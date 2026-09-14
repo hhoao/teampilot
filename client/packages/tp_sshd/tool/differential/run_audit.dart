@@ -9,11 +9,13 @@
 /// package suite stays green on machines without OpenSSH.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:dartssh2/dartssh2.dart' show SSHClient, SSHKeyPair, SSHSocket;
 
+import 'area_a_malformed.dart';
 import 'audit_harness.dart';
 
 /// What the OpenSSH reference says should happen on one audit row.
@@ -63,11 +65,51 @@ const Map<String, String> areaTitles = {
   'e': 'Area E — timing surfaces',
 };
 
-/// Registered area implementations. Tasks 2–5 add their runners here; until
+/// Registered area implementations. Tasks 3–5 add their runners here; until
 /// then every area reports that no rows exist.
-final Map<String, AreaRunner> areaRunners = {};
+final Map<String, AreaRunner> areaRunners = {
+  'a': _runAreaA,
+};
 
-Future<void> main(List<String> args) async {
+/// Async errors that escaped every row's own guards, attributed to the row
+/// that was in flight when they surfaced. The tp_sshd server runs in this
+/// process, so an unhandled async error in its wiring lands here too — for
+/// an audit runner, that is a finding to report, not a reason to die before
+/// the remaining rows run.
+final strayZoneErrors = <String>[];
+
+/// The audit row currently running, for [strayZoneErrors] attribution.
+String? rowInProgress;
+
+/// Runs the Area A rows (malformed input, A01–A18) sequentially against the
+/// harness servers. Rows are sequential on purpose: each one must leave both
+/// listeners serving (the crash-isolation check), and a broken row must not
+/// take the rest of the run down.
+Future<List<RowResult>> _runAreaA(AuditServers servers) async {
+  final results = <RowResult>[];
+  for (final row in areaARows()) {
+    rowInProgress = row.id;
+    try {
+      results.add(await row.run(servers));
+    } on Object catch (error) {
+      // A row that escaped its own probe guards is recorded as an error
+      // result, not a run abort.
+      results.add(
+        RowResult(
+          id: row.id,
+          expected: OpenSshExpectation(row.sourceHint, '(row crashed)'),
+          openSshActual: 'ROW ERROR: $error',
+          tpSshdActual: 'ROW ERROR: $error',
+        ),
+      );
+    } finally {
+      rowInProgress = null;
+    }
+  }
+  return results;
+}
+
+Future<void> _main(List<String> args) async {
   var smoke = false;
   var area = 'all';
   var opensshSrc =
@@ -116,6 +158,18 @@ Future<void> main(List<String> args) async {
   }
   exit(exitCode);
 }
+
+Future<void> main(List<String> args) {
+  // The tp_sshd server under audit runs in this process: an unhandled
+  // async error in its wiring is a finding for [strayZoneErrors], not a
+  // run abort that would cost the remaining rows.
+  return runZonedGuarded(() async {
+    await _main(args);
+  }, (error, stack) {
+    strayZoneErrors.add('${rowInProgress ?? '(outside a row)'}: $error');
+  })!;
+}
+
 
 Never _usage(String problem) {
   print('error: $problem');
@@ -249,6 +303,13 @@ Future<void> _runAreas(AuditServers servers, String selection) async {
   }
   if (!ranAny) {
     print('(no audit rows registered — run --smoke to verify the harness)');
+  }
+  if (strayZoneErrors.isNotEmpty) {
+    print('');
+    print('## Stray async errors (escaped the rows\' own guards)');
+    for (final error in strayZoneErrors) {
+      print('- [$error]');
+    }
   }
 }
 

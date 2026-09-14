@@ -12,8 +12,14 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart'
-    show SSHDisconnectError, SSHSocket, SSHTransport;
-import 'package:dartssh2/protocol.dart' show SSHMessage;
+    show SSHDisconnectError, SSHKeyPair, SSHSocket, SSHTransport;
+import 'package:dartssh2/protocol.dart'
+    show
+        SSHMessage,
+        SSH_Message_Channel_Open_Failure,
+        SSH_Message_Userauth_Failure,
+        SSH_Message_Userauth_Request,
+        SSH_Message_Service_Request;
 
 /// One thing the dialed server did that an audit row records.
 ///
@@ -25,13 +31,20 @@ sealed class Observed {
 
 /// One SSH message the server sent, by numeric id and its common name.
 class MessageObservation extends Observed {
-  const MessageObservation(this.id, this.name);
+  const MessageObservation(this.id, this.name, [this.detail]);
 
   final int id;
   final String name;
 
+  /// Payload-derived detail for the messages whose content is itself an
+  /// audit observable (`USERAUTH_FAILURE`'s methods list,
+  /// `CHANNEL_OPEN_FAILURE`'s reason code and description); `null` when the
+  /// id alone says everything.
+  final String? detail;
+
   @override
-  String toString() => 'msg:$id($name)';
+  String toString() =>
+      detail == null ? 'msg:$id($name)' : 'msg:$id($name, $detail)';
 }
 
 /// An `SSH_MSG_DISCONNECT` the server sent.
@@ -140,6 +153,12 @@ class RawSession {
         onDone: () => _recordEnd(null),
       );
     }
+    // Neither lifecycle future is awaited by every dial mode (raw sessions
+    // never reach KEX), but both complete with an error when the connection
+    // ends. Default handlers keep those completions from surfacing as
+    // unhandled async errors; row code that awaits still gets the result.
+    _keyExchangeCompleter.future.ignore();
+    _authenticatedCompleter.future.ignore();
   }
 
   final Socket _socket;
@@ -157,7 +176,18 @@ class RawSession {
   final List<Observed> _observations = [];
   final Completer<DisconnectObservation?> _disconnectCompleter =
       Completer<DisconnectObservation?>();
+  final Completer<void> _keyExchangeCompleter = Completer<void>();
+  final Completer<void> _authenticatedCompleter = Completer<void>();
   var _ended = false;
+
+  /// The initial key exchange, complete (post-NEWKEYS). Rows injecting
+  /// post-KEX traffic await this first. Completes with an error when the
+  /// connection ends before the exchange completes.
+  Future<void> get keyExchangeDone => _keyExchangeCompleter.future;
+
+  /// `SSH_MSG_USERAUTH_SUCCESS` observed — the publickey login went through.
+  /// Completes with an error when the connection ends first.
+  Future<void> get authenticated => _authenticatedCompleter.future;
 
   /// Writes [bytes] straight onto the TCP socket, bypassing [transport].
   ///
@@ -203,11 +233,40 @@ class RawSession {
       _observations.add(const ClosedObservation());
       _disconnectCompleter.complete(null);
     }
+    final closed = StateError('connection ended');
+    if (!_keyExchangeCompleter.isCompleted) {
+      _keyExchangeCompleter.completeError(closed);
+    }
+    if (!_authenticatedCompleter.isCompleted) {
+      _authenticatedCompleter.completeError(closed);
+    }
   }
 
   void _recordMessage(Uint8List payload) {
     final id = SSHMessage.readMessageId(payload);
-    _observations.add(MessageObservation(id, sshMessageName(id)));
+    _observations.add(MessageObservation(id, sshMessageName(id), _detailOf(id, payload)));
+    if (id == 52 && !_authenticatedCompleter.isCompleted) {
+      _authenticatedCompleter.complete();
+    }
+  }
+
+  /// The payload detail recorded for the messages whose content is itself
+  /// an audit observable. Decoding is best-effort: a decode failure must not
+  /// mask the id-level observation.
+  String? _detailOf(int id, Uint8List payload) {
+    try {
+      switch (id) {
+        case SSH_Message_Userauth_Failure.messageId:
+          final failure = SSH_Message_Userauth_Failure.decode(payload);
+          return 'methods=[${failure.methodsLeft.join(',')}]';
+        case SSH_Message_Channel_Open_Failure.messageId:
+          final failure = SSH_Message_Channel_Open_Failure.decode(payload);
+          return 'reason=${failure.reasonCode} "${failure.description}"';
+      }
+    } on Object {
+      return null;
+    }
+    return null;
   }
 
   /// Records a transport-layer message the transport handled internally
@@ -220,6 +279,12 @@ class RawSession {
     final id = _tracedMessageIds[token];
     if (id == null) return;
     _observations.add(MessageObservation(id, sshMessageName(id)));
+  }
+
+  void _completeKeyExchange() {
+    if (!_keyExchangeCompleter.isCompleted) {
+      _keyExchangeCompleter.complete();
+    }
   }
 }
 
@@ -242,13 +307,73 @@ Future<RawSession> dialRaw({required int port, String? versionString}) async {
     );
     return session;
   }
+  return _dialTransport(socket);
+}
 
-  // The transport starts the handshake in its constructor and traces its
-  // outgoing lines synchronously there, before the session below exists —
-  // hence the nullable holder. Incoming lines only arrive on a later
-  // event-loop turn, by which time the holder is set.
+/// Dials [port] and drives the client-side key exchange to completion, then
+/// stops: the connection is post-NEWKEYS but pre-authentication. Audit rows
+/// take it from there through [RawSession.transport]'s `sendPacket`.
+Future<RawSession> dialPostKex({required int port}) async {
+  final socket = await Socket.connect('127.0.0.1', port);
+  return _dialTransport(socket);
+}
+
+/// Dials [port], completes the key exchange, negotiates `ssh-userauth`, and
+/// authenticates with [identity] (ed25519 publickey, RFC 4252 §7 signature
+/// over the transport-composed challenge). Completes when
+/// [RawSession.authenticated] fires — the returned session is post-auth.
+///
+/// [signChallenge] overrides the signature: the challenge bytes are handed
+/// to it instead of the identity, for rows that need an invalid signature.
+Future<RawSession> dialAuthenticated({
+  required int port,
+  required SSHKeyPair identity,
+  required String username,
+  Uint8List Function(Uint8List challenge)? signChallenge,
+}) async {
+  final socket = await Socket.connect('127.0.0.1', port);
+  final publicKey = identity.toPublicKey().encode();
+  return _dialTransport(socket, onReady: (transport) {
+    transport.sendPacket(
+      SSH_Message_Service_Request('ssh-userauth').encode(),
+    );
+    // The RFC 4252 §7 signed request: the challenge is the session-id
+    // prefixed request-without-signature (same construction as
+    // test/dual_test_utils.dart).
+    final challenge = transport.composeChallenge(
+      username: username,
+      service: 'ssh-connection',
+      publicKeyAlgorithm: 'ssh-ed25519',
+      publicKey: publicKey,
+    );
+    final signature = signChallenge != null
+        ? signChallenge(challenge)
+        : identity.sign(challenge).encode();
+    transport.sendPacket(
+      SSH_Message_Userauth_Request.publicKey(
+        username: username,
+        publicKeyAlgorithm: 'ssh-ed25519',
+        publicKey: publicKey,
+        signature: signature,
+      ).encode(),
+    );
+  });
+}
+
+/// The transport-mode dial shared by [dialRaw] (no version override),
+/// [dialPostKex] and [dialAuthenticated].
+///
+/// The transport starts the handshake in its constructor and traces its
+/// outgoing lines synchronously there, before the session below exists —
+/// hence the nullable holder. Incoming lines only arrive on a later
+/// event-loop turn, by which time the holder is set.
+RawSession _dialTransport(
+  Socket socket, {
+  void Function(SSHTransport transport)? onReady,
+}) {
   RawSession? session;
-  final transport = SSHTransport(
+  late final SSHTransport transport;
+  transport = SSHTransport(
     _ClientSocket(socket),
     onVerifyHostKey: (_, __) => true,
     printTrace: (line) {
@@ -263,6 +388,10 @@ Future<RawSession> dialRaw({required int port, String? versionString}) async {
       // the transport never answers on the driver's behalf.
       session?._recordMessage(payload);
       return true;
+    },
+    onReady: () {
+      session?._completeKeyExchange();
+      onReady?.call(transport);
     },
   );
   final rawSession = RawSession._(socket, transport);
