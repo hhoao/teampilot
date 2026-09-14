@@ -7,6 +7,7 @@ import '../services/git/git_worktree_service.dart';
 import '../services/home_workspace/worktree_ui_prefs_store.dart';
 import '../services/storage/home_storage.dart';
 import '../services/workspace/workspace_worktree_store.dart';
+import '../utils/logging/logger.dart';
 import '../utils/session/session_worktree_grouping.dart';
 import '../utils/workspace/workspace_path_utils.dart';
 
@@ -171,6 +172,8 @@ class WorktreeCubit extends Cubit<WorktreeState> {
 
   bool _hydrated = false;
   int _loadGeneration = 0;
+  bool _reloadInFlight = false;
+  bool _reloadQueued = false;
 
   /// Repo paths that have completed at least one [load] in this cubit (including
   /// empty / non-git results). Used so landing [selectProject] can skip a
@@ -391,6 +394,36 @@ class WorktreeCubit extends Cubit<WorktreeState> {
       return;
     }
     await load(projectPath, preferCurrentPath: preferWorktreePath);
+  }
+
+  /// Reloads `git worktree list` for the current repo with a coalescing guard:
+  /// at most one in-flight chain per repo plus a single trailing run, mirroring
+  /// [GitCubit.refresh]. No-op until [bindWorktreeService] bound a runner.
+  /// Errors are absorbed (labels heal on the next event / TTL tick).
+  Future<void> reloadActiveRepo() async {
+    if (_lister == null) return;
+    final repo = state.repoPath.trim();
+    if (repo.isEmpty) return;
+    if (_reloadInFlight) {
+      _reloadQueued = true;
+      return;
+    }
+    _reloadInFlight = true;
+    try {
+      try {
+        await load(repo, force: true);
+      } on Object catch (e, st) {
+        appLogger.d('[worktree] reload active repo failed: $repo ($e)',
+            error: e, stackTrace: st);
+        if (!isClosed && state.loading) emit(state.copyWith(loading: false));
+      }
+    } finally {
+      _reloadInFlight = false;
+    }
+    if (_reloadQueued && !isClosed) {
+      _reloadQueued = false;
+      unawaited(reloadActiveRepo());
+    }
   }
 
   bool _canReuseLoadedProject(String path) =>

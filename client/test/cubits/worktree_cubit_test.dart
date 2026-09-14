@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/models/git_worktree.dart';
+import 'package:teampilot/services/git/git_service.dart';
 import 'package:teampilot/services/git/git_worktree_service.dart';
 import 'package:teampilot/services/home_workspace/worktree_ui_prefs_store.dart';
 import 'package:teampilot/services/workspace/workspace_worktree_store.dart';
@@ -46,6 +47,25 @@ class _DelayedLister implements WorktreeLister {
     await Future<void>.delayed(delay);
     return _list;
   }
+}
+
+class _CountingDelayedLister implements WorktreeLister {
+  _CountingDelayedLister(this._list, this.delay);
+  final List<GitWorktree> _list;
+  final Duration delay;
+  var calls = 0;
+  @override
+  Future<List<GitWorktree>> list(String repoPath) async {
+    calls++;
+    await Future<void>.delayed(delay);
+    return _list;
+  }
+}
+
+class _ThrowingLister implements WorktreeLister {
+  @override
+  Future<List<GitWorktree>> list(String repoPath) async =>
+      throw GitException('boom');
 }
 
 class _DelayedPrefsStore extends WorktreeUiPrefsStore {
@@ -421,6 +441,69 @@ void main() {
 
     expect(store.peek('ws-1', '/repo-b')!.worktrees, hasLength(1));
     await cubit.close();
+  });
+
+  group('reloadActiveRepo', () {
+    test('skips silently before the git runner is bound', () async {
+      final cubit = WorktreeCubit(
+        storage: fakeHomeStorage(),
+        initialRepoPath: '/repo',
+      );
+      await cubit.reloadActiveRepo(); // must not throw StateError
+      await cubit.close();
+    });
+
+    test('reloads the active repo with force and republishes worktrees',
+        () async {
+      var list = [_wt('/repo', main: true), _wt('/wt/a')];
+      final lister = _CountingLister((_) => list);
+      final cubit = WorktreeCubit(
+        storage: fakeHomeStorage(),
+        lister: lister,
+        initialRepoPath: '/repo',
+      );
+      await cubit.reloadActiveRepo();
+      expect(lister.calls, 1);
+      expect(cubit.state.worktrees, hasLength(2));
+
+      list = [_wt('/repo', main: true), _wt('/wt/a'), _wt('/wt/b')];
+      await cubit.reloadActiveRepo();
+      expect(lister.calls, 2);
+      expect(cubit.state.worktrees, hasLength(3));
+      await cubit.close();
+    });
+
+    test('coalesces concurrent reloads into one in-flight plus one trailing',
+        () async {
+      final lister = _CountingDelayedLister(
+        [_wt('/repo', main: true)],
+        const Duration(milliseconds: 20),
+      );
+      final cubit = WorktreeCubit(
+        storage: fakeHomeStorage(),
+        lister: lister,
+        initialRepoPath: '/repo',
+      );
+      final first = cubit.reloadActiveRepo();
+      final second = cubit.reloadActiveRepo();
+      final third = cubit.reloadActiveRepo();
+      await Future.wait([first, second, third]);
+      // 第一条执行中；第二条排队；第三条看到已排队直接返回 → 共 2 次 list。
+      expect(lister.calls, 2);
+      await cubit.close();
+    });
+
+    test('absorbs git errors without leaving loading stuck', () async {
+      final cubit = WorktreeCubit(
+        storage: fakeHomeStorage(),
+        lister: _ThrowingLister(),
+        initialRepoPath: '/repo',
+      );
+      await cubit.reloadActiveRepo(); // must not throw
+      expect(cubit.state.loading, isFalse);
+      expect(cubit.state.worktrees, isEmpty);
+      await cubit.close();
+    });
   });
 }
 
