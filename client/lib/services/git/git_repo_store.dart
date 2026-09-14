@@ -49,6 +49,7 @@ class GitRepoStore {
     return GitCubit(
       service: service,
       storage: _storage ?? HomeStorage(workContext),
+      onHeadChanged: notifyHeadChanged,
     )..setRepoRoot(root);
   }
 
@@ -74,6 +75,18 @@ class GitRepoStore {
   final DateTime Function() _now;
   final HomeStorage? _storage;
   final p.Context _ctx = p.Context();
+
+  final _headChanged = StreamController<String>.broadcast(sync: true);
+
+  /// HEAD-branch mutation notifications (repoRoot), e.g. git panel / graph
+  /// checkouts. Worktree loading subscribes to keep branch labels fresh.
+  Stream<String> get headChanged => _headChanged.stream;
+
+  void notifyHeadChanged(String repoRoot) {
+    final root = repoRoot.trim();
+    if (root.isEmpty) return;
+    _headChanged.add(root);
+  }
 
   /// Normalized `targetId:root` → cubit. Insertion order is the LRU order.
   final Map<String, GitCubit> _cubits = <String, GitCubit>{};
@@ -212,5 +225,6 @@ class GitRepoStore {
     }
     _cubits.clear();
     _graphCubits.clear();
+    _headChanged.close();
   }
 }

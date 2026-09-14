@@ -152,6 +152,7 @@ class GitCubit extends Cubit<GitState> {
     required GitService service,
     HeadlessAiService? headless,
     HomeStorage? storage,
+    void Function(String repoRoot)? onHeadChanged,
   }) : _service = service,
        _headless =
            headless ??
@@ -168,10 +169,15 @@ class GitCubit extends Cubit<GitState> {
                    ),
                  ),
            ),
+       onHeadChanged = onHeadChanged,
        super(const GitState());
 
   final GitService _service;
   final HeadlessAiService _headless;
+
+  /// Fired after a branch-affecting mutation succeeds; `repoRoot` is the repo
+  /// whose HEAD moved. Used to keep worktree/branch labels fresh.
+  final void Function(String repoRoot)? onHeadChanged;
 
   /// Seeds [GitState.expandedFolderPaths] once after the first status load.
   bool _treeExpansionInitialized = false;
@@ -575,6 +581,7 @@ class GitCubit extends Cubit<GitState> {
 
   Future<void> checkoutBranch(String name) async {
     if (await _mutate(() => _service.checkout(state.repoRoot, name))) {
+      onHeadChanged?.call(state.repoRoot);
       await ensureBranches(force: true);
     }
   }
@@ -583,6 +590,7 @@ class GitCubit extends Cubit<GitState> {
     if (await _mutate(
       () => _service.createBranch(state.repoRoot, name.trim()),
     )) {
+      onHeadChanged?.call(state.repoRoot);
       await ensureBranches(force: true);
     }
   }

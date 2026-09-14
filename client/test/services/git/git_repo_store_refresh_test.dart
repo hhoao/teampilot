@@ -126,4 +126,17 @@ void main() {
     store.refreshAll(['/repo'], workContext: context);
     expect(cubit.refreshCalls, 2, reason: '单 root 无降频，行为与历史一致');
   });
+
+  test('notifyHeadChanged publishes the repo root on headChanged', () async {
+    final store = GitRepoStore();
+    addTearDown(store.dispose);
+    final seen = <String>[];
+    final sub = store.headChanged.listen(seen.add);
+    addTearDown(sub.cancel);
+
+    store.notifyHeadChanged('/repo-a');
+    store.notifyHeadChanged('  '); // 空白被忽略
+    await Future<void>.delayed(Duration.zero);
+    expect(seen, ['/repo-a']);
+  });
 }
