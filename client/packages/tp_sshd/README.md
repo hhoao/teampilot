@@ -54,6 +54,17 @@ commands or binding real sockets. The one bounded wait in the package:
 `SSHServerChannel.close` gives data still queued for the client's window
 credit two seconds to flush before dropping the tail.
 
+Channel input is flow-controlled like OpenSSH's: the receive window granted
+to the peer is only re-granted as the consumer takes bytes off
+`SSHServerChannel.input`, reported through `SSHServerChannel.consumeInput`.
+The in-package consumers (the exec/shell stdin pump, the SFTP subsystem,
+the forwarding pump) report consumption with OS-level backpressure — each
+write is awaited, so a program or socket that stops reading stops the
+credit from returning. A peer that keeps sending past the granted window
+beyond a 10% grace margin is disconnected (`channel N: peer ignored channel
+window`, reason 2). Embedders subscribing to `input` directly should report
+consumption the same way, or the peer's window will not refill.
+
 See [test/dual_test_utils.dart](test/dual_test_utils.dart) for a complete
 wiring example (in-memory socket pairs, a real `SSHClient` on the other end,
 and raw-transport harnesses for protocol-level traffic).

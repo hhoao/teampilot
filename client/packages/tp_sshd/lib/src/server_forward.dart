@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -118,21 +119,58 @@ Future<void> pumpForwardConnection(
     ),
   );
 
-  // Client → TCP peer.
-  subscriptions.add(
-    channel.input.listen(
-      (data) {
+  // Client → TCP peer: one chunk at a time, each write awaited before the
+  // next is taken, and only a completed write reports consumption back to
+  // the channel. Awaiting the sink carries the socket's own backpressure (a
+  // peer that stopped reading makes the write wait), so a flood aimed at a
+  // silent target exhausts the granted window instead of being buffered
+  // unboundedly (F4, audit A16).
+  final pendingOutput = Queue<Uint8List>();
+  var writingOutput = false;
+  var outputEnded = false;
+  var outputBroken = false;
+  void pumpOutput() {
+    if (writingOutput || outputBroken) return;
+    if (pendingOutput.isEmpty) {
+      if (outputEnded) {
+        unawaited(connection.output.close().then((_) {}, onError: (Object _) {}));
+      }
+      return;
+    }
+    writingOutput = true;
+    unawaited(() async {
+      while (pendingOutput.isNotEmpty && !outputBroken) {
+        final data = pendingOutput.removeFirst();
         try {
-          connection.output.add(data);
+          await connection.output.addStream(Stream.value(data));
         } on Object {
           // The TCP side died mid-write; its own completion closes the
           // channel.
+          outputBroken = true;
+          pendingOutput.clear();
+          return;
         }
+        channel.consumeInput(data.length);
+      }
+      writingOutput = false;
+      if (outputEnded && pendingOutput.isEmpty) {
+        unawaited(connection.output.close().then((_) {}, onError: (Object _) {}));
+      }
+    }());
+  }
+
+  subscriptions.add(
+    channel.input.listen(
+      (data) {
+        pendingOutput.add(data);
+        pumpOutput();
       },
       onError: (Object _) {},
       onDone: () {
-        // The client half-closed its channel: stop writing to the peer.
-        connection.output.close().then((_) {}, onError: (Object _) {});
+        // The client half-closed its channel: the peer's sink is released
+        // once the queued writes have drained.
+        outputEnded = true;
+        pumpOutput();
       },
     ),
   );

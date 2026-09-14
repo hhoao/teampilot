@@ -34,6 +34,7 @@ class SSHServerChannel {
     required int peerMaximumPacketSize,
     required void Function(Uint8List payload) sendPacket,
     required void Function(SSHServerChannel channel) onClosed,
+    void Function(String description)? onProtocolViolation,
     this.closeFlushTimeout = const Duration(seconds: 2),
     this.printDebug,
   })  : _sendWindow = peerInitialWindowSize,
@@ -44,6 +45,7 @@ class SSHServerChannel {
             ? peerMaximumPacketSize
             : maximumPacketSize,
         _sendPacket = sendPacket,
+        _onProtocolViolation = onProtocolViolation,
         _onClosed = onClosed;
 
   /// The channel number the client assigned to this channel. Every message
@@ -66,10 +68,31 @@ class SSHServerChannel {
 
   final void Function(Uint8List payload) _sendPacket;
   final void Function(SSHServerChannel channel) _onClosed;
+
+  /// Reports a channel-protocol violation that must take the whole
+  /// connection down (the receive window being overrun past its grace
+  /// margin): the connection turns the description into a
+  /// `DISCONNECT(2, …)`.
+  final void Function(String description)? _onProtocolViolation;
   final void Function(String? message)? printDebug;
 
   /// Remaining bytes the client may still send us (the receive direction).
   var _receiveWindow = initialReceiveWindow;
+
+  /// Bytes the client has sent past the granted receive window so far, not
+  /// reset by an in-window packet — sshd's `local_window_exceeded`
+  /// (channels.c:channel_input_data): the first overage is tolerated, and
+  /// once the total excess crosses a tenth of the window the peer is
+  /// ignoring flow control and the connection goes down.
+  var _windowExceeded = 0;
+
+  /// Bytes admitted onto [input]/[extendedInput] that the consumer has not
+  /// reported through [consumeInput] yet. Never re-granted while it sits
+  /// here: against a non-reading program the window stays a bound.
+  var _pendingInput = 0;
+
+  /// Bytes the consumer reported as consumed but not yet granted back.
+  var _consumedInput = 0;
 
   /// Remaining bytes we may still send the client (the send direction).
   int _sendWindow;
@@ -369,7 +392,8 @@ class SSHServerChannel {
 
   /// Admits one inbound data message: checks it against the packet size and
   /// window the client was given, surfaces it on [controller], and grants
-  /// the consumed window back once enough of it has accumulated.
+  /// the window the client was given, surfaces it on [controller], and holds
+  /// the credit back until the consumer reports it through [consumeInput].
   void _handleIncoming(Uint8List data, StreamController<Uint8List> controller) {
     if (isClosed || data.isEmpty) return;
     if (_receivedEof) {
@@ -382,38 +406,76 @@ class SSHServerChannel {
         'tp_sshd: dropping ${data.length} bytes on channel $ourChannel '
         'after the client EOF',
       );
+      _pendingInput += data.length;
+      consumeInput(data.length);
       return;
     }
-    if (data.length > maximumPacketSize || data.length > _receiveWindow) {
+    if (data.length > maximumPacketSize) {
+      // The documented C04 divergence: a chunk over the advertised
+      // maximumPacketSize fails this channel (sshd drops it silently).
       _failChannel(
-        'the client sent ${data.length} bytes, over the packet-size/window '
-        'bounds it was given ($_receiveWindow left of the window)',
+        'the client sent ${data.length} bytes, over the packet-size bound it '
+        'was given',
       );
       return;
     }
-    _receiveWindow -= data.length;
+    if (data.length > _receiveWindow) {
+      // Past the granted window (channels.c:channel_input_data): the first
+      // overages are tolerated — the data is still admitted and the credit
+      // zeroed — but the excess accumulates, and past a tenth of the window
+      // the peer is ignoring flow control and the connection goes down
+      // (audit A16 + C05).
+      final excess = data.length - _receiveWindow;
+      _windowExceeded += excess;
+      printDebug?.call(
+        'tp_sshd: channel $ourChannel rcvd too much data ${data.length}, '
+        'window $_receiveWindow/$initialReceiveWindow '
+        '(excess total $_windowExceeded)',
+      );
+      _receiveWindow = 0;
+      if (_windowExceeded > initialReceiveWindow ~/ 10) {
+        _onProtocolViolation?.call(
+          'channel $ourChannel: peer ignored channel window',
+        );
+        return;
+      }
+    } else {
+      _receiveWindow -= data.length;
+      _windowExceeded = 0;
+    }
+    _pendingInput += data.length;
     controller.add(data);
-    _grantReceiveWindowIfNeeded();
   }
 
-  /// Grants the consumed receive window back once enough of it has
-  /// accumulated, using OpenSSH's two refill rules (channels.c): when the
-  /// window has dropped below half, or when more than three maximum-size
-  /// packets are outstanding — whichever fires first. Interactive channels
-  /// stay quiet (no adjustment per keystroke), bulk transfers get frequent
-  /// refills, and the window can never starve.
-  void _grantReceiveWindowIfNeeded() {
-    final consumed = initialReceiveWindow - _receiveWindow;
+  /// Reports [bytes] of the channel's input as consumed by its reader: the
+  /// program took them off its stdin (or the SFTP server parsed them, the
+  /// forward pump handed them to the socket). Only consumed bytes are ever
+  /// granted back, which is what makes the advertised receive window a
+  /// bound — against a non-reading program no credit returns and a peer
+  /// that keeps sending is disconnected by [_handleIncoming] (F4, audit
+  /// A16 + C05; sshd's channel_check_window grants `local_consumed` only).
+  ///
+  /// The grant waits for one of sshd's two refill thresholds — the window
+  /// below half, or more than three maximum-size packets outstanding — so
+  /// interactive channels stay quiet while bulk transfers refill early.
+  void consumeInput(int bytes) {
+    if (isClosed || bytes <= 0) return;
+    final admitted = bytes < _pendingInput ? bytes : _pendingInput;
+    if (admitted <= 0) return;
+    _pendingInput -= admitted;
+    _consumedInput += admitted;
+    final outstanding = initialReceiveWindow - _receiveWindow;
     final belowHalf = _receiveWindow < initialReceiveWindow ~/ 2;
-    final threePacketsOutstanding = consumed > 3 * maximumPacketSize;
+    final threePacketsOutstanding = outstanding > 3 * maximumPacketSize;
     if (!belowHalf && !threePacketsOutstanding) return;
-    _receiveWindow = initialReceiveWindow;
+    _receiveWindow += _consumedInput;
     _sendPacket(
       SSH_Message_Channel_Window_Adjust(
         recipientChannel: recipientChannel,
-        bytesToAdd: consumed,
+        bytesToAdd: _consumedInput,
       ).encode(),
     );
+    _consumedInput = 0;
   }
 
   void _replyToRequest(

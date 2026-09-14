@@ -312,6 +312,7 @@ class SSHServerConnection {
       peerMaximumPacketSize: message.maximumPacketSize,
       sendPacket: _transport.sendPacket,
       onClosed: _onChannelClosed,
+      onProtocolViolation: _disconnectForChannelViolation,
       printDebug: _config.printDebug,
     );
     // Session requests (exec today; shell and pty in Task 7) are served by
@@ -400,6 +401,7 @@ class SSHServerConnection {
           peerMaximumPacketSize: message.maximumPacketSize,
           sendPacket: _transport.sendPacket,
           onClosed: _onChannelClosed,
+          onProtocolViolation: _disconnectForChannelViolation,
           printDebug: _config.printDebug,
         );
         _channels[ourChannel] = channel;
@@ -583,6 +585,14 @@ class SSHServerConnection {
     }
   }
 
+  /// Takes a channel down together with the whole connection: the channel
+  /// reported a violation the protocol makes fatal for the connection (the
+  /// receive window being overrun past its grace margin), so the peer is
+  /// answered with a `DISCONNECT(2, description)` before the teardown.
+  void _disconnectForChannelViolation(String description) {
+    _disconnect(SSHDisconnectReason.protocolError, description);
+  }
+
   /// Serves the client's verdict on a server-initiated channel open
   /// (RFC 4254 §5.1): a CHANNEL_OPEN_CONFIRMATION promotes the pending open
   /// to a live channel; a CHANNEL_OPEN_FAILURE resolves it to `null`. A
@@ -620,6 +630,7 @@ class SSHServerConnection {
           peerMaximumPacketSize: message.maximumPacketSize,
           sendPacket: _transport.sendPacket,
           onClosed: _onChannelClosed,
+          onProtocolViolation: _disconnectForChannelViolation,
           printDebug: _config.printDebug,
         );
         _channels[channel.ourChannel] = channel;

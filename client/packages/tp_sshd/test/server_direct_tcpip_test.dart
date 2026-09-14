@@ -6,12 +6,16 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:dartssh2/dartssh2.dart' show SSHChannelOpenError;
+import 'package:dartssh2/dartssh2.dart'
+    show SSHChannelOpenError, SSHDisconnectError;
 import 'package:dartssh2/protocol.dart'
     show
         SSHMessage,
+        SSH_Message_Channel_Confirmation,
+        SSH_Message_Channel_Data,
         SSH_Message_Channel_Open,
         SSH_Message_Channel_Open_Failure,
+        SSH_Message_Channel_Window_Adjust,
         SSH_Message_Global_Request,
         SSH_Message_Request_Failure;
 import 'package:test/test.dart';
@@ -391,6 +395,72 @@ void main() {
     await connection.close();
     client.close();
   });
+
+  test('a forwarded peer that never reads keeps the granted window a bound',
+      () async {
+    // F4's direct-tcpip half (A16): the flood target never reads, so the
+    // forward pump's writes never complete, nothing is re-granted, and a
+    // peer that keeps sending past the granted window beyond sshd's 10%
+    // grace margin is disconnected instead of buffered unboundedly.
+    final confirmed = Completer<void>();
+    final adjusts = <int>[];
+    final (connection, client) = await startRawAuthenticatedConnection(
+      forwarding: forwardingConfig(
+        dial: (host, port) async => _GatedForwardConnection(),
+      ),
+      onServerMessage: (payload) {
+        switch (SSHMessage.readMessageId(payload)) {
+          case SSH_Message_Channel_Confirmation.messageId:
+            if (!confirmed.isCompleted) confirmed.complete();
+          case SSH_Message_Channel_Window_Adjust.messageId:
+            adjusts.add(
+              SSH_Message_Channel_Window_Adjust.decode(payload).bytesToAdd,
+            );
+        }
+      },
+    );
+    addTearDown(connection.close);
+    addTearDown(client.close);
+
+    client.sendPacket(
+      SSH_Message_Channel_Open.directTcpip(
+        senderChannel: 100,
+        initialWindowSize: 2 * 1024 * 1024,
+        maximumPacketSize: 32768,
+        host: '127.0.0.1',
+        port: 80,
+        originatorIP: '127.0.0.1',
+        originatorPort: 5,
+      ).encode(),
+    );
+    await confirmed.future;
+    final serverChannel = connection.channels.keys.single;
+
+    // 64 chunks of 32768 spend the 2 MiB window; the seventh overflowing
+    // chunk crosses the 10% grace and draws the disconnect.
+    final chunk = Uint8List(32768);
+    for (var i = 0; i < 71; i++) {
+      client.sendPacket(
+        SSH_Message_Channel_Data(
+          recipientChannel: serverChannel,
+          data: chunk,
+        ).encode(),
+      );
+    }
+    await expectLater(
+      client.done.timeout(const Duration(seconds: 5)),
+      throwsA(
+        isA<SSHDisconnectError>()
+            .having((error) => error.reasonCode, 'reasonCode', 2)
+            .having(
+              (error) => error.message,
+              'message',
+              'channel $serverChannel: peer ignored channel window',
+            ),
+      ),
+    );
+    expect(adjusts, isEmpty);
+  });
 }
 
 /// Binds a real loopback [ServerSocket] through the seam.
@@ -440,4 +510,50 @@ class _RealForwardConnection implements ForwardConnection {
 
   @override
   void destroy() => _socket.destroy();
+}
+
+/// A forwarded connection whose peer never reads: every write waits on a
+/// gate the test never opens, standing in for A16's silent flood target.
+/// Its input never ends either — a closed stream would finish the channel
+/// before the flood even starts.
+class _GatedForwardConnection implements ForwardConnection {
+  final _output = _GatedOutputSink();
+  final _input = StreamController<Uint8List>();
+
+  @override
+  Stream<Uint8List> get input => _input.stream;
+
+  @override
+  StreamSink<List<int>> get output => _output;
+
+  @override
+  Future<void> get done => Completer<void>().future;
+
+  @override
+  InternetAddress get remoteAddress => InternetAddress.loopbackIPv4;
+
+  @override
+  int get remotePort => 80;
+
+  @override
+  void destroy() {}
+}
+
+class _GatedOutputSink implements StreamSink<List<int>> {
+  final _gate = Completer<void>();
+
+  @override
+  void add(List<int> data) {}
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) {}
+
+  @override
+  Future<void> addStream(Stream<List<int>> stream) => _gate.future;
+
+  @override
+  Future<void> close() => Future.value();
+
+  @override
+  Future<void> get done => Future.value();
 }

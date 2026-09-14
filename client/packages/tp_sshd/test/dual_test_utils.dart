@@ -119,6 +119,7 @@ SSHClient _connectClient(
 Future<(SSHServerConnection, SSHTransport)> startRawAuthenticatedConnection({
   void Function(Uint8List payload)? onServerMessage,
   SSHForwardingConfig? forwarding,
+  SSHProcessFactory? processFactory,
 }) async {
   final (clientSocket, serverSocket) = loopbackSSHSocketPair();
   final connection = SSHServerConnection(
@@ -128,6 +129,7 @@ Future<(SSHServerConnection, SSHTransport)> startRawAuthenticatedConnection({
       expectedUsername: 'user',
       authenticate: (_) async => true,
       forwarding: forwarding,
+      processFactory: processFactory,
     ),
   );
   final authenticated = Completer<void>();

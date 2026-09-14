@@ -539,7 +539,13 @@ void main() {
       );
       await opened.future;
       final SSHServerChannel channel = connection.channels.values.single;
-      final inputSubscription = channel.input.listen(input.add);
+      // The consumer reports every chunk as consumed: the grants below are
+      // consumption-driven (sshd's channel_check_window grants only bytes
+      // the reader took, never bytes merely received).
+      final inputSubscription = channel.input.listen((data) {
+        input.add(data);
+        channel.consumeInput(data.length);
+      });
 
       client.sendPacket(
         SSH_Message_Channel_Data(
@@ -566,6 +572,127 @@ void main() {
       expect(adjusts, [98308]);
       await inputSubscription.cancel();
 
+      await connection.close();
+      client.close();
+    });
+
+    test('a peer that exceeds the granted window past the grace is '
+        'disconnected', () async {
+      // F4 (A16 + C05): the granted receive window must be a bound. A peer
+      // that keeps sending past it beyond sshd's 10% grace margin is
+      // disconnected with sshd's exact wording; before this fix the server
+      // re-granted credit on receipt accounting alone and buffered
+      // unboundedly.
+      final adjusts = <int>[];
+      final opened = Completer<void>();
+      final (connection, client) = await startRawAuthenticatedConnection(
+        onServerMessage: (payload) {
+          switch (SSHMessage.readMessageId(payload)) {
+            case SSH_Message_Channel_Confirmation.messageId:
+              if (!opened.isCompleted) opened.complete();
+            case SSH_Message_Channel_Window_Adjust.messageId:
+              adjusts.add(
+                SSH_Message_Channel_Window_Adjust.decode(payload).bytesToAdd,
+              );
+          }
+        },
+      );
+
+      client.sendPacket(
+        SSH_Message_Channel_Open.session(
+          senderChannel: 3,
+          initialWindowSize: 2 * 1024 * 1024,
+          maximumPacketSize: 32768,
+        ).encode(),
+      );
+      await opened.future;
+      final SSHServerChannel channel = connection.channels.values.single;
+      expect(channel.ourChannel, 0);
+
+      // Nothing ever consumes the channel's input, so nothing is ever
+      // re-granted. 64 chunks of 32768 spend the 2 MiB window exactly; each
+      // chunk after that adds its full length to the excess, and 10% of the
+      // window (209715) is crossed on the seventh overflowing chunk.
+      final chunk = Uint8List(32768);
+      for (var i = 0; i < 71; i++) {
+        client.sendPacket(
+          SSH_Message_Channel_Data(
+            recipientChannel: channel.ourChannel,
+            data: chunk,
+          ).encode(),
+        );
+      }
+      await expectLater(
+        client.done.timeout(const Duration(seconds: 5)),
+        throwsA(
+          isA<SSHDisconnectError>()
+              .having((error) => error.reasonCode, 'reasonCode', 2)
+              .having(
+                (error) => error.message,
+                'message',
+                'channel 0: peer ignored channel window',
+              ),
+        ),
+      );
+      // The window was never re-granted: receipt accounting alone must not
+      // hand credit back.
+      expect(adjusts, isEmpty);
+      await connection.close();
+    });
+
+    test('overflow inside the grace margin is delivered and granted back '
+        'on consumption', () async {
+      final adjusts = <int>[];
+      final opened = Completer<void>();
+      final (connection, client) = await startRawAuthenticatedConnection(
+        onServerMessage: (payload) {
+          switch (SSHMessage.readMessageId(payload)) {
+            case SSH_Message_Channel_Confirmation.messageId:
+              if (!opened.isCompleted) opened.complete();
+            case SSH_Message_Channel_Window_Adjust.messageId:
+              adjusts.add(
+                SSH_Message_Channel_Window_Adjust.decode(payload).bytesToAdd,
+              );
+          }
+        },
+      );
+
+      client.sendPacket(
+        SSH_Message_Channel_Open.session(
+          senderChannel: 3,
+          initialWindowSize: 2 * 1024 * 1024,
+          maximumPacketSize: 32768,
+        ).encode(),
+      );
+      await opened.future;
+      final SSHServerChannel channel = connection.channels.values.single;
+
+      // A listener that does not report consumption yet: 64 chunks spend the
+      // window, three more overflow inside the 10% grace — tolerated, like
+      // sshd's first-overage branch, and still delivered.
+      final received = BytesBuilder(copy: false);
+      final inputSubscription = channel.input.listen(received.add);
+      final chunk = Uint8List(32768);
+      for (var i = 0; i < 67; i++) {
+        client.sendPacket(
+          SSH_Message_Channel_Data(
+            recipientChannel: channel.ourChannel,
+            data: chunk,
+          ).encode(),
+        );
+      }
+      await waitUntil(() => received.length == 67 * 32768);
+      expect(adjusts, isEmpty);
+      expect(client.isClosed, isFalse);
+
+      // The reader takes everything off the stream: exactly the consumed
+      // bytes are granted back (including the tolerated grace excess, the
+      // way sshd's local_consumed accounting does).
+      channel.consumeInput(received.length);
+      await waitUntil(() => adjusts.isNotEmpty);
+      expect(adjusts, [67 * 32768]);
+
+      await inputSubscription.cancel();
       await connection.close();
       client.close();
     });
