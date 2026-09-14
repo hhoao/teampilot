@@ -867,6 +867,22 @@ impact vs churn), not a dependency.
   its grant is never disconnected (C01's exactness and C10's SFTP
   round-trip still pass). One fix serves A16 + C05 + C03's receive
   half.
+
+  *Fix landed (2026-09-14, tp_sshd 992552d):* the window is now enforced
+  in `_handleIncoming` exactly per channels.c — an overflowing packet
+  zeroes the credit and accumulates the excess, past a tenth of the window
+  the connection goes down with `DISCONNECT(2, "channel N: peer ignored
+  channel window")` (a new `onProtocolViolation` seam on
+  `SSHServerChannel`) — and refill is consumption-driven through the new
+  `SSHServerChannel.consumeInput(bytes)` (sshd's `channel_check_window`
+  grants `local_consumed` only), under the same two refill thresholds.
+  The in-package consumers (exec/shell stdin pump, SFTP subsystem,
+  forwarding pump) report consumption with OS-level backpressure: each
+  write is awaited, so a program or socket that stops reading stops the
+  credit. Differential re-runs: A16 and C05 now disconnect with sshd's
+  exact wording (C05 also shows sshd's 64 KiB pipe-slack adjust shape —
+  2×/65536 vs sshd's 1×/65536); C01's boundary exactness holds and C10's
+  SFTP round-trip stays byte-intact.
 - **F5 — A15 + D05: channel-scoped messages for a nonexistent channel
   must be a protocol error** (tp_sshd, `server_connection.dart`). Every
   channel-scoped message (DATA, REQUEST, EOF, …) addressed to an unknown
@@ -881,6 +897,19 @@ impact vs churn), not a dependency.
   never-opened (or fully closed and reaped) recipient id each produce a
   decodable `SSH_MSG_DISCONNECT` reason 2 naming the nonexistent
   channel, and the connection closes.
+
+  *Fix landed (2026-09-14, tp_sshd 4599197):* every channel-scoped
+  message for an unknown id draws `DISCONNECT(2)` with sshd's wording
+  (`"data packet referred to nonexistent channel N"`,
+  `"server_input_channel_req: unknown channel N"`, `ieof`/`oclose`/
+  `extended data packet …`), except the two legitimate races — a pending
+  server-initiated open, and a channel this server finished whose
+  CHANNEL_CLOSE the client has not sent yet (mirroring sshd holding a
+  dying channel until both sides closed; the client's own CHANNEL_CLOSE
+  reaps the id, after which further messages are the protocol error —
+  D05's shape). Unknown-id WINDOW_ADJUSTs stay ignored like sshd's
+  logit-only branch. Differential re-runs: A15 and D05 both observe the
+  exact sshd disconnect wording; D08's pending-open tolerance unchanged.
 - **F6 — B02 + C07: messages racing the rekey exchange window must not
   be dropped** (dartssh2, `ssh_transport.dart`). The shared transport
   answers every incoming non-KEX message processed while a key exchange
@@ -903,6 +932,22 @@ impact vs churn), not a dependency.
   close). B02 is a racy distribution row — the verdict rests on the
   trace evidence (UNIMPLEMENTED for packets 40/41/42) plus repeated
   runs, not on any single regeneration (see the regeneration note).
+
+  *Status (2026-09-14, Task 7b):* NOT LANDED — and confirmed NOT
+  landable from the tp_sshd package. The drop sits in the shared
+  dartssh2 transport (`ssh_transport.dart` `_handleMessage` default
+  case: `_kexInProgress` routes every non-transport message id to
+  `_handleUnexpectedKexMessage` → UNIMPLEMENTED + drop) *before* the
+  `onMessage`/`onPacket` hooks are consulted, for both roles, so
+  `SSHServerConnection` never sees a message that races into the
+  exchange window and cannot buffer or re-dispatch it. The fix belongs
+  to the fork dispatch (as this item's own `(dartssh2, ssh_transport.dart)`
+  tag says): buffer non-KEX *incoming* messages with id ≥ 50 while
+  `_kexInProgress` (the symmetric twin of the outgoing
+  `_rekeyPendingPackets` queue) and re-dispatch them from
+  `_handleMessageNewKeys` after the keys are applied; strict-kex
+  violations (initial KEX only) must keep firing `_failStrictKex`
+  before the buffering. B02/C07 therefore still regenerate unfixed.
 - **F7 — D01: data after EOF must not kill the connection** (tp_sshd,
   `server_channel.dart`). A `CHANNEL_DATA` arriving after the client's
   `CHANNEL_EOF` on a live channel must be tolerated the way sshd
@@ -917,6 +962,13 @@ impact vs churn), not a dependency.
   *Acceptance:* post-EOF data on a live channel leaves the connection
   serving (drop it like sshd, or close just that channel); the
   connection does not close. Guard `_handleIncoming` on `_receivedEof`.
+
+  *Fix landed (2026-09-14, tp_sshd 86c4c0d):* `_handleIncoming` now
+  fake-consumes post-EOF data (window accounting only, bytes dropped
+  with a debug log) exactly like sshd's post-EOF branch; the throw on
+  the closed input controller — and with it the whole-connection
+  teardown — is gone. Differential re-run: D01 is now `same` (no reply,
+  connection open, on both servers).
 - **F8 — A09/A10/A11 (+ A12's failure packets): `USERAUTH_FAILURE` must
   advertise the enabled methods** (tp_sshd, `server_connection.dart`).
   The failure packet's methods list must say `publickey` (RFC 4252 §8),
@@ -927,6 +979,15 @@ impact vs churn), not a dependency.
   bad-signature publickey request each answer
   `USERAUTH_FAILURE(methods=[publickey])`; A12's five failures carry the
   same list.
+
+  *Fix landed (2026-09-14, tp_sshd 85e1d94):* `_failAuthAttempt` now
+  sends `methodsLeft: ['publickey']`; the old "never advertises
+  continuable methods" comment — once a deliberate design — is replaced
+  by the RFC 4252 §8 rationale (OpenSSH clients consult the list before
+  offering a publickey). The maxAuthAttempts disconnect keeps reason 14
+  per A12's deliberate-divergence ruling (cap parity, no client branches
+  on the reason code). Differential re-run: A09/A10/A11 are now `same`;
+  A12's five failure packets carry the list.
 - **F9 — A08: no userauth before service negotiation** (tp_sshd,
   `server_connection.dart`). A `USERAUTH_REQUEST` arriving before
   `SERVICE_ACCEPT` must not be processed (sshd answers `UNIMPLEMENTED`
@@ -934,6 +995,12 @@ impact vs churn), not a dependency.
   input_service_request). *Acceptance:* tp_sshd ignores or refuses it;
   in particular it must not answer `USERAUTH_PK_OK` or authenticate on
   a connection that never negotiated `ssh-userauth`.
+
+  *Fix landed (2026-09-14, tp_sshd 9dc2480):* a `USERAUTH_REQUEST`
+  before the service is negotiated falls to the transport's default
+  dispatch — `UNIMPLEMENTED`, connection open — exactly sshd's shape; a
+  `_serviceAccepted` flag arms userauth handling only once
+  `ssh-userauth` is accepted. Differential re-run: A08 is now `same`.
 
 **P2 — hostile-input robustness in the shared transport (dartssh2-side)**
 
