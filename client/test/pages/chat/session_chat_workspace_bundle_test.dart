@@ -249,6 +249,7 @@ void main() {
           sessionId: any(named: 'sessionId'),
           memberId: any(named: 'memberId'),
         )).thenReturn(false);
+    when(() => chatCubit.sessionHasDocument(any())).thenReturn(true);
     when(() => chatCubit.lifecycle).thenReturn(lifecycle);
     when(() => chatCubit.followUpQueue).thenReturn(
       InMemoryFollowUpQueueStore(),
