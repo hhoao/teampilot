@@ -94,6 +94,14 @@ class SSHServerConnection {
   /// [SSHServerConfig.maxAuthAttempts] throttle.
   var _authAttempts = 0;
 
+  /// Whether the client completed the `ssh-userauth` service negotiation
+  /// (RFC 4253 §10). sshd only registers its USERAUTH_REQUEST handler once
+  /// the service is accepted (auth2.c:do_authentication2 +
+  /// input_service_request), so a request before that falls to the default
+  /// dispatch and is answered with UNIMPLEMENTED — never processed, never
+  /// answered with USERAUTH_PK_OK, never authenticating.
+  var _serviceAccepted = false;
+
   /// Completes when the underlying transport closes, normally or with an
   /// error.
   Future<void> get done => _transport.done;
@@ -131,6 +139,7 @@ class SSHServerConnection {
       case SSH_Message_Service_Request.messageId:
         final message = SSH_Message_Service_Request.decode(payload);
         if (message.serviceName == 'ssh-userauth') {
+          _serviceAccepted = true;
           _transport.sendPacket(
             SSH_Message_Service_Accept(message.serviceName).encode(),
           );
@@ -142,6 +151,11 @@ class SSHServerConnection {
         }
         return true;
       case SSH_Message_Userauth_Request.messageId:
+        if (!_serviceAccepted) {
+          // Not negotiated yet: sshd's default dispatch answers
+          // UNIMPLEMENTED (audit A08), and the connection stays open.
+          return false;
+        }
         // The trust decision is the embedder's async authenticate callback,
         // so the request is handled detached from the synchronous
         // onMessage dispatch.

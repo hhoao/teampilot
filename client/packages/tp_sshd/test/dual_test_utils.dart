@@ -194,6 +194,7 @@ Future<(SSHServer, SSHTransport)> startRawPair({
   required void Function(SSHTransport client) onReady,
   bool Function(Uint8List payload)? onServerMessage,
   Duration authFailureMinDelay = const Duration(milliseconds: 10),
+  void Function(String? line)? onClientTrace,
 }) async {
   final (clientSocket, serverSocket) = loopbackSSHSocketPair();
   final connections = StreamController<SSHSocket>();
@@ -213,6 +214,10 @@ Future<(SSHServer, SSHTransport)> startRawPair({
     onVerifyHostKey: (_, __) => true,
     onReady: () => onReady(client),
     onMessage: onServerMessage ?? (_) => true,
+    // The transport answers some messages itself (UNIMPLEMENTED, DEBUG, the
+    // KEX family) so they never reach onMessage; the trace is the only place
+    // a test can observe them from the client side.
+    printTrace: onClientTrace,
   );
   return (server, client);
 }

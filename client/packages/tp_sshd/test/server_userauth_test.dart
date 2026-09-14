@@ -299,6 +299,85 @@ void main() {
     });
   });
 
+  group('no userauth before service negotiation', () {
+    test('a userauth request before SERVICE_REQUEST is not processed', () async {
+      // A08: sshd only registers the USERAUTH_REQUEST handler once
+      // `ssh-userauth` has been accepted, so a probe sent before the
+      // service request falls to the default dispatch: UNIMPLEMENTED, and
+      // the connection stays open. It must never be answered with
+      // USERAUTH_PK_OK or authenticate.
+      // The transport answers UNIMPLEMENTED itself (it never reaches
+      // onMessage), so the reply is observed through the client transport's
+      // trace log — the same recovery the differential raw driver uses.
+      final replies = <int>[];
+      final settled = Completer<void>();
+      final (server, client) = await startRawPair(
+        authenticate: (_) async => true,
+        onClientTrace: (line) {
+          if (line == null) return;
+          if (line.contains('<-') &&
+              line.contains('SSH_Message_Unimplemented')) {
+            replies.add(SSH_Message_Unimplemented.messageId);
+            if (!settled.isCompleted) settled.complete();
+          }
+        },
+        onServerMessage: (payload) {
+          replies.add(SSHMessage.readMessageId(payload));
+          if (!settled.isCompleted) settled.complete();
+          return true;
+        },
+        onReady: (client) {
+          // A well-formed publickey probe for the trusted device key —
+          // sent before any SERVICE_REQUEST.
+          client.sendPacket(testProbeRequest().encode());
+        },
+      );
+      addTearDown(server.close);
+      addTearDown(client.close);
+      await settled.future.timeout(const Duration(seconds: 5));
+      // Give a misbehaving server the chance to answer more than once.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(
+        replies,
+        [SSH_Message_Unimplemented.messageId],
+        reason: 'a userauth request before the service negotiation must draw '
+            'UNIMPLEMENTED, never USERAUTH_PK_OK',
+      );
+      expect(client.isClosed, isFalse);
+    });
+
+    test('the same probe is answered once the service is negotiated', () async {
+      // The regression half: the service request path still arms userauth
+      // handling, and the identical probe is then answered with PK_OK.
+      final replies = <int>[];
+      final settled = Completer<void>();
+      final (server, client) = await startRawPair(
+        authenticate: (_) async => true,
+        onServerMessage: (payload) {
+          final id = SSHMessage.readMessageId(payload);
+          if (id != SSH_Message_Unimplemented.messageId) replies.add(id);
+          if (id == SSH_Message_Userauth_PK_Ok.messageId &&
+              !settled.isCompleted) {
+            settled.complete();
+          }
+          return true;
+        },
+        onReady: (client) {
+          client.sendPacket(SSH_Message_Service_Request('ssh-userauth').encode());
+          client.sendPacket(testProbeRequest().encode());
+        },
+      );
+      addTearDown(server.close);
+      addTearDown(client.close);
+      await settled.future.timeout(const Duration(seconds: 5));
+      expect(replies, [
+        SSH_Message_Service_Accept.messageId,
+        SSH_Message_Userauth_PK_Ok.messageId,
+      ]);
+      expect(client.isClosed, isFalse);
+    });
+  });
+
   test('onAuthenticated reports the connection and auth request', () async {
     final seen = <(SSHServerConnection, String)>[];
     final (client, server) = await startDualPair(
