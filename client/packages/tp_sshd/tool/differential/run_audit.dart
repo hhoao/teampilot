@@ -143,8 +143,16 @@ Future<void> _printSourceAnchor(String path) async {
     );
     return;
   }
-  final result = await Process.run('git', ['-C', path, 'describe', '--tags']);
-  final tag = result.exitCode == 0
+  final result = await () async {
+    try {
+      return await Process.run('git', ['-C', path, 'describe', '--tags']);
+    } on ProcessException {
+      // A machine without git (the same minimal class that lacks sshd) must
+      // still get a clean skip, not a crash before the servers even start.
+      return null;
+    }
+  }();
+  final tag = result != null && result.exitCode == 0
       ? (result.stdout as String).trim()
       : 'unknown tag';
   print('OpenSSH reference source: $path ($tag)');

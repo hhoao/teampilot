@@ -8,6 +8,13 @@
 // sandbox directory; exec and interactive shells run as the local user, like
 // the app's embedded server eventually will.
 //
+// NOTE: a verbatim TWIN of this wiring (the socket/forwarding adapters
+// `_AcceptedSocket`/`_IoServerSocketHandle`/`_IoForwardConnection`, the
+// `_spawnProcess`/`_spawnPty` factories, `LocalSftpFilesystem`, `_hostInfo`)
+// lives in `tool/differential/audit_harness.dart`, where it backs the
+// differential audit against system sshd. A fix to the wiring here MUST be
+// mirrored there, or the audit silently measures stale server behavior.
+//
 // VM-only: dart:io sockets, processes and signals.
 library;
 

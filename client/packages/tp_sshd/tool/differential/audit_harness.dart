@@ -2,10 +2,18 @@
 /// tp_sshd server, both on loopback, both authorizing the SAME generated
 /// device key — so one audit driver can exercise either server identically.
 ///
-/// The tp_sshd wiring is the proven demo wiring from
-/// `example/demo_sshd.dart` (socket adapters, real process/pty factories,
-/// the local SFTP filesystem), factored here as library code with the
-/// sandbox rooted in the audit temp dir instead of `~/.tp_sshd_demo`.
+/// The tp_sshd wiring is a verbatim TWIN of the proven demo wiring in
+/// `example/demo_sshd.dart`: the socket/forwarding adapters
+/// (`_AcceptedSocket`, `_IoServerSocketHandle`, `_IoForwardConnection`), the
+/// real process/pty factories (`_spawnProcess`, `_spawnShellExec`,
+/// `_spawnPty`), `_hostInfo`, and `LocalSftpFilesystem`. Only the sandbox
+/// root differs (the audit temp dir instead of `~/.tp_sshd_demo`).
+///
+/// DRIFT WARNING: this twin is deliberate (the demo stays a standalone
+/// example), but it means a fix to the demo wiring does NOT propagate here.
+/// Any change to the wiring in `demo_sshd.dart` must be mirrored in this
+/// file, or the audit rows below silently measure stale server behavior
+/// instead of the product's.
 ///
 /// VM-only tool code: `dart:io` sockets, processes and `ssh-keygen`.
 library;
@@ -20,7 +28,9 @@ import 'package:dartssh2/protocol.dart'
     show SftpFileAttrs, SftpFileMode, SftpFileOpenMode, SftpName;
 import 'package:tp_sshd/tp_sshd.dart';
 
-/// Thrown when the system sshd binary cannot launch on this machine.
+/// Thrown when an OpenSSH prerequisite this harness shells out to (the system
+/// sshd binary, or `ssh-keygen` for key bootstrap) is unavailable on this
+/// machine.
 ///
 /// The audit runner converts this into a clean SKIPPED exit so the package
 /// suite stays green on machines without OpenSSH.
@@ -108,8 +118,9 @@ class AuditServers {
 /// our generated device key authorized, password auth off, StrictModes off
 /// (temp dir), Subsystem sftp internal-sftp.
 ///
-/// Throws [SshdUnavailableException] when the system sshd cannot launch —
-/// the caller converts that into a skip, never a suite failure.
+/// Throws [SshdUnavailableException] when an OpenSSH prerequisite is missing
+/// (the system sshd cannot launch, or `ssh-keygen` cannot execute) — the
+/// caller converts that into a skip, never a suite failure.
 Future<AuditServers> startAuditServers({bool useSystemSshd = true}) async {
   final dir = await Directory.systemTemp.createTemp('tp_diff_');
   final username = Platform.environment['USER'] ?? 'audituser';
@@ -286,16 +297,28 @@ Future<void> _generateKey(
   String name,
   String comment,
 ) async {
-  final result = await Process.run('ssh-keygen', [
-    '-t',
-    'ed25519',
-    '-N',
-    '',
-    '-C',
-    comment,
-    '-f',
-    '${dir.path}/$name',
-  ]);
+  ProcessResult result;
+  try {
+    result = await Process.run('ssh-keygen', [
+      '-t',
+      'ed25519',
+      '-N',
+      '',
+      '-C',
+      comment,
+      '-f',
+      '${dir.path}/$name',
+    ]);
+  } on ProcessException catch (error) {
+    // A machine without ssh-keygen is the same machine class as one without
+    // sshd (minimal containers, Windows dev boxes): the whole OpenSSH tool
+    // suite is absent, so this is a skip, never a crash. This runs before
+    // [_launchSystemSshd], so without the conversion the unhandled
+    // ProcessException would escape the runner's skip handling.
+    throw SshdUnavailableException(
+      'cannot execute ssh-keygen: ${error.message}',
+    );
+  }
   if (result.exitCode != 0) {
     throw StateError('ssh-keygen failed: ${result.stderr}');
   }
