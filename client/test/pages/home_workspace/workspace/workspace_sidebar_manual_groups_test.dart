@@ -11,6 +11,7 @@ import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/git_worktree.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_sidebar.dart';
@@ -34,6 +35,15 @@ AppSession _session(String id) => AppSession(
   sessionId: id,
   workspaceId: 'ws-1',
   folders: const [WorkspaceFolder(path: '/tmp/huji')],
+  display: id,
+  createdAt: 1,
+  updatedAt: 1,
+);
+
+AppSession _sessionAt(String id, String path) => AppSession(
+  sessionId: id,
+  workspaceId: 'ws-1',
+  folders: [WorkspaceFolder(path: path)],
   display: id,
   createdAt: 1,
   updatedAt: 1,
@@ -75,6 +85,7 @@ void main() {
     bool markSessionsHydrated = false,
     bool seedManualGroup = false,
     bool resolvedWorktreeTools = false,
+    List<GitWorktree> worktrees = const [],
     bool settle = true,
   }) async {
     // Repository reads use real dart:io; under testWidgets they only complete
@@ -88,6 +99,7 @@ void main() {
         WorktreeState(
           repoPath: _workspace.firstFolderPath,
           currentWorktreePath: _workspace.firstFolderPath,
+          worktrees: worktrees,
         ),
       );
     }
@@ -239,6 +251,63 @@ void main() {
     expect(find.byType(WorktreeGroupSection), findsNothing);
     expect(find.byTooltip('Refresh worktrees'), findsNothing);
     expect(chatCubit.state.sessions, hasLength(2));
+  });
+
+  testWidgets('project tree includes loaded git worktree folders', (
+    tester,
+  ) async {
+    await pumpSidebar(
+      tester,
+      resolvedWorktreeTools: true,
+      sessions: [_session('main'), _sessionAt('feature', '/tmp/huji-feature')],
+      worktrees: const [
+        GitWorktree(
+          path: '/tmp/huji',
+          branch: 'refs/heads/main',
+          head: 'abc1234',
+          isBare: false,
+          isMainWorktree: true,
+        ),
+        GitWorktree(
+          path: '/tmp/huji-feature',
+          branch: 'refs/heads/feature-a',
+          head: 'def5678',
+          isBare: false,
+          isMainWorktree: false,
+        ),
+      ],
+    );
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('workspace-sidebar-view-switcher')),
+        matching: find.text('Project tree'),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('huji'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('project-tree-worktree-node-/tmp/huji')),
+        matching: find.text('main'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(
+          const ValueKey('project-tree-worktree-node-/tmp/huji-feature'),
+        ),
+        matching: find.text('feature-a'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Other'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('project-tree-worktree-session-feature')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('switching back restores manual groups', (tester) async {

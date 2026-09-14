@@ -405,11 +405,7 @@ class WorktreeCubit extends Cubit<WorktreeState> {
 
   void _applyPreferWorktreePath(String repoPath, String? preferWorktreePath) {
     if (preferWorktreePath == null || preferWorktreePath.isEmpty) return;
-    final next = _initialCurrent(
-      state.worktrees,
-      preferWorktreePath,
-      repoPath,
-    );
+    final next = _initialCurrent(state.worktrees, preferWorktreePath, repoPath);
     if (!workspacePathsEqual(
       next,
       state.currentWorktreePath,
@@ -435,9 +431,14 @@ class WorktreeCubit extends Cubit<WorktreeState> {
         final list = await lister.list(path);
         if (isClosed) return;
         _worktreeStore?.remember(workspaceId, path, list);
+        // The sidebar reads prefetched projects from the shared store. Emit a
+        // new snapshot so project-tree consumers rebuild after the cache is
+        // populated, even though the active repo state is unchanged.
+        emit(state.copyWith());
       } on Object {
         if (isClosed) return;
         _worktreeStore?.remember(workspaceId, path, const []);
+        emit(state.copyWith());
       }
     }
   }

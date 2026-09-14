@@ -734,13 +734,21 @@ class _ConversationListHost extends StatelessWidget {
     }
 
     if (view == _WorkspaceSidebarView.projectTree) {
+      final worktreeCubit = context.watch<WorktreeCubit>();
+      final worktreesByProjectPath = {
+        for (final folder in workspace.folders)
+          folder.path: worktreeCubit.worktreesForProject(folder.path),
+      };
       final projectGroups = groupSessionsByProject(
         folders: workspace.folders,
         sessions: sortedSessions,
         usesPosixPaths: homeStorageOf(context).usesPosixPaths,
+        worktreesByProjectPath: worktreesByProjectPath,
       );
       return ProjectTreeSection(
         groups: projectGroups,
+        worktreesByProjectPath: worktreesByProjectPath,
+        usesPosixPaths: homeStorageOf(context).usesPosixPaths,
         workspace: workspace,
         tabScopeId: tabScopeId,
         highlightSessionId: scopedActiveSessionId(

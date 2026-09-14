@@ -405,6 +405,23 @@ void main() {
       expect(cubit.state.currentWorktreePath, '/wt/a');
     },
   );
+
+  test('prefetchProjects notifies listeners after caching a project', () async {
+    final store = WorkspaceWorktreeStore();
+    final cubit = WorktreeCubit(
+      lister: _FakeWorktreeService([_wt('/repo-b', main: true)]),
+      workspaceId: 'ws-1',
+      worktreeStore: store,
+      storage: fakeHomeStorage(),
+    );
+    final emission = cubit.stream.first;
+
+    await cubit.prefetchProjects(['/repo-b']);
+    await emission;
+
+    expect(store.peek('ws-1', '/repo-b')!.worktrees, hasLength(1));
+    await cubit.close();
+  });
 }
 
 class _RepoDelayedLister implements WorktreeLister {

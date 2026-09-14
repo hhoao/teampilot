@@ -7,6 +7,7 @@ import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/session_groups_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/git_worktree.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/project_tree_section.dart';
@@ -61,8 +62,9 @@ void main() {
 
   Future<void> pumpProjectTree(
     WidgetTester tester,
-    List<ProjectSessionGroup> groups,
-  ) async {
+    List<ProjectSessionGroup> groups, {
+    Map<String, List<GitWorktree>> worktreesByProjectPath = const {},
+  }) async {
     await tester.runAsync(() => groupsCubit.load(_workspace.workspaceId));
     chatCubit.emit(
       chatCubit.state.copyWith(
@@ -92,6 +94,7 @@ void main() {
                 height: 1000,
                 child: ProjectTreeSection(
                   groups: groups,
+                  worktreesByProjectPath: worktreesByProjectPath,
                   workspace: _workspace,
                   tabScopeId: 'ws-1',
                   highlightSessionId: null,
@@ -125,6 +128,36 @@ void main() {
     expect(find.text('huji'), findsOneWidget);
     expect(find.byType(SidebarSessionTile), findsOneWidget);
     expect(find.text('Other'), findsNothing);
+  });
+
+  testWidgets('renders git worktrees under their project node', (tester) async {
+    await pumpProjectTree(
+      tester,
+      groups,
+      worktreesByProjectPath: {
+        '/tmp/huji': [
+          const GitWorktree(
+            path: '/tmp/huji',
+            branch: 'refs/heads/main',
+            head: 'abc1234',
+            isBare: false,
+            isMainWorktree: true,
+          ),
+          const GitWorktree(
+            path: '/tmp/huji-feature',
+            branch: 'refs/heads/feature-a',
+            head: 'def5678',
+            isBare: false,
+            isMainWorktree: false,
+          ),
+        ],
+      },
+    );
+
+    expect(find.text('huji'), findsOneWidget);
+    expect(find.text('main'), findsOneWidget);
+    expect(find.text('feature-a'), findsOneWidget);
+    expect(find.byType(SidebarSessionTile), findsOneWidget);
   });
 
   testWidgets('collapsing a project hides only its children', (tester) async {

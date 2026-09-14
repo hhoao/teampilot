@@ -26,6 +26,7 @@ List<ProjectSessionGroup> groupSessionsByProject({
   required List<WorkspaceFolder> folders,
   required List<AppSession> sessions,
   required bool usesPosixPaths,
+  Map<String, List<GitWorktree>>? worktreesByProjectPath,
 }) {
   final buckets = [for (final _ in folders) <AppSession>[]];
   final otherSessions = <AppSession>[];
@@ -35,7 +36,7 @@ List<ProjectSessionGroup> groupSessionsByProject({
       session,
       folders,
       usesPosixPaths: usesPosixPaths,
-      worktreesByProjectPath: null,
+      worktreesByProjectPath: worktreesByProjectPath,
     );
     final ownerIndex = owner == null
         ? null
