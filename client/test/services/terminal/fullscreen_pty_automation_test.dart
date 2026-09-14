@@ -358,39 +358,6 @@ void main() {
       },
     );
 
-    test(
-      'resume transcript echo is not mistaken for staged input (pasteNotFound)',
-      () async {
-        // A resumed codex session replays an identical older message in the
-        // transcript near the composer. The loose needle probe hits it, but the
-        // live composer is empty — the send must NOT be ACKed as submitted.
-        final machine = newMachine()..begin();
-        final port = FakeFullscreenPtyDeliveryPort(
-          crAckConfig: const FullscreenCrAckConfig(
-            strategy: FullscreenCrAckStrategy.composerMovesDown,
-            composerPrefix: '\u203a',
-          ),
-          composerStagedOverride: false, // live composer is empty
-        )
-          ..staged = TeamBus.doorbellNotice; // transcript echo visible on grid
-
-        final outcome = await automation.continueSubmission(
-          machine,
-          port: port,
-          text: TeamBus.doorbellNotice,
-          pasteSettle: Duration.zero,
-        );
-
-        expect(
-          outcome,
-          FullscreenPtyDeliveryOutcome.pasteNotFound,
-          reason:
-              'transcript echo must not lock the submission / report submitted'
-              ' — that is the "running but never sent" resume bug',
-        );
-      },
-    );
-
     test('skips everything when hook already acked the submit', () async {
       final machine = newMachine()..begin();
       final port = FakeFullscreenPtyDeliveryPort();

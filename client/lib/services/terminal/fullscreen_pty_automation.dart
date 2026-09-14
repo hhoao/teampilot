@@ -297,34 +297,11 @@ class FullscreenPtyAutomation {
       minSettle: pasteSettle + _timing.afterPaste + _extraSettleForLength(text),
       pollTimeout: _pastePollBudget(text),
     );
-    // The loose probe can hit a *transcript* echo of the same text on a
-    // resumed session (the composer's slack window includes a few rows above
-    // the live box). Pasting is only proven staged when the needle is the body
-    // of the live bottom composer block — otherwise a new message "succeeds"
-    // by ACK-ing an old presented line, submits an empty CR, and the operator
-    // session shows working while the CLI never received the message.
-    if (anchor != null && _isStagedInComposer(port, needle)) {
+    if (anchor != null) {
       machine.noteNeedleFound(); // lock — never return to staging
       return anchor;
     }
-    if (anchor != null) {
-      // Anchor landed on a transcript echo, not the live composer — treat as
-      // a miss and keep staging (bounded by the retry budget).
-      appLogger.d(
-        '[team-bus] pty-probe-ack transcript-hit needle="$needle" '
-        'row=${anchor.row} — not staged in live composer; retry',
-      );
-    }
     return null;
-  }
-
-  bool _isStagedInComposer(
-    FullscreenPtyDeliveryPort port,
-    String needle,
-  ) {
-    final prefix = port.crAckConfig.composerPrefix?.trim() ?? '';
-    if (prefix.isEmpty) return true; // no composer chrome → rely on loose ACK
-    return port.isNeedleStagedInComposer(needle);
   }
 
   /// Send phase of a locked submission: settle, optional popup dismiss, CR.

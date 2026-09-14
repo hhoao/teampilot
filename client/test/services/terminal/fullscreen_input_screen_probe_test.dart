@@ -165,6 +165,32 @@ void main() {
     expect(anchor!.row, 18);
   });
 
+  test('locateNeedle ACKs opencode staged paste in its real landing layout',
+      () {
+    // Real opencode 1.18 landing grid (captured): "┃ Build" status line also
+    // starts with the composer prefix, and staged text soft-wraps onto a
+    // non-prefixed row. The paste ACK must still resolve the staged line.
+    final lines = List<String>.filled(24, '');
+    lines[11] = '   \u2503';
+    lines[12] = '   \u2503  \u76ee\u524d\u6211\u670d\u52a1\u5668\u4e0a\u90e8\u7f72';
+    lines[13] = 'inio\uff0c';
+    lines[14] = '   \u2503  Build \u00b7 deepseek-v4-flash';
+    final grid = _FakeGrid.fromRows(lines);
+
+    final anchor = locateFullscreenPromptNeedle(
+      grid,
+      '\u76ee\u524d\u6211\u670d\u52a1\u5668\u4e0a\u90e8\u7f72',
+      scanRows: 24,
+      composerPrefix: '\u2503',
+    );
+    expect(
+      anchor,
+      isNotNull,
+      reason: 'opencode staged paste must be locatable for paste ACK',
+    );
+    expect(anchor!.row, 12);
+  });
+
   test('bottomComposerChromeRow finds lowest prefix row in scan window', () {
     final lines = List<String>.filled(8, '');
     lines[3] = '› older composer';
