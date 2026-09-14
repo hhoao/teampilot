@@ -1,6 +1,6 @@
 /// Area A of the tp_sshd differential audit: malformed input handling.
 ///
-/// 18 rows (A01–A18), one per stimulus in the audit plan. Every row's
+/// 19 rows (A01–A19), one per stimulus in the audit plan. Every row's
 /// OpenSSH expectation was written from the V_10_2_P1 source BEFORE the
 /// row ran (see DIFFERENTIAL_AUDIT.md); the runners here only apply the
 /// stimulus to both servers and record what came back.
@@ -42,7 +42,7 @@ class AuditRow {
   final String sourceHint;
 }
 
-/// The Area A rows (A01–A18). Tasks 3–5 mirror this shape for their areas.
+/// The Area A rows (A01–A19). Tasks 3–5 mirror this shape for their areas.
 List<AuditRow> areaARows() => [
   _row(
     id: 'A01',
@@ -207,6 +207,22 @@ List<AuditRow> areaARows() => [
     predicted: 'logged, no reply, clean teardown; the listener serves the '
         'next login',
     probe: _probeA18,
+  ),
+  _row(
+    id: 'A19',
+    stimulus: 'a non-KEX packet (SERVICE_REQUEST) injected after the client '
+        'KEXINIT and before any NEWKEYS, with strict kex negotiated (the '
+        'KEXINIT advertises kex-strict-c-v00@openssh.com) — the strict-kex '
+        'violation of RFC 9142 §3.2',
+    citation: 'packet.c:ssh_packet_read_poll_seqnr (during initial strict KEX '
+        'nothing is implicitly handled) + kex.c:kex_protocol_error (strict '
+        'branch: KEX_INITIAL && kex_strict) -> packet.c:ssh_packet_disconnect '
+        '-> packet.c:sshpkt_disconnect (SSH2_DISCONNECT_PROTOCOL_ERROR, '
+        'ssh2.h:153); marker detection kex.c:kex_choose_conf',
+    predicted: 'DISCONNECT(2, "strict KEX violation: unexpected packet type 5 '
+        '(seqnr 1)") flushed to the wire (ssh_packet_disconnect waits for the '
+        'write), then close',
+    probe: _probeA19,
   ),
 ];
 
@@ -524,7 +540,7 @@ MEBQY=
 final _distrustedKey = SSHKeyPair.fromPem(_distrustedKeyPem).single;
 
 // ---------------------------------------------------------------------------
-// Rows A01–A04, A18: raw byte stream, pre-KEX
+// Rows A01–A04, A18, A19: raw byte stream, pre-KEX
 // ---------------------------------------------------------------------------
 
 Future<String> _probeA01(AuditServers servers, int port) async {
@@ -597,6 +613,74 @@ Future<String> _probeA18(AuditServers servers, int port) async {
     await session.sendRawBytes(_plainPacket(writer.takeBytes()));
     final observations = await session.collect(window: _collectWindow);
     return _describeRaw(session.rawInbound, observations);
+  } finally {
+    await session.close();
+  }
+}
+
+/// A well-formed client KEXINIT that negotiates strict kex: the
+/// `kex-strict-c-v00@openssh.com` marker in the kex name-list is what makes
+/// the server enable the strict rules (kex.c:kex_choose_conf /
+/// dartssh2 `_negotiateStrictKex`). The real algorithms mirror the standard
+/// proposals both servers accept, so the exchange actually starts — the row
+/// must reach the server mid-KEX, not die in algorithm negotiation.
+SSH_Message_KexInit _strictKexClientKexInit() => SSH_Message_KexInit(
+      kexAlgorithms: const [
+        'curve25519-sha256',
+        'kex-strict-c-v00@openssh.com',
+      ],
+      serverHostKeyAlgorithms: const ['ssh-ed25519'],
+      encryptionClientToServer: const [
+        'aes256-ctr',
+        'aes128-ctr',
+        'chacha20-poly1305@openssh.com',
+      ],
+      encryptionServerToClient: const [
+        'aes256-ctr',
+        'aes128-ctr',
+        'chacha20-poly1305@openssh.com',
+      ],
+      macClientToServer: const [
+        'hmac-sha2-256-etm@openssh.com',
+        'hmac-sha2-256',
+      ],
+      macServerToClient: const [
+        'hmac-sha2-256-etm@openssh.com',
+        'hmac-sha2-256',
+      ],
+      compressionClientToServer: const ['none'],
+      compressionServerToClient: const ['none'],
+      firstKexPacketFollows: false,
+    );
+
+Future<String> _probeA19(AuditServers servers, int port) async {
+  final session = await dialRaw(port: port, versionString: 'SSH-2.0-DartSSH_2.0');
+  try {
+    await _awaitBanner(session);
+    // The exchange must be in progress but pre-NEWKEYS: everything here is
+    // plaintext, so the whole start of the handshake is hand-driven.
+    await session.sendRawBytes(
+      _plainPacket(_strictKexClientKexInit().encode()),
+    );
+    // The violation: a non-KEX packet between KEXINIT and NEWKEYS. The
+    // injected type is SERVICE_REQUEST (5), not the plan memo's other
+    // examples (USERAUTH_REQUEST 50 / CHANNEL_OPEN 90): types above the KEX
+    // dispatch range (SSH2_MSG_TRANSPORT_MAX 49) are fatal on sshd whether
+    // or not strict kex is on (the dispatch table entry is NULL during
+    // KEX), while a transport-range type is exactly what
+    // kex.c:kex_protocol_error's strict branch polices — with strict kex
+    // off it would merely draw UNIMPLEMENTED, so the row observes the
+    // strict-mode behavior and not the dispatch-table behavior.
+    await session.sendRawBytes(
+      _plainPacket(SSH_Message_Service_Request('ssh-userauth').encode()),
+    );
+    final observations = await session.collect(window: _collectWindow);
+    return await _withSshdLogCheck(
+      servers,
+      port,
+      _describeRaw(session.rawInbound, observations),
+      'strict KEX violation',
+    );
   } finally {
     await session.close();
   }

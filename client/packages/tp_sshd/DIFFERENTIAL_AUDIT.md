@@ -72,6 +72,7 @@ login afterwards).
 | A16 | `CHANNEL_DATA` flood on an open **direct-tcpip** channel (a request-less *session* channel stays `SSH_CHANNEL_LARVAL` and its data is dropped before any window check — `serverloop.c:server_request_session`, `channels.c:channel_input_data` non-open type check): 320 × 32000 bytes ≈ 10 MiB — enough to first fill the target socket's kernel buffer, then exhaust the 2 MiB window + 10% grace | Each packet is under `local_maxpacket` (32 KiB) so the "rcvd big packet" ignore does not fire; once the window is exhausted the excess is logged, and past 10% of `local_window_max` (≈ 209 KiB) → `ssh_packet_disconnect("channel N: peer ignored channel window")` → `DISCONNECT(2, …)`. [channels.c:channel_input_data; CHAN_TCP_WINDOW_DEFAULT channels.h:232] | connection closed (the RST from the continuing flood beat the client's observation of the DISCONNECT); sshd log confirms the predicted path verbatim: `rcvd too much data … excess …` accumulating past the grace, then `channel 0: peer ignored channel window` + the disconnect | **no disconnect, ever**: the server kept granting window (`msg:93(CHANNEL_WINDOW_ADJUST)` × 55) and buffered all ~10 MiB; the teardown then leaked an **unhandled async error** (see triage note 6) | **fix-divergence** |
 | A17 | `GLOBAL_REQUEST "audit-bogus@tp-sshd-differential"` with `want_reply = true` | Unknown request name → success stays 0 → `REQUEST_FAILURE`, connection stays open. [serverloop.c:server_input_global_request] | `msg:82(REQUEST_FAILURE)`, connection open — prediction confirmed | `msg:82(REQUEST_FAILURE)`, connection open | **match** |
 | A18 | client `DISCONNECT(11)` sent right after the version exchange (mid-handshake, pre-KEX) | `SSH_MSG_DISCONNECT` is intercepted in the read loop in every phase: logged, no reply, clean teardown (`SSH_ERR_DISCONNECTED`); the listener serves the next login. [packet.c:ssh_packet_read_poll_seqnr] | banner + KEXINIT, then closed with no reply; sshd log records `Received disconnect … 11: tp-sshd differential audit A18`; listener served the next login — prediction confirmed | banner + KEXINIT, then closed with no reply; listener served the next login | **match** |
+| A19 | strict-kex violation (RFC 9142 §3.2): a hand-driven client `KEXINIT` that advertises `kex-strict-c-v00@openssh.com` (so the server enables strict kex), then a non-KEX packet — `SERVICE_REQUEST` (id 5) — injected while the exchange is in progress, before any `NEWKEYS` (all plaintext, raw bytes) | During the initial KEX in strict mode nothing is implicitly handled, and the whole transport range (ids 1–49) dispatches to `kex_protocol_error`, whose strict branch (`KEX_INITIAL && kex_strict`) is fatal: `ssh_packet_disconnect("strict KEX violation: unexpected packet type 5 (seqnr 1)")` → `sshpkt_disconnect` emits `SSH_MSG_DISCONNECT` with `SSH2_DISCONNECT_PROTOCOL_ERROR` (2, ssh2.h:153) and `ssh_packet_disconnect` waits for the write (unlike the A03/A04 path, this DISCONNECT reaches the wire), then close. Strict mode is only on because our KEXINIT carries the `kex-strict-c-v00@openssh.com` marker (kex.c:kex_choose_conf); without it the same packet draws only `UNIMPLEMENTED`. [packet.c:ssh_packet_read_poll_seqnr; kex.c:kex_protocol_error; packet.c:ssh_packet_disconnect → packet.c:sshpkt_disconnect; ssh2.h:153] | banner + KEXINIT, then `disconnect:2("strict KEX violation: unexpected packet type 5 (seqnr 1)")`, then closed — prediction confirmed exactly (message, type, reason code and seqnr); sshd log confirms the `strict KEX violation` path | banner + KEXINIT, then closed with **no DISCONNECT on the wire**: the strict-kex check did fire and tore the connection down (the violation was neither accepted nor ignored), but via `SSHHandshakeError` → `SSHTransport.closeWithError` → `socket.destroy()` (dartssh2 `ssh_transport.dart`), so the client sees an unexplained TCP close instead of the protocol-error DISCONNECT | **fix-divergence** |
 
 Row A16 first pass (recorded because the finding stands on its own): the
 same flood against a request-less **session** channel was silently
@@ -83,8 +84,8 @@ tp_sshd — related to Area C (window handling), noted there for follow-up.
 
 ## Area A triage
 
-Verdicts: 7 match, 4 deliberate-divergence, 5 fix-divergence (A09–A11 share
-one fix; every other fix-divergence row is its own fix).
+Verdicts: 8 match, 3 deliberate-divergence, 8 fix-divergence, 19 rows
+(A09–A11 share one fix; every other fix-divergence row is its own fix).
 
 ### fix-divergence — acceptance criteria
 
@@ -120,6 +121,23 @@ one fix; every other fix-divergence row is its own fix).
    consumption), so the window is never a bound and a peer can buffer
    unbounded data server-side (resource exhaustion). Fix belongs with Area
    C's window work.
+6. **A19 — strict-kex violations must carry a wire DISCONNECT.** A non-KEX
+   packet arriving between `KEXINIT` and `NEWKEYS` under negotiated strict
+   kex (RFC 9142 §3.2) must be answered with `DISCONNECT(2, "strict key
+   exchange violation: …")` before the connection closes, the way sshd does
+   (kex.c:kex_protocol_error → packet.c:ssh_packet_disconnect →
+   `SSH2_DISCONNECT_PROTOCOL_ERROR`). tp_sshd's transport does tear the
+   connection down — the violation is neither accepted nor ignored, so the
+   Terrapin countermeasure itself is enforced — but the error path
+   (`SSHHandshakeError` → `SSHTransport.closeWithError` →
+   `socket.destroy()` in dartssh2 `ssh_transport.dart`) never emits the
+   DISCONNECT, so a client sees an unexplained TCP close where sshd
+   delivers a protocol-error reason. Acceptance: a strict-kex violation
+   produces a decodable `SSH_MSG_DISCONNECT` (reason 2, description naming
+   the strict-key-exchange violation) on the wire before the close.
+   (dartssh2-side change: the strict-kex throw paths —
+   `_handleMessage`'s forbidden-message check, `_handleUnexpectedKexMessage`,
+   `_negotiateStrictKex` — should send the DISCONNECT before closing.)
 
 ### deliberate-divergence (documented, not scheduled for fixing)
 
@@ -142,7 +160,7 @@ one fix; every other fix-divergence row is its own fix).
 
 ### findings recorded from the runner itself
 
-6. **A16 teardown — unhandled async error in the forward pump.** When the
+7. **A16 teardown — unhandled async error in the forward pump.** When the
    row's forwarded TCP connection was reset, tp_sshd (in-process) leaked
    `SocketException: Connection reset by peer` past every guard — the
    runner's zone caught it (`Stray async errors: [A16: …]`). Root cause:

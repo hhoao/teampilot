@@ -81,7 +81,7 @@ final strayZoneErrors = <String>[];
 /// The audit row currently running, for [strayZoneErrors] attribution.
 String? rowInProgress;
 
-/// Runs the Area A rows (malformed input, A01–A18) sequentially against the
+/// Runs the Area A rows (malformed input, A01–A19) sequentially against the
 /// harness servers. Rows are sequential on purpose: each one must leave both
 /// listeners serving (the crash-isolation check), and a broken row must not
 /// take the rest of the run down.
