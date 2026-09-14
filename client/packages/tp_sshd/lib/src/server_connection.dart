@@ -771,7 +771,10 @@ class SSHServerConnection {
   /// N.`; a verdict for an unknown id is `channel_from_packet_id`'s
   /// nonexistent-channel disconnect. Only the finish race stays tolerated:
   /// a channel this server finished but whose CHANNEL_CLOSE the client has
-  /// not sent yet.
+  /// not sent yet. A fully reaped id is NOT that race — reaped means the
+  /// client already sent CHANNEL_CLOSE, so the channel is resolved and
+  /// sshd's channel table holds no entry: the verdict draws the
+  /// nonexistent-channel disconnect like any unknown id.
   void _tolerateOrDisconnectOpenReply(int id, String kind) {
     if (_channels.containsKey(id)) {
       _disconnect(
@@ -780,7 +783,7 @@ class SSHServerConnection {
       );
       return;
     }
-    if (_closingChannels.contains(id) || _reapedChannels.contains(id)) return;
+    if (_closingChannels.contains(id)) return;
     _disconnect(
       SSHDisconnectReason.protocolError,
       'open $kind packet referred to nonexistent channel $id',
