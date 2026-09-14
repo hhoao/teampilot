@@ -214,38 +214,50 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                                     Expanded(
                                       child: SingleChildScrollView(
                                         scrollDirection: Axis.horizontal,
-                                        child: TpSegmentedControl(
-                                          key: const ValueKey(
-                                            'workspace-sidebar-view-switcher',
+                                        child: Theme(
+                                          data: Theme.of(context).copyWith(
+                                            textTheme: Theme.of(context)
+                                                .textTheme
+                                                .copyWith(
+                                                  labelLarge: TpTextStyles.of(
+                                                    context,
+                                                  ).sm,
+                                                ),
                                           ),
-                                          totalSwitches: 2,
-                                          initialLabelIndex:
-                                              _view ==
-                                                  _WorkspaceSidebarView.groups
-                                              ? 0
-                                              : 1,
-                                          labels: [
-                                            l10n.workspaceSidebarGroupsView,
-                                            l10n.workspaceSidebarProjectTreeView,
-                                          ],
-                                          icons: const [
-                                            Icons.tag_outlined,
-                                            Icons.folder_outlined,
-                                          ],
-                                          customWidths: const [72, 72],
-                                          tooltips: [
-                                            l10n.workspaceSidebarGroupsView,
-                                            l10n.workspaceSidebarProjectTreeView,
-                                          ],
-                                          onToggle: (index) {
-                                            if (index == null) return;
-                                            setState(() {
-                                              _view = index == 0
-                                                  ? _WorkspaceSidebarView.groups
-                                                  : _WorkspaceSidebarView
-                                                        .projectTree;
-                                            });
-                                          },
+                                          child: TpSegmentedControl(
+                                            key: const ValueKey(
+                                              'workspace-sidebar-view-switcher',
+                                            ),
+                                            totalSwitches: 2,
+                                            initialLabelIndex:
+                                                _view ==
+                                                    _WorkspaceSidebarView.groups
+                                                ? 0
+                                                : 1,
+                                            labels: [
+                                              l10n.workspaceSidebarGroupsView,
+                                              l10n.workspaceSidebarProjectTreeView,
+                                            ],
+                                            icons: const [
+                                              Icons.tag_outlined,
+                                              Icons.folder_outlined,
+                                            ],
+                                            customWidths: const [72, 72],
+                                            tooltips: [
+                                              l10n.workspaceSidebarGroupsView,
+                                              l10n.workspaceSidebarProjectTreeView,
+                                            ],
+                                            onToggle: (index) {
+                                              if (index == null) return;
+                                              setState(() {
+                                                _view = index == 0
+                                                    ? _WorkspaceSidebarView
+                                                          .groups
+                                                    : _WorkspaceSidebarView
+                                                          .projectTree;
+                                              });
+                                            },
+                                          ),
                                         ),
                                       ),
                                     ),

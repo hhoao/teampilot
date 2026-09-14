@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
@@ -196,6 +197,21 @@ void main() {
     final archiveButton = tester.getRect(find.byIcon(Icons.archive_outlined));
 
     expect(archiveButton.center.dy, closeTo(switcher.center.dy, 0.5));
+  });
+
+  testWidgets('view switcher labels use the sm text size', (tester) async {
+    await pumpSidebar(tester);
+
+    final switcher = find.byKey(
+      const ValueKey('workspace-sidebar-view-switcher'),
+    );
+    final expectedSize = TpTextStyles.of(tester.element(switcher)).sm.fontSize;
+    for (final label in ['Groups', 'Project tree']) {
+      final text = tester.widget<Text>(
+        find.descendant(of: switcher, matching: find.text(label)),
+      );
+      expect(text.style?.fontSize, expectedSize);
+    }
   });
 
   testWidgets(
