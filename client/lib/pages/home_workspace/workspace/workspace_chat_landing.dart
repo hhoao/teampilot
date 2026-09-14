@@ -7,6 +7,7 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../utils/ui/app_keys.dart';
 import 'unbound_compose_body.dart';
+import 'workspace_landing_worktree_refresher.dart';
 
 export 'unbound_compose_body.dart' show LandingComposeSubmit;
 
@@ -62,51 +63,55 @@ class WorkspaceChatLanding extends StatelessWidget {
         ? math.max(spacing.md, TpMobileChrome.leadingInset)
         : spacing.md;
 
-    return Stack(
-      children: [
-        ColoredBox(
-          color: cs.surface,
-          child: SizedBox.expand(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.symmetric(
-                  horizontal: spacing.xl,
-                  vertical: spacing.xxl,
-                ),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: kWorkspaceLandingMaxWidth,
+    return WorkspaceLandingWorktreeRefresher(
+      isSubmitting: isSubmitting,
+      disabled: disabled,
+      child: Stack(
+        children: [
+          ColoredBox(
+            color: cs.surface,
+            child: SizedBox.expand(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: spacing.xl,
+                    vertical: spacing.xxl,
                   ),
-                  child: UnboundComposeBody(
-                    workspace: workspace,
-                    onSubmit: onSubmit,
-                    isSubmitting: isSubmitting,
-                    disabled: disabled,
-                    initialText: initialText,
-                    initialTextRevision: initialTextRevision,
-                    referencedSessionId: referencedSessionId,
-                    deferFieldMount: true,
-                    showLocationHeader: true,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: kWorkspaceLandingMaxWidth,
+                    ),
+                    child: UnboundComposeBody(
+                      workspace: workspace,
+                      onSubmit: onSubmit,
+                      isSubmitting: isSubmitting,
+                      disabled: disabled,
+                      initialText: initialText,
+                      initialTextRevision: initialTextRevision,
+                      referencedSessionId: referencedSessionId,
+                      deferFieldMount: true,
+                      showLocationHeader: true,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-        if (showBackButton)
-          Positioned(
-            top: spacing.md,
-            left: backLeft,
-            child: TpIconButton(
-              key: AppKeys.workspaceChatLandingBackButton,
-              icon: Icons.arrow_back,
-              size: TpIconButton.chromeAlignedSize(context),
-              tooltip: l10n.workspaceChatLandingBackToWorkbench,
-              backgroundColor: Colors.transparent,
-              onTap: onBack,
+          if (showBackButton)
+            Positioned(
+              top: spacing.md,
+              left: backLeft,
+              child: TpIconButton(
+                key: AppKeys.workspaceChatLandingBackButton,
+                icon: Icons.arrow_back,
+                size: TpIconButton.chromeAlignedSize(context),
+                tooltip: l10n.workspaceChatLandingBackToWorkbench,
+                backgroundColor: Colors.transparent,
+                onTap: onBack,
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
