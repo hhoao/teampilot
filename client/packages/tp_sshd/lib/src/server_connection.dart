@@ -94,6 +94,14 @@ class SSHServerConnection {
   /// channel_from_packet_id against a freed channel.
   final _reapedChannels = <int>{};
 
+  /// How many channel tombstones ([_closingChannels] plus
+  /// [_reapedChannels]) may accumulate before the oldest are compacted
+  /// away. Channel numbers are only reused after 2^32 opens, so without a
+  /// bound a long-lived connection churning channels — the TeamBus relay's
+  /// forwarded-tcpip channels on a pairing session, F3's scenario — grows
+  /// the sets by one id per channel forever.
+  static const _maxChannelTombstones = 256;
+
   /// Server-initiated channel opens awaiting the client's verdict, keyed by
   /// the channel number the open was sent with (see [_openServerChannel]).
   final _pendingOpens = <int, _PendingOpen>{};
@@ -600,6 +608,7 @@ class SSHServerConnection {
         // id moves from race-tolerated to fully reaped.
         if (_channels[id] == null && _closingChannels.remove(id)) {
           _reapedChannels.add(id);
+          _compactChannelTombstones();
           return;
         }
         _channelFromPacket(id, 'oclose packet')?.handleClose();
@@ -661,6 +670,24 @@ class SSHServerConnection {
       _reapedChannels.add(channel.ourChannel);
     } else {
       _closingChannels.add(channel.ourChannel);
+    }
+    _compactChannelTombstones();
+  }
+
+  /// Compacts the tombstone sets once they outgrow [_maxChannelTombstones],
+  /// dropping the oldest ids — the smallest numbers, since every channel id
+  /// is allocated in increasing order. A dropped id is treated as fully
+  /// reaped: any message a peer could still legitimately send for it raced
+  /// a channel that finished hundreds of generations ago, well past the
+  /// round trips the tombstones exist to tolerate.
+  void _compactChannelTombstones() {
+    final excess =
+        _closingChannels.length + _reapedChannels.length - _maxChannelTombstones;
+    if (excess <= 0) return;
+    final ids = [..._closingChannels, ..._reapedChannels]..sort();
+    for (final id in ids.take(excess)) {
+      _closingChannels.remove(id);
+      _reapedChannels.remove(id);
     }
   }
 
