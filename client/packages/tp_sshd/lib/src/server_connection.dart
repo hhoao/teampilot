@@ -619,6 +619,9 @@ class SSHServerConnection {
   /// signature verifies AND the key is trusted. Every failure counts toward
   /// [SSHServerConfig.maxAuthAttempts].
   Future<void> _handleUserauthRequest(Uint8List payload) async {
+    // The anti-oracle floor is measured from the request's receipt, so the
+    // clock starts here, before any failure path is taken.
+    final receivedAt = DateTime.now();
     final SSH_Message_Userauth_Request message;
     try {
       message = SSH_Message_Userauth_Request.decode(payload);
@@ -634,14 +637,14 @@ class SSHServerConnection {
         message.user != _config.expectedUsername) {
       // Fail closed: no other method is served, and requests for any other
       // user are failed (counted), not answered.
-      _failAuthAttempt();
+      _failAuthAttempt(receivedAt);
       return;
     }
 
     final publicKeyAlgorithm = message.publicKeyAlgorithm;
     final publicKey = message.publicKey;
     if (publicKeyAlgorithm == null || publicKey == null) {
-      _failAuthAttempt();
+      _failAuthAttempt(receivedAt);
       return;
     }
 
@@ -652,7 +655,7 @@ class SSHServerConnection {
         sessionId: _transport.sessionId!,
         request: message,
       )) {
-        _failAuthAttempt();
+        _failAuthAttempt(receivedAt);
         return;
       }
     }
@@ -686,7 +689,7 @@ class SSHServerConnection {
           ).encode(),
         );
       } else {
-        _failAuthAttempt();
+        _failAuthAttempt(receivedAt);
       }
       return;
     }
@@ -709,18 +712,40 @@ class SSHServerConnection {
       );
       return;
     }
-    _failAuthAttempt();
+    _failAuthAttempt(receivedAt);
   }
 
   /// Counts and answers one failed authentication attempt.
+  ///
+  /// The reply is padded out to [SSHServerConfig.authFailureMinDelay],
+  /// measured from [receivedAt] — the moment the request was received — so
+  /// that timing the reply cannot reveal which failure path was taken
+  /// (wrong key vs unknown user vs malformed blob; sshd's
+  /// `ensure_minimum_time_since`).
   ///
   /// After [SSHServerConfig.maxAuthAttempts] failures the connection is
   /// disconnected (RFC 4253 §11.1 reason 14) instead of answered. The
   /// failure never advertises continuable methods: publickey is the only
   /// method there is, and offering it would just invite another attempt.
-  void _failAuthAttempt() {
+  Future<void> _failAuthAttempt(DateTime receivedAt) async {
     _authAttempts += 1;
-    if (_authAttempts >= _config.maxAuthAttempts) {
+    // The throttle verdict is taken at receipt, in dispatch order, BEFORE
+    // the padding below: pipelined requests all increment the counter long
+    // before their padded replies go out, so re-reading it after the pad
+    // would let an early reply answer for a later attempt (the first reply
+    // would disconnect instead of the maxAuthAttempts-th).
+    final throttled = _authAttempts >= _config.maxAuthAttempts;
+    final minDelay = _config.authFailureMinDelay;
+    if (minDelay > Duration.zero) {
+      final remaining = minDelay - DateTime.now().difference(receivedAt);
+      if (remaining > Duration.zero) {
+        await Future<void>.delayed(remaining);
+      }
+    }
+    // The connection may have been closed while the failure reply was being
+    // padded out.
+    if (_phase != _Phase.auth) return;
+    if (throttled) {
       _disconnect(
         SSHDisconnectReason.noMoreAuthMethodsAvailable,
         'Too many failed authentication attempts',

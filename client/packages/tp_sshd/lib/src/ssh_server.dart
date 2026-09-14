@@ -29,6 +29,7 @@ class SSHServerConfig {
     required this.expectedUsername,
     required this.authenticate,
     this.authTimeout = const Duration(seconds: 30),
+    this.authFailureMinDelay = const Duration(milliseconds: 10),
     this.maxAuthAttempts = 6,
     this.maxChannels = 10,
     this.processFactory,
@@ -61,6 +62,22 @@ class SSHServerConfig {
   /// How long a connection may live without completing authentication
   /// before the server closes it.
   final Duration authTimeout;
+
+  /// The minimum wall-clock time from the receipt of a `USERAUTH_REQUEST` to
+  /// its failure reply (the `USERAUTH_FAILURE`, or the throttle disconnect
+  /// past [maxAuthAttempts]).
+  ///
+  /// This is sshd's anti-oracle floor (auth2.c: `ensure_minimum_time_since`,
+  /// MIN_FAIL_DELAY_SECONDS): without it, the failure paths have disjoint
+  /// costs — a wrong key pays the full signature verify plus the embedder's
+  /// authenticate callback, an unknown user fails at the username compare —
+  /// so a timing peer learns whether a username matched. Padding every
+  /// failed attempt out to one floor makes the classes indistinguishable.
+  /// The default (10 ms) comfortably dominates every failure path's real
+  /// cost; `Duration.zero` disables the padding. sshd additionally jitters
+  /// the delay per username (`user_specific_delay`); that is a hardening
+  /// follow-up, not part of the floor.
+  final Duration authFailureMinDelay;
 
   /// How many authentication attempts a connection may make before the
   /// server disconnects it.

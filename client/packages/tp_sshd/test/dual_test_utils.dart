@@ -193,6 +193,7 @@ Future<(SSHServer, SSHTransport)> startRawPair({
   required Future<bool> Function(SSHServerAuthRequest request) authenticate,
   required void Function(SSHTransport client) onReady,
   bool Function(Uint8List payload)? onServerMessage,
+  Duration authFailureMinDelay = const Duration(milliseconds: 10),
 }) async {
   final (clientSocket, serverSocket) = loopbackSSHSocketPair();
   final connections = StreamController<SSHSocket>();
@@ -202,6 +203,7 @@ Future<(SSHServer, SSHTransport)> startRawPair({
       hostKeyPair: testHostKey,
       expectedUsername: 'user',
       authenticate: authenticate,
+      authFailureMinDelay: authFailureMinDelay,
     ),
   );
   connections.add(serverSocket);
