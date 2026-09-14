@@ -287,19 +287,15 @@ class FullscreenPtyAutomation {
     machine.noteStagingAttempt();
     bool canExecute() => !(isAcked?.call() ?? false);
     await port.syncDisplayGrid();
-    // Clear the composer first so the baseline reflects only content that
-    // survives the clear — a pre-existing staged body on a resumed session is
-    // wiped here and must NOT anchor the new paste.
+    // Clear the composer first: a pre-existing staged body on a resumed session
+    // must not be mistaken for the new paste.
     await port.clearStagedInput(canExecute: canExecute);
     await Future<void>.delayed(_timing.afterClear);
-    // Paste-denominator baseline: text still present after the clear (an
-    // earlier identical transcript echo on a resumed / repeated session).
-    // Newly pasted text must appear STRICTLY below this line — a fresh paste
-    // lands in the bottom-pinned input box; any match at or above the baseline
-    // is the old copy, not the new message.
     final needle = PtyAutomationNeedle.forText(text);
-    final preBaseline = _locatePasteAck(port, needle);
     await port.pasteText(text, canExecute: canExecute);
+    // Paste ACK is cursor-anchored: the needle must appear in the cursor input
+    // zone (see [locateNeedleInCursorZone]). A status/footer character below the
+    // box can never ACK, and there is no ordering baseline to maintain.
     final anchor = await _pollForNeedle(
       port,
       needle,
@@ -307,15 +303,6 @@ class FullscreenPtyAutomation {
       pollTimeout: _pastePollBudget(text),
     );
     if (anchor == null) return null;
-    if (preBaseline != null && anchor.row <= preBaseline.row) {
-      // The match sits at or above the post-clear baseline → it is the old
-      // transcript echo, not the newly staged line. Treat as a miss.
-      appLogger.d(
-        '[team-bus] pty-probe-ack stale-baseline needle="$needle" '
-        'pre=${preBaseline.row} anchor=${anchor.row} — not the new paste; retry',
-      );
-      return null;
-    }
     machine.noteNeedleFound(); // lock — never return to staging
     return anchor;
   }

@@ -186,7 +186,15 @@ final class RowAwareFakeFullscreenPtyDeliveryPort
   FullscreenPromptAnchor? locatePasteZoneNeedle(
     String needle, {
     int scanRows = 24,
-  }) => locateNeedle(needle, scanRows: scanRows);
+  }) {
+    // Cursor input zone: only the live composer body, never the stale echo
+    // (which sits in transcript, outside the cursor row).
+    if (staged != null && staged!.contains(needle)) {
+      return FullscreenPromptAnchor(
+          row: stagedRow, startCol: 0, needle: needle);
+    }
+    return null;
+  }
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
