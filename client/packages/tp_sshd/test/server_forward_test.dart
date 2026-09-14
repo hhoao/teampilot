@@ -6,10 +6,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:dartssh2/dartssh2.dart' show SSHDisconnectError;
 import 'package:dartssh2/protocol.dart'
     show
         SSHMessage,
         SSHMessageReader,
+        SSH_Message_Channel_Confirmation,
+        SSH_Message_Channel_Open,
         SSH_Message_Global_Request,
         SSH_Message_Request_Failure,
         SSH_Message_Request_Success;
@@ -68,6 +71,113 @@ void main() {
     await forward.close(); // cancel-tcpip-forward
     await client.close();
     await server.close();
+  });
+
+  group('open verdict policy for server-initiated channels', () {
+    // sshd's channel_input_open_confirmation looks the channel up by id and,
+    // for anything that is not a channel still in its OPENING state, only
+    // debug-logs and returns — a duplicate confirmation for a channel the
+    // first confirmation already created is NOT connection-fatal. A verdict
+    // for a truly unknown id (one this server never opened) still draws the
+    // channel_from_packet_id disconnect.
+    test('a duplicate open confirmation for a live channel is tolerated',
+        () async {
+      final forwardedConnections = StreamController<ForwardConnection>();
+      addTearDown(forwardedConnections.close);
+      var successes = 0;
+      int? boundPort;
+      Uint8List? openPayload;
+      final opened = Completer<void>();
+      final (connection, client) = await startRawAuthenticatedConnection(
+        forwarding: SSHForwardingConfig(
+          allowTcpForwarding: SshTcpForwardingMode.remote,
+          dialSocket: (host, port) => throw StateError('no dial'),
+          bindServerSocket: (address, port) async => _FakeServerSocketHandle(
+            forwardedConnections.stream,
+          ),
+        ),
+        onServerMessage: (payload) {
+          switch (SSHMessage.readMessageId(payload)) {
+            case SSH_Message_Request_Success.messageId:
+              successes += 1;
+              if (boundPort == null) {
+                boundPort = SSHMessageReader(
+                  SSH_Message_Request_Success.decode(payload).requestData,
+                ).readUint32();
+              }
+            case SSH_Message_Channel_Open.messageId:
+              openPayload = payload;
+              if (!opened.isCompleted) opened.complete();
+          }
+        },
+      );
+      addTearDown(connection.close);
+      addTearDown(client.close);
+
+      // Bind a forwarded port, then feed the listener one accepted
+      // connection: the server opens a forwarded-tcpip channel for it.
+      client.sendPacket(
+        SSH_Message_Global_Request.tcpipForward('127.0.0.1', 0).encode(),
+      );
+      await waitUntil(() => successes == 1);
+      forwardedConnections.add(_IdleForwardConnection());
+      await opened.future.timeout(const Duration(seconds: 5));
+      final open = SSH_Message_Channel_Open.decode(openPayload!);
+      final confirmation = SSH_Message_Channel_Confirmation(
+        recipientChannel: open.senderChannel,
+        senderChannel: 5000,
+        initialWindowSize: 2 * 1024 * 1024,
+        maximumPacketSize: 32768,
+        data: Uint8List(0),
+      );
+      client.sendPacket(confirmation.encode());
+      await waitUntil(() => connection.channels.isNotEmpty);
+
+      // The stimulus: the same confirmation again — the channel it created
+      // is still live, so this is a duplicate verdict, not an unknown id.
+      client.sendPacket(confirmation.encode());
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(
+        client.isClosed,
+        isFalse,
+        reason: 'a duplicate open confirmation killed the whole connection',
+      );
+
+      // The connection is still serving: a fresh request is answered, and
+      // the forwarded channel the duplicate referred to is still open.
+      client.sendPacket(
+        SSH_Message_Global_Request(
+          requestName: 'keepalive@openssh.com',
+          wantReply: true,
+        ).encode(),
+      );
+      await waitUntil(() => successes == 2);
+      expect(connection.channels.values.single.isClosed, isFalse);
+
+      // A confirmation for an id this server never opened still draws the
+      // protocol error (F5's never-existed class).
+      client.sendPacket(
+        SSH_Message_Channel_Confirmation(
+          recipientChannel: 99999,
+          senderChannel: 5001,
+          initialWindowSize: 2 * 1024 * 1024,
+          maximumPacketSize: 32768,
+          data: Uint8List(0),
+        ).encode(),
+      );
+      final error = await client.done
+          .timeout(const Duration(seconds: 5))
+          .then<Object>(
+            (value) =>
+                throw StateError('connection closed without a reason'),
+            onError: (Object error, _) => error,
+          );
+      expect(error, isA<SSHDisconnectError>());
+      expect(
+        (error as SSHDisconnectError).message,
+        'open confirmation packet referred to nonexistent channel 99999',
+      );
+    });
   });
 
   test('a reset forwarded connection never leaks an unhandled error', () async {
@@ -392,6 +502,47 @@ class _RealForwardConnection implements ForwardConnection {
 
   @override
   void destroy() => _socket.destroy();
+}
+
+/// A [ServerSocketHandle] whose accepted connections are pushed by the test
+/// through a controller, with a fixed bound port.
+class _FakeServerSocketHandle implements ServerSocketHandle {
+  _FakeServerSocketHandle(this._connections);
+
+  final Stream<ForwardConnection> _connections;
+
+  @override
+  int get port => 41234;
+
+  @override
+  Stream<ForwardConnection> get connections => _connections;
+
+  @override
+  Future<void> close() async {}
+}
+
+/// A [ForwardConnection] whose peer never says anything and never goes away:
+/// an accepted forwarded connection at rest.
+class _IdleForwardConnection implements ForwardConnection {
+  final _inputController = StreamController<Uint8List>();
+
+  @override
+  Stream<Uint8List> get input => _inputController.stream;
+
+  @override
+  StreamSink<List<int>> get output => _DiscardSink();
+
+  @override
+  Future<void> get done => Completer<void>().future;
+
+  @override
+  InternetAddress get remoteAddress => InternetAddress.loopbackIPv4;
+
+  @override
+  int get remotePort => 54321;
+
+  @override
+  void destroy() {}
 }
 
 /// A [ForwardConnection] whose peer resets the connection mid-stream: its

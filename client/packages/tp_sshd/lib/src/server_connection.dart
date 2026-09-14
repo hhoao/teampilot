@@ -656,11 +656,20 @@ class SSHServerConnection {
     }
   }
 
-  /// The unknown-id policy for an open verdict: tolerated when it can be a
-  /// race (a duplicate verdict, or one for a channel that has since
-  /// finished — both still have a remembered id), a protocol error
-  /// otherwise.
+  /// The unknown-id policy for an open verdict: tolerated when the channel
+  /// is known in any form — live (a duplicate verdict for a channel the
+  /// first verdict already created, the shape OpenSSH's
+  /// `channel_input_open_confirmation` answers with a debug log and a
+  /// return), or remembered as closing/reaped (a verdict racing the
+  /// channel's finish) — a protocol error otherwise.
   void _tolerateOrDisconnectOpenReply(int id, String what) {
+    if (_channels.containsKey(id)) {
+      _config.printDebug?.call(
+        'tp_sshd: ignoring $what for channel $id '
+        '(duplicate verdict for a live channel)',
+      );
+      return;
+    }
     if (_closingChannels.contains(id) || _reapedChannels.contains(id)) return;
     _disconnect(
       SSHDisconnectReason.protocolError,
