@@ -15,7 +15,7 @@
 - **Never run `flutter test` directly.** Inner loop: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings`. Tests: `cd client && dart run tool/run_tests.dart <paths>`.
 - Claiming done requires: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && dart run tool/run_tests.dart`.
 - Diagnostics use `AppLogger` (`utils/logging/logger.dart`); no `print`.
-- Do not commit unless the user explicitly asks. The "Checkpoint" steps below stage nothing and commit nothing unless instructed.
+- **Commits (user-approved):** commit each task's changes on the current branch (`feat/history-hot-seat-load`) with a concise conventional message; do **not** push. The "Checkpoint" steps are just analyze/test gates.
 - Do not change user-facing copy; no l10n edits.
 - File size soft limits (CODE_QUALITY): keep edits focused; `SessionChatView` is already oversized, so add only the minimal orchestration and prefer new small helpers/tests over growing `build()`.
 - `ChatState`/`sessionActivities` key is `sessionId`; hot predicate is `isHistorySeatHot` in `client/lib/services/session/history_seat_key.dart`.
