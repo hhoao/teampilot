@@ -205,6 +205,100 @@ void main() {
     client.close();
   });
 
+  group('USERAUTH_FAILURE advertises the served methods', () {
+    /// One raw connection whose service is negotiated and whose stimulus
+    /// fires once the userauth phase is reachable; completes with the
+    /// methods list of the first USERAUTH_FAILURE the server sends.
+    Future<List<String>> firstFailureMethods(
+      void Function(SSHTransport client) stimulus, {
+      required Future<bool> Function(SSHServerAuthRequest request) authenticate,
+    }) async {
+      final methods = Completer<List<String>>();
+      final (server, client) = await startRawPair(
+        authenticate: authenticate,
+        onServerMessage: (payload) {
+          if (SSHMessage.readMessageId(payload) ==
+                  SSH_Message_Userauth_Failure.messageId &&
+              !methods.isCompleted) {
+            methods.complete(
+              SSH_Message_Userauth_Failure.decode(payload).methodsLeft,
+            );
+          }
+          return true;
+        },
+        onReady: (client) {
+          client.sendPacket(SSH_Message_Service_Request('ssh-userauth').encode());
+          stimulus(client);
+        },
+      );
+      addTearDown(server.close);
+      addTearDown(client.close);
+      return methods.future.timeout(const Duration(seconds: 5));
+    }
+
+    test('a password-method request is failed with methods=[publickey]',
+        () async {
+      // A09: the password method is not served, but the failure must still
+      // tell the client which method is (RFC 4252 §8) — an empty list reads
+      // as "no methods available" and can end a login that would succeed.
+      final methods = await firstFailureMethods(
+        (client) => client.sendPacket(
+          SSH_Message_Userauth_Request.password(
+            user: 'user',
+            password: 'audit-wrong-password',
+          ).encode(),
+        ),
+        authenticate: (_) async => false,
+      );
+      expect(methods, ['publickey']);
+    });
+
+    test('an undecodable key blob is failed with methods=[publickey]',
+        () async {
+      // A10: the blob claims 3 name bytes then ends — no key can be read out
+      // of it, but the failure answer is the same shape as any other.
+      final methods = await firstFailureMethods(
+        (client) => client.sendPacket(
+          SSH_Message_Userauth_Request.publicKey(
+            username: 'user',
+            publicKeyAlgorithm: 'ssh-ed25519',
+            publicKey: Uint8List.fromList([0, 0, 0, 3, 1, 2, 3]),
+            signature: null,
+          ).encode(),
+        ),
+        authenticate: (_) async => false,
+      );
+      expect(methods, ['publickey']);
+    });
+
+    test('a bad signature is failed with methods=[publickey]', () async {
+      // A11: the key itself is trusted, but the signed request does not
+      // verify — the failure must still advertise publickey.
+      final methods = await firstFailureMethods(
+        (client) {
+          final challenge = client.composeChallenge(
+            username: 'user',
+            service: 'ssh-connection',
+            publicKeyAlgorithm: 'ssh-ed25519',
+            publicKey: testDeviceKey.toPublicKey().encode(),
+          );
+          final corrupted = Uint8List.fromList(challenge);
+          corrupted[corrupted.length - 1] ^= 0xff;
+          client.sendPacket(
+            SSH_Message_Userauth_Request.publicKey(
+              username: 'user',
+              publicKeyAlgorithm: 'ssh-ed25519',
+              publicKey: testDeviceKey.toPublicKey().encode(),
+              signature: testDeviceKey.sign(corrupted).encode(),
+            ).encode(),
+          );
+        },
+        authenticate: (_) async => true,
+      );
+      expect(methods, ['publickey']);
+    });
+  });
+
   test('onAuthenticated reports the connection and auth request', () async {
     final seen = <(SSHServerConnection, String)>[];
     final (client, server) = await startDualPair(
@@ -222,12 +316,18 @@ void main() {
 
   test('too many failed attempts disconnects the connection', () async {
     var failures = 0;
+    final failureMethods = <List<String>>[];
     final (server, client) = await startRawPair(
       authenticate: (_) async => false,
       onServerMessage: (payload) {
         if (SSHMessage.readMessageId(payload) ==
             SSH_Message_Userauth_Failure.messageId) {
           failures += 1;
+          // A12: every one of the five answered failures carries the same
+          // continuable-methods list (F8) — the cap itself stays reason 14,
+          // the documented deliberate divergence from sshd's reason 2.
+          failureMethods
+              .add(SSH_Message_Userauth_Failure.decode(payload).methodsLeft);
         }
         return true;
       },
@@ -252,6 +352,7 @@ void main() {
     // The first five attempts were answered with a failure; the sixth is
     // answered with the disconnect above instead.
     expect(failures, 5);
+    expect(failureMethods, everyElement(['publickey']));
     await server.close();
     client.close();
   });

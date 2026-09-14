@@ -731,8 +731,10 @@ class SSHServerConnection {
   ///
   /// After [SSHServerConfig.maxAuthAttempts] failures the connection is
   /// disconnected (RFC 4253 §11.1 reason 14) instead of answered. The
-  /// failure never advertises continuable methods: publickey is the only
-  /// method there is, and offering it would just invite another attempt.
+  /// failure advertises the continuable methods (`publickey`, RFC 4252 §8):
+  /// clients like OpenSSH consult that list to decide whether to offer a
+  /// publickey at all, and an empty list reads as "no methods available" —
+  /// ending a login that would have succeeded (audit A09/A10/A11).
   Future<void> _failAuthAttempt(DateTime receivedAt) async {
     _authAttempts += 1;
     // The throttle verdict is taken at receipt, in dispatch order, BEFORE
@@ -759,7 +761,7 @@ class SSHServerConnection {
       return;
     }
     _transport.sendPacket(
-      SSH_Message_Userauth_Failure(methodsLeft: const []).encode(),
+      SSH_Message_Userauth_Failure(methodsLeft: const ['publickey']).encode(),
     );
   }
 
