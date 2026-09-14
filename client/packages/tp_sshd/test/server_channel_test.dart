@@ -757,6 +757,63 @@ void main() {
       await connection.close();
       client.close();
     });
+
+    // The post-EOF branch is not uniform: sshd fake-consumes plain DATA
+    // after the client's EOF (channels.c:channel_input_data) but fatals for
+    // EXTENDED_DATA — "Received extended_data after EOF on channel %d."
+    // (channels.c:channel_input_extended_data's CHAN_EOF_RCVD branch; the
+    // same citation D01's row carries). F7's uniform guard must not
+    // fake-consume the extended half too.
+    test('post-EOF extended data disconnects the whole connection', () async {
+      final opened = Completer<void>();
+      final (connection, client) = await startRawAuthenticatedConnection(
+        onServerMessage: (payload) {
+          if (SSHMessage.readMessageId(payload) ==
+                  SSH_Message_Channel_Confirmation.messageId &&
+              !opened.isCompleted) {
+            opened.complete();
+          }
+        },
+      );
+      addTearDown(connection.close);
+      addTearDown(client.close);
+
+      client.sendPacket(
+        SSH_Message_Channel_Open.session(
+          senderChannel: 8,
+          initialWindowSize: 2 * 1024 * 1024,
+          maximumPacketSize: 32768,
+        ).encode(),
+      );
+      await opened.future;
+      final SSHServerChannel channel = connection.channels.values.single;
+
+      // The stimulus: EOF, then extended data on the same channel. sshd
+      // fatals; the uniform post-EOF guard used to fake-consume it instead.
+      client.sendPacket(
+        SSH_Message_Channel_EOF(recipientChannel: channel.ourChannel).encode(),
+      );
+      await waitUntil(() => channel.receivedEof);
+      client.sendPacket(
+        SSH_Message_Channel_Extended_Data(
+          recipientChannel: channel.ourChannel,
+          dataTypeCode: SSH_Message_Channel_Extended_Data.dataTypeStderr,
+          data: Uint8List.fromList('after-eof'.codeUnits),
+        ).encode(),
+      );
+      final error = await client.done
+          .timeout(const Duration(seconds: 5))
+          .then<Object>(
+            (value) => throw StateError('connection closed without a reason'),
+            onError: (Object error, _) => error,
+          );
+      expect(error, isA<SSHDisconnectError>());
+      expect((error as SSHDisconnectError).reasonCode, 2);
+      expect(
+        error.message,
+        'Received extended_data after EOF on channel ${channel.ourChannel}.',
+      );
+    });
   });
 
   group('nonexistent channel policy', () {

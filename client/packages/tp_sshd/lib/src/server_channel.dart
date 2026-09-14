@@ -396,6 +396,19 @@ class SSHServerChannel {
   void _handleIncoming(Uint8List data, StreamController<Uint8List> controller) {
     if (isClosed || data.isEmpty) return;
     if (_receivedEof) {
+      if (identical(controller, _extendedInput)) {
+        // Extended data after the client's CHANNEL_EOF is NOT tolerated
+        // the way plain data is: sshd fatals — "Received extended_data
+        // after EOF on channel %d." (channels.c:channel_input_extended_
+        // data's CHAN_EOF_RCVD branch, the other half of audit D01's
+        // citation) — because stderr cannot be fake-consumed into the
+        // (closed) stdin stream either. Same violation path as a peer
+        // ignoring the channel window (F4/F5).
+        _onProtocolViolation?.call(
+          'Received extended_data after EOF on channel $ourChannel.',
+        );
+        return;
+      }
       // Data after the client's CHANNEL_EOF on a live channel: sshd
       // fake-consumes it — window accounting only, the bytes dropped
       // (channels.c:channel_input_data's post-EOF branch). Throwing here
