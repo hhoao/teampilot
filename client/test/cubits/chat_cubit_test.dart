@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_alacritty/flutter_alacritty.dart';
@@ -1820,5 +1821,66 @@ void main() {
         );
       },
     );
+
+    test(
+      'concurrent hydrateSessionDocument reads the document once',
+      () async {
+        final tmp = await Directory.systemTemp.createTemp(
+          'chat_doc_single_flight_',
+        );
+        final repo = _CountingSessionRepository(
+          rootDir: tmp.path,
+          storage: testHomeStorage,
+        );
+        final postFrame = PostFrameTestHarness();
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
+          sessionRepository: repo,
+          postFrameScheduler: postFrame.scheduler,
+        );
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+        final ws = await repo.createWorkspace([const WorkspaceFolder(path: '/p')]);
+        final created = (await repo.createSession(ws.workspaceId)).session;
+        await cubit.loadWorkspaceIndex(repo);
+        await cubit.ensureSessionsForWorkspace(ws.workspaceId);
+        expect(cubit.sessionHasDocument(created.sessionId), isFalse);
+
+        final first = cubit.hydrateSessionDocument(
+          ws.workspaceId,
+          created.sessionId,
+        );
+        final second = cubit.hydrateSessionDocument(
+          ws.workspaceId,
+          created.sessionId,
+        );
+        repo.gate.complete();
+        final results = await Future.wait([first, second]);
+
+        expect(repo.loadSessionCalls, 1);
+        expect(results[0], isNotNull);
+        expect(identical(results[0], results[1]), isTrue);
+        expect(cubit.sessionHasDocument(created.sessionId), isTrue);
+      },
+    );
   });
+}
+
+class _CountingSessionRepository extends SessionRepository {
+  _CountingSessionRepository({
+    required super.rootDir,
+    required super.storage,
+  });
+
+  int loadSessionCalls = 0;
+  final Completer<void> gate = Completer<void>();
+
+  @override
+  Future<AppSession?> loadSession(String workspaceId, String sessionId) async {
+    loadSessionCalls++;
+    await gate.future;
+    return super.loadSession(workspaceId, sessionId);
+  }
 }

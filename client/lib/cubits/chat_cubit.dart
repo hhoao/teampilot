@@ -308,6 +308,11 @@ class ChatCubit extends Cubit<ChatState>
   final ChatTabStore _tabStore;
   final SessionDataStore _dataStore;
 
+  /// In-flight session-document hydrations keyed by session id. Restored open
+  /// tabs and an activating History view hydrate the same document; coalesce so
+  /// each `session.json` is read once.
+  final Map<String, Future<AppSession?>> _documentHydrationInFlight = {};
+
   /// Per-session [SessionPod] values, keyed by session id. The launch/connect
   /// lifecycle (Task 6) drives `phase`; the workbench overlay derives from the
   /// active pod instead of global connecting sentinels.
@@ -1818,18 +1823,39 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
+  /// Loads and caches a session document. Concurrent callers for the same
+  /// session id share one read. Returns the full document, or `null` when it
+  /// cannot be loaded.
   Future<AppSession?> hydrateSessionDocument(
     String workspaceId,
     String sessionId,
-  ) async {
+  ) {
     final repo = _sessionRepository;
     final id = sessionId.trim();
     final ws = workspaceId.trim();
-    if (repo == null || id.isEmpty || ws.isEmpty) return null;
+    if (repo == null || id.isEmpty || ws.isEmpty) {
+      return Future<AppSession?>.value();
+    }
     if (_dataStore.sessionHasDocument(id)) {
       final cached = state.sessions.where((s) => s.sessionId == id).firstOrNull;
-      if (cached != null) return cached;
+      if (cached != null) return Future<AppSession?>.value(cached);
     }
+    return _documentHydrationInFlight.putIfAbsent(id, () {
+      final future = _loadSessionDocument(repo, ws, id);
+      future.whenComplete(() {
+        if (identical(_documentHydrationInFlight[id], future)) {
+          _documentHydrationInFlight.remove(id);
+        }
+      });
+      return future;
+    });
+  }
+
+  Future<AppSession?> _loadSessionDocument(
+    SessionRepository repo,
+    String ws,
+    String id,
+  ) async {
     final full = await repo.loadSession(ws, id);
     if (full == null || isClosed) return null;
     _dataStore.markSessionDocument(id);
