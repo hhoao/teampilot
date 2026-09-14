@@ -295,6 +295,102 @@ void main() {
       expect(port.crCount, 1);
     });
 
+    test(
+      'hookSubmitAck: grid submit false-positive does not report submitted',
+      () async {
+        // Resume bug regression: even if the grid probe (composerMovesDown)
+        // reports submitted on a transcript echo, hookSubmitAck must wait for
+        // the real hook confirmation and end crStuck — never "running but not
+        // sent".
+        final machine = newMachine()..begin();
+        final port = FakeFullscreenPtyDeliveryPort(
+          crAckConfig: const FullscreenCrAckConfig(
+            strategy: FullscreenCrAckStrategy.composerMovesDown,
+            composerPrefix: '\u203a',
+            hookSubmitAck: true,
+          ),
+          crsToClear: 1,
+        )
+          ..staged = TeamBus.doorbellNotice; // grid would ACK this
+
+        final outcome = await automation.continueSubmission(
+          machine,
+          port: port,
+          text: TeamBus.doorbellNotice,
+          pasteSettle: Duration.zero,
+          isAcked: () => false, // hook never confirms
+        );
+
+        expect(
+          outcome,
+          FullscreenPtyDeliveryOutcome.crStuck,
+          reason:
+              'without the hook confirmation the submit must stay unconfirmed, '
+              'even though the grid would report submitted',
+        );
+      },
+    );
+
+    test(
+      'hookSubmitAck: hook confirmation returns submitted immediately',
+      () async {
+        final machine = newMachine()..begin();
+        final port = FakeFullscreenPtyDeliveryPort(
+          crAckConfig: const FullscreenCrAckConfig(
+            strategy: FullscreenCrAckStrategy.composerMovesDown,
+            composerPrefix: '\u203a',
+            hookSubmitAck: true,
+          ),
+        );
+
+        // Only confirm once CR rides — asserts the hook-only path really
+        // reaches _hookOnlyCr and honors the hook (not an early staging ack).
+        final outcome = await automation.continueSubmission(
+          machine,
+          port: port,
+          text: TeamBus.doorbellNotice,
+          pasteSettle: Duration.zero,
+          isAcked: () => port.crCount > 0,
+        );
+
+        expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+        expect(port.crCount, greaterThanOrEqualTo(1));
+      },
+    );
+
+    test(
+      'resume transcript echo is not mistaken for staged input (pasteNotFound)',
+      () async {
+        // A resumed codex session replays an identical older message in the
+        // transcript near the composer. The loose needle probe hits it, but the
+        // live composer is empty — the send must NOT be ACKed as submitted.
+        final machine = newMachine()..begin();
+        final port = FakeFullscreenPtyDeliveryPort(
+          crAckConfig: const FullscreenCrAckConfig(
+            strategy: FullscreenCrAckStrategy.composerMovesDown,
+            composerPrefix: '\u203a',
+          ),
+          composerStagedOverride: false, // live composer is empty
+        )
+          ..staged = TeamBus.doorbellNotice; // transcript echo visible on grid
+
+        final outcome = await automation.continueSubmission(
+          machine,
+          port: port,
+          text: TeamBus.doorbellNotice,
+          pasteSettle: Duration.zero,
+        );
+
+        expect(
+          outcome,
+          FullscreenPtyDeliveryOutcome.pasteNotFound,
+          reason:
+              'transcript echo must not lock the submission / report submitted'
+              ' — that is the "running but never sent" resume bug',
+        );
+      },
+    );
+
     test('skips everything when hook already acked the submit', () async {
       final machine = newMachine()..begin();
       final port = FakeFullscreenPtyDeliveryPort();

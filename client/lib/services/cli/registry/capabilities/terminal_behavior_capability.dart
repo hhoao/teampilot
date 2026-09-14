@@ -52,6 +52,12 @@ abstract interface class TerminalBehaviorCapability implements CliCapability {
   /// echoing it into PTY output (none of the built-in CLIs currently need it).
   bool get usesGridPasteAck;
 
+  /// Whether the CR submit is confirmed solely by the CLI's submit hook
+  /// (`promptSubmitted` runtime event) instead of the mirror grid. Grid submit
+  /// probing false-positives on resumed sessions; all built-in CLIs emit a
+  /// submit hook, so this should be true wherever [usesGridPasteAck] is true.
+  bool get usesHookSubmitAck;
+
   /// How a file dropped onto this CLI's terminal is quoted and injected.
   TerminalPathDropBehavior get pathDropBehavior;
 

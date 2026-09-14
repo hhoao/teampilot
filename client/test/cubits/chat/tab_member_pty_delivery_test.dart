@@ -133,7 +133,7 @@ void main() {
     expect(afterTurn, ['s:m']);
   });
 
-  test('direct fullscreen submit waits for the grid submit ACK', () async {
+  test('direct fullscreen submit waits for the commit submission', () async {
     final shell = await ConnectedRecordingShell.connect();
     addTearDown(shell.dispose);
     final tabStore = _DeliveryHarness._connectedTabStore(shell);
@@ -171,10 +171,13 @@ void main() {
     );
 
     await shell.emitPtyOutput('gpt-5.6-luna default · /tmp\r\n›\r\n');
+    // The submit verdict rides the CLI's UserPromptSubmit hook (codex
+    // hookSubmitAck), not the mirror grid.
+    var hookConfirmed = false;
     var completed = false;
-    final submit = commands.submit(delivery, canExecute: () => true).then((
-      result,
-    ) {
+    final submit = commands
+        .submit(delivery, canExecute: () => true, isAcked: () => hookConfirmed)
+        .then((result) {
       completed = true;
       return result;
     });
@@ -186,8 +189,11 @@ void main() {
       reason: 'PTY writes alone are not proof that Codex accepted the prompt',
     );
 
+    // Stage the paste on the grid so the paste ACK passes, then the CR lands.
     await shell.emitPtyOutput('› $text\r\n');
-    unawaited(_emitCodexSubmitFrameAfterCr(shell, text));
+    unawaited(
+      _emitCodexSubmitFrameAfterCr(shell, text, () => hookConfirmed = true),
+    );
 
     expect(await submit, PromptSubmissionResult.submitted);
   });
@@ -357,8 +363,9 @@ void main() {
 
 Future<void> _emitCodexSubmitFrameAfterCr(
   ConnectedRecordingShell shell,
-  String text,
-) async {
+  String text, [
+  void Function()? onSubmitted,
+]) async {
   final deadline = DateTime.now().add(const Duration(seconds: 2));
   while (!shell.ptyInputJoined.contains('\r')) {
     if (DateTime.now().isAfter(deadline)) {
@@ -369,6 +376,8 @@ Future<void> _emitCodexSubmitFrameAfterCr(
   // The staged row is row 4 in the synthetic screen. Replace that row with
   // transcript text and paint a fresh composer below it.
   await shell.emitPtyOutput('\x1b[4;1H\x1b[2K$text\r\n›\r\n');
+  // Model the CLI's UserPromptSubmit hook confirming the commit.
+  onSubmitted?.call();
 }
 
 final class _DeliveryHarness {

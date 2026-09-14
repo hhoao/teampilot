@@ -51,6 +51,8 @@ final class CursorTerminalBehavior
   @override
   bool get usesGridPasteAck => true;
   @override
+  bool get usesHookSubmitAck => true;
+  @override
   TerminalPathDropBehavior get pathDropBehavior =>
       TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
   @override

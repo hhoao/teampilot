@@ -472,6 +472,7 @@ final class TabMemberPtyDelivery {
           behavior?.fullscreenCrAckStrategy ??
           FullscreenCrAckStrategy.anchorCellClears,
       composerPrefix: behavior?.fullscreenComposerPrefix,
+      hookSubmitAck: behavior?.usesHookSubmitAck ?? false,
     );
   }
 
@@ -593,6 +594,7 @@ final class TabPromptDeliveryCommands implements PromptDeliveryCommands {
               behavior?.fullscreenCrAckStrategy ??
               FullscreenCrAckStrategy.anchorCellClears,
           composerPrefix: behavior?.fullscreenComposerPrefix,
+          hookSubmitAck: behavior?.usesHookSubmitAck ?? false,
         ),
         painted: shell.observationPainted,
       ),

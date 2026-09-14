@@ -297,10 +297,34 @@ class FullscreenPtyAutomation {
       minSettle: pasteSettle + _timing.afterPaste + _extraSettleForLength(text),
       pollTimeout: _pastePollBudget(text),
     );
-    if (anchor != null) {
+    // The loose probe can hit a *transcript* echo of the same text on a
+    // resumed session (the composer's slack window includes a few rows above
+    // the live box). Pasting is only proven staged when the needle is the body
+    // of the live bottom composer block — otherwise a new message "succeeds"
+    // by ACK-ing an old presented line, submits an empty CR, and the operator
+    // session shows working while the CLI never received the message.
+    if (anchor != null && _isStagedInComposer(port, needle)) {
       machine.noteNeedleFound(); // lock — never return to staging
+      return anchor;
     }
-    return anchor;
+    if (anchor != null) {
+      // Anchor landed on a transcript echo, not the live composer — treat as
+      // a miss and keep staging (bounded by the retry budget).
+      appLogger.d(
+        '[team-bus] pty-probe-ack transcript-hit needle="$needle" '
+        'row=${anchor.row} — not staged in live composer; retry',
+      );
+    }
+    return null;
+  }
+
+  bool _isStagedInComposer(
+    FullscreenPtyDeliveryPort port,
+    String needle,
+  ) {
+    final prefix = port.crAckConfig.composerPrefix?.trim() ?? '';
+    if (prefix.isEmpty) return true; // no composer chrome → rely on loose ACK
+    return port.isNeedleStagedInComposer(needle);
   }
 
   /// Send phase of a locked submission: settle, optional popup dismiss, CR.
@@ -381,7 +405,101 @@ class FullscreenPtyAutomation {
     if (port.crAckConfig.strategy == FullscreenCrAckStrategy.timed) {
       return _timedCr(port, fence, isAcked: isAcked);
     }
+    if (port.crAckConfig.hookSubmitAck) {
+      return _hookOnlyCr(port, fence, isAcked: isAcked);
+    }
     return _anchoredCr(port, anchor, fence, isAcked: isAcked);
+  }
+
+  /// CR submit confirmed **only** by the hook `promptSubmitted` signal.
+  ///
+  /// Grid submit probing is unreliable on resumed sessions: an identical older
+  /// message in the transcript can be mistaken for the staged line and report
+  /// submitted while the CLI never received the new prompt. When the CLI emits
+  /// a submit hook ([FullscreenCrAckConfig.hookSubmitAck]), the mirror grid is
+  /// used purely for the paste ACK and the submit verdict is the hook alone.
+  ///
+  /// A swallowed CR is nudged (bounded by [PtyAutomationTiming.crMaxAttempts])
+  /// exactly like pressing Enter again; the ack wait repeats each try, and only
+  /// a hook confirmation (or the [PtyAutomationTiming.sendAckTimeout] budget)
+  /// decides the outcome — never the grid.
+  Future<FullscreenPtyDeliveryOutcome> _hookOnlyCr(
+    FullscreenPtyDeliveryPort port,
+    bool Function() fence, {
+    bool Function()? isAcked,
+  }) async {
+    final deadline = DateTime.now().add(_timing.sendAckTimeout);
+    for (var attempt = 0; attempt < _timing.crMaxAttempts; attempt++) {
+      if (isAcked?.call() ?? false) {
+        return FullscreenPtyDeliveryOutcome.submitted;
+      }
+      if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
+      if (attempt > 0) {
+        appLogger.d(
+          '[team-bus] pty-hook-cr-retry attempt=$attempt '
+          'max=${_timing.crMaxAttempts}',
+        );
+      }
+      await port.submitCr(canExecute: fence);
+      // The submit fence may close while the CR write is in flight (hook
+      // confirmation); that is a success, not an abort.
+      if (isAcked?.call() ?? false) {
+        return FullscreenPtyDeliveryOutcome.submitted;
+      }
+      if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
+      final acked = await _pollForHookAck(
+        port,
+        deadline,
+        attemptedAt: DateTime.now(),
+        isAcked: isAcked,
+      );
+      if (acked) return FullscreenPtyDeliveryOutcome.submitted;
+      if (DateTime.now().isAfter(deadline)) break;
+    }
+    _logHookCrStuck(port);
+    return FullscreenPtyDeliveryOutcome.crStuck;
+  }
+
+  /// Pools `isAcked` (the hook confirmation) until [deadline]. Returns true as
+  /// soon as confirmed; the grid is never consulted.
+  Future<bool> _pollForHookAck(
+    FullscreenPtyDeliveryPort port,
+    DateTime deadline, {
+    required DateTime attemptedAt,
+    bool Function()? isAcked,
+  }) async {
+    final remainingTotal = deadline.difference(attemptedAt);
+    if (remainingTotal <= Duration.zero) {
+      return isAcked?.call() ?? false;
+    }
+    final timeout = _timing.pollTimeout > Duration.zero &&
+            _timing.pollTimeout < remainingTotal
+        ? _timing.pollTimeout
+        : remainingTotal;
+    final pollDeadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(pollDeadline)) {
+      if (isAcked?.call() ?? false) return true;
+      if (port.isAborted) return false;
+      final remaining = deadline.difference(DateTime.now());
+      if (remaining <= Duration.zero) break;
+      final slice =
+          _timing.pollInterval <= Duration.zero ||
+              remaining < _timing.pollInterval
+          ? remaining
+          : _timing.pollInterval;
+      await Future.any<void>([
+        port.waitForPaint(timeout: slice),
+        if (_timing.pollInterval > Duration.zero) Future<void>.delayed(slice),
+      ]);
+    }
+    return isAcked?.call() ?? false;
+  }
+
+  void _logHookCrStuck(FullscreenPtyDeliveryPort port) {
+    appLogger.w(
+      '[team-bus] pty-hook-cr-stuck strategy=${port.crAckConfig.strategy} '
+      'scanRows=${_probeScanRows(port)} viewportRows=${port.viewportRows}',
+    );
   }
 
   Future<FullscreenPtyDeliveryOutcome> _timedCr(

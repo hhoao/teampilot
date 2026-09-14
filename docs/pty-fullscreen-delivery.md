@@ -134,10 +134,14 @@ abort（shell 断开 / fence 关闭）从任意非终态 → aborted
 
 ## 4. 为什么"能粘上 ≠ 能发出去"
 
-- **粘贴**：`pasteText` 写 bracketed-paste 到 PTY → 网格探针确认文本可见。可靠、可自证。
-- **发送**：`submitCr` 之后只能靠「composer 清空 + hook 事件」间接确认，且二者都可能延迟或缺失。
-  这也是为什么 `pasted` 之后绝不回退到 `staging`：粘贴一旦确认成功，再贴只会制造重复；
-  发送确认缺失只能靠补 CR / 等待 hook，直到预算耗尽。
+- **粘贴**：`pasteText` 写 bracketed-paste 到 PTY → 网格探针确认文本是 live composer 的 body
+  （`isNeedleStagedInComposer` 严格门禁）。可靠、可自证；resume 时 transcript 中的旧文本
+  不会被误认为已 staged（否则发空 CR，session 显示 working 而 CLI 从未收到消息）。
+- **发送**：`submitCr` 之后，提交确认**只信 hook 事件**（`UserPromptSubmit` /
+  `beforeSubmitPrompt` / `userMessageSubmitted` → `promptSubmitted`），
+  `hookSubmitAck` 时网格**不再作为提交判据**（网格对 resume transcript 回声会误报
+  submitted）。hook 未到则补 CR / 等 hook，直到预算耗尽 (`crStuck`)。
+  这也是为什么 `pasted` 之后绝不回退到 `staging`：粘贴一旦确认成功，再贴只会制造重复。
 
 ## 5. 相关文件
 

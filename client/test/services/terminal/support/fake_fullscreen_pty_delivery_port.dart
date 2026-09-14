@@ -13,6 +13,7 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
     this.collapseAsClaudePaste = false,
     this.crAckConfig = const FullscreenCrAckConfig.productionDefault(),
     this.composerChromeEmptyOverride,
+    this.composerStagedOverride,
   });
 
   bool aborted;
@@ -25,6 +26,11 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
 
   /// When set, [isComposerChromeEmpty] returns this value instead of inferring.
   final bool? composerChromeEmptyOverride;
+
+  /// When set, [isNeedleStagedInComposer] returns this value instead of
+  /// inferring from [staged]. Simulates a resumed session where the needle
+  /// exists on the grid (old transcript echo) but the live composer is empty.
+  final bool? composerStagedOverride;
 
   String? staged;
   int pasteCount = 0;
@@ -93,6 +99,7 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   @override
   bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) {
     if (staged == null || needle.isEmpty) return false;
+    if (composerStagedOverride != null) return composerStagedOverride!;
     return staged!.contains(needle);
   }
 
