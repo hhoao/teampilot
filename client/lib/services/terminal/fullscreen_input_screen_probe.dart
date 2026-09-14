@@ -74,6 +74,65 @@ FullscreenPromptAnchor? locateFullscreenPromptNeedle(
   return null;
 }
 
+/// Locate [needle] in the **cursor input zone**: the cursor row plus a small
+/// window above it (multi-line paste tail). The cursor is the TUI's own input
+/// position, so this avoids matching a stray character in a status/footer row
+/// *below* the input box (e.g. a single "1" matching "17%" in the status line).
+///
+/// Falls back to the bottom-[scanRows] search when the grid has no cursor.
+FullscreenPromptAnchor? locateNeedleInCursorZone(
+  TerminalScreenGrid grid,
+  String needle,
+) {
+  if (needle.isEmpty) return null;
+  final rows = grid.rows;
+  if (rows == 0 || grid.columns == 0) return null;
+  final cursor = grid.cursorRow;
+  if (cursor < 0) return locateFullscreenPromptNeedle(grid, needle);
+  final top = _cursorZoneTop(grid, cursor);
+  final runes = needle.runes.toList();
+  for (var r = cursor; r >= top; r--) {
+    final startCol = _findNeedleStartCol(grid, r, runes);
+    if (startCol >= 0) {
+      return FullscreenPromptAnchor(row: r, startCol: startCol, needle: needle);
+    }
+  }
+  return null;
+}
+
+/// Collapsed-paste chrome (`[Pasted ~N lines]`) in the cursor input zone.
+FullscreenPromptAnchor? locateCollapsedPasteInCursorZone(
+  TerminalScreenGrid grid,
+) {
+  final rows = grid.rows;
+  if (rows == 0 || grid.columns == 0) return null;
+  final cursor = grid.cursorRow;
+  if (cursor < 0) return locateCollapsedPasteNeedle(grid);
+  final top = _cursorZoneTop(grid, cursor);
+  for (var r = cursor; r >= top; r--) {
+    final marker = PtyAutomationNeedle.collapsedPasteNeedle(
+      _logicalRowText(grid, r),
+    );
+    if (marker == null) continue;
+    final startCol = _findNeedleStartCol(grid, r, marker.runes.toList());
+    if (startCol >= 0) {
+      return FullscreenPromptAnchor(row: r, startCol: startCol, needle: marker);
+    }
+  }
+  return null;
+}
+
+/// Top row of the cursor input zone: walk up from [cursor] through contiguous
+/// non-blank rows, capped at [cursorZoneWrapSlack] rows.
+int _cursorZoneTop(TerminalScreenGrid grid, int cursor) {
+  var top = cursor;
+  for (var i = 0; i < cursorZoneWrapSlack && top > 0; i++) {
+    if (_rowIsBlank(grid, top - 1)) break;
+    top -= 1;
+  }
+  return top;
+}
+
 /// Full-screen TUIs (Claude Code, opencode, etc.) hide long pastes behind
 /// `[Pasted text #N +M lines]` or `[Pasted ~N lines]` chrome.
 ///
@@ -136,12 +195,9 @@ bool isFullscreenPromptSubmitted(
 const int cursorZoneWrapSlack = 4;
 
 /// True while [needle] still occupies the input box around the cursor: the
-/// cursor row, any row below it forming the box (wrap continuation), or a small
-/// window above the cursor where a multi-line paste's tail may start.
-///
-/// The box is bounded by blank rows: above, the contiguous non-blank run is
-/// walked up to [cursorZoneWrapSlack] rows; below, the run ends at the first
-/// blank row.
+/// cursor row, plus a small window above it where a multi-line paste's tail may
+/// start. Rows *below* the cursor are excluded so a status/footer character
+/// cannot be mistaken for staged input.
 bool needleStaysInCursorZone(
   TerminalScreenGrid grid,
   String needle,
@@ -150,19 +206,8 @@ bool needleStaysInCursorZone(
   final cursor = grid.cursorRow;
   if (rows == 0 || cursor < 0) return false;
   final runes = needle.runes.toList();
-
-  var top = cursor;
-  for (var i = 0; i < cursorZoneWrapSlack && top > 0; i++) {
-    if (_rowIsBlank(grid, top - 1)) break;
-    top -= 1;
-  }
-  var bottom = cursor;
-  for (var r = cursor + 1; r < rows; r++) {
-    if (_rowIsBlank(grid, r)) break;
-    bottom = r;
-  }
-
-  for (var r = top; r <= bottom; r++) {
+  final top = _cursorZoneTop(grid, cursor);
+  for (var r = top; r <= cursor; r++) {
     if (_findNeedleStartCol(grid, r, runes) >= 0) return true;
   }
   return false;

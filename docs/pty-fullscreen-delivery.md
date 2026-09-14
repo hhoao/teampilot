@@ -134,20 +134,23 @@ abort（shell 断开 / fence 关闭）从任意非终态 → aborted
 
 粘贴是否成功，靠「**网格里能否在输入框区域找到 needle 字符串**」来判定。这是"能粘上 vs 能发出去"中的第一环。
 
-### 4.1 判定逻辑（`locateFullscreenPromptNeedle`）
+### 4.1 判定逻辑（光标输入区）
 
-1. 取 `needle`（`PtyAutomationNeedle.forText`，长文本取尾部 40 字符）。
-2. 确定**搜索起点** `searchStart`（`_composerLocateStartRow`）：以最底部 `composerPrefix` 行（`›`/`┃`/`→`/`❯`/`﹀`）为底，往上放宽 `composerAboveSlack = 12` 行作为上限——**只搜输入框附近，不碰更早期的 transcript**。
-3. **从底部往上**逐行扫（`for r = rows-1 …`），每行从左到右做逐字符匹配（`_matchesNeedleAt`，支持跨行软换行拼接、CJK 宽字符、wrap 空格折叠）。
-4. 命中 → 返回 `row/col`；否则 `null`。
+粘贴 ACK 与提交判定都以**终端光标行**（`TerminalScreenGrid.cursorRow`，由 alacritty 引擎透传）为锚——它是 TUI 自己宣告的输入位置，最可靠。
+
+- **输入区窗口** `[cursor - cursorZoneWrapSlack, cursor]`（默认上探 4 行，遇空行停）：光标行 + 上方少量行（多行长粘贴的尾部可能从光标上一行开始）。
+- **向下不扩**：光标下方的行（status/footer）不参与，避免单字符 needle（如 "1"）撞上状态行的 "17%"。
+- 窗口内逐行匹配 needle（`_matchesNeedleAt`：跨行软换行拼接、CJK 宽字符、wrap 空格折叠）。
+- 光标不可用时（`cursorRow < 0`）回退到"屏幕底部 scanRows 行"搜索。
+
+`locateNeedleInCursorZone` 找粘贴文本；`needleStaysInCursorZone` 判"文本是否仍在输入区"（提交判定 / CR 重试守卫）。
 
 ### 4.2 关键特性与边界
 
-- **底部优先**：`from bottom-up`，所以同屏出现多条相同文本时，先命中**位置更靠下**的那条 = 输入框里最新贴入的，而不是上方 history。
-- **窗口限定**：搜索不越过 `composerAboveSlack`，远的历史 transcript 不参与。
-- **短消息重复发送**：若连续发送两条相同短消息，旧的在 transcript（更靠上），新的在输入框（更靠下），底部优先天然命中新贴的。
-- **粘贴失败 + 旧同文本在窗口内**：被基线增量（§4.4 的 `<=` 拒绝）拦截 → `pasteNotFound`，不再发空 CR。
-- **长文本软换行**：长文本跨多个物理行时，needle 从尾部取，可能分布在 wrap 行中；`_matchesNeedleAt` 的 wrap 拼接使其仍可命中，但极长文本仍需 `pollTimeout` 放大（`_pastePollBudget`）。
+- **光标锚定**：不用任何 per-CLI 前缀字符，也不依赖"输入框在屏幕底部"的假设。
+- **避免下方干扰**：单字符 needle（"1"）只匹配光标输入区，不会命中下方 status 行的同字符。
+- **多行粘贴**：光标在末行，尾部 40 字符可能起于光标上方 → 窗口上探 `cursorZoneWrapSlack` 行覆盖。
+- **长文本软换行**：`_matchesNeedleAt` 的 wrap 拼接使其仍可命中；极长文本用 `pollTimeout` 放大（`_pastePollBudget`）。
 
 ### 4.3 hook 提交兜底（为什么"粘贴误判"不会被当成成功）
 
@@ -158,16 +161,9 @@ abort（shell 断开 / fence 关闭）从任意非终态 → aborted
 
 这就把「粘贴定位的误差」从"可能误报成功"降级为"浪费一次 CR 重试"。
 
-### 4.4 基线检测（粘贴前基线 + 粘贴后增量）
+### 4.4 粘贴 ACK 的额外校验
 
-为避免"同屏重复文本"误命中新消息，粘贴 ACK 采用**粘贴前基线 + 粘贴后增量**：
-
-1. **先清空输入框**（`clearStagedInput` + `afterClear`），把 resume 时输入框里残留的旧 staged 清掉，基线只反映"clear 之后仍存在"的内容。
-2. **记录基线**：在输入框区域（`bottomComposerChromeRow` 往上 slack 窗口）定位当前仍可见的候选文本最靠下行号 `preBaselineRow`（无候选则为空）。
-3. **粘贴后增量**：新贴入的文本必然出现在基线**之下**（输入框在屏幕底部固定）。只有当 `anchor.row > preBaselineRow` 才认定是新贴；**`<=`（等于或更靠上）一律拒绝**，视为未贴上继续重贴。
-
-- **有效**：① 重复相同短消息——旧的在基线之上、新的在基线之下；② **粘贴失败时**（新文本没进去），grid 只剩基线那行 → `anchor.row == preBaselineRow` → `<=` 拒绝 → `pasteNotFound`，**不会误判成功发空 CR**。
-- **边界**：长文本跨多行时，若 wrap/重排让新文本起始行落在基线之上或同于基线，会漏判；此时靠 §4.3 的 hook 兜底（多一次 CR 重试），不误报成功。
+`_stagingOnce` 先 `clearStagedInput`（清输入框残留）、再记录**粘贴前基线**（`preBaseline` = 光标窗口内当前是否已有该文本），粘贴后要求命中行 **严格低于** 基线（`<=` 拒绝）——防止"粘贴失败时旧残留冒充新贴"。基线在光标窗口下通常为空（composer 已清），是轻量兜底。
 
 ## 5. 相关文件
 

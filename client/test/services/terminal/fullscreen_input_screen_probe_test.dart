@@ -91,6 +91,25 @@ void main() {
     expect(anchor.row, 7);
   });
 
+  test('locateNeedleInCursorZone ignores a same-char status line below', () {
+    // Real opencode dump: the single-char reply "1" is staged at r33 (cursor),
+    // while the status row r37 contains "17%". Bottom-up search would match the
+    // status row; the cursor zone must match only the input line.
+    final rows = List<String>.filled(40, '');
+    rows[32] = '┃';
+    rows[33] = '┃  1';
+    rows[34] = '┃';
+    rows[35] = '┃  Build · deepseek-v4-flash OpenCode Go';
+    rows[37] = '/home/hhoa/git/hhoa/teampilot  app_shell.dart  170.0K (17%)';
+    final grid = _FakeGrid.fromRows(rows)..cursorRow = 33;
+
+    final anchor = locateNeedleInCursorZone(grid, '1');
+    expect(anchor, isNotNull);
+    expect(anchor!.row, 33);
+
+    expect(needleStaysInCursorZone(grid, '1'), isTrue);
+  });
+
   test('locateCollapsedPasteNeedle finds opencode paste chrome', () {
     final lines = List<String>.filled(10, '');
     lines[7] = '┃  [Pasted ~152 lines]';

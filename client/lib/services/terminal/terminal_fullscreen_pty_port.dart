@@ -51,26 +51,19 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
     }
   }
 
-  /// Paste-ACK location: finds [needle] in the **bottom input zone** (the last
-  /// [scanRows] visible rows), without a CLI-specific composer prefix. The
-  /// input box is pinned at the bottom of full-screen TUIs, so bottom-scoped
-  /// search plus the paste-denominator baseline (in [FullscreenPtyAutomation])
-  /// is enough to distinguish a newly staged paste from an older transcript
-  /// echo — no per-CLI prefix character needed.
+  /// Paste-ACK location: the cursor input zone (cursor row plus a small window
+/// above for multi-line paste tails). The cursor is the TUI's own input
+/// position, so a stray character in a status row below the input box (e.g. a
+/// single "1" matching "17%") is never mistaken for the paste.
   @override
   FullscreenPromptAnchor? locatePasteZoneNeedle(
     String needle, {
     int scanRows = 24,
-  }) => _probe.locateFullscreenPromptNeedle(
-    needle,
-    scanRows: scanRows,
-  );
+  }) => _probe.locateNeedleInCursorZone(needle);
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
-      _probe.locateCollapsedPasteNeedle(
-        scanRows: scanRows,
-      );
+      _probe.locateCollapsedPasteInCursorZone();
 
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
