@@ -609,7 +609,7 @@ mechanism is the anti-oracle E01 measures.
 
 | ID | 刺激 | OpenSSH 预期（源码出处） | OpenSSH 实测 | tp_sshd 实测 | 判定 |
 |----|------|--------------------------|--------------|--------------|------|
-| E01 | 认证失败时延分布：三种失败条件各 50 次全新连接（每条件新连接，避开两端的 6 次失败上限）——wrong-key（真实用户名 + 未授权密钥 + **有效** RFC 4252 §7 签名）、unknown-user（不存在的用户名，其余为有效登录）、malformed-blob（不可解码密钥 blob，A10 形状）——测量 USERAUTH_REQUEST 发出到 USERAUTH_FAILURE 回复的墙钟 µs，每格 median/p95/max（专用 harness，PerSourcePenalties 关闭：150 次失败登录测的是认证时延而非惩罚门控） | 每个失败的 non-"none" 尝试都被垫时：5 ms 下限 + 0–4.2 ms 由 timing_secret 派生的按用户名伪随机抖动，之后才回包——三种失败条件在时延上不可区分（垫时即反预言机；路径差异被下限吸收）。[auth2.c:input_userauth_request -> ensure_minimum_time_since + user_specific_delay] | wrong-key med 6986µs p95 7571µs；unknown-user med 7744µs p95 8115µs；malformed-blob med 6765µs p95 7066µs — 同用户名的两条件（wrong-key/malformed）仅差 220µs，unknown-user 的 ~1 ms 落差是按用户名抖动（秘密派生的常量，不泄露路径） | wrong-key med 11905µs、unknown-user med 11646µs、malformed-blob med 11278µs（regeneration 2026-09-14）— 三类落在同一噪声带内（差距 ~5%），不可分 *(regenerated post-fix; was: 2808/902/630 µs 三类清晰可分，正确用户名的拒绝比错误用户名慢 3 倍; fixed-in tp_sshd 的 authFailureMinDelay 垫时, F1)* | **match**（in-kind：三类不可分，F1 验收达成） |
+| E01 | 认证失败时延分布：三种失败条件各 50 次全新连接（每条件新连接，避开两端的 6 次失败上限）——wrong-key（真实用户名 + 未授权密钥 + **有效** RFC 4252 §7 签名）、unknown-user（不存在的用户名，其余为有效登录）、malformed-blob（不可解码密钥 blob，A10 形状）——测量 USERAUTH_REQUEST 发出到 USERAUTH_FAILURE 回复的墙钟 µs，每格 median/p95/max（专用 harness，PerSourcePenalties 关闭：150 次失败登录测的是认证时延而非惩罚门控） | 每个失败的 non-"none" 尝试都被垫时：5 ms 下限 + 0–4.2 ms 由 timing_secret 派生的按用户名伪随机抖动，之后才回包——三种失败条件在时延上不可区分（垫时即反预言机；路径差异被下限吸收）。[auth2.c:input_userauth_request -> ensure_minimum_time_since + user_specific_delay] | wrong-key med 6986µs p95 7571µs；unknown-user med 7744µs p95 8115µs；malformed-blob med 6765µs p95 7066µs — 同用户名的两条件（wrong-key/malformed）仅差 220µs，unknown-user 的 ~1 ms 落差是按用户名抖动（秘密派生的常量，不泄露路径） | wrong-key med 11905µs、unknown-user med 11646µs、malformed-blob med 11278µs（regeneration 2026-09-14，final row-refresh run——与下方 F1 fix-landed 注的 7a fix-landed run 是两次独立运行，逐 run 中位数漂移属预期，见 regeneration note）— 三类落在同一噪声带内（差距 ~5%），不可分 *(regenerated post-fix; was: 2808/902/630 µs 三类清晰可分，正确用户名的拒绝比错误用户名慢 3 倍; fixed-in tp_sshd 的 authFailureMinDelay 垫时, F1)* | **match**（in-kind：三类不可分，F1 验收达成） |
 | E02 | 认证前空闲超时：拨号完成 KEX、协商 ssh-userauth 后不发任何字节，测量拆连接的时刻与方式（两端都配 3 s：sshd `LoginGraceTime 3`、tp_sshd `authTimeout 3 s`，使行可运行；默认值差异记录于 triage 注 3） | setitimer 为 login_grace_time 加 0–4 s 随机抖动（arc4random_uniform(4×10⁶) µs）；到时 grace_alarm_handler 杀进程组并 `_exit(EXIT_LOGIN_GRACE)`——静默关闭、线上无 DISCONNECT，落在 ~3–7 s。[sshd-session.c:1238-1248；sshd-session.c:211 grace_alarm_handler] | 4.29 s 处静默 `closed`（3 s + ~1.3 s 抖动，落在预测区间） | 2.97 s 处静默 `closed`（定时器自连接建立起 3 s 整、无抖动；测量锚点在 KEX+协商之后，故读数略小于 3.00，见 triage 注 2） | **match**（等配置下机制一致：超时即静默拆连接、无 DISCONNECT；默认值 30 s vs 120 s 为 deliberate，见 triage 注 3） |
 | E03 | 认证后空闲：已认证连接 5 s 内无任何流量（无通道）——服务端有无 keepalive 探测、有无空闲断连 | 两端都不探测也不断连：client_alive_interval 默认 0 = 禁用（client_alive_check 仅在 interval > 0 时发探测）；tp_sshd 认证成功即取消唯一的 _authTimer，此后无任何定时器。[servconf.c:452-455；serverloop.c:client_alive_check；server_connection.dart] | 5 s 空闲零流量（2 条环境噪声消息已过滤），连接存活 — prediction confirmed | 5 s 空闲零流量，连接存活 | **match** |
 | E04 | 认证前连接洪泛：顺序开 7 条连接并保持未认证（专用 harness，sshd 配 `MaxStartups 3:100:6` 使丢弃模式确定：begin=3、rate=100%、full=6）；按每条连接的首字节分类（SSH banner = 接受） | children_active < 3 的连接被接受（banner）；达到 3 后每个新连接被 drop_connection 拒绝：在任何 SSH banner 之前收到明文 `Not allowed at this time\r\n`，随后 socket 被父进程关闭。[sshd.c:drop_connection + should_drop_connection；sshd.c:1147 close(newsock)] | accepted #1–#3（banner），dropped #4–#7（拒绝行 + 关闭），sshd log 证实 `drop connection` — prediction confirmed | 7/7 全部接受（banner），无任何拒绝 | **deliberate-divergence**（tp_sshd 无认证前连接上限——嵌入式配对场景的监听面不由服务端自限；见 triage 注 4） |
@@ -651,7 +651,10 @@ are judged match-in-kind, never by numeric equality (area method note).
    reply — the `USERAUTH_FAILURE`, or the throttle disconnect — out to the
    floor measured from the request's receipt; the throttle verdict is
    captured at receipt so pipelined attempts keep their reply assignment.
-   Area E regeneration (50 fresh connections per condition): tp_sshd
+   Area E regeneration, 7a fix-landed run (50 fresh connections per
+   condition; the row table above carries the later final row-refresh
+   run's medians — two separate runs, per-run drift is expected per the
+   regeneration note): tp_sshd
    wrong-key med 11200 µs / unknown-user med 10871 µs / malformed-blob med
    10185 µs (was 2808 / 902 / 630 µs — a 4.5x spread). The three
    conditions now sit within one noise band, in-kind with the same run's
@@ -767,7 +770,8 @@ non-row harness finding (F13) landed across three fix waves (7a: F1,
 F2, F13; 7b: F4, F5, F7, F8, F9; 7c: F3, F6, F10, F11, F12). Verified
 by a full five-area harness regeneration (2026-09-14: every fixed row
 flipped as recorded above, zero stray async errors), the package gate
-(tp_sshd `dart analyze` clean, `dart test` 99 passing), and a captured
+(tp_sshd `dart analyze` clean, `dart test` 100 passing as of 7d3c656),
+and a captured
 full dartssh2 fork run (`dart test`: 731 passed, 23 skipped, 0 failed
 when captured — that run still depended on the third-party
 test.rebex.net server, whose per-IP connection rate limit makes full
@@ -1016,7 +1020,9 @@ impact vs churn), not a dependency.
   trace evidence (UNIMPLEMENTED for packets 40/41/42) plus repeated
   runs, not on any single regeneration (see the regeneration note).
 
-  *Status (2026-09-14, Task 7b):* was NOT LANDED from the tp_sshd
+  *Status (2026-09-14, Task 7b):* — *superseded by the fix-landed note
+  below (7c, dartssh2 fork 74dd24c); the 7b analysis is retained as
+  history.* Was NOT LANDED from the tp_sshd
   package (analysis retained below); landed in the fork the next wave. The drop sits in the shared
   dartssh2 transport (`ssh_transport.dart` `_handleMessage` default
   case: `_kexInProgress` routes every non-transport message id to
@@ -1066,7 +1072,7 @@ impact vs churn), not a dependency.
   fake-consumes post-EOF data (window accounting only, bytes dropped
   with a debug log) exactly like sshd's post-EOF branch; the throw on
   the closed input controller — and with it the whole-connection
-  teardown — is gone. Differential re-run: D01 is now `same` (no reply,
+  teardown — is gone. Differential re-run: D01 is now `match` (no reply,
   connection open, on both servers).
 - **F8 — A09/A10/A11 (+ A12's failure packets): `USERAUTH_FAILURE` must
   advertise the enabled methods** (tp_sshd, `server_connection.dart`).
@@ -1085,7 +1091,7 @@ impact vs churn), not a dependency.
   by the RFC 4252 §8 rationale (OpenSSH clients consult the list before
   offering a publickey). The maxAuthAttempts disconnect keeps reason 14
   per A12's deliberate-divergence ruling (cap parity, no client branches
-  on the reason code). Differential re-run: A09/A10/A11 are now `same`;
+  on the reason code). Differential re-run: A09/A10/A11 are now `match`;
   A12's five failure packets carry the list.
 - **F9 — A08: no userauth before service negotiation** (tp_sshd,
   `server_connection.dart`). A `USERAUTH_REQUEST` arriving before
@@ -1099,7 +1105,7 @@ impact vs churn), not a dependency.
   before the service is negotiated falls to the transport's default
   dispatch — `UNIMPLEMENTED`, connection open — exactly sshd's shape; a
   `_serviceAccepted` flag arms userauth handling only once
-  `ssh-userauth` is accepted. Differential re-run: A08 is now `same`.
+  `ssh-userauth` is accepted. Differential re-run: A08 is now `match`.
 
 **P2 — hostile-input robustness in the shared transport (dartssh2-side)**
 
