@@ -4,7 +4,7 @@ import 'package:teampilot/models/session_list_entry.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 
 void main() {
-  test('fromSession keeps list fields and toListSession drops folders', () {
+  test('fromSession keeps list fields and folder metadata', () {
     final session = AppSession(
       sessionId: 's1',
       workspaceId: 'w1',
@@ -30,7 +30,7 @@ void main() {
     expect(entry.workflowId, 'wf');
     final list = entry.toListSession('w1');
     expect(list.display, 'Hello');
-    expect(list.folders, isEmpty);
+    expect(list.folders.single.path, '/repo');
     expect(list.members, isEmpty);
     expect(list.archived, isTrue);
   });

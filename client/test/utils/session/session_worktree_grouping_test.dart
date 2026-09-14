@@ -22,6 +22,14 @@ AppSession _session(String id, String primary, {int updatedAt = 0}) =>
       updatedAt: updatedAt,
     );
 
+AppSession _sessionWithFolders(String id, List<String> paths) => AppSession(
+  sessionId: id,
+  workspaceId: 'w',
+  folders: [for (final path in paths) WorkspaceFolder(path: path)],
+  createdAt: 0,
+  updatedAt: 0,
+);
+
 void main() {
   final worktrees = [_wt('/repo', main: true), _wt('/wt/feat')];
 
@@ -90,6 +98,31 @@ void main() {
     expect(orphan.sessions.single.sessionId, 'z');
   });
 
+  test('session without folder metadata defaults to the main worktree', () {
+    final groups = groupSessionsByWorktree(
+      worktrees: worktrees,
+      sessions: [_session('legacy', '')],
+      usesPosixPaths: false,
+    );
+    expect(groups.first.worktree!.isMainWorktree, isTrue);
+    expect(groups.first.sessions.single.sessionId, 'legacy');
+    expect(groups.any((g) => g.isOrphan), isFalse);
+  });
+
+  test('uses the first session folder that matches a worktree', () {
+    final groups = groupSessionsByWorktree(
+      worktrees: worktrees,
+      sessions: [
+        _sessionWithFolders('multi-root', ['/home/hhoa/agent', '/repo']),
+      ],
+      usesPosixPaths: false,
+    );
+
+    final main = groups.firstWhere((g) => g.worktree?.path == '/repo');
+    expect(main.sessions.single.sessionId, 'multi-root');
+    expect(groups.any((g) => g.isOrphan), isFalse);
+  });
+
   test('no orphan group when all sessions match', () {
     final groups = groupSessionsByWorktree(
       worktrees: worktrees,
@@ -128,39 +161,33 @@ void main() {
     );
   });
 
-  test(
-    'preserves recentlyUpdated order within each worktree group',
-    () {
-      // Sidebar pipeline: global sort first, then bucket. Encounter order in
-      // each bucket must stay newest-updated-first (same key as the time label).
-      final unsorted = [
-        _session('old', '/repo', updatedAt: 10),
-        _session('mid', '/repo', updatedAt: 20),
-        _session('feat-new', '/wt/feat', updatedAt: 50),
-        _session('feat-old', '/wt/feat', updatedAt: 5),
-        _session('new', '/repo', updatedAt: 40),
-      ];
-      final sorted = sortAppSessions(
-        unsorted,
-        sort: AppSessionSort.recentlyUpdated,
-      );
-      final groups = groupSessionsByWorktree(
-        worktrees: worktrees,
-        sessions: sorted,
-        usesPosixPaths: false,
-      );
+  test('preserves recentlyUpdated order within each worktree group', () {
+    // Sidebar pipeline: global sort first, then bucket. Encounter order in
+    // each bucket must stay newest-updated-first (same key as the time label).
+    final unsorted = [
+      _session('old', '/repo', updatedAt: 10),
+      _session('mid', '/repo', updatedAt: 20),
+      _session('feat-new', '/wt/feat', updatedAt: 50),
+      _session('feat-old', '/wt/feat', updatedAt: 5),
+      _session('new', '/repo', updatedAt: 40),
+    ];
+    final sorted = sortAppSessions(
+      unsorted,
+      sort: AppSessionSort.recentlyUpdated,
+    );
+    final groups = groupSessionsByWorktree(
+      worktrees: worktrees,
+      sessions: sorted,
+      usesPosixPaths: false,
+    );
 
-      final main = groups.firstWhere((g) => g.worktree?.path == '/repo');
-      expect(
-        [for (final s in main.sessions) s.sessionId],
-        ['new', 'mid', 'old'],
-      );
+    final main = groups.firstWhere((g) => g.worktree?.path == '/repo');
+    expect([for (final s in main.sessions) s.sessionId], ['new', 'mid', 'old']);
 
-      final feat = groups.firstWhere((g) => g.worktree?.path == '/wt/feat');
-      expect(
-        [for (final s in feat.sessions) s.sessionId],
-        ['feat-new', 'feat-old'],
-      );
-    },
-  );
+    final feat = groups.firstWhere((g) => g.worktree?.path == '/wt/feat');
+    expect(
+      [for (final s in feat.sessions) s.sessionId],
+      ['feat-new', 'feat-old'],
+    );
+  });
 }

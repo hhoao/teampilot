@@ -1,4 +1,6 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
@@ -12,6 +14,8 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/project_tree_section.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/workspace/workspace_tools_context.dart';
+import 'package:teampilot/services/workspace/workspace_tools_scope.dart';
 import 'package:teampilot/utils/session/session_project_grouping.dart';
 import 'package:teampilot/widgets/sidebar_session_tile.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -64,6 +68,8 @@ void main() {
     WidgetTester tester,
     List<ProjectSessionGroup> groups, {
     Map<String, List<GitWorktree>> worktreesByProjectPath = const {},
+    double height = 1000,
+    bool resolvedWorktreeTools = false,
   }) async {
     await tester.runAsync(() => groupsCubit.load(_workspace.workspaceId));
     chatCubit.emit(
@@ -71,6 +77,27 @@ void main() {
         sessions: [for (final group in groups) ...group.sessions],
       ),
     );
+    Widget section = ProjectTreeSection(
+      groups: groups,
+      worktreesByProjectPath: worktreesByProjectPath,
+      workspace: _workspace,
+      tabScopeId: 'ws-1',
+      highlightSessionId: null,
+    );
+    if (resolvedWorktreeTools) {
+      section = WorkspaceToolsScope(
+        state: WorkspaceToolsScopeState(
+          tools: WorkspaceToolsContext(
+            targetId: 'local',
+            context: testHomeStorage.context,
+          ),
+          roots: [_workspace.firstFolderPath],
+          effectiveFolders: _workspace.folders,
+          resolving: false,
+        ),
+        child: section,
+      );
+    }
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -89,17 +116,7 @@ void main() {
                 BlocProvider<AgentAttentionCubit>.value(value: attentionCubit),
                 BlocProvider<SessionGroupsCubit>.value(value: groupsCubit),
               ],
-              child: SizedBox(
-                width: 320,
-                height: 1000,
-                child: ProjectTreeSection(
-                  groups: groups,
-                  worktreesByProjectPath: worktreesByProjectPath,
-                  workspace: _workspace,
-                  tabScopeId: 'ws-1',
-                  highlightSessionId: null,
-                ),
-              ),
+              child: SizedBox(width: 320, height: height, child: section),
             ),
           ),
         ),
@@ -158,6 +175,201 @@ void main() {
     expect(find.text('main'), findsOneWidget);
     expect(find.text('feature-a'), findsOneWidget);
     expect(find.byType(SidebarSessionTile), findsOneWidget);
+  });
+
+  testWidgets('project and worktree directories restore context menu actions', (
+    tester,
+  ) async {
+    await pumpProjectTree(
+      tester,
+      groups,
+      resolvedWorktreeTools: true,
+      worktreesByProjectPath: {
+        '/tmp/huji': [
+          const GitWorktree(
+            path: '/tmp/huji',
+            branch: 'refs/heads/main',
+            head: 'abc1234',
+            isBare: false,
+            isMainWorktree: true,
+          ),
+          const GitWorktree(
+            path: '/tmp/huji-feature',
+            branch: 'refs/heads/feature-a',
+            head: 'def5678',
+            isBare: false,
+            isMainWorktree: false,
+          ),
+        ],
+      },
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey('project-tree-node-/tmp/huji')),
+      buttons: kSecondaryMouseButton,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('New conversation here'), findsOneWidget);
+    expect(find.text('Copy path'), findsOneWidget);
+    expect(find.text('Remove worktree'), findsNothing);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    await tester.tap(
+      find.byKey(
+        const ValueKey('project-tree-worktree-node-/tmp/huji-feature'),
+      ),
+      buttons: kSecondaryMouseButton,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('New conversation here'), findsOneWidget);
+    expect(find.text('Copy path'), findsOneWidget);
+    expect(find.text('Remove worktree'), findsOneWidget);
+  });
+
+  testWidgets('caps worktree sessions and expands into an inner scroll list', (
+    tester,
+  ) async {
+    final sessions = [
+      for (var i = 0; i < 12; i++) _session('s$i', '/tmp/huji'),
+    ];
+    await pumpProjectTree(
+      tester,
+      [
+        ProjectSessionGroup(
+          projectPath: '/tmp/huji',
+          label: 'huji',
+          sessions: sessions,
+        ),
+      ],
+      worktreesByProjectPath: {
+        '/tmp/huji': [
+          const GitWorktree(
+            path: '/tmp/huji',
+            branch: 'refs/heads/main',
+            head: 'abc1234',
+            isBare: false,
+            isMainWorktree: true,
+          ),
+        ],
+      },
+    );
+
+    expect(find.byType(SidebarSessionTile), findsNWidgets(8));
+    expect(find.text('More'), findsOneWidget);
+
+    await tester.tap(find.text('More'));
+    await tester.pump();
+
+    expect(find.text('Show less'), findsOneWidget);
+    expect(
+      find.byKey(
+        const ValueKey('project-tree-worktree-session-list-/tmp/huji'),
+      ),
+      findsOneWidget,
+    );
+
+    final sessionList = find.byKey(
+      const ValueKey('project-tree-worktree-session-list-/tmp/huji'),
+    );
+    final innerScrollable = find.descendant(
+      of: sessionList,
+      matching: find.byType(Scrollable),
+    );
+    expect(innerScrollable, findsOneWidget);
+    final innerState = tester.state<ScrollableState>(innerScrollable);
+    expect(innerState.position.maxScrollExtent, greaterThan(0));
+
+    final before = innerState.position.pixels;
+    await tester.dragFrom(tester.getCenter(sessionList), const Offset(0, -200));
+    await tester.pumpAndSettle();
+    expect(innerState.position.pixels, greaterThan(before));
+    expect(
+      find.byKey(const ValueKey('project-tree-worktree-session-s11')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('expanded worktree list consumes drag and wheel scrolling', (
+    tester,
+  ) async {
+    final firstProjectSessions = [
+      for (var i = 0; i < 12; i++) _session('first-$i', '/tmp/huji'),
+    ];
+    final secondProjectSessions = [
+      for (var i = 0; i < 12; i++) _session('second-$i', '/tmp/other'),
+    ];
+    final projectGroups = [
+      ProjectSessionGroup(
+        projectPath: '/tmp/huji',
+        label: 'huji',
+        sessions: firstProjectSessions,
+      ),
+      ProjectSessionGroup(
+        projectPath: '/tmp/other',
+        label: 'other',
+        sessions: secondProjectSessions,
+      ),
+    ];
+    await pumpProjectTree(
+      tester,
+      projectGroups,
+      height: 600,
+      worktreesByProjectPath: {
+        '/tmp/huji': [
+          const GitWorktree(
+            path: '/tmp/huji',
+            branch: 'refs/heads/main',
+            head: 'abc1234',
+            isBare: false,
+            isMainWorktree: true,
+          ),
+        ],
+      },
+    );
+
+    await tester.tap(find.text('More').first);
+    await tester.pump();
+
+    final innerList = find.byKey(
+      const ValueKey('project-tree-worktree-session-list-/tmp/huji'),
+    );
+    final innerScrollable = find.descendant(
+      of: innerList,
+      matching: find.byType(Scrollable),
+    );
+    final innerState = tester.state<ScrollableState>(innerScrollable);
+    final outerState = tester.state<ScrollableState>(
+      find.byType(Scrollable).first,
+    );
+    expect(innerState.position.maxScrollExtent, greaterThan(0));
+    expect(outerState.position.maxScrollExtent, greaterThan(0));
+
+    final outerBeforeDrag = outerState.position.pixels;
+    final innerBeforeDrag = innerState.position.pixels;
+    await tester.dragFrom(tester.getCenter(innerList), const Offset(0, -40));
+    await tester.pumpAndSettle();
+    expect(innerState.position.pixels, greaterThan(innerBeforeDrag));
+    expect(outerState.position.pixels, outerBeforeDrag);
+
+    final outerBeforeWheel = outerState.position.pixels;
+    final innerBeforeWheel = innerState.position.pixels;
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: tester.getCenter(innerList),
+        scrollDelta: const Offset(0, -20),
+      ),
+    );
+    await tester.pump();
+    expect(innerState.position.pixels, isNot(innerBeforeWheel));
+    expect(outerState.position.pixels, outerBeforeWheel);
+
+    await tester.dragFrom(tester.getCenter(innerList), const Offset(0, -1000));
+    await tester.pumpAndSettle();
+    expect(innerState.position.pixels, innerState.position.maxScrollExtent);
+    expect(outerState.position.pixels, greaterThan(outerBeforeWheel));
   });
 
   testWidgets('collapsing a project hides only its children', (tester) async {

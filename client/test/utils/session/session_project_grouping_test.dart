@@ -528,6 +528,60 @@ void main() {
       expect(groups.last.sessions.single.sessionId, 'orphan');
     });
 
+    test('uses the first session folder that belongs to the workspace', () {
+      const folders = [WorkspaceFolder(path: '/repo')];
+      final session = AppSession(
+        sessionId: 'multi-root',
+        workspaceId: 'w1',
+        folders: const [
+          WorkspaceFolder(path: '/home/agent'),
+          WorkspaceFolder(path: '/repo'),
+        ],
+        createdAt: 1,
+      );
+
+      final groups = groupSessionsByProject(
+        folders: folders,
+        sessions: [session],
+        usesPosixPaths: true,
+        worktreesByProjectPath: {
+          '/repo': [
+            GitWorktree(
+              path: '/repo',
+              branch: 'refs/heads/main',
+              head: 'abc',
+              isBare: false,
+              isMainWorktree: true,
+            ),
+          ],
+        },
+      );
+
+      expect(groups.single.sessions.single.sessionId, 'multi-root');
+    });
+
+    test('session without folder metadata defaults to the first project', () {
+      const folders = [
+        WorkspaceFolder(path: '/main-project'),
+        WorkspaceFolder(path: '/other-project'),
+      ];
+      final groups = groupSessionsByProject(
+        folders: folders,
+        sessions: [
+          AppSession(
+            sessionId: 'legacy',
+            workspaceId: 'w1',
+            folders: const [],
+            createdAt: 1,
+          ),
+        ],
+        usesPosixPaths: true,
+      );
+
+      expect(groups.first.sessions.single.sessionId, 'legacy');
+      expect(groups.any((group) => group.isOther), isFalse);
+    });
+
     test('matches Windows-style paths when POSIX paths are disabled', () {
       const folders = [WorkspaceFolder(path: r'C:\repo')];
       final session = AppSession(

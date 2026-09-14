@@ -371,6 +371,13 @@ class _SessionGroupMemberList extends StatefulWidget {
 
 class _SessionGroupMemberListState extends State<_SessionGroupMemberList> {
   bool _showAll = false;
+  final _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -434,6 +441,8 @@ class _SessionGroupMemberListState extends State<_SessionGroupMemberList> {
         SizedBox(
           height: scrollable ? height : null,
           child: ListView.builder(
+            controller: _scrollController,
+            primary: false,
             padding: EdgeInsets.zero,
             scrollCacheExtent: const ScrollCacheExtent.pixels(0),
             physics: scrollable

@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,10 +12,14 @@ import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/git_worktree.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_sidebar.dart';
+import 'package:teampilot/pages/home_workspace/workspace/worktree_group_section.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/utils/session/app_session_sort.dart';
+import 'package:teampilot/utils/session/session_worktree_grouping.dart';
 import 'package:teampilot/widgets/sidebar_session_tile.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -31,11 +36,12 @@ AppSession _session({
   String display = '',
   int createdAt = 1,
   int updatedAt = 1,
+  String path = '/tmp/huji',
 }) {
   return AppSession(
     sessionId: id,
     workspaceId: _workspace.workspaceId,
-    folders: const [WorkspaceFolder(path: '/tmp/huji')],
+    folders: [WorkspaceFolder(path: path)],
     display: display,
     createdAt: createdAt,
     updatedAt: updatedAt,
@@ -72,7 +78,12 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  Future<void> pumpSidebar(WidgetTester tester) async {
+  Future<void> pumpSidebar(
+    WidgetTester tester, {
+    double height = 1000,
+    Workspace? workspace,
+  }) async {
+    final effectiveWorkspace = workspace ?? _workspace;
     tester.view.physicalSize = const Size(400, 1200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -109,9 +120,9 @@ void main() {
               ],
               child: SizedBox(
                 width: 320,
-                height: 1000,
+                height: height,
                 child: WorkspaceSidebar(
-                  workspace: _workspace,
+                  workspace: effectiveWorkspace,
                   tabScopeId: 'ws-1',
                 ),
               ),
@@ -193,6 +204,173 @@ void main() {
       find.byKey(const ValueKey('project-tree-session-b')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('project tree expanded sessions scroll inside the sidebar', (
+    tester,
+  ) async {
+    final workspace = Workspace(
+      workspaceId: _workspace.workspaceId,
+      folders: [
+        const WorkspaceFolder(path: '/tmp/huji'),
+        for (var i = 0; i < 10; i++) WorkspaceFolder(path: '/tmp/project-$i'),
+      ],
+      createdAt: 1,
+    );
+    await emitSessions([
+      for (var i = 0; i < 12; i++)
+        _session(id: 's$i', display: 'Session $i', createdAt: 12 - i),
+      for (var i = 0; i < 10; i++)
+        _session(id: 'other-$i', display: 'Other $i', path: '/tmp/project-$i'),
+    ]);
+    await pumpSidebar(tester, workspace: workspace);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('workspace-sidebar-view-switcher')),
+        matching: find.text('Project tree'),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text('More'));
+    await tester.pump();
+    final sessionList = find.byKey(
+      const ValueKey('project-tree-session-list-/tmp/huji'),
+    );
+    expect(sessionList, findsOneWidget);
+    final innerList = find.descendant(
+      of: sessionList,
+      matching: find.byType(Scrollable),
+    );
+    final innerState = tester.state<ScrollableState>(innerList);
+    expect(innerState.position.maxScrollExtent, greaterThan(0));
+    final outerState = tester.state<ScrollableState>(
+      find.byType(Scrollable).at(1),
+    );
+    expect(outerState.position.maxScrollExtent, greaterThan(0));
+
+    final before = innerState.position.pixels;
+    await tester.dragFrom(tester.getCenter(innerList), const Offset(0, -200));
+    await tester.pumpAndSettle();
+    expect(innerState.position.pixels, greaterThan(before));
+
+    final afterDrag = innerState.position.pixels;
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: tester.getCenter(innerList),
+        scrollDelta: const Offset(0, -100),
+      ),
+    );
+    await tester.pump();
+    expect(innerState.position.pixels, lessThan(afterDrag));
+  });
+
+  testWidgets('expanded worktree group consumes drag and wheel scrolling', (
+    tester,
+  ) async {
+    final sessions = [
+      for (var i = 0; i < 12; i++)
+        _session(id: 'worktree-$i', display: 'Worktree $i'),
+    ];
+    chatCubit.emit(chatCubit.state.copyWith(sessions: sessions));
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: MultiRepositoryProvider(
+            providers: [
+              RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
+              RepositoryProvider<SessionRepository>.value(
+                value: sessionRepository,
+              ),
+            ],
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider<ChatCubit>.value(value: chatCubit),
+                BlocProvider<AutomationCubit>.value(value: automationCubit),
+                BlocProvider<AgentAttentionCubit>.value(value: attentionCubit),
+                BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
+              ],
+              child: SizedBox(
+                width: 320,
+                height: 700,
+                child: ListView(
+                  children: [
+                    WorktreeGroupSection(
+                      group: WorktreeGroup(
+                        worktree: const GitWorktree(
+                          path: '/tmp/huji',
+                          branch: 'refs/heads/main',
+                          head: 'abc1234',
+                          isBare: false,
+                          isMainWorktree: true,
+                        ),
+                        sessions: sessions,
+                      ),
+                      workspace: _workspace,
+                      tabScopeId: 'ws-1',
+                      collapsed: false,
+                      sessionSort: AppSessionSort.recentlyUpdated,
+                      workspaceOrderedSessionIds: [
+                        for (final session in sessions) session.sessionId,
+                      ],
+                      onSessionsReordered: (_) {},
+                    ),
+                    const SizedBox(height: 1000),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text('More'));
+    await tester.pump();
+
+    final innerList = find.byType(ReorderableListView);
+    final innerScrollable = find.descendant(
+      of: innerList,
+      matching: find.byType(Scrollable),
+    );
+    final innerState = tester.state<ScrollableState>(innerScrollable);
+    final outerState = tester.state<ScrollableState>(
+      find.byType(Scrollable).first,
+    );
+    expect(innerState.position.maxScrollExtent, greaterThan(0));
+    expect(outerState.position.maxScrollExtent, greaterThan(0));
+
+    final outerBeforeDrag = outerState.position.pixels;
+    final innerBeforeDrag = innerState.position.pixels;
+    await tester.dragFrom(
+      tester.getCenter(innerScrollable),
+      const Offset(0, -40),
+    );
+    await tester.pumpAndSettle();
+    expect(innerState.position.pixels, greaterThan(innerBeforeDrag));
+    expect(outerState.position.pixels, outerBeforeDrag);
+
+    final outerBeforeWheel = outerState.position.pixels;
+    final innerBeforeWheel = innerState.position.pixels;
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: tester.getCenter(innerScrollable),
+        scrollDelta: const Offset(0, -20),
+      ),
+    );
+    await tester.pump();
+    expect(innerState.position.pixels, isNot(innerBeforeWheel));
+    expect(outerState.position.pixels, outerBeforeWheel);
+
+    await tester.dragFrom(
+      tester.getCenter(innerScrollable),
+      const Offset(0, -1000),
+    );
+    await tester.pumpAndSettle();
+    expect(innerState.position.pixels, innerState.position.maxScrollExtent);
+    expect(outerState.position.pixels, greaterThan(outerBeforeWheel));
   });
 
   testWidgets('flat drag stamps the workspace sort order', (tester) async {

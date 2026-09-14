@@ -1,12 +1,14 @@
 import 'package:flutter/foundation.dart';
 
 import 'app_session.dart';
+import 'workspace_folder.dart';
 
 /// Sidebar-row snapshot of an [AppSession].
 ///
-/// Omits folders, members, and other document fields so a workspace can paint
-/// the conversation list from one `sessions-index.json` instead of N
-/// `session.json` files.
+/// Omits members and other document fields so a workspace can paint the
+/// conversation list from one `sessions-index.json` instead of N
+/// `session.json` files. Folder metadata stays in the index for sidebar
+/// project/worktree grouping.
 @immutable
 class SessionListEntry {
   const SessionListEntry._({
@@ -20,6 +22,7 @@ class SessionListEntry {
     required this.archived,
     required this.pinned,
     required this.sortOrder,
+    required this.folders,
   });
 
   factory SessionListEntry({
@@ -33,6 +36,7 @@ class SessionListEntry {
     bool archived = false,
     bool pinned = false,
     int sortOrder = 0,
+    List<WorkspaceFolder> folders = const [],
   }) {
     return SessionListEntry._(
       sessionId: sessionId,
@@ -45,6 +49,7 @@ class SessionListEntry {
       archived: archived,
       pinned: pinned,
       sortOrder: sortOrder,
+      folders: List<WorkspaceFolder>.unmodifiable(folders),
     );
   }
 
@@ -60,6 +65,7 @@ class SessionListEntry {
       archived: json['archived'] as bool? ?? false,
       pinned: json['pinned'] as bool? ?? false,
       sortOrder: json['sortOrder'] as int? ?? 0,
+      folders: foldersFromJson(json['folders']),
     );
   }
 
@@ -75,6 +81,7 @@ class SessionListEntry {
       archived: session.archived,
       pinned: session.pinned,
       sortOrder: session.sortOrder,
+      folders: session.folders,
     );
   }
 
@@ -88,8 +95,10 @@ class SessionListEntry {
   final bool archived;
   final bool pinned;
   final int sortOrder;
+  final List<WorkspaceFolder> folders;
 
-  /// List-row [AppSession]: row fields only; folders and members stay empty.
+  /// List-row [AppSession]: row fields plus folder metadata; members stay
+  /// empty.
   AppSession toListSession(String workspaceId) {
     return AppSession(
       sessionId: sessionId,
@@ -103,6 +112,7 @@ class SessionListEntry {
       archived: archived,
       pinned: pinned,
       sortOrder: sortOrder,
+      folders: folders,
     );
   }
 
@@ -116,6 +126,8 @@ class SessionListEntry {
       'pinned': pinned,
       if (sortOrder != 0) 'sortOrder': sortOrder,
       if (archived) 'archived': archived,
+      if (folders.isNotEmpty)
+        'folders': [for (final folder in folders) folder.toJson()],
       if (purpose != SessionPurpose.normal) 'purpose': purpose.value,
       if (workflowId.isNotEmpty) 'workflowId': workflowId,
     };

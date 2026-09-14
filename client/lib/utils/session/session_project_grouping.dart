@@ -151,65 +151,88 @@ bool sessionBelongsToProject(
 /// The workspace folder that owns [session].
 ///
 /// Git-backed projects ([worktreesByProjectPath] entry non-empty): the repo
-/// whose `git worktree list` contains [session.firstFolderPath]. Plain folders
-/// (no worktrees): longest workspace-folder path prefix match.
+/// whose `git worktree list` contains the first matching path in
+/// [session.folders]. Plain folders (no worktrees): longest workspace-folder
+/// path prefix match for the first matching session folder.
 String? owningProjectFolderForSession(
   AppSession session,
   List<WorkspaceFolder> folders, {
   required bool usesPosixPaths,
   Map<String, List<GitWorktree>>? worktreesByProjectPath,
 }) {
-  final primary = normalizeWorkspacePath(
-    session.firstFolderPath,
-    usesPosixPaths: usesPosixPaths,
-  );
-  if (primary.isEmpty) return null;
+  final sessionPaths = [
+    for (final folder in session.folders)
+      normalizeWorkspacePath(folder.path, usesPosixPaths: usesPosixPaths),
+  ].where((path) => path.isNotEmpty);
+  if (sessionPaths.isEmpty) {
+    return folders.isEmpty ? null : folders.first.path;
+  }
 
   if (worktreesByProjectPath != null) {
-    String? bestWorktreeOwner;
-    var bestWorktreeLen = -1;
-    for (final folder in folders) {
-      final worktrees = worktreesByProjectPath[folder.path] ?? const [];
-      if (worktrees.isEmpty) continue;
-      final matched = worktreePathForSessionPath(
-        primary,
-        worktrees,
-        usesPosixPaths: usesPosixPaths,
-      );
-      if (matched == null) continue;
-      final matchedLen = normalizeWorkspacePath(
-        matched,
-        usesPosixPaths: usesPosixPaths,
-      ).length;
-      if (matchedLen > bestWorktreeLen) {
-        bestWorktreeOwner = folder.path;
-        bestWorktreeLen = matchedLen;
+    for (final sessionPath in sessionPaths) {
+      String? bestWorktreeOwner;
+      var bestWorktreeLen = -1;
+      for (final folder in folders) {
+        final worktrees = worktreesByProjectPath[folder.path] ?? const [];
+        if (worktrees.isEmpty) continue;
+        final matched = worktreePathForSessionPath(
+          sessionPath,
+          worktrees,
+          usesPosixPaths: usesPosixPaths,
+        );
+        if (matched == null) continue;
+        final matchedLen = normalizeWorkspacePath(
+          matched,
+          usesPosixPaths: usesPosixPaths,
+        ).length;
+        if (matchedLen > bestWorktreeLen) {
+          bestWorktreeOwner = folder.path;
+          bestWorktreeLen = matchedLen;
+        }
       }
+      if (bestWorktreeOwner != null) return bestWorktreeOwner;
     }
-    if (bestWorktreeOwner != null) return bestWorktreeOwner;
   }
 
-  String? bestPath;
-  var bestLen = -1;
-  for (final folder in folders) {
-    final root = normalizeWorkspacePath(
-      folder.path,
-      usesPosixPaths: usesPosixPaths,
-    );
-    if (root.isEmpty ||
-        !sessionBelongsToProject(
-          session,
-          folder.path,
-          usesPosixPaths: usesPosixPaths,
-        )) {
-      continue;
+  for (final sessionPath in sessionPaths) {
+    String? bestPath;
+    var bestLen = -1;
+    for (final folder in folders) {
+      final root = normalizeWorkspacePath(
+        folder.path,
+        usesPosixPaths: usesPosixPaths,
+      );
+      if (root.isEmpty ||
+          !_pathBelongsToProject(
+            sessionPath,
+            root,
+            usesPosixPaths: usesPosixPaths,
+          )) {
+        continue;
+      }
+      if (root.length > bestLen) {
+        bestPath = folder.path;
+        bestLen = root.length;
+      }
     }
-    if (root.length > bestLen) {
-      bestPath = folder.path;
-      bestLen = root.length;
-    }
+    if (bestPath != null) return bestPath;
   }
-  return bestPath;
+  return null;
+}
+
+bool _pathBelongsToProject(
+  String path,
+  String root, {
+  required bool usesPosixPaths,
+}) {
+  if (workspacePathsEqual(path, root, usesPosixPaths: usesPosixPaths)) {
+    return true;
+  }
+  final comparablePath = usesPosixPaths ? path : path.replaceAll(r'\', '/');
+  final comparableRoot = usesPosixPaths ? root : root.replaceAll(r'\', '/');
+  return comparablePath.startsWith(
+    comparableRoot.endsWith('/') ? comparableRoot : '$comparableRoot/',
+  );
 }
 
 Map<String, List<AppSession>> _sessionsByOwningProjectFolder({
