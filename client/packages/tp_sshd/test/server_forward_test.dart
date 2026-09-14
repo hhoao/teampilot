@@ -70,6 +70,51 @@ void main() {
     await server.close();
   });
 
+  test('a reset forwarded connection never leaks an unhandled error', () async {
+    // F13: the pump must consume connection.done's error channel. A TCP
+    // reset completes the socket's done future with a SocketException; the
+    // pump used to drop the future returned by whenComplete, so the error
+    // escaped into the embedder's zone as an unhandled exception.
+    //
+    // The channel, the connection and the pump are all created inside the
+    // guarded zone: a future's error is routed through the zone it was
+    // created in, so creating the connection outside would route the error
+    // around the guard and the test would not see what the pump does.
+    final debugLines = <String>[];
+    final strayErrors = <Object>[];
+    await runZonedGuarded(() async {
+      final channel = SSHServerChannel(
+        recipientChannel: 0,
+        ourChannel: 7,
+        channelType: 'forwarded-tcpip',
+        peerInitialWindowSize: SSHServerChannel.initialReceiveWindow,
+        peerMaximumPacketSize: SSHServerChannel.maximumPacketSize,
+        sendPacket: (_) {},
+        onClosed: (_) {},
+      );
+      final connection = _ResetForwardConnection();
+      final pump = pumpForwardConnection(
+        channel,
+        connection,
+        printDebug: (message) => debugLines.add(message ?? ''),
+      );
+      connection.reset();
+      // The pump itself must finish normally — the reset is contained, not
+      // propagated — and any would-be unhandled error surfaces in this
+      // window.
+      await pump.timeout(const Duration(seconds: 5));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      // The channel still finished: the reset tears the forwarding down, it
+      // does not hang it.
+      expect(channel.isClosed, isTrue);
+      await connection.close();
+    }, (error, stackTrace) => strayErrors.add(error));
+
+    expect(strayErrors, isEmpty);
+    // The reset is diagnosed through the package's printDebug seam.
+    expect(debugLines, isNotEmpty);
+  });
+
   test('non-loopback bind requests are refused without consulting the seam',
       () async {
     // A permissive seam that records every call: the loopback-only rule must
@@ -347,4 +392,59 @@ class _RealForwardConnection implements ForwardConnection {
 
   @override
   void destroy() => _socket.destroy();
+}
+
+/// A [ForwardConnection] whose peer resets the connection mid-stream: its
+/// [ForwardConnection.done] completes with the SocketException a TCP RST
+/// produces on a real socket.
+class _ResetForwardConnection implements ForwardConnection {
+  final _inputController = StreamController<Uint8List>();
+  final _doneCompleter = Completer<void>();
+
+  @override
+  Stream<Uint8List> get input => _inputController.stream;
+
+  @override
+  StreamSink<List<int>> get output => _DiscardSink();
+
+  @override
+  Future<void> get done => _doneCompleter.future;
+
+  @override
+  InternetAddress get remoteAddress => InternetAddress.loopbackIPv4;
+
+  @override
+  int get remotePort => 54321;
+
+  @override
+  void destroy() {}
+
+  /// The peer's RST lands while the pump is running.
+  void reset() {
+    _doneCompleter.completeError(
+      const SocketException('Connection reset by peer'),
+    );
+  }
+
+  Future<void> close() async {
+    await _inputController.close();
+  }
+}
+
+/// A [StreamSink] that swallows everything written to it.
+class _DiscardSink implements StreamSink<List<int>> {
+  @override
+  void add(List<int> data) {}
+
+  @override
+  Future<void> addStream(Stream<List<int>> stream) async {}
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) {}
+
+  @override
+  Future<void> close() async {}
+
+  @override
+  Future<void> get done async {}
 }

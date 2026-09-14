@@ -386,7 +386,13 @@ class SSHServerConnection {
             data: Uint8List(0),
           ).encode(),
         );
-        unawaited(pumpForwardConnection(channel, result.connection));
+        unawaited(
+          pumpForwardConnection(
+            channel,
+            result.connection,
+            printDebug: _config.printDebug,
+          ),
+        );
     }
   }
 

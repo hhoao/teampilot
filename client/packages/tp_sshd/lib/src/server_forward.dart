@@ -81,10 +81,17 @@ typedef SSHForwardedChannelOpener = Future<SSHServerChannel?> Function({
 /// Pumps one accepted connection against its channel until either side
 /// ends: TCP bytes become channel data and back, the TCP side ending
 /// closes the channel, and the channel ending destroys the TCP side.
+///
+/// Every completion of [ForwardConnection.done] — including an errored one
+/// (a TCP reset completes it with a SocketException) — is consumed here: an
+/// ended connection closes the channel and finishes the pump, and the error
+/// itself is diagnosed through [printDebug] instead of escaping into the
+/// embedder's zone as an unhandled exception.
 Future<void> pumpForwardConnection(
   SSHServerChannel channel,
-  ForwardConnection connection,
-) {
+  ForwardConnection connection, {
+  void Function(String? message)? printDebug,
+}) {
   final subscriptions = <StreamSubscription<dynamic>>[];
   final finished = Completer<void>();
   var stopped = false;
@@ -138,13 +145,26 @@ Future<void> pumpForwardConnection(
     stop();
   });
 
-  // The TCP connection ended outright — failed, or destroyed from the
-  // channel side above: finish the channel if it is not already finishing
-  // itself.
-  connection.done.whenComplete(() {
-    channel.close();
-    stop();
-  });
+  // The TCP connection ended outright — failed (a reset completes it with
+  // an error), or destroyed from the channel side above: finish the channel
+  // if it is not already finishing itself. The error channel is consumed
+  // here (then/onError, not whenComplete): dropping it would let a reset
+  // escape into the embedder's zone as an unhandled exception.
+  unawaited(
+    connection.done.then(
+      (_) {
+        channel.close();
+        stop();
+      },
+      onError: (Object error) {
+        printDebug?.call(
+          'tp_sshd: forwarded connection ended with an error: $error',
+        );
+        channel.close();
+        stop();
+      },
+    ),
+  );
 
   return finished.future;
 }
@@ -341,7 +361,7 @@ class SSHServerForwarder {
       connection.destroy();
       return;
     }
-    await pumpForwardConnection(channel, connection);
+    await pumpForwardConnection(channel, connection, printDebug: printDebug);
   }
 
   /// Answers [request] with the global-request reply it asked for, carrying
