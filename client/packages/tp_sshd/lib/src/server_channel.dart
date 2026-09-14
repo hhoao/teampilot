@@ -399,11 +399,11 @@ class SSHServerChannel {
       if (identical(controller, _extendedInput)) {
         // Extended data after the client's CHANNEL_EOF is NOT tolerated
         // the way plain data is: sshd fatals — "Received extended_data
-        // after EOF on channel %d." (channels.c:channel_input_extended_
-        // data's CHAN_EOF_RCVD branch, the other half of audit D01's
-        // citation) — because stderr cannot be fake-consumed into the
-        // (closed) stdin stream either. Same violation path as a peer
-        // ignoring the channel window (F4/F5).
+        // after EOF on channel %d." (channels.c:
+        // channel_input_extended_data's CHAN_EOF_RCVD branch, the other
+        // half of audit D01's citation) — because stderr cannot be
+        // fake-consumed into the (closed) stdin stream either. Same
+        // violation path as a peer ignoring the channel window (F4/F5).
         _onProtocolViolation?.call(
           'Received extended_data after EOF on channel $ourChannel.',
         );
