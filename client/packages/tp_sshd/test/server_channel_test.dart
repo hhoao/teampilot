@@ -570,4 +570,65 @@ void main() {
       client.close();
     });
   });
+
+  group('data after the client EOF', () {
+    // D01: sshd fake-consumes data arriving after the client's CHANNEL_EOF
+    // on a live channel (channels.c:channel_input_data's post-EOF branch);
+    // before this fix the closed input controller made controller.add throw
+    // synchronously, and the escaping error tore the WHOLE connection down
+    // with nothing on the wire.
+    test('post-EOF data is dropped and the connection keeps serving', () async {
+      final opened = Completer<void>();
+      final pong = Completer<void>();
+      final (connection, client) = await startRawAuthenticatedConnection(
+        onServerMessage: (payload) {
+          switch (SSHMessage.readMessageId(payload)) {
+            case SSH_Message_Channel_Confirmation.messageId:
+              if (!opened.isCompleted) opened.complete();
+            case SSH_Message_Request_Success.messageId:
+              if (!pong.isCompleted) pong.complete();
+          }
+        },
+      );
+
+      client.sendPacket(
+        SSH_Message_Channel_Open.session(
+          senderChannel: 7,
+          initialWindowSize: 2 * 1024 * 1024,
+          maximumPacketSize: 32768,
+        ).encode(),
+      );
+      await opened.future;
+      final SSHServerChannel channel = connection.channels.values.single;
+
+      // The stimulus: EOF, then more data on the same (still open) channel.
+      client.sendPacket(
+        SSH_Message_Channel_EOF(recipientChannel: channel.ourChannel).encode(),
+      );
+      await waitUntil(() => channel.receivedEof);
+      client.sendPacket(
+        SSH_Message_Channel_Data(
+          recipientChannel: channel.ourChannel,
+          data: Uint8List.fromList('after-eof'.codeUnits),
+        ).encode(),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+
+      // The connection did not die: it still answers a fresh request...
+      expect(client.isClosed, isFalse);
+      client.sendPacket(
+        SSH_Message_Global_Request(
+          requestName: 'keepalive@openssh.com',
+          wantReply: true,
+        ).encode(),
+      );
+      await pong.future.timeout(const Duration(seconds: 5));
+      // ...and the channel itself is still open (the data was dropped, not
+      // the channel).
+      expect(channel.isClosed, isFalse);
+
+      await connection.close();
+      client.close();
+    });
+  });
 }

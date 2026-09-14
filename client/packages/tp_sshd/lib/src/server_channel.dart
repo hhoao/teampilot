@@ -358,6 +358,18 @@ class SSHServerChannel {
   /// the consumed window back once enough of it has accumulated.
   void _handleIncoming(Uint8List data, StreamController<Uint8List> controller) {
     if (isClosed || data.isEmpty) return;
+    if (_receivedEof) {
+      // Data after the client's CHANNEL_EOF on a live channel: sshd
+      // fake-consumes it — window accounting only, the bytes dropped
+      // (channels.c:channel_input_data's post-EOF branch). Throwing here
+      // instead (the input controller is closed) would tear down the whole
+      // connection over one misbehaving channel (audit D01).
+      printDebug?.call(
+        'tp_sshd: dropping ${data.length} bytes on channel $ourChannel '
+        'after the client EOF',
+      );
+      return;
+    }
     if (data.length > maximumPacketSize || data.length > _receiveWindow) {
       _failChannel(
         'the client sent ${data.length} bytes, over the packet-size/window '
