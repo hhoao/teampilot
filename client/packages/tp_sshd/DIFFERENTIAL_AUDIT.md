@@ -38,6 +38,17 @@ login afterwards).
   post-auth traffic (an unsolicited `hostkeys-00@openssh.com` GLOBAL_REQUEST
   plus a DEBUG message, which tp_sshd never sends) are excluded from the
   row comparison; both are recorded here once instead.
+- **Areas C+D plumbing**: the probe scaffolding was promoted to
+  `tool/differential/row_plumbing.dart` from Area C on (the Task 3 review
+  ruling); `area_a_malformed.dart` and `area_b_rekey.dart` keep their
+  local copies untouched so the completed areas' runners do not churn.
+- **sshd exec stderr noise** (Areas C+D): every sshd exec via the harness
+  user's shell emits one 45-byte `tput: No value for $TERM and no -T
+  specified\n` EXTENDED_DATA burst (the user's rc running tput on a
+  TERM-less, pty-less exec; tp_sshd's `/bin/sh -c` execs emit none).
+  The bytes count against the channel window on sshd, so byte-exact
+  window rows see e.g. 4051+45 of a 4096 grant; normalized in the
+  verdicts below.
 - The runner wraps the run in a guarded zone and reports **stray async
   errors** — errors that escaped a row's own guards. Because the tp_sshd
   server runs in-process, a leak in its wiring surfaces there; see A16.
@@ -310,4 +321,245 @@ B08), 0 deliberate-divergence, 8 rows.
    无害、交换照常完成。若协商出 chacha20-poly1305，同一复位会使下一包
    认证失败（"Corrupted MAC on input."）并拆连接。预测的前半段
    （UNIMPLEMENTED + 不采纳）完全证实；后半段按套件记录于此。
+
+## Area C — window handling
+
+All rows run on a real dartssh2 client transport that hand-crafts the
+channel messages (the raw driver), so the client-side window the SERVER
+sees is the probe's own `CHANNEL_OPEN`/`WINDOW_ADJUST` arithmetic, and
+every server channel id is parsed from the confirmation, never assumed.
+C01/C02/C10 are observational rows (the window policy itself is the
+subject); the sshd `tput` stderr noise from the method section is
+normalized out of the byte-exact comparisons. In 10.2 the session
+channel's window is only granted when the program starts
+(`session_set_fds` → `channel_set_fds`, 2 MiB = `CHAN_SES_WINDOW_DEFAULT`,
+channels.h:230), which is the anchor of C02.
+
+| ID | 刺激 | OpenSSH 预期（源码出处） | OpenSSH 实测 | tp_sshd 实测 | 判定 |
+|----|------|--------------------------|--------------|--------------|------|
+| C01 | 客户端只授 2048 字节接收窗口的 session 通道 + `cat` exec，灌入 1 MiB：回声停在授权窗口处吗？随后 +1024 的 adjust 精确放行多少？服务端对入流的 WINDOW_ADJUST 节奏 | 回声停在恰好授权的窗口字节，直到客户端 adjust；每个 +1024 精确放行 1024；服务端绝不超发；入流 adjust 只在阈值越过时发。[channels.c:channel_output_poll_input_open（remote_window 0 即停读子进程）；channels.c:channel_check_window（低于半窗或 > 3×maxpacket 未消费，且只对真正消费掉的字节）] | 回声停在 2003+45(stderr) 字节（= 2048 窗口，tput 噪声也计入窗口）；+1024 adjust → 3027（+1024 精确）；入流 adjust：11 次共 983040 字节（消费尾随，停测时 64 KiB 尚未消费）— prediction confirmed | 回声停在恰好 2048；+1024 → 3072（+1024 精确）；入流 adjust：8 次共 1048576 字节（记账式，收多少补多少） | **match**（窗口边界与 adjust 精确度一致；adjust 节奏差异为观测记录，见 triage 注 1） |
+| C02 | 观测行：两个服务端在 session 通道上的初始窗口授予（confirmation 携带值）+ exec 时刻的 adjust 序列 + 1 MiB 入流的 adjust 节奏 | sshd 的 session 通道 LARVAL 期窗口为 0，confirmation 带 0；程序启动时 session_set_fds → channel_set_fds 以 WINDOW_ADJUST 授 2 MiB。[serverloop.c:server_request_session（channel_new window 0）；session.c:session_set_fds；channels.h:230 CHAN_SES_WINDOW_DEFAULT] | confirmation window=0 maxpacket=32768；exec 后 1 次 adjust 2097152；1 MiB 入流 8 次 adjust 共 1048576 — prediction confirmed | confirmation window=2097152（2 MiB 平铺），exec 后无 adjust；1 MiB 入流 8 次 adjust 共 1048576 | **deliberate-divergence**（tp_sshd 开通道即授 2 MiB 平铺，server_channel.dart initialReceiveWindow — 等效授权，少一次往返） |
+| C03 | 32768 字节客户端窗口 + 产出 1 MiB 的 exec（`head -c 1048576 /dev/zero`），客户端永不读取、永不 adjust | 服务端在窗口耗尽后停读子进程（子进程阻塞在 stdout 管道上）；无定时器、无断连；通道停摆、连接存活。[channels.c:channel_output_poll_input_open（remote_window <= 0 即 return）] | 32723+45(stderr) 字节即停（= 32768 窗口），3 秒后再无字节；连接存活；子进程被冻结，无 exit-status | 32768 字节即停；但服务端无背压地读完了子进程全部输出（内存队列），子进程退出 → exit-status → ~2 秒后 EOF+CLOSE（超出授权窗口的尾部被丢弃） | **deliberate-divergence**（bounded-flush 家族，D02：tp_sshd 的 2 s 关闭冲刷界 + 无界写队列 vs sshd 冻结子进程；见 triage 注 2） |
+| C04 | 单个 33000 字节 CHANNEL_DATA（> 服务端授予的 32768 maxpacket，但 < 35000 传输层包上限，故观测的是通道策略而非 A03 的长度上限）发到 `cat` exec 通道，随后一个小的界内探测块 | 超大包被丢弃：logit "rcvd big packet" + return 0，无回复，通道与连接都活着，后续探测块照常回显。[channels.c:channel_input_data（win_len > local_maxpacket 分支）] | 33000 字节块后无任何回复；后续 6 字节探测回显（通道活着）— prediction confirmed | 33000 字节块后 `msg:97(CHANNEL_CLOSE)`：整个通道被关闭；后续探测无回显（通道已死）；连接存活 | **deliberate-divergence**（越界包：sshd 静默丢弃 vs tp_sshd 关闭该通道 — `_handleIncoming` 的边界检查；连接两边都不受影响；见 triage 注 3） |
+| C05 | 窗口耗尽 + 1 字节：向 `sleep 30`（永不读 stdin 的程序）灌 2 MiB + 32768 + 1 字节，再补 ~320 KiB 越过 10% 宽限 | 首次越界被容忍（local_window_exceeded 累计、窗口清零、数据仍入缓冲、不回包）；越过 local_window_max/10 后 DISCONNECT(2, "channel N: peer ignored channel window")。[channels.c:channel_input_data] | 阶段 1：1 次 adjust 65536（管道消费），无断连（管道 64 KiB 余量吸收了首次越界）；阶段 2 (+320 KiB)：`msg:93, closed` — DISCONNECT 入队但未冲上线（A03 家族），sshd log 证实 `peer ignored channel window` — 机制证实 | 阶段 1：16 次 adjust 共 2097152（记账式回补，窗口从未真正耗尽）；阶段 2：19 次 adjust 共 2457601，永不断连，无界缓冲 | **fix-divergence**（A16 的 session 通道正式化：接收窗口纯按记账回补、无消费要求、无 10% 宽限强制 — 服务端可被无界缓冲；验收标准见 triage 注 4） |
+| C06 | 三个 WINDOW_ADJUST 异常依次：发给未创建通道 99999 的 adjust、对已开通道的 adjust 0、以及在 send window 已为 0xffffffff 的通道上 +1（溢出） | 未知通道：logit 后忽略，无回复；adjust 0：no-op 无回复；溢出：fatal "channel %d: adjust %u overflows remote window %u" — 线上无 DISCONNECT 的拆连接。[channels.c:channel_input_window_adjust] | 未知通道与 adjust 0 均无回复（prediction confirmed）；溢出 adjust：裸 `closed`，sshd log 证实 `overflows remote window` | 未知通道与 adjust 0 同样无回复；溢出 adjust：`msg:97(CHANNEL_CLOSE)` — 只关闭该通道（`_failChannel`），连接存活 | **deliberate-divergence**（前两项一致；溢出的处置范围不同：sshd fatal 杀整条连接 vs tp_sshd 只关该通道 — fork 客户端策略的镜像；见 triage 注 5） |
+| C07 | rekey 下的窗口压力（B01 变体，×3 轮）：65536 字节客户端窗口的 `cat` exec，灌 512 KiB，客户端以 50 ms 泵调整窗口，echo ≥ 64 KiB 时 rekey()；回声必须逐字节完整、通道必须收尾 | 两边都在交换期排队非 KEX 出站包、NEWKEYS 后按序冲刷；入站通道消息照常分发；流完整收尾。[packet.c:ssh_packet_send2；channels.c:channel_check_window] vs dartssh2 共享传输层的 UNIMPLEMENTED 丢弃（B02 记录） | 1/3 轮干净；失败轮：echo 冻结在 130982/524288（前缀完整）、通道永不关闭、0 次 UNIMPLEMENTED — 失败由驱动侧客户端半边丢弃在途 DATA 造成（B02 客户端半） | 0/3 轮干净；每轮 echo 冻结在恰好 65536（首个窗口边界）、通道经 2 s 界收尾、0 次 UNIMPLEMENTED — adjust/数据包竞进服务端交换窗口被丢弃后发送窗口饿死（B02 服务端半） | **fix-divergence**（B02 家族：交换窗口内到达的非 KEX 消息被静默丢弃；C07 补充了两个方向的证据与窗口压力下的确定性死锁形态；验收标准同 B02） |
+| C08 | max-channels 洪泛：一条连接开 11 个 session 通道（tp_sshd maxChannels 10；sshd MaxSessions 默认 10） | 前 10 个确认，第 11 个失败：session_new 达到 max_sessions 返回 NULL → CHANNEL_OPEN_FAILURE，reason 保持初值 SSH2_OPEN_CONNECT_FAILED(2)，描述 "open failed"。[session.c:session_new；serverloop.c:server_request_session + server_input_channel_open；servconf.h:40 DEFAULT_SESSIONS_MAX 10] | 10/11 确认；第 11 个 `reason=2 "open failed"` — prediction confirmed | 10/11 确认；第 11 个 `reason=4 "Too many open channels (10/10)"` | **deliberate-divergence**（上限数量一致（10=10）；拒绝码不同：reason 4（resource shortage）恰是 RFC 4254 §5.1 为此情形建议的码 — tp_sshd 的更贴切） |
+| C09 | 第 11 个通道的确切拒绝观测 + 槽位回收：拒绝后关掉一个已确认通道，再开一个 | 已关闭通道的槽位归还：新开被确认（sshd 经 cleanup 回调释放 session；上限计的是活通道）。[channels.c:channel_free；serverloop.c] | 10/11 确认后拒绝（reason=2）；关闭一个通道后新开：confirmed（槽位回收）— prediction confirmed | 10/11 确认后拒绝（reason=4）；关闭一个通道后新开：confirmed（槽位回收） | **match**（拒绝码差异属 C08；本行问题 — 槽位回收 — 行为一致） |
+| C10 | 观测行：真实 dartssh2 SftpClient 的 4 MiB SFTP 往返（流水线 WRITE 后流水线 READ） | 双端完成往返、字节完整；流水线请求受 session 通道 2 MiB 窗口约束，无停顿无错误。[sftp-server.c process() 循环；channels.h:230 经 session_set_fds] | 4 MiB 往返：上传 3817ms，下载 3736ms，4194304 字节读回，字节完整 | 4 MiB 往返：上传 7482ms，下载 7446ms，4194304 字节读回，字节完整 | **match**（观测行：完成与完整性一致；tp_sshd 每方向约慢 2×，记录为观测差距，见 triage 注 6） |
+
+## Area C triage
+
+Verdicts: 3 match (C01, C09, C10), 5 deliberate-divergence (C02, C03,
+C04, C06, C08), 2 fix-divergence (C05, C07), 10 rows.
+
+### fix-divergence — acceptance criteria
+
+1. **C05 — the granted window must be enforceable (A16's finding, extended
+   to session channels).** A peer that keeps sending past the granted
+   window beyond the grace margin (sshd: 10% of `local_window_max`) must
+   be disconnected (`channel <id>: peer ignored channel window`, reason
+   2; the DISCONNECT may be queued-unflushed exactly like sshd's — the
+   acceptance observable is the teardown + the bound). Today
+   `_grantReceiveWindowIfNeeded` (server_channel.dart) refills on pure
+   receipt accounting (below half or > 3 packets — regardless of
+   consumption), so against a non-reading program the window is never a
+   bound and the server buffers unboundedly (this row: 2.4 MiB into a
+   `sleep`). One fix serves A16 + C05 + C03's receive half.
+2. **C07 — non-KEX messages racing into the exchange window must not be
+   dropped (B02's acceptance criterion, unchanged).** Under window
+   pressure the drop is a deterministic deadlock: tp_sshd 0/3 rounds
+   froze at exactly the client's initial window (the WINDOW_ADJUST that
+   would reopen the server's send window was dropped mid-exchange; the
+   channel then only finished via the 2 s close-flush bound). The sshd
+   side also lost rounds (1/3) to the same shared-transport drop in its
+   client half — in-flight echo DATA discarded while the client was
+   exchanging — which is why this is one cross-cutting dartssh2-side fix
+   (buffer and re-dispatch after NEWKEYS) and not a per-server behavior
+   gap.
+
+### deliberate-divergence (documented, not scheduled for fixing)
+
+- **C02** — initial grant: sshd confirms session channels with window 0
+  (LARVAL) and grants the 2 MiB via WINDOW_ADJUST when the program
+  starts; tp_sshd confirms with the full 2 MiB immediately. Same effective
+  grant, one round-trip cheaper; both stay at 2 MiB (no dynamic growth on
+  either server — OpenSSH's client-side dynamic window is a client
+  policy, not a server one).
+- **C03** — non-reading client: sshd stops reading the child at window 0
+  (the child freezes on its stdout pipe; the channel is held open
+  indefinitely); tp_sshd has no send-side backpressure — the child's
+  whole output is queued in memory, the process exits, and the channel
+  finishes (exit-status, then EOF + CLOSE after the 2 s close-flush
+  bound), dropping everything past the client's grant. Recorded with the
+  D02 bounded-flush choice; the client-visible edge (a client that pauses
+  > 2 s after process exit loses the tail it had not granted) is noted
+  under D02's triage entry as the recorded risk of that bound.
+- **C04** — a single data chunk over the granted maximum packet size:
+  sshd drops the packet silently ("rcvd big packet") and the channel
+  lives on; tp_sshd closes the channel (connection unaffected). A sender
+  violating the advertised maxpacket is misbehaving either way; tp_sshd's
+  channel-scope teardown is the documented `_handleIncoming` bound check.
+  Candidate to revisit: matching sshd's tolerant drop would keep
+  buggy-but-recoverable clients alive.
+- **C06** — an overflowing WINDOW_ADJUST (uint32 wrap): sshd's `fatal`
+  kills the whole connection (no wire DISCONNECT, log-only); tp_sshd
+  closes just the offending channel (`_failChannel`, mirroring the fork's
+  client-side policy of failing a channel without taking the connection
+  down). The unknown-channel and zero adjust halves are identical (both
+  silent).
+- **C08** — channel/session cap: both cap at 10; the refusal differs —
+  sshd reason 2 "open failed" vs tp_sshd reason 4 "Too many open channels
+  (10/10)". RFC 4254 §5.1's reason 4 (resource shortage) is exactly this
+  case, so tp_sshd's reply is the more spec-apt of the two.
+
+### notes (no action)
+
+1. **C01 adjust cadence** — sshd granted the inbound stream back in 11
+   consumption-trailing adjusts (983040 of 1048576 bytes by the time the
+   row stopped; the last 64 KiB was still unconsumed in the pipe), while
+   tp_sshd granted all 1048576 in 8 receipt-accounting adjusts. Both end
+   with the window effectively restored; the cadence difference is the
+   same accounting-vs-consumption distinction as C05, observed here
+   without any enforcement consequence.
+2. **C03's sshd half** — the child freeze means sshd never delivers
+   exit-status while the window is exhausted (the process cannot exit);
+   this is the same mechanism D02 phase 2 records from the exit-path
+   angle.
+3. **C04's transport cap interplay** — a chunk larger than ~34990 bytes
+   never reaches the channel layer on tp_sshd at all: the shared
+   dartssh2 transport rejects packets over 35000 bytes (`SSHPacket.
+   maxLength`) and tears the connection down (A03's ambient difference).
+   The row therefore uses 33000 bytes to observe the channel policy.
+4. **C05's sshd nuance** — the "1 byte past the window" overage was
+   absorbed by the child's 64 KiB stdin-pipe slack (consumed = 65536), so
+   the excess counter only crossed the 10% grace in phase 2; the
+   disconnect itself arrived queued-unflushed (bare close), confirmed by
+   the sshd log — the same unflushed-DISCONNECT shape as A03/A04.
+5. **C10 throughput** — tp_sshd's SFTP is ~2× slower per direction
+   (7.4 s vs 3.7 s for 4 MiB): the harness `LocalSftpFileSystem`
+   serializes position+read/write pairs per handle while sshd's
+   internal-sftp reads with larger concurrency. Correctness identical
+   (byte-intact both ways); recorded as an observation for Task 7's
+   performance candidates, not a divergence.
+
+## Area D — channel close races
+
+In 10.2 the channel teardown state machine lives in nchan.c
+(`chan_rcvd_ieof` / `chan_rcvd_oclose` / `chan_is_dead`), and the session
+exit path in session.c (`session_close_by_pid` → `session_exit_message`)
+— that is where these citations point. All rows hand-craft the channel
+messages on the raw driver; the sshd `tput` stderr noise is normalized
+(method section).
+
+| ID | 刺激 | OpenSSH 预期（源码出处） | OpenSSH 实测 | tp_sshd 实测 | 判定 |
+|----|------|--------------------------|--------------|--------------|------|
+| D01 | 客户端 EOF 后继续发 DATA：`cat > /dev/null; sleep 30` exec 在 EOF 后仍活着（cat 半程结束、sleep 半程撑住通道），客户端再发 10 字节 | EOF 后的普通 DATA 无 EOF 检查：ostate != OPEN 分支假消费（仅记账，字节丢弃），无回复、连接存活；只有 EOF 后的 EXTENDED data 才断连。[channels.c:channel_input_data；channel_input_extended_data] | EOF 后 10 字节：无任何回复，连接存活 — prediction confirmed | EOF 后 10 字节：连接被整个拆掉（裸 `closed`，无 DISCONNECT）— `handleEof` 关闭输入控制器后 `_handleIncoming` 对已关控制器 add 抛错，经传输层 dispatch 传播到 closeWithError | **fix-divergence** |
+| D02 | 输出仍在等窗口信用时收尾。阶段 1：4096 字节客户端窗口 + 256 KiB 输出，首批发到后客户端发 CHANNEL_CLOSE；阶段 2：同样压力但不关 — exit-status/EOF/CLOSE 相对进程退出何时落地 | 阶段 1：chan_rcvd_oclose → ostate WAIT_DRAIN — 无信用则永远等待，不回 CLOSE。阶段 2：进程退出路径丢弃挂起输出（chan_write_failed 重置缓冲）：exit-status → EOF → CLOSE 立即连发。[nchan.c:chan_rcvd_oclose；session.c:session_exit_message] | 阶段 1：0 个后续数据字节，`exit-signal(PIPE) → CLOSE`（关闭读端使 head SIGPIPE 死亡，子进程退出路径收尾 — 与预测的"沉默挂起"不同，预测被证伪）；阶段 2：10 秒内 exit-status 未到（子进程被窗口冻结，无法退出 — C03 机制） | 阶段 1：0 个后续数据字节，立即 `CLOSE`（队列丢弃、进程杀死、无退出报告）；阶段 2：exit-status 立即到达，EOF + CLOSE 在 1974 ms 后（2 s closeFlushTimeout 界），尾部丢弃 | **deliberate-divergence**（bounded-flush 2 s 界；两阶段的完整差异见 triage 注 1） |
+| D03 | 双方 EOF：`echo done` exec，客户端在 exec 应答后立即发 CHANNEL_EOF（从不发 CLOSE）— 谁先发 CLOSE、收尾顺序 | 客户端 EOF 后服务端输出进入 WAIT_DRAIN；子进程退出驱动 exit-status → EOF → CLOSE；CLOSE 由服务端发出。[nchan.c:chan_rcvd_ieof；chan_is_dead/chan_send_close2；session.c:session_close_by_pid] | `data:5 → CHANNEL_SUCCESS → stderr(45) → EOF → exit-status(0) → CLOSE`；CLOSE 来自服务端 — prediction confirmed（EOF 先于 exit-status，见 D04） | `data:5 → CHANNEL_SUCCESS → exit-status(0) → EOF → CLOSE`；CLOSE 来自服务端 | **match**（关闭发起者与收尾完成一致；exit-status/EOF 顺序差是 D04 的记录项） |
+| D04 | 无任何客户端 EOF 的 exit-status 排序：`echo ok` exec，客户端只等 — 观测 exit-status/EOF/CLOSE 顺序与退出码 | session_close_by_pid → session_exit_message 先发 exit-status，再 chan_write_failed；EOF 由子进程 stdin 管道排空驱动，CLOSE 最后。[session.c:session_exit_message；nchan.c:chan_ibuf_empty → chan_send_eof2；chan_is_dead → chan_send_close2] | `data:3 → CHANNEL_SUCCESS → stderr(45) → EOF → exit-status(0) → CLOSE` — EOF 抢在 exit-status 之前（管道 EOF 与 SIGCHLD 路径竞速，观测两次一致）；CLOSE 最后 — 预测的前半段被实测修正 | `data:3 → CHANNEL_SUCCESS → exit-status(0) → EOF → CLOSE` — exit-status 严格先于 EOF/CLOSE | **deliberate-divergence**（顺序：tp_sshd 刻意先发 exit-status — `_pipeProcess` 注释"a client that sees EOF first may stop waiting for it"；两种顺序都为 RFC 所容，sshd 的 EOF 先行是其两条异步路径的竞速结果） |
+| D05 | 通道彻底死亡后再发 CHANNEL_REQUEST（echo ok 通道完全关闭并确认后，对其再发一个 want_reply 的 `env` 请求） | 通道已释放：channel_lookup 失败 → DISCONNECT(2, "server_input_channel_req: unknown channel <id>")，连接被拆。[serverloop.c:server_input_channel_req] | `disconnect:2("server_input_channel_req: unknown channel 0")`，log 证实 — prediction confirmed | 无任何回复，连接存活（通道已从表中移除，静默忽略 — A15 家族） | **fix-divergence**（A15 的同类：验收标准并入 A15 — 通道作用域消息对不存在通道应回协议错误，涵盖 DATA 与 REQUEST） |
+| D06 | 通道中途的 TCP RST（观测行）：exec 流式输出 1 MiB 中客户端以 SO_LINGER 0 硬拆 socket | 读错误路径拆连接、收尸子进程、监听器无恙；sshd log 记录 reset。[sshd-session.c 会话主循环读错误路径；serverloop.c] | RST 发出（已收 1 MiB 且仍在流）；sshd log 证实 `Connection reset`；监听器存活 | RST 发出；进程内服务端存活，运行器 zone 无 stray async error；监听器存活 | **match** |
+| D07 | 客户端在子进程（`sleep 2`）仍运行时、未发任何 EOF 就发 CHANNEL_CLOSE | chan_rcvd_oclose 后 channel_garbage_collect 因 session cleanup 回调 force=0 而持有"almost dead"通道：子进程活着时不回 CLOSE；子进程退出时 session_close_by_pid 仍交付 exit-status 与 CLOSE（无 EOF）。[nchan.c:chan_rcvd_oclose；channels.c:channel_garbage_collect；serverloop.c:server_request_session] | `exit-status(0) → CLOSE`，CLOSE 在子进程退出时（~2 s）才回，此前沉默 — prediction confirmed | 立即 `CLOSE`（handleClose → _finish：队列丢弃、进程杀死），无 exit-status | **deliberate-divergence**（提前 CLOSE 的语义：sshd 持通道至子进程退出并补报 exit-status vs tp_sshd 立即收尾并杀进程；客户端已声明不再需要通道，两种读法皆合规；见 triage 注 2） |
+| D08 | 服务端发起的 `forwarded-tcpip` 通道（tcpip-forward 到 127.0.0.1:0 后拨入一条连接）被客户端以 CHANNEL_CLOSE 回应而非确认 — pending-open 竞态；随后控制连接正常确认 | OPENING 通道收 CLOSE 应被拆除：接受 socket 随 fd 关闭 — 拨入连接被服务端关闭。[channels.c:channel_post_port_listener；nchan.c:chan_rcvd_oclose] | CLOSE 后无任何回复；拨入连接保持打开（**通道僵尸**：SSH_CHANNEL_OPENING 在 channel_handler_init 的 pre/post 表中无处理项，ostate 停在 WAIT_DRAIN，永不释放 — 预测被证伪）；控制连接：echo 正常（转发仍活） | CLOSE 后无任何回复；拨入连接保持打开（pending open 永不裁决，连接被持有到 SSH 连接结束）；控制连接：echo 正常（转发仍活） | **match**（两端都持有被 CLOSE 的 pending open、都不回包、转发都存活；sshd 的僵尸机制记录于 triage 注 3） |
+| D09 | pty 会话（pty-req + shell）键入 `exit` 退出：exit-status/EOF/CLOSE 排序与 pty 清理 | session_close_by_pid：exit-status 经 session_exit_message，随后 session_pty_cleanup 释放 tty；EOF/CLOSE 由 nchan 状态机收尾。[session.c:session_close_by_pid / session_pty_cleanup] | `data:588 → EOF → exit-status(0) → CLOSE`，通道即时收尾 | `data:342 → exit-status(0) → EOF → CLOSE`，通道即时收尾 | **match**（收尾完成、退出码、及时性一致；exit-status/EOF 顺序差是 D04 的记录项；data 字节数差异为两边 shell 启动噪声） |
+| D10 | 对 `sleep 30` exec 通道发带 `SIGBOGUS` 名字的 `signal` 请求（want_reply = true） | name2sig 失败 → error "unsupported signal" → success 0 → CHANNEL_FAILURE；连接存活。[session.c:session_input_channel_req → session_signal_req] | `msg:100(CHANNEL_FAILURE)`，log 证实 `unsupported signal` — prediction confirmed | 无任何回复，连接存活 — 共享 dartssh2 解码器的 `.signal` 工厂把 wantReply 硬编码为 false（msg_channel.dart:781-791），服务端根本看不到该标志位 | **deliberate-divergence**（RFC 4254 §6.9 的报文格式本身把 signal 的 want reply 钉为 FALSE，合规客户端不会等待回复；sshd 的 CHANNEL_FAILURE 是其通用 want_reply 处理。解码器丢标志位是潜在的 dartssh2 缺陷，随信号功能一并修 — triage 注 4） |
+
+## Area D triage
+
+Verdicts: 4 match (D03, D06, D08, D09), 4 deliberate-divergence (D02,
+D04, D07, D10), 2 fix-divergence (D01, D05), 10 rows.
+
+### fix-divergence — acceptance criteria
+
+1. **D01 — data after EOF must not kill the connection.** A
+   `CHANNEL_DATA` arriving after the client's `CHANNEL_EOF` on a live
+   channel must be tolerated the way sshd tolerates it (dropped with
+   window accounting only, channels.c:channel_input_data's
+   `ostate != CHAN_OUTPUT_OPEN` branch) — or delivered — but never
+   allowed to throw. Today `handleEof` closes the channel's input
+   `StreamController` and `_handleIncoming`'s `controller.add` on the
+   closed controller throws synchronously; the error escapes the
+   transport dispatch into `closeWithError` and the WHOLE connection is
+   torn down with nothing on the wire (one misbehaving channel kills
+   every other channel on the connection). Acceptance: post-EOF data on
+   a live channel leaves the connection serving (drop it like sshd, or
+   close just that channel). (tp_sshd-side change: guard
+   `_handleIncoming` on `_receivedEof`.)
+2. **D05 — requests for a nonexistent channel must be a protocol error
+   (the A15 fix, extended).** Same acceptance criterion as A15, with the
+   class widened: every channel-scoped message (DATA, REQUEST, EOF, …)
+   addressed to an unknown recipient draws
+   `DISCONNECT(2, "<what> packet referred to nonexistent channel <id>")`
+   the way sshd does (serverloop.c:server_input_channel_req's
+   "unknown channel" disconnect), instead of being silently ignored.
+
+### deliberate-divergence (documented, not scheduled for fixing)
+
+- **D02 — the bounded close flush.** tp_sshd gives pending outgoing data
+  a 2 s window-credit wait (`closeFlushTimeout`, server_channel.dart)
+  before finishing the channel; sshd has no bound at all — on the exit
+  path it drops the tail instantly (`chan_write_failed` resets the
+  output buffer), and on a received CLOSE it either waits for a drain
+  that may never come (frozen child) or lets the child die of SIGPIPE
+  (observed: `exit-signal(PIPE)` → CLOSE, because `chan_shutdown_read`
+  closes the child's stdout read end). The recorded risk of tp_sshd's
+  2 s bound: a healthy-but-slow client that does not grant the tail's
+  credit within 2 s of process exit loses data it had every intention of
+  reading (C03's manifestation). A future refinement could keep the
+  bound only for peers that have actually gone quiet, but the bound
+  itself is the documented spec choice.
+- **D04 — exit-status strictly before EOF.** tp_sshd deliberately sends
+  `exit-status` before EOF/CLOSE (`_pipeProcess`: "a client that sees
+  EOF first may stop waiting for it"); sshd's EOF is driven by the
+  stdout-pipe EOF and raced ahead of the SIGCHLD exit path in every
+  observed round. Both orders are legal; clients must accept either.
+- **D07 — early client CLOSE.** sshd holds the channel "almost dead"
+  until the child exits (the session cleanup callback is registered with
+  force=0) and still delivers `exit-status` + CLOSE then; tp_sshd
+  finishes immediately (`handleClose` → `_finish`), kills the process,
+  and sends no exit-status. The client has declared the channel
+  unneeded; tp_sshd trades the late exit report for immediate teardown
+  and no orphaned process.
+- **D10 — signal with a bogus name.** sshd answers `CHANNEL_FAILURE` (its
+  generic want_reply handling; the name lookup failed with "unsupported
+  signal"); tp_sshd sends nothing because the shared dartssh2 decoder's
+  `.signal` factory hardcodes `wantReply: false` (msg_channel.dart), so
+  the server never sees the flag. RFC 4254 §6.9 pins `want reply FALSE`
+  in the signal message format itself, so no compliant client waits for
+  a reply — recorded as deliberate, with the decoder flag-loss noted as
+  a latent dartssh2 issue to fix alongside any signal work.
+
+### notes (no action)
+
+1. **D02 phase-by-phase summary** — phase 1 (client CLOSE, 252 KiB
+   pending credit): both servers sent 0 more data bytes and finished the
+   channel, by different routes — sshd via the child's SIGPIPE death
+   (`exit-signal(PIPE)` → CLOSE), tp_sshd by dropping the queue
+   immediately (CLOSE only, no exit report). Phase 2 (server exit under
+   the same pressure): sshd's child froze on its stdout pipe (no
+   exit-status within 10 s — C03's mechanism seen from the exit path);
+   tp_sshd's unbounded queue let the process exit immediately, with
+   exit-status → EOF → CLOSE landing 1974 ms later (the 2 s bound).
+2. **D07/D02 phase 1's exit reports** — where sshd reports the child's
+   death (`exit-signal(PIPE)` after a CLOSE-induced read-end shutdown;
+   `exit-status` at child exit after an early CLOSE), tp_sshd kills the
+   process silently on channel close (`_pipeProcess` teardown). The
+   exit-report-after-close family is part of the same early-CLOSE policy
+   divergence as D07.
+3. **D08's sshd half — the prediction was wrong, and the actual is
+   interesting.** `chan_rcvd_oclose` tears down `SSH_CHANNEL_LARVAL`
+   channels immediately, but a pending server-initiated open is
+   `SSH_CHANNEL_OPENING`, and `channel_handler_init` (channels.c) has no
+   pre/post handler for OPENING — so on sshd 10.2 a CLOSE addressed to
+   an unconfirmed forwarded-tcpip channel leaves it in
+   istate-CLOSED/ostate-WAIT_DRAIN forever: no reply, no free, the
+   accepted socket never closed. tp_sshd's pending-open map holds the
+   same connection for the same observable outcome; both release
+   everything only when the SSH connection ends. The control connection
+   round-trips on both, so forwarding itself never degrades.
+4. **D10's decoder detail** — the want_reply flag loss is in the shared
+   dartssh2 `SSH_Message_Channel_Request.signal` factory (decode path),
+   not in tp_sshd: a tp_sshd fix is not possible without the decoder
+   preserving the flag. Folded into the dartssh2-side fix list.
 

@@ -31,7 +31,7 @@ sealed class Observed {
 
 /// One SSH message the server sent, by numeric id and its common name.
 class MessageObservation extends Observed {
-  const MessageObservation(this.id, this.name, [this.detail]);
+  const MessageObservation(this.id, this.name, [this.detail, this.payload]);
 
   final int id;
   final String name;
@@ -41,6 +41,12 @@ class MessageObservation extends Observed {
   /// `CHANNEL_OPEN_FAILURE`'s reason code and description); `null` when the
   /// id alone says everything.
   final String? detail;
+
+  /// The full message payload, for probes that decode message-specific
+  /// fields the shared [detail] does not carry (a confirmation's window
+  /// grant, a window adjustment's byte count). `null` when recording could
+  /// not capture it.
+  final Uint8List? payload;
 
   @override
   String toString() =>
@@ -206,6 +212,33 @@ class RawSession {
     return List<Observed>.unmodifiable(_observations);
   }
 
+  /// The observations so far, without waiting — the poll helper for probe
+  /// code that decides on message-level state.
+  List<Observed> get currentObservations =>
+      List<Observed>.unmodifiable(_observations);
+
+  /// Abruptly resets the connection: SO_LINGER 0 followed by destroy, the
+  /// closest a Dart client can get to sending an RST mid-channel. (A plain
+  /// destroy on a fully-drained socket is only a FIN.)
+  void destroyAbruptly() {
+    try {
+      // struct linger { int onoff; int linger; } — on, 0 seconds.
+      // (SO_LINGER = 13 on Linux; the SDK exposes the level, not the name.)
+      _socket.setRawOption(
+        RawSocketOption(
+          RawSocketOption.levelSocket,
+          13,
+          Uint8List.fromList([1, 0, 0, 0, 0, 0, 0, 0]),
+        ),
+      );
+    } on Object {
+      // Not every platform accepts SO_LINGER; the destroy below is still an
+      // abrupt close, just a FIN instead of an RST.
+    }
+    _socket.destroy();
+    _recordEnd(null);
+  }
+
   /// Completes with the DISCONNECT the server sent, or `null` when the
   /// connection ends without one.
   Future<DisconnectObservation?> get disconnectObserved =>
@@ -244,7 +277,14 @@ class RawSession {
 
   void _recordMessage(Uint8List payload) {
     final id = SSHMessage.readMessageId(payload);
-    _observations.add(MessageObservation(id, sshMessageName(id), _detailOf(id, payload)));
+    _observations.add(
+      MessageObservation(
+        id,
+        sshMessageName(id),
+        _detailOf(id, payload),
+        payload,
+      ),
+    );
     if (id == 52 && !_authenticatedCompleter.isCompleted) {
       _authenticatedCompleter.complete();
     }

@@ -18,6 +18,8 @@ import 'package:dartssh2/dartssh2.dart' show SSHClient, SSHKeyPair, SSHSocket;
 
 import 'area_a_malformed.dart';
 import 'area_b_rekey.dart';
+import 'area_c_windows.dart';
+import 'area_d_close_races.dart';
 import 'audit_harness.dart';
 
 /// What the OpenSSH reference says should happen on one audit row.
@@ -67,11 +69,13 @@ const Map<String, String> areaTitles = {
   'e': 'Area E — timing surfaces',
 };
 
-/// Registered area implementations. Tasks 4–5 add their runners here; until
-/// then every area reports that no rows exist.
+/// Registered area implementations. Area E adds its runner in Task 5; until
+/// then it reports that no rows exist.
 final Map<String, AreaRunner> areaRunners = {
   'a': _runAreaA,
   'b': _runAreaB,
+  'c': _runAreaC,
+  'd': _runAreaD,
 };
 
 /// Async errors that escaped every row's own guards, attributed to the row
@@ -123,11 +127,18 @@ Future<List<RowResult>> _runAreaA(AuditServers servers) =>
 Future<List<RowResult>> _runAreaB(AuditServers servers) =>
     _runRows(servers, areaBRows());
 
+/// Runs the Area C rows (window handling, C01–C10).
+Future<List<RowResult>> _runAreaC(AuditServers servers) =>
+    _runRows(servers, areaCRows());
+
+/// Runs the Area D rows (channel close races, D01–D10).
+Future<List<RowResult>> _runAreaD(AuditServers servers) =>
+    _runRows(servers, areaDRows());
+
 Future<void> _main(List<String> args) async {
   var smoke = false;
   var area = 'all';
-  var opensshSrc =
-      '${Platform.environment['HOME']}/.cache/openssh-portable';
+  var opensshSrc = '${Platform.environment['HOME']}/.cache/openssh-portable';
   for (var i = 0; i < args.length; i++) {
     switch (args[i]) {
       case '--smoke':
@@ -184,7 +195,6 @@ Future<void> main(List<String> args) {
   })!;
 }
 
-
 Never _usage(String problem) {
   print('error: $problem');
   _printUsage();
@@ -235,7 +245,8 @@ Future<bool> _runSmoke(AuditServers servers) async {
   print('username : ${servers.username}');
   print('OpenSSH  : 127.0.0.1:${servers.sshdPort}');
   print('tp_sshd  : 127.0.0.1:${servers.tpdPort}');
-  print('audit dir: ${servers.tempDir.path} (sshd log: ${servers.sshdLogPath})');
+  print(
+      'audit dir: ${servers.tempDir.path} (sshd log: ${servers.sshdLogPath})');
 
   final results = <({String label, bool ok})>[];
   results.add(
@@ -247,7 +258,8 @@ Future<bool> _runSmoke(AuditServers servers) async {
   print('| server | login | exec `echo ok` |');
   print('|--------|-------|----------------|');
   for (final result in results) {
-    print('| ${result.label} | ${result.ok ? 'ok' : 'FAILED'} | ${result.ok ? '`ok`' : 'failed'} |');
+    print(
+        '| ${result.label} | ${result.ok ? 'ok' : 'FAILED'} | ${result.ok ? '`ok`' : 'failed'} |');
   }
   return results.every((result) => result.ok);
 }
@@ -300,8 +312,7 @@ Future<({String label, bool ok})> _smokeLoginExec(
 // ---------------------------------------------------------------------------
 
 Future<void> _runAreas(AuditServers servers, String selection) async {
-  final selected =
-      selection == 'all' ? areaTitles.keys.toList() : [selection];
+  final selected = selection == 'all' ? areaTitles.keys.toList() : [selection];
   var ranAny = false;
   for (final key in selected) {
     final runner = areaRunners[key];
