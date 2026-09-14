@@ -391,8 +391,7 @@ class SSHServerChannel {
   }
 
   /// Admits one inbound data message: checks it against the packet size and
-  /// window the client was given, surfaces it on [controller], and grants
-  /// the window the client was given, surfaces it on [controller], and holds
+  /// window the client was given, surfaces it on [controller], and holds
   /// the credit back until the consumer reports it through [consumeInput].
   void _handleIncoming(Uint8List data, StreamController<Uint8List> controller) {
     if (isClosed || data.isEmpty) return;

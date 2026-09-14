@@ -124,7 +124,8 @@ class _ThrowingStdinSink implements StreamSink<List<int>> {
   void addError(Object error, [StackTrace? stackTrace]) {}
 
   @override
-  Future<void> addStream(Stream<List<int>> stream) => Future.value();
+  Future<void> addStream(Stream<List<int>> stream) =>
+      Future<void>.error(StateError('stdin is gone'));
 
   @override
   Future<void> close() => Future.value();
