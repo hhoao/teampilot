@@ -1865,7 +1865,62 @@ void main() {
         expect(cubit.sessionHasDocument(created.sessionId), isTrue);
       },
     );
+
+    test(
+      'failed hydrateSessionDocument propagates, has no unhandled error, '
+      'and retries',
+      () async {
+        final tmp = await Directory.systemTemp.createTemp('chat_doc_fail_');
+        final repo = _ThrowingSessionRepository(
+          rootDir: tmp.path,
+          storage: testHomeStorage,
+        );
+        final postFrame = PostFrameTestHarness();
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
+          storage: testHomeStorage,
+          sessionRepository: repo,
+          postFrameScheduler: postFrame.scheduler,
+        );
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+
+        var thrown = 0;
+        Object? unhandled;
+        await runZonedGuarded(() async {
+          for (var attempt = 0; attempt < 2; attempt++) {
+            try {
+              await cubit.hydrateSessionDocument('ws-1', 'session-1');
+            } on FileSystemException {
+              thrown++;
+            }
+          }
+          await Future<void>.delayed(Duration.zero);
+        }, (error, stack) {
+          unhandled = error;
+        });
+
+        expect(thrown, 2);
+        expect(repo.loadSessionCalls, 2);
+        expect(unhandled, isNull);
+      },
+    );
   });
+}
+
+class _ThrowingSessionRepository extends SessionRepository {
+  _ThrowingSessionRepository({
+    required super.rootDir,
+    required super.storage,
+  });
+
+  int loadSessionCalls = 0;
+
+  @override
+  Future<AppSession?> loadSession(String workspaceId, String sessionId) async {
+    loadSessionCalls++;
+    throw const FileSystemException('storage transport unavailable');
+  }
 }
 
 class _CountingSessionRepository extends SessionRepository {

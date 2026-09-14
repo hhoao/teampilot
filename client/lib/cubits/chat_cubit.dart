@@ -1846,7 +1846,7 @@ class ChatCubit extends Cubit<ChatState>
         if (identical(_documentHydrationInFlight[id], future)) {
           _documentHydrationInFlight.remove(id);
         }
-      });
+      }).ignore();
       return future;
     });
   }

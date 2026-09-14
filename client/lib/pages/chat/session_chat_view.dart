@@ -849,6 +849,10 @@ class _SessionChatViewState extends State<SessionChatView> {
     final previous = _liveRefresh;
     _liveRefresh = null;
     _liveRefreshScope = null;
+    /// Drop the stale start single-flight too, or its future can return from
+    /// `_startLiveRefresh` and let the new seat miss live refresh until the
+    /// next busy/route event.
+    _liveRefreshStartInFlight = null;
     await previous?.stop();
   }
 
