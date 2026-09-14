@@ -627,6 +627,19 @@ by numeric equality (area method note).
    early-exit username compare and the embedder's early-exit key compare
    are not themselves the observable).
 
+   *Fix landed (2026-09-14):* `SSHServerConfig.authFailureMinDelay` (a
+   10 ms floor by default, `Duration.zero` disables) pads every failure
+   reply — the `USERAUTH_FAILURE`, or the throttle disconnect — out to the
+   floor measured from the request's receipt; the throttle verdict is
+   captured at receipt so pipelined attempts keep their reply assignment.
+   Area E regeneration (50 fresh connections per condition): tp_sshd
+   wrong-key med 11200 µs / unknown-user med 10871 µs / malformed-blob med
+   10185 µs (was 2808 / 902 / 630 µs — a 4.5x spread). The three
+   conditions now sit within one noise band, in-kind with the same run's
+   sshd cells (8452 / 7487 / 8256 µs, itself a ~13% spread). Per-username
+   jitter (sshd's `user_specific_delay`) is recorded as a hardening
+   follow-up, not part of the floor.
+
 ### deliberate-divergence (documented, not scheduled for fixing)
 
 - **E04 — no pre-auth connection cap.** sshd bounds concurrent
@@ -789,6 +802,21 @@ impact vs churn), not a dependency.
   before the close. The strict-kex throw paths (`_handleMessage`'s
   forbidden-message check, `_handleUnexpectedKexMessage`,
   `_negotiateStrictKex`) should send the DISCONNECT before closing.
+
+  *Fix landed (2026-09-14, dartssh2 fork branch `differential-fixes`,
+  43899e5):* all three throw paths now route through
+  `_failStrictKex`, which sends
+  `DISCONNECT(2, "strict KEX violation: …")` before throwing — in the
+  clear (every caller sits inside the initial exchange, before NEWKEYS
+  applied keys), bypassing the rekey buffer, and flushed before
+  `closeWithError` destroys the socket. Both roles emit it, matching
+  OpenSSH's client and server. Area A regeneration observes it on the
+  wire: tp_sshd actual for A19 is now
+  `disconnect:2("strict KEX violation: unexpected message 5 received
+  during key exchange")` followed by close (before: closed with no
+  DISCONNECT on the wire). The row still string-diffs against sshd on
+  message wording and banner text; the acceptance criterion above is met,
+  and the row-verdict refresh belongs to the final fix-wave dispatch.
 - **F3 — B06+B07: the server must be able to initiate a rekey**
   (tp_sshd, `server_connection.dart`). Today there is no trigger of any
   kind (no byte counter, no timer; dartssh2's `rekey()` is a client-role
@@ -959,6 +987,13 @@ impact vs churn), not a dependency.
   leak an unhandled error into the embedder's zone; a RST on a forwarded
   connection mid-stream (D06's shape) leaves the runner's stray-error
   list empty.
+
+  *Fix landed (2026-09-14):* the pump consumes both channels of
+  `connection.done` (`then`/`onError`): an errored completion closes the
+  channel and finishes the pump like a normal end, and the error is
+  diagnosed through a new optional `printDebug` seam. The area A
+  regeneration ran with an empty stray-error list (the section does not
+  even print).
 
 ### Documented follow-ups (recorded, not scheduled)
 
