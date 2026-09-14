@@ -792,6 +792,41 @@ match at equal config (both run at 3 s); only the shipped defaults
 diverge, deliberately. It is carried in the deliberate table below so
 the tally does not lose it.
 
+### Post-closure whole-branch review (2026-09-15, final-review fix waves)
+
+Two whole-branch reviews returned APPROVE_WITH_FINDINGS; all findings
+landed in two parallel fix waves on 2026-09-15 (no row verdict above
+moves — every item is hardening or sshd-alignment below the row grain):
+
+- **Final-review finding 1 (Important, fixed):** F6's inbound rekey
+  queue `_rekeyPendingInboundPackets` was unbounded — window enforcement
+  (F4) is suspended during an exchange, so a peer could stall a rekey
+  and flood channel data without limit. Fixed in the fork
+  (`dartssh2` `43267de`, parent gitlink `0e302e0ce`): an 8 MiB byte cap;
+  overflow answers with a wire `DISCONNECT(2, "rekey inbound queue
+  overflow")` then `closeWithError`, and the budget resets when the
+  queue drains after NEWKEYS (3 fork tests).
+- Open verdicts for fully reaped channel ids are now fatal
+  (channels.c:3698-3700's twin; only the our-CLOSE-not-acked race stays
+  tolerated) and the open-FAILURE half of the verdict policy is tested
+  (`d61b35753`).
+- Post-EOF `CHANNEL_EXTENDED_DATA` is a protocol violation — sshd's
+  "Received extended_data after EOF on channel N."
+  (channels.c:channel_input_extended_data), the other half of D01's
+  citation; plain DATA stays fake-consumed (`f5f4a538d`).
+- `_failAuthAttempt`'s post-padding sends are guarded against a dead
+  transport (the F13 leak class, `4ea2772af`).
+- The fork's disconnect-flush wait is bounded (500 ms) so a peer that
+  stopped reading cannot hold the teardown open forever (`dartssh2`
+  `24c37ec`, gitlink carried in `707ce4a3d`).
+- Channel tombstone sets are compacted past 256 entries (a parallel
+  wave's hardening, `c3efb766d`), the fork's third-party
+  test.rebex.net tests are gated behind `DARTSSH2_REBEX=1`
+  (`dartssh2` `ba28fbb`), and this document's final-state nits were
+  corrected (`a1fbbb70a`): the E01 run labels, the legend word in the
+  F7/F8/F9 notes, F6's superseded pointer, and the gate count (100
+  passing as of 7d3c656; 104 after both waves).
+
 ### Deliberate divergences (documented spec, not scheduled for fixing)
 
 | ID | surface | sshd | tp_sshd | spec rationale |
