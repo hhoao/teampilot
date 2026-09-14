@@ -26,12 +26,18 @@ import 'package:dartssh2/protocol.dart'
 /// A sealed hierarchy rather than a record: Dart has no sealed records, and
 /// exhaustive `switch` over the variants is how audit rows compare servers.
 sealed class Observed {
-  const Observed();
+  /// When this was recorded, in microseconds on the shared observation
+  /// clock (see [observationClockMicros]) — the timing rows' (Area E)
+  /// latency measurements read it instead of polling granularity.
+  Observed(this.timestamp);
+
+  final int timestamp;
 }
 
 /// One SSH message the server sent, by numeric id and its common name.
 class MessageObservation extends Observed {
-  const MessageObservation(this.id, this.name, [this.detail, this.payload]);
+  MessageObservation(this.id, this.name, [this.detail, this.payload])
+      : super(observationClockMicros());
 
   final int id;
   final String name;
@@ -55,7 +61,8 @@ class MessageObservation extends Observed {
 
 /// An `SSH_MSG_DISCONNECT` the server sent.
 class DisconnectObservation extends Observed {
-  const DisconnectObservation(this.reasonCode, this.description);
+  DisconnectObservation(this.reasonCode, this.description)
+      : super(observationClockMicros());
 
   final int reasonCode;
   final String description;
@@ -66,11 +73,20 @@ class DisconnectObservation extends Observed {
 
 /// The TCP connection closed (with or without an error on the wire).
 class ClosedObservation extends Observed {
-  const ClosedObservation();
+  ClosedObservation() : super(observationClockMicros());
 
   @override
   String toString() => 'closed';
 }
+
+/// The monotonic clock every [Observed.timestamp] is stamped on. Timing
+/// rows (Area E) call it right before sending their stimulus, so a reply's
+/// latency is `observation.timestamp - then` at microsecond granularity —
+/// independent of the 20 ms polling granularity of the await helpers.
+final Stopwatch _observationClock = Stopwatch()..start();
+
+/// Now, in microseconds on the shared observation clock.
+int observationClockMicros() => _observationClock.elapsedMicroseconds;
 
 /// Common names for the SSH message ids the dartssh2/tp_sshd message
 /// classes define (RFC 4253 §11.1 numbering). Ids 30/31/60 are shared by
@@ -263,7 +279,7 @@ class RawSession {
       _observations.add(observation);
       _disconnectCompleter.complete(observation);
     } else {
-      _observations.add(const ClosedObservation());
+      _observations.add(ClosedObservation());
       _disconnectCompleter.complete(null);
     }
     final closed = StateError('connection ended');

@@ -20,6 +20,7 @@ import 'area_a_malformed.dart';
 import 'area_b_rekey.dart';
 import 'area_c_windows.dart';
 import 'area_d_close_races.dart';
+import 'area_e_timing.dart';
 import 'audit_harness.dart';
 
 /// What the OpenSSH reference says should happen on one audit row.
@@ -69,13 +70,13 @@ const Map<String, String> areaTitles = {
   'e': 'Area E — timing surfaces',
 };
 
-/// Registered area implementations. Area E adds its runner in Task 5; until
-/// then it reports that no rows exist.
+/// Registered area implementations.
 final Map<String, AreaRunner> areaRunners = {
   'a': _runAreaA,
   'b': _runAreaB,
   'c': _runAreaC,
   'd': _runAreaD,
+  'e': _runAreaE,
 };
 
 /// Async errors that escaped every row's own guards, attributed to the row
@@ -134,6 +135,10 @@ Future<List<RowResult>> _runAreaC(AuditServers servers) =>
 /// Runs the Area D rows (channel close races, D01–D10).
 Future<List<RowResult>> _runAreaD(AuditServers servers) =>
     _runRows(servers, areaDRows());
+
+/// Runs the Area E rows (timing surfaces, E01–E06).
+Future<List<RowResult>> _runAreaE(AuditServers servers) =>
+    _runRows(servers, areaERows());
 
 Future<void> _main(List<String> args) async {
   var smoke = false;

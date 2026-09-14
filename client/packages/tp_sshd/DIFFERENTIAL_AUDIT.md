@@ -42,6 +42,17 @@ login afterwards).
   `tool/differential/row_plumbing.dart` from Area C on (the Task 3 review
   ruling); `area_a_malformed.dart` and `area_b_rekey.dart` keep their
   local copies untouched so the completed areas' runners do not churn.
+- **Area E (timing rows)**: timing rows are judged `match-in-kind` — both
+  servers uniform, or both variable — never by numeric equality (wall-clock
+  µs over loopback TCP are not comparable across processes); what IS a
+  finding is an oracle, a failure class one server makes indistinguishable
+  that the other answers at measurably different speeds. Latencies come
+  from µs timestamps the raw driver stamps on every observation
+  (`raw_driver.dart`), not from poll granularity. E01/E02/E04 run on
+  dedicated harness pairs (`startAuditServers(sshdConfigExtras: …)`) so
+  their sshd config knobs (`PerSourcePenalties no`, `LoginGraceTime 3`,
+  `MaxStartups 3:100:6`) apply without touching the shared pair or its
+  per-source penalty state.
 - **sshd exec stderr noise** (Areas C+D): every sshd exec via the harness
   user's shell emits one 45-byte `tput: No value for $TERM and no -T
   specified\n` EXTENDED_DATA burst (the user's rc running tput on a
@@ -563,3 +574,123 @@ D04, D07, D10), 2 fix-divergence (D01, D05), 10 rows.
    not in tp_sshd: a tp_sshd fix is not possible without the decoder
    preserving the flag. Folded into the dartssh2-side fix list.
 
+
+## Area E — timing surfaces
+
+Timing rows (E01, E02, E05) are judged `match-in-kind` — both uniform or
+both variable — never by numeric equality; wall-clock µs over loopback TCP
+are not comparable across processes. What IS a finding is an oracle: a
+failure class one server makes indistinguishable (by padding) that the
+other answers at measurably different speeds. E01/E02/E04 run on dedicated
+harness pairs (`startAuditServers(sshdConfigExtras: …)`) — see the method
+section; latencies are read from the raw driver's µs observation
+timestamps. In 10.2 the auth-failure padding lives in `auth2.c`
+(`ensure_minimum_time_since` + `user_specific_delay`: a 5 ms floor plus
+0–4.2 ms per-username pseudorandom jitter derived from a secret) — that
+mechanism is the anti-oracle E01 measures.
+
+| ID | 刺激 | OpenSSH 预期（源码出处） | OpenSSH 实测 | tp_sshd 实测 | 判定 |
+|----|------|--------------------------|--------------|--------------|------|
+| E01 | 认证失败时延分布：三种失败条件各 50 次全新连接（每条件新连接，避开两端的 6 次失败上限）——wrong-key（真实用户名 + 未授权密钥 + **有效** RFC 4252 §7 签名）、unknown-user（不存在的用户名，其余为有效登录）、malformed-blob（不可解码密钥 blob，A10 形状）——测量 USERAUTH_REQUEST 发出到 USERAUTH_FAILURE 回复的墙钟 µs，每格 median/p95/max（专用 harness，PerSourcePenalties 关闭：150 次失败登录测的是认证时延而非惩罚门控） | 每个失败的 non-"none" 尝试都被垫时：5 ms 下限 + 0–4.2 ms 由 timing_secret 派生的按用户名伪随机抖动，之后才回包——三种失败条件在时延上不可区分（垫时即反预言机；路径差异被下限吸收）。[auth2.c:input_userauth_request -> ensure_minimum_time_since + user_specific_delay] | wrong-key med 6986µs p95 7571µs；unknown-user med 7744µs p95 8115µs；malformed-blob med 6765µs p95 7066µs — 同用户名的两条件（wrong-key/malformed）仅差 220µs，unknown-user 的 ~1 ms 落差是按用户名抖动（秘密派生的常量，不泄露路径） | wrong-key med 2808µs p95 3805µs；unknown-user med 902µs p95 1213µs；malformed-blob med 630µs p95 838µs — 三类清晰可分：正确用户名要付完整 ed25519 验签 + 异步 authenticate 回调（~2.8 ms），错误用户名在用户名比较处提前退出（~0.9 ms），坏 blob 在解码/回调处最快（~0.6 ms） | **fix-divergence**（用户名枚举预言机：正确用户名的拒绝比错误用户名慢 3 倍，sshd 用垫时防住的正是这个；验收标准见 triage 注 1） |
+| E02 | 认证前空闲超时：拨号完成 KEX、协商 ssh-userauth 后不发任何字节，测量拆连接的时刻与方式（两端都配 3 s：sshd `LoginGraceTime 3`、tp_sshd `authTimeout 3 s`，使行可运行；默认值差异记录于 triage 注 3） | setitimer 为 login_grace_time 加 0–4 s 随机抖动（arc4random_uniform(4×10⁶) µs）；到时 grace_alarm_handler 杀进程组并 `_exit(EXIT_LOGIN_GRACE)`——静默关闭、线上无 DISCONNECT，落在 ~3–7 s。[sshd-session.c:1238-1248；sshd-session.c:211 grace_alarm_handler] | 4.29 s 处静默 `closed`（3 s + ~1.3 s 抖动，落在预测区间） | 2.97 s 处静默 `closed`（定时器自连接建立起 3 s 整、无抖动；测量锚点在 KEX+协商之后，故读数略小于 3.00，见 triage 注 2） | **match**（等配置下机制一致：超时即静默拆连接、无 DISCONNECT；默认值 30 s vs 120 s 为 deliberate，见 triage 注 3） |
+| E03 | 认证后空闲：已认证连接 5 s 内无任何流量（无通道）——服务端有无 keepalive 探测、有无空闲断连 | 两端都不探测也不断连：client_alive_interval 默认 0 = 禁用（client_alive_check 仅在 interval > 0 时发探测）；tp_sshd 认证成功即取消唯一的 _authTimer，此后无任何定时器。[servconf.c:452-455；serverloop.c:client_alive_check；server_connection.dart] | 5 s 空闲零流量（2 条环境噪声消息已过滤），连接存活 — prediction confirmed | 5 s 空闲零流量，连接存活 | **match** |
+| E04 | 认证前连接洪泛：顺序开 7 条连接并保持未认证（专用 harness，sshd 配 `MaxStartups 3:100:6` 使丢弃模式确定：begin=3、rate=100%、full=6）；按每条连接的首字节分类（SSH banner = 接受） | children_active < 3 的连接被接受（banner）；达到 3 后每个新连接被 drop_connection 拒绝：在任何 SSH banner 之前收到明文 `Not allowed at this time\r\n`，随后 socket 被父进程关闭。[sshd.c:drop_connection + should_drop_connection；sshd.c:1147 close(newsock)] | accepted #1–#3（banner），dropped #4–#7（拒绝行 + 关闭），sshd log 证实 `drop connection` — prediction confirmed | 7/7 全部接受（banner），无任何拒绝 | **deliberate-divergence**（tp_sshd 无认证前连接上限——嵌入式配对场景的监听面不由服务端自限；见 triage 注 4） |
+| E05 | 通道上限的执行时机（认证后）：先确认 10 个 session 通道，再计时 10 次第 11 个 open——每次 CHANNEL_OPEN 发出到 CHANNEL_OPEN_FAILURE 回复的 µs（C08 已记录拒绝码差异，本行是执行时机半边） | 两端都在 dispatch 当轮即时拒绝，无延迟、无限速：session_new 达到 max_sessions 返回 NULL，server_input_channel_open 立即回 CHANNEL_OPEN_FAILURE。[session.c:session_new；serverloop.c:server_input_channel_open] | 10/11 确认，第 11 个拒绝 reason=2 "open failed"，med 720µs p95 772µs max 838µs | 10/11 确认，第 11 个拒绝 reason=4 "Too many open channels (10/10)"，med 662µs p95 956µs max 1176µs | **match**（in-kind：两端均在分发当轮亚毫秒拒绝；拒绝码差异归 C08） |
+| E06 | keepalive 全局请求节奏：认证后流水线连发 20 个 `keepalive@openssh.com` GLOBAL_REQUEST（want_reply=1，间隔为零），随后活性检查——每个都必须被应答 | `keepalive@openssh.com` 不在 server_input_global_request 的已知请求表里（它是 sshd 自己的**出站** keepalive 名，serverloop.c:132-138）→ 未知请求 → success 保持 0 → 每个 REQUEST_FAILURE；sshd 的容活语义是任意四种回复都重置计数器（server_input_keep_alive）。[serverloop.c:server_input_global_request；serverloop.c:402-410] | 20 × REQUEST_FAILURE，连接存活 — prediction confirmed | 20 × REQUEST_SUCCESS，连接存活 | **deliberate-divergence**（应答种类不同、存活等价：任何合规客户端把任意回复都当活性证明；见 triage 注 5） |
+
+## Area E triage
+
+Verdicts: 3 match (E02, E03, E05), 2 deliberate-divergence (E04, E06),
+1 fix-divergence (E01), 6 rows. Timing rows are judged match-in-kind, never
+by numeric equality (area method note).
+
+### fix-divergence — acceptance criteria
+
+1. **E01 — auth-failure timing must not be an oracle.** A remote peer
+   timing the `USERAUTH_FAILURE` reply must not be able to distinguish
+   failure classes — in particular whether the USERNAME matched. Today
+   tp_sshd's three failure paths have disjoint costs (wrong-key med
+   ~2.8 ms — the full ed25519 verify plus the async authenticate callback;
+   unknown-user ~0.9 ms — the username mismatch early-exit before any
+   crypto, server_connection.dart:634; malformed-blob ~0.6 ms), so a
+   correct username is ~3× slower to reject than a wrong one. sshd
+   prevents exactly this by padding every failed non-"none" attempt to a
+   common floor before replying (auth2.c:ensure_minimum_time_since +
+   user_specific_delay: 5 ms minimum + 0-4.2 ms pseudorandom per-username
+   jitter derived from a secret — measured 6.8/7.0/7.7 ms medians with the
+   same-username conditions within 0.22 ms, the cross-username gap being
+   the secret-derived constant). Acceptance: fresh-connection-per-trial
+   median reply latencies for wrong-key / unknown-user / malformed-blob
+   are indistinguishable within the noise band. An implementation may
+   adopt sshd's floor+jitter scheme or equivalent constant-work padding;
+   note the fix is the total path time, not the individual compares (the
+   early-exit username compare and the embedder's early-exit key compare
+   are not themselves the observable).
+
+### deliberate-divergence (documented, not scheduled for fixing)
+
+- **E04 — no pre-auth connection cap.** sshd bounds concurrent
+  unauthenticated connections (MaxStartups 10:30:100 by default;
+  drop_connection answers with the plaintext "Not allowed at this time"
+  line and closes before any banner); tp_sshd accepts every connection
+  and gives each its full auth window. Embedded context: the server is
+  paired with the app client on the device — the flood surface the cap
+  defends against (an internet-facing sshd) is not this deployment, and
+  an embedder that needs the bound can enforce it at the listener (the
+  harness's own `ServerSocket`). A configurable cap policy is a Task 7
+  backlog candidate, not a fix.
+- **E06 — keepalive answered REQUEST_SUCCESS.** sshd replies
+  REQUEST_FAILURE (keepalive@openssh.com is unknown to its global-request
+  handler — it is the name sshd itself uses for outgoing keepalives);
+  tp_sshd special-cases the name and replies REQUEST_SUCCESS
+  (server_connection.dart:209-215). Liveness-equivalent: sshd's own
+  contract accepts any of the four reply types as proof of life
+  (server_input_keep_alive), so no compliant client observes a difference
+  beyond the reply id. Related observation: tp_sshd never SENDS
+  keepalives — it has no ClientAliveInterval equivalent (E03's
+  none/none).
+
+### notes (no action)
+
+1. **E01's sshd cross-username gap** — sshd's unknown-user cell (7.7 ms
+   median) sits ~1 ms above the same-username cells; that is
+   user_specific_delay working as designed (each username draws a
+   secret-derived constant of 0-4.2 ms; this run's draws happened to
+   differ by ~1 ms). Same-username conditions (wrong-key, malformed-blob)
+   are within 0.22 ms — the anti-oracle property holds where it matters.
+   The wrong-key condition is also the clearest cross-server processing
+   asymmetry in the area: sshd does NOT verify an unallowed key's
+   signature (user_key_allowed short-circuits the && in
+   auth2-pubkey.c:userauth_pubkey), while tp_sshd verifies before asking
+   the embedder — both absorbed under sshd's floor, both visible in
+   tp_sshd's unpadded cells.
+2. **E02's measurement anchor** — both servers arm their timer at
+   connection acceptance; the probe's clock starts after KEX + service
+   negotiation, so both readings undercount by the same ~20-30 ms.
+   tp_sshd's 2.97 s is "3 s minus the handshake lead-in"; sshd's 4.29 s
+   is "3 s + ~1.3 s jitter minus the same lead-in". Only one sample per
+   server per run is taken (the full jitter sweep would multiply the
+   row's wall time); the single sample landing inside the predicted
+   3-7 s band is the confirmation.
+3. **E02's default values** — the row matches at equal config, but the
+   DEFAULTS diverge: sshd LoginGraceTime 120 s (servconf.c:327-328) vs
+   tp_sshd authTimeout 30 s (ssh_server.dart). Deliberate: the embedded
+   pairing window (QR-pair → first login) is short-lived and a stale
+   pre-auth socket should not pin state for two minutes; 30 s is the
+   documented spec choice. sshd additionally jitters its grace expiry
+   (0-4 s) to make the exact teardown time unpredictable — tp_sshd's
+   fixed Timer is acceptable because the timeout is public configuration,
+   not a secret; recorded as a hardening candidate only.
+4. **E04's close detection** — the dropped connections' first bytes are
+   the refusal line; the close that follows (close(newsock) right after
+   drop_connection) was verified by keeping the socket subscription alive
+   past the first chunk (a first pass used `Socket.first`, whose
+   cancelled subscription hides the server's FIN and misreported the
+   refused connections as still open).
+5. **E01/E02/E04 dedicated harnesses** — these rows run on their own
+   server pairs (`startAuditServers` with `sshdConfigExtras`), both
+   because their sshd needs other config (LoginGraceTime 3 /
+   MaxStartups 3:100:6) and because E01's 150 failing logins would
+   otherwise run 127.0.0.1 into sshd's PerSourcePenalties (an authfail
+   penalty of 5 s each, active once past the 15 s penalty_min) and gate
+   the rows that follow on the shared sshd.

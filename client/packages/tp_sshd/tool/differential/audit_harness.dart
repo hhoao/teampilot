@@ -57,10 +57,10 @@ class AuditServers {
     required StreamController<SSHSocket> connections,
     required SSHServer tpServer,
     required File sshdPidFile,
-  }) : _listener = listener,
-       _connections = connections,
-       _tpServer = tpServer,
-       _sshdPidFile = sshdPidFile;
+  })  : _listener = listener,
+        _connections = connections,
+        _tpServer = tpServer,
+        _sshdPidFile = sshdPidFile;
 
   /// Loopback port of the system sshd, or 0 when it was not launched
   /// (`useSystemSshd: false`).
@@ -118,10 +118,20 @@ class AuditServers {
 /// our generated device key authorized, password auth off, StrictModes off
 /// (temp dir), Subsystem sftp internal-sftp.
 ///
+/// [sshdConfigExtras] appends extra `key value` lines to the sshd config
+/// (Area E's timing rows override `LoginGraceTime` / `MaxStartups` /
+/// `PerSourcePenalties` this way); the defaults are unchanged when it is
+/// empty. [tpSshdAuthTimeout] overrides the tp_sshd pre-auth timeout
+/// (default 30 s) the same way.
+///
 /// Throws [SshdUnavailableException] when an OpenSSH prerequisite is missing
 /// (the system sshd cannot launch, or `ssh-keygen` cannot execute) — the
 /// caller converts that into a skip, never a suite failure.
-Future<AuditServers> startAuditServers({bool useSystemSshd = true}) async {
+Future<AuditServers> startAuditServers({
+  bool useSystemSshd = true,
+  Map<String, String> sshdConfigExtras = const {},
+  Duration? tpSshdAuthTimeout,
+}) async {
   final dir = await Directory.systemTemp.createTemp('tp_diff_');
   final username = Platform.environment['USER'] ?? 'audituser';
 
@@ -141,7 +151,7 @@ Future<AuditServers> startAuditServers({bool useSystemSshd = true}) async {
   File? sshdPidFile;
   String sshdLogPath = '';
   if (useSystemSshd) {
-    final launched = await _launchSystemSshd(dir);
+    final launched = await _launchSystemSshd(dir, sshdConfigExtras);
     sshdPort = launched.port;
     sshdPidFile = launched.pidFile;
     sshdLogPath = launched.logPath;
@@ -163,6 +173,7 @@ Future<AuditServers> startAuditServers({bool useSystemSshd = true}) async {
     config: SSHServerConfig(
       hostKeyPair: hostKey,
       expectedUsername: username,
+      authTimeout: tpSshdAuthTimeout ?? const Duration(seconds: 30),
       authenticate: (request) async => _bytesEqual(
         request.publicKey,
         authorizedKeyBlob,
@@ -216,7 +227,8 @@ const _sshdBinary = '/usr/sbin/sshd';
 ///
 /// Overridable with the `TP_DIFF_SSHD` environment variable so the
 /// skip path (missing sshd) can be exercised on machines that have it.
-String get _sshdBinaryPath => Platform.environment['TP_DIFF_SSHD'] ?? _sshdBinary;
+String get _sshdBinaryPath =>
+    Platform.environment['TP_DIFF_SSHD'] ?? _sshdBinary;
 
 /// Bind-and-release port probe: returns a currently free loopback port.
 ///
@@ -230,12 +242,16 @@ Future<int> _probeFreePort() async {
 
 Future<({int port, File pidFile, String logPath})> _launchSystemSshd(
   Directory dir,
+  Map<String, String> configExtras,
 ) async {
   const maxAttempts = 3;
   for (var attempt = 1; attempt <= maxAttempts; attempt++) {
     final port = await _probeFreePort();
     final configPath = '${dir.path}/sshd_config';
     final logPath = '${dir.path}/sshd.log';
+    final extras = configExtras.entries
+        .map((entry) => '${entry.key} ${entry.value}')
+        .join('\n');
     File(configPath).writeAsStringSync('''
 ListenAddress 127.0.0.1
 HostKey ${dir.path}/host_key
@@ -248,6 +264,7 @@ StrictModes no
 Subsystem sftp internal-sftp
 PidFile ${dir.path}/sshd.pid
 LogLevel DEBUG3
+$extras
 ''');
 
     ProcessResult result;
@@ -279,13 +296,7 @@ LogLevel DEBUG3
   }
   final log = File('${dir.path}/sshd.log');
   final tail = log.existsSync()
-      ? log
-            .readAsLinesSync()
-            .reversed
-            .take(10)
-            .toList()
-            .reversed
-            .join('\n')
+      ? log.readAsLinesSync().reversed.take(10).toList().reversed.join('\n')
       : '(no log)';
   throw SshdUnavailableException(
     '$_sshdBinary exited non-zero $maxAttempts times; last log lines:\n$tail',
