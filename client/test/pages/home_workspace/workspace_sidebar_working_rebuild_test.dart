@@ -104,10 +104,7 @@ void main() {
             ],
             child: MultiBlocProvider(
               providers: [
-                BlocProvider<ChatCubit>(
-                  lazy: false,
-                  create: (_) => chatCubit,
-                ),
+                BlocProvider<ChatCubit>(lazy: false, create: (_) => chatCubit),
                 BlocProvider(
                   create: (_) => MemberPresenceCubit(storage: testHomeStorage),
                 ),
