@@ -170,6 +170,38 @@ void main() {
     await cubit.close();
   });
 
+  test(
+    'load re-anchors persisted selection when the folder targetId drifted',
+    () async {
+      final fs = InMemoryFilesystem();
+      final prefs = _prefsStore(fs);
+      const movedFolder = WorkspaceFolder(path: '/proj', targetId: 'ssh:home');
+      final config = OwnedLaunchConfiguration(
+        owner: movedFolder,
+        configuration: LaunchConfiguration.fromJson(
+          ShellScriptLaunchSchema.withDefaults({
+            'id': 'api',
+            'name': 'api',
+            'type': ShellScriptLaunchSchema.typeName,
+            'execute': 'scriptText',
+            'scriptText': 'true',
+            'executeInTerminal': false,
+          }),
+        ),
+      );
+      // Prefs predate the folder moving to the `ssh:home` machine.
+      await prefs.saveSelectedKey(_workspaceId, 'local|/proj|api');
+      final platform = FakeRunPlatform(configurations: [config]);
+      final cubit = _cubit(platform: platform, prefsStore: prefs);
+
+      await cubit.load();
+
+      expect(cubit.state.selectedKey, config.selectionKey);
+      expect(await prefs.selectedKeyFor(_workspaceId), config.selectionKey);
+      await cubit.close();
+    },
+  );
+
   test('load with empty configs and compounds clears selection and prefs', () async {
     final fs = InMemoryFilesystem();
     final prefs = _prefsStore(fs);

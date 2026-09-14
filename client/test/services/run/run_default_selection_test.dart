@@ -7,15 +7,21 @@ import 'package:teampilot/services/run/run_default_selection.dart';
 
 const _folder = WorkspaceFolder(path: '/proj');
 
-OwnedLaunchConfiguration _config(String id) => OwnedLaunchConfiguration(
-  owner: _folder,
-  configuration: LaunchConfiguration(id: id, name: id, type: 'shellScript'),
-);
+OwnedLaunchConfiguration _config(String id, {WorkspaceFolder? owner}) =>
+    OwnedLaunchConfiguration(
+      owner: owner ?? _folder,
+      configuration: LaunchConfiguration(id: id, name: id, type: 'shellScript'),
+    );
 
-OwnedLaunchCompound _compound(String id) => OwnedLaunchCompound(
-  owner: _folder,
-  compound: LaunchCompound(id: id, name: id, configurationIds: const []),
-);
+OwnedLaunchCompound _compound(String id, {WorkspaceFolder? owner}) =>
+    OwnedLaunchCompound(
+      owner: owner ?? _folder,
+      compound: LaunchCompound(
+        id: id,
+        name: id,
+        configurationIds: const [],
+      ),
+    );
 
 void main() {
   test('restores persisted key when it matches a config', () {
@@ -84,6 +90,61 @@ void main() {
     expect(
       resolveRunDefaultSelection(
         persistedKey: null,
+        configurations: [a],
+        compounds: const [],
+      ),
+      a.selectionKey,
+    );
+  });
+
+  test('config rematches by path+id when its targetId drifted', () {
+    const moved = WorkspaceFolder(path: '/proj', targetId: 'ssh:home');
+    final a = _config('a', owner: moved);
+    final stale = 'local|/proj|a';
+    expect(
+      resolveRunDefaultSelection(
+        persistedKey: stale,
+        configurations: [a],
+        compounds: const [],
+      ),
+      a.selectionKey,
+    );
+  });
+
+  test('compound rematches by path+id when its targetId drifted', () {
+    const moved = WorkspaceFolder(path: '/proj', targetId: 'ssh:home');
+    final c = _compound('c', owner: moved);
+    expect(
+      resolveRunDefaultSelection(
+        persistedKey: 'local|/proj|compound:c',
+        configurations: const [],
+        compounds: [c],
+      ),
+      c.selectionKey,
+    );
+  });
+
+  test('targetId drift rematch prefers the folder matching the stale path', () {
+    const local = WorkspaceFolder(path: '/other');
+    const moved = WorkspaceFolder(path: '/proj', targetId: 'ssh:home');
+    final other = _config('a', owner: local);
+    final target = _config('a', owner: moved);
+    expect(
+      resolveRunDefaultSelection(
+        persistedKey: 'local|/proj|a',
+        configurations: [other, target],
+        compounds: const [],
+      ),
+      target.selectionKey,
+    );
+  });
+
+  test('paths containing a pipe still rematch by last segment', () {
+    const moved = WorkspaceFolder(path: '/we|ird', targetId: 'ssh:home');
+    final a = _config('a', owner: moved);
+    expect(
+      resolveRunDefaultSelection(
+        persistedKey: 'local|/we|ird|a',
         configurations: [a],
         compounds: const [],
       ),

@@ -176,4 +176,91 @@ void main() {
       'ssh:host|/x|run',
     );
   });
+
+  test('unreachable folder target does not drop other folders configs', () async {
+    await writeLaunchJson(folderA, {
+      'version': 1,
+      'configurations': [
+        {'id': 'main', 'name': 'Main A', 'type': 'shellScript', 'execute': 'scriptText', 'scriptText': 'a'},
+      ],
+    });
+    const unreachable = WorkspaceFolder(path: '/home/hhoa', targetId: 'ssh:down');
+    final faultIo = _FaultLaunchConfigIo(
+      delegate: memoryIo,
+      throwForTargetId: 'ssh:down',
+    );
+    final faultStore = LaunchConfigStore(io: faultIo);
+
+    final list = await faultStore.listConfigurations(
+      folders: [unreachable, folderA],
+    );
+
+    expect(list, hasLength(1));
+    expect(list.single.owner.path, '/proj/a');
+  });
+
+  test('unreachable folder target does not drop other folders compounds', () async {
+    await writeLaunchJson(folderA, {
+      'version': 1,
+      'configurations': [
+        {'id': 'a', 'name': 'A', 'type': 'shellScript', 'execute': 'scriptText', 'scriptText': 'a'},
+      ],
+      'compounds': [
+        {'id': 'both', 'name': 'Both', 'configurations': ['a']},
+      ],
+    });
+    const unreachable = WorkspaceFolder(path: '/home/hhoa', targetId: 'ssh:down');
+    final faultIo = _FaultLaunchConfigIo(
+      delegate: memoryIo,
+      throwForTargetId: 'ssh:down',
+    );
+    final faultStore = LaunchConfigStore(io: faultIo);
+
+    final compounds = await faultStore.listCompounds(
+      folders: [unreachable, folderA],
+    );
+
+    expect(compounds, hasLength(1));
+    expect(compounds.single.owner.path, '/proj/a');
+  });
+}
+
+/// Delegates to [delegate] but throws for [throwForTargetId], simulating an
+/// unreachable SSH/WSL machine.
+class _FaultLaunchConfigIo implements LaunchConfigIo {
+  _FaultLaunchConfigIo({
+    required this.delegate,
+    required this.throwForTargetId,
+  });
+
+  final LaunchConfigIo delegate;
+  final String throwForTargetId;
+
+  void _guard(String targetId) {
+    if (targetId == throwForTargetId) {
+      throw StateError('target unreachable: $targetId');
+    }
+  }
+
+  @override
+  Future<bool> exists(String path, {required String targetId}) {
+    _guard(targetId);
+    return delegate.exists(path, targetId: targetId);
+  }
+
+  @override
+  Future<String?> readString(String path, {required String targetId}) {
+    _guard(targetId);
+    return delegate.readString(path, targetId: targetId);
+  }
+
+  @override
+  Future<void> writeString(
+    String path,
+    String content, {
+    required String targetId,
+  }) {
+    _guard(targetId);
+    return delegate.writeString(path, content, targetId: targetId);
+  }
 }

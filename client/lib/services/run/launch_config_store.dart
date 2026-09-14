@@ -156,7 +156,7 @@ class LaunchConfigStore {
   }) async {
     final results = <OwnedLaunchConfiguration>[];
     for (final folder in folders) {
-      final doc = await _readDocument(folder);
+      final doc = await _readDocumentOrSkip(folder);
       if (doc == null) continue;
       for (final config in doc.configurations) {
         results.add(
@@ -172,13 +172,28 @@ class LaunchConfigStore {
   }) async {
     final results = <OwnedLaunchCompound>[];
     for (final folder in folders) {
-      final doc = await _readDocument(folder);
+      final doc = await _readDocumentOrSkip(folder);
       if (doc == null) continue;
       for (final compound in doc.compounds) {
         results.add(OwnedLaunchCompound(owner: folder, compound: compound));
       }
     }
     return results;
+  }
+
+  /// Reads [folder]'s document, swallowing per-folder IO failures.
+  ///
+  /// One unreachable machine (SSH down / WSL not started / permission error)
+  /// must not drop every other folder's launch items — the Run toolbar would
+  /// then look empty even though local `launch.json` files exist.
+  Future<LaunchConfigDocument?> _readDocumentOrSkip(
+    WorkspaceFolder folder,
+  ) async {
+    try {
+      return await _readDocument(folder);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> upsertConfiguration({
