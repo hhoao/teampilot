@@ -1703,6 +1703,7 @@ Future<AppShell> buildAppShell({
     );
     final workspaceWorktreeRegistry = WorkspaceWorktreeRegistry(
       storage: homeStorage,
+      gitMutationSignals: gitRepoStore.headChanged,
     );
     final workspaceSessionGroupsRegistry = WorkspaceSessionGroupsRegistry(
       storage: homeStorage,

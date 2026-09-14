@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/models/git_worktree.dart';
@@ -503,6 +505,31 @@ void main() {
       expect(cubit.state.loading, isFalse);
       expect(cubit.state.worktrees, isEmpty);
       await cubit.close();
+    });
+  });
+
+  group('gitMutationSignals', () {
+    test('reloads only when the event repo matches the active repo', () async {
+      final controller = StreamController<String>.broadcast(sync: true);
+      addTearDown(controller.close);
+      final lister = _CountingLister((_) => [_wt('/repo', main: true)]);
+      final cubit = WorktreeCubit(
+        storage: fakeHomeStorage(),
+        lister: lister,
+        initialRepoPath: '/repo',
+        gitMutationSignals: controller.stream,
+      );
+
+      controller.add('/repo'); // 匹配 → reload
+      controller.add('/other'); // 不匹配 → 忽略
+      controller.add(''); // 空 → 忽略
+      await Future<void>.delayed(Duration.zero);
+      expect(lister.calls, 1);
+
+      await cubit.close();
+      controller.add('/repo'); // close 后不得再触发
+      await Future<void>.delayed(Duration.zero);
+      expect(lister.calls, 1);
     });
   });
 }

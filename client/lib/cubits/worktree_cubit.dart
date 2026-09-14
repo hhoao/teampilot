@@ -149,6 +149,7 @@ class WorktreeCubit extends Cubit<WorktreeState> {
     WorktreeUiPrefsStore? prefsStore,
     WorkspaceWorktreeStore? worktreeStore,
     String? initialRepoPath,
+    Stream<String>? gitMutationSignals,
   }) : _storage = storage,
        _lister = lister,
        _prefsStore = prefsStore ?? WorktreeUiPrefsStore(storage: storage),
@@ -159,12 +160,18 @@ class WorktreeCubit extends Cubit<WorktreeState> {
            worktreeStore: worktreeStore,
            initialRepoPath: initialRepoPath,
          ),
-       );
+       ) {
+    final signals = gitMutationSignals;
+    if (signals != null) {
+      _gitSignalsSub = signals.listen(_onGitMutationSignal);
+    }
+  }
 
   WorktreeLister? _lister;
   final HomeStorage _storage;
   final WorktreeUiPrefsStore _prefsStore;
   final WorkspaceWorktreeStore? _worktreeStore;
+  StreamSubscription<String>? _gitSignalsSub;
 
   /// Scopes persisted UI state (collapse + current worktree). Empty disables
   /// persistence (e.g. in unit tests that don't exercise it).
@@ -424,6 +431,29 @@ class WorktreeCubit extends Cubit<WorktreeState> {
       _reloadQueued = false;
       unawaited(reloadActiveRepo());
     }
+  }
+
+  void _onGitMutationSignal(String repoRoot) {
+    if (isClosed) return;
+    final path = repoRoot.trim();
+    if (path.isEmpty) return;
+    final active = state.repoPath.trim();
+    if (active.isEmpty) return;
+    if (!workspacePathsEqual(
+      path,
+      active,
+      usesPosixPaths: _storage.usesPosixPaths,
+    )) {
+      return;
+    }
+    unawaited(reloadActiveRepo());
+  }
+
+  @override
+  Future<void> close() async {
+    await _gitSignalsSub?.cancel();
+    _gitSignalsSub = null;
+    await super.close();
   }
 
   bool _canReuseLoadedProject(String path) =>

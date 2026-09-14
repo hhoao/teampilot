@@ -5,10 +5,15 @@ import 'workspace_worktree_store.dart';
 /// Retains long-lived [WorktreeCubit]s per open workspace, backed by
 /// [WorkspaceWorktreeStore] for instant hydration on first mount.
 class WorkspaceWorktreeRegistry {
-  WorkspaceWorktreeRegistry({WorkspaceWorktreeStore? store, this.storage})
-    : _store = store ?? WorkspaceWorktreeStore();
+  WorkspaceWorktreeRegistry({
+    WorkspaceWorktreeStore? store,
+    this.storage,
+    Stream<String>? gitMutationSignals,
+  }) : _store = store ?? WorkspaceWorktreeStore(),
+       _gitMutationSignals = gitMutationSignals;
 
   final WorkspaceWorktreeStore _store;
+  final Stream<String>? _gitMutationSignals;
   final HomeStorage? storage;
   final Map<String, WorktreeCubit> _cubits = <String, WorktreeCubit>{};
 
@@ -38,6 +43,7 @@ class WorkspaceWorktreeRegistry {
       workspaceId: ws,
       worktreeStore: _store,
       initialRepoPath: repoPath,
+      gitMutationSignals: _gitMutationSignals,
     );
     _cubits[ws] = cubit;
     return cubit;
