@@ -149,6 +149,11 @@ class _SessionChatViewState extends State<SessionChatView> {
 
   /// [_startLiveRefresh] 的在途启动链:并发调用合并为一条,见 [_startLiveRefresh]。
   Future<void>? _liveRefreshStartInFlight;
+
+  /// Single-flight for the non-forced history load: mount, activation, and
+  /// running/busy transitions can fire in one async window; coalesce so a cold
+  /// seat is never parsed twice.
+  Future<void>? _historyLoadInFlight;
   AiHistorySeat? _seat;
   CliTaskBoardController? _taskBoardController;
 
@@ -324,6 +329,10 @@ class _SessionChatViewState extends State<SessionChatView> {
       _editingFailedMessage = null;
       _subagentPreview.clear();
       _bindSeat();
+      // The single-flight is seat-scoped: if the previous seat's non-forced
+      // load is still in flight, the new seat must not tether to it or it
+      // would never get its own load until an unrelated hot transition.
+      _historyLoadInFlight = null;
       // Defer: load → runtime.setLoading sync-notifies seat listeners
       // while ancestors (e.g. TpDeferredForegroundMount) are still building.
       // Do not clearPendings here: re-entering a seat (tab switch, team prop
@@ -335,7 +344,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         unawaited(_loadHistoryThenHydratePersistedPendingUsers());
       });
     } else if (oldWidget.routeActive != widget.routeActive) {
-      _maybeStartLiveRefreshForRunningPty();
+      unawaited(_refreshWhenHot());
     }
   }
 
@@ -519,12 +528,62 @@ class _SessionChatViewState extends State<SessionChatView> {
     usesPosixPaths: homeStorageOf(context).usesPosixPaths,
   );
 
-  Future<void> _loadHistory({bool force = false}) async {
+  Future<void> _loadHistory({bool force = false}) {
+    if (force) return _loadHistoryImpl(force: true);
+    final inFlight = _historyLoadInFlight;
+    if (inFlight != null) return inFlight;
+    final future = _loadHistoryImpl(force: false);
+    _historyLoadInFlight = future;
+    future.whenComplete(() {
+      if (identical(_historyLoadInFlight, future)) {
+        _historyLoadInFlight = null;
+      }
+    }).ignore();
+    return future;
+  }
+
+  Future<void> _loadHistoryImpl({required bool force}) async {
     final seat = _seat;
     if (seat == null) return;
+    final chat = context.read<ChatCubit>();
+    final running = chat.isMemberRunning(
+      sessionId: widget.session.sessionId,
+      memberId: _shellMemberId,
+    );
+    // Cold seats only load when hot (visible or running). Offstage, idle
+    // restored tabs defer to first activation instead of parsing on boot.
+    if (!force &&
+        !isHistorySeatHot(
+          routeActive: widget.routeActive,
+          isMemberRunning: running,
+        )) {
+      appLogger.d(
+        '[history-defer] not-hot skip session=${widget.session.sessionId} '
+        'member=$_shellMemberId routeActive=${widget.routeActive} '
+        'running=$running',
+      );
+      await _liveRefresh?.stop();
+      return;
+    }
+    final ready =
+        seat.state.status == AiHistoryViewStatus.ready &&
+        seat.state.sessionId == widget.session.sessionId &&
+        seat.state.memberId == widget.selectedMemberId;
+    // A list-row stub carries no persisted CLI (resolver falls back to claude).
+    // Load the session document first so the cold parse locates the real
+    // transcript once instead of guessing and re-parsing.
+    var session = widget.session;
+    if (!ready && !chat.sessionHasDocument(session.sessionId)) {
+      final hydrated = await chat.hydrateSessionDocument(
+        session.workspaceId,
+        session.sessionId,
+      );
+      if (!mounted) return;
+      if (hydrated != null) session = hydrated;
+    }
     if (force) {
       await seat.load(
-        session: widget.session,
+        session: session,
         memberId: widget.selectedMemberId,
         launchContext: _launchContext,
         team: widget.team,
@@ -533,17 +592,14 @@ class _SessionChatViewState extends State<SessionChatView> {
       );
       if (!mounted) return;
       _maybeStartLiveRefreshForRunningPty();
-      // Seat owns the working latch across remount — sync (do not force-clear)
-      // so landing Starting survives long connects.
-      _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
+      _syncAwaitingFromWorkingSessions(chat.state);
       if (seat.state.awaitingAssistant) {
         unawaited(_startLiveRefresh(skipInitialRefresh: true));
       }
       return;
     }
-    // Soft when already ready for this seat — no loading flash / hard reload.
     await seat.softReloadOrLoad(
-      session: widget.session,
+      session: session,
       memberId: widget.selectedMemberId,
       launchContext: _launchContext,
       team: widget.team,
@@ -551,11 +607,38 @@ class _SessionChatViewState extends State<SessionChatView> {
     );
     if (!mounted) return;
     _maybeStartLiveRefreshForRunningPty();
-    // Landing seed / continue awaiting: refresh while PTY runs offstage.
-    _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
+    _syncAwaitingFromWorkingSessions(chat.state);
     if (seat.state.awaitingAssistant) {
       unawaited(_startLiveRefresh(skipInitialRefresh: true));
     }
+  }
+
+  /// Single entry for "this seat's hot state may have changed": load a cold hot
+  /// seat, otherwise (re)start or stop live refresh.
+  Future<void> _refreshWhenHot() async {
+    if (!mounted) return;
+    final seat = _seat;
+    final running = context.read<ChatCubit>().isMemberRunning(
+      sessionId: widget.session.sessionId,
+      memberId: _shellMemberId,
+    );
+    if (!isHistorySeatHot(
+      routeActive: widget.routeActive,
+      isMemberRunning: running,
+    )) {
+      await _liveRefresh?.stop();
+      return;
+    }
+    final ready =
+        seat != null &&
+        seat.state.status == AiHistoryViewStatus.ready &&
+        seat.state.sessionId == widget.session.sessionId &&
+        seat.state.memberId == widget.selectedMemberId;
+    if (!ready) {
+      await _loadHistoryThenHydratePersistedPendingUsers();
+      return;
+    }
+    _maybeStartLiveRefreshForRunningPty();
   }
 
   /// PTY shells for Simple seats are keyed by [AppSession.sessionId].
@@ -766,6 +849,10 @@ class _SessionChatViewState extends State<SessionChatView> {
     final previous = _liveRefresh;
     _liveRefresh = null;
     _liveRefreshScope = null;
+    /// Drop the stale start single-flight too, or its future can return from
+    /// `_startLiveRefresh` and let the new seat miss live refresh until the
+    /// next busy/route event.
+    _liveRefreshStartInFlight = null;
     await previous?.stop();
   }
 
@@ -1310,7 +1397,7 @@ class _SessionChatViewState extends State<SessionChatView> {
                     current.isSessionBusy(widget.session.sessionId),
                 listener: (context, state) {
                   _syncAwaitingFromWorkingSessions(state);
-                  _maybeStartLiveRefreshForRunningPty();
+                  unawaited(_refreshWhenHot());
                   final chat = context.read<ChatCubit>();
                   _notifyFollowUpMemberWorking(chat);
                   _clearStoppedTurnIfSeatIdle(chat);
