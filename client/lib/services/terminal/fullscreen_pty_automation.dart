@@ -287,14 +287,18 @@ class FullscreenPtyAutomation {
     machine.noteStagingAttempt();
     bool canExecute() => !(isAcked?.call() ?? false);
     await port.syncDisplayGrid();
-    // Paste-denominator baseline: text already present before this paste (an
-    // earlier identical transcript echo / staged body on a resumed session).
-    // Newly pasted text must appear *below* this line in the live composer;
-    // otherwise the probe would ACK the old line instead of the new message.
-    final needle = PtyAutomationNeedle.forText(text);
-    final preBaseline = _locatePasteAck(port, needle);
+    // Clear the composer first so the baseline reflects only content that
+    // survives the clear — a pre-existing staged body on a resumed session is
+    // wiped here and must NOT anchor the new paste.
     await port.clearStagedInput(canExecute: canExecute);
     await Future<void>.delayed(_timing.afterClear);
+    // Paste-denominator baseline: text still present after the clear (an
+    // earlier identical transcript echo on a resumed / repeated session).
+    // Newly pasted text must appear STRICTLY below this line — a fresh paste
+    // lands in the bottom-pinned input box; any match at or above the baseline
+    // is the old copy, not the new message.
+    final needle = PtyAutomationNeedle.forText(text);
+    final preBaseline = _locatePasteAck(port, needle);
     await port.pasteText(text, canExecute: canExecute);
     final anchor = await _pollForNeedle(
       port,
@@ -303,8 +307,8 @@ class FullscreenPtyAutomation {
       pollTimeout: _pastePollBudget(text),
     );
     if (anchor == null) return null;
-    if (preBaseline != null && anchor.row < preBaseline.row) {
-      // The only match sits above the pre-paste baseline → it is the old
+    if (preBaseline != null && anchor.row <= preBaseline.row) {
+      // The match sits at or above the post-clear baseline → it is the old
       // transcript echo, not the newly staged line. Treat as a miss.
       appLogger.d(
         '[team-bus] pty-probe-ack stale-baseline needle="$needle" '

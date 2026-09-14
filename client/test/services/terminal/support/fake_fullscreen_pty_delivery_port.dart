@@ -151,12 +151,16 @@ final class RowAwareFakeFullscreenPtyDeliveryPort
           strategy: FullscreenCrAckStrategy.composerMovesDown,
           composerPrefix: '\u203a',
         ),
+    this.pasteFailsToStage = false,
+    this.staleEcho,
+    this.staleRow = 3,
   });
 
   @override
   final FullscreenCrAckConfig crAckConfig;
+  final bool pasteFailsToStage;
   String? staleEcho; // pre-render text sitting on an upper row
-  int staleRow = 3;
+  int staleRow;
   String? staged; // freshly pasted text
   int stagedRow = 5;
   int pasteCount = 0;
@@ -221,11 +225,9 @@ final class RowAwareFakeFullscreenPtyDeliveryPort
   @override
   Future<void> pasteText(String text, {bool Function()? canExecute}) async {
     pasteCount++;
-    // First paste: only the stale echo exists (row 3). Real TUI renders the
-    // pasted copy below it (row 5) — approximate with stagedRow.
-    if (staleEcho == null) {
-      staleEcho = text;
-      staleRow = 3;
+    if (pasteFailsToStage) {
+      staged = null; // paste dropped; grid still shows only the stale echo
+      return;
     }
     staged = text;
     stagedRow = 5;

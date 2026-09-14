@@ -389,8 +389,10 @@ void main() {
         // on a lower row in the input box. The paste-denominator baseline must
         // require the new line, otherwise the second send locks onto the first.
         final machine = newMachine()..begin();
-        final port = RowAwareFakeFullscreenPtyDeliveryPort();
         final text = TeamBus.doorbellNotice;
+        final port = RowAwareFakeFullscreenPtyDeliveryPort(
+          staleEcho: text,
+        );
 
         final outcome = await automation.continueSubmission(
           machine,
@@ -408,6 +410,36 @@ void main() {
         );
         expect(port.pasteCount, 1);
         expect(port.crCount, greaterThanOrEqualTo(1));
+      },
+    );
+
+    test(
+      'failed paste with same-text echo above baseline ends pasteNotFound, not a false success',
+      () async {
+        // If the new paste does not land, the only match is the stale echo at
+        // the baseline row. The strict (<=) baseline must reject it — otherwise
+        // a dropped paste would be ACKed as staged and a stray CR sent.
+        final machine = newMachine()..begin();
+        final text = TeamBus.doorbellNotice;
+        final port = RowAwareFakeFullscreenPtyDeliveryPort(
+          pasteFailsToStage: true,
+          staleEcho: text,
+        );
+
+        final outcome = await automation.continueSubmission(
+          machine,
+          port: port,
+          text: text,
+          pasteSettle: Duration.zero,
+        );
+
+        expect(
+          outcome,
+          FullscreenPtyDeliveryOutcome.pasteNotFound,
+          reason:
+              'a paste that never staged must not be ACKed by the stale echo '
+              'at the baseline row (<= check) or reported as submitted',
+        );
       },
     );
   });
