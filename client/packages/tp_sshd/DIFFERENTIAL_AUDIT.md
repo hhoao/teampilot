@@ -195,3 +195,119 @@ Verdicts: 8 match, 3 deliberate-divergence, 8 fix-divergence, 19 rows
   sshd answering a *second* KEXINIT mid-exchange with `UNIMPLEMENTED`
   (kex.c:kex_protocol_error — the strict-KEX fatal case applies only to the
   initial KEX); recorded for Area B, where rekey edge cases belong.
+
+## Area B — rekey timing
+
+Anchor finding (pre-confirmed): **tp_sshd never initiates a rekey.**
+dartssh2's `rekey()` (ssh_transport.dart:2054) is a client-role API no
+server code calls, and `server_connection.dart` has no byte counter and no
+timer — a long-lived pairing session keeps its keys forever unless the peer
+chooses to rotate them. Every runnable row therefore drives the exchange
+from the client side.
+
+- **B05–B07 are source-only rows** (a host-key change needs a MITM proxy
+  that owns a second host key; the rekey thresholds need a 64 GiB /
+  configured-interval session): their columns record source-verified facts
+  instead of live runs, and are marked `source-only`.
+- **B02 is a distribution row**: whether the channel teardown races into
+  the exchange window is a sub-millisecond timing question, so the row runs
+  five rounds per server and the observable is the outcome distribution.
+- Rows B03/B04/B08 inject crafted packets through the raw driver's
+  transport around a client-initiated rekey; post-auth observations filter
+  sshd's ambient hostkeys GLOBAL_REQUEST + DEBUG (normalized once in the
+  method section above). The rekey-driven stimulus is always a *rekey* —
+  the strict-KEX fatal rules of A19 apply only to the initial KEX
+  (kex.c:kex_protocol_error:239 requires `KEX_INITIAL`, cleared in
+  kex.c:kex_input_newkeys:561).
+
+| ID | 刺激 | OpenSSH 预期（源码出处） | OpenSSH 实测 | tp_sshd 实测 | 判定 |
+|----|------|--------------------------|--------------|--------------|------|
+| B01 | 对端主动 rekey（真实 dartssh2 SSHClient，开着 `cat` exec 通道，两次 stdin 回显之间调用 `rekey()`，之后再执行一条命令） | 正常 rekey：服务器应答自己的 KEXINIT，交换走到 NEWKEYS，已开通道在新密钥下继续工作。[kex.c:kex_send_newkeys; kex.c:kex_input_kexinit; packet.c:ssh_packet_send2（rekey 期间非 KEX 出站包排队）] | rekey completed; 通道 rekey 前后回显均成功；rekey 后新 exec `"echo post" -> "post"`；通道干净关闭（exit 0） — prediction confirmed | 完全相同（rekey completed; 前后回显 ok; 新 exec ok; exit 0） | **match** |
+| B02 | rekey 期间有数据在途（×5 轮）：1 MiB exec 流（`head -c 1048576` 模式文件）流动中客户端在收到 ≥ 64 KiB 时 `rekey()`；流必须逐字节完整、通道必须正常收尾 | 两边都在交换期间把非 KEX 出站包排队、NEWKEYS 后按序冲刷：流短暂停顿后继续，不丢、不乱序。[packet.c:ssh_packet_send2（"During rekeying we can only send key exchange messages. Queue everything else."）] | 5/5 轮：流逐字节完整、按序；通道干净关闭（exit 0） — prediction confirmed | 4/5 轮干净；1 轮流完整但**通道永远不关闭**：exec 收尾（exit-status/EOF/CLOSE）落进交换窗口被丢弃，会话挂死（追踪证实：客户端对 packet 40/41/42 回 UNIMPLEMENTED，即 ssh_transport.dart `_handleMessage` 的 `_kexInProgress` default 分支丢包；单独 8 轮测量中挂死 1–2 轮，OpenSSH 侧 0/8） | **fix-divergence** |
+| B03 | 交换进行中注入第二个 KEXINIT（rekey 刚发起、NEWKEYS 之前，算法列表与首个相同） | 重复 KEXINIT 不重新协商：它落入 `kex_protocol_error`（kex_input_kexinit 收到首个 KEXINIT 时把 KEXINIT 重注册为 kex_protocol_error），非首次交换的 strict 分支不触发 → 回 `UNIMPLEMENTED`，进行中的交换照常完成，连接继续。[kex.c:kex_input_kexinit:621; kex.c:kex_protocol_error:234-247（fatal 需 KEX_INITIAL）; kex.c:kex_input_newkeys:561] | `msg:20(KEXINIT), msg:3(UNIMPLEMENTED), msg:31(KEXDH_REPLY), msg:21(NEWKEYS), msg:82(REQUEST_FAILURE)` — rekey 完成、请求 ping 仍被应答，prediction confirmed；sshd log 证实 `kex_protocol_error: type 20 seq 3` | `msg:20(KEXINIT), msg:31(KEXDH_REPLY), closed` — 重复 KEXINIT **被静默并入协商**（无 UNIMPLEMENTED）：`_handleMessageKexInit` 用它覆盖 `_remoteKexInit` 并替换临时 kex，交换哈希失同步，客户端验证 KEXDH_REPLY 签名失败（"The message is forged or malformed or the signature is invalid"）→ 连接关闭，rekey 永不完成 | **fix-divergence** |
+| B04 | rekey KEXINIT 只提议不支持的 kex 算法（kex 列表 = `tp-sshd-audit-bogus-kex`，其余字段合法） | 服务器先发自己的 KEXINIT，协商失败为致命：`choose_kex` 失败 → `kex->failed_choice` → `sshpkt_vfatal` 的 `SSH_ERR_NO_KEX_ALG_MATCH` 分支 → `logdie "Unable to negotiate … Their offer: …"` 退出 — 线上无 DISCONNECT，只有 sshd log 可见。[kex.c:kex_choose_conf:980-984; packet.c:sshpkt_vfatal:2043-2050] | 裸 `closed`，无 DISCONNECT；sshd log 证实 `Unable to negotiate … Their offer: tp-sshd-audit-bogus-kex`（其 KEXINIT 已发出但 logdie 退出时未冲上线，与 A03/A04 同类） | `msg:20(KEXINIT), closed` — 同样致命、同样无 DISCONNECT；区别仅在 tp_sshd 的 KEXINIT 先到达了线上（`_sendKexInit` 在协商抛 `StateError('No matching key exchange algorithm')` 之前已写出） | **match**（裸关闭这一结果类一致；线上形状的差别见 triage 注记 5） |
+| B05 | rekey 时服务器换主机密钥（客户端策略镜像，需 MITM 才能差分运行 — source-only） | OpenSSH 客户端在**每次**交换中重新验证服务器主机密钥，密钥变化即致命。[kexgen.c:167 → kex.c:kex_verify_host_key:1183-1196 → sshconnect2.c:verify_host_key_callback:94-103（fatal "Host key verification failed."）] | source-only — 机制在源码中确认（kexgen.c:167 → kex.c:1183-1196 → sshconnect2.c:94-103） | source-only — dartssh2 客户端同样：ssh_transport.dart:1903-1913 在每次 rekey 重比对已接受密钥的指纹，变化即以 `SSHHostkeyError "Host key changed during rekey: …"` 关闭（刻意不再询问 onVerifyHostKey） | **match**（客户端行为参照行） |
+| B06 | 长会话字节阈值：服务器自己会不会发起 rekey — source-only（10.2 默认阈值为密码学几何量级，回环打满需数小时） | sshd 的触发机制**始终在岗**：`max_blocks` 取密码几何界（block≥16 → 2^(block×2) 块；RekeyLimit 取 min；另有 MAX_PACKETS 2^31 硬顶），每次发包与主循环检查，超限即服务器自发 KEXINIT（`kex_start_rekex`），非 KEX 出站包排队到 NEWKEYS。[packet.c:1046-1063; packet.c:1070-1123 + 1366-1399; serverloop.c:385-387；sshd_config.5:1788-1812（默认 "default none"）] | source-only — 机制在源码中确认；10.2 默认仅字节界（RekeyLimit "default none"，servconf.c:398-401 → rekey_limit=0/interval=0），本 harness 实测 sshd 每连接打日志 `rekey in after 4294967296 blocks`（= 2^32 块，AES 16 字节块即 64 GiB） | source-only — **无任何触发机制**：server_connection.dart 无字节计数器、无定时器（"rekey" 零引用）；dartssh2 的 `rekey()`（ssh_transport.dart:2054）是客户端角色 API，服务器代码从不调用 — 密钥只在客户端主动时才轮换 | **fix-divergence** |
+| B07 | 时间阈值 rekey（sshd 每小时）— source-only（等 1 小时不现实，且 10.2 默认根本没有时间阈值） | 时间 rekey 仅在 RekeyLimit 配置了 interval 时生效（serverloop.c:171 只在 `rekey_interval > 0` 时排定 deadline，packet.c:1095-1097 触发）；默认（"default none"）sshd 从不按时间 rekey | source-only — 可配置（`RekeyLimit <bytes> <interval>`）但默认关闭：servconf.c:400-401 默认 interval=0 | source-only — 与 B06 同一无：服务器侧不存在任何定时器，配置等价物也无从触发 | **fix-divergence**（与 B06 同一缺失机制） |
+| B08 | strict-kex 的 rekey 变体：rekey KEXINIT 之后、NEWKEYS 之前注入乱序 NEWKEYS（strict kex 已协商 — dartssh2 客户端首包带 `kex-strict-c-v00@openssh.com`） | 乱序 NEWKEYS 不被采纳：交换期 dispatch 指向 `kex_protocol_error` → 回 `UNIMPLEMENTED`；但 strict 的读序号复位**照发**（packet.c:1804-1808 对每个收到的 NEWKEYS 复位 p_read.seqnr，rekey 也算），于是客户端下一包 MAC 校验失败（"Corrupted MAC on input."）→ 拆连接、无 DISCONNECT。[kex.c:kex_input_newkeys:531; packet.c:1804-1808; packet.c:1697/1717; packet.c:sshpkt_vfatal] | `msg:20(KEXINIT), msg:3(UNIMPLEMENTED), msg:31(KEXDH_REPLY), msg:21(NEWKEYS)` — 交换**完成**、连接存活；sshd log：复位两次（`resetting read seqnr 4` / `…3`）但**无** "Corrupted MAC" — 预测的 MAC 失效半段未发生：协商出的 aes256-gcm 不把序号绑进 AEAD nonce（只有 chacha20-poly1305 绑，cipher.c:336-340 / cipher-chachapoly.c:69-82），复位因此无害 | `msg:20(KEXINIT), closed` — 乱序 NEWKEYS **被直接采纳**：`_handleMessageNewKeys`（ssh_transport.dart:2016）无进行中检查，用陈旧交换哈希重新推导密钥并终结交换状态；客户端真正的 KEXDH_INIT 随后命中 kex 为空的 `SSHStateError`（ssh_transport.dart:1951-1960）→ 连接被拆，无 DISCONNECT，rekey 永不完成 | **fix-divergence** |
+
+## Area B triage
+
+Verdicts: 3 match (B01, B04, B05), 5 fix-divergence (B02, B03, B06+B07,
+B08), 0 deliberate-divergence, 8 rows.
+
+### fix-divergence — acceptance criteria
+
+1. **B02 — rekey 交换窗口内到达的会话流量不得被丢弃。** The shared
+   transport (used by BOTH the tp_sshd server and the dartssh2 client)
+   answers every incoming non-KEX message that is processed while a key
+   exchange is in progress with `UNIMPLEMENTED` and drops it
+   (ssh_transport.dart:1625-1627: `_handleMessage` default case →
+   `_handleUnexpectedKexMessage` → `_sendUnimplemented`). OpenSSH keeps
+   dispatching ids ≥ 50 through a rekey — `kex_reset_dispatch` only guards
+   the transport range 1-49 (kex.c:252-256). Both servers queue their
+   *outgoing* non-KEX traffic during an exchange, so bulk data is safe; the
+   casualties are packets that were sent before the peer's KEXINIT arrived
+   and land inside the window. In the audit driver (in-process server, so
+   the exec teardown trails the data by event-loop turns) that happens for
+   the exit-status/EOF/CLOSE teardown in 1-2 of 8 rounds — the channel then
+   hangs forever (the client answered UNIMPLEMENTED for packets 40/41/42;
+   both server and client carry the same drop, so any peer whose traffic
+   trails its rekey KEXINIT can hit the server half too). Acceptance:
+   a non-KEX message racing into the exchange window is processed, or
+   buffered and re-dispatched after NEWKEYS — never silently dropped; in
+   particular a channel teardown must always survive a rekey.
+   (dartssh2-side change.)
+2. **B03 — 交换进行中的重复 KEXINIT 必须被拒绝而不是并入协商。**
+   Acceptance: while an exchange is in progress, a second KEXINIT draws
+   `UNIMPLEMENTED` and the in-flight exchange completes, the way sshd does
+   (kex.c:kex_input_kexinit:621 re-registers KEXINIT → kex_protocol_error
+   for the duration of the exchange). Today `_handleMessageKexInit` has no
+   in-progress guard: it overwrites `_remoteKexInit` and replaces the
+   ephemeral kex with a fresh one, the exchange hashes desynchronize, the
+   client's verification of KEXDH_REPLY fails ("signature is invalid") and
+   the connection dies. (dartssh2-side change: reject or ignore a KEXINIT
+   while `_kexInProgress` is true.)
+3. **B06/B07 — 服务器必须能主动 rekey。** Acceptance criterion (Task 7):
+   a server whose session exceeds `rekeyBytes`/`rekeyInterval` initiates
+   KEXINIT unprompted; open channels survive; strict-kex ordering holds;
+   an incompatible client gets a clean disconnect. Source truth recorded
+   for the fix's defaults: OpenSSH 10.2's default is byte-bound-only —
+   `RekeyLimit default none` (sshd_config.5:1788-1812; servconf.c:398-401),
+   the bound is cipher geometry (2^(block×2) blocks, observed in the
+   harness log as `rekey in after 4294967296 blocks` ≈ 64 GiB at AES's
+   16-byte blocks) with a 2^31-packet hard cap, and time-based rekey fires
+   only when an interval is configured (serverloop.c:171,
+   packet.c:1095-1097). tp_sshd has no trigger of any kind
+   (server_connection.dart), so a pairing session's keys never rotate
+   unless the client asks.
+4. **B08 — 交换外/交换中的 NEWKEYS 不得被无条件采纳。** Acceptance: an
+   unsolicited NEWKEYS (mid-exchange, or with no exchange in progress) is
+   not applied — it draws `UNIMPLEMENTED` like sshd (kex.c:
+   kex_input_newkeys:531 leaves NEWKEYS dispatched to kex_protocol_error
+   outside a completed exchange) and the session survives. Today
+   `_handleMessageNewKeys` (ssh_transport.dart:2016) applies remote keys
+   unconditionally: mid-exchange it re-derives keys from the *stale*
+   exchange hash, ends the exchange state and resets the strict-kex
+   receive sequence number, after which the peer's real KEXDH_INIT hits
+   the kex-null `SSHStateError` (ssh_transport.dart:1951-1960) and the
+   connection is torn down without a DISCONNECT (A19's missing-DISCONNECT
+   family).
+
+### notes (no action)
+
+5. **B04 — 关闭前的 KEXINIT 是否冲上线是实现差异，不是语义差异。** sshd
+   的 log 显示它先排了自己的 KEXINIT（`SSH2_MSG_KEXINIT sent`），
+   `logdie` 退出时未冲刷（与 A03/A04 的未冲刷 DISCONNECT 同类），线上
+   只见裸 close；tp_sshd 的 KEXINIT 在抛 `StateError` 前已写入 socket，
+   线上是 `msg:20` 后 close。两边的致命性、无 DISCONNECT 一致，判定按
+   结果类记 match。
+6. **B08 的 OpenSSH 半边 — 预测的 MAC 失效依赖协商出的密码套件。**
+   strict-kex 的读序号复位在收到乱序 NEWKEYS 时确实触发（log:
+   `resetting read seqnr 4`，packet.c:1804-1808），但该连接协商的是
+   aes256-gcm@openssh.com — OpenSSH 中只有 chacha20-poly1305 把序号绑进
+   AEAD nonce（cipher.c:336-340 → cipher-chachapoly.c:69-82），故复位
+   无害、交换照常完成。若协商出 chacha20-poly1305，同一复位会使下一包
+   认证失败（"Corrupted MAC on input."）并拆连接。预测的前半段
+   （UNIMPLEMENTED + 不采纳）完全证实；后半段按套件记录于此。
+

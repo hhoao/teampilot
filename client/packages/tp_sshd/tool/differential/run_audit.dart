@@ -4,6 +4,7 @@
 ///
 ///   dart run tool/differential/run_audit.dart --smoke
 ///   dart run tool/differential/run_audit.dart --area a
+///   dart run tool/differential/run_audit.dart --area b
 ///
 /// Exits 0 with `SKIPPED:` when the system sshd is unavailable, so the
 /// package suite stays green on machines without OpenSSH.
@@ -16,6 +17,7 @@ import 'dart:io';
 import 'package:dartssh2/dartssh2.dart' show SSHClient, SSHKeyPair, SSHSocket;
 
 import 'area_a_malformed.dart';
+import 'area_b_rekey.dart';
 import 'audit_harness.dart';
 
 /// What the OpenSSH reference says should happen on one audit row.
@@ -65,10 +67,11 @@ const Map<String, String> areaTitles = {
   'e': 'Area E — timing surfaces',
 };
 
-/// Registered area implementations. Tasks 3–5 add their runners here; until
+/// Registered area implementations. Tasks 4–5 add their runners here; until
 /// then every area reports that no rows exist.
 final Map<String, AreaRunner> areaRunners = {
   'a': _runAreaA,
+  'b': _runAreaB,
 };
 
 /// Async errors that escaped every row's own guards, attributed to the row
@@ -81,13 +84,16 @@ final strayZoneErrors = <String>[];
 /// The audit row currently running, for [strayZoneErrors] attribution.
 String? rowInProgress;
 
-/// Runs the Area A rows (malformed input, A01–A19) sequentially against the
-/// harness servers. Rows are sequential on purpose: each one must leave both
-/// listeners serving (the crash-isolation check), and a broken row must not
-/// take the rest of the run down.
-Future<List<RowResult>> _runAreaA(AuditServers servers) async {
+/// Runs one area's rows sequentially against the harness servers. Rows are
+/// sequential on purpose: each one must leave both listeners serving (the
+/// crash-isolation check), and a broken row must not take the rest of the
+/// run down.
+Future<List<RowResult>> _runRows(
+  AuditServers servers,
+  List<AuditRow> rows,
+) async {
   final results = <RowResult>[];
-  for (final row in areaARows()) {
+  for (final row in rows) {
     rowInProgress = row.id;
     try {
       results.add(await row.run(servers));
@@ -108,6 +114,14 @@ Future<List<RowResult>> _runAreaA(AuditServers servers) async {
   }
   return results;
 }
+
+/// Runs the Area A rows (malformed input, A01–A19).
+Future<List<RowResult>> _runAreaA(AuditServers servers) =>
+    _runRows(servers, areaARows());
+
+/// Runs the Area B rows (rekey timing, B01–B08).
+Future<List<RowResult>> _runAreaB(AuditServers servers) =>
+    _runRows(servers, areaBRows());
 
 Future<void> _main(List<String> args) async {
   var smoke = false;
