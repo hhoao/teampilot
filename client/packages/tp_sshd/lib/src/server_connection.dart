@@ -57,7 +57,7 @@ class SSHServerConnection {
         allowTarget: targetAllowed,
         bindServerSocket: forwarding.bindServerSocket,
         openForwardedChannel: _openForwardedChannel,
-        sendPacket: _transport.sendPacket,
+        sendPacket: _sendPacket,
         printDebug: config.printDebug,
       );
     } else {
@@ -114,6 +114,29 @@ class SSHServerConnection {
   /// answered with USERAUTH_PK_OK, never authenticating.
   var _serviceAccepted = false;
 
+  /// How many key exchanges this connection initiated on its own — the
+  /// rekey trigger ([SSHServerConfig.rekeyBytes]/[rekeyInterval]) firing,
+  /// not a peer-initiated exchange. Read-only, for tests and embedder
+  /// diagnostics.
+  int get rekeyCount => _rekeyCount;
+  var _rekeyCount = 0;
+
+  /// Outbound bytes counted since the last key exchange this server
+  /// initiated completed, checked on every send against
+  /// [SSHServerConfig.rekeyBytes] (sshd's `rekey bytes` accounting,
+  /// packet.c:1095-1097).
+  var _outboundBytes = 0;
+
+  /// The one-shot timer for [SSHServerConfig.rekeyInterval], armed when the
+  /// connection authenticates and re-armed after every completed exchange.
+  Timer? _rekeyTimer;
+
+  /// Whether a server-initiated key exchange is still in flight, so
+  /// concurrent threshold crossings (a byte threshold hit mid-exchange, the
+  /// timer firing during an exchange) collapse into the one exchange
+  /// already running.
+  var _rekeyInFlight = false;
+
   /// Completes when the underlying transport closes, normally or with an
   /// error.
   Future<void> get done => _transport.done;
@@ -125,10 +148,66 @@ class SSHServerConnection {
   /// Closes the connection and its socket.
   Future<void> close() async {
     _authTimer.cancel();
+    _rekeyTimer?.cancel();
     _phase = _Phase.closed;
     _teardownChannels();
     await _forwarder?.close();
     await _transport.close();
+  }
+
+  /// The connection's outbound send path: every packet the connection layer
+  /// emits — its own replies and every channel's and the forwarder's
+  /// traffic — goes through here, so the rekey accounting sees it (audit
+  /// B06/B07: without a byte counter and a timer, a long-lived pairing
+  /// session keeps its keys forever).
+  void _sendPacket(Uint8List data) {
+    _transport.sendPacket(data);
+    _countOutbound(data.length);
+  }
+
+  /// Counts [bytes] of outbound traffic against
+  /// [SSHServerConfig.rekeyBytes], initiating a rekey when the threshold is
+  /// crossed. Bytes sent while an exchange is in flight are not counted:
+  /// the counter resets to zero when that exchange completes anyway.
+  void _countOutbound(int bytes) {
+    if (_phase != _Phase.running || _rekeyInFlight) return;
+    final rekeyBytes = _config.rekeyBytes;
+    if (rekeyBytes == null) return;
+    _outboundBytes += bytes;
+    if (_outboundBytes >= rekeyBytes) {
+      _startRekey('$_outboundBytes bytes sent');
+    }
+  }
+
+  /// Arms the one-shot [SSHServerConfig.rekeyInterval] timer.
+  void _armRekeyTimer() {
+    _rekeyTimer?.cancel();
+    final interval = _config.rekeyInterval;
+    if (interval == null || _phase != _Phase.running) return;
+    _rekeyTimer = Timer(interval, () => _startRekey('interval elapsed'));
+  }
+
+  /// Initiates a key exchange of our own (sshd's `kex_start_rekex`,
+  /// packet.c:1070-1123): an unprompted KEXINIT goes out through the
+  /// transport's [SSHTransport.rekey], and the byte counter and interval
+  /// deadline restart once the exchange completes. Concurrent triggers
+  /// collapse into the exchange already in flight.
+  void _startRekey(String why) {
+    if (_phase != _Phase.running || _rekeyInFlight) return;
+    _rekeyInFlight = true;
+    _rekeyCount += 1;
+    _config.printDebug?.call('tp_sshd: initiating rekey ($why)');
+    _transport
+        .rekey()
+        .whenComplete(() {
+          // The connection may have ended before the exchange completed;
+          // nothing is re-armed then.
+          if (_phase != _Phase.running) return;
+          _rekeyInFlight = false;
+          _outboundBytes = 0;
+          _armRekeyTimer();
+        })
+        .ignore();
   }
 
   /// Auth-phase message handling.
@@ -152,7 +231,7 @@ class SSHServerConnection {
         final message = SSH_Message_Service_Request.decode(payload);
         if (message.serviceName == 'ssh-userauth') {
           _serviceAccepted = true;
-          _transport.sendPacket(
+          _sendPacket(
             SSH_Message_Service_Accept(message.serviceName).encode(),
           );
         } else {
@@ -234,14 +313,14 @@ class SSHServerConnection {
       // after the switch to the shared wantReply refusal below.
       case 'keepalive@openssh.com':
         if (message.wantReply) {
-          _transport.sendPacket(
+          _sendPacket(
             SSH_Message_Request_Success(Uint8List(0)).encode(),
           );
         }
         return;
     }
     if (message.wantReply) {
-      _transport.sendPacket(SSH_Message_Request_Failure().encode());
+      _sendPacket(SSH_Message_Request_Failure().encode());
     }
   }
 
@@ -275,7 +354,7 @@ class SSHServerConnection {
     // "channel resource shortage" case), before the type dispatch so a
     // direct-tcpip open cannot evade its half of the quota.
     if (_channels.length >= _config.maxChannels) {
-      _transport.sendPacket(
+      _sendPacket(
         SSH_Message_Channel_Open_Failure(
           recipientChannel: message.senderChannel,
           reasonCode: SSH_Message_Channel_Open_Failure.codeResourceShortage,
@@ -292,7 +371,7 @@ class SSHServerConnection {
     }
 
     if (message.channelType != 'session') {
-      _transport.sendPacket(
+      _sendPacket(
         SSH_Message_Channel_Open_Failure(
           recipientChannel: message.senderChannel,
           reasonCode:
@@ -310,7 +389,7 @@ class SSHServerConnection {
       channelType: message.channelType,
       peerInitialWindowSize: message.initialWindowSize,
       peerMaximumPacketSize: message.maximumPacketSize,
-      sendPacket: _transport.sendPacket,
+      sendPacket: _sendPacket,
       onClosed: _onChannelClosed,
       onProtocolViolation: _disconnectForChannelViolation,
       printDebug: _config.printDebug,
@@ -320,7 +399,7 @@ class SSHServerConnection {
     channel.onRequest = (channel, request) =>
         handleSessionRequest(channel, request, config: _config);
     _channels[ourChannel] = channel;
-    _transport.sendPacket(
+    _sendPacket(
       SSH_Message_Channel_Confirmation(
         recipientChannel: message.senderChannel,
         senderChannel: ourChannel,
@@ -399,13 +478,13 @@ class SSHServerConnection {
           channelType: 'direct-tcpip',
           peerInitialWindowSize: message.initialWindowSize,
           peerMaximumPacketSize: message.maximumPacketSize,
-          sendPacket: _transport.sendPacket,
+          sendPacket: _sendPacket,
           onClosed: _onChannelClosed,
           onProtocolViolation: _disconnectForChannelViolation,
           printDebug: _config.printDebug,
         );
         _channels[ourChannel] = channel;
-        _transport.sendPacket(
+        _sendPacket(
           SSH_Message_Channel_Confirmation(
             recipientChannel: message.senderChannel,
             senderChannel: ourChannel,
@@ -439,7 +518,7 @@ class SSHServerConnection {
     String description,
   ) {
     try {
-      _transport.sendPacket(
+      _sendPacket(
         SSH_Message_Channel_Open_Failure(
           recipientChannel: recipientChannel,
           reasonCode: reasonCode,
@@ -628,7 +707,7 @@ class SSHServerConnection {
           channelType: pending.channelType,
           peerInitialWindowSize: message.initialWindowSize,
           peerMaximumPacketSize: message.maximumPacketSize,
-          sendPacket: _transport.sendPacket,
+          sendPacket: _sendPacket,
           onClosed: _onChannelClosed,
           onProtocolViolation: _disconnectForChannelViolation,
           printDebug: _config.printDebug,
@@ -697,7 +776,7 @@ class SSHServerConnection {
     final open = buildOpen(ourChannel);
     final pending = _PendingOpen(open.channelType);
     _pendingOpens[ourChannel] = pending;
-    _transport.sendPacket(open.encode());
+    _sendPacket(open.encode());
     return pending.completer.future;
   }
 
@@ -830,7 +909,7 @@ class SSHServerConnection {
       // Public-key probing (RFC 4252 §7.8): tell the client the key is worth
       // signing with.
       if (trusted) {
-        _transport.sendPacket(
+        _sendPacket(
           SSH_Message_Userauth_PK_Ok(
             publicKeyAlgorithm: publicKeyAlgorithm,
             publicKey: publicKey,
@@ -847,7 +926,8 @@ class SSHServerConnection {
       // live connection later, then start serving session traffic.
       _authTimer.cancel();
       _phase = _Phase.running;
-      _transport.sendPacket(SSH_Message_Userauth_Success().encode());
+      _armRekeyTimer();
+      _sendPacket(SSH_Message_Userauth_Success().encode());
       // The success twin of [_failAuthAttempt]: the embedder now knows this
       // connection belongs to whoever authenticated with this key.
       _config.onAuthenticated?.call(
@@ -902,7 +982,7 @@ class SSHServerConnection {
       );
       return;
     }
-    _transport.sendPacket(
+    _sendPacket(
       SSH_Message_Userauth_Failure(methodsLeft: const ['publickey']).encode(),
     );
   }
@@ -919,6 +999,7 @@ class SSHServerConnection {
 
   void _onTransportClosed() {
     _authTimer.cancel();
+    _rekeyTimer?.cancel();
     _phase = _Phase.closed;
     _teardownChannels();
     // Release the binds too; the transport is already gone, so nothing can
@@ -928,7 +1009,7 @@ class SSHServerConnection {
 
   /// Sends a disconnect message and closes the connection.
   void _disconnect(SSHDisconnectReason reason, String description) {
-    _transport.sendPacket(
+    _sendPacket(
       SSH_Message_Disconnect(
         reasonCode: reason.code,
         description: description,

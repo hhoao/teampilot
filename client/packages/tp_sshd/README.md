@@ -15,7 +15,15 @@ dartssh2 protocol primitives ([../dartssh2](../dartssh2) `protocol.dart`).
   reason 4, resource shortage).
 - **KEX:** curve25519-sha256, ed25519 host keys, chacha20-poly1305 /
   aes256-gcm, strict KEX (RFC 9142). Peer-initiated mid-session rekey is
-  supported (verified against the fork's `SSHClient.rekey()`).
+  supported (verified against the fork's `SSHClient.rekey()`), and the
+  server initiates rekeying itself: after `rekeyBytes` (default 1 GiB) of
+  outbound traffic or `rekeyInterval` (default 1 h) of authenticated
+  session lifetime, whichever comes first. Open channels survive the
+  rotation. Both knobs are nullable — `null` disables that trigger. (The
+  defaults are a deliberate divergence: OpenSSH 10.2's default is no
+  configured `RekeyLimit` at all — its geometry-scale bound effectively
+  never fires, which for a long-lived pairing session means keys that never
+  rotate. See `SSHServerConfig.rekeyBytes` for the full rationale.)
 
 ## Usage
 

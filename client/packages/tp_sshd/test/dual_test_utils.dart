@@ -66,6 +66,11 @@ Future<(SSHClient, SSHServer)> startDualPair({
 /// Like [startDualPair], but hands the test the connection object itself, so
 /// it can reach the server-side channel table through
 /// [SSHServerConnection.channels].
+///
+/// [rekeyBytes] and [rekeyInterval] are passed straight into the config:
+/// omitting them leaves them `null`, i.e. server-initiated rekey disabled —
+/// what the pre-rekey tests assumed — while the rekey tests inject tiny
+/// thresholds.
 Future<(SSHClient, SSHServerConnection)> startDualConnection({
   required SSHKeyPair hostKeyPair,
   required Future<bool> Function(SSHServerAuthRequest request) authenticate,
@@ -73,6 +78,9 @@ Future<(SSHClient, SSHServerConnection)> startDualConnection({
   String username = 'user',
   SSHForwardingConfig? forwarding,
   int maxChannels = 10,
+  SSHProcessFactory? processFactory,
+  int? rekeyBytes,
+  Duration? rekeyInterval,
 }) async {
   final (clientSocket, serverSocket) = loopbackSSHSocketPair();
   final connection = SSHServerConnection(
@@ -83,6 +91,9 @@ Future<(SSHClient, SSHServerConnection)> startDualConnection({
       authenticate: authenticate,
       forwarding: forwarding,
       maxChannels: maxChannels,
+      processFactory: processFactory,
+      rekeyBytes: rekeyBytes,
+      rekeyInterval: rekeyInterval,
     ),
   );
   final client = _connectClient(
