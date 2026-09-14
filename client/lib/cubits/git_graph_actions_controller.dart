@@ -101,6 +101,7 @@ class GitGraphActionsController {
     try {
       await action();
       await cubit.refresh();
+      cubit.onHeadChanged?.call(_dir);
       return true;
     } on GitException catch (e) {
       appLogger.e('[GitGraph] action failed: ${e.message}');

@@ -84,4 +84,35 @@ void main() {
     );
     await cubit.close();
   });
+
+  test('successful action notifies onHeadChanged with repoRoot', () async {
+    final roots = <String>[];
+    final cubit = GitGraphCubit(
+      history: FakeHistoryForGraph(rows: []),
+      git: FakeGitForGraph(repoStatus()),
+      actions: actions,
+      onHeadChanged: roots.add,
+    );
+    await cubit.setRepoRoot('/repo');
+    final controller = GitGraphActionsController(cubit: cubit);
+    await controller.createBranch('dev', atHash: 'c1');
+    expect(roots, ['/repo']);
+    await cubit.close();
+  });
+
+  test('failed action does not notify', () async {
+    final roots = <String>[];
+    final cubit = GitGraphCubit(
+      history: FakeHistoryForGraph(rows: []),
+      git: FakeGitForGraph(repoStatus()),
+      actions: actions,
+      onHeadChanged: roots.add,
+    );
+    await cubit.setRepoRoot('/repo');
+    actions.throwNext = GitException('conflict');
+    final controller = GitGraphActionsController(cubit: cubit);
+    expect(await controller.deleteBranch('dev'), isFalse);
+    expect(roots, isEmpty);
+    await cubit.close();
+  });
 }

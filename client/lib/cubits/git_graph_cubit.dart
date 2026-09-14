@@ -195,15 +195,20 @@ class GitGraphCubit extends Cubit<GitGraphState> {
     required GitService git,
     GitHistoryActions? actions,
     DateTime Function()? clock,
+    void Function(String repoRoot)? onHeadChanged,
   }) : _history = history,
        _git = git,
        _actions = actions ?? GitHistoryActions(),
        _now = clock ?? DateTime.now,
+       onHeadChanged = onHeadChanged,
        super(const GitGraphState());
 
   final GitHistoryService _history;
   final GitService _git;
   final GitHistoryActions _actions;
+
+  /// Fired after any graph write action succeeds; `repoRoot` is the graph repo.
+  final void Function(String repoRoot)? onHeadChanged;
 
   /// 时钟注入缝（TTL 判定用）；默认墙钟。
   final DateTime Function() _now;

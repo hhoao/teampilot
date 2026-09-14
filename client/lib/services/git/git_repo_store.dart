@@ -32,7 +32,7 @@ class GitRepoStore {
     int maxRetained = 8,
     HomeStorage? storage,
   }) : _injectedCubitFactory = cubitFactory,
-       _graphFactory = graphCubitFactory ?? _defaultGraphFactory,
+       _injectedGraphFactory = graphCubitFactory,
        _now = clock ?? DateTime.now,
        _maxRetained = maxRetained,
        _storage = storage;
@@ -53,10 +53,7 @@ class GitRepoStore {
     )..setRepoRoot(root);
   }
 
-  static GitGraphCubit _defaultGraphFactory(
-    String root,
-    RuntimeContext workContext,
-  ) {
+  GitGraphCubit _defaultGraphFactory(String root, RuntimeContext workContext) {
     final history =
         GitHistoryService.debugOverrideFactory?.call() ??
         GitHistoryService.forContext(workContext);
@@ -66,11 +63,16 @@ class GitRepoStore {
     final actions =
         GitHistoryActions.debugOverrideFactory?.call() ??
         GitHistoryActions.forContext(workContext);
-    return GitGraphCubit(history: history, git: git, actions: actions);
+    return GitGraphCubit(
+      history: history,
+      git: git,
+      actions: actions,
+      onHeadChanged: notifyHeadChanged,
+    );
   }
 
-  final GitGraphCubit Function(String root, RuntimeContext workContext)
-  _graphFactory;
+  final GitGraphCubit Function(String root, RuntimeContext workContext)?
+  _injectedGraphFactory;
   final int _maxRetained;
   final DateTime Function() _now;
   final HomeStorage? _storage;
@@ -128,7 +130,10 @@ class GitRepoStore {
       _graphCubits[key] = existing;
       return existing;
     }
-    final cubit = _graphFactory(_ctx.normalize(root), workContext);
+    final cubit = (_injectedGraphFactory ?? _defaultGraphFactory)(
+      _ctx.normalize(root),
+      workContext,
+    );
     unawaited(cubit.setRepoRoot(root));
     _graphCubits[key] = cubit;
     _evict();
