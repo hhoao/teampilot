@@ -33,6 +33,25 @@ void main() {
     expect(isFullscreenPromptAtAnchor(grid, anchor), isFalse);
   });
 
+  test(
+    'needleStaysInCursorZone finds a multi-line paste tail starting above cursor',
+    () {
+      // Multi-line composer: the staged tail sits on r19 while the cursor is on
+      // the last line (r20). Without the wrap slack the scan would start at the
+      // cursor and miss the r19 start.
+      final rows = List<String>.filled(24, '');
+      rows[19] = 'staged tail continues here';
+      rows[20] = 'and the final line';
+      final grid = _FakeGrid.fromRows(rows)..cursorRow = 20;
+
+      expect(
+        needleStaysInCursorZone(grid, 'staged tail continues here'),
+        isTrue,
+        reason: 'needle starting above the cursor is still staged input',
+      );
+    },
+  );
+
   test('isAtAnchor false when same text moved to transcript row above', () {
     final grid = _FakeGrid.fromRows([
       '你和你的队员打个招呼吧',

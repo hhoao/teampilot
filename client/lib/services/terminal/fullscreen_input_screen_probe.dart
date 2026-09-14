@@ -130,8 +130,18 @@ bool isFullscreenPromptSubmitted(
   }
 }
 
-/// True while [needle] still occupies the cursor input row or a row below it
-/// forming the input box (wrap continuation), i.e. the message is still staged.
+/// Rows above the cursor still counted as part of the input box: a multi-line
+/// paste ends with the cursor on the last line, and the needle is the paste's
+/// trailing 40 chars, which may start one or more rows above the cursor.
+const int cursorZoneWrapSlack = 4;
+
+/// True while [needle] still occupies the input box around the cursor: the
+/// cursor row, any row below it forming the box (wrap continuation), or a small
+/// window above the cursor where a multi-line paste's tail may start.
+///
+/// The box is bounded by blank rows: above, the contiguous non-blank run is
+/// walked up to [cursorZoneWrapSlack] rows; below, the run ends at the first
+/// blank row.
 bool needleStaysInCursorZone(
   TerminalScreenGrid grid,
   String needle,
@@ -140,10 +150,20 @@ bool needleStaysInCursorZone(
   final cursor = grid.cursorRow;
   if (rows == 0 || cursor < 0) return false;
   final runes = needle.runes.toList();
-  for (var r = cursor; r < rows; r++) {
-    if (_findNeedleStartCol(grid, r, runes) >= 0) return true;
-    // Stop at the first blank row: the input box is a contiguous bottom block.
+
+  var top = cursor;
+  for (var i = 0; i < cursorZoneWrapSlack && top > 0; i++) {
+    if (_rowIsBlank(grid, top - 1)) break;
+    top -= 1;
+  }
+  var bottom = cursor;
+  for (var r = cursor + 1; r < rows; r++) {
     if (_rowIsBlank(grid, r)) break;
+    bottom = r;
+  }
+
+  for (var r = top; r <= bottom; r++) {
+    if (_findNeedleStartCol(grid, r, runes) >= 0) return true;
   }
   return false;
 }
