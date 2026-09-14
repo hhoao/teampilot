@@ -1009,16 +1009,27 @@ class SSHServerConnection {
     // The connection may have been closed while the failure reply was being
     // padded out.
     if (_phase != _Phase.auth) return;
-    if (throttled) {
-      _disconnect(
-        SSHDisconnectReason.noMoreAuthMethodsAvailable,
-        'Too many failed authentication attempts',
+    // The transport may still have died inside that window without the
+    // phase having moved yet (the done handler runs as a microtask after
+    // this timer fires): an unguarded send would throw out of this
+    // fire-and-forget future and leak into the embedder's zone — the F13
+    // class. Guarded like [_refuseChannelOpen]: when the transport is
+    // already gone, the teardown owns the aftermath.
+    try {
+      if (throttled) {
+        _disconnect(
+          SSHDisconnectReason.noMoreAuthMethodsAvailable,
+          'Too many failed authentication attempts',
+        );
+        return;
+      }
+      _sendPacket(
+        SSH_Message_Userauth_Failure(methodsLeft: const ['publickey'])
+            .encode(),
       );
-      return;
+    } on Object {
+      // transport is gone; the connection teardown owns the aftermath
     }
-    _sendPacket(
-      SSH_Message_Userauth_Failure(methodsLeft: const ['publickey']).encode(),
-    );
   }
 
   /// Closes connections that never finished authenticating.
