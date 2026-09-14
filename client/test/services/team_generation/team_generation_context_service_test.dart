@@ -34,7 +34,10 @@ void main() {
       storage: testHomeStorage,
     );
     final settings = resolveTeamGenerationSettingsSnapshot(
-      settings: TeamGenerationSettings(teamMode: TeamMode.mixed),
+      settings: TeamGenerationSettings(
+        teamMode: TeamMode.mixed,
+        minimumMemberCount: 8,
+      ),
       presets: const [],
       registry: CliToolRegistry.builtIn(),
       capturedAt: 42,
@@ -85,10 +88,10 @@ void main() {
     expect(structured['settingsRevision'], settings.revision);
     expect(structured['requestedMode'], TeamMode.mixed.value);
     expect(structured['planSchema'], isA<Map>());
-    expect(
-      (structured['constraints'] as Map)['leadMemberName'],
-      TeamMemberNaming.teamLeadName,
-    );
+    final constraints = structured['constraints'] as Map;
+    expect(constraints['leadMemberName'], TeamMemberNaming.teamLeadName);
+    expect(constraints['memberCountMin'], 8);
+    expect(constraints.containsKey('memberCountMax'), isFalse);
     expect(jsonEncode(result.response), isNot(contains('apiKey')));
     expect(jsonEncode(result.response), isNot(contains('token-1')));
   });

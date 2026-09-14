@@ -15824,6 +15824,24 @@ abstract class AppLocalizations {
   /// **'Generator model'**
   String get teamGenerateGeneratorModel;
 
+  /// No description provided for @teamGenerateMinimumMemberCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum team members'**
+  String get teamGenerateMinimumMemberCount;
+
+  /// No description provided for @teamGenerateMinimumMemberCountHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The generated team will include at least this many distinct roles.'**
+  String get teamGenerateMinimumMemberCountHint;
+
+  /// No description provided for @teamGenerateMinimumMemberCountInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum must be at least 3.'**
+  String get teamGenerateMinimumMemberCountInvalid;
+
   /// No description provided for @teamGenerateTeamMode.
   ///
   /// In en, this message translates to:

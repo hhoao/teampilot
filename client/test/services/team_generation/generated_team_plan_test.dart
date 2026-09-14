@@ -50,6 +50,53 @@ void main() {
       expect(plan.hasLead, isTrue);
     });
 
+    test('accepts plans with more than five members', () {
+      final plan = GeneratedTeamPlan.fromJson({
+        ...validPlanJson(),
+        'members': [
+          ...(validPlanJson()['members'] as List),
+          {
+            'name': 'reviewer',
+            'role': 'Reviewer',
+            'responsibilities': 'Reviews the implementation',
+            'workingMethod': 'Review diffs and report risks',
+            'presetId': 'codex-fast',
+            'replicas': 1,
+          },
+          {
+            'name': 'tester',
+            'role': 'Tester',
+            'responsibilities': 'Validates behavior',
+            'workingMethod': 'Run focused regression tests',
+            'presetId': 'codex-fast',
+            'replicas': 1,
+          },
+          {
+            'name': 'documenter',
+            'role': 'Documenter',
+            'responsibilities': 'Documents the delivered change',
+            'workingMethod': 'Summarize verified behavior',
+            'presetId': 'codex-fast',
+            'replicas': 1,
+          },
+          {
+            'name': 'release-manager',
+            'role': 'Release Manager',
+            'responsibilities': 'Coordinates release readiness',
+            'workingMethod': 'Review evidence and hand off',
+            'presetId': 'codex-fast',
+            'replicas': 1,
+          },
+        ],
+      });
+
+      expect(plan.members, hasLength(6));
+    });
+
+    test('wire schema leaves member count unbounded', () {
+      expect(GeneratedTeamPlan.wireSchema, isNot(contains('memberCount')));
+    });
+
     test('strict parser rejects unknown keys and non-integer replica counts',
         () {
       expect(

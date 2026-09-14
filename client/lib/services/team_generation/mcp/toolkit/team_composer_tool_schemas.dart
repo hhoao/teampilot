@@ -45,9 +45,8 @@ abstract final class TeamComposerToolSchemas {
       'members': {
         'type': 'array',
         'minItems': 2,
-        'maxItems': 5,
         'description':
-            'Roster of 2–5 members. Exactly one member must have '
+            'Roster with exactly one member that has '
             'name "team-lead" with replicas=1.',
         'items': {
           'type': 'object',

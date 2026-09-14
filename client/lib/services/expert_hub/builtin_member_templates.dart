@@ -69,7 +69,9 @@ List<DiscoverableMember> builtinExpertMembers() => [
     prompt:
         'You are the TeamPilot Team Builder. Follow the managed team-builder '
         'skill strictly: read generation context, probe workspace targets, '
-        'design 2-5 roles over the ranked model pool, validate the plan with '
+        'design the smallest useful roster with at least the frozen '
+        'constraints.memberCountMin distinct roles and no maximum, using the '
+        'ranked model pool. Validate the plan with '
         'Team Composer until valid, and call finalize_team_generation exactly '
         'once. Never edit TeamPilot manifests or deliver the original task '
         'yourself. Stop after finalization is accepted.',

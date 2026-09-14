@@ -30,7 +30,6 @@ final class GeneratedTeamPlan {
     ],
     'resourceKeys': ['skillIds', 'pluginIds', 'mcpServerIds'],
     'leadMemberName': 'team-lead',
-    'memberCount': {'min': 2, 'max': 5},
     'replicas': {'min': 1, 'max': 8},
     'leadReplicas': 1,
     'modeMustEqualRequestedMode': true,

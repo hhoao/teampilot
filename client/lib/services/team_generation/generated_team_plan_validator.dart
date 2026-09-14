@@ -136,9 +136,14 @@ final class GeneratedTeamPlanValidator {
       issues.add(_error('mode_mismatch'));
     }
 
-    // Member count 2..5, exactly one canonical singleton lead.
-    if (plan.members.length < 2 || plan.members.length > 5) {
-      issues.add(_error('member_count_out_of_range'));
+    // At least the frozen minimum, exactly one canonical singleton lead.
+    if (plan.members.length < frozen.minimumMemberCount) {
+      issues.add(
+        _error(
+          'member_count_below_minimum',
+          detail: '${plan.members.length} < ${frozen.minimumMemberCount}',
+        ),
+      );
     }
     final leads = plan.members
         .where((member) => member.name == TeamMemberNaming.teamLeadName)

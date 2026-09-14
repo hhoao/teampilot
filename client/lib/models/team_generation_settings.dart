@@ -8,6 +8,13 @@ import '../services/cli/registry/cli_tool_registry.dart';
 import 'cli_preset.dart';
 import 'team_config.dart';
 
+const kDefaultMinimumGeneratedTeamMembers = 3;
+
+int normalizeMinimumGeneratedTeamMembers(int value) =>
+    value < kDefaultMinimumGeneratedTeamMembers
+    ? kDefaultMinimumGeneratedTeamMembers
+    : value;
+
 @immutable
 final class GenerateModelPoolEntry {
   factory GenerateModelPoolEntry({
@@ -201,6 +208,7 @@ final class TeamGenerationSettings {
     CliTool nativeCli = CliTool.claude,
     List<GenerateModelPoolEntry> modelPool = const [],
     bool retainBuilderSession = false,
+    int minimumMemberCount = kDefaultMinimumGeneratedTeamMembers,
   }) {
     return TeamGenerationSettings._internal(
       schemaVersion: schemaVersion,
@@ -208,6 +216,9 @@ final class TeamGenerationSettings {
       nativeCli: nativeCli,
       modelPool: _freezeModelPool(modelPool),
       retainBuilderSession: retainBuilderSession,
+      minimumMemberCount: normalizeMinimumGeneratedTeamMembers(
+        minimumMemberCount,
+      ),
     );
   }
 
@@ -217,6 +228,7 @@ final class TeamGenerationSettings {
     this.nativeCli = CliTool.claude,
     this.modelPool = const [],
     this.retainBuilderSession = false,
+    this.minimumMemberCount = kDefaultMinimumGeneratedTeamMembers,
   });
 
   factory TeamGenerationSettings.fromJson(Map<String, Object?> json) {
@@ -226,6 +238,9 @@ final class TeamGenerationSettings {
       teamMode: TeamMode.decode(json['teamMode']),
       nativeCli: CliTool.parse(json['nativeCli']),
       retainBuilderSession: json['retainBuilderSession'] == true,
+      minimumMemberCount: _minimumMemberCountFromJson(
+        json['minimumMemberCount'],
+      ),
       modelPool:
           rawPool
               ?.map(
@@ -246,6 +261,7 @@ final class TeamGenerationSettings {
   final CliTool nativeCli;
   final List<GenerateModelPoolEntry> modelPool;
   final bool retainBuilderSession;
+  final int minimumMemberCount;
 
   TeamGenerationSettings normalized() {
     final normalizedPool = <GenerateModelPoolEntry>[];
@@ -265,6 +281,7 @@ final class TeamGenerationSettings {
         teamMode == this.teamMode &&
         nativeCli == this.nativeCli &&
         retainBuilderSession == this.retainBuilderSession &&
+        minimumMemberCount == this.minimumMemberCount &&
         _sameList(modelPool, immutablePool)) {
       return this;
     }
@@ -274,6 +291,9 @@ final class TeamGenerationSettings {
       nativeCli: nativeCli,
       modelPool: immutablePool,
       retainBuilderSession: retainBuilderSession,
+      minimumMemberCount: normalizeMinimumGeneratedTeamMembers(
+        minimumMemberCount,
+      ),
     );
   }
 
@@ -283,6 +303,7 @@ final class TeamGenerationSettings {
       'schemaVersion': normalizedSettings.schemaVersion,
       'teamMode': normalizedSettings.teamMode.value,
       'nativeCli': normalizedSettings.nativeCli.value,
+      'minimumMemberCount': normalizedSettings.minimumMemberCount,
       if (normalizedSettings.retainBuilderSession) 'retainBuilderSession': true,
       'modelPool': [
         for (final entry in normalizedSettings.modelPool) entry.toJson(),
@@ -298,6 +319,7 @@ final class TeamGenerationSettings {
             teamMode == other.teamMode &&
             nativeCli == other.nativeCli &&
             retainBuilderSession == other.retainBuilderSession &&
+            minimumMemberCount == other.minimumMemberCount &&
             listEquals(modelPool, other.modelPool);
   }
 
@@ -307,6 +329,7 @@ final class TeamGenerationSettings {
     teamMode,
     nativeCli,
     retainBuilderSession,
+    minimumMemberCount,
     Object.hashAll(modelPool),
   );
 }
@@ -320,6 +343,7 @@ final class TeamGenerationSettingsSnapshot {
     required CliTool nativeCli,
     required List<EffectiveGenerateModelPoolEntry> modelPool,
     bool retainBuilderSession = false,
+    int minimumMemberCount = kDefaultMinimumGeneratedTeamMembers,
   }) {
     return TeamGenerationSettingsSnapshot._internal(
       revision: revision,
@@ -328,6 +352,9 @@ final class TeamGenerationSettingsSnapshot {
       nativeCli: nativeCli,
       modelPool: _freezeEffectiveModelPool(modelPool),
       retainBuilderSession: retainBuilderSession,
+      minimumMemberCount: normalizeMinimumGeneratedTeamMembers(
+        minimumMemberCount,
+      ),
     );
   }
 
@@ -338,6 +365,7 @@ final class TeamGenerationSettingsSnapshot {
     required this.nativeCli,
     required this.modelPool,
     this.retainBuilderSession = false,
+    this.minimumMemberCount = kDefaultMinimumGeneratedTeamMembers,
   });
 
   final String revision;
@@ -346,6 +374,7 @@ final class TeamGenerationSettingsSnapshot {
   final CliTool nativeCli;
   final List<EffectiveGenerateModelPoolEntry> modelPool;
   final bool retainBuilderSession;
+  final int minimumMemberCount;
 
   factory TeamGenerationSettingsSnapshot.fromJson(Map<String, Object?> json) {
     TeamMode decodeMode() {
@@ -364,6 +393,9 @@ final class TeamGenerationSettingsSnapshot {
       teamMode: decodeMode(),
       nativeCli: decodeCli(),
       retainBuilderSession: json['retainBuilderSession'] == true,
+      minimumMemberCount: _minimumMemberCountFromJson(
+        json['minimumMemberCount'],
+      ),
       modelPool: [
         for (final value in rawPool is List ? rawPool : const [])
           if (value is Map)
@@ -403,6 +435,7 @@ final class TeamGenerationSettingsSnapshot {
     'capturedAt': capturedAt,
     'teamMode': teamMode.value,
     'nativeCli': nativeCli.value,
+    'minimumMemberCount': minimumMemberCount,
     if (retainBuilderSession) 'retainBuilderSession': true,
     'modelPool': [
       for (final entry in modelPool)
@@ -430,6 +463,7 @@ final class TeamGenerationSettingsSnapshot {
             teamMode == other.teamMode &&
             nativeCli == other.nativeCli &&
             retainBuilderSession == other.retainBuilderSession &&
+            minimumMemberCount == other.minimumMemberCount &&
             listEquals(modelPool, other.modelPool);
   }
 
@@ -440,6 +474,7 @@ final class TeamGenerationSettingsSnapshot {
     teamMode,
     nativeCli,
     retainBuilderSession,
+    minimumMemberCount,
     Object.hashAll(modelPool),
   );
 }
@@ -503,6 +538,7 @@ TeamGenerationSettings hydrateTeamGenerationSettings({
     teamMode: normalizedSettings.teamMode,
     nativeCli: normalizedSettings.nativeCli,
     retainBuilderSession: normalizedSettings.retainBuilderSession,
+    minimumMemberCount: normalizedSettings.minimumMemberCount,
     modelPool: [
       for (final entry in normalizedSettings.modelPool)
         if (entry.legacyPresetId case final legacyPresetId?)
@@ -575,6 +611,7 @@ TeamGenerationSettingsSnapshot resolveTeamGenerationSettingsSnapshot({
   }
   final canonical = jsonEncode({
     'retainBuilderSession': normalizedSettings.retainBuilderSession,
+    'minimumMemberCount': normalizedSettings.minimumMemberCount,
     'teamMode': normalizedSettings.teamMode.value,
     'nativeCli': normalizedSettings.nativeCli.value,
     'modelPool': [
@@ -599,6 +636,7 @@ TeamGenerationSettingsSnapshot resolveTeamGenerationSettingsSnapshot({
     teamMode: normalizedSettings.teamMode,
     nativeCli: normalizedSettings.nativeCli,
     retainBuilderSession: normalizedSettings.retainBuilderSession,
+    minimumMemberCount: normalizedSettings.minimumMemberCount,
     modelPool: List<EffectiveGenerateModelPoolEntry>.unmodifiable(effective),
   );
 }
@@ -628,6 +666,14 @@ List<EffectiveGenerateModelPoolEntry> _freezeEffectiveModelPool(
 
 bool _sameList<T>(List<T> a, List<T> b) {
   return identical(a, b) || listEquals(a, b);
+}
+
+int _minimumMemberCountFromJson(Object? raw) {
+  if (raw is int) return normalizeMinimumGeneratedTeamMembers(raw);
+  if (raw is double && raw.isFinite && raw == raw.truncateToDouble()) {
+    return normalizeMinimumGeneratedTeamMembers(raw.toInt());
+  }
+  return kDefaultMinimumGeneratedTeamMembers;
 }
 
 int _schemaVersionFromJson(Object? raw) {

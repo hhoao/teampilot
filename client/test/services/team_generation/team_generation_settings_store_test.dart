@@ -9,6 +9,35 @@ import 'package:teampilot/services/team_generation/team_generation_settings_stor
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
+  test('save and load preserve the minimum member count', () async {
+    final fs = InMemoryFilesystem();
+    final store = TeamGenerationSettingsStore(
+      fs: fs,
+      pathOverride: '/tp/ui/team-generation-settings.json',
+      storage: fakeHomeStorage(filesystem: fs),
+    );
+
+    await store.save(TeamGenerationSettings(minimumMemberCount: 9));
+
+    expect((await store.load()).minimumMemberCount, 9);
+  });
+
+  test('legacy settings without a minimum use the shared default', () async {
+    final fs = InMemoryFilesystem();
+    final store = TeamGenerationSettingsStore(
+      fs: fs,
+      pathOverride: '/tp/ui/team-generation-settings.json',
+      storage: fakeHomeStorage(filesystem: fs),
+    );
+    await fs.ensureDir('/tp/ui');
+    await fs.writeString(
+      '/tp/ui/team-generation-settings.json',
+      jsonEncode({'schemaVersion': 1, 'modelPool': []}),
+    );
+
+    expect((await store.load()).minimumMemberCount, 3);
+  });
+
   test('save and load preserve Builder retention setting', () async {
     final fs = InMemoryFilesystem();
     final store = TeamGenerationSettingsStore(

@@ -8517,6 +8517,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamGenerateGeneratorModel => '生成模型';
 
   @override
+  String get teamGenerateMinimumMemberCount => '团队最少成员数';
+
+  @override
+  String get teamGenerateMinimumMemberCountHint => '生成的团队至少包含这么多不同的角色。';
+
+  @override
+  String get teamGenerateMinimumMemberCountInvalid => '最少需要 3 名成员。';
+
+  @override
   String get teamGenerateTeamMode => '团队模式';
 
   @override

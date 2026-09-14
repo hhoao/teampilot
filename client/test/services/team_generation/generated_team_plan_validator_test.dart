@@ -18,6 +18,7 @@ CliPreset preset(String id, CliTool cli) => CliPreset(
 );
 
 GeneratedTeamValidationInput input({
+  int minimumMemberCount = 3,
   String memberPreset = 'claude-strong',
   Map<String, int> leadPlacement = const {'local': 1},
   Map<String, int> workerPlacement = const {'local': 1},
@@ -27,6 +28,7 @@ GeneratedTeamValidationInput input({
     capturedAt: 42,
     teamMode: TeamMode.mixed,
     nativeCli: CliTool.claude,
+    minimumMemberCount: minimumMemberCount,
     modelPool: [
       EffectiveGenerateModelPoolEntry(
         rank: 1,
@@ -101,7 +103,7 @@ String _digest(CliPreset preset) => [
 ].join('|');
 
 Map<String, Object?> planJson({
-  int memberCount = 2,
+  int memberCount = 3,
   int leads = 1,
   String? memberPreset = 'claude-strong',
   Map<String, int>? leadPlacement = const {'local': 1},
@@ -111,7 +113,7 @@ Map<String, Object?> planJson({
   for (var li = 0; li < leads; li++) {
     members.add({
       'name': TeamMemberNaming.teamLeadName,
-      'role': 'Delivery Lead',
+      'role': leads == 1 ? 'Delivery Lead' : 'Delivery Lead $li',
       'responsibilities': 'Own decomposition and integration',
       'workingMethod': 'Delegate, review evidence, integrate',
       if (memberPreset != null) 'presetId': memberPreset,
@@ -122,7 +124,7 @@ Map<String, Object?> planJson({
   for (var i = members.length; i < memberCount; i++) {
     members.add({
       'name': 'worker-$i',
-      'role': 'Worker',
+      'role': 'Worker $i',
       'responsibilities': 'Implements tasks',
       'workingMethod': 'Test-first small diffs',
       'presetId': 'codex-fast',
@@ -169,21 +171,43 @@ void main() {
     expect(result.destinationLaunch!.leadTargetId, 'local');
   });
 
-  test('requires 2-5 roles and one singleton canonical lead', () async {
+  test('rejects a plan below the frozen minimum', () async {
     final result = await validator.validate(
-      input: input(),
-      planJson: planJson(leads: 2, memberCount: 6),
+      input: input(minimumMemberCount: 4),
+      planJson: planJson(memberCount: 3),
     );
+
     expect(result.isValid, isFalse);
-    expect(
-      result.issueCodes,
-      containsAll(['member_count_out_of_range', 'lead_count_invalid']),
-    );
-    expect(
-      result.issueCodes.where((code) => code == 'duplicate_member_id'),
-      everyElement(anything),
-    );
+    expect(result.issueCodes, contains('member_count_below_minimum'));
+    expect(result.issueCodes, isNot(contains('member_count_out_of_range')));
   });
+
+  test('accepts a valid plan with more than five member entries', () async {
+    final result = await validator.validate(
+      input: input(minimumMemberCount: 3),
+      planJson: planJson(memberCount: 6),
+    );
+
+    expect(result.isValid, isTrue);
+    expect(result.roster, hasLength(6));
+  });
+
+  test(
+    'rejects duplicate leads without rejecting six distinct roles for count',
+    () async {
+      final result = await validator.validate(
+        input: input(minimumMemberCount: 3),
+        planJson: planJson(leads: 2, memberCount: 6),
+      );
+      expect(result.isValid, isFalse);
+      expect(
+        result.issueCodes,
+        containsAll(['lead_count_invalid', 'duplicate_member_id']),
+      );
+      expect(result.issueCodes, isNot(contains('member_count_below_minimum')));
+      expect(result.issueCodes, isNot(contains('overlapping_roles')));
+    },
+  );
 
   test('rejects live preset drift and unavailable mixed placement', () async {
     final result = await validator.validate(
@@ -213,7 +237,7 @@ void main() {
   test('rejects a worker whose placement is missing', () async {
     final result = await validator.validate(
       input: input(),
-      planJson: planJson(workerPlacement: null),
+      planJson: planJson(memberCount: 2, workerPlacement: null),
     );
 
     expect(result.isValid, isFalse);
