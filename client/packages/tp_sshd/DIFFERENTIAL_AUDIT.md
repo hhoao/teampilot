@@ -694,3 +694,338 @@ by numeric equality (area method note).
    otherwise run 127.0.0.1 into sshd's PerSourcePenalties (an authfail
    penalty of 5 s each, active once past the 15 s penalty_min) and gate
    the rows that follow on the shared sshd.
+
+## Summary — triage consolidation
+
+All five areas are complete: **53 rows**. This section is what Task 7's
+fix implementation is driven from. Triage did not change any row's
+verdict — every count below is the area tallies summed — it groups the
+18 fix-divergence rows into 12 mechanism-level fix items (plus one
+non-row harness finding), assigns priorities (security → client-visible
+compatibility → hostile-input robustness → hygiene), and records the
+downgrades/follow-ups.
+
+### Final counts per verdict
+
+| Area | match | deliberate-divergence | fix-divergence | rows |
+|------|-------|----------------------|----------------|------|
+| A — malformed input | 8 | 3 (A07, A12, A14) | 8 (A01, A08, A09, A10, A11, A15, A16, A19) | 19 |
+| B — rekey timing | 3 | 0 | 5 (B02, B03, B06, B07, B08) | 8 |
+| C — window handling | 3 | 5 (C02, C03, C04, C06, C08) | 2 (C05, C07) | 10 |
+| D — channel close races | 4 | 4 (D02, D04, D07, D10) | 2 (D01, D05) | 10 |
+| E — timing surfaces | 3 | 2 (E04, E06) | 1 (E01) | 6 |
+| **Total** | **21** | **14** | **18** | **53** |
+
+Plus one documented deliberate divergence that is **not a row verdict**:
+E02's *default values* — tp_sshd `authTimeout` 30 s vs sshd
+`LoginGraceTime` 120 s (Area E triage note 3). The E02 row itself is a
+match at equal config (both run at 3 s); only the shipped defaults
+diverge, deliberately. It is carried in the deliberate table below so
+the tally does not lose it.
+
+### Deliberate divergences (documented spec, not scheduled for fixing)
+
+| ID | surface | sshd | tp_sshd | spec rationale |
+|----|---------|------|---------|----------------|
+| A07 | unknown service request | `DISCONNECT(2, "bad service request <name>")` | `DISCONNECT(7, "Service not available: <name>")` | Both fatal; reason 7 is the more apt RFC 4253 §11.1 semantic; clients only surface the text. |
+| A12 | auth-attempt cap disconnect | reason 2, `Too many authentication failures` | reason 14, `Too many failed authentication attempts` | Cap parity (both cut at 6: five failures then the disconnect); no client branches on the reason code. The failure packets' empty methods list is A09's fix (F8). |
+| A14 | unknown channel type | `CHANNEL_OPEN_FAILURE` reason 2 `"open failed"` | reason 1, `Channel type '<name>' is not supported` | RFC 4254 §5.1 actually suggests reason 3 for unknown types — both deviate; clients only display the string. |
+| C02 | initial session-channel window | confirms with window 0 (LARVAL), grants 2 MiB via WINDOW_ADJUST at program start | confirms with the full 2 MiB immediately | Same effective grant, one round-trip cheaper; both stay at 2 MiB. |
+| C03 | non-reading client (send side) | stops reading the child at window 0 (child freezes on its stdout pipe; channel held open) | no send-side backpressure — output queued in memory, channel finishes after the 2 s close-flush bound, tail dropped | The bounded-flush family with D02; the client-visible edge (a client pausing > 2 s after process exit loses the un-granted tail) is the recorded risk of that bound (D02). |
+| C04 | single chunk over granted maxpacket | drops the packet silently ("rcvd big packet"), channel lives on | closes the channel (connection unaffected) | A sender violating the advertised maxpacket is misbehaving either way; channel-scope teardown is the documented `_handleIncoming` bound check. Revisit candidate (follow-ups). |
+| C06 | overflowing WINDOW_ADJUST (uint32 wrap) | `fatal` kills the whole connection (log-only, no wire DISCONNECT) | closes just the offending channel (`_failChannel`) | Mirrors the fork's client-side policy of failing a channel without taking the connection down; the unknown-channel and zero-adjust halves are identical. |
+| C08 | channel/session cap refusal | reason 2 `"open failed"` at the 11th open | reason 4 `"Too many open channels (10/10)"` | Cap parity (10 = `MaxSessions` default); RFC 4254 §5.1's reason 4 (resource shortage) is exactly this case — tp_sshd's reply is the more spec-apt of the two. |
+| D02 | close flush bound | none — exit path drops the tail instantly; received CLOSE waits for a drain that may never come (or the child dies of SIGPIPE) | pending outgoing data gets a 2 s window-credit wait (`closeFlushTimeout`) before finishing | Documented spec choice: the bound guarantees teardown. Recorded risk: a healthy-but-slow client that does not grant the tail's credit within 2 s of process exit loses data it intended to read (C03's manifestation). |
+| D04 | exit-status/EOF ordering | EOF races ahead of exit-status (pipe EOF vs SIGCHLD, observed every round) | exit-status strictly before EOF/CLOSE (`_pipeProcess`: "a client that sees EOF first may stop waiting for it") | Both orders are RFC-legal; clients must accept either; tp_sshd's order is deliberate. |
+| D07 | early client CLOSE | holds the channel "almost dead" until the child exits, then delivers exit-status + CLOSE | finishes immediately (`handleClose` → `_finish`), kills the process, no exit-status | The client has declared the channel unneeded; tp_sshd trades the late exit report for immediate teardown and no orphaned process. |
+| D10 | `signal` request with a bogus name | `CHANNEL_FAILURE` (generic want_reply handling) | no reply (decoder hardcodes `wantReply: false`, so the server never sees the flag) | RFC 4254 §6.9 pins `want reply FALSE` in the signal message format itself, so no compliant client waits for a reply. The decoder flag loss is a latent dartssh2 issue (follow-ups). |
+| E02-defaults | pre-auth idle timeout *default* | `LoginGraceTime` 120 s (plus 0-4 s jitter) | `authTimeout` 30 s, fixed timer | Deliberate: the embedded pairing window (QR-pair → first login) is short-lived and a stale pre-auth socket should not pin state for two minutes. The fixed (unjittered) timer is acceptable because the timeout is public configuration, not a secret; jitter is a hardening candidate (follow-ups). |
+| E04 | pre-auth connection cap | `MaxStartups 10:30:100`; past the threshold answers the plaintext `Not allowed at this time` line and closes before any banner | no pre-auth cap; every connection gets its full auth window | Embedded pairing context: the listener is paired with the app client on the device, not internet-facing; an embedder needing the bound can enforce it at the listener. Configurable cap is a backlog candidate (follow-ups). |
+| E06 | `keepalive@openssh.com` reply | `REQUEST_FAILURE` (the name is unknown to sshd's global-request handler — it is sshd's own *outbound* keepalive name) | `REQUEST_SUCCESS` (special-cased) | Liveness-equivalent: sshd's own keepalive contract accepts any of the four reply types as proof of life (server_input_keep_alive), so no compliant client observes a difference beyond the reply id. |
+
+### Fix list — prioritized, grouped by mechanism
+
+Task 7 implements per mechanism, not per row: 18 fix-divergence rows
+collapse into 12 fix items (F1–F12) plus one non-row harness finding
+(F13). Priority order: security first (P0), client-visible compatibility
+next (P1), hostile-input robustness in the shared dartssh2 transport
+(P2), package hygiene (P3). Within a priority tier the items are
+independent — the ordering inside a tier is a suggestion (security
+impact vs churn), not a dependency.
+
+**P0 — security**
+
+- **F1 — E01: auth-failure timing must not be an oracle** (tp_sshd,
+  `server_connection.dart`). A remote peer timing the
+  `USERAUTH_FAILURE` reply must not be able to distinguish failure
+  classes — in particular whether the USERNAME matched. Today the three
+  failure paths have disjoint costs (wrong-key med ~2.8 ms — full
+  ed25519 verify plus the async authenticate callback; unknown-user
+  ~0.9 ms — the username-mismatch early-exit before any crypto; malformed
+  ~0.6 ms), so a correct username is ~3× slower to reject than a wrong
+  one. sshd prevents exactly this by padding every failed non-"none"
+  attempt to a common floor before replying (auth2.c:
+  `ensure_minimum_time_since` + `user_specific_delay`: 5 ms minimum +
+  0-4.2 ms pseudorandom per-username jitter derived from a secret).
+  *Acceptance:* fresh-connection-per-trial median reply latencies for
+  wrong-key / unknown-user / malformed-blob are indistinguishable within
+  the noise band. An implementation may adopt sshd's floor+jitter scheme
+  or equivalent constant-work padding; the fix is the total path time,
+  not the individual compares (the early-exit username compare and the
+  embedder's early-exit key compare are not themselves the observable).
+- **F2 — A19: strict-kex violations must carry a wire DISCONNECT**
+  (dartssh2, `ssh_transport.dart`). A non-KEX packet arriving between
+  `KEXINIT` and `NEWKEYS` under negotiated strict kex (RFC 9142 §3.2)
+  must be answered with `DISCONNECT(2, "strict key exchange violation:
+  …")` before the connection closes, the way sshd does
+  (kex.c:kex_protocol_error → packet.c:ssh_packet_disconnect →
+  `SSH2_DISCONNECT_PROTOCOL_ERROR`). The Terrapin countermeasure itself
+  is already enforced (the connection is torn down) but via
+  `SSHHandshakeError` → `SSHTransport.closeWithError` →
+  `socket.destroy()`, so a client sees an unexplained TCP close where
+  sshd delivers a protocol-error reason. *Acceptance:* a strict-kex
+  violation produces a decodable `SSH_MSG_DISCONNECT` (reason 2,
+  description naming the strict-key-exchange violation) on the wire
+  before the close. The strict-kex throw paths (`_handleMessage`'s
+  forbidden-message check, `_handleUnexpectedKexMessage`,
+  `_negotiateStrictKex`) should send the DISCONNECT before closing.
+- **F3 — B06+B07: the server must be able to initiate a rekey**
+  (tp_sshd, `server_connection.dart`). Today there is no trigger of any
+  kind (no byte counter, no timer; dartssh2's `rekey()` is a client-role
+  API), so a pairing session's keys never rotate unless the client asks.
+  *Acceptance (Task 7):* a server whose session exceeds
+  `rekeyBytes`/`rekeyInterval` initiates KEXINIT unprompted; open
+  channels survive; strict-kex ordering holds; an incompatible client
+  gets a clean disconnect.
+  *Defaults rationale (corrected during Area B — supersedes any
+  "matching sshd's 4 GiB/1 h default" reasoning):* OpenSSH 10.2's
+  default is **no configured RekeyLimit at all** — `RekeyLimit default
+  none` (sshd_config.5:1788-1812; servconf.c:398-401 defaults
+  rekey_limit = 0, interval = 0). The only bound that fires by default
+  is cipher geometry: `max_blocks = 2^(block×2)` blocks
+  (packet.c:1046-1063; observed in the harness log as `rekey in after
+  4294967296 blocks` ≈ 64 GiB at AES's 16-byte blocks) with a 2^31-packet
+  hard cap, and a time-based rekey fires only when an interval is
+  configured (serverloop.c:171, packet.c:1095-1097). Proposed tp_sshd
+  defaults: **`rekeyBytes` 1 GiB, `rekeyInterval` 1 h**, both
+  configurable and 0-disableable. Justification (deliberate divergence
+  from sshd's effective default): tp_sshd's deployment is the opposite
+  of an internet-facing sshd's — pairing sessions are long-lived and
+  frequently low-volume, so a geometry-scale byte-only bound would
+  essentially never fire and the session would keep its keys forever,
+  which is exactly the B06 finding. A 1 GiB byte bound plus a 1 h
+  interval guarantees every live pairing session rotates keys at least
+  hourly, covering idle-but-alive sessions a byte counter never reaches;
+  0 restores sshd-default-equivalent behavior for embedders who want it.
+
+**P1 — client-visible compatibility (a real client misbehaves)**
+
+- **F4 — A16 + C05 (+ C03's receive half): the granted receive window
+  must be enforceable** (tp_sshd, `server_channel.dart`). A peer that
+  keeps sending past the granted window beyond the grace margin (sshd:
+  10% of `local_window_max`) must be disconnected (`channel <id>: peer
+  ignored channel window`, reason 2; the DISCONNECT may be
+  queued-unflushed exactly like sshd's — the acceptance observable is
+  the teardown + the bound). Today `_grantReceiveWindowIfNeeded` refills
+  on pure receipt accounting (below half or > 3 packets outstanding —
+  regardless of consumption), so against a non-reading program the
+  window is never a bound and the server buffers unboundedly (C05: 2.4
+  MiB into a `sleep`; A16: ~10 MiB buffered with 55 gratuitous
+  WINDOW_ADJUSTs). *Acceptance:* (a) against a peer that exceeds the
+  granted window past the grace margin, the server disconnects (the
+  connection does not stay open granting credit); (b) window refill is
+  consumption-driven — against a non-reading program, sent-but-unread
+  bytes are never re-granted; (c) a well-behaved peer that stays inside
+  its grant is never disconnected (C01's exactness and C10's SFTP
+  round-trip still pass). One fix serves A16 + C05 + C03's receive
+  half.
+- **F5 — A15 + D05: channel-scoped messages for a nonexistent channel
+  must be a protocol error** (tp_sshd, `server_connection.dart`). Every
+  channel-scoped message (DATA, REQUEST, EOF, …) addressed to an unknown
+  recipient channel must draw `DISCONNECT(2, "<what> packet referred to
+  nonexistent channel <id>")` the way sshd does
+  (channels.c:channel_from_packet_id;
+  serverloop.c:server_input_channel_req), instead of being silently
+  ignored. The racing-close rationale covers at most a small window
+  around a channel's own CLOSE; swallowing every unknown id indefinitely
+  hides real client bugs (a silent hang instead of an error).
+  *Acceptance:* `CHANNEL_DATA` and a want-reply `CHANNEL_REQUEST` to a
+  never-opened (or fully closed and reaped) recipient id each produce a
+  decodable `SSH_MSG_DISCONNECT` reason 2 naming the nonexistent
+  channel, and the connection closes.
+- **F6 — B02 + C07: messages racing the rekey exchange window must not
+  be dropped** (dartssh2, `ssh_transport.dart`). The shared transport
+  answers every incoming non-KEX message processed while a key exchange
+  is in progress with `UNIMPLEMENTED` and drops it
+  (ssh_transport.dart:1625-1627). OpenSSH keeps dispatching ids ≥ 50
+  through a rekey (`kex_reset_dispatch` only guards the transport range
+  1-49). The casualties are packets sent before the peer's KEXINIT
+  arrived that land inside the window — in B02 the exec teardown
+  (exit-status/EOF/CLOSE) in 1-2 of 8 rounds, leaving the channel hung
+  forever; in C07 the drop is a deterministic deadlock under window
+  pressure (tp_sshd 0/3 rounds froze at exactly the client's initial
+  window because the reopening WINDOW_ADJUST was dropped mid-exchange;
+  the sshd side also lost 1/3 rounds through the same drop in its
+  client half — this is one cross-cutting dartssh2-side fix, not a
+  per-server behavior gap). *Acceptance:* a non-KEX message racing into
+  the exchange window is processed, or buffered and re-dispatched after
+  NEWKEYS — never silently dropped; in particular a channel teardown
+  always survives a rekey (B02's 5-round run: 5/5 clean closes; C07's
+  3-round run under window pressure: streams complete and channels
+  close). B02 is a racy distribution row — the verdict rests on the
+  trace evidence (UNIMPLEMENTED for packets 40/41/42) plus repeated
+  runs, not on any single regeneration (see the regeneration note).
+- **F7 — D01: data after EOF must not kill the connection** (tp_sshd,
+  `server_channel.dart`). A `CHANNEL_DATA` arriving after the client's
+  `CHANNEL_EOF` on a live channel must be tolerated the way sshd
+  tolerates it (dropped with window accounting only,
+  channels.c:channel_input_data's `ostate != CHAN_OUTPUT_OPEN` branch)
+  — or delivered — but never allowed to throw. Today `handleEof` closes
+  the channel's input `StreamController` and `_handleIncoming`'s
+  `controller.add` on the closed controller throws synchronously; the
+  error escapes the transport dispatch into `closeWithError` and the
+  whole connection is torn down with nothing on the wire (one
+  misbehaving channel kills every other channel on the connection).
+  *Acceptance:* post-EOF data on a live channel leaves the connection
+  serving (drop it like sshd, or close just that channel); the
+  connection does not close. Guard `_handleIncoming` on `_receivedEof`.
+- **F8 — A09/A10/A11 (+ A12's failure packets): `USERAUTH_FAILURE` must
+  advertise the enabled methods** (tp_sshd, `server_connection.dart`).
+  The failure packet's methods list must say `publickey` (RFC 4252 §8),
+  not be empty. A client that consults the list to decide whether to
+  offer a publickey sees "no methods available" and can give up on a
+  login that would have succeeded. *Acceptance:* a password-method
+  request, an undecodable-key-blob publickey request, and a
+  bad-signature publickey request each answer
+  `USERAUTH_FAILURE(methods=[publickey])`; A12's five failures carry the
+  same list.
+- **F9 — A08: no userauth before service negotiation** (tp_sshd,
+  `server_connection.dart`). A `USERAUTH_REQUEST` arriving before
+  `SERVICE_ACCEPT` must not be processed (sshd answers `UNIMPLEMENTED`
+  through the default dispatch; auth2.c:do_authentication2 +
+  input_service_request). *Acceptance:* tp_sshd ignores or refuses it;
+  in particular it must not answer `USERAUTH_PK_OK` or authenticate on
+  a connection that never negotiated `ssh-userauth`.
+
+**P2 — hostile-input robustness in the shared transport (dartssh2-side)**
+
+- **F10 — B03: a duplicate KEXINIT mid-exchange must be rejected, not
+  merged into the negotiation** (dartssh2, `ssh_transport.dart`).
+  *Acceptance:* while an exchange is in progress, a second KEXINIT draws
+  `UNIMPLEMENTED` and the in-flight exchange completes, the way sshd
+  does (kex.c:kex_input_kexinit:621 re-registers KEXINIT →
+  kex_protocol_error for the duration of the exchange). Today
+  `_handleMessageKexInit` has no in-progress guard: it overwrites
+  `_remoteKexInit` and replaces the ephemeral kex, the exchange hashes
+  desynchronize, the client's KEXDH_REPLY verification fails ("signature
+  is invalid") and the connection dies. Reject or ignore a KEXINIT
+  while `_kexInProgress` is true.
+- **F11 — B08: an unsolicited NEWKEYS must not be adopted** (dartssh2,
+  `ssh_transport.dart`). *Acceptance:* an unsolicited NEWKEYS
+  (mid-exchange, or with no exchange in progress) is not applied — it
+  draws `UNIMPLEMENTED` like sshd (kex.c:kex_input_newkeys:531 leaves
+  NEWKEYS dispatched to kex_protocol_error outside a completed exchange)
+  and the session survives. Today `_handleMessageNewKeys`
+  (ssh_transport.dart:2016) applies remote keys unconditionally:
+  mid-exchange it re-derives keys from the *stale* exchange hash, ends
+  the exchange state and resets the strict-kex receive sequence number,
+  after which the peer's real KEXDH_INIT hits the kex-null
+  `SSHStateError` and the connection is torn down without a DISCONNECT
+  (F2's missing-DISCONNECT family).
+- **F12 — A01: server-side pre-banner garbage must be fatal** (dartssh2,
+  server side). Any non-`SSH-` line from a client before its
+  identification string must terminate the connection: send the
+  plaintext `Invalid SSH identification string.` line and close
+  (kex.c:kex_exchange_identification, server branch). Today tp_sshd
+  discards up to 1024 such lines and completes the handshake against a
+  prober. *Acceptance:* a garbage line before the version string closes
+  the connection with the error line; a clean handshake right after a
+  refused prober still succeeds on a fresh connection. (The client-side
+  pre-banner tolerance is legitimate; only the server-side tolerance is
+  the defect.)
+
+**P3 — package hygiene**
+
+- **F13 — A16 stray async error: the forward pump must consume
+  `connection.done`'s error channel** (tp_sshd,
+  `lib/src/server_forward.dart:pumpForwardConnection`). When a forwarded
+  TCP connection is reset, the pump drops the future returned by
+  `connection.done.whenComplete(...)`, so an *errored* connection
+  completion propagates to an unlistened future — in the audit runner
+  the zone caught `SocketException: Connection reset by peer` past every
+  guard; in the app that is an unhandled exception. *Acceptance:* the
+  pump must consume `connection.done`'s error channel
+  (`.catchError`/`onError`) so a reset forwarded connection can never
+  leak an unhandled error into the embedder's zone; a RST on a forwarded
+  connection mid-stream (D06's shape) leaves the runner's stray-error
+  list empty.
+
+### Documented follow-ups (recorded, not scheduled)
+
+No fix-divergence row was downgraded in triage: every one of the 18 rows
+carries concrete, testable acceptance criteria above (grouped into
+F1–F12). The rubric's candidate downgrade — C07, if it is dominated by
+the driver transport's own behavior — was checked against the row text:
+C07's failures on *both* servers trace to the same shared-transport
+drop (sshd lost 1/3 rounds through its dartssh2 client half), so C07 is
+not a separate behavior gap; it is folded into F6 as evidence and a
+second acceptance scenario, not downgraded. The entries below are
+deliberate-divergence refinements and latent issues recorded for a
+future pass, each with its one-line reason:
+
+- **C04 revisit — tolerant drop for over-maxpacket chunks.** Matching
+  sshd's silent drop would keep buggy-but-recoverable clients alive;
+  deliberate today, revisit only if a real client shows up.
+- **D10 decoder flag loss.** The shared dartssh2
+  `SSH_Message_Channel_Request.signal` factory hardcodes
+  `wantReply: false` (msg_channel.dart:781-791), so the server never
+  sees the flag; no compliant client is affected (RFC 4254 §6.9 pins
+  want reply FALSE in the format) — fix only alongside any signal
+  feature work. A tp_sshd-side fix is not possible without the decoder
+  preserving the flag.
+- **E02 grace-timer jitter.** sshd jitters its grace expiry (0-4 s) so
+  the exact teardown time is unpredictable; tp_sshd's fixed Timer is
+  acceptable because the timeout is public configuration, not a secret
+  — hardening candidate only.
+- **E04 configurable pre-auth connection cap.** Embedded pairing does
+  not need sshd's MaxStartups, and an embedder can enforce a bound at
+  the listener (`ServerSocket`); a configurable cap policy is a backlog
+  candidate.
+- **C10 SFTP throughput (~2× slower per direction).** Correctness
+  identical (byte-intact both ways); the harness `LocalSftpFileSystem`
+  serializes position+read/write pairs per handle — a Task 7
+  performance candidate, not a divergence.
+- **A16 first-pass note — data ahead of the first CHANNEL_REQUEST on a
+  request-less session channel.** sshd drops it (LARVAL channels discard
+  data before window accounting); tp_sshd delivers it. tp_sshd is the
+  more tolerant side and no client was observed to misbehave; recorded
+  for the window work (F4) to keep in mind, not a separate item.
+
+### Regeneration note — timing-variable rows
+
+When the audit is regenerated, these rows compare **in-kind**, never by
+numeric equality (wall-clock µs over loopback TCP are not comparable
+across runs):
+
+- **B02** — a distribution row: the exec teardown racing into the
+  exchange window happens in 1-2 of 8 rounds (0/8 on the sshd side);
+  the verdict rests on the trace evidence (the client answered
+  UNIMPLEMENTED for packets 40/41/42) plus repeated runs, not on any
+  single regeneration.
+- **C07** — same family under window pressure (tp_sshd 0/3 clean, sshd
+  1/3 clean in this run); the freeze point (exactly the initial grant)
+  and the 0 × UNIMPLEMENTED trace are the stable observables.
+- **D02 phase 2's ms figure** — the 1974 ms EOF+CLOSE delay is a single
+  sample of the 2 s `closeFlushTimeout` bound; compare against the
+  bound (≈ 2 s), not the exact milliseconds.
+- **E01's distributions** — per-run medians/p95s vary; the finding is
+  the cross-condition separability (wrong-key ~2.8 ms vs unknown-user
+  ~0.9 ms vs malformed ~0.6 ms in this run — a ~3× oracle), not the
+  absolute values. sshd's cross-username gap (~1 ms here) is
+  `user_specific_delay` working as designed (each username draws a
+  secret-derived 0-4.2 ms constant); same-username conditions are the
+  cells that must be indistinguishable.
+- **E02** — one sample per server per run; the sample must land inside
+  the predicted band (tp_sshd: at the configured timeout minus the
+  handshake lead-in; sshd: timeout + 0-4 s jitter minus the same
+  lead-in).
