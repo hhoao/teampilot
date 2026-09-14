@@ -65,12 +65,6 @@ abstract interface class TerminalBehaviorCapability implements CliCapability {
   /// cell; codex keeps the line as history and paints a new composer below.
   FullscreenCrAckStrategy get fullscreenCrAckStrategy;
 
-  /// Leading prefix on mirror-grid rows that identify composer chrome (`→`, `›`,
-  /// `❯`, `┃`, …). Used to scope paste needle search away from stale transcript
-  /// on tall viewports, and required for
-  /// [FullscreenCrAckStrategy.composerMovesDown] CR ACK.
-  String? get fullscreenComposerPrefix;
-
   /// Whether the composer opens an autocomplete popup on "@" in pasted text
   /// that consumes the submit CR (Claude Code file-mention). When true, grid
   /// automation sends ESC before the CR for text containing "@".

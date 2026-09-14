@@ -385,7 +385,7 @@ class FullscreenPtyAutomation {
     String text,
   ) {
     final needle = PtyAutomationNeedle.forText(text);
-    return port.locateNeedle(needle, scanRows: _probeScanRows(port));
+    return port.locatePasteZoneNeedle(needle, scanRows: _probeScanRows(port));
   }
 
   Future<FullscreenPtyDeliveryOutcome> _pollCrUntilAnchorClears(
@@ -578,19 +578,21 @@ class FullscreenPtyAutomation {
   /// it moves into the transcript and the bottom composer row repaints empty.
   /// [FullscreenCrAckStrategy.anchorCellClears] (claude): the needle must
   /// still sit at the anchor cells — a cleared composer means submitted.
+  /// Resend-safety guard for a CR retry: true only when the grid proves the
+  /// staged text is still un-submitted input.
+  ///
+  /// A needle still in the cursor input zone means the message has not been
+  /// consumed and a CR retry cannot duplicate it. Covers both
+  /// [FullscreenCrAckStrategy.anchorCellClears] and
+  /// [FullscreenCrAckStrategy.composerMovesDown] without a per-CLI prefix.
   bool _crRetrySafeToResend(
     FullscreenPtyDeliveryPort port,
     FullscreenPromptAnchor anchor,
   ) {
     switch (port.crAckConfig.strategy) {
       case FullscreenCrAckStrategy.composerMovesDown:
-        final prefix = port.crAckConfig.composerPrefix?.trim();
-        if (prefix == null || prefix.isEmpty) {
-          return port.isAtAnchor(anchor);
-        }
-        return port.isNeedleStagedInComposer(anchor.needle);
       case FullscreenCrAckStrategy.anchorCellClears:
-        return port.isAtAnchor(anchor);
+        return port.isNeedleStagedInCursorZone(anchor.needle);
       case FullscreenCrAckStrategy.timed:
         return false;
     }

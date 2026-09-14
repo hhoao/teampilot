@@ -24,8 +24,6 @@ final class OpencodeTerminalBehavior implements TerminalBehaviorCapability {
   FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
       FullscreenCrAckStrategy.anchorCellClears;
   @override
-  String? get fullscreenComposerPrefix => '\u2503';
-  @override
   bool get mentionAutocompletePopup => false;
 
   @override

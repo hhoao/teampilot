@@ -15,8 +15,6 @@ abstract interface class FullscreenPtyDeliveryPort {
   /// Completes on the next screen paint, or when [timeout] elapses.
   Future<void> waitForPaint({required Duration timeout});
 
-  FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24});
-
   /// Paste-ACK location in the **bottom input zone**: bottom [scanRows] visible
   /// rows, no CLI composer prefix. Used by the paste ACK / baseline flow.
   FullscreenPromptAnchor? locatePasteZoneNeedle(
@@ -27,19 +25,14 @@ abstract interface class FullscreenPtyDeliveryPort {
   /// Collapsed-paste chrome (`[Pasted ~N lines]`) in the bottom input zone.
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24});
 
-  /// Collapsed-paste chrome ACK when body text is hidden from the grid
-  /// (e.g. Claude Code `[Pasted text #N +M lines]`, opencode `[Pasted ~N lines]`).
-  FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24});
-
   bool isAtAnchor(FullscreenPromptAnchor anchor);
 
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24});
 
-  /// Whether the bottommost composer chrome row is prefix-only (no staged body).
-  bool isComposerChromeEmpty({int scanRows = 24});
-
-  /// Whether [needle] is still the body of a composer-prefixed input row.
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24});
+  /// Whether [needle] is still the body of the live input box (cursor input
+  /// zone). Used by the CR retry guard: a needle still staged means a CR retry
+  /// cannot duplicate the message.
+  bool isNeedleStagedInCursorZone(String needle);
 
   Future<void> clearStagedInput({bool Function()? canExecute});
 

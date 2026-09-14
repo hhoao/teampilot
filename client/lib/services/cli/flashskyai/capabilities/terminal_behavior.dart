@@ -25,8 +25,6 @@ final class FlashskyaiTerminalBehavior implements TerminalBehaviorCapability {
   FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
       FullscreenCrAckStrategy.anchorCellClears;
   @override
-  String? get fullscreenComposerPrefix => '\u276f';
-  @override
   bool get mentionAutocompletePopup => true;
 
   @override

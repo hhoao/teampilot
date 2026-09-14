@@ -82,35 +82,16 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   }
 
   @override
+  bool isNeedleStagedInCursorZone(String needle) {
+    if (staged == null || needle.isEmpty) return false;
+    return staged!.contains(needle);
+  }
+
+  @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
     if (crCount < crsToClear) return false;
     if (staged == null) return true;
     return !staged!.contains(anchor.needle);
-  }
-
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) {
-    if (composerChromeEmptyOverride != null) {
-      return composerChromeEmptyOverride!;
-    }
-    final prefix = crAckConfig.composerPrefix?.trim();
-    if (prefix == null || prefix.isEmpty) {
-      return staged == null || staged!.trim().isEmpty;
-    }
-    if (staged == null) return true;
-    final trimmed = staged!.trimLeft();
-    if (!trimmed.startsWith(prefix)) {
-      // Staged body without prefix chrome — treat as non-empty composer body.
-      return staged!.trim().isEmpty;
-    }
-    return trimmed.substring(prefix.length).trim().isEmpty;
-  }
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) {
-    if (staged == null || needle.isEmpty) return false;
-    if (composerStagedOverride != null) return composerStagedOverride!;
-    return staged!.contains(needle);
   }
 
   @override
@@ -159,7 +140,6 @@ final class RowAwareFakeFullscreenPtyDeliveryPort
     this.crAckConfig =
         const FullscreenCrAckConfig(
           strategy: FullscreenCrAckStrategy.composerMovesDown,
-          composerPrefix: '\u203a',
         ),
     this.pasteFailsToStage = false,
     this.staleEcho,
@@ -223,18 +203,14 @@ final class RowAwareFakeFullscreenPtyDeliveryPort
   }
 
   @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      staged != null && staged!.contains(needle);
+
+  @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
     if (crCount < 1) return false;
     return staged == null;
   }
-
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) =>
-      staged == null || staged!.trim().isEmpty;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      staged != null && staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {

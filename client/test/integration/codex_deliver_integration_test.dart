@@ -151,7 +151,6 @@ void main() {
             painted: session.observationPainted,
             crAckConfig: const FullscreenCrAckConfig(
               strategy: FullscreenCrAckStrategy.composerMovesDown,
-              composerPrefix: '\u203a',
             ),
           );
           final outcome = await automation.deliverPasteAndSubmit(

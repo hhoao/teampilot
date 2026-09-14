@@ -24,8 +24,6 @@ final class ClaudeTerminalBehavior implements TerminalBehaviorCapability {
   FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
       FullscreenCrAckStrategy.anchorCellClears;
   @override
-  String? get fullscreenComposerPrefix => '\u276f';
-  @override
   // Claude Code's composer opens a file-mention autocomplete on "@path" pastes
   // that consumes the submit CR (verified against 2.1.211 in a PTY).
   bool get mentionAutocompletePopup => true;

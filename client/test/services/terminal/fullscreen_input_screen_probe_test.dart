@@ -66,7 +66,6 @@ void main() {
     final anchor = locateCollapsedPasteNeedle(
       grid,
       scanRows: 10,
-      composerPrefix: '❯',
     );
     expect(anchor, isNotNull);
     expect(anchor!.needle, '[Pasted text #3 +17 lines]');
@@ -82,7 +81,6 @@ void main() {
     final anchor = locateCollapsedPasteNeedle(
       grid,
       scanRows: 10,
-      composerPrefix: '┃',
     );
     expect(anchor, isNotNull);
     expect(anchor!.needle, '[Pasted ~152 lines]');
@@ -98,55 +96,10 @@ void main() {
     final anchor = locateCollapsedPasteNeedle(
       grid,
       scanRows: 10,
-      composerPrefix: '›',
     );
     expect(anchor, isNotNull);
     expect(anchor!.needle, '[Pasted Content 29390 chars]');
     expect(anchor.row, 7);
-  });
-
-  test(
-    'locateNeedle does not treat splash text as paste when composer is absent',
-    () {
-      final grid = _FakeGrid.fromRows([
-        'Welcome to Codex',
-        'hello',
-        'Press enter to continue',
-      ]);
-
-      expect(
-        locateFullscreenPromptNeedle(
-          grid,
-          'hello',
-          scanRows: 24,
-          composerPrefix: '\u203a',
-        ),
-        isNull,
-        reason:
-            'without a › composer row, splash/MOTD text must not ACK a Codex paste',
-      );
-    },
-  );
-
-  test('locateNeedle ignores stale transcript above composer slack window', () {
-    final lines = List<String>.filled(24, '');
-    lines[2] = '[teammate-bus] stale delivery in transcript';
-    lines[22] = '→ Plan, search, build anything';
-    final grid = _FakeGrid.fromRows(lines);
-
-    expect(
-      locateFullscreenPromptNeedle(
-        grid,
-        '[teammate-bus]',
-        scanRows: 24,
-        composerPrefix: '→',
-      ),
-      isNull,
-    );
-    expect(
-      locateFullscreenPromptNeedle(grid, '[teammate-bus]', scanRows: 24),
-      isNotNull,
-    );
   });
 
   test('locateNeedle finds wrapped paste above cursor composer chrome', () {
@@ -159,7 +112,6 @@ void main() {
       grid,
       '[teammate-bus]',
       scanRows: 24,
-      composerPrefix: '→',
     );
     expect(anchor, isNotNull);
     expect(anchor!.row, 18);
@@ -181,7 +133,6 @@ void main() {
       grid,
       '\u76ee\u524d\u6211\u670d\u52a1\u5668\u4e0a\u90e8\u7f72',
       scanRows: 24,
-      composerPrefix: '\u2503',
     );
     expect(
       anchor,
@@ -189,15 +140,6 @@ void main() {
       reason: 'opencode staged paste must be locatable for paste ACK',
     );
     expect(anchor!.row, 12);
-  });
-
-  test('bottomComposerChromeRow finds lowest prefix row in scan window', () {
-    final lines = List<String>.filled(8, '');
-    lines[3] = '› older composer';
-    lines[6] = '› active composer';
-    final grid = _FakeGrid.fromRows(lines);
-
-    expect(bottomComposerChromeRow(grid, '\u203a', scanRows: 8), 6);
   });
 
   test(
@@ -208,6 +150,7 @@ void main() {
         '› codex-probe-12345',
         '› ',
       ]);
+      grid.cursorRow = 1; // input box holds the staged needle
       final anchor = locateFullscreenPromptNeedle(grid, 'codex-probe-12345')!;
       expect(isFullscreenPromptAtAnchor(grid, anchor), isTrue);
       expect(
@@ -215,7 +158,6 @@ void main() {
           grid,
           anchor,
           strategy: FullscreenCrAckStrategy.composerMovesDown,
-          composerPrefix: '\u203a',
           scanRows: 24,
         ),
         isFalse,
@@ -233,6 +175,7 @@ void main() {
         'status footer default · /tmp',
         '› codex-probe-12345',
       ]);
+      grid.cursorRow = 2; // needle moved down WITH the live composer
       const anchor = FullscreenPromptAnchor(
         row: 1,
         startCol: 2,
@@ -244,7 +187,6 @@ void main() {
           grid,
           anchor,
           strategy: FullscreenCrAckStrategy.composerMovesDown,
-          composerPrefix: '\u203a',
           scanRows: 24,
         ),
         isFalse,
@@ -269,20 +211,10 @@ void main() {
       needle: 'codex-probe-12345',
     );
     expect(
-      isNeedleStagedInComposer(
-        grid,
-        'codex-probe-12345',
-        composerPrefix: '›',
-        scanRows: 24,
-      ),
-      isFalse,
-    );
-    expect(
       isFullscreenPromptSubmitted(
         grid,
         anchor,
         strategy: FullscreenCrAckStrategy.composerMovesDown,
-        composerPrefix: '\u203a',
         scanRows: 24,
       ),
       isTrue,
@@ -296,51 +228,19 @@ void main() {
         'codex output above',
         '› codex-probe-12345',
       ]);
+      grid.cursorRow = 1; // staged needle still at the live composer
       final anchor = locateFullscreenPromptNeedle(grid, 'codex-probe-12345')!;
       expect(
         isFullscreenPromptSubmitted(
           grid,
           anchor,
           strategy: FullscreenCrAckStrategy.composerMovesDown,
-          composerPrefix: '\u203a',
           scanRows: 24,
         ),
         isFalse,
       );
     },
   );
-
-  test('isComposerChromeEmpty true for prefix-only cursor row', () {
-    final grid = _FakeGrid.fromRows(['A', '→ ']);
-    expect(
-      isComposerChromeEmpty(grid, composerPrefix: '→', scanRows: 8),
-      isTrue,
-    );
-  });
-
-  test('isComposerChromeEmpty false when body follows prefix', () {
-    final grid = _FakeGrid.fromRows(['→ A']);
-    expect(
-      isComposerChromeEmpty(grid, composerPrefix: '→', scanRows: 8),
-      isFalse,
-    );
-  });
-
-  test('isComposerChromeEmpty false when no composer row', () {
-    final grid = _FakeGrid.fromRows(['just history']);
-    expect(
-      isComposerChromeEmpty(grid, composerPrefix: '→', scanRows: 8),
-      isFalse,
-    );
-  });
-
-  test('isComposerChromeEmpty true for codex prefix with trailing spaces', () {
-    final grid = _FakeGrid.fromRows(['›     ']);
-    expect(
-      isComposerChromeEmpty(grid, composerPrefix: '\u203a', scanRows: 8),
-      isTrue,
-    );
-  });
 
   test('locateNeedle finds soft-wrapped CJK tail across two rows', () {
     // Logical paste (no prefix in needle). Composer prefix only on first row.
@@ -485,23 +385,6 @@ prefix
     return rows;
   }
 
-  test('transcript echo with › prefix is not staged composer input', () {
-    final grid = _FakeGrid.fromRows(realCodexEchoDumpRows());
-
-    expect(
-      isNeedleStagedInComposer(
-        grid,
-        'hello',
-        composerPrefix: '›',
-        scanRows: 24,
-      ),
-      isFalse,
-      reason:
-          'the live input box (r21) holds the placeholder, not "hello"; '
-          'the r13 echo is transcript history, not un-submitted input',
-    );
-  });
-
   test('composerMovesDown verdict submitted for real codex echo layout', () {
     final grid = _FakeGrid.fromRows(realCodexEchoDumpRows());
     // Anchor from paste time: the composer row that held "hello" pre-submit.
@@ -516,7 +399,6 @@ prefix
         grid,
         anchor,
         strategy: FullscreenCrAckStrategy.composerMovesDown,
-        composerPrefix: '›',
         scanRows: 24,
       ),
       isTrue,
@@ -525,71 +407,6 @@ prefix
           '(codex was Working 17s at dump time — the CR was accepted)',
     );
   });
-
-  test(
-    'isNeedleStagedInComposer true when needle is the bottom chrome body',
-    () {
-      final rows = List<String>.filled(24, '');
-      rows[23] = '› hello';
-      final grid = _FakeGrid.fromRows(rows);
-
-      expect(
-        isNeedleStagedInComposer(
-          grid,
-          'hello',
-          composerPrefix: '›',
-          scanRows: 24,
-        ),
-        isTrue,
-        reason: 'needle on the live input box row — a swallowed CR must retry',
-      );
-    },
-  );
-
-  test(
-    'isNeedleStagedInComposer true for wrapped tail with non-empty chrome',
-    () {
-      final rows = List<String>.filled(24, '');
-      rows[21] = '› hello_WORLD_PART';
-      rows[22] = '_CONTINUES_HERE';
-      rows[23] = '_TAIL_OF_BODY';
-      final grid = _FakeGrid.fromRows(rows);
-
-      expect(
-        isNeedleStagedInComposer(
-          grid,
-          'WORLD_PART_CONTINUES_HERE',
-          composerPrefix: '›',
-          scanRows: 24,
-        ),
-        isTrue,
-        reason: 'wrapped staged body ending in the live composer row',
-      );
-    },
-  );
-
-  test(
-    'isNeedleStagedInComposer false for echo directly above placeholder',
-    () {
-      // Even a close echo (2 rows above the live box) is transcript once the
-      // live composer row repaints with its placeholder.
-      final rows = List<String>.filled(24, '');
-      rows[20] = '› hello';
-      rows[21] = '';
-      rows[22] = '› Ask Codex to do anything';
-      final grid = _FakeGrid.fromRows(rows);
-
-      expect(
-        isNeedleStagedInComposer(
-          grid,
-          'hello',
-          composerPrefix: '›',
-          scanRows: 24,
-        ),
-        isFalse,
-      );
-    },
-  );
 }
 
 int _displayWidth(String text) {
@@ -680,6 +497,9 @@ final class _FakeGrid implements TerminalScreenGrid {
 
   final List<List<int>> rowsData;
   final List<List<int>> flagsData;
+
+  /// Cursor row (composer position) — tests set this to model a live input box.
+  int cursorRow = -1;
 
   @override
   int get rows => rowsData.length;

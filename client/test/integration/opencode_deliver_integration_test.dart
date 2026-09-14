@@ -150,7 +150,6 @@ void main() {
             painted: session.observationPainted,
             crAckConfig: const FullscreenCrAckConfig(
               strategy: FullscreenCrAckStrategy.anchorCellClears,
-              composerPrefix: '\u2503',
             ),
           );
 

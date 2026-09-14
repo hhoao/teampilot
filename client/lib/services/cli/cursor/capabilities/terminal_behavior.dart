@@ -59,8 +59,6 @@ final class CursorTerminalBehavior
   FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
       FullscreenCrAckStrategy.composerMovesDown;
   @override
-  String? get fullscreenComposerPrefix => '→';
-  @override
   bool get mentionAutocompletePopup => false;
 
   @override

@@ -51,14 +51,6 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
     }
   }
 
-  @override
-  FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) =>
-      _probe.locateFullscreenPromptNeedle(
-        needle,
-        scanRows: scanRows,
-        composerPrefix: _crAckConfig.composerPrefix,
-      );
-
   /// Paste-ACK location: finds [needle] in the **bottom input zone** (the last
   /// [scanRows] visible rows), without a CLI-specific composer prefix. The
   /// input box is pinned at the bottom of full-screen TUIs, so bottom-scoped
@@ -72,59 +64,29 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
   }) => _probe.locateFullscreenPromptNeedle(
     needle,
     scanRows: scanRows,
-    composerPrefix: null,
   );
-
-  @override
-  FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
-      _probe.locateCollapsedPasteNeedle(
-        scanRows: scanRows,
-        composerPrefix: _crAckConfig.composerPrefix,
-      );
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       _probe.locateCollapsedPasteNeedle(
         scanRows: scanRows,
-        composerPrefix: null,
       );
 
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
-      _probe.isFullscreenPromptAtAnchor(
-        anchor,
-        composerPrefix: _crAckConfig.composerPrefix,
-      );
+      _probe.isFullscreenPromptAtAnchor(anchor);
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       _probe.isFullscreenPromptSubmitted(
         anchor,
         strategy: _crAckConfig.strategy,
-        composerPrefix: _crAckConfig.composerPrefix,
         scanRows: scanRows,
       );
 
   @override
-  bool isComposerChromeEmpty({int scanRows = 24}) {
-    final prefix = _crAckConfig.composerPrefix?.trim();
-    if (prefix == null || prefix.isEmpty) return false;
-    return _probe.isComposerChromeEmpty(
-      composerPrefix: prefix,
-      scanRows: scanRows,
-    );
-  }
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) {
-    final prefix = _crAckConfig.composerPrefix?.trim();
-    if (prefix == null || prefix.isEmpty) return false;
-    return _probe.isNeedleStagedInComposer(
-      needle,
-      composerPrefix: prefix,
-      scanRows: scanRows,
-    );
-  }
+  bool isNeedleStagedInCursorZone(String needle) =>
+      _probe.needleStaysInCursorZone(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) =>

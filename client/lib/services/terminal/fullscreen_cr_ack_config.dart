@@ -4,8 +4,8 @@ enum FullscreenCrAckStrategy {
   anchorCellClears,
 
   /// Staged text stays on [FullscreenPromptAnchor.row] as history; a new
-  /// [FullscreenCrAckConfig.composerPrefix] row appears below (codex).
-  /// Not submitted while [needle] is still the body of a composer row.
+  /// input row appears below (codex).
+  /// Not submitted while [needle] is still the body of the input box.
   composerMovesDown,
 
   /// Skip grid polling after CR; rely on paste settle timing only.
@@ -16,21 +16,14 @@ enum FullscreenCrAckStrategy {
 final class FullscreenCrAckConfig {
   const FullscreenCrAckConfig({
     this.strategy = FullscreenCrAckStrategy.anchorCellClears,
-    this.composerPrefix,
     this.hookSubmitAck = false,
   });
 
   const FullscreenCrAckConfig.productionDefault()
     : strategy = FullscreenCrAckStrategy.anchorCellClears,
-      composerPrefix = null,
       hookSubmitAck = false;
 
   final FullscreenCrAckStrategy strategy;
-
-  /// Row-leading prefix that marks composer chrome on the mirror grid. Scopes
-  /// paste needle search on tall viewports and is required for
-  /// [FullscreenCrAckStrategy.composerMovesDown].
-  final String? composerPrefix;
 
   /// When true, the CR submit is confirmed **only** by the hook
   /// `promptSubmitted` signal ([FullscreenPtyDeliveryPort] `isAcked`); the

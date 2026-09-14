@@ -146,7 +146,7 @@ abort（shell 断开 / fence 关闭）从任意非终态 → aborted
 - **底部优先**：`from bottom-up`，所以同屏出现多条相同文本时，先命中**位置更靠下**的那条 = 输入框里最新贴入的，而不是上方 history。
 - **窗口限定**：搜索不越过 `composerAboveSlack`，远的历史 transcript 不参与。
 - **短消息重复发送**：若连续发送两条相同短消息，旧的在 transcript（更靠上），新的在输入框（更靠下），底部优先天然命中新贴的。
-- **已知边界（已缓解）**：粘贴失败 + 旧同文本在窗口内，会被基线增量（§4.4 的 `<=` 拒绝）拦截 → `pasteNotFound`，不再发空 CR。残余风险只剩长文本 wrap 的漏判（§4.3 hook 兜底）。
+- **粘贴失败 + 旧同文本在窗口内**：被基线增量（§4.4 的 `<=` 拒绝）拦截 → `pasteNotFound`，不再发空 CR。
 - **长文本软换行**：长文本跨多个物理行时，needle 从尾部取，可能分布在 wrap 行中；`_matchesNeedleAt` 的 wrap 拼接使其仍可命中，但极长文本仍需 `pollTimeout` 放大（`_pastePollBudget`）。
 
 ### 4.3 hook 提交兜底（为什么"粘贴误判"不会被当成成功）

@@ -185,8 +185,6 @@ void main() {
         painted: session.observationPainted,
         crAckConfig: FullscreenCrAckConfig(
           strategy: const CursorTerminalBehavior().fullscreenCrAckStrategy,
-          composerPrefix:
-              const CursorTerminalBehavior().fullscreenComposerPrefix,
         ),
       );
 

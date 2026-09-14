@@ -306,7 +306,6 @@ void main() {
         final port = FakeFullscreenPtyDeliveryPort(
           crAckConfig: const FullscreenCrAckConfig(
             strategy: FullscreenCrAckStrategy.composerMovesDown,
-            composerPrefix: '\u203a',
             hookSubmitAck: true,
           ),
           crsToClear: 1,
@@ -338,7 +337,6 @@ void main() {
         final port = FakeFullscreenPtyDeliveryPort(
           crAckConfig: const FullscreenCrAckConfig(
             strategy: FullscreenCrAckStrategy.composerMovesDown,
-            composerPrefix: '\u203a',
             hookSubmitAck: true,
           ),
         );
@@ -456,7 +454,6 @@ void main() {
     // crStuck / unconfirmed with the text stuck in the composer forever.
     const codexCrAck = FullscreenCrAckConfig(
       strategy: FullscreenCrAckStrategy.composerMovesDown,
-      composerPrefix: '›',
     );
 
     test('re-CRs when startup overlay swallowed the first CRs', () async {
@@ -692,7 +689,6 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
     : _inner = FakeFullscreenPtyDeliveryPort(
         crAckConfig: const FullscreenCrAckConfig(
           strategy: FullscreenCrAckStrategy.composerMovesDown,
-          composerPrefix: '\u203a',
         ),
       );
 
@@ -739,18 +735,15 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
 
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) => _inner.isAtAnchor(anchor);
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
+
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       _inner.isSubmittedAfterCr(anchor, scanRows: scanRows);
 
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) =>
-      _inner.isComposerChromeEmpty(scanRows: scanRows);
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      _inner.isNeedleStagedInComposer(needle, scanRows: scanRows);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) =>
@@ -789,7 +782,6 @@ final class _CursorTranscriptAfterSubmitPort
   @override
   FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
     strategy: const CursorTerminalBehavior().fullscreenCrAckStrategy,
-    composerPrefix: const CursorTerminalBehavior().fullscreenComposerPrefix,
   );
 
   @override
@@ -828,22 +820,14 @@ final class _CursorTranscriptAfterSubmitPort
   }
 
   @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      _staged != null && _staged!.contains(needle);
+
+  @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
     if (!_submitted) return false;
-    return switch (crAckConfig.strategy) {
-      FullscreenCrAckStrategy.timed => true,
-      FullscreenCrAckStrategy.anchorCellClears => !isAtAnchor(anchor),
-      FullscreenCrAckStrategy.composerMovesDown =>
-        crAckConfig.composerPrefix == '→',
-    };
+    return _submitted;
   }
-
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) => _submitted;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      !_submitted && _staged != null && _staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -904,7 +888,6 @@ final class _ComposerMovesDownStuckButCommittedPort
   @override
   FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.composerMovesDown,
-    composerPrefix: '→',
   );
 
   @override
@@ -941,6 +924,10 @@ final class _ComposerMovesDownStuckButCommittedPort
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       locateNeedle(anchor.needle) != null;
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      _composerBody != null && _composerBody!.contains(needle);
+
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
@@ -949,13 +936,6 @@ final class _ComposerMovesDownStuckButCommittedPort
         isSubmittedVerdictOnCall > 0;
   }
 
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) =>
-      _composerBody == null || _composerBody!.trim().isEmpty;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      _composerBody != null && _composerBody!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1006,7 +986,6 @@ final class _ComposerMovesDownStuckStagedThenAckPort
   @override
   FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.composerMovesDown,
-    composerPrefix: '→',
   );
 
   @override
@@ -1042,6 +1021,10 @@ final class _ComposerMovesDownStuckStagedThenAckPort
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       staged != null && staged!.contains(anchor.needle);
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
+
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
@@ -1049,13 +1032,6 @@ final class _ComposerMovesDownStuckStagedThenAckPort
     return _round >= 1 && crCount > 0 && staged == null;
   }
 
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) =>
-      staged == null || staged!.trim().isEmpty;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      staged != null && staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1106,7 +1082,6 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
   @override
   FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.composerMovesDown,
-    composerPrefix: '→',
   );
 
   @override
@@ -1142,6 +1117,10 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       staged != null && staged!.contains(anchor.needle);
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
+
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
@@ -1149,13 +1128,6 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
     return pasteCount >= 2 && staged == null && crCount > 0;
   }
 
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) =>
-      staged == null || staged!.trim().isEmpty;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      staged != null && staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1210,7 +1182,6 @@ final class _AnchorCellStuckButHookAckedPort
   @override
   FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.anchorCellClears,
-    composerPrefix: '\u2503',
   );
 
   @override
@@ -1246,18 +1217,16 @@ final class _AnchorCellStuckButHookAckedPort
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       staged != null && staged!.contains(anchor.needle);
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
+
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       // Stale mirror: never reflects the commit.
       false;
 
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) => !submitted;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      !submitted && staged != null && staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1307,7 +1276,6 @@ final class _MentionPopupSwallowsCrPort implements FullscreenPtyDeliveryPort {
   @override
   FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.anchorCellClears,
-    composerPrefix: '❯',
   );
 
   @override
@@ -1344,17 +1312,15 @@ final class _MentionPopupSwallowsCrPort implements FullscreenPtyDeliveryPort {
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       staged != null && staged!.contains(anchor.needle);
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
+
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       crCount > 0 && !popupOpen && staged == null;
 
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) => staged == null;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      staged != null && staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1408,7 +1374,6 @@ final class _AbortedAfterHookAckPort implements FullscreenPtyDeliveryPort {
   @override
   FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.anchorCellClears,
-    composerPrefix: '›',
   );
 
   @override
@@ -1444,18 +1409,16 @@ final class _AbortedAfterHookAckPort implements FullscreenPtyDeliveryPort {
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       staged != null && staged!.contains(anchor.needle);
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
+
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       // Stale mirror: never reflects the commit.
       false;
 
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) => crCount > 0;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      crCount == 0 && staged != null && staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1533,18 +1496,15 @@ final class _PaintWakePort implements FullscreenPtyDeliveryPort {
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       _visible && staged != null && staged!.contains(anchor.needle);
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
+
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       crCount > 0 && (staged == null || !staged!.contains(anchor.needle));
 
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) =>
-      staged == null || staged!.trim().isEmpty;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      staged != null && staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1591,7 +1551,6 @@ final class _LateCrAckPaintPort implements FullscreenPtyDeliveryPort {
   @override
   FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.composerMovesDown,
-    composerPrefix: '\u203a',
   );
 
   @override
@@ -1633,18 +1592,15 @@ final class _LateCrAckPaintPort implements FullscreenPtyDeliveryPort {
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       staged != null && staged!.contains(anchor.needle);
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
+
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       _crAckVisible;
 
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) =>
-      staged == null || staged!.trim().isEmpty;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      staged != null && staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {

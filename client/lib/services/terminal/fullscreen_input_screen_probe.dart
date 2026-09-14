@@ -12,6 +12,12 @@ abstract interface class TerminalScreenGrid {
   int get columns;
   int codepointAt(int row, int col);
   int flagsAt(int row, int col);
+
+  /// Row of the terminal cursor (the live input position for a full-screen
+  /// TUI). This is the most reliable "where is the composer" signal — it does
+  /// not depend on a per-CLI prefix character and is not confused by status
+  /// rows that reuse the same glyph (opencode's `┃ Build`). `-1` when unknown.
+  int get cursorRow;
 }
 
 /// Screen position of a staged prompt substring; the [needle] may continue onto
@@ -38,24 +44,19 @@ class FullscreenPromptAnchor {
 // Mirror flutter_alacritty `cell_flags.dart` / rust `engine.rs`.
 const int _flagWideSpacer = 1 << 5;
 
-/// Rows above the bottom composer chrome to search for wrapped multi-line paste
-/// (cursor doorbell above `→`, etc.).
-const int fullscreenComposerLocateAboveSlack = 12;
-
 /// Bottom-up search for [needle] in the last [scanRows] visible rows.
 ///
-/// Search tries each column start on every row; a match may consume subsequent
-/// rows when the needle continues past a soft wrap.
+/// Bottom-up search for [needle] in the last [scanRows] visible rows (the
+/// bottom input zone). Search tries each column start on every row; a match may
+/// consume subsequent rows when the needle continues past a soft wrap.
 ///
-/// When [composerPrefix] is set, only rows at or above the bottommost composer
-/// chrome row (within [composerAboveSlack]) are searched so stale transcript
-/// higher on a tall viewport is not mistaken for staged input.
+/// The input box is pinned at the bottom of full-screen TUIs, so restricting the
+/// search to the bottom [scanRows] rows separates staged input from higher
+/// transcript — no per-CLI prefix character is needed.
 FullscreenPromptAnchor? locateFullscreenPromptNeedle(
   TerminalScreenGrid grid,
   String needle, {
   int scanRows = 8,
-  String? composerPrefix,
-  int composerAboveSlack = fullscreenComposerLocateAboveSlack,
 }) {
   if (needle.isEmpty) return null;
   final rows = grid.rows;
@@ -63,21 +64,9 @@ FullscreenPromptAnchor? locateFullscreenPromptNeedle(
 
   final needleRunes = needle.runes.toList();
   final windowStart = (rows - scanRows).clamp(0, rows - 1);
-  final searchStart = _composerLocateStartRow(
-    grid,
-    windowStart: windowStart,
-    scanRows: scanRows,
-    composerPrefix: composerPrefix,
-    composerAboveSlack: composerAboveSlack,
-  );
-  if (searchStart == null) return null;
+  final searchStart = windowStart;
   for (var r = rows - 1; r >= searchStart; r--) {
-    final startCol = _findNeedleStartCol(
-      grid,
-      r,
-      needleRunes,
-      composerPrefix: composerPrefix,
-    );
+    final startCol = _findNeedleStartCol(grid, r, needleRunes);
     if (startCol >= 0) {
       return FullscreenPromptAnchor(row: r, startCol: startCol, needle: needle);
     }
@@ -89,34 +78,21 @@ FullscreenPromptAnchor? locateFullscreenPromptNeedle(
 /// `[Pasted text #N +M lines]` or `[Pasted ~N lines]` chrome.
 ///
 /// Body text is absent from the grid, so [locateFullscreenPromptNeedle] on the
-/// original paste fails — treat this composer chrome as paste ACK instead.
+/// original paste fails — treat this composer chrome as paste ACK instead,
+/// searched in the same bottom [scanRows] input zone.
 FullscreenPromptAnchor? locateCollapsedPasteNeedle(
   TerminalScreenGrid grid, {
   int scanRows = 8,
-  String? composerPrefix,
-  int composerAboveSlack = fullscreenComposerLocateAboveSlack,
 }) {
   final rows = grid.rows;
   if (rows == 0 || grid.columns == 0) return null;
   final windowStart = (rows - scanRows).clamp(0, rows - 1);
-  final searchStart = _composerLocateStartRow(
-    grid,
-    windowStart: windowStart,
-    scanRows: scanRows,
-    composerPrefix: composerPrefix,
-    composerAboveSlack: composerAboveSlack,
-  );
-  if (searchStart == null) return null;
+  final searchStart = windowStart;
   for (var r = rows - 1; r >= searchStart; r--) {
     final rowText = _logicalRowText(grid, r);
     final marker = PtyAutomationNeedle.collapsedPasteNeedle(rowText);
     if (marker == null) continue;
-    final startCol = _findNeedleStartCol(
-      grid,
-      r,
-      marker.runes.toList(),
-      composerPrefix: composerPrefix,
-    );
+    final startCol = _findNeedleStartCol(grid, r, marker.runes.toList());
     if (startCol >= 0) {
       return FullscreenPromptAnchor(row: r, startCol: startCol, needle: marker);
     }
@@ -124,190 +100,62 @@ FullscreenPromptAnchor? locateCollapsedPasteNeedle(
   return null;
 }
 
-/// Bottom-most mirror row whose trimmed text starts with [composerPrefix].
-int? bottomComposerChromeRow(
-  TerminalScreenGrid grid,
-  String composerPrefix, {
-  int scanRows = 8,
-}) {
-  final prefix = composerPrefix.trim();
-  if (prefix.isEmpty) return null;
-  final rows = grid.rows;
-  if (rows == 0) return null;
-  final startRow = (rows - scanRows).clamp(0, rows - 1);
-  for (var r = rows - 1; r >= startRow; r--) {
-    if (_rowStartsWith(grid, r, prefix)) return r;
-  }
-  return null;
-}
-
-/// True when the bottommost composer chrome row is prefix-only (no staged body).
-///
-/// Returns false when [composerPrefix] is empty or no composer row is found —
-/// callers must not treat "unknown" as empty.
-bool isComposerChromeEmpty(
-  TerminalScreenGrid grid, {
-  required String composerPrefix,
-  int scanRows = 24,
-}) {
-  final prefix = composerPrefix.trim();
-  if (prefix.isEmpty) return false;
-  final row = bottomComposerChromeRow(grid, prefix, scanRows: scanRows);
-  if (row == null) return false;
-  final text = _logicalRowText(grid, row).trimLeft();
-  if (!text.startsWith(prefix)) return false;
-  return text.substring(prefix.length).trim().isEmpty;
-}
-
-/// Start row for composer-scoped search, or `null` when [composerPrefix] is
-/// set but no composer chrome exists yet (splash / MOTD / trust screens).
-int? _composerLocateStartRow(
-  TerminalScreenGrid grid, {
-  required int windowStart,
-  required int scanRows,
-  String? composerPrefix,
-  required int composerAboveSlack,
-}) {
-  final prefix = composerPrefix?.trim();
-  if (prefix == null || prefix.isEmpty) return windowStart;
-  final composerRow = bottomComposerChromeRow(grid, prefix, scanRows: scanRows);
-  if (composerRow == null) return null;
-  return (composerRow - composerAboveSlack).clamp(windowStart, grid.rows - 1);
-}
-
 /// True when [anchor.needle] still occupies the same cells starting at
 /// [anchor.row]; the needle may occupy cells on [anchor.row] and following
 /// soft-wrapped rows.
 bool isFullscreenPromptAtAnchor(
   TerminalScreenGrid grid,
-  FullscreenPromptAnchor anchor, {
-  String? composerPrefix,
-}) {
+  FullscreenPromptAnchor anchor,
+) {
   final needleRunes = anchor.needle.runes.toList();
-  return _matchesNeedleAt(
-    grid,
-    anchor.row,
-    anchor.startCol,
-    needleRunes,
-    composerPrefix: composerPrefix,
-  );
-}
-
-/// True when [needle] is still the body of the live input box.
-///
-/// Distinguishes a live composer from transcript residual: codex renders
-/// submitted user messages with the same `›` glyph as the composer, so ANY
-/// prefixed row in the window (the old rule) false-matched the transcript
-/// echo and the CR-ACK never confirmed (2026-09-09, logs/app_2026-09-09.log:
-/// echo at r13, live placeholder composer at r21, "Working 17s").
-///
-/// Staged text can only be: the chrome (bottommost composer) row itself, or
-/// the row directly above it when they form one unbroken composer block —
-/// a prefixed relayout row over an empty chrome (bd2351a9a), or a soft-wrap
-/// continuation whose tail fills the chrome row. Anything farther from the
-/// live chrome (echo, banner, spinner rows) is not un-submitted input.
-bool isNeedleStagedInComposer(
-  TerminalScreenGrid grid,
-  String needle, {
-  required String composerPrefix,
-  int scanRows = 24,
-}) {
-  final prefix = composerPrefix.trim();
-  if (prefix.isEmpty || needle.isEmpty) return false;
-  final rows = grid.rows;
-  if (rows == 0 || grid.columns == 0) return false;
-  final chrome = bottomComposerChromeRow(grid, prefix, scanRows: scanRows);
-  if (chrome == null) return false;
-  final needleRunes = needle.runes.toList();
-  if (_findNeedleStartCol(grid, chrome, needleRunes, composerPrefix: prefix) >=
-      0) {
-    return true;
-  }
-  final above = chrome - 1;
-  if (above < 0) return false;
-  if (_findNeedleStartCol(grid, above, needleRunes, composerPrefix: prefix) <
-      0) {
-    return false;
-  }
-  // Needle is on chrome-1: staged only as an unbroken composer block —
-  // either a prefixed input row (relayout keeps `› needle` + `› ` adjacent)
-  // or a wrapped continuation whose tail sits in the live chrome row.
-  final rowAboveIsComposer = _rowStartsWith(grid, above, prefix);
-  final chromeHasBody = !_isPrefixOnlyRow(grid, chrome, prefix);
-  return rowAboveIsComposer || chromeHasBody;
-}
-
-/// True when the row is a composer chrome row with no body after the prefix.
-bool _isPrefixOnlyRow(TerminalScreenGrid grid, int row, String prefix) {
-  final text = _logicalRowText(grid, row).trimLeft();
-  if (!text.startsWith(prefix)) return false;
-  return text.substring(prefix.length).trim().isEmpty;
+  return _matchesNeedleAt(grid, anchor.row, anchor.startCol, needleRunes);
 }
 
 bool isFullscreenPromptSubmitted(
   TerminalScreenGrid grid,
   FullscreenPromptAnchor anchor, {
   required FullscreenCrAckStrategy strategy,
-  String? composerPrefix,
   int scanRows = 24,
 }) {
   switch (strategy) {
     case FullscreenCrAckStrategy.timed:
       return true;
     case FullscreenCrAckStrategy.anchorCellClears:
-      return !isFullscreenPromptAtAnchor(
-        grid,
-        anchor,
-        composerPrefix: composerPrefix,
-      );
     case FullscreenCrAckStrategy.composerMovesDown:
-      final prefix = composerPrefix?.trim();
-      if (prefix != null &&
-          prefix.isNotEmpty &&
-          isNeedleStagedInComposer(
-            grid,
-            anchor.needle,
-            composerPrefix: prefix,
-            scanRows: scanRows,
-          )) {
-        return false;
-      }
-      if (!isFullscreenPromptAtAnchor(
-        grid,
-        anchor,
-        composerPrefix: composerPrefix,
-      )) {
-        return true;
-      }
-      if (prefix == null || prefix.isEmpty) return false;
-      return _hasComposerRowBelow(
-        grid,
-        anchor.row,
-        composerPrefix: prefix,
-        scanRows: scanRows,
-      );
+      // Cursor-based verdict: submitted iff the needle is no longer held by the
+      // input box (cursor row and its soft-wrap continuation rows). The cursor
+      // is the TUI's own input position — no per-CLI prefix, and not confused
+      // by status rows that reuse the composer glyph (`┃ Build`).
+      return !needleStaysInCursorZone(grid, anchor.needle);
   }
 }
 
-bool _hasComposerRowBelow(
+/// True while [needle] still occupies the cursor input row or a row below it
+/// forming the input box (wrap continuation), i.e. the message is still staged.
+bool needleStaysInCursorZone(
   TerminalScreenGrid grid,
-  int aboveRow, {
-  required String composerPrefix,
-  int scanRows = 24,
-}) {
+  String needle,
+) {
   final rows = grid.rows;
-  if (rows == 0 || aboveRow >= rows - 1) return false;
-  final startRow = (rows - scanRows).clamp(0, rows - 1);
-  for (var r = rows - 1; r > aboveRow; r--) {
-    if (r < startRow) break;
-    if (_rowStartsWith(grid, r, composerPrefix)) return true;
+  final cursor = grid.cursorRow;
+  if (rows == 0 || cursor < 0) return false;
+  final runes = needle.runes.toList();
+  for (var r = cursor; r < rows; r++) {
+    if (_findNeedleStartCol(grid, r, runes) >= 0) return true;
+    // Stop at the first blank row: the input box is a contiguous bottom block.
+    if (_rowIsBlank(grid, r)) break;
   }
   return false;
 }
 
-bool _rowStartsWith(TerminalScreenGrid grid, int row, String prefix) {
-  final text = _logicalRowText(grid, row).trimLeft();
-  return text.startsWith(prefix);
+bool _rowIsBlank(TerminalScreenGrid grid, int row) {
+  if (row < 0 || row >= grid.rows) return true;
+  for (var c = 0; c < grid.columns; c++) {
+    if (_isWideSpacer(grid, row, c)) continue;
+    final cp = grid.codepointAt(row, c);
+    if (cp != 0 && cp != 0x20) return false;
+  }
+  return true;
 }
 
 /// Debug helper: logical text of the bottom [scanRows] (for ACK miss logs).
@@ -502,6 +350,9 @@ final class _GridViewAdapter implements TerminalScreenGrid {
 
   @override
   int get columns => _grid.columns as int;
+
+  @override
+  int get cursorRow => (_grid.cursorRow as int?) ?? -1;
 
   @override
   int codepointAt(int row, int col) => _grid.codepointAt(row, col) as int;

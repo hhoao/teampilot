@@ -24,8 +24,6 @@ final class CodexTerminalBehavior implements TerminalBehaviorCapability {
   FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
       FullscreenCrAckStrategy.composerMovesDown;
   @override
-  String? get fullscreenComposerPrefix => '\u203a';
-  @override
   bool get mentionAutocompletePopup => false;
 
   @override

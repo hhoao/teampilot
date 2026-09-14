@@ -18,63 +18,38 @@ final class TerminalScreenProbeController {
   probe.FullscreenPromptAnchor? locateFullscreenPromptNeedle(
     String needle, {
     int scanRows = 8,
-    String? composerPrefix,
   }) =>
       probe.locateFullscreenPromptNeedle(
         _screenGrid,
         needle,
         scanRows: scanRows,
-        composerPrefix: composerPrefix,
       );
 
   probe.FullscreenPromptAnchor? locateCollapsedPasteNeedle({
     int scanRows = 8,
-    String? composerPrefix,
   }) =>
       probe.locateCollapsedPasteNeedle(
         _screenGrid,
         scanRows: scanRows,
-        composerPrefix: composerPrefix,
       );
 
-  bool isFullscreenPromptAtAnchor(probe.FullscreenPromptAnchor anchor, {String? composerPrefix}) =>
-      probe.isFullscreenPromptAtAnchor(_screenGrid, anchor, composerPrefix: composerPrefix);
+  bool isFullscreenPromptAtAnchor(probe.FullscreenPromptAnchor anchor) =>
+      probe.isFullscreenPromptAtAnchor(_screenGrid, anchor);
 
   bool isFullscreenPromptSubmitted(
     probe.FullscreenPromptAnchor anchor, {
     required FullscreenCrAckStrategy strategy,
-    String? composerPrefix,
     int scanRows = 24,
   }) =>
       probe.isFullscreenPromptSubmitted(
         _screenGrid,
         anchor,
         strategy: strategy,
-        composerPrefix: composerPrefix,
         scanRows: scanRows,
       );
 
-  bool isComposerChromeEmpty({
-    required String composerPrefix,
-    int scanRows = 24,
-  }) =>
-      probe.isComposerChromeEmpty(
-        _screenGrid,
-        composerPrefix: composerPrefix,
-        scanRows: scanRows,
-      );
-
-  bool isNeedleStagedInComposer(
-    String needle, {
-    required String composerPrefix,
-    int scanRows = 24,
-  }) =>
-      probe.isNeedleStagedInComposer(
-        _screenGrid,
-        needle,
-        composerPrefix: composerPrefix,
-        scanRows: scanRows,
-      );
+  bool needleStaysInCursorZone(String needle) =>
+      probe.needleStaysInCursorZone(_screenGrid, needle);
 
   String describeProbeWindow({int scanRows = 8}) =>
       probe.describeProbeWindow(_screenGrid, scanRows: scanRows);
