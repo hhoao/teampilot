@@ -222,7 +222,38 @@ void main() {
     );
 
     expect(find.text('Hydrating'), findsOneWidget);
-    expect(find.byType(ListView), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('workspace-sidebar-manual-groups-list')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('manual group list lazily builds groups outside its viewport', (
+    tester,
+  ) async {
+    await pumpSidebar(tester);
+    for (var i = 0; i < 30; i++) {
+      groupsCubit.createGroup('Group $i');
+    }
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 120));
+
+    final groups = groupsCubit.state.groups;
+    expect(groups, hasLength(30));
+    expect(
+      find.byKey(
+        ValueKey('manual-group-${groups.first.id}'),
+        skipOffstage: false,
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(
+        ValueKey('manual-group-${groups.last.id}'),
+        skipOffstage: false,
+      ),
+      findsNothing,
+    );
   });
 
   testWidgets('switches to project tree without changing sessions', (

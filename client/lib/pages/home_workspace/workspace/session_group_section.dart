@@ -444,6 +444,7 @@ class _SessionGroupMemberListState extends State<_SessionGroupMemberList> {
             controller: _scrollController,
             primary: false,
             padding: EdgeInsets.zero,
+            itemExtent: _groupSessionRowHeight,
             scrollCacheExtent: const ScrollCacheExtent.pixels(0),
             physics: scrollable
                 ? const ClampingScrollPhysics()

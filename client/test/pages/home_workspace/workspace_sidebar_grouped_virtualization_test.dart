@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
@@ -152,6 +153,11 @@ void main() {
     await pumpSidebar(tester);
 
     expect(find.byType(ReorderableListView), findsOneWidget);
+    final list = tester.widget<ReorderableListView>(
+      find.byType(ReorderableListView),
+    );
+    expect(list.itemExtent, 46);
+    expect(list.scrollCacheExtent, const ScrollCacheExtent.pixels(0));
     expect(find.text('More'), findsNothing);
     expect(mountedTiles(tester), 3);
     expect(

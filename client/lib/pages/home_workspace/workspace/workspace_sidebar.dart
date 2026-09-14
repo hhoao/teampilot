@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -709,13 +710,16 @@ class _ConversationListHost extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _ManualGroupsHost(
-          workspace: workspace,
-          tabScopeId: tabScopeId,
-          sessionSort: sessionSort,
-          highlightSessionId: scopedActiveSessionId(
-            context.read<WorkbenchCubit>(),
-            tabScopeId,
+        Flexible(
+          fit: FlexFit.loose,
+          child: _ManualGroupsHost(
+            workspace: workspace,
+            tabScopeId: tabScopeId,
+            sessionSort: sessionSort,
+            highlightSessionId: scopedActiveSessionId(
+              context.read<WorkbenchCubit>(),
+              tabScopeId,
+            ),
           ),
         ),
         Expanded(child: listArea),
@@ -769,6 +773,8 @@ class _ConversationListHost extends StatelessWidget {
   Widget _buildSessionList(BuildContext context, List<String> sessionIds) {
     return ReorderableListView.builder(
       padding: EdgeInsets.zero,
+      itemExtent: kWorkspaceSidebarRowPaintHeight + kWorkspaceSidebarRowGap,
+      scrollCacheExtent: const ScrollCacheExtent.pixels(0),
       buildDefaultDragHandles: false,
       itemCount: sessionIds.length,
       onReorderItem: (oldIndex, newIndex) {
@@ -1319,22 +1325,23 @@ class _ManualGroupsHost extends StatelessWidget {
     if (groups.isEmpty) return const SizedBox.shrink();
     return ConstrainedBox(
       constraints: const BoxConstraints(maxHeight: 360),
-      child: SingleChildScrollView(
+      child: ListView.builder(
+        key: const ValueKey('workspace-sidebar-manual-groups-list'),
+        primary: false,
         padding: const EdgeInsets.only(bottom: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final group in groups)
-              SessionGroupSection(
-                key: ValueKey('manual-group-${group.id}'),
-                group: group,
-                workspace: workspace,
-                tabScopeId: tabScopeId,
-                sessionSort: sessionSort,
-                highlightSessionId: highlightSessionId,
-              ),
-          ],
-        ),
+        scrollCacheExtent: const ScrollCacheExtent.pixels(0),
+        itemCount: groups.length,
+        itemBuilder: (context, index) {
+          final group = groups[index];
+          return SessionGroupSection(
+            key: ValueKey('manual-group-${group.id}'),
+            group: group,
+            workspace: workspace,
+            tabScopeId: tabScopeId,
+            sessionSort: sessionSort,
+            highlightSessionId: highlightSessionId,
+          );
+        },
       ),
     );
   }
