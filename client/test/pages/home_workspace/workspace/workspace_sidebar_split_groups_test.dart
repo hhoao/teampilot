@@ -185,6 +185,19 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('view switcher and sidebar actions share one row', (
+    tester,
+  ) async {
+    await pumpSidebar(tester);
+
+    final switcher = tester.getRect(
+      find.byKey(const ValueKey('workspace-sidebar-view-switcher')),
+    );
+    final archiveButton = tester.getRect(find.byIcon(Icons.archive_outlined));
+
+    expect(archiveButton.center.dy, closeTo(switcher.center.dy, 0.5));
+  });
+
   testWidgets(
     'running session strip does not reserve empty space without footer',
     (tester) async {

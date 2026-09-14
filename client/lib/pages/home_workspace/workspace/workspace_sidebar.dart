@@ -88,10 +88,7 @@ enum _WorkspaceSidebarView { groups, projectTree }
 const _conversationSectionGap = 14.0;
 const _conversationHeaderBottomPadding = 8.0;
 const _normalConversationHeaderHeight =
-    tpSegmentedControlMinHeight +
-    6.0 +
-    TpIconButton.kCompactSize +
-    _conversationHeaderBottomPadding;
+    tpSegmentedControlMinHeight + _conversationHeaderBottomPadding;
 const _archiveConversationHeaderHeight =
     TpIconButton.kCompactSize + _conversationHeaderBottomPadding;
 
@@ -235,6 +232,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                                             Icons.tag_outlined,
                                             Icons.folder_outlined,
                                           ],
+                                          customWidths: const [72, 72],
                                           tooltips: [
                                             l10n.workspaceSidebarGroupsView,
                                             l10n.workspaceSidebarProjectTreeView,
@@ -251,12 +249,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                                         ),
                                       ),
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
+                                    const SizedBox(width: 4),
                                     _SessionSortButton(
                                       sort: _sessionSort,
                                       onChanged: (s) =>
