@@ -631,4 +631,215 @@ void main() {
       client.close();
     });
   });
+
+  group('nonexistent channel policy', () {
+    // F5 (A15 + D05): channel-scoped messages addressed to a channel that
+    // does not exist draw DISCONNECT(2) the way sshd does
+    // (channels.c:channel_from_packet_id,
+    // serverloop.c:server_input_channel_req) — silently swallowing every
+    // unknown id hides real client bugs behind a hang. Two classes stay
+    // tolerated: ids with a pending server-initiated open, and channels this
+    // server finished whose CHANNEL_CLOSE the client has not acknowledged
+    // yet (a message racing our close must not kill the connection).
+    Future<SSHDisconnectError> serverDisconnect(SSHTransport client) {
+      return client.done.timeout(const Duration(seconds: 5)).then(
+            (value) => throw StateError('connection closed without a reason'),
+            onError: (Object error, _) {
+              expect(error, isA<SSHDisconnectError>());
+              return error as SSHDisconnectError;
+            },
+          );
+    }
+
+    test('data for a never-opened channel is a protocol error', () async {
+      final (connection, client) = await startRawAuthenticatedConnection();
+      addTearDown(connection.close);
+      addTearDown(client.close);
+
+      client.sendPacket(
+        SSH_Message_Channel_Data(
+          recipientChannel: 99999,
+          data: Uint8List.fromList([0x78]),
+        ).encode(),
+      );
+      final error = await serverDisconnect(client);
+      expect(error.reasonCode, 2); // SSH_DISCONNECT_PROTOCOL_ERROR
+      expect(
+        error.message,
+        'data packet referred to nonexistent channel 99999',
+      );
+    });
+
+    test('a channel request for a never-opened channel is a protocol error',
+        () async {
+      final (connection, client) = await startRawAuthenticatedConnection();
+      addTearDown(connection.close);
+      addTearDown(client.close);
+
+      client.sendPacket(
+        SSH_Message_Channel_Request.env(
+          recipientChannel: 4242,
+          wantReply: true,
+          variableName: 'TP_DIFF',
+          variableValue: 'd05',
+        ).encode(),
+      );
+      final error = await serverDisconnect(client);
+      expect(error.reasonCode, 2);
+      // sshd's serverloop.c wording for this one, not the
+      // channel_from_packet_id shape.
+      expect(error.message, 'server_input_channel_req: unknown channel 4242');
+    });
+
+    test('a request for a fully closed and reaped channel is a protocol error',
+        () async {
+      final opened = Completer<void>();
+      final (connection, client) = await startRawAuthenticatedConnection(
+        onServerMessage: (payload) {
+          if (SSHMessage.readMessageId(payload) ==
+                  SSH_Message_Channel_Confirmation.messageId &&
+              !opened.isCompleted) {
+            opened.complete();
+          }
+        },
+      );
+      addTearDown(connection.close);
+      addTearDown(client.close);
+
+      client.sendPacket(
+        SSH_Message_Channel_Open.session(
+          senderChannel: 100,
+          initialWindowSize: 2 * 1024 * 1024,
+          maximumPacketSize: 32768,
+        ).encode(),
+      );
+      await opened.future;
+      final serverId = connection.channels.keys.single;
+
+      // Fully close the channel from the client: the server finishes it on
+      // the received CHANNEL_CLOSE, so the id is reaped (D05's setup).
+      client.sendPacket(
+        SSH_Message_Channel_Close(recipientChannel: serverId).encode(),
+      );
+      await waitUntil(() => connection.channels.isEmpty);
+
+      client.sendPacket(
+        SSH_Message_Channel_Request.env(
+          recipientChannel: serverId,
+          wantReply: true,
+          variableName: 'TP_DIFF',
+          variableValue: 'd05',
+        ).encode(),
+      );
+      final error = await serverDisconnect(client);
+      expect(error.reasonCode, 2);
+      expect(
+        error.message,
+        'server_input_channel_req: unknown channel $serverId',
+      );
+    });
+
+    test('a request racing the server-side close is tolerated', () async {
+      final opened = Completer<void>();
+      final pong = Completer<void>();
+      final (connection, client) = await startRawAuthenticatedConnection(
+        onServerMessage: (payload) {
+          switch (SSHMessage.readMessageId(payload)) {
+            case SSH_Message_Channel_Confirmation.messageId:
+              if (!opened.isCompleted) opened.complete();
+            case SSH_Message_Request_Success.messageId:
+              if (!pong.isCompleted) pong.complete();
+          }
+        },
+      );
+      addTearDown(connection.close);
+      addTearDown(client.close);
+
+      client.sendPacket(
+        SSH_Message_Channel_Open.session(
+          senderChannel: 100,
+          initialWindowSize: 2 * 1024 * 1024,
+          maximumPacketSize: 32768,
+        ).encode(),
+      );
+      await opened.future;
+      final SSHServerChannel channel = connection.channels.values.single;
+
+      // The server finishes the channel on its own (process exit shape):
+      // its CLOSE is on the wire but the client has not acknowledged it, so
+      // a request that was in flight when the close landed must not draw a
+      // disconnect.
+      channel.close();
+      await waitUntil(() => connection.channels.isEmpty);
+      client.sendPacket(
+        SSH_Message_Channel_Request.env(
+          recipientChannel: channel.ourChannel,
+          wantReply: true,
+          variableName: 'TP_DIFF',
+          variableValue: 'race',
+        ).encode(),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(client.isClosed, isFalse);
+      // The connection is still serving: a fresh request is answered.
+      client.sendPacket(
+        SSH_Message_Global_Request(
+          requestName: 'keepalive@openssh.com',
+          wantReply: true,
+        ).encode(),
+      );
+      await pong.future.timeout(const Duration(seconds: 5));
+
+      // Once the client acknowledges the close, the id is reaped and the
+      // same request does draw the protocol error.
+      client.sendPacket(
+        SSH_Message_Channel_Close(recipientChannel: channel.ourChannel).encode(),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      client.sendPacket(
+        SSH_Message_Channel_Request.env(
+          recipientChannel: channel.ourChannel,
+          wantReply: true,
+          variableName: 'TP_DIFF',
+          variableValue: 'after-reap',
+        ).encode(),
+      );
+      final error = await serverDisconnect(client);
+      expect(error.reasonCode, 2);
+    });
+
+    test('a window adjust for an unknown channel is ignored, not fatal',
+        () async {
+      // sshd only logits this one (channel_input_window_adjust) — it never
+      // disconnects for an unknown-id adjust.
+      final pong = Completer<void>();
+      final (connection, client) = await startRawAuthenticatedConnection(
+        onServerMessage: (payload) {
+          if (SSHMessage.readMessageId(payload) ==
+                  SSH_Message_Request_Success.messageId &&
+              !pong.isCompleted) {
+            pong.complete();
+          }
+        },
+      );
+      addTearDown(connection.close);
+      addTearDown(client.close);
+
+      client.sendPacket(
+        SSH_Message_Channel_Window_Adjust(
+          recipientChannel: 99999,
+          bytesToAdd: 1024,
+        ).encode(),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(client.isClosed, isFalse);
+      client.sendPacket(
+        SSH_Message_Global_Request(
+          requestName: 'keepalive@openssh.com',
+          wantReply: true,
+        ).encode(),
+      );
+      await pong.future.timeout(const Duration(seconds: 5));
+    });
+  });
 }

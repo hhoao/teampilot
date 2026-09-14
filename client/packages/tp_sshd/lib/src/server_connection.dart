@@ -82,6 +82,18 @@ class SSHServerConnection {
   /// number (the id the client addresses them by).
   final _channels = <int, SSHServerChannel>{};
 
+  /// Channel ids this server finished whose CHANNEL_CLOSE the client has
+  /// not sent yet. A message addressed to one of these raced our close —
+  /// the client could not have seen it yet — so it is tolerated the way
+  /// sshd's still-allocated dying channels tolerate it, until the client's
+  /// own CHANNEL_CLOSE moves the id to [_reapedChannels].
+  final _closingChannels = <int>{};
+
+  /// Channel ids whose close handshake completed on both sides. A message
+  /// for one of these is a protocol error, exactly like sshd's
+  /// channel_from_packet_id against a freed channel.
+  final _reapedChannels = <int>{};
+
   /// Server-initiated channel opens awaiting the client's verdict, keyed by
   /// the channel number the open was sent with (see [_openServerChannel]).
   final _pendingOpens = <int, _PendingOpen>{};
@@ -299,7 +311,7 @@ class SSHServerConnection {
       peerInitialWindowSize: message.initialWindowSize,
       peerMaximumPacketSize: message.maximumPacketSize,
       sendPacket: _transport.sendPacket,
-      onClosed: (channel) => _channels.remove(channel.ourChannel),
+      onClosed: _onChannelClosed,
       printDebug: _config.printDebug,
     );
     // Session requests (exec today; shell and pty in Task 7) are served by
@@ -387,7 +399,7 @@ class SSHServerConnection {
           peerInitialWindowSize: message.initialWindowSize,
           peerMaximumPacketSize: message.maximumPacketSize,
           sendPacket: _transport.sendPacket,
-          onClosed: (channel) => _channels.remove(channel.ourChannel),
+          onClosed: _onChannelClosed,
           printDebug: _config.printDebug,
         );
         _channels[ourChannel] = channel;
@@ -438,9 +450,13 @@ class SSHServerConnection {
   }
 
   /// Routes a channel-scoped message to its channel by the recipient id the
-  /// client addressed it to (our channel number). An unknown id is ignored
-  /// silently: it is indistinguishable from a message racing the close that
-  /// removed the channel.
+  /// client addressed it to (our channel number). An unknown id is a
+  /// protocol error, the way sshd treats a freed channel
+  /// (channels.c:channel_from_packet_id,
+  /// serverloop.c:server_input_channel_req) — except the two races where
+  /// the id is legitimately gone or not yet resolved: a pending
+  /// server-initiated open, and a channel this server closed whose CLOSE
+  /// the client cannot have seen yet. See [_channelFromPacket].
   void _handleChannelMessage(Uint8List payload) {
     switch (SSHMessage.readMessageId(payload)) {
       case SSH_Message_Channel_Window_Adjust.messageId:
@@ -450,7 +466,9 @@ class SSHServerConnection {
           payload,
         );
         if (message == null) return;
-        _channelOrNull(message.recipientChannel)
+        // sshd only logs an unknown-id adjust (channel_input_window_adjust)
+        // — it never disconnects for this one.
+        _channels[message.recipientChannel]
             ?.handleWindowAdjust(message.bytesToAdd);
         return;
       case SSH_Message_Channel_Data.messageId:
@@ -460,7 +478,10 @@ class SSHServerConnection {
           payload,
         );
         if (message == null) return;
-        _channelOrNull(message.recipientChannel)?.handleData(message.data);
+        _channelFromPacket(
+          message.recipientChannel,
+          'data packet',
+        )?.handleData(message.data);
         return;
       case SSH_Message_Channel_Extended_Data.messageId:
         final message = _decodeMessage(
@@ -469,8 +490,10 @@ class SSHServerConnection {
           payload,
         );
         if (message == null) return;
-        _channelOrNull(message.recipientChannel)
-            ?.handleExtendedData(message.dataTypeCode, message.data);
+        _channelFromPacket(
+          message.recipientChannel,
+          'extended data packet',
+        )?.handleExtendedData(message.dataTypeCode, message.data);
         return;
       case SSH_Message_Channel_EOF.messageId:
         final message = _decodeMessage(
@@ -479,7 +502,10 @@ class SSHServerConnection {
           payload,
         );
         if (message == null) return;
-        _channelOrNull(message.recipientChannel)?.handleEof();
+        _channelFromPacket(
+          message.recipientChannel,
+          'ieof packet',
+        )?.handleEof();
         return;
       case SSH_Message_Channel_Close.messageId:
         final message = _decodeMessage(
@@ -488,7 +514,14 @@ class SSHServerConnection {
           payload,
         );
         if (message == null) return;
-        _channelOrNull(message.recipientChannel)?.handleClose();
+        final id = message.recipientChannel;
+        // The client acknowledging our close completes the handshake: the
+        // id moves from race-tolerated to fully reaped.
+        if (_channels[id] == null && _closingChannels.remove(id)) {
+          _reapedChannels.add(id);
+          return;
+        }
+        _channelFromPacket(id, 'oclose packet')?.handleClose();
         return;
       case SSH_Message_Channel_Request.messageId:
         final message = _decodeMessage(
@@ -497,16 +530,66 @@ class SSHServerConnection {
           payload,
         );
         if (message == null) return;
-        _channelOrNull(message.recipientChannel)?.handleRequest(message);
+        _channelFromPacket(
+          message.recipientChannel,
+          // sshd's serverloop.c wording for requests, not the
+          // channel_from_packet_id shape.
+          'server_input_channel_req: unknown channel',
+          rawDescription: true,
+        )?.handleRequest(message);
         return;
     }
   }
 
-  SSHServerChannel? _channelOrNull(int ourChannel) => _channels[ourChannel];
+  /// Resolves the channel a channel-scoped message addressed, applying the
+  /// nonexistent-channel policy (F5, audit A15 + D05).
+  ///
+  /// - a live channel → that channel;
+  /// - a pending server-initiated open → `null`, tolerated: the reply races
+  ///   the open, and sshd's channel table still holds the OPENING channel;
+  /// - a channel this server finished but the client has not closed yet →
+  ///   `null`, tolerated: the message raced our CHANNEL_CLOSE (D05's race);
+  /// - anything else → `DISCONNECT(2, "<what> referred to nonexistent
+  ///   channel <id>")` and `null`.
+  SSHServerChannel? _channelFromPacket(
+    int id,
+    String what, {
+    bool rawDescription = false,
+  }) {
+    final channel = _channels[id];
+    if (channel != null) return channel;
+    if (_pendingOpens.containsKey(id) || _closingChannels.contains(id)) {
+      return null;
+    }
+    _disconnect(
+      SSHDisconnectReason.protocolError,
+      rawDescription
+          ? '$what $id'
+          : '$what referred to nonexistent channel $id',
+    );
+    return null;
+  }
+
+  /// Records one channel finishing: its id leaves the live table, and —
+  /// depending on whether the client's CHANNEL_CLOSE was already received —
+  /// lands in the race-tolerated or the fully-reaped set (see
+  /// [_closingChannels] and [_reapedChannels]).
+  void _onChannelClosed(SSHServerChannel channel) {
+    _channels.remove(channel.ourChannel);
+    if (channel.receivedClose) {
+      _reapedChannels.add(channel.ourChannel);
+    } else {
+      _closingChannels.add(channel.ourChannel);
+    }
+  }
 
   /// Serves the client's verdict on a server-initiated channel open
   /// (RFC 4254 §5.1): a CHANNEL_OPEN_CONFIRMATION promotes the pending open
-  /// to a live channel; a CHANNEL_OPEN_FAILURE resolves it to `null`.
+  /// to a live channel; a CHANNEL_OPEN_FAILURE resolves it to `null`. A
+  /// verdict for an id that was never a pending open is a protocol error
+  /// like any other channel-scoped message for a nonexistent channel —
+  /// unless it races a channel the verdict already created (duplicate
+  /// replies) or one that has since finished.
   void _handleChannelOpenReply(Uint8List payload) {
     switch (SSHMessage.readMessageId(payload)) {
       case SSH_Message_Channel_Confirmation.messageId:
@@ -517,7 +600,13 @@ class SSHServerConnection {
         );
         if (message == null) return;
         final pending = _pendingOpens.remove(message.recipientChannel);
-        if (pending == null) return;
+        if (pending == null) {
+          _tolerateOrDisconnectOpenReply(
+            message.recipientChannel,
+            'open confirmation packet',
+          );
+          return;
+        }
         // Register the channel synchronously before completing the open:
         // CHANNEL_DATA may follow the confirmation in the same transport
         // input, and the channel's single-subscription input buffers until
@@ -530,7 +619,7 @@ class SSHServerConnection {
           peerInitialWindowSize: message.initialWindowSize,
           peerMaximumPacketSize: message.maximumPacketSize,
           sendPacket: _transport.sendPacket,
-          onClosed: (channel) => _channels.remove(channel.ourChannel),
+          onClosed: _onChannelClosed,
           printDebug: _config.printDebug,
         );
         _channels[channel.ourChannel] = channel;
@@ -543,12 +632,29 @@ class SSHServerConnection {
           payload,
         );
         if (message == null) return;
-        _pendingOpens
-            .remove(message.recipientChannel)
-            ?.completer
-            .complete(null);
+        final pending = _pendingOpens.remove(message.recipientChannel);
+        if (pending == null) {
+          _tolerateOrDisconnectOpenReply(
+            message.recipientChannel,
+            'open failure packet',
+          );
+          return;
+        }
+        pending.completer.complete(null);
         return;
     }
+  }
+
+  /// The unknown-id policy for an open verdict: tolerated when it can be a
+  /// race (a duplicate verdict, or one for a channel that has since
+  /// finished — both still have a remembered id), a protocol error
+  /// otherwise.
+  void _tolerateOrDisconnectOpenReply(int id, String what) {
+    if (_closingChannels.contains(id) || _reapedChannels.contains(id)) return;
+    _disconnect(
+      SSHDisconnectReason.protocolError,
+      '$what referred to nonexistent channel $id',
+    );
   }
 
   /// Opens a server-initiated channel (RFC 4254 §5.1, the direction the
@@ -624,6 +730,8 @@ class SSHServerConnection {
       channel.detach();
     }
     _channels.clear();
+    _closingChannels.clear();
+    _reapedChannels.clear();
     for (final pending in _pendingOpens.values) {
       pending.completer.complete(null);
     }

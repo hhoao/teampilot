@@ -94,6 +94,17 @@ class SSHServerChannel {
   var _receivedEof = false;
   var _sentClose = false;
 
+  /// The client has sent CHANNEL_CLOSE: from its point of view the channel
+  /// is over, so no further message for this id can be a race against our
+  /// own close. Reported through [onClosed] so the connection can tell a
+  /// fully reaped channel id (messages for it are a protocol error, the way
+  /// sshd treats a freed channel) from one this server closed but the
+  /// client has not acknowledged yet (in-flight messages are tolerated).
+  var _receivedClose = false;
+
+  /// Whether the client has already sent CHANNEL_CLOSE.
+  bool get receivedClose => _receivedClose;
+
   /// [close] was called while data was still queued for window credit: the
   /// channel finishes itself once the queue drains, or when the bounded wait
   /// in [closeFlushTimeout] gives up on the client's window.
@@ -227,7 +238,10 @@ class SSHServerChannel {
 
   /// Records the client's CHANNEL_CLOSE: the channel is finished. Our own
   /// CHANNEL_CLOSE is echoed if it was not sent yet.
-  void handleClose() => _finish();
+  void handleClose() {
+    _receivedClose = true;
+    _finish();
+  }
 
   /// Dispatches a channel request from the client to [onRequest]. See there
   /// for the acknowledge/refuse semantics.
