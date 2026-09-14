@@ -242,7 +242,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                                               Icons.tag_outlined,
                                               Icons.folder_outlined,
                                             ],
-                                            customWidths: const [72, 72],
+                                            customWidths: const [88, 104],
                                             tooltips: [
                                               l10n.workspaceSidebarGroupsView,
                                               l10n.workspaceSidebarProjectTreeView,

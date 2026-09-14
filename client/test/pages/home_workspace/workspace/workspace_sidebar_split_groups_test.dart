@@ -214,6 +214,18 @@ void main() {
     }
   });
 
+  testWidgets('view switcher leaves horizontal room around labels', (
+    tester,
+  ) async {
+    await pumpSidebar(tester);
+
+    final switcher = tester.getRect(
+      find.byKey(const ValueKey('workspace-sidebar-view-switcher')),
+    );
+
+    expect(switcher.width, greaterThan(144));
+  });
+
   testWidgets(
     'running session strip does not reserve empty space without footer',
     (tester) async {
