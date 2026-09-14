@@ -380,6 +380,36 @@ void main() {
       expect(port.pasteCount, 0);
       expect(port.crCount, 0);
     });
+
+    test(
+      'repeated identical short message ACKs the newly pasted copy, not the stale echo',
+      () async {
+        // Regression for "send the same short message twice": the first render
+        // sits on an upper row (transcript echo); the freshly pasted copy lands
+        // on a lower row in the input box. The paste-denominator baseline must
+        // require the new line, otherwise the second send locks onto the first.
+        final machine = newMachine()..begin();
+        final port = RowAwareFakeFullscreenPtyDeliveryPort();
+        final text = TeamBus.doorbellNotice;
+
+        final outcome = await automation.continueSubmission(
+          machine,
+          port: port,
+          text: text,
+          pasteSettle: Duration.zero,
+        );
+
+        expect(
+          outcome,
+          FullscreenPtyDeliveryOutcome.submitted,
+          reason:
+              'second identical send must stage on the fresh row below the '
+              'stale echo, not confuse it with the already-present line',
+        );
+        expect(port.pasteCount, 1);
+        expect(port.crCount, greaterThanOrEqualTo(1));
+      },
+    );
   });
 
   test('isTextVisible uses PtyAutomationNeedle', () {

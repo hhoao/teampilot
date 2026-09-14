@@ -287,21 +287,33 @@ class FullscreenPtyAutomation {
     machine.noteStagingAttempt();
     bool canExecute() => !(isAcked?.call() ?? false);
     await port.syncDisplayGrid();
+    // Paste-denominator baseline: text already present before this paste (an
+    // earlier identical transcript echo / staged body on a resumed session).
+    // Newly pasted text must appear *below* this line in the live composer;
+    // otherwise the probe would ACK the old line instead of the new message.
+    final needle = PtyAutomationNeedle.forText(text);
+    final preBaseline = _locatePasteAck(port, needle);
     await port.clearStagedInput(canExecute: canExecute);
     await Future<void>.delayed(_timing.afterClear);
     await port.pasteText(text, canExecute: canExecute);
-    final needle = PtyAutomationNeedle.forText(text);
     final anchor = await _pollForNeedle(
       port,
       needle,
       minSettle: pasteSettle + _timing.afterPaste + _extraSettleForLength(text),
       pollTimeout: _pastePollBudget(text),
     );
-    if (anchor != null) {
-      machine.noteNeedleFound(); // lock — never return to staging
-      return anchor;
+    if (anchor == null) return null;
+    if (preBaseline != null && anchor.row < preBaseline.row) {
+      // The only match sits above the pre-paste baseline → it is the old
+      // transcript echo, not the newly staged line. Treat as a miss.
+      appLogger.d(
+        '[team-bus] pty-probe-ack stale-baseline needle="$needle" '
+        'pre=${preBaseline.row} anchor=${anchor.row} — not the new paste; retry',
+      );
+      return null;
     }
-    return null;
+    machine.noteNeedleFound(); // lock — never return to staging
+    return anchor;
   }
 
   /// Send phase of a locked submission: settle, optional popup dismiss, CR.

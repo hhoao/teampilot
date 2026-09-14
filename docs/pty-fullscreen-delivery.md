@@ -16,7 +16,7 @@ operator 输入
                            └─ FullscreenPtySubmission            # 状态机（本文档）
                                 ├─ staging   : clear → bracketed-paste → probe needle
                                 ├─ pasted    : needle 已上屏（锁定）
-                                └─ awaitingAck: submitCr → probe anchor 清除 / hook isAcked
+                                └─ awaitingAck: submitCr → 等 hook isAcked
 TeamBus 信箱门铃（机器人消息）走同一底层：
   TeamBus.reengageIdleWorkers ─ retryDelivery
        └─ TabMemberPtyDelivery.retryMemberDelivery
@@ -46,7 +46,7 @@ deliverPasteAndSubmit(port, text, settle, {isAcked, dismissMentionPopup})
 continueSubmission(machine, port, text, settle, {isAcked, dismissMentionPopup})
   → _driveToTerminal(machine)   # 按 phase 执行原语直到终态
       staging    → _stagingOnce()   # clear → paste → probe（预算内重贴）
-      pasted     → _sendOnce()      # settle → (ESC @) → CR → anchor/hook ack
+      pasted     → _sendOnce()      # settle → (ESC @) → CR → 等 hook ack
       awaitingAck→ _sendOnce()      # 只补 CR / 等 hook，绝不重贴
 ```
 
@@ -63,14 +63,14 @@ continueSubmission(machine, port, text, settle, {isAcked, dismissMentionPopup})
                            pasteNotFound       │  needle 确认
                     （预算内回退自身 staging）  ▼
                                ┌─────────────────────────────┐
-      ┌────────┐              │          pasted              │ ← 锁定，永不回退 staging
+┌────────┐              │          pasted              │ ← 锁定，永不回退 staging
       │  done  │ ◄─────────   │  （本阶段只允许 submitCr）    │
       └────────┘              └──────────────┬──────────────┘
-                     anchor 清除 / hook ack    │ submitCr
-                                    ▼          ▼
+                 hook ack (promptSubmitted)    │ submitCr
+                                     ▼          ▼
                                ┌─────────────────────────────┐
                                │        awaitingAck          │
-                               │  submitCr → 探测/anchor 清除 │
+                               │  submitCr → 等 hook 确认     │
                                │  失败时只补 CR，绝不重贴      │
                                └──────────────┬──────────────┘
                                               │ crStuck / 超时
@@ -89,8 +89,8 @@ abort（shell 断开 / fence 关闭）从任意非终态 → aborted
 | `idle` | 无投递进行中 | `begin()` | `begin` → `staging` |
 | `staging` | 清理 + 粘贴 + 探针 needle | clear / paste / probe | ① needle 确认 → `pasted`（**锁定**）② 预算耗尽 → `failed`(pasteNotFound) ③ `isAcked` → `done` ④ abort → `aborted` |
 | `pasted` | needle 已上屏，**锁定** | `submitCr` | `submitCr` → `awaitingAck` |
-| `awaitingAck` | CR 已发，等待提交确认 | 只补 CR / 等待 | ① anchor 清除或 `isAcked` → `done` ② CR 预算 + 超时耗尽 → `failed`(crStuck) ③ abort → `aborted` |
-| `done` | 提交成功（grid 或 hook 确认） | — | 终态 |
+| `awaitingAck` | CR 已发，等待提交确认 | 只补 CR / 等待 | ① `isAcked`（hook）→ `done` ② CR 预算 + 超时耗尽 → `failed`(crStuck) ③ abort → `aborted` |
+| `done` | 提交成功（hook 确认） | — | 终态 |
 | `failed` | 预算耗尽未提交 | — | 终态（区别于 `done`） |
 | `aborted` | shell 断开 / fence 关闭 | — | 终态 |
 
@@ -105,14 +105,12 @@ abort（shell 断开 / fence 关闭）从任意非终态 → aborted
 
 ### 与发送确认的关系
 
-粘贴确认靠「网格 needle 是否可见」——这是**可靠**的（文本上屏即确认）。
-发送确认靠两种信号，都是**间接**的：
+- **粘贴确认**靠「composer 前缀限定的网格 needle」：文本上屏且位于输入框附近即确认（见 §4）。
+- **发送确认**靠 CLI 的提交 hook（`hookSubmitAck` 时**只信 hook**，网格不再参与提交判据）：
+  - `promptSubmitted` 事件 = 权威"已提交"；coordinator 据此置 `confirmed`。
+  - opencode = `userMessageSubmitted`；claude / codex / flashskyai = `UserPromptSubmit`；cursor = `beforeSubmitPrompt`。
 
-- **grid anchor 清除**（`isFullscreenPromptSubmitted`）：CR 后 staged 文本从 composer 消失。
-- **hook `promptSubmitted`**（`RuntimeEventEnvelope.promptSubmitted`，opencode 经
-  `chat_interaction.dart` 上报）：权威的"消息已提交"信号；coordinator 据此置 `confirmed`。
-
-状态机里 `isAcked` 一旦为真，任何在途重试立即停（防重复）；`awaitingAck` 超时且 hook 未到 → `failed`。
+状态机里 `isAcked` 一旦为真，任何在途重试立即停（防重复）；`awaitingAck` 超时且 hook 未到 → `crStuck`。
 
 ## 3. 时间预算（`PtyAutomationTiming.production()`）
 
@@ -132,16 +130,43 @@ abort（shell 断开 / fence 关闭）从任意非终态 → aborted
 
 测试档 `PtyAutomationTiming.instant()` 将以上全部归零并把预算压到最小值，保证单测瞬时完成。
 
-## 4. 为什么"能粘上 ≠ 能发出去"
+## 4. 粘贴检测机制（paste ACK）— 现状与边界
 
-- **粘贴**：`pasteText` 写 bracketed-paste 到 PTY → 网格探针确认文本是 live composer 的 body
-  （`isNeedleStagedInComposer` 严格门禁）。可靠、可自证；resume 时 transcript 中的旧文本
-  不会被误认为已 staged（否则发空 CR，session 显示 working 而 CLI 从未收到消息）。
-- **发送**：`submitCr` 之后，提交确认**只信 hook 事件**（`UserPromptSubmit` /
-  `beforeSubmitPrompt` / `userMessageSubmitted` → `promptSubmitted`），
-  `hookSubmitAck` 时网格**不再作为提交判据**（网格对 resume transcript 回声会误报
-  submitted）。hook 未到则补 CR / 等 hook，直到预算耗尽 (`crStuck`)。
-  这也是为什么 `pasted` 之后绝不回退到 `staging`：粘贴一旦确认成功，再贴只会制造重复。
+粘贴是否成功，靠「**网格里能否在输入框区域找到 needle 字符串**」来判定。这是"能粘上 vs 能发出去"中的第一环。
+
+### 4.1 判定逻辑（`locateFullscreenPromptNeedle`）
+
+1. 取 `needle`（`PtyAutomationNeedle.forText`，长文本取尾部 40 字符）。
+2. 确定**搜索起点** `searchStart`（`_composerLocateStartRow`）：以最底部 `composerPrefix` 行（`›`/`┃`/`→`/`❯`/`﹀`）为底，往上放宽 `composerAboveSlack = 12` 行作为上限——**只搜输入框附近，不碰更早期的 transcript**。
+3. **从底部往上**逐行扫（`for r = rows-1 …`），每行从左到右做逐字符匹配（`_matchesNeedleAt`，支持跨行软换行拼接、CJK 宽字符、wrap 空格折叠）。
+4. 命中 → 返回 `row/col`；否则 `null`。
+
+### 4.2 关键特性与边界
+
+- **底部优先**：`from bottom-up`，所以同屏出现多条相同文本时，先命中**位置更靠下**的那条 = 输入框里最新贴入的，而不是上方 history。
+- **窗口限定**：搜索不越过 `composerAboveSlack`，远的历史 transcript 不参与。
+- **短消息重复发送**：若连续发送两条相同短消息，旧的在 transcript（更靠上），新的在输入框（更靠下），底部优先天然命中新贴的。
+- **已知边界（尚未完美）**：若新消息**未贴入输入框**（粘贴失败），而旧的同文本恰在窗口内，会把旧文本误认作 staged → 发一次空 CR。此场景由 §2/§4.3 的 hook 提交兜底——**不会误报提交成功**，最多多一次 CR 重试。
+- **长文本软换行**：长文本跨多个物理行时，needle 从尾部取，可能分布在 wrap 行中；`_matchesNeedleAt` 的 wrap 拼接使其仍可命中，但极长文本仍需 `pollTimeout` 放大（`_pastePollBudget`）。
+
+### 4.3 hook 提交兜底（为什么"粘贴误判"不会被当成成功）
+
+提交是否成功**只信 CLI hook**（`hookSubmitAck`）。因此哪怕粘贴定位偶尔误判/漏判，最终结果也只有两种安全结局之一：
+
+- hook 到了 → `submitted`（真实提交，绝不会假）；
+- hook 不到 → `crStuck` / `unconfirmed`（可能多按了一次 CR，但不会被谎报成功）。
+
+这就把「粘贴定位的误差」从"可能误报成功"降级为"浪费一次 CR 重试"。
+
+### 4.4 基线检测（粘贴前基线 + 粘贴后增量）
+
+为避免"同屏重复文本"误命中新消息，粘贴 ACK 采用**粘贴前基线 + 粘贴后增量**：
+
+1. **粘贴前**：扫描输入框区域（`bottomComposerChromeRow` 往上 slack 窗口），记录当前已出现候选文本的**最靠下行号**作为 `preBaselineRow`（无候选则为空）。
+2. **粘贴后**：`locateNeedle` 只从 `preBaselineRow` **之下**找 needle——新贴入的文本必然出现在该行下方（输入框在屏幕底部固定），旧的重复文本在上方被排除。
+
+- **有效**：精确区分"连续两条相同短消息"——旧的在基线之上、新的在基线之下。
+- **边界**：长文本跨多行时，若 wrap/重排让新文本起始行落在基线之上，会漏判；此时靠 §4.3 的 hook 兜底（多一次 CR 重试），不误报成功。
 
 ## 5. 相关文件
 
