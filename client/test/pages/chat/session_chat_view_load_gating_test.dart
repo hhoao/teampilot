@@ -117,12 +117,32 @@ class _Harness {
 
   late _MockChatCubit chatCubit;
   late _MockAiHistorySeat seat;
+  late _MockAiHistoryCubit aiHistoryCubit;
+  late _MockCliPresetsCubit cliPresetsCubit;
+  late _MockLaunchProfileCubit launchProfileCubit;
+  late _MockPluginCubit pluginCubit;
+  late _MockSkillCubit skillCubit;
+  late _MockSessionPreferencesCubit sessionPreferencesCubit;
+  late _MockAppProviderCubit appProviderCubit;
+  late _MockExpertHubCubit expertHubCubit;
+  late _MockAgentAttentionCubit agentAttentionCubit;
+  late _MockEditorCubit editorCubit;
+  late _MockWorktreeCubit worktreeCubit;
+  late _MockMemberPresenceCubit memberPresenceCubit;
+  late _MockLayoutCubit layoutCubit;
+  late _MockSessionLifecycleService lifecycle;
+  final WorkbenchCubit workbenchCubit = WorkbenchCubit();
+
   ChatState chatState = const ChatState();
   AiHistoryState seatState = const AiHistoryState();
   bool memberRunning = false;
   bool hasDocument = true;
   AppSession? hydratedDocument;
   AppSession session = _session('s1');
+
+  /// When set, [AiHistorySeat.softReloadOrLoad] awaits this gate so a load can
+  /// be held in flight across a seat change.
+  Completer<void>? softLoadGate;
 
   static final Workspace _workspace = Workspace(
     workspaceId: 'ws-1',
@@ -139,10 +159,22 @@ class _Harness {
     this.seatState = seatState ?? const AiHistoryState();
     chatState = ChatState(workspaces: [_workspace]);
     routeActive.value = active;
+    _createMocks();
+    await _pumpSubtree();
+  }
 
+  /// Re-pumps the SAME mounted subtree with a new [session], reusing the
+  /// existing mocks/providers so [SessionChatView]'s [State.didUpdateWidget]
+  /// seat-change path runs against the same seat.
+  Future<void> repump({required AppSession session}) async {
+    this.session = session;
+    await _pumpSubtree();
+  }
+
+  void _createMocks() {
     chatCubit = _MockChatCubit();
     seat = _MockAiHistorySeat();
-    when(() => seat.state).thenAnswer((_) => this.seatState);
+    when(() => seat.state).thenAnswer((_) => seatState);
     when(
       () => seat.stream,
     ).thenAnswer((_) => const Stream<AiHistoryState>.empty());
@@ -184,23 +216,22 @@ class _Harness {
         team: any(named: 'team'),
         workingDirectory: any(named: 'workingDirectory'),
       ),
-    ).thenAnswer((_) => Future.value());
+    ).thenAnswer((_) => softLoadGate?.future ?? Future.value());
 
-    final aiHistoryCubit = _MockAiHistoryCubit();
-    final cliPresetsCubit = _MockCliPresetsCubit();
-    final launchProfileCubit = _MockLaunchProfileCubit();
-    final pluginCubit = _MockPluginCubit();
-    final skillCubit = _MockSkillCubit();
-    final sessionPreferencesCubit = _MockSessionPreferencesCubit();
-    final appProviderCubit = _MockAppProviderCubit();
-    final expertHubCubit = _MockExpertHubCubit();
-    final agentAttentionCubit = _MockAgentAttentionCubit();
-    final editorCubit = _MockEditorCubit();
-    final worktreeCubit = _MockWorktreeCubit();
-    final memberPresenceCubit = _MockMemberPresenceCubit();
-    final layoutCubit = _MockLayoutCubit();
-    final workbenchCubit = WorkbenchCubit();
-    final lifecycle = _MockSessionLifecycleService();
+    aiHistoryCubit = _MockAiHistoryCubit();
+    cliPresetsCubit = _MockCliPresetsCubit();
+    launchProfileCubit = _MockLaunchProfileCubit();
+    pluginCubit = _MockPluginCubit();
+    skillCubit = _MockSkillCubit();
+    sessionPreferencesCubit = _MockSessionPreferencesCubit();
+    appProviderCubit = _MockAppProviderCubit();
+    expertHubCubit = _MockExpertHubCubit();
+    agentAttentionCubit = _MockAgentAttentionCubit();
+    editorCubit = _MockEditorCubit();
+    worktreeCubit = _MockWorktreeCubit();
+    memberPresenceCubit = _MockMemberPresenceCubit();
+    layoutCubit = _MockLayoutCubit();
+    lifecycle = _MockSessionLifecycleService();
     when(
       () => lifecycle.launchWorkTarget(any(), memberId: any(named: 'memberId')),
     ).thenReturn(RuntimeTarget.local());
@@ -251,7 +282,9 @@ class _Harness {
     _stubCubit(worktreeCubit, const WorktreeState());
     _stubCubit(memberPresenceCubit, const MemberPresenceState());
     _stubCubit(layoutCubit, const LayoutState());
+  }
 
+  Future<void> _pumpSubtree() async {
     final theme = buildDarkTheme();
     await tester.pumpWidget(
       MultiRepositoryProvider(
@@ -295,11 +328,10 @@ class _Harness {
                       workspace: _workspace,
                       selectedMemberId: '',
                       routeActive: active,
-                      onSubmit: (_) async =>
-                          const HistoryContinueSubmitResult(
-                            ok: true,
-                            channel: HistoryContinueChannel.pty,
-                          ),
+                      onSubmit: (_) async => const HistoryContinueSubmitResult(
+                        ok: true,
+                        channel: HistoryContinueChannel.pty,
+                      ),
                     ),
                   ),
                 ),
@@ -454,15 +486,17 @@ void main() {
       ..hydratedDocument = _session('s1', cli: CliTool.cursor);
     await h.pump(session: _session('s1'), active: true);
     verify(() => h.chatCubit.hydrateSessionDocument('ws-1', 's1')).called(1);
-    final loaded = verify(
-      () => h.seat.softReloadOrLoad(
-        session: captureAny(named: 'session'),
-        memberId: any(named: 'memberId'),
-        launchContext: any(named: 'launchContext'),
-        team: any(named: 'team'),
-        workingDirectory: any(named: 'workingDirectory'),
-      ),
-    ).captured.single as AppSession;
+    final loaded =
+        verify(
+              () => h.seat.softReloadOrLoad(
+                session: captureAny(named: 'session'),
+                memberId: any(named: 'memberId'),
+                launchContext: any(named: 'launchContext'),
+                team: any(named: 'team'),
+                workingDirectory: any(named: 'workingDirectory'),
+              ),
+            ).captured.single
+            as AppSession;
     expect(loaded.cli, CliTool.cursor);
   });
 
@@ -481,5 +515,24 @@ void main() {
     );
     verifyNever(() => h.chatCubit.hydrateSessionDocument(any(), any()));
     verifySoftLoad(h);
+  });
+
+  testWidgets('seat change during an in-flight load still loads the new seat', (
+    tester,
+  ) async {
+    final h = _Harness(tester)..softLoadGate = Completer<void>();
+    await h.pump(session: _session('s1'), active: true);
+    final appSessionB = _session('s2');
+    await h.repump(session: appSessionB);
+    final loadedSessions = verify(
+      () => h.seat.softReloadOrLoad(
+        session: captureAny(named: 'session'),
+        memberId: any(named: 'memberId'),
+        launchContext: any(named: 'launchContext'),
+        team: any(named: 'team'),
+        workingDirectory: any(named: 'workingDirectory'),
+      ),
+    ).captured.map((s) => (s as AppSession).sessionId);
+    expect(loadedSessions, contains('s2'));
   });
 }

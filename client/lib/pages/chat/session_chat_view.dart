@@ -329,6 +329,10 @@ class _SessionChatViewState extends State<SessionChatView> {
       _editingFailedMessage = null;
       _subagentPreview.clear();
       _bindSeat();
+      // The single-flight is seat-scoped: if the previous seat's non-forced
+      // load is still in flight, the new seat must not tether to it or it
+      // would never get its own load until an unrelated hot transition.
+      _historyLoadInFlight = null;
       // Defer: load → runtime.setLoading sync-notifies seat listeners
       // while ancestors (e.g. TpDeferredForegroundMount) are still building.
       // Do not clearPendings here: re-entering a seat (tab switch, team prop
@@ -530,13 +534,11 @@ class _SessionChatViewState extends State<SessionChatView> {
     if (inFlight != null) return inFlight;
     final future = _loadHistoryImpl(force: false);
     _historyLoadInFlight = future;
-    future
-        .whenComplete(() {
-          if (identical(_historyLoadInFlight, future)) {
-            _historyLoadInFlight = null;
-          }
-        })
-        .ignore();
+    future.whenComplete(() {
+      if (identical(_historyLoadInFlight, future)) {
+        _historyLoadInFlight = null;
+      }
+    }).ignore();
     return future;
   }
 
