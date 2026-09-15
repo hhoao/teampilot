@@ -968,6 +968,33 @@ void main() {
     expect(result.messages.single.id, 'worker-message');
   });
 
+  test('large bundle applies reusable bundle-only cache after worker parsing',
+      () async {
+    final executor = _RecordingHistoryParseExecutor()
+      ..messages = _toolResultMessages();
+    final enricher = _ReusableIndexEnricher();
+    final registry = fakeAiHistoryRegistry(
+      cli: CliTool.claude,
+      adapter: const _ThrowingParseAdapter(),
+      toolResultEnricher: enricher,
+      locate: (_) async => _largeBundle(),
+    );
+    final session = simpleSession();
+
+    final result = await buildLoader(
+      registry: registry,
+      parseExecutor: executor,
+    ).load(
+      session: session,
+      memberId: '',
+      launchContext: launchContextFor(session),
+    );
+
+    expect(executor.lastWorkerEnricherId, isNull);
+    expect(enricher.calls, 1);
+    expect(result.messages.single.id, 'cached-enriched');
+  });
+
   test('unchanged reload returns cached enriched messages, not the raw tail',
       () async {
     // The adapter emits a tool result carrying the truncation sentinel so the
@@ -2687,6 +2714,68 @@ final class _RecordingIndexEnricher
   void importIndex(Object? snapshot) {
     importedSnapshot = snapshot;
   }
+
+  @override
+  void invalidateIndex({String? sourceToken}) {}
+
+  @override
+  int get lastDecodeBatches => 0;
+
+  @override
+  int get lastDecodeLines => 0;
+
+  @override
+  int get lastDecodeMicroseconds => 0;
+}
+
+final class _ReusableIndexEnricher
+    implements ToolResultEnricher, ToolResultIndexCache {
+  var calls = 0;
+
+  @override
+  String? get workerId => 'claude-compatible';
+
+  @override
+  bool get requiresFilesystem => false;
+
+  @override
+  bool matchesTruncationMarker(String result) =>
+      result.contains('tool output truncated');
+
+  @override
+  bool needsEnrichment(AiToolCallPart part) =>
+      defaultToolResultNeedsEnrichment(this, part);
+
+  @override
+  Future<List<AiMessage>> enrich({
+    required List<AiMessage> messages,
+    required SessionHistoryContext? ctx,
+    required String? rootTranscriptPath,
+    required AiTranscriptBundle? bundle,
+    String? sourceToken,
+  }) async {
+    calls++;
+    return [
+      AiMessage(
+        id: 'cached-enriched',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'cached result')],
+      ),
+    ];
+  }
+
+  @override
+  bool canReuseIndex({
+    String? sourceToken,
+    String? rootTranscriptPath,
+    required int contentLength,
+  }) => true;
+
+  @override
+  Object? exportIndex() => null;
+
+  @override
+  void importIndex(Object? snapshot) {}
 
   @override
   void invalidateIndex({String? sourceToken}) {}

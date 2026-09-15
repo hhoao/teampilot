@@ -1334,7 +1334,7 @@ final class AiHistoryLoader {
           result.enrichTime.inMicroseconds,
         );
       }
-      if (enricher.requiresFilesystem &&
+      if ((enricher.requiresFilesystem || reuse) &&
           _needsToolResultEnrichment(result.messages, enricher)) {
         return _enrichMessages(
           enricher: enricher,
