@@ -850,7 +850,12 @@ class SessionLaunchService
       team,
     ).where((m) => m.id == mid).firstOrNull;
     if (member == null || !member.isValid) return;
-    _memberConnectScheduler.schedule(team, member, tab);
+    _memberConnectScheduler.schedule(
+      team,
+      member,
+      tab,
+      selectMember: false,
+    );
   }
 
   Future<void> restartWorkspaceSession(

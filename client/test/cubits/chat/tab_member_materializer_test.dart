@@ -17,6 +17,7 @@ import '../../support/post_frame_test_harness.dart';
 class _RecordingConnector implements MemberConnector {
   var scheduleCalls = 0;
   String? lastMemberId;
+  bool? lastSelectMember;
 
   @override
   void scheduleMemberConnect(
@@ -27,6 +28,7 @@ class _RecordingConnector implements MemberConnector {
   }) {
     scheduleCalls++;
     lastMemberId = member.id;
+    lastSelectMember = selectMember;
   }
 }
 
@@ -215,6 +217,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 100));
       expect(connector.scheduleCalls, 1);
       expect(connector.lastMemberId, 'builder-1');
+      expect(connector.lastSelectMember, isFalse);
 
       materializer.markMemberReady('sess-1', 'builder-1');
       await pending;

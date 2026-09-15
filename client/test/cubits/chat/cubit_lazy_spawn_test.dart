@@ -69,6 +69,7 @@ void main() {
       );
 
       cubit.selectMember('worker-1');
+      expect(tab.selectedMemberId, 'worker-1');
       await drainPendingAsyncWork();
 
       expect(
@@ -109,6 +110,31 @@ void main() {
         reason:
             'switching to terminal view for a non-running member must spawn it',
       );
+    },
+  );
+
+  test(
+    'lazy terminal restore starts a member without changing current selection',
+    () async {
+      final opened = await openMixedSessionWithShells(
+        cubit: cubit,
+        repo: repo,
+        postFrame: postFrame,
+      );
+      final tab = cubit.activeTab!;
+      tab.memberShells.remove('worker-1');
+      tab.reclaimedMemberIds.add('worker-1');
+      tab.workbenchView = SessionWorkbenchView.terminal;
+      tab.selectedMemberId = 'team-lead';
+      tab.persistedSession = (await repo.loadSessions()).firstWhere(
+        (s) => s.sessionId == opened.sessionId,
+      );
+
+      await cubit.ensureMemberTerminalForView(opened.sessionId, 'worker-1');
+      await drainPendingAsyncWork();
+
+      expect(tab.selectedMemberId, 'team-lead');
+      expect(tab.membersPendingConnect, contains('worker-1'));
     },
   );
 }

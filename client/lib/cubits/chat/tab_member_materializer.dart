@@ -342,7 +342,12 @@ class TabMemberMaterializer implements MemberMaterializer {
       '[member-materializer] materialize schedule-connect '
       'member=$memberId session=$sessionId',
     );
-    _connector.scheduleMemberConnect(team, member, tab);
+    _connector.scheduleMemberConnect(
+      team,
+      member,
+      tab,
+      selectMember: false,
+    );
     await _awaitMemberReady(sessionId, memberId, ready);
   }
 
