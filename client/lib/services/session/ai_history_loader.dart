@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:isolate';
 
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter/foundation.dart';
@@ -26,6 +25,7 @@ import 'ai_history_locator.dart';
 import 'ai_history_page.dart';
 import 'ai_history_watch_meta.dart';
 import 'ai_transcript_tail_reader.dart';
+import 'history_parse_worker.dart';
 import 'jsonl_decode_worker.dart';
 import 'session_history_context.dart';
 import 'session_history_context_builder.dart';
@@ -64,6 +64,7 @@ final class AiHistoryLoader {
     SessionHistoryCacheTokenResolver? resolveCacheToken,
     List<CliPreset> Function()? globalPresets,
     AiHistoryLoadTimings? timings,
+    HistoryParseExecutor? parseExecutor,
   }) : _contextBuilder = contextBuilder,
        _resolveWorkContext = resolveWorkContext,
        _registry = registry ?? CliToolRegistry.builtIn(),
@@ -72,7 +73,8 @@ final class AiHistoryLoader {
            AiHistoryLocator(registry: registry ?? CliToolRegistry.builtIn()),
        _resolveCacheToken = resolveCacheToken,
        _globalPresets = globalPresets,
-       _timings = timings;
+       _timings = timings,
+       _parseExecutor = parseExecutor ?? HistoryParseWorker.instance;
 
   final SessionHistoryContextBuilder _contextBuilder;
   final AiHistoryWorkContextResolver _resolveWorkContext;
@@ -81,6 +83,7 @@ final class AiHistoryLoader {
   final SessionHistoryCacheTokenResolver? _resolveCacheToken;
   final List<CliPreset> Function()? _globalPresets;
   final AiHistoryLoadTimings? _timings;
+  final HistoryParseExecutor _parseExecutor;
 
   /// Per-seat cache: resolver token → messages → attachments.
   final _tokens = <String, String>{};
@@ -293,11 +296,6 @@ final class AiHistoryLoader {
   /// Bundles at/above this size parse on a worker isolate; smaller ones parse
   /// in place (isolate spawn + transfer overhead would dominate).
   static const _isolateParseMinBytes = 256 * 1024;
-
-  /// Switch to disable worker-isolate parsing of heavy transcripts (everything
-  /// then parses on the caller / UI isolate). Debug builds already skip
-  /// isolate parse — see `_parseAndEnrich` (`kDebugMode` guard).
-  static bool enableIsolateParse = true;
 
   /// Work-plane context for the seat (live refresh binds this FS).
   Future<RuntimeContext> resolveSeatRuntime({
@@ -1317,96 +1315,37 @@ final class AiHistoryLoader {
           contentLength: totalBytes,
         );
 
-    // Linux/Android debug: cold Isolate.run can hang forever (child never
-    // resumes) and tear down the VM service — same class of failure as the
-    // boot index readers. Keep large-parse off-isolate in profile/release only.
-    if (enableIsolateParse &&
-        !kDebugMode &&
-        totalBytes >= _isolateParseMinBytes) {
-      if (reuse) {
-        final parsed = await _timed(
-          AiHistoryLoadPhase.parse,
-          () => Isolate.run(
-            () => adapter.parse(bundle),
-            debugName: 'history-loader',
-          ),
-        );
-        if (_needsToolResultEnrichment(parsed, enricher)) {
-          return _enrichMessages(
-            enricher: enricher,
-            messages: parsed,
-            ctx: ctx,
-            parentPath: parentPath,
-            bundle: bundle,
-            sourceToken: sourceToken,
-          );
-        }
-        return parsed;
-      }
-
-      final packed = await Isolate.run(() async {
-        final parseSw = Stopwatch()..start();
-        var parsed = await adapter.parse(bundle);
-        parseSw.stop();
-        var enrichUs = 0;
-        var decodeBatches = 0;
-        var decodeLines = 0;
-        var decodeUs = 0;
-        Object? index;
-        if (!enricher.requiresFilesystem &&
-            _needsToolResultEnrichment(parsed, enricher)) {
-          final enrichSw = Stopwatch()..start();
-          parsed = await enricher.enrich(
-            messages: parsed,
-            ctx: null,
-            rootTranscriptPath: parentPath,
-            bundle: bundle,
-            sourceToken: sourceToken,
-          );
-          enrichSw.stop();
-          enrichUs = enrichSw.elapsedMicroseconds;
-          if (enricher is ToolResultIndexCache) {
-            final cache = enricher as ToolResultIndexCache;
-            decodeBatches = cache.lastDecodeBatches;
-            decodeLines = cache.lastDecodeLines;
-            decodeUs = cache.lastDecodeMicroseconds;
-            index = cache.exportIndex();
-          }
-        }
-        return <Object?>[
-          parsed,
-          index,
-          parseSw.elapsedMicroseconds,
-          enrichUs,
-          decodeBatches,
-          decodeLines,
-          decodeUs,
-        ];
-      }, debugName: 'history-loader');
-      final messages = packed[0]! as List<AiMessage>;
-      indexCache?.importIndex(packed[1]);
-      _recordTimedPhase(AiHistoryLoadPhase.parse, packed[2]! as int);
-      final enrichUs = packed[3]! as int;
-      if (enrichUs > 0) {
-        _recordTimedPhase(AiHistoryLoadPhase.enrich, enrichUs);
-      }
-      _recordDecodeCounts(
-        batches: packed[4]! as int,
-        lines: packed[5]! as int,
-        microseconds: packed[6]! as int,
+    if (totalBytes >= _isolateParseMinBytes) {
+      final result = await _parseExecutor.parse(
+        adapterId: adapter.id,
+        bundle: bundle,
+        workerEnricherId: reuse ? null : enricher.workerId,
+        sourceToken: sourceToken,
+        rootTranscriptPath: parentPath,
       );
+      indexCache?.importIndex(result.indexSnapshot);
+      _recordTimedPhase(
+        AiHistoryLoadPhase.parse,
+        result.parseTime.inMicroseconds,
+      );
+      if (result.enrichTime > Duration.zero) {
+        _recordTimedPhase(
+          AiHistoryLoadPhase.enrich,
+          result.enrichTime.inMicroseconds,
+        );
+      }
       if (enricher.requiresFilesystem &&
-          _needsToolResultEnrichment(messages, enricher)) {
+          _needsToolResultEnrichment(result.messages, enricher)) {
         return _enrichMessages(
           enricher: enricher,
-          messages: messages,
+          messages: result.messages,
           ctx: ctx,
           parentPath: parentPath,
           bundle: bundle,
           sourceToken: sourceToken,
         );
       }
-      return messages;
+      return result.messages;
     }
 
     final parsed = await _timed(

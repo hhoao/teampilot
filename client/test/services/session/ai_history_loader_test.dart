@@ -37,6 +37,7 @@ import 'package:teampilot/services/session/ai_history_locator.dart';
 import 'package:teampilot/services/session/ai_history_page.dart';
 import 'package:teampilot/services/session/ai_history_watch_meta.dart';
 import 'package:teampilot/services/session/chat_transcript_find_controller.dart';
+import 'package:teampilot/services/session/history_parse_worker.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
 import 'package:teampilot/services/session/session_history_pagination.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
@@ -87,6 +88,7 @@ void main() {
     AiHistoryWorkContextResolver? resolveWorkContext,
     bool useCapabilityToken = false,
     AiHistoryLoadTimings? timings,
+    HistoryParseExecutor? parseExecutor,
   }) {
     final resolvedRegistry = registry ?? CliToolRegistry.builtIn();
     return AiHistoryLoader(
@@ -97,6 +99,7 @@ void main() {
       locator: locator ?? AiHistoryLocator(registry: resolvedRegistry),
       resolveCacheToken: useCapabilityToken ? null : (_) async => mtimeToken,
       timings: timings,
+      parseExecutor: parseExecutor,
     );
   }
 
@@ -860,6 +863,8 @@ void main() {
     // unavailable; filesystem-backed enrichers must still run on the caller
     // isolate with a non-null ctx instead of being skipped.
     final enricher = _RecordingFsEnricher();
+    final executor = _RecordingHistoryParseExecutor()
+      ..messages = _toolResultMessages();
     final registry = fakeAiHistoryRegistry(
       cli: CliTool.claude,
       adapter: _EchoAdapter(),
@@ -874,7 +879,7 @@ void main() {
         ],
       ),
     );
-    final loader = buildLoader(registry: registry);
+    final loader = buildLoader(registry: registry, parseExecutor: executor);
 
     final result = await loader.load(
       session: simpleSession(),
@@ -884,7 +889,83 @@ void main() {
 
     expect(enricher.calls, 1);
     expect(enricher.sawCallerCtx, isTrue);
+    expect(executor.calls, 1);
     expect(result.messages.single.id, 'enriched');
+  });
+
+  test('large bundle routes parsing through the injected worker executor',
+      () async {
+    final executor = _RecordingHistoryParseExecutor();
+    final registry = fakeAiHistoryRegistry(
+      cli: CliTool.claude,
+      adapter: const _ThrowingParseAdapter(),
+      locate: (_) async => _largeBundle(),
+    );
+    final session = simpleSession();
+
+    final result = await buildLoader(
+      registry: registry,
+      parseExecutor: executor,
+    ).load(
+      session: session,
+      memberId: '',
+      launchContext: launchContextFor(session),
+    );
+
+    expect(executor.calls, 1);
+    expect(executor.lastAdapterId, 'claude');
+    expect(result.messages.single.id, 'worker-message');
+  });
+
+  test('large bundle propagates worker timeout without caller-isolate fallback',
+      () async {
+    final executor = _RecordingHistoryParseExecutor()
+      ..error = TimeoutException('worker timed out');
+    final registry = fakeAiHistoryRegistry(
+      cli: CliTool.claude,
+      adapter: const _ThrowingParseAdapter(),
+      locate: (_) async => _largeBundle(),
+    );
+    final session = simpleSession();
+
+    await expectLater(
+      () => buildLoader(registry: registry, parseExecutor: executor).load(
+        session: session,
+        memberId: '',
+        launchContext: launchContextFor(session),
+      ),
+      throwsA(isA<TimeoutException>()),
+    );
+
+    expect(executor.calls, 1);
+  });
+
+  test('large bundle imports bundle-only worker index before returning',
+      () async {
+    final snapshot = <String, Object>{'worker-index': 1};
+    final executor = _RecordingHistoryParseExecutor()
+      ..indexSnapshot = snapshot;
+    final enricher = _RecordingIndexEnricher();
+    final registry = fakeAiHistoryRegistry(
+      cli: CliTool.claude,
+      adapter: const _ThrowingParseAdapter(),
+      toolResultEnricher: enricher,
+      locate: (_) async => _largeBundle(),
+    );
+    final session = simpleSession();
+
+    final result = await buildLoader(
+      registry: registry,
+      parseExecutor: executor,
+    ).load(
+      session: session,
+      memberId: '',
+      launchContext: launchContextFor(session),
+    );
+
+    expect(executor.lastWorkerEnricherId, 'claude-compatible');
+    expect(enricher.importedSnapshot, same(snapshot));
+    expect(result.messages.single.id, 'worker-message');
   });
 
   test('unchanged reload returns cached enriched messages, not the raw tail',
@@ -2489,6 +2570,135 @@ class _EchoAdapter implements AiTranscriptAdapter {
       ),
     ];
   }
+}
+
+List<AiMessage> _toolResultMessages() => [
+  AiMessage(
+    id: 'parsed',
+    role: AiRole.user,
+    parts: [
+      AiToolCallPart(
+        toolCallId: 'call_0',
+        toolName: 'Bash',
+        result: 'tool output truncated',
+        status: AiToolCallStatus.complete,
+      ),
+    ],
+  ),
+];
+
+AiTranscriptBundle _largeBundle() => AiTranscriptBundle(
+  adapterId: 'claude',
+  fragments: [
+    AiTranscriptFragment(
+      name: 'large.jsonl',
+      bytes: List.filled(300 * 1024, 0x20),
+    ),
+  ],
+);
+
+final class _ThrowingParseAdapter implements AiTranscriptAdapter {
+  const _ThrowingParseAdapter();
+
+  @override
+  String get id => 'claude';
+
+  @override
+  Future<List<AiMessage>> parse(AiTranscriptBundle bundle) async =>
+      throw StateError('large bundle parsing must not run on the caller');
+}
+
+final class _RecordingHistoryParseExecutor implements HistoryParseExecutor {
+  var calls = 0;
+  String? lastAdapterId;
+  String? lastWorkerEnricherId;
+  List<AiMessage>? messages;
+  Object? indexSnapshot;
+  Object? error;
+
+  @override
+  Future<HistoryParseResult> parse({
+    required String adapterId,
+    required AiTranscriptBundle bundle,
+    String? workerEnricherId,
+    String? sourceToken,
+    String? rootTranscriptPath,
+  }) async {
+    calls++;
+    lastAdapterId = adapterId;
+    lastWorkerEnricherId = workerEnricherId;
+    final failure = error;
+    if (failure != null) throw failure;
+    return HistoryParseResult(
+      messages: messages ?? const [
+        AiMessage(
+          id: 'worker-message',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'worker result')],
+        ),
+      ],
+      indexSnapshot: indexSnapshot,
+      parseTime: const Duration(milliseconds: 12),
+      enrichTime: const Duration(milliseconds: 8),
+    );
+  }
+
+  @override
+  Future<void> dispose() async {}
+}
+
+final class _RecordingIndexEnricher
+    implements ToolResultEnricher, ToolResultIndexCache {
+  Object? importedSnapshot;
+
+  @override
+  String? get workerId => 'claude-compatible';
+
+  @override
+  bool get requiresFilesystem => false;
+
+  @override
+  bool matchesTruncationMarker(String result) => false;
+
+  @override
+  bool needsEnrichment(AiToolCallPart part) =>
+      defaultToolResultNeedsEnrichment(this, part);
+
+  @override
+  Future<List<AiMessage>> enrich({
+    required List<AiMessage> messages,
+    required SessionHistoryContext? ctx,
+    required String? rootTranscriptPath,
+    required AiTranscriptBundle? bundle,
+    String? sourceToken,
+  }) async => messages;
+
+  @override
+  bool canReuseIndex({
+    String? sourceToken,
+    String? rootTranscriptPath,
+    required int contentLength,
+  }) => false;
+
+  @override
+  Object? exportIndex() => null;
+
+  @override
+  void importIndex(Object? snapshot) {
+    importedSnapshot = snapshot;
+  }
+
+  @override
+  void invalidateIndex({String? sourceToken}) {}
+
+  @override
+  int get lastDecodeBatches => 0;
+
+  @override
+  int get lastDecodeLines => 0;
+
+  @override
+  int get lastDecodeMicroseconds => 0;
 }
 
 String _agentToolUseJsonl() {
