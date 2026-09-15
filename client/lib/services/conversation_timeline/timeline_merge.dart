@@ -1,5 +1,6 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
+import 'mailbox_wait_anchor.dart';
 import 'timeline_models.dart';
 
 final _epoch = DateTime.fromMillisecondsSinceEpoch(0);
@@ -40,7 +41,10 @@ TimelineSnapshot mergeTimeline({
       ),
   ];
 
-  return TimelineSnapshot(messages: messages, unreadUserMails: unread);
+  return TimelineSnapshot(
+    messages: anchorMailboxAfterWaitForMessage(messages),
+    unreadUserMails: unread,
+  );
 }
 
 sealed class CliTimelineDelta {
@@ -88,10 +92,7 @@ class MailboxTimelineUnchanged extends MailboxTimelineDelta {
 }
 
 class MailboxTimelineAppended extends MailboxTimelineDelta {
-  const MailboxTimelineAppended({
-    required this.events,
-    required this.unread,
-  });
+  const MailboxTimelineAppended({required this.events, required this.unread});
 
   final List<TimelineEvent> events;
   final List<UnreadUserMail> unread;
@@ -171,6 +172,22 @@ TimelineSnapshot _fullTimelineMerge({
   );
 }
 
+bool _shouldRebuildForWaitAnchor(
+  List<AiMessage> messages,
+  List<TimelineEvent> newEvents,
+) {
+  final hasWaitOrTail = messages.any(
+    (message) =>
+        isWaitAnchorTailId(message.id) ||
+        (message.role == AiRole.assistant &&
+            lastWaitForMessageIndex(message.parts) >= 0),
+  );
+  if (!hasWaitOrTail) return false;
+  return newEvents.any(
+    (event) => event.source == 'mailbox' || event.source == 'cli',
+  );
+}
+
 TimelineSnapshot _tryAppendEvents({
   required List<AiMessage> messages,
   required List<TimelineEvent> newEvents,
@@ -179,7 +196,17 @@ TimelineSnapshot _tryAppendEvents({
   required List<TimelineEvent> mailboxEvents,
 }) {
   if (newEvents.isEmpty) {
-    return TimelineSnapshot(messages: messages, unreadUserMails: unread);
+    return TimelineSnapshot(
+      messages: anchorMailboxAfterWaitForMessage(messages),
+      unreadUserMails: unread,
+    );
+  }
+  if (_shouldRebuildForWaitAnchor(messages, newEvents)) {
+    return _fullTimelineMerge(
+      nextCliMessages: nextCliMessages,
+      mailboxEvents: mailboxEvents,
+      unread: unread,
+    );
   }
   final existingIds = {for (final m in messages) m.id};
   for (final event in newEvents) {
@@ -196,7 +223,10 @@ TimelineSnapshot _tryAppendEvents({
     final insertAt = _insertIndexForEvent(messages, event, nextCliMessages);
     messages.insert(insertAt, _messageFromEvent(event));
   }
-  return TimelineSnapshot(messages: messages, unreadUserMails: unread);
+  return TimelineSnapshot(
+    messages: anchorMailboxAfterWaitForMessage(messages),
+    unreadUserMails: unread,
+  );
 }
 
 /// Identity-preserving merge for append-only CLI/mailbox deltas. Falls back to

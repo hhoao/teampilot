@@ -116,17 +116,16 @@ MailboxTimelineDelta computeMailboxTimelineDelta({
   if (newEvents.isEmpty && next.length == previous.length) {
     return const MailboxTimelineUnchanged();
   }
-  return MailboxTimelineAppended(
-    events: newEvents,
-    unread: partition.unread,
-  );
+  return MailboxTimelineAppended(events: newEvents, unread: partition.unread);
 }
 
 /// Merges the CLI transcript with mailbox-delivered user turns into one
 /// display timeline: CLI messages keep their [cliOrder] (used when
 /// [AiMessage.createdAt] is missing); read mailbox user mail is interleaved by
-/// [LoggedMessage.createdAt] via [mergeTimeline]. Unread mail never appears in
-/// [TimelineSnapshot.messages] — see [TimelineSnapshot.unreadUserMails].
+/// [LoggedMessage.createdAt] via [mergeTimeline], then anchored after
+/// `wait_for_message` when that tool shares a turn with later assistant prose.
+/// Unread mail never appears in [TimelineSnapshot.messages] — see
+/// [TimelineSnapshot.unreadUserMails].
 TimelineSnapshot buildConversationTimeline({
   required List<AiMessage> cliMessages,
   required List<LoggedMessage> mailboxRecords,

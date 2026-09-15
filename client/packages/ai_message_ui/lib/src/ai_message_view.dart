@@ -95,7 +95,8 @@ class _AiMessageViewState extends State<AiMessageView> {
         ),
       ),
     );
-    final trackHover = widget.showActionBar &&
+    final trackHover =
+        widget.showActionBar &&
         widget.actionBarReveal == AiActionBarReveal.hover;
 
     final body = Padding(
@@ -134,9 +135,14 @@ class _AiMessageViewState extends State<AiMessageView> {
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 child: DefaultTextStyle.merge(
-                  style: aiTheme.markdown.systemMessage(scheme.onSurfaceVariant),
+                  style: aiTheme.markdown.systemMessage(
+                    scheme.onSurfaceVariant,
+                  ),
                   child: parts,
                 ),
               ),
@@ -236,8 +242,7 @@ class _UserBubble extends StatelessWidget {
           final bubbleCap = canFitActionBar
               ? (threadMax - actionBarReserve).clamp(0.0, threadMax)
               : threadMax;
-          final bubbleMax =
-              aiTheme.userBubbleMaxWidth.clamp(0.0, bubbleCap);
+          final bubbleMax = aiTheme.userBubbleMaxWidth.clamp(0.0, bubbleCap);
           return Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -252,8 +257,7 @@ class _UserBubble extends StatelessWidget {
               ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: bubbleMax),
                 child: ClipRRect(
-                  borderRadius:
-                      BorderRadius.circular(aiTheme.userBubbleRadius),
+                  borderRadius: BorderRadius.circular(aiTheme.userBubbleRadius),
                   child: ColoredBox(
                     color: aiTheme.resolveUserBubble(scheme),
                     child: _UserBubbleFadeHost(
@@ -268,27 +272,7 @@ class _UserBubble extends StatelessWidget {
                         style: aiTheme.markdown.userBubble(
                           aiTheme.resolveUserForeground(scheme),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (message.deliveryChannel == 'mailbox')
-                              Padding(
-                                padding:
-                                    const EdgeInsets.only(right: 6, top: 2),
-                                child: Icon(
-                                  Icons.mail_outline,
-                                  key: const ValueKey(
-                                    'ai-user-bubble-mailbox-marker',
-                                  ),
-                                  size: 13,
-                                  color:
-                                      aiTheme.resolveUserForeground(scheme),
-                                ),
-                              ),
-                            Flexible(child: parts),
-                          ],
-                        ),
+                        child: parts,
                       ),
                     ),
                   ),
