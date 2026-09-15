@@ -19,6 +19,9 @@ final class FlashskyaiTerminalBehavior implements TerminalBehaviorCapability {
   @override
   bool get usesHookSubmitAck => true;
   @override
+  bool get usesPasteBaseline => false;
+
+  @override
   TerminalPathDropBehavior get pathDropBehavior =>
       TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
   @override

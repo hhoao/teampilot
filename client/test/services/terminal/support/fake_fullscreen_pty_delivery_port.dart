@@ -132,17 +132,18 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
       staged == null ? '<empty staged>' : 'staged="$staged"';
 }
 
-// Row-aware fake for the paste-denominator baseline regression:
-// simulates a repeated identical short message where the earlier render sits
-// on an upper row and the freshly pasted copy lands on a lower row (TUI input
-// box pinned at the bottom). `locateNeedle` returns the row that currently
-// represents staged content.
+// Row-aware fake for the paste-denominator baseline (cursor): simulates a
+// repeated identical short message where the earlier render sits on an upper
+// row and the freshly pasted copy lands on a lower row (TUI input box pinned
+// at the bottom). `locatePasteZoneNeedle` returns the row that currently
+// represents staged content (stale echo in the transcript, new copy below).
 final class RowAwareFakeFullscreenPtyDeliveryPort
     implements FullscreenPtyDeliveryPort {
   RowAwareFakeFullscreenPtyDeliveryPort({
     this.crAckConfig =
         const FullscreenCrAckConfig(
           strategy: FullscreenCrAckStrategy.composerMovesDown,
+          pasteBaseline: true,
         ),
     this.pasteFailsToStage = false,
     this.staleEcho,
@@ -193,13 +194,10 @@ final class RowAwareFakeFullscreenPtyDeliveryPort
     String needle, {
     int scanRows = 24,
   }) {
-    // Cursor input zone: only the live composer body, never the stale echo
-    // (which sits in transcript, outside the cursor row).
-    if (staged != null && staged!.contains(needle)) {
-      return FullscreenPromptAnchor(
-          row: stagedRow, startCol: 0, needle: needle);
-    }
-    return null;
+    // Bottom input zone: the live staged body first (row 5), else the stale
+    // transcript echo (row 3) — the baseline flow rejects anchors at/above the
+    // post-clear baseline.
+    return locateNeedle(needle, scanRows: scanRows);
   }
 
   @override

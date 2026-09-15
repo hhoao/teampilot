@@ -472,6 +472,7 @@ final class TabMemberPtyDelivery {
           behavior?.fullscreenCrAckStrategy ??
           FullscreenCrAckStrategy.anchorCellClears,
       hookSubmitAck: behavior?.usesHookSubmitAck ?? false,
+      pasteBaseline: behavior?.usesPasteBaseline ?? false,
     );
   }
 
@@ -593,6 +594,7 @@ final class TabPromptDeliveryCommands implements PromptDeliveryCommands {
               behavior?.fullscreenCrAckStrategy ??
               FullscreenCrAckStrategy.anchorCellClears,
           hookSubmitAck: behavior?.usesHookSubmitAck ?? false,
+          pasteBaseline: behavior?.usesPasteBaseline ?? false,
         ),
         painted: shell.observationPainted,
       ),

@@ -297,10 +297,15 @@ class FullscreenPtyAutomation {
     await port.clearStagedInput(canExecute: canExecute);
     await Future<void>.delayed(_timing.afterClear);
     final needle = PtyAutomationNeedle.forText(text);
+    // Paste-denominator baseline (cursor): text still present after the clear
+    // is an earlier identical transcript echo. Newly pasted text must appear
+    // STRICTLY below that row — a fresh paste lands in the bottom-pinned input
+    // box, and any match at or above the baseline is the old copy, not this
+    // message. Other CLIs use the cursor input zone and need no baseline.
+    final preBaseline = port.crAckConfig.pasteBaseline
+        ? _locatePasteAck(port, needle)
+        : null;
     await port.pasteText(text, canExecute: canExecute);
-    // Paste ACK is cursor-anchored: the needle must appear in the cursor input
-    // zone (see [locateNeedleInCursorZone]). A status/footer character below the
-    // box can never ACK, and there is no ordering baseline to maintain.
     final anchor = await _pollForNeedle(
       port,
       needle,
@@ -308,6 +313,15 @@ class FullscreenPtyAutomation {
       pollTimeout: _pastePollBudget(text),
     );
     if (anchor == null) return null;
+    if (preBaseline != null && anchor.row <= preBaseline.row) {
+      // The match sits at or above the post-clear baseline → it is the old
+      // transcript echo, not the newly staged line. Treat as a miss.
+      appLogger.d(
+        '[team-bus] pty-probe-ack stale-baseline needle="$needle" '
+        'pre=${preBaseline.row} anchor=${anchor.row} — not the new paste; retry',
+      );
+      return null;
+    }
     machine.noteNeedleFound(); // lock — never return to staging
     return anchor;
   }

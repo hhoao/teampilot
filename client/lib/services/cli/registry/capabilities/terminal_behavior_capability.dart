@@ -58,6 +58,12 @@ abstract interface class TerminalBehaviorCapability implements CliCapability {
   /// submit hook, so this should be true wherever [usesGridPasteAck] is true.
   bool get usesHookSubmitAck;
 
+  /// Whether paste ACK uses the paste-denominator baseline flow (bottom-scan
+  /// + pre-paste baseline row) instead of the cursor input zone. True only for
+  /// cursor-agent: its mirror caret sits below its composer box, so the cursor
+  /// zone starts inside the paste and a whole-paste needle never ACKs.
+  bool get usesPasteBaseline;
+
   /// How a file dropped onto this CLI's terminal is quoted and injected.
   TerminalPathDropBehavior get pathDropBehavior;
 

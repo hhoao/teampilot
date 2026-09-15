@@ -168,44 +168,6 @@ void main() {
     );
   });
 
-  test('cursor paste ACKs when the caret sits below the composer box', () {
-    // Real cursor-agent geometry: the paste body is rows 8-9 (path + CJK), but
-    // the terminal caret sits on the EMPTY last composer line (row 13), four
-    // rows below the text. A fixed "4 rows above cursor" window starts at row 9
-    // and misses the needle that begins on row 8 (`.png`). The zone must walk
-    // up through the contiguous composer box to the blank gap (row 6).
-    final rows = List<String>.filled(39, '');
-    rows[2] = 'Cursor Agent';
-    rows[3] = 'v2026.09.10-fd3934a';
-    rows[4] = 'Tip: Use /config to customize Cursor settings and behavior.';
-    rows[7] = '▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄';
-    rows[8] =
-        '  → @/home/hhoa/Documents/TeamPilot/Attachments/4b059105-a81f-45af-b649-ab7b1ceefa64.png';
-    rows[9] = '    目前发送到邮箱的消息顺序气泡还是很奇怪，它不是出现在当前工具调用的下面';
-    rows[10] = '▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀';
-    rows[11] = 'Starting...                Run Everything';
-    rows[12] = '/home/hhoa/git/hhoa/teampilot · main';
-    final grid = _FakeGrid.wrappedWideLines(
-      columns: 120,
-      lineTexts: rows,
-    )..cursorRow = 13;
-    const text =
-        '@/home/hhoa/Documents/TeamPilot/Attachments/'
-        '4b059105-a81f-45af-b649-ab7b1ceefa64.png\n'
-        '目前发送到邮箱的消息顺序气泡还是很奇怪，它不是出现在当前工具调用的下面';
-    final needle = PtyAutomationNeedle.forText(text);
-    expect(needle, '.png 目前发送到邮箱的消息顺序气泡还是很奇怪，它不是出现在当前工具调用的下面');
-
-    final anchor = locateNeedleInCursorZone(grid, needle);
-    expect(
-      anchor,
-      isNotNull,
-      reason: 'caret below the composer must not hide the paste from the ACK',
-    );
-    expect(anchor!.row, 8, reason: 'needle starts on the .png row above the caret');
-    expect(needleStaysInCursorZone(grid, needle), isTrue);
-  });
-
   test('isAtAnchor false when same text moved to transcript row above', () {
     final grid = _FakeGrid.fromRows([
       '你和你的队员打个招呼吧',
