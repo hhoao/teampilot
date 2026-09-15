@@ -34,6 +34,9 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
   int get viewportRows => _probe.viewportRows;
 
   @override
+  int get cursorRow => _probe.cursorRow;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => _crAckConfig;
 
   @override

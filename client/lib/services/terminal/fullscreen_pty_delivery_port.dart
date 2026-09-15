@@ -8,6 +8,10 @@ abstract interface class FullscreenPtyDeliveryPort {
   /// Visible viewport height in mirror-grid rows (0 when unknown).
   int get viewportRows;
 
+  /// Mirror-grid cursor row of the terminal (TUI input position), `-1` unknown.
+  /// Diagnostic aid for paste ACK misses (`[team-bus] pty-stage-miss`).
+  int get cursorRow;
+
   FullscreenCrAckConfig get crAckConfig;
 
   Future<void> syncDisplayGrid();

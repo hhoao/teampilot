@@ -115,6 +115,9 @@ final class FullscreenPtySubmission {
   int get stagingAttemptsRemaining =>
       (_budget.stagingMaxAttempts - _stagingAttempts).clamp(0, 1 << 31);
 
+  /// Number of completed staging attempts (clear+paste+probe).
+  int get stagingAttempts => _stagingAttempts;
+
   bool get canRetryStaging => stagingAttemptsRemaining > 0;
 
   bool get canRetryCr =>

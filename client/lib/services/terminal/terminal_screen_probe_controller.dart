@@ -13,6 +13,11 @@ final class TerminalScreenProbeController {
 
   int get viewportRows => engine.grid.rows;
 
+  /// Mirror-grid cursor row (`-1` when unknown); diagnostic aid for paste ACK
+  /// misses — a paste sitting outside the [locateNeedleInCursorZone] window
+  /// (stale/misplaced cursor) never ACKs.
+  int get cursorRow => probe.terminalScreenGrid(engine.grid).cursorRow;
+
   Future<void> syncDisplayGrid() => engine.drainForTest();
 
   probe.FullscreenPromptAnchor? locateFullscreenPromptNeedle(

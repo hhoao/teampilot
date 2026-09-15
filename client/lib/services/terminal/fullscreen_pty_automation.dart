@@ -224,6 +224,7 @@ class FullscreenPtyAutomation {
     bool dismissMentionPopup = false,
   }) async {
     var anchor = _stagedAnchor(port, text);
+    var stageMissLogged = false;
     while (!machine.isTerminal) {
       switch (machine.phase) {
         case FullscreenPtySubmissionPhase.staging:
@@ -242,6 +243,10 @@ class FullscreenPtyAutomation {
             if (port.isAborted) {
               machine.abort();
               return _machineOutcome(machine, stagingExhausted: true);
+            }
+            if (!stageMissLogged) {
+              stageMissLogged = true;
+              _logStageMiss(machine, port, text);
             }
             if (machine.canRetryStaging) {
               if (_timing.stagingRetryInterval > Duration.zero) {
@@ -728,6 +733,24 @@ class FullscreenPtyAutomation {
       '[team-bus] pty-probe-miss outcome=$outcome '
       'needle="$needle" textChars=${text.length} '
       'scanRows=$scanRows viewportRows=${port.viewportRows}\n'
+      '${port.describeProbeWindow(scanRows: scanRows)}',
+    );
+  }
+
+  /// First staging attempt that failed to place the needle: dump the mirror
+  /// grid + cursor row so a repro shows exactly why paste ACK missed (e.g. the
+  /// staged text sits outside the cursor input zone, or the cursor row is
+  /// stale/misplaced). Logged once per submission to avoid 3 minutes of noise.
+  void _logStageMiss(
+    FullscreenPtySubmission machine,
+    FullscreenPtyDeliveryPort port,
+    String text,
+  ) {
+    final scanRows = _probeScanRows(port);
+    appLogger.d(
+      '[team-bus] pty-stage-miss attempt=${machine.stagingAttempts} '
+      'scanRows=$scanRows viewportRows=${port.viewportRows} '
+      'cursorRow=${port.cursorRow} textChars=${text.length}\n'
       '${port.describeProbeWindow(scanRows: scanRows)}',
     );
   }
