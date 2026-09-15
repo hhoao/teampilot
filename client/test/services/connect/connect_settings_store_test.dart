@@ -5,6 +5,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_reachability.dart';
+import 'package:teampilot/services/connect/connect_ssh_backend.dart';
 import 'package:teampilot/services/connect/connect_settings_store.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -103,5 +104,27 @@ void main() {
       'lan',
     );
     expect(json['relayUrl'], 'https://relay.example');
+  });
+
+  test('load defaults sshBackend to embedded', () async {
+    final settings = await newStore().load();
+    expect(settings.sshBackend, ConnectSshBackendKind.embedded);
+  });
+
+  test('saveSshBackend round-trips system and preserves embeddedPort', () async {
+    final store = newStore();
+    final port = await store.loadOrCreateEmbeddedPort();
+    await store.saveSshBackend(ConnectSshBackendKind.system);
+    final json = await readSettings(store.settingsPath);
+    expect(json['sshBackend'], 'system');
+    expect(json['embeddedPort'], port);
+    expect((await newStore().load()).sshBackend, ConnectSshBackendKind.system);
+  });
+
+  test('reachability save preserves sshBackend', () async {
+    final store = newStore();
+    await store.saveSshBackend(ConnectSshBackendKind.system);
+    await store.save(extraEndpoints: const [], relayUrl: '');
+    expect((await newStore().load()).sshBackend, ConnectSshBackendKind.system);
   });
 }
