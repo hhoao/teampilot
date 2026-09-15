@@ -12,6 +12,54 @@ void main() {
     expect(anchor.startCol, 2);
   });
 
+  test('bottomPad excludes the screen footer from the bottom scan', () {
+    // cursor-agent draws its footer (model / cwd) BELOW the input box. A needle
+    // that duplicates that footer text must not be ACKed as staged input (nor
+    // set the paste baseline below the box).
+    final grid = _FakeGrid.fromRows([
+      'Plan, search, build anything', // input-box line
+      'Composer 2.5 Fast',
+      '~/agent · main',
+    ]);
+
+    // Footer row 2 (~/agent · main) holds the needle: excluded → not found.
+    expect(
+      locateFullscreenPromptNeedle(
+        grid,
+        '~/agent',
+        scanRows: 8,
+        bottomPad: 2,
+      ),
+      isNull,
+      reason: 'needle only in the bottom-padded footer must not be found',
+    );
+    // Footer row 1 holds the needle: still excluded → not found.
+    expect(
+      locateFullscreenPromptNeedle(
+        grid,
+        'Composer 2.5 Fast',
+        scanRows: 8,
+        bottomPad: 2,
+      ),
+      isNull,
+    );
+    // Without the pad the footer is reachable.
+    expect(
+      locateFullscreenPromptNeedle(grid, '~/agent', scanRows: 8),
+      isNotNull,
+    );
+
+    // Needle in the input-box line stays reachable with the pad.
+    final anchor = locateFullscreenPromptNeedle(
+      grid,
+      'Plan, search',
+      scanRows: 8,
+      bottomPad: 2,
+    );
+    expect(anchor, isNotNull);
+    expect(anchor!.row, 0);
+  });
+
   test('locateNeedle matches CJK with wide-char spacer columns', () {
     final grid = _FakeGrid.wideCjkRow(row: 1, prefix: '> ', text: '和你的队员打个招呼吧');
     final anchor = locateFullscreenPromptNeedle(grid, '和你的队员打个招呼吧');

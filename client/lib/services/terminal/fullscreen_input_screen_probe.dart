@@ -57,15 +57,21 @@ FullscreenPromptAnchor? locateFullscreenPromptNeedle(
   TerminalScreenGrid grid,
   String needle, {
   int scanRows = 8,
+  int bottomPad = 0,
 }) {
   if (needle.isEmpty) return null;
   final rows = grid.rows;
   if (rows == 0 || grid.columns == 0) return null;
 
+  // Search the last [scanRows] rows, excluding the bottom [bottomPad] rows on
+  // the screen (cursor-agent's footer cwd / model rows) so needle text that
+  // happens to sit BELOW the input box (status/footer) is never ACKed as
+  // staged input and never forms a paste baseline.
+  final bottom = rows - bottomPad;
+  if (bottom <= 0) return null;
+  final windowStart = (bottom - scanRows).clamp(0, bottom - 1);
   final needleRunes = needle.runes.toList();
-  final windowStart = (rows - scanRows).clamp(0, rows - 1);
-  final searchStart = windowStart;
-  for (var r = rows - 1; r >= searchStart; r--) {
+  for (var r = bottom - 1; r >= windowStart; r--) {
     final startCol = _findNeedleStartCol(grid, r, needleRunes);
     if (startCol >= 0) {
       return FullscreenPromptAnchor(row: r, startCol: startCol, needle: needle);
@@ -142,12 +148,14 @@ int _cursorZoneTop(TerminalScreenGrid grid, int cursor) {
 FullscreenPromptAnchor? locateCollapsedPasteNeedle(
   TerminalScreenGrid grid, {
   int scanRows = 8,
+  int bottomPad = 0,
 }) {
   final rows = grid.rows;
   if (rows == 0 || grid.columns == 0) return null;
-  final windowStart = (rows - scanRows).clamp(0, rows - 1);
-  final searchStart = windowStart;
-  for (var r = rows - 1; r >= searchStart; r--) {
+  final bottom = rows - bottomPad;
+  if (bottom <= 0) return null;
+  final windowStart = (bottom - scanRows).clamp(0, bottom - 1);
+  for (var r = bottom - 1; r >= windowStart; r--) {
     final rowText = _logicalRowText(grid, r);
     final marker = PtyAutomationNeedle.collapsedPasteNeedle(rowText);
     if (marker == null) continue;

@@ -19,6 +19,9 @@ final class OpencodeTerminalBehavior implements TerminalBehaviorCapability {
   bool get usesHookSubmitAck => true;
   @override
   bool get usesPasteBaseline => false;
+  @override
+  int get pasteZoneBottomPad => 0;
+
 
   @override
   TerminalPathDropBehavior get pathDropBehavior =>

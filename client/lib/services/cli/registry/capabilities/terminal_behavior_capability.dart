@@ -64,6 +64,12 @@ abstract interface class TerminalBehaviorCapability implements CliCapability {
   /// zone starts inside the paste and a whole-paste needle never ACKs.
   bool get usesPasteBaseline;
 
+  /// Bottom rows of the screen to exclude from the paste-ACK / baseline bottom
+  /// scan. cursor-agent draws its composer footer (model / cwd) BELOW the input
+  /// box; needle text duplicating it would set the baseline below the box and
+  /// reject every fresh paste. cursor: 2, others: 0.
+  int get pasteZoneBottomPad;
+
   /// How a file dropped onto this CLI's terminal is quoted and injected.
   TerminalPathDropBehavior get pathDropBehavior;
 

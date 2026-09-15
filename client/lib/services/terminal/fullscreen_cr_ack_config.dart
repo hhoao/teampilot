@@ -18,14 +18,22 @@ final class FullscreenCrAckConfig {
     this.strategy = FullscreenCrAckStrategy.anchorCellClears,
     this.hookSubmitAck = false,
     this.pasteBaseline = false,
+    this.pasteZoneBottomPad = 0,
   });
 
   const FullscreenCrAckConfig.productionDefault()
     : strategy = FullscreenCrAckStrategy.anchorCellClears,
       hookSubmitAck = false,
-      pasteBaseline = false;
+      pasteBaseline = false,
+      pasteZoneBottomPad = 0;
 
   final FullscreenCrAckStrategy strategy;
+
+  /// Bottom rows of the screen to exclude from the paste-ACK / baseline bottom
+  /// scan. cursor-agent renders its composer footer (model / cwd) BELOW the
+  /// input box; a needle that duplicates that text there would set the baseline
+  /// below the box and reject every fresh paste. cursor uses 2, others 0.
+  final int pasteZoneBottomPad;
 
   /// When true, paste ACK uses the paste-denominator baseline flow: locate the
   /// needle in the bottom input zone AFTER the composer clear (any leftover

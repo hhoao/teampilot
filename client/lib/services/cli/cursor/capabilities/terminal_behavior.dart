@@ -54,6 +54,9 @@ final class CursorTerminalBehavior
   bool get usesHookSubmitAck => true;
   @override
   bool get usesPasteBaseline => true;
+  @override
+  int get pasteZoneBottomPad => 2;
+
 
   @override
   TerminalPathDropBehavior get pathDropBehavior =>

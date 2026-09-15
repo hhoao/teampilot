@@ -64,12 +64,21 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
     String needle, {
     int scanRows = 24,
   }) => _crAckConfig.pasteBaseline
-      ? _probe.locateFullscreenPromptNeedle(needle, scanRows: scanRows)
+      ? _probe.locateFullscreenPromptNeedle(
+          needle,
+          scanRows: scanRows,
+          bottomPad: _crAckConfig.pasteZoneBottomPad,
+        )
       : _probe.locateNeedleInCursorZone(needle);
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
-      _probe.locateCollapsedPasteInCursorZone();
+      _crAckConfig.pasteBaseline
+      ? _probe.locateCollapsedPasteNeedle(
+          scanRows: scanRows,
+          bottomPad: _crAckConfig.pasteZoneBottomPad,
+        )
+      : _probe.locateCollapsedPasteInCursorZone();
 
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>

@@ -23,19 +23,23 @@ final class TerminalScreenProbeController {
   probe.FullscreenPromptAnchor? locateFullscreenPromptNeedle(
     String needle, {
     int scanRows = 8,
+    int bottomPad = 0,
   }) =>
       probe.locateFullscreenPromptNeedle(
         _screenGrid,
         needle,
         scanRows: scanRows,
+        bottomPad: bottomPad,
       );
 
   probe.FullscreenPromptAnchor? locateCollapsedPasteNeedle({
     int scanRows = 8,
+    int bottomPad = 0,
   }) =>
       probe.locateCollapsedPasteNeedle(
         _screenGrid,
         scanRows: scanRows,
+        bottomPad: bottomPad,
       );
 
   probe.FullscreenPromptAnchor? locateNeedleInCursorZone(String needle) =>
