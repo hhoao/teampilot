@@ -256,6 +256,17 @@ void main() {
     );
   });
 
+  testWidgets('small manual group list keeps its natural height', (
+    tester,
+  ) async {
+    await pumpSidebar(tester, seedManualGroup: true);
+
+    final listBox = tester.renderObject<RenderBox>(
+      find.byKey(const ValueKey('workspace-sidebar-manual-groups-list')),
+    );
+    expect(listBox.size.height, lessThan(360));
+  });
+
   testWidgets('switches to project tree without changing sessions', (
     tester,
   ) async {

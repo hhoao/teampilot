@@ -1323,11 +1323,16 @@ class _ManualGroupsHost extends StatelessWidget {
       (c) => c.state.ready ? c.state.groups : const <SessionGroup>[],
     );
     if (groups.isEmpty) return const SizedBox.shrink();
+    // A small group set should retain its natural height. Once the set is
+    // large enough to need a viewport, keep the list lazy and let it consume
+    // the available bounded height.
+    final shrinkWrap = groups.length <= 8;
     return ConstrainedBox(
       constraints: const BoxConstraints(maxHeight: 360),
       child: ListView.builder(
         key: const ValueKey('workspace-sidebar-manual-groups-list'),
         primary: false,
+        shrinkWrap: shrinkWrap,
         padding: const EdgeInsets.only(bottom: 8),
         scrollCacheExtent: const ScrollCacheExtent.pixels(0),
         itemCount: groups.length,
