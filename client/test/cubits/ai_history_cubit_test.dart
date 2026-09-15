@@ -17,7 +17,6 @@ import 'package:teampilot/services/cli/registry/capabilities/ai_history_capabili
 import 'package:teampilot/services/cli/tasks/cli_task_board.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/ai_history_locator.dart';
-import 'package:teampilot/services/session/ai_history_page.dart';
 import 'package:teampilot/services/session/chat_transcript_find_controller.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
 import 'package:teampilot/services/session/session_history_pagination.dart';
@@ -36,14 +35,16 @@ void main() {
   late AiHistoryCubit cubit;
 
   void bumpCacheToken([String? next]) {
-    cacheToken = next ?? 'token-${cacheToken.hashCode.abs()}-${holderMessages.length}';
+    cacheToken =
+        next ?? 'token-${cacheToken.hashCode.abs()}-${holderMessages.length}';
   }
 
   ExternalStoreAiThreadRuntime seatRuntime({
     String sessionId = 'sess-a',
     String memberId = '',
-  }) =>
-      cubit.ensureSeat(sessionId: sessionId, selectedMemberId: memberId).runtime;
+  }) => cubit
+      .ensureSeat(sessionId: sessionId, selectedMemberId: memberId)
+      .runtime;
 
   AppSession simpleSession({String id = 'sess-a'}) => AppSession(
     sessionId: id,
@@ -54,7 +55,6 @@ void main() {
     updatedAt: 1,
   );
 
-
   WorkspaceLaunchContext launchCtx(AppSession s) => WorkspaceLaunchContext(
     session: s,
     workspace: Workspace(
@@ -62,7 +62,7 @@ void main() {
       folders: s.folders,
       createdAt: 0,
     ),
-                                                                            usesPosixPaths: false,
+    usesPosixPaths: false,
   );
 
   List<AiMessage> messages(int count) => [
@@ -111,7 +111,11 @@ void main() {
     holderMessages = messages(2);
     locator.emitBundle = true;
 
-    final done = cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
+    final done = cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
     expect(cubit.state.status, AiHistoryViewStatus.loading);
     expect(seatRuntime().status, AiThreadStatus.loading);
     await done;
@@ -125,7 +129,11 @@ void main() {
 
   test('empty load sets runtime empty', () async {
     locator.emitBundle = false;
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
     expect(cubit.state.status, AiHistoryViewStatus.empty);
     expect(seatRuntime().status, AiThreadStatus.empty);
     expect(seatRuntime().messages, isEmpty);
@@ -180,7 +188,11 @@ void main() {
     holderMessages = messages(50);
     locator.emitBundle = true;
 
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
     expect(cubit.state.totalMessageCount, 50);
     expect(seatRuntime().messages, hasLength(kSessionHistoryInitialTurns));
     expect(seatRuntime().messages.first.id, 'm-20');
@@ -265,10 +277,7 @@ void main() {
     expect(parseGate.isCompleted, isFalse);
 
     parseGate.complete();
-    final full = await pagedLoader.fullIndex(
-      sessionId: 'sess-a',
-      memberId: '',
-    );
+    final full = await pagedLoader.fullIndex(sessionId: 'sess-a', memberId: '');
     expect(full, isNotNull);
     expect(full!.messages.map((m) => m.id), all.map((m) => m.id));
 
@@ -331,10 +340,7 @@ void main() {
         sessionId: 'sess-a',
         selectedMemberId: '',
       );
-      expect(
-        seat.runtime.messages.map((m) => m.id),
-        recent.map((m) => m.id),
-      );
+      expect(seat.runtime.messages.map((m) => m.id), recent.map((m) => m.id));
       expect(
         seat.runtime.messages.map((m) => m.id),
         isNot(contains('m-0')),
@@ -360,7 +366,8 @@ void main() {
       expect(
         reduceCliTaskBoard(seat.runtime.messages).tasks.map((t) => t.subject),
         isNot(contains('old-task')),
-        reason: 'task-create consumers must scan loadedMessages, not the window',
+        reason:
+            'task-create consumers must scan loadedMessages, not the window',
       );
     },
   );
@@ -523,71 +530,78 @@ void main() {
     },
   );
 
-  test('loadOlder page failure keeps runtime and reports a soft error', () async {
-    final all = _pagedHistoryMessages();
-    final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
-    final older = all.sublist(0, all.length - kSessionHistoryInitialTurns);
-    final parseGate = Completer<void>();
-    final adapter = _GatedParseAdapter(all, parseGate);
-    final reader = _FakePageReader(
-      latest: recent,
-      older: older,
-      olderError: StateError('older page boom'),
-    );
-    final fs = LocalFilesystem();
-    final pagedLoader = AiHistoryLoader(
-      contextBuilder: const SessionHistoryContextBuilder(),
-      resolveWorkContext: (_, {String? memberId}) async => RuntimeContext(
-        target: RuntimeTarget.local(),
-        filesystem: fs,
-        home: '/tmp/ai-history-cubit-page-fail',
-        cwd: '/tmp/ai-history-cubit-page-fail',
-        appDataRoot: '/tmp/ai-history-cubit-page-fail',
-        paths: AppPaths('/tmp/ai-history-cubit-page-fail'),
-      ),
-      locator: _ScriptedLocator()..emitBundle = true,
-      registry: fakeAiHistoryRegistry(
-        cli: CliTool.claude,
-        adapter: adapter,
-        pageReader: reader,
-        locate: (_) async => _dummyBundle(),
-      ),
-      resolveCacheToken: (_) async => 'page-token-fail',
-    );
-    final pagedCubit = AiHistoryCubit(loader: pagedLoader);
-    addTearDown(pagedCubit.close);
-    addTearDown(parseGate.complete);
+  test(
+    'loadOlder page failure keeps runtime and reports a soft error',
+    () async {
+      final all = _pagedHistoryMessages();
+      final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
+      final older = all.sublist(0, all.length - kSessionHistoryInitialTurns);
+      final parseGate = Completer<void>();
+      final adapter = _GatedParseAdapter(all, parseGate);
+      final reader = _FakePageReader(
+        latest: recent,
+        older: older,
+        olderError: StateError('older page boom'),
+      );
+      final fs = LocalFilesystem();
+      final pagedLoader = AiHistoryLoader(
+        contextBuilder: const SessionHistoryContextBuilder(),
+        resolveWorkContext: (_, {String? memberId}) async => RuntimeContext(
+          target: RuntimeTarget.local(),
+          filesystem: fs,
+          home: '/tmp/ai-history-cubit-page-fail',
+          cwd: '/tmp/ai-history-cubit-page-fail',
+          appDataRoot: '/tmp/ai-history-cubit-page-fail',
+          paths: AppPaths('/tmp/ai-history-cubit-page-fail'),
+        ),
+        locator: _ScriptedLocator()..emitBundle = true,
+        registry: fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: adapter,
+          pageReader: reader,
+          locate: (_) async => _dummyBundle(),
+        ),
+        resolveCacheToken: (_) async => 'page-token-fail',
+      );
+      final pagedCubit = AiHistoryCubit(loader: pagedLoader);
+      addTearDown(pagedCubit.close);
+      addTearDown(parseGate.complete);
 
-    await pagedCubit.load(
+      await pagedCubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+      final before = List<AiMessage>.from(
+        pagedCubit
+            .ensureSeat(sessionId: 'sess-a', selectedMemberId: '')
+            .runtime
+            .messages,
+      );
+
+      await pagedCubit.loadOlder();
+
+      expect(
+        pagedCubit
+            .ensureSeat(sessionId: 'sess-a', selectedMemberId: '')
+            .runtime
+            .messages
+            .map((m) => m.id),
+        before.map((m) => m.id),
+      );
+      expect(pagedCubit.state.isLoadingOlder, isFalse);
+      expect(pagedCubit.state.softReloadError, contains('older page boom'));
+      expect(pagedCubit.state.status, AiHistoryViewStatus.ready);
+    },
+  );
+
+  test('error sets runtime error', () async {
+    locator.error = StateError('boom');
+    await cubit.load(
       session: simpleSession(),
       memberId: '',
       launchContext: launchCtx(simpleSession()),
     );
-    final before = List<AiMessage>.from(
-      pagedCubit
-          .ensureSeat(sessionId: 'sess-a', selectedMemberId: '')
-          .runtime
-          .messages,
-    );
-
-    await pagedCubit.loadOlder();
-
-    expect(
-      pagedCubit
-          .ensureSeat(sessionId: 'sess-a', selectedMemberId: '')
-          .runtime
-          .messages
-          .map((m) => m.id),
-      before.map((m) => m.id),
-    );
-    expect(pagedCubit.state.isLoadingOlder, isFalse);
-    expect(pagedCubit.state.softReloadError, contains('older page boom'));
-    expect(pagedCubit.state.status, AiHistoryViewStatus.ready);
-  });
-
-  test('error sets runtime error', () async {
-    locator.error = StateError('boom');
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     expect(cubit.state.status, AiHistoryViewStatus.error);
     expect(cubit.state.errorMessage, contains('boom'));
     expect(seatRuntime().status, AiThreadStatus.error);
@@ -611,7 +625,58 @@ void main() {
     expect(cubit.state.totalMessageCount, 2);
   });
 
-  test('softReload identical transcript early-exits without stream emit', () async {
+  test(
+    'softReload identical transcript early-exits without stream emit',
+    () async {
+      holderMessages = messages(2);
+      locator.emitBundle = true;
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+
+      final emissions = <AiHistoryState>[];
+      final sub = cubit.stream.listen(emissions.add);
+      await cubit.softReload();
+      await sub.cancel();
+
+      expect(emissions, isEmpty);
+    },
+  );
+
+  test(
+    'softReload grows visibleCount by tip delta and preserves start',
+    () async {
+      holderMessages = messages(40);
+      locator.emitBundle = true;
+
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+      expect(seatRuntime().messages, hasLength(kSessionHistoryInitialTurns));
+      expect(seatRuntime().messages.first.id, 'm-10');
+
+      cubit.loadOlder();
+      expect(cubit.state.totalMessageCount, 40);
+      expect(seatRuntime().messages, hasLength(40));
+      expect(seatRuntime().messages.first.id, 'm-0');
+
+      holderMessages = messages(42);
+      bumpCacheToken();
+      await cubit.softReload();
+
+      expect(cubit.state.totalMessageCount, 42);
+      expect(seatRuntime().messages, hasLength(42));
+      expect(seatRuntime().messages.first.id, 'm-0');
+      expect(seatRuntime().messages.last.id, 'm-41');
+      expect(cubit.state.hasOlder, isFalse);
+    },
+  );
+
+  test('softReload does not emit loading when already ready', () async {
     holderMessages = messages(2);
     locator.emitBundle = true;
     await cubit.load(
@@ -619,43 +684,6 @@ void main() {
       memberId: '',
       launchContext: launchCtx(simpleSession()),
     );
-
-    final emissions = <AiHistoryState>[];
-    final sub = cubit.stream.listen(emissions.add);
-    await cubit.softReload();
-    await sub.cancel();
-
-    expect(emissions, isEmpty);
-  });
-
-  test('softReload grows visibleCount by tip delta and preserves start', () async {
-    holderMessages = messages(40);
-    locator.emitBundle = true;
-
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
-    expect(seatRuntime().messages, hasLength(kSessionHistoryInitialTurns));
-    expect(seatRuntime().messages.first.id, 'm-10');
-
-    cubit.loadOlder();
-    expect(cubit.state.totalMessageCount, 40);
-    expect(seatRuntime().messages, hasLength(40));
-    expect(seatRuntime().messages.first.id, 'm-0');
-
-    holderMessages = messages(42);
-    bumpCacheToken();
-    await cubit.softReload();
-
-    expect(cubit.state.totalMessageCount, 42);
-    expect(seatRuntime().messages, hasLength(42));
-    expect(seatRuntime().messages.first.id, 'm-0');
-    expect(seatRuntime().messages.last.id, 'm-41');
-    expect(cubit.state.hasOlder, isFalse);
-  });
-
-  test('softReload does not emit loading when already ready', () async {
-    holderMessages = messages(2);
-    locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
     expect(cubit.state.status, AiHistoryViewStatus.ready);
 
     final statuses = <AiHistoryViewStatus>[];
@@ -674,7 +702,11 @@ void main() {
   test('softReload truncate clamps visibleCount', () async {
     holderMessages = messages(40);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
     cubit.loadOlder();
     expect(seatRuntime().messages, hasLength(40));
 
@@ -691,7 +723,11 @@ void main() {
   test('pending user merges then drops on matching tip user text', () async {
     holderMessages = messages(2);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
 
     cubit.enqueuePendingUser('hello   world');
     expect(cubit.state.awaitingAssistant, isTrue);
@@ -852,7 +888,11 @@ void main() {
   test('held assistant tip flushes immediately on idle endAwaiting', () async {
     holderMessages = messages(1);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
 
     cubit.enqueuePendingUser('hello');
     holderMessages = [
@@ -882,7 +922,11 @@ void main() {
   test('enqueuePendingUser replaces the previous pending overlay', () async {
     holderMessages = messages(1);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
 
     cubit.enqueuePendingUser('a');
     cubit.enqueuePendingUser('b');
@@ -989,73 +1033,80 @@ void main() {
     );
   });
 
+  test('command-expanded user turn reconciles the typed pending bubble', () async {
+    // A slash-command message from compose is recorded by the CLI as
+    // <command-message>/<command-name>/<command-args> markup — the recorded
+    // user turn is a CLI rewrite, not the typed text. Reconciliation must not
+    // depend on text, or the pending bubble sticks at the tip forever.
+    holderMessages = messages(1);
+    locator.emitBundle = true;
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
+
+    cubit.enqueuePendingUser(
+      r'/using-git-worktrees /subagent-driven-development 开始吧',
+    );
+    expect(
+      seatRuntime().messages.where((m) => m.id.startsWith('pending:')),
+      hasLength(1),
+    );
+
+    holderMessages = [
+      ...messages(1),
+      const AiMessage(
+        id: 'u-cmd',
+        role: AiRole.user,
+        parts: [
+          AiTextPart(
+            text:
+                '<command-message>superpowers:using-git-worktrees</command-message>\n'
+                '<command-name>/superpowers:using-git-worktrees</command-name>\n'
+                '<command-args>开始吧</command-args>',
+          ),
+        ],
+      ),
+      const AiMessage(
+        id: 'a-1',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'on it')],
+      ),
+    ];
+    bumpCacheToken();
+    await cubit.softReload();
+
+    expect(
+      seatRuntime().messages.where((m) => m.id.startsWith('pending:')),
+      isEmpty,
+      reason: 'pending should reconcile to the command-expanded real message',
+    );
+    expect(seatRuntime().messages.last.id, 'u-cmd');
+  });
+
   test(
-    'command-expanded user turn reconciles the typed pending bubble',
+    'enqueuePendingUser on empty promotes to ready with pending tip',
     () async {
-      // A slash-command message from compose is recorded by the CLI as
-      // <command-message>/<command-name>/<command-args> markup — the recorded
-      // user turn is a CLI rewrite, not the typed text. Reconciliation must not
-      // depend on text, or the pending bubble sticks at the tip forever.
-      holderMessages = messages(1);
-      locator.emitBundle = true;
+      locator.emitBundle = false;
       await cubit.load(
         session: simpleSession(),
         memberId: '',
         launchContext: launchCtx(simpleSession()),
       );
+      expect(cubit.state.status, AiHistoryViewStatus.empty);
 
-      cubit.enqueuePendingUser(r'/using-git-worktrees /subagent-driven-development 开始吧');
+      cubit.enqueuePendingUser('continue me');
+
+      expect(cubit.state.status, AiHistoryViewStatus.ready);
+      expect(seatRuntime().messages, hasLength(1));
+      expect(seatRuntime().messages.single.id, startsWith('pending:'));
       expect(
-        seatRuntime().messages.where((m) => m.id.startsWith('pending:')),
-        hasLength(1),
+        (seatRuntime().messages.single.parts.single as AiTextPart).text,
+        'continue me',
       );
-
-      holderMessages = [
-        ...messages(1),
-        const AiMessage(
-          id: 'u-cmd',
-          role: AiRole.user,
-          parts: [
-            AiTextPart(
-              text: '<command-message>superpowers:using-git-worktrees</command-message>\n'
-                  '<command-name>/superpowers:using-git-worktrees</command-name>\n'
-                  '<command-args>开始吧</command-args>',
-            ),
-          ],
-        ),
-        const AiMessage(
-          id: 'a-1',
-          role: AiRole.assistant,
-          parts: [AiTextPart(text: 'on it')],
-        ),
-      ];
-      bumpCacheToken();
-      await cubit.softReload();
-
-      expect(
-        seatRuntime().messages.where((m) => m.id.startsWith('pending:')),
-        isEmpty,
-        reason: 'pending should reconcile to the command-expanded real message',
-      );
-      expect(seatRuntime().messages.last.id, 'u-cmd');
     },
   );
-
-  test('enqueuePendingUser on empty promotes to ready with pending tip', () async {
-    locator.emitBundle = false;
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
-    expect(cubit.state.status, AiHistoryViewStatus.empty);
-
-    cubit.enqueuePendingUser('continue me');
-
-    expect(cubit.state.status, AiHistoryViewStatus.ready);
-    expect(seatRuntime().messages, hasLength(1));
-    expect(seatRuntime().messages.single.id, startsWith('pending:'));
-    expect(
-      (seatRuntime().messages.single.parts.single as AiTextPart).text,
-      'continue me',
-    );
-  });
 
   test('seedPendingUser applies immediately when already on seat', () async {
     locator.emitBundle = false;
@@ -1141,25 +1192,28 @@ void main() {
     );
   });
 
-  test('cancelSeedPendingUser drops stored seed and matching pending', () async {
-    locator.emitBundle = false;
-    cubit.seedPendingUser(
-      sessionId: 'sess-a',
-      memberId: '',
-      text: 'will fail',
-    );
-    cubit.cancelSeedPendingUser(sessionId: 'sess-a', text: 'will fail');
+  test(
+    'cancelSeedPendingUser drops stored seed and matching pending',
+    () async {
+      locator.emitBundle = false;
+      cubit.seedPendingUser(
+        sessionId: 'sess-a',
+        memberId: '',
+        text: 'will fail',
+      );
+      cubit.cancelSeedPendingUser(sessionId: 'sess-a', text: 'will fail');
 
-    await cubit.load(
-      session: simpleSession(),
-      memberId: '',
-      launchContext: launchCtx(simpleSession()),
-    );
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
 
-    expect(cubit.state.awaitingAssistant, isFalse);
-    expect(cubit.state.status, AiHistoryViewStatus.empty);
-    expect(seatRuntime().messages, isEmpty);
-  });
+      expect(cubit.state.awaitingAssistant, isFalse);
+      expect(cubit.state.status, AiHistoryViewStatus.empty);
+      expect(seatRuntime().messages, isEmpty);
+    },
+  );
 
   test(
     'softReloadOrLoad keeps pending-only first bubble when transcript still missing',
@@ -1191,33 +1245,44 @@ void main() {
     },
   );
 
-  test('softReloadOrLoad soft-reloads when already ready for same seat', () async {
-    holderMessages = messages(2);
-    locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
-    expect(cubit.state.status, AiHistoryViewStatus.ready);
+  test(
+    'softReloadOrLoad soft-reloads when already ready for same seat',
+    () async {
+      holderMessages = messages(2);
+      locator.emitBundle = true;
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+      expect(cubit.state.status, AiHistoryViewStatus.ready);
 
-    final statuses = <AiHistoryViewStatus>[];
-    final sub = cubit.stream.listen((s) => statuses.add(s.status));
+      final statuses = <AiHistoryViewStatus>[];
+      final sub = cubit.stream.listen((s) => statuses.add(s.status));
 
-    holderMessages = messages(3);
-    bumpCacheToken();
-    await cubit.softReloadOrLoad(
-      session: simpleSession(),
-      memberId: '',
-      launchContext: launchCtx(simpleSession()),
-    );
-    await sub.cancel();
+      holderMessages = messages(3);
+      bumpCacheToken();
+      await cubit.softReloadOrLoad(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+      await sub.cancel();
 
-    expect(statuses, isNot(contains(AiHistoryViewStatus.loading)));
-    expect(cubit.state.status, AiHistoryViewStatus.ready);
-    expect(cubit.state.totalMessageCount, 3);
-  });
+      expect(statuses, isNot(contains(AiHistoryViewStatus.loading)));
+      expect(cubit.state.status, AiHistoryViewStatus.ready);
+      expect(cubit.state.totalMessageCount, 3);
+    },
+  );
 
   test('softReloadIfSession soft-reloads when ready for session', () async {
     holderMessages = messages(2);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
     expect(cubit.state.status, AiHistoryViewStatus.ready);
 
     final statuses = <AiHistoryViewStatus>[];
@@ -1236,7 +1301,11 @@ void main() {
   test('softReload no-ops after seat clear / generation bump', () async {
     holderMessages = messages(2);
     locator.emitBundle = true;
-    await cubit.load(session: simpleSession(), memberId: '', launchContext: launchCtx(simpleSession()));
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
 
     final delayed = Completer<AiTranscriptBundle?>();
     locator.queue.add(delayed.future);
@@ -1250,10 +1319,7 @@ void main() {
     await soft;
 
     expect(cubit.state.status, AiHistoryViewStatus.empty);
-    expect(
-      cubit.seatOf(sessionId: 'sess-a', selectedMemberId: ''),
-      isNull,
-    );
+    expect(cubit.seatOf(sessionId: 'sess-a', selectedMemberId: ''), isNull);
     expect(cubit.state.totalMessageCount, 0);
   });
 
@@ -1401,196 +1467,167 @@ void main() {
     },
   );
 
-  test(
-    'refreshMailboxTimeline degrades to CLI-only when the mailbox loader '
-    'throws',
-    () async {
-      holderMessages = messages(2);
-      locator.emitBundle = true;
+  test('refreshMailboxTimeline degrades to CLI-only when the mailbox loader '
+      'throws', () async {
+    holderMessages = messages(2);
+    locator.emitBundle = true;
 
-      await cubit.close();
-      cubit = AiHistoryCubit(
-        loader: loader,
-        loadMailboxRecords: (sessionId, memberId) async =>
-            throw StateError('mailbox boom'),
-      );
+    await cubit.close();
+    cubit = AiHistoryCubit(
+      loader: loader,
+      loadMailboxRecords: (sessionId, memberId) async =>
+          throw StateError('mailbox boom'),
+    );
 
-      await cubit.load(
-        session: simpleSession(),
-        memberId: '',
-        launchContext: launchCtx(simpleSession()),
-      );
-      expect(seatRuntime().messages.map((m) => m.id).toList(), [
-        'm-0',
-        'm-1',
-      ]);
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
+    expect(seatRuntime().messages.map((m) => m.id).toList(), ['m-0', 'm-1']);
 
-      await cubit.refreshMailboxTimeline();
+    await cubit.refreshMailboxTimeline();
 
-      expect(seatRuntime().messages.map((m) => m.id).toList(), [
-        'm-0',
-        'm-1',
-      ]);
-    },
-  );
+    expect(seatRuntime().messages.map((m) => m.id).toList(), ['m-0', 'm-1']);
+  });
 
-  test(
-    'softReload with a transient empty CLI parse keeps prior CLI history '
-    'and still merges a new read mailbox message (no wipe)',
-    () async {
-      holderMessages = messages(5);
-      locator.emitBundle = true;
+  test('softReload with a transient empty CLI parse keeps prior CLI history '
+      'and still merges a new read mailbox message (no wipe)', () async {
+    holderMessages = messages(5);
+    locator.emitBundle = true;
 
-      var mailboxRecords = <LoggedMessage>[];
-      await cubit.close();
-      cubit = AiHistoryCubit(
-        loader: loader,
-        loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
-      );
+    var mailboxRecords = <LoggedMessage>[];
+    await cubit.close();
+    cubit = AiHistoryCubit(
+      loader: loader,
+      loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
+    );
 
-      await cubit.load(
-        session: simpleSession(),
-        memberId: '',
-        launchContext: launchCtx(simpleSession()),
-      );
-      expect(seatRuntime().messages, hasLength(5));
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
+    expect(seatRuntime().messages, hasLength(5));
 
-      // Transient empty CLI parse (e.g. locate() briefly finds no bundle)
-      // while the mailbox now has a NEW read message not yet in the timeline.
-      holderMessages = const [];
-      locator.emitBundle = false;
-      bumpCacheToken();
-      mailboxRecords = [
-        LoggedMessage(
-          seq: 0,
-          message: const TeamMessage(
-            id: 'mail-1',
-            from: TeamBus.userSenderId,
-            to: 'dev',
-            content: 'mailbox user',
-          ),
-          createdAt: 6000,
-          read: true,
+    // Transient empty CLI parse (e.g. locate() briefly finds no bundle)
+    // while the mailbox now has a NEW read message not yet in the timeline.
+    holderMessages = const [];
+    locator.emitBundle = false;
+    bumpCacheToken();
+    mailboxRecords = [
+      LoggedMessage(
+        seq: 0,
+        message: const TeamMessage(
+          id: 'mail-1',
+          from: TeamBus.userSenderId,
+          to: 'dev',
+          content: 'mailbox user',
         ),
-      ];
+        createdAt: 6000,
+        read: true,
+      ),
+    ];
 
-      await cubit.softReload();
+    await cubit.softReload();
 
-      final ids = seatRuntime().messages.map((m) => m.id).toList();
-      expect(ids, containsAll(['m-0', 'm-1', 'm-2', 'm-3', 'm-4']));
-      expect(ids, contains('mailbox:mail-1'));
-    },
-  );
+    final ids = seatRuntime().messages.map((m) => m.id).toList();
+    expect(ids, containsAll(['m-0', 'm-1', 'm-2', 'm-3', 'm-4']));
+    expect(ids, contains('mailbox:mail-1'));
+  });
 
-  test(
-    'mailbox bubble survives seat reopen from mailbox loader',
-    () async {
-      holderMessages = messages(2);
-      locator.emitBundle = true;
+  test('mailbox bubble survives seat reopen from mailbox loader', () async {
+    holderMessages = messages(2);
+    locator.emitBundle = true;
 
-      var mailboxRecords = <LoggedMessage>[];
-      await cubit.close();
-      cubit = AiHistoryCubit(
-        loader: loader,
-        loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
-      );
+    var mailboxRecords = <LoggedMessage>[];
+    await cubit.close();
+    cubit = AiHistoryCubit(
+      loader: loader,
+      loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
+    );
 
-      final session = simpleSession();
-      await cubit.load(
-        session: session,
-        memberId: '',
-        launchContext: launchCtx(session),
-      );
-      expect(seatRuntime().messages.map((m) => m.id).toList(), [
-        'm-0',
-        'm-1',
-      ]);
+    final session = simpleSession();
+    await cubit.load(
+      session: session,
+      memberId: '',
+      launchContext: launchCtx(session),
+    );
+    expect(seatRuntime().messages.map((m) => m.id).toList(), ['m-0', 'm-1']);
 
-      mailboxRecords = [
-        LoggedMessage(
-          seq: 0,
-          message: const TeamMessage(
-            id: 'mail-1',
-            from: TeamBus.userSenderId,
-            to: 'dev',
-            content: 'mailbox follow-up',
-          ),
-          createdAt: 3000,
-          read: true,
+    mailboxRecords = [
+      LoggedMessage(
+        seq: 0,
+        message: const TeamMessage(
+          id: 'mail-1',
+          from: TeamBus.userSenderId,
+          to: 'dev',
+          content: 'mailbox follow-up',
         ),
-      ];
-      await cubit.refreshMailboxTimeline();
-      expect(seatRuntime().messages.last.id, 'mailbox:mail-1');
-      expect(seatRuntime().messages.last.deliveryChannel, 'mailbox');
+        createdAt: 3000,
+        read: true,
+      ),
+    ];
+    await cubit.refreshMailboxTimeline();
+    expect(seatRuntime().messages.last.id, 'mailbox:mail-1');
+    expect(seatRuntime().messages.last.deliveryChannel, 'mailbox');
 
-      cubit.clearPendings();
-      await cubit.load(
-        session: session,
-        memberId: '',
-        launchContext: launchCtx(session),
-      );
+    cubit.clearPendings();
+    await cubit.load(
+      session: session,
+      memberId: '',
+      launchContext: launchCtx(session),
+    );
 
-      final mailboxMsg = seatRuntime().messages.firstWhere(
-        (m) => m.id == 'mailbox:mail-1',
-      );
-      expect(mailboxMsg.deliveryChannel, 'mailbox');
-      expect(
-        (mailboxMsg.parts.single as AiTextPart).text,
-        'mailbox follow-up',
-      );
+    final mailboxMsg = seatRuntime().messages.firstWhere(
+      (m) => m.id == 'mailbox:mail-1',
+    );
+    expect(mailboxMsg.deliveryChannel, 'mailbox');
+    expect((mailboxMsg.parts.single as AiTextPart).text, 'mailbox follow-up');
 
-      // Switch away then reopen same seat — rebuilds from log, not sticky.
-      await cubit.load(
-        session: simpleSession(id: 'other'),
-        memberId: '',
-        launchContext: launchCtx(simpleSession(id: 'other')),
-      );
-      await cubit.load(
-        session: session,
-        memberId: '',
-        launchContext: launchCtx(session),
-      );
+    // Switch away then reopen same seat — rebuilds from log, not sticky.
+    await cubit.load(
+      session: simpleSession(id: 'other'),
+      memberId: '',
+      launchContext: launchCtx(simpleSession(id: 'other')),
+    );
+    await cubit.load(
+      session: session,
+      memberId: '',
+      launchContext: launchCtx(session),
+    );
 
-      final reopened = seatRuntime().messages.firstWhere(
-        (m) => m.id == 'mailbox:mail-1',
-      );
-      expect(reopened.deliveryChannel, 'mailbox');
-    },
-  );
+    final reopened = seatRuntime().messages.firstWhere(
+      (m) => m.id == 'mailbox:mail-1',
+    );
+    expect(reopened.deliveryChannel, 'mailbox');
+  });
 
-  test(
-    'mailbox: loader throwing degrades to CLI-only history',
-    () async {
-      holderMessages = messages(2);
-      locator.emitBundle = true;
+  test('mailbox: loader throwing degrades to CLI-only history', () async {
+    holderMessages = messages(2);
+    locator.emitBundle = true;
 
-      await cubit.close();
-      cubit = AiHistoryCubit(
-        loader: loader,
-        loadMailboxRecords: (sessionId, memberId) async =>
-            throw StateError('mailbox boom'),
-      );
+    await cubit.close();
+    cubit = AiHistoryCubit(
+      loader: loader,
+      loadMailboxRecords: (sessionId, memberId) async =>
+          throw StateError('mailbox boom'),
+    );
 
-      await cubit.load(
-        session: simpleSession(),
-        memberId: '',
-        launchContext: launchCtx(simpleSession()),
-      );
+    await cubit.load(
+      session: simpleSession(),
+      memberId: '',
+      launchContext: launchCtx(simpleSession()),
+    );
 
-      expect(cubit.state.status, AiHistoryViewStatus.ready);
-      expect(seatRuntime().messages.map((m) => m.id).toList(), [
-        'm-0',
-        'm-1',
-      ]);
-    },
-  );
+    expect(cubit.state.status, AiHistoryViewStatus.ready);
+    expect(seatRuntime().messages.map((m) => m.id).toList(), ['m-0', 'm-1']);
+  });
 }
 
 AiTranscriptBundle _dummyBundle() => const AiTranscriptBundle(
   adapterId: 'claude',
-  fragments: [
-    AiTranscriptFragment(name: 'canned.jsonl', bytes: []),
-  ],
+  fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
 );
 
 class _HolderAdapter implements AiTranscriptAdapter {
@@ -1663,11 +1700,7 @@ class _GatedParseAdapter implements AiTranscriptAdapter {
 }
 
 class _FakePageReader implements AiTranscriptPageReader {
-  _FakePageReader({
-    required this.latest,
-    required this.older,
-    this.olderError,
-  });
+  _FakePageReader({required this.latest, required this.older, this.olderError});
 
   final List<AiMessage> latest;
   final List<AiMessage> older;

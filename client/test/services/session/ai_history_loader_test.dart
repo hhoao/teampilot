@@ -34,7 +34,6 @@ import 'package:teampilot/services/session/ai_history_load_result.dart';
 import 'package:teampilot/services/session/ai_history_load_timings.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/ai_history_locator.dart';
-import 'package:teampilot/services/session/ai_history_page.dart';
 import 'package:teampilot/services/session/ai_history_watch_meta.dart';
 import 'package:teampilot/services/session/chat_transcript_find_controller.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
@@ -69,7 +68,7 @@ void main() {
           folders: session.folders,
           createdAt: 1,
         ),
-                              usesPosixPaths: false,
+        usesPosixPaths: false,
       );
 
   RuntimeContext fixedRoots() => RuntimeContext(
@@ -152,37 +151,43 @@ void main() {
     expect(messages, isNotEmpty);
     expect(messages.first.id, 'u-1');
     expect(messages.first.role, AiRole.user);
-    expect(
-      messages.where((m) => m.role == AiRole.assistant),
-      isNotEmpty,
-    );
+    expect(messages.where((m) => m.role == AiRole.assistant), isNotEmpty);
   });
 
-  test('annotates tool call categories after parse (built-in resolver)', () async {
-    final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
-    final sessionId = 'sess-cat';
-    final toolRoot = layout.sessionRuntimeToolDir('ws-1', sessionId, 'claude');
-    final projects = p.join(toolRoot, 'projects', bucket);
-    await Directory(projects).create(recursive: true);
-    final fixture = await File(
-      'test/fixtures/session_history/claude/basic.jsonl',
-    ).readAsBytes();
-    await File(p.join(projects, '$sessionId.jsonl')).writeAsBytes(fixture);
+  test(
+    'annotates tool call categories after parse (built-in resolver)',
+    () async {
+      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
+        '/work/project',
+      );
+      final sessionId = 'sess-cat';
+      final toolRoot = layout.sessionRuntimeToolDir(
+        'ws-1',
+        sessionId,
+        'claude',
+      );
+      final projects = p.join(toolRoot, 'projects', bucket);
+      await Directory(projects).create(recursive: true);
+      final fixture = await File(
+        'test/fixtures/session_history/claude/basic.jsonl',
+      ).readAsBytes();
+      await File(p.join(projects, '$sessionId.jsonl')).writeAsBytes(fixture);
 
-    final session = simpleSession(id: sessionId);
-    final result = await buildLoader().load(
-      session: session,
-      memberId: '',
-      launchContext: launchContextFor(session),
-    );
-    expect(result.cli, CliTool.claude);
-    final parts = [
-      for (final m in result.messages) ...m.parts.whereType<AiToolCallPart>(),
-    ];
-    expect(parts, isNotEmpty);
-    // fixture 只有 Bash(basic.jsonl 仅含一条 tool_use):
-    expect(parts.single.category, AiToolCallCategory.command);
-  });
+      final session = simpleSession(id: sessionId);
+      final result = await buildLoader().load(
+        session: session,
+        memberId: '',
+        launchContext: launchContextFor(session),
+      );
+      expect(result.cli, CliTool.claude);
+      final parts = [
+        for (final m in result.messages) ...m.parts.whereType<AiToolCallPart>(),
+      ];
+      expect(parts, isNotEmpty);
+      // fixture 只有 Bash(basic.jsonl 仅含一条 tool_use):
+      expect(parts.single.category, AiToolCallCategory.command);
+    },
+  );
 
   test('Cursor transcript parses via the capability adapter', () async {
     // Cursor rows use a top-level `role` field (not claude's `type`), wrap
@@ -215,10 +220,7 @@ void main() {
     expect(messages, isNotEmpty);
     expect(messages.first.role, AiRole.user);
     expect((messages.first.parts.single as AiTextPart).text, contains('hello'));
-    expect(
-      messages.where((m) => m.role == AiRole.assistant),
-      isNotEmpty,
-    );
+    expect(messages.where((m) => m.role == AiRole.assistant), isNotEmpty);
   });
 
   test('load uses work-context FS from resolver, not home FS', () async {
@@ -256,9 +258,7 @@ void main() {
 
       SessionHistoryContext? locatedCtx;
       final loader = buildLoader(
-        locator: _CapturingLocator(
-          onLocate: (ctx) => locatedCtx = ctx,
-        ),
+        locator: _CapturingLocator(onLocate: (ctx) => locatedCtx = ctx),
         resolveWorkContext: (_, {String? memberId}) async => workRuntime,
       );
 
@@ -342,23 +342,32 @@ void main() {
     final session = simpleSession();
     final ctx = launchContextFor(session);
     expect(
-      (await loader.load(session: session, memberId: '', launchContext: ctx))
-          .messages,
+      (await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      )).messages,
       isEmpty,
     );
     expect(locateCalls, 1);
 
     expect(
-      (await loader.load(session: session, memberId: '', launchContext: ctx))
-          .messages,
+      (await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      )).messages,
       isEmpty,
     );
     expect(locateCalls, 1);
 
     mtimeToken = 'mtime-2';
     expect(
-      (await loader.load(session: session, memberId: '', launchContext: ctx))
-          .messages,
+      (await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      )).messages,
       isEmpty,
     );
     expect(locateCalls, 2);
@@ -375,22 +384,31 @@ void main() {
     final ctx = launchContextFor(session);
 
     expect(
-      (await loader.load(session: session, memberId: '', launchContext: ctx))
-          .messages,
+      (await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      )).messages,
       isEmpty,
     );
     expect(locateCalls, 1);
     expect(
-      (await loader.load(session: session, memberId: '', launchContext: ctx))
-          .messages,
+      (await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      )).messages,
       isEmpty,
     );
     expect(locateCalls, 1);
 
     loader.clearCache();
     expect(
-      (await loader.load(session: session, memberId: '', launchContext: ctx))
-          .messages,
+      (await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      )).messages,
       isEmpty,
     );
     expect(locateCalls, 2);
@@ -418,13 +436,15 @@ void main() {
       useCapabilityToken: true,
       registry: fakeAiHistoryRegistry(
         cli: CliTool.opencode,
-        adapter: _HolderAdapter(() => [
-          AiMessage(
-            id: 'm1',
-            role: AiRole.user,
-            parts: const [AiTextPart(text: 'hi')],
-          ),
-        ]),
+        adapter: _HolderAdapter(
+          () => [
+            AiMessage(
+              id: 'm1',
+              role: AiRole.user,
+              parts: const [AiTextPart(text: 'hi')],
+            ),
+          ],
+        ),
         locate: (_) => locator.locate(
           ctx: SessionHistoryContext(
             fs: LocalFilesystem(),
@@ -467,6 +487,104 @@ void main() {
     expect(identical(third.messages, first.messages), isFalse);
   });
 
+  test(
+    'transient empty full parse never overwrites a loaded non-empty cache',
+    () async {
+      // Regression: while the CLI store is mid-write, a live-refresh reload can
+      // transiently locate nothing (sqlite read hiccup) and produce an EMPTY
+      // full-parse. Before the fix that empty result was cached as "complete"
+      // and then applied to the seat, blanking a transcript that had content.
+      var token = 'oc-1';
+      var holder = <AiMessage>[
+        AiMessage(
+          id: 'm1',
+          role: AiRole.user,
+          parts: const [AiTextPart(text: 'hi')],
+        ),
+        AiMessage(
+          id: 'm2',
+          role: AiRole.assistant,
+          parts: const [AiTextPart(text: 'yo')],
+        ),
+      ];
+      var emitBundle = true;
+      final session = simpleSession(
+        id: 'sess-o',
+      ).copyWith(cli: CliTool.opencode);
+      final ctx = launchContextFor(session);
+      final locator = _CountingLocator(() async {
+        if (!emitBundle) return null;
+        return AiTranscriptBundle(
+          adapterId: 'opencode',
+          fragments: const [
+            AiTranscriptFragment(name: 'm.json', bytes: [1, 2, 3]),
+          ],
+        );
+      });
+      final loader = buildLoader(
+        locator: locator,
+        useCapabilityToken: true,
+        registry: fakeAiHistoryRegistry(
+          cli: CliTool.opencode,
+          adapter: _HolderAdapter(() => List.of(holder)),
+          locate: (_) => locator.locate(
+            ctx: SessionHistoryContext(
+              fs: LocalFilesystem(),
+              taskId: 't',
+              env: const {},
+              transcriptRoots: const [],
+              bucket: '',
+            ),
+            cli: CliTool.opencode,
+          ),
+          liveCacheToken: (_) async => token,
+        ),
+      );
+
+      // First load publishes content.
+      final first = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      expect(first.messages, isNotEmpty);
+
+      // Store moved to a moment where locate transiently misses, but the real
+      // store still has content (the transient empty was a false negative).
+      token = 'oc-2';
+      emitBundle = false;
+      final reload = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      expect(
+        reload.messages,
+        isNotEmpty,
+        reason: 'a transient empty locate must not wipe the loaded transcript',
+      );
+      expect(reload.messages.map((m) => m.id), ['m1', 'm2']);
+
+      // Store readable again (new messages) → reload picks up the growth.
+      emitBundle = true;
+      holder = [
+        ...holder,
+        AiMessage(
+          id: 'm3',
+          role: AiRole.user,
+          parts: const [AiTextPart(text: 'more')],
+        ),
+      ];
+      token = 'oc-3';
+      final grown = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      expect(grown.messages.map((m) => m.id), ['m1', 'm2', 'm3']);
+    },
+  );
+
   test('built-in registry exposes Claude AiHistoryCapability', () {
     final cap = CliToolRegistry.builtIn().capability<AiHistoryCapability>(
       CliTool.claude,
@@ -500,9 +618,7 @@ void main() {
   });
 
   test('resolveWatchMeta returns null when locate misses', () async {
-    final loader = buildLoader(
-      locator: _CountingLocator(() async => null),
-    );
+    final loader = buildLoader(locator: _CountingLocator(() async => null));
     final session = simpleSession();
     expect(
       await loader.resolveWatchMeta(
@@ -547,10 +663,7 @@ void main() {
     final enricher = ClaudeCompatibleToolResultEnricher(
       decodeLines: (lines) {
         batches++;
-        return [
-          for (final line in lines)
-            tryDecodeJsonlLine(line),
-        ];
+        return [for (final line in lines) tryDecodeJsonlLine(line)];
       },
     );
     const jsonl =
@@ -578,144 +691,156 @@ void main() {
     expect(batches, 2);
   });
 
-  test('invalidate of an unloaded seat keeps other tool-result indexes',
-      () async {
-    var batches = 0;
-    final enricher = ClaudeCompatibleToolResultEnricher(
-      decodeLines: (lines) {
-        batches++;
-        return [for (final line in lines) tryDecodeJsonlLine(line)];
-      },
-    );
-    const jsonl =
-        '{"type":"user","message":{"role":"user","content":[{"tool_use_id":"call_0","type":"tool_result","content":"tool output truncated","is_error":false}]},"toolUseResult":{"stdout":"pwd","stderr":"","exitCode":0}}\n';
-    final registry = fakeAiHistoryRegistry(
-      cli: CliTool.claude,
-      adapter: _EchoAdapter(),
-      toolResultEnricher: enricher,
-      locate: (_) async => AiTranscriptBundle(
-        adapterId: 'claude',
-        fragments: [
-          AiTranscriptFragment(name: 't.jsonl', bytes: utf8.encode(jsonl)),
-        ],
-      ),
-    );
-    final loader = buildLoader(registry: registry);
-    final session = simpleSession();
-    final ctx = launchContextFor(session);
-
-    await loader.load(session: session, memberId: '', launchContext: ctx);
-    expect(batches, 1);
-
-    loader.invalidate(sessionId: 'other-session', memberId: '');
-    await loader.load(session: session, memberId: '', launchContext: ctx);
-    expect(
-      batches,
-      1,
-      reason: 'unloaded seat invalidate must not wipe other indexes',
-    );
-  });
-
-  test('messagesIfCached waits for the full index and matches locate token',
-      () async {
-    final all = _pagedHistoryMessages();
-    final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
-    final older = all.sublist(0, all.length - kSessionHistoryInitialTurns);
-    final parseGate = Completer<void>();
-    final adapter = _GatedParseAdapter(all, parseGate);
-    const locateToken = '/proj/a.jsonl|2026-01-01T00:00:00.000Z|128';
-    mtimeToken = locateToken;
-    final session = simpleSession();
-    final loader = buildLoader(
-      registry: fakeAiHistoryRegistry(
+  test(
+    'invalidate of an unloaded seat keeps other tool-result indexes',
+    () async {
+      var batches = 0;
+      final enricher = ClaudeCompatibleToolResultEnricher(
+        decodeLines: (lines) {
+          batches++;
+          return [for (final line in lines) tryDecodeJsonlLine(line)];
+        },
+      );
+      const jsonl =
+          '{"type":"user","message":{"role":"user","content":[{"tool_use_id":"call_0","type":"tool_result","content":"tool output truncated","is_error":false}]},"toolUseResult":{"stdout":"pwd","stderr":"","exitCode":0}}\n';
+      final registry = fakeAiHistoryRegistry(
         cli: CliTool.claude,
-        adapter: adapter,
-        pageReader: _FakePageReader(latest: recent, older: older),
-        locate: (_) async => const AiTranscriptBundle(
+        adapter: _EchoAdapter(),
+        toolResultEnricher: enricher,
+        locate: (_) async => AiTranscriptBundle(
           adapterId: 'claude',
-          fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
-          hints: {'cacheToken': locateToken},
+          fragments: [
+            AiTranscriptFragment(name: 't.jsonl', bytes: utf8.encode(jsonl)),
+          ],
         ),
-      ),
-    );
+      );
+      final loader = buildLoader(registry: registry);
+      final session = simpleSession();
+      final ctx = launchContextFor(session);
 
-    await loader.load(
-      session: session,
-      memberId: '',
-      launchContext: launchContextFor(session),
-    );
-    expect(
-      loader.messagesIfCached(
+      await loader.load(session: session, memberId: '', launchContext: ctx);
+      expect(batches, 1);
+
+      loader.invalidate(sessionId: 'other-session', memberId: '');
+      await loader.load(session: session, memberId: '', launchContext: ctx);
+      expect(
+        batches,
+        1,
+        reason: 'unloaded seat invalidate must not wipe other indexes',
+      );
+    },
+  );
+
+  test(
+    'messagesIfCached waits for the full index and matches locate token',
+    () async {
+      final all = _pagedHistoryMessages();
+      final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
+      final older = all.sublist(0, all.length - kSessionHistoryInitialTurns);
+      final parseGate = Completer<void>();
+      final adapter = _GatedParseAdapter(all, parseGate);
+      const locateToken = '/proj/a.jsonl|2026-01-01T00:00:00.000Z|128';
+      mtimeToken = locateToken;
+      final session = simpleSession();
+      final loader = buildLoader(
+        registry: fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: adapter,
+          pageReader: _FakePageReader(latest: recent, older: older),
+          locate: (_) async => const AiTranscriptBundle(
+            adapterId: 'claude',
+            fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
+            hints: {'cacheToken': locateToken},
+          ),
+        ),
+      );
+
+      await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: launchContextFor(session),
+      );
+      expect(
+        loader.messagesIfCached(
+          sessionId: session.sessionId,
+          memberId: '',
+          token: locateToken,
+        ),
+        isNull,
+        reason: 'page-first window must not be treated as the search index',
+      );
+
+      parseGate.complete();
+      final full = await loader.fullIndex(
         sessionId: session.sessionId,
         memberId: '',
-        token: locateToken,
-      ),
-      isNull,
-      reason: 'page-first window must not be treated as the search index',
-    );
+      );
+      expect(full, isNotNull);
+      expect(
+        loader.messagesIfCached(
+          sessionId: session.sessionId,
+          memberId: '',
+          token: locateToken,
+        ),
+        same(full!.messages),
+      );
+      expect(
+        loader.messagesIfCached(
+          sessionId: session.sessionId,
+          memberId: '',
+          token: '2026-01-01T00:00:00.000Z',
+        ),
+        isNull,
+      );
+    },
+  );
 
-    parseGate.complete();
-    final full = await loader.fullIndex(
-      sessionId: session.sessionId,
-      memberId: '',
-    );
-    expect(full, isNotNull);
-    expect(
-      loader.messagesIfCached(
+  test(
+    'default cache token matches locate path|mtime|size after full load',
+    () async {
+      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
+        '/work/project',
+      );
+      final sessionId = 'sess-token';
+      final toolRoot = layout.sessionRuntimeToolDir(
+        'ws-1',
+        sessionId,
+        'claude',
+      );
+      final projects = p.join(toolRoot, 'projects', bucket);
+      await Directory(projects).create(recursive: true);
+      final fixture = await File(
+        'test/fixtures/session_history/claude/basic.jsonl',
+      ).readAsBytes();
+      final transcriptPath = p.join(projects, '$sessionId.jsonl');
+      await File(transcriptPath).writeAsBytes(fixture);
+
+      final session = simpleSession(id: sessionId);
+      final loader = buildLoader(useCapabilityToken: true);
+      final ctx = launchContextFor(session);
+      await loader.load(session: session, memberId: '', launchContext: ctx);
+      final full = await loader.fullIndex(
         sessionId: session.sessionId,
         memberId: '',
-        token: locateToken,
-      ),
-      same(full!.messages),
-    );
-    expect(
-      loader.messagesIfCached(
-        sessionId: session.sessionId,
-        memberId: '',
-        token: '2026-01-01T00:00:00.000Z',
-      ),
-      isNull,
-    );
-  });
+      );
+      expect(full, isNotNull);
 
-  test('default cache token matches locate path|mtime|size after full load',
-      () async {
-    final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
-    final sessionId = 'sess-token';
-    final toolRoot = layout.sessionRuntimeToolDir('ws-1', sessionId, 'claude');
-    final projects = p.join(toolRoot, 'projects', bucket);
-    await Directory(projects).create(recursive: true);
-    final fixture = await File(
-      'test/fixtures/session_history/claude/basic.jsonl',
-    ).readAsBytes();
-    final transcriptPath = p.join(projects, '$sessionId.jsonl');
-    await File(transcriptPath).writeAsBytes(fixture);
-
-    final session = simpleSession(id: sessionId);
-    final loader = buildLoader(useCapabilityToken: true);
-    final ctx = launchContextFor(session);
-    await loader.load(session: session, memberId: '', launchContext: ctx);
-    final full = await loader.fullIndex(
-      sessionId: session.sessionId,
-      memberId: '',
-    );
-    expect(full, isNotNull);
-
-    final token = await aiHistoryPathCacheToken(
-      fs: fs,
-      path: transcriptPath,
-      byteLength: fixture.length,
-    );
-    expect(
-      loader.messagesIfCached(
-        sessionId: session.sessionId,
-        memberId: '',
-        token: token,
-      ),
-      isNotNull,
-      reason: 'search warm token must match the default loader token',
-    );
-  });
+      final token = await aiHistoryPathCacheToken(
+        fs: fs,
+        path: transcriptPath,
+        byteLength: fixture.length,
+      );
+      expect(
+        loader.messagesIfCached(
+          sessionId: session.sessionId,
+          memberId: '',
+          token: token,
+        ),
+        isNotNull,
+        reason: 'search warm token must match the default loader token',
+      );
+    },
+  );
 
   test('records load phase timings when enabled', () async {
     final timings = AiHistoryLoadTimings();
@@ -754,249 +879,273 @@ void main() {
     );
   });
 
-  test('cursor missing shell result triggers the gate and backfills from terminals',
-      () async {
-    // The cursor Shell part has no result at all (not a truncation marker) —
-    // the loader guard must still fire so the terminal enricher backfills
-    // stdout from the terminals dir. Regression for the dead-path bug where
-    // only String+marker results opened the gate.
-    final fixture = await File(
-      'test/fixtures/session_history/cursor/projects/home-me-proj/'
-      'agent-transcripts/chat-shell-missing-result/chat-shell-missing-result.jsonl',
-    ).readAsBytes();
-    final terminal = await File(
-      'test/fixtures/session_history/cursor/projects/home-me-proj/'
-      'terminals/shell-pwd.txt',
-    ).readAsString();
+  test(
+    'cursor missing shell result triggers the gate and backfills from terminals',
+    () async {
+      // The cursor Shell part has no result at all (not a truncation marker) —
+      // the loader guard must still fire so the terminal enricher backfills
+      // stdout from the terminals dir. Regression for the dead-path bug where
+      // only String+marker results opened the gate.
+      final fixture = await File(
+        'test/fixtures/session_history/cursor/projects/home-me-proj/'
+        'agent-transcripts/chat-shell-missing-result/chat-shell-missing-result.jsonl',
+      ).readAsBytes();
+      final terminal = await File(
+        'test/fixtures/session_history/cursor/projects/home-me-proj/'
+        'terminals/shell-pwd.txt',
+      ).readAsString();
 
-    final rootPath = p.join(
-      base.path,
-      'proj',
-      'agent-transcripts',
-      'chat',
-      'chat.jsonl',
-    );
-    await Directory(p.dirname(rootPath)).create(recursive: true);
-    await Directory(p.join(base.path, 'proj', 'terminals')).create(
-      recursive: true,
-    );
-    await File(
-      p.join(base.path, 'proj', 'terminals', 'shell-pwd.txt'),
-    ).writeAsString(terminal);
+      final rootPath = p.join(
+        base.path,
+        'proj',
+        'agent-transcripts',
+        'chat',
+        'chat.jsonl',
+      );
+      await Directory(p.dirname(rootPath)).create(recursive: true);
+      await Directory(
+        p.join(base.path, 'proj', 'terminals'),
+      ).create(recursive: true);
+      await File(
+        p.join(base.path, 'proj', 'terminals', 'shell-pwd.txt'),
+      ).writeAsString(terminal);
 
-    final registry = fakeAiHistoryRegistry(
-      cli: CliTool.cursor,
-      adapter: const CursorAiTranscriptAdapter(),
-      toolResultEnricher: const CursorTerminalToolResultEnricher(
-        shellResolver: ConfigurableAiShellToolTargetResolver(
-          toolNames: {
-            'bash', 'shell', 'shell_command', 'exec_command',
-            'run_shell_command', 'run_terminal_cmd', 'execute',
-          },
-        ),
-      ),
-      locate: (_) async => AiTranscriptBundle(
-        adapterId: 'cursor',
-        fragments: [AiTranscriptFragment(name: 'chat.jsonl', bytes: fixture)],
-        hints: AiHistoryWatchMeta(
-          changeWatchRoot: p.join(base.path, 'proj'),
-          cacheTokenPaths: [rootPath],
-        ).toHints(),
-      ),
-    );
-    final loader = buildLoader(registry: registry);
-
-    final result = await loader.load(
-      session: simpleSession().copyWith(cli: CliTool.cursor),
-      memberId: '',
-      launchContext: launchContextFor(
-        simpleSession().copyWith(cli: CliTool.cursor),
-      ),
-    );
-
-    final part = result.messages
-        .expand((m) => m.parts)
-        .whereType<AiToolCallPart>()
-        .single;
-    expect(part.toolName, 'Shell');
-    expect(part.result, '/home/hhoa/proj');
-    expect(part.status, AiToolCallStatus.complete);
-    expect(part.isError, isFalse);
-  });
-
-  test('opencode truncation marker triggers the gate and backfills from hint file',
-      () async {
-    // The opencode placeholder carries `...N bytes truncated...`, which the
-    // loader guard must also detect (not just the Claude sentinel), so the
-    // backfill enricher runs and replaces the placeholder with the file body.
-    final hintPath = p.join(base.path, 'tool-output', 'tool_abc');
-    await Directory(p.dirname(hintPath)).create(recursive: true);
-    await File(hintPath).writeAsString('full webfetch output\n第二行');
-    final registry = fakeAiHistoryRegistry(
-      cli: CliTool.opencode,
-      adapter: const _OpencodeMarkerAdapter(),
-      toolResultEnricher: const OpencodeToolOutputBackfillEnricher(),
-      locate: (_) async => AiTranscriptBundle(
-        adapterId: 'opencode',
-        fragments: [AiTranscriptFragment(name: hintPath, bytes: const [1])],
-      ),
-    );
-    final loader = buildLoader(registry: registry);
-
-    final result = await loader.load(
-      session: simpleSession().copyWith(cli: CliTool.opencode),
-      memberId: '',
-      launchContext: launchContextFor(simpleSession().copyWith(cli: CliTool.opencode)),
-    );
-    final part = result.messages.single.parts.single as AiToolCallPart;
-
-    expect(part.result, 'full webfetch output\n第二行');
-    expect(part.status, AiToolCallStatus.complete);
-  });
-
-  test('filesystem toolResultEnricher runs on caller isolate for large bundles',
-      () async {
-    // Bundles >= _isolateParseMinBytes parse on a worker isolate where ctx is
-    // unavailable; filesystem-backed enrichers must still run on the caller
-    // isolate with a non-null ctx instead of being skipped.
-    final enricher = _RecordingFsEnricher();
-    final registry = fakeAiHistoryRegistry(
-      cli: CliTool.claude,
-      adapter: _EchoAdapter(),
-      toolResultEnricher: enricher,
-      locate: (_) async => AiTranscriptBundle(
-        adapterId: 'claude',
-        fragments: [
-          AiTranscriptFragment(
-            name: 'big.jsonl',
-            bytes: List.filled(300 * 1024, 0x20),
+      final registry = fakeAiHistoryRegistry(
+        cli: CliTool.cursor,
+        adapter: const CursorAiTranscriptAdapter(),
+        toolResultEnricher: const CursorTerminalToolResultEnricher(
+          shellResolver: ConfigurableAiShellToolTargetResolver(
+            toolNames: {
+              'bash',
+              'shell',
+              'shell_command',
+              'exec_command',
+              'run_shell_command',
+              'run_terminal_cmd',
+              'execute',
+            },
           ),
-        ],
-      ),
-    );
-    final loader = buildLoader(registry: registry);
+        ),
+        locate: (_) async => AiTranscriptBundle(
+          adapterId: 'cursor',
+          fragments: [AiTranscriptFragment(name: 'chat.jsonl', bytes: fixture)],
+          hints: AiHistoryWatchMeta(
+            changeWatchRoot: p.join(base.path, 'proj'),
+            cacheTokenPaths: [rootPath],
+          ).toHints(),
+        ),
+      );
+      final loader = buildLoader(registry: registry);
 
-    final result = await loader.load(
-      session: simpleSession(),
-      memberId: '',
-      launchContext: launchContextFor(simpleSession()),
-    );
+      final result = await loader.load(
+        session: simpleSession().copyWith(cli: CliTool.cursor),
+        memberId: '',
+        launchContext: launchContextFor(
+          simpleSession().copyWith(cli: CliTool.cursor),
+        ),
+      );
 
-    expect(enricher.calls, 1);
-    expect(enricher.sawCallerCtx, isTrue);
-    expect(result.messages.single.id, 'enriched');
-  });
+      final part = result.messages
+          .expand((m) => m.parts)
+          .whereType<AiToolCallPart>()
+          .single;
+      expect(part.toolName, 'Shell');
+      expect(part.result, '/home/hhoa/proj');
+      expect(part.status, AiToolCallStatus.complete);
+      expect(part.isError, isFalse);
+    },
+  );
 
-  test('unchanged reload returns cached enriched messages, not the raw tail',
-      () async {
-    // The adapter emits a tool result carrying the truncation sentinel so the
-    // first load enriches (storing the enriched list in _messages). With the
-    // same cache token, the second load hits the loader's token cache and must
-    // hand back the cached enriched messages without re-parsing/re-enriching.
-    mtimeToken = 'mtime-1';
-    final session = simpleSession();
-    final enricher = _RecordingEnricher();
-    final registry = fakeAiHistoryRegistry(
-      cli: CliTool.claude,
-      adapter: _EchoAdapter(),
-      toolResultEnricher: enricher,
-      locate: (_) async => AiTranscriptBundle(
-        adapterId: 'claude',
-        fragments: const [
-          AiTranscriptFragment(name: 't.jsonl', bytes: [1, 2, 3]),
-        ],
-      ),
-    );
-    final loader = buildLoader(registry: registry);
-    final ctx = launchContextFor(session);
+  test(
+    'opencode truncation marker triggers the gate and backfills from hint file',
+    () async {
+      // The opencode placeholder carries `...N bytes truncated...`, which the
+      // loader guard must also detect (not just the Claude sentinel), so the
+      // backfill enricher runs and replaces the placeholder with the file body.
+      final hintPath = p.join(base.path, 'tool-output', 'tool_abc');
+      await Directory(p.dirname(hintPath)).create(recursive: true);
+      await File(hintPath).writeAsString('full webfetch output\n第二行');
+      final registry = fakeAiHistoryRegistry(
+        cli: CliTool.opencode,
+        adapter: const _OpencodeMarkerAdapter(),
+        toolResultEnricher: const OpencodeToolOutputBackfillEnricher(),
+        locate: (_) async => AiTranscriptBundle(
+          adapterId: 'opencode',
+          fragments: [
+            AiTranscriptFragment(name: hintPath, bytes: const [1]),
+          ],
+        ),
+      );
+      final loader = buildLoader(registry: registry);
 
-    final first = await loader.load(
-      session: session,
-      memberId: '',
-      launchContext: ctx,
-    );
-    expect(first.messages.single.id, 'enriched');
+      final result = await loader.load(
+        session: simpleSession().copyWith(cli: CliTool.opencode),
+        memberId: '',
+        launchContext: launchContextFor(
+          simpleSession().copyWith(cli: CliTool.opencode),
+        ),
+      );
+      final part = result.messages.single.parts.single as AiToolCallPart;
 
-    // Same token → cache hit; no re-parse, no re-enrich.
-    final second = await loader.load(
-      session: session,
-      memberId: '',
-      launchContext: ctx,
-    );
-    expect(
-      second.messages.single.id,
-      'enriched',
-      reason: 'unchanged reload must return cached enriched messages, not the raw tail',
-    );
-    expect(enricher.calls, 1, reason: 'unchanged reload must not re-enrich');
-  });
+      expect(part.result, 'full webfetch output\n第二行');
+      expect(part.status, AiToolCallStatus.complete);
+    },
+  );
 
-  test('appended transcript lines surface on reload; unchanged reload reuses attachments',
-      () async {
-    mtimeToken = 'mtime-1';
-    // Seed a transcript under the located toolRoot so locate finds it.
-    final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
-    final session = simpleSession();
-    final toolRoot = layout.sessionRuntimeToolDir(
-      'ws-1',
-      session.sessionId,
-      'claude',
-    );
-    final projects = p.join(toolRoot, 'projects', bucket);
-    await Directory(projects).create(recursive: true);
-    final fixture = await File(
-      'test/fixtures/session_history/claude/basic.jsonl',
-    ).readAsBytes();
-    await File(p.join(projects, '${session.sessionId}.jsonl')).writeAsBytes(
-      fixture,
-    );
-
-    final loader = buildLoader();
-    final ctx = launchContextFor(session);
-    await loader.load(session: session, memberId: '', launchContext: ctx);
-    final meta = await loader.resolveWatchMeta(launchContext: ctx, memberId: '');
-    final paths = meta?.cacheTokenPaths ?? const [];
-    final path = paths.isEmpty ? null : paths.first;
-    expect(path, isNotNull, reason: 'transcript must be located');
-
-    final before = (await fs.readString(path!))!;
-    await fs.writeString(
-      path,
-      '$before{"type":"user","message":{"role":"user","content":"appended"}}\n',
-    );
-    // Touch mtime so the loader token gate opens. With the injected resolver
-    // the gate token is [mtimeToken]; the real file mtime drives the default
-    // _defaultCacheToken in production.
-    final f = File(path);
-    f.setLastModifiedSync(DateTime.now().add(const Duration(seconds: 1)));
-    mtimeToken = 'mtime-2';
-
-    final second = await loader.load(
-      session: session,
-      memberId: '',
-      launchContext: ctx,
-    );
-    expect(
-      second.messages.any(
-        (m) =>
-            m.parts.any(
-              (p) => p is AiTextPart && p.text.contains('appended'),
+  test(
+    'filesystem toolResultEnricher runs on caller isolate for large bundles',
+    () async {
+      // Bundles >= _isolateParseMinBytes parse on a worker isolate where ctx is
+      // unavailable; filesystem-backed enrichers must still run on the caller
+      // isolate with a non-null ctx instead of being skipped.
+      final enricher = _RecordingFsEnricher();
+      final registry = fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: _EchoAdapter(),
+        toolResultEnricher: enricher,
+        locate: (_) async => AiTranscriptBundle(
+          adapterId: 'claude',
+          fragments: [
+            AiTranscriptFragment(
+              name: 'big.jsonl',
+              bytes: List.filled(300 * 1024, 0x20),
             ),
-      ),
-      isTrue,
-    );
+          ],
+        ),
+      );
+      final loader = buildLoader(registry: registry);
 
-    final third = await loader.load(
-      session: session,
-      memberId: '',
-      launchContext: ctx,
-    );
-    expect(
-      identical(second.subagentAttachments, third.subagentAttachments),
-      isTrue,
-      reason: 'unchanged reload must reuse the attachment map',
-    );
-  });
+      final result = await loader.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchContextFor(simpleSession()),
+      );
+
+      expect(enricher.calls, 1);
+      expect(enricher.sawCallerCtx, isTrue);
+      expect(result.messages.single.id, 'enriched');
+    },
+  );
+
+  test(
+    'unchanged reload returns cached enriched messages, not the raw tail',
+    () async {
+      // The adapter emits a tool result carrying the truncation sentinel so the
+      // first load enriches (storing the enriched list in _messages). With the
+      // same cache token, the second load hits the loader's token cache and must
+      // hand back the cached enriched messages without re-parsing/re-enriching.
+      mtimeToken = 'mtime-1';
+      final session = simpleSession();
+      final enricher = _RecordingEnricher();
+      final registry = fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: _EchoAdapter(),
+        toolResultEnricher: enricher,
+        locate: (_) async => AiTranscriptBundle(
+          adapterId: 'claude',
+          fragments: const [
+            AiTranscriptFragment(name: 't.jsonl', bytes: [1, 2, 3]),
+          ],
+        ),
+      );
+      final loader = buildLoader(registry: registry);
+      final ctx = launchContextFor(session);
+
+      final first = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      expect(first.messages.single.id, 'enriched');
+
+      // Same token → cache hit; no re-parse, no re-enrich.
+      final second = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      expect(
+        second.messages.single.id,
+        'enriched',
+        reason:
+            'unchanged reload must return cached enriched messages, not the raw tail',
+      );
+      expect(enricher.calls, 1, reason: 'unchanged reload must not re-enrich');
+    },
+  );
+
+  test(
+    'appended transcript lines surface on reload; unchanged reload reuses attachments',
+    () async {
+      mtimeToken = 'mtime-1';
+      // Seed a transcript under the located toolRoot so locate finds it.
+      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
+        '/work/project',
+      );
+      final session = simpleSession();
+      final toolRoot = layout.sessionRuntimeToolDir(
+        'ws-1',
+        session.sessionId,
+        'claude',
+      );
+      final projects = p.join(toolRoot, 'projects', bucket);
+      await Directory(projects).create(recursive: true);
+      final fixture = await File(
+        'test/fixtures/session_history/claude/basic.jsonl',
+      ).readAsBytes();
+      await File(
+        p.join(projects, '${session.sessionId}.jsonl'),
+      ).writeAsBytes(fixture);
+
+      final loader = buildLoader();
+      final ctx = launchContextFor(session);
+      await loader.load(session: session, memberId: '', launchContext: ctx);
+      final meta = await loader.resolveWatchMeta(
+        launchContext: ctx,
+        memberId: '',
+      );
+      final paths = meta?.cacheTokenPaths ?? const [];
+      final path = paths.isEmpty ? null : paths.first;
+      expect(path, isNotNull, reason: 'transcript must be located');
+
+      final before = (await fs.readString(path!))!;
+      await fs.writeString(
+        path,
+        '$before{"type":"user","message":{"role":"user","content":"appended"}}\n',
+      );
+      // Touch mtime so the loader token gate opens. With the injected resolver
+      // the gate token is [mtimeToken]; the real file mtime drives the default
+      // _defaultCacheToken in production.
+      final f = File(path);
+      f.setLastModifiedSync(DateTime.now().add(const Duration(seconds: 1)));
+      mtimeToken = 'mtime-2';
+
+      final second = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      expect(
+        second.messages.any(
+          (m) => m.parts.any(
+            (p) => p is AiTextPart && p.text.contains('appended'),
+          ),
+        ),
+        isTrue,
+      );
+
+      final third = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      expect(
+        identical(second.subagentAttachments, third.subagentAttachments),
+        isTrue,
+        reason: 'unchanged reload must reuse the attachment map',
+      );
+    },
+  );
 
   test('incremental load reuses message instances across appends', () async {
     mtimeToken = 'mtime-1';
@@ -1016,9 +1165,9 @@ void main() {
         '{"type":"$type","uuid":"$id","message":{"id":"$id","content":"$text"},'
         '"timestamp":"2026-08-10T00:00:00Z"}';
 
-    await File(transcriptPath).writeAsString(
-      '${line('user', 'u1', 'hello')}\n',
-    );
+    await File(
+      transcriptPath,
+    ).writeAsString('${line('user', 'u1', 'hello')}\n');
     final loader = buildLoader();
     final first = await loader.load(
       session: session,
@@ -1032,10 +1181,7 @@ void main() {
     );
     expect(indexed, isNotNull);
     expect(indexed!.messages, hasLength(1));
-    await loader.debugAwaitTailWarm(
-      sessionId: session.sessionId,
-      memberId: '',
-    );
+    await loader.debugAwaitTailWarm(sessionId: session.sessionId, memberId: '');
 
     // 追加流式分片 + 元数据行
     await File(transcriptPath).writeAsString(
@@ -1052,16 +1198,20 @@ void main() {
       memberId: '',
       launchContext: ctx,
     );
-    expect(identical(second.messages, indexed.messages), isFalse,
-        reason: '增量 tail 原地变异 state 列表,必须返回新 List 实例,'
-            '否则 seat 的 identical 判定会把新内容当成没变而跳过渲染');
-    expect(identical(second.messages[0], indexed.messages[0]), isTrue,
-        reason: '未变化消息保持实例身份');
-    expect(second.messages, hasLength(2));
     expect(
-      (second.messages[1].parts.single as AiTextPart).text,
-      'part1 part2',
+      identical(second.messages, indexed.messages),
+      isFalse,
+      reason:
+          '增量 tail 原地变异 state 列表,必须返回新 List 实例,'
+          '否则 seat 的 identical 判定会把新内容当成没变而跳过渲染',
     );
+    expect(
+      identical(second.messages[0], indexed.messages[0]),
+      isTrue,
+      reason: '未变化消息保持实例身份',
+    );
+    expect(second.messages, hasLength(2));
+    expect((second.messages[1].parts.single as AiTextPart).text, 'part1 part2');
   });
 
   group('incremental subagent attachment freshness', () {
@@ -1226,7 +1376,8 @@ void main() {
         expect(
           identical(second.subagentAttachments, warmed.subagentAttachments),
           isTrue,
-          reason: '任务调用集合未变时增量 tick 必须复用同一附件 map 实例,'
+          reason:
+              '任务调用集合未变时增量 tick 必须复用同一附件 map 实例,'
               '否则 seat 的 identical / 内容比较每次都要重建(性能回归)',
         );
       },
@@ -1297,11 +1448,7 @@ void main() {
             'message': {
               'role': 'assistant',
               'content': [
-                {
-                  'type': 'tool_result',
-                  'tool_use_id': 'toolu_agent',
-                  'content': 'done',
-                },
+                {'type': 'tool_result', 'tool_use_id': 'toolu_agent', 'content': 'done'},
               ],
             },
             'uuid': 'r-1',
@@ -1328,7 +1475,8 @@ void main() {
         expect(
           reResolved!.source,
           AiSubagentAttachmentSource.sideTranscript,
-          reason: '调用完成(part 状态/结果变化)后必须重新解析,不能停留在'
+          reason:
+              '调用完成(part 状态/结果变化)后必须重新解析,不能停留在'
               '退化占位——否则预览永远看不到真实的子会话内容',
         );
         expect(reResolved.messages, hasLength(1));
@@ -1368,10 +1516,8 @@ void main() {
       ).writeAsString(_sideTranscriptJsonl(lines: 1));
 
       final resolver = _CountingSubagentSideResolver();
-      final builtInCap =
-          CliToolRegistry.builtIn().capability<AiHistoryCapability>(
-            CliTool.claude,
-          )!;
+      final builtInCap = CliToolRegistry.builtIn()
+          .capability<AiHistoryCapability>(CliTool.claude)!;
       final registry = fakeAiHistoryRegistry(
         cli: CliTool.claude,
         adapter: const ClaudeAiTranscriptAdapter(),
@@ -1390,105 +1536,106 @@ void main() {
       expect(resolver.resolveCount, 0);
     });
 
-    test('two concurrent requests for one id share one resolver call', () async {
-      mtimeToken = 'mtime-1';
-      final session = simpleSession();
-      final ctx = launchContextFor(session);
-      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
-        '/work/project',
-      );
-      final toolRoot = layout.sessionRuntimeToolDir(
-        'ws-1',
-        session.sessionId,
-        'claude',
-      );
-      final projects = p.join(toolRoot, 'projects', bucket);
-      await Directory(projects).create(recursive: true);
-      final parentPath = p.join(projects, '${session.sessionId}.jsonl');
-      await File(parentPath).writeAsString('${_agentToolUseJsonl()}\n');
+    test(
+      'two concurrent requests for one id share one resolver call',
+      () async {
+        mtimeToken = 'mtime-1';
+        final session = simpleSession();
+        final ctx = launchContextFor(session);
+        final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
+          '/work/project',
+        );
+        final toolRoot = layout.sessionRuntimeToolDir(
+          'ws-1',
+          session.sessionId,
+          'claude',
+        );
+        final projects = p.join(toolRoot, 'projects', bucket);
+        await Directory(projects).create(recursive: true);
+        final parentPath = p.join(projects, '${session.sessionId}.jsonl');
+        await File(parentPath).writeAsString('${_agentToolUseJsonl()}\n');
 
-      final subagentsDir = p.join(projects, session.sessionId, 'subagents');
-      await Directory(subagentsDir).create(recursive: true);
-      await File(
-        p.join(subagentsDir, 'agent-abc.meta.json'),
-      ).writeAsString(jsonEncode({'toolUseId': 'toolu_agent'}));
-      await File(
-        p.join(subagentsDir, 'agent-abc.jsonl'),
-      ).writeAsString(_sideTranscriptJsonl(lines: 1));
+        final subagentsDir = p.join(projects, session.sessionId, 'subagents');
+        await Directory(subagentsDir).create(recursive: true);
+        await File(
+          p.join(subagentsDir, 'agent-abc.meta.json'),
+        ).writeAsString(jsonEncode({'toolUseId': 'toolu_agent'}));
+        await File(
+          p.join(subagentsDir, 'agent-abc.jsonl'),
+        ).writeAsString(_sideTranscriptJsonl(lines: 1));
 
-      final gate = Completer<void>();
-      final resolver = _CountingSubagentSideResolver(
-        onResolve: () async {
-          await gate.future;
-          return SubagentSideResolveResult(
-            messages: [
-              AiMessage(
-                id: 'side-1',
-                role: AiRole.assistant,
-                parts: const [AiTextPart(text: 'side')],
-              ),
-            ],
-            handle: const SubagentFileHandle('/side.jsonl'),
-          );
-        },
-      );
-      final builtInCap =
-          CliToolRegistry.builtIn().capability<AiHistoryCapability>(
-            CliTool.claude,
-          )!;
-      final registry = fakeAiHistoryRegistry(
-        cli: CliTool.claude,
-        adapter: const ClaudeAiTranscriptAdapter(),
-        locate: builtInCap.locate,
-        subagentSideResolver: resolver,
-        subagentToolNames: builtInCap.subagentToolNames,
-      );
-      final loader = buildLoader(registry: registry);
-      final loaded = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
-      final seat = await _resolveSeatForLoader(
-        session,
-        fs: fs,
-        layout: layout,
-        registry: registry,
-      );
-      final cacheKey = AiHistoryLoader.cacheKeyFor(session.sessionId, '');
-      final args = (
-        cacheKey: cacheKey,
-        toolCallId: 'toolu_agent',
-        ctx: seat.ctx,
-        capability: seat.cap,
-        messages: loaded.messages,
-        cli: seat.cli,
-      );
-      expect(resolver.resolveCount, 0);
-      final a = loader.loadSubagentAttachment(
-        cacheKey: args.cacheKey,
-        toolCallId: args.toolCallId,
-        ctx: args.ctx,
-        capability: args.capability,
-        messages: args.messages,
-        cli: args.cli,
-      );
-      final b = loader.loadSubagentAttachment(
-        cacheKey: args.cacheKey,
-        toolCallId: args.toolCallId,
-        ctx: args.ctx,
-        capability: args.capability,
-        messages: args.messages,
-        cli: args.cli,
-      );
-      await Future<void>.delayed(Duration.zero);
-      expect(resolver.resolveCount, 1);
-      gate.complete();
-      final results = await Future.wait([a, b]);
-      expect(results[0], isNotNull);
-      expect(identical(results[0], results[1]), isTrue);
-      expect(resolver.resolveCount, 1);
-    });
+        final gate = Completer<void>();
+        final resolver = _CountingSubagentSideResolver(
+          onResolve: () async {
+            await gate.future;
+            return SubagentSideResolveResult(
+              messages: [
+                AiMessage(
+                  id: 'side-1',
+                  role: AiRole.assistant,
+                  parts: const [AiTextPart(text: 'side')],
+                ),
+              ],
+              handle: const SubagentFileHandle('/side.jsonl'),
+            );
+          },
+        );
+        final builtInCap = CliToolRegistry.builtIn()
+            .capability<AiHistoryCapability>(CliTool.claude)!;
+        final registry = fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: const ClaudeAiTranscriptAdapter(),
+          locate: builtInCap.locate,
+          subagentSideResolver: resolver,
+          subagentToolNames: builtInCap.subagentToolNames,
+        );
+        final loader = buildLoader(registry: registry);
+        final loaded = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        final seat = await _resolveSeatForLoader(
+          session,
+          fs: fs,
+          layout: layout,
+          registry: registry,
+        );
+        final cacheKey = AiHistoryLoader.cacheKeyFor(session.sessionId, '');
+        final args = (
+          cacheKey: cacheKey,
+          toolCallId: 'toolu_agent',
+          ctx: seat.ctx,
+          capability: seat.cap,
+          messages: loaded.messages,
+          cli: seat.cli,
+        );
+        expect(resolver.resolveCount, 0);
+        final a = loader.loadSubagentAttachment(
+          cacheKey: args.cacheKey,
+          toolCallId: args.toolCallId,
+          ctx: args.ctx,
+          capability: args.capability,
+          messages: args.messages,
+          cli: args.cli,
+        );
+        final b = loader.loadSubagentAttachment(
+          cacheKey: args.cacheKey,
+          toolCallId: args.toolCallId,
+          ctx: args.ctx,
+          capability: args.capability,
+          messages: args.messages,
+          cli: args.cli,
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(resolver.resolveCount, 1);
+        gate.complete();
+        final results = await Future.wait([a, b]);
+        expect(results[0], isNotNull);
+        expect(identical(results[0], results[1]), isTrue);
+        expect(resolver.resolveCount, 1);
+      },
+    );
 
     test('successful request is cached', () async {
       mtimeToken = 'mtime-1';
@@ -1517,10 +1664,8 @@ void main() {
       ).writeAsString(_sideTranscriptJsonl(lines: 1));
 
       final resolver = _CountingSubagentSideResolver();
-      final builtInCap =
-          CliToolRegistry.builtIn().capability<AiHistoryCapability>(
-            CliTool.claude,
-          )!;
+      final builtInCap = CliToolRegistry.builtIn()
+          .capability<AiHistoryCapability>(CliTool.claude)!;
       final registry = fakeAiHistoryRegistry(
         cli: CliTool.claude,
         adapter: const ClaudeAiTranscriptAdapter(),
@@ -1606,10 +1751,8 @@ void main() {
         ),
         delegate: delegate,
       );
-      final builtInCap =
-          CliToolRegistry.builtIn().capability<AiHistoryCapability>(
-            CliTool.claude,
-          )!;
+      final builtInCap = CliToolRegistry.builtIn()
+          .capability<AiHistoryCapability>(CliTool.claude)!;
       final registry = fakeAiHistoryRegistry(
         cli: CliTool.claude,
         adapter: const ClaudeAiTranscriptAdapter(),
@@ -1643,11 +1786,7 @@ void main() {
       expect(resolver.resolveCount, 1);
 
       fingerprint = 'fp-2';
-      await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
+      await loader.load(session: session, memberId: '', launchContext: ctx);
 
       gate.complete();
       final attachment = await inFlight;
@@ -1687,10 +1826,8 @@ void main() {
       await File(parentPath).writeAsString('${_agentToolUseJsonl()}\n');
 
       final resolver = _CountingSubagentSideResolver();
-      final builtInCap =
-          CliToolRegistry.builtIn().capability<AiHistoryCapability>(
-            CliTool.claude,
-          )!;
+      final builtInCap = CliToolRegistry.builtIn()
+          .capability<AiHistoryCapability>(CliTool.claude)!;
       final registry = fakeAiHistoryRegistry(
         cli: CliTool.claude,
         adapter: const ClaudeAiTranscriptAdapter(),
@@ -1730,7 +1867,9 @@ void main() {
       mtimeToken = 'mtime-1';
       // Parent transcript with an `agent` tool_use but no tool_result yet
       // (the sub-agent is still running — the parent jsonl stays frozen).
-      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
+      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
+        '/work/project',
+      );
       final session = simpleSession();
       final toolRoot = layout.sessionRuntimeToolDir(
         'ws-1',
@@ -1764,11 +1903,7 @@ void main() {
         memberId: '',
       );
       expect(fullAfterFirst, isNotNull);
-      final seat = await _resolveSeatForLoader(
-        session,
-        fs: fs,
-        layout: layout,
-      );
+      final seat = await _resolveSeatForLoader(session, fs: fs, layout: layout);
       final cacheKey = AiHistoryLoader.cacheKeyFor(session.sessionId, '');
       final firstAttachment = await loader.loadSubagentAttachment(
         cacheKey: cacheKey,
@@ -1779,7 +1914,10 @@ void main() {
         cli: seat.cli,
       );
       expect(firstAttachment, isNotNull);
-      expect(firstAttachment!.source, AiSubagentAttachmentSource.sideTranscript);
+      expect(
+        firstAttachment!.source,
+        AiSubagentAttachmentSource.sideTranscript,
+      );
       expect(firstAttachment.messages, hasLength(1));
 
       // The running sub-agent appends its own transcript; the parent jsonl
@@ -1979,11 +2117,7 @@ void main() {
             ),
           );
 
-      expect(
-        reader.latestCalls,
-        2,
-        reason: 'full index 尚未完成时,store 变动必须重读最近窗',
-      );
+      expect(reader.latestCalls, 2, reason: 'full index 尚未完成时,store 变动必须重读最近窗');
       expect(second.messages.map((m) => m.id), grown.map((m) => m.id));
       expect(second.isComplete, isFalse);
       expect(parseGate.isCompleted, isFalse);
@@ -1997,62 +2131,65 @@ void main() {
     },
   );
 
-  test('loadOlder still prepends after background full index completes', () async {
-    final all = _pagedHistoryMessages();
-    final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
-    final older = all.sublist(0, all.length - kSessionHistoryInitialTurns);
-    final adapter = _GatedParseAdapter(all, Completer<void>()..complete());
-    final reader = _FakePageReader(latest: recent, older: older);
-    final session = simpleSession();
-    final loader = buildLoader(
-      locator: _CountingLocator(
-        () async => const AiTranscriptBundle(
-          adapterId: 'claude',
-          fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
+  test(
+    'loadOlder still prepends after background full index completes',
+    () async {
+      final all = _pagedHistoryMessages();
+      final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
+      final older = all.sublist(0, all.length - kSessionHistoryInitialTurns);
+      final adapter = _GatedParseAdapter(all, Completer<void>()..complete());
+      final reader = _FakePageReader(latest: recent, older: older);
+      final session = simpleSession();
+      final loader = buildLoader(
+        locator: _CountingLocator(
+          () async => const AiTranscriptBundle(
+            adapterId: 'claude',
+            fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
+          ),
         ),
-      ),
-      registry: fakeAiHistoryRegistry(
-        cli: CliTool.claude,
-        adapter: adapter,
-        pageReader: reader,
-        locate: (_) async => const AiTranscriptBundle(
-          adapterId: 'claude',
-          fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
+        registry: fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: adapter,
+          pageReader: reader,
+          locate: (_) async => const AiTranscriptBundle(
+            adapterId: 'claude',
+            fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
+          ),
         ),
-      ),
-    );
+      );
 
-    final first = await loader.load(
-      session: session,
-      memberId: '',
-      launchContext: launchContextFor(session),
-    );
-    expect(first.hasOlder, isTrue);
-    expect(first.isComplete, isFalse);
+      final first = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: launchContextFor(session),
+      );
+      expect(first.hasOlder, isTrue);
+      expect(first.isComplete, isFalse);
 
-    final full = await loader.fullIndex(
-      sessionId: session.sessionId,
-      memberId: '',
-    );
-    expect(full, isNotNull);
-    expect(full!.isComplete, isTrue);
-    expect(full.messages.map((m) => m.id), all.map((m) => m.id));
+      final full = await loader.fullIndex(
+        sessionId: session.sessionId,
+        memberId: '',
+      );
+      expect(full, isNotNull);
+      expect(full!.isComplete, isTrue);
+      expect(full.messages.map((m) => m.id), all.map((m) => m.id));
 
-    final olderResult = await loader.loadOlder(
-      sessionId: session.sessionId,
-      memberId: '',
-    );
-    expect(
-      olderResult,
-      isNotNull,
-      reason: 'background full index must not drop the page cursor',
-    );
-    expect(olderResult!.messages.map((m) => m.id), older.map((m) => m.id));
-    expect(
-      [...olderResult.messages, ...first.messages].map((m) => m.id),
-      full.messages.map((m) => m.id),
-    );
-  });
+      final olderResult = await loader.loadOlder(
+        sessionId: session.sessionId,
+        memberId: '',
+      );
+      expect(
+        olderResult,
+        isNotNull,
+        reason: 'background full index must not drop the page cursor',
+      );
+      expect(olderResult!.messages.map((m) => m.id), older.map((m) => m.id));
+      expect(
+        [...olderResult.messages, ...first.messages].map((m) => m.id),
+        full.messages.map((m) => m.id),
+      );
+    },
+  );
 
   test(
     'unchanged-token load after fullIndex returns the hydrated full index',
@@ -2120,9 +2257,7 @@ void main() {
     final adapter = _GatedParseAdapter(all, Completer<void>()..complete());
     final session = simpleSession();
 
-    Future<AiHistoryLoadResult> loadWith(
-      AiTranscriptPageReader? reader,
-    ) {
+    Future<AiHistoryLoadResult> loadWith(AiTranscriptPageReader? reader) {
       return buildLoader(
         locator: _CountingLocator(
           () async => const AiTranscriptBundle(
@@ -2196,7 +2331,8 @@ void main() {
         expect(
           concatenated.map((m) => m.id),
           full!.messages.map((m) => m.id),
-          reason: '${family.label} concatenated pages must equal full index ids',
+          reason:
+              '${family.label} concatenated pages must equal full index ids',
         );
         expect(
           sameMessageListContent(concatenated, full.messages),
@@ -2217,15 +2353,12 @@ class _CountingLocator extends AiHistoryLocator {
   Future<AiTranscriptBundle?> locate({
     required SessionHistoryContext ctx,
     required CliTool cli,
-  }) =>
-      _onLocate();
+  }) => _onLocate();
 }
 
 class _CapturingLocator extends AiHistoryLocator {
-  _CapturingLocator({
-    required this.onLocate,
-    CliToolRegistry? registry,
-  }) : super(registry: registry ?? CliToolRegistry.builtIn());
+  _CapturingLocator({required this.onLocate, CliToolRegistry? registry})
+    : super(registry: registry ?? CliToolRegistry.builtIn());
 
   final void Function(SessionHistoryContext ctx) onLocate;
 
@@ -2341,7 +2474,8 @@ class _OpencodeMarkerAdapter implements AiTranscriptAdapter {
           AiToolCallPart(
             toolCallId: 'call_0',
             toolName: 'webfetch',
-            result: 'preview\n\n...120935 bytes truncated...\n\n'
+            result:
+                'preview\n\n...120935 bytes truncated...\n\n'
                 'The tool call succeeded but the output was truncated. '
                 'Full output saved to:\n$hintPath\n'
                 'Use Grep to search the full content or Read with offset/limit '
@@ -2355,11 +2489,7 @@ class _OpencodeMarkerAdapter implements AiTranscriptAdapter {
 }
 
 class _SeatResolve {
-  const _SeatResolve({
-    required this.ctx,
-    required this.cap,
-    required this.cli,
-  });
+  const _SeatResolve({required this.ctx, required this.cap, required this.cli});
 
   final SessionHistoryContext ctx;
   final AiHistoryCapability cap;
@@ -2430,8 +2560,7 @@ class _GatedSubagentSideResolver implements SubagentSideResolver {
   Future<String?> fingerprint({
     required SessionHistoryContext ctx,
     required String? rootTranscriptPath,
-  }) async =>
-      fingerprintProvider();
+  }) async => fingerprintProvider();
 }
 
 class _CountingSubagentSideResolver implements SubagentSideResolver {
@@ -2457,8 +2586,7 @@ class _CountingSubagentSideResolver implements SubagentSideResolver {
   Future<String?> fingerprint({
     required SessionHistoryContext ctx,
     required String? rootTranscriptPath,
-  }) async =>
-      'fp-static';
+  }) async => 'fp-static';
 }
 
 class _EchoAdapter implements AiTranscriptAdapter {
@@ -2760,14 +2888,8 @@ Future<_LoaderFamily> _installPinnedJsonlFamily({
   final toolRoot = _sessionConfigDir(layout, cli, sessionId);
   final bucket = RuntimeLayout.workspaceBucketForPrimaryPath('/work/project');
   final dest = p.join(toolRoot, 'projects', bucket, '$sessionId.jsonl');
-  await _copyFile(
-    'test/fixtures/session_history/${cli.value}/$name',
-    dest,
-  );
-  return (
-    label: label,
-    session: sessionFor(id: sessionId).copyWith(cli: cli),
-  );
+  await _copyFile('test/fixtures/session_history/${cli.value}/$name', dest);
+  return (label: label, session: sessionFor(id: sessionId).copyWith(cli: cli));
 }
 
 Future<_LoaderFamily> _installCodexFamily({

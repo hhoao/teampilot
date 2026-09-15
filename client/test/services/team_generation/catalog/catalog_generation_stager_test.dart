@@ -8,7 +8,6 @@ import 'package:teampilot/services/catalog/catalog_kind.dart';
 import 'package:teampilot/services/catalog/catalog_kind_registry.dart';
 import 'package:teampilot/services/catalog/catalog_mcp_handler.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 import 'package:teampilot/services/team_generation/catalog/catalog_generation_stager.dart';
 import 'package:teampilot/services/team_generation/models/team_generation_job.dart';

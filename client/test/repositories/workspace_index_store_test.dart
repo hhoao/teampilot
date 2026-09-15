@@ -21,7 +21,7 @@ void main() {
     if (tmp.existsSync()) tmp.deleteSync(recursive: true);
   });
 
-  Workspace _workspace(String id) => Workspace(
+  Workspace workspace0(String id) => Workspace(
     workspaceId: id,
     folders: [WorkspaceFolder(path: '/tmp/$id')],
     display: id,
@@ -36,16 +36,11 @@ void main() {
           Completer<List<Map<String, Object?>>?>().future;
 
       final store = WorkspaceIndexStore(
-        SessionRepositoryFs(
-          teampilotRoot: tmp.path,
-          fs: LocalFilesystem(),
-        ),
+        SessionRepositoryFs(teampilotRoot: tmp.path, fs: LocalFilesystem()),
       );
-      await store.upsert(_workspace('ws-1'));
+      await store.upsert(workspace0('ws-1'));
 
-      final loaded = await store
-          .tryRead()
-          .timeout(const Duration(seconds: 2));
+      final loaded = await store.tryRead().timeout(const Duration(seconds: 2));
       expect(loaded, isNotNull);
       expect(loaded!.single.workspaceId, 'ws-1');
     },
@@ -58,16 +53,11 @@ void main() {
           Completer<List<Map<String, Object?>>?>().future;
 
       final store = WorkspaceIndexStore(
-        SessionRepositoryFs(
-          teampilotRoot: tmp.path,
-          fs: LocalFilesystem(),
-        ),
+        SessionRepositoryFs(teampilotRoot: tmp.path, fs: LocalFilesystem()),
       );
-      final workspace = _workspace('ws-1');
+      final workspace = workspace0('ws-1');
 
-      await store
-          .upsert(workspace)
-          .timeout(const Duration(seconds: 2));
+      await store.upsert(workspace).timeout(const Duration(seconds: 2));
 
       final loaded = await store.tryRead(preferIsolate: false);
       expect(loaded, isNotNull);
@@ -77,31 +67,22 @@ void main() {
 
   test('concurrent upserts keep every workspace', () async {
     final store = WorkspaceIndexStore(
-      SessionRepositoryFs(
-        teampilotRoot: tmp.path,
-        fs: LocalFilesystem(),
-      ),
+      SessionRepositoryFs(teampilotRoot: tmp.path, fs: LocalFilesystem()),
     );
 
     await Future.wait([
-      store.upsert(_workspace('a')),
-      store.upsert(_workspace('b')),
-      store.upsert(_workspace('c')),
+      store.upsert(workspace0('a')),
+      store.upsert(workspace0('b')),
+      store.upsert(workspace0('c')),
     ]);
 
     final loaded = await store.tryRead(preferIsolate: false);
-    expect(
-      loaded!.map((w) => w.workspaceId).toSet(),
-      {'a', 'b', 'c'},
-    );
+    expect(loaded!.map((w) => w.workspaceId).toSet(), {'a', 'b', 'c'});
   });
 
   test('tryRead upgrades legacy primaryPath into a local folder', () async {
     final store = WorkspaceIndexStore(
-      SessionRepositoryFs(
-        teampilotRoot: tmp.path,
-        fs: LocalFilesystem(),
-      ),
+      SessionRepositoryFs(teampilotRoot: tmp.path, fs: LocalFilesystem()),
     );
     // Pre-June-2026 manifest shape: empty folders + bare primaryPath.
     // Without the upgrade every session in this workspace resolves an empty
@@ -131,18 +112,9 @@ void main() {
     final legacy = loaded!.single;
     expect(legacy.workspaceId, 'legacy');
     expect(legacy.folders, hasLength(1));
-    expect(
-      legacy.folders.first.path,
-      r'C:\Users\dev\Documents\TeamPilot',
-    );
-    expect(
-      legacy.folders.first.targetId,
-      WorkspaceFolder.localTargetId,
-    );
-    expect(
-      legacy.firstFolderPath,
-      r'C:\Users\dev\Documents\TeamPilot',
-    );
+    expect(legacy.folders.first.path, r'C:\Users\dev\Documents\TeamPilot');
+    expect(legacy.folders.first.targetId, WorkspaceFolder.localTargetId);
+    expect(legacy.firstFolderPath, r'C:\Users\dev\Documents\TeamPilot');
   });
 
   test('upgradeLegacyPrimaryPath keeps non-empty folders untouched', () {

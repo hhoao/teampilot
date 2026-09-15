@@ -21,7 +21,6 @@ import 'package:teampilot/pages/home_workspace/workspace/workspace_landing_gener
 import 'package:teampilot/repositories/session_repository_fs.dart';
 import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 import 'package:teampilot/services/notification/notification_recorder.dart';
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../support/post_frame_test_harness.dart';
 
@@ -30,7 +29,7 @@ class _RecordingChatCubit extends ChatCubit {
     : super(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
-             storage: testHomeStorage,
+        storage: testHomeStorage,
       );
 
   final bool failRename;
@@ -332,7 +331,10 @@ void main() {
     final chat = _RecordingChatCubit();
     final workbench = WorkbenchCubit();
     final bridge = WorkbenchChatBridge(workbench: workbench, chat: chat);
-    final repo = SessionRepository(rootDir: '/teampilot', storage: testHomeStorage, );
+    final repo = SessionRepository(
+      rootDir: '/teampilot',
+      storage: testHomeStorage,
+    );
     final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
     final session = AppSession(
       sessionId: 'sess-1',
@@ -458,7 +460,7 @@ void main() {
           'reference_session_delete_',
         );
         addTearDown(() => tmp.deleteSync(recursive: true));
-        repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
+        repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
         workspace = await repo.createWorkspace([WorkspaceFolder(path: '/a')]);
         session = (await repo.createSession(
           workspace.workspaceId,
@@ -516,10 +518,7 @@ void main() {
 
       await tester.runAsync(() => chat.deleteSession(repo, session.sessionId));
 
-      expect(
-        workbench.centerLandingInitialText(workspace.workspaceId),
-        isNull,
-      );
+      expect(workbench.centerLandingInitialText(workspace.workspaceId), isNull);
       expect(
         workbench.centerLandingReferenceSessionId(workspace.workspaceId),
         isNull,

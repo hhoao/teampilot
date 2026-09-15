@@ -9,7 +9,6 @@ import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/onboarding/steps/default_preset_step.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -69,9 +68,7 @@ Future<void> _pumpDefaultPresetStep(
         child: CliToolRegistryScope(
           registry: CliToolRegistry.builtIn(),
           child: const Scaffold(
-            body: SingleChildScrollView(
-              child: OnboardingDefaultPresetStep(),
-            ),
+            body: SingleChildScrollView(child: OnboardingDefaultPresetStep()),
           ),
         ),
       ),
@@ -146,46 +143,45 @@ void main() {
     },
   );
 
-  testWidgets(
-    'shows model and effort after switching CLI that has providers',
-    (tester) async {
-      await _pumpDefaultPresetStep(
-        tester,
-        providerState: const AppProviderState(
-          providersByCli: {
-            CliTool.claude: [
-              AppProviderConfig(
-                id: 'packy',
-                cli: CliTool.claude,
-                name: 'Packy',
-                baseUrl: 'https://api.example.com',
-                defaultModel: 'claude-sonnet-4-6',
-              ),
-            ],
-            CliTool.codex: [
-              AppProviderConfig(
-                id: 'codex-openai',
-                cli: CliTool.codex,
-                name: 'OpenAI',
-                baseUrl: 'https://api.openai.com',
-                defaultModel: 'gpt-5',
-              ),
-            ],
-          },
-        ),
-      );
+  testWidgets('shows model and effort after switching CLI that has providers', (
+    tester,
+  ) async {
+    await _pumpDefaultPresetStep(
+      tester,
+      providerState: const AppProviderState(
+        providersByCli: {
+          CliTool.claude: [
+            AppProviderConfig(
+              id: 'packy',
+              cli: CliTool.claude,
+              name: 'Packy',
+              baseUrl: 'https://api.example.com',
+              defaultModel: 'claude-sonnet-4-6',
+            ),
+          ],
+          CliTool.codex: [
+            AppProviderConfig(
+              id: 'codex-openai',
+              cli: CliTool.codex,
+              name: 'OpenAI',
+              baseUrl: 'https://api.openai.com',
+              defaultModel: 'gpt-5',
+            ),
+          ],
+        },
+      ),
+    );
 
-      await tester.tap(find.byType(TpCompactSelect<String>).first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Codex').last);
-      await tester.pumpAndSettle();
+    await tester.tap(find.byType(TpCompactSelect<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Codex').last);
+    await tester.pumpAndSettle();
 
-      expect(find.text('Default model'), findsOneWidget);
-      expect(find.byType(ProviderModelPickerField), findsOneWidget);
-      expect(find.text('Reasoning effort'), findsOneWidget);
-      expect(find.byType(CliEffortPickerField), findsOneWidget);
-    },
-  );
+    expect(find.text('Default model'), findsOneWidget);
+    expect(find.byType(ProviderModelPickerField), findsOneWidget);
+    expect(find.text('Reasoning effort'), findsOneWidget);
+    expect(find.byType(CliEffortPickerField), findsOneWidget);
+  });
 
   testWidgets(
     'shows model and effort when preset provider id is empty but providers exist',

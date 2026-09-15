@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/session_workbench_view.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 
@@ -23,7 +22,7 @@ void main() {
 
   setUp(() async {
     tmp = await Directory.systemTemp.createTemp('it_lazy_spawn_');
-    repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
+    repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
     postFrame = PostFrameTestHarness();
     cubit = ChatCubit(
       executableResolver: () => 'true',
@@ -37,9 +36,9 @@ void main() {
               FakeTerminalSession(
                 executable: executable,
                 scrollbackLines: scrollbackLines,
-                                   fs: InMemoryFilesystem(),
+                fs: InMemoryFilesystem(),
               ),
-                       storage: testHomeStorage,
+      storage: testHomeStorage,
     );
   });
 

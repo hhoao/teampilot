@@ -117,7 +117,7 @@ void main() {
         _workspace.workspaceId,
       ]);
     }
-    SizedBox _sidebar() => SizedBox(
+    SizedBox sidebar() => SizedBox(
       width: 320,
       height: 1000,
       child: WorkspaceSidebar(workspace: _workspace, tabScopeId: 'ws-1'),
@@ -160,9 +160,9 @@ void main() {
                         effectiveFolders: _workspace.folders,
                         resolving: false,
                       ),
-                      child: _sidebar(),
+                      child: sidebar(),
                     )
-                  : _sidebar(),
+                  : sidebar(),
             ),
           ),
         ),

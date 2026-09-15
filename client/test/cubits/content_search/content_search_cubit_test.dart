@@ -40,14 +40,14 @@ void main() {
   late _FakeRunner fake;
   late ContentSearchCubit cubit;
 
-  Stream<TpSearchMatch> _stream(List<TpSearchMatch> ms) async* {
+  Stream<TpSearchMatch> stream(List<TpSearchMatch> ms) async* {
     for (final m in ms) {
       yield m;
       await Future<void>.delayed(Duration.zero);
     }
   }
 
-  TpSearchMatch _m(String rel, int line, {String root = '/root'}) =>
+  TpSearchMatch m(String rel, int line, {String root = '/root'}) =>
       TpSearchMatch(
         path: '$root/$rel',
         relativePath: rel,
@@ -70,7 +70,7 @@ void main() {
 
   test('aggregates matches by file, file header precedes its lines', () async {
     fake.handler = (_) =>
-        _stream([_m('a.dart', 1), _m('b.txt', 2), _m('a.dart', 3)]);
+        stream([m('a.dart', 1), m('b.txt', 2), m('a.dart', 3)]);
     await cubit.search(const TpSearchOptions(pattern: 'hello'));
     final st = cubit.state;
     expect(st.searching, isFalse);
@@ -80,13 +80,13 @@ void main() {
   });
 
   test('truncated flag propagates', () async {
-    fake.handler = (_) => Stream.fromIterable([_m('a.dart', 1)]);
+    fake.handler = (_) => Stream.fromIterable([m('a.dart', 1)]);
     await cubit.search(const TpSearchOptions(pattern: 'hello'));
     expect(cubit.state.files, hasLength(1));
   });
 
   test('cancel stops aggregation and clears searching', () async {
-    fake.handler = (_) => _stream([_m('a.dart', 1), _m('b.txt', 2)]);
+    fake.handler = (_) => stream([m('a.dart', 1), m('b.txt', 2)]);
     final fut = cubit.search(const TpSearchOptions(pattern: 'hello'));
     await Future<void>.delayed(const Duration(milliseconds: 10));
     cubit.cancel();
@@ -94,32 +94,34 @@ void main() {
     expect(cubit.state.searching, isFalse);
   });
 
-  test('cancel reaches the runner; a new search cancels the previous run',
-      () async {
-    final gate = Completer<void>();
-    fake.handler = (_) => Stream<TpSearchMatch>.multi((controller) async {
-      controller.add(_m('a.dart', 1));
-      await gate.future;
-      controller.add(_m('b.txt', 2));
-      controller.close();
-    });
-    final fut = cubit.search(const TpSearchOptions(pattern: 'hello'));
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-    expect(fake.cancelCalls, 0);
-    cubit.cancel();
-    expect(fake.cancelCalls, 1);
-    gate.complete();
-    await fut;
+  test(
+    'cancel reaches the runner; a new search cancels the previous run',
+    () async {
+      final gate = Completer<void>();
+      fake.handler = (_) => Stream<TpSearchMatch>.multi((controller) async {
+        controller.add(m('a.dart', 1));
+        await gate.future;
+        controller.add(m('b.txt', 2));
+        controller.close();
+      });
+      final fut = cubit.search(const TpSearchOptions(pattern: 'hello'));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(fake.cancelCalls, 0);
+      cubit.cancel();
+      expect(fake.cancelCalls, 1);
+      gate.complete();
+      await fut;
 
-    fake.handler = (_) => _stream([_m('a.dart', 1)]);
-    final first = cubit.search(const TpSearchOptions(pattern: 'first'));
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-    expect(fake.cancelCalls, 1);
-    final second = cubit.search(const TpSearchOptions(pattern: 'second'));
-    expect(fake.cancelCalls, 2);
-    await first;
-    await second;
-  });
+      fake.handler = (_) => stream([m('a.dart', 1)]);
+      final first = cubit.search(const TpSearchOptions(pattern: 'first'));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(fake.cancelCalls, 1);
+      final second = cubit.search(const TpSearchOptions(pattern: 'second'));
+      expect(fake.cancelCalls, 2);
+      await first;
+      await second;
+    },
+  );
 
   test('error surfaces in state, not thrown', () async {
     fake.handler = (_) => Stream.error(StateError('boom'));
@@ -129,7 +131,7 @@ void main() {
   });
 
   test('clear resets results and query fields', () async {
-    fake.handler = (_) => _stream([_m('a.dart', 1)]);
+    fake.handler = (_) => stream([m('a.dart', 1)]);
     await cubit.search(const TpSearchOptions(pattern: 'hello'));
     cubit.clear();
     expect(cubit.state.files, isEmpty);
@@ -145,7 +147,7 @@ void main() {
       runnerFactory: (_) => fake,
       replacerFactory: (_) => slow,
     );
-    fake.handler = (_) => _stream([_m('a.dart', 1)]);
+    fake.handler = (_) => stream([m('a.dart', 1)]);
     await closed.search(const TpSearchOptions(pattern: 'hello'));
     final replace = closed.replaceAll('X');
     await closed.close();
@@ -161,7 +163,7 @@ void main() {
       runnerFactory: (_) => fake,
       replacerFactory: (_) => slow,
     );
-    fake.handler = (_) => _stream([_m('a.dart', 1)]);
+    fake.handler = (_) => stream([m('a.dart', 1)]);
     await closed.search(const TpSearchOptions(pattern: 'hello'));
     final replace = closed.replaceSingle('/root/a.dart', 'X');
     await closed.close();
@@ -175,12 +177,15 @@ void main() {
     final a = _FakeRunner('/a');
     final b = _FakeRunner('/b');
     final multi = ContentSearchCubit(
-      slices: [_slice('/b'), _slice('/a')], // b first: files order follows slice order
+      slices: [
+        _slice('/b'),
+        _slice('/a'),
+      ], // b first: files order follows slice order
       runnerFactory: (s) => s.root == '/a' ? a : b,
       replacerFactory: (_) => throw UnimplementedError(),
     );
-    a.handler = (_) => _stream([_m('x.dart', 1, root: '/a')]);
-    b.handler = (_) => _stream([_m('y.dart', 1, root: '/b')]);
+    a.handler = (_) => stream([m('x.dart', 1, root: '/a')]);
+    b.handler = (_) => stream([m('y.dart', 1, root: '/b')]);
     await multi.search(const TpSearchOptions(pattern: 'hello'));
     expect(multi.state.files.map((f) => f.rootKey), ['/b', '/a']);
     expect(multi.state.files.map((f) => f.rootLabel), ['b', 'a']);
@@ -196,7 +201,7 @@ void main() {
       replacerFactory: (_) => throw UnimplementedError(),
     );
     a.handler = (_) => Stream.error(StateError('ssh down'));
-    b.handler = (_) => _stream([_m('y.dart', 1, root: '/b')]);
+    b.handler = (_) => stream([m('y.dart', 1, root: '/b')]);
     await multi.search(const TpSearchOptions(pattern: 'hello'));
     expect(multi.state.sliceErrors.keys, ['/a']);
     expect(multi.state.sliceErrors['/a'], isA<StateError>());
@@ -222,25 +227,30 @@ void main() {
 
   // === fix-wave tests: duplicate-root robustness and truncation ===
 
-  test('two slices sharing one root string emit each file group once',
-      () async {
-    // Both slices share the root string, so the factory cannot dispatch on
-    // root — hand out one runner per slice by call order instead.
-    final runners = [_FakeRunner('/dup'), _FakeRunner('/dup')];
-    var next = 0;
-    final multi = ContentSearchCubit(
-      slices: [_slice('/dup'), _slice('/dup')],
-      runnerFactory: (_) => runners[next++],
-      replacerFactory: (_) => throw UnimplementedError(),
-    );
-    runners[0].handler = (_) => _stream([_m('a.dart', 1, root: '/dup')]);
-    runners[1].handler = (_) => _stream([_m('b.txt', 1, root: '/dup')]);
-    await multi.search(const TpSearchOptions(pattern: 'hello'));
-    // Both runners feed the same root; without the emission-loop guard each
-    // group would be emitted twice with identical (rootKey, path).
-    expect(multi.state.files, hasLength(2));
-    expect(multi.state.files.map((f) => f.path), ['/dup/a.dart', '/dup/b.txt']);
-  });
+  test(
+    'two slices sharing one root string emit each file group once',
+    () async {
+      // Both slices share the root string, so the factory cannot dispatch on
+      // root — hand out one runner per slice by call order instead.
+      final runners = [_FakeRunner('/dup'), _FakeRunner('/dup')];
+      var next = 0;
+      final multi = ContentSearchCubit(
+        slices: [_slice('/dup'), _slice('/dup')],
+        runnerFactory: (_) => runners[next++],
+        replacerFactory: (_) => throw UnimplementedError(),
+      );
+      runners[0].handler = (_) => stream([m('a.dart', 1, root: '/dup')]);
+      runners[1].handler = (_) => stream([m('b.txt', 1, root: '/dup')]);
+      await multi.search(const TpSearchOptions(pattern: 'hello'));
+      // Both runners feed the same root; without the emission-loop guard each
+      // group would be emitted twice with identical (rootKey, path).
+      expect(multi.state.files, hasLength(2));
+      expect(multi.state.files.map((f) => f.path), [
+        '/dup/a.dart',
+        '/dup/b.txt',
+      ]);
+    },
+  );
 
   test('allFailed compares against distinct roots, not raw slices', () async {
     final a = _FakeRunner('/dup');
@@ -256,21 +266,27 @@ void main() {
     expect(multi.state.files, isEmpty);
   });
 
-  test('truncated is set when a slice reaches maxResults, else false',
-      () async {
-    fake.handler = (_) => Stream.fromIterable([
-      for (var i = 0; i < 3; i++) _m('a.dart', i + 1),
-    ]);
-    await cubit.search(const TpSearchOptions(pattern: 'hello', maxResults: 3));
-    expect(cubit.state.files, hasLength(1));
-    expect(cubit.state.truncated, isTrue);
+  test(
+    'truncated is set when a slice reaches maxResults, else false',
+    () async {
+      fake.handler = (_) => Stream.fromIterable([
+        for (var i = 0; i < 3; i++) m('a.dart', i + 1),
+      ]);
+      await cubit.search(
+        const TpSearchOptions(pattern: 'hello', maxResults: 3),
+      );
+      expect(cubit.state.files, hasLength(1));
+      expect(cubit.state.truncated, isTrue);
 
-    fake.handler = (_) =>
-        Stream.fromIterable([_m('a.dart', 1), _m('a.dart', 2)]);
-    await cubit.search(const TpSearchOptions(pattern: 'hello', maxResults: 3));
-    expect(cubit.state.files, hasLength(1));
-    expect(cubit.state.truncated, isFalse);
-  });
+      fake.handler = (_) =>
+          Stream.fromIterable([m('a.dart', 1), m('a.dart', 2)]);
+      await cubit.search(
+        const TpSearchOptions(pattern: 'hello', maxResults: 3),
+      );
+      expect(cubit.state.files, hasLength(1));
+      expect(cubit.state.truncated, isFalse);
+    },
+  );
 }
 
 /// Replacer that blocks until [release] — unchanged from the previous version.

@@ -3,11 +3,9 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/headless.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/registry/capabilities/headless_capability.dart';
-import 'package:teampilot/services/storage/home_storage.dart';
 
 import '../../../../support/post_frame_test_harness.dart';
 

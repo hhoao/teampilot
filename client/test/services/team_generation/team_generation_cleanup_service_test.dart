@@ -6,7 +6,6 @@ import 'package:teampilot/models/simple_launch_identity.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/team_generation_settings.dart';
 import 'package:teampilot/models/workspace.dart';
-import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 import 'package:teampilot/services/team_generation/models/team_generation_job.dart';

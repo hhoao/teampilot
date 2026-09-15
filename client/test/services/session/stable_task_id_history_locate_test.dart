@@ -5,7 +5,6 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/session_member_binding.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
@@ -39,7 +38,7 @@ void main() {
           folders: session.folders,
           createdAt: 1,
         ),
-                              usesPosixPaths: false,
+        usesPosixPaths: false,
       );
 
   RuntimeContext fixedRoots() => RuntimeContext(
@@ -64,19 +63,14 @@ void main() {
     folders: const [WorkspaceFolder(path: projectPath)],
     sessionTeam: teamId,
     members: [
-      SessionMemberBinding(
-        rosterMemberId: memberId,
-        taskId: bindingTaskId,
-      ),
+      SessionMemberBinding(rosterMemberId: memberId, taskId: bindingTaskId),
     ],
     launchState: AppSessionLaunchState.started,
     createdAt: 1,
     updatedAt: 1,
   );
 
-  Future<void> writeClaudeTranscript({
-    required String transcriptTaskId,
-  }) async {
+  Future<void> writeClaudeTranscript({required String transcriptTaskId}) async {
     final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(projectPath);
     final toolRoot = layout.sessionRuntimeToolDir(
       workspaceId,
@@ -89,9 +83,9 @@ void main() {
     final fixture = await File(
       'test/fixtures/session_history/claude/basic.jsonl',
     ).readAsBytes();
-    await File(p.join(projects, '$transcriptTaskId.jsonl')).writeAsBytes(
-      fixture,
-    );
+    await File(
+      p.join(projects, '$transcriptTaskId.jsonl'),
+    ).writeAsBytes(fixture);
   }
 
   setUp(() {

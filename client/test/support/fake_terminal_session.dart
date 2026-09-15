@@ -1,11 +1,14 @@
-import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/session/shell_launch_spec.dart';
 import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 /// Recording [TerminalSession] for cubit / smoke tests that assert connect args.
 class FakeTerminalSession extends TerminalSession {
-  FakeTerminalSession({required super.fs, super.executable = 'flashskyai', super.scrollbackLines = 10000});
+  FakeTerminalSession({
+    required super.fs,
+    super.executable = 'flashskyai',
+    super.scrollbackLines = 10000,
+  });
 
   var _running = false;
   final connectedMembers = <String>[];

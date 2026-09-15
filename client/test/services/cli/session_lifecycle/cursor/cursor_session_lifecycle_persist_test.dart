@@ -14,7 +14,6 @@ import 'package:teampilot/services/cli/cursor/provider/cursor_workspace_trust.da
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
 
-import '../../../../support/cursor_warm_tier_manifest_paths.dart';
 import '../../../../support/in_memory_filesystem.dart';
 
 void main() {

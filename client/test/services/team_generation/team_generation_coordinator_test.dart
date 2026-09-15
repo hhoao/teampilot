@@ -33,7 +33,7 @@ import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 class _RecordingSessionPort implements TeamGenerationSessionPort {
-  _RecordingSessionPort({this.kickoffOutcomes, this.failBuilderTitle = false});
+  _RecordingSessionPort({this.kickoffOutcomes}) : failBuilderTitle = false;
 
   /// When set, each builder deliverTracked consumes the next outcome.
   final List<PortDeliveryOutcome>? kickoffOutcomes;

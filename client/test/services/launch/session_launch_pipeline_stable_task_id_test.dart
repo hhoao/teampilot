@@ -11,7 +11,6 @@ import 'package:teampilot/cubits/chat/model/session_create_request.dart';
 import 'package:teampilot/cubits/chat/model/session_workbench_view.dart';
 import 'package:teampilot/cubits/chat/model/session_open_status.dart';
 import 'package:teampilot/cubits/chat/session_data_store.dart';
-import 'package:teampilot/cubits/chat/session_launch_host.dart';
 import 'package:teampilot/cubits/chat/session_launch_service.dart';
 import 'package:teampilot/cubits/chat/tab_session_runtime_coordinator.dart';
 import 'package:teampilot/models/app_session.dart';
@@ -37,7 +36,8 @@ import '../../support/in_memory_filesystem.dart';
 void main() {
   group('stable member taskId staging', () {
     test('provisional team bindings use plan taskIds not sessionId', () async {
-      final tabStore = ChatTabStore(storage: fakeHomeStorage())..setActiveWorkspaceId('ws-1');
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())
+        ..setActiveWorkspaceId('ws-1');
       final workspace = Workspace(
         workspaceId: 'ws-1',
         folders: const [WorkspaceFolder(path: '/proj')],
@@ -123,7 +123,7 @@ void main() {
       );
 
       final tabStore = ChatTabStore(storage: fakeHomeStorage())
-          ..setActiveWorkspaceId(workspace.workspaceId);
+        ..setActiveWorkspaceId(workspace.workspaceId);
       final host = _CapturingHost(
         ChatState(workspaces: [workspace]),
         tabStore: tabStore,
@@ -186,14 +186,15 @@ void main() {
           cli: CliTool.claude,
         );
         final capturer = _CapturingSessionRepository();
-        final tabStore = ChatTabStore(storage: fakeHomeStorage())..setActiveWorkspaceId('ws-1');
+        final tabStore = ChatTabStore(storage: fakeHomeStorage())
+          ..setActiveWorkspaceId('ws-1');
         final host = _CapturingHost(
           ChatState(workspaces: [workspace]),
           tabStore: tabStore,
           lifecycle: SessionLifecycleService(
-          storage: fakeHomeStorage(),
-          loadPresets: () => const [],
-        ),
+            storage: fakeHomeStorage(),
+            loadPresets: () => const [],
+          ),
           sessionRepository: capturer,
         );
         final service = SessionLaunchService(host, storage: fakeHomeStorage());
@@ -250,7 +251,8 @@ void main() {
       );
       final capturer = _CapturingSessionRepository()
         ..createGate = Completer<void>();
-      final tabStore = ChatTabStore(storage: fakeHomeStorage())..setActiveWorkspaceId('ws-1');
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())
+        ..setActiveWorkspaceId('ws-1');
       final host = _CapturingHost(
         ChatState(workspaces: [workspace]),
         tabStore: tabStore,
@@ -282,9 +284,7 @@ void main() {
       final provisional = host.appended.single;
       host.applyState(
         host.state.copyWith(
-          sessions: [
-            provisional.copyWith(display: 'Fix the landing title'),
-          ],
+          sessions: [provisional.copyWith(display: 'Fix the landing title')],
         ),
       );
 
@@ -295,10 +295,7 @@ void main() {
       expect(persisted.display, 'Fix the landing title');
       expect(
         capturer.renames,
-        contains((
-          'sess-title-cccccccccccccccc',
-          'Fix the landing title',
-        )),
+        contains(('sess-title-cccccccccccccccc', 'Fix the landing title')),
       );
     });
   });
@@ -455,8 +452,7 @@ class _CapturingSessionRepository extends Fake implements SessionRepository {
     return (
       session: session,
       workspace:
-          knownWorkspace ??
-          Workspace(workspaceId: workspaceId, createdAt: 1),
+          knownWorkspace ?? Workspace(workspaceId: workspaceId, createdAt: 1),
     );
   }
 }
@@ -466,7 +462,7 @@ class _CapturingHost implements SessionLaunchHost {
     this.state, {
     required ChatTabStore tabStore,
     SessionLifecycleService? lifecycle,
-    SessionRepository? sessionRepository,
+    this.sessionRepository,
   }) : tabStore = tabStore,
        lifecycle =
            lifecycle ??
@@ -474,7 +470,6 @@ class _CapturingHost implements SessionLaunchHost {
              storage: fakeHomeStorage(),
              loadPresets: () => const [],
            ),
-       sessionRepository = sessionRepository,
        shellFactory = ChatSessionShellFactory(
          executableResolver: () => 'true',
          terminalSessionFactory:
@@ -500,11 +495,11 @@ class _CapturingHost implements SessionLaunchHost {
 
   @override
   ChatDataSnapshot stateSnapshot() => ChatDataSnapshot(
-        workspaces: state.workspaces,
-        sessions: state.sessions,
-        visibleWorkspaces: state.visibleWorkspaces,
-        visibleSessions: state.visibleSessions,
-      );
+    workspaces: state.workspaces,
+    sessions: state.sessions,
+    visibleWorkspaces: state.visibleWorkspaces,
+    visibleSessions: state.visibleSessions,
+  );
 
   @override
   final SessionDataStore dataStore = SessionDataStore(
@@ -624,7 +619,8 @@ class _CapturingHost implements SessionLaunchHost {
   Future<void> loadWorkspaceData(SessionRepository repo) async {}
 
   @override
-  PostFrameScheduler get postFrameScheduler => (VoidCallback cb) => cb();
+  PostFrameScheduler get postFrameScheduler =>
+      (VoidCallback cb) => cb();
 
   @override
   void setPodView(String sessionId, SessionWorkbenchView view) {}

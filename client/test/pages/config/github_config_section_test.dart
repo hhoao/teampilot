@@ -24,10 +24,9 @@ class InMemorySecureKeyValueStore implements SecureKeyValueStore {
 
 class _SeededGithubAccountCubit extends GithubAccountCubit {
   _SeededGithubAccountCubit({
-    required GithubCredentialsStore store,
+    required super.store,
     required GithubAccountState initial,
   }) : super(
-         store: store,
          deviceFlow: null,
          openUrl: (_) async {},
          fetchLogin: (_) async => 'octocat',

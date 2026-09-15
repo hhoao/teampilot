@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/runtime_target.dart';
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_capability_error.dart';
@@ -484,8 +483,7 @@ void main() {
       ),
     );
 
-    test('host facts come from the host-info query, never raw exec',
-        () async {
+    test('host facts come from the host-info query, never raw exec', () async {
       final commands = <String>[];
       final embedded = session(
         embeddedTarget: true,
@@ -497,7 +495,10 @@ void main() {
       addTearDown(embedded.close);
 
       expect(
-        await remoteSshRunsAsRoot(memberSession: embedded, embeddedTarget: true),
+        await remoteSshRunsAsRoot(
+          memberSession: embedded,
+          embeddedTarget: true,
+        ),
         isTrue,
       );
       expect(
@@ -517,13 +518,15 @@ void main() {
       expect(commands.first, hostInfoQuery);
     });
 
-    test('non-elevated host-info reports non-root and non-container',
-        () async {
+    test('non-elevated host-info reports non-root and non-container', () async {
       final embedded = session(embeddedTarget: true);
       addTearDown(embedded.close);
 
       expect(
-        await remoteSshRunsAsRoot(memberSession: embedded, embeddedTarget: true),
+        await remoteSshRunsAsRoot(
+          memberSession: embedded,
+          embeddedTarget: true,
+        ),
         isFalse,
       );
       expect(
@@ -540,7 +543,10 @@ void main() {
       addTearDown(embedded.close);
 
       expect(
-        await remoteSshRunsAsRoot(memberSession: embedded, embeddedTarget: true),
+        await remoteSshRunsAsRoot(
+          memberSession: embedded,
+          embeddedTarget: true,
+        ),
         isNull,
       );
       expect(
@@ -560,7 +566,10 @@ void main() {
       addTearDown(embedded.close);
 
       expect(
-        await remoteSshRunsAsRoot(memberSession: embedded, embeddedTarget: true),
+        await remoteSshRunsAsRoot(
+          memberSession: embedded,
+          embeddedTarget: true,
+        ),
         isNull,
       );
     });

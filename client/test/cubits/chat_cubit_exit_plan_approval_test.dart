@@ -26,17 +26,17 @@ void main() {
       await attention.close();
     });
 
-    ChatCubit _buildCubit() {
+    ChatCubit buildCubit() {
       return ChatCubit(
         executableResolver: () => '/bin/true',
         automationRepository: testAutomationRepository(),
         agentAttentionCubit: attention,
         exitPlanApprovalService: ExitPlanModeApprovalService(hookGate: gate),
-                        storage: testHomeStorage,
+        storage: testHomeStorage,
       );
     }
 
-    void _seedWaitingTab(ChatCubit cubit, {required String sessionId}) {
+    void seedWaitingTab(ChatCubit cubit, {required String sessionId}) {
       final tab = ChatTab(
         info: ChatTabInfo(id: sessionId, title: sessionId, subtitle: ''),
         cliTeamName: sessionId,
@@ -64,10 +64,10 @@ void main() {
         toolUseId: 'toolu-plan-1',
         timeout: const Duration(hours: 1),
       );
-      final cubit = _buildCubit();
+      final cubit = buildCubit();
       addTearDown(cubit.close);
       const sessionId = 'sess-ep';
-      _seedWaitingTab(cubit, sessionId: sessionId);
+      seedWaitingTab(cubit, sessionId: sessionId);
 
       final result = await cubit.approveExitPlanMode(
         sessionId: sessionId,
@@ -91,10 +91,10 @@ void main() {
         toolUseId: 'toolu-plan-2',
         timeout: const Duration(hours: 1),
       );
-      final cubit = _buildCubit();
+      final cubit = buildCubit();
       addTearDown(cubit.close);
       const sessionId = 'sess-ep2';
-      _seedWaitingTab(cubit, sessionId: sessionId);
+      seedWaitingTab(cubit, sessionId: sessionId);
 
       final result = await cubit.rejectExitPlanMode(
         sessionId: sessionId,
@@ -112,10 +112,10 @@ void main() {
     });
 
     test('failed approval does not dismiss waiting', () async {
-      final cubit = _buildCubit();
+      final cubit = buildCubit();
       addTearDown(cubit.close);
       const sessionId = 'sess-ep3';
-      _seedWaitingTab(cubit, sessionId: sessionId);
+      seedWaitingTab(cubit, sessionId: sessionId);
 
       final result = await cubit.approveExitPlanMode(
         sessionId: sessionId,

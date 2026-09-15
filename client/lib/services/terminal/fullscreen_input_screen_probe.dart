@@ -123,11 +123,16 @@ FullscreenPromptAnchor? locateCollapsedPasteInCursorZone(
 }
 
 /// Top row of the cursor input zone: walk up from [cursor] through contiguous
-/// non-blank rows, capped at [cursorZoneWrapSlack] rows.
+/// non-blank rows, stopping at the first blank (the composer's top boundary).
+///
+/// No fixed row-count cap: full-screen TUIs keep the terminal caret on the
+/// EMPTY bottom composer line, several rows below the paste body (cursor-agent
+/// draws its box, status and cwd rows under the pasted text before the caret
+/// line). A fixed "4 rows above the caret" window would start inside the paste
+/// and miss a needle that begins one row higher (e.g. `.png` on the path row).
 int _cursorZoneTop(TerminalScreenGrid grid, int cursor) {
   var top = cursor;
-  for (var i = 0; i < cursorZoneWrapSlack && top > 0; i++) {
-    if (_rowIsBlank(grid, top - 1)) break;
+  while (top > 0 && !_rowIsBlank(grid, top - 1)) {
     top -= 1;
   }
   return top;
@@ -189,15 +194,10 @@ bool isFullscreenPromptSubmitted(
   }
 }
 
-/// Rows above the cursor still counted as part of the input box: a multi-line
-/// paste ends with the cursor on the last line, and the needle is the paste's
-/// trailing 40 chars, which may start one or more rows above the cursor.
-const int cursorZoneWrapSlack = 4;
-
 /// True while [needle] still occupies the input box around the cursor: the
-/// cursor row, plus a small window above it where a multi-line paste's tail may
-/// start. Rows *below* the cursor are excluded so a status/footer character
-/// cannot be mistaken for staged input.
+/// cursor row, plus the contiguous non-blank rows above it where a multi-line
+/// paste's tail may sit. Rows *below* the cursor are excluded so a status/
+/// footer character cannot be mistaken for staged input.
 bool needleStaysInCursorZone(
   TerminalScreenGrid grid,
   String needle,

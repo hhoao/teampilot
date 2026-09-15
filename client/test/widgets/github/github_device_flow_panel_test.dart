@@ -24,10 +24,9 @@ class InMemorySecureKeyValueStore implements SecureKeyValueStore {
 
 class _SeededGithubAccountCubit extends GithubAccountCubit {
   _SeededGithubAccountCubit({
-    required GithubCredentialsStore store,
+    required super.store,
     required GithubAccountState initial,
   }) : super(
-         store: store,
          deviceFlow: null,
          openUrl: (_) async {},
          fetchLogin: (_) async => 'octocat',
@@ -93,7 +92,8 @@ void main() {
         initial: const GithubAccountState(
           status: GithubAccountStatus.waiting,
           userCode: 'ABCD-1234',
-          verificationUri: 'https://github.com/login/device?user_code=ABCD-1234',
+          verificationUri:
+              'https://github.com/login/device?user_code=ABCD-1234',
           deviceFlowAvailable: true,
         ),
       );

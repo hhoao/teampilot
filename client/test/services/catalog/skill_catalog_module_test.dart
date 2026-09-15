@@ -16,7 +16,6 @@ import 'package:teampilot/services/skill/skill_manifest_service.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
-import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory tmp;
@@ -46,9 +45,13 @@ void main() {
     );
     workFs = LocalFilesystem();
     final homeStorage = HomeStorage(testHomeStorage.context);
-    manifest = SkillManifestService(rootDir: tmp.path, storage: homeStorage, );
-    install = SkillInstallService(manifest: manifest, storage: homeStorage, );
-    repository = SkillRepository(manifest: manifest, install: install, storage: homeStorage, );
+    manifest = SkillManifestService(rootDir: tmp.path, storage: homeStorage);
+    install = SkillInstallService(manifest: manifest, storage: homeStorage);
+    repository = SkillRepository(
+      manifest: manifest,
+      install: install,
+      storage: homeStorage,
+    );
     configRepo = WorkspaceProjectConfigRepository(
       storage: HomeStorage(testHomeStorage.context),
     );

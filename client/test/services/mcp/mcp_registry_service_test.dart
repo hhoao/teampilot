@@ -23,7 +23,6 @@ import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
 import 'package:path/path.dart' as p;
 import '../../support/in_memory_filesystem.dart';
-import '../../support/post_frame_test_harness.dart';
 
 HomeStorage _storageFor(Directory root) => HomeStorage.forTesting(
   filesystem: LocalFilesystem(),
@@ -211,9 +210,9 @@ void main() {
     );
 
     await McpRegistryService(
-        layout: layout,
-        storage: _storageFor(root),
-      ).writeForSession(
+      layout: layout,
+      storage: _storageFor(root),
+    ).writeForSession(
       workspaceId: 'workspace-1',
       teamId: teamId,
       sessionId: sessionId,

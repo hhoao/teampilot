@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -219,9 +218,7 @@ void main() {
     });
 
     test('below last row single-root resolves to that root', () {
-      final rows = [
-        _row(path: '/proj/src', name: 'src', isDirectory: true),
-      ];
+      final rows = [_row(path: '/proj/src', name: 'src', isDirectory: true)];
 
       final hit = resolveFileTreePanelDropHit(
         contentY: kFileTreeRowExtent * 3,
@@ -257,9 +254,7 @@ void main() {
     });
 
     test('in-tree onto self rejects', () {
-      final rows = [
-        _row(path: '/proj/src', name: 'src', isDirectory: true),
-      ];
+      final rows = [_row(path: '/proj/src', name: 'src', isDirectory: true)];
 
       final hit = resolveFileTreePanelDropHit(
         contentY: kFileTreeRowExtent * 0.2,

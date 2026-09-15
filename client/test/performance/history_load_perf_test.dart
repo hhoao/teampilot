@@ -19,7 +19,6 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/ai_history_load_timings.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/ai_history_locator.dart';
-import 'package:teampilot/services/session/ai_history_page.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
 import 'package:teampilot/services/session/session_history_pagination.dart';
@@ -48,133 +47,138 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  test('page-first load is one decoder batch, lazy sides, identity refresh',
-      () async {
-    final all = _syntheticHistory();
-    final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
-    final older = all.sublist(0, all.length - kSessionHistoryInitialTurns);
-    final jsonl = _largeTranscriptJsonl();
-    final jsonlLines = const LineSplitter()
-        .convert(jsonl)
-        .where((line) => line.trim().isNotEmpty)
-        .length;
-    final parseGate = Completer<void>();
-    final adapter = _GatedParseAdapter(
-      const ClaudeAiTranscriptAdapter(),
-      parseGate,
-    );
-    final reader = _FakePageReader(latest: recent, older: older);
-    final side = _CountingSideResolver();
-    var decoderBatches = 0;
-    var decoderLines = 0;
-    final enricher = ClaudeCompatibleToolResultEnricher(
-      decodeLines: (lines) {
-        decoderBatches++;
-        decoderLines += lines.length;
-        return [for (final line in lines) tryDecodeJsonlLine(line)];
-      },
-    );
-    final timings = AiHistoryLoadTimings();
-    final registry = fakeAiHistoryRegistry(
-      cli: CliTool.claude,
-      adapter: adapter,
-      pageReader: reader,
-      subagentSideResolver: side,
-      subagentToolNames: const {'agent', 'task'},
-      toolResultEnricher: enricher,
-      locate: (_) async => AiTranscriptBundle(
-        adapterId: 'claude',
-        fragments: [
-          AiTranscriptFragment(name: 'large.jsonl', bytes: utf8.encode(jsonl)),
-        ],
-      ),
-    );
-    final loader = AiHistoryLoader(
-      contextBuilder: const SessionHistoryContextBuilder(),
-      resolveWorkContext: (_, {String? memberId}) async => RuntimeContext(
-        target: RuntimeTarget.local(),
-        filesystem: fs,
-        home: base.path,
-        cwd: base.path,
-        appDataRoot: base.path,
-        paths: AppPaths(base.path),
-      ),
-      registry: registry,
-      locator: AiHistoryLocator(registry: registry),
-      resolveCacheToken: (_) async => 'mtime-perf',
-      timings: timings,
-    );
-    final session = AppSession(
-      sessionId: 'sess-perf',
-      workspaceId: 'ws-1',
-      folders: const [WorkspaceFolder(path: '/work/project')],
-      cli: CliTool.claude,
-      createdAt: 1,
-      updatedAt: 1,
-    );
-    final launch = WorkspaceLaunchContext(
-      session: session,
-      workspace: Workspace(
-        workspaceId: session.workspaceId,
-        folders: session.folders,
+  test(
+    'page-first load is one decoder batch, lazy sides, identity refresh',
+    () async {
+      final all = _syntheticHistory();
+      final recent = all.sublist(all.length - kSessionHistoryInitialTurns);
+      final older = all.sublist(0, all.length - kSessionHistoryInitialTurns);
+      final jsonl = _largeTranscriptJsonl();
+      final jsonlLines = const LineSplitter()
+          .convert(jsonl)
+          .where((line) => line.trim().isNotEmpty)
+          .length;
+      final parseGate = Completer<void>();
+      final adapter = _GatedParseAdapter(
+        const ClaudeAiTranscriptAdapter(),
+        parseGate,
+      );
+      final reader = _FakePageReader(latest: recent, older: older);
+      final side = _CountingSideResolver();
+      var decoderBatches = 0;
+      var decoderLines = 0;
+      final enricher = ClaudeCompatibleToolResultEnricher(
+        decodeLines: (lines) {
+          decoderBatches++;
+          decoderLines += lines.length;
+          return [for (final line in lines) tryDecodeJsonlLine(line)];
+        },
+      );
+      final timings = AiHistoryLoadTimings();
+      final registry = fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: adapter,
+        pageReader: reader,
+        subagentSideResolver: side,
+        subagentToolNames: const {'agent', 'task'},
+        toolResultEnricher: enricher,
+        locate: (_) async => AiTranscriptBundle(
+          adapterId: 'claude',
+          fragments: [
+            AiTranscriptFragment(
+              name: 'large.jsonl',
+              bytes: utf8.encode(jsonl),
+            ),
+          ],
+        ),
+      );
+      final loader = AiHistoryLoader(
+        contextBuilder: const SessionHistoryContextBuilder(),
+        resolveWorkContext: (_, {String? memberId}) async => RuntimeContext(
+          target: RuntimeTarget.local(),
+          filesystem: fs,
+          home: base.path,
+          cwd: base.path,
+          appDataRoot: base.path,
+          paths: AppPaths(base.path),
+        ),
+        registry: registry,
+        locator: AiHistoryLocator(registry: registry),
+        resolveCacheToken: (_) async => 'mtime-perf',
+        timings: timings,
+      );
+      final session = AppSession(
+        sessionId: 'sess-perf',
+        workspaceId: 'ws-1',
+        folders: const [WorkspaceFolder(path: '/work/project')],
+        cli: CliTool.claude,
         createdAt: 1,
-      ),
-                                           usesPosixPaths: false,
-    );
+        updatedAt: 1,
+      );
+      final launch = WorkspaceLaunchContext(
+        session: session,
+        workspace: Workspace(
+          workspaceId: session.workspaceId,
+          folders: session.folders,
+          createdAt: 1,
+        ),
+        usesPosixPaths: false,
+      );
 
-    final first = await loader.load(
-      session: session,
-      memberId: '',
-      launchContext: launch,
-    );
+      final first = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: launch,
+      );
 
-    expect(first.isComplete, isFalse);
-    expect(first.hasOlder, isTrue);
-    expect(first.messages, hasLength(kSessionHistoryInitialTurns));
-    expect(first.messages.map((m) => m.id), recent.map((m) => m.id));
-    expect(parseGate.isCompleted, isFalse);
-    expect(adapter.parseCalls, 0);
-    expect(reader.latestCalls, 1);
-    expect(side.resolveCalls, 0);
-    expect(timings.sideTranscriptReads, 0);
-    expect(timings.order, contains(AiHistoryLoadPhase.firstPublish));
-    expect(timings.order, isNot(contains(AiHistoryLoadPhase.parse)));
-    expect(timings.decoderBatches, 0);
-    expect(decoderBatches, 0);
+      expect(first.isComplete, isFalse);
+      expect(first.hasOlder, isTrue);
+      expect(first.messages, hasLength(kSessionHistoryInitialTurns));
+      expect(first.messages.map((m) => m.id), recent.map((m) => m.id));
+      expect(parseGate.isCompleted, isFalse);
+      expect(adapter.parseCalls, 0);
+      expect(reader.latestCalls, 1);
+      expect(side.resolveCalls, 0);
+      expect(timings.sideTranscriptReads, 0);
+      expect(timings.order, contains(AiHistoryLoadPhase.firstPublish));
+      expect(timings.order, isNot(contains(AiHistoryLoadPhase.parse)));
+      expect(timings.decoderBatches, 0);
+      expect(decoderBatches, 0);
 
-    parseGate.complete();
-    final full = await loader.fullIndex(
-      sessionId: session.sessionId,
-      memberId: '',
-    );
-    expect(full, isNotNull);
-    expect(full!.isComplete, isTrue);
-    expect(full.messages, isNotEmpty);
-    expect(adapter.parseCalls, 1);
-    expect(decoderBatches, 1);
-    expect(decoderLines, jsonlLines);
-    expect(timings.decoderBatches, 1);
-    expect(timings.decoderLines, jsonlLines);
-    expect(timings.order, contains(AiHistoryLoadPhase.parse));
-    expect(timings.order, contains(AiHistoryLoadPhase.decode));
-    expect(side.resolveCalls, 0);
-    expect(timings.sideTranscriptReads, 0);
+      parseGate.complete();
+      final full = await loader.fullIndex(
+        sessionId: session.sessionId,
+        memberId: '',
+      );
+      expect(full, isNotNull);
+      expect(full!.isComplete, isTrue);
+      expect(full.messages, isNotEmpty);
+      expect(adapter.parseCalls, 1);
+      expect(decoderBatches, 1);
+      expect(decoderLines, jsonlLines);
+      expect(timings.decoderBatches, 1);
+      expect(timings.decoderLines, jsonlLines);
+      expect(timings.order, contains(AiHistoryLoadPhase.parse));
+      expect(timings.order, contains(AiHistoryLoadPhase.decode));
+      expect(side.resolveCalls, 0);
+      expect(timings.sideTranscriptReads, 0);
 
-    final refresh = await loader.load(
-      session: session,
-      memberId: '',
-      launchContext: launch,
-    );
-    expect(
-      identical(refresh.messages, full.messages),
-      isTrue,
-      reason: 'unchanged token must keep the same message list instance',
-    );
-    expect(adapter.parseCalls, 1);
-    expect(decoderBatches, 1);
-    expect(timings.decoderBatches, 1);
-    expect(side.resolveCalls, 0);
-  });
+      final refresh = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: launch,
+      );
+      expect(
+        identical(refresh.messages, full.messages),
+        isTrue,
+        reason: 'unchanged token must keep the same message list instance',
+      );
+      expect(adapter.parseCalls, 1);
+      expect(decoderBatches, 1);
+      expect(timings.decoderBatches, 1);
+      expect(side.resolveCalls, 0);
+    },
+  );
 }
 
 List<AiMessage> _syntheticHistory() {
@@ -371,6 +375,5 @@ class _CountingSideResolver implements SubagentSideResolver {
   Future<String?> fingerprint({
     required SessionHistoryContext ctx,
     required String? rootTranscriptPath,
-  }) async =>
-      null;
+  }) async => null;
 }

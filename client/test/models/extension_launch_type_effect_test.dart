@@ -20,7 +20,10 @@ void main() {
           'device': {'type': 'string'},
         },
       },
-      'discover': {'enabled': true, 'globs': ['pubspec.yaml']},
+      'discover': {
+        'enabled': true,
+        'globs': ['pubspec.yaml'],
+      },
     });
     final c = LaunchTypeContribution.fromEffect(
       extensionId: 'ext.flutter',
@@ -30,7 +33,7 @@ void main() {
     expect(c?.adapterRuntime, 'workspace');
     expect(c?.lifecycle, LaunchAdapterLifecycle.sticky);
     expect(c?.configurationSchema, isNotNull);
-    expect(c?.configurationSchema!['required'], ['device']);
+    expect(c?.configurationSchema['required'], ['device']);
     expect(c?.kinds, ['run']);
     expect(c?.adapterCommand, r'${extensionPath}/bin/adapter');
     expect(c?.discover?['enabled'], isTrue);

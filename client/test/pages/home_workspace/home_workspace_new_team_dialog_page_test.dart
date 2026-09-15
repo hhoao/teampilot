@@ -8,7 +8,6 @@ import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
-import 'package:teampilot/cubits/team/model/launch_profile_state.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_new_team_dialog.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
@@ -103,7 +102,9 @@ void main() {
                         teamCubit,
                         expertStore: LocalExpertStore(
                           fs: InMemoryFilesystem(),
-                          dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
+                          dirOverride: AppPaths(
+                            '/tp',
+                          ).memberHubLocalTemplatesDir,
                         ),
                       );
                     },

@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:ai_message_core/ai_message_core.dart';
-import 'package:collection/collection.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mock_model_gateway/core/turns.dart';
 import 'package:mock_model_gateway/scenarios/mixed_collab_3plus.dart';
@@ -30,7 +29,6 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/team_bus/mcp/bus_bridge_locator.dart';
 import 'package:teampilot/services/team_bus/persistence/bus_message_log.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
@@ -374,7 +372,8 @@ final class CliMessageMatrixHarness {
     }
     final runtime = CatalogRuntime.assemble(
       storage: testHomeStorage,
-      sessions: chat.sessionRepository ?? SessionRepository(storage: testHomeStorage),
+      sessions:
+          chat.sessionRepository ?? SessionRepository(storage: testHomeStorage),
     );
     catalogRuntime = runtime;
     chat.teammateBusMcpGateway.attachCatalogHandler(
@@ -890,17 +889,18 @@ final class CliMessageMatrixHarness {
       ),
       resolveChannel: resolveChannel,
       connectWorkspaceSession: chat.connectWorkspaceSession,
-      ensureMemberInputReady: (
-        sessionId,
-        member, {
-        bool directToPty = false,
-        bool Function()? aborted,
-      }) => chat.memberMaterializer.ensureMemberInputReady(
-        sessionId,
-        member,
-        directToPty: directToPty,
-        aborted: aborted,
-      ),
+      ensureMemberInputReady:
+          (
+            sessionId,
+            member, {
+            bool directToPty = false,
+            bool Function()? aborted,
+          }) => chat.memberMaterializer.ensureMemberInputReady(
+            sessionId,
+            member,
+            directToPty: directToPty,
+            aborted: aborted,
+          ),
       deliverUserCommandToMember:
           (sessionId, member, body, {bool directToPty = false}) =>
               chat.sessionRuntime.deliverUserCommandToMember(

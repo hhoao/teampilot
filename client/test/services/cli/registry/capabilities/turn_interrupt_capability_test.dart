@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 

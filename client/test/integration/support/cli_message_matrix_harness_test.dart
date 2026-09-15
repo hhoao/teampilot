@@ -8,7 +8,6 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
-import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/terminal/pending_user_message.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -33,7 +32,7 @@ void main() {
 
     final providers = await AppProviderRepository(
       basePath: testHomeStorage.paths.basePath,
-                                                   storage: testHomeStorage,
+      storage: testHomeStorage,
     ).loadProviders(CliTool.claude);
     expect(providers, hasLength(1));
     expect(providers.single.id, kMatrixSimpleProviderId);
@@ -244,7 +243,7 @@ void main() {
           folders: session.folders,
           createdAt: 0,
         ),
-                                             usesPosixPaths: false,
+        usesPosixPaths: false,
       ),
     );
 

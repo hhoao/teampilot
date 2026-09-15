@@ -41,10 +41,7 @@ class _FakeProcessLauncher implements RunProcessLauncher {
     String? preferTerminalEntryId,
   }) async {
     launchCount++;
-    return RunLaunchHandle(
-      exitCode: Future.value(0),
-      stop: () async {},
-    );
+    return RunLaunchHandle(exitCode: Future.value(0), stop: () async {});
   }
 }
 
@@ -67,17 +64,12 @@ RunPlatform _platform({
   final launcher = _FakeProcessLauncher();
   final mgr =
       sessionManager ??
-      RunSessionManager(
-        executor: launcher,
-        adapters: _FakeAdapterLauncher(),
-      );
+      RunSessionManager(executor: launcher, adapters: _FakeAdapterLauncher());
   return RunPlatform(
     store: LaunchConfigStore(io: MemoryLaunchConfigIo()),
     registry: reg,
     sessionManager: mgr,
-    adapterClient: LaunchAdapterClient(
-      extensionPathResolver: (_) => '/ext',
-    ),
+    adapterClient: LaunchAdapterClient(extensionPathResolver: (_) => '/ext'),
     registrar: LaunchTypeRegistrar(
       extensions: const [],
       detector: (_) async => true,
@@ -127,14 +119,8 @@ void main() {
 
   test('isTypeAvailable is always true for shellScript', () {
     final platform = _platform();
-    expect(
-      platform.isTypeAvailable('shellScript', targetId: 'local'),
-      isTrue,
-    );
-    expect(
-      platform.isTypeAvailable('process', targetId: 'ssh:box'),
-      isFalse,
-    );
+    expect(platform.isTypeAvailable('shellScript', targetId: 'local'), isTrue);
+    expect(platform.isTypeAvailable('process', targetId: 'ssh:box'), isFalse);
   });
 
   test('validateConfiguration validates shellScript after variable expand', () {
@@ -216,7 +202,7 @@ void main() {
         id: 'app',
         name: 'app',
         type: 'flutter',
-        extras: const {'device': 'linux'},
+        extras: {'device': 'linux'},
       ),
     );
 
@@ -255,7 +241,7 @@ void main() {
         id: 'app',
         name: 'app',
         type: 'flutter',
-        extras: const {'device': 'linux'},
+        extras: {'device': 'linux'},
       ),
     );
 

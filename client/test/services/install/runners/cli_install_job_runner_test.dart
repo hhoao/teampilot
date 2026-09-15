@@ -9,7 +9,6 @@ import 'package:teampilot/models/install_job/install_job_spec.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_installer_service.dart';
-import 'package:teampilot/services/cli/installer_types.dart';
 import 'package:teampilot/services/install/install_job_keys.dart';
 import 'package:teampilot/services/install/runners/cli_install_job_runner.dart';
 
@@ -56,16 +55,18 @@ InstallJobSpec<CliInstallResult> _spec(InstallJobKey key) => InstallJobSpec(
 void main() {
   group('CliInstallJobRunner', () {
     test('supports cliExecutable keys with known CliTool targets', () {
-      final runner = CliInstallJobRunner(installerFactory: () => _FakeCliInstallerService(({
-        required cli,
-        required mode,
-        sshProfile,
-        onProgress,
-        isCancelled,
-        onProcessStarted,
-      }) async {
-        return const CliInstallResult(success: true, message: 'ok');
-      }));
+      final runner = CliInstallJobRunner(
+        installerFactory: () => _FakeCliInstallerService(({
+          required cli,
+          required mode,
+          sshProfile,
+          onProgress,
+          isCancelled,
+          onProcessStarted,
+        }) async {
+          return const CliInstallResult(success: true, message: 'ok');
+        }),
+      );
 
       expect(
         runner.supports(
@@ -112,11 +113,11 @@ void main() {
         }),
       );
 
-      final key = InstallJobKeys.cli('claude', scope: const InstallJobScopeLocal());
-      final result = await runner.run(
-        _spec(key),
-        InstallJobContext(),
+      final key = InstallJobKeys.cli(
+        'claude',
+        scope: const InstallJobScopeLocal(),
       );
+      final result = await runner.run(_spec(key), InstallJobContext());
 
       expect(capturedCli, CliTool.claude);
       expect(capturedMode, CliInstallMode.local);
@@ -180,7 +181,10 @@ void main() {
       );
 
       final ctx = InstallJobContext();
-      final key = InstallJobKeys.cli('claude', scope: const InstallJobScopeLocal());
+      final key = InstallJobKeys.cli(
+        'claude',
+        scope: const InstallJobScopeLocal(),
+      );
       await runner.run(_spec(key), ctx);
 
       expect(capturedCancelled, isNotNull);
@@ -223,7 +227,10 @@ void main() {
         }),
       );
 
-      final key = InstallJobKeys.cli('claude', scope: const InstallJobScopeLocal());
+      final key = InstallJobKeys.cli(
+        'claude',
+        scope: const InstallJobScopeLocal(),
+      );
       await runner.run(
         _spec(key),
         InstallJobContext(
@@ -257,7 +264,10 @@ void main() {
         }),
       );
 
-      final key = InstallJobKeys.cli('claude', scope: const InstallJobScopeLocal());
+      final key = InstallJobKeys.cli(
+        'claude',
+        scope: const InstallJobScopeLocal(),
+      );
       expect(
         () => runner.run(_spec(key), InstallJobContext()),
         throwsA(

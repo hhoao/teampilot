@@ -3,7 +3,6 @@ import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/managed_provider_cubit.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/managed_provider.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/managed_provider_repository.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_cli_row_janitor.dart';
@@ -26,42 +25,42 @@ void main() {
     );
   });
 
-  ManagedProvider _entry({
-    required String id,
-    String source = 'cli:cursor',
-  }) => ManagedProvider(
-    id: id,
-    name: 'Cursor Usage',
-    kind: ManagedProviderKind.subscriptionQuota,
-    adapterId: 'http-json',
-    endpointConfig: ManagedProviderEndpointConfig(
-      url: 'https://cursor.com/api/usage-summary',
-      credentialSource: source,
-      credentialName: 'Cookie',
-      credentialTemplate: 'WorkosCursorSessionToken={accountId}::{accessToken}',
-    ),
-  );
+  ManagedProvider entry({required String id, String source = 'cli:cursor'}) =>
+      ManagedProvider(
+        id: id,
+        name: 'Cursor Usage',
+        kind: ManagedProviderKind.subscriptionQuota,
+        adapterId: 'http-json',
+        endpointConfig: ManagedProviderEndpointConfig(
+          url: 'https://cursor.com/api/usage-summary',
+          credentialSource: source,
+          credentialName: 'Cookie',
+          credentialTemplate:
+              'WorkosCursorSessionToken={accountId}::{accessToken}',
+        ),
+      );
 
-  AppProviderCubit _appCubit() => AppProviderCubit(
-    repository: AppProviderRepository(fs: fs, basePath: '/tp', storage: fakeHomeStorage(filesystem: fs), ),
+  AppProviderCubit appCubit0() => AppProviderCubit(
+    repository: AppProviderRepository(
+      fs: fs,
+      basePath: '/tp',
+      storage: fakeHomeStorage(filesystem: fs),
+    ),
     basePath: '/tp',
-                                                    storage: fakeHomeStorage(filesystem: fs),
+    storage: fakeHomeStorage(filesystem: fs),
   );
 
   test('upsert expands an intent source to the per-entry source', () async {
-    final appCubit = _appCubit();
+    final appCubit = appCubit0();
     final cubit = ManagedProviderCubit(
       repository: repo,
       appProviderCubit: appCubit,
     );
 
-    await cubit.upsert(_entry(id: 'managed-1'));
+    await cubit.upsert(entry(id: 'managed-1'));
 
     final saved = cubit.state.providerFor('managed-1')!;
-    expect(
-      saved.endpointConfig.credentialSource,
-      'cli:cursor-mp-managed-1',
-    );
+    expect(saved.endpointConfig.credentialSource, 'cli:cursor-mp-managed-1');
     expect(
       appCubit.state
           .providersFor(CliTool.cursor)
@@ -74,9 +73,9 @@ void main() {
 
   test('upsert leaves already per-entry sources unchanged', () async {
     await repo.save([
-      _entry(id: 'managed-2', source: 'cli:cursor-mp-managed-2'),
+      entry(id: 'managed-2', source: 'cli:cursor-mp-managed-2'),
     ]);
-    final appCubit = _appCubit();
+    final appCubit = appCubit0();
     final cubit = ManagedProviderCubit(
       repository: repo,
       appProviderCubit: appCubit,
@@ -84,17 +83,14 @@ void main() {
     await cubit.load();
 
     final loaded = cubit.state.providerFor('managed-2')!;
-    expect(
-      loaded.endpointConfig.credentialSource,
-      'cli:cursor-mp-managed-2',
-    );
+    expect(loaded.endpointConfig.credentialSource, 'cli:cursor-mp-managed-2');
     await cubit.close();
     await appCubit.close();
   });
 
   test('load leaves legacy-source entries untouched and un-migrated', () async {
-    await repo.save([_entry(id: 'managed-3', source: 'cli:cursor-account')]);
-    final appCubit = _appCubit();
+    await repo.save([entry(id: 'managed-3', source: 'cli:cursor-account')]);
+    final appCubit = appCubit0();
     final cubit = ManagedProviderCubit(
       repository: repo,
       appProviderCubit: appCubit,
@@ -104,10 +100,7 @@ void main() {
     final loaded = cubit.state.providerFor('managed-3')!;
     // No migration, no row ensure: the entry stays exactly as on disk and
     // no dedicated row is created for it.
-    expect(
-      loaded.endpointConfig.credentialSource,
-      'cli:cursor-account',
-    );
+    expect(loaded.endpointConfig.credentialSource, 'cli:cursor-account');
     expect(
       appCubit.state
           .providersFor(CliTool.cursor)
@@ -124,7 +117,7 @@ void main() {
   });
 
   test('delete removes the dedicated CLI row and its directory', () async {
-    final appCubit = _appCubit();
+    final appCubit = appCubit0();
     final janitor = ManagedProviderCliRowJanitor(
       fs: fs,
       basePath: '/tp',
@@ -135,7 +128,7 @@ void main() {
       appProviderCubit: appCubit,
       rowJanitor: janitor,
     );
-    await cubit.upsert(_entry(id: 'managed-4'));
+    await cubit.upsert(entry(id: 'managed-4'));
     await fs.ensureDir('/tp/providers/cursor/cursor-mp-managed-4/home');
 
     await cubit.delete('managed-4');
@@ -156,12 +149,10 @@ void main() {
   });
 
   test('delete of a non-cli entry has no CLI side effects', () async {
-    final appCubit = _appCubit();
-    await appCubit.upsertProvider(AppProviderConfig(
-      id: 'cursor-keep',
-      cli: CliTool.cursor,
-      name: 'Keep',
-    ));
+    final appCubit = appCubit0();
+    await appCubit.upsertProvider(
+      AppProviderConfig(id: 'cursor-keep', cli: CliTool.cursor, name: 'Keep'),
+    );
     final janitor = ManagedProviderCliRowJanitor(
       fs: fs,
       basePath: '/tp',

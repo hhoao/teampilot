@@ -10,7 +10,7 @@ import '../support/in_memory_filesystem.dart';
 
 void main() {
   Future<({SessionRepository repo, AppSession session})>
-  _simpleSession() async {
+  simpleSession() async {
     final tmp = await Directory.systemTemp.createTemp('fs_continue_overrides_');
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(
@@ -30,7 +30,7 @@ void main() {
   }
 
   test('updateContinueOverrides round-trips on disk', () async {
-    final (:repo, :session) = await _simpleSession();
+    final (:repo, :session) = await simpleSession();
     const overrides = SessionContinueOverrides(
       memberOverrides: {
         'team-lead': SessionMemberContinueOverride(
@@ -49,7 +49,7 @@ void main() {
   test(
     'updateSimpleLaunchIdentity updates fields without clearing continueOverrides',
     () async {
-      final (:repo, :session) = await _simpleSession();
+      final (:repo, :session) = await simpleSession();
       const overrides = SessionContinueOverrides(
         memberOverrides: {
           'team-lead': SessionMemberContinueOverride(provider: 'openai'),

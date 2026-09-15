@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_pty_new/flutter_pty_new.dart';
@@ -51,10 +50,9 @@ abstract final class LocalPtyProbeHarness {
         : const ['python3', 'python'];
     for (final cmd in commands) {
       try {
-        final result = Process.runSync(
-          Platform.isWindows ? 'where' : 'which',
-          [cmd],
-        );
+        final result = Process.runSync(Platform.isWindows ? 'where' : 'which', [
+          cmd,
+        ]);
         if (result.exitCode != 0) continue;
         for (final raw in result.stdout.toString().split(RegExp(r'\r?\n'))) {
           final line = raw.trim();
@@ -150,8 +148,7 @@ abstract final class LocalPtyProbeHarness {
       confirmFallback: confirmFallback,
       transportStarter:
           (
-            _executable,
-            {
+            executable, {
             required List<String> arguments,
             required String workingDirectory,
             required int columns,
@@ -172,7 +169,7 @@ abstract final class LocalPtyProbeHarness {
               ),
             );
           },
-                                     fs: InMemoryFilesystem(),
+      fs: InMemoryFilesystem(),
     );
     session.connect(
       workingDirectory: workingDirectory ?? Directory.systemTemp.path,
@@ -183,16 +180,15 @@ abstract final class LocalPtyProbeHarness {
   }
 
   static Future<TerminalSession> connectDefaultShell() {
-    return connectShell(
-      executable: shellExecutable,
-      arguments: shellArguments,
-    );
+    return connectShell(executable: shellExecutable, arguments: shellArguments);
   }
 
   static Future<TerminalSession> connectBracketedPasteFixture() async {
     final python = resolvePythonPath();
     if (python == null) {
-      markTestSkipped('python not on PATH (needed for bracketed-paste fixture)');
+      markTestSkipped(
+        'python not on PATH (needed for bracketed-paste fixture)',
+      );
     }
     final script = p.absolute(bracketedPasteFixturePath());
     if (!File(script).existsSync()) {
@@ -209,10 +205,7 @@ abstract final class LocalPtyProbeHarness {
       );
     }
 
-    return connectShell(
-      executable: python!,
-      arguments: ['-u', script],
-    );
+    return connectShell(executable: python!, arguments: ['-u', script]);
   }
 
   static Future<void> waitUntilConnected(

@@ -79,10 +79,7 @@ void main() {
           createdAt: DateTime.utc(2026, 1, 1, 12),
         ),
       ];
-      final allEvents = [
-        ...initialEvents,
-        cliDelta.events.single,
-      ];
+      final allEvents = [...initialEvents, cliDelta.events.single];
 
       final merged = mergeTimelineIncremental(
         previous: previous,
@@ -99,66 +96,140 @@ void main() {
       expect(identical(merged.messages[2], initial.messages[0]), isFalse);
       expect(identical(merged.messages[2], initial.messages[1]), isFalse);
       expect(
-        mergeTimeline(events: allEvents, unread: const []).messages.map((m) => m.id),
+        mergeTimeline(
+          events: allEvents,
+          unread: const [],
+        ).messages.map((m) => m.id),
         merged.messages.map((m) => m.id),
       );
     });
 
-    test('append-only mailbox reuses unchanged instances outside insert segment', () {
-      final t1 = DateTime.utc(2026, 1, 1, 10);
-      final t2 = DateTime.utc(2026, 1, 1, 11);
-      final t3 = DateTime.utc(2026, 1, 1, 12);
+    test(
+      'append-only mailbox reuses unchanged instances outside insert segment',
+      () {
+        final t1 = DateTime.utc(2026, 1, 1, 10);
+        final t2 = DateTime.utc(2026, 1, 1, 11);
+        final t3 = DateTime.utc(2026, 1, 1, 12);
 
-      final initialEvents = [
-        cliEvent(id: 'cli-1', text: 'cli user', createdAt: t1, cliOrder: 0),
-        cliEvent(
+        final initialEvents = [
+          cliEvent(id: 'cli-1', text: 'cli user', createdAt: t1, cliOrder: 0),
+          cliEvent(
+            id: 'cli-2',
+            text: 'cli assistant',
+            createdAt: t3,
+            cliOrder: 1,
+            role: AiRole.assistant,
+          ),
+        ];
+        final initial = mergeTimeline(events: initialEvents, unread: const []);
+        final previous = SeatTimelineSnapshot(
+          cliMessages: initial.messages,
+          mailboxRecords: const [],
+          snapshot: initial,
+        );
+
+        final mailbox = mailboxEvent(
+          id: 'mail-1',
+          text: 'mailbox user',
+          createdAt: t2,
+        );
+        final allEvents = [...initialEvents, mailbox];
+        final mailboxDelta = MailboxTimelineAppended(
+          events: [mailbox],
+          unread: const [],
+        );
+
+        final merged = mergeTimelineIncremental(
+          previous: previous,
+          cliDelta: const CliTimelineUnchanged(),
+          mailboxDelta: mailboxDelta,
+          unread: const [],
+          nextCliMessages: previous.cliMessages,
+          mailboxEvents: [mailbox],
+        );
+
+        expect(merged.messages.map((m) => m.id), [
+          'cli-1',
+          'mailbox:mail-1',
+          'cli-2',
+        ]);
+        expect(identical(merged.messages[0], initial.messages[0]), isTrue);
+        expect(identical(merged.messages[2], initial.messages[1]), isTrue);
+        expect(identical(merged.messages[1], initial.messages[0]), isFalse);
+        expect(
+          mergeTimeline(
+            events: allEvents,
+            unread: const [],
+          ).messages.map((m) => m.id),
+          merged.messages.map((m) => m.id),
+        );
+      },
+    );
+
+    test(
+      'incremental mailbox append splits trailing prose after wait_for_message',
+      () {
+        final t1 = DateTime.utc(2026, 1, 1, 10);
+        final t2 = DateTime.utc(2026, 1, 1, 11);
+        final waitAssistant = AiMessage(
           id: 'cli-2',
-          text: 'cli assistant',
-          createdAt: t3,
-          cliOrder: 1,
           role: AiRole.assistant,
-        ),
-      ];
-      final initial = mergeTimeline(events: initialEvents, unread: const []);
-      final previous = SeatTimelineSnapshot(
-        cliMessages: initial.messages,
-        mailboxRecords: const [],
-        snapshot: initial,
-      );
+          parts: [
+            AiToolCallPart(toolCallId: 'w1', toolName: 'wait_for_message'),
+            const AiTextPart(text: 'greeting'),
+          ],
+          createdAt: t1,
+        );
+        final initial = mergeTimeline(
+          events: [
+            cliEvent(id: 'cli-1', text: 'first', createdAt: t1, cliOrder: 0),
+            TimelineEvent(
+              id: waitAssistant.id,
+              role: waitAssistant.role,
+              parts: waitAssistant.parts,
+              createdAt: waitAssistant.createdAt,
+              source: 'cli',
+              cliOrder: 1,
+            ),
+          ],
+          unread: const [],
+        );
+        final previous = SeatTimelineSnapshot(
+          cliMessages: initial.messages,
+          mailboxRecords: const [],
+          snapshot: initial,
+        );
+        final mailbox = mailboxEvent(
+          id: 'mail-1',
+          text: 'hello',
+          createdAt: t2,
+        );
 
-      final mailbox = mailboxEvent(
-        id: 'mail-1',
-        text: 'mailbox user',
-        createdAt: t2,
-      );
-      final allEvents = [...initialEvents, mailbox];
-      final mailboxDelta = MailboxTimelineAppended(
-        events: [mailbox],
-        unread: const [],
-      );
+        final merged = mergeTimelineIncremental(
+          previous: previous,
+          cliDelta: const CliTimelineUnchanged(),
+          mailboxDelta: MailboxTimelineAppended(
+            events: [mailbox],
+            unread: const [],
+          ),
+          unread: const [],
+          nextCliMessages: previous.cliMessages,
+          mailboxEvents: [mailbox],
+        );
 
-      final merged = mergeTimelineIncremental(
-        previous: previous,
-        cliDelta: const CliTimelineUnchanged(),
-        mailboxDelta: mailboxDelta,
-        unread: const [],
-        nextCliMessages: previous.cliMessages,
-        mailboxEvents: [mailbox],
-      );
-
-      expect(merged.messages.map((m) => m.id), [
-        'cli-1',
-        'mailbox:mail-1',
-        'cli-2',
-      ]);
-      expect(identical(merged.messages[0], initial.messages[0]), isTrue);
-      expect(identical(merged.messages[2], initial.messages[1]), isTrue);
-      expect(identical(merged.messages[1], initial.messages[0]), isFalse);
-      expect(
-        mergeTimeline(events: allEvents, unread: const []).messages.map((m) => m.id),
-        merged.messages.map((m) => m.id),
-      );
-    });
+        expect(merged.messages.map((m) => m.id), [
+          'cli-1',
+          'cli-2',
+          'mailbox:mail-1',
+          'cli-2::after:w1',
+        ]);
+        expect((merged.messages[2].parts.single as AiTextPart).text, 'hello');
+        expect(
+          (merged.messages[3].parts.single as AiTextPart).text,
+          'greeting',
+        );
+      },
+    );
 
     test('identical prefix skips content fingerprints', () {
       final first = AiMessage(
@@ -229,43 +300,45 @@ void main() {
       );
     });
 
-    test('incremental builder replaces last assistant without rewriting prefix',
-        () {
-      final first = AiMessage(
-        id: 'u',
-        role: AiRole.user,
-        parts: [AiTextPart(text: 'q')],
-      );
-      final a1 = AiMessage(
-        id: 'a',
-        role: AiRole.assistant,
-        parts: [AiTextPart(text: 'h')],
-      );
-      final initial = buildConversationTimelineIncremental(
-        cliMessages: [first, a1],
-        mailboxRecords: const [],
-      );
-      final a2 = AiMessage(
-        id: 'a',
-        role: AiRole.assistant,
-        parts: [AiTextPart(text: 'hello')],
-      );
-      final next = buildConversationTimelineIncremental(
-        previous: initial,
-        cliMessages: [first, a2],
-        mailboxRecords: const [],
-      );
+    test(
+      'incremental builder replaces last assistant without rewriting prefix',
+      () {
+        final first = AiMessage(
+          id: 'u',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'q')],
+        );
+        final a1 = AiMessage(
+          id: 'a',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'h')],
+        );
+        final initial = buildConversationTimelineIncremental(
+          cliMessages: [first, a1],
+          mailboxRecords: const [],
+        );
+        final a2 = AiMessage(
+          id: 'a',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'hello')],
+        );
+        final next = buildConversationTimelineIncremental(
+          previous: initial,
+          cliMessages: [first, a2],
+          mailboxRecords: const [],
+        );
 
-      expect(next.snapshot.messages, hasLength(2));
-      expect(
-        identical(next.snapshot.messages[0], initial.snapshot.messages[0]),
-        isTrue,
-      );
-      expect(
-        (next.snapshot.messages[1].parts.single as AiTextPart).text,
-        'hello',
-      );
-    });
+        expect(next.snapshot.messages, hasLength(2));
+        expect(
+          identical(next.snapshot.messages[0], initial.snapshot.messages[0]),
+          isTrue,
+        );
+        expect(
+          (next.snapshot.messages[1].parts.single as AiTextPart).text,
+          'hello',
+        );
+      },
+    );
 
     test('last grow plus new message is LastReplacedAndAppended', () {
       final first = AiMessage(
@@ -417,50 +490,53 @@ void main() {
       expect(identical(merged.messages[1], nextLast), isTrue);
     });
 
-    test('incremental builder last-grow plus append does not rewrite prefix', () {
-      final first = AiMessage(
-        id: 'u',
-        role: AiRole.user,
-        parts: [AiTextPart(text: 'q')],
-        createdAt: DateTime.utc(2026, 1, 1, 10),
-      );
-      final a1 = AiMessage(
-        id: 'a',
-        role: AiRole.assistant,
-        parts: [AiTextPart(text: 'h')],
-        createdAt: DateTime.utc(2026, 1, 1, 11),
-      );
-      final initial = buildConversationTimelineIncremental(
-        cliMessages: [first, a1],
-        mailboxRecords: const [],
-      );
-      final a2 = AiMessage(
-        id: 'a',
-        role: AiRole.assistant,
-        parts: [AiTextPart(text: 'hello')],
-        createdAt: DateTime.utc(2026, 1, 1, 11),
-      );
-      final extra = AiMessage(
-        id: 'b',
-        role: AiRole.assistant,
-        parts: [AiTextPart(text: 'next')],
-        createdAt: DateTime.utc(2026, 1, 1, 12),
-      );
-      final next = buildConversationTimelineIncremental(
-        previous: initial,
-        cliMessages: [first, a2, extra],
-        mailboxRecords: const [],
-      );
-      expect(next.snapshot.messages.map((m) => m.id), ['u', 'a', 'b']);
-      expect(
-        identical(next.snapshot.messages[0], initial.snapshot.messages[0]),
-        isTrue,
-      );
-      expect(
-        (next.snapshot.messages[1].parts.single as AiTextPart).text,
-        'hello',
-      );
-    });
+    test(
+      'incremental builder last-grow plus append does not rewrite prefix',
+      () {
+        final first = AiMessage(
+          id: 'u',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'q')],
+          createdAt: DateTime.utc(2026, 1, 1, 10),
+        );
+        final a1 = AiMessage(
+          id: 'a',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'h')],
+          createdAt: DateTime.utc(2026, 1, 1, 11),
+        );
+        final initial = buildConversationTimelineIncremental(
+          cliMessages: [first, a1],
+          mailboxRecords: const [],
+        );
+        final a2 = AiMessage(
+          id: 'a',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'hello')],
+          createdAt: DateTime.utc(2026, 1, 1, 11),
+        );
+        final extra = AiMessage(
+          id: 'b',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'next')],
+          createdAt: DateTime.utc(2026, 1, 1, 12),
+        );
+        final next = buildConversationTimelineIncremental(
+          previous: initial,
+          cliMessages: [first, a2, extra],
+          mailboxRecords: const [],
+        );
+        expect(next.snapshot.messages.map((m) => m.id), ['u', 'a', 'b']);
+        expect(
+          identical(next.snapshot.messages[0], initial.snapshot.messages[0]),
+          isTrue,
+        );
+        expect(
+          (next.snapshot.messages[1].parts.single as AiTextPart).text,
+          'hello',
+        );
+      },
+    );
 
     test('CLI rewrite falls back to full merge with fresh instances', () {
       final t1 = DateTime.utc(2026, 1, 1, 10);
@@ -646,6 +722,175 @@ void main() {
         'cli-a',
         'cli-b',
         'mailbox:mail-1',
+      ]);
+    });
+
+    test(
+      'mailbox bubble sits after wait_for_message, not trailing assistant text',
+      () {
+        final t1 = DateTime.utc(2026, 1, 1, 10);
+        final t2 = DateTime.utc(2026, 1, 1, 11);
+
+        final snapshot = mergeTimeline(
+          events: [
+            TimelineEvent(
+              id: 'cli-assistant-1',
+              role: AiRole.assistant,
+              parts: [
+                AiToolCallPart(
+                  toolCallId: 'w1',
+                  toolName: 'teammate-bus_wait_for_message',
+                ),
+                const AiTextPart(text: '你好！团队已全员在线待命。'),
+              ],
+              createdAt: t1,
+              source: 'cli',
+              cliOrder: 0,
+            ),
+            TimelineEvent(
+              id: 'mailbox:mail-1',
+              role: AiRole.user,
+              parts: const [AiTextPart(text: 'hello')],
+              createdAt: t2,
+              source: 'mailbox',
+              deliveryChannel: 'mailbox',
+            ),
+          ],
+          unread: const [],
+        );
+
+        expect(snapshot.messages.map((m) => m.id), [
+          'cli-assistant-1',
+          'mailbox:mail-1',
+          'cli-assistant-1::after:w1',
+        ]);
+        expect(snapshot.messages[0].parts.single, isA<AiToolCallPart>());
+        expect((snapshot.messages[1].parts.single as AiTextPart).text, 'hello');
+        expect(snapshot.messages[1].deliveryChannel, 'mailbox');
+        expect(
+          (snapshot.messages[2].parts.single as AiTextPart).text,
+          '你好！团队已全员在线待命。',
+        );
+      },
+    );
+
+    test(
+      'anchors mailbox after mcp-prefixed wait_for_message with reasoning',
+      () {
+        final snapshot = mergeTimeline(
+          events: [
+            TimelineEvent(
+              id: 'a1',
+              role: AiRole.assistant,
+              parts: [
+                const AiReasoningPart(text: 'park'),
+                AiToolCallPart(
+                  toolCallId: 'w1',
+                  toolName: 'mcp__teammate-bus__wait_for_message',
+                ),
+                const AiTextPart(text: 'greeting'),
+              ],
+              createdAt: DateTime.utc(2026, 1, 1, 10),
+              source: 'cli',
+              cliOrder: 0,
+            ),
+            TimelineEvent(
+              id: 'mailbox:m1',
+              role: AiRole.user,
+              parts: const [AiTextPart(text: 'hi')],
+              createdAt: DateTime.utc(2026, 1, 1, 11),
+              source: 'mailbox',
+              deliveryChannel: 'mailbox',
+            ),
+          ],
+          unread: const [],
+        );
+
+        expect(snapshot.messages.map((m) => m.id), [
+          'a1',
+          'mailbox:m1',
+          'a1::after:w1',
+        ]);
+        expect(snapshot.messages[0].parts, hasLength(2));
+        expect(snapshot.messages[0].parts[0], isA<AiReasoningPart>());
+        expect(
+          (snapshot.messages[0].parts[1] as AiToolCallPart).toolName,
+          'mcp__teammate-bus__wait_for_message',
+        );
+      },
+    );
+
+    test('does not split when wait_for_message is already the last part', () {
+      final snapshot = mergeTimeline(
+        events: [
+          TimelineEvent(
+            id: 'a1',
+            role: AiRole.assistant,
+            parts: [
+              const AiTextPart(text: 'greeting'),
+              AiToolCallPart(toolCallId: 'w1', toolName: 'wait_for_message'),
+            ],
+            createdAt: DateTime.utc(2026, 1, 1, 10),
+            source: 'cli',
+            cliOrder: 0,
+          ),
+          TimelineEvent(
+            id: 'mailbox:m1',
+            role: AiRole.user,
+            parts: const [AiTextPart(text: 'hello')],
+            createdAt: DateTime.utc(2026, 1, 1, 11),
+            source: 'mailbox',
+            deliveryChannel: 'mailbox',
+          ),
+        ],
+        unread: const [],
+      );
+
+      expect(snapshot.messages.map((m) => m.id), ['a1', 'mailbox:m1']);
+    });
+
+    test('places consecutive mailbox bubbles after the same wait', () {
+      final snapshot = mergeTimeline(
+        events: [
+          TimelineEvent(
+            id: 'a1',
+            role: AiRole.assistant,
+            parts: [
+              AiToolCallPart(
+                toolCallId: 'w1',
+                toolName: 'mcp__teammate_bus::wait_for_message',
+              ),
+              const AiTextPart(text: 'greeting'),
+            ],
+            createdAt: DateTime.utc(2026, 1, 1, 10),
+            source: 'cli',
+            cliOrder: 0,
+          ),
+          TimelineEvent(
+            id: 'mailbox:m1',
+            role: AiRole.user,
+            parts: const [AiTextPart(text: 'one')],
+            createdAt: DateTime.utc(2026, 1, 1, 11),
+            source: 'mailbox',
+            deliveryChannel: 'mailbox',
+          ),
+          TimelineEvent(
+            id: 'mailbox:m2',
+            role: AiRole.user,
+            parts: const [AiTextPart(text: 'two')],
+            createdAt: DateTime.utc(2026, 1, 1, 12),
+            source: 'mailbox',
+            deliveryChannel: 'mailbox',
+          ),
+        ],
+        unread: const [],
+      );
+
+      expect(snapshot.messages.map((m) => m.id), [
+        'a1',
+        'mailbox:m1',
+        'mailbox:m2',
+        'a1::after:w1',
       ]);
     });
   });

@@ -138,7 +138,7 @@ abort（shell 断开 / fence 关闭）从任意非终态 → aborted
 
 粘贴 ACK 与提交判定都以**终端光标行**（`TerminalScreenGrid.cursorRow`，由 alacritty 引擎透传）为锚——它是 TUI 自己宣告的输入位置，最可靠。
 
-- **输入区窗口** `[cursor - cursorZoneWrapSlack, cursor]`（默认上探 4 行，遇空行停）：光标行 + 上方少量行（多行长粘贴的尾部可能从光标上一行开始）。
+- **输入区窗口** `[top, cursor]`：从光标行**向上跨过连续非空行**到第一个空行为止（`_cursorZoneTop`）。光标行 + 上方整个输入框体（多行长粘贴 + 路径行都可能在这里）。
 - **向下不扩**：光标下方的行（status/footer）不参与，避免单字符 needle（如 "1"）撞上状态行的 "17%"。
 - 窗口内逐行匹配 needle（`_matchesNeedleAt`：跨行软换行拼接、CJK 宽字符、wrap 空格折叠）。
 - 光标不可用时（`cursorRow < 0`）回退到"屏幕底部 scanRows 行"搜索。
@@ -149,7 +149,7 @@ abort（shell 断开 / fence 关闭）从任意非终态 → aborted
 
 - **光标锚定**：不用任何 per-CLI 前缀字符，也不依赖"输入框在屏幕底部"的假设。
 - **避免下方干扰**：单字符 needle（"1"）只匹配光标输入区，不会命中下方 status 行的同字符。
-- **多行粘贴**：光标在末行，尾部 40 字符可能起于光标上方 → 窗口上探 `cursorZoneWrapSlack` 行覆盖。
+- **多行粘贴 / 光标偏下**：光标可能停在输入框下方的空行（cursor-agent 把终端光标放在空 composer 行，paste 本体在其上方若干行）→ 窗口无上限地向**上**跨连续非空行，让 need 起点永远落在窗口内。
 - **长文本软换行**：`_matchesNeedleAt` 的 wrap 拼接使其仍可命中；极长文本用 `pollTimeout` 放大（`_pastePollBudget`）。
 - **非字母数字的全局容差**：needle 逐 cell 匹配，**精确匹配优先**；失配时若网格当前 cell 是**非字母/数字**（空格、TUI 行首框线 `│`、提示符 `❯ › >`、标点、padding），视为 painted chrome 跨过并重试同一字符——不限于行首、不需要 per-CLI 白名单。**字母/数字（含 CJK）失配即失败**，内容永远不被跳过。续行若**一个 needle 字符都没匹配**（纯 chrome/边框行）则直接失败，不会把两个分开的输入区拼接起来。提交正确性仍由 hook 兜底，"误 ACK"最坏只是多一次 CR 重试。
 

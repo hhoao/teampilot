@@ -10,7 +10,6 @@ import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dar
 import 'package:teampilot/services/cli/codex/provider/codex_hook_writer.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/opencode_hook_writer.dart';
 import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dart';
-import 'package:teampilot/services/resource/providers/endpoint_hook_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/runtime_event_hook_contribution_provider.dart';
 import 'package:teampilot/services/cli/registry/capabilities/mcp_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';

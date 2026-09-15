@@ -18,8 +18,7 @@ class _MockSshClientFactory extends Mock implements SshClientFactory {}
 class _MockSftpClient extends Mock implements SftpClient {}
 
 class _FailingPathResolver extends RemoteSshStoragePathResolver {
-  _FailingPathResolver({required SshClientFactory clientFactory})
-    : super(clientFactory: clientFactory);
+  _FailingPathResolver({required super.clientFactory});
 
   @override
   Future<RemoteSshStoragePaths> resolve(SshProfile profile) =>
@@ -60,7 +59,12 @@ class _FakeResolver extends RuntimeContextResolver {
 void main() {
   setUpAll(() {
     registerFallbackValue(
-      const SshProfile(id: 'p1', name: 'Remote', host: 'example.com', username: 'u'),
+      const SshProfile(
+        id: 'p1',
+        name: 'Remote',
+        host: 'example.com',
+        username: 'u',
+      ),
     );
   });
 
@@ -186,6 +190,30 @@ void main() {
     await reg.forTarget(t);
     expect(resolver.resolveCount['ssh:p1'], 2);
   });
+
+  test(
+    'failed home reinstall keeps the previous home context available',
+    () async {
+      final evicted = <String>[];
+      final resolver = _FakeResolver();
+      final reg = RuntimeContextRegistry(
+        resolver: resolver,
+        homeTarget: RuntimeTarget.ssh('p1', label: 'Remote'),
+        onEvict: (id) async => evicted.add(id),
+      );
+      await reg.ensureHome();
+      resolver.offline.add('ssh:p1');
+
+      await expectLater(
+        reg.rebindHome(RuntimeTarget.ssh('p1', label: 'Remote')),
+        throwsStateError,
+      );
+
+      expect(reg.home().appDataRoot, '/tp-ssh:p1');
+      await reg.dispose('ssh:p1');
+      expect(evicted, ['ssh:p1']);
+    },
+  );
 
   test('dispose notifies onEvict for remote contexts by default', () async {
     final evicted = <String>[];

@@ -11,7 +11,6 @@ import 'package:teampilot/services/cli/codex/provider/codex_cc_switch_import.dar
 import 'package:teampilot/services/cli/codex/provider/codex_toml_parser.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
-import '../../../support/in_memory_filesystem.dart';
 import '../../../support/post_frame_test_harness.dart';
 
 void main() {
@@ -181,9 +180,9 @@ rmcp_client = true
       );
 
       final service = ProviderImportService(
-          repository: repository,
-          storage: buildTestHomeStorage(),
-        );
+        repository: repository,
+        storage: buildTestHomeStorage(),
+      );
       await service.importForCli(CliTool.codex, onlyIfEmpty: false);
 
       final codex = await repository.loadProviders(CliTool.codex);

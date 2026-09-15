@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/team_generation_settings.dart';
 import 'package:teampilot/models/workspace.dart';
@@ -15,7 +14,6 @@ import 'package:teampilot/services/team_generation/generated_team_commit_service
 import 'package:teampilot/services/team_generation/models/team_generation_job.dart';
 import 'package:teampilot/services/team_generation/models/team_generation_launch.dart';
 import 'package:teampilot/services/team_generation/team_generation_job_store.dart';
-import 'package:teampilot/services/team_generation/team_generation_workflow_executor.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';

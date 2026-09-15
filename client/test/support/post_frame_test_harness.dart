@@ -33,7 +33,6 @@ import 'package:teampilot/services/storage/workspace_layout.dart';
 // Shared test-home state + install/reset seams live in test_runtime_context;
 // re-exported so existing `post_frame_test_harness` imports keep resolving.
 import 'test_runtime_context.dart';
-import 'package:teampilot/services/storage/app_paths.dart';
 import 'in_memory_filesystem.dart';
 export 'test_runtime_context.dart'
     show

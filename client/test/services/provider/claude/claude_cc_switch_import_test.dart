@@ -11,7 +11,6 @@ import 'package:teampilot/services/cli/codex/provider/codex_cc_switch_import.dar
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
-import '../../../support/in_memory_filesystem.dart';
 import '../../../support/post_frame_test_harness.dart';
 
 void main() {
@@ -127,62 +126,65 @@ void main() {
       },
     );
 
-    test('non-current cc-switch provider keeps catalog settings only', () async {
-      const currentRaw = 'current-provider';
-      const otherRaw = 'other-provider';
+    test(
+      'non-current cc-switch provider keeps catalog settings only',
+      () async {
+        const currentRaw = 'current-provider';
+        const otherRaw = 'other-provider';
 
-      await _writeJson(p.join(home, '.cc-switch', 'settings.json'), {
-        'currentProviderClaude': currentRaw,
-      });
-      _writeCcSwitchDb(
-        home: home,
-        rows: [
-          _CcSwitchRow(
-            id: currentRaw,
-            appType: 'claude',
-            name: 'Current',
-            settingsConfig: {
-              'env': {
-                'ANTHROPIC_AUTH_TOKEN': 'sk-current',
-                'ANTHROPIC_BASE_URL': 'https://current.example.com',
+        await _writeJson(p.join(home, '.cc-switch', 'settings.json'), {
+          'currentProviderClaude': currentRaw,
+        });
+        _writeCcSwitchDb(
+          home: home,
+          rows: [
+            _CcSwitchRow(
+              id: currentRaw,
+              appType: 'claude',
+              name: 'Current',
+              settingsConfig: {
+                'env': {
+                  'ANTHROPIC_AUTH_TOKEN': 'sk-current',
+                  'ANTHROPIC_BASE_URL': 'https://current.example.com',
+                },
               },
-            },
-          ),
-          _CcSwitchRow(
-            id: otherRaw,
-            appType: 'claude',
-            name: 'Other',
-            settingsConfig: {
-              'env': {
-                'ANTHROPIC_AUTH_TOKEN': 'sk-other',
-                'ANTHROPIC_BASE_URL': 'https://other.example.com',
+            ),
+            _CcSwitchRow(
+              id: otherRaw,
+              appType: 'claude',
+              name: 'Other',
+              settingsConfig: {
+                'env': {
+                  'ANTHROPIC_AUTH_TOKEN': 'sk-other',
+                  'ANTHROPIC_BASE_URL': 'https://other.example.com',
+                },
               },
-            },
-          ),
-        ],
-      );
+            ),
+          ],
+        );
 
-      await _writeJson(p.join(home, '.claude', 'settings.json'), {
-        'env': {
-          'ANTHROPIC_AUTH_TOKEN': ClaudeSettingsParser.proxyManagedToken,
-          'ANTHROPIC_BASE_URL': 'http://127.0.0.1:15721',
-        },
-      });
+        await _writeJson(p.join(home, '.claude', 'settings.json'), {
+          'env': {
+            'ANTHROPIC_AUTH_TOKEN': ClaudeSettingsParser.proxyManagedToken,
+            'ANTHROPIC_BASE_URL': 'http://127.0.0.1:15721',
+          },
+        });
 
-      final service = ProviderImportService(
+        final service = ProviderImportService(
           repository: repository,
           storage: buildTestHomeStorage(),
         );
-      await service.importForCli(CliTool.claude, onlyIfEmpty: false);
+        await service.importForCli(CliTool.claude, onlyIfEmpty: false);
 
-      final claude = await repository.loadProviders(CliTool.claude);
-      final other = claude.singleWhere(
-        (p) => p.id == sanitizeImportedProviderId(otherRaw),
-      );
-      expect(other.baseUrl, 'https://other.example.com');
-      expect(other.apiKey, 'sk-other');
-      expect(other.config.containsKey('upstreamEnv'), isFalse);
-    });
+        final claude = await repository.loadProviders(CliTool.claude);
+        final other = claude.singleWhere(
+          (p) => p.id == sanitizeImportedProviderId(otherRaw),
+        );
+        expect(other.baseUrl, 'https://other.example.com');
+        expect(other.apiKey, 'sk-other');
+        expect(other.config.containsKey('upstreamEnv'), isFalse);
+      },
+    );
   });
 }
 

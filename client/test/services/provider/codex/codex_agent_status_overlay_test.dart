@@ -6,12 +6,10 @@ import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dar
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_agent_status_overlay.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 
-String _bashHookFileName(String baseName) =>
-    HostExecutionEnvironment.resolve(isWindowsHost: false)
-        .scriptRunner
-        .hookFileName(baseName);
+String _bashHookFileName(String baseName) => HostExecutionEnvironment.resolve(
+  isWindowsHost: false,
+).scriptRunner.hookFileName(baseName);
 
 void main() {
   group('CodexAgentStatusOverlay', () {
@@ -22,7 +20,9 @@ void main() {
     setUp(() async {
       root = await Directory.systemTemp.createTemp('codex_agent_status_');
       fs = LocalFilesystem();
-      host = HostExecutionEnvironment.resolve(isWindowsHost: Platform.isWindows);
+      host = HostExecutionEnvironment.resolve(
+        isWindowsHost: Platform.isWindows,
+      );
     });
 
     tearDown(() async {

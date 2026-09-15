@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/theme/app_font_resolver.dart';
@@ -16,12 +15,7 @@ void main() {
       monoFontId: 'jetbrainsMono',
       platform: TargetPlatform.linux,
     );
-    return buildLightTheme(
-      null,
-      AppTypographyScale.standard,
-      null,
-      fonts,
-    );
+    return buildLightTheme(null, AppTypographyScale.standard, null, fonts);
   }
 
   test('document profile exposes Orca-like rhythm', () {
@@ -39,7 +33,10 @@ void main() {
     expect(tokens.inlineCode.fontFamilyFallback, mono.monoFontFamilyFallback);
     expect(tokens.inlineCode.fontFamily, isNot('monospace'));
     expect(tokens.inlineCode.backgroundColor, isNull);
-    expect(tokens.body.fontFamily, theme.extension<TpFontTheme>()!.uiFontFamily);
+    expect(
+      tokens.body.fontFamily,
+      theme.extension<TpFontTheme>()!.uiFontFamily,
+    );
     expect(tokens.inlineCode.fontSize, tokens.body.fontSize);
     expect(tokens.inlineCode.height, tokens.body.height);
     expect(tokens.listItemGap, 10);

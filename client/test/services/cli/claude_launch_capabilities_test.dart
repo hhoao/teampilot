@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/claude/capabilities/permission_launch.dart';
 import 'package:teampilot/services/cli/claude/claude_tool.dart';

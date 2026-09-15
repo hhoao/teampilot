@@ -21,7 +21,6 @@ import 'package:teampilot/utils/team/team_member_naming.dart';
 
 import '../support/fake_terminal_session.dart';
 import '../support/fixed_resume_lifecycle_service.dart';
-import '../support/in_memory_filesystem.dart';
 import '../support/post_frame_test_harness.dart';
 import '../support/test_runtime_context.dart';
 
@@ -31,9 +30,7 @@ String _testExecutable() => 'flashskyai';
 TeamProfile _withBuiltinMembers(TeamProfile team) =>
     ExpertMemberMaterializer.materializeTeam(
       team,
-      MemberCatalogSnapshot({
-        for (final m in builtinExpertMembers()) m.key: m,
-      }),
+      MemberCatalogSnapshot({for (final m in builtinExpertMembers()) m.key: m}),
     );
 
 Future<void> _deleteTempDirBestEffort(Directory dir) =>
@@ -110,7 +107,13 @@ void main() {
 
     expect(chatCubit.activeTab?.info.id, session.sessionId);
     expect(chatCubit.activeTab?.selectedMemberId, 'team-lead');
-    expect(chatCubit.isMemberRunning(sessionId: session.sessionId, memberId: 'team-lead'), isTrue);
+    expect(
+      chatCubit.isMemberRunning(
+        sessionId: session.sessionId,
+        memberId: 'team-lead',
+      ),
+      isTrue,
+    );
   });
 
   test('chat cubit manages tabs and selection', () async {
@@ -182,8 +185,14 @@ void main() {
     final tab = cubit.tabStore.openTabs.single;
     expect(tab.info.id, 'local-test-team');
     expect(tab.selectedMemberId, 'dev');
-    expect(cubit.isMemberRunning(sessionId: tab.info.id, memberId: 'team-lead'), isTrue);
-    expect(cubit.isMemberRunning(sessionId: tab.info.id, memberId: 'dev'), isTrue);
+    expect(
+      cubit.isMemberRunning(sessionId: tab.info.id, memberId: 'team-lead'),
+      isTrue,
+    );
+    expect(
+      cubit.isMemberRunning(sessionId: tab.info.id, memberId: 'dev'),
+      isTrue,
+    );
   });
 
   test(
@@ -199,7 +208,10 @@ void main() {
         storage: testHomeStorage,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
-              final session = FakeTerminalSession(fs: testHomeStorage.fs, executable: executable);
+              final session = FakeTerminalSession(
+                fs: testHomeStorage.fs,
+                executable: executable,
+              );
               sessions.add(session);
               return session;
             },
@@ -229,10 +241,8 @@ void main() {
       expect(claudeDir, contains(p.join('workspace', 'workspaces')));
       expect(claudeDir, endsWith(p.join('runtime', 'claude')));
       expect(
-        sessions
-            .single
-            .lastExtraEnvironments
-            .single?[ClaudeProviderCapability.settingsFileEnvKey],
+        sessions.single.lastExtraEnvironments.single?[ClaudeProviderCapability
+            .settingsFileEnvKey],
         p.join(claudeDir!, 'settings', 'dev.json'),
       );
     },
@@ -243,7 +253,10 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('connect_all_');
       addTearDown(() => _deleteTempDirBestEffort(tmp));
-      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: testHomeStorage,
+      );
       final postFrame = PostFrameTestHarness();
       final team = TeamProfile(
         id: 'test-team',
@@ -288,8 +301,14 @@ void main() {
 
       expect(cubit.tabStore.openTabs.length, 1);
       final tab = cubit.tabStore.openTabs.single;
-      expect(cubit.isMemberRunning(sessionId: tab.info.id, memberId: 'team-lead'), isTrue);
-      expect(cubit.isMemberRunning(sessionId: tab.info.id, memberId: 'dev'), isTrue);
+      expect(
+        cubit.isMemberRunning(sessionId: tab.info.id, memberId: 'team-lead'),
+        isTrue,
+      );
+      expect(
+        cubit.isMemberRunning(sessionId: tab.info.id, memberId: 'dev'),
+        isTrue,
+      );
       expect(tab.selectedMemberId, 'team-lead');
     },
   );
@@ -299,7 +318,10 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('connect_one_');
       addTearDown(() => _deleteTempDirBestEffort(tmp));
-      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: testHomeStorage,
+      );
       final postFrame = PostFrameTestHarness();
       final team = TeamProfile(
         id: 'test-team',
@@ -346,8 +368,14 @@ void main() {
       final tab = cubit.tabStore.openTabs.single;
       // Native teams launch every member shell regardless of the
       // auto-launch preference.
-      expect(cubit.isMemberRunning(sessionId: tab.info.id, memberId: 'team-lead'), isTrue);
-      expect(cubit.isMemberRunning(sessionId: tab.info.id, memberId: 'dev'), isTrue);
+      expect(
+        cubit.isMemberRunning(sessionId: tab.info.id, memberId: 'team-lead'),
+        isTrue,
+      );
+      expect(
+        cubit.isMemberRunning(sessionId: tab.info.id, memberId: 'dev'),
+        isTrue,
+      );
       expect(tab.selectedMemberId, 'team-lead');
     },
   );
@@ -412,8 +440,14 @@ void main() {
       expect(cubit.tabStore.openTabs.single.info.id, 'session-1');
       expect(cubit.activeTab?.info.id, 'session-1');
       expect(cubit.activeTab?.selectedMemberId, 'dev');
-      expect(cubit.isMemberRunning(sessionId: 'session-1', memberId: 'team-lead'), isTrue);
-      expect(cubit.isMemberRunning(sessionId: 'session-1', memberId: 'dev'), isTrue);
+      expect(
+        cubit.isMemberRunning(sessionId: 'session-1', memberId: 'team-lead'),
+        isTrue,
+      );
+      expect(
+        cubit.isMemberRunning(sessionId: 'session-1', memberId: 'dev'),
+        isTrue,
+      );
     },
   );
 
@@ -444,7 +478,10 @@ void main() {
       storage: testHomeStorage,
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) {
-            captured = FakeTerminalSession(fs: testHomeStorage.fs, executable: executable);
+            captured = FakeTerminalSession(
+              fs: testHomeStorage.fs,
+              executable: executable,
+            );
             return captured!;
           },
       postFrameScheduler: postFrame.scheduler,
@@ -497,7 +534,10 @@ void main() {
       storage: testHomeStorage,
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) {
-            captured = FakeTerminalSession(fs: testHomeStorage.fs, executable: executable);
+            captured = FakeTerminalSession(
+              fs: testHomeStorage.fs,
+              executable: executable,
+            );
             return captured!;
           },
       postFrameScheduler: postFrame.scheduler,
@@ -525,7 +565,10 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('open_sess_');
       addTearDown(() => _deleteTempDirBestEffort(tmp));
-      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: testHomeStorage,
+      );
       final team = TeamProfile(
         id: 'tid',
         name: 'TName',
@@ -551,7 +594,10 @@ void main() {
         storage: testHomeStorage,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
-              captured = FakeTerminalSession(fs: testHomeStorage.fs, executable: executable);
+              captured = FakeTerminalSession(
+                fs: testHomeStorage.fs,
+                executable: executable,
+              );
               return captured!;
             },
         postFrameScheduler: postFrame.scheduler,
@@ -580,7 +626,10 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('open_sess_');
       addTearDown(() => _deleteTempDirBestEffort(tmp));
-      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: testHomeStorage,
+      );
       final team = TeamProfile(
         id: 'tid',
         name: 'TName',
@@ -605,7 +654,10 @@ void main() {
         storage: testHomeStorage,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
-              captured = FakeTerminalSession(fs: testHomeStorage.fs, executable: executable);
+              captured = FakeTerminalSession(
+                fs: testHomeStorage.fs,
+                executable: executable,
+              );
               return captured!;
             },
         postFrameScheduler: postFrame.scheduler,
@@ -632,7 +684,10 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('ensure_cli_lock_');
       addTearDown(() => _deleteTempDirBestEffort(tmp));
-      final repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: testHomeStorage,
+      );
       final liveTeam = TeamProfile(
         id: 't1',
         name: 'Team',
@@ -688,7 +743,10 @@ void main() {
       expect(tab.selectedMemberId, 'team-lead');
       // Simulate a stale idle shell created under the live Cursor profile.
       tab.memberShells['team-lead']?.disconnect();
-      final stale = FakeTerminalSession(fs: testHomeStorage.fs, executable: 'bin-cursor');
+      final stale = FakeTerminalSession(
+        fs: testHomeStorage.fs,
+        executable: 'bin-cursor',
+      );
       tab.memberShells['team-lead'] = stale;
 
       final ensured = cubit.ensureSession(liveTeam);

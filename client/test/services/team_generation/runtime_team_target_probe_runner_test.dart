@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
-import 'package:teampilot/services/cli/cli_tool_locator.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/team_generation/models/team_target_probe.dart';
 import 'package:teampilot/services/team_generation/runtime_team_target_probe_runner.dart';

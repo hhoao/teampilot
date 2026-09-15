@@ -10,39 +10,36 @@ import 'package:teampilot/services/preview/html_preview_session.dart';
 import '../../support/in_memory_filesystem.dart';
 
 class _FailingSession extends HtmlPreviewSession {
-  _FailingSession({required HtmlPreviewServer server})
+  _FailingSession({required super.server})
     : super(
         htmlDirectory: '/repo',
         entryFileName: 'index.html',
-        server: server,
       );
 
   @override
   Future<HtmlPreviewMount?> start() async => null;
 }
 
-Widget _app({
-  required EditorCubit editor,
-  required HtmlPreviewPane pane,
-}) {
+Widget _app({required EditorCubit editor, required HtmlPreviewPane pane}) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: BlocProvider<EditorCubit>(
-      create: (_) => editor,
-      child: pane,
-    ),
+    home: BlocProvider<EditorCubit>(create: (_) => editor, child: pane),
   );
 }
 
 void main() {
-  testWidgets('auto-opens the system browser with the entry uri',
-      (tester) async {
+  testWidgets('auto-opens the system browser with the entry uri', (
+    tester,
+  ) async {
     final fs = InMemoryFilesystem();
     await fs.writeString('/repo/index.html', '<p>x</p>');
     final server = HtmlPreviewServer(fs: fs);
     final opened = <Uri>[];
-    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs), );
+    final editor = EditorCubit(
+      fs: fs,
+      storage: fakeHomeStorage(filesystem: fs),
+    );
 
     await tester.pumpWidget(
       _app(
@@ -72,14 +69,18 @@ void main() {
     await tester.runAsync(() => server.dispose());
   });
 
-  testWidgets('does not re-open the browser when the pane remounts',
-      (tester) async {
+  testWidgets('does not re-open the browser when the pane remounts', (
+    tester,
+  ) async {
     final fs = InMemoryFilesystem();
     await fs.writeString('/repo/index.html', '<p>x</p>');
     final server = HtmlPreviewServer(fs: fs);
     final opened = <Uri>[];
     final openedPaths = <String>{};
-    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs), );
+    final editor = EditorCubit(
+      fs: fs,
+      storage: fakeHomeStorage(filesystem: fs),
+    );
     Widget build() => _app(
       editor: editor,
       pane: HtmlPreviewPane(
@@ -118,7 +119,10 @@ void main() {
     final fs = InMemoryFilesystem();
     await fs.writeString('/repo/index.html', '<p>x</p>');
     final server = HtmlPreviewServer(fs: fs);
-    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs), );
+    final editor = EditorCubit(
+      fs: fs,
+      storage: fakeHomeStorage(filesystem: fs),
+    );
 
     await tester.pumpWidget(
       _app(
@@ -140,16 +144,22 @@ void main() {
     await tester.runAsync(() => server.dispose());
   });
 
-  testWidgets('resolves work-plane fs from editor cubit when fs not provided',
-      (tester) async {
+  testWidgets('resolves work-plane fs from editor cubit when fs not provided', (
+    tester,
+  ) async {
     // A windows-context fs makes the resolved fs observable: the session
     // factory receives dirname('C:\\repo\\index.html') = 'C:\\repo' from the
     // editor cubit fs, while the posix AppStorage fallback would yield '.'.
-    final fs = InMemoryFilesystem(pathContext: p.Context(style: p.Style.windows));
+    final fs = InMemoryFilesystem(
+      pathContext: p.Context(style: p.Style.windows),
+    );
     await fs.writeString(r'C:\repo\index.html', '<p>cubit fs</p>');
     final server = HtmlPreviewServer(fs: fs);
     final opened = <Uri>[];
-    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs), );
+    final editor = EditorCubit(
+      fs: fs,
+      storage: fakeHomeStorage(filesystem: fs),
+    );
     String? factoryDir;
 
     await tester.pumpWidget(

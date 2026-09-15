@@ -127,7 +127,7 @@ void main() {
     LaunchConfiguration? latest = shellBase();
     await pumpForm(
       tester,
-      value: latest!,
+      value: latest,
       onChanged: (v) => latest = v,
       schema: ShellScriptLaunchSchema.configurationSchema,
     );

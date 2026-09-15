@@ -81,18 +81,18 @@ void main() {
     final needle = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
     final anchor = locateNeedleInCursorZone(grid, needle);
-    expect(anchor, isNotNull,
-        reason: 'wrapped needle must ACK across an unknown chrome glyph');
+    expect(
+      anchor,
+      isNotNull,
+      reason: 'wrapped needle must ACK across an unknown chrome glyph',
+    );
     expect(anchor!.row, 0);
   });
 
   test('CJK content at wrap start is not consumed as chrome', () {
     // Only a non-letter/digit is chrome. A continuation row that begins with a
     // real content glyph (CJK letter 中) must match as content, not be skipped.
-    final grid = _FakeGrid.fromRows([
-      '│  ABCDEFG',
-      '│  中XYZWQ',
-    ])..cursorRow = 1;
+    final grid = _FakeGrid.fromRows(['│  ABCDEFG', '│  中XYZWQ'])..cursorRow = 1;
     final needle = 'ABCDEFG中XYZWQ';
 
     final anchor = locateNeedleInCursorZone(grid, needle);
@@ -135,13 +135,75 @@ void main() {
   test('needle does not bridge a border-only row with zero matches', () {
     // A continuation row that is pure chrome (border + padding) matches zero
     // needle characters — the needle must fail, not stitch across it.
-    final grid = _FakeGrid.fromRows([
-      'ABC',
-      '│  ',
-      'DEF',
-    ]);
+    final grid = _FakeGrid.fromRows(['ABC', '│  ', 'DEF']);
     expect(locateFullscreenPromptNeedle(grid, 'ABCDEF'), isNull);
     expect(locateFullscreenPromptNeedle(grid, 'ABCDEF', scanRows: 8), isNull);
+  });
+
+  test('cursor attachment paste ACKs across path + CJK tail rows', () {
+    // Real cursor-agent layout seen when delivering "@path\n消息": the composer
+    // row 0 holds the `→ ` prompt + file mention, and the CJK message tail
+    // wraps to the row below (3-space indent). The flattened 40-char needle
+    // spans BOTH rows (.png on row 0, the CJK on row 1).
+    const line0 =
+        '  → @/home/hhoa/Documents/TeamPilot/Attachments/'
+        '4b059105-a81f-45af-b649-ab7b1ceefa64.png';
+    const line1 = '    目前发送到邮箱的消息顺序气泡还是很奇怪，它不是出现在当前工具调用的下面';
+    final grid = _FakeGrid.wrappedWideLines(
+      columns: 120,
+      lineTexts: [line0, line1],
+    )..cursorRow = 1;
+    const text =
+        '@/home/hhoa/Documents/TeamPilot/Attachments/'
+        '4b059105-a81f-45af-b649-ab7b1ceefa64.png\n'
+        '目前发送到邮箱的消息顺序气泡还是很奇怪，它不是出现在当前工具调用的下面';
+    final needle = PtyAutomationNeedle.forText(text);
+    expect(needle, '.png 目前发送到邮箱的消息顺序气泡还是很奇怪，它不是出现在当前工具调用的下面');
+
+    final anchor = locateNeedleInCursorZone(grid, needle);
+    expect(
+      anchor,
+      isNotNull,
+      reason: 'cursor attachment paste tail must ACK across both rows',
+    );
+  });
+
+  test('cursor paste ACKs when the caret sits below the composer box', () {
+    // Real cursor-agent geometry: the paste body is rows 8-9 (path + CJK), but
+    // the terminal caret sits on the EMPTY last composer line (row 13), four
+    // rows below the text. A fixed "4 rows above cursor" window starts at row 9
+    // and misses the needle that begins on row 8 (`.png`). The zone must walk
+    // up through the contiguous composer box to the blank gap (row 6).
+    final rows = List<String>.filled(39, '');
+    rows[2] = 'Cursor Agent';
+    rows[3] = 'v2026.09.10-fd3934a';
+    rows[4] = 'Tip: Use /config to customize Cursor settings and behavior.';
+    rows[7] = '▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄';
+    rows[8] =
+        '  → @/home/hhoa/Documents/TeamPilot/Attachments/4b059105-a81f-45af-b649-ab7b1ceefa64.png';
+    rows[9] = '    目前发送到邮箱的消息顺序气泡还是很奇怪，它不是出现在当前工具调用的下面';
+    rows[10] = '▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀';
+    rows[11] = 'Starting...                Run Everything';
+    rows[12] = '/home/hhoa/git/hhoa/teampilot · main';
+    final grid = _FakeGrid.wrappedWideLines(
+      columns: 120,
+      lineTexts: rows,
+    )..cursorRow = 13;
+    const text =
+        '@/home/hhoa/Documents/TeamPilot/Attachments/'
+        '4b059105-a81f-45af-b649-ab7b1ceefa64.png\n'
+        '目前发送到邮箱的消息顺序气泡还是很奇怪，它不是出现在当前工具调用的下面';
+    final needle = PtyAutomationNeedle.forText(text);
+    expect(needle, '.png 目前发送到邮箱的消息顺序气泡还是很奇怪，它不是出现在当前工具调用的下面');
+
+    final anchor = locateNeedleInCursorZone(grid, needle);
+    expect(
+      anchor,
+      isNotNull,
+      reason: 'caret below the composer must not hide the paste from the ACK',
+    );
+    expect(anchor!.row, 8, reason: 'needle starts on the .png row above the caret');
+    expect(needleStaysInCursorZone(grid, needle), isTrue);
   });
 
   test('isAtAnchor false when same text moved to transcript row above', () {
@@ -174,10 +236,7 @@ void main() {
     lines[9] = 'paste again to expand';
     final grid = _FakeGrid.fromRows(lines);
 
-    final anchor = locateCollapsedPasteNeedle(
-      grid,
-      scanRows: 10,
-    );
+    final anchor = locateCollapsedPasteNeedle(grid, scanRows: 10);
     expect(anchor, isNotNull);
     expect(anchor!.needle, '[Pasted text #3 +17 lines]');
     expect(anchor.row, 7);
@@ -208,10 +267,7 @@ void main() {
     lines[9] = '';
     final grid = _FakeGrid.fromRows(lines);
 
-    final anchor = locateCollapsedPasteNeedle(
-      grid,
-      scanRows: 10,
-    );
+    final anchor = locateCollapsedPasteNeedle(grid, scanRows: 10);
     expect(anchor, isNotNull);
     expect(anchor!.needle, '[Pasted ~152 lines]');
     expect(anchor.row, 7);
@@ -223,10 +279,7 @@ void main() {
     lines[9] = '';
     final grid = _FakeGrid.fromRows(lines);
 
-    final anchor = locateCollapsedPasteNeedle(
-      grid,
-      scanRows: 10,
-    );
+    final anchor = locateCollapsedPasteNeedle(grid, scanRows: 10);
     expect(anchor, isNotNull);
     expect(anchor!.needle, '[Pasted Content 29390 chars]');
     expect(anchor.row, 7);
@@ -247,30 +300,33 @@ void main() {
     expect(anchor!.row, 18);
   });
 
-  test('locateNeedle ACKs opencode staged paste in its real landing layout',
-      () {
-    // Real opencode 1.18 landing grid (captured): "┃ Build" status line also
-    // starts with the composer prefix, and staged text soft-wraps onto a
-    // non-prefixed row. The paste ACK must still resolve the staged line.
-    final lines = List<String>.filled(24, '');
-    lines[11] = '   \u2503';
-    lines[12] = '   \u2503  \u76ee\u524d\u6211\u670d\u52a1\u5668\u4e0a\u90e8\u7f72';
-    lines[13] = 'inio\uff0c';
-    lines[14] = '   \u2503  Build \u00b7 deepseek-v4-flash';
-    final grid = _FakeGrid.fromRows(lines);
+  test(
+    'locateNeedle ACKs opencode staged paste in its real landing layout',
+    () {
+      // Real opencode 1.18 landing grid (captured): "┃ Build" status line also
+      // starts with the composer prefix, and staged text soft-wraps onto a
+      // non-prefixed row. The paste ACK must still resolve the staged line.
+      final lines = List<String>.filled(24, '');
+      lines[11] = '   \u2503';
+      lines[12] =
+          '   \u2503  \u76ee\u524d\u6211\u670d\u52a1\u5668\u4e0a\u90e8\u7f72';
+      lines[13] = 'inio\uff0c';
+      lines[14] = '   \u2503  Build \u00b7 deepseek-v4-flash';
+      final grid = _FakeGrid.fromRows(lines);
 
-    final anchor = locateFullscreenPromptNeedle(
-      grid,
-      '\u76ee\u524d\u6211\u670d\u52a1\u5668\u4e0a\u90e8\u7f72',
-      scanRows: 24,
-    );
-    expect(
-      anchor,
-      isNotNull,
-      reason: 'opencode staged paste must be locatable for paste ACK',
-    );
-    expect(anchor!.row, 12);
-  });
+      final anchor = locateFullscreenPromptNeedle(
+        grid,
+        '\u76ee\u524d\u6211\u670d\u52a1\u5668\u4e0a\u90e8\u7f72',
+        scanRows: 24,
+      );
+      expect(
+        anchor,
+        isNotNull,
+        reason: 'opencode staged paste must be locatable for paste ACK',
+      );
+      expect(anchor!.row, 12);
+    },
+  );
 
   test(
     'isSubmitted false for composerMovesDown when original composer still holds needle',
@@ -629,6 +685,7 @@ final class _FakeGrid implements TerminalScreenGrid {
   final List<List<int>> flagsData;
 
   /// Cursor row (composer position) — tests set this to model a live input box.
+  @override
   int cursorRow = -1;
 
   @override

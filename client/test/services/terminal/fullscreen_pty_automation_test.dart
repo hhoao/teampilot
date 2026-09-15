@@ -703,6 +703,9 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
   int get viewportRows => _inner.viewportRows;
 
   @override
+  int get cursorRow => _inner.cursorRow;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => _inner.crAckConfig;
 
   @override
@@ -778,6 +781,9 @@ final class _CursorTranscriptAfterSubmitPort
 
   @override
   int get viewportRows => 24;
+
+  @override
+  int get cursorRow => -1;
 
   @override
   FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
@@ -886,6 +892,9 @@ final class _ComposerMovesDownStuckButCommittedPort
   int get viewportRows => 24;
 
   @override
+  int get cursorRow => -1;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.composerMovesDown,
   );
@@ -984,6 +993,9 @@ final class _ComposerMovesDownStuckStagedThenAckPort
   int get viewportRows => 24;
 
   @override
+  int get cursorRow => -1;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.composerMovesDown,
   );
@@ -1078,6 +1090,9 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
 
   @override
   int get viewportRows => 24;
+
+  @override
+  int get cursorRow => -1;
 
   @override
   FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
@@ -1180,6 +1195,9 @@ final class _AnchorCellStuckButHookAckedPort
   int get viewportRows => 24;
 
   @override
+  int get cursorRow => -1;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.anchorCellClears,
   );
@@ -1272,6 +1290,9 @@ final class _MentionPopupSwallowsCrPort implements FullscreenPtyDeliveryPort {
 
   @override
   int get viewportRows => 24;
+
+  @override
+  int get cursorRow => -1;
 
   @override
   FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
@@ -1372,6 +1393,9 @@ final class _AbortedAfterHookAckPort implements FullscreenPtyDeliveryPort {
   int get viewportRows => 24;
 
   @override
+  int get cursorRow => -1;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.anchorCellClears,
   );
@@ -1456,6 +1480,9 @@ final class _PaintWakePort implements FullscreenPtyDeliveryPort {
 
   @override
   int get viewportRows => 24;
+
+  @override
+  int get cursorRow => -1;
 
   @override
   FullscreenCrAckConfig get crAckConfig =>
@@ -1547,6 +1574,9 @@ final class _LateCrAckPaintPort implements FullscreenPtyDeliveryPort {
 
   @override
   int get viewportRows => 24;
+
+  @override
+  int get cursorRow => -1;
 
   @override
   FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(

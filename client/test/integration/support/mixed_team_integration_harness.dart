@@ -23,7 +23,6 @@ import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import 'package:teampilot/repositories/workspace_project_config_repository.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
-import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_context_registry.dart';
 import 'package:teampilot/services/storage/runtime_context_resolver.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
@@ -214,8 +213,9 @@ class MixedTeamIntegrationHarness {
             installMcp: (_) async => null,
             localStore: LocalExpertStore(
               fs: testHomeStorage.fs,
-              dirOverride: AppPaths(testHomeStorage.paths.basePath)
-                  .memberHubLocalTemplatesDir,
+              dirOverride: AppPaths(
+                testHomeStorage.paths.basePath,
+              ).memberHubLocalTemplatesDir,
             ),
           ),
           workspaceProjectConfig: WorkspaceProjectConfigRepository(
@@ -530,11 +530,7 @@ class MixedTeamIntegrationHarness {
     String kickoff = 'Coordinate the team.',
   }) async {
     _resetMockScenarios();
-    await _submitLeaderKickoff(
-      cubit,
-      postFrame: postFrame,
-      kickoff: kickoff,
-    );
+    await _submitLeaderKickoff(cubit, postFrame: postFrame, kickoff: kickoff);
   }
 
   Future<void> _submitWorkerKickoff(
@@ -895,9 +891,7 @@ class MixedTeamDockerRemote {
       username: DockerSshServer.defaultUsername,
     );
 
-    final sshProfileRepository = SshProfileRepository(
-      storage: testHomeStorage,
-    );
+    final sshProfileRepository = SshProfileRepository(storage: testHomeStorage);
     await sshProfileRepository.save(profile);
 
     final sshClientFactory = SshClientFactory(

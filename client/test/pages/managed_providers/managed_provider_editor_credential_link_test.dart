@@ -6,7 +6,6 @@ import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/managed_provider_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/pages/managed_providers/managed_provider_editor_page.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/managed_provider_repository.dart';
@@ -102,8 +101,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('selecting a provider link hides the secret and persists source',
-      (tester) async {
+  testWidgets('selecting a provider link hides the secret and persists source', (
+    tester,
+  ) async {
     await appProviderCubit.upsertProvider(
       const AppProviderConfig(
         id: 'deepseek',

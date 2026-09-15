@@ -1,7 +1,5 @@
-import 'dart:ui' show Brightness;
 
 import 'package:ai_message_core/ai_message_core.dart';
-import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/ai_history/workspace_edit_line_highlighter.dart';

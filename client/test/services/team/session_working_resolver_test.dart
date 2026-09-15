@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
 import 'package:teampilot/models/app_session.dart';
-import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/team/session_working_resolver.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
@@ -17,15 +16,17 @@ void main() {
 
   group('SessionWorkingResolver', () {
     test('personal active tab never uses team presence snapshot', () {
-      final tab = ChatTab(
-        info: ChatTabInfo(id: 'personal-1', title: 'P', subtitle: ''),
-        cliTeamName: '',
-      )..persistedSession = AppSession(
-          sessionId: 'personal-1',
-          workspaceId: 'ws',
-          folders: const [],
-          createdAt: 0,
-        );
+      final tab =
+          ChatTab(
+              info: ChatTabInfo(id: 'personal-1', title: 'P', subtitle: ''),
+              cliTeamName: '',
+            )
+            ..persistedSession = AppSession(
+              sessionId: 'personal-1',
+              workspaceId: 'ws',
+              folders: const [],
+              createdAt: 0,
+            );
 
       expect(
         resolver.usesPresenceSnapshotForTab(
@@ -37,42 +38,48 @@ void main() {
       );
     });
 
-    test('native active tab uses presence snapshot when roster is published', () {
-      final tab = ChatTab(
-        info: ChatTabInfo(id: 'native-1', title: 'N', subtitle: ''),
-        cliTeamName: '',
-      )..persistedSession = AppSession(
-          sessionId: 'native-1',
-          workspaceId: 'ws',
-          folders: const [],
-          sessionTeam: 'team-1',
-          cliTeamName: 'default-native-team-3',
-          createdAt: 0,
-        );
+    test(
+      'native active tab uses presence snapshot when roster is published',
+      () {
+        final tab =
+            ChatTab(
+                info: ChatTabInfo(id: 'native-1', title: 'N', subtitle: ''),
+                cliTeamName: '',
+              )
+              ..persistedSession = AppSession(
+                sessionId: 'native-1',
+                workspaceId: 'ws',
+                folders: const [],
+                sessionTeam: 'team-1',
+                cliTeamName: 'default-native-team-3',
+                createdAt: 0,
+              );
 
-      expect(
-        resolver.usesPresenceSnapshotForTab(
-          tab: tab,
-          activeSessionId: 'native-1',
-          presenceNonEmpty: true,
-        ),
-        isTrue,
-      );
-    });
+        expect(
+          resolver.usesPresenceSnapshotForTab(
+            tab: tab,
+            activeSessionId: 'native-1',
+            presenceNonEmpty: true,
+          ),
+          isTrue,
+        );
+      },
+    );
 
     test('mixed active tab uses presence snapshot when bus is installed', () {
-      final tab = ChatTab(
-        info: ChatTabInfo(id: 'mixed-1', title: 'M', subtitle: ''),
-        cliTeamName: 'team-a',
-      )
-        ..persistedSession = AppSession(
-          sessionId: 'mixed-1',
-          workspaceId: 'ws',
-          folders: const [],
-          sessionTeam: 'team-1',
-          createdAt: 0,
-        )
-        ..teamBus = TeamBus(launcher: FakeMemberLauncher());
+      final tab =
+          ChatTab(
+              info: ChatTabInfo(id: 'mixed-1', title: 'M', subtitle: ''),
+              cliTeamName: 'team-a',
+            )
+            ..persistedSession = AppSession(
+              sessionId: 'mixed-1',
+              workspaceId: 'ws',
+              folders: const [],
+              sessionTeam: 'team-1',
+              createdAt: 0,
+            )
+            ..teamBus = TeamBus(launcher: FakeMemberLauncher());
 
       expect(
         resolver.usesPresenceSnapshotForTab(
@@ -91,17 +98,18 @@ void main() {
         )
         ..markUserTurnStarted();
 
-      final tab = ChatTab(
-        info: ChatTabInfo(id: 'personal-1', title: 'P', subtitle: ''),
-        cliTeamName: '',
-      )
-        ..persistedSession = AppSession(
-          sessionId: 'personal-1',
-          workspaceId: 'ws',
-          folders: const [],
-          createdAt: 0,
-        )
-        ..memberShells['agent'] = shell;
+      final tab =
+          ChatTab(
+              info: ChatTabInfo(id: 'personal-1', title: 'P', subtitle: ''),
+              cliTeamName: '',
+            )
+            ..persistedSession = AppSession(
+              sessionId: 'personal-1',
+              workspaceId: 'ws',
+              folders: const [],
+              createdAt: 0,
+            )
+            ..memberShells['agent'] = shell;
 
       expect(
         resolver.tabHasWorkingMember(
@@ -120,17 +128,18 @@ void main() {
         );
       shell.activityTracker.markActive();
 
-      final tab = ChatTab(
-        info: ChatTabInfo(id: 'personal-1', title: 'P', subtitle: ''),
-        cliTeamName: '',
-      )
-        ..persistedSession = AppSession(
-          sessionId: 'personal-1',
-          workspaceId: 'ws',
-          folders: const [],
-          createdAt: 0,
-        )
-        ..memberShells['agent'] = shell;
+      final tab =
+          ChatTab(
+              info: ChatTabInfo(id: 'personal-1', title: 'P', subtitle: ''),
+              cliTeamName: '',
+            )
+            ..persistedSession = AppSession(
+              sessionId: 'personal-1',
+              workspaceId: 'ws',
+              folders: const [],
+              createdAt: 0,
+            )
+            ..memberShells['agent'] = shell;
 
       expect(
         resolver.tabHasWorkingMember(
@@ -143,40 +152,38 @@ void main() {
       );
     });
 
-    test(
-      'personal startup PTY while booting is not session-working',
-      () {
-        final shell = _ConnectedShell();
-        shell.activityTracker.reset();
-        // Simulate the false-arm path: idle-watch reads isWorking before the
-        // first banner, then startup output arrives and looks "active".
-        expect(shell.activityTracker.isWorking, isFalse);
-        shell.activityTracker.markActive();
+    test('personal startup PTY while booting is not session-working', () {
+      final shell = _ConnectedShell();
+      shell.activityTracker.reset();
+      // Simulate the false-arm path: idle-watch reads isWorking before the
+      // first banner, then startup output arrives and looks "active".
+      expect(shell.activityTracker.isWorking, isFalse);
+      shell.activityTracker.markActive();
 
-        final tab = ChatTab(
-          info: ChatTabInfo(id: 'personal-1', title: 'P', subtitle: ''),
-          cliTeamName: '',
-        )
-          ..persistedSession = AppSession(
-            sessionId: 'personal-1',
-            workspaceId: 'ws',
-            folders: const [],
-            createdAt: 0,
-          )
-          ..memberShells['agent'] = shell;
+      final tab =
+          ChatTab(
+              info: ChatTabInfo(id: 'personal-1', title: 'P', subtitle: ''),
+              cliTeamName: '',
+            )
+            ..persistedSession = AppSession(
+              sessionId: 'personal-1',
+              workspaceId: 'ws',
+              folders: const [],
+              createdAt: 0,
+            )
+            ..memberShells['agent'] = shell;
 
-        expect(
-          resolver.tabHasWorkingMember(
-            tab: tab,
-            team: null,
-            globalPresets: const [],
-          ),
-          isFalse,
-          reason:
-              'opening an idle session must not light working from boot banner',
-        );
-      },
-    );
+      expect(
+        resolver.tabHasWorkingMember(
+          tab: tab,
+          team: null,
+          globalPresets: const [],
+        ),
+        isFalse,
+        reason:
+            'opening an idle session must not light working from boot banner',
+      );
+    });
 
     test('mixed bus in-turn is session-working after doorbell submitted', () {
       final shell = _ConnectedShell()
@@ -192,12 +199,13 @@ void main() {
       bus.declareMember(node);
       bus.noteMailDeliverySubmitted('worker');
 
-      final tab = ChatTab(
-        info: ChatTabInfo(id: 'session-1', title: 'S', subtitle: ''),
-        cliTeamName: 'team-a',
-      )
-        ..teamBus = bus
-        ..memberShells['worker'] = shell;
+      final tab =
+          ChatTab(
+              info: ChatTabInfo(id: 'session-1', title: 'S', subtitle: ''),
+              cliTeamName: 'team-a',
+            )
+            ..teamBus = bus
+            ..memberShells['worker'] = shell;
 
       final team = const TeamProfile(
         id: 't',
@@ -232,12 +240,13 @@ void main() {
         ),
       );
 
-      final tab = ChatTab(
-        info: ChatTabInfo(id: 'session-1', title: 'S', subtitle: ''),
-        cliTeamName: 'team-a',
-      )
-        ..teamBus = bus
-        ..memberShells['worker'] = shell;
+      final tab =
+          ChatTab(
+              info: ChatTabInfo(id: 'session-1', title: 'S', subtitle: ''),
+              cliTeamName: 'team-a',
+            )
+            ..teamBus = bus
+            ..memberShells['worker'] = shell;
 
       final team = const TeamProfile(
         id: 't',

@@ -6,7 +6,6 @@ import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/services/follow_up/follow_up_queue.dart';
-import 'package:teampilot/services/session/history_seat_key.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 import 'package:teampilot/widgets/follow_up/follow_up_queue_strip.dart';
 import 'package:teampilot/widgets/follow_up/terminal_follow_up_compose.dart';
@@ -37,7 +36,7 @@ void main() {
       executableResolver: () => 'claude',
       automationRepository: testAutomationRepository(),
       followUpQueueStore: store,
-                                 storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     addTearDown(chatCubit.close);
 

@@ -8,7 +8,6 @@ import 'package:teampilot/services/terminal/observation/terminal_observation_eve
 import 'package:teampilot/services/terminal/observation/terminal_observation_seat.dart';
 import 'package:teampilot/services/terminal/terminal_export.dart';
 import 'package:teampilot/services/terminal/terminal_launch_controller.dart';
-import 'package:teampilot/services/terminal/terminal_launch_phase.dart';
 
 import '../../support/flush_terminal_engine.dart';
 import '../../support/rust_lib_test_init.dart';
@@ -64,11 +63,14 @@ void main() {
     },
   );
 
-  test('without attachObservation, feedPtyBytes still feeds the engine', () async {
-    controller.feedPtyBytes(Uint8List.fromList('Z'.codeUnits));
-    await flushTerminalEngine(engine);
-    expect(exportTerminalScrollback(engine), contains('Z'));
-  });
+  test(
+    'without attachObservation, feedPtyBytes still feeds the engine',
+    () async {
+      controller.feedPtyBytes(Uint8List.fromList('Z'.codeUnits));
+      await flushTerminalEngine(engine);
+      expect(exportTerminalScrollback(engine), contains('Z'));
+    },
+  );
 }
 
 final class _Capture implements TerminalOutputObserver {

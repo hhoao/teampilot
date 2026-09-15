@@ -7,7 +7,6 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
-import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/mcp/profile_mcp_linker_service.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 
@@ -131,7 +130,9 @@ void main() {
       final cubit = LaunchProfileCubit(
         storage: HomeStorage(testHomeStorage.context),
         repository: repo,
-        sessionRepository: SessionRepository(storage: HomeStorage(testHomeStorage.context)),
+        sessionRepository: SessionRepository(
+          storage: HomeStorage(testHomeStorage.context),
+        ),
         executableResolver: () => 'flashskyai',
         mcpLinker: linker,
         installedMcpLoader: () async => [_userServer],
@@ -175,7 +176,9 @@ void main() {
         final cubit = LaunchProfileCubit(
           storage: HomeStorage(testHomeStorage.context),
           repository: repo,
-          sessionRepository: SessionRepository(storage: HomeStorage(testHomeStorage.context)),
+          sessionRepository: SessionRepository(
+            storage: HomeStorage(testHomeStorage.context),
+          ),
           executableResolver: () => 'flashskyai',
           mcpLinker: linker,
           installedMcpLoader: () async => [_userServer],

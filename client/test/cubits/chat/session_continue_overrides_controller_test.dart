@@ -9,7 +9,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 void main() {
   const controller = SessionContinueOverridesController();
 
-  AppSession _simpleSession() {
+  AppSession simpleSession() {
     return AppSession(
       sessionId: 's1',
       workspaceId: 'w1',
@@ -24,7 +24,7 @@ void main() {
     );
   }
 
-  CliPreset _claudePreset({String id = 'preset-b'}) {
+  CliPreset claudePreset({String id = 'preset-b'}) {
     return CliPreset(
       id: id,
       name: 'Beta',
@@ -40,8 +40,8 @@ void main() {
   group('patchPreset', () {
     test('same-CLI preset updates Simple identity fields', () {
       final patched = controller.patchPreset(
-        session: _simpleSession(),
-        preset: _claudePreset(),
+        session: simpleSession(),
+        preset: claudePreset(),
         lockedCli: CliTool.claude,
       );
 
@@ -54,8 +54,8 @@ void main() {
 
     test('cross-CLI preset is rejected', () {
       final patched = controller.patchPreset(
-        session: _simpleSession(),
-        preset: _claudePreset().copyWith(cli: CliTool.codex),
+        session: simpleSession(),
+        preset: claudePreset().copyWith(cli: CliTool.codex),
         lockedCli: CliTool.claude,
       );
 
@@ -65,7 +65,7 @@ void main() {
     test(
       'team member preset expands override without touching other members',
       () {
-        final session = _simpleSession().copyWith(
+        final session = simpleSession().copyWith(
           sessionTeam: 'team-1',
           continueOverrides: const SessionContinueOverrides(
             memberOverrides: {
@@ -80,7 +80,7 @@ void main() {
 
         final patched = controller.patchPreset(
           session: session,
-          preset: _claudePreset(),
+          preset: claudePreset(),
           memberId: 'builder-0',
           lockedCli: CliTool.claude,
         );
@@ -102,7 +102,7 @@ void main() {
   group('patchCustom', () {
     test('clears presetId and updates provider/model/effort for Simple', () {
       final patched = controller.patchCustom(
-        session: _simpleSession(),
+        session: simpleSession(),
         provider: 'openai',
         model: 'gpt-4o',
         effort: 'low',
@@ -117,7 +117,7 @@ void main() {
     });
 
     test('returns null for team sessions', () {
-      final session = _simpleSession().copyWith(sessionTeam: 'team-1');
+      final session = simpleSession().copyWith(sessionTeam: 'team-1');
 
       final patched = controller.patchCustom(
         session: session,

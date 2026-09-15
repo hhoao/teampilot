@@ -455,9 +455,8 @@ HookContribution _contribution(
 
 final class _Provider
     implements HookContributionProvider, HookContributionProviderOptional {
-  _Provider(this.providerId, this.entries, {this.delay, bool optional = false})
-    : failure = null,
-      optional = optional;
+  _Provider(this.providerId, this.entries, {this.delay, this.optional = false})
+    : failure = null;
 
   _Provider.failure(this.providerId, {this.optional = false})
     : entries = const [],

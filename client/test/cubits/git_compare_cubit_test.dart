@@ -27,10 +27,9 @@ const _fileB = GitFileChange(
 class _FakeHistory implements GitHistoryService {
   _FakeHistory({
     this.files = const [_fileA],
-    this.diffText = 'diff text',
     this.error,
     this.gate,
-  });
+  }) : diffText = 'diff text';
 
   List<GitFileChange> files;
   String diffText;
@@ -110,10 +109,7 @@ void main() {
 
   test('stale load does not overwrite newer', () async {
     final gate = Completer<void>();
-    final history = _FakeHistory(
-      files: const [_fileA],
-      gate: gate.future,
-    );
+    final history = _FakeHistory(files: const [_fileA], gate: gate.future);
     final cubit = GitCompareCubit(spec: _spec, history: history);
     addTearDown(cubit.close);
 
@@ -126,11 +122,9 @@ void main() {
     gate.complete();
     await first;
 
-    expect(
-      cubit.state.files,
-      const [_fileB],
-      reason: 'stale first load must not overwrite newer result',
-    );
+    expect(cubit.state.files, const [
+      _fileB,
+    ], reason: 'stale first load must not overwrite newer result');
     expect(history.listCalls, 2);
   });
 

@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
-import 'package:teampilot/cubits/team/model/launch_profile_state.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
@@ -101,7 +100,11 @@ Future<void> _pumpWorkspaceInfo(
   final tmp = await Directory.systemTemp.createTemp('ws_info_target_');
   addTearDown(() => tmp.deleteSync(recursive: true));
   final fs = LocalFilesystem();
-  final sshRepo = SshProfileRepository(rootDir: tmp.path, fs: fs, storage: testHomeStorage, );
+  final sshRepo = SshProfileRepository(
+    rootDir: tmp.path,
+    fs: fs,
+    storage: testHomeStorage,
+  );
   await sshRepo.save(
     const SshProfile(
       id: 'p1',
@@ -123,13 +126,16 @@ Future<void> _pumpWorkspaceInfo(
   final chat = ChatCubit(
     executableResolver: () => 'flashskyai',
     automationRepository: testAutomationRepository(),
-                          storage: testHomeStorage,
+    storage: testHomeStorage,
   );
   addTearDown(chat.close);
   final launchProfiles = LaunchProfileCubit(
     storage: testHomeStorage,
     repository: testLaunchProfileRepository(tmp),
-    sessionRepository: SessionRepository(rootDir: tmp.path, storage: testHomeStorage, ),
+    sessionRepository: SessionRepository(
+      rootDir: tmp.path,
+      storage: testHomeStorage,
+    ),
     executableResolver: () => 'claude',
   );
   addTearDown(launchProfiles.close);
@@ -157,7 +163,10 @@ Future<void> _pumpWorkspaceInfo(
           RepositoryProvider<HomeTargetController>.value(value: controller),
           RepositoryProvider<SshProfileRepository>.value(value: sshRepo),
           RepositoryProvider<SessionRepository>.value(
-            value: SessionRepository(rootDir: tmp.path, storage: testHomeStorage, ),
+            value: SessionRepository(
+              rootDir: tmp.path,
+              storage: testHomeStorage,
+            ),
           ),
         ],
         child: MultiBlocProvider(

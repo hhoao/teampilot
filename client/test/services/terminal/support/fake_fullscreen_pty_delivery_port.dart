@@ -44,6 +44,9 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   int get viewportRows => 24;
 
   @override
+  int get cursorRow => -1;
+
+  @override
   Future<void> syncDisplayGrid() async {}
 
   @override
@@ -162,6 +165,9 @@ final class RowAwareFakeFullscreenPtyDeliveryPort
 
   @override
   int get viewportRows => 24;
+
+  @override
+  int get cursorRow => -1;
 
   @override
   Future<void> syncDisplayGrid() async {}

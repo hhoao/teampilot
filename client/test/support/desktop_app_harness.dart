@@ -88,7 +88,6 @@ import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
-import 'test_runtime_context.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/workspace/repo_clone_service.dart';
@@ -196,7 +195,10 @@ Widget buildTestApp({
       );
   final workbenchCubit = WorkbenchCubit();
   // Hoisted so the workbench editor opener below can share the same instances.
-  final editorCubit = EditorCubit(storage: fakeHomeStorage(), fs: LocalFilesystem());
+  final editorCubit = EditorCubit(
+    storage: fakeHomeStorage(),
+    fs: LocalFilesystem(),
+  );
   final floatingWorkspaceCubit = FloatingWorkspaceCubit();
   final workbenchEditorOpener = WorkbenchEditorOpener(
     editor: editorCubit,
@@ -207,10 +209,7 @@ Widget buildTestApp({
   );
   // Mirror the production bridge wiring (app_shell.dart) so session opens feed
   // the bar and bar-close tears down the domain in harness-driven tests too.
-  final chatBridge = WorkbenchChatBridge(
-    workbench: workbenchCubit,
-    chat: chat,
-  );
+  final chatBridge = WorkbenchChatBridge(workbench: workbenchCubit, chat: chat);
   workbenchCubit.port = chatBridge;
   chat.workbenchPort = chatBridge;
   chat.onSessionTabOpened = chatBridge.onSessionTabOpened;
@@ -364,15 +363,11 @@ Widget buildTestApp({
       RepositoryProvider<WorkspaceChromeCommands>(
         create: (_) => WorkspaceChromeCommands(),
       ),
-      RepositoryProvider<UiZoomBaseline>(
-        create: (_) => UiZoomBaseline(),
-      ),
+      RepositoryProvider<UiZoomBaseline>(create: (_) => UiZoomBaseline()),
       RepositoryProvider<WorkspaceRunRegistry>.value(
         value: workspaceRunRegistry,
       ),
-      RepositoryProvider<RunCommandHost>(
-        create: (_) => RunCommandHost(),
-      ),
+      RepositoryProvider<RunCommandHost>(create: (_) => RunCommandHost()),
       RepositoryProvider<WorkspaceSearchHost>(
         create: (_) => WorkspaceSearchHost(),
       ),
@@ -385,9 +380,7 @@ Widget buildTestApp({
       RepositoryProvider<WorkbenchEditorOpener>.value(
         value: workbenchEditorOpener,
       ),
-      RepositoryProvider<InstallJobRegistry>.value(
-        value: installJobRegistry,
-      ),
+      RepositoryProvider<InstallJobRegistry>.value(value: installJobRegistry),
     ],
     child: MultiBlocProvider(
       providers: [
@@ -401,9 +394,7 @@ Widget buildTestApp({
         BlocProvider.value(value: teamCubit),
         BlocProvider.value(value: chat),
         BlocProvider.value(value: presence),
-        BlocProvider(
-          create: (_) => AgentAttentionCubit(pruneInterval: null),
-        ),
+        BlocProvider(create: (_) => AgentAttentionCubit(pruneInterval: null)),
         BlocProvider(create: (_) => ConfigCubit()),
         BlocProvider.value(value: llmConfigCubit ?? testLlmConfigCubit()),
         BlocProvider.value(value: appProviderCubit!),
@@ -417,7 +408,8 @@ Widget buildTestApp({
         BlocProvider.value(value: editorCubit),
         BlocProvider.value(value: workbenchCubit),
         BlocProvider.value(
-          value: extensionCubit ??
+          value:
+              extensionCubit ??
               ExtensionCubit(
                 extensionRepo,
                 ExtensionAcquisitionEngine(
@@ -469,9 +461,8 @@ Widget buildTestApp({
           ),
         ),
         BlocProvider(
-          create: (_) => testAutomationCubit(
-            sessionRepository: desktopHarnessSessionRepo,
-          ),
+          create: (_) =>
+              testAutomationCubit(sessionRepository: desktopHarnessSessionRepo),
         ),
       ],
       child: CliToolRegistryScope(

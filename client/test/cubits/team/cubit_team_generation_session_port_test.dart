@@ -1,6 +1,5 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/team/cubit_team_generation_session_port.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/models/app_session.dart';

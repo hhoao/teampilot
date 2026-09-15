@@ -1,11 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/runtime_target.dart';
-import 'package:teampilot/models/workspace_agent_config.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
-import 'package:teampilot/services/provider/control_plane_profile_paths.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_workspace_trust.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
@@ -60,7 +57,7 @@ void main() {
       home: '/fake/user/home',
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base, fs: fs),
-                                  storage: fakeHomeStorage(filesystem: fs),
+      storage: fakeHomeStorage(filesystem: fs),
     );
   });
 
@@ -224,7 +221,11 @@ void main() {
     test(
       'mixed warns cursor_credentials_missing when provider not ready',
       () async {
-        final repository = AppProviderRepository(basePath: base, fs: fs, storage: fakeHomeStorage(filesystem: fs), );
+        final repository = AppProviderRepository(
+          basePath: base,
+          fs: fs,
+          storage: fakeHomeStorage(filesystem: fs),
+        );
         await repository.saveProviders(CliTool.cursor, [
           const AppProviderConfig(
             id: 'work',

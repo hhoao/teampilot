@@ -1,7 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/chat/chat_session_shell_factory.dart';
 import 'package:teampilot/cubits/chat/chat_tab_store.dart';
 import 'package:teampilot/cubits/chat/model/chat_state.dart';
@@ -10,12 +8,8 @@ import 'package:teampilot/cubits/chat/model/session_create_request.dart';
 import 'package:teampilot/cubits/chat/model/session_open_status.dart';
 import 'package:teampilot/cubits/chat/model/session_workbench_view.dart';
 import 'package:teampilot/cubits/chat/session_data_store.dart';
-import 'package:teampilot/cubits/chat/session_launch_host.dart';
 import 'package:teampilot/cubits/chat/session_launch_service.dart';
-import 'package:teampilot/cubits/chat/tab_member_materializer.dart';
 import 'package:teampilot/cubits/chat/tab_session_runtime_coordinator.dart';
-import 'package:teampilot/cubits/chat/tab_team_bus_coordinator.dart';
-import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/member_remote_provision_progress.dart';
 import 'package:teampilot/models/runtime_target.dart';
@@ -25,14 +19,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/agent_status/agent_status_seat_lookup.dart';
-import 'package:teampilot/services/agent_status/ask_user_answer_pending_store.dart';
-import 'package:teampilot/services/install/install_job_registry.dart';
-import 'package:teampilot/services/launch/session_connect_orchestrator.dart';
-import 'package:teampilot/services/launch/workspace_provision_coordinator.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
-import 'package:teampilot/services/team_bus/remote/remote_bus_binding_resolver.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/team/team_config_launch_validator.dart';
 
@@ -56,6 +43,7 @@ class _CapturingSessionRepository extends Fake implements SessionRepository {
   @override
   Future<void> renameSession(String sessionId, String newName) async {}
 
+  @override
   Future<({AppSession session, Workspace workspace})> createSession(
     String workspaceId, {
     String sessionTeam = '',
@@ -98,8 +86,7 @@ class _CapturingSessionRepository extends Fake implements SessionRepository {
     return (
       session: session,
       workspace:
-          knownWorkspace ??
-          Workspace(workspaceId: workspaceId, createdAt: 1),
+          knownWorkspace ?? Workspace(workspaceId: workspaceId, createdAt: 1),
     );
   }
 }
@@ -109,9 +96,8 @@ class SessionGenerationHarness {
   SessionGenerationHarness(Workspace workspace)
     : workspace = workspace,
       repository = _CapturingSessionRepository(),
-      tabStore =
-          ChatTabStore(storage: fakeHomeStorage())
-            ..setActiveWorkspaceId(workspace.workspaceId) {
+      tabStore = ChatTabStore(storage: fakeHomeStorage())
+        ..setActiveWorkspaceId(workspace.workspaceId) {
     host = _CapturingHost(
       ChatState(workspaces: [workspace]),
       tabStore: tabStore,
@@ -149,7 +135,7 @@ class _CapturingHost implements SessionLaunchHost {
     this.state, {
     required ChatTabStore tabStore,
     SessionLifecycleService? lifecycle,
-    SessionRepository? sessionRepository,
+    this.sessionRepository,
   }) : tabStore = tabStore,
        lifecycle =
            lifecycle ??
@@ -157,12 +143,14 @@ class _CapturingHost implements SessionLaunchHost {
              storage: fakeHomeStorage(),
              loadPresets: () => const [],
            ),
-       sessionRepository = sessionRepository,
        shellFactory = ChatSessionShellFactory(
          executableResolver: () => 'true',
          terminalSessionFactory:
              ({required executable, scrollbackLines = 10000}) =>
-                 TerminalSession(executable: executable, fs: InMemoryFilesystem()),
+                 TerminalSession(
+                   executable: executable,
+                   fs: InMemoryFilesystem(),
+                 ),
          defaultTargetResolver: RuntimeTarget.local,
        ),
        sessionRuntime = TabSessionRuntimeCoordinator(
@@ -239,16 +227,16 @@ class _CapturingHost implements SessionLaunchHost {
 
   @override
   ChatDataSnapshot stateSnapshot() => ChatDataSnapshot(
-        workspaces: state.workspaces,
-        sessions: state.sessions,
-        visibleWorkspaces: state.visibleWorkspaces,
-        visibleSessions: state.visibleSessions,
-      );
+    workspaces: state.workspaces,
+    sessions: state.sessions,
+    visibleWorkspaces: state.visibleWorkspaces,
+    visibleSessions: state.visibleSessions,
+  );
 
   @override
   final SessionDataStore dataStore = SessionDataStore(
-      storage: fakeHomeStorage(),
-    );
+    storage: fakeHomeStorage(),
+  );
 
   @override
   void emitSnapshot(ChatDataSnapshot snapshot) {
@@ -288,7 +276,8 @@ class _CapturingHost implements SessionLaunchHost {
   Future<void> loadWorkspaceData(SessionRepository repo) async {}
 
   @override
-  PostFrameScheduler get postFrameScheduler => (VoidCallback cb) => cb();
+  PostFrameScheduler get postFrameScheduler =>
+      (VoidCallback cb) => cb();
 
   @override
   void setPodView(String sessionId, SessionWorkbenchView view) {}
@@ -345,11 +334,11 @@ class _CapturingHost implements SessionLaunchHost {
 
 void main() {
   Workspace workspace() => Workspace(
-        workspaceId: 'ws-1',
-        folders: const [WorkspaceFolder(path: '/proj')],
-        createdAt: 1,
-        updatedAt: 1,
-      );
+    workspaceId: 'ws-1',
+    folders: const [WorkspaceFolder(path: '/proj')],
+    createdAt: 1,
+    updatedAt: 1,
+  );
 
   test('create request persists builder purpose and workflow', () async {
     final harness = SessionGenerationHarness(workspace());

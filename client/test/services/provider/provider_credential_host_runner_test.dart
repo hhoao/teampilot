@@ -53,10 +53,8 @@ class _ScriptedStarter implements HostProcessStarter {
   _ScriptedStarter(
     this.stdoutChunks, {
     List<List<int>> stderrChunks = const [],
-    this.exitCode = 0,
-    this.startError,
     this.onStart,
-  }) : _stderrChunks = stderrChunks;
+  }) : exitCode = 0, startError = null, _stderrChunks = stderrChunks;
 
   final List<List<int>> stdoutChunks;
   final List<List<int>> _stderrChunks;
@@ -90,11 +88,7 @@ class _ThrowingStarter implements HostProcessStarter {
 void main() {
   group('ProviderCredentialHostRunner.run', () {
     test('delegates to one-shot runner', () async {
-      const expected = HostRunResult(
-        exitCode: 0,
-        stdout: 'ok',
-        stderr: '',
-      );
+      const expected = HostRunResult(exitCode: 0, stdout: 'ok', stderr: '');
       final runner = ProviderCredentialHostRunner(
         oneShot: () => _FakeOneShotRunner(expected),
         streaming: () => _ThrowingStarter(StateError('no stream')),
@@ -113,10 +107,9 @@ void main() {
       HostRunRequest? seen;
       final runner = ProviderCredentialHostRunner(
         oneShot: () => _FailOneShotRunner(),
-        streaming: () => _ScriptedStarter(
-          [utf8.encode('ok\n')],
-          onStart: (request) => seen = request,
-        ),
+        streaming: () => _ScriptedStarter([
+          utf8.encode('ok\n'),
+        ], onStart: (request) => seen = request),
       );
 
       await runner.runLogin(
@@ -151,7 +144,10 @@ void main() {
       );
 
       expect(result.exitCode, 0);
-      expect(opened.map((u) => u.host), ['authenticator.cursor.sh', 'example.com']);
+      expect(opened.map((u) => u.host), [
+        'authenticator.cursor.sh',
+        'example.com',
+      ]);
       expect(result.stdout, contains('authenticator.cursor.sh'));
     });
 
@@ -215,7 +211,10 @@ void main() {
       );
 
       final result = await runner.runLogin(
-        const HostRunRequest(executable: 'claude', arguments: ['auth', 'login']),
+        const HostRunRequest(
+          executable: 'claude',
+          arguments: ['auth', 'login'],
+        ),
       );
 
       expect(result.exitCode, 0);
@@ -241,27 +240,34 @@ void main() {
       expect(result.succeeded, isTrue);
     });
 
-    test('wraps non-ProcessException start failures as ProcessException', () async {
-      final runner = ProviderCredentialHostRunner(
-        oneShot: () => _FailOneShotRunner(),
-        streaming: () => _ThrowingStarter(StateError('ssh down')),
-      );
+    test(
+      'wraps non-ProcessException start failures as ProcessException',
+      () async {
+        final runner = ProviderCredentialHostRunner(
+          oneShot: () => _FailOneShotRunner(),
+          streaming: () => _ThrowingStarter(StateError('ssh down')),
+        );
 
-      expect(
-        () => runner.runLogin(
-          const HostRunRequest(
-            executable: '/root/.local/bin/cursor-agent',
-            arguments: ['login'],
+        expect(
+          () => runner.runLogin(
+            const HostRunRequest(
+              executable: '/root/.local/bin/cursor-agent',
+              arguments: ['login'],
+            ),
           ),
-        ),
-        throwsA(
-          isA<ProcessException>()
-              .having((e) => e.executable, 'executable', '/root/.local/bin/cursor-agent')
-              .having((e) => e.arguments, 'arguments', ['login'])
-              .having((e) => e.message, 'message', contains('ssh down')),
-        ),
-      );
-    });
+          throwsA(
+            isA<ProcessException>()
+                .having(
+                  (e) => e.executable,
+                  'executable',
+                  '/root/.local/bin/cursor-agent',
+                )
+                .having((e) => e.arguments, 'arguments', ['login'])
+                .having((e) => e.message, 'message', contains('ssh down')),
+          ),
+        );
+      },
+    );
 
     test('opens complete URL at end of chunk before process exits', () async {
       final opened = <Uri>[];

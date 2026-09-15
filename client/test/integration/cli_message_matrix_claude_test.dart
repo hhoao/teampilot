@@ -8,7 +8,6 @@ import 'package:mock_model_gateway/scenarios/native_collab_replica_2plus.dart';
 import 'package:mock_model_gateway/scenarios/simple_3turn.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
-import '../support/test_runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -65,7 +64,8 @@ void main() {
           expect(
             result.ok,
             isTrue,
-            reason: 'submitCompose failed at turn ${i + 1}\n'
+            reason:
+                'submitCompose failed at turn ${i + 1}\n'
                 '${harness.diagnosticsBundle()}',
           );
           await harness.waitForGatewayTurns(
@@ -105,7 +105,9 @@ void main() {
       // ping/pong/tasks/idle cells pass — only this mock-scripted mixed cell
       // is red. Requires a real Claude CLI + TeamBus environment to debug;
       // skip rather than block CI on a pre-existing flake.
-      markTestSkipped('mixed collab user bubble missing from transcript (needs real-env debug)');
+      markTestSkipped(
+        'mixed collab user bubble missing from transcript (needs real-env debug)',
+      );
       return;
       IntegrationPrerequisites.skipUnlessNativePty();
       final claudePath = IntegrationPrerequisites.requireClaudePath();
@@ -142,7 +144,8 @@ void main() {
         expect(
           result.ok,
           isTrue,
-          reason: 'submitCompose failed on lead\n'
+          reason:
+              'submitCompose failed on lead\n'
               '${harness.diagnosticsBundle()}',
         );
 
@@ -206,8 +209,7 @@ void main() {
         expect(
           leadMail.any(
             (row) =>
-                row['from'] == kMatrixWorkerTypeId &&
-                row['content'] == 'pong',
+                row['from'] == kMatrixWorkerTypeId && row['content'] == 'pong',
           ),
           isTrue,
           reason: harness.diagnosticsBundle(),
@@ -270,7 +272,8 @@ void main() {
           expect(
             result.ok,
             isTrue,
-            reason: 'submitCompose failed at turn ${i + 1}\n'
+            reason:
+                'submitCompose failed at turn ${i + 1}\n'
                 '${harness.diagnosticsBundle()}',
           );
           await harness.waitForPtyMarkers([markers[i]]);
@@ -348,18 +351,20 @@ void main() {
         final cliTeam = harness.session!.cliTeamName.trim().isNotEmpty
             ? harness.session!.cliTeamName
             : harness.session!.sessionId;
-        final claudeDir = RuntimeLayout(
-          teampilotRoot: testHomeStorage.appDataRoot,
-          fs: testHomeStorage.fs,
-        ).sessionRuntimeToolDir(
+        final claudeDir =
+            RuntimeLayout(
+              teampilotRoot: testHomeStorage.appDataRoot,
+              fs: testHomeStorage.fs,
+            ).sessionRuntimeToolDir(
               harness.session!.workspaceId,
               harness.session!.sessionId,
               'claude',
             );
 
         final leadBefore1 = harness.gateway!.requestCountFor(leadScriptApiKey);
-        final workerGatewayBaseline =
-            harness.gateway!.requestCountFor(workerScriptApiKey);
+        final workerGatewayBaseline = harness.gateway!.requestCountFor(
+          workerScriptApiKey,
+        );
         // Start the inbox watch *before* the compose: the booted worker
         // consumes pod inbox messages within ~100ms of the lead SendMessage
         // write (file returns to `[]`), so a post-compose poll can miss the
@@ -379,10 +384,9 @@ void main() {
           minTurns: leadBefore1 + 2,
         );
         await inboxWatch.waitForUnread();
-        await harness.waitForPtyMarkers(
-          [markReplicaLead1],
-          memberId: kMatrixLeadMemberId,
-        );
+        await harness.waitForPtyMarkers([
+          markReplicaLead1,
+        ], memberId: kMatrixLeadMemberId);
 
         expectClaudeRosterPods(
           claudeDir: claudeDir,
@@ -437,10 +441,7 @@ void main() {
           apiKey: workerScriptApiKey,
           minTurns: workerGatewayBaseline + 1,
         );
-        await harness.waitForPtyMarkers(
-          [markReplicaW01],
-          memberId: worker0,
-        );
+        await harness.waitForPtyMarkers([markReplicaW01], memberId: worker0);
 
         harness.gateway!.seekScenario(leadScriptApiKey, 3);
         await harness.bootComposeSeatToPrompt();
@@ -453,10 +454,9 @@ void main() {
           minTurns: 5,
           byScenarioIndex: true,
         );
-        await harness.waitForPtyMarkers(
-          [markReplicaLead2],
-          memberId: kMatrixLeadMemberId,
-        );
+        await harness.waitForPtyMarkers([
+          markReplicaLead2,
+        ], memberId: kMatrixLeadMemberId);
       } catch (e, st) {
         // ignore: avoid_print
         print(harness.diagnosticsBundle());

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/theme/workspace_surface_layers.dart';
@@ -21,10 +20,7 @@ void main() {
               child: ListView(
                 children: [
                   for (var i = 0; i < 8; i++)
-                    ListTile(
-                      title: Text('row $i'),
-                      onTap: () {},
-                    ),
+                    ListTile(title: Text('row $i'), onTap: () {}),
                 ],
               ),
             ),

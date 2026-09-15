@@ -161,10 +161,7 @@ void main() {
     expect(find.textContaining('shared repository'), findsOneWidget);
     await tester.tap(find.byType(TpButton).last); // 接受确认
     await tester.pumpAndSettle();
-    expect(
-      actions.calls.single,
-      ['delete-remote-branch', 'origin', 'feature'],
-    );
+    expect(actions.calls.single, ['delete-remote-branch', 'origin', 'feature']);
   });
 
   testWidgets('remote branch history sets branch filter to remote name', (
@@ -262,7 +259,7 @@ void main() {
     expect(cubit.state.branchFilter, 'v1.0');
   });
 
-  Future<GitGraphCubit> _pumpRefsMenuWithCompare(
+  Future<GitGraphCubit> pumpRefsMenuWithCompare(
     WidgetTester tester, {
     required WorkbenchCubit workbench,
     required FloatingWorkspaceCubit floating,
@@ -310,8 +307,10 @@ void main() {
     return cubit;
   }
 
-  GitCompareSpec? _openedCompareSpec(WorkbenchCubit workbench) {
-    final tabId = workbench.mergedFloatingStrip('ws').order
+  GitCompareSpec? openedCompareSpec(WorkbenchCubit workbench) {
+    final tabId = workbench
+        .mergedFloatingStrip('ws')
+        .order
         .firstWhere((t) => t.kind == WorkbenchTabKind.gitCompare)
         .id;
     return GitCompareSpec.tryParseTabId(tabId);
@@ -324,7 +323,7 @@ void main() {
     final floating = FloatingWorkspaceCubit();
     addTearDown(workbench.close);
     addTearDown(floating.close);
-    await _pumpRefsMenuWithCompare(
+    await pumpRefsMenuWithCompare(
       tester,
       workbench: workbench,
       floating: floating,
@@ -337,7 +336,7 @@ void main() {
     await tester.tap(find.text('Working Tree (main)'));
     await tester.pumpAndSettle();
 
-    final spec = _openedCompareSpec(workbench);
+    final spec = openedCompareSpec(workbench);
     expect(spec?.repoRoot, '/repo');
     expect(spec?.left, const GitCompareRef('feature'));
     expect(spec?.right, const GitCompareWorkingTree());
@@ -350,7 +349,7 @@ void main() {
     final floating = FloatingWorkspaceCubit();
     addTearDown(workbench.close);
     addTearDown(floating.close);
-    await _pumpRefsMenuWithCompare(
+    await pumpRefsMenuWithCompare(
       tester,
       workbench: workbench,
       floating: floating,
@@ -363,7 +362,7 @@ void main() {
     await tester.tap(find.text('origin/main'));
     await tester.pumpAndSettle();
 
-    final spec = _openedCompareSpec(workbench);
+    final spec = openedCompareSpec(workbench);
     expect(spec?.left, const GitCompareRef('feature'));
     expect(spec?.right, const GitCompareRef('origin/main'));
   });
@@ -373,7 +372,7 @@ void main() {
     final floating = FloatingWorkspaceCubit();
     addTearDown(workbench.close);
     addTearDown(floating.close);
-    await _pumpRefsMenuWithCompare(
+    await pumpRefsMenuWithCompare(
       tester,
       workbench: workbench,
       floating: floating,
@@ -390,7 +389,7 @@ void main() {
 
     await tester.tap(find.text('main'));
     await tester.pumpAndSettle();
-    final spec = _openedCompareSpec(workbench);
+    final spec = openedCompareSpec(workbench);
     expect(spec?.left, const GitCompareRef('v1.0'));
     expect(spec?.right, const GitCompareRef('main'));
   });

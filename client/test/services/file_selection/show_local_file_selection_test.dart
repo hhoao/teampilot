@@ -15,7 +15,7 @@ class _FakeFilesystemPort implements TpFilesystemPort {
 
   @override
   Future<List<TpFsEntry>>? Function(String rootPath, String query)?
-      get searchFiles => null;
+  get searchFiles => null;
 
   @override
   Future<bool> exists(String path) async => false;
@@ -36,7 +36,7 @@ class _FakePermissionPort implements TpPermissionPort {
 }
 
 class _FakeDesktopPickerPort implements TpDesktopPickerPort {
-  _FakeDesktopPickerPort({this.directoryResult, this.filesResult});
+  _FakeDesktopPickerPort({this.directoryResult}) : filesResult = null;
 
   final List<TpPickedEntry>? directoryResult;
   final List<TpPickedEntry>? filesResult;
@@ -79,8 +79,9 @@ TpFileSelectionDeps _testDeps({
 }
 
 void main() {
-  testWidgets('showLocalFileSelection maps desktop directory pick to paths',
-      (tester) async {
+  testWidgets('showLocalFileSelection maps desktop directory pick to paths', (
+    tester,
+  ) async {
     final desktop = _FakeDesktopPickerPort(
       directoryResult: [
         const TpPickedEntry(path: '/workspace', kind: TpPickedKind.directory),
@@ -117,8 +118,9 @@ void main() {
     expect(result, ['/workspace']);
   });
 
-  testWidgets('showLocalFileSelection returns null when picker cancelled',
-      (tester) async {
+  testWidgets('showLocalFileSelection returns null when picker cancelled', (
+    tester,
+  ) async {
     final desktop = _FakeDesktopPickerPort(directoryResult: null);
     final deps = _testDeps(isDesktop: () => true, desktop: desktop);
     List<String>? result = const [];

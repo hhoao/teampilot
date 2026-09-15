@@ -1,13 +1,10 @@
-import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/run_cubit.dart';
 import 'package:teampilot/models/run/launch_configuration.dart';
 import 'package:teampilot/models/run/launch_type_contribution.dart';
-import 'package:teampilot/models/run/run_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/run/launch_adapter_client.dart';
-import 'package:teampilot/services/run/launch_adapter_protocol.dart';
 import 'package:teampilot/services/run/launch_config_store.dart';
 import 'package:teampilot/services/run/launch_discover.dart';
 import 'package:teampilot/services/run/launch_type_registrar.dart';
@@ -55,10 +52,7 @@ class _FakeProcessLauncher implements RunProcessLauncher {
     required void Function(ProcessRunOutput output) onOutput,
     String? preferTerminalEntryId,
   }) async {
-    return RunLaunchHandle(
-      exitCode: Future.value(0),
-      stop: () async {},
-    );
+    return RunLaunchHandle(exitCode: Future.value(0), stop: () async {});
   }
 }
 
@@ -118,26 +112,27 @@ void main() {
     );
   }
 
-  test('glob discover returns recommendation when marker file exists', () async {
-    await writeMarker('pubspec.yaml');
+  test(
+    'glob discover returns recommendation when marker file exists',
+    () async {
+      await writeMarker('pubspec.yaml');
 
-    final recommendations = await LaunchDiscover(io: memoryIo).discover(
-      folders: const [_folder],
-      registry: registry,
-    );
+      final recommendations = await LaunchDiscover(
+        io: memoryIo,
+      ).discover(folders: const [_folder], registry: registry);
 
-    expect(recommendations, hasLength(1));
-    expect(recommendations.single.owner, _folder);
-    expect(recommendations.single.configuration.type, 'flutter');
-    expect(recommendations.single.configuration.id, 'flutter');
-    expect(recommendations.single.configuration.extras['device'], 'linux');
-  });
+      expect(recommendations, hasLength(1));
+      expect(recommendations.single.owner, _folder);
+      expect(recommendations.single.configuration.type, 'flutter');
+      expect(recommendations.single.configuration.id, 'flutter');
+      expect(recommendations.single.configuration.extras['device'], 'linux');
+    },
+  );
 
   test('discover skips folders without matching globs', () async {
-    final recommendations = await LaunchDiscover(io: memoryIo).discover(
-      folders: const [_folder],
-      registry: registry,
-    );
+    final recommendations = await LaunchDiscover(
+      io: memoryIo,
+    ).discover(folders: const [_folder], registry: registry);
     expect(recommendations, isEmpty);
   });
 
@@ -163,16 +158,19 @@ void main() {
     expect(recommendations, isEmpty);
   });
 
-  test('RunPlatform discoverRecommendations delegates to LaunchDiscover', () async {
-    await writeMarker('pubspec.yaml');
-    final platform = _platform(store: store, registry: registry);
+  test(
+    'RunPlatform discoverRecommendations delegates to LaunchDiscover',
+    () async {
+      await writeMarker('pubspec.yaml');
+      final platform = _platform(store: store, registry: registry);
 
-    expect(
-      await platform.discoverRecommendations(const [_folder]),
-      hasLength(1),
-    );
-    await platform.sessionManager.dispose();
-  });
+      expect(
+        await platform.discoverRecommendations(const [_folder]),
+        hasLength(1),
+      );
+      await platform.sessionManager.dispose();
+    },
+  );
 
   test('refreshDiscover populates cubit recommendations', () async {
     await writeMarker('pubspec.yaml');
@@ -187,36 +185,36 @@ void main() {
     await platform.sessionManager.dispose();
   });
 
-  test('acceptRecommendation writes validated config into launch.json', () async {
-    await writeMarker('pubspec.yaml');
-    final platform = _platform(store: store, registry: registry);
-    final cubit = RunCubit(platform: platform, folders: const [_folder]);
-    addTearDown(cubit.close);
+  test(
+    'acceptRecommendation writes validated config into launch.json',
+    () async {
+      await writeMarker('pubspec.yaml');
+      final platform = _platform(store: store, registry: registry);
+      final cubit = RunCubit(platform: platform, folders: const [_folder]);
+      addTearDown(cubit.close);
 
-    await cubit.load();
-    final recommendation = cubit.state.recommendations.single;
+      await cubit.load();
+      final recommendation = cubit.state.recommendations.single;
 
-    await cubit.acceptRecommendation(recommendation);
+      await cubit.acceptRecommendation(recommendation);
 
-    final path = LaunchConfigStore.launchConfigPath(_folder);
-    final raw = await memoryIo.readString(path, targetId: _folder.targetId);
-    expect(raw, isNotNull);
-    expect(raw, contains('"type": "flutter"'));
-    expect(cubit.state.configurations, hasLength(1));
-    expect(cubit.state.recommendations, isEmpty);
-    expect(cubit.state.errorMessage, isNull);
-    await platform.sessionManager.dispose();
-  });
+      final path = LaunchConfigStore.launchConfigPath(_folder);
+      final raw = await memoryIo.readString(path, targetId: _folder.targetId);
+      expect(raw, isNotNull);
+      expect(raw, contains('"type": "flutter"'));
+      expect(cubit.state.configurations, hasLength(1));
+      expect(cubit.state.recommendations, isEmpty);
+      expect(cubit.state.errorMessage, isNull);
+      await platform.sessionManager.dispose();
+    },
+  );
 
   test('acceptRecommendation reports schema validation errors', () async {
     await writeMarker('pubspec.yaml');
     final badRegistry = LaunchTypeRegistry.withBuiltIns();
     badRegistry.registerExtension(
       _flutterDiscoverContrib(
-        discoverConfiguration: const {
-          'id': 'flutter',
-          'name': 'Flutter',
-        },
+        discoverConfiguration: const {'id': 'flutter', 'name': 'Flutter'},
       ),
     );
     badRegistry.setAvailability(

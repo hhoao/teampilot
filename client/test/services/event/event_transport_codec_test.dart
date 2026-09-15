@@ -1,5 +1,4 @@
 // client/test/services/event/event_transport_codec_test.dart
-import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/event/agent_presence_event.dart';
@@ -26,7 +25,10 @@ void main() {
       ...payload,
     });
     expect(line.endsWith('\n'), isTrue);
-    expect(line.contains('\n', 0) && line.indexOf('\n') == line.length - 1, isTrue);
+    expect(
+      line.contains('\n', 0) && line.indexOf('\n') == line.length - 1,
+      isTrue,
+    );
     final decoded = tryDecodeTransportLine(line);
     expect(decoded, isNotNull);
     final back = codec.decode(decoded!) as AgentPresenceEvent;

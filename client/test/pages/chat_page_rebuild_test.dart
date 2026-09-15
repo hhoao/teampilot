@@ -7,7 +7,6 @@ import 'package:teampilot/cubits/ai_history_cubit.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
@@ -42,8 +41,6 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
-import 'package:teampilot/services/storage/runtime_context_registry.dart';
-import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 import 'package:teampilot/services/plugin/plugin_repo_service.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
@@ -245,8 +242,9 @@ void main() {
       );
       addTearDown(() => cliPresetsCubit.close());
 
-      final sessionPreferencesCubit =
-          (await tester.runAsync(testSessionPreferencesCubit))!;
+      final sessionPreferencesCubit = (await tester.runAsync(
+        testSessionPreferencesCubit,
+      ))!;
       addTearDown(() => sessionPreferencesCubit.close());
 
       chatCubit.ingestWorkspaceSessionSnapshot(
@@ -266,7 +264,7 @@ void main() {
           supportedLocales: AppLocalizations.supportedLocales,
           home: MultiRepositoryProvider(
             providers: [
-            RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
+              RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
               RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
               RepositoryProvider<WorkspaceFileTreeStore>(
                 create: (_) => WorkspaceFileTreeStore(),
@@ -310,9 +308,7 @@ void main() {
               ],
               child: WorkspaceToolsScope(
                 state: const WorkspaceToolsScopeState(resolving: false),
-                child: Scaffold(
-                  body: _chatPageShell(),
-                ),
+                child: Scaffold(body: _chatPageShell()),
               ),
             ),
           ),
@@ -428,8 +424,9 @@ void main() {
       );
       addTearDown(() => cliPresetsCubit.close());
 
-      final sessionPreferencesCubit =
-          (await tester.runAsync(testSessionPreferencesCubit))!;
+      final sessionPreferencesCubit = (await tester.runAsync(
+        testSessionPreferencesCubit,
+      ))!;
       addTearDown(() => sessionPreferencesCubit.close());
 
       chatCubit.ingestWorkspaceSessionSnapshot(
@@ -509,9 +506,7 @@ void main() {
               ],
               child: WorkspaceToolsScope(
                 state: const WorkspaceToolsScopeState(resolving: false),
-                child: Scaffold(
-                  body: _chatPageShell(wrapCliRegistry: true),
-                ),
+                child: Scaffold(body: _chatPageShell(wrapCliRegistry: true)),
               ),
             ),
           ),
@@ -635,8 +630,9 @@ void main() {
     );
     addTearDown(() => cliPresetsCubit.close());
 
-    final sessionPreferencesCubit =
-        (await tester.runAsync(testSessionPreferencesCubit))!;
+    final sessionPreferencesCubit = (await tester.runAsync(
+      testSessionPreferencesCubit,
+    ))!;
     addTearDown(() => sessionPreferencesCubit.close());
 
     chatCubit.ingestWorkspaceSessionSnapshot(
@@ -712,9 +708,7 @@ void main() {
             ],
             child: WorkspaceToolsScope(
               state: const WorkspaceToolsScopeState(resolving: false),
-              child: Scaffold(
-                body: _chatPageShell(wrapCliRegistry: true),
-              ),
+              child: Scaffold(body: _chatPageShell(wrapCliRegistry: true)),
             ),
           ),
         ),
@@ -844,8 +838,9 @@ void main() {
       );
       addTearDown(() => cliPresetsCubit.close());
 
-      final sessionPreferencesCubit =
-          (await tester.runAsync(testSessionPreferencesCubit))!;
+      final sessionPreferencesCubit = (await tester.runAsync(
+        testSessionPreferencesCubit,
+      ))!;
       addTearDown(() => sessionPreferencesCubit.close());
 
       chatCubit.ingestWorkspaceSessionSnapshot(
@@ -908,9 +903,7 @@ void main() {
               ],
               child: WorkspaceToolsScope(
                 state: const WorkspaceToolsScopeState(resolving: false),
-                child: Scaffold(
-                  body: _chatPageShell(),
-                ),
+                child: Scaffold(body: _chatPageShell()),
               ),
             ),
           ),
@@ -1026,8 +1019,9 @@ void main() {
       );
       addTearDown(() => cliPresetsCubit.close());
 
-      final sessionPreferencesCubit =
-          (await tester.runAsync(testSessionPreferencesCubit))!;
+      final sessionPreferencesCubit = (await tester.runAsync(
+        testSessionPreferencesCubit,
+      ))!;
       addTearDown(() => sessionPreferencesCubit.close());
 
       chatCubit.ingestWorkspaceSessionSnapshot(
@@ -1122,9 +1116,7 @@ void main() {
               ],
               child: WorkspaceToolsScope(
                 state: const WorkspaceToolsScopeState(resolving: false),
-                child: Scaffold(
-                  body: _chatPageShell(wrapCliRegistry: true),
-                ),
+                child: Scaffold(body: _chatPageShell(wrapCliRegistry: true)),
               ),
             ),
           ),
@@ -1138,12 +1130,11 @@ void main() {
       final leaves = layout.leafGroupIds;
       expect(leaves, hasLength(2));
       // One probe per split group's pane.
-      final probes =
-          tester
-              .stateList<ChatPageStructuralBodyProbeState>(
-                find.byKey(chatPageStructuralBodyProbeKey),
-              )
-              .toList();
+      final probes = tester
+          .stateList<ChatPageStructuralBodyProbeState>(
+            find.byKey(chatPageStructuralBodyProbeKey),
+          )
+          .toList();
       expect(probes.length, 2);
 
       // Pure focus switch: no strip, tab, or session data changes.
@@ -1156,12 +1147,11 @@ void main() {
       // rebuilds nothing on a pure focus switch. (The structural probe's
       // own build count MAY advance: chrome re-runs cheaply; the session
       // hosts must not remount, which is what element identity asserts.)
-      final probesAfter =
-          tester
-              .stateList<ChatPageStructuralBodyProbeState>(
-                find.byKey(chatPageStructuralBodyProbeKey),
-              )
-              .toList();
+      final probesAfter = tester
+          .stateList<ChatPageStructuralBodyProbeState>(
+            find.byKey(chatPageStructuralBodyProbeKey),
+          )
+          .toList();
       expect(probesAfter.length, 2);
       expect(identical(probesAfter.first, probes.first), isTrue);
       expect(identical(probesAfter[1], probes[1]), isTrue);

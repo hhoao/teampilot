@@ -7,7 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/registry/config_profile/config_profile_scope.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/claude/team_roster_service.dart';
@@ -67,7 +66,9 @@ void main() {
       'settings.json',
     );
     final raw = await fs.readString(dir);
-    final settings = raw == null ? <String, Object?>{} : (jsonDecode(raw) as Map).cast<String, Object?>();
+    final settings = raw == null
+        ? <String, Object?>{}
+        : (jsonDecode(raw) as Map).cast<String, Object?>();
     return (settings['enabledPlugins'] as Map?)?.cast<String, Object?>() ??
         const {};
   }
@@ -84,7 +85,7 @@ void main() {
         basePath: root,
         fs: fs,
         layout: layout,
-                                            storage: testHomeStorage,
+        storage: testHomeStorage,
       );
 
       await service.prepareSimpleSessionLaunch(
@@ -151,17 +152,32 @@ void main() {
         memberId: 'm1',
       );
 
-      expect(personal, contains('demo@local'),
-          reason: 'personal mode must register the enabled plugin');
-      expect(native, contains('demo@local'),
-          reason: 'native team mode must register the enabled plugin');
-      expect(mixed, contains('demo@local'),
-          reason: 'mixed team mode must register the enabled plugin per-member');
+      expect(
+        personal,
+        contains('demo@local'),
+        reason: 'personal mode must register the enabled plugin',
+      );
+      expect(
+        native,
+        contains('demo@local'),
+        reason: 'native team mode must register the enabled plugin',
+      );
+      expect(
+        mixed,
+        contains('demo@local'),
+        reason: 'mixed team mode must register the enabled plugin per-member',
+      );
 
-      expect(personal, native,
-          reason: 'personal and native must register the same plugins');
-      expect(personal, mixed,
-          reason: 'personal and mixed must register the same plugins');
+      expect(
+        personal,
+        native,
+        reason: 'personal and native must register the same plugins',
+      );
+      expect(
+        personal,
+        mixed,
+        reason: 'personal and mixed must register the same plugins',
+      );
     },
   );
 }

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -90,97 +89,88 @@ void main() {
     };
   }
 
-  test(
-    'PreToolUse hold → allow complete → updatedInput.answers',
-    () async {
-      const sessionId = 'ask-s1';
-      const memberId = 'm1';
-      const toolUseId = 'toolu-ask-1';
-      gateway.registerAgentStatusSession(sessionId: sessionId);
+  test('PreToolUse hold → allow complete → updatedInput.answers', () async {
+    const sessionId = 'ask-s1';
+    const memberId = 'm1';
+    const toolUseId = 'toolu-ask-1';
+    gateway.registerAgentStatusSession(sessionId: sessionId);
 
-      final questions = const [
-        AgentAskUserQuestion(
-          question: 'Pick color?',
-          options: [
-            AgentAskUserOption(label: 'Red'),
-            AgentAskUserOption(label: 'Blue'),
-          ],
-        ),
-        AgentAskUserQuestion(
-          question: 'Pick size?',
-          options: [
-            AgentAskUserOption(label: 'S'),
-            AgentAskUserOption(label: 'L'),
-          ],
-        ),
-      ];
+    final questions = const [
+      AgentAskUserQuestion(
+        question: 'Pick color?',
+        options: [
+          AgentAskUserOption(label: 'Red'),
+          AgentAskUserOption(label: 'Blue'),
+        ],
+      ),
+      AgentAskUserQuestion(
+        question: 'Pick size?',
+        options: [
+          AgentAskUserOption(label: 'S'),
+          AgentAskUserOption(label: 'L'),
+        ],
+      ),
+    ];
 
-      final responseFuture = postAskPreToolUse(
-        sessionId: sessionId,
-        memberId: memberId,
-        body: askBody(
-          toolUseId: toolUseId,
-          questions: [
-            {
-              'question': 'Pick color?',
-              'options': ['Red', 'Blue'],
-            },
-            {
-              'question': 'Pick size?',
-              'options': ['S', 'L'],
-            },
-          ],
-        ),
-      );
+    final responseFuture = postAskPreToolUse(
+      sessionId: sessionId,
+      memberId: memberId,
+      body: askBody(
+        toolUseId: toolUseId,
+        questions: [
+          {
+            'question': 'Pick color?',
+            'options': ['Red', 'Blue'],
+          },
+          {
+            'question': 'Pick size?',
+            'options': ['S', 'L'],
+          },
+        ],
+      ),
+    );
 
-      await waitUntilWaiter(
+    await waitUntilWaiter(
+      sessionId: sessionId,
+      memberId: memberId,
+      toolUseId: toolUseId,
+    );
+    expect(
+      cubit.state.attentionFor(sessionId: sessionId, memberId: memberId),
+      AgentSeatAttention.waiting,
+    );
+    expect(
+      cubit.state
+          .entryFor(sessionId: sessionId, memberId: memberId)
+          ?.lastEvent
+          ?.askUserQuestions,
+      hasLength(2),
+    );
+
+    expect(
+      gate.complete(
         sessionId: sessionId,
         memberId: memberId,
         toolUseId: toolUseId,
-      );
-      expect(
-        cubit.state.attentionFor(sessionId: sessionId, memberId: memberId),
-        AgentSeatAttention.waiting,
-      );
-      expect(
-        cubit.state
-            .entryFor(sessionId: sessionId, memberId: memberId)
-            ?.lastEvent
-            ?.askUserQuestions,
-        hasLength(2),
-      );
-
-      expect(
-        gate.complete(
-          sessionId: sessionId,
-          memberId: memberId,
-          toolUseId: toolUseId,
-          reply: AskUserQuestionHookReply.allow(
-            questions: questions,
-            answers: const {
-              'Pick color?': 'Blue',
-              'Pick size?': 'L',
-            },
-          ),
+        reply: AskUserQuestionHookReply.allow(
+          questions: questions,
+          answers: const {'Pick color?': 'Blue', 'Pick size?': 'L'},
         ),
-        isTrue,
-      );
+      ),
+      isTrue,
+    );
 
-      final resp = await responseFuture.timeout(const Duration(seconds: 5));
-      expect(resp.statusCode, HttpStatus.ok);
-      final decoded = jsonDecode(await resp.transform(utf8.decoder).join());
-      expect(decoded, isA<Map>());
-      final hook = (decoded as Map)['hookSpecificOutput'] as Map;
-      expect(hook['permissionDecision'], 'allow');
-      final updated = hook['updatedInput'] as Map;
-      expect(updated['answers'], {
-        'Pick color?': 'Blue',
-        'Pick size?': 'L',
-      });
-      expect(updated['questions'], isA<List>());
-      expect((updated['questions'] as List), hasLength(2));
-    },
-  );
+    final resp = await responseFuture.timeout(const Duration(seconds: 5));
+    expect(resp.statusCode, HttpStatus.ok);
+    final decoded = jsonDecode(await resp.transform(utf8.decoder).join());
+    expect(decoded, isA<Map>());
+    final hook = (decoded as Map)['hookSpecificOutput'] as Map;
+    expect(hook['permissionDecision'], 'allow');
+    final updated = hook['updatedInput'] as Map;
+    expect(updated['answers'], {'Pick color?': 'Blue', 'Pick size?': 'L'});
+    expect(updated['questions'], isA<List>());
+    expect((updated['questions'] as List), hasLength(2));
+  });
 
   test('PreToolUse hold → reject → permissionDecision deny', () async {
     const sessionId = 'ask-s2';
@@ -220,7 +210,8 @@ void main() {
 
     final resp = await responseFuture.timeout(const Duration(seconds: 5));
     expect(resp.statusCode, HttpStatus.ok);
-    final decoded = jsonDecode(await resp.transform(utf8.decoder).join()) as Map;
+    final decoded =
+        jsonDecode(await resp.transform(utf8.decoder).join()) as Map;
     final hook = decoded['hookSpecificOutput'] as Map;
     expect(hook['permissionDecision'], 'deny');
     expect(hook.containsKey('updatedInput'), isFalse);

@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/models/diff_identity.dart';
 import 'package:teampilot/services/diff/diff_engine.dart';
-import 'package:teampilot/services/diff/diff_model.dart';
 import 'package:teampilot/services/editor/editor_messages.dart';
 import 'package:teampilot/services/editor/file_editor_theme.dart';
 import 'package:teampilot/services/io/filesystem.dart';
@@ -24,7 +23,10 @@ void main() {
     final file = File('${dir.path}/sample.txt');
     await file.writeAsString('hello');
 
-    final cubit = EditorCubit(fs: LocalFilesystem(), storage: fakeHomeStorage());
+    final cubit = EditorCubit(
+      fs: LocalFilesystem(),
+      storage: fakeHomeStorage(),
+    );
     addTearDown(cubit.close);
 
     await cubit.openFile(ws, file.path);
@@ -58,7 +60,10 @@ void main() {
     final a = File('${dir.path}/a.txt')..writeAsStringSync('a');
     final b = File('${dir.path}/b.txt')..writeAsStringSync('b');
 
-    final cubit = EditorCubit(fs: LocalFilesystem(), storage: fakeHomeStorage());
+    final cubit = EditorCubit(
+      fs: LocalFilesystem(),
+      storage: fakeHomeStorage(),
+    );
     addTearDown(cubit.close);
 
     await cubit.openFile(ws, a.path);
@@ -78,54 +83,65 @@ void main() {
     expect(identical(cubit.editorKeyFor(ws, a.path), keyA), isFalse);
   });
 
-  test('openDiff keeps staged and unstaged separate; close leaves file', () async {
-    final cubit = EditorCubit(fs: LocalFilesystem(), storage: fakeHomeStorage());
-    addTearDown(cubit.close);
+  test(
+    'openDiff keeps staged and unstaged separate; close leaves file',
+    () async {
+      final cubit = EditorCubit(
+        fs: LocalFilesystem(),
+        storage: fakeHomeStorage(),
+      );
+      addTearDown(cubit.close);
 
-    cubit.openDiff(
-      workspaceId: ws,
-      identity: const ScmDiffIdentity('/repo/a.dart', ScmDiffMode.unstaged),
-      title: 'a.dart',
-      diffText: 'diff --git a',
-    );
-    cubit.openDiff(
-      workspaceId: ws,
-      identity: const ScmDiffIdentity('/repo/a.dart', ScmDiffMode.staged),
-      title: 'a.dart',
-      diffText: 'diff --git b',
-    );
+      cubit.openDiff(
+        workspaceId: ws,
+        identity: const ScmDiffIdentity('/repo/a.dart', ScmDiffMode.unstaged),
+        title: 'a.dart',
+        diffText: 'diff --git a',
+      );
+      cubit.openDiff(
+        workspaceId: ws,
+        identity: const ScmDiffIdentity('/repo/a.dart', ScmDiffMode.staged),
+        title: 'a.dart',
+        diffText: 'diff --git b',
+      );
 
-    final bucket = cubit.state.bucket(ws);
-    expect(bucket.openDiffs.length, 2);
-    expect(
-      bucket
-          .openDiffs[const ScmDiffIdentity(
-            '/repo/a.dart',
-            ScmDiffMode.unstaged,
-          ).storageKey]
-          ?.diffText,
-      'diff --git a',
-    );
+      final bucket = cubit.state.bucket(ws);
+      expect(bucket.openDiffs.length, 2);
+      expect(
+        bucket
+            .openDiffs[const ScmDiffIdentity(
+              '/repo/a.dart',
+              ScmDiffMode.unstaged,
+            ).storageKey]
+            ?.diffText,
+        'diff --git a',
+      );
 
-    final dir = await Directory.systemTemp.createTemp('teampilot_editor_diff_');
-    addTearDown(() => dir.delete(recursive: true));
-    final file = File('${dir.path}/a.dart')..writeAsStringSync('x');
-    await cubit.openFile(ws, file.path);
+      final dir = await Directory.systemTemp.createTemp(
+        'teampilot_editor_diff_',
+      );
+      addTearDown(() => dir.delete(recursive: true));
+      final file = File('${dir.path}/a.dart')..writeAsStringSync('x');
+      await cubit.openFile(ws, file.path);
 
-    cubit.closeDiff(
-      ws,
-      const ScmDiffIdentity('/repo/a.dart', ScmDiffMode.unstaged).storageKey,
-    );
-    expect(cubit.state.bucket(ws).openDiffs.length, 1);
-    expect(cubit.state.bucket(ws).openFilePaths, [file.path]);
-  });
+      cubit.closeDiff(
+        ws,
+        const ScmDiffIdentity('/repo/a.dart', ScmDiffMode.unstaged).storageKey,
+      );
+      expect(cubit.state.bucket(ws).openDiffs.length, 1);
+      expect(cubit.state.bucket(ws).openFilePaths, [file.path]);
+    },
+  );
 
   test('file buckets are isolated per workspace', () async {
     final dir = await Directory.systemTemp.createTemp('teampilot_editor_ws_');
     addTearDown(() => dir.delete(recursive: true));
     final file = File('${dir.path}/a.txt')..writeAsStringSync('hi');
 
-    final cubit = EditorCubit(fs: LocalFilesystem(), storage: fakeHomeStorage());
+    final cubit = EditorCubit(
+      fs: LocalFilesystem(),
+      storage: fakeHomeStorage(),
+    );
     addTearDown(cubit.close);
 
     await cubit.openFile('ws-a', file.path);
@@ -133,52 +149,58 @@ void main() {
     expect(cubit.state.bucket('ws-b').openFilePaths, isEmpty);
   });
 
-  test('wires a DocumentSession + token provider for a highlightable file',
-      () async {
-    final dir = await Directory.systemTemp.createTemp('teampilot_editor_ts_');
-    addTearDown(() => dir.delete(recursive: true));
-    final file = File('${dir.path}/a.json')
-      ..writeAsStringSync('{"hello": "world"}');
+  test(
+    'wires a DocumentSession + token provider for a highlightable file',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('teampilot_editor_ts_');
+      addTearDown(() => dir.delete(recursive: true));
+      final file = File('${dir.path}/a.json')
+        ..writeAsStringSync('{"hello": "world"}');
 
-    final pool = FakeTsWorkerPool();
-    final cubit = EditorCubit(
+      final pool = FakeTsWorkerPool();
+      final cubit = EditorCubit(
         fs: LocalFilesystem(),
         storage: fakeHomeStorage(),
         workerPool: pool,
       );
-    addTearDown(cubit.close);
+      addTearDown(cubit.close);
 
-    await cubit.openFile(ws, file.path);
+      await cubit.openFile(ws, file.path);
 
-    // JSON resolves to the json pack, so a worker session is opened and the
-    // viewport is colored before the file reports "open".
-    expect(cubit.documentSessionFor(ws, file.path), isNotNull);
-    expect(pool.handles, hasLength(1));
-    final provider = cubit.tokenProviderFor(ws, file.path);
-    expect(provider, isNotNull);
-    expect(provider!.tokensForLine(0), isNotEmpty);
-  });
+      // JSON resolves to the json pack, so a worker session is opened and the
+      // viewport is colored before the file reports "open".
+      expect(cubit.documentSessionFor(ws, file.path), isNotNull);
+      expect(pool.handles, hasLength(1));
+      final provider = cubit.tokenProviderFor(ws, file.path);
+      expect(provider, isNotNull);
+      expect(provider!.tokensForLine(0), isNotEmpty);
+    },
+  );
 
-  test('plain-text file opens with no worker session or token provider',
-      () async {
-    final dir = await Directory.systemTemp.createTemp('teampilot_editor_txt_');
-    addTearDown(() => dir.delete(recursive: true));
-    final file = File('${dir.path}/notes.txt')..writeAsStringSync('hello');
+  test(
+    'plain-text file opens with no worker session or token provider',
+    () async {
+      final dir = await Directory.systemTemp.createTemp(
+        'teampilot_editor_txt_',
+      );
+      addTearDown(() => dir.delete(recursive: true));
+      final file = File('${dir.path}/notes.txt')..writeAsStringSync('hello');
 
-    final pool = FakeTsWorkerPool();
-    final cubit = EditorCubit(
+      final pool = FakeTsWorkerPool();
+      final cubit = EditorCubit(
         fs: LocalFilesystem(),
         storage: fakeHomeStorage(),
         workerPool: pool,
       );
-    addTearDown(cubit.close);
+      addTearDown(cubit.close);
 
-    await cubit.openFile(ws, file.path);
+      await cubit.openFile(ws, file.path);
 
-    // A session object exists but the file is plain text: no worker attach.
-    expect(pool.handles, isEmpty);
-    expect(cubit.tokenProviderFor(ws, file.path)!.tokensForLine(0), isEmpty);
-  });
+      // A session object exists but the file is plain text: no worker attach.
+      expect(pool.handles, isEmpty);
+      expect(cubit.tokenProviderFor(ws, file.path)!.tokensForLine(0), isEmpty);
+    },
+  );
 
   test('editing forwards an incremental edit to the session', () async {
     final dir = await Directory.systemTemp.createTemp('teampilot_editor_edit_');
@@ -187,10 +209,10 @@ void main() {
 
     final pool = FakeTsWorkerPool();
     final cubit = EditorCubit(
-        fs: LocalFilesystem(),
-        storage: fakeHomeStorage(),
-        workerPool: pool,
-      );
+      fs: LocalFilesystem(),
+      storage: fakeHomeStorage(),
+      workerPool: pool,
+    );
     addTearDown(cubit.close);
 
     await cubit.openFile(ws, file.path);
@@ -206,16 +228,18 @@ void main() {
   });
 
   test('closeFile disposes the DocumentSession worker attachment', () async {
-    final dir = await Directory.systemTemp.createTemp('teampilot_editor_close_');
+    final dir = await Directory.systemTemp.createTemp(
+      'teampilot_editor_close_',
+    );
     addTearDown(() => dir.delete(recursive: true));
     final file = File('${dir.path}/a.json')..writeAsStringSync('{"a": "b"}');
 
     final pool = FakeTsWorkerPool();
     final cubit = EditorCubit(
-        fs: LocalFilesystem(),
-        storage: fakeHomeStorage(),
-        workerPool: pool,
-      );
+      fs: LocalFilesystem(),
+      storage: fakeHomeStorage(),
+      workerPool: pool,
+    );
     addTearDown(cubit.close);
 
     await cubit.openFile(ws, file.path);
@@ -230,55 +254,74 @@ void main() {
     expect(handle.disposeSent, isTrue);
   });
 
-  test('closeFile cancels in-flight open so late read does not reopen', () async {
-    final gate = Completer<void>();
-    final fs = _GatedFilesystem(gate);
-    fs.files['/repo/a.txt'] = 'hello';
+  test(
+    'closeFile cancels in-flight open so late read does not reopen',
+    () async {
+      final gate = Completer<void>();
+      final fs = _GatedFilesystem(gate);
+      fs.files['/repo/a.txt'] = 'hello';
 
-    final cubit = EditorCubit(fs: fs, storage: fakeHomeStorage());
-    addTearDown(cubit.close);
+      final cubit = EditorCubit(fs: fs, storage: fakeHomeStorage());
+      addTearDown(cubit.close);
 
-    final pending = cubit.openFile(ws, '/repo/a.txt');
-    await Future<void>.delayed(Duration.zero);
-    expect(cubit.state.bucket(ws).loadingPaths, contains('/repo/a.txt'));
+      final pending = cubit.openFile(ws, '/repo/a.txt');
+      await Future<void>.delayed(Duration.zero);
+      expect(cubit.state.bucket(ws).loadingPaths, contains('/repo/a.txt'));
 
-    expect(cubit.closeFile(ws, '/repo/a.txt', force: true), isTrue);
-    expect(cubit.state.bucket(ws).loadingPaths, isEmpty);
+      expect(cubit.closeFile(ws, '/repo/a.txt', force: true), isTrue);
+      expect(cubit.state.bucket(ws).loadingPaths, isEmpty);
 
-    gate.complete();
-    await pending;
-    expect(cubit.state.bucket(ws).openFilePaths, isEmpty);
-    expect(cubit.controllerFor(ws, '/repo/a.txt'), isNull);
-  });
+      gate.complete();
+      await pending;
+      expect(cubit.state.bucket(ws).openFilePaths, isEmpty);
+      expect(cubit.controllerFor(ws, '/repo/a.txt'), isNull);
+    },
+  );
 
-  test('closeFile cancels in-flight image open so late read does not keep bytes',
-      () async {
-    final gate = Completer<void>();
-    final fs = _GatedFilesystem(gate);
-    fs.byteFiles['/repo/dot.png'] = <int>[
-      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-    ];
+  test(
+    'closeFile cancels in-flight image open so late read does not keep bytes',
+    () async {
+      final gate = Completer<void>();
+      final fs = _GatedFilesystem(gate);
+      fs.byteFiles['/repo/dot.png'] = <int>[
+        0x89,
+        0x50,
+        0x4E,
+        0x47,
+        0x0D,
+        0x0A,
+        0x1A,
+        0x0A,
+      ];
 
-    final cubit = EditorCubit(fs: fs, storage: fakeHomeStorage());
-    addTearDown(cubit.close);
+      final cubit = EditorCubit(fs: fs, storage: fakeHomeStorage());
+      addTearDown(cubit.close);
 
-    final pending = cubit.openFile(ws, '/repo/dot.png');
-    await Future<void>.delayed(Duration.zero);
-    expect(cubit.state.bucket(ws).loadingPaths, contains('/repo/dot.png'));
+      final pending = cubit.openFile(ws, '/repo/dot.png');
+      await Future<void>.delayed(Duration.zero);
+      expect(cubit.state.bucket(ws).loadingPaths, contains('/repo/dot.png'));
 
-    expect(cubit.closeFile(ws, '/repo/dot.png', force: true), isTrue);
-    expect(cubit.state.bucket(ws).loadingPaths, isEmpty);
+      expect(cubit.closeFile(ws, '/repo/dot.png', force: true), isTrue);
+      expect(cubit.state.bucket(ws).loadingPaths, isEmpty);
 
-    gate.complete();
-    await pending;
-    expect(cubit.state.bucket(ws).openFilePaths, isEmpty);
-    expect(cubit.bytesFor(ws, '/repo/dot.png'), isNull);
-  });
+      gate.complete();
+      await pending;
+      expect(cubit.state.bucket(ws).openFilePaths, isEmpty);
+      expect(cubit.bytesFor(ws, '/repo/dot.png'), isNull);
+    },
+  );
 
   test('openFile loads image bytes without text controller', () async {
     final fs = InMemoryFilesystem();
     fs.byteFiles['/repo/dot.png'] = <int>[
-      0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+      0x89,
+      0x50,
+      0x4E,
+      0x47,
+      0x0D,
+      0x0A,
+      0x1A,
+      0x0A,
     ];
     final cubit = EditorCubit(fs: fs, storage: fakeHomeStorage());
     addTearDown(cubit.close);
@@ -484,10 +527,7 @@ void main() {
         expect(cubit.isDiffDirty(diffKey), isFalse);
         expect(cubit.diffCanonicalFor(diffKey), right);
         expect(cubit.state.bucket(ws).dirtyDiffKeys, isNot(contains(diffKey)));
-        expect(
-          cubit.state.snackbarMessage,
-          startsWith('diffApplyFailed:'),
-        );
+        expect(cubit.state.snackbarMessage, startsWith('diffApplyFailed:'));
       },
     );
 
@@ -518,27 +558,27 @@ void main() {
       );
     });
 
-    test('saveDiffWorkingTree write failure preserves dirty canonical', () async {
-      final fs = _FailingWriteFilesystem();
-      const right = 'a\nx\nc';
-      final cubit = await cubitWithDiff(
-        fs: fs,
-        left: 'a\nb\nc',
-        right: right,
-      );
+    test(
+      'saveDiffWorkingTree write failure preserves dirty canonical',
+      () async {
+        final fs = _FailingWriteFilesystem();
+        const right = 'a\nx\nc';
+        final cubit = await cubitWithDiff(
+          fs: fs,
+          left: 'a\nb\nc',
+          right: right,
+        );
 
-      cubit.updateDiffCanonical(diffKey, 'a\nsaved\nc');
-      final saved = await cubit.saveDiffWorkingTree(ws, diffKey);
+        cubit.updateDiffCanonical(diffKey, 'a\nsaved\nc');
+        final saved = await cubit.saveDiffWorkingTree(ws, diffKey);
 
-      expect(saved, isFalse);
-      expect(fs.files[path], right);
-      expect(cubit.isDiffDirty(diffKey), isTrue);
-      expect(cubit.diffCanonicalFor(diffKey), 'a\nsaved\nc');
-      expect(
-        cubit.state.snackbarMessage,
-        startsWith('diffSaveFailed:'),
-      );
-    });
+        expect(saved, isFalse);
+        expect(fs.files[path], right);
+        expect(cubit.isDiffDirty(diffKey), isTrue);
+        expect(cubit.diffCanonicalFor(diffKey), 'a\nsaved\nc');
+        expect(cubit.state.snackbarMessage, startsWith('diffSaveFailed:'));
+      },
+    );
 
     test('retryDiffReload after failed reload succeeds', () async {
       final fs = InMemoryFilesystem();
@@ -567,26 +607,16 @@ void main() {
       expect(applied, isTrue);
       expect(fs.files[path], left);
       expect(cubit.state.snackbarMessage, 'diffReloadAfterSaveFailed');
-      expect(
-        cubit.state.bucket(ws).openDiffs[diffKey]?.diffText,
-        'initial',
-      );
+      expect(cubit.state.bucket(ws).openDiffs[diffKey]?.diffText, 'initial');
 
       final retried = await cubit.retryDiffReload(ws, diffKey);
       expect(retried, isTrue);
-      expect(
-        cubit.state.bucket(ws).openDiffs[diffKey]?.diffText,
-        'retry ok',
-      );
+      expect(cubit.state.bucket(ws).openDiffs[diffKey]?.diffText, 'retry ok');
     });
 
     test('closeDiff clears writable handle', () async {
       final fs = InMemoryFilesystem();
-      final cubit = await cubitWithDiff(
-        fs: fs,
-        left: 'a',
-        right: 'b',
-      );
+      final cubit = await cubitWithDiff(fs: fs, left: 'a', right: 'b');
       cubit.updateDiffCanonical(diffKey, 'dirty');
       cubit.closeDiff(ws, diffKey);
 
@@ -627,66 +657,67 @@ void main() {
       return cubit;
     }
 
-    test('diff apply syncs open file and clears file dirty with snackbar',
-        () async {
-      final fs = InMemoryFilesystem();
-      const disk = 'a\nx\nc';
-      const left = 'a\nb\nc';
-      final cubit = await cubitWithOpenFileAndDiff(
-        fs: fs,
-        fileText: disk,
-        diffCanonical: disk,
-      );
+    test(
+      'diff apply syncs open file and clears file dirty with snackbar',
+      () async {
+        final fs = InMemoryFilesystem();
+        const disk = 'a\nx\nc';
+        const left = 'a\nb\nc';
+        final cubit = await cubitWithOpenFileAndDiff(
+          fs: fs,
+          fileText: disk,
+          diffCanonical: disk,
+        );
 
-      cubit.controllerFor(ws, path)!.text = 'stale file edit';
-      await pumpEventQueue();
-      expect(cubit.state.bucket(ws).isDirty(path), isTrue);
+        cubit.controllerFor(ws, path)!.text = 'stale file edit';
+        await pumpEventQueue();
+        expect(cubit.state.bucket(ws).isDirty(path), isTrue);
 
-      final result = computeLineDiff(left, disk);
-      final applied = await cubit.applyDiffHunk(
-        workspaceId: ws,
-        diffKey: diffKey,
-        result: result,
-        block: result.blocks.single,
-        discardDirtyIfNeeded: false,
-      );
+        final result = computeLineDiff(left, disk);
+        final applied = await cubit.applyDiffHunk(
+          workspaceId: ws,
+          diffKey: diffKey,
+          result: result,
+          block: result.blocks.single,
+          discardDirtyIfNeeded: false,
+        );
 
-      expect(applied, isTrue);
-      expect(fs.files[path], left);
-      expect(cubit.controllerFor(ws, path)?.text, left);
-      expect(cubit.state.bucket(ws).isDirty(path), isFalse);
-      expect(cubit.state.snackbarMessage, 'diffFileReloadedAfterDiffWrite');
-    });
+        expect(applied, isTrue);
+        expect(fs.files[path], left);
+        expect(cubit.controllerFor(ws, path)?.text, left);
+        expect(cubit.state.bucket(ws).isDirty(path), isFalse);
+        expect(cubit.state.snackbarMessage, 'diffFileReloadedAfterDiffWrite');
+      },
+    );
 
-    test('diff save syncs open file and clears file dirty with snackbar',
-        () async {
-      final fs = InMemoryFilesystem();
-      const disk = 'a\nx\nc';
-      final cubit = await cubitWithOpenFileAndDiff(
-        fs: fs,
-        fileText: disk,
-        diffCanonical: disk,
-      );
+    test(
+      'diff save syncs open file and clears file dirty with snackbar',
+      () async {
+        final fs = InMemoryFilesystem();
+        const disk = 'a\nx\nc';
+        final cubit = await cubitWithOpenFileAndDiff(
+          fs: fs,
+          fileText: disk,
+          diffCanonical: disk,
+        );
 
-      cubit.controllerFor(ws, path)!.text = 'stale file edit';
-      await pumpEventQueue();
-      cubit.updateDiffCanonical(diffKey, 'a\nsaved\nc');
+        cubit.controllerFor(ws, path)!.text = 'stale file edit';
+        await pumpEventQueue();
+        cubit.updateDiffCanonical(diffKey, 'a\nsaved\nc');
 
-      final saved = await cubit.saveDiffWorkingTree(ws, diffKey);
+        final saved = await cubit.saveDiffWorkingTree(ws, diffKey);
 
-      expect(saved, isTrue);
-      expect(fs.files[path], 'a\nsaved\nc');
-      expect(cubit.controllerFor(ws, path)?.text, 'a\nsaved\nc');
-      expect(cubit.state.bucket(ws).isDirty(path), isFalse);
-      expect(cubit.state.snackbarMessage, 'diffFileReloadedAfterDiffWrite');
-    });
+        expect(saved, isTrue);
+        expect(fs.files[path], 'a\nsaved\nc');
+        expect(cubit.controllerFor(ws, path)?.text, 'a\nsaved\nc');
+        expect(cubit.state.bucket(ws).isDirty(path), isFalse);
+        expect(cubit.state.snackbarMessage, 'diffFileReloadedAfterDiffWrite');
+      },
+    );
 
     test('saveFile returns false when writable diff is dirty', () async {
       final fs = InMemoryFilesystem();
-      final cubit = await cubitWithOpenFileAndDiff(
-        fs: fs,
-        fileText: 'hello',
-      );
+      final cubit = await cubitWithOpenFileAndDiff(fs: fs, fileText: 'hello');
 
       cubit.updateDiffCanonical(diffKey, 'dirty diff');
       cubit.controllerFor(ws, path)!.text = 'edited file';
@@ -698,35 +729,37 @@ void main() {
       expect(cubit.state.bucket(ws).isDirty(path), isTrue);
     });
 
-    test('saveFile with discardDiffDirty reloads diff from saved file text',
-        () async {
-      final fs = InMemoryFilesystem();
-      var reloadCount = 0;
-      final cubit = await cubitWithOpenFileAndDiff(
-        fs: fs,
-        fileText: 'hello',
-        reloadDiff: (_, __) async {
-          reloadCount++;
-          return 'reloaded after file save';
-        },
-      );
+    test(
+      'saveFile with discardDiffDirty reloads diff from saved file text',
+      () async {
+        final fs = InMemoryFilesystem();
+        var reloadCount = 0;
+        final cubit = await cubitWithOpenFileAndDiff(
+          fs: fs,
+          fileText: 'hello',
+          reloadDiff: (_, __) async {
+            reloadCount++;
+            return 'reloaded after file save';
+          },
+        );
 
-      cubit.updateDiffCanonical(diffKey, 'dirty diff');
-      cubit.controllerFor(ws, path)!.text = 'saved from file';
-      await pumpEventQueue();
+        cubit.updateDiffCanonical(diffKey, 'dirty diff');
+        cubit.controllerFor(ws, path)!.text = 'saved from file';
+        await pumpEventQueue();
 
-      final saved = await cubit.saveFile(ws, path, discardDiffDirty: true);
+        final saved = await cubit.saveFile(ws, path, discardDiffDirty: true);
 
-      expect(saved, isTrue);
-      expect(fs.files[path], 'saved from file');
-      expect(reloadCount, 1);
-      expect(cubit.isDiffDirty(diffKey), isFalse);
-      expect(cubit.diffCanonicalFor(diffKey), 'saved from file');
-      expect(
-        cubit.state.bucket(ws).openDiffs[diffKey]?.diffText,
-        'reloaded after file save',
-      );
-    });
+        expect(saved, isTrue);
+        expect(fs.files[path], 'saved from file');
+        expect(reloadCount, 1);
+        expect(cubit.isDiffDirty(diffKey), isFalse);
+        expect(cubit.diffCanonicalFor(diffKey), 'saved from file');
+        expect(
+          cubit.state.bucket(ws).openDiffs[diffKey]?.diffText,
+          'reloaded after file save',
+        );
+      },
+    );
 
     test('saveFile reloads clean diff after file save', () async {
       final fs = InMemoryFilesystem();
@@ -760,7 +793,10 @@ void main() {
 
   test('openFile rejects oversized images', () async {
     final fs = InMemoryFilesystem();
-    fs.byteFiles['/repo/big.png'] = List<int>.filled(kEditorMaxImageBytes + 1, 0);
+    fs.byteFiles['/repo/big.png'] = List<int>.filled(
+      kEditorMaxImageBytes + 1,
+      0,
+    );
     final cubit = EditorCubit(fs: fs, storage: fakeHomeStorage());
     addTearDown(cubit.close);
 

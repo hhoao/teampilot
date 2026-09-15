@@ -7,9 +7,7 @@ import 'package:teampilot/services/cli/registry/capabilities/ai_history_capabili
 import 'package:teampilot/services/cli/claude/capabilities/history/ai_history_capability.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/ai_history_capability.dart';
 import 'package:teampilot/services/cli/flashskyai/capabilities/history/ai_history_capability.dart';
-import 'package:teampilot/services/cli/claude/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/ai_transcript.dart';
-import 'package:teampilot/services/cli/flashskyai/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/ai_history_watch_meta.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
@@ -97,47 +95,50 @@ void main() {
     },
   );
 
-  test('Claude fixture: truncated Bash enriches stdout from toolUseResult', () async {
-    const cap = ClaudeAiHistoryCapability();
-    final bytes = await File(
-      'test/fixtures/session_history/claude/truncated_bash.jsonl',
-    ).readAsBytes();
-    final bundle = AiTranscriptBundle(
-      adapterId: 'claude',
-      fragments: [
-        AiTranscriptFragment(name: 'truncated_bash.jsonl', bytes: bytes),
-      ],
-      hints: const AiHistoryWatchMeta(
-        changeWatchRoot: '/proj',
-        cacheTokenPaths: ['/proj/truncated_bash.jsonl'],
-      ).toHints(),
-    );
+  test(
+    'Claude fixture: truncated Bash enriches stdout from toolUseResult',
+    () async {
+      const cap = ClaudeAiHistoryCapability();
+      final bytes = await File(
+        'test/fixtures/session_history/claude/truncated_bash.jsonl',
+      ).readAsBytes();
+      final bundle = AiTranscriptBundle(
+        adapterId: 'claude',
+        fragments: [
+          AiTranscriptFragment(name: 'truncated_bash.jsonl', bytes: bytes),
+        ],
+        hints: const AiHistoryWatchMeta(
+          changeWatchRoot: '/proj',
+          cacheTokenPaths: ['/proj/truncated_bash.jsonl'],
+        ).toHints(),
+      );
 
-    final enriched = await parseAndEnrich(
-      cap: cap,
-      bundle: bundle,
-      ctx: SessionHistoryContext(
-        fs: fs,
-        taskId: 'task-1',
-        env: const {},
-        transcriptRoots: const [],
-        bucket: 'bucket',
-      ),
-    );
+      final enriched = await parseAndEnrich(
+        cap: cap,
+        bundle: bundle,
+        ctx: SessionHistoryContext(
+          fs: fs,
+          taskId: 'task-1',
+          env: const {},
+          transcriptRoots: const [],
+          bucket: 'bucket',
+        ),
+      );
 
-    final bash = enriched
-        .expand((m) => m.parts)
-        .whereType<AiToolCallPart>()
-        .single;
-    expect(bash.toolName, 'Bash');
-    expect(
-      bash.result,
-      "manpath: can't set the locale; make sure \$LC_* and \$LANG are correct\n"
-      'ONBOARDING.md\ndemo-cli\nflashskyai',
-    );
-    expect(bash.isError, isFalse);
-    expect(bash.status, AiToolCallStatus.complete);
-  });
+      final bash = enriched
+          .expand((m) => m.parts)
+          .whereType<AiToolCallPart>()
+          .single;
+      expect(bash.toolName, 'Bash');
+      expect(
+        bash.result,
+        "manpath: can't set the locale; make sure \$LC_* and \$LANG are correct\n"
+        'ONBOARDING.md\ndemo-cli\nflashskyai',
+      );
+      expect(bash.isError, isFalse);
+      expect(bash.status, AiToolCallStatus.complete);
+    },
+  );
 
   test(
     'flashskyai streamed_tools fixture: truncated Bash enriches stdout',

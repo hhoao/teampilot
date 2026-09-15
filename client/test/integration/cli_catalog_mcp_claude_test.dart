@@ -9,7 +9,6 @@ import 'package:mock_model_gateway/scenarios/catalog_mcp_simple_claude.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/workspace_project_config_repository.dart';
-import '../support/test_runtime_context.dart';
 
 import '../support/post_frame_test_harness.dart';
 import '../support/rust_lib_test_init.dart';
@@ -104,9 +103,7 @@ void main() {
         expect(workspaceId, isNotNull);
         final bound = await WorkspaceProjectConfigRepository(
           storage: testHomeStorage,
-        ).load(
-          workspaceId!,
-        );
+        ).load(workspaceId!);
         expect(
           bound.bundle.skillIds,
           contains('local:$catalogL2SkillDirectory'),

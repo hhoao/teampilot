@@ -70,7 +70,7 @@ class _McpCap implements McpCapability {
 }
 
 class _NativeCap implements TeamBehaviorCapability {
-  const _NativeCap({this.native = true});
+  const _NativeCap() : native = true;
 
   final bool native;
 

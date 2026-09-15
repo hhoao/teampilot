@@ -79,7 +79,7 @@ void main() {
       );
       expect(idx, isNotNull);
       expect(text.substring(idx!), startsWith('fix'));
-      expect(idx! + 'fix'.length, lessThanOrEqualTo(text.length));
+      expect(idx + 'fix'.length, lessThanOrEqualTo(text.length));
     });
 
     test('returns null for blanks and non-matches', () {
@@ -224,52 +224,51 @@ void main() {
       expect(matches.single.memberLabel, 'dev');
     });
 
-    test('warm reuses chat history messages when the source token matches',
-        () async {
-      var parseCalls = 0;
-      final cached = [
-        AiMessage(
-          id: 'cached',
-          role: AiRole.user,
-          parts: [AiTextPart(text: 'cached red widget')],
-        ),
-      ];
-      final registry = fakeAiHistoryRegistry(
-        cli: CliTool.claude,
-        adapter: _CountingParseAdapter(() => parseCalls++),
-        locate: (_) async => const AiTranscriptBundle(
-          adapterId: 'claude',
-          fragments: [
-            AiTranscriptFragment(name: 's.jsonl', bytes: [0x7B, 0x7D]),
-          ],
-          hints: {'cacheToken': '/proj/s.jsonl|2026-01-01T00:00:00.000Z|2'},
-        ),
-      );
-      final index = WorkspaceSessionContentIndex(
-        fs: fs,
-        layout: RuntimeLayout(teampilotRoot: root, fs: fs),
-        appDataRoot: root,
-        registry: registry,
-        cachedHistoryMessages: ({
-          required sessionId,
-          required memberId,
-          required token,
-        }) {
-          if (token == '/proj/s.jsonl|2026-01-01T00:00:00.000Z|2') {
-            return cached;
-          }
-          return null;
-        },
-      );
-      final sessions = [simpleSession()];
+    test(
+      'warm reuses chat history messages when the source token matches',
+      () async {
+        var parseCalls = 0;
+        final cached = [
+          AiMessage(
+            id: 'cached',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'cached red widget')],
+          ),
+        ];
+        final registry = fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: _CountingParseAdapter(() => parseCalls++),
+          locate: (_) async => const AiTranscriptBundle(
+            adapterId: 'claude',
+            fragments: [
+              AiTranscriptFragment(name: 's.jsonl', bytes: [0x7B, 0x7D]),
+            ],
+            hints: {'cacheToken': '/proj/s.jsonl|2026-01-01T00:00:00.000Z|2'},
+          ),
+        );
+        final index = WorkspaceSessionContentIndex(
+          fs: fs,
+          layout: RuntimeLayout(teampilotRoot: root, fs: fs),
+          appDataRoot: root,
+          registry: registry,
+          cachedHistoryMessages:
+              ({required sessionId, required memberId, required token}) {
+                if (token == '/proj/s.jsonl|2026-01-01T00:00:00.000Z|2') {
+                  return cached;
+                }
+                return null;
+              },
+        );
+        final sessions = [simpleSession()];
 
-      await index.warm(sessions: sessions);
+        await index.warm(sessions: sessions);
 
-      expect(parseCalls, 0);
-      final matches = index.search('red', sessions: sessions);
-      expect(matches, hasLength(1));
-      expect(matches.single.snippet.toLowerCase(), contains('red'));
-    });
+        expect(parseCalls, 0);
+        final matches = index.search('red', sessions: sessions);
+        expect(matches, hasLength(1));
+        expect(matches.single.snippet.toLowerCase(), contains('red'));
+      },
+    );
 
     test('invalidateSession drops a session so it no longer matches', () async {
       await writeSimpleTranscript('sess-1');

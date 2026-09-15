@@ -9,7 +9,6 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/ai_feature_setting.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/cli_preset.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/team_generation_settings.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_landing_generate_settings_dialog.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
@@ -76,9 +75,7 @@ Widget buildGenerateSettingsTestHost() {
     providers: [RepositoryProvider<HomeStorage>.value(value: testHomeStorage)],
     child: MultiBlocProvider(
       providers: [
-        BlocProvider<AiFeatureSettingsCubit>(
-          create: (_) => aiSettingsCubit,
-        ),
+        BlocProvider<AiFeatureSettingsCubit>(create: (_) => aiSettingsCubit),
         BlocProvider<AppProviderCubit>(create: (_) => appProviderCubit),
         BlocProvider<CliPresetsCubit>(create: (_) => presetsCubit),
       ],
@@ -142,19 +139,22 @@ void main() {
     expect(nativeIds, isNot(contains(CliTool.cursor)));
   });
 
-  test('generator may use any launchable cli even when native team is locked', () {
-    final registry = CliToolRegistry.builtIn();
-    final launchable = {
-      for (final definition in registry.launchable) definition.id,
-    };
-    final native = {
-      for (final definition in registry.nativeTeamLaunchable) definition.id,
-    };
+  test(
+    'generator may use any launchable cli even when native team is locked',
+    () {
+      final registry = CliToolRegistry.builtIn();
+      final launchable = {
+        for (final definition in registry.launchable) definition.id,
+      };
+      final native = {
+        for (final definition in registry.nativeTeamLaunchable) definition.id,
+      };
 
-    // Product rule: pool is native-filtered; generator is not.
-    expect(launchable.difference(native), isNotEmpty);
-    expect(launchable, contains(CliTool.codex));
-  });
+      // Product rule: pool is native-filtered; generator is not.
+      expect(launchable.difference(native), isNotEmpty);
+      expect(launchable, contains(CliTool.codex));
+    },
+  );
 
   testWidgets('loads three and saves a larger minimum', (tester) async {
     await tester.pumpWidget(buildGenerateSettingsTestHost());
@@ -211,10 +211,7 @@ void main() {
       of: find.text('Save'),
       matching: find.byType(TextButton),
     );
-    expect(
-      tester.widget<TextButton>(saveButton).onPressed,
-      isNull,
-    );
+    expect(tester.widget<TextButton>(saveButton).onPressed, isNull);
 
     await tester.enterText(minimumField, '');
     await tester.pump();

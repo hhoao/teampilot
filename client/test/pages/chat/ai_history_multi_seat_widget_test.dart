@@ -3,7 +3,6 @@ import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/ai_history_cubit.dart';
-import 'package:teampilot/cubits/ai_history_seat.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/runtime_target.dart';
@@ -45,7 +44,7 @@ void main() {
       folders: s.folders,
       createdAt: 0,
     ),
-                                                                            usesPosixPaths: false,
+    usesPosixPaths: false,
   );
 
   List<AiMessage> markerMessages(String marker) => [
@@ -103,92 +102,91 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  testWidgets(
-    'softReload seat A updates only that SessionHistoryThread',
-    (tester) async {
-      final sessionA = simpleSession(id: 'sess-a');
-      final sessionB = simpleSession(id: 'sess-b');
+  testWidgets('softReload seat A updates only that SessionHistoryThread', (
+    tester,
+  ) async {
+    final sessionA = simpleSession(id: 'sess-a');
+    final sessionB = simpleSession(id: 'sess-b');
 
-      await cubit.load(
-        session: sessionA,
-        memberId: '',
-        launchContext: launchCtx(sessionA),
-      );
-      await cubit.load(
-        session: sessionB,
-        memberId: '',
-        launchContext: launchCtx(sessionB),
-      );
+    await cubit.load(
+      session: sessionA,
+      memberId: '',
+      launchContext: launchCtx(sessionA),
+    );
+    await cubit.load(
+      session: sessionB,
+      memberId: '',
+      launchContext: launchCtx(sessionB),
+    );
 
-      final seatA = cubit.ensureSeat(
-        sessionId: sessionA.sessionId,
-        selectedMemberId: '',
-      );
-      final seatB = cubit.ensureSeat(
-        sessionId: sessionB.sessionId,
-        selectedMemberId: '',
-      );
-      expect(identical(seatA.runtime, seatB.runtime), isFalse);
+    final seatA = cubit.ensureSeat(
+      sessionId: sessionA.sessionId,
+      selectedMemberId: '',
+    );
+    final seatB = cubit.ensureSeat(
+      sessionId: sessionB.sessionId,
+      selectedMemberId: '',
+    );
+    expect(identical(seatA.runtime, seatB.runtime), isFalse);
 
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('en'),
-          theme: ThemeData(extensions: [AiMessageTheme.test()]),
-          home: Scaffold(
-            body: Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 400,
-                    child: SessionHistoryThread(
-                      key: const ValueKey('thread-a'),
-                      runtime: seatA.runtime,
-                      hasOlder: false,
-                      isLoadingOlder: false,
-                    ),
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        theme: ThemeData(extensions: [AiMessageTheme.test()]),
+        home: Scaffold(
+          body: Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 400,
+                  child: SessionHistoryThread(
+                    key: const ValueKey('thread-a'),
+                    runtime: seatA.runtime,
+                    hasOlder: false,
+                    isLoadingOlder: false,
                   ),
                 ),
-                Expanded(
-                  child: SizedBox(
-                    height: 400,
-                    child: SessionHistoryThread(
-                      key: const ValueKey('thread-b'),
-                      runtime: seatB.runtime,
-                      hasOlder: false,
-                      isLoadingOlder: false,
-                    ),
+              ),
+              Expanded(
+                child: SizedBox(
+                  height: 400,
+                  child: SessionHistoryThread(
+                    key: const ValueKey('thread-b'),
+                    runtime: seatB.runtime,
+                    hasOlder: false,
+                    isLoadingOlder: false,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.text('marker-A'), findsOneWidget);
-      expect(find.text('marker-B'), findsOneWidget);
-      expect(find.text('extra-A-tip'), findsNothing);
+    expect(find.text('marker-A'), findsOneWidget);
+    expect(find.text('marker-B'), findsOneWidget);
+    expect(find.text('extra-A-tip'), findsNothing);
 
-      messagesBySession['sess-a'] = [
-        ...markerMessages('A'),
-        const AiMessage(
-          id: 'm-A-tip',
-          role: AiRole.assistant,
-          parts: [AiTextPart(text: 'extra-A-tip')],
-        ),
-      ];
-      await seatA.softReload();
-      await tester.pumpAndSettle();
+    messagesBySession['sess-a'] = [
+      ...markerMessages('A'),
+      const AiMessage(
+        id: 'm-A-tip',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'extra-A-tip')],
+      ),
+    ];
+    await seatA.softReload();
+    await tester.pumpAndSettle();
 
-      expect(find.text('extra-A-tip'), findsOneWidget);
-      expect(find.text('marker-A'), findsOneWidget);
-      expect(find.text('marker-B'), findsOneWidget);
-      expect(find.textContaining('extra-B'), findsNothing);
-    },
-  );
+    expect(find.text('extra-A-tip'), findsOneWidget);
+    expect(find.text('marker-A'), findsOneWidget);
+    expect(find.text('marker-B'), findsOneWidget);
+    expect(find.textContaining('extra-B'), findsNothing);
+  });
 
   test(
     'loadSubagentAttachment only resolves the requested running id',
@@ -256,9 +254,7 @@ void main() {
 
 AiTranscriptBundle _bundleForSession(String sessionId) => AiTranscriptBundle(
   adapterId: 'claude',
-  fragments: const [
-    AiTranscriptFragment(name: 'canned.jsonl', bytes: []),
-  ],
+  fragments: const [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
   hints: {'sessionId': sessionId},
 );
 
@@ -319,6 +315,5 @@ class _CountingSideResolver implements SubagentSideResolver {
   Future<String?> fingerprint({
     required SessionHistoryContext ctx,
     required String? rootTranscriptPath,
-  }) async =>
-      null;
+  }) async => null;
 }
