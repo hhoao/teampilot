@@ -28,10 +28,7 @@ void main() {
 
   test('authorize creates the file, chmod 600, and appends the line', () async {
     await keys.authorize(keyA);
-    expect(
-      await fs.readString('$home/.ssh/authorized_keys'),
-      '$keyA\n',
-    );
+    expect(await fs.readString('$home/.ssh/authorized_keys'), '$keyA\n');
     expect(chmoded, ['$home/.ssh/authorized_keys']);
   });
 
@@ -45,12 +42,33 @@ void main() {
 
   test('revoke removes matching blobs and leaves others', () async {
     await fs.ensureDir('$home/.ssh');
-    await fs.atomicWrite(
-      '$home/.ssh/authorized_keys',
-      '$keyA\n$keyB\n',
-    );
+    await fs.atomicWrite('$home/.ssh/authorized_keys', '$keyA\n$keyB\n');
     await keys.revoke(keyAComment);
     expect(await fs.readString('$home/.ssh/authorized_keys'), '$keyB\n');
     expect(chmoded, ['$home/.ssh/authorized_keys']);
+  });
+
+  test(
+    'authorize throws on a malformed blob and leaves the file unchanged',
+    () async {
+      await fs.ensureDir('$home/.ssh');
+      await fs.atomicWrite('$home/.ssh/authorized_keys', '$keyA\n');
+
+      await expectLater(
+        keys.authorize('ssh-ed25519 !!!not-base64!!! phone'),
+        throwsA(isA<FormatException>()),
+      );
+
+      expect(await fs.readString('$home/.ssh/authorized_keys'), '$keyA\n');
+      expect(chmoded, isEmpty);
+    },
+  );
+
+  test('authorize throws when publicKey contains a newline', () async {
+    await expectLater(
+      keys.authorize('$keyA\nssh-ed25519 AAAA extra'),
+      throwsA(isA<FormatException>()),
+    );
+    expect(await fs.readString('$home/.ssh/authorized_keys'), isNull);
   });
 }

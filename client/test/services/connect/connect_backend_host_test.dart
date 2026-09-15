@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/connect/connect_backend_host.dart';
 import 'package:teampilot/services/connect/connect_settings_store.dart';
@@ -73,5 +75,81 @@ void main() {
     expect((await store.load()).sshBackend, ConnectSshBackendKind.system);
     expect(host.kind, ConnectSshBackendKind.embedded);
     expect(host.current.isEmbedded, isTrue);
+  });
+
+  test('failed start does not commit the next kind', () async {
+    final embedded = FakeEmbeddedServer(isListening: true, port: 54321);
+    final system = FakeEmbeddedServer(
+      isListening: false,
+      port: 22,
+      isEmbedded: false,
+      hostKeyFingerprints: const ['SHA256:sys'],
+    );
+    system.onStart = () async {
+      throw StateError('system sshd down');
+    };
+    final host = ConnectBackendHost(
+      embedded: embedded,
+      system: system,
+      settings: store,
+      systemSshdSelectable: true,
+    );
+    await host.startSelected();
+
+    await expectLater(
+      host.select(ConnectSshBackendKind.system),
+      throwsA(isA<StateError>()),
+    );
+
+    expect(host.kind, ConnectSshBackendKind.embedded);
+    expect(host.current, same(embedded));
+  });
+
+  test('overlapping select calls do not interleave stop/start', () async {
+    final events = <String>[];
+    final releaseSystemStart = Completer<void>();
+    final embedded = FakeEmbeddedServer(isListening: true, port: 54321);
+    embedded.onStart = () async {
+      events.add('embedded-start');
+      embedded.isListening = true;
+    };
+    final system = FakeEmbeddedServer(
+      isListening: false,
+      port: 22,
+      isEmbedded: false,
+      hostKeyFingerprints: const ['SHA256:sys'],
+    );
+    system.onStart = () async {
+      events.add('system-start-begin');
+      await releaseSystemStart.future;
+      events.add('system-start-end');
+      system.isListening = true;
+    };
+    final host = ConnectBackendHost(
+      embedded: embedded,
+      system: system,
+      settings: store,
+      systemSshdSelectable: true,
+    );
+    await host.startSelected();
+
+    final toSystem = host.select(ConnectSshBackendKind.system);
+    await Future<void>.delayed(Duration.zero);
+    expect(events, ['embedded-start', 'system-start-begin']);
+    final toEmbedded = host.select(ConnectSshBackendKind.embedded);
+    await Future<void>.delayed(Duration.zero);
+    expect(events, ['embedded-start', 'system-start-begin']);
+
+    releaseSystemStart.complete();
+    await Future.wait([toSystem, toEmbedded]);
+
+    expect(events, [
+      'embedded-start',
+      'system-start-begin',
+      'system-start-end',
+      'embedded-start',
+    ]);
+    expect(host.kind, ConnectSshBackendKind.embedded);
+    expect(host.current, same(embedded));
   });
 }

@@ -20,15 +20,13 @@ class AuthorizedKeysFile {
   Future<void> authorize(String publicKey) async {
     await fs.ensureDir('$homePath/.ssh');
     final trimmed = publicKey.trim();
-    final targetBlob = _decodePublicKeyBlob(trimmed);
+    final targetBlob = _requirePublicKeyBlob(trimmed);
 
     var content = await fs.readString(path) ?? '';
     for (final line in content.split('\n')) {
       if (line.isEmpty) continue;
       final blob = _decodePublicKeyBlob(line);
-      if (blob != null &&
-          targetBlob != null &&
-          _bytesEqual(blob, targetBlob)) {
+      if (blob != null && _bytesEqual(blob, targetBlob)) {
         return;
       }
     }
@@ -70,6 +68,19 @@ class AuthorizedKeysFile {
     await fs.atomicWrite(path, newContent);
     await _chmod600?.call(path);
   }
+}
+
+List<int> _requirePublicKeyBlob(String publicKeyLine) {
+  if (publicKeyLine.contains('\n') || publicKeyLine.contains('\r')) {
+    throw const FormatException('authorized_keys entry must be a single line');
+  }
+  final blob = _decodePublicKeyBlob(publicKeyLine);
+  if (blob == null) {
+    throw const FormatException(
+      'authorized_keys entry must be "<type> <base64> [comment]"',
+    );
+  }
+  return blob;
 }
 
 List<int>? _decodePublicKeyBlob(String publicKeyLine) {

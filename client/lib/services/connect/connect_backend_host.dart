@@ -1,3 +1,5 @@
+import 'package:synchronized/synchronized.dart';
+
 import 'connect_settings_store.dart';
 import 'connect_ssh_backend.dart';
 
@@ -18,6 +20,7 @@ class ConnectBackendHost {
   final ConnectSshBackend? _system;
   final ConnectSettingsStore _settings;
   final bool systemSshdSelectable;
+  final Lock _switchLock = Lock();
 
   ConnectSshBackend _current;
   ConnectSshBackendKind _kind;
@@ -25,11 +28,17 @@ class ConnectBackendHost {
   ConnectSshBackend get current => _current;
   ConnectSshBackendKind get kind => _kind;
 
-  Future<void> startSelected() => _applyEffective();
+  /// Present when the process constructed a system sshd backend, even if
+  /// [current] is the embedded server after a switch.
+  ConnectSshBackend? get system => _system;
 
-  Future<void> select(ConnectSshBackendKind requested) async {
-    await _settings.saveSshBackend(requested);
-    await _applyEffective();
+  Future<void> startSelected() => _switchLock.synchronized(_applyEffective);
+
+  Future<void> select(ConnectSshBackendKind requested) {
+    return _switchLock.synchronized(() async {
+      await _settings.saveSshBackend(requested);
+      await _applyEffective();
+    });
   }
 
   Future<ConnectSshBackendKind> _effectiveKind() async {
@@ -47,8 +56,8 @@ class ConnectBackendHost {
         ? _system!
         : _embedded;
     await _current.stop();
+    await next.start();
     _current = next;
     _kind = nextKind;
-    await _current.start();
   }
 }

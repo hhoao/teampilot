@@ -9,17 +9,14 @@ void main() {
     final prints = fingerprintsFromSshKeyScan(stdout);
 
     expect(prints, hasLength(1));
-    expect(prints.single, startsWith('SHA256:'));
+    expect(prints.single, 'SHA256:FvilWia5vBU67xx6gAb1dRPgDkgTyXLMZHAF351r4hE');
   });
 
   test('sample is down when probe fails', () async {
     final presence = SshdPresence(
       probe: () async => false,
-      scan: () async => (
-        exitCode: 0,
-        stdout: '127.0.0.1 ssh-ed25519 AAAA\n',
-        stderr: '',
-      ),
+      scan: () async =>
+          (exitCode: 0, stdout: '127.0.0.1 ssh-ed25519 AAAA\n', stderr: ''),
     );
 
     final shot = await presence.sample();
@@ -31,11 +28,7 @@ void main() {
   test('sample is down when scan returns no keys', () async {
     final presence = SshdPresence(
       probe: () async => true,
-      scan: () async => (
-        exitCode: 1,
-        stdout: '',
-        stderr: 'Connection refused',
-      ),
+      scan: () async => (exitCode: 1, stdout: '', stderr: 'Connection refused'),
     );
 
     final shot = await presence.sample();
@@ -48,16 +41,16 @@ void main() {
     const blob = 'AAAAC3NzaC1lZDI1NTE5AAAAIGZha2VrZXlh';
     final presence = SshdPresence(
       probe: () async => true,
-      scan: () async => (
-        exitCode: 0,
-        stdout: '127.0.0.1 ssh-ed25519 $blob\n',
-        stderr: '',
-      ),
+      scan: () async =>
+          (exitCode: 0, stdout: '127.0.0.1 ssh-ed25519 $blob\n', stderr: ''),
     );
 
     final shot = await presence.sample();
 
     expect(shot.listening, isTrue);
-    expect(shot.fingerprints.single, startsWith('SHA256:'));
+    expect(
+      shot.fingerprints.single,
+      'SHA256:FvilWia5vBU67xx6gAb1dRPgDkgTyXLMZHAF351r4hE',
+    );
   });
 }

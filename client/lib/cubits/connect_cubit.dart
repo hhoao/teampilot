@@ -380,11 +380,22 @@ class ConnectCubit extends Cubit<ConnectState> {
   }
 
   Future<void> selectSshBackend(ConnectSshBackendKind kind) async {
-    await _backends.select(kind);
-    await _agent.replaceSshBackend(_backends.current);
-    await refresh();
-    if (!isClosed) {
-      emit(state.copyWith(sshBackend: _backends.kind, rePairNotice: true));
+    try {
+      await _backends.select(kind);
+      await _agent.replaceSshBackend(_backends.current);
+      await refresh();
+      if (!isClosed) {
+        emit(state.copyWith(sshBackend: _backends.kind, rePairNotice: true));
+      }
+    } on Object {
+      try {
+        await _agent.replaceSshBackend(_backends.current);
+      } on Object {
+        // Keep the originating switch failure as the UI error.
+      }
+      if (!isClosed) {
+        emit(state.copyWith(sshBackend: _backends.kind, hasError: true));
+      }
     }
   }
 
@@ -499,7 +510,13 @@ class ConnectCubit extends Cubit<ConnectState> {
     try {
       final key = await _deviceStore.publicKeyForDevice(deviceId);
       if (key != null) {
-        await _backends.current.revokePublicKey(key);
+        final system = _backends.system;
+        if (system != null) {
+          await system.revokePublicKey(key);
+        }
+        if (!identical(_backends.current, system)) {
+          await _backends.current.revokePublicKey(key);
+        }
       }
       await _deviceStore.revokeDevice(deviceId);
       if (!isClosed) {

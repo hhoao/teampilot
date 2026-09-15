@@ -459,8 +459,8 @@ void main() {
       expect(cubit.state.rePairNotice, isTrue);
       expect(starts, 2);
 
-    cubit.ackRePairNotice();
-    expect(cubit.state.rePairNotice, isFalse);
+      cubit.ackRePairNotice();
+      expect(cubit.state.rePairNotice, isFalse);
     },
   );
 
@@ -529,6 +529,148 @@ void main() {
       expect(keyStillPresentDuringRevoke, isTrue);
       expect(cubit.state.pairedDevices, isEmpty);
       expect(await deviceStore.publicKeyForDevice('phone-1'), isNull);
+    },
+  );
+
+  test(
+    'revokeDevice revokes the system key after switching to embedded',
+    () async {
+      const publicKey = 'ssh-ed25519 AAAA1';
+      final deviceStore = _deviceStore();
+      await deviceStore.issueDevice(
+        deviceId: 'phone-1',
+        publicKey: publicKey,
+        deviceName: 'Pixel',
+      );
+      final settingsStore = _settingsStore();
+      final embedded = FakeEmbeddedServer();
+      final system = FakeEmbeddedServer(
+        isListening: false,
+        port: 22,
+        isEmbedded: false,
+        hostKeyFingerprints: const ['SHA256:sys'],
+      );
+      system.onStart = () async {
+        system.isListening = true;
+      };
+      final host = ConnectBackendHost(
+        embedded: embedded,
+        system: system,
+        settings: settingsStore,
+        systemSshdSelectable: true,
+      );
+      await host.startSelected();
+      await host.select(ConnectSshBackendKind.system);
+      await system.authorizePublicKey(publicKey);
+      ConnectSshBackend? replaced;
+      final cubit = ConnectCubit(
+        agent: ConnectAgentController(
+          currentOffer: () => _offer(),
+          startQrSession:
+              ({
+                required advertiseAddress,
+                required username,
+                required displayName,
+                required appDataRoot,
+              }) async {},
+          stopQrSession: () async {},
+          regenerateQr: () async {},
+          updateExtraEndpoints: (_) async {},
+          replaceSshBackend: (backend) async => replaced = backend,
+        ),
+        backends: host,
+        deviceStore: deviceStore,
+        settingsStore: settingsStore,
+        listNetworkAddresses: () async => const [
+          ConnectNetworkAddress(
+            name: 'Wi-Fi',
+            address: '192.168.1.20',
+            isLoopback: false,
+            isIpv4: true,
+          ),
+        ],
+        username: 'alice',
+        displayName: 'Alice desktop',
+        appDataRoot: '/app-data',
+      );
+      addTearDown(cubit.close);
+
+      await cubit.openQrSession();
+      await cubit.selectSshBackend(ConnectSshBackendKind.embedded);
+      expect(replaced, same(embedded));
+      expect(cubit.state.sshBackend, ConnectSshBackendKind.embedded);
+
+      await cubit.revokeDevice('phone-1');
+
+      expect(system.revokedPublicKeys, [publicKey]);
+      expect(embedded.revokedPublicKeys, [publicKey]);
+      expect(await deviceStore.hasDevice('phone-1'), isFalse);
+    },
+  );
+
+  test(
+    'selectSshBackend emits hasError and keeps host/agent on embedded when start fails',
+    () async {
+      ConnectSshBackend? replaced;
+      final settingsStore = _settingsStore();
+      final embedded = FakeEmbeddedServer();
+      final system = FakeEmbeddedServer(
+        isListening: false,
+        port: 22,
+        isEmbedded: false,
+        hostKeyFingerprints: const ['SHA256:sys'],
+      );
+      system.onStart = () async {
+        throw StateError('system sshd down');
+      };
+      final host = ConnectBackendHost(
+        embedded: embedded,
+        system: system,
+        settings: settingsStore,
+        systemSshdSelectable: true,
+      );
+      await host.startSelected();
+      final cubit = ConnectCubit(
+        agent: ConnectAgentController(
+          currentOffer: () => _offer(),
+          startQrSession:
+              ({
+                required advertiseAddress,
+                required username,
+                required displayName,
+                required appDataRoot,
+              }) async {},
+          stopQrSession: () async {},
+          regenerateQr: () async {},
+          updateExtraEndpoints: (_) async {},
+          replaceSshBackend: (backend) async => replaced = backend,
+        ),
+        backends: host,
+        deviceStore: _deviceStore(),
+        settingsStore: settingsStore,
+        listNetworkAddresses: () async => const [
+          ConnectNetworkAddress(
+            name: 'Wi-Fi',
+            address: '192.168.1.20',
+            isLoopback: false,
+            isIpv4: true,
+          ),
+        ],
+        username: 'alice',
+        displayName: 'Alice desktop',
+        appDataRoot: '/app-data',
+      );
+      addTearDown(cubit.close);
+
+      await cubit.openQrSession();
+      await cubit.selectSshBackend(ConnectSshBackendKind.system);
+
+      expect(cubit.state.hasError, isTrue);
+      expect(cubit.state.sshBackend, ConnectSshBackendKind.embedded);
+      expect(cubit.state.rePairNotice, isFalse);
+      expect(host.kind, ConnectSshBackendKind.embedded);
+      expect(host.current, same(embedded));
+      expect(replaced, same(embedded));
     },
   );
 }

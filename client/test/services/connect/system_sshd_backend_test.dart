@@ -56,4 +56,59 @@ void main() {
       isEmpty,
     );
   });
+
+  test('restart resamples presence', () async {
+    var listening = true;
+    final backend = SystemSshdBackend(
+      presence: SshdPresence(
+        probe: () async => listening,
+        scan: () async => (
+          exitCode: 0,
+          stdout:
+              '127.0.0.1 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGZha2VrZXlh\n',
+          stderr: '',
+        ),
+      ),
+      authorizedKeys: AuthorizedKeysFile(
+        fs: InMemoryFilesystem(),
+        homePath: '/home/alice',
+      ),
+    );
+    await backend.start();
+    expect(backend.isListening, isTrue);
+
+    listening = false;
+    await backend.restart();
+    expect(backend.isListening, isFalse);
+    expect(backend.hostKeyFingerprints, isEmpty);
+
+    listening = true;
+    await backend.restart();
+    expect(backend.isListening, isTrue);
+    expect(backend.hostKeyFingerprints, isNotEmpty);
+  });
+
+  test('port getter stays 22 after stop when not listening', () async {
+    final backend = SystemSshdBackend(
+      presence: SshdPresence(
+        probe: () async => true,
+        scan: () async => (
+          exitCode: 0,
+          stdout:
+              '127.0.0.1 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGZha2VrZXlh\n',
+          stderr: '',
+        ),
+      ),
+      authorizedKeys: AuthorizedKeysFile(
+        fs: InMemoryFilesystem(),
+        homePath: '/home/alice',
+      ),
+    );
+    expect(backend.port, 22);
+    await backend.start();
+    expect(backend.port, 22);
+    await backend.stop();
+    expect(backend.isListening, isFalse);
+    expect(backend.port, 22);
+  });
 }
