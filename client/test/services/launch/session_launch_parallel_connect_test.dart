@@ -3,6 +3,7 @@ import 'package:teampilot/cubits/chat/chat_tab_store.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
+import 'package:teampilot/cubits/chat/session_launch_service.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -125,4 +126,37 @@ void main() {
 
     expect(serialize, isFalse);
   });
+
+  test('session connecting does not claim a different member', () {
+    final tabStore = ChatTabStore(storage: fakeHomeStorage())
+      ..setActiveWorkspaceId('w1');
+    tabStore.registerSession(_tab('s1'));
+    final service = SessionLaunchService(
+      _LaunchHost(tabStore),
+      storage: fakeHomeStorage(),
+    );
+
+    expect(
+      service.isMemberConnectOwnedElsewhere('s1', 'builder-0'),
+      isFalse,
+      reason:
+          'a different member must still be scheduled while the session connects',
+    );
+  });
+}
+
+class _LaunchHost implements SessionLaunchHost {
+  _LaunchHost(this.tabStore);
+
+  @override
+  final ChatTabStore tabStore;
+
+  @override
+  bool isSessionConnecting(String sessionId) => true;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    if (invocation.isGetter || invocation.isSetter) return null;
+    return super.noSuchMethod(invocation);
+  }
 }
