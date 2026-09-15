@@ -569,11 +569,14 @@ class _SessionChatViewState extends State<SessionChatView> {
         seat.state.status == AiHistoryViewStatus.ready &&
         seat.state.sessionId == widget.session.sessionId &&
         seat.state.memberId == widget.selectedMemberId;
-    // A list-row stub carries no persisted CLI (resolver falls back to claude).
-    // Load the session document first so the cold parse locates the real
-    // transcript once instead of guessing and re-parsing.
+    // A list-row stub carries no persisted CLI (resolver falls back to claude),
+    // so the cold parse would locate the wrong transcript. Hydrate the session
+    // document on EVERY cold load: the widget's snapshot can be a stale stub
+    // even after the store marked the document (store emits a newer full doc on
+    // hydrate). Hydration is single-flight and a cache hit once the doc exists,
+    // so this is a state/disk read only when the load genuinely precedes it.
     var session = widget.session;
-    if (!ready && !chat.sessionHasDocument(session.sessionId)) {
+    if (!ready) {
       final hydrated = await chat.hydrateSessionDocument(
         session.workspaceId,
         session.sessionId,

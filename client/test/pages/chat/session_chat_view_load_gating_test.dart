@@ -500,6 +500,33 @@ void main() {
     expect(loaded.cli, CliTool.cursor);
   });
 
+  testWidgets(
+    'cold hot mount still hydrates when the store already marks the document',
+    (tester) async {
+      // The widget can hold a pre-hydration list-row stub (cli=null -> claude
+      // fallback) even after the store marked the document and emitted a newer
+      // full doc. The cold load must still ask the store for the authoritative
+      // document, otherwise the previous codex transcript is never located.
+      final h = _Harness(tester)
+        ..hasDocument = true
+        ..hydratedDocument = _session('s1', cli: CliTool.cursor);
+      await h.pump(session: _session('s1'), active: true);
+      verify(() => h.chatCubit.hydrateSessionDocument('ws-1', 's1')).called(1);
+      final loaded =
+          verify(
+                () => h.seat.softReloadOrLoad(
+                  session: captureAny(named: 'session'),
+                  memberId: any(named: 'memberId'),
+                  launchContext: any(named: 'launchContext'),
+                  team: any(named: 'team'),
+                  workingDirectory: any(named: 'workingDirectory'),
+                ),
+              ).captured.single
+              as AppSession;
+      expect(loaded.cli, CliTool.cursor);
+    },
+  );
+
   testWidgets('ready hot mount does not re-hydrate the document', (
     tester,
   ) async {

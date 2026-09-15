@@ -250,6 +250,9 @@ void main() {
           memberId: any(named: 'memberId'),
         )).thenReturn(false);
     when(() => chatCubit.sessionHasDocument(any())).thenReturn(true);
+    when(
+      () => chatCubit.hydrateSessionDocument(any(), any()),
+    ).thenAnswer((_) async => null);
     when(() => chatCubit.lifecycle).thenReturn(lifecycle);
     when(() => chatCubit.followUpQueue).thenReturn(
       InMemoryFollowUpQueueStore(),
