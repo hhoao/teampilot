@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/ai_history_cubit.dart';
@@ -10,6 +12,7 @@ import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/ai_history_locator.dart';
+import 'package:teampilot/services/session/history_parse_worker.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
@@ -60,15 +63,9 @@ void main() {
     (p) => p is AiTextPart && p.text.contains(needle),
   );
 
-  setUp(() {
-    setUpTestAppStorage();
-    messagesBySession = {
-      'sess-a': markerMessages('A'),
-      'sess-b': markerMessages('B'),
-    };
-    locator = _ScriptedLocator();
+  AiHistoryLoader makeLoader({HistoryParseExecutor? parseExecutor}) {
     final fs = LocalFilesystem();
-    loader = AiHistoryLoader(
+    return AiHistoryLoader(
       contextBuilder: const SessionHistoryContextBuilder(),
       resolveWorkContext: (_, {String? memberId}) async => RuntimeContext(
         target: RuntimeTarget.local(),
@@ -98,7 +95,18 @@ void main() {
         }
         return buf.toString();
       },
+      parseExecutor: parseExecutor,
     );
+  }
+
+  setUp(() {
+    setUpTestAppStorage();
+    messagesBySession = {
+      'sess-a': markerMessages('A'),
+      'sess-b': markerMessages('B'),
+    };
+    locator = _ScriptedLocator();
+    loader = makeLoader();
     cubit = AiHistoryCubit(loader: loader);
   });
 
@@ -355,12 +363,52 @@ void main() {
     // but must not throw and must still visit the ready seat.
     expect(idle.state.status, AiHistoryViewStatus.empty);
   });
+
+  test('late worker result cannot replace a newer seat generation', () async {
+    locator.emitBundle = true;
+    locator.emitLargeBundle = true;
+    final executor = _QueuedHistoryParseExecutor();
+    loader = makeLoader(parseExecutor: executor);
+    final seat = AiHistorySeat(loader: loader);
+    addTearDown(seat.close);
+    final sessionA = simpleSession(id: 'sess-a');
+    final sessionB = simpleSession(id: 'sess-b');
+
+    final loadA = seat.load(
+      session: sessionA,
+      memberId: '',
+      launchContext: launchCtx(sessionA),
+    );
+    await pumpEventQueue();
+    final loadB = seat.load(
+      session: sessionB,
+      memberId: '',
+      launchContext: launchCtx(sessionB),
+    );
+    await pumpEventQueue();
+    expect(executor.requests, hasLength(2));
+
+    executor.complete(0, 'old-result');
+    await pumpEventQueue();
+    expect(seat.runtime.messages, isEmpty);
+
+    executor.complete(1, 'new-result');
+    await Future.wait([loadA, loadB]);
+    expect(seat.state.sessionId, sessionB.sessionId);
+    expect(seat.runtime.messages.single.id, 'new-result');
+  });
 }
 
-AiTranscriptBundle _bundleForSession(String sessionId) => AiTranscriptBundle(
+AiTranscriptBundle _bundleForSession(
+  String sessionId, {
+  bool large = false,
+}) => AiTranscriptBundle(
   adapterId: 'claude',
-  fragments: const [
-    AiTranscriptFragment(name: 'canned.jsonl', bytes: []),
+  fragments: [
+    AiTranscriptFragment(
+      name: 'canned.jsonl',
+      bytes: large ? List<int>.filled(256 * 1024, 32) : const [],
+    ),
   ],
   hints: {'sessionId': sessionId},
 );
@@ -382,6 +430,7 @@ class _SessionMapAdapter implements AiTranscriptAdapter {
 
 class _ScriptedLocator extends AiHistoryLocator {
   bool emitBundle = false;
+  bool emitLargeBundle = false;
   Object? error;
   final queue = <Future<AiTranscriptBundle?>>[];
 
@@ -394,6 +443,40 @@ class _ScriptedLocator extends AiHistoryLocator {
     if (queue.isNotEmpty) return queue.removeAt(0);
     if (!emitBundle) return null;
     final sessionId = ctx.sessionId?.trim() ?? '';
-    return _bundleForSession(sessionId);
+    return _bundleForSession(sessionId, large: emitLargeBundle);
   }
+}
+
+final class _QueuedHistoryParseExecutor implements HistoryParseExecutor {
+  final requests = <Completer<HistoryParseResult>>[];
+
+  @override
+  Future<HistoryParseResult> parse({
+    required String adapterId,
+    required AiTranscriptBundle bundle,
+    String? workerEnricherId,
+    String? sourceToken,
+    String? rootTranscriptPath,
+  }) {
+    final request = Completer<HistoryParseResult>();
+    requests.add(request);
+    return request.future;
+  }
+
+  void complete(int index, String id) {
+    requests[index].complete(
+      HistoryParseResult(
+        messages: [
+          AiMessage(
+            id: id,
+            role: AiRole.assistant,
+            parts: [AiTextPart(text: id)],
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Future<void> dispose() async {}
 }
