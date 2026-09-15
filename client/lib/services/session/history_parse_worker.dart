@@ -42,6 +42,8 @@ final class HistoryParseWorker implements HistoryParseExecutor {
   HistoryParseWorker({
     @visibleForTesting this.idleTimeout = const Duration(seconds: 30),
     @visibleForTesting this.readyTimeout = const Duration(seconds: 10),
+    @visibleForTesting
+    this.debugBehavior = HistoryParseWorkerDebugBehavior.normal,
   });
 
   static final HistoryParseWorker instance = HistoryParseWorker();
@@ -52,11 +54,17 @@ final class HistoryParseWorker implements HistoryParseExecutor {
   @visibleForTesting
   final Duration readyTimeout;
 
+  @visibleForTesting
+  final HistoryParseWorkerDebugBehavior debugBehavior;
+
   _HistoryParseResidentWorker? _worker;
   var _spawnCount = 0;
 
   @visibleForTesting
   int get debugSpawnCount => _spawnCount;
+
+  @visibleForTesting
+  bool get debugHasResidentWorker => _worker != null;
 
   @override
   Future<HistoryParseResult> parse({
@@ -88,9 +96,14 @@ final class HistoryParseWorker implements HistoryParseExecutor {
     final existing = _worker;
     if (existing != null && !existing.isDead) return existing;
 
-    existing?.close();
     _spawnCount += 1;
-    return _worker = _HistoryParseResidentWorker(idleTimeout);
+    late final _HistoryParseResidentWorker worker;
+    worker = _HistoryParseResidentWorker(
+      idleTimeout,
+      debugBehavior: debugBehavior,
+      onTerminal: () => _discardWorker(worker),
+    );
+    return _worker = worker;
   }
 
   void _discardWorker([_HistoryParseResidentWorker? expected]) {
@@ -106,7 +119,41 @@ final class HistoryParseWorker implements HistoryParseExecutor {
   @visibleForTesting
   void debugInstallZombieWorker() {
     _discardWorker();
-    _worker = _HistoryParseResidentWorker.zombie();
+    late final _HistoryParseResidentWorker worker;
+    worker = _HistoryParseResidentWorker.zombie(
+      onTerminal: () => _discardWorker(worker),
+    );
+    _worker = worker;
+  }
+
+  @visibleForTesting
+  Future<void> debugWaitForPendingRequest() {
+    final worker = _worker;
+    if (worker == null) {
+      throw StateError('session-history-parser worker is unavailable');
+    }
+    return worker.debugWaitForPendingRequest();
+  }
+
+  @visibleForTesting
+  Future<void> debugTriggerIsolateError() =>
+      _debugTrigger(_HistoryParseDebugCommandKind.isolateError);
+
+  @visibleForTesting
+  Future<void> debugTriggerIsolateExit() =>
+      _debugTrigger(_HistoryParseDebugCommandKind.exit);
+
+  Future<void> _debugTrigger(_HistoryParseDebugCommandKind kind) {
+    final worker = _worker;
+    if (worker == null) {
+      throw StateError('session-history-parser worker is unavailable');
+    }
+    return worker.debugTrigger(kind, readyTimeout);
+  }
+
+  @visibleForTesting
+  void debugCloseResponsePort() {
+    _worker?.debugCloseResponsePort();
   }
 
   @override
@@ -115,18 +162,34 @@ final class HistoryParseWorker implements HistoryParseExecutor {
   }
 }
 
+@visibleForTesting
+enum HistoryParseWorkerDebugBehavior {
+  normal,
+  stallRequests,
+  delayFirstResponse,
+}
+
 final class _HistoryParseResidentWorker {
-  _HistoryParseResidentWorker(this.idleTimeout) {
+  _HistoryParseResidentWorker(
+    this.idleTimeout, {
+    required this.debugBehavior,
+    required this.onTerminal,
+  }) {
     _start();
   }
 
-  _HistoryParseResidentWorker.zombie() : idleTimeout = Duration.zero;
+  _HistoryParseResidentWorker.zombie({required this.onTerminal})
+    : idleTimeout = Duration.zero,
+      debugBehavior = HistoryParseWorkerDebugBehavior.normal;
 
   final Duration idleTimeout;
+  final HistoryParseWorkerDebugBehavior debugBehavior;
+  final void Function() onTerminal;
   final _pending = <int, Completer<HistoryParseResult>>{};
   final _responses = ReceivePort();
   final _control = ReceivePort();
   final _ready = Completer<SendPort>();
+  final _pendingRequest = Completer<void>();
 
   Isolate? _isolate;
   StreamSubscription<dynamic>? _responsesSub;
@@ -146,6 +209,7 @@ final class _HistoryParseResidentWorker {
         control: _control.sendPort,
         responses: _responses.sendPort,
         idleTimeoutMillis: idleTimeout.inMilliseconds,
+        debugBehavior: debugBehavior,
       ),
       debugName: 'session-history-parser',
       onError: _control.sendPort,
@@ -184,6 +248,9 @@ final class _HistoryParseResidentWorker {
     final requestId = _nextRequestId++;
     final completer = Completer<HistoryParseResult>();
     _pending[requestId] = completer;
+    if (!_pendingRequest.isCompleted) {
+      _pendingRequest.complete();
+    }
     try {
       port.send(
         _HistoryParseRequest(
@@ -226,6 +293,23 @@ final class _HistoryParseResidentWorker {
         throw error;
       },
     );
+  }
+
+  Future<void> debugWaitForPendingRequest() {
+    if (_pending.isNotEmpty) return Future.value();
+    return _pendingRequest.future;
+  }
+
+  Future<void> debugTrigger(
+    _HistoryParseDebugCommandKind kind,
+    Duration timeout,
+  ) async {
+    final port = await _waitReady(timeout);
+    port.send(_HistoryParseDebugCommand(kind));
+  }
+
+  void debugCloseResponsePort() {
+    _responses.close();
   }
 
   void _onControl(Object? message) {
@@ -289,6 +373,7 @@ final class _HistoryParseResidentWorker {
   void _fail(Object error, StackTrace stackTrace) {
     if (_failed) return;
     _failed = true;
+    onTerminal();
     if (!_ready.isCompleted) {
       _ready.completeError(error, stackTrace);
     }
@@ -324,11 +409,13 @@ final class _HistoryParseSpawnArgs {
     required this.control,
     required this.responses,
     required this.idleTimeoutMillis,
+    required this.debugBehavior,
   });
 
   final SendPort control;
   final SendPort responses;
   final int idleTimeoutMillis;
+  final HistoryParseWorkerDebugBehavior debugBehavior;
 }
 
 final class _HistoryParseRequest {
@@ -368,6 +455,14 @@ final class _HistoryParseWorkerExited {
   const _HistoryParseWorkerExited();
 }
 
+enum _HistoryParseDebugCommandKind { isolateError, exit }
+
+final class _HistoryParseDebugCommand {
+  const _HistoryParseDebugCommand(this.kind);
+
+  final _HistoryParseDebugCommandKind kind;
+}
+
 void _historyParseWorkerEntry(_HistoryParseSpawnArgs args) {
   final requests = ReceivePort();
   args.control.send(requests.sendPort);
@@ -391,10 +486,27 @@ void _historyParseWorkerEntry(_HistoryParseSpawnArgs args) {
 
   armIdleTimer();
   requests.listen((message) async {
+    if (message case _HistoryParseDebugCommand(:final kind)) {
+      switch (kind) {
+        case _HistoryParseDebugCommandKind.isolateError:
+          throw StateError('debug session-history-parser isolate error');
+        case _HistoryParseDebugCommandKind.exit:
+          exit();
+      }
+      return;
+    }
     if (message is! _HistoryParseRequest || exited) return;
     idleTimer?.cancel();
     activeRequests += 1;
+    if (args.debugBehavior == HistoryParseWorkerDebugBehavior.stallRequests) {
+      return;
+    }
     try {
+      if (args.debugBehavior ==
+              HistoryParseWorkerDebugBehavior.delayFirstResponse &&
+          message.requestId == 0) {
+        await Future<void>.delayed(const Duration(milliseconds: 30));
+      }
       final result = await parseHistoryBundleInWorker(
         adapterId: message.adapterId,
         bundle: message.bundle,

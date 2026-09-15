@@ -52,6 +52,131 @@ void main() {
     );
     await worker.dispose();
   });
+
+  test('request timeout discards a stalled resident worker', () async {
+    final worker = HistoryParseWorker(
+      readyTimeout: const Duration(milliseconds: 30),
+      debugBehavior: HistoryParseWorkerDebugBehavior.stallRequests,
+    );
+    addTearDown(worker.dispose);
+
+    await expectLater(
+      worker.parse(adapterId: 'claude', bundle: claudeBundle('u1', 'a1')),
+      throwsA(isA<TimeoutException>()),
+    );
+
+    expect(worker.debugHasResidentWorker, isFalse);
+  });
+
+  test(
+    'idle expiry discards the worker before the next parse respawns it',
+    () async {
+      final worker = HistoryParseWorker(
+        idleTimeout: const Duration(milliseconds: 20),
+        readyTimeout: const Duration(milliseconds: 200),
+      );
+      addTearDown(worker.dispose);
+
+      await worker.parse(adapterId: 'claude', bundle: claudeBundle('u1', 'a1'));
+      await waitForWorkerDiscard(worker);
+
+      expect(worker.debugHasResidentWorker, isFalse);
+      final result = await worker.parse(
+        adapterId: 'claude',
+        bundle: claudeBundle('u2', 'a2'),
+      );
+      expect(result.messages.last.id, 'a2');
+      expect(worker.debugSpawnCount, 2);
+    },
+  );
+
+  test('matches concurrent responses by request ID', () async {
+    final worker = HistoryParseWorker(
+      readyTimeout: const Duration(milliseconds: 200),
+      debugBehavior: HistoryParseWorkerDebugBehavior.delayFirstResponse,
+    );
+    addTearDown(worker.dispose);
+
+    final results = await Future.wait([
+      worker.parse(adapterId: 'claude', bundle: claudeBundle('u1', 'a1')),
+      worker.parse(adapterId: 'claude', bundle: claudeBundle('u2', 'a2')),
+    ]);
+
+    expect(results[0].messages.last.id, 'a1');
+    expect(results[1].messages.last.id, 'a2');
+  });
+
+  test('disposal fails a pending request and releases the worker', () async {
+    final worker = HistoryParseWorker(
+      readyTimeout: const Duration(milliseconds: 200),
+      debugBehavior: HistoryParseWorkerDebugBehavior.stallRequests,
+    );
+    addTearDown(worker.dispose);
+
+    final pending = worker.parse(
+      adapterId: 'claude',
+      bundle: claudeBundle('u1', 'a1'),
+    );
+    final pendingError = expectLater(pending, throwsA(isA<StateError>()));
+    await worker.debugWaitForPendingRequest();
+    await worker.dispose();
+
+    await pendingError;
+    expect(worker.debugHasResidentWorker, isFalse);
+  });
+
+  test('isolate error discards an idle worker before the next parse', () async {
+    final worker = HistoryParseWorker(
+      readyTimeout: const Duration(milliseconds: 200),
+    );
+    addTearDown(worker.dispose);
+
+    await worker.parse(adapterId: 'claude', bundle: claudeBundle('u1', 'a1'));
+    await worker.debugTriggerIsolateError();
+    await waitForWorkerDiscard(worker);
+
+    expect(worker.debugHasResidentWorker, isFalse);
+    await worker.parse(adapterId: 'claude', bundle: claudeBundle('u2', 'a2'));
+    expect(worker.debugSpawnCount, 2);
+  });
+
+  test('isolate exit discards an idle worker before the next parse', () async {
+    final worker = HistoryParseWorker(
+      readyTimeout: const Duration(milliseconds: 200),
+    );
+    addTearDown(worker.dispose);
+
+    await worker.parse(adapterId: 'claude', bundle: claudeBundle('u1', 'a1'));
+    await worker.debugTriggerIsolateExit();
+    await waitForWorkerDiscard(worker);
+
+    expect(worker.debugHasResidentWorker, isFalse);
+    await worker.parse(adapterId: 'claude', bundle: claudeBundle('u2', 'a2'));
+    expect(worker.debugSpawnCount, 2);
+  });
+
+  test('response port closure discards an idle worker', () async {
+    final worker = HistoryParseWorker(
+      readyTimeout: const Duration(milliseconds: 200),
+    );
+    addTearDown(worker.dispose);
+
+    await worker.parse(adapterId: 'claude', bundle: claudeBundle('u1', 'a1'));
+    worker.debugCloseResponsePort();
+    await waitForWorkerDiscard(worker);
+
+    expect(worker.debugHasResidentWorker, isFalse);
+    await worker.parse(adapterId: 'claude', bundle: claudeBundle('u2', 'a2'));
+    expect(worker.debugSpawnCount, 2);
+  });
+}
+
+Future<void> waitForWorkerDiscard(HistoryParseWorker worker) async {
+  for (var attempt = 0; attempt < 20; attempt += 1) {
+    if (!worker.debugHasResidentWorker) return;
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  }
+  fail('worker was not discarded');
 }
 
 AiTranscriptBundle claudeBundle(String userId, String assistantId) {
