@@ -211,6 +211,17 @@ void main() {
     expect(find.byType(ReorderableListView), findsNothing);
   });
 
+  testWidgets('empty manual groups do not add a flexible layout slot', (
+    tester,
+  ) async {
+    await pumpSidebar(tester);
+
+    expect(
+      find.byKey(const ValueKey('workspace-sidebar-manual-groups-slot')),
+      findsNothing,
+    );
+  });
+
   testWidgets('manual groups remain visible while sessions hydrate', (
     tester,
   ) async {

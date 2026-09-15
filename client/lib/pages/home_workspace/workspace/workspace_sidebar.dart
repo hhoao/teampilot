@@ -707,21 +707,26 @@ class _ConversationListHost extends StatelessWidget {
   }
 
   Widget _buildWithManualGroups(BuildContext context, Widget listArea) {
+    final hasManualGroups = context.select<SessionGroupsCubit, bool>(
+      (c) => c.state.ready && c.state.groups.isNotEmpty,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Flexible(
-          fit: FlexFit.loose,
-          child: _ManualGroupsHost(
-            workspace: workspace,
-            tabScopeId: tabScopeId,
-            sessionSort: sessionSort,
-            highlightSessionId: scopedActiveSessionId(
-              context.read<WorkbenchCubit>(),
-              tabScopeId,
+        if (hasManualGroups)
+          Flexible(
+            key: const ValueKey('workspace-sidebar-manual-groups-slot'),
+            fit: FlexFit.loose,
+            child: _ManualGroupsHost(
+              workspace: workspace,
+              tabScopeId: tabScopeId,
+              sessionSort: sessionSort,
+              highlightSessionId: scopedActiveSessionId(
+                context.read<WorkbenchCubit>(),
+                tabScopeId,
+              ),
             ),
           ),
-        ),
         Expanded(child: listArea),
       ],
     );
