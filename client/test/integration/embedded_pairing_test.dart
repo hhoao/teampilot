@@ -86,7 +86,7 @@ void main() {
     );
     await server.start();
     agent = ConnectAgent(
-      embeddedServer: server,
+      sshBackend: server,
       deviceStore: deviceStore,
       gate: PairingTokenGate(),
       bind: bindPairingHttps,

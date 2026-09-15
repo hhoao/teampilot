@@ -6,8 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/services/connect/connect_agent.dart';
 import 'package:teampilot/services/connect/connect_relay_client.dart';
+import 'package:teampilot/services/connect/connect_ssh_backend.dart';
 import 'package:teampilot/services/connect/connect_settings_store.dart';
-import 'package:teampilot/services/connect/embedded_ssh_server.dart';
 import 'package:teampilot/services/connect/paired_device_store.dart';
 import 'package:teampilot/services/connect/pairing_certificate.dart';
 import 'package:teampilot/services/connect/pairing_http.dart';
@@ -31,13 +31,13 @@ void main() {
   );
 
   ConnectAgent agent({
-    EmbeddedSshServerHandle? embeddedServer,
+    ConnectSshBackend? embeddedServer,
     List<SshReachabilityEndpoint> extraEndpoints = const [],
     PairedDeviceStore? deviceStore,
     ConnectRelayRegistration? relayRegistration,
     GrantGenerator? generateGrant,
   }) => ConnectAgent(
-    embeddedServer:
+    sshBackend:
         embeddedServer ??
         FakeEmbeddedServer(
           isListening: true,
@@ -58,6 +58,14 @@ void main() {
   setUp(() {
     binding = _FakePairingBind();
     gate = PairingTokenGate();
+  });
+
+  test('fake backend is embedded and authorize is a no-op', () async {
+    final fake = FakeEmbeddedServer();
+    expect(fake, isA<ConnectSshBackend>());
+    expect(fake.isEmbedded, isTrue);
+    await fake.authorizePublicKey('ssh-ed25519 AAAA');
+    await fake.revokePublicKey('ssh-ed25519 AAAA');
   });
 
   test('offer is v2 with emb and the embedded port when the server is up',
@@ -603,7 +611,7 @@ void main() {
   );
 }
 
-/// Test double for [EmbeddedSshServerHandle]; [isListening] is mutable so a
+/// Test double for [ConnectSshBackend]; [isListening] is mutable so a
 /// test can flip the server down mid-run.
 Future<void> _start(ConnectAgent agent) => agent.startQrSession(
   advertiseAddress: '192.168.1.20',

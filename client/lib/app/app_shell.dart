@@ -164,6 +164,7 @@ import '../services/storage/device_local_control_plane.dart';
 import '../services/io/local_filesystem.dart';
 import '../services/connect/connect_agent.dart';
 import '../services/connect/connect_settings_store.dart';
+import '../services/connect/connect_ssh_backend.dart';
 import '../services/connect/embedded_ssh_server.dart'
     show EmbeddedSshServer;
 import '../services/perf/live_perf_driver.dart';
@@ -554,7 +555,7 @@ class AppShell {
   final ConnectCubit? connectCubit;
 
   /// The desktop's embedded SSH server; `null` on Android (no Connect host).
-  final EmbeddedSshServer? embeddedSshServer;
+  final ConnectSshBackend? embeddedSshServer;
 
   /// The device registry shared by the embedded server, pairing agent, and
   /// Connect UI; `null` on Android.
@@ -1730,7 +1731,7 @@ Future<AppShell> buildAppShell({
     );
     final configCubit = ConfigCubit();
     ConnectCubit? connectCubit;
-    EmbeddedSshServer? embeddedSshServer;
+    ConnectSshBackend? embeddedSshServer;
     PairedDeviceStore? connectDeviceStore;
     if (!Platform.isAndroid) {
       final localFs = LocalFilesystem(
@@ -1781,7 +1782,7 @@ Future<AppShell> buildAppShell({
       }
       embeddedSshServer = server;
       final connectAgent = ConnectAgent.production(
-        embeddedServer: server,
+        sshBackend: server,
         fs: localFs,
         extraEndpoints: settings.extraEndpoints,
         deviceStore: pairedDeviceStore,

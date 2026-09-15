@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/ssh_reachability.dart';
 import '../services/connect/connect_agent.dart';
 import '../services/connect/connect_settings_store.dart';
-import '../services/connect/embedded_ssh_server.dart';
+import '../services/connect/connect_ssh_backend.dart';
 import '../services/connect/paired_device_store.dart';
 import '../services/connect/ssh_pairing_offer.dart';
 
@@ -132,7 +132,7 @@ class ConnectPairedDevice extends Equatable {
 }
 
 /// Snapshot of the embedded connection server's reachability state, mirrored
-/// from [EmbeddedSshServerHandle] for the Connect UI.
+/// from [ConnectSshBackend] for the Connect UI.
 ///
 /// Formerly `SshdPresenceSnapshot` from the deleted system-sshd probe; only
 /// the value shape survived the embedded-server migration.
@@ -231,7 +231,7 @@ class ConnectState extends Equatable {
 class ConnectCubit extends Cubit<ConnectState> {
   ConnectCubit({
     required ConnectAgentController agent,
-    required EmbeddedSshServerHandle embeddedServer,
+    required ConnectSshBackend embeddedServer,
     required PairedDeviceStore deviceStore,
     required ConnectSettingsStore settingsStore,
     required ConnectNetworkAddressLookup listNetworkAddresses,
@@ -249,7 +249,7 @@ class ConnectCubit extends Cubit<ConnectState> {
        super(const ConnectState());
 
   final ConnectAgentController _agent;
-  final EmbeddedSshServerHandle _embeddedServer;
+  final ConnectSshBackend _embeddedServer;
   final PairedDeviceStore _deviceStore;
   final ConnectSettingsStore _settingsStore;
   final ConnectNetworkAddressLookup _listNetworkAddresses;
