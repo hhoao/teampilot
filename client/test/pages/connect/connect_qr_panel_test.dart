@@ -10,6 +10,7 @@ import 'package:teampilot/pages/connect/connect_section.dart';
 import 'package:teampilot/pages/config/connect_config_section.dart';
 import 'package:teampilot/services/connect/connect_backend_host.dart';
 import 'package:teampilot/services/connect/connect_settings_store.dart';
+import 'package:teampilot/services/connect/connect_ssh_backend.dart';
 import 'package:teampilot/services/connect/paired_device_store.dart';
 import 'package:teampilot/services/connect/ssh_pairing_offer.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
@@ -95,6 +96,75 @@ void main() {
       expect(find.text('Retry'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'shows macOS system sshd down copy instead of embedded when system is down',
+    (tester) async {
+      await tester.pumpWidget(
+        _harness(
+          ConnectState(
+            sshd: _sshd(listening: false),
+            sshBackend: ConnectSshBackendKind.system,
+            systemSshdHint: ConnectSystemSshdHint.macos,
+          ),
+        ),
+      );
+
+      expect(
+        find.text(
+          'No SSH server is listening on port 22. Enable Remote Login in '
+          'Sharing settings, then retry.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'The embedded connection server failed to start. Retry or restart '
+          'the app.',
+        ),
+        findsNothing,
+      );
+      expect(find.byKey(AppKeys.connectSshdRetryCta), findsOneWidget);
+    },
+  );
+
+  testWidgets('shows Linux system sshd down copy for linux and none hints', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness(
+        ConnectState(
+          sshd: _sshd(listening: false),
+          sshBackend: ConnectSshBackendKind.system,
+          systemSshdHint: ConnectSystemSshdHint.linux,
+        ),
+      ),
+    );
+    expect(
+      find.text(
+        'No SSH server is listening on port 22. Start the OpenSSH sshd '
+        'service, then retry.',
+      ),
+      findsOneWidget,
+    );
+
+    await tester.pumpWidget(
+      _harness(
+        ConnectState(
+          sshd: _sshd(listening: false),
+          sshBackend: ConnectSshBackendKind.system,
+          systemSshdHint: ConnectSystemSshdHint.none,
+        ),
+      ),
+    );
+    expect(
+      find.text(
+        'No SSH server is listening on port 22. Start the OpenSSH sshd '
+        'service, then retry.',
+      ),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('shows pairing QR and hides retry CTA when offer is ready', (
     tester,

@@ -8,7 +8,9 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/connect_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/ssh_reachability.dart';
+import 'connect_paired_devices_card.dart';
 import 'connect_qr_panel.dart';
+import 'connect_ssh_backend_selector.dart';
 
 class ConnectSection extends StatefulWidget {
   const ConnectSection({super.key});
@@ -39,7 +41,15 @@ class _ConnectSectionState extends State<ConnectSection> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ConnectCubit, ConnectState>(
+    return BlocConsumer<ConnectCubit, ConnectState>(
+      listenWhen: (previous, current) =>
+          !previous.rePairNotice && current.rePairNotice,
+      listener: (context, state) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.connectSshBackendRePair)),
+        );
+        context.read<ConnectCubit>().ackRePairNotice();
+      },
       builder: (context, state) {
         final cubit = context.read<ConnectCubit>();
         return SingleChildScrollView(
@@ -60,8 +70,9 @@ class _ConnectSectionState extends State<ConnectSection> {
                     ),
               ),
               const SizedBox(height: 16),
-              _PairedDevicesCard(
+              ConnectPairedDevicesCard(
                 devices: state.pairedDevices,
+                sshBackend: state.sshBackend,
                 onRevoke: cubit.revokeDevice,
               ),
             ],
@@ -120,6 +131,10 @@ class _PairingCard extends StatelessWidget {
                       }
                     },
                   ),
+                ConnectSshBackendSelector(
+                  state: state,
+                  onChanged: (kind) => unawaited(cubit.selectSshBackend(kind)),
+                ),
                 const SizedBox(height: 20),
                 if (state.hasError) ...[
                   Text(
@@ -441,58 +456,5 @@ class _EndpointControllers {
   void dispose() {
     host.dispose();
     port.dispose();
-  }
-}
-
-class _PairedDevicesCard extends StatelessWidget {
-  const _PairedDevicesCard({required this.devices, required this.onRevoke});
-
-  final List<ConnectPairedDevice> devices;
-  final Future<void> Function(String deviceId) onRevoke;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return TpCard.outlined(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TpSectionHeader(title: l10n.connectPairedDevicesTitle),
-          if (devices.isEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-              child: Text(l10n.connectNoPairedDevices),
-            )
-          else
-            for (final device in devices)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 6, 20, 14),
-                child: Row(
-                  children: [
-                    const Icon(Icons.phone_android_outlined),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(device.name),
-                          Text(
-                            device.deviceId,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                    TpButton(
-                      variant: TpButtonVariant.destructive,
-                      onPressed: () => unawaited(onRevoke(device.deviceId)),
-                      child: Text(l10n.connectRevokeDevice),
-                    ),
-                  ],
-                ),
-              ),
-        ],
-      ),
-    );
   }
 }

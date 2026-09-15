@@ -8750,6 +8750,35 @@ class AppLocalizationsEn extends AppLocalizations {
       'The embedded connection server failed to start. Retry or restart the app.';
 
   @override
+  String get connectSshBackendLabel => 'SSH server';
+
+  @override
+  String get connectSshBackendEmbedded => 'Embedded';
+
+  @override
+  String get connectSshBackendSystem => 'System OpenSSH (22)';
+
+  @override
+  String get connectSshBackendHelp =>
+      'Compare the built-in server with this computer\'s OpenSSH. Switching requires re-scanning the pairing code.';
+
+  @override
+  String get connectSshBackendRePair =>
+      'Paired phones must re-scan this computer\'s pairing code.';
+
+  @override
+  String get connectSystemSshdDownLinux =>
+      'No SSH server is listening on port 22. Start the OpenSSH sshd service, then retry.';
+
+  @override
+  String get connectSystemSshdDownMacos =>
+      'No SSH server is listening on port 22. Enable Remote Login in Sharing settings, then retry.';
+
+  @override
+  String get connectRevokeSystemHint =>
+      'New logins are blocked. Already-open OpenSSH sessions may stay connected until they disconnect.';
+
+  @override
   String get connectSshdRetry => 'Retry';
 
   @override

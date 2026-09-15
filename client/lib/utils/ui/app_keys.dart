@@ -144,6 +144,7 @@ class AppKeys {
   static const connectScanQr = Key('connect-scan-qr');
   static const connectPasteCode = Key('connect-paste-code');
   static const connectSshdRetryCta = Key('connect-sshd-retry-cta');
+  static const connectSshBackendSelect = Key('connect-ssh-backend-select');
   static const connectRegenerateQr = Key('connect-regenerate-qr');
   static const configGithubSectionButton = Key('config-github-section-button');
   static const configDiscoverySectionButton = Key(
