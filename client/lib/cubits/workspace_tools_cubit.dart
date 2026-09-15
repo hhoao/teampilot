@@ -1,159 +1,81 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-/// Per-scope right-tools UI state: which tool tabs are open and which is
-/// selected. Keyed by tab scope id so each open workspace remembers its own
-/// set across workspace switches. Panel width/visibility stay global in
-/// [LayoutCubit] — this cubit only owns the open-tab set.
+import '../models/right_tool_open_set.dart';
+
 class WorkspaceToolsState extends Equatable {
-  const WorkspaceToolsState({
-    this.openIdsByScope = const {},
-    this.selectedIdByScope = const {},
-  });
+  const WorkspaceToolsState({this.openSet = const RightToolOpenSet()});
 
-  final Map<String, List<String>> openIdsByScope;
-  final Map<String, String?> selectedIdByScope;
+  final RightToolOpenSet openSet;
 
-  WorkspaceToolsState copyWith({
-    Map<String, List<String>>? openIdsByScope,
-    Map<String, String?>? selectedIdByScope,
-  }) => WorkspaceToolsState(
-    openIdsByScope: openIdsByScope ?? this.openIdsByScope,
-    selectedIdByScope: selectedIdByScope ?? this.selectedIdByScope,
-  );
+  WorkspaceToolsState copyWith({RightToolOpenSet? openSet}) =>
+      WorkspaceToolsState(openSet: openSet ?? this.openSet);
 
   @override
-  List<Object?> get props => [openIdsByScope, selectedIdByScope];
+  List<Object?> get props => [openSet];
 }
 
 class WorkspaceToolsCubit extends Cubit<WorkspaceToolsState> {
-  WorkspaceToolsCubit() : super(const WorkspaceToolsState());
+  WorkspaceToolsCubit({
+    RightToolOpenSet initial = const RightToolOpenSet(),
+    void Function(RightToolOpenSet set)? persist,
+  }) : _persist = persist,
+       super(WorkspaceToolsState(openSet: initial));
 
+  final void Function(RightToolOpenSet set)? _persist;
+
+  /// [scopeId] is ignored; the open set is global.
   List<String> openIdsFor(String scopeId) =>
-      List<String>.unmodifiable(state.openIdsByScope[scopeId] ?? const []);
+      List<String>.unmodifiable(state.openSet.openIds);
 
-  String? selectedIdFor(String scopeId) => state.selectedIdByScope[scopeId];
+  /// [scopeId] is ignored; the open set is global.
+  String? selectedIdFor(String scopeId) => state.openSet.selectedId;
 
-  /// Opens [toolId] if needed and selects it.
+  void hydrate(RightToolOpenSet set) {
+    if (set == state.openSet) return;
+    emit(state.copyWith(openSet: set));
+  }
+
+  /// [scopeId] is ignored; the open set is global.
   void ensureOpenAndSelect(String scopeId, String toolId) {
-    final open = List<String>.of(state.openIdsByScope[scopeId] ?? const []);
-    final selected = state.selectedIdByScope[scopeId];
-    var changed = false;
-    if (!open.contains(toolId)) {
-      open.add(toolId);
-      changed = true;
-    }
-    if (selected != toolId) {
-      changed = true;
-    }
-    if (!changed) return;
-    emit(
-      state.copyWith(
-        openIdsByScope: Map<String, List<String>>.of(state.openIdsByScope)
-          ..[scopeId] = open,
-        selectedIdByScope: Map<String, String?>.of(state.selectedIdByScope)
-          ..[scopeId] = toolId,
-      ),
-    );
+    _apply(state.openSet.opened(toolId));
   }
 
-  /// Opens [toolIds] when the scope has no open tabs yet (first visit).
-  void openDefaultsIfEmpty(
-    String scopeId,
-    List<String> toolIds, {
-    String? selectId,
-  }) {
-    if (toolIds.isEmpty) return;
-    final existing = state.openIdsByScope[scopeId];
-    if (existing != null && existing.isNotEmpty) return;
-    final open = List<String>.of(toolIds);
-    final selected =
-        selectId != null && open.contains(selectId) ? selectId : open.first;
-    emit(
-      state.copyWith(
-        openIdsByScope: Map<String, List<String>>.of(state.openIdsByScope)
-          ..[scopeId] = open,
-        selectedIdByScope: Map<String, String?>.of(state.selectedIdByScope)
-          ..[scopeId] = selected,
-      ),
-    );
+  /// [scopeId] is ignored; the open set is global.
+  void seedTeamDefaults(String scopeId, Iterable<String> catalogIds) {
+    _apply(state.openSet.seededForTeam(catalogIds));
   }
 
+  /// [scopeId] is ignored; the open set is global.
   void selectTool(String scopeId, String toolId) {
-    final open = state.openIdsByScope[scopeId] ?? const <String>[];
-    if (!open.contains(toolId)) {
-      ensureOpenAndSelect(scopeId, toolId);
-      return;
-    }
-    if (selectedIdFor(scopeId) == toolId) return;
-    emit(
-      state.copyWith(
-        selectedIdByScope: Map<String, String?>.of(state.selectedIdByScope)
-          ..[scopeId] = toolId,
-      ),
-    );
+    _apply(state.openSet.selected(toolId));
   }
 
-  void closeTool(String scopeId, String toolId) {
-    final open = List<String>.of(state.openIdsByScope[scopeId] ?? const []);
-    final index = open.indexOf(toolId);
-    if (index < 0) return;
-    open.removeAt(index);
-    String? selected = state.selectedIdByScope[scopeId];
-    if (selected == toolId) {
-      if (open.isEmpty) {
-        selected = null;
-      } else if (index > 0) {
-        selected = open[index - 1];
-      } else {
-        selected = open.first;
-      }
-    }
-    emit(
-      state.copyWith(
-        openIdsByScope: Map<String, List<String>>.of(state.openIdsByScope)
-          ..[scopeId] = open,
-        selectedIdByScope: Map<String, String?>.of(state.selectedIdByScope)
-          ..[scopeId] = selected,
-      ),
-    );
+  /// [scopeId] is ignored; the open set is global.
+  void closeTool(
+    String scopeId,
+    String toolId, {
+    Iterable<String> catalog = const [],
+  }) {
+    final effectiveCatalog = catalog.isEmpty ? state.openSet.openIds : catalog;
+    _apply(state.openSet.closed(toolId, catalog: effectiveCatalog));
   }
 
-  /// Drops open ids that are no longer in [availableIds] (catalog changed).
+  /// Catalog membership is a display filter. Remembered ids stay.
+  /// [scopeId] and [availableIds] are ignored; the open set is global.
   void pruneToAvailable(String scopeId, Iterable<String> availableIds) {
-    final available = availableIds.toSet();
-    final open = List<String>.of(state.openIdsByScope[scopeId] ?? const []);
-    final nextOpen = [for (final id in open) if (available.contains(id)) id];
-    if (nextOpen.length == open.length) {
-      final selected = state.selectedIdByScope[scopeId];
-      if (selected == null || available.contains(selected)) return;
-    }
-    String? selected = state.selectedIdByScope[scopeId];
-    if (selected != null && !nextOpen.contains(selected)) {
-      selected = nextOpen.isEmpty ? null : nextOpen.last;
-    }
-    emit(
-      state.copyWith(
-        openIdsByScope: Map<String, List<String>>.of(state.openIdsByScope)
-          ..[scopeId] = nextOpen,
-        selectedIdByScope: Map<String, String?>.of(state.selectedIdByScope)
-          ..[scopeId] = selected,
-      ),
-    );
+    final _ = (scopeId, availableIds);
   }
 
+  /// Global remembered set survives workspace-tab close.
+  /// [scopeId] is ignored; the open set is global.
   void removeWorkspace(String scopeId) {
-    if (!state.openIdsByScope.containsKey(scopeId) &&
-        !state.selectedIdByScope.containsKey(scopeId)) {
-      return;
-    }
-    emit(
-      state.copyWith(
-        openIdsByScope: Map<String, List<String>>.of(state.openIdsByScope)
-          ..remove(scopeId),
-        selectedIdByScope: Map<String, String?>.of(state.selectedIdByScope)
-          ..remove(scopeId),
-      ),
-    );
+    final _ = scopeId;
+  }
+
+  void _apply(RightToolOpenSet next) {
+    if (next == state.openSet) return;
+    emit(state.copyWith(openSet: next));
+    _persist?.call(next);
   }
 }
