@@ -4441,7 +4441,6 @@
   },
   "gitGraphShowColumnHeader": "Show column header",
   "gitGraphHideColumnHeader": "Hide column header",
-  "gitGraphShowDiffWithWorkingTree": "Show Diff with Working Tree",
   "gitGraphCompareWith": "Compare with…",
   "gitGraphCompareWorkingTree": "Working Tree ({branch})",
   "@gitGraphCompareWorkingTree": { "placeholders": { "branch": { "type": "String" } } },

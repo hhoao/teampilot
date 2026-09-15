@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -8347,9 +8346,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitGraphHideColumnHeader => '隐藏列头';
-
-  @override
-  String get gitGraphShowDiffWithWorkingTree => '与工作区比较差异';
 
   @override
   String get gitGraphCompareWith => '与…比较';

@@ -15494,12 +15494,6 @@ abstract class AppLocalizations {
   /// **'Hide column header'**
   String get gitGraphHideColumnHeader;
 
-  /// No description provided for @gitGraphShowDiffWithWorkingTree.
-  ///
-  /// In en, this message translates to:
-  /// **'Show Diff with Working Tree'**
-  String get gitGraphShowDiffWithWorkingTree;
-
   /// No description provided for @gitGraphCompareWith.
   ///
   /// In en, this message translates to:

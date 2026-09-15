@@ -3753,7 +3753,6 @@
   },
   "gitGraphShowColumnHeader": "显示列头",
   "gitGraphHideColumnHeader": "隐藏列头",
-  "gitGraphShowDiffWithWorkingTree": "与工作区比较差异",
   "gitGraphCompareWith": "与…比较",
   "gitGraphCompareWorkingTree": "工作区（{branch}）",
   "@gitGraphCompareWorkingTree": { "placeholders": { "branch": { "type": "String" } } },

@@ -179,13 +179,16 @@ void main() {
     expect(actions.calls.single, ['checkout-commit', 'deadbeef']);
   });
 
-  testWidgets('menu shows Show Diff with Working Tree item', (tester) async {
+  testWidgets('commit menu shows Compare with… and not Working Tree shortcut', (
+    tester,
+  ) async {
     final actions = RecordingGraphActions();
     await _pumpMenuHost(tester, actions, graphCommitRow('c1'));
-    expect(find.text('Show Diff with Working Tree'), findsOneWidget);
+    expect(find.text('Compare with…'), findsOneWidget);
+    expect(find.text('Show Diff with Working Tree'), findsNothing);
   });
 
-  testWidgets('diff-working-tree menu opens git compare tab for branch', (
+  testWidgets('compare with working tree uses commit hash even when row has a branch', (
     tester,
   ) async {
     final workbench = WorkbenchCubit();
@@ -200,24 +203,29 @@ void main() {
         GitRefDecoration(GitRefDecorationKind.localBranch, 'main'),
       ],
     );
-    await _pumpCompareMenuHost(tester, actions, row, workbench, floating);
-    await tester.tap(find.text('Show Diff with Working Tree'));
+    await _pumpCompareMenuHost(
+      tester,
+      actions,
+      row,
+      workbench,
+      floating,
+      historyRows: [row],
+    );
+    await tester.tap(find.text('Compare with…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Working Tree (main)'));
     await tester.pumpAndSettle();
 
-    expect(
-      workbench.mergedFloatingStrip('ws').order.map((t) => t.kind),
-      contains(WorkbenchTabKind.gitCompare),
-    );
     final tabId = workbench.mergedFloatingStrip('ws').order
         .firstWhere((t) => t.kind == WorkbenchTabKind.gitCompare)
         .id;
     final spec = GitCompareSpec.tryParseTabId(tabId);
     expect(spec?.repoRoot, '/repo');
-    expect(spec?.left, const GitCompareRef('main'));
+    expect(spec?.left, const GitCompareRef('abcdef1234567890'));
     expect(spec?.right, const GitCompareWorkingTree());
   });
 
-  testWidgets('diff-working-tree menu uses commit hash when no branch', (
+  testWidgets('compare with another loaded commit uses both hashes', (
     tester,
   ) async {
     final workbench = WorkbenchCubit();
@@ -226,22 +234,56 @@ void main() {
     addTearDown(floating.close);
 
     final actions = RecordingGraphActions();
+    final left = graphCommitRow('aaaaaaaaaaaaaaaa');
+    final right = graphCommitRow('bbbbbbbbbbbbbbbb');
     await _pumpCompareMenuHost(
       tester,
       actions,
-      graphCommitRow('abcdef1234567890'),
+      left,
       workbench,
       floating,
+      historyRows: [left, right],
     );
-    await tester.tap(find.text('Show Diff with Working Tree'));
+    await tester.tap(find.text('Compare with…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('bbbbbbbb ${right.subject}'));
     await tester.pumpAndSettle();
 
     final tabId = workbench.mergedFloatingStrip('ws').order
         .firstWhere((t) => t.kind == WorkbenchTabKind.gitCompare)
         .id;
     final spec = GitCompareSpec.tryParseTabId(tabId);
-    expect(spec?.left, const GitCompareRef('abcdef1234567890'));
-    expect(spec?.right, const GitCompareWorkingTree());
+    expect(spec?.left, GitCompareRef(left.hash));
+    expect(spec?.right, GitCompareRef(right.hash));
+  });
+
+  testWidgets('source commit is disabled in compare target list', (
+    tester,
+  ) async {
+    final workbench = WorkbenchCubit();
+    final floating = FloatingWorkspaceCubit();
+    addTearDown(workbench.close);
+    addTearDown(floating.close);
+
+    final actions = RecordingGraphActions();
+    final row = graphCommitRow('aaaaaaaaaaaaaaaa');
+    await _pumpCompareMenuHost(
+      tester,
+      actions,
+      row,
+      workbench,
+      floating,
+      historyRows: [row],
+    );
+    await tester.tap(find.text('Compare with…'));
+    await tester.pumpAndSettle();
+    final item = tester.widget<TpActionMenuItem>(
+      find.widgetWithText(
+        TpActionMenuItem,
+        'aaaaaaaa ${row.subject}',
+      ),
+    );
+    expect(item.enabled, isFalse);
   });
 }
 
@@ -250,13 +292,14 @@ Future<void> _pumpCompareMenuHost(
   RecordingGraphActions actions,
   GitCommitRow row,
   WorkbenchCubit workbench,
-  FloatingWorkspaceCubit floating,
-) async {
+  FloatingWorkspaceCubit floating, {
+  required List<GitGraphRow> historyRows,
+}) async {
   tester.view.physicalSize = const Size(900, 1400);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
   final cubit = GitGraphCubit(
-    history: FakeHistoryForGraph(rows: [graphCommitRow('c0')]),
+    history: FakeHistoryForGraph(rows: historyRows),
     git: FakeGitForGraph(repoStatus()),
     actions: actions,
   );
