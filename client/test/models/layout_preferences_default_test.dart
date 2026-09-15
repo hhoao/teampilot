@@ -462,4 +462,44 @@ void main() {
       isTrue,
     );
   });
+
+  test('right-tool open set defaults empty and round-trips', () {
+    expect(const LayoutPreferences().rightToolOpenIds, isEmpty);
+    expect(const LayoutPreferences().rightToolSelectedId, isNull);
+    expect(const LayoutPreferences().rightToolDismissedIds, isEmpty);
+    expect(LayoutPreferences.fromJson(const {}).rightToolOpenIds, isEmpty);
+
+    final parsed = LayoutPreferences.fromJson(const {
+      'rightToolOpenIds': ['members', 'nope', 'mailbox', 'members'],
+      'rightToolSelectedId': 'mailbox',
+      'rightToolDismissedIds': ['board', 'bogus'],
+    });
+    expect(parsed.rightToolOpenIds, ['members', 'mailbox']);
+    expect(parsed.rightToolSelectedId, 'mailbox');
+    expect(parsed.rightToolDismissedIds, ['board']);
+
+    final restored = LayoutPreferences.fromJson(parsed.toJson());
+    expect(restored.rightToolOpenIds, ['members', 'mailbox']);
+    expect(restored.rightToolSelectedId, 'mailbox');
+    expect(restored.rightToolDismissedIds, ['board']);
+  });
+
+  test('rightToolSelectedId unknown values become null', () {
+    expect(
+      LayoutPreferences.fromJson(const {
+        'rightToolSelectedId': 'nope',
+      }).rightToolSelectedId,
+      isNull,
+    );
+  });
+
+  test('copyWith can clear rightToolSelectedId', () {
+    const prefs = LayoutPreferences(
+      rightToolOpenIds: ['members'],
+      rightToolSelectedId: 'members',
+    );
+    final cleared = prefs.copyWith(clearRightToolSelectedId: true);
+    expect(cleared.rightToolSelectedId, isNull);
+    expect(cleared.rightToolOpenIds, ['members']);
+  });
 }
