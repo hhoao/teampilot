@@ -129,6 +129,16 @@ void main() {
     expect(await store.isValidDeviceKey(otherDevicePubLine), isFalse);
   });
 
+  test('publicKeyForDevice returns the issued line or null', () async {
+    await store.issueDevice(
+      deviceId: 'phone-1',
+      publicKey: testDevicePubLine,
+      deviceName: 'Pixel',
+    );
+    expect(await store.publicKeyForDevice('phone-1'), testDevicePubLine);
+    expect(await store.publicKeyForDevice('missing'), isNull);
+  });
+
   test('same device re-pair replaces the key entry', () async {
     await store.issueDevice(deviceId: 'phone-1', publicKey: testDevicePubLine);
     await store.issueDevice(deviceId: 'phone-1', publicKey: otherDevicePubLine);
@@ -254,27 +264,32 @@ void main() {
     },
   );
 
-  test('listDevices returns registered ids with their optional names',
-      () async {
-    expect(await store.listDevices(), isEmpty);
+  test(
+    'listDevices returns registered ids with their optional names',
+    () async {
+      expect(await store.listDevices(), isEmpty);
 
-    await store.issueDevice(
-      deviceId: 'phone-1',
-      publicKey: testDevicePubLine,
-      deviceName: 'Pixel',
-    );
-    await store.issueDevice(deviceId: 'phone-2', publicKey: otherDevicePubLine);
+      await store.issueDevice(
+        deviceId: 'phone-1',
+        publicKey: testDevicePubLine,
+        deviceName: 'Pixel',
+      );
+      await store.issueDevice(
+        deviceId: 'phone-2',
+        publicKey: otherDevicePubLine,
+      );
 
-    expect(await store.listDevices(), const [
-      (deviceId: 'phone-1', deviceName: 'Pixel'),
-      (deviceId: 'phone-2', deviceName: null),
-    ]);
+      expect(await store.listDevices(), const [
+        (deviceId: 'phone-1', deviceName: 'Pixel'),
+        (deviceId: 'phone-2', deviceName: null),
+      ]);
 
-    await store.revokeDevice('phone-1');
-    expect(await store.listDevices(), const [
-      (deviceId: 'phone-2', deviceName: null),
-    ]);
-  });
+      await store.revokeDevice('phone-1');
+      expect(await store.listDevices(), const [
+        (deviceId: 'phone-2', deviceName: null),
+      ]);
+    },
+  );
 
   test('dispose closes the device registry change stream', () async {
     store.dispose();

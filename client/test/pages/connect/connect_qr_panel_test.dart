@@ -8,6 +8,7 @@ import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/pages/connect/connect_qr_panel.dart';
 import 'package:teampilot/pages/connect/connect_section.dart';
 import 'package:teampilot/pages/config/connect_config_section.dart';
+import 'package:teampilot/services/connect/connect_backend_host.dart';
 import 'package:teampilot/services/connect/connect_settings_store.dart';
 import 'package:teampilot/services/connect/paired_device_store.dart';
 import 'package:teampilot/services/connect/ssh_pairing_offer.dart';
@@ -138,9 +139,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1000, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     tester.platformDispatcher.textScaleFactorTestValue = 2.5;
-    addTearDown(
-      () => tester.platformDispatcher.textScaleFactorTestValue = 1.0,
-    );
+    addTearDown(() => tester.platformDispatcher.textScaleFactorTestValue = 1.0);
 
     await tester.pumpWidget(
       _harness(ConnectState(sshd: _sshd(listening: true), offer: _offer())),
@@ -181,6 +180,11 @@ void main() {
       var starts = 0;
       var stops = 0;
       final offer = _offer();
+      final settingsStore = ConnectSettingsStore(
+        fs: InMemoryFilesystem(),
+        appDataRoot: '/app-data',
+        generateHostId: () => 'abcdefghijklmnop',
+      );
       final cubit = ConnectCubit(
         agent: ConnectAgentController(
           currentOffer: () => offer,
@@ -197,16 +201,17 @@ void main() {
           regenerateQr: () async {},
           updateExtraEndpoints: (_) async {},
         ),
-        embeddedServer: fakeListeningEmbeddedServer,
+        backends: ConnectBackendHost(
+          embedded: fakeListeningEmbeddedServer,
+          system: null,
+          settings: settingsStore,
+          systemSshdSelectable: false,
+        ),
         deviceStore: PairedDeviceStore(
           fs: InMemoryFilesystem(),
           appDataRoot: '/app-data',
         ),
-        settingsStore: ConnectSettingsStore(
-          fs: InMemoryFilesystem(),
-          appDataRoot: '/app-data',
-          generateHostId: () => 'abcdefghijklmnop',
-        ),
+        settingsStore: settingsStore,
         listNetworkAddresses: () async => const [
           ConnectNetworkAddress(
             name: 'Wi-Fi',

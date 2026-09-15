@@ -114,6 +114,14 @@ class PairedDeviceStore {
     return (await _loadDevices()).any((entry) => entry.deviceId == deviceId);
   }
 
+  /// The stored OpenSSH public-key line for [deviceId], or `null`.
+  Future<String?> publicKeyForDevice(String deviceId) async {
+    for (final entry in await _loadDeviceEntries()) {
+      if (entry.deviceId == deviceId) return entry.publicKey;
+    }
+    return null;
+  }
+
   /// Lists the registered device keys with their optional display names, for
   /// the Connect UI's paired-device list. A pure read of `connect/devices.json`.
   Future<List<({String deviceId, String? deviceName})>> listDevices() async {

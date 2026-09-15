@@ -32,17 +32,35 @@ class FakeEmbeddedServer implements ConnectSshBackend {
   /// Thrown by [authorizePublicKey] when set.
   Object? authorizeError;
 
+  /// Optional hook run by [start] — default sets [isListening] when omitted.
+  Future<void> Function()? onStart;
+
   /// Optional hook run by [restart] — lets a test flip [isListening]/[port]
   /// to simulate a successful re-start.
   Future<void> Function()? onRestart;
 
+  /// Optional hook run by [revokePublicKey] so callers can observe order.
+  Future<void> Function(String publicKey)? onRevokePublicKey;
+
   int restarts = 0;
+  int stops = 0;
+  final revokedPublicKeys = <String>[];
 
   @override
-  Future<void> start() async {}
+  Future<void> start() async {
+    final hook = onStart;
+    if (hook != null) {
+      await hook();
+    } else {
+      isListening = true;
+    }
+  }
 
   @override
-  Future<void> stop() async {}
+  Future<void> stop() async {
+    stops += 1;
+    isListening = false;
+  }
 
   @override
   Future<void> restart() async {
@@ -60,7 +78,11 @@ class FakeEmbeddedServer implements ConnectSshBackend {
   }
 
   @override
-  Future<void> revokePublicKey(String publicKey) async {}
+  Future<void> revokePublicKey(String publicKey) async {
+    revokedPublicKeys.add(publicKey);
+    final hook = onRevokePublicKey;
+    if (hook != null) await hook(publicKey);
+  }
 }
 
 /// The default listening server most connect tests want: port 54321 with a

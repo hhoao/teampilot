@@ -163,6 +163,7 @@ import '../services/storage/app_paths.dart';
 import '../services/storage/device_local_control_plane.dart';
 import '../services/io/local_filesystem.dart';
 import '../services/connect/connect_agent.dart';
+import '../services/connect/connect_backend_host.dart';
 import '../services/connect/connect_settings_store.dart';
 import '../services/connect/connect_ssh_backend.dart';
 import '../services/connect/embedded_ssh_server.dart'
@@ -1809,7 +1810,11 @@ Future<AppShell> buildAppShell({
       }
       connectCubit = ConnectCubit(
         agent: ConnectAgentController.fromAgent(connectAgent),
-        embeddedServer: server,
+        backends: ConnectBackendHost(
+          embedded: server,
+          settings: settingsStore,
+          systemSshdSelectable: false,
+        ),
         deviceStore: pairedDeviceStore,
         settingsStore: settingsStore,
         listNetworkAddresses: () async {
