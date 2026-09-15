@@ -100,6 +100,50 @@ void main() {
     expect(anchor!.row, 0);
   });
 
+  test('non-alphanumeric chrome cells are skipped on mismatch anywhere', () {
+    // Mismatch tolerance is global, not just at a row start: a grid that
+    // inserts punctuation/symbols/spaces (TUI chrome or padding) still matches
+    // an otherwise-exact needle.
+    for (final row in ['a#bc', 'a→bc', 'a bc', 'a==b']) {
+      final grid = _FakeGrid.fromRows([row]);
+      final needle = row.contains('==') ? 'a=b' : 'abc';
+      expect(
+        locateFullscreenPromptNeedle(grid, needle),
+        isNotNull,
+        reason: 'inserted chrome "$row" must still ACK "$needle"',
+      );
+    }
+  });
+
+  test('letter/digit mismatch fails — content is never skipped', () {
+    // Only non-alphanumerics are chrome. A differing letter, digit or CJK
+    // must not be stepped over.
+    for (final row in ['aXbc', 'a 3bc']) {
+      final grid = _FakeGrid.fromRows([row]);
+      final needle = row.contains('3') ? 'a2bc' : 'abc';
+      expect(
+        locateFullscreenPromptNeedle(grid, needle),
+        isNull,
+        reason: 'content difference in "$row" must not ACK',
+      );
+    }
+    final cjkGrid = _FakeGrid.fromRows(['中X文']);
+    expect(locateFullscreenPromptNeedle(cjkGrid, '中文'), isNull);
+    expect(locateFullscreenPromptNeedle(cjkGrid, '中X文'), isNotNull);
+  });
+
+  test('needle does not bridge a border-only row with zero matches', () {
+    // A continuation row that is pure chrome (border + padding) matches zero
+    // needle characters — the needle must fail, not stitch across it.
+    final grid = _FakeGrid.fromRows([
+      'ABC',
+      '│  ',
+      'DEF',
+    ]);
+    expect(locateFullscreenPromptNeedle(grid, 'ABCDEF'), isNull);
+    expect(locateFullscreenPromptNeedle(grid, 'ABCDEF', scanRows: 8), isNull);
+  });
+
   test('isAtAnchor false when same text moved to transcript row above', () {
     final grid = _FakeGrid.fromRows([
       '你和你的队员打个招呼吧',

@@ -167,7 +167,7 @@ bool isFullscreenPromptAtAnchor(
   FullscreenPromptAnchor anchor,
 ) {
   final needleRunes = anchor.needle.runes.toList();
-  return _matchesNeedleAt(grid, anchor.row, anchor.startCol, needleRunes);
+  return _matchesNeedleAt(grid, anchor.row, anchor.startCol, needleRunes) >= 0;
 }
 
 bool isFullscreenPromptSubmitted(
@@ -242,47 +242,50 @@ int _findNeedleStartCol(
 ) {
   for (var start = 0; start < grid.columns; start++) {
     if (_isWideSpacer(grid, row, start)) continue;
-    if (_matchesNeedleAt(grid, row, start, needleRunes)) return start;
+    final firstMatchedCol = _matchesNeedleAt(grid, row, start, needleRunes);
+    if (firstMatchedCol >= 0) return firstMatchedCol;
   }
   return -1;
 }
 
-bool _matchesNeedleAt(
+/// Matches [needleRunes] starting at [row]/[startCol], skipping TUI chrome on
+/// mismatch. Returns the column where the needle's FIRST content cell matched
+/// (so anchors point at real text, not a leading chrome glyph), or `-1`.
+int _matchesNeedleAt(
   TerminalScreenGrid grid,
-  int row,
+  int startRow,
   int startCol,
   List<int> needleRunes,
 ) {
-  var r = row;
+  var r = startRow;
   var col = startCol;
   // After a soft wrap, leading indent is chrome and word-break spaces in the
   // needle may not appear as grid cells — collapse them until content.
   var collapseWrapSpaces = false;
+  var firstRow = true;
+  var rowMatched = 0;
+  var firstContentCol = -1;
   for (var i = 0; i < needleRunes.length; i++) {
     final cp = needleRunes[i];
     var wrapped = false;
     while (true) {
-      if (r >= grid.rows) return false;
+      if (r >= grid.rows) return -1;
       col = _skipWideSpacers(grid, r, col);
       if (col < grid.columns && !_rowRemainderIsPadding(grid, r, col)) {
         break;
       }
-      // Soft-wrap before comparing this rune.
-      // Padding at end of row triggers wrap before comparing the current
-      // needle rune (trailing spaces are not consumed as needle content
-      // unless the matcher is still on a content cell).
+      // Soft-wrap before comparing this rune. Padding at end of row triggers
+      // wrap before comparing the current needle rune.
       r += 1;
       col = 0;
-      if (r >= grid.rows) return false;
-      if (!_rowHasNonSpaceContent(grid, r) && cp != 0x20) return false;
-      // Full-screen TUIs paint composer chrome on EVERY input-box row — a left
-      // border (`│`), claude's `> `-style prompt glyph, etc. — beyond the wrap
-      // padding. A long staged paste wraps across those rows, so the flattened
-      // needle must skip the chrome to keep ACKing. Skipping is limited to one
-      // leading symbol + padding and only happens on a continuation row, so it
-      // can never mistake a status/footer line for the input box.
-      col = _skipLeadingChrome(grid, r);
       wrapped = true;
+      if (r >= grid.rows) return -1;
+      // A continuation row that matched zero needle characters is chrome/
+      // border (or blank); the needle must not stitch across it.
+      if (!firstRow && rowMatched == 0) return -1;
+      firstRow = false;
+      rowMatched = 0;
+      if (!_rowHasNonSpaceContent(grid, r) && cp != 0x20) return -1;
     }
     if (wrapped) collapseWrapSpaces = true;
     if (cp == 0x20 && collapseWrapSpaces) {
@@ -292,10 +295,28 @@ bool _matchesNeedleAt(
       }
     }
     collapseWrapSpaces = false;
-    if (col >= grid.columns || grid.codepointAt(r, col) != cp) return false;
-    col = _advancePastCell(grid, r, col);
+    // Exact match consumes the cell and counts toward the row. On a mismatch
+    // a NON letter/digit grid cell (space, TUI marker, punctuation, box
+    // border) is painted chrome — step over it and retry the same rune. A
+    // letter/digit cell (incl. CJK) that differs from the needle fails: real
+    // content is never skipped.
+    while (true) {
+      if (col >= grid.columns) return -1;
+      final gridCp = grid.codepointAt(r, col);
+      if (gridCp == cp) {
+        if (firstContentCol < 0) firstContentCol = col;
+        rowMatched += 1;
+        col = _advancePastCell(grid, r, col);
+        break;
+      }
+      if (!_isContentCharacter(gridCp)) {
+        col = _advancePastCell(grid, r, col);
+        continue;
+      }
+      return -1;
+    }
   }
-  return true;
+  return firstContentCol;
 }
 
 bool _rowRemainderIsPadding(TerminalScreenGrid grid, int row, int fromCol) {
@@ -361,58 +382,18 @@ String _logicalRowText(TerminalScreenGrid grid, int row) {
 bool _isWideSpacer(TerminalScreenGrid grid, int row, int col) =>
     (grid.flagsAt(row, col) & _flagWideSpacer) != 0;
 
+/// Letter or digit (Unicode, incl. CJK) — real paste content. Anything else
+/// that mismatches the needle may be TUI-painted chrome to step over.
+final RegExp _contentChar = RegExp(r'[\p{L}\p{N}]', unicode: true);
+
+bool _isContentCharacter(int cp) =>
+    _contentChar.hasMatch(String.fromCharCodes([cp]));
+
 int _skipWideSpacers(TerminalScreenGrid grid, int row, int col) {
   while (col < grid.columns && _isWideSpacer(grid, row, col)) {
     col++;
   }
   return col;
-}
-
-/// Advances past leading composer chrome at the start of a soft-wrapped composer
-/// row: wrap padding spaces, then ONE TUI chrome glyph (input-box left border
-/// `│`, prompt prefix `❯`/`›`/`→`/`>`) plus any following padding. Stops at real
-/// content so a symbol that is genuinely part of the paste is only ever skipped
-/// at a wrap boundary where the rest of the needle still has to match.
-int _skipLeadingChrome(TerminalScreenGrid grid, int row) {
-  var col = _skipWideSpacers(grid, row, 0);
-  col = _skipPaddingCells(grid, row, col);
-  if (col >= grid.columns) return col;
-  final cp = grid.codepointAt(row, col);
-  // Any single non-letter/digit cell at the wrap start is treated as painted
-  // chrome (box border, prompt glyph, bullet...) — no per-CLI allowlist. Only
-  // this one cell is relaxed; the rest of the needle still matches exactly.
-  if (_isWrappableChrome(cp)) {
-    col = _skipWideSpacers(grid, row, col + 1);
-    col = _skipPaddingCells(grid, row, col);
-  }
-  return col;
-}
-
-int _skipPaddingCells(TerminalScreenGrid grid, int row, int col) {
-  while (col < grid.columns) {
-    col = _skipWideSpacers(grid, row, col);
-    if (col >= grid.columns) break;
-    final cp = grid.codepointAt(row, col);
-    if (cp != 0 && cp != 0x20) break;
-    col++;
-  }
-  return col;
-}
-
-final RegExp _symbolChar = RegExp(r'\p{S}', unicode: true);
-
-/// True when [cp] is painted TUI chrome, not paste content.
-///
-/// Chrome = any Unicode **symbol** (box-drawing `│`, prompts `❯ › → >`,
-/// bullets `▸ •`, arrows — one category, no single-glyph allowlist) plus the
-/// two punctuation glyphs some TUIs still use (`›`, `•`). Real content that
-/// begins a wrapped line stays exact: connector/open/close punctuation
-/// (`_`, `}`, `]`, `,` …) and letters/digits are never skipped. Only the wrap
-/// boundary is relaxed — one cell at most — and submits remain hook-confirmed.
-bool _isWrappableChrome(int cp) {
-  if (_symbolChar.hasMatch(String.fromCharCodes([cp]))) return true;
-  // 0x203a ›  (cursor), 0x2022 •  (bullets) — Punctuation, not Symbol.
-  return cp == 0x203a || cp == 0x2022;
 }
 
 int _advancePastCell(TerminalScreenGrid grid, int row, int col) {

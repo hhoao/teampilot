@@ -151,7 +151,7 @@ abort（shell 断开 / fence 关闭）从任意非终态 → aborted
 - **避免下方干扰**：单字符 needle（"1"）只匹配光标输入区，不会命中下方 status 行的同字符。
 - **多行粘贴**：光标在末行，尾部 40 字符可能起于光标上方 → 窗口上探 `cursorZoneWrapSlack` 行覆盖。
 - **长文本软换行**：`_matchesNeedleAt` 的 wrap 拼接使其仍可命中；极长文本用 `pollTimeout` 放大（`_pastePollBudget`）。
-- **续行 composer chrome**：TUI 输入框每行都绘制左框线/提示符（opencode `│`、claude `❯`、cursor `›` 等）+ 缩进。needle 跨行时 wrap 分支会跳过**一个**行首 chrome 符号（按 Unicode Symbol 类别判定，不需 per-CLI 白名单）及其后空白（`_skipLeadingChrome`）。标点/连接符（`_`、`}` 等）与字母数字仍是内容，只在"上一行已匹配、继续到下一行"时放宽一处，不会把状态行/ footer 当输入框。
+- **非字母数字的全局容差**：needle 逐 cell 匹配，**精确匹配优先**；失配时若网格当前 cell 是**非字母/数字**（空格、TUI 行首框线 `│`、提示符 `❯ › >`、标点、padding），视为 painted chrome 跨过并重试同一字符——不限于行首、不需要 per-CLI 白名单。**字母/数字（含 CJK）失配即失败**，内容永远不被跳过。续行若**一个 needle 字符都没匹配**（纯 chrome/边框行）则直接失败，不会把两个分开的输入区拼接起来。提交正确性仍由 hook 兜底，"误 ACK"最坏只是多一次 CR 重试。
 
 ### 4.3 hook 提交兜底（为什么"粘贴误判"不会被当成成功）
 
