@@ -1,3 +1,5 @@
+import '../../models/right_tool_open_set.dart';
+
 /// Stable ids for right-tools tabs (open-set / selection), independent of
 /// catalog order so shortcuts and persistence survive visibility toggles.
 abstract final class RightToolIds {
@@ -8,5 +10,5 @@ abstract final class RightToolIds {
   static const board = 'board';
   static const search = 'search';
 
-  static const teamSeedIds = ['members', 'mailbox'];
+  static const teamSeedIds = RightToolOpenSet.teamSeedIds;
 }

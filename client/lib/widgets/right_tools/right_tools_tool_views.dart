@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -827,16 +826,17 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
     final path = cached?.isNotEmpty == true
         ? cached!
         : (await MemberConfigInspector(
-            storage: chatCubit.lifecycle.storage,
-          ).inspect(
-            workspaceId: widget.workspaceId,
-            sessionId: activeTab?.info.id ?? '',
-            team: widget.team,
-            member: member,
-            workContext: workContext,
-            globalPresets: context.read<CliPresetsCubit>().state.presets,
-            preferExpectedRuntimeDir: true,
-          )).resolvedDir;
+                storage: chatCubit.lifecycle.storage,
+              ).inspect(
+                workspaceId: widget.workspaceId,
+                sessionId: activeTab?.info.id ?? '',
+                team: widget.team,
+                member: member,
+                workContext: workContext,
+                globalPresets: context.read<CliPresetsCubit>().state.presets,
+                preferExpectedRuntimeDir: true,
+              ))
+              .resolvedDir;
     if (!context.mounted || path.isEmpty) return;
     await openMemberConfigDirectory(
       context,

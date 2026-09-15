@@ -63,15 +63,11 @@ class WorkspaceToolsCubit extends Cubit<WorkspaceToolsState> {
 
   /// Catalog membership is a display filter. Remembered ids stay.
   /// [scopeId] and [availableIds] are ignored; the open set is global.
-  void pruneToAvailable(String scopeId, Iterable<String> availableIds) {
-    final _ = (scopeId, availableIds);
-  }
+  void pruneToAvailable(String scopeId, Iterable<String> availableIds) {}
 
   /// Global remembered set survives workspace-tab close.
   /// [scopeId] is ignored; the open set is global.
-  void removeWorkspace(String scopeId) {
-    final _ = scopeId;
-  }
+  void removeWorkspace(String scopeId) {}
 
   void _apply(RightToolOpenSet next) {
     if (next == state.openSet) return;
