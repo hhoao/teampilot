@@ -4421,6 +4421,7 @@
   "gitGraphLocalBranches": "Local branches",
   "gitGraphRemoteBranches": "Remote branches",
   "gitGraphTags": "Tags",
+  "gitGraphCommits": "Commits",
   "gitGraphHashSearchEmptyHint": "No loaded commit matches this hash. Scroll down or click \"Load more\" to fetch older history.",
   "gitGraphConflictHint": "Resolve the conflicts, stage the files, then commit to continue.",
   "gitGraphColumnGraph": "Graph",

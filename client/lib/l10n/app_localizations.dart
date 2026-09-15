@@ -15416,6 +15416,12 @@ abstract class AppLocalizations {
   /// **'Tags'**
   String get gitGraphTags;
 
+  /// No description provided for @gitGraphCommits.
+  ///
+  /// In en, this message translates to:
+  /// **'Commits'**
+  String get gitGraphCommits;
+
   /// No description provided for @gitGraphHashSearchEmptyHint.
   ///
   /// In en, this message translates to:
