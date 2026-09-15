@@ -151,6 +151,7 @@ abort（shell 断开 / fence 关闭）从任意非终态 → aborted
 - **避免下方干扰**：单字符 needle（"1"）只匹配光标输入区，不会命中下方 status 行的同字符。
 - **多行粘贴**：光标在末行，尾部 40 字符可能起于光标上方 → 窗口上探 `cursorZoneWrapSlack` 行覆盖。
 - **长文本软换行**：`_matchesNeedleAt` 的 wrap 拼接使其仍可命中；极长文本用 `pollTimeout` 放大（`_pastePollBudget`）。
+- **续行 composer chrome**：TUI 输入框每行都绘制左框线/提示符（opencode `│`、claude `❯` 等）+ 缩进。needle 跨行时 wrap 分支会跳过**一个** chrome 符号及其后空白（`_skipLeadingChrome`），只在"上一行已匹配、继续到下一行"时生效，不会把状态行/ footer 当输入框。
 
 ### 4.3 hook 提交兜底（为什么"粘贴误判"不会被当成成功）
 

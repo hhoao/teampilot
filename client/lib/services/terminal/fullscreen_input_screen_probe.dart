@@ -238,19 +238,11 @@ String describeProbeWindow(TerminalScreenGrid grid, {int scanRows = 8}) {
 int _findNeedleStartCol(
   TerminalScreenGrid grid,
   int row,
-  List<int> needleRunes, {
-  String? composerPrefix,
-}) {
+  List<int> needleRunes,
+) {
   for (var start = 0; start < grid.columns; start++) {
     if (_isWideSpacer(grid, row, start)) continue;
-    if (_matchesNeedleAt(
-      grid,
-      row,
-      start,
-      needleRunes,
-      composerPrefix: composerPrefix,
-    ))
-      return start;
+    if (_matchesNeedleAt(grid, row, start, needleRunes)) return start;
   }
   return -1;
 }
@@ -259,9 +251,8 @@ bool _matchesNeedleAt(
   TerminalScreenGrid grid,
   int row,
   int startCol,
-  List<int> needleRunes, {
-  String? composerPrefix,
-}) {
+  List<int> needleRunes,
+) {
   var r = row;
   var col = startCol;
   // After a soft wrap, leading indent is chrome and word-break spaces in the
@@ -284,9 +275,13 @@ bool _matchesNeedleAt(
       col = 0;
       if (r >= grid.rows) return false;
       if (!_rowHasNonSpaceContent(grid, r) && cp != 0x20) return false;
-      // Claude / other TUIs indent wrapped composer lines past the prompt
-      // prefix. Leading spaces are chrome, not paste content.
-      col = _skipLeadingPadding(grid, r, composerPrefix: composerPrefix);
+      // Full-screen TUIs paint composer chrome on EVERY input-box row — a left
+      // border (`│`), claude's `> `-style prompt glyph, etc. — beyond the wrap
+      // padding. A long staged paste wraps across those rows, so the flattened
+      // needle must skip the chrome to keep ACKing. Skipping is limited to one
+      // leading symbol + padding and only happens on a continuation row, so it
+      // can never mistake a status/footer line for the input box.
+      col = _skipLeadingChrome(grid, r);
       wrapped = true;
     }
     if (wrapped) collapseWrapSpaces = true;
@@ -373,26 +368,49 @@ int _skipWideSpacers(TerminalScreenGrid grid, int row, int col) {
   return col;
 }
 
-/// Advances past leading empty / space cells on a soft-wrapped continuation row.
-int _skipLeadingPadding(
-  TerminalScreenGrid grid,
-  int row, {
-  String? composerPrefix,
-}) {
-  var col = 0;
-  // OpenCode (and potentially other TUIs) repeats its composer prefix char on
-  // every wrapped continuation line — skip it just like space/null padding.
-  final prefixCp = (composerPrefix != null && composerPrefix.trim().isNotEmpty)
-      ? composerPrefix.trim().runes.first
-      : null;
+/// Advances past leading composer chrome at the start of a soft-wrapped composer
+/// row: wrap padding spaces, then ONE TUI chrome glyph (input-box left border
+/// `│`, prompt prefix `❯`/`›`/`→`/`>`) plus any following padding. Stops at real
+/// content so a symbol that is genuinely part of the paste is only ever skipped
+/// at a wrap boundary where the rest of the needle still has to match.
+int _skipLeadingChrome(TerminalScreenGrid grid, int row) {
+  var col = _skipWideSpacers(grid, row, 0);
+  col = _skipPaddingCells(grid, row, col);
+  if (col >= grid.columns) return col;
+  final cp = grid.codepointAt(row, col);
+  if (_isComposerChrome(cp)) {
+    col = _skipWideSpacers(grid, row, col + 1);
+    col = _skipPaddingCells(grid, row, col);
+  }
+  return col;
+}
+
+int _skipPaddingCells(TerminalScreenGrid grid, int row, int col) {
   while (col < grid.columns) {
     col = _skipWideSpacers(grid, row, col);
     if (col >= grid.columns) break;
     final cp = grid.codepointAt(row, col);
-    if (cp != 0 && cp != 0x20 && (prefixCp == null || cp != prefixCp)) break;
+    if (cp != 0 && cp != 0x20) break;
     col++;
   }
   return col;
+}
+
+/// Box-drawing and prompt glyphs that full-screen TUIs paint at the start of
+/// every composer row. Deliberately NOT a general "any symbol" — content that
+/// begins a wrapped paste line with one of these (e.g. a leading `>`) also
+/// matches, which is acceptable: only the wrap boundary is relaxed and the rest
+/// of the needle must still match the grid exactly.
+bool _isComposerChrome(int cp) {
+  // Box drawing: │ ┃ ─ │ ┆ ┊ ...
+  if (cp >= 0x2500 && cp <= 0x257f) return true;
+  return switch (cp) {
+    // `>` prompt / quote markers.
+    0x3e => true,
+    // ❯ › → ▸ ▶ • prompt glyphs.
+    0x276f || 0x203a || 0x2192 || 0x25b8 || 0x25b6 || 0x2022 => true,
+    _ => false,
+  };
 }
 
 int _advancePastCell(TerminalScreenGrid grid, int row, int col) {

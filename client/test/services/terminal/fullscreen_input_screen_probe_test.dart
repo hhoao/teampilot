@@ -52,6 +52,24 @@ void main() {
     },
   );
 
+  test('cursor-zone needle wraps past a per-line composer chrome border', () {
+    // opencode's input box paints a left border (`│` + 2 padding) on every
+    // visual row. A long staged paste wraps across those rows, so the
+    // continuation chrome must be skipped — nothing is sent when the flattened
+    // needle stops matching at the first wrapped border glyph.
+    final grid = _FakeGrid.fromRows([
+      '│  0123456789ABCDEFG',
+      '│  HIJKLMNOPQRSTUVWX',
+      '│  YZ',
+    ])..cursorRow = 2;
+    final needle = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+    final anchor = locateNeedleInCursorZone(grid, needle);
+    expect(anchor, isNotNull, reason: 'wrapped needle must ACK across chrome');
+    expect(anchor!.row, 0);
+    expect(needleStaysInCursorZone(grid, needle), isTrue);
+  });
+
   test('isAtAnchor false when same text moved to transcript row above', () {
     final grid = _FakeGrid.fromRows([
       '你和你的队员打个招呼吧',
