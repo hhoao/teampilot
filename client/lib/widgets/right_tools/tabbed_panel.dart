@@ -122,7 +122,11 @@ class _TabbedPanelState extends State<TabbedPanel> {
   void _close(String id) {
     final scope = widget.scopeId;
     if (scope != null) {
-      context.read<WorkspaceToolsCubit>().closeTool(scope, id);
+      context.read<WorkspaceToolsCubit>().closeTool(
+        scope,
+        id,
+        catalog: _catalogIds,
+      );
     } else {
       setState(() {
         final index = _localOpenIds.indexOf(id);

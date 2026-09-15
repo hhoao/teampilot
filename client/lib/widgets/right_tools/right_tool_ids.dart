@@ -8,6 +8,5 @@ abstract final class RightToolIds {
   static const board = 'board';
   static const search = 'search';
 
-  /// First-visit open set for mixed-mode team sessions (members / mailbox / board).
-  static const mixedTeamDefaults = [members, mailbox, board];
+  static const teamSeedIds = ['members', 'mailbox'];
 }

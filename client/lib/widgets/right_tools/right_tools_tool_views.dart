@@ -377,38 +377,15 @@ class _RightToolsViewsCacheKey {
 class _RightToolsToolViewsState extends State<RightToolsToolViews> {
   _RightToolsViewsCacheKey? _cacheKey;
   List<ToolView>? _cachedViews;
-  var _mixedDefaultsSeeded = false;
 
-  @override
-  void didUpdateWidget(covariant RightToolsToolViews oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.toolsScopeId != widget.toolsScopeId) {
-      _mixedDefaultsSeeded = false;
-    }
-  }
-
-  void _seedMixedTeamDefaultsIfNeeded(
-    BuildContext context,
-    List<ToolView> views,
-  ) {
-    if (_mixedDefaultsSeeded) return;
-    final team = widget.team;
-    if (widget.isPersonalContext || team?.teamMode != TeamMode.mixed) return;
-
-    final available = views.map((v) => v.id).toSet();
-    final defaults = [
-      for (final id in RightToolIds.mixedTeamDefaults)
-        if (available.contains(id)) id,
-    ];
-    if (defaults.isEmpty) return;
-
-    _mixedDefaultsSeeded = true;
+  void _seedTeamToolsIfNeeded(BuildContext context, List<ToolView> views) {
+    if (widget.isPersonalContext || widget.team == null) return;
+    final catalog = [for (final view in views) view.id];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<WorkspaceToolsCubit>().openDefaultsIfEmpty(
+      context.read<WorkspaceToolsCubit>().seedTeamDefaults(
         widget.toolsScopeId,
-        defaults,
-        selectId: RightToolIds.members,
+        catalog,
       );
     });
   }
@@ -509,7 +486,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
       );
     }
 
-    _seedMixedTeamDefaultsIfNeeded(context, _cachedViews!);
+    _seedTeamToolsIfNeeded(context, _cachedViews!);
 
     return TabbedPanel(views: _cachedViews!, scopeId: widget.toolsScopeId);
   }
