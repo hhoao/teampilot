@@ -75,6 +75,38 @@ void main() {
     );
   });
 
+  test(
+    'Claude-compatible worker enrichment is skipped when no part needs it',
+    () async {
+      final bundle = AiTranscriptBundle(
+        adapterId: 'claude',
+        fragments: [
+          AiTranscriptFragment(
+            name: 'plain.jsonl',
+            bytes: utf8.encode(
+              '{"type":"user","message":{"role":"user","content":"hello"},'
+              '"uuid":"u-1","timestamp":"2026-09-15T00:00:00.000Z"}\n'
+              '{"type":"assistant","message":{"role":"assistant",'
+              '"content":[{"type":"text","text":"no tools here"}]},'
+              '"uuid":"a-1","timestamp":"2026-09-15T00:00:01.000Z"}',
+            ),
+          ),
+        ],
+      );
+
+      final result = await parseHistoryBundleInWorker(
+        adapterId: 'claude',
+        bundle: bundle,
+        workerEnricherId: 'claude-compatible',
+        sourceToken: 'plain-token',
+      );
+
+      expect(result.messages.map((message) => message.id), ['u-1', 'a-1']);
+      expect(result.indexSnapshot, isNull);
+      expect(result.enrichTime, Duration.zero);
+    },
+  );
+
   test('Claude-compatible enricher exposes its stable worker ID', () {
     expect(ClaudeCompatibleToolResultEnricher().workerId, 'claude-compatible');
   });

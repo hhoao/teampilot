@@ -14,7 +14,10 @@ typedef ToolResultLineDecoder =
     List<Map<String, dynamic>?> Function(List<String> lines);
 
 final class ClaudeCompatibleToolResultEnricher
-    implements ToolResultEnricher, ToolResultIndexCache {
+    implements
+        ToolResultEnricher,
+        ToolResultIndexCache,
+        ToolResultIndexSnapshotApplier {
   ClaudeCompatibleToolResultEnricher({ToolResultLineDecoder? decodeLines})
     : _decodeLines = decodeLines ?? _defaultDecodeLines;
 
@@ -95,7 +98,37 @@ final class ClaudeCompatibleToolResultEnricher
 
   @override
   void importIndex(Object? snapshot) {
-    if (snapshot is! Map) return;
+    _indexes.addAll(_decodeIndexSnapshot(snapshot));
+  }
+
+  @override
+  Future<List<AiMessage>> applyIndexSnapshot({
+    required List<AiMessage> messages,
+    required Object? snapshot,
+    String? sourceToken,
+    String? rootTranscriptPath,
+  }) async {
+    lastDecodeBatches = 0;
+    lastDecodeLines = 0;
+    lastDecodeMicroseconds = 0;
+    final indexes = _decodeIndexSnapshot(snapshot);
+    if (indexes.isEmpty) return messages;
+    final identity = _cacheIdentity(
+      sourceToken: sourceToken,
+      rootTranscriptPath: rootTranscriptPath,
+      bundle: null,
+    );
+    final cached = identity.isEmpty
+        ? (indexes.length == 1 ? indexes.values.single : null)
+        : indexes[identity];
+    final records = cached?.records;
+    if (records == null || records.isEmpty) return messages;
+    return _applyIndex(messages, records);
+  }
+
+  Map<String, _CachedToolResultIndex> _decodeIndexSnapshot(Object? snapshot) {
+    if (snapshot is! Map) return const {};
+    final indexes = <String, _CachedToolResultIndex>{};
     for (final entry in snapshot.entries) {
       final identity = entry.key;
       final value = entry.value;
@@ -104,9 +137,7 @@ final class ClaudeCompatibleToolResultEnricher
       final indexedBytes = value['indexedBytes'];
       final boundary = value['boundary'];
       final rawRecords = value['records'];
-      if (indexedLength is! int ||
-          boundary is! String ||
-          rawRecords is! Map) {
+      if (indexedLength is! int || boundary is! String || rawRecords is! Map) {
         continue;
       }
       final records = <String, _IndexedToolUseResult>{};
@@ -119,13 +150,14 @@ final class ClaudeCompatibleToolResultEnricher
           blockIsError: payload['blockIsError'] == true,
         );
       }
-      _indexes[identity] = _CachedToolResultIndex(
+      indexes[identity] = _CachedToolResultIndex(
         indexedLength: indexedLength,
         indexedBytes: indexedBytes is int ? indexedBytes : indexedLength,
         boundary: boundary,
         records: records,
       );
     }
+    return indexes;
   }
 
   @override
@@ -185,11 +217,7 @@ final class ClaudeCompatibleToolResultEnricher
         content.substring(cached.indexedLength),
       );
       final merged = {...cached.records, ...appended};
-      _storeIndex(
-        identity: identity,
-        content: content,
-        records: merged,
-      );
+      _storeIndex(identity: identity, content: content, records: merged);
       return merged;
     }
     final records = _indexToolUseResults(content);
@@ -382,8 +410,9 @@ Map<String, _IndexedToolUseResult> _indexDecodedEvents(
   return index;
 }
 
-List<Map<String, dynamic>?> _defaultDecodeLines(List<String> lines) =>
-    [for (final line in lines) _tryDecodeObject(line)];
+List<Map<String, dynamic>?> _defaultDecodeLines(List<String> lines) => [
+  for (final line in lines) _tryDecodeObject(line),
+];
 
 Map<String, dynamic>? _tryDecodeObject(String line) {
   try {
@@ -416,10 +445,7 @@ _Replacement? _replacementFromToolUseResult(Object? toolUseResult) {
     final text = _combineStdoutStderr(stdout, stderr);
     if (text.isEmpty) return null;
 
-    return _Replacement(
-      text: text,
-      isError: _isErrorExitCode(map['exitCode']),
-    );
+    return _Replacement(text: text, isError: _isErrorExitCode(map['exitCode']));
   }
 
   return null;

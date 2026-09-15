@@ -56,6 +56,7 @@ void main() {
   test('request timeout discards a stalled resident worker', () async {
     final worker = HistoryParseWorker(
       readyTimeout: const Duration(milliseconds: 30),
+      requestTimeout: const Duration(milliseconds: 30),
       debugBehavior: HistoryParseWorkerDebugBehavior.stallRequests,
     );
     addTearDown(worker.dispose);
@@ -105,6 +106,27 @@ void main() {
     expect(results[0].messages.last.id, 'a1');
     expect(results[1].messages.last.id, 'a2');
   });
+
+  test(
+    'queued requests use a request timeout separate from readiness',
+    () async {
+      final worker = HistoryParseWorker(
+        readyTimeout: const Duration(milliseconds: 20),
+        requestTimeout: const Duration(milliseconds: 200),
+        debugBehavior: HistoryParseWorkerDebugBehavior.delayFirstResponse,
+      );
+      addTearDown(worker.dispose);
+
+      final results = await Future.wait([
+        worker.parse(adapterId: 'claude', bundle: claudeBundle('u1', 'a1')),
+        worker.parse(adapterId: 'claude', bundle: claudeBundle('u2', 'a2')),
+      ]);
+
+      expect(results[0].messages.last.id, 'a1');
+      expect(results[1].messages.last.id, 'a2');
+      expect(worker.debugSpawnCount, 1);
+    },
+  );
 
   test('disposal fails a pending request and releases the worker', () async {
     final worker = HistoryParseWorker(

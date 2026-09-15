@@ -115,8 +115,7 @@ final class AiHistoryLoader {
   final _inflightLoads = <String, Future<AiHistoryLoadResult>>{};
 
   /// Per-seat lazy subagent attachment loads (cacheKey+toolCallId → future).
-  final _inflightSubagentLoads =
-      <String, Future<AiSubagentAttachment?>>{};
+  final _inflightSubagentLoads = <String, Future<AiSubagentAttachment?>>{};
 
   /// Bumped when a seat's lazy attachment cache is cleared (side fingerprint).
   final _subagentSeatGenerations = <String, int>{};
@@ -174,13 +173,14 @@ final class AiHistoryLoader {
     final path = rootTranscriptPath?.trim().isEmpty ?? true
         ? null
         : rootTranscriptPath;
-    var attachment = await const SubagentAttachmentInflater().resolveByToolCallId(
-      toolCallId: toolCallId,
-      messages: messages,
-      ctx: ctx,
-      capability: capability,
-      rootTranscriptPath: path,
-    );
+    var attachment = await const SubagentAttachmentInflater()
+        .resolveByToolCallId(
+          toolCallId: toolCallId,
+          messages: messages,
+          ctx: ctx,
+          capability: capability,
+          rootTranscriptPath: path,
+        );
     _timings?.addSideTranscriptRead();
     if (_subagentSeatGeneration(cacheKey) != seatGen ||
         _subagentIdGeneration(cacheKey, toolCallId) != idGen) {
@@ -188,10 +188,9 @@ final class AiHistoryLoader {
     }
     if (attachment == null) return null;
 
-    final annotated = annotateSubagentAttachments(
-      {toolCallId: attachment},
-      resolver: _categoryResolverFor(cli),
-    );
+    final annotated = annotateSubagentAttachments({
+      toolCallId: attachment,
+    }, resolver: _categoryResolverFor(cli));
     attachment = annotated[toolCallId] ?? attachment;
 
     if (_subagentSeatGeneration(cacheKey) != seatGen ||
@@ -215,7 +214,9 @@ final class AiHistoryLoader {
 
   void _invalidateSubagentLoadsForSeat(String cacheKey) {
     _subagentSeatGenerations[cacheKey] = _subagentSeatGeneration(cacheKey) + 1;
-    _inflightSubagentLoads.removeWhere((k, _) => k.startsWith('$cacheKey\u0000'));
+    _inflightSubagentLoads.removeWhere(
+      (k, _) => k.startsWith('$cacheKey\u0000'),
+    );
   }
 
   void _invalidateSubagentLoadForId(String cacheKey, String toolCallId) {
@@ -283,6 +284,7 @@ final class AiHistoryLoader {
       SubagentAttachmentInflater.addWorkflowChildren(attachment, cache);
     }
   }
+
   final _hasOlder = <String, bool>{};
   final _cursors = <String, AiHistoryCursor?>{};
   final _complete = <String, bool>{};
@@ -374,11 +376,7 @@ final class AiHistoryLoader {
     final reader = _tailReaderFor(cli);
     if (reader == null) return null;
     final state = _tailStates.putIfAbsent(cacheKey, TailReaderState.new);
-    await reader.refresh(
-      fs: ctx.fs,
-      path: parentPath,
-      state: state,
-    );
+    await reader.refresh(fs: ctx.fs, path: parentPath, state: state);
     return state.messages;
   }
 
@@ -996,10 +994,7 @@ final class AiHistoryLoader {
       final pageSw = Stopwatch()..start();
       final page = await _timed(
         AiHistoryLoadPhase.read,
-        () => reader.readLatest(
-          ctx: ctx,
-          limit: kSessionHistoryInitialTurns,
-        ),
+        () => reader.readLatest(ctx: ctx, limit: kSessionHistoryInitialTurns),
       );
       final readMs = pageSw.elapsedMilliseconds;
       if (page == null) {
@@ -1030,14 +1025,16 @@ final class AiHistoryLoader {
       _messages[cacheKey] = messages;
       _attachments[cacheKey] = attachments;
       _tokens[cacheKey] = token ?? 'changed-$cacheKey';
-      _hasOlder[cacheKey] = page.completeMessages != null ? false : page.hasOlder;
-      _cursors[cacheKey] =
-          page.completeMessages != null ? null : page.nextCursor;
+      _hasOlder[cacheKey] = page.completeMessages != null
+          ? false
+          : page.hasOlder;
+      _cursors[cacheKey] = page.completeMessages != null
+          ? null
+          : page.nextCursor;
       _pageContexts[cacheKey] = ctx;
       _pageClis[cacheKey] = cli;
       // Byte-0 scans already hold the full finalize — do not decode again.
-      final pageComplete =
-          page.completeMessages != null || !page.hasOlder;
+      final pageComplete = page.completeMessages != null || !page.hasOlder;
       if (pageComplete) {
         // Latest page already covered byte 0 — treat as the full index so we
         // do not decode the same transcript again on a background force load.
@@ -1160,9 +1157,10 @@ final class AiHistoryLoader {
       return;
     }
     final prefix = '${sessionId.trim()}\u0000';
-    for (final key in [..._parentPaths.keys, ..._tokens.keys]
-        .where((k) => k.startsWith(prefix))
-        .toSet()) {
+    for (final key in [
+      ..._parentPaths.keys,
+      ..._tokens.keys,
+    ].where((k) => k.startsWith(prefix)).toSet()) {
       _invalidateToolResultIndexes(identity: _indexIdentityFor(key));
     }
     _tokens.removeWhere((key, _) => key.startsWith(prefix));
@@ -1276,8 +1274,9 @@ final class AiHistoryLoader {
       return;
     }
     for (final cli in CliTool.values) {
-      final enricher =
-          _registry.capability<AiHistoryCapability>(cli)?.toolResultEnricher;
+      final enricher = _registry
+          .capability<AiHistoryCapability>(cli)
+          ?.toolResultEnricher;
       final cache = enricher is ToolResultIndexCache
           ? enricher as ToolResultIndexCache
           : null;
@@ -1314,6 +1313,7 @@ final class AiHistoryLoader {
           rootTranscriptPath: parentPath,
           contentLength: totalBytes,
         );
+    final reusableIndexSnapshot = reuse ? indexCache.exportIndex() : null;
 
     if (totalBytes >= _isolateParseMinBytes) {
       final result = await _parseExecutor.parse(
@@ -1323,7 +1323,9 @@ final class AiHistoryLoader {
         sourceToken: sourceToken,
         rootTranscriptPath: parentPath,
       );
-      indexCache?.importIndex(result.indexSnapshot);
+      if (!reuse) {
+        indexCache?.importIndex(result.indexSnapshot);
+      }
       _recordTimedPhase(
         AiHistoryLoadPhase.parse,
         result.parseTime.inMicroseconds,
@@ -1334,8 +1336,24 @@ final class AiHistoryLoader {
           result.enrichTime.inMicroseconds,
         );
       }
-      if ((enricher.requiresFilesystem || reuse) &&
-          _needsToolResultEnrichment(result.messages, enricher)) {
+      if (!_needsToolResultEnrichment(result.messages, enricher)) {
+        return result.messages;
+      }
+      if (reuse &&
+          reusableIndexSnapshot != null &&
+          indexCache is ToolResultIndexSnapshotApplier) {
+        return _timed(
+          AiHistoryLoadPhase.enrich,
+          () =>
+              (indexCache as ToolResultIndexSnapshotApplier).applyIndexSnapshot(
+                messages: result.messages,
+                snapshot: reusableIndexSnapshot,
+                sourceToken: sourceToken,
+                rootTranscriptPath: parentPath,
+              ),
+        );
+      }
+      if (enricher.requiresFilesystem || reuse || enricher.workerId == null) {
         return _enrichMessages(
           enricher: enricher,
           messages: result.messages,

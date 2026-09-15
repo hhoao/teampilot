@@ -33,6 +33,10 @@ Future<HistoryParseResult> parseHistoryBundleInWorker({
   if (workerEnricherId == 'claude-compatible') {
     final enrichSw = Stopwatch()..start();
     final enricher = ClaudeCompatibleToolResultEnricher();
+    if (!_needsToolResultEnrichment(messages, enricher)) {
+      enrichSw.stop();
+      return HistoryParseResult(messages: messages, parseTime: parseSw.elapsed);
+    }
     final enriched = await enricher.enrich(
       messages: messages,
       ctx: null,
@@ -50,4 +54,18 @@ Future<HistoryParseResult> parseHistoryBundleInWorker({
   }
 
   return HistoryParseResult(messages: messages, parseTime: parseSw.elapsed);
+}
+
+bool _needsToolResultEnrichment(
+  List<AiMessage> messages,
+  ClaudeCompatibleToolResultEnricher enricher,
+) {
+  for (final message in messages) {
+    for (final part in message.parts) {
+      if (part is AiToolCallPart && enricher.needsEnrichment(part)) {
+        return true;
+      }
+    }
+  }
+  return false;
 }

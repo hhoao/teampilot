@@ -42,6 +42,8 @@ final class HistoryParseWorker implements HistoryParseExecutor {
   HistoryParseWorker({
     @visibleForTesting this.idleTimeout = const Duration(seconds: 30),
     @visibleForTesting this.readyTimeout = const Duration(seconds: 10),
+    @visibleForTesting this.requestTimeout = const Duration(seconds: 30),
+    @visibleForTesting this.queueTimeout = const Duration(minutes: 5),
     @visibleForTesting
     this.debugBehavior = HistoryParseWorkerDebugBehavior.normal,
   });
@@ -53,6 +55,12 @@ final class HistoryParseWorker implements HistoryParseExecutor {
 
   @visibleForTesting
   final Duration readyTimeout;
+
+  @visibleForTesting
+  final Duration requestTimeout;
+
+  @visibleForTesting
+  final Duration queueTimeout;
 
   @visibleForTesting
   final HistoryParseWorkerDebugBehavior debugBehavior;
@@ -82,7 +90,9 @@ final class HistoryParseWorker implements HistoryParseExecutor {
         workerEnricherId: workerEnricherId,
         sourceToken: sourceToken,
         rootTranscriptPath: rootTranscriptPath,
-        timeout: readyTimeout,
+        readyTimeout: readyTimeout,
+        requestTimeout: requestTimeout,
+        queueTimeout: queueTimeout,
       );
     } catch (_) {
       if (worker.isDead) {
@@ -195,6 +205,7 @@ final class _HistoryParseResidentWorker {
   StreamSubscription<dynamic>? _responsesSub;
   StreamSubscription<dynamic>? _controlSub;
   var _nextRequestId = 0;
+  Future<void> _requestTail = Future<void>.value();
   var _failed = false;
   var _closed = false;
 
@@ -234,51 +245,78 @@ final class _HistoryParseResidentWorker {
     required String? workerEnricherId,
     required String? sourceToken,
     required String? rootTranscriptPath,
-    required Duration timeout,
+    required Duration readyTimeout,
+    required Duration requestTimeout,
+    required Duration queueTimeout,
   }) async {
     if (isDead) {
       throw StateError('session-history-parser worker is unavailable');
     }
 
-    final port = await _waitReady(timeout);
+    final port = await _waitReady(readyTimeout);
     if (isDead) {
       throw StateError('session-history-parser worker is unavailable');
     }
 
-    final requestId = _nextRequestId++;
-    final completer = Completer<HistoryParseResult>();
-    _pending[requestId] = completer;
-    if (!_pendingRequest.isCompleted) {
-      _pendingRequest.complete();
-    }
-    try {
-      port.send(
-        _HistoryParseRequest(
-          requestId: requestId,
-          adapterId: adapterId,
-          bundle: bundle,
-          workerEnricherId: workerEnricherId,
-          sourceToken: sourceToken,
-          rootTranscriptPath: rootTranscriptPath,
-        ),
-      );
-    } catch (error, stackTrace) {
-      _pending.remove(requestId);
-      _fail(error, stackTrace);
-      rethrow;
-    }
+    final previous = _requestTail;
+    final turn = Completer<void>();
+    _requestTail = previous.catchError((_) {}).then((_) => turn.future);
 
-    return completer.future.timeout(
-      timeout,
-      onTimeout: () {
-        final error = TimeoutException(
-          'session-history-parser worker request timed out',
-          timeout,
+    try {
+      await previous.timeout(
+        queueTimeout,
+        onTimeout: () {
+          final error = TimeoutException(
+            'session-history-parser worker queue timed out',
+            queueTimeout,
+          );
+          _fail(error, StackTrace.current);
+          throw error;
+        },
+      );
+      if (isDead) {
+        throw StateError('session-history-parser worker is unavailable');
+      }
+
+      final requestId = _nextRequestId++;
+      final completer = Completer<HistoryParseResult>();
+      _pending[requestId] = completer;
+      if (!_pendingRequest.isCompleted) {
+        _pendingRequest.complete();
+      }
+      try {
+        port.send(
+          _HistoryParseRequest(
+            requestId: requestId,
+            adapterId: adapterId,
+            bundle: bundle,
+            workerEnricherId: workerEnricherId,
+            sourceToken: sourceToken,
+            rootTranscriptPath: rootTranscriptPath,
+          ),
         );
-        _fail(error, StackTrace.current);
-        throw error;
-      },
-    );
+      } catch (error, stackTrace) {
+        _pending.remove(requestId);
+        _fail(error, stackTrace);
+        rethrow;
+      }
+
+      return await completer.future.timeout(
+        requestTimeout,
+        onTimeout: () {
+          final error = TimeoutException(
+            'session-history-parser worker request timed out',
+            requestTimeout,
+          );
+          _fail(error, StackTrace.current);
+          throw error;
+        },
+      );
+    } finally {
+      if (!turn.isCompleted) {
+        turn.complete();
+      }
+    }
   }
 
   Future<SendPort> _waitReady(Duration timeout) {

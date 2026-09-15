@@ -75,6 +75,17 @@ abstract interface class ToolResultIndexCache {
   void importIndex(Object? snapshot);
 }
 
+/// Applies a previously exported index without decoding transcript content or
+/// mutating the live cache.
+abstract interface class ToolResultIndexSnapshotApplier {
+  Future<List<AiMessage>> applyIndexSnapshot({
+    required List<AiMessage> messages,
+    required Object? snapshot,
+    String? sourceToken,
+    String? rootTranscriptPath,
+  });
+}
+
 /// Canonical marker-shape gate shared by the interface default and marker-only
 /// enrichers: a String result carrying this enricher's truncation marker.
 bool defaultToolResultNeedsEnrichment(
@@ -108,6 +119,5 @@ final class NoOpToolResultEnricher implements ToolResultEnricher {
     required String? rootTranscriptPath,
     required AiTranscriptBundle? bundle,
     String? sourceToken,
-  }) async =>
-      messages;
+  }) async => messages;
 }
