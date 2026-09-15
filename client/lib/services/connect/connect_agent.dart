@@ -139,7 +139,7 @@ class ConnectAgent {
 
   static const _inviteTtl = Duration(minutes: 10);
 
-  final ConnectSshBackend _sshBackend;
+  ConnectSshBackend _sshBackend;
   final PairingTokenGate _gate;
   final PairingBind _bind;
   final PairingCertificateProvider _certificateProvider;
@@ -216,7 +216,7 @@ class ConnectAgent {
         displayName: displayName,
         appDataRoot: appDataRoot,
         hostId: await _stableHostId(appDataRoot),
-        embeddedPort: _sshBackend.port,
+        sshPort: _sshBackend.port,
         fingerprints: fingerprints,
         certificateSha256: certificate.sha256Hex,
         pairingPort: binding.port,
@@ -354,6 +354,11 @@ class ConnectAgent {
     }
   });
 
+  Future<void> replaceSshBackend(ConnectSshBackend backend) =>
+      _lifecycleLock.synchronized(() async {
+        _sshBackend = backend;
+      });
+
   Future<void> _regenerateQr() async {
     final session = _session;
     if (session == null || _binding == null) {
@@ -370,7 +375,7 @@ class ConnectAgent {
     final relay = _relayRegistration;
     return SshPairingOffer(
       v: 2,
-      emb: true,
+      emb: _sshBackend.isEmbedded,
       hostId: session.hostId,
       username: session.username,
       displayName: session.displayName,
@@ -379,7 +384,7 @@ class ConnectAgent {
         SshReachabilityEndpoint(
           kind: SshEndpointKind.lan,
           host: session.advertiseAddress,
-          port: session.embeddedPort,
+          port: session.sshPort,
         ),
         ..._extraEndpoints.where(
           (endpoint) => endpoint.kind == SshEndpointKind.extra,
@@ -441,12 +446,19 @@ class ConnectAgent {
               required String deviceId,
               required String deviceName,
               required String publicKey,
-            }) =>
-                _deviceStore.issueDevice(
-                  deviceId: deviceId,
-                  publicKey: publicKey,
-                  deviceName: deviceName,
-                ),
+            }) async {
+              await _deviceStore.issueDevice(
+                deviceId: deviceId,
+                publicKey: publicKey,
+                deviceName: deviceName,
+              );
+              try {
+                await _sshBackend.authorizePublicKey(publicKey);
+              } on Object {
+                await _deviceStore.revokeDevice(deviceId);
+                rethrow;
+              }
+            },
         now: _now(),
         profileHint: session.displayName,
       );
@@ -501,7 +513,7 @@ class _QrSession {
     required this.displayName,
     required this.appDataRoot,
     required this.hostId,
-    required this.embeddedPort,
+    required this.sshPort,
     required this.fingerprints,
     required this.certificateSha256,
     required this.pairingPort,
@@ -513,8 +525,8 @@ class _QrSession {
   final String appDataRoot;
   final String hostId;
 
-  /// The embedded SSH server's actually bound port.
-  final int embeddedPort;
+  /// The SSH backend's listening port.
+  final int sshPort;
   final List<String> fingerprints;
   final String certificateSha256;
   final int pairingPort;

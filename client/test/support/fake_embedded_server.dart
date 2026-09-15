@@ -11,6 +11,7 @@ class FakeEmbeddedServer implements ConnectSshBackend {
     this.hostKeyFingerprints = const ['SHA256:host-key'],
     this.isEmbedded = true,
     this.restartError,
+    this.authorizeError,
   });
 
   @override
@@ -27,6 +28,9 @@ class FakeEmbeddedServer implements ConnectSshBackend {
 
   /// Thrown by [restart] when set, simulating a failed re-start.
   Object? restartError;
+
+  /// Thrown by [authorizePublicKey] when set.
+  Object? authorizeError;
 
   /// Optional hook run by [restart] — lets a test flip [isListening]/[port]
   /// to simulate a successful re-start.
@@ -50,7 +54,10 @@ class FakeEmbeddedServer implements ConnectSshBackend {
   }
 
   @override
-  Future<void> authorizePublicKey(String publicKey) async {}
+  Future<void> authorizePublicKey(String publicKey) async {
+    final error = authorizeError;
+    if (error != null) throw error;
+  }
 
   @override
   Future<void> revokePublicKey(String publicKey) async {}
