@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -81,10 +82,17 @@ typedef SSHForwardedChannelOpener = Future<SSHServerChannel?> Function({
 /// Pumps one accepted connection against its channel until either side
 /// ends: TCP bytes become channel data and back, the TCP side ending
 /// closes the channel, and the channel ending destroys the TCP side.
+///
+/// Every completion of [ForwardConnection.done] — including an errored one
+/// (a TCP reset completes it with a SocketException) — is consumed here: an
+/// ended connection closes the channel and finishes the pump, and the error
+/// itself is diagnosed through [printDebug] instead of escaping into the
+/// embedder's zone as an unhandled exception.
 Future<void> pumpForwardConnection(
   SSHServerChannel channel,
-  ForwardConnection connection,
-) {
+  ForwardConnection connection, {
+  void Function(String? message)? printDebug,
+}) {
   final subscriptions = <StreamSubscription<dynamic>>[];
   final finished = Completer<void>();
   var stopped = false;
@@ -111,21 +119,58 @@ Future<void> pumpForwardConnection(
     ),
   );
 
-  // Client → TCP peer.
-  subscriptions.add(
-    channel.input.listen(
-      (data) {
+  // Client → TCP peer: one chunk at a time, each write awaited before the
+  // next is taken, and only a completed write reports consumption back to
+  // the channel. Awaiting the sink carries the socket's own backpressure (a
+  // peer that stopped reading makes the write wait), so a flood aimed at a
+  // silent target exhausts the granted window instead of being buffered
+  // unboundedly (F4, audit A16).
+  final pendingOutput = Queue<Uint8List>();
+  var writingOutput = false;
+  var outputEnded = false;
+  var outputBroken = false;
+  void pumpOutput() {
+    if (writingOutput || outputBroken) return;
+    if (pendingOutput.isEmpty) {
+      if (outputEnded) {
+        unawaited(connection.output.close().then((_) {}, onError: (Object _) {}));
+      }
+      return;
+    }
+    writingOutput = true;
+    unawaited(() async {
+      while (pendingOutput.isNotEmpty && !outputBroken) {
+        final data = pendingOutput.removeFirst();
         try {
-          connection.output.add(data);
+          await connection.output.addStream(Stream.value(data));
         } on Object {
           // The TCP side died mid-write; its own completion closes the
           // channel.
+          outputBroken = true;
+          pendingOutput.clear();
+          return;
         }
+        channel.consumeInput(data.length);
+      }
+      writingOutput = false;
+      if (outputEnded && pendingOutput.isEmpty) {
+        unawaited(connection.output.close().then((_) {}, onError: (Object _) {}));
+      }
+    }());
+  }
+
+  subscriptions.add(
+    channel.input.listen(
+      (data) {
+        pendingOutput.add(data);
+        pumpOutput();
       },
       onError: (Object _) {},
       onDone: () {
-        // The client half-closed its channel: stop writing to the peer.
-        connection.output.close().then((_) {}, onError: (Object _) {});
+        // The client half-closed its channel: the peer's sink is released
+        // once the queued writes have drained.
+        outputEnded = true;
+        pumpOutput();
       },
     ),
   );
@@ -138,13 +183,26 @@ Future<void> pumpForwardConnection(
     stop();
   });
 
-  // The TCP connection ended outright — failed, or destroyed from the
-  // channel side above: finish the channel if it is not already finishing
-  // itself.
-  connection.done.whenComplete(() {
-    channel.close();
-    stop();
-  });
+  // The TCP connection ended outright — failed (a reset completes it with
+  // an error), or destroyed from the channel side above: finish the channel
+  // if it is not already finishing itself. The error channel is consumed
+  // here (then/onError, not whenComplete): dropping it would let a reset
+  // escape into the embedder's zone as an unhandled exception.
+  unawaited(
+    connection.done.then(
+      (_) {
+        channel.close();
+        stop();
+      },
+      onError: (Object error) {
+        printDebug?.call(
+          'tp_sshd: forwarded connection ended with an error: $error',
+        );
+        channel.close();
+        stop();
+      },
+    ),
+  );
 
   return finished.future;
 }
@@ -341,7 +399,7 @@ class SSHServerForwarder {
       connection.destroy();
       return;
     }
-    await pumpForwardConnection(channel, connection);
+    await pumpForwardConnection(channel, connection, printDebug: printDebug);
   }
 
   /// Answers [request] with the global-request reply it asked for, carrying

@@ -66,6 +66,11 @@ Future<(SSHClient, SSHServer)> startDualPair({
 /// Like [startDualPair], but hands the test the connection object itself, so
 /// it can reach the server-side channel table through
 /// [SSHServerConnection.channels].
+///
+/// [rekeyBytes] and [rekeyInterval] are passed straight into the config:
+/// omitting them leaves them `null`, i.e. server-initiated rekey disabled —
+/// what the pre-rekey tests assumed — while the rekey tests inject tiny
+/// thresholds.
 Future<(SSHClient, SSHServerConnection)> startDualConnection({
   required SSHKeyPair hostKeyPair,
   required Future<bool> Function(SSHServerAuthRequest request) authenticate,
@@ -73,6 +78,9 @@ Future<(SSHClient, SSHServerConnection)> startDualConnection({
   String username = 'user',
   SSHForwardingConfig? forwarding,
   int maxChannels = 10,
+  SSHProcessFactory? processFactory,
+  int? rekeyBytes,
+  Duration? rekeyInterval,
 }) async {
   final (clientSocket, serverSocket) = loopbackSSHSocketPair();
   final connection = SSHServerConnection(
@@ -83,6 +91,9 @@ Future<(SSHClient, SSHServerConnection)> startDualConnection({
       authenticate: authenticate,
       forwarding: forwarding,
       maxChannels: maxChannels,
+      processFactory: processFactory,
+      rekeyBytes: rekeyBytes,
+      rekeyInterval: rekeyInterval,
     ),
   );
   final client = _connectClient(
@@ -119,6 +130,7 @@ SSHClient _connectClient(
 Future<(SSHServerConnection, SSHTransport)> startRawAuthenticatedConnection({
   void Function(Uint8List payload)? onServerMessage,
   SSHForwardingConfig? forwarding,
+  SSHProcessFactory? processFactory,
 }) async {
   final (clientSocket, serverSocket) = loopbackSSHSocketPair();
   final connection = SSHServerConnection(
@@ -128,6 +140,7 @@ Future<(SSHServerConnection, SSHTransport)> startRawAuthenticatedConnection({
       expectedUsername: 'user',
       authenticate: (_) async => true,
       forwarding: forwarding,
+      processFactory: processFactory,
     ),
   );
   final authenticated = Completer<void>();
@@ -193,6 +206,8 @@ Future<(SSHServer, SSHTransport)> startRawPair({
   required Future<bool> Function(SSHServerAuthRequest request) authenticate,
   required void Function(SSHTransport client) onReady,
   bool Function(Uint8List payload)? onServerMessage,
+  Duration authFailureMinDelay = const Duration(milliseconds: 10),
+  void Function(String? line)? onClientTrace,
 }) async {
   final (clientSocket, serverSocket) = loopbackSSHSocketPair();
   final connections = StreamController<SSHSocket>();
@@ -202,6 +217,7 @@ Future<(SSHServer, SSHTransport)> startRawPair({
       hostKeyPair: testHostKey,
       expectedUsername: 'user',
       authenticate: authenticate,
+      authFailureMinDelay: authFailureMinDelay,
     ),
   );
   connections.add(serverSocket);
@@ -211,6 +227,10 @@ Future<(SSHServer, SSHTransport)> startRawPair({
     onVerifyHostKey: (_, __) => true,
     onReady: () => onReady(client),
     onMessage: onServerMessage ?? (_) => true,
+    // The transport answers some messages itself (UNIMPLEMENTED, DEBUG, the
+    // KEX family) so they never reach onMessage; the trace is the only place
+    // a test can observe them from the client side.
+    printTrace: onClientTrace,
   );
   return (server, client);
 }

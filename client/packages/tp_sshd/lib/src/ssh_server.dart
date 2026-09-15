@@ -29,6 +29,9 @@ class SSHServerConfig {
     required this.expectedUsername,
     required this.authenticate,
     this.authTimeout = const Duration(seconds: 30),
+    this.authFailureMinDelay = const Duration(milliseconds: 10),
+    this.rekeyBytes = 1024 * 1024 * 1024,
+    this.rekeyInterval = const Duration(hours: 1),
     this.maxAuthAttempts = 6,
     this.maxChannels = 10,
     this.processFactory,
@@ -61,6 +64,51 @@ class SSHServerConfig {
   /// How long a connection may live without completing authentication
   /// before the server closes it.
   final Duration authTimeout;
+
+  /// The minimum wall-clock time from the receipt of a `USERAUTH_REQUEST` to
+  /// its failure reply (the `USERAUTH_FAILURE`, or the throttle disconnect
+  /// past [maxAuthAttempts]).
+  ///
+  /// This is sshd's anti-oracle floor (auth2.c: `ensure_minimum_time_since`,
+  /// MIN_FAIL_DELAY_SECONDS): without it, the failure paths have disjoint
+  /// costs — a wrong key pays the full signature verify plus the embedder's
+  /// authenticate callback, an unknown user fails at the username compare —
+  /// so a timing peer learns whether a username matched. Padding every
+  /// failed attempt out to one floor makes the classes indistinguishable.
+  /// The default (10 ms) comfortably dominates every failure path's real
+  /// cost; `Duration.zero` disables the padding. sshd additionally jitters
+  /// the delay per username (`user_specific_delay`); that is a hardening
+  /// follow-up, not part of the floor.
+  final Duration authFailureMinDelay;
+
+  /// How many outbound bytes a session may carry before the server initiates
+  /// a key exchange of its own, or `null` to disable the byte trigger.
+  ///
+  /// Defaults to 1 GiB. This is a deliberate divergence from OpenSSH, whose
+  /// 10.2 default is **no configured `RekeyLimit` at all** — `RekeyLimit
+  /// default none` (sshd_config.5:1788-1812; servconf.c:398-401 defaults
+  /// `rekey_limit = 0`, `rekey_interval = 0`): the only bound firing by
+  /// default is cipher geometry (`max_blocks = 2^(block×2)` blocks ≈ 64 GiB
+  /// for AES's 16-byte blocks, plus a 2^31-packet hard cap), which
+  /// essentially never trips for a normal session (audit row B06). tp_sshd's
+  /// deployment is the opposite of an internet-facing sshd's: pairing
+  /// sessions are long-lived and frequently low-volume, so a
+  /// geometry-scale byte-only bound would never fire and the session would
+  /// keep its keys forever — exactly the B06 finding. Pairing
+  /// [rekeyInterval]'s 1 h with a 1 GiB byte bound guarantees every live
+  /// pairing session rotates keys at least hourly; `null` restores
+  /// sshd-default-equivalent behavior for embedders who want it.
+  final int? rekeyBytes;
+
+  /// How long an authenticated session may live before the server initiates
+  /// a key exchange of its own, or `null` to disable the interval trigger.
+  ///
+  /// Defaults to 1 h. OpenSSH only rekeys on time when `RekeyLimit`
+  /// configures an interval (serverloop.c:171, packet.c:1095-1097 — the 10.2
+  /// default configures none, audit row B07); the default here exists for
+  /// the same pairing-session rationale as [rekeyBytes]: an idle-but-alive
+  /// session is exactly the case a byte counter never reaches.
+  final Duration? rekeyInterval;
 
   /// How many authentication attempts a connection may make before the
   /// server disconnects it.

@@ -6,10 +6,15 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:dartssh2/dartssh2.dart' show SSHDisconnectError;
 import 'package:dartssh2/protocol.dart'
     show
         SSHMessage,
         SSHMessageReader,
+        SSH_Message_Channel_Close,
+        SSH_Message_Channel_Confirmation,
+        SSH_Message_Channel_Open,
+        SSH_Message_Channel_Open_Failure,
         SSH_Message_Global_Request,
         SSH_Message_Request_Failure,
         SSH_Message_Request_Success;
@@ -68,6 +73,315 @@ void main() {
     await forward.close(); // cancel-tcpip-forward
     await client.close();
     await server.close();
+  });
+
+  group('open verdict policy for server-initiated channels', () {
+    // sshd's channel_input_open_confirmation (channels.c:3636-3644) fatals
+    // for any channel that is not still in its OPENING state —
+    // `ssh_packet_disconnect("Received open confirmation for non-opening
+    // channel %d.")` — and only a truly unknown id takes
+    // channel_from_packet_id's nonexistent-channel disconnect. A dartssh2
+    // client answers each server-initiated open exactly once, so a
+    // duplicate verdict for a live channel is a misbehaving peer, not a
+    // race tp_sshd must absorb.
+    test(
+      'a duplicate open confirmation for a live channel draws the '
+      'non-opening disconnect',
+      () async {
+        final forwardedConnections = StreamController<ForwardConnection>();
+        addTearDown(forwardedConnections.close);
+        var successes = 0;
+        Uint8List? openPayload;
+        final opened = Completer<void>();
+        final (connection, client) = await startRawAuthenticatedConnection(
+          forwarding: SSHForwardingConfig(
+            allowTcpForwarding: SshTcpForwardingMode.remote,
+            dialSocket: (host, port) => throw StateError('no dial'),
+            bindServerSocket: (address, port) async => _FakeServerSocketHandle(
+              forwardedConnections.stream,
+            ),
+          ),
+          onServerMessage: (payload) {
+            switch (SSHMessage.readMessageId(payload)) {
+              case SSH_Message_Request_Success.messageId:
+                successes += 1;
+              case SSH_Message_Channel_Open.messageId:
+                openPayload = payload;
+                if (!opened.isCompleted) opened.complete();
+            }
+          },
+        );
+        addTearDown(connection.close);
+        addTearDown(client.close);
+
+        // Bind a forwarded port, then feed the listener one accepted
+        // connection: the server opens a forwarded-tcpip channel for it.
+        client.sendPacket(
+          SSH_Message_Global_Request.tcpipForward('127.0.0.1', 0).encode(),
+        );
+        await waitUntil(() => successes == 1);
+        forwardedConnections.add(_IdleForwardConnection());
+        await opened.future.timeout(const Duration(seconds: 5));
+        final open = SSH_Message_Channel_Open.decode(openPayload!);
+        final confirmation = SSH_Message_Channel_Confirmation(
+          recipientChannel: open.senderChannel,
+          senderChannel: 5000,
+          initialWindowSize: 2 * 1024 * 1024,
+          maximumPacketSize: 32768,
+          data: Uint8List(0),
+        );
+        client.sendPacket(confirmation.encode());
+        await waitUntil(() => connection.channels.isNotEmpty);
+
+        // The stimulus: the same confirmation again — the channel it
+        // created is still live, so sshd answers the non-opening fatal.
+        client.sendPacket(confirmation.encode());
+        final error = await client.done
+            .timeout(const Duration(seconds: 5))
+            .then<Object>(
+              (value) =>
+                  throw StateError('connection closed without a reason'),
+              onError: (Object error, _) => error,
+            );
+        expect(error, isA<SSHDisconnectError>());
+        expect(
+          (error as SSHDisconnectError).reasonCode,
+          2, // SSH_DISCONNECT_PROTOCOL_ERROR
+        );
+        expect(
+          error.message,
+          'Received open confirmation for non-opening channel '
+          '${open.senderChannel}.',
+        );
+      },
+    );
+
+    // F5's never-existed class: a verdict for an id this server never
+    // opened draws channel_from_packet_id's disconnect, unchanged.
+    test(
+      'an open confirmation for an id this server never opened draws the '
+      'nonexistent-channel disconnect',
+      () async {
+        final (connection, client) = await startRawAuthenticatedConnection();
+        addTearDown(connection.close);
+        addTearDown(client.close);
+
+        client.sendPacket(
+          SSH_Message_Channel_Confirmation(
+            recipientChannel: 99999,
+            senderChannel: 5001,
+            initialWindowSize: 2 * 1024 * 1024,
+            maximumPacketSize: 32768,
+            data: Uint8List(0),
+          ).encode(),
+        );
+        final error = await client.done
+            .timeout(const Duration(seconds: 5))
+            .then<Object>(
+              (value) =>
+                  throw StateError('connection closed without a reason'),
+              onError: (Object error, _) => error,
+            );
+        expect(error, isA<SSHDisconnectError>());
+        expect(
+          (error as SSHDisconnectError).message,
+          'open confirmation packet referred to nonexistent channel 99999',
+        );
+      },
+    );
+
+    // The open-failure twin (channels.c:3698-3700):
+    // channel_input_open_failure fatals the same way its confirmation twin
+    // does, with its own wording — `Received open failure for non-opening
+    // channel %d.` for a channel that is not still OPENING.
+    test(
+      'a duplicate open failure for a live channel draws the non-opening '
+      'disconnect',
+      () async {
+        final forwardedConnections = StreamController<ForwardConnection>();
+        addTearDown(forwardedConnections.close);
+        var successes = 0;
+        Uint8List? openPayload;
+        final opened = Completer<void>();
+        final (connection, client) = await startRawAuthenticatedConnection(
+          forwarding: SSHForwardingConfig(
+            allowTcpForwarding: SshTcpForwardingMode.remote,
+            dialSocket: (host, port) => throw StateError('no dial'),
+            bindServerSocket: (address, port) async => _FakeServerSocketHandle(
+              forwardedConnections.stream,
+            ),
+          ),
+          onServerMessage: (payload) {
+            switch (SSHMessage.readMessageId(payload)) {
+              case SSH_Message_Request_Success.messageId:
+                successes += 1;
+              case SSH_Message_Channel_Open.messageId:
+                openPayload = payload;
+                if (!opened.isCompleted) opened.complete();
+            }
+          },
+        );
+        addTearDown(connection.close);
+        addTearDown(client.close);
+
+        // Bind a forwarded port and open the channel, exactly like the
+        // confirmation test: the failure verdict needs a live channel.
+        client.sendPacket(
+          SSH_Message_Global_Request.tcpipForward('127.0.0.1', 0).encode(),
+        );
+        await waitUntil(() => successes == 1);
+        forwardedConnections.add(_IdleForwardConnection());
+        await opened.future.timeout(const Duration(seconds: 5));
+        final open = SSH_Message_Channel_Open.decode(openPayload!);
+        client.sendPacket(
+          SSH_Message_Channel_Confirmation(
+            recipientChannel: open.senderChannel,
+            senderChannel: 5002,
+            initialWindowSize: 2 * 1024 * 1024,
+            maximumPacketSize: 32768,
+            data: Uint8List(0),
+          ).encode(),
+        );
+        await waitUntil(() => connection.channels.isNotEmpty);
+
+        // The stimulus: an open failure for the live channel — it is not
+        // opening, so sshd answers the non-opening fatal.
+        client.sendPacket(
+          SSH_Message_Channel_Open_Failure(
+            recipientChannel: open.senderChannel,
+            reasonCode: SSH_Message_Channel_Open_Failure.codeConnectFailed,
+            description: 'stimulus',
+          ).encode(),
+        );
+        final error = await client.done
+            .timeout(const Duration(seconds: 5))
+            .then<Object>(
+              (value) =>
+                  throw StateError('connection closed without a reason'),
+              onError: (Object error, _) => error,
+            );
+        expect(error, isA<SSHDisconnectError>());
+        expect(
+          (error as SSHDisconnectError).reasonCode,
+          2, // SSH_DISCONNECT_PROTOCOL_ERROR
+        );
+        expect(
+          error.message,
+          'Received open failure for non-opening channel '
+          '${open.senderChannel}.',
+        );
+      },
+    );
+
+    // The reaped class: reaped means the client already sent CHANNEL_CLOSE —
+    // the channel is fully resolved, not racing anything, so sshd's channel
+    // table has no entry and channel_from_packet_id fatals. Only the
+    // closing race (our CLOSE sent, the client's acknowledgment still
+    // outstanding) stays tolerated.
+    test(
+      'an open failure for a fully reaped channel id draws the '
+      'nonexistent-channel disconnect',
+      () async {
+        final opened = Completer<void>();
+        final (connection, client) = await startRawAuthenticatedConnection(
+          onServerMessage: (payload) {
+            if (SSHMessage.readMessageId(payload) ==
+                    SSH_Message_Channel_Confirmation.messageId &&
+                !opened.isCompleted) {
+              opened.complete();
+            }
+          },
+        );
+        addTearDown(connection.close);
+        addTearDown(client.close);
+
+        // A client-opened session channel, fully closed from the client:
+        // the server reaps the id on the received CHANNEL_CLOSE.
+        client.sendPacket(
+          SSH_Message_Channel_Open.session(
+            senderChannel: 200,
+            initialWindowSize: 2 * 1024 * 1024,
+            maximumPacketSize: 32768,
+          ).encode(),
+        );
+        await opened.future;
+        final serverId = connection.channels.keys.single;
+        client.sendPacket(
+          SSH_Message_Channel_Close(recipientChannel: serverId).encode(),
+        );
+        await waitUntil(() => connection.channels.isEmpty);
+
+        // The stimulus: an open failure verdict for the reaped id.
+        client.sendPacket(
+          SSH_Message_Channel_Open_Failure(
+            recipientChannel: serverId,
+            reasonCode: SSH_Message_Channel_Open_Failure.codeConnectFailed,
+            description: 'stimulus',
+          ).encode(),
+        );
+        final error = await client.done
+            .timeout(const Duration(seconds: 5))
+            .then<Object>(
+              (value) =>
+                  throw StateError('connection closed without a reason'),
+              onError: (Object error, _) => error,
+            );
+        expect(error, isA<SSHDisconnectError>());
+        expect(
+          (error as SSHDisconnectError).reasonCode,
+          2, // SSH_DISCONNECT_PROTOCOL_ERROR
+        );
+        expect(
+          error.message,
+          'open failure packet referred to nonexistent channel $serverId',
+        );
+      },
+    );
+  });
+
+  test('a reset forwarded connection never leaks an unhandled error', () async {
+    // F13: the pump must consume connection.done's error channel. A TCP
+    // reset completes the socket's done future with a SocketException; the
+    // pump used to drop the future returned by whenComplete, so the error
+    // escaped into the embedder's zone as an unhandled exception.
+    //
+    // The channel, the connection and the pump are all created inside the
+    // guarded zone: a future's error is routed through the zone it was
+    // created in, so creating the connection outside would route the error
+    // around the guard and the test would not see what the pump does.
+    final debugLines = <String>[];
+    final strayErrors = <Object>[];
+    await runZonedGuarded(() async {
+      final channel = SSHServerChannel(
+        recipientChannel: 0,
+        ourChannel: 7,
+        channelType: 'forwarded-tcpip',
+        peerInitialWindowSize: SSHServerChannel.initialReceiveWindow,
+        peerMaximumPacketSize: SSHServerChannel.maximumPacketSize,
+        sendPacket: (_) {},
+        onClosed: (_) {},
+      );
+      final connection = _ResetForwardConnection();
+      final pump = pumpForwardConnection(
+        channel,
+        connection,
+        printDebug: (message) => debugLines.add(message ?? ''),
+      );
+      connection.reset();
+      // The pump itself must finish normally — the reset is contained, not
+      // propagated — and any would-be unhandled error surfaces in this
+      // window.
+      await pump.timeout(const Duration(seconds: 5));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      // The channel still finished: the reset tears the forwarding down, it
+      // does not hang it.
+      expect(channel.isClosed, isTrue);
+      await connection.close();
+    }, (error, stackTrace) => strayErrors.add(error));
+
+    expect(strayErrors, isEmpty);
+    // The reset is diagnosed through the package's printDebug seam.
+    expect(debugLines, isNotEmpty);
   });
 
   test('non-loopback bind requests are refused without consulting the seam',
@@ -347,4 +661,100 @@ class _RealForwardConnection implements ForwardConnection {
 
   @override
   void destroy() => _socket.destroy();
+}
+
+/// A [ServerSocketHandle] whose accepted connections are pushed by the test
+/// through a controller, with a fixed bound port.
+class _FakeServerSocketHandle implements ServerSocketHandle {
+  _FakeServerSocketHandle(this._connections);
+
+  final Stream<ForwardConnection> _connections;
+
+  @override
+  int get port => 41234;
+
+  @override
+  Stream<ForwardConnection> get connections => _connections;
+
+  @override
+  Future<void> close() async {}
+}
+
+/// A [ForwardConnection] whose peer never says anything and never goes away:
+/// an accepted forwarded connection at rest.
+class _IdleForwardConnection implements ForwardConnection {
+  final _inputController = StreamController<Uint8List>();
+
+  @override
+  Stream<Uint8List> get input => _inputController.stream;
+
+  @override
+  StreamSink<List<int>> get output => _DiscardSink();
+
+  @override
+  Future<void> get done => Completer<void>().future;
+
+  @override
+  InternetAddress get remoteAddress => InternetAddress.loopbackIPv4;
+
+  @override
+  int get remotePort => 54321;
+
+  @override
+  void destroy() {}
+}
+
+/// A [ForwardConnection] whose peer resets the connection mid-stream: its
+/// [ForwardConnection.done] completes with the SocketException a TCP RST
+/// produces on a real socket.
+class _ResetForwardConnection implements ForwardConnection {
+  final _inputController = StreamController<Uint8List>();
+  final _doneCompleter = Completer<void>();
+
+  @override
+  Stream<Uint8List> get input => _inputController.stream;
+
+  @override
+  StreamSink<List<int>> get output => _DiscardSink();
+
+  @override
+  Future<void> get done => _doneCompleter.future;
+
+  @override
+  InternetAddress get remoteAddress => InternetAddress.loopbackIPv4;
+
+  @override
+  int get remotePort => 54321;
+
+  @override
+  void destroy() {}
+
+  /// The peer's RST lands while the pump is running.
+  void reset() {
+    _doneCompleter.completeError(
+      const SocketException('Connection reset by peer'),
+    );
+  }
+
+  Future<void> close() async {
+    await _inputController.close();
+  }
+}
+
+/// A [StreamSink] that swallows everything written to it.
+class _DiscardSink implements StreamSink<List<int>> {
+  @override
+  void add(List<int> data) {}
+
+  @override
+  Future<void> addStream(Stream<List<int>> stream) async {}
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) {}
+
+  @override
+  Future<void> close() async {}
+
+  @override
+  Future<void> get done async {}
 }

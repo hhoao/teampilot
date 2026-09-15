@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -355,22 +356,70 @@ void _pipeProcess(SSHServerChannel channel, SSHServerProcess process) {
     drain(process.stdout, channel.write, stdoutDone),
     drain(process.stderr, channel.writeExtended, stderrDone),
   ];
+  // Channel input → the process's stdin, one chunk at a time: each write is
+  // awaited before the next is taken, and only a completed write reports
+  // consumption back to the channel (consumeInput). Awaiting the sink is
+  // what carries the OS's own backpressure (a full stdin pipe or socket
+  // makes the write wait), so against a program that never reads its stdin
+  // no window credit is ever re-granted and the client's grant stays a real
+  // bound (F4, audit C05).
+  final pendingStdin = Queue<Uint8List>();
+  var writingStdin = false;
+  var stdinEnded = false;
+  var stdinBroken = false;
+  // A sink with a write still in flight (a program that never reads its
+  // stdin made addStream wait) refuses close() synchronously; the pipe is
+  // released when the teardown below kills the process instead.
+  void closeStdin() {
+    try {
+      unawaited(process.stdin.close().catchError((_) {}));
+    } on Object {
+      // the sink is still bound to a blocked write
+    }
+  }
+  void pumpStdin() {
+    if (writingStdin) return;
+    if (stdinBroken) return;
+    if (pendingStdin.isEmpty) {
+      if (stdinEnded) closeStdin();
+      return;
+    }
+    writingStdin = true;
+    unawaited(() async {
+      while (pendingStdin.isNotEmpty && !stdinBroken) {
+        final data = pendingStdin.removeFirst();
+        try {
+          await process.stdin.addStream(Stream.value(data));
+        } on Object {
+          // The process's stdin contract broke mid-write (a pipe the process
+          // already tore down, a sink that fails closed): treat it as the
+          // input side ending — stop forwarding input to it and release the
+          // pipe — instead of letting the error escape into the stream
+          // listener's zone.
+          stdinBroken = true;
+          pendingStdin.clear();
+          closeStdin();
+          return;
+        }
+        channel.consumeInput(data.length);
+      }
+      writingStdin = false;
+      if (stdinEnded && pendingStdin.isEmpty) closeStdin();
+    }());
+  }
+
   StreamSubscription<Uint8List>? inputSubscription;
   inputSubscription = channel.input.listen(
     (data) {
-      try {
-        process.stdin.add(data);
-      } on Object {
-        // The process's stdin contract broke mid-write (a pipe the process
-        // already tore down, a sink that fails closed): treat it as the
-        // input side ending — stop forwarding input to it and release the
-        // pipe — instead of letting the error escape into the stream
-        // listener's zone.
-        inputSubscription?.cancel();
-        unawaited(process.stdin.close().catchError((_) {}));
-      }
+      pendingStdin.add(data);
+      pumpStdin();
     },
-    onDone: () => unawaited(process.stdin.close().catchError((_) {})),
+    onDone: () {
+      // The client closed its half (EOF or channel close): the sink is
+      // released once the queued writes have drained, so no input is lost.
+      stdinEnded = true;
+      pumpStdin();
+    },
   );
   subscriptions.add(inputSubscription);
 
@@ -386,7 +435,7 @@ void _pipeProcess(SSHServerChannel channel, SSHServerProcess process) {
     // pipes a cancelled subscription will never finish.
     if (!stdoutDone.isCompleted) stdoutDone.complete();
     if (!stderrDone.isCompleted) stderrDone.complete();
-    unawaited(process.stdin.close().catchError((_) {}));
+    closeStdin();
   }
 
   channel.done.whenComplete(teardown);

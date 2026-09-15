@@ -5,6 +5,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:dartssh2/dartssh2.dart' show SSHDisconnectError;
+import 'package:dartssh2/protocol.dart';
 import 'package:test/test.dart';
 import 'package:tp_sshd/tp_sshd.dart';
 
@@ -122,7 +124,59 @@ class _ThrowingStdinSink implements StreamSink<List<int>> {
   void addError(Object error, [StackTrace? stackTrace]) {}
 
   @override
-  Future<void> addStream(Stream<List<int>> stream) => Future.value();
+  Future<void> addStream(Stream<List<int>> stream) =>
+      Future<void>.error(StateError('stdin is gone'));
+
+  @override
+  Future<void> close() => Future.value();
+
+  @override
+  Future<void> get done => Future.value();
+}
+
+/// A process whose stdin sink accepts nothing: every `addStream` waits on a
+/// gate the test controls, standing in for a program that never reads its
+/// stdin (C05's `sleep 30`).
+class _NeverReadingProcess implements SSHServerProcess {
+  final _stdout = StreamController<Uint8List>();
+  final _stderr = StreamController<Uint8List>();
+  final _exit = Completer<int>();
+
+  @override
+  Future<int> get exitCode => _exit.future;
+
+  @override
+  void kill() {
+    if (!_exit.isCompleted) _exit.complete(9);
+  }
+
+  @override
+  StreamSink<List<int>> get stdin => _NeverReadingStdinSink();
+
+  @override
+  Stream<Uint8List> get stderr => _stderr.stream;
+
+  @override
+  Stream<Uint8List> get stdout => _stdout.stream;
+
+  void finish() {
+    _stdout.close();
+    _stderr.close();
+    if (!_exit.isCompleted) _exit.complete(0);
+  }
+}
+
+class _NeverReadingStdinSink implements StreamSink<List<int>> {
+  final _gate = Completer<void>();
+
+  @override
+  void add(List<int> data) {}
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) {}
+
+  @override
+  Future<void> addStream(Stream<List<int>> stream) => _gate.future;
 
   @override
   Future<void> close() => Future.value();
@@ -283,5 +337,80 @@ void main() {
 
     client.close();
     await server.close();
+  });
+
+  test('a process that never reads stdin keeps the granted window a bound',
+      () async {
+    // F4's session half (C05): against a program that never reads stdin,
+    // bytes the program has not taken are never re-granted, so the client's
+    // granted window is a real bound — a peer that keeps sending past it
+    // beyond sshd's 10% grace margin is disconnected instead of buffered
+    // unboundedly.
+    final process = _NeverReadingProcess();
+    final opened = Completer<void>();
+    final execAccepted = Completer<void>();
+    final adjusts = <int>[];
+    final (connection, client) = await startRawAuthenticatedConnection(
+      processFactory: (argv, cwd, env) async => process,
+      onServerMessage: (payload) {
+        switch (SSHMessage.readMessageId(payload)) {
+          case SSH_Message_Channel_Confirmation.messageId:
+            if (!opened.isCompleted) opened.complete();
+          case SSH_Message_Channel_Success.messageId:
+            if (!execAccepted.isCompleted) execAccepted.complete();
+          case SSH_Message_Channel_Window_Adjust.messageId:
+            adjusts.add(
+              SSH_Message_Channel_Window_Adjust.decode(payload).bytesToAdd,
+            );
+        }
+      },
+    );
+    addTearDown(connection.close);
+    addTearDown(client.close);
+
+    client.sendPacket(
+      SSH_Message_Channel_Open.session(
+        senderChannel: 100,
+        initialWindowSize: 2 * 1024 * 1024,
+        maximumPacketSize: 32768,
+      ).encode(),
+    );
+    await opened.future;
+    final serverChannel = connection.channels.keys.single;
+    client.sendPacket(
+      SSH_Message_Channel_Request.exec(
+        recipientChannel: serverChannel,
+        wantReply: true,
+        command: TpExecCodec.encode(const SSHExecRequest(argv: ['sleep'])),
+      ).encode(),
+    );
+    await execAccepted.future;
+
+    // 64 chunks of 32768 spend the 2 MiB window; the seventh overflowing
+    // chunk crosses the 10% grace and draws the disconnect.
+    final chunk = Uint8List(32768);
+    for (var i = 0; i < 71; i++) {
+      client.sendPacket(
+        SSH_Message_Channel_Data(
+          recipientChannel: serverChannel,
+          data: chunk,
+        ).encode(),
+      );
+    }
+    await expectLater(
+      client.done.timeout(const Duration(seconds: 5)),
+      throwsA(
+        isA<SSHDisconnectError>()
+            .having((error) => error.reasonCode, 'reasonCode', 2)
+            .having(
+              (error) => error.message,
+              'message',
+              'channel $serverChannel: peer ignored channel window',
+            ),
+      ),
+    );
+    // The stdin gate never opened, so nothing was ever re-granted.
+    expect(adjusts, isEmpty);
+    process.finish();
   });
 }

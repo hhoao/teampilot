@@ -117,6 +117,11 @@ class _SftpServerSession {
   }
 
   void _onData(Uint8List data) {
+    // Parsing the chunk is its consumption: the requests it carries are
+    // dispatched and their replies are bounded by the channel's own send
+    // window, so the client's receive-window credit returns as the
+    // subsystem makes progress (F4's consumption-driven refill).
+    _channel.consumeInput(data.length);
     final builder = BytesBuilder(copy: false)
       ..add(_pending)
       ..add(data);

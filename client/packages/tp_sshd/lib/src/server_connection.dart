@@ -57,7 +57,7 @@ class SSHServerConnection {
         allowTarget: targetAllowed,
         bindServerSocket: forwarding.bindServerSocket,
         openForwardedChannel: _openForwardedChannel,
-        sendPacket: _transport.sendPacket,
+        sendPacket: _sendPacket,
         printDebug: config.printDebug,
       );
     } else {
@@ -82,6 +82,26 @@ class SSHServerConnection {
   /// number (the id the client addresses them by).
   final _channels = <int, SSHServerChannel>{};
 
+  /// Channel ids this server finished whose CHANNEL_CLOSE the client has
+  /// not sent yet. A message addressed to one of these raced our close —
+  /// the client could not have seen it yet — so it is tolerated the way
+  /// sshd's still-allocated dying channels tolerate it, until the client's
+  /// own CHANNEL_CLOSE moves the id to [_reapedChannels].
+  final _closingChannels = <int>{};
+
+  /// Channel ids whose close handshake completed on both sides. A message
+  /// for one of these is a protocol error, exactly like sshd's
+  /// channel_from_packet_id against a freed channel.
+  final _reapedChannels = <int>{};
+
+  /// How many channel tombstones ([_closingChannels] plus
+  /// [_reapedChannels]) may accumulate before the oldest are compacted
+  /// away. Channel numbers are only reused after 2^32 opens, so without a
+  /// bound a long-lived connection churning channels — the TeamBus relay's
+  /// forwarded-tcpip channels on a pairing session, F3's scenario — grows
+  /// the sets by one id per channel forever.
+  static const _maxChannelTombstones = 256;
+
   /// Server-initiated channel opens awaiting the client's verdict, keyed by
   /// the channel number the open was sent with (see [_openServerChannel]).
   final _pendingOpens = <int, _PendingOpen>{};
@@ -94,6 +114,37 @@ class SSHServerConnection {
   /// [SSHServerConfig.maxAuthAttempts] throttle.
   var _authAttempts = 0;
 
+  /// Whether the client completed the `ssh-userauth` service negotiation
+  /// (RFC 4253 §10). sshd only registers its USERAUTH_REQUEST handler once
+  /// the service is accepted (auth2.c:do_authentication2 +
+  /// input_service_request), so a request before that falls to the default
+  /// dispatch and is answered with UNIMPLEMENTED — never processed, never
+  /// answered with USERAUTH_PK_OK, never authenticating.
+  var _serviceAccepted = false;
+
+  /// How many key exchanges this connection initiated on its own — the
+  /// rekey trigger ([SSHServerConfig.rekeyBytes]/[rekeyInterval]) firing,
+  /// not a peer-initiated exchange. Read-only, for tests and embedder
+  /// diagnostics.
+  int get rekeyCount => _rekeyCount;
+  var _rekeyCount = 0;
+
+  /// Outbound bytes counted since the last key exchange this server
+  /// initiated completed, checked on every send against
+  /// [SSHServerConfig.rekeyBytes] (sshd's `rekey bytes` accounting,
+  /// packet.c:1095-1097).
+  var _outboundBytes = 0;
+
+  /// The one-shot timer for [SSHServerConfig.rekeyInterval], armed when the
+  /// connection authenticates and re-armed after every completed exchange.
+  Timer? _rekeyTimer;
+
+  /// Whether a server-initiated key exchange is still in flight, so
+  /// concurrent threshold crossings (a byte threshold hit mid-exchange, the
+  /// timer firing during an exchange) collapse into the one exchange
+  /// already running.
+  var _rekeyInFlight = false;
+
   /// Completes when the underlying transport closes, normally or with an
   /// error.
   Future<void> get done => _transport.done;
@@ -105,10 +156,66 @@ class SSHServerConnection {
   /// Closes the connection and its socket.
   Future<void> close() async {
     _authTimer.cancel();
+    _rekeyTimer?.cancel();
     _phase = _Phase.closed;
     _teardownChannels();
     await _forwarder?.close();
     await _transport.close();
+  }
+
+  /// The connection's outbound send path: every packet the connection layer
+  /// emits — its own replies and every channel's and the forwarder's
+  /// traffic — goes through here, so the rekey accounting sees it (audit
+  /// B06/B07: without a byte counter and a timer, a long-lived pairing
+  /// session keeps its keys forever).
+  void _sendPacket(Uint8List data) {
+    _transport.sendPacket(data);
+    _countOutbound(data.length);
+  }
+
+  /// Counts [bytes] of outbound traffic against
+  /// [SSHServerConfig.rekeyBytes], initiating a rekey when the threshold is
+  /// crossed. Bytes sent while an exchange is in flight are not counted:
+  /// the counter resets to zero when that exchange completes anyway.
+  void _countOutbound(int bytes) {
+    if (_phase != _Phase.running || _rekeyInFlight) return;
+    final rekeyBytes = _config.rekeyBytes;
+    if (rekeyBytes == null) return;
+    _outboundBytes += bytes;
+    if (_outboundBytes >= rekeyBytes) {
+      _startRekey('$_outboundBytes bytes sent');
+    }
+  }
+
+  /// Arms the one-shot [SSHServerConfig.rekeyInterval] timer.
+  void _armRekeyTimer() {
+    _rekeyTimer?.cancel();
+    final interval = _config.rekeyInterval;
+    if (interval == null || _phase != _Phase.running) return;
+    _rekeyTimer = Timer(interval, () => _startRekey('interval elapsed'));
+  }
+
+  /// Initiates a key exchange of our own (sshd's `kex_start_rekex`,
+  /// packet.c:1070-1123): an unprompted KEXINIT goes out through the
+  /// transport's [SSHTransport.rekey], and the byte counter and interval
+  /// deadline restart once the exchange completes. Concurrent triggers
+  /// collapse into the exchange already in flight.
+  void _startRekey(String why) {
+    if (_phase != _Phase.running || _rekeyInFlight) return;
+    _rekeyInFlight = true;
+    _rekeyCount += 1;
+    _config.printDebug?.call('tp_sshd: initiating rekey ($why)');
+    _transport
+        .rekey()
+        .whenComplete(() {
+          // The connection may have ended before the exchange completed;
+          // nothing is re-armed then.
+          if (_phase != _Phase.running) return;
+          _rekeyInFlight = false;
+          _outboundBytes = 0;
+          _armRekeyTimer();
+        })
+        .ignore();
   }
 
   /// Auth-phase message handling.
@@ -131,7 +238,8 @@ class SSHServerConnection {
       case SSH_Message_Service_Request.messageId:
         final message = SSH_Message_Service_Request.decode(payload);
         if (message.serviceName == 'ssh-userauth') {
-          _transport.sendPacket(
+          _serviceAccepted = true;
+          _sendPacket(
             SSH_Message_Service_Accept(message.serviceName).encode(),
           );
         } else {
@@ -142,6 +250,11 @@ class SSHServerConnection {
         }
         return true;
       case SSH_Message_Userauth_Request.messageId:
+        if (!_serviceAccepted) {
+          // Not negotiated yet: sshd's default dispatch answers
+          // UNIMPLEMENTED (audit A08), and the connection stays open.
+          return false;
+        }
         // The trust decision is the embedder's async authenticate callback,
         // so the request is handled detached from the synchronous
         // onMessage dispatch.
@@ -208,14 +321,14 @@ class SSHServerConnection {
       // after the switch to the shared wantReply refusal below.
       case 'keepalive@openssh.com':
         if (message.wantReply) {
-          _transport.sendPacket(
+          _sendPacket(
             SSH_Message_Request_Success(Uint8List(0)).encode(),
           );
         }
         return;
     }
     if (message.wantReply) {
-      _transport.sendPacket(SSH_Message_Request_Failure().encode());
+      _sendPacket(SSH_Message_Request_Failure().encode());
     }
   }
 
@@ -249,7 +362,7 @@ class SSHServerConnection {
     // "channel resource shortage" case), before the type dispatch so a
     // direct-tcpip open cannot evade its half of the quota.
     if (_channels.length >= _config.maxChannels) {
-      _transport.sendPacket(
+      _sendPacket(
         SSH_Message_Channel_Open_Failure(
           recipientChannel: message.senderChannel,
           reasonCode: SSH_Message_Channel_Open_Failure.codeResourceShortage,
@@ -266,7 +379,7 @@ class SSHServerConnection {
     }
 
     if (message.channelType != 'session') {
-      _transport.sendPacket(
+      _sendPacket(
         SSH_Message_Channel_Open_Failure(
           recipientChannel: message.senderChannel,
           reasonCode:
@@ -284,8 +397,9 @@ class SSHServerConnection {
       channelType: message.channelType,
       peerInitialWindowSize: message.initialWindowSize,
       peerMaximumPacketSize: message.maximumPacketSize,
-      sendPacket: _transport.sendPacket,
-      onClosed: (channel) => _channels.remove(channel.ourChannel),
+      sendPacket: _sendPacket,
+      onClosed: _onChannelClosed,
+      onProtocolViolation: _disconnectForChannelViolation,
       printDebug: _config.printDebug,
     );
     // Session requests (exec today; shell and pty in Task 7) are served by
@@ -293,7 +407,7 @@ class SSHServerConnection {
     channel.onRequest = (channel, request) =>
         handleSessionRequest(channel, request, config: _config);
     _channels[ourChannel] = channel;
-    _transport.sendPacket(
+    _sendPacket(
       SSH_Message_Channel_Confirmation(
         recipientChannel: message.senderChannel,
         senderChannel: ourChannel,
@@ -372,12 +486,13 @@ class SSHServerConnection {
           channelType: 'direct-tcpip',
           peerInitialWindowSize: message.initialWindowSize,
           peerMaximumPacketSize: message.maximumPacketSize,
-          sendPacket: _transport.sendPacket,
-          onClosed: (channel) => _channels.remove(channel.ourChannel),
+          sendPacket: _sendPacket,
+          onClosed: _onChannelClosed,
+          onProtocolViolation: _disconnectForChannelViolation,
           printDebug: _config.printDebug,
         );
         _channels[ourChannel] = channel;
-        _transport.sendPacket(
+        _sendPacket(
           SSH_Message_Channel_Confirmation(
             recipientChannel: message.senderChannel,
             senderChannel: ourChannel,
@@ -386,7 +501,13 @@ class SSHServerConnection {
             data: Uint8List(0),
           ).encode(),
         );
-        unawaited(pumpForwardConnection(channel, result.connection));
+        unawaited(
+          pumpForwardConnection(
+            channel,
+            result.connection,
+            printDebug: _config.printDebug,
+          ),
+        );
     }
   }
 
@@ -405,7 +526,7 @@ class SSHServerConnection {
     String description,
   ) {
     try {
-      _transport.sendPacket(
+      _sendPacket(
         SSH_Message_Channel_Open_Failure(
           recipientChannel: recipientChannel,
           reasonCode: reasonCode,
@@ -418,9 +539,13 @@ class SSHServerConnection {
   }
 
   /// Routes a channel-scoped message to its channel by the recipient id the
-  /// client addressed it to (our channel number). An unknown id is ignored
-  /// silently: it is indistinguishable from a message racing the close that
-  /// removed the channel.
+  /// client addressed it to (our channel number). An unknown id is a
+  /// protocol error, the way sshd treats a freed channel
+  /// (channels.c:channel_from_packet_id,
+  /// serverloop.c:server_input_channel_req) — except the two races where
+  /// the id is legitimately gone or not yet resolved: a pending
+  /// server-initiated open, and a channel this server closed whose CLOSE
+  /// the client cannot have seen yet. See [_channelFromPacket].
   void _handleChannelMessage(Uint8List payload) {
     switch (SSHMessage.readMessageId(payload)) {
       case SSH_Message_Channel_Window_Adjust.messageId:
@@ -430,7 +555,9 @@ class SSHServerConnection {
           payload,
         );
         if (message == null) return;
-        _channelOrNull(message.recipientChannel)
+        // sshd only logs an unknown-id adjust (channel_input_window_adjust)
+        // — it never disconnects for this one.
+        _channels[message.recipientChannel]
             ?.handleWindowAdjust(message.bytesToAdd);
         return;
       case SSH_Message_Channel_Data.messageId:
@@ -440,7 +567,10 @@ class SSHServerConnection {
           payload,
         );
         if (message == null) return;
-        _channelOrNull(message.recipientChannel)?.handleData(message.data);
+        _channelFromPacket(
+          message.recipientChannel,
+          'data packet',
+        )?.handleData(message.data);
         return;
       case SSH_Message_Channel_Extended_Data.messageId:
         final message = _decodeMessage(
@@ -449,8 +579,10 @@ class SSHServerConnection {
           payload,
         );
         if (message == null) return;
-        _channelOrNull(message.recipientChannel)
-            ?.handleExtendedData(message.dataTypeCode, message.data);
+        _channelFromPacket(
+          message.recipientChannel,
+          'extended data packet',
+        )?.handleExtendedData(message.dataTypeCode, message.data);
         return;
       case SSH_Message_Channel_EOF.messageId:
         final message = _decodeMessage(
@@ -459,7 +591,10 @@ class SSHServerConnection {
           payload,
         );
         if (message == null) return;
-        _channelOrNull(message.recipientChannel)?.handleEof();
+        _channelFromPacket(
+          message.recipientChannel,
+          'ieof packet',
+        )?.handleEof();
         return;
       case SSH_Message_Channel_Close.messageId:
         final message = _decodeMessage(
@@ -468,7 +603,15 @@ class SSHServerConnection {
           payload,
         );
         if (message == null) return;
-        _channelOrNull(message.recipientChannel)?.handleClose();
+        final id = message.recipientChannel;
+        // The client acknowledging our close completes the handshake: the
+        // id moves from race-tolerated to fully reaped.
+        if (_channels[id] == null && _closingChannels.remove(id)) {
+          _reapedChannels.add(id);
+          _compactChannelTombstones();
+          return;
+        }
+        _channelFromPacket(id, 'oclose packet')?.handleClose();
         return;
       case SSH_Message_Channel_Request.messageId:
         final message = _decodeMessage(
@@ -477,16 +620,92 @@ class SSHServerConnection {
           payload,
         );
         if (message == null) return;
-        _channelOrNull(message.recipientChannel)?.handleRequest(message);
+        _channelFromPacket(
+          message.recipientChannel,
+          // sshd's serverloop.c wording for requests, not the
+          // channel_from_packet_id shape.
+          'server_input_channel_req: unknown channel',
+          rawDescription: true,
+        )?.handleRequest(message);
         return;
     }
   }
 
-  SSHServerChannel? _channelOrNull(int ourChannel) => _channels[ourChannel];
+  /// Resolves the channel a channel-scoped message addressed, applying the
+  /// nonexistent-channel policy (F5, audit A15 + D05).
+  ///
+  /// - a live channel → that channel;
+  /// - a pending server-initiated open → `null`, tolerated: the reply races
+  ///   the open, and sshd's channel table still holds the OPENING channel;
+  /// - a channel this server finished but the client has not closed yet →
+  ///   `null`, tolerated: the message raced our CHANNEL_CLOSE (D05's race);
+  /// - anything else → `DISCONNECT(2, "<what> referred to nonexistent
+  ///   channel <id>")` and `null`.
+  SSHServerChannel? _channelFromPacket(
+    int id,
+    String what, {
+    bool rawDescription = false,
+  }) {
+    final channel = _channels[id];
+    if (channel != null) return channel;
+    if (_pendingOpens.containsKey(id) || _closingChannels.contains(id)) {
+      return null;
+    }
+    _disconnect(
+      SSHDisconnectReason.protocolError,
+      rawDescription
+          ? '$what $id'
+          : '$what referred to nonexistent channel $id',
+    );
+    return null;
+  }
+
+  /// Records one channel finishing: its id leaves the live table, and —
+  /// depending on whether the client's CHANNEL_CLOSE was already received —
+  /// lands in the race-tolerated or the fully-reaped set (see
+  /// [_closingChannels] and [_reapedChannels]).
+  void _onChannelClosed(SSHServerChannel channel) {
+    _channels.remove(channel.ourChannel);
+    if (channel.receivedClose) {
+      _reapedChannels.add(channel.ourChannel);
+    } else {
+      _closingChannels.add(channel.ourChannel);
+    }
+    _compactChannelTombstones();
+  }
+
+  /// Compacts the tombstone sets once they outgrow [_maxChannelTombstones],
+  /// dropping the oldest ids — the smallest numbers, since every channel id
+  /// is allocated in increasing order. A dropped id is treated as fully
+  /// reaped: any message a peer could still legitimately send for it raced
+  /// a channel that finished hundreds of generations ago, well past the
+  /// round trips the tombstones exist to tolerate.
+  void _compactChannelTombstones() {
+    final excess =
+        _closingChannels.length + _reapedChannels.length - _maxChannelTombstones;
+    if (excess <= 0) return;
+    final ids = [..._closingChannels, ..._reapedChannels]..sort();
+    for (final id in ids.take(excess)) {
+      _closingChannels.remove(id);
+      _reapedChannels.remove(id);
+    }
+  }
+
+  /// Takes a channel down together with the whole connection: the channel
+  /// reported a violation the protocol makes fatal for the connection (the
+  /// receive window being overrun past its grace margin), so the peer is
+  /// answered with a `DISCONNECT(2, description)` before the teardown.
+  void _disconnectForChannelViolation(String description) {
+    _disconnect(SSHDisconnectReason.protocolError, description);
+  }
 
   /// Serves the client's verdict on a server-initiated channel open
   /// (RFC 4254 §5.1): a CHANNEL_OPEN_CONFIRMATION promotes the pending open
-  /// to a live channel; a CHANNEL_OPEN_FAILURE resolves it to `null`.
+  /// to a live channel; a CHANNEL_OPEN_FAILURE resolves it to `null`. A
+  /// verdict for an id without a pending open follows sshd's policy for a
+  /// channel that is not still opening — fatal for a live channel, and
+  /// tolerated only when it races a channel that has since finished (see
+  /// [_tolerateOrDisconnectOpenReply]).
   void _handleChannelOpenReply(Uint8List payload) {
     switch (SSHMessage.readMessageId(payload)) {
       case SSH_Message_Channel_Confirmation.messageId:
@@ -497,7 +716,13 @@ class SSHServerConnection {
         );
         if (message == null) return;
         final pending = _pendingOpens.remove(message.recipientChannel);
-        if (pending == null) return;
+        if (pending == null) {
+          _tolerateOrDisconnectOpenReply(
+            message.recipientChannel,
+            'confirmation',
+          );
+          return;
+        }
         // Register the channel synchronously before completing the open:
         // CHANNEL_DATA may follow the confirmation in the same transport
         // input, and the channel's single-subscription input buffers until
@@ -509,8 +734,9 @@ class SSHServerConnection {
           channelType: pending.channelType,
           peerInitialWindowSize: message.initialWindowSize,
           peerMaximumPacketSize: message.maximumPacketSize,
-          sendPacket: _transport.sendPacket,
-          onClosed: (channel) => _channels.remove(channel.ourChannel),
+          sendPacket: _sendPacket,
+          onClosed: _onChannelClosed,
+          onProtocolViolation: _disconnectForChannelViolation,
           printDebug: _config.printDebug,
         );
         _channels[channel.ourChannel] = channel;
@@ -523,12 +749,45 @@ class SSHServerConnection {
           payload,
         );
         if (message == null) return;
-        _pendingOpens
-            .remove(message.recipientChannel)
-            ?.completer
-            .complete(null);
+        final pending = _pendingOpens.remove(message.recipientChannel);
+        if (pending == null) {
+          _tolerateOrDisconnectOpenReply(
+            message.recipientChannel,
+            'failure',
+          );
+          return;
+        }
+        pending.completer.complete(null);
         return;
     }
+  }
+
+  /// The policy for an open verdict addressed to an id without a pending
+  /// open, matching sshd's `channel_input_open_confirmation` /
+  /// `channel_input_open_failure` (channels.c:3642-3644, 3698-3700): a
+  /// verdict for a channel that is already live — a duplicate verdict, since
+  /// a dartssh2 client answers each server-initiated open exactly once — is
+  /// the non-opening fatal, `Received open <kind> for non-opening channel
+  /// N.`; a verdict for an unknown id is `channel_from_packet_id`'s
+  /// nonexistent-channel disconnect. Only the finish race stays tolerated:
+  /// a channel this server finished but whose CHANNEL_CLOSE the client has
+  /// not sent yet. A fully reaped id is NOT that race — reaped means the
+  /// client already sent CHANNEL_CLOSE, so the channel is resolved and
+  /// sshd's channel table holds no entry: the verdict draws the
+  /// nonexistent-channel disconnect like any unknown id.
+  void _tolerateOrDisconnectOpenReply(int id, String kind) {
+    if (_channels.containsKey(id)) {
+      _disconnect(
+        SSHDisconnectReason.protocolError,
+        'Received open $kind for non-opening channel $id.',
+      );
+      return;
+    }
+    if (_closingChannels.contains(id)) return;
+    _disconnect(
+      SSHDisconnectReason.protocolError,
+      'open $kind packet referred to nonexistent channel $id',
+    );
   }
 
   /// Opens a server-initiated channel (RFC 4254 §5.1, the direction the
@@ -551,7 +810,7 @@ class SSHServerConnection {
     final open = buildOpen(ourChannel);
     final pending = _PendingOpen(open.channelType);
     _pendingOpens[ourChannel] = pending;
-    _transport.sendPacket(open.encode());
+    _sendPacket(open.encode());
     return pending.completer.future;
   }
 
@@ -604,6 +863,8 @@ class SSHServerConnection {
       channel.detach();
     }
     _channels.clear();
+    _closingChannels.clear();
+    _reapedChannels.clear();
     for (final pending in _pendingOpens.values) {
       pending.completer.complete(null);
     }
@@ -619,6 +880,9 @@ class SSHServerConnection {
   /// signature verifies AND the key is trusted. Every failure counts toward
   /// [SSHServerConfig.maxAuthAttempts].
   Future<void> _handleUserauthRequest(Uint8List payload) async {
+    // The anti-oracle floor is measured from the request's receipt, so the
+    // clock starts here, before any failure path is taken.
+    final receivedAt = DateTime.now();
     final SSH_Message_Userauth_Request message;
     try {
       message = SSH_Message_Userauth_Request.decode(payload);
@@ -634,14 +898,14 @@ class SSHServerConnection {
         message.user != _config.expectedUsername) {
       // Fail closed: no other method is served, and requests for any other
       // user are failed (counted), not answered.
-      _failAuthAttempt();
+      _failAuthAttempt(receivedAt);
       return;
     }
 
     final publicKeyAlgorithm = message.publicKeyAlgorithm;
     final publicKey = message.publicKey;
     if (publicKeyAlgorithm == null || publicKey == null) {
-      _failAuthAttempt();
+      _failAuthAttempt(receivedAt);
       return;
     }
 
@@ -652,7 +916,7 @@ class SSHServerConnection {
         sessionId: _transport.sessionId!,
         request: message,
       )) {
-        _failAuthAttempt();
+        _failAuthAttempt(receivedAt);
         return;
       }
     }
@@ -679,14 +943,14 @@ class SSHServerConnection {
       // Public-key probing (RFC 4252 §7.8): tell the client the key is worth
       // signing with.
       if (trusted) {
-        _transport.sendPacket(
+        _sendPacket(
           SSH_Message_Userauth_PK_Ok(
             publicKeyAlgorithm: publicKeyAlgorithm,
             publicKey: publicKey,
           ).encode(),
         );
       } else {
-        _failAuthAttempt();
+        _failAuthAttempt(receivedAt);
       }
       return;
     }
@@ -696,7 +960,8 @@ class SSHServerConnection {
       // live connection later, then start serving session traffic.
       _authTimer.cancel();
       _phase = _Phase.running;
-      _transport.sendPacket(SSH_Message_Userauth_Success().encode());
+      _armRekeyTimer();
+      _sendPacket(SSH_Message_Userauth_Success().encode());
       // The success twin of [_failAuthAttempt]: the embedder now knows this
       // connection belongs to whoever authenticated with this key.
       _config.onAuthenticated?.call(
@@ -709,27 +974,62 @@ class SSHServerConnection {
       );
       return;
     }
-    _failAuthAttempt();
+    _failAuthAttempt(receivedAt);
   }
 
   /// Counts and answers one failed authentication attempt.
   ///
+  /// The reply is padded out to [SSHServerConfig.authFailureMinDelay],
+  /// measured from [receivedAt] — the moment the request was received — so
+  /// that timing the reply cannot reveal which failure path was taken
+  /// (wrong key vs unknown user vs malformed blob; sshd's
+  /// `ensure_minimum_time_since`).
+  ///
   /// After [SSHServerConfig.maxAuthAttempts] failures the connection is
   /// disconnected (RFC 4253 §11.1 reason 14) instead of answered. The
-  /// failure never advertises continuable methods: publickey is the only
-  /// method there is, and offering it would just invite another attempt.
-  void _failAuthAttempt() {
+  /// failure advertises the continuable methods (`publickey`, RFC 4252 §8):
+  /// clients like OpenSSH consult that list to decide whether to offer a
+  /// publickey at all, and an empty list reads as "no methods available" —
+  /// ending a login that would have succeeded (audit A09/A10/A11).
+  Future<void> _failAuthAttempt(DateTime receivedAt) async {
     _authAttempts += 1;
-    if (_authAttempts >= _config.maxAuthAttempts) {
-      _disconnect(
-        SSHDisconnectReason.noMoreAuthMethodsAvailable,
-        'Too many failed authentication attempts',
-      );
-      return;
+    // The throttle verdict is taken at receipt, in dispatch order, BEFORE
+    // the padding below: pipelined requests all increment the counter long
+    // before their padded replies go out, so re-reading it after the pad
+    // would let an early reply answer for a later attempt (the first reply
+    // would disconnect instead of the maxAuthAttempts-th).
+    final throttled = _authAttempts >= _config.maxAuthAttempts;
+    final minDelay = _config.authFailureMinDelay;
+    if (minDelay > Duration.zero) {
+      final remaining = minDelay - DateTime.now().difference(receivedAt);
+      if (remaining > Duration.zero) {
+        await Future<void>.delayed(remaining);
+      }
     }
-    _transport.sendPacket(
-      SSH_Message_Userauth_Failure(methodsLeft: const []).encode(),
-    );
+    // The connection may have been closed while the failure reply was being
+    // padded out.
+    if (_phase != _Phase.auth) return;
+    // The transport may still have died inside that window without the
+    // phase having moved yet (the done handler runs as a microtask after
+    // this timer fires): an unguarded send would throw out of this
+    // fire-and-forget future and leak into the embedder's zone — the F13
+    // class. Guarded like [_refuseChannelOpen]: when the transport is
+    // already gone, the teardown owns the aftermath.
+    try {
+      if (throttled) {
+        _disconnect(
+          SSHDisconnectReason.noMoreAuthMethodsAvailable,
+          'Too many failed authentication attempts',
+        );
+        return;
+      }
+      _sendPacket(
+        SSH_Message_Userauth_Failure(methodsLeft: const ['publickey'])
+            .encode(),
+      );
+    } on Object {
+      // transport is gone; the connection teardown owns the aftermath
+    }
   }
 
   /// Closes connections that never finished authenticating.
@@ -744,6 +1044,7 @@ class SSHServerConnection {
 
   void _onTransportClosed() {
     _authTimer.cancel();
+    _rekeyTimer?.cancel();
     _phase = _Phase.closed;
     _teardownChannels();
     // Release the binds too; the transport is already gone, so nothing can
@@ -753,7 +1054,7 @@ class SSHServerConnection {
 
   /// Sends a disconnect message and closes the connection.
   void _disconnect(SSHDisconnectReason reason, String description) {
-    _transport.sendPacket(
+    _sendPacket(
       SSH_Message_Disconnect(
         reasonCode: reason.code,
         description: description,
