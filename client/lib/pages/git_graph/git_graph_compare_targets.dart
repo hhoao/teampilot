@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/git_graph_cubit.dart';
-import '../../l10n/app_localizations.dart';
+import '../../l10n/l10n_extensions.dart';
 import '../../models/git_compare.dart';
 import '../../models/git_graph.dart';
+import '../git_compare/open_git_compare.dart';
 
 List<TpActionMenuSpec> gitCompareTargetSpecs({
   required AppLocalizations l10n,
@@ -85,3 +86,54 @@ List<TpActionMenuSpec> gitCompareTargetSpecs({
 
 TpActionMenuSpec _sectionHeader(IconData icon, String label) =>
     TpActionMenuSpec.item(icon: icon, label: label, enabled: false);
+
+Future<void> showGitCompareTargetMenu({
+  required BuildContext context,
+  required Offset globalPosition,
+  required String workspaceId,
+  required GitGraphState state,
+  required GitCompareRef source,
+}) async {
+  if (!context.mounted) return;
+  final l10n = context.l10n;
+  final target = await showTpActionMenuOverlay<GitCompareSide>(
+    context: context,
+    globalPosition: globalPosition,
+    useRootNavigator: true,
+    transitionDuration: const Duration(milliseconds: 160),
+    transitionCurve: Curves.easeOutCubic,
+    menuBuilder: (overlayContext, complete) {
+      final children = buildTpActionMenuChildren(
+        context: overlayContext,
+        specs: gitCompareTargetSpecs(
+          l10n: l10n,
+          state: state,
+          source: source,
+        ),
+        menuController: TpActionMenuController(TpPopoverController()),
+        onSelect: (value) => complete(value as GitCompareSide?),
+      );
+      return DecoratedBox(
+        decoration: TpActionMenuMetrics.panelDecoration(overlayContext),
+        child: Padding(
+          padding: TpActionMenuMetrics.panelPadding,
+          child: TpActionMenuPanel(
+            minWidth: 200,
+            menuAnchorShell: true,
+            children: children,
+          ),
+        ),
+      );
+    },
+  );
+  if (target == null || !context.mounted) return;
+  openGitCompareTab(
+    context,
+    workspaceId: workspaceId,
+    spec: GitCompareSpec(
+      repoRoot: state.repoRoot,
+      left: source,
+      right: target,
+    ),
+  );
+}
