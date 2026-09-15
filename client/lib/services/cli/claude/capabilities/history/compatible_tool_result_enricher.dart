@@ -34,6 +34,9 @@ final class ClaudeCompatibleToolResultEnricher
   bool get requiresFilesystem => false;
 
   @override
+  String get workerId => 'claude-compatible';
+
+  @override
   bool matchesTruncationMarker(String result) => _isTruncated(result);
 
   @override

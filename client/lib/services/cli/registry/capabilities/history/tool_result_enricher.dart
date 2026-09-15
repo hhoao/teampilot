@@ -3,6 +3,11 @@ import 'package:ai_message_core/ai_message_core.dart';
 import '../../../../session/session_history_context.dart';
 
 abstract interface class ToolResultEnricher {
+  /// Stable ID for a pure bundle-only enricher that can run in
+  /// HistoryParseWorker. Null means the enricher must remain on the caller
+  /// isolate.
+  String? get workerId => null;
+
   /// True when [result] carries this enricher's truncation marker — a
   /// placeholder the enricher could backfill. The loader's enrichment guard
   /// consults this to skip [enrich] when no part needs it; enrichers that
@@ -82,6 +87,9 @@ bool defaultToolResultNeedsEnrichment(
 
 final class NoOpToolResultEnricher implements ToolResultEnricher {
   const NoOpToolResultEnricher();
+
+  @override
+  String? get workerId => null;
 
   @override
   bool get requiresFilesystem => false;

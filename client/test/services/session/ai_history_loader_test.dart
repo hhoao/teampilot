@@ -2257,6 +2257,9 @@ class _RecordingEnricher implements ToolResultEnricher {
   String? lastSourceToken;
 
   @override
+  String? get workerId => null;
+
+  @override
   bool get requiresFilesystem => false;
 
   @override
@@ -2290,6 +2293,9 @@ class _RecordingEnricher implements ToolResultEnricher {
 class _RecordingFsEnricher implements ToolResultEnricher {
   var calls = 0;
   var sawCallerCtx = false;
+
+  @override
+  String? get workerId => null;
 
   @override
   bool get requiresFilesystem => true;
