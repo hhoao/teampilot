@@ -378,7 +378,10 @@ int _skipLeadingChrome(TerminalScreenGrid grid, int row) {
   col = _skipPaddingCells(grid, row, col);
   if (col >= grid.columns) return col;
   final cp = grid.codepointAt(row, col);
-  if (_isComposerChrome(cp)) {
+  // Any single non-letter/digit cell at the wrap start is treated as painted
+  // chrome (box border, prompt glyph, bullet...) — no per-CLI allowlist. Only
+  // this one cell is relaxed; the rest of the needle still matches exactly.
+  if (_isWrappableChrome(cp)) {
     col = _skipWideSpacers(grid, row, col + 1);
     col = _skipPaddingCells(grid, row, col);
   }
@@ -396,21 +399,20 @@ int _skipPaddingCells(TerminalScreenGrid grid, int row, int col) {
   return col;
 }
 
-/// Box-drawing and prompt glyphs that full-screen TUIs paint at the start of
-/// every composer row. Deliberately NOT a general "any symbol" — content that
-/// begins a wrapped paste line with one of these (e.g. a leading `>`) also
-/// matches, which is acceptable: only the wrap boundary is relaxed and the rest
-/// of the needle must still match the grid exactly.
-bool _isComposerChrome(int cp) {
-  // Box drawing: │ ┃ ─ │ ┆ ┊ ...
-  if (cp >= 0x2500 && cp <= 0x257f) return true;
-  return switch (cp) {
-    // `>` prompt / quote markers.
-    0x3e => true,
-    // ❯ › → ▸ ▶ • prompt glyphs.
-    0x276f || 0x203a || 0x2192 || 0x25b8 || 0x25b6 || 0x2022 => true,
-    _ => false,
-  };
+final RegExp _symbolChar = RegExp(r'\p{S}', unicode: true);
+
+/// True when [cp] is painted TUI chrome, not paste content.
+///
+/// Chrome = any Unicode **symbol** (box-drawing `│`, prompts `❯ › → >`,
+/// bullets `▸ •`, arrows — one category, no single-glyph allowlist) plus the
+/// two punctuation glyphs some TUIs still use (`›`, `•`). Real content that
+/// begins a wrapped line stays exact: connector/open/close punctuation
+/// (`_`, `}`, `]`, `,` …) and letters/digits are never skipped. Only the wrap
+/// boundary is relaxed — one cell at most — and submits remain hook-confirmed.
+bool _isWrappableChrome(int cp) {
+  if (_symbolChar.hasMatch(String.fromCharCodes([cp]))) return true;
+  // 0x203a ›  (cursor), 0x2022 •  (bullets) — Punctuation, not Symbol.
+  return cp == 0x203a || cp == 0x2022;
 }
 
 int _advancePastCell(TerminalScreenGrid grid, int row, int col) {

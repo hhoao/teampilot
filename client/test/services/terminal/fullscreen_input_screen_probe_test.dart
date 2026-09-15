@@ -70,6 +70,36 @@ void main() {
     expect(needleStaysInCursorZone(grid, needle), isTrue);
   });
 
+  test('cursor-zone needle wraps past ANY unknown chrome glyph', () {
+    // No allowlist: a TUI painting an out-of-scope glyph (◆ here) to lead its
+    // composer rows must still ACK a wrapped paste.
+    final grid = _FakeGrid.fromRows([
+      '◆  0123456789ABCDEFG',
+      '◆  HIJKLMNOPQRSTUVWX',
+      '◆  YZ',
+    ])..cursorRow = 2;
+    final needle = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+    final anchor = locateNeedleInCursorZone(grid, needle);
+    expect(anchor, isNotNull,
+        reason: 'wrapped needle must ACK across an unknown chrome glyph');
+    expect(anchor!.row, 0);
+  });
+
+  test('CJK content at wrap start is not consumed as chrome', () {
+    // Only a non-letter/digit is chrome. A continuation row that begins with a
+    // real content glyph (CJK letter 中) must match as content, not be skipped.
+    final grid = _FakeGrid.fromRows([
+      '│  ABCDEFG',
+      '│  中XYZWQ',
+    ])..cursorRow = 1;
+    final needle = 'ABCDEFG中XYZWQ';
+
+    final anchor = locateNeedleInCursorZone(grid, needle);
+    expect(anchor, isNotNull, reason: 'CJK after wrap must match as content');
+    expect(anchor!.row, 0);
+  });
+
   test('isAtAnchor false when same text moved to transcript row above', () {
     final grid = _FakeGrid.fromRows([
       '你和你的队员打个招呼吧',
