@@ -43,7 +43,7 @@ void main() {
       folders: s.folders,
       createdAt: 0,
     ),
-                                                                            usesPosixPaths: false,
+    usesPosixPaths: false,
   );
 
   List<AiMessage> markerMessages(String marker) => [
@@ -59,9 +59,8 @@ void main() {
     ),
   ];
 
-  bool messageHasText(AiMessage m, String needle) => m.parts.any(
-    (p) => p is AiTextPart && p.text.contains(needle),
-  );
+  bool messageHasText(AiMessage m, String needle) =>
+      m.parts.any((p) => p is AiTextPart && p.text.contains(needle));
 
   AiHistoryLoader makeLoader({HistoryParseExecutor? parseExecutor}) {
     final fs = LocalFilesystem();
@@ -155,33 +154,36 @@ void main() {
     );
   });
 
-  test('merged messages keep tool call categories after mailbox merge', () async {
-    messagesBySession['sess-a'] = [
-      AiMessage(
-        id: 'm-tool',
-        role: AiRole.assistant,
-        parts: [AiToolCallPart(toolCallId: 't1', toolName: 'Bash')],
-      ),
-    ];
-    locator.emitBundle = true;
-    final session = simpleSession(id: 'sess-a');
-    await cubit.load(
-      session: session,
-      memberId: '',
-      launchContext: launchCtx(session),
-    );
-    final seat = cubit.ensureSeat(
-      sessionId: session.sessionId,
-      selectedMemberId: '',
-    );
+  test(
+    'merged messages keep tool call categories after mailbox merge',
+    () async {
+      messagesBySession['sess-a'] = [
+        AiMessage(
+          id: 'm-tool',
+          role: AiRole.assistant,
+          parts: [AiToolCallPart(toolCallId: 't1', toolName: 'Bash')],
+        ),
+      ];
+      locator.emitBundle = true;
+      final session = simpleSession(id: 'sess-a');
+      await cubit.load(
+        session: session,
+        memberId: '',
+        launchContext: launchCtx(session),
+      );
+      final seat = cubit.ensureSeat(
+        sessionId: session.sessionId,
+        selectedMemberId: '',
+      );
 
-    final tool = seat.runtime.messages
-        .expand((m) => m.parts)
-        .whereType<AiToolCallPart>()
-        .single;
-    expect(tool.toolName, 'Bash');
-    expect(tool.category, AiToolCallCategory.command);
-  });
+      final tool = seat.runtime.messages
+          .expand((m) => m.parts)
+          .whereType<AiToolCallPart>()
+          .single;
+      expect(tool.toolName, 'Bash');
+      expect(tool.category, AiToolCallCategory.command);
+    },
+  );
 
   test('softReload seat A does not change seat B messages', () async {
     locator.emitBundle = true;
@@ -219,18 +221,12 @@ void main() {
     ];
     await seatA.softReload();
 
-    expect(
-      seatA.runtime.messages.any((m) => m.id == 'm-A-tip'),
-      isTrue,
-    );
+    expect(seatA.runtime.messages.any((m) => m.id == 'm-A-tip'), isTrue);
     expect(
       seatA.runtime.messages.any((m) => messageHasText(m, 'extra-A-tip')),
       isTrue,
     );
-    expect(
-      seatB.runtime.messages.map((m) => m.id).toList(),
-      bIdsBefore,
-    );
+    expect(seatB.runtime.messages.map((m) => m.id).toList(), bIdsBefore);
   });
 
   test('seedPendingUser for B while A loaded applies on B load only', () async {
@@ -334,11 +330,7 @@ void main() {
     locator.emitBundle = true;
     final session = simpleSession(id: 'sess-a');
     final launch = launchCtx(session);
-    await cubit.load(
-      session: session,
-      memberId: '',
-      launchContext: launch,
-    );
+    await cubit.load(session: session, memberId: '', launchContext: launch);
     final seat = cubit.ensureSeat(
       sessionId: session.sessionId,
       selectedMemberId: '',
@@ -397,21 +389,56 @@ void main() {
     expect(seat.state.sessionId, sessionB.sessionId);
     expect(seat.runtime.messages.single.id, 'new-result');
   });
+
+  test('worker failure keeps the existing transcript', () async {
+    locator.emitBundle = true;
+    final executor = _QueuedHistoryParseExecutor();
+    loader = makeLoader(parseExecutor: executor);
+    final seat = AiHistorySeat(loader: loader);
+    addTearDown(seat.close);
+    final session = simpleSession();
+
+    await seat.load(
+      session: session,
+      memberId: '',
+      launchContext: launchCtx(session),
+    );
+    expect(seat.runtime.messages.map((message) => message.id), [
+      'm-A-0',
+      'm-A-1',
+    ]);
+
+    locator.emitLargeBundle = true;
+    final reload = seat.load(
+      session: session,
+      memberId: '',
+      launchContext: launchCtx(session),
+      force: true,
+    );
+    await pumpEventQueue();
+    expect(executor.requests, hasLength(1));
+
+    executor.fail(0, StateError('worker failed'));
+    await reload;
+
+    expect(seat.runtime.messages.map((message) => message.id), [
+      'm-A-0',
+      'm-A-1',
+    ]);
+  });
 }
 
-AiTranscriptBundle _bundleForSession(
-  String sessionId, {
-  bool large = false,
-}) => AiTranscriptBundle(
-  adapterId: 'claude',
-  fragments: [
-    AiTranscriptFragment(
-      name: 'canned.jsonl',
-      bytes: large ? List<int>.filled(256 * 1024, 32) : const [],
-    ),
-  ],
-  hints: {'sessionId': sessionId},
-);
+AiTranscriptBundle _bundleForSession(String sessionId, {bool large = false}) =>
+    AiTranscriptBundle(
+      adapterId: 'claude',
+      fragments: [
+        AiTranscriptFragment(
+          name: 'canned.jsonl',
+          bytes: large ? List<int>.filled(256 * 1024, 32) : const [],
+        ),
+      ],
+      hints: {'sessionId': sessionId},
+    );
 
 class _SessionMapAdapter implements AiTranscriptAdapter {
   _SessionMapAdapter(this._messagesBySession);
@@ -475,6 +502,10 @@ final class _QueuedHistoryParseExecutor implements HistoryParseExecutor {
         ],
       ),
     );
+  }
+
+  void fail(int index, Object error) {
+    requests[index].completeError(error);
   }
 
   @override
