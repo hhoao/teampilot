@@ -49,10 +49,23 @@ AppSession _sessionAt(String id, String path) => AppSession(
   updatedAt: 1,
 );
 
+class _CountingWorktreeLister implements WorktreeLister {
+  var calls = 0;
+  final listedPaths = <String>[];
+
+  @override
+  Future<List<GitWorktree>> list(String repoPath) async {
+    calls++;
+    listedPaths.add(repoPath);
+    return const [];
+  }
+}
+
 void main() {
   late ChatCubit chatCubit;
   late AutomationCubit automationCubit;
   late WorktreeCubit worktreeCubit;
+  late _CountingWorktreeLister worktreeLister;
   late AgentAttentionCubit attentionCubit;
   late SessionGroupsCubit groupsCubit;
   late SessionRepository sessionRepository;
@@ -65,7 +78,11 @@ void main() {
       sessionRepository: sessionRepository,
     );
     automationCubit = testAutomationCubit();
-    worktreeCubit = WorktreeCubit(storage: testHomeStorage);
+    worktreeLister = _CountingWorktreeLister();
+    worktreeCubit = WorktreeCubit(
+      storage: testHomeStorage,
+      lister: worktreeLister,
+    );
     attentionCubit = AgentAttentionCubit(pruneInterval: null);
     groupsCubit = SessionGroupsCubit(storage: testHomeStorage);
   });
@@ -302,7 +319,14 @@ void main() {
     expect(find.byTooltip('New group'), findsNothing);
     expect(find.byTooltip('New worktree'), findsOneWidget);
     expect(find.byType(WorktreeGroupSection), findsNothing);
-    expect(find.byTooltip('Refresh worktrees'), findsNothing);
+    expect(find.byTooltip('Refresh worktrees'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Refresh worktrees'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 120));
+
+    expect(worktreeLister.calls, 1);
+    expect(worktreeLister.listedPaths, [_workspace.firstFolderPath]);
     expect(chatCubit.state.sessions, hasLength(2));
   });
 

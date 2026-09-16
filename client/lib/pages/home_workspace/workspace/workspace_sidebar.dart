@@ -296,6 +296,31 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                                         )) ...[
                                       const SizedBox(width: 2),
                                       TpIconButton(
+                                        icon: Icons.refresh_rounded,
+                                        compact: true,
+                                        size: TpIconButton.kCompactSize,
+                                        tooltip: l10n.worktreeRefreshTooltip,
+                                        onTap: throttledTap(
+                                          'workspace_sidebar_refresh_worktrees',
+                                          () {
+                                            final cubit = context
+                                                .read<WorktreeCubit>();
+                                            final repoPath =
+                                                cubit.state.repoPath
+                                                    .trim()
+                                                    .isNotEmpty
+                                                ? cubit.state.repoPath
+                                                : widget
+                                                      .workspace
+                                                      .firstFolderPath;
+                                            unawaited(
+                                              cubit.load(repoPath, force: true),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(width: 2),
+                                      TpIconButton(
                                         icon: Icons.account_tree_outlined,
                                         compact: true,
                                         size: TpIconButton.kCompactSize,
