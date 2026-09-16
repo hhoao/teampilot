@@ -152,6 +152,7 @@ class SessionSshProfileReconnect {
         stackTrace: st,
       );
       _host.failSessionConnect(tab.info.id, 'Failed to reconnect: $e');
+      rethrow;
     } finally {
       tab.membersPendingConnect.remove(session.sessionId);
     }
