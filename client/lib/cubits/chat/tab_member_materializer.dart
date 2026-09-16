@@ -82,7 +82,17 @@ class TabMemberMaterializer implements MemberMaterializer {
       );
       return;
     }
-    await materializeMember(sessionId, memberId, '');
+    final materialize = materializeMember(sessionId, memberId, '');
+    if (aborted == null) {
+      await materialize;
+    } else {
+      // materializeMember can wait for a shell that is still connecting. Do
+      // not make the operator wait for that shell after Stop; the materialize
+      // future may finish in the background, but this delivery must return so
+      // its caller can drop the queued prompt and re-enable compose.
+      await _awaitMaterializeOrAbort(materialize, aborted);
+      if (aborted()) return;
+    }
     appLogger.d(
       '[member-materializer] materialize done member=$memberId '
       'session=$sessionId '
@@ -357,6 +367,27 @@ class TabMemberMaterializer implements MemberMaterializer {
       if (tab.teamBus != null && _isMixedBusRegistered(sessionId)) return;
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
+  }
+
+  Future<void> _awaitMaterializeOrAbort(
+    Future<void> materialize,
+    bool Function() aborted,
+  ) {
+    final abortedWait = Completer<void>();
+    Timer? timer;
+
+    void pollAbort() {
+      if (aborted() || _isClosed()) {
+        if (!abortedWait.isCompleted) abortedWait.complete();
+        return;
+      }
+      timer = Timer(const Duration(milliseconds: 50), pollAbort);
+    }
+
+    pollAbort();
+    return Future.any<void>([materialize, abortedWait.future]).whenComplete(() {
+      timer?.cancel();
+    });
   }
 
   Future<void> _awaitMemberReady(

@@ -364,6 +364,28 @@ void main() {
   );
 
   test(
+    'ensureMemberInputReady exits promptly when stop interrupts connect wait',
+    () async {
+      final harness = await _ComposerHarness.connect(cli: CliTool.codex);
+      addTearDown(harness.dispose);
+      harness.shell.session.disconnect();
+
+      var stopped = false;
+      final pending = harness.materializer.ensureMemberInputReady(
+        _sessionId,
+        _memberId,
+        directToPty: true,
+        waitCap: const Duration(seconds: 30),
+        aborted: () => stopped,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      stopped = true;
+
+      await pending.timeout(const Duration(seconds: 2));
+    },
+  );
+
+  test(
     'ensureMemberInputReady returns before materialize when already stopped',
     () async {
       final harness = await _ComposerHarness.connect(cli: CliTool.codex);
