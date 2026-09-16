@@ -141,7 +141,6 @@ final class JsonlTranscriptPageParser {
           : null,
       sourceToken: sourceToken,
       rebuilt: rebuilt,
-      pageBytes: lines.fold<int>(0, (sum, line) => sum + line.bytes.length),
       completeMessages: completeMessages,
     );
   }

@@ -1092,7 +1092,7 @@ final class AiHistoryLoader {
       if (kDebugMode) {
         appLogger.i(
           '[ai-history-timing] page read '
-          'bundleBytes=0 pageBytes=${page?.pageBytes ?? 0} '
+          'bundleBytes=0 pageBytes=0 '
           'parseMode=page readMs=$readMs',
         );
       }

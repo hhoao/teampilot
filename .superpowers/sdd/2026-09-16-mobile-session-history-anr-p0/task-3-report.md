@@ -21,11 +21,16 @@ were not implemented.
 
 ## Review fix
 
-The Task 3 Step 5 diagnostics gap was fixed after review. Page results now
-carry numeric `pageBytes` metadata, and loader timing diagnostics emit
-`bundleBytes`, `pageBytes`, `parseMode`, and phase durations for page reads,
-full locate, and caller/worker parsing. These fields contain no transcript
-content, secrets, or raw paths.
+The Task 3 Step 5 diagnostics gap was fixed after review. Loader timing
+diagnostics emit `bundleBytes`, `pageBytes`, `parseMode`, and phase durations
+for page reads, full locate, and caller/worker parsing. `bundleBytes` is
+measured from the located bundle; `pageBytes` uses the declared-scope loader
+default of `0` because the existing page API does not expose source byte
+counts. These fields contain no transcript content, secrets, or raw paths.
+
+The follow-up scope correction removed the attempted page-byte metadata from
+the page model, JSONL parser, and OpenCode capability. No production files
+outside the Task 3 write set remain changed by this fix.
 
 ## Verification
 

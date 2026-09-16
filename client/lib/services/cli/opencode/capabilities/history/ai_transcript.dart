@@ -558,10 +558,6 @@ final class OpencodeTranscriptPageReader implements AiTranscriptPageReader {
             : null,
         sourceToken: snapshot.sourceToken,
         rebuilt: rebuilt,
-        pageBytes: rows.fragments.fold<int>(
-          0,
-          (sum, fragment) => sum + fragment.bytes.length,
-        ),
       ),
     );
   }
