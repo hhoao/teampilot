@@ -32,6 +32,17 @@ The follow-up scope correction removed the attempted page-byte metadata from
 the page model, JSONL parser, and OpenCode capability. No production files
 outside the Task 3 write set remain changed by this fix.
 
+## Final scope verification
+
+Compared with Task 3 start commit `9048872b8`, the final name-only diff
+contains only this report and
+`client/lib/services/session/ai_history_loader.dart`. The following files are
+byte-identical to that starting point:
+
+- `client/lib/services/cli/opencode/capabilities/history/ai_transcript.dart`
+- `client/lib/services/session/ai_history_page.dart`
+- `client/lib/services/session/jsonl_transcript_page_parser.dart`
+
 ## Verification
 
 - Focused tests, run through the required wrapper:
