@@ -14,10 +14,10 @@ void assertApplyPath({
   if (path.contains('\x00')) {
     throw StateError('path contains NUL');
   }
-  final normalized = pathContext.normalize(path);
-  if (pathContext.split(normalized).contains('..')) {
+  if (pathContext.split(path).contains('..')) {
     throw StateError('path contains ..');
   }
+  final normalized = pathContext.normalize(path);
   if (normalized != workRoot && !pathContext.isWithin(workRoot, normalized)) {
     throw StateError('path escapes workRoot');
   }
@@ -155,8 +155,8 @@ final class ApplyPlan {
   };
 
   factory ApplyPlan.fromJson(Map<String, Object?> json) {
-    final version = json['protocolVersion'] as int? ?? applyPlanProtocolVersion;
-    if (version != applyPlanProtocolVersion) {
+    final version = json['protocolVersion'] as int?;
+    if (version == null || version != applyPlanProtocolVersion) {
       throw StateError('unsupported protocolVersion');
     }
     final rawOps = json['ops'] as List<Object?>? ?? const [];

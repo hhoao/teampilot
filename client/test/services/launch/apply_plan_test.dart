@@ -56,8 +56,26 @@ void main() {
       ),
       throwsStateError,
     );
+    expect(
+      () => assertApplyPath(
+        path: '/work/a/../b',
+        workRoot: '/work',
+        pathContext: ctx,
+      ),
+      throwsStateError,
+    );
     assertApplyPath(path: '/work', workRoot: '/work', pathContext: ctx);
     assertApplyPath(path: '/work/a/b', workRoot: '/work', pathContext: ctx);
+  });
+
+  test('fromJson rejects missing or unsupported protocolVersion', () {
+    final base = ApplyPlan(workRoot: '/work', ops: const []).toJson();
+    base.remove('protocolVersion');
+    expect(() => ApplyPlan.fromJson(base), throwsStateError);
+
+    final unsupported = ApplyPlan(workRoot: '/work', ops: const []).toJson()
+      ..['protocolVersion'] = 2;
+    expect(() => ApplyPlan.fromJson(unsupported), throwsStateError);
   });
 
   test('utf8 writeFile threshold is 4096', () {
