@@ -8,7 +8,9 @@ import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/pages/connect/connect_qr_panel.dart';
 import 'package:teampilot/pages/connect/connect_section.dart';
 import 'package:teampilot/pages/config/connect_config_section.dart';
+import 'package:teampilot/services/connect/connect_backend_host.dart';
 import 'package:teampilot/services/connect/connect_settings_store.dart';
+import 'package:teampilot/services/connect/connect_ssh_backend.dart';
 import 'package:teampilot/services/connect/paired_device_store.dart';
 import 'package:teampilot/services/connect/ssh_pairing_offer.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
@@ -95,6 +97,75 @@ void main() {
     },
   );
 
+  testWidgets(
+    'shows macOS system sshd down copy instead of embedded when system is down',
+    (tester) async {
+      await tester.pumpWidget(
+        _harness(
+          ConnectState(
+            sshd: _sshd(listening: false),
+            sshBackend: ConnectSshBackendKind.system,
+            systemSshdHint: ConnectSystemSshdHint.macos,
+          ),
+        ),
+      );
+
+      expect(
+        find.text(
+          'No SSH server is listening on port 22. Enable Remote Login in '
+          'Sharing settings, then retry.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'The embedded connection server failed to start. Retry or restart '
+          'the app.',
+        ),
+        findsNothing,
+      );
+      expect(find.byKey(AppKeys.connectSshdRetryCta), findsOneWidget);
+    },
+  );
+
+  testWidgets('shows Linux system sshd down copy for linux and none hints', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness(
+        ConnectState(
+          sshd: _sshd(listening: false),
+          sshBackend: ConnectSshBackendKind.system,
+          systemSshdHint: ConnectSystemSshdHint.linux,
+        ),
+      ),
+    );
+    expect(
+      find.text(
+        'No SSH server is listening on port 22. Start the OpenSSH sshd '
+        'service, then retry.',
+      ),
+      findsOneWidget,
+    );
+
+    await tester.pumpWidget(
+      _harness(
+        ConnectState(
+          sshd: _sshd(listening: false),
+          sshBackend: ConnectSshBackendKind.system,
+          systemSshdHint: ConnectSystemSshdHint.none,
+        ),
+      ),
+    );
+    expect(
+      find.text(
+        'No SSH server is listening on port 22. Start the OpenSSH sshd '
+        'service, then retry.',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('shows pairing QR and hides retry CTA when offer is ready', (
     tester,
   ) async {
@@ -138,9 +209,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1000, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     tester.platformDispatcher.textScaleFactorTestValue = 2.5;
-    addTearDown(
-      () => tester.platformDispatcher.textScaleFactorTestValue = 1.0,
-    );
+    addTearDown(() => tester.platformDispatcher.textScaleFactorTestValue = 1.0);
 
     await tester.pumpWidget(
       _harness(ConnectState(sshd: _sshd(listening: true), offer: _offer())),
@@ -181,6 +250,11 @@ void main() {
       var starts = 0;
       var stops = 0;
       final offer = _offer();
+      final settingsStore = ConnectSettingsStore(
+        fs: InMemoryFilesystem(),
+        appDataRoot: '/app-data',
+        generateHostId: () => 'abcdefghijklmnop',
+      );
       final cubit = ConnectCubit(
         agent: ConnectAgentController(
           currentOffer: () => offer,
@@ -197,16 +271,17 @@ void main() {
           regenerateQr: () async {},
           updateExtraEndpoints: (_) async {},
         ),
-        embeddedServer: fakeListeningEmbeddedServer,
+        backends: ConnectBackendHost(
+          embedded: fakeListeningEmbeddedServer,
+          system: null,
+          settings: settingsStore,
+          systemSshdSelectable: false,
+        ),
         deviceStore: PairedDeviceStore(
           fs: InMemoryFilesystem(),
           appDataRoot: '/app-data',
         ),
-        settingsStore: ConnectSettingsStore(
-          fs: InMemoryFilesystem(),
-          appDataRoot: '/app-data',
-          generateHostId: () => 'abcdefghijklmnop',
-        ),
+        settingsStore: settingsStore,
         listNetworkAddresses: () async => const [
           ConnectNetworkAddress(
             name: 'Wi-Fi',

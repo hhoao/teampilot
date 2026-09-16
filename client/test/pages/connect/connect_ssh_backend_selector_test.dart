@@ -8,66 +8,81 @@ import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/pages/connect/connect_section.dart';
 import 'package:teampilot/services/connect/connect_backend_host.dart';
 import 'package:teampilot/services/connect/connect_settings_store.dart';
+import 'package:teampilot/services/connect/connect_ssh_backend.dart';
 import 'package:teampilot/services/connect/paired_device_store.dart';
 import 'package:teampilot/services/connect/ssh_pairing_offer.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
+import 'package:teampilot/utils/ui/app_keys.dart';
 
 import '../../support/fake_embedded_server.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
-  testWidgets('without an extra endpoint or relay the page says LAN only', (
+  testWidgets('shows the SSH backend selector when system sshd is selectable', (
     tester,
   ) async {
-    final harness = _Harness();
+    final harness = _Harness(systemSshdSelectable: true);
     addTearDown(harness.dispose);
 
     await tester.pumpWidget(_host(harness));
     await tester.pumpAndSettle();
 
-    expect(find.text('LAN only'), findsOneWidget);
-    expect(find.text('LAN and remote'), findsNothing);
+    expect(find.byKey(AppKeys.connectSshBackendSelect), findsOneWidget);
   });
 
-  testWidgets('an extra endpoint upgrades the label to LAN and remote', (
+  testWidgets(
+    'hides the SSH backend selector when system sshd is not selectable',
+    (tester) async {
+      final harness = _Harness();
+      addTearDown(harness.dispose);
+
+      await tester.pumpWidget(_host(harness));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(AppKeys.connectSshBackendSelect), findsNothing);
+    },
+  );
+
+  testWidgets('shows a re-pair snackbar when the SSH backend changes', (
     tester,
   ) async {
-    final harness = _Harness();
+    final harness = _Harness(systemSshdSelectable: true);
     addTearDown(harness.dispose);
-    const endpoint = SshReachabilityEndpoint(
-      kind: SshEndpointKind.extra,
-      host: 'desktop.example.test',
-      port: 2222,
-    );
-    await harness.cubit.openQrSession();
-    await harness.cubit.saveSettings(
-      extraEndpoints: const [endpoint],
-      relayUrl: '',
-    );
 
     await tester.pumpWidget(_host(harness));
     await tester.pumpAndSettle();
 
-    expect(find.text('LAN only'), findsNothing);
-    expect(find.text('LAN and remote'), findsOneWidget);
-  });
+    await harness.cubit.selectSshBackend(ConnectSshBackendKind.system);
+    await tester.pump();
 
-  testWidgets('a configured relay upgrades the label to LAN and remote', (
-    tester,
-  ) async {
-    final harness = _Harness();
-    addTearDown(harness.dispose);
-    await harness.cubit.openQrSession();
-    await harness.cubit.saveSettings(
-      extraEndpoints: const [],
-      relayUrl: 'wss://relay.example.test',
+    expect(
+      find.text("Paired phones must re-scan this computer's pairing code."),
+      findsOneWidget,
     );
-
-    await tester.pumpWidget(_host(harness));
-    await tester.pumpAndSettle();
-
-    expect(find.text('LAN and remote'), findsOneWidget);
+    expect(harness.cubit.state.rePairNotice, isFalse);
   });
+
+  testWidgets(
+    'shows the system revoke hint when the system backend is active',
+    (tester) async {
+      final harness = _Harness(systemSshdSelectable: true);
+      addTearDown(harness.dispose);
+
+      await tester.pumpWidget(_host(harness));
+      await tester.pumpAndSettle();
+
+      await harness.cubit.selectSshBackend(ConnectSshBackendKind.system);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'New logins are blocked. Already-open OpenSSH sessions may stay '
+          'connected until they disconnect.',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 }
 
 SshPairingOffer _offer() => SshPairingOffer(
@@ -94,14 +109,20 @@ SshPairingOffer _offer() => SshPairingOffer(
 );
 
 class _Harness {
-  _Harness() {
+  _Harness({bool systemSshdSelectable = false}) {
     final fs = InMemoryFilesystem();
     final offer = _offer();
-    deviceStore = PairedDeviceStore(fs: fs, appDataRoot: '/app-data');
     final settingsStore = ConnectSettingsStore(
       fs: fs,
       appDataRoot: '/app-data',
       generateHostId: () => 'abcdefghijklmnop',
+    );
+    final embedded = FakeEmbeddedServer();
+    final system = FakeEmbeddedServer(
+      isListening: true,
+      port: 22,
+      isEmbedded: false,
+      hostKeyFingerprints: const ['SHA256:sys'],
     );
     cubit = ConnectCubit(
       agent: ConnectAgentController(
@@ -116,14 +137,15 @@ class _Harness {
         stopQrSession: () async {},
         regenerateQr: () async {},
         updateExtraEndpoints: (_) async {},
+        replaceSshBackend: (_) async {},
       ),
       backends: ConnectBackendHost(
-        embedded: fakeListeningEmbeddedServer,
-        system: null,
+        embedded: embedded,
+        system: systemSshdSelectable ? system : null,
         settings: settingsStore,
-        systemSshdSelectable: false,
+        systemSshdSelectable: systemSshdSelectable,
       ),
-      deviceStore: deviceStore,
+      deviceStore: PairedDeviceStore(fs: fs, appDataRoot: '/app-data'),
       settingsStore: settingsStore,
       listNetworkAddresses: () async => const [
         ConnectNetworkAddress(
@@ -140,7 +162,6 @@ class _Harness {
   }
 
   late final ConnectCubit cubit;
-  late final PairedDeviceStore deviceStore;
 
   Future<void> dispose() => cubit.close();
 }

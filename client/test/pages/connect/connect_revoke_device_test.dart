@@ -6,6 +6,7 @@ import 'package:teampilot/cubits/connect_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/pages/connect/connect_section.dart';
+import 'package:teampilot/services/connect/connect_backend_host.dart';
 import 'package:teampilot/services/connect/connect_settings_store.dart';
 import 'package:teampilot/services/connect/paired_device_store.dart';
 import 'package:teampilot/services/connect/ssh_pairing_offer.dart';
@@ -89,6 +90,11 @@ class _Harness {
     fs = InMemoryFilesystem();
     final offer = _offer();
     deviceStore = PairedDeviceStore(fs: fs, appDataRoot: '/app-data');
+    final settingsStore = ConnectSettingsStore(
+      fs: fs,
+      appDataRoot: '/app-data',
+      generateHostId: () => 'abcdefghijklmnop',
+    );
     cubit = ConnectCubit(
       agent: ConnectAgentController(
         currentOffer: () => offer,
@@ -103,13 +109,14 @@ class _Harness {
         regenerateQr: () async {},
         updateExtraEndpoints: (_) async {},
       ),
-      embeddedServer: fakeListeningEmbeddedServer,
-      deviceStore: deviceStore,
-      settingsStore: ConnectSettingsStore(
-        fs: fs,
-        appDataRoot: '/app-data',
-        generateHostId: () => 'abcdefghijklmnop',
+      backends: ConnectBackendHost(
+        embedded: fakeListeningEmbeddedServer,
+        system: null,
+        settings: settingsStore,
+        systemSshdSelectable: false,
       ),
+      deviceStore: deviceStore,
+      settingsStore: settingsStore,
       listNetworkAddresses: () async => const [
         ConnectNetworkAddress(
           name: 'Wi-Fi',

@@ -3,6 +3,7 @@ import 'dart:math';
 
 import '../../models/ssh_reachability.dart';
 import '../io/filesystem.dart';
+import 'connect_ssh_backend.dart';
 
 typedef ConnectHostIdGenerator = String Function();
 
@@ -11,11 +12,13 @@ class ConnectSettings {
     required this.hostId,
     this.extraEndpoints = const [],
     this.relayUrl = '',
+    this.sshBackend = ConnectSshBackendKind.embedded,
   });
 
   final String hostId;
   final List<SshReachabilityEndpoint> extraEndpoints;
   final String relayUrl;
+  final ConnectSshBackendKind sshBackend;
 }
 
 class ConnectSettingsStore {
@@ -88,7 +91,12 @@ class ConnectSettingsStore {
       hostId: hostId,
       extraEndpoints: List.unmodifiable(endpoints),
       relayUrl: json['relayUrl'] is String ? json['relayUrl'] as String : '',
+      sshBackend: parseConnectSshBackendKind(json['sshBackend']),
     );
+  }
+
+  Future<void> saveSshBackend(ConnectSshBackendKind kind) async {
+    await _write({...await _readJson(), 'sshBackend': kind.jsonValue});
   }
 
   Future<void> save({

@@ -15560,6 +15560,54 @@ abstract class AppLocalizations {
   /// **'The embedded connection server failed to start. Retry or restart the app.'**
   String get connectSshdDown;
 
+  /// No description provided for @connectSshBackendLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH server'**
+  String get connectSshBackendLabel;
+
+  /// No description provided for @connectSshBackendEmbedded.
+  ///
+  /// In en, this message translates to:
+  /// **'Embedded'**
+  String get connectSshBackendEmbedded;
+
+  /// No description provided for @connectSshBackendSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System OpenSSH (22)'**
+  String get connectSshBackendSystem;
+
+  /// No description provided for @connectSshBackendHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare the built-in server with this computer\'s OpenSSH. Switching requires re-scanning the pairing code.'**
+  String get connectSshBackendHelp;
+
+  /// No description provided for @connectSshBackendRePair.
+  ///
+  /// In en, this message translates to:
+  /// **'Paired phones must re-scan this computer\'s pairing code.'**
+  String get connectSshBackendRePair;
+
+  /// No description provided for @connectSystemSshdDownLinux.
+  ///
+  /// In en, this message translates to:
+  /// **'No SSH server is listening on port 22. Start the OpenSSH sshd service, then retry.'**
+  String get connectSystemSshdDownLinux;
+
+  /// No description provided for @connectSystemSshdDownMacos.
+  ///
+  /// In en, this message translates to:
+  /// **'No SSH server is listening on port 22. Enable Remote Login in Sharing settings, then retry.'**
+  String get connectSystemSshdDownMacos;
+
+  /// No description provided for @connectRevokeSystemHint.
+  ///
+  /// In en, this message translates to:
+  /// **'New logins are blocked. Already-open OpenSSH sessions may stay connected until they disconnect.'**
+  String get connectRevokeSystemHint;
+
   /// No description provided for @connectSshdRetry.
   ///
   /// In en, this message translates to:

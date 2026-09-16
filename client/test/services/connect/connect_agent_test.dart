@@ -6,8 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/services/connect/connect_agent.dart';
 import 'package:teampilot/services/connect/connect_relay_client.dart';
+import 'package:teampilot/services/connect/connect_ssh_backend.dart';
 import 'package:teampilot/services/connect/connect_settings_store.dart';
-import 'package:teampilot/services/connect/embedded_ssh_server.dart';
 import 'package:teampilot/services/connect/paired_device_store.dart';
 import 'package:teampilot/services/connect/pairing_certificate.dart';
 import 'package:teampilot/services/connect/pairing_http.dart';
@@ -31,14 +31,14 @@ void main() {
   );
 
   ConnectAgent agent({
-    EmbeddedSshServerHandle? embeddedServer,
+    ConnectSshBackend? sshBackend,
     List<SshReachabilityEndpoint> extraEndpoints = const [],
     PairedDeviceStore? deviceStore,
     ConnectRelayRegistration? relayRegistration,
     GrantGenerator? generateGrant,
   }) => ConnectAgent(
-    embeddedServer:
-        embeddedServer ??
+    sshBackend:
+        sshBackend ??
         FakeEmbeddedServer(
           isListening: true,
           port: 2222,
@@ -60,10 +60,18 @@ void main() {
     gate = PairingTokenGate();
   });
 
+  test('fake backend is embedded and authorize is a no-op', () async {
+    final fake = FakeEmbeddedServer();
+    expect(fake, isA<ConnectSshBackend>());
+    expect(fake.isEmbedded, isTrue);
+    await fake.authorizePublicKey('ssh-ed25519 AAAA');
+    await fake.revokePublicKey('ssh-ed25519 AAAA');
+  });
+
   test('offer is v2 with emb and the embedded port when the server is up',
       () async {
     final connectAgent = agent(
-      embeddedServer: FakeEmbeddedServer(
+      sshBackend: FakeEmbeddedServer(
         isListening: true,
         port: 54321,
         hostKeyFingerprints: const ['SHA256:abc'],
@@ -85,10 +93,32 @@ void main() {
     expect(offer.hostKeyFingerprints, ['SHA256:abc']);
   });
 
+  test('system backend offer is v2 emb false on port 22', () async {
+    final connectAgent = agent(
+      sshBackend: FakeEmbeddedServer(
+        isListening: true,
+        port: 22,
+        isEmbedded: false,
+        hostKeyFingerprints: const ['SHA256:system-key'],
+      ),
+    );
+    await connectAgent.startQrSession(
+      advertiseAddress: '192.168.1.5',
+      username: 'u',
+      displayName: 'desk',
+      appDataRoot: '/app-data',
+    );
+    final offer = connectAgent.currentOffer!;
+    expect(offer.v, 2);
+    expect(offer.emb, isFalse);
+    expect(offer.endpoints.first.port, 22);
+    expect(offer.hostKeyFingerprints, ['SHA256:system-key']);
+  });
+
   test('does not mint or bind when the embedded server is not listening',
       () async {
     final connectAgent = agent(
-      embeddedServer: FakeEmbeddedServer(
+      sshBackend: FakeEmbeddedServer(
         isListening: false,
         port: 0,
         hostKeyFingerprints: const ['SHA256:abc'],
@@ -110,7 +140,7 @@ void main() {
     'does not mint or bind when the host key has no SHA256 fingerprint',
     () async {
       final connectAgent = agent(
-        embeddedServer: FakeEmbeddedServer(
+        sshBackend: FakeEmbeddedServer(
           isListening: true,
           port: 54321,
           hostKeyFingerprints: const ['md5:unsupported'],
@@ -131,7 +161,7 @@ void main() {
 
   test('mints a LAN offer bound only to the advertised address', () async {
     final connectAgent = agent(
-      embeddedServer: FakeEmbeddedServer(
+      sshBackend: FakeEmbeddedServer(
         isListening: true,
         port: 2222,
         hostKeyFingerprints: const ['SHA256:host-key'],
@@ -244,6 +274,26 @@ void main() {
     expect(gate.consume(oldToken, now), isFalse);
   });
 
+  test('replaceSshBackend swaps the live backend without reminting', () async {
+    final connectAgent = agent();
+    await _start(connectAgent);
+    final offer = connectAgent.currentOffer;
+    final backend = FakeEmbeddedServer(
+      isListening: true,
+      port: 22,
+      isEmbedded: false,
+      hostKeyFingerprints: const ['SHA256:system-key'],
+    );
+
+    await connectAgent.replaceSshBackend(backend);
+
+    expect(connectAgent.currentOffer, same(offer));
+    expect(await connectAgent.resolveRelayTarget('ssh'), (
+      host: InternetAddress.loopbackIPv4,
+      port: 22,
+    ));
+  });
+
   test('valid incoming POST registers the device key', () async {
     final deviceStore = store();
     final connectAgent = agent(deviceStore: deviceStore);
@@ -271,6 +321,38 @@ void main() {
     expect(result.body['ok'], isTrue);
     expect(await deviceStore.isValidDeviceKey(publicKey), isTrue);
     expect(await deviceStore.deviceIdForPublicKey(publicKey), 'pixel-1');
+  });
+
+  test('pairing authorize failure rolls back the device store', () async {
+    final deviceStore = store();
+    final backend = FakeEmbeddedServer(
+      isListening: true,
+      port: 22,
+      isEmbedded: false,
+      hostKeyFingerprints: const ['SHA256:abc'],
+      authorizeError: StateError('authorized_keys denied'),
+    );
+    final connectAgent = agent(sshBackend: backend, deviceStore: deviceStore);
+    await _start(connectAgent);
+    final response = Completer<({int statusCode, Map<String, Object?> body})>();
+    binding.requests.add(
+      PairingHttpRequest(
+        method: 'POST',
+        uri: Uri(path: '/pair'),
+        body: PairingPostBody(
+          token: connectAgent.currentOffer!.pairing.token,
+          deviceId: 'pixel-1',
+          deviceName: 'Pixel',
+          publicKey: publicKey,
+        ),
+        respond: ({required statusCode, required body}) async {
+          response.complete((statusCode: statusCode, body: body));
+        },
+      ),
+    );
+    final result = await response.future;
+    expect(result.statusCode, HttpStatus.internalServerError);
+    expect(await deviceStore.hasDevice('pixel-1'), isFalse);
   });
 
   test('rejects an oversized content length before listening', () async {
@@ -489,6 +571,21 @@ void main() {
       expect(await dial(), isFalse);
     });
 
+    test('relay ssh target follows the backend port', () async {
+      final connectAgent = agent(
+        sshBackend: FakeEmbeddedServer(
+          isListening: true,
+          port: 22,
+          isEmbedded: false,
+          hostKeyFingerprints: const ['SHA256:abc'],
+        ),
+      );
+      expect(await connectAgent.resolveRelayTarget('ssh'), (
+        host: InternetAddress.loopbackIPv4,
+        port: 22,
+      ));
+    });
+
     test('ssh dial target is the embedded server while it is listening',
         () async {
       final server = FakeEmbeddedServer(
@@ -496,7 +593,7 @@ void main() {
         port: 54321,
         hostKeyFingerprints: const ['SHA256:abc'],
       );
-      final connectAgent = agent(embeddedServer: server);
+      final connectAgent = agent(sshBackend: server);
       await _start(connectAgent);
 
       expect(await connectAgent.resolveRelayTarget('ssh'), (
@@ -603,7 +700,7 @@ void main() {
   );
 }
 
-/// Test double for [EmbeddedSshServerHandle]; [isListening] is mutable so a
+/// Test double for [ConnectSshBackend]; [isListening] is mutable so a
 /// test can flip the server down mid-run.
 Future<void> _start(ConnectAgent agent) => agent.startQrSession(
   advertiseAddress: '192.168.1.20',

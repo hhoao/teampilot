@@ -163,9 +163,14 @@ import '../services/storage/app_paths.dart';
 import '../services/storage/device_local_control_plane.dart';
 import '../services/io/local_filesystem.dart';
 import '../services/connect/connect_agent.dart';
+import '../services/connect/authorized_keys_file.dart';
+import '../services/connect/connect_backend_host.dart';
 import '../services/connect/connect_settings_store.dart';
+import '../services/connect/connect_ssh_backend.dart';
 import '../services/connect/embedded_ssh_server.dart'
     show EmbeddedSshServer;
+import '../services/connect/sshd_presence.dart';
+import '../services/connect/system_sshd_backend.dart';
 import '../services/perf/live_perf_driver.dart';
 import '../services/storage/workspace_layout.dart';
 import '../services/automation/automation_bus_gateway.dart';
@@ -447,6 +452,7 @@ class AppShell {
     required this.configCubit,
     required this.connectCubit,
     required this.embeddedSshServer,
+    this.systemSshdBackend,
     required this.connectDeviceStore,
     required this.appProviderCubit,
     required this.managedProviderControlPlane,
@@ -554,7 +560,10 @@ class AppShell {
   final ConnectCubit? connectCubit;
 
   /// The desktop's embedded SSH server; `null` on Android (no Connect host).
-  final EmbeddedSshServer? embeddedSshServer;
+  final ConnectSshBackend? embeddedSshServer;
+
+  /// Linux/macOS system OpenSSH backend; `null` on Android and Windows.
+  final ConnectSshBackend? systemSshdBackend;
 
   /// The device registry shared by the embedded server, pairing agent, and
   /// Connect UI; `null` on Android.
@@ -1730,7 +1739,8 @@ Future<AppShell> buildAppShell({
     );
     final configCubit = ConfigCubit();
     ConnectCubit? connectCubit;
-    EmbeddedSshServer? embeddedSshServer;
+    ConnectSshBackend? embeddedSshServer;
+    ConnectSshBackend? systemSshdBackend;
     PairedDeviceStore? connectDeviceStore;
     if (!Platform.isAndroid) {
       final localFs = LocalFilesystem(
@@ -1766,22 +1776,54 @@ Future<AppShell> buildAppShell({
         username: username,
         homePath: nativeHome,
       );
+      final systemSshdSelectable = Platform.isLinux || Platform.isMacOS;
+      final systemBackend = systemSshdSelectable
+          ? SystemSshdBackend(
+              presence: SshdPresence(
+                probe: loopbackSshdProbe(),
+                scan: sshKeyScanRunner(
+                  run: (exe, args) async {
+                    final result = await Process.run(exe, args);
+                    return (
+                      exitCode: result.exitCode,
+                      stdout: result.stdout.toString(),
+                      stderr: result.stderr.toString(),
+                    );
+                  },
+                ),
+              ),
+              authorizedKeys: AuthorizedKeysFile(
+                fs: localFs,
+                homePath: nativeHome,
+                chmod600: (path) async {
+                  await Process.run('chmod', ['600', path]);
+                },
+              ),
+            )
+          : null;
+      final backendHost = ConnectBackendHost(
+        embedded: server,
+        system: systemBackend,
+        settings: settingsStore,
+        systemSshdSelectable: systemSshdSelectable,
+      );
       try {
-        await server.start();
+        await backendHost.startSelected();
       } on Object catch (error, stackTrace) {
         // Non-blocking: the app continues; the Connect UI shows the failed
         // state with a retry affordance. Broad on purpose — anything from a
         // typed [EmbeddedSshServerStartException] (bind conflicts) to a
         // host-key persistence failure must not crash app boot.
         appLogger.e(
-          '[connect] embedded ssh server failed to start',
+          '[connect] ssh backend failed to start',
           error: error,
           stackTrace: stackTrace,
         );
       }
       embeddedSshServer = server;
+      systemSshdBackend = systemBackend;
       final connectAgent = ConnectAgent.production(
-        embeddedServer: server,
+        sshBackend: backendHost.current,
         fs: localFs,
         extraEndpoints: settings.extraEndpoints,
         deviceStore: pairedDeviceStore,
@@ -1808,7 +1850,12 @@ Future<AppShell> buildAppShell({
       }
       connectCubit = ConnectCubit(
         agent: ConnectAgentController.fromAgent(connectAgent),
-        embeddedServer: server,
+        backends: backendHost,
+        systemSshdHint: Platform.isMacOS
+            ? ConnectSystemSshdHint.macos
+            : (Platform.isLinux
+                  ? ConnectSystemSshdHint.linux
+                  : ConnectSystemSshdHint.none),
         deviceStore: pairedDeviceStore,
         settingsStore: settingsStore,
         listNetworkAddresses: () async {
@@ -2890,6 +2937,7 @@ Future<AppShell> buildAppShell({
       configCubit: configCubit,
       connectCubit: connectCubit,
       embeddedSshServer: embeddedSshServer,
+      systemSshdBackend: systemSshdBackend,
       connectDeviceStore: connectDeviceStore,
       appProviderCubit: appProviderCubit,
       managedProviderControlPlane: managedProviderControlPlane,
@@ -3287,11 +3335,12 @@ ConnectRelayRegistration _relayRegistrationFor(Uri uri) {
   );
 }
 
-/// Tears down the Connect stack: the QR-session cubit, the embedded SSH
-/// server's listener, and the shared paired-device registry. Safe to call
-/// with a null shell (Android) and on partially-built shells.
+/// Tears down the Connect stack: the QR-session cubit, both SSH backends,
+/// and the shared paired-device registry. Safe to call with a null shell
+/// (Android) and on partially-built shells.
 Future<void> _teardownConnect(AppShell? shell) async {
   await shell?.connectCubit?.close();
   await shell?.embeddedSshServer?.stop();
+  await shell?.systemSshdBackend?.stop();
   shell?.connectDeviceStore?.dispose();
 }

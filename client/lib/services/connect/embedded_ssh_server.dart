@@ -25,29 +25,11 @@ import '../../utils/logging/logger_utils.dart';
 import '../io/filesystem.dart';
 import '../storage/app_paths.dart' show AppPaths;
 import 'connect_settings_store.dart';
+import 'connect_ssh_backend.dart';
 import 'embedded_host_key_store.dart';
 import 'embedded_process_factories.dart';
 import 'embedded_sftp_filesystem.dart';
 import 'paired_device_store.dart';
-
-/// The surface the app consumes (Task 10's ConnectAgent); implemented by
-/// [EmbeddedSshServer].
-abstract class EmbeddedSshServerHandle {
-  /// Whether [EmbeddedSshServer.start] currently holds a listener.
-  bool get isListening;
-
-  /// The actually bound port — not the requested one, so an ephemeral
-  /// `portOverride: 0` (tests) or a re-picked port is reported correctly.
-  int get port;
-
-  /// OpenSSH-style SHA256 fingerprints of the host key, for the pairing
-  /// offer's verification UI.
-  List<String> get hostKeyFingerprints;
-
-  /// Stops and starts the server — the retry affordance for a failed start
-  /// (e.g. the persisted port was occupied and the re-pick also failed).
-  Future<void> restart();
-}
 
 /// Thrown when the embedded server cannot bind a port — after the single
 /// re-pick retry on a persisted-port conflict. Non-fatal for the app: the
@@ -64,7 +46,7 @@ class EmbeddedSshServerStartException implements Exception {
 /// Owns the tp_sshd instance and its dart:io resources: the listener socket,
 /// the persisted host key, the settings store, and the device-registry
 /// subscription that powers revocation teardown.
-class EmbeddedSshServer implements EmbeddedSshServerHandle {
+class EmbeddedSshServer implements ConnectSshBackend {
   EmbeddedSshServer({
     required Filesystem fs,
     required String appDataRoot,
@@ -149,6 +131,9 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
   List<String> get hostKeyFingerprints =>
       _hostKey == null ? const [] : [_hostKey!.fingerprint];
 
+  @override
+  bool get isEmbedded => true;
+
   /// Loads (or generates) the host key, binds the listener, and starts the
   /// [SSHServer] over the accepted sockets.
   ///
@@ -156,6 +141,7 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
   /// (persisting the replacement) and the bind retried; a second failure —
   /// or any failure with an explicit [portOverride] — throws
   /// [EmbeddedSshServerStartException].
+  @override
   Future<void> start() async {
     if (isListening) {
       throw StateError('EmbeddedSshServer is already listening');
@@ -275,6 +261,7 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
 
   /// Stops the server: cancels the registry subscription, closes the SSH
   /// server, the listener, and the accepted-socket stream.
+  @override
   Future<void> stop() async {
     await _registrySubscription?.cancel();
     _registrySubscription = null;
@@ -289,10 +276,17 @@ class EmbeddedSshServer implements EmbeddedSshServerHandle {
   }
 
   /// Stops and starts again (the retry affordance for a start failure).
+  @override
   Future<void> restart() async {
     await stop();
     await start();
   }
+
+  @override
+  Future<void> authorizePublicKey(String publicKey) async {}
+
+  @override
+  Future<void> revokePublicKey(String publicKey) async {}
 
   /// Revokes [deviceId] in the device store. The registry-changed
   /// listener tears down any live connection that device still holds.

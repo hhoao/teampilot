@@ -8385,6 +8385,32 @@ class AppLocalizationsZh extends AppLocalizations {
   String get connectSshdDown => '内嵌连接服务启动失败。请重试或重启应用。';
 
   @override
+  String get connectSshBackendLabel => 'SSH 服务器';
+
+  @override
+  String get connectSshBackendEmbedded => '内置';
+
+  @override
+  String get connectSshBackendSystem => '系统 OpenSSH (22)';
+
+  @override
+  String get connectSshBackendHelp => '用本机 OpenSSH 对比内置服务器。切换后需重新扫码配对。';
+
+  @override
+  String get connectSshBackendRePair => '已配对的手机需重新扫描此电脑的配对码。';
+
+  @override
+  String get connectSystemSshdDownLinux =>
+      '22 端口没有 SSH 服务在听。请启动 OpenSSH 的 sshd，然后重试。';
+
+  @override
+  String get connectSystemSshdDownMacos =>
+      '22 端口没有 SSH 服务在听。请在「共享」中打开远程登录，然后重试。';
+
+  @override
+  String get connectRevokeSystemHint => '新登录会被拒绝。已经建立的 OpenSSH 会话可能要等断开后才会失效。';
+
+  @override
   String get connectSshdRetry => '重试';
 
   @override

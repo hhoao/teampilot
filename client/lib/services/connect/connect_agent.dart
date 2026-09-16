@@ -10,7 +10,7 @@ import '../../models/ssh_reachability.dart';
 import '../io/filesystem.dart';
 import 'connect_relay_client.dart';
 import 'connect_settings_store.dart';
-import 'embedded_ssh_server.dart';
+import 'connect_ssh_backend.dart';
 import 'paired_device_store.dart';
 import 'pairing_certificate.dart';
 import 'pairing_http.dart';
@@ -78,7 +78,7 @@ class ConnectRelayRegistration {
 
 class ConnectAgent {
   ConnectAgent({
-    required EmbeddedSshServerHandle embeddedServer,
+    required ConnectSshBackend sshBackend,
     required PairedDeviceStore deviceStore,
     required PairingTokenGate gate,
     required PairingBind bind,
@@ -89,7 +89,7 @@ class ConnectAgent {
     ConnectRelayRegistration? relayRegistration,
     GrantGenerator? generateGrant,
     RelaySocketSeam? relayConnectSocket,
-  }) : _embeddedServer = embeddedServer,
+  }) : _sshBackend = sshBackend,
        _deviceStore = deviceStore,
        _gate = gate,
        _bind = bind,
@@ -112,7 +112,7 @@ class ConnectAgent {
        _relayConnectSocket = relayConnectSocket;
 
   factory ConnectAgent.production({
-    required EmbeddedSshServerHandle embeddedServer,
+    required ConnectSshBackend sshBackend,
     required PairedDeviceStore deviceStore,
     required Filesystem fs,
     List<SshReachabilityEndpoint> extraEndpoints = const [],
@@ -121,7 +121,7 @@ class ConnectAgent {
     RelaySocketSeam? relayConnectSocket,
   }) {
     return ConnectAgent(
-      embeddedServer: embeddedServer,
+      sshBackend: sshBackend,
       deviceStore: deviceStore,
       gate: PairingTokenGate(),
       bind: bindPairingHttps,
@@ -139,7 +139,7 @@ class ConnectAgent {
 
   static const _inviteTtl = Duration(minutes: 10);
 
-  final EmbeddedSshServerHandle _embeddedServer;
+  ConnectSshBackend _sshBackend;
   final PairingTokenGate _gate;
   final PairingBind _bind;
   final PairingCertificateProvider _certificateProvider;
@@ -197,8 +197,8 @@ class ConnectAgent {
 
     // The embedded server failed to start: no offer is minted; the Connect
     // UI surfaces the failed state through the handle.
-    if (!_embeddedServer.isListening) return;
-    final fingerprints = _embeddedServer.hostKeyFingerprints
+    if (!_sshBackend.isListening) return;
+    final fingerprints = _sshBackend.hostKeyFingerprints
         .where((value) => value.startsWith('SHA256:'))
         .toSet()
         .toList(growable: false);
@@ -216,7 +216,7 @@ class ConnectAgent {
         displayName: displayName,
         appDataRoot: appDataRoot,
         hostId: await _stableHostId(appDataRoot),
-        embeddedPort: _embeddedServer.port,
+        sshPort: _sshBackend.port,
         fingerprints: fingerprints,
         certificateSha256: certificate.sha256Hex,
         pairingPort: binding.port,
@@ -338,8 +338,8 @@ class ConnectAgent {
         if (binding == null) return null;
         return (host: InternetAddress.loopbackIPv4, port: binding.port);
       case 'ssh':
-        if (!_embeddedServer.isListening) return null;
-        return (host: InternetAddress.loopbackIPv4, port: _embeddedServer.port);
+        if (!_sshBackend.isListening) return null;
+        return (host: InternetAddress.loopbackIPv4, port: _sshBackend.port);
       default:
         return null;
     }
@@ -353,6 +353,11 @@ class ConnectAgent {
       await _regenerateQr();
     }
   });
+
+  Future<void> replaceSshBackend(ConnectSshBackend backend) =>
+      _lifecycleLock.synchronized(() async {
+        _sshBackend = backend;
+      });
 
   Future<void> _regenerateQr() async {
     final session = _session;
@@ -370,7 +375,7 @@ class ConnectAgent {
     final relay = _relayRegistration;
     return SshPairingOffer(
       v: 2,
-      emb: true,
+      emb: _sshBackend.isEmbedded,
       hostId: session.hostId,
       username: session.username,
       displayName: session.displayName,
@@ -379,7 +384,7 @@ class ConnectAgent {
         SshReachabilityEndpoint(
           kind: SshEndpointKind.lan,
           host: session.advertiseAddress,
-          port: session.embeddedPort,
+          port: session.sshPort,
         ),
         ..._extraEndpoints.where(
           (endpoint) => endpoint.kind == SshEndpointKind.extra,
@@ -441,12 +446,19 @@ class ConnectAgent {
               required String deviceId,
               required String deviceName,
               required String publicKey,
-            }) =>
-                _deviceStore.issueDevice(
-                  deviceId: deviceId,
-                  publicKey: publicKey,
-                  deviceName: deviceName,
-                ),
+            }) async {
+              await _deviceStore.issueDevice(
+                deviceId: deviceId,
+                publicKey: publicKey,
+                deviceName: deviceName,
+              );
+              try {
+                await _sshBackend.authorizePublicKey(publicKey);
+              } on Object {
+                await _deviceStore.revokeDevice(deviceId);
+                rethrow;
+              }
+            },
         now: _now(),
         profileHint: session.displayName,
       );
@@ -501,7 +513,7 @@ class _QrSession {
     required this.displayName,
     required this.appDataRoot,
     required this.hostId,
-    required this.embeddedPort,
+    required this.sshPort,
     required this.fingerprints,
     required this.certificateSha256,
     required this.pairingPort,
@@ -513,8 +525,8 @@ class _QrSession {
   final String appDataRoot;
   final String hostId;
 
-  /// The embedded SSH server's actually bound port.
-  final int embeddedPort;
+  /// The SSH backend's listening port.
+  final int sshPort;
   final List<String> fingerprints;
   final String certificateSha256;
   final int pairingPort;
