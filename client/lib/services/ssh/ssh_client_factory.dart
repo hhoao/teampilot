@@ -139,7 +139,12 @@ class SshClientFactory {
         _sftpByProfile.remove(profile.id);
       } else if (cached.hostIdentifier == profile.hostIdentifier) {
         await cached.ready;
-        if (!probeCached || await _probeStorageClient(cached.client)) {
+        final inFlight = _inFlight[profile.id] ?? 0;
+        final skipProbe = !probeCached || inFlight > 0;
+        if (skipProbe || await _probeStorageClient(cached.client)) {
+          return cached.client;
+        }
+        if ((_inFlight[profile.id] ?? 0) > 0) {
           return cached.client;
         }
         _evictProfile(

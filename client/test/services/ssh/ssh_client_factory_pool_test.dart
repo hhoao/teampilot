@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
@@ -39,6 +40,46 @@ void main() {
     expect(identical(first, second), isFalse);
     expect(first.isClosed, isTrue);
     expect(factory.hasLiveStorageClient(profile.id), isTrue);
+  });
+
+  test('clientForStorage skips probe while another storage op is in flight', () async {
+    var pingCount = 0;
+    var createCount = 0;
+    final gate = Completer<void>();
+    late final _BlockingRunClient client;
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        createCount += 1;
+        return client;
+      },
+    );
+    const profile = SshProfile(
+      id: 'p1', name: 'dev', host: 'example.com', username: 'alice',
+    );
+    client = _BlockingRunClient(gate.future, [])
+      ..onPing = () {
+        pingCount += 1;
+        throw StateError('probe should not run');
+      };
+
+    await factory.clientForStorage(profile);
+    pingCount = 0;
+    final op = factory.runOnStorageWithStdin(
+      profile,
+      'bash -s',
+      stdin: utf8.encode('sleep'),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    final second = await factory.clientForStorage(profile);
+    expect(identical(second, client), isTrue);
+    expect(createCount, 1);
+    expect(pingCount, 0);
+
+    gate.complete();
+    await op;
   });
 
   test(
@@ -619,12 +660,15 @@ class _BlockingRunClient extends SSHClient {
 
   final Future<void> _gate;
   final List<int> disconnectCalls;
+  void Function()? onPing;
 
   @override
   Future<void> get authenticated => Future.value();
 
   @override
-  Future<void> ping() async {}
+  Future<void> ping() async {
+    onPing?.call();
+  }
 
   @override
   Future<SSHRunResult> runWithResult(
