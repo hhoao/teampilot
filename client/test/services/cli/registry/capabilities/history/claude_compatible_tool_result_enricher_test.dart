@@ -449,6 +449,72 @@ void main() {
       },
     );
 
+    test(
+      'tokenless same-size rewrite is not reusable from an index snapshot',
+      () async {
+        final counted = countingEnricher();
+        final original =
+            '${truncatedUserLine(toolUseId: 'call_02', stdout: 'old')}\n';
+        final rewritten =
+            '${truncatedUserLine(toolUseId: 'call_02', stdout: 'new')}\n';
+        expect(utf8.encode(rewritten).length, utf8.encode(original).length);
+
+        await enrich(
+          messages: truncatedBashMessage(),
+          bundle: AiTranscriptBundle(
+            adapterId: 'claude',
+            fragments: [
+              AiTranscriptFragment(
+                name: 'session.jsonl',
+                bytes: utf8.encode(original),
+              ),
+            ],
+          ),
+          enricher: counted.enricher,
+        );
+        expect(counted.lines(), 1);
+
+        expect(
+          counted.enricher.canReuseIndex(
+            sourceToken: null,
+            rootTranscriptPath: null,
+            contentLength: utf8.encode(rewritten).length,
+          ),
+          isFalse,
+          reason:
+              'length plus a fragment name is not a verifiable content identity',
+        );
+
+        final staleApplied = await counted.enricher.applyIndexSnapshot(
+          messages: truncatedBashMessage(),
+          snapshot: counted.enricher.exportIndex(),
+          sourceToken: null,
+          rootTranscriptPath: null,
+        );
+        expect(
+          (staleApplied.single.parts.single as AiToolCallPart).result,
+          'tool output truncated',
+          reason: 'tokenless snapshots must not be applied as if current',
+        );
+
+        final result = await enrich(
+          messages: truncatedBashMessage(),
+          bundle: AiTranscriptBundle(
+            adapterId: 'claude',
+            fragments: [
+              AiTranscriptFragment(
+                name: 'session.jsonl',
+                bytes: utf8.encode(rewritten),
+              ),
+            ],
+          ),
+          enricher: counted.enricher,
+        );
+        expect((result.single.parts.single as AiToolCallPart).result, 'new');
+        expect(counted.lines(), 2);
+      },
+    );
+
     test('canReuseIndex follows path identity used by enrich', () async {
       final counted = countingEnricher();
       final jsonl =

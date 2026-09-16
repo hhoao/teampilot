@@ -1089,6 +1089,77 @@ void main() {
   );
 
   test(
+    'large bundle ignores stale reusable snapshot after invalidation and repopulation',
+    () async {
+      final executor = _CompletingHistoryParseExecutor(
+        messages: _toolResultMessages(),
+      );
+      final enricher = _InvalidationRaceIndexEnricher();
+      final registry = fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: const _ThrowingParseAdapter(),
+        toolResultEnricher: enricher,
+        locate: (_) async => _largeBundle(),
+      );
+      final loader = buildLoader(registry: registry, parseExecutor: executor);
+      final session = simpleSession();
+      final ctx = launchContextFor(session);
+
+      final seedLoad = loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      await executor.waitForCall(0);
+      executor.complete(0);
+      await seedLoad;
+
+      final staleLoad = loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+        force: true,
+      );
+      await executor.waitForCall(1);
+
+      loader.invalidate(sessionId: session.sessionId, memberId: '');
+
+      final repopulatingLoad = loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+        force: true,
+      );
+      await executor.waitForCall(2);
+      executor.complete(2);
+      final repopulated = await repopulatingLoad;
+      expect(repopulated.messages.single.id, 'worker-fresh-enriched');
+
+      executor.complete(1);
+      await executor
+          .waitForCall(3)
+          .timeout(const Duration(milliseconds: 200), onTimeout: () {});
+      if (executor.calls > 3) executor.complete(3);
+      final result = await staleLoad;
+
+      expect(executor.calls, 4);
+      expect(executor.workerEnricherIds, [
+        isNull,
+        isNull,
+        'claude-compatible',
+        'claude-compatible',
+      ]);
+      expect(enricher.fullDecodeAttempts, 0);
+      expect(
+        enricher.appliedSnapshotCount,
+        1,
+        reason: 'only the seed load may apply the pre-invalidation snapshot',
+      );
+      expect(result.messages.single.id, 'worker-fresh-enriched');
+    },
+  );
+
+  test(
     'large bundle runs caller-only bundle enricher after worker parsing',
     () async {
       final executor = _RecordingHistoryParseExecutor()

@@ -117,6 +117,10 @@ final class AiHistoryLoader {
   /// Per-seat lazy subagent attachment loads (cacheKey+toolCallId → future).
   final _inflightSubagentLoads = <String, Future<AiSubagentAttachment?>>{};
 
+  /// Global revision for in-memory tool-result indexes. Any invalidation or
+  /// worker import makes snapshots captured before an await stale.
+  var _toolResultIndexRevision = 0;
+
   /// Bumped when a seat's lazy attachment cache is cleared (side fingerprint).
   final _subagentSeatGenerations = <String, int>{};
 
@@ -1273,6 +1277,7 @@ final class AiHistoryLoader {
     if (!all && (identity == null || identity.trim().isEmpty)) {
       return;
     }
+    _bumpToolResultIndexRevision();
     for (final cli in CliTool.values) {
       final enricher = _registry
           .capability<AiHistoryCapability>(cli)
@@ -1288,6 +1293,10 @@ final class AiHistoryLoader {
     final path = _parentPaths[cacheKey]?.trim();
     if (path != null && path.isNotEmpty) return path;
     return _tokens[cacheKey];
+  }
+
+  void _bumpToolResultIndexRevision() {
+    _toolResultIndexRevision++;
   }
 
   Future<List<AiMessage>> _parseAndEnrich({
@@ -1313,9 +1322,11 @@ final class AiHistoryLoader {
           rootTranscriptPath: parentPath,
           contentLength: totalBytes,
         );
+    final reusableIndexRevision = _toolResultIndexRevision;
     final reusableIndexSnapshot = reuse ? indexCache.exportIndex() : null;
 
     if (totalBytes >= _isolateParseMinBytes) {
+      final importRevision = _toolResultIndexRevision;
       final result = await _parseExecutor.parse(
         adapterId: adapter.id,
         bundle: bundle,
@@ -1323,8 +1334,11 @@ final class AiHistoryLoader {
         sourceToken: sourceToken,
         rootTranscriptPath: parentPath,
       );
-      if (!reuse) {
-        indexCache?.importIndex(result.indexSnapshot);
+      if (!reuse &&
+          indexCache != null &&
+          importRevision == _toolResultIndexRevision) {
+        indexCache.importIndex(result.indexSnapshot);
+        _bumpToolResultIndexRevision();
       }
       _recordTimedPhase(
         AiHistoryLoadPhase.parse,
@@ -1341,6 +1355,7 @@ final class AiHistoryLoader {
       }
       final reuseStillValid =
           reuse &&
+          reusableIndexRevision == _toolResultIndexRevision &&
           indexCache.canReuseIndex(
             sourceToken: sourceToken,
             rootTranscriptPath: parentPath,
@@ -1362,6 +1377,7 @@ final class AiHistoryLoader {
         );
       }
       if (reuse && !reuseStillValid && enricher.workerId != null) {
+        final refreshRevision = _toolResultIndexRevision;
         final refreshed = await _parseExecutor.parse(
           adapterId: adapter.id,
           bundle: bundle,
@@ -1369,7 +1385,10 @@ final class AiHistoryLoader {
           sourceToken: sourceToken,
           rootTranscriptPath: parentPath,
         );
-        indexCache.importIndex(refreshed.indexSnapshot);
+        if (refreshRevision == _toolResultIndexRevision) {
+          indexCache.importIndex(refreshed.indexSnapshot);
+          _bumpToolResultIndexRevision();
+        }
         _recordTimedPhase(
           AiHistoryLoadPhase.parse,
           refreshed.parseTime.inMicroseconds,

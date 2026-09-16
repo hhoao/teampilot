@@ -308,8 +308,7 @@ String? _normalizeSourceToken(String? token) {
 
 bool _sourceTokenMatches(String? cached, String? current) {
   final currentToken = _normalizeSourceToken(current);
-  if (cached == null || currentToken == null) return true;
-  return cached == currentToken;
+  return cached != null && currentToken != null && cached == currentToken;
 }
 
 String _cacheIdentity({
