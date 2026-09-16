@@ -72,11 +72,12 @@ void main() {
       profile: profile,
     );
     await runner.runStdinCommand(
-      command: "gzip -dc | tar -x -C '/tmp/root'",
+      command: "mkdir -p '/tmp/root' && gzip -dc | tar -x -C '/tmp/root'",
       stdin: Uint8List.fromList([1, 2, 3]),
       operation: 'Launch overlay extract',
     );
-    expect(ran, "gzip -dc | tar -x -C '/tmp/root'");
+    expect(ran, "mkdir -p '/tmp/root' && gzip -dc | tar -x -C '/tmp/root'");
+    expect(ran, "mkdir -p '/tmp/root' && gzip -dc | tar -x -C '/tmp/root'");
     expect(stdin, [1, 2, 3]);
   });
 

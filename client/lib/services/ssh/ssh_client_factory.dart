@@ -125,8 +125,10 @@ class SshClientFactory {
   /// Interactive session work (PTY, reverse bus tunnels, exec probes) must use
   /// [createMemberClient] via [SshMemberSession.open] instead.
   ///
-  /// Reuses a pooled client only after a short keepalive probe so half-dead
-  /// sockets (FIN not yet observed) are rebuilt instead of hanging callers.
+  /// Idle cached clients are keepalive-probed before reuse. When another
+  /// storage op is already in flight (`_inFlight > 0`, including this caller's
+  /// own tracked increment), the probe is skipped so a long stdin write is
+  /// not evicted by a probe timeout.
   Future<SSHClient> clientForStorage(
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),

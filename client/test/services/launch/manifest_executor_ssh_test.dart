@@ -13,6 +13,7 @@ import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/services/launch/launch_manifest.dart';
 import 'package:teampilot/services/launch/manifest_executor.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
+import 'package:teampilot/utils/logging/logger.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -46,6 +47,7 @@ void main() {
     expect(factory.hasLiveStorageClient(profile.id), isTrue);
     expect(createCount, 1);
 
+    final fs = InMemoryFilesystem();
     final manifest = LaunchManifest()..writeFile('/tmp/cursor/settings.json', '{}');
     final executor = ManifestExecutor(
       sshClientFactory: factory,
@@ -54,8 +56,8 @@ void main() {
 
     await executor.flush(
       manifest: manifest,
-      targetFs: InMemoryFilesystem(),
-      sourceFs: InMemoryFilesystem(),
+      targetFs: fs,
+      sourceFs: fs,
       sshProfileId: profile.id,
     );
 
@@ -89,6 +91,7 @@ void main() {
       ..copyTree(source: '/src/tree', destination: '/dst/tree')
       ..symlink(linkPath: '/dst/home/.npm', target: '/root/.npm');
 
+    final before = await appLogger.getPendingLogLines();
     await ManifestExecutor(
       sshClientFactory: factory,
       profileById: (_) => profile,
@@ -98,6 +101,7 @@ void main() {
       sourceFs: fs,
       sshProfileId: profile.id,
     );
+    final lines = (await appLogger.getPendingLogLines()).skip(before.length);
 
     expect(execs, hasLength(1));
     expect(execs.single.command, 'bash -s');
@@ -106,6 +110,53 @@ void main() {
     expect(script, contains("rm -rf -- '/dst/home/.npm'"));
     expect(script, contains("ln -sfn -- '/root/.npm' '/dst/home/.npm'"));
     expect(script, isNot(contains('cat >')));
+    expect(
+      lines.where((l) => l.contains('[session-launch] manifest flush via ssh ops=')),
+      isNotEmpty,
+    );
+    expect(
+      lines.where(
+        (l) =>
+            l.contains('stdinBytes=') &&
+            l.contains('scriptEpochs=') &&
+            l.contains('tarEpochs='),
+      ),
+      isNotEmpty,
+    );
+  });
+
+  test('off-home ssh flush rejects empty work root', () async {
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return _RunnableClient();
+      },
+    );
+    await expectLater(
+      ManifestExecutor(
+        sshClientFactory: factory,
+        profileById: (_) => profile,
+      ).flush(
+        manifest: LaunchManifest()..writeFile('/tmp/a.txt', 'x'),
+        targetFs: InMemoryFilesystem(),
+        sourceFs: InMemoryFilesystem(),
+        sshProfileId: profile.id,
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('work app-data root'),
+        ),
+      ),
+    );
   });
 
   test('cross-machine ssh flush copies external symlink targets', () async {
@@ -149,7 +200,10 @@ void main() {
     );
 
     expect(execs, hasLength(1));
-    expect(execs.single.command, contains('gzip -dc | tar -x -C'));
+    expect(
+      execs.single.command,
+      "mkdir -p '$workRoot' && gzip -dc | tar -x -C '$workRoot'",
+    );
     final stdin = execs.single.stdin!;
     expect(stdin.length, greaterThan(2));
     expect(stdin[0], 0x1f);

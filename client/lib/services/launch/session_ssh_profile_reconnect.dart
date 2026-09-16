@@ -56,25 +56,35 @@ class SessionSshProfileReconnect {
     if (_host.isClosed) return;
     appLogger.i('[session-launch] reconnectSshProfile profile=$profileId');
 
+    Object? firstError;
+    StackTrace? firstStack;
     for (final tab in _openTabs()) {
-      final session = tab.persistedSession;
-      if (session == null) continue;
+      try {
+        final session = tab.persistedSession;
+        if (session == null) continue;
 
-      if (session.sessionTeam.trim().isEmpty) {
-        await _reconnectPersonalTab(tab, session, profileId);
-      } else {
-        final team = await _host.teamProfileById(session.sessionTeam.trim());
-        if (team == null) continue;
-        for (final member in team.members.where((m) => m.isValid)) {
-          await _reconnectTeamMemberTab(
-            tab: tab,
-            team: team,
-            member: member,
-            session: session,
-            profileId: profileId,
-          );
+        if (session.sessionTeam.trim().isEmpty) {
+          await _reconnectPersonalTab(tab, session, profileId);
+        } else {
+          final team = await _host.teamProfileById(session.sessionTeam.trim());
+          if (team == null) continue;
+          for (final member in team.members.where((m) => m.isValid)) {
+            await _reconnectTeamMemberTab(
+              tab: tab,
+              team: team,
+              member: member,
+              session: session,
+              profileId: profileId,
+            );
+          }
         }
+      } on Object catch (e, st) {
+        firstError ??= e;
+        firstStack ??= st;
       }
+    }
+    if (firstError != null) {
+      Error.throwWithStackTrace(firstError, firstStack!);
     }
   }
 
@@ -152,6 +162,8 @@ class SessionSshProfileReconnect {
         stackTrace: st,
       );
       _host.failSessionConnect(tab.info.id, 'Failed to reconnect: $e');
+      // Follow-up: failSessionConnect already records this failure; rethrow
+      // surfaces the same root cause to the session-plane callback.
       rethrow;
     } finally {
       tab.membersPendingConnect.remove(session.sessionId);

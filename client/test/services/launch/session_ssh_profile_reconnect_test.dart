@@ -86,6 +86,78 @@ void main() {
       expect(host.failedSessionIds, ['sess-1']);
       expect(tab.membersPendingConnect, isEmpty);
     });
+
+    test('reconnect finishes remaining personal tabs then throws first error',
+        () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+
+      const profileId = 'profile-1';
+      final workspace = Workspace(
+        workspaceId: 'ws-1',
+        folders: const [WorkspaceFolder(path: '/work')],
+        createdAt: 1,
+      );
+      final session1 = AppSession(
+        sessionId: 'sess-1',
+        workspaceId: workspace.workspaceId,
+        folders: const [WorkspaceFolder(path: '/work')],
+        createdAt: 1,
+      );
+      final session2 = AppSession(
+        sessionId: 'sess-2',
+        workspaceId: workspace.workspaceId,
+        folders: const [WorkspaceFolder(path: '/work')],
+        createdAt: 1,
+      );
+      final tab1 = ChatTab(
+        info: const ChatTabInfo(id: 'sess-1', title: 'S1', subtitle: ''),
+        cliTeamName: '',
+      )..persistedSession = session1;
+      final tab2 = ChatTab(
+        info: const ChatTabInfo(id: 'sess-2', title: 'S2', subtitle: ''),
+        cliTeamName: '',
+      )..persistedSession = session2;
+      final shell1 = FakeTerminalSession(fs: InMemoryFilesystem());
+      final shell2 = FakeTerminalSession(fs: InMemoryFilesystem());
+      tab1.resumeSession = shell1;
+      tab2.resumeSession = shell2;
+      addTearDown(shell1.dispose);
+      addTearDown(shell2.dispose);
+
+      final host = _ReconnectHost(
+        lifecycle: _SshProfileLifecycle(
+          RuntimeTarget.ssh(profileId, label: 'ssh'),
+        ),
+      );
+      final connector = _SelectiveFailingShellConnector(host, failSessionIds: {
+        'sess-1',
+      });
+      final reconnect = SessionSshProfileReconnect(
+        host: host,
+        shellConnector: connector,
+        launchContextFor: (s) => WorkspaceLaunchContext(
+          session: s,
+          workspace: workspace,
+          usesPosixPaths: true,
+        ),
+        scheduleMemberConnect: (_, _, _, {bool selectMember = false}) {},
+        workspaceIndex: () => SessionLaunchWorkspaceIndex(
+          workspaces: [workspace],
+          sessions: [session1, session2],
+          usesPosixPaths: true,
+        ),
+        openTabs: () => [tab1, tab2],
+      );
+
+      await expectLater(
+        reconnect.reconnect(profileId),
+        throwsA(isA<StateError>()),
+      );
+      expect(connector.attemptedSessionIds, ['sess-1', 'sess-2']);
+      expect(host.failedSessionIds, ['sess-1']);
+      expect(tab1.membersPendingConnect, isEmpty);
+      expect(tab2.membersPendingConnect, isEmpty);
+    });
   });
 }
 
@@ -152,4 +224,32 @@ class _FailingShellConnector extends SessionShellConnector {
     TeamMemberConfig? member,
     Workspace? workspace,
   }) async => ConnectShellResult.failed;
+}
+
+class _SelectiveFailingShellConnector extends SessionShellConnector {
+  _SelectiveFailingShellConnector(
+    SessionLaunchHost host, {
+    required this.failSessionIds,
+  }) : super(host, _UnusedDelegate(), isLocalNative: () => true);
+
+  final Set<String> failSessionIds;
+  final attemptedSessionIds = <String>[];
+
+  @override
+  Future<ConnectShellResult> connect({
+    required ChatTab tab,
+    required AppSession session,
+    required TerminalSession shell,
+    SessionRepository? repo,
+    required bool launched,
+    TeamProfile? team,
+    TeamMemberConfig? member,
+    Workspace? workspace,
+  }) async {
+    attemptedSessionIds.add(session.sessionId);
+    if (failSessionIds.contains(session.sessionId)) {
+      return ConnectShellResult.failed;
+    }
+    return ConnectShellResult.attached;
+  }
 }

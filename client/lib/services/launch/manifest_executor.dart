@@ -33,11 +33,20 @@ class ManifestExecutor {
     if (runner != null) {
       final sameHost = identical(sourceFs, targetFs);
       final workRoot = (symlinkProjectionRoot ?? '').trim();
+      if (!sameHost && workRoot.isEmpty) {
+        throw StateError(
+          'off-home SSH manifest flush requires a non-empty work app-data root',
+        );
+      }
       final epochs = await buildManifestSshFlushPlan(
         manifest: manifest,
         sourceFs: sourceFs,
-        workRoot: workRoot.isEmpty ? '/' : workRoot,
+        workRoot: workRoot,
         sameHost: sameHost,
+      );
+      appLogger.d(
+        '[session-launch] manifest flush via ssh '
+        'ops=${manifest.entries.length}',
       );
       var tarEpochs = 0;
       var scriptEpochs = 0;

@@ -39,10 +39,9 @@ void main() {
     );
   });
 
-  test('gzip tar round-trips file symlink and dir', () {
+  test('gzip tar round-trips file and dir with directory execute bits', () {
     final archive = Archive();
     addOverlayFile(archive, relativePath: 'a.txt', bytes: utf8.encode('hi'));
-    addOverlaySymlink(archive, relativePath: 'link', target: '/opt/x');
     addOverlayDir(archive, relativePath: 'empty');
     final gz = encodeLaunchOverlayGzip(archive);
     expect(gz.length, greaterThan(32));
@@ -50,17 +49,35 @@ void main() {
     final decoded = TarDecoder().decodeBytes(tar);
     expect(
       decoded.files.map((f) => f.name),
-      containsAll(['a.txt', 'link', 'empty']),
+      containsAll(['a.txt', 'empty']),
     );
-    expect(decoded.findFile('link')!.symbolicLink, '/opt/x');
     expect(utf8.decode(decoded.findFile('a.txt')!.content as List<int>), 'hi');
+    final dir = decoded.findFile('empty')!;
+    expect(dir.isDirectory, isTrue);
+    expect(dir.unixPermissions & 0x49, isNot(0));
   });
 
-  test('extract command is short pipeline not bash -s', () {
+  test('extract command mkdirs workRoot then gzip|tar under 1KB', () {
     final cmd = launchOverlayExtractCommand(root);
-    expect(cmd.startsWith('gzip -dc | tar -x -C '), isTrue);
-    expect(cmd, contains("'$root'"));
+    expect(cmd, "mkdir -p '$root' && gzip -dc | tar -x -C '$root'");
     expect(utf8.encode(cmd).length, lessThan(1024));
     expect(cmd, isNot(contains('bash -s')));
+  });
+
+  test('empty workRoot is not mapped to /', () {
+    expect(
+      () => launchOverlayExtractCommand(''),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('work root'),
+        ),
+      ),
+    );
+    expect(
+      () => launchOverlayExtractCommand('   '),
+      throwsA(isA<StateError>()),
+    );
   });
 }

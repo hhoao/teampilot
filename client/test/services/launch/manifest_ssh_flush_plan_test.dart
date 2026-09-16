@@ -39,7 +39,10 @@ void main() {
     );
     expect(epochs, hasLength(1));
     expect(epochs.single.kind, ManifestSshEpochKind.tar);
-    expect(epochs.single.extractCommand, contains('gzip -dc | tar -x -C'));
+    expect(
+      epochs.single.extractCommand,
+      "mkdir -p '$root' && gzip -dc | tar -x -C '$root'",
+    );
     final tar = GZipDecoder().decodeBytes(epochs.single.gzipTar!);
     final decoded = TarDecoder().decodeBytes(tar);
     final file = decoded.findFile('pool/bin/bin.dat')!;
@@ -84,7 +87,7 @@ void main() {
     expect(epochs[0].script, contains('rm -rf'));
   });
 
-  test('in-root symlink tar is preceded by leftover-dir rm', () async {
+  test('in-root symlink is mutation script not a tar member', () async {
     final fs = InMemoryFilesystem();
     const root = '/work/root';
     final manifest = LaunchManifest()
@@ -95,14 +98,33 @@ void main() {
       workRoot: root,
       sameHost: false,
     );
-    expect(epochs.map((e) => e.kind).toList(), [
-      ManifestSshEpochKind.script,
-      ManifestSshEpochKind.tar,
-    ]);
-    expect(epochs[0].script, contains("rm -rf -- '$root/home/.npm'"));
-    final tar = GZipDecoder().decodeBytes(epochs[1].gzipTar!);
-    final decoded = TarDecoder().decodeBytes(tar);
-    expect(decoded.findFile('home/.npm')!.symbolicLink, '$root/pool/npm');
+    expect(epochs, hasLength(1));
+    expect(epochs.single.kind, ManifestSshEpochKind.script);
+    expect(epochs.single.script, contains("rm -rf -- '$root/home/.npm'"));
+    expect(
+      epochs.single.script,
+      contains("ln -sfn -- '$root/pool/npm' '$root/home/.npm'"),
+    );
+    expect(epochs.single.gzipTar, isNull);
+  });
+
+  test('symlink target over 100 bytes survives as ln -sfn not tar', () async {
+    final fs = InMemoryFilesystem();
+    const root = '/work/root';
+    final target = '$root/pool/${'x' * 120}';
+    expect(target.length, greaterThan(100));
+    final manifest = LaunchManifest()
+      ..symlink(linkPath: '$root/home/.long', target: target);
+    final epochs = await buildManifestSshFlushPlan(
+      manifest: manifest,
+      sourceFs: fs,
+      workRoot: root,
+      sameHost: false,
+    );
+    expect(epochs, hasLength(1));
+    expect(epochs.single.kind, ManifestSshEpochKind.script);
+    expect(epochs.single.script, contains("ln -sfn -- '$target'"));
+    expect(epochs.single.gzipTar, isNull);
   });
 
   test('out-of-root writeFile is heredoc script not tar', () async {

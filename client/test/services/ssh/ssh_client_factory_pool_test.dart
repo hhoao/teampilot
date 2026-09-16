@@ -82,6 +82,38 @@ void main() {
     await op;
   });
 
+  test('runOnStorageWithStdin rejects exec commands over 1024 bytes', () async {
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return _InstantAuthClient();
+      },
+    );
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
+    final command = 'echo ${'x' * 1024}';
+    expect(utf8.encode(command).length, greaterThan(1024));
+    expect(
+      () => factory.runOnStorageWithStdin(
+        profile,
+        command,
+        stdin: utf8.encode('ignored'),
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('1024'),
+        ),
+      ),
+    );
+  });
+
   test(
     'clientForStorage reuses the same pooled client for one profile',
     () async {

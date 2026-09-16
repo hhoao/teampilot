@@ -102,15 +102,13 @@ Future<List<ManifestSshEpoch>> buildManifestSshFlushPlan({
 
 enum _BufferKind { script, tar }
 
-enum _MemberKind { file, dir, symlink }
+enum _MemberKind { file, dir }
 
 final class _OverlayMember {
-  const _OverlayMember(this.kind, {this.bytes, this.target, this.linkPath});
+  const _OverlayMember(this.kind, {this.bytes});
 
   final _MemberKind kind;
   final List<int>? bytes;
-  final String? target;
-  final String? linkPath;
 }
 
 final class _OffHomePlanner {
@@ -186,18 +184,10 @@ final class _OffHomePlanner {
     required String target,
   }) async {
     if (_targetWithinRoot(target: target, linkPath: linkPath)) {
-      final rel = _relative(linkPath);
-      if (rel == null) {
-        _openKind(_BufferKind.script);
-        _script.symlink(linkPath: linkPath, target: target);
-        return;
-      }
-      _openKind(_BufferKind.tar);
-      _overlay[rel] = _OverlayMember(
-        _MemberKind.symlink,
-        target: target,
-        linkPath: linkPath,
-      );
+      // Never emit tar symlink members: ustar truncates targets >100 bytes.
+      // Mutation script already does leftover-dir `rm -rf` then `ln -sfn`.
+      _openKind(_BufferKind.script);
+      _script.symlink(linkPath: linkPath, target: target);
       return;
     }
     await _copyExternal(
@@ -285,6 +275,8 @@ final class _OffHomePlanner {
   void _addBytes(String destination, List<int> bytes) {
     final rel = _relative(destination);
     if (rel == null) {
+      // Follow-up: out-of-root copy bodies go through a heredoc writeFile and
+      // are not binary-safe (`String.fromCharCodes`).
       _openKind(_BufferKind.script);
       _script.writeFile(destination, String.fromCharCodes(bytes));
       return;
@@ -315,29 +307,13 @@ final class _OffHomePlanner {
   void _flushTar() {
     if (_overlay.isEmpty) return;
     final archive = Archive();
-    final symlinkPaths = <String>[];
     for (final MapEntry(:key, :value) in _overlay.entries) {
       switch (value.kind) {
         case _MemberKind.file:
           addOverlayFile(archive, relativePath: key, bytes: value.bytes!);
         case _MemberKind.dir:
           addOverlayDir(archive, relativePath: key);
-        case _MemberKind.symlink:
-          addOverlaySymlink(archive, relativePath: key, target: value.target!);
-          symlinkPaths.add(value.linkPath!);
       }
-    }
-    if (symlinkPaths.isNotEmpty) {
-      final buffer = StringBuffer()..writeln('set -e');
-      for (final path in symlinkPaths) {
-        buffer.writeln('rm -rf -- ${posixShellQuote(path)}');
-      }
-      epochs.add(
-        ManifestSshEpoch(
-          kind: ManifestSshEpochKind.script,
-          script: buffer.toString(),
-        ),
-      );
     }
     epochs.add(
       ManifestSshEpoch(
