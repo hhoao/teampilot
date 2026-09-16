@@ -8,6 +8,7 @@ import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
 import '../ssh/ssh_client_factory.dart';
 import 'launch_manifest.dart';
+import 'manifest_ssh_flush_plan.dart';
 import 'work_plane_script_runner.dart';
 
 /// Applies a staged [LaunchManifest] in one batch (local disk or SSH script).
@@ -30,16 +31,41 @@ class ManifestExecutor {
       profileById: profileById,
     );
     if (runner != null) {
-      // Same work FS (Android/SSH home): apply mkdir/ln/cp on the remote in
-      // one script. Cross-machine off-home still expands local copies first.
-      final toApply = identical(sourceFs, targetFs)
-          ? manifest
-          : await _expandCopies(
-              manifest,
-              sourceFs,
-              symlinkProjectionRoot: symlinkProjectionRoot,
+      final sameHost = identical(sourceFs, targetFs);
+      final workRoot = (symlinkProjectionRoot ?? '').trim();
+      final epochs = await buildManifestSshFlushPlan(
+        manifest: manifest,
+        sourceFs: sourceFs,
+        workRoot: workRoot.isEmpty ? '/' : workRoot,
+        sameHost: sameHost,
+      );
+      var tarEpochs = 0;
+      var scriptEpochs = 0;
+      var stdinBytes = 0;
+      for (final epoch in epochs) {
+        switch (epoch.kind) {
+          case ManifestSshEpochKind.script:
+            scriptEpochs++;
+            stdinBytes += utf8.encode(epoch.script!).length;
+            await runner.runScript(
+              epoch.script!,
+              operation: 'Launch manifest apply',
             );
-      await _flushViaSsh(runner: runner, manifest: toApply);
+          case ManifestSshEpochKind.tar:
+            tarEpochs++;
+            stdinBytes += epoch.gzipTar!.length;
+            await runner.runStdinCommand(
+              command: epoch.extractCommand!,
+              stdin: epoch.gzipTar!,
+              operation: 'Launch overlay extract',
+            );
+        }
+      }
+      appLogger.d(
+        '[session-launch] manifest flush via ssh '
+        'ops=${manifest.entries.length} epochs=${epochs.length} '
+        'scriptEpochs=$scriptEpochs tarEpochs=$tarEpochs stdinBytes=$stdinBytes',
+      );
       return;
     }
     await _flushLocal(
@@ -127,17 +153,6 @@ class ManifestExecutor {
       '[session-launch] manifest flush-local '
       'ops=${applied.entries.length} $summary',
     );
-  }
-
-  Future<void> _flushViaSsh({
-    required WorkPlaneScriptRunner runner,
-    required LaunchManifest manifest,
-  }) async {
-    final script = _buildApplyScript(manifest);
-    appLogger.d(
-      '[session-launch] manifest flush via ssh ops=${manifest.entries.length}',
-    );
-    await runner.runScript(script, operation: 'Launch manifest apply');
   }
 
   /// Expands copy ops into concrete file writes for SSH (sources read on control plane).
@@ -326,80 +341,7 @@ class ManifestExecutor {
     }
   }
 
-  static String _buildApplyScript(LaunchManifest manifest) {
-    final buffer = StringBuffer()..writeln('set -e');
-    for (final entry in manifest.entries) {
-      switch (entry) {
-        case ManifestEnsureDir(:final path):
-          buffer.writeln('mkdir -p ${_shellQuote(path)}');
-        case ManifestWriteFile(:final path, :final content):
-          final quoted = _shellQuote(path);
-          final dir = _shellQuote(_dirname(path));
-          final delimiter = _heredocDelimiter(content);
-          buffer
-            ..writeln('mkdir -p $dir')
-            ..writeln("cat > $quoted <<'$delimiter'")
-            ..writeln(content)
-            ..writeln(delimiter);
-        case ManifestSymlink(:final linkPath, :final target):
-          final dir = _shellQuote(_dirname(linkPath));
-          // Replace leftover files/dirs at the link path. GNU `ln -sf` will
-          // otherwise create `dest/$(basename target)` when dest is a
-          // directory, then fail with "cannot overwrite directory".
-          buffer
-            ..writeln('mkdir -p $dir')
-            ..writeln('rm -rf -- ${_shellQuote(linkPath)}')
-            ..writeln(
-              'ln -sfn -- ${_shellQuote(target)} ${_shellQuote(linkPath)}',
-            );
-        case ManifestRemoveRecursive(:final path):
-          buffer.writeln('rm -rf ${_shellQuote(path)}');
-        case ManifestRename(:final from, :final to):
-          final dir = _shellQuote(_dirname(to));
-          buffer
-            ..writeln('mkdir -p $dir')
-            ..writeln('mv ${_shellQuote(from)} ${_shellQuote(to)}');
-        case ManifestCopyFile(:final source, :final destination):
-          final dir = _shellQuote(_dirname(destination));
-          buffer
-            ..writeln('mkdir -p $dir')
-            ..writeln(
-              'cp -f -- ${_shellQuote(source)} ${_shellQuote(destination)}',
-            );
-        case ManifestCopyTree(:final source, :final destination):
-          buffer
-            ..writeln('mkdir -p ${_shellQuote(_dirname(destination))}')
-            ..writeln('rm -rf ${_shellQuote(destination)}')
-            ..writeln('mkdir -p ${_shellQuote(destination)}')
-            ..writeln(
-              'cp -R -- ${_shellQuote('$source/.')} '
-              '${_shellQuote(destination)}',
-            );
-      }
-    }
-    return buffer.toString();
-  }
-
   @visibleForTesting
   static String debugBuildApplyScript(LaunchManifest manifest) =>
-      _buildApplyScript(manifest);
-
-  static String _heredocDelimiter(String content) {
-    var delimiter = '__TP_MANIFEST_${content.hashCode.abs()}__';
-    var salt = 0;
-    while (content.contains(delimiter)) {
-      delimiter = '__TP_MANIFEST_${content.hashCode.abs()}_${salt}__';
-      salt++;
-    }
-    return delimiter;
-  }
-
-  static String _shellQuote(String value) =>
-      "'${value.replaceAll("'", "'\"'\"'")}'";
-
-  static String _dirname(String path) {
-    final index = path.lastIndexOf('/');
-    if (index <= 0) return '/';
-    return path.substring(0, index);
-  }
+      buildMutationApplyScript(manifest);
 }

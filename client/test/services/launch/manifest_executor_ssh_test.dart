@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -13,6 +15,13 @@ import 'package:teampilot/services/launch/manifest_executor.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 
 import '../../support/in_memory_filesystem.dart';
+
+class _RecordedExec {
+  const _RecordedExec({required this.command, this.stdin});
+
+  final String command;
+  final List<int>? stdin;
+}
 
 void main() {
   test('ssh manifest flush keeps storage pool alive', () async {
@@ -55,7 +64,7 @@ void main() {
   });
 
   test('same-host ssh flush runs remote cp without expanding copies', () async {
-    String? ranScript;
+    final execs = <_RecordedExec>[];
     const profile = SshProfile(
       id: 'p1',
       name: 'dev',
@@ -68,8 +77,8 @@ void main() {
       knownHostRepository: InMemorySshKnownHostRepository(),
       connector: (profile, {timeout = const Duration(seconds: 10)}) async {
         return _RunnableClient(
-          onRun: (command) {
-            ranScript = command;
+          onRun: (command, stdin) {
+            execs.add(_RecordedExec(command: command, stdin: stdin));
           },
         );
       },
@@ -90,32 +99,33 @@ void main() {
       sshProfileId: profile.id,
     );
 
-    expect(ranScript, isNotNull);
-    expect(ranScript, contains("cp -R -- '/src/tree/.' '/dst/tree'"));
-    expect(
-      ranScript,
-      contains("rm -rf -- '/dst/home/.npm'"),
-    );
-    expect(
-      ranScript,
-      contains("ln -sfn -- '/root/.npm' '/dst/home/.npm'"),
-    );
-    expect(ranScript, isNot(contains('cat >')));
+    expect(execs, hasLength(1));
+    expect(execs.single.command, 'bash -s');
+    final script = utf8.decode(execs.single.stdin!);
+    expect(script, contains("cp -R -- '/src/tree/.' '/dst/tree'"));
+    expect(script, contains("rm -rf -- '/dst/home/.npm'"));
+    expect(script, contains("ln -sfn -- '/root/.npm' '/dst/home/.npm'"));
+    expect(script, isNot(contains('cat >')));
   });
 
   test('cross-machine ssh flush copies external symlink targets', () async {
-    String? ranScript;
+    final execs = <_RecordedExec>[];
     const profile = SshProfile(
       id: 'p1',
       name: 'dev',
       host: 'example.com',
       username: 'alice',
     );
+    const workRoot = '/home/alice/.local/share/teampilot';
     final factory = SshClientFactory(
       credentialStore: InMemorySshCredentialStore(),
       knownHostRepository: InMemorySshKnownHostRepository(),
       connector: (profile, {timeout = const Duration(seconds: 10)}) async {
-        return _RunnableClient(onRun: (command) => ranScript = command);
+        return _RunnableClient(
+          onRun: (command, stdin) {
+            execs.add(_RecordedExec(command: command, stdin: stdin));
+          },
+        );
       },
     );
     final source = InMemoryFilesystem();
@@ -123,7 +133,7 @@ void main() {
     await source.writeString('/home/alice/.claude.json', 'credentials');
     final manifest = LaunchManifest()
       ..symlink(
-        linkPath: '/home/alice/.config/claude.json',
+        linkPath: '$workRoot/.config/claude.json',
         target: '/home/alice/.claude.json',
       );
 
@@ -134,13 +144,22 @@ void main() {
       manifest: manifest,
       targetFs: target,
       sourceFs: source,
-      symlinkProjectionRoot: '/home/alice/.local/share/teampilot',
+      symlinkProjectionRoot: workRoot,
       sshProfileId: profile.id,
     );
 
-    expect(ranScript, contains("cat > '/home/alice/.config/claude.json'"));
-    expect(ranScript, contains('credentials'));
-    expect(ranScript, isNot(contains('ln -sfn')));
+    expect(execs, hasLength(1));
+    expect(execs.single.command, contains('gzip -dc | tar -x -C'));
+    final stdin = execs.single.stdin!;
+    expect(stdin.length, greaterThan(2));
+    expect(stdin[0], 0x1f);
+    expect(stdin[1], 0x8b);
+    final scriptText = utf8.decode(stdin, allowMalformed: true);
+    expect(scriptText, isNot(contains('credentials')));
+    final tar = GZipDecoder().decodeBytes(stdin);
+    final decoded = TarDecoder().decodeBytes(tar);
+    final file = decoded.findFile('.config/claude.json')!;
+    expect(utf8.decode(file.content as List<int>), 'credentials');
   });
 
   test(
@@ -199,7 +218,7 @@ void main() {
 class _RunnableClient extends SSHClient {
   _RunnableClient({this.onRun}) : super(_FakeSSHSocket(), username: 'test');
 
-  final void Function(String command)? onRun;
+  final void Function(String command, List<int>? stdin)? onRun;
 
   @override
   Future<void> get authenticated => Future.value();
@@ -213,7 +232,7 @@ class _RunnableClient extends SSHClient {
     Map<String, String>? environment,
     List<int>? stdin,
   }) async {
-    onRun?.call(command);
+    onRun?.call(command, stdin);
     return SSHRunResult(
       output: Uint8List(0),
       stdout: Uint8List(0),
