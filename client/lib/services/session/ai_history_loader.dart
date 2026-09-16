@@ -297,6 +297,7 @@ final class AiHistoryLoader {
   /// Background full-index futures and completed results (search / task board).
   final _fullIndexFutures = <String, Future<AiHistoryLoadResult>>{};
   final _fullIndexes = <String, AiHistoryLoadResult>{};
+  final _cacheGenerations = <String, int>{};
 
   /// Bundles at/above this size parse on a worker isolate; smaller ones parse
   /// in place (isolate spawn + transfer overhead would dominate).
@@ -316,6 +317,9 @@ final class AiHistoryLoader {
 
   /// Clears all seats (v1 work-plane evict).
   void clearCache() {
+    for (final key in _cacheKeys()) {
+      _bumpCacheGeneration(key);
+    }
     _tokens.clear();
     _messages.clear();
     _attachments.clear();
@@ -411,6 +415,7 @@ final class AiHistoryLoader {
     required String? parentPath,
     required String? token,
     bool indexOnly = false,
+    int? expectedGeneration,
   }) async {
     // Incrementally added/replaced parts are unannotated → annotate now
     // (idempotent on parts the previous load already covered).
@@ -450,6 +455,9 @@ final class AiHistoryLoader {
       cache: !indexOnly,
       currentSigs: suffixSigs,
     );
+    if (_isStaleGeneration(cacheKey, expectedGeneration)) {
+      return _incompleteResult(cacheKey: cacheKey, cli: cli);
+    }
     // 增量路径原地变异 state 的实时列表,annotate 无改动时返回的仍是
     // 同一个实例——seat 用 identical 判定"CLI 未变化"会把这个实例当成
     // 没变而跳过,页面永远不出现增量消息。必须包装成新实例(内部消息
@@ -612,6 +620,7 @@ final class AiHistoryLoader {
     required String cacheKey,
     required bool force,
     bool skipPaging = false,
+    int? expectedGeneration,
   }) async {
     final cap = _registry.capability<AiHistoryCapability>(cli);
     if (cap == null) {
@@ -625,6 +634,9 @@ final class AiHistoryLoader {
     final token = await (_resolveCacheToken ?? _defaultTokenResolverFor(cap))(
       ctx,
     );
+    if (_isStaleGeneration(cacheKey, expectedGeneration)) {
+      return _incompleteResult(cacheKey: cacheKey, cli: cli);
+    }
     if (!force && token != null && _tokens[cacheKey] == token) {
       final full = _fullIndexes[cacheKey];
       final cachedMessages = full?.messages ?? _messages[cacheKey] ?? const [];
@@ -758,6 +770,7 @@ final class AiHistoryLoader {
           parentPath: parentPath,
           token: token,
           indexOnly: skipPaging,
+          expectedGeneration: expectedGeneration,
         );
       }
 
@@ -787,16 +800,23 @@ final class AiHistoryLoader {
         }
         return null; // degrade-only; never invent a path from fragment basename
       }();
+      if (_isStaleGeneration(cacheKey, expectedGeneration)) {
+        return _incompleteResult(cacheKey: cacheKey, cli: cli);
+      }
       _parentPaths[cacheKey] = parentPath ?? '';
 
       // JSONL 类 CLI 走 tail-anchor 增量(原地变异复用消息实例);
       // 失败/不适配(无 path、无 lineAppend、非 JSONL 存储)回退全量 parse。
-      final tail = await _tryIncrementalLoad(
-        cacheKey: cacheKey,
-        cli: cli,
-        ctx: ctx,
-        parentPath: parentPath,
-      );
+      // A background full bootstrap must never cold-start the tail reader:
+      // its full reload can decode the whole JSONL on this isolate.
+      final tail = skipPaging
+          ? null
+          : await _tryIncrementalLoad(
+              cacheKey: cacheKey,
+              cli: cli,
+              ctx: ctx,
+              parentPath: parentPath,
+            );
       if (tail != null) {
         return await _finishIncremental(
           cacheKey: cacheKey,
@@ -843,15 +863,34 @@ final class AiHistoryLoader {
       // exists in the transcript.
       var messages = const <AiMessage>[];
       if (bundle != null) {
-        messages = await _parseAndEnrich(
-          adapter: cap.adapter,
-          enricher: cap.toolResultEnricher,
-          bundle: bundle,
-          ctx: ctx,
-          parentPath: parentPath,
-          sourceToken: token,
-          bundleBytes: bundleBytes,
-        );
+        try {
+          messages = await _parseAndEnrich(
+            cacheKey: cacheKey,
+            adapter: cap.adapter,
+            enricher: cap.toolResultEnricher,
+            bundle: bundle,
+            ctx: ctx,
+            parentPath: parentPath,
+            sourceToken: token,
+            bundleBytes: bundleBytes,
+            expectedGeneration: expectedGeneration,
+          );
+        } on Object catch (e, st) {
+          if (skipPaging && bundleBytes >= _isolateParseMinBytes) {
+            appLogger.w(
+              '[ai-history] background full parse failed; keeping incomplete state '
+              'session=${session.sessionId} member=$effectiveMemberId cli=$cli',
+              error: e,
+              stackTrace: st,
+            );
+            return _incompleteResult(cacheKey: cacheKey, cli: cli);
+          }
+          rethrow;
+        }
+      }
+
+      if (_isStaleGeneration(cacheKey, expectedGeneration)) {
+        return _incompleteResult(cacheKey: cacheKey, cli: cli);
       }
 
       // 临时空结果保护:定位/parse 短暂失败(如超大 WAL 写并发下 sqlite
@@ -905,6 +944,9 @@ final class AiHistoryLoader {
           messages: messages,
           state: incrementalState,
         );
+        if (_isStaleGeneration(cacheKey, expectedGeneration)) {
+          return _incompleteResult(cacheKey: cacheKey, cli: cli);
+        }
         _incrementalStates[cacheKey] = incrementalState;
       }
 
@@ -1052,18 +1094,35 @@ final class AiHistoryLoader {
     final existing = _fullIndexFutures[cacheKey];
     if (existing != null && _fullIndexes[cacheKey] == null) return existing;
 
-    final future = Future<AiHistoryLoadResult>(() {
-      return _loadOnce(
-        session: session,
-        cli: cli,
-        effectiveMemberId: effectiveMemberId,
-        ctx: ctx,
-        cacheKey: cacheKey,
-        force: true,
-        skipPaging: true,
-      );
-    });
+    final generation = _cacheGeneration(cacheKey);
+    late final Future<AiHistoryLoadResult> future;
+    future =
+        Future<AiHistoryLoadResult>(() {
+          return _loadOnce(
+            session: session,
+            cli: cli,
+            effectiveMemberId: effectiveMemberId,
+            ctx: ctx,
+            cacheKey: cacheKey,
+            force: true,
+            skipPaging: true,
+            expectedGeneration: generation,
+          );
+        }).then((result) {
+          if (_isStaleGeneration(cacheKey, generation)) {
+            return _incompleteResult(cacheKey: cacheKey, cli: cli);
+          }
+          return result;
+        });
     _fullIndexFutures[cacheKey] = future;
+    future.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace __) {
+        if (identical(_fullIndexFutures[cacheKey], future)) {
+          _fullIndexFutures.remove(cacheKey);
+        }
+      },
+    );
     future.ignore();
     return future;
   }
@@ -1227,6 +1286,7 @@ final class AiHistoryLoader {
   void invalidate({required String sessionId, String? memberId}) {
     if (memberId != null) {
       final key = _cacheKey(sessionId, memberId);
+      _bumpCacheGeneration(key);
       _invalidateToolResultIndexes(identity: _indexIdentityFor(key));
       _tokens.remove(key);
       _messages.remove(key);
@@ -1249,6 +1309,9 @@ final class AiHistoryLoader {
       return;
     }
     final prefix = '${sessionId.trim()}\u0000';
+    for (final key in _cacheKeys().where((key) => key.startsWith(prefix))) {
+      _bumpCacheGeneration(key);
+    }
     for (final key in [
       ..._parentPaths.keys,
       ..._tokens.keys,
@@ -1387,7 +1450,40 @@ final class AiHistoryLoader {
     _toolResultIndexRevision++;
   }
 
+  int _cacheGeneration(String cacheKey) => _cacheGenerations[cacheKey] ?? 0;
+
+  void _bumpCacheGeneration(String cacheKey) {
+    _cacheGenerations[cacheKey] = _cacheGeneration(cacheKey) + 1;
+  }
+
+  bool _isStaleGeneration(String cacheKey, int? expectedGeneration) =>
+      expectedGeneration != null &&
+      _cacheGeneration(cacheKey) != expectedGeneration;
+
+  AiHistoryLoadResult _incompleteResult({
+    required String cacheKey,
+    required CliTool cli,
+  }) => AiHistoryLoadResult(
+    messages: _messages[cacheKey] ?? const [],
+    cli: cli,
+    subagentAttachments: _attachments[cacheKey] ?? const {},
+    hasOlder: _hasOlder[cacheKey] ?? false,
+    cursor: _cursors[cacheKey],
+    isComplete: false,
+  );
+
+  Set<String> _cacheKeys() => {
+    ..._tokens.keys,
+    ..._messages.keys,
+    ..._attachments.keys,
+    ..._tailStates.keys,
+    ..._incrementalStates.keys,
+    ..._fullIndexFutures.keys,
+    ..._fullIndexes.keys,
+  };
+
   Future<List<AiMessage>> _parseAndEnrich({
+    required String cacheKey,
     required AiTranscriptAdapter adapter,
     required ToolResultEnricher enricher,
     required AiTranscriptBundle bundle,
@@ -1395,6 +1491,7 @@ final class AiHistoryLoader {
     required String? parentPath,
     required String? sourceToken,
     required int bundleBytes,
+    int? expectedGeneration,
   }) async {
     final totalBytes = bundle.fragments.fold<int>(
       0,
@@ -1431,6 +1528,9 @@ final class AiHistoryLoader {
           'bundleBytes=$bundleBytes pageBytes=0 parseMode=worker '
           'parseMs=${parseSw.elapsedMilliseconds}',
         );
+      }
+      if (_isStaleGeneration(cacheKey, expectedGeneration)) {
+        return result.messages;
       }
       if (!reuse &&
           indexCache != null &&
@@ -1527,6 +1627,9 @@ final class AiHistoryLoader {
         'bundleBytes=$bundleBytes pageBytes=0 parseMode=caller '
         'parseMs=${parseSw.elapsedMilliseconds}',
       );
+    }
+    if (_isStaleGeneration(cacheKey, expectedGeneration)) {
+      return parsed;
     }
     if (_needsToolResultEnrichment(parsed, enricher)) {
       return _enrichMessages(

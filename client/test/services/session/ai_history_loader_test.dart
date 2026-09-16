@@ -1045,6 +1045,199 @@ void main() {
   );
 
   test(
+    'background full bootstrap skips tail decode and returns incomplete on worker failure',
+    () async {
+      final transcriptPath = p.join(base.path, 'large.jsonl');
+      final line = utf8.encode('{"type":"ignored"}\n');
+      final bytes = <int>[];
+      while (bytes.length < 300 * 1024) {
+        bytes.addAll(line);
+      }
+      await File(transcriptPath).writeAsBytes(bytes);
+      var tailAppendCalls = 0;
+      final executor = _RecordingHistoryParseExecutor()
+        ..error = TimeoutException('full worker timed out');
+      final registry = fakeAiHistoryRegistry(
+        cli: CliTool.claude,
+        adapter: const _ThrowingParseAdapter(),
+        lineAppend: (_, __, {required fallbackId}) {
+          tailAppendCalls++;
+          return false;
+        },
+        pageReader: _NullPageReader(),
+        locate: (_) async => AiTranscriptBundle(
+          adapterId: 'claude',
+          fragments: [AiTranscriptFragment(name: transcriptPath, bytes: bytes)],
+          hints: AiHistoryWatchMeta(
+            changeWatchRoot: base.path,
+            cacheTokenPaths: [transcriptPath],
+          ).toHints(),
+        ),
+      );
+      final loader = buildLoader(registry: registry, parseExecutor: executor);
+
+      final first = await loader.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchContextFor(simpleSession()),
+      );
+      expect(first.isComplete, isFalse);
+
+      final full = await loader.fullIndex(sessionId: 'sess-a', memberId: '');
+      expect(full, isNotNull);
+      expect(full!.isComplete, isFalse);
+      expect(executor.calls, 1);
+      expect(tailAppendCalls, 0);
+    },
+  );
+
+  test(
+    'invalidation prevents a stale background full index from repopulating the cache',
+    () async {
+      final executor = _CompletingHistoryParseExecutor(
+        messages: const [
+          AiMessage(
+            id: 'stale-message',
+            role: AiRole.assistant,
+            parts: [AiTextPart(text: 'stale')],
+          ),
+        ],
+      );
+      final session = simpleSession();
+      final loader = buildLoader(
+        registry: fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: const _ThrowingParseAdapter(),
+          pageReader: _NullPageReader(),
+          locate: (_) async => _largeBundle(),
+        ),
+        parseExecutor: executor,
+      );
+
+      final first = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: launchContextFor(session),
+      );
+      expect(first.isComplete, isFalse);
+      final pending = loader.fullIndex(
+        sessionId: session.sessionId,
+        memberId: '',
+      );
+      await executor.waitForCall(0);
+
+      loader.invalidate(sessionId: session.sessionId, memberId: '');
+      executor.complete(0);
+
+      final stale = await pending;
+      expect(stale, isNotNull);
+      expect(stale!.isComplete, isFalse);
+      expect(
+        await loader.fullIndex(sessionId: session.sessionId, memberId: ''),
+        isNull,
+      );
+    },
+  );
+
+  test(
+    'invalidation prevents a stale background worker snapshot from being imported',
+    () async {
+      final executor = _CompletingHistoryParseExecutor(
+        messages: const [
+          AiMessage(
+            id: 'stale-message',
+            role: AiRole.assistant,
+            parts: [AiTextPart(text: 'stale')],
+          ),
+        ],
+      );
+      final enricher = _RecordingIndexEnricher();
+      final session = simpleSession();
+      final loader = buildLoader(
+        registry: fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: const _ThrowingParseAdapter(),
+          pageReader: _NullPageReader(),
+          toolResultEnricher: enricher,
+          locate: (_) async => _largeBundle(),
+        ),
+        parseExecutor: executor,
+      );
+
+      final first = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: launchContextFor(session),
+      );
+      expect(first.isComplete, isFalse);
+      final pending = loader.fullIndex(
+        sessionId: session.sessionId,
+        memberId: '',
+      );
+      await executor.waitForCall(0);
+
+      loader.invalidate(sessionId: session.sessionId, memberId: '');
+      executor.complete(0);
+
+      final stale = await pending;
+      expect(stale, isNotNull);
+      expect(stale!.isComplete, isFalse);
+      expect(enricher.importedSnapshot, isNull);
+    },
+  );
+
+  test(
+    'failed background full index flight is cleared so the next load retries',
+    () async {
+      var locateCalls = 0;
+      final session = simpleSession();
+      final loader = buildLoader(
+        locator: _CountingLocator(() async {
+          locateCalls++;
+          if (locateCalls == 1) throw StateError('transient locate failure');
+          return _largeBundle();
+        }),
+        registry: fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: const _ThrowingParseAdapter(),
+          pageReader: _NullPageReader(),
+        ),
+        parseExecutor: _RecordingHistoryParseExecutor(),
+      );
+
+      final first = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: launchContextFor(session),
+      );
+      expect(first.isComplete, isFalse);
+      await expectLater(
+        loader.fullIndex(sessionId: session.sessionId, memberId: ''),
+        throwsA(isA<StateError>()),
+      );
+      expect(
+        await loader.fullIndex(sessionId: session.sessionId, memberId: ''),
+        isNull,
+      );
+
+      final retry = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: launchContextFor(session),
+        force: true,
+      );
+      expect(retry.isComplete, isFalse);
+      final recovered = await loader.fullIndex(
+        sessionId: session.sessionId,
+        memberId: '',
+      );
+      expect(recovered, isNotNull);
+      expect(recovered!.isComplete, isTrue);
+      expect(locateCalls, 2);
+    },
+  );
+
+  test(
     'large bundle imports bundle-only worker index before returning',
     () async {
       final snapshot = <String, Object>{'worker-index': 1};

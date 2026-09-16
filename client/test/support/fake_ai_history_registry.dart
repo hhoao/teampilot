@@ -53,8 +53,9 @@ final class FakeAiHistoryCapability implements AiHistoryCapability {
   final ToolResultEnricher toolResultEnricher;
 
   @override
-  Future<String?> resolveParentTranscriptPath(SessionHistoryContext ctx) async =>
-      null;
+  Future<String?> resolveParentTranscriptPath(
+    SessionHistoryContext ctx,
+  ) async => null;
 
   @override
   Future<String?> liveCacheToken(SessionHistoryContext ctx) =>
@@ -112,6 +113,7 @@ CliToolRegistry fakeAiHistoryRegistry({
   ToolResultEnricher toolResultEnricher = const NoOpToolResultEnricher(),
   Set<String> subagentToolNames = const {},
   Future<String?> Function(SessionHistoryContext ctx)? liveCacheToken,
+  AiTranscriptLineAppend? lineAppend,
   AiTranscriptPageReader? pageReader,
 }) {
   final registry = CliToolRegistry();
@@ -121,6 +123,7 @@ CliToolRegistry fakeAiHistoryRegistry({
       FakeAiHistoryCapability(
         adapter: adapter,
         locateFn: locate,
+        lineAppend: lineAppend,
         pageReader: pageReader,
         subagentSideResolver: subagentSideResolver,
         toolResultEnricher: toolResultEnricher,
