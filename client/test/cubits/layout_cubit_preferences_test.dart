@@ -2,6 +2,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
+import 'package:teampilot/models/right_tool_open_set.dart';
 import 'package:teampilot/repositories/layout_repository.dart';
 
 void main() {
@@ -74,5 +75,33 @@ void main() {
     final reloaded = LayoutCubit(repository: LayoutRepository(prefs));
     await reloaded.load();
     expect(reloaded.state.preferences.sessionTabBarVisible, isTrue);
+  });
+
+  test('setRightToolOpenSet updates state and persists', () async {
+    final prefs = await SharedPreferences.getInstance();
+    final cubit = LayoutCubit(repository: LayoutRepository(prefs));
+    await cubit.load();
+
+    await cubit.setRightToolOpenSet(
+      const RightToolOpenSet(
+        openIds: ['members', 'mailbox'],
+        selectedId: 'members',
+        dismissedIds: ['board'],
+      ),
+    );
+    expect(cubit.state.preferences.rightToolOpenIds, ['members', 'mailbox']);
+    expect(cubit.state.preferences.rightToolSelectedId, 'members');
+    expect(cubit.state.preferences.rightToolDismissedIds, ['board']);
+
+    await cubit.setRightToolOpenSet(
+      const RightToolOpenSet(openIds: ['fileTree'], dismissedIds: ['members']),
+    );
+    expect(cubit.state.preferences.rightToolSelectedId, isNull);
+
+    final reloaded = LayoutCubit(repository: LayoutRepository(prefs));
+    await reloaded.load();
+    expect(reloaded.state.preferences.rightToolOpenIds, ['fileTree']);
+    expect(reloaded.state.preferences.rightToolSelectedId, isNull);
+    expect(reloaded.state.preferences.rightToolDismissedIds, ['members']);
   });
 }

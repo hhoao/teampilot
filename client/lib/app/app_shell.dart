@@ -104,6 +104,7 @@ import '../services/connect/paired_relay_tunnel_registry.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../models/layout_preferences.dart';
+import '../models/right_tool_open_set.dart';
 import '../cubits/workspace_tools_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/managed_provider_cubit.dart';
@@ -1703,7 +1704,11 @@ Future<AppShell> buildAppShell({
       layout: layoutCubit,
       floating: floatingWorkspaceCubit,
     );
-    final workspaceToolsCubit = WorkspaceToolsCubit();
+    final workspaceToolsCubit = WorkspaceToolsCubit(
+      persist: (set) {
+        unawaited(layoutCubit.setRightToolOpenSet(set));
+      },
+    );
     final workspaceTerminalRegistry = WorkspaceTerminalRegistry();
     final gitRepoStore = GitRepoStore(storage: homeStorage);
     final workspaceFileTreeStore = WorkspaceFileTreeStore();
@@ -2426,6 +2431,13 @@ Future<AppShell> buildAppShell({
     boot('loading layout');
     await layoutCubit.load();
     floatingWorkspacePersistence.hydrateFromLayout();
+    workspaceToolsCubit.hydrate(
+      RightToolOpenSet.sanitize(
+        openIds: layoutCubit.state.preferences.rightToolOpenIds,
+        selectedId: layoutCubit.state.preferences.rightToolSelectedId,
+        dismissedIds: layoutCubit.state.preferences.rightToolDismissedIds,
+      ),
+    );
     floatingWorkspacePersistence.bind();
     await shortcutCubit.load();
     unawaited(notificationBootstrap);

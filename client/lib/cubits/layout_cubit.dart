@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tp_markdown/tp_markdown.dart' show ContentDisplayMode;
 
 import '../models/layout_preferences.dart';
+import '../models/right_tool_open_set.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_typography_scale.dart';
 import '../repositories/layout_repository.dart';
@@ -157,6 +158,15 @@ class LayoutCubit extends Cubit<LayoutState> {
 
   Future<void> setRightToolsWidth(double width) =>
       _save(state.preferences.copyWith(rightToolsWidth: width));
+
+  Future<void> setRightToolOpenSet(RightToolOpenSet set) => _save(
+    state.preferences.copyWith(
+      rightToolOpenIds: set.openIds,
+      rightToolSelectedId: set.selectedId,
+      clearRightToolSelectedId: set.selectedId == null,
+      rightToolDismissedIds: set.dismissedIds,
+    ),
+  );
 
   Future<void> setRightToolsVisible(bool visible) async {
     if (!visible) {
