@@ -4,6 +4,7 @@ import 'dart:isolate';
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:meta/meta.dart';
 
+import 'history_isolate_transport.dart';
 import 'history_parse_worker_adapters.dart';
 
 /// Result returned by a worker-safe transcript parse and optional enrichment.
@@ -289,7 +290,7 @@ final class _HistoryParseResidentWorker {
           _HistoryParseRequest(
             requestId: requestId,
             adapterId: adapterId,
-            bundle: bundle,
+            bundle: HistoryTransferBundle.fromBundle(bundle),
             workerEnricherId: workerEnricherId,
             sourceToken: sourceToken,
             rootTranscriptPath: rootTranscriptPath,
@@ -468,7 +469,7 @@ final class _HistoryParseRequest {
 
   final int requestId;
   final String adapterId;
-  final AiTranscriptBundle bundle;
+  final HistoryTransferBundle bundle;
   final String? workerEnricherId;
   final String? sourceToken;
   final String? rootTranscriptPath;
@@ -547,7 +548,7 @@ void _historyParseWorkerEntry(_HistoryParseSpawnArgs args) {
       }
       final result = await parseHistoryBundleInWorker(
         adapterId: message.adapterId,
-        bundle: message.bundle,
+        bundle: message.bundle.materialize(),
         workerEnricherId: message.workerEnricherId,
         sourceToken: message.sourceToken,
         rootTranscriptPath: message.rootTranscriptPath,
