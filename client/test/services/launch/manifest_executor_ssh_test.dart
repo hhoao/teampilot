@@ -129,6 +129,13 @@ void main() {
       expect(
         lines.where(
           (l) =>
+              l.contains('apply-plan protocol=1') && l.contains('provided='),
+        ),
+        isNotEmpty,
+      );
+      expect(
+        lines.where(
+          (l) =>
               l.contains('stdinBytes=') &&
               l.contains('scriptEpochs=') &&
               l.contains('tarEpochs='),
