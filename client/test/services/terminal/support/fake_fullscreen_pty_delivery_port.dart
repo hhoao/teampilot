@@ -140,15 +140,15 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
 final class RowAwareFakeFullscreenPtyDeliveryPort
     implements FullscreenPtyDeliveryPort {
   RowAwareFakeFullscreenPtyDeliveryPort({
-    this.crAckConfig =
-        const FullscreenCrAckConfig(
-          strategy: FullscreenCrAckStrategy.composerMovesDown,
-          pasteBaseline: true,
-          pasteZoneBottomPad: 3,
-        ),
+    this.crAckConfig = const FullscreenCrAckConfig(
+      strategy: FullscreenCrAckStrategy.composerMovesDown,
+      pasteBaseline: true,
+      pasteZoneBottomPad: 3,
+    ),
     this.pasteFailsToStage = false,
     this.staleEcho,
     this.staleRow = 3,
+    this.laggingProbe = false,
   });
 
   @override
@@ -156,11 +156,20 @@ final class RowAwareFakeFullscreenPtyDeliveryPort
   final bool pasteFailsToStage;
   String? staleEcho; // pre-render text sitting on an upper row
   int staleRow;
+
+  /// When true, [locatePasteZoneNeedle] reads a snapshot updated only by
+  /// [syncDisplayGrid] — the live TUI (clear/paste) can move ahead of the
+  /// probe grid, matching production `drainForTest` lag.
+  final bool laggingProbe;
   String? staged; // freshly pasted text
   int stagedRow = 5;
   int pasteCount = 0;
   int crCount = 0;
   int clearCount = 0;
+  String? _probeStaged;
+  int _probeStagedRow = 5;
+  String? _probeEcho;
+  int _probeEchoRow = 3;
 
   @override
   bool get isAborted => false;
@@ -172,20 +181,53 @@ final class RowAwareFakeFullscreenPtyDeliveryPort
   int get cursorRow => -1;
 
   @override
-  Future<void> syncDisplayGrid() async {}
+  Future<void> syncDisplayGrid() async {
+    if (!laggingProbe) return;
+    _probeStaged = staged;
+    _probeStagedRow = stagedRow;
+    _probeEcho = staleEcho;
+    _probeEchoRow = staleRow;
+  }
 
   @override
   Future<void> waitForPaint({required Duration timeout}) async {}
 
   @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
-    if (staged != null && staged!.contains(needle)) {
-      return FullscreenPromptAnchor(
-          row: stagedRow, startCol: 0, needle: needle);
+    if (laggingProbe) {
+      return _anchorOn(
+        staged: _probeStaged,
+        stagedRow: _probeStagedRow,
+        echo: _probeEcho,
+        echoRow: _probeEchoRow,
+        needle: needle,
+      );
     }
-    if (staleEcho != null && staleEcho!.contains(needle)) {
+    return _anchorOn(
+      staged: staged,
+      stagedRow: stagedRow,
+      echo: staleEcho,
+      echoRow: staleRow,
+      needle: needle,
+    );
+  }
+
+  FullscreenPromptAnchor? _anchorOn({
+    required String? staged,
+    required int stagedRow,
+    required String? echo,
+    required int echoRow,
+    required String needle,
+  }) {
+    if (staged != null && staged.contains(needle)) {
       return FullscreenPromptAnchor(
-          row: staleRow, startCol: 0, needle: needle);
+        row: stagedRow,
+        startCol: 0,
+        needle: needle,
+      );
+    }
+    if (echo != null && echo.contains(needle)) {
+      return FullscreenPromptAnchor(row: echoRow, startCol: 0, needle: needle);
     }
     return null;
   }

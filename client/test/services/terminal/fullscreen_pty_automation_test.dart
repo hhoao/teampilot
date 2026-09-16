@@ -45,36 +45,38 @@ void main() {
       expect(port.pasteCount, 2);
     });
 
-    test('single-attempt staging budget returns pasteNotFound after one paste',
-        () {
-      final single = FullscreenPtyAutomation(
-        timing: const PtyAutomationTiming(
-          afterClear: Duration.zero,
-          afterPaste: Duration.zero,
-          afterCr: Duration.zero,
-          afterReinject: Duration.zero,
-          crMaxAttempts: 2,
-          reinjectMaxAttempts: 1,
-          nudgeMaxAttempts: 2,
-          scanRows: 24,
-          pollTimeout: Duration.zero,
-          pollInterval: Duration.zero,
-          stagingMaxAttempts: 1,
-          stagingRetryInterval: Duration.zero,
-          sendAckTimeout: Duration.zero,
-        ),
-      );
-      return () async {
-        final port = FakeFullscreenPtyDeliveryPort(pastesBeforeVisible: 2);
-        final outcome = await single.deliverPasteAndSubmit(
-          port: port,
-          text: 'never lands',
-          pasteSettle: Duration.zero,
+    test(
+      'single-attempt staging budget returns pasteNotFound after one paste',
+      () {
+        final single = FullscreenPtyAutomation(
+          timing: const PtyAutomationTiming(
+            afterClear: Duration.zero,
+            afterPaste: Duration.zero,
+            afterCr: Duration.zero,
+            afterReinject: Duration.zero,
+            crMaxAttempts: 2,
+            reinjectMaxAttempts: 1,
+            nudgeMaxAttempts: 2,
+            scanRows: 24,
+            pollTimeout: Duration.zero,
+            pollInterval: Duration.zero,
+            stagingMaxAttempts: 1,
+            stagingRetryInterval: Duration.zero,
+            sendAckTimeout: Duration.zero,
+          ),
         );
-        expect(outcome, FullscreenPtyDeliveryOutcome.pasteNotFound);
-        expect(port.pasteCount, 1);
-      }();
-    });
+        return () async {
+          final port = FakeFullscreenPtyDeliveryPort(pastesBeforeVisible: 2);
+          final outcome = await single.deliverPasteAndSubmit(
+            port: port,
+            text: 'never lands',
+            pasteSettle: Duration.zero,
+          );
+          expect(outcome, FullscreenPtyDeliveryOutcome.pasteNotFound);
+          expect(port.pasteCount, 1);
+        }();
+      },
+    );
 
     test('returns pasteNotFound when needle never appears', () async {
       final port = FakeFullscreenPtyDeliveryPort(visibleAfterPaste: false);
@@ -245,35 +247,39 @@ void main() {
   });
 
   group('continueSubmission (state-machine driven)', () {
-    FullscreenPtySubmission newMachine({FullscreenPtySubmissionBudget? budget}) =>
-        FullscreenPtySubmission(
-          budget: budget ??
-              const FullscreenPtySubmissionBudget(stagingMaxAttempts: 2),
-          now: DateTime.now,
+    FullscreenPtySubmission newMachine({
+      FullscreenPtySubmissionBudget? budget,
+    }) => FullscreenPtySubmission(
+      budget:
+          budget ?? const FullscreenPtySubmissionBudget(stagingMaxAttempts: 2),
+      now: DateTime.now,
+    );
+
+    test(
+      're-pastes from staging when text is not visible on the grid',
+      () async {
+        final machine = newMachine()..begin();
+        final port = FakeFullscreenPtyDeliveryPort();
+        final text = TeamBus.doorbellNotice;
+
+        final outcome = await automation.continueSubmission(
+          machine,
+          port: port,
+          text: text,
+          pasteSettle: Duration.zero,
         );
 
-    test('re-pastes from staging when text is not visible on the grid', () async {
-      final machine = newMachine()..begin();
-      final port = FakeFullscreenPtyDeliveryPort();
-      final text = TeamBus.doorbellNotice;
-
-      final outcome = await automation.continueSubmission(
-        machine,
-        port: port,
-        text: text,
-        pasteSettle: Duration.zero,
-      );
-
-      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
-      expect(
-        port.pasteCount,
-        1,
-        reason:
-            'deferred / pasteNotFound retries must re-paste; CR-only leaves '
-            'the composer empty forever',
-      );
-      expect(port.crCount, 1);
-    });
+        expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+        expect(
+          port.pasteCount,
+          1,
+          reason:
+              'deferred / pasteNotFound retries must re-paste; CR-only leaves '
+              'the composer empty forever',
+        );
+        expect(port.crCount, 1);
+      },
+    );
 
     test('locked pasted only nudges CR and never re-pastes', () async {
       final machine = newMachine()..begin();
@@ -309,8 +315,7 @@ void main() {
             hookSubmitAck: true,
           ),
           crsToClear: 1,
-        )
-          ..staged = TeamBus.doorbellNotice; // grid would ACK this
+        )..staged = TeamBus.doorbellNotice; // grid would ACK this
 
         final outcome = await automation.continueSubmission(
           machine,
@@ -388,9 +393,7 @@ void main() {
         // require the new line, otherwise the second send locks onto the first.
         final machine = newMachine()..begin();
         final text = TeamBus.doorbellNotice;
-        final port = RowAwareFakeFullscreenPtyDeliveryPort(
-          staleEcho: text,
-        );
+        final port = RowAwareFakeFullscreenPtyDeliveryPort(staleEcho: text);
 
         final outcome = await automation.continueSubmission(
           machine,
@@ -438,6 +441,38 @@ void main() {
               'a paste that never staged must not be ACKed by the stale echo '
               'at the baseline row (<= check) or reported as submitted',
         );
+      },
+    );
+
+    test(
+      'paste baseline drains the grid after clear so leftover composer text is not the baseline',
+      () async {
+        // Cursor: leftover "A" is still in the composer when staging starts.
+        // Ctrl-U clears the live TUI, but the probe grid lags until
+        // syncDisplayGrid (drainForTest). Baseline must read the post-clear
+        // drain, otherwise pre and post paste both sit on the composer row
+        // and stale-baseline rejects a successful paste forever.
+        final machine = newMachine()..begin();
+        final port = RowAwareFakeFullscreenPtyDeliveryPort(laggingProbe: true)
+          ..staged = 'A';
+
+        final outcome = await automation.continueSubmission(
+          machine,
+          port: port,
+          text: 'A',
+          pasteSettle: Duration.zero,
+        );
+
+        expect(
+          outcome,
+          FullscreenPtyDeliveryOutcome.submitted,
+          reason:
+              'clearing leftover composer text must refresh the probe grid '
+              'before the paste-denominator baseline is recorded',
+        );
+        expect(port.clearCount, greaterThanOrEqualTo(1));
+        expect(port.pasteCount, 1);
+        expect(port.crCount, greaterThanOrEqualTo(1));
       },
     );
   });
@@ -721,6 +756,7 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
     if (anchor != null) needleSeenAt ??= DateTime.now();
     return anchor;
   }
+
   @override
   FullscreenPromptAnchor? locatePasteZoneNeedle(
     String needle, {
@@ -730,7 +766,6 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
   @override
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
-
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -742,11 +777,9 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
   bool isNeedleStagedInCursorZone(String needle) =>
       isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
 
-
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       _inner.isSubmittedAfterCr(anchor, scanRows: scanRows);
-
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) =>
@@ -805,6 +838,7 @@ final class _CursorTranscriptAfterSubmitPort
       needle: needle,
     );
   }
+
   @override
   FullscreenPromptAnchor? locatePasteZoneNeedle(
     String needle, {
@@ -814,7 +848,6 @@ final class _CursorTranscriptAfterSubmitPort
   @override
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
-
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -915,6 +948,7 @@ final class _ComposerMovesDownStuckButCommittedPort
       needle: needle,
     );
   }
+
   @override
   FullscreenPromptAnchor? locatePasteZoneNeedle(
     String needle, {
@@ -924,7 +958,6 @@ final class _ComposerMovesDownStuckButCommittedPort
   @override
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
-
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -937,14 +970,12 @@ final class _ComposerMovesDownStuckButCommittedPort
   bool isNeedleStagedInCursorZone(String needle) =>
       _composerBody != null && _composerBody!.contains(needle);
 
-
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
     _verdictCalls++;
     return _verdictCalls >= isSubmittedVerdictOnCall &&
         isSubmittedVerdictOnCall > 0;
   }
-
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1015,6 +1046,7 @@ final class _ComposerMovesDownStuckStagedThenAckPort
       needle: needle,
     );
   }
+
   @override
   FullscreenPromptAnchor? locatePasteZoneNeedle(
     String needle, {
@@ -1024,7 +1056,6 @@ final class _ComposerMovesDownStuckStagedThenAckPort
   @override
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
-
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -1037,13 +1068,11 @@ final class _ComposerMovesDownStuckStagedThenAckPort
   bool isNeedleStagedInCursorZone(String needle) =>
       isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
 
-
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
     // Round 0 (first paste): never ACK. After reinject paste, ACK on CR.
     return _round >= 1 && crCount > 0 && staged == null;
   }
-
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1114,6 +1143,7 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
       needle: needle,
     );
   }
+
   @override
   FullscreenPromptAnchor? locatePasteZoneNeedle(
     String needle, {
@@ -1123,7 +1153,6 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
   @override
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
-
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -1136,13 +1165,11 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
   bool isNeedleStagedInCursorZone(String needle) =>
       isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
 
-
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
     // ACK only after second paste's CR (pasteCount >= 2 and cleared).
     return pasteCount >= 2 && staged == null && crCount > 0;
   }
-
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1217,6 +1244,7 @@ final class _AnchorCellStuckButHookAckedPort
       needle: needle,
     );
   }
+
   @override
   FullscreenPromptAnchor? locatePasteZoneNeedle(
     String needle, {
@@ -1226,7 +1254,6 @@ final class _AnchorCellStuckButHookAckedPort
   @override
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
-
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -1239,12 +1266,10 @@ final class _AnchorCellStuckButHookAckedPort
   bool isNeedleStagedInCursorZone(String needle) =>
       isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
 
-
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       // Stale mirror: never reflects the commit.
       false;
-
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1315,6 +1340,7 @@ final class _MentionPopupSwallowsCrPort implements FullscreenPtyDeliveryPort {
       needle: needle,
     );
   }
+
   @override
   FullscreenPromptAnchor? locatePasteZoneNeedle(
     String needle, {
@@ -1324,7 +1350,6 @@ final class _MentionPopupSwallowsCrPort implements FullscreenPtyDeliveryPort {
   @override
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
-
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -1337,11 +1362,9 @@ final class _MentionPopupSwallowsCrPort implements FullscreenPtyDeliveryPort {
   bool isNeedleStagedInCursorZone(String needle) =>
       isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
 
-
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       crCount > 0 && !popupOpen && staged == null;
-
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1415,6 +1438,7 @@ final class _AbortedAfterHookAckPort implements FullscreenPtyDeliveryPort {
       needle: needle,
     );
   }
+
   @override
   FullscreenPromptAnchor? locatePasteZoneNeedle(
     String needle, {
@@ -1424,7 +1448,6 @@ final class _AbortedAfterHookAckPort implements FullscreenPtyDeliveryPort {
   @override
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
-
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -1437,12 +1460,10 @@ final class _AbortedAfterHookAckPort implements FullscreenPtyDeliveryPort {
   bool isNeedleStagedInCursorZone(String needle) =>
       isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
 
-
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       // Stale mirror: never reflects the commit.
       false;
-
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1505,6 +1526,7 @@ final class _PaintWakePort implements FullscreenPtyDeliveryPort {
       needle: needle,
     );
   }
+
   @override
   FullscreenPromptAnchor? locatePasteZoneNeedle(
     String needle, {
@@ -1514,7 +1536,6 @@ final class _PaintWakePort implements FullscreenPtyDeliveryPort {
   @override
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
-
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -1527,11 +1548,9 @@ final class _PaintWakePort implements FullscreenPtyDeliveryPort {
   bool isNeedleStagedInCursorZone(String needle) =>
       isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
 
-
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       crCount > 0 && (staged == null || !staged!.contains(anchor.needle));
-
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1604,6 +1623,7 @@ final class _LateCrAckPaintPort implements FullscreenPtyDeliveryPort {
       needle: needle,
     );
   }
+
   @override
   FullscreenPromptAnchor? locatePasteZoneNeedle(
     String needle, {
@@ -1613,7 +1633,6 @@ final class _LateCrAckPaintPort implements FullscreenPtyDeliveryPort {
   @override
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
-
 
   @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
@@ -1626,11 +1645,9 @@ final class _LateCrAckPaintPort implements FullscreenPtyDeliveryPort {
   bool isNeedleStagedInCursorZone(String needle) =>
       isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
 
-
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       _crAckVisible;
-
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
