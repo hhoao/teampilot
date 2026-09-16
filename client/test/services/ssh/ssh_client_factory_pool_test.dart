@@ -633,6 +633,7 @@ class _BlockingRunClient extends SSHClient {
     bool stdout = true,
     bool stderr = true,
     Map<String, String>? environment,
+    List<int>? stdin,
   }) async {
     await _gate;
     return SSHRunResult(

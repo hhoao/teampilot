@@ -211,6 +211,7 @@ class _RunnableClient extends SSHClient {
     bool stdout = true,
     bool stderr = true,
     Map<String, String>? environment,
+    List<int>? stdin,
   }) async {
     onRun?.call(command);
     return SSHRunResult(

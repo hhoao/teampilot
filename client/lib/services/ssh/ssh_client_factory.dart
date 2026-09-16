@@ -236,6 +236,9 @@ class SshClientFactory {
     }
   }
 
+  /// Rejects exec argv longer than this so large payloads go on stdin.
+  static const maxExecCommandBytes = 1024;
+
   /// Runs [command] on the storage-plane client with an I/O timeout.
   ///
   /// On timeout the pooled client is evicted so the next caller rebuilds.
@@ -261,6 +264,38 @@ class SshClientFactory {
       rethrow;
     }
   });
+
+  /// Runs [command] on the storage plane, writing [stdin] then closing it.
+  Future<SSHRunResult> runOnStorageWithStdin(
+    SshProfile profile,
+    String command, {
+    required List<int> stdin,
+    Duration timeout = SshStorageIo.provisionPhaseTimeout,
+    bool stderr = true,
+  }) {
+    if (utf8.encode(command).length > maxExecCommandBytes) {
+      throw StateError(
+        'storage exec command exceeds $maxExecCommandBytes bytes',
+      );
+    }
+    return _tracked(profile.id, () async {
+      final client = await clientForStorage(profile);
+      try {
+        return await SshStorageIo.awaitOrThrow(
+          client.runWithResult(command, stderr: stderr, stdin: stdin),
+          timeout: timeout,
+          operation: 'storage exec stdin',
+        );
+      } on TimeoutException {
+        _evictProfile(
+          profile.id,
+          closePooled: true,
+          reason: SshTransportCloseReason.transportError,
+        );
+        rethrow;
+      }
+    });
+  }
 
   /// Tracks a storage operation so an evicted client is not closed underneath
   /// an SFTP channel or storage exec that is already using it.

@@ -654,6 +654,7 @@ class _RootBareMetalClient extends SSHClient {
     bool stdout = true,
     bool stderr = true,
     Map<String, String>? environment,
+    List<int>? stdin,
   }) async {
     recordCommand?.call(command);
     if (command == TpExecCodec.encodeHostInfoQuery()) {
