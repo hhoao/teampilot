@@ -26,6 +26,7 @@ final class AiHistoryPage {
     required this.nextCursor,
     required this.sourceToken,
     required this.rebuilt,
+    this.pageBytes = 0,
     List<AiMessage>? completeMessages,
   }) : messages = List<AiMessage>.unmodifiable(messages),
        completeMessages = completeMessages == null
@@ -41,6 +42,10 @@ final class AiHistoryPage {
   final AiHistoryCursor? nextCursor;
   final String sourceToken;
   final bool rebuilt;
+
+  /// Number of source bytes consumed to assemble this page. This is only
+  /// diagnostic metadata; it never contains transcript content.
+  final int pageBytes;
 
   /// Full finalized transcript when the reader scanned from byte 0.
   ///

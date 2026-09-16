@@ -750,7 +750,7 @@ final class AiHistoryLoader {
       if (dbDelta != null) {
         final parentPath = dbDelta.parentPath;
         if (parentPath != null) _parentPaths[cacheKey] = parentPath;
-      return await _finishIncremental(
+        return await _finishIncremental(
           cacheKey: cacheKey,
           cli: cli,
           ctx: ctx,
@@ -761,10 +761,21 @@ final class AiHistoryLoader {
         );
       }
 
+      final locateSw = Stopwatch()..start();
       final bundle = await _timed(
         AiHistoryLoadPhase.locate,
         () => _locator.locate(ctx: ctx, cli: cli),
       );
+      locateSw.stop();
+      final bundleBytes = _bundleBytes(bundle);
+      if (kDebugMode) {
+        appLogger.i(
+          '[ai-history-timing] full locate '
+          'bundleBytes=$bundleBytes pageBytes=0 '
+          'parseMode=${skipPaging ? 'background-full' : 'full'} '
+          'locateMs=${locateSw.elapsedMilliseconds}',
+        );
+      }
       final watch = bundle == null
           ? null
           : AiHistoryWatchMeta.fromHints(bundle.hints);
@@ -787,7 +798,7 @@ final class AiHistoryLoader {
         parentPath: parentPath,
       );
       if (tail != null) {
-      return await _finishIncremental(
+        return await _finishIncremental(
           cacheKey: cacheKey,
           cli: cli,
           ctx: ctx,
@@ -839,6 +850,7 @@ final class AiHistoryLoader {
           ctx: ctx,
           parentPath: parentPath,
           sourceToken: token,
+          bundleBytes: bundleBytes,
         );
       }
 
@@ -1077,6 +1089,13 @@ final class AiHistoryLoader {
         () => reader.readLatest(ctx: ctx, limit: kSessionHistoryInitialTurns),
       );
       final readMs = pageSw.elapsedMilliseconds;
+      if (kDebugMode) {
+        appLogger.i(
+          '[ai-history-timing] page read '
+          'bundleBytes=0 pageBytes=${page?.pageBytes ?? 0} '
+          'parseMode=page readMs=$readMs',
+        );
+      }
       if (page == null) {
         if (kDebugMode) {
           appLogger.i(
@@ -1375,6 +1394,7 @@ final class AiHistoryLoader {
     required SessionHistoryContext ctx,
     required String? parentPath,
     required String? sourceToken,
+    required int bundleBytes,
   }) async {
     final totalBytes = bundle.fragments.fold<int>(
       0,
@@ -1395,6 +1415,7 @@ final class AiHistoryLoader {
     final reusableIndexSnapshot = reuse ? indexCache.exportIndex() : null;
 
     if (totalBytes >= _isolateParseMinBytes) {
+      final parseSw = Stopwatch()..start();
       final importRevision = _toolResultIndexRevision;
       final result = await _parseExecutor.parse(
         adapterId: adapter.id,
@@ -1403,6 +1424,14 @@ final class AiHistoryLoader {
         sourceToken: sourceToken,
         rootTranscriptPath: parentPath,
       );
+      parseSw.stop();
+      if (kDebugMode) {
+        appLogger.i(
+          '[ai-history-timing] parse '
+          'bundleBytes=$bundleBytes pageBytes=0 parseMode=worker '
+          'parseMs=${parseSw.elapsedMilliseconds}',
+        );
+      }
       if (!reuse &&
           indexCache != null &&
           importRevision == _toolResultIndexRevision) {
@@ -1486,10 +1515,19 @@ final class AiHistoryLoader {
       return result.messages;
     }
 
+    final parseSw = Stopwatch()..start();
     final parsed = await _timed(
       AiHistoryLoadPhase.parse,
       () => adapter.parse(bundle),
     );
+    parseSw.stop();
+    if (kDebugMode) {
+      appLogger.i(
+        '[ai-history-timing] parse '
+        'bundleBytes=$bundleBytes pageBytes=0 parseMode=caller '
+        'parseMs=${parseSw.elapsedMilliseconds}',
+      );
+    }
     if (_needsToolResultEnrichment(parsed, enricher)) {
       return _enrichMessages(
         enricher: enricher,
@@ -1527,6 +1565,14 @@ final class AiHistoryLoader {
 
   void _recordTimedPhase(AiHistoryLoadPhase phase, int microseconds) {
     _timings?.record(phase, Duration(microseconds: microseconds));
+  }
+
+  int _bundleBytes(AiTranscriptBundle? bundle) {
+    if (bundle == null) return 0;
+    return bundle.fragments.fold<int>(
+      0,
+      (sum, fragment) => sum + fragment.bytes.length,
+    );
   }
 
   void _recordIndexDecode(ToolResultEnricher enricher) {

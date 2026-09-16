@@ -19,6 +19,14 @@ were not implemented.
   capabilities without page readers remain intact.
 - No transcript or message content was added to diagnostics.
 
+## Review fix
+
+The Task 3 Step 5 diagnostics gap was fixed after review. Page results now
+carry numeric `pageBytes` metadata, and loader timing diagnostics emit
+`bundleBytes`, `pageBytes`, `parseMode`, and phase durations for page reads,
+full locate, and caller/worker parsing. These fields contain no transcript
+content, secrets, or raw paths.
+
 ## Verification
 
 - Focused tests, run through the required wrapper:
