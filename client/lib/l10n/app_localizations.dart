@@ -15416,6 +15416,12 @@ abstract class AppLocalizations {
   /// **'Tags'**
   String get gitGraphTags;
 
+  /// No description provided for @gitGraphCommits.
+  ///
+  /// In en, this message translates to:
+  /// **'Commits'**
+  String get gitGraphCommits;
+
   /// No description provided for @gitGraphHashSearchEmptyHint.
   ///
   /// In en, this message translates to:
@@ -15487,12 +15493,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hide column header'**
   String get gitGraphHideColumnHeader;
-
-  /// No description provided for @gitGraphShowDiffWithWorkingTree.
-  ///
-  /// In en, this message translates to:
-  /// **'Show Diff with Working Tree'**
-  String get gitGraphShowDiffWithWorkingTree;
 
   /// No description provided for @gitGraphCompareWith.
   ///

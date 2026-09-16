@@ -8669,6 +8669,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitGraphTags => 'Tags';
 
   @override
+  String get gitGraphCommits => 'Commits';
+
+  @override
   String get gitGraphHashSearchEmptyHint =>
       'No loaded commit matches this hash. Scroll down or click \"Load more\" to fetch older history.';
 
@@ -8707,9 +8710,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitGraphHideColumnHeader => 'Hide column header';
-
-  @override
-  String get gitGraphShowDiffWithWorkingTree => 'Show Diff with Working Tree';
 
   @override
   String get gitGraphCompareWith => 'Compare with…';

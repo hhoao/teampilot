@@ -393,4 +393,66 @@ void main() {
     expect(spec?.left, const GitCompareRef('v1.0'));
     expect(spec?.right, const GitCompareRef('main'));
   });
+
+  testWidgets('compare submenu opens branch vs loaded commit tab', (
+    tester,
+  ) async {
+    final workbench = WorkbenchCubit();
+    final floating = FloatingWorkspaceCubit();
+    addTearDown(workbench.close);
+    addTearDown(floating.close);
+    final commit = graphCommitRow('abcdef1234567890');
+    final actions = RecordingGraphActions();
+    final history = FakeHistoryForGraph(
+      rows: [commit],
+      branchInfos: [
+        GitBranchInfo('main', 'h0', isRemote: false, isCurrent: true),
+        GitBranchInfo('feature', 'h1', isRemote: false, isCurrent: false),
+      ],
+    );
+    final cubit = GitGraphCubit(
+      history: history,
+      git: FakeGitForGraph(repoStatus()),
+      actions: actions,
+    );
+    addTearDown(cubit.close);
+    await cubit.setRepoRoot('/repo');
+    await tester.pumpWidget(
+      MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider.value(value: workbench),
+          RepositoryProvider.value(value: floating),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('en'),
+          home: BlocProvider.value(
+            value: cubit,
+            child: Scaffold(
+              body: Center(
+                child: GitGraphRefsMenu(
+                  state: cubit.state,
+                  workspaceId: 'ws',
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.account_tree_outlined));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('feature'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Compare with…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('abcdef12 ${commit.subject}'));
+    await tester.pumpAndSettle();
+
+    final spec = openedCompareSpec(workbench);
+    expect(spec?.left, const GitCompareRef('feature'));
+    expect(spec?.right, GitCompareRef(commit.hash));
+  });
 }

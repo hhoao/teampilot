@@ -8306,6 +8306,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitGraphTags => '标签';
 
   @override
+  String get gitGraphCommits => '提交';
+
+  @override
   String get gitGraphHashSearchEmptyHint =>
       '已加载的提交中没有匹配该哈希的记录，请继续向下滚动或点击“加载更多”以载入更早的历史。';
 
@@ -8343,9 +8346,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitGraphHideColumnHeader => '隐藏列头';
-
-  @override
-  String get gitGraphShowDiffWithWorkingTree => '与工作区比较差异';
 
   @override
   String get gitGraphCompareWith => '与…比较';

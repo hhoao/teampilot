@@ -7,8 +7,7 @@ import '../../cubits/git_graph_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_compare.dart';
 import '../../models/git_graph.dart';
-import '../git_compare/git_compare_refs.dart';
-import '../git_compare/open_git_compare.dart';
+import 'git_graph_compare_targets.dart';
 
 /// 行级右键 / 长按菜单：checkout 本地分支或该提交（分离 HEAD）、重命名 / 删除 /
 /// 合并本地分支、删除 / 推送标签、在此建分支 / 标签、cherry-pick、revert、
@@ -108,20 +107,13 @@ Future<void> showCommitContextMenu(
       await actions.resetTo(row.hash, mode: GitResetMode.soft);
     case 'reset-mixed':
       await actions.resetTo(row.hash, mode: GitResetMode.mixed);
-    case 'diff-working-tree':
-      final refs = gitCompareRefsForCommit(row);
-      openGitCompareTab(
-        context,
+    case 'compare':
+      await showGitCompareTargetMenu(
+        context: context,
+        globalPosition: position,
         workspaceId: workspaceId,
-        spec: GitCompareSpec(
-          repoRoot: repoRoot,
-          left: GitCompareRef(
-            refs.compareRef,
-            titleOverride:
-                refs.titleRef == refs.compareRef ? null : refs.titleRef,
-          ),
-          right: const GitCompareWorkingTree(),
-        ),
+        state: state,
+        source: GitCompareRef(row.hash),
       );
     case 'copy-hash':
       await _copyAndNotify(
@@ -228,9 +220,9 @@ List<TpActionMenuSpec> _menuSpecs(
   ),
   const TpActionMenuSpec.divider(),
   TpActionMenuSpec.item(
-    value: 'diff-working-tree',
+    value: 'compare',
     icon: Icons.difference_outlined,
-    label: l10n.gitGraphShowDiffWithWorkingTree,
+    label: l10n.gitGraphCompareWith,
   ),
   TpActionMenuSpec.item(
     value: 'copy-hash',
