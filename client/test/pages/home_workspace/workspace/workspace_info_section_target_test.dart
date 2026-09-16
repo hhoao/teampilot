@@ -42,12 +42,35 @@ void main() {
       final l10n = await AppLocalizations.delegate.load(const Locale('en'));
       expect(find.text(l10n.workspaceFoldersSectionTitle), findsOneWidget);
       expect(find.text(l10n.rootSandboxEnvOptInTitle), findsOneWidget);
+      expect(find.text(l10n.injectSessionSshMcpTitle), findsNothing);
       expect(
         find.text(l10n.workspaceFoldersAddOnAnotherMachine),
         findsOneWidget,
       );
     });
   });
+
+  testWidgets(
+    'WorkspaceInfoSection shows inject Session SSH MCP toggle for mixed topology',
+    (tester) async {
+      await tester.runAsync(() async {
+        await _pumpWorkspaceInfo(
+          tester,
+          workspace: Workspace(
+            workspaceId: 'w1',
+            folders: const [
+              WorkspaceFolder(path: '/proj'),
+              WorkspaceFolder(path: '/home', targetId: 'ssh:home'),
+            ],
+            createdAt: 1,
+          ),
+        );
+
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        expect(find.text(l10n.injectSessionSshMcpTitle), findsOneWidget);
+      });
+    },
+  );
 
   testWidgets(
     'WorkspaceInfoSection does not show per-team member machine cards',

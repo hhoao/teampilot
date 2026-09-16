@@ -17,6 +17,7 @@ import '../../models/workspace_launch_context.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/catalog/catalog_mcp_transport.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
+import '../../services/ssh/mcp/session_ssh_mcp_transport.dart';
 import '../../services/team_generation/mcp/team_composer_mcp_transport.dart';
 import '../../models/install_job/install_cancel_policy.dart';
 import '../../models/install_job/install_job_key.dart';
@@ -90,6 +91,8 @@ Map<String, Map<String, Object?>> composeRuntimeExtraMcpServers({
   required String? Function(AppSession session)? teamGenerationTokenIssuer,
   RemoteBusBinding? mixedRemoteBinding,
   MemberAgentStatusEndpoint? agentStatus,
+  Workspace? workspace,
+  Uri? sessionSshMcpEndpoint,
 }) {
   final remoteBinding = _catalogRemoteBindingForRuntime(
     mixedRemoteBinding: mixedRemoteBinding,
@@ -128,6 +131,24 @@ Map<String, Map<String, Object?>> composeRuntimeExtraMcpServers({
       workflowToken: token,
       isLocalNative: isLocalNative,
       remoteBinding: remoteBinding,
+    );
+  }
+  if (workspace != null &&
+      sessionSshMcpEndpoint != null &&
+      shouldInjectSessionSshMcp(
+        workspace: workspace,
+        launchKind: launchKind,
+      )) {
+    return extraMcpServersWithSessionSsh(
+      extra: servers,
+      config: resolveSessionSshMcpTransportConfig(
+        cliRegistry: cliRegistry,
+        sessionSshMcpEndpoint: sessionSshMcpEndpoint,
+        sessionId: session.sessionId,
+        memberId: memberId,
+        cli: cli,
+        isLocalNative: isLocalNative,
+      ),
     );
   }
   return servers;
@@ -395,6 +416,7 @@ class SessionShellConnector {
               launchKind: launchTarget.kind,
               mixedRemoteBinding: null,
               agentStatus: agentStatus,
+              workspace: workspace,
             ),
             agentStatus: agentStatus,
             onProvisionProgress: onProgress,
@@ -484,6 +506,7 @@ class SessionShellConnector {
               launchKind: launchTarget.kind,
               mixedRemoteBinding: remoteBinding,
               agentStatus: agentStatus,
+              workspace: workspace,
             ),
             busIdle: mixedBus
                 ? switch (remoteBinding) {
@@ -1114,6 +1137,7 @@ class SessionShellConnector {
     required RuntimeKind launchKind,
     required RemoteBusBinding? mixedRemoteBinding,
     required MemberAgentStatusEndpoint? agentStatus,
+    required Workspace? workspace,
   }) => composeRuntimeExtraMcpServers(
     extra: extra,
     session: session,
@@ -1127,6 +1151,8 @@ class SessionShellConnector {
     teamGenerationTokenIssuer: _host.teamGenerationTokenIssuer,
     mixedRemoteBinding: mixedRemoteBinding,
     agentStatus: agentStatus,
+    workspace: workspace,
+    sessionSshMcpEndpoint: _host.teammateBusMcpGateway.sessionSshMcpEndpoint,
   );
 
   /// Builds [MemberAgentStatusEndpoint] for a seat. Soft-fails status-only SSH

@@ -3185,6 +3185,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Keep skip-permissions when Claude runs as root.';
 
   @override
+  String get injectSessionSshMcpTitle =>
+      'Inject Session SSH MCP for local members';
+
+  @override
+  String get injectSessionSshMcpSubtitle =>
+      'Local seats can run commands and transfer files on this workspace\'s remote machines. Reconnect sessions after changing.';
+
+  @override
   String get rootSandboxEnvConfirmTitle => 'Enable root sandbox env?';
 
   @override

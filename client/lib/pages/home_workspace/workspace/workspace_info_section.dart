@@ -13,6 +13,7 @@ import '../../../widgets/workspace_topology_chip.dart';
 import '../../../utils/workspace/workspace_display_name.dart';
 import '../workspace_actions.dart';
 import 'config/workspace_folders_section.dart';
+import 'inject_session_ssh_mcp_tile.dart';
 import 'root_sandbox_env_opt_in_tile.dart';
 import 'workspace_icon_settings_row.dart';
 
@@ -108,12 +109,45 @@ class WorkspaceInfoSection extends StatelessWidget {
           TpCard.outlined(
             child: WorkspaceRootSandboxEnvOptInCard(workspace: live),
           ),
+          if (workspaceTopologyOf(live.folders) == WorkspaceTopology.mixed) ...[
+            const SizedBox(height: 12),
+            TpCard.outlined(
+              child: WorkspaceInjectSessionSshMcpCard(workspace: live),
+            ),
+          ],
           const SizedBox(height: 12),
           WorkspaceFoldersSection(workspace: live, lockTargets: false),
           const SizedBox(height: 12),
           WorkspaceConfigDangerZone(workspace: live),
         ],
       ),
+    );
+  }
+}
+
+class WorkspaceInjectSessionSshMcpCard extends StatelessWidget {
+  const WorkspaceInjectSessionSshMcpCard({required this.workspace, super.key});
+
+  final Workspace workspace;
+
+  @override
+  Widget build(BuildContext context) {
+    final live = context.select<ChatCubit, Workspace>(
+      (c) => c.state.workspaces.firstWhere(
+        (p) => p.workspaceId == workspace.workspaceId,
+        orElse: () => workspace,
+      ),
+    );
+    return InjectSessionSshMcpTile(
+      enabled: live.injectSessionSshMcp,
+      showDividerBelow: false,
+      onChanged: (next) async {
+        await context.read<ChatCubit>().updateWorkspaceMetadata(
+          context.read<SessionRepository>(),
+          live.workspaceId,
+          injectSessionSshMcp: next,
+        );
+      },
     );
   }
 }

@@ -19,6 +19,7 @@ class Workspace {
     this.memberTargetsByTeam = const {},
     this.memberPlacementInitializedByTeam = const {},
     this.rootSandboxEnvOptIn = false,
+    this.injectSessionSshMcp = true,
   });
 
   factory Workspace({
@@ -33,6 +34,7 @@ class Workspace {
     Map<String, MemberTargetAssignments> memberTargetsByTeam = const {},
     Map<String, bool> memberPlacementInitializedByTeam = const {},
     bool rootSandboxEnvOptIn = false,
+    bool injectSessionSshMcp = true,
   }) {
     return Workspace._(
       workspaceId: workspaceId,
@@ -48,6 +50,7 @@ class Workspace {
         memberPlacementInitializedByTeam,
       ),
       rootSandboxEnvOptIn: rootSandboxEnvOptIn,
+      injectSessionSshMcp: injectSessionSshMcp,
     );
   }
 
@@ -70,6 +73,7 @@ class Workspace {
         json['memberPlacementInitializedByTeam'],
       ),
       rootSandboxEnvOptIn: json['rootSandboxEnvOptIn'] == true,
+      injectSessionSshMcp: json['injectSessionSshMcp'] == false ? false : true,
     );
   }
 
@@ -89,6 +93,8 @@ class Workspace {
   final Map<String, bool> memberPlacementInitializedByTeam;
 
   final bool rootSandboxEnvOptIn;
+
+  final bool injectSessionSshMcp;
 
   String get firstFolderPath => folders.isEmpty ? '' : folders.first.path;
   List<String> get extraFolderPaths => folders.length <= 1
@@ -178,6 +184,7 @@ class Workspace {
     Map<String, MemberTargetAssignments>? memberTargetsByTeam,
     Map<String, bool>? memberPlacementInitializedByTeam,
     bool? rootSandboxEnvOptIn,
+    bool? injectSessionSshMcp,
   }) {
     return Workspace(
       workspaceId: workspaceId ?? this.workspaceId,
@@ -193,6 +200,7 @@ class Workspace {
           memberPlacementInitializedByTeam ??
           this.memberPlacementInitializedByTeam,
       rootSandboxEnvOptIn: rootSandboxEnvOptIn ?? this.rootSandboxEnvOptIn,
+      injectSessionSshMcp: injectSessionSshMcp ?? this.injectSessionSshMcp,
     );
   }
 
@@ -216,6 +224,7 @@ class Workspace {
             e.key: e.value,
         },
       if (rootSandboxEnvOptIn) 'rootSandboxEnvOptIn': true,
+      if (!injectSessionSshMcp) 'injectSessionSshMcp': false,
     };
   }
 
@@ -295,7 +304,8 @@ class Workspace {
               memberPlacementInitializedByTeam,
               other.memberPlacementInitializedByTeam,
             ) &&
-            rootSandboxEnvOptIn == other.rootSandboxEnvOptIn;
+            rootSandboxEnvOptIn == other.rootSandboxEnvOptIn &&
+            injectSessionSshMcp == other.injectSessionSshMcp;
   }
 
   @override
@@ -315,6 +325,7 @@ class Workspace {
     ),
     Object.hashAll(memberPlacementInitializedByTeam.entries),
     rootSandboxEnvOptIn,
+    injectSessionSshMcp,
   );
 }
 

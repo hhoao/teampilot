@@ -497,12 +497,14 @@ class SessionDataStore {
     String? display,
     String? defaultProfileId,
     bool? rootSandboxEnvOptIn,
+    bool? injectSessionSshMcp,
   }) async {
     final updated = await repo.updateWorkspaceMetadata(
       workspaceId,
       display: display,
       defaultProfileId: defaultProfileId,
       rootSandboxEnvOptIn: rootSandboxEnvOptIn,
+      injectSessionSshMcp: injectSessionSshMcp,
     );
     if (updated == null) return null;
     return snapshotWithWorkspace(base, updated);

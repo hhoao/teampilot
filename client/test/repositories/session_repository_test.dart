@@ -300,6 +300,25 @@ void main() {
     expect(loaded.single.rootSandboxEnvOptIn, isTrue);
   });
 
+  test('updateWorkspaceMetadata persists injectSessionSshMcp', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
+    final p = await repo.createWorkspace([WorkspaceFolder(path: '/base')]);
+    expect(p.injectSessionSshMcp, isTrue);
+
+    await repo.updateWorkspaceMetadata(
+      p.workspaceId,
+      injectSessionSshMcp: false,
+    );
+    final loaded = await repo.loadWorkspaces();
+    expect(loaded.single.injectSessionSshMcp, isFalse);
+  });
+
   test('applyWorkspaceIcon persists preset and auto icons', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));

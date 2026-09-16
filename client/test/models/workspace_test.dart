@@ -192,4 +192,21 @@ void main() {
     });
     expect(restored.rootSandboxEnvOptIn, isFalse);
   });
+
+  test('injectSessionSshMcp defaults on and omits true from json', () {
+    final ws = Workspace(workspaceId: 'p1', createdAt: 1);
+    expect(ws.injectSessionSshMcp, isTrue);
+    expect(ws.toJson().containsKey('injectSessionSshMcp'), isFalse);
+    expect(Workspace.fromJson(ws.toJson()).injectSessionSshMcp, isTrue);
+  });
+
+  test('injectSessionSshMcp false round-trips', () {
+    final ws = Workspace(
+      workspaceId: 'p1',
+      createdAt: 1,
+      injectSessionSshMcp: false,
+    );
+    expect(ws.toJson()['injectSessionSshMcp'], isFalse);
+    expect(Workspace.fromJson(ws.toJson()).injectSessionSshMcp, isFalse);
+  });
 }

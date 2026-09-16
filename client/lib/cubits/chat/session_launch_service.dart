@@ -87,6 +87,7 @@ class SessionLaunchService
         shellForLaunch: _shellForLaunch,
         sessionForMemberConnect: _sessionForMemberConnect,
         tabStore: _tabStore,
+        workspaceById: _workspaceById,
       );
   late final SessionLaunchBundle _launch = SessionLaunchBundle.create(
     SessionLaunchBundleDeps(

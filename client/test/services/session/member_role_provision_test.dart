@@ -9,6 +9,7 @@ import 'package:teampilot/services/catalog/catalog_mcp_policy.dart';
 import 'package:teampilot/services/catalog/modules/skill_catalog_tools.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/member_role_provision.dart';
+import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_policy.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 
 void main() {
@@ -162,6 +163,20 @@ void main() {
     expect(allow, contains('mcp__teampilot__search_skills'));
     expect(allow, contains('mcp__teampilot__list_installed'));
     expect(allow, isNot(contains('mcp__teampilot__install_skill')));
+  });
+
+  test('applySessionSshMcpAllows merges ssh tools and keeps existing allows', () {
+    final settings = MemberRoleProvision.applySessionSshMcpAllows(
+      const {
+        'permissions': {
+          'allow': ['mcp__teampilot__search_skills'],
+        },
+      },
+      claudeEntries: SessionSshMcpPolicy.claudeAllowEntries,
+    );
+    final allow = (settings['permissions']! as Map)['allow'] as List;
+    expect(allow, contains('mcp__teampilot__search_skills'));
+    expect(allow, containsAll(SessionSshMcpPolicy.claudeAllowEntries));
   });
 
   test('disallowedToolsForMixedClaude worker omits Agent', () {

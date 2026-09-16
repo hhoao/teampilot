@@ -3,6 +3,7 @@ import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/chat/session_launch_host.dart';
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
+import '../../models/workspace.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/launch/connect_shell_result.dart';
 import '../../services/launch/session_shell_connector.dart';
@@ -21,6 +22,8 @@ typedef ShellForLaunchFn =
 typedef SessionForMemberConnectFn =
     AppSession? Function(ChatTab tab, TeamProfile team);
 
+typedef WorkspaceByIdFn = Workspace? Function(String workspaceId);
+
 /// Schedules per-member PTY connects for an existing team session tab.
 class SessionMemberConnectScheduler {
   SessionMemberConnectScheduler({
@@ -29,17 +32,20 @@ class SessionMemberConnectScheduler {
     required ShellForLaunchFn shellForLaunch,
     required SessionForMemberConnectFn sessionForMemberConnect,
     required ChatTabStore tabStore,
+    required WorkspaceByIdFn workspaceById,
   }) : _host = host,
        _shellConnector = shellConnector,
        _shellForLaunch = shellForLaunch,
        _sessionForMemberConnect = sessionForMemberConnect,
-       _tabStore = tabStore;
+       _tabStore = tabStore,
+       _workspaceById = workspaceById;
 
   final SessionLaunchHost _host;
   final SessionShellConnector _shellConnector;
   final ShellForLaunchFn _shellForLaunch;
   final SessionForMemberConnectFn _sessionForMemberConnect;
   final ChatTabStore _tabStore;
+  final WorkspaceByIdFn _workspaceById;
 
   TerminalSession memberShellForConnect({
     required ChatTab tab,
@@ -166,6 +172,7 @@ class SessionMemberConnectScheduler {
           launched: connectSession.launchState == AppSessionLaunchState.started,
           team: team,
           member: member,
+          workspace: _workspaceById(connectSession.workspaceId),
         );
         if (result == ConnectShellResult.attached) {
           tab.reclaimedMemberIds.remove(member.id);

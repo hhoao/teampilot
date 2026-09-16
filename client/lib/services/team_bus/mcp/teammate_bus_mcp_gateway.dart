@@ -9,6 +9,8 @@ import '../../agent_runtime/agent_event_gateway.dart';
 import '../../agent_status/ask_user_answer_pending_store.dart';
 import '../../catalog/catalog_mcp_constants.dart';
 import '../../catalog/catalog_mcp_handler.dart';
+import '../../ssh/mcp/session_ssh_mcp_constants.dart';
+import '../../ssh/mcp/session_ssh_mcp_http.dart';
 import '../../team_generation/mcp/team_composer_mcp_constants.dart';
 import '../../team_generation/mcp/team_composer_mcp_handler.dart';
 import '../../team_generation/team_generation_authorizer.dart';
@@ -36,6 +38,7 @@ class TeammateBusMcpGateway {
   AskUserAnswerPendingStore? _askUserAnswerStore;
   CatalogMcpHandler? _catalogHandler;
   Future<CatalogMcpSession?> Function(String sessionId)? _resolveCatalogSession;
+  SessionSshMcpHttpAdapter? _sessionSshMcp;
   TeamComposerMcpHandler? _teamComposerHandler;
   TeamGenerationAuthorizer? _teamGenerationAuthorizer;
   HttpServer? _http;
@@ -65,6 +68,8 @@ class TeammateBusMcpGateway {
     }
     await _agentEventGateway?.close();
     _agentEventGateway = null;
+    await _sessionSshMcp?.close();
+    _sessionSshMcp = null;
     await _http?.close(force: true);
     _http = null;
     await _rawSocket?.close();
@@ -75,6 +80,9 @@ class TeammateBusMcpGateway {
 
   Uri get catalogMcpEndpoint =>
       Uri.parse('http://127.0.0.1:${_http!.port}$catalogMcpPath');
+
+  Uri get sessionSshMcpEndpoint =>
+      Uri.parse('http://127.0.0.1:${_http!.port}$sessionSshMcpPath');
 
   Uri get idleEndpoint => Uri.parse('http://127.0.0.1:${_http!.port}/idle');
 
@@ -111,6 +119,11 @@ class TeammateBusMcpGateway {
   }) {
     _catalogHandler = handler;
     _resolveCatalogSession = resolveSession;
+  }
+
+  /// Mounts mcp_dart Streamable HTTP at [sessionSshMcpPath] (`/ssh/mcp`).
+  void attachSessionSshMcp(SessionSshMcpHttpAdapter adapter) {
+    _sessionSshMcp = adapter;
   }
 
   /// Attaches the Team Composer MCP handler plus its authorizer.
@@ -195,6 +208,20 @@ class TeammateBusMcpGateway {
       if (request.method == 'POST' && request.uri.path == '/agent-status') {
         final sessionId = _resolveSessionId(request);
         await _handleAgentStatus(request, sessionId: sessionId);
+        return;
+      }
+
+      // Session SSH MCP is available without TeamBus register. Route before
+      // the `_delegates` bail-out so missing X-Session is a JSON-RPC/tool
+      // error in HTTP 200, not 400. GET/POST/DELETE — mcp_dart streamable HTTP.
+      if (request.uri.path == sessionSshMcpPath) {
+        final adapter = _sessionSshMcp;
+        if (adapter == null) {
+          request.response.statusCode = HttpStatus.notFound;
+          await request.response.close();
+          return;
+        }
+        await adapter.handle(request);
         return;
       }
 
@@ -412,7 +439,11 @@ class TeammateBusMcpGateway {
     Future<void> respondUnauthorized(String message) async {
       request.response
         ..statusCode = HttpStatus.ok
-        ..headers.contentType = ContentType('application', 'json', charset: 'utf-8')
+        ..headers.contentType = ContentType(
+          'application',
+          'json',
+          charset: 'utf-8',
+        )
         ..write(
           JsonRpcResponse.error(
             rpc?.id,
@@ -430,7 +461,11 @@ class TeammateBusMcpGateway {
     if (rpc == null) {
       request.response
         ..statusCode = HttpStatus.ok
-        ..headers.contentType = ContentType('application', 'json', charset: 'utf-8')
+        ..headers.contentType = ContentType(
+          'application',
+          'json',
+          charset: 'utf-8',
+        )
         ..write(
           JsonRpcResponse.error(
             null,
@@ -468,8 +503,7 @@ class TeammateBusMcpGateway {
     }
 
     final toolName = rpc.params[McpParams.toolName];
-    if (toolName is! String ||
-        !TeamComposerToolName.all.contains(toolName)) {
+    if (toolName is! String || !TeamComposerToolName.all.contains(toolName)) {
       final res = await handler.handleToolCall(
         requestId: rpc.id,
         toolName: toolName is String ? toolName : '',

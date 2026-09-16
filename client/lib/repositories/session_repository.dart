@@ -444,6 +444,7 @@ class SessionRepository {
     String? display,
     String? defaultProfileId,
     bool? rootSandboxEnvOptIn,
+    bool? injectSessionSshMcp,
   }) async {
     final fs = await _fs();
     final existing = await _readManifest(fs, workspaceId);
@@ -456,6 +457,8 @@ class SessionRepository {
           : existing.defaultProfileId,
       folders: existing.folders,
       rootSandboxEnvOptIn: rootSandboxEnvOptIn ?? existing.rootSandboxEnvOptIn,
+      injectSessionSshMcp:
+          injectSessionSshMcp ?? existing.injectSessionSshMcp,
       updatedAt: now,
     );
     await _writeManifest(fs, updated);

@@ -21,6 +21,7 @@ import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/provider_catalog_access.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../catalog/catalog_mcp_policy.dart';
+import '../../../ssh/mcp/session_ssh_mcp_policy.dart';
 import '../../../io/filesystem.dart';
 import '../../../remote/remote_credential_materializer.dart';
 import '../../../session/member_role_provision.dart';
@@ -1152,6 +1153,10 @@ final class ClaudeProviderCapability extends CatalogModelCapability
       claudeEntries: CatalogMcpPolicy.claudeAllowEntries(
         CatalogMcpPolicy.advertisedRegistry(),
       ),
+    );
+    settings = MemberRoleProvision.applySessionSshMcpAllows(
+      settings,
+      claudeEntries: SessionSshMcpPolicy.claudeAllowEntries,
     );
     if (!hooksAlreadyMaterialized) {
       // 收敛：内部托管 hook（agent-status / bus idle / team-lead delegate /
