@@ -27,6 +27,6 @@ final class MemoryBlobStore implements BlobStore {
   Future<List<int>> open(String sha256) async {
     final bytes = _bytes[sha256];
     if (bytes == null) throw StateError('missing blob $sha256');
-    return bytes;
+    return List<int>.from(bytes);
   }
 }

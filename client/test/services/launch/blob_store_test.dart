@@ -13,6 +13,18 @@ void main() {
     expect(store.open('00' * 32), throwsStateError);
   });
 
+  test('open returns a copy; mutating it does not affect subsequent open', () async {
+    final store = MemoryBlobStore();
+    final bytes = <int>[10, 20, 30];
+    final hash = contentSha256Hex(bytes);
+    await store.put(hash, bytes);
+
+    final opened = await store.open(hash);
+    opened[0] = 99;
+
+    expect(await store.open(hash), bytes);
+  });
+
   test('put with wrong hash throws and does not store', () async {
     final store = MemoryBlobStore();
     expect(
