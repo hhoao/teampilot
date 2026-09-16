@@ -38,6 +38,9 @@ final class OpencodeToolOutputBackfillEnricher implements ToolResultEnricher {
   const OpencodeToolOutputBackfillEnricher();
 
   @override
+  String? get workerId => null;
+
+  @override
   bool get requiresFilesystem => true;
 
   @override

@@ -15,6 +15,9 @@ final class CursorTerminalToolResultEnricher implements ToolResultEnricher {
   final AiShellToolTargetResolver shellResolver;
 
   @override
+  String? get workerId => null;
+
+  @override
   bool get requiresFilesystem => true;
 
   // Backfills missing (empty) results, not a truncation marker — the loader

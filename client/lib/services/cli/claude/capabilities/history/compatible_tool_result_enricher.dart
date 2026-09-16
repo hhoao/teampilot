@@ -14,7 +14,10 @@ typedef ToolResultLineDecoder =
     List<Map<String, dynamic>?> Function(List<String> lines);
 
 final class ClaudeCompatibleToolResultEnricher
-    implements ToolResultEnricher, ToolResultIndexCache {
+    implements
+        ToolResultEnricher,
+        ToolResultIndexCache,
+        ToolResultIndexSnapshotApplier {
   ClaudeCompatibleToolResultEnricher({ToolResultLineDecoder? decodeLines})
     : _decodeLines = decodeLines ?? _defaultDecodeLines;
 
@@ -32,6 +35,9 @@ final class ClaudeCompatibleToolResultEnricher
 
   @override
   bool get requiresFilesystem => false;
+
+  @override
+  String get workerId => 'claude-compatible';
 
   @override
   bool matchesTruncationMarker(String result) => _isTruncated(result);
@@ -66,6 +72,7 @@ final class ClaudeCompatibleToolResultEnricher
     if (identity.isEmpty) return false;
     final cached = _indexes[identity];
     return cached != null &&
+        _sourceTokenMatches(cached.sourceToken, sourceToken) &&
         (cached.indexedLength == contentLength ||
             cached.indexedBytes == contentLength);
   }
@@ -79,6 +86,8 @@ final class ClaudeCompatibleToolResultEnricher
           'indexedLength': entry.value.indexedLength,
           'indexedBytes': entry.value.indexedBytes,
           'boundary': entry.value.boundary,
+          if (entry.value.sourceToken != null)
+            'sourceToken': entry.value.sourceToken,
           'records': {
             for (final record in entry.value.records.entries)
               record.key: {
@@ -92,7 +101,40 @@ final class ClaudeCompatibleToolResultEnricher
 
   @override
   void importIndex(Object? snapshot) {
-    if (snapshot is! Map) return;
+    _indexes.addAll(_decodeIndexSnapshot(snapshot));
+  }
+
+  @override
+  Future<List<AiMessage>> applyIndexSnapshot({
+    required List<AiMessage> messages,
+    required Object? snapshot,
+    String? sourceToken,
+    String? rootTranscriptPath,
+  }) async {
+    lastDecodeBatches = 0;
+    lastDecodeLines = 0;
+    lastDecodeMicroseconds = 0;
+    final indexes = _decodeIndexSnapshot(snapshot);
+    if (indexes.isEmpty) return messages;
+    final identity = _cacheIdentity(
+      sourceToken: sourceToken,
+      rootTranscriptPath: rootTranscriptPath,
+      bundle: null,
+    );
+    final cached = identity.isEmpty
+        ? (indexes.length == 1 ? indexes.values.single : null)
+        : indexes[identity];
+    if (!_sourceTokenMatches(cached?.sourceToken, sourceToken)) {
+      return messages;
+    }
+    final records = cached?.records;
+    if (records == null || records.isEmpty) return messages;
+    return _applyIndex(messages, records);
+  }
+
+  Map<String, _CachedToolResultIndex> _decodeIndexSnapshot(Object? snapshot) {
+    if (snapshot is! Map) return const {};
+    final indexes = <String, _CachedToolResultIndex>{};
     for (final entry in snapshot.entries) {
       final identity = entry.key;
       final value = entry.value;
@@ -100,10 +142,9 @@ final class ClaudeCompatibleToolResultEnricher
       final indexedLength = value['indexedLength'];
       final indexedBytes = value['indexedBytes'];
       final boundary = value['boundary'];
+      final sourceToken = value['sourceToken'];
       final rawRecords = value['records'];
-      if (indexedLength is! int ||
-          boundary is! String ||
-          rawRecords is! Map) {
+      if (indexedLength is! int || boundary is! String || rawRecords is! Map) {
         continue;
       }
       final records = <String, _IndexedToolUseResult>{};
@@ -116,13 +157,17 @@ final class ClaudeCompatibleToolResultEnricher
           blockIsError: payload['blockIsError'] == true,
         );
       }
-      _indexes[identity] = _CachedToolResultIndex(
+      indexes[identity] = _CachedToolResultIndex(
         indexedLength: indexedLength,
         indexedBytes: indexedBytes is int ? indexedBytes : indexedLength,
         boundary: boundary,
+        sourceToken: sourceToken is String && sourceToken.trim().isNotEmpty
+            ? sourceToken.trim()
+            : null,
         records: records,
       );
     }
+    return indexes;
   }
 
   @override
@@ -149,7 +194,11 @@ final class ClaudeCompatibleToolResultEnricher
         rootTranscriptPath: rootTranscriptPath,
         bundle: bundle,
       );
-      final toolUseResults = _recordsFor(identity: identity, content: content);
+      final toolUseResults = _recordsFor(
+        identity: identity,
+        content: content,
+        sourceToken: sourceToken,
+      );
       if (toolUseResults.isEmpty) return messages;
 
       return _applyIndex(messages, toolUseResults);
@@ -167,12 +216,14 @@ final class ClaudeCompatibleToolResultEnricher
   Map<String, _IndexedToolUseResult> _recordsFor({
     required String identity,
     required String content,
+    required String? sourceToken,
   }) {
     final length = content.length;
     final cached = identity.isEmpty ? null : _indexes[identity];
     if (cached != null &&
         cached.indexedLength == length &&
-        cached.boundary == _boundaryOf(content, length)) {
+        cached.boundary == _boundaryOf(content, length) &&
+        _sourceTokenMatches(cached.sourceToken, sourceToken)) {
       return cached.records;
     }
     if (cached != null &&
@@ -185,18 +236,25 @@ final class ClaudeCompatibleToolResultEnricher
       _storeIndex(
         identity: identity,
         content: content,
+        sourceToken: sourceToken,
         records: merged,
       );
       return merged;
     }
     final records = _indexToolUseResults(content);
-    _storeIndex(identity: identity, content: content, records: records);
+    _storeIndex(
+      identity: identity,
+      content: content,
+      sourceToken: sourceToken,
+      records: records,
+    );
     return records;
   }
 
   void _storeIndex({
     required String identity,
     required String content,
+    required String? sourceToken,
     required Map<String, _IndexedToolUseResult> records,
   }) {
     if (identity.isEmpty) return;
@@ -204,6 +262,7 @@ final class ClaudeCompatibleToolResultEnricher
       indexedLength: content.length,
       indexedBytes: utf8.encode(content).length,
       boundary: _boundaryOf(content, content.length),
+      sourceToken: _normalizeSourceToken(sourceToken),
       records: records,
     );
   }
@@ -231,13 +290,25 @@ final class _CachedToolResultIndex {
     required this.indexedLength,
     required this.indexedBytes,
     required this.boundary,
+    required this.sourceToken,
     required this.records,
   });
 
   final int indexedLength;
   final int indexedBytes;
   final String boundary;
+  final String? sourceToken;
   final Map<String, _IndexedToolUseResult> records;
+}
+
+String? _normalizeSourceToken(String? token) {
+  final trimmed = token?.trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
+}
+
+bool _sourceTokenMatches(String? cached, String? current) {
+  final currentToken = _normalizeSourceToken(current);
+  return cached != null && currentToken != null && cached == currentToken;
 }
 
 String _cacheIdentity({
@@ -379,8 +450,9 @@ Map<String, _IndexedToolUseResult> _indexDecodedEvents(
   return index;
 }
 
-List<Map<String, dynamic>?> _defaultDecodeLines(List<String> lines) =>
-    [for (final line in lines) _tryDecodeObject(line)];
+List<Map<String, dynamic>?> _defaultDecodeLines(List<String> lines) => [
+  for (final line in lines) _tryDecodeObject(line),
+];
 
 Map<String, dynamic>? _tryDecodeObject(String line) {
   try {
@@ -413,10 +485,7 @@ _Replacement? _replacementFromToolUseResult(Object? toolUseResult) {
     final text = _combineStdoutStderr(stdout, stderr);
     if (text.isEmpty) return null;
 
-    return _Replacement(
-      text: text,
-      isError: _isErrorExitCode(map['exitCode']),
-    );
+    return _Replacement(text: text, isError: _isErrorExitCode(map['exitCode']));
   }
 
   return null;

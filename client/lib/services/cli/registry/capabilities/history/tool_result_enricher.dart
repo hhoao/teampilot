@@ -3,6 +3,11 @@ import 'package:ai_message_core/ai_message_core.dart';
 import '../../../../session/session_history_context.dart';
 
 abstract interface class ToolResultEnricher {
+  /// Stable ID for a pure bundle-only enricher that can run in
+  /// HistoryParseWorker. Null means the enricher must remain on the caller
+  /// isolate.
+  String? get workerId => null;
+
   /// True when [result] carries this enricher's truncation marker — a
   /// placeholder the enricher could backfill. The loader's enrichment guard
   /// consults this to skip [enrich] when no part needs it; enrichers that
@@ -70,6 +75,17 @@ abstract interface class ToolResultIndexCache {
   void importIndex(Object? snapshot);
 }
 
+/// Applies a previously exported index without decoding transcript content or
+/// mutating the live cache.
+abstract interface class ToolResultIndexSnapshotApplier {
+  Future<List<AiMessage>> applyIndexSnapshot({
+    required List<AiMessage> messages,
+    required Object? snapshot,
+    String? sourceToken,
+    String? rootTranscriptPath,
+  });
+}
+
 /// Canonical marker-shape gate shared by the interface default and marker-only
 /// enrichers: a String result carrying this enricher's truncation marker.
 bool defaultToolResultNeedsEnrichment(
@@ -82,6 +98,9 @@ bool defaultToolResultNeedsEnrichment(
 
 final class NoOpToolResultEnricher implements ToolResultEnricher {
   const NoOpToolResultEnricher();
+
+  @override
+  String? get workerId => null;
 
   @override
   bool get requiresFilesystem => false;
@@ -100,6 +119,5 @@ final class NoOpToolResultEnricher implements ToolResultEnricher {
     required String? rootTranscriptPath,
     required AiTranscriptBundle? bundle,
     String? sourceToken,
-  }) async =>
-      messages;
+  }) async => messages;
 }
