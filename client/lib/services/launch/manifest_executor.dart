@@ -82,7 +82,7 @@ class ManifestExecutor {
       'blobs=$blobCount blobBytes=$blobBytes inlineBytes=$inlineBytes',
     );
 
-    if (runner != null) {
+    if (runner != null && !sameHost) {
       final payload = await compileApplyPlanForSsh(
         plan: built.plan,
         blobs: built.blobs,

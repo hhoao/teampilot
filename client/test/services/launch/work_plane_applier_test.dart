@@ -8,6 +8,23 @@ import 'package:teampilot/services/launch/work_plane_applier.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
+  test('writeInline uses atomicWrite', () async {
+    final fs = _AtomicWriteRecordingFilesystem();
+    await WorkPlaneApplier(
+      fs: fs,
+      blobs: MemoryBlobStore(),
+      workRoot: '/w',
+    ).apply(
+      ApplyPlan(
+        workRoot: '/w',
+        ops: [ApplyWriteInline(path: '/w/a/file.txt', content: 'content')],
+      ),
+    );
+
+    expect(fs.atomicWrites, ['/w/a/file.txt']);
+    expect(await fs.readString('/w/a/file.txt'), 'content');
+  });
+
   test('rm then writeBlob leaves file; writeBlob then rm removes it', () async {
     final fs = InMemoryFilesystem();
     final blobs = MemoryBlobStore();
@@ -57,25 +74,33 @@ void main() {
     expect(await fs.readSymlinkTarget('/w/link'), '/w/target');
   });
 
-  test('escapes workRoot fail closed before later ops', () async {
+  test('middle escape fails closed before applying any ops', () async {
     final fs = InMemoryFilesystem();
-    await fs.writeString('/w/keep.txt', 'keep');
     expect(
-      () => WorkPlaneApplier(
-        fs: fs,
-        blobs: MemoryBlobStore(),
-        workRoot: '/w',
-      ).apply(
-        ApplyPlan(
-          workRoot: '/w',
-          ops: [
-            ApplyRemove('/etc/passwd'),
-            ApplyRemove('/w/keep.txt'),
-          ],
-        ),
-      ),
+      () => WorkPlaneApplier(fs: fs, blobs: MemoryBlobStore(), workRoot: '/w')
+          .apply(
+            ApplyPlan(
+              workRoot: '/w',
+              ops: [
+                ApplyWriteInline(path: '/w/created.txt', content: 'created'),
+                ApplyRemove('/etc/passwd'),
+                ApplyWriteInline(path: '/w/later.txt', content: 'later'),
+              ],
+            ),
+          ),
       throwsStateError,
     );
-    expect(await fs.readString('/w/keep.txt'), 'keep');
+    expect((await fs.stat('/w/created.txt')).exists, isFalse);
+    expect((await fs.stat('/w/later.txt')).exists, isFalse);
   });
+}
+
+class _AtomicWriteRecordingFilesystem extends InMemoryFilesystem {
+  final List<String> atomicWrites = [];
+
+  @override
+  Future<void> atomicWrite(String path, String content) {
+    atomicWrites.add(path);
+    return super.atomicWrite(path, content);
+  }
 }

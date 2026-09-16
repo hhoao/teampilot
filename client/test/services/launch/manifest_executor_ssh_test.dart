@@ -68,87 +68,49 @@ void main() {
     expect(factory.hasLiveStorageClient(profile.id), isTrue);
   });
 
-  test(
-    'same-host ssh flush sends bounded commands and payload stdin',
-    () async {
-      final execs = <_RecordedExec>[];
-      const profile = SshProfile(
-        id: 'p1',
-        name: 'dev',
-        host: 'example.com',
-        username: 'alice',
-      );
+  test('same-host ssh flush applies in process without ssh execs', () async {
+    final execs = <_RecordedExec>[];
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'dev',
+      host: 'example.com',
+      username: 'alice',
+    );
 
-      final factory = SshClientFactory(
-        credentialStore: InMemorySshCredentialStore(),
-        knownHostRepository: InMemorySshKnownHostRepository(),
-        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
-          return _RunnableClient(
-            onRun: (command, stdin) {
-              execs.add(_RecordedExec(command: command, stdin: stdin));
-            },
-          );
-        },
-      );
+    final factory = SshClientFactory(
+      credentialStore: InMemorySshCredentialStore(),
+      knownHostRepository: InMemorySshKnownHostRepository(),
+      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+        return _RunnableClient(
+          onRun: (command, stdin) {
+            execs.add(_RecordedExec(command: command, stdin: stdin));
+          },
+        );
+      },
+    );
 
-      final fs = InMemoryFilesystem();
-      await fs.writeString('/src/tree/a.txt', 'A');
-      final manifest = LaunchManifest()
-        ..copyTree(source: '/src/tree', destination: '/dst/tree')
-        ..symlink(linkPath: '/dst/home/.npm', target: '/dst/.npm');
+    final fs = InMemoryFilesystem();
+    await fs.writeString('/src/tree/a.txt', 'A');
+    final manifest = LaunchManifest()
+      ..copyTree(source: '/src/tree', destination: '/dst/tree')
+      ..symlink(linkPath: '/dst/home/.npm', target: '/dst/.npm');
 
-      final before = await appLogger.getPendingLogLines();
-      await ManifestExecutor(
-        sshClientFactory: factory,
-        profileById: (_) => profile,
-      ).flush(
-        manifest: manifest,
-        targetFs: fs,
-        sourceFs: fs,
-        sshProfileId: profile.id,
-        symlinkProjectionRoot: '/dst',
-        homeRoot: '/dst',
-      );
-      final lines = (await appLogger.getPendingLogLines()).skip(before.length);
+    await ManifestExecutor(
+      sshClientFactory: factory,
+      profileById: (_) => profile,
+    ).flush(
+      manifest: manifest,
+      targetFs: fs,
+      sourceFs: fs,
+      sshProfileId: profile.id,
+      symlinkProjectionRoot: '/dst',
+      homeRoot: '/dst',
+    );
 
-      expect(execs, hasLength(2));
-      expect(execs.every((exec) => exec.command.length < 1024), isTrue);
-      expect(execs.every((exec) => exec.stdin?.isNotEmpty ?? false), isTrue);
-      expect(execs.first.command, 'bash -s');
-      final script = utf8.decode(execs.first.stdin!);
-      expect(script, contains("rm -rf -- '/dst/home/.npm'"));
-      expect(script, contains("ln -sfn -- '/dst/.npm' '/dst/home/.npm'"));
-      expect(script, isNot(contains('cat >')));
-      expect(execs.last.command, contains('gzip -dc | tar -x'));
-      expect(
-        lines.where(
-          (l) => l.contains('[session-launch] manifest flush via ssh ops='),
-        ),
-        isNotEmpty,
-      );
-      expect(
-        lines.where(
-          (l) =>
-              l.contains('apply-plan protocol=1') &&
-              l.contains('provided=') &&
-              l.contains('ops=') &&
-              l.contains('blobs=') &&
-              l.contains('blobBytes=') &&
-              l.contains('inlineBytes='),
-        ),
-        isNotEmpty,
-      );
-      expect(
-        lines.where(
-          (l) =>
-              l.contains('stdinBytes=') &&
-              l.contains('scriptEpochs=') &&
-              l.contains('tarEpochs='),
-        ),
-        isNotEmpty,
-      );
-    },
-  );
+    expect(execs, isEmpty);
+    expect(await fs.readString('/dst/tree/a.txt'), 'A');
+    expect(await fs.readSymlinkTarget('/dst/home/.npm'), '/dst/.npm');
+  });
 
   test('off-home ssh flush rejects empty work root', () async {
     const profile = SshProfile(

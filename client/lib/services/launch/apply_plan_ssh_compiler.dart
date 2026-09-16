@@ -24,8 +24,8 @@ Future<ApplyPlanSshPayload> compileApplyPlanForSsh({
     throw StateError('unsupported protocolVersion');
   }
 
-  final script = _compileMutationScript(plan.ops);
   final members = _compactedBlobMembers(plan);
+  final script = _compileMutationScript(plan.ops, members.values);
   if (members.isEmpty) {
     return ApplyPlanSshPayload(script: script);
   }
@@ -45,9 +45,13 @@ Future<ApplyPlanSshPayload> compileApplyPlanForSsh({
   );
 }
 
-String? _compileMutationScript(List<ApplyOp> ops) {
+String? _compileMutationScript(
+  List<ApplyOp> ops,
+  Iterable<_BlobMember> blobMembers,
+) {
   final buffer = StringBuffer();
-  for (final op in ops) {
+  for (var opIndex = 0; opIndex < ops.length; opIndex++) {
+    final op = ops[opIndex];
     switch (op) {
       case ApplyEnsureDir(:final path):
         buffer.writeln('mkdir -p ${posixShellQuote(path)}');
@@ -66,6 +70,13 @@ String? _compileMutationScript(List<ApplyOp> ops) {
             '${posixShellQuote(linkPath)}',
           );
       case ApplyWriteInline(:final path, :final content):
+        final normalizedPath = p.posix.normalize(path);
+        final supersededByBlob = blobMembers.any(
+          (member) =>
+              member.opIndex > opIndex &&
+              p.posix.normalize(member.destination) == normalizedPath,
+        );
+        if (supersededByBlob) break;
         final delimiter = _heredocDelimiter(content);
         buffer
           ..writeln('mkdir -p ${posixShellQuote(_posixDirname(path))}')
@@ -120,18 +131,31 @@ Map<String, _BlobMember> _compactedBlobMembers(ApplyPlan plan) {
   }
   lastWrites.removeWhere((_, member) {
     for (var i = member.opIndex + 1; i < plan.ops.length; i++) {
-      final op = plan.ops[i];
-      if (op is! ApplyRemove) continue;
-      final removePath = p.posix.normalize(op.path);
-      final destination = p.posix.normalize(member.destination);
-      if (destination == removePath ||
-          p.posix.isWithin(removePath, destination)) {
+      if (_mutationShadowsDestination(plan.ops[i], member.destination)) {
         return true;
       }
     }
     return false;
   });
   return lastWrites;
+}
+
+bool _mutationShadowsDestination(ApplyOp op, String destination) {
+  final normalizedDestination = p.posix.normalize(destination);
+  bool atOrAbove(String path) {
+    final normalizedPath = p.posix.normalize(path);
+    return normalizedDestination == normalizedPath ||
+        p.posix.isWithin(normalizedPath, normalizedDestination);
+  }
+
+  return switch (op) {
+    ApplyRemove(:final path) => atOrAbove(path),
+    ApplyRename(:final from, :final to) => atOrAbove(from) || atOrAbove(to),
+    ApplySymlink(:final linkPath) => atOrAbove(linkPath),
+    ApplyWriteInline(:final path) =>
+      normalizedDestination == p.posix.normalize(path),
+    ApplyEnsureDir() || ApplyWriteBlob() || ApplyTree() => false,
+  };
 }
 
 _BlobMember _blobMember({

@@ -55,7 +55,12 @@ final class _WorkPathProjector {
   int _providedLinks = 0;
 
   Future<ApplyPlanBuild> build() async {
-    for (final entry in manifest.entries) {
+    for (
+      var entryIndex = 0;
+      entryIndex < manifest.entries.length;
+      entryIndex++
+    ) {
+      final entry = manifest.entries[entryIndex];
       switch (entry) {
         case ManifestEnsureDir(:final path):
           final projected = _project(path);
@@ -76,9 +81,17 @@ final class _WorkPathProjector {
         case ManifestSymlink(:final linkPath, :final target):
           await _addSymlink(linkPath: linkPath, target: target);
         case ManifestCopyFile(:final source, :final destination):
-          await _addCopyFile(source: source, destination: destination);
+          await _addCopyFile(
+            source: source,
+            destination: destination,
+            entryIndex: entryIndex,
+          );
         case ManifestCopyTree(:final source, :final destination):
-          await _addCopyTree(source: source, destination: destination);
+          await _addCopyTree(
+            source: source,
+            destination: destination,
+            entryIndex: entryIndex,
+          );
       }
     }
     return ApplyPlanBuild(
@@ -117,10 +130,13 @@ final class _WorkPathProjector {
   Future<void> _addCopyFile({
     required String source,
     required String destination,
+    required int entryIndex,
   }) async {
     final projectedDest = _projectRequired(destination);
     final candidate = _project(source);
-    if (candidate != null && await _isProvidedFile(source, candidate)) {
+    if (candidate != null &&
+        !_hasLaterMutationInside(projectedDest, entryIndex) &&
+        await _isProvidedFile(source, candidate)) {
       _assertPath(candidate);
       _ops.add(ApplySymlink(linkPath: projectedDest, target: candidate));
       _providedLinks++;
@@ -138,10 +154,13 @@ final class _WorkPathProjector {
   Future<void> _addCopyTree({
     required String source,
     required String destination,
+    required int entryIndex,
   }) async {
     final projectedDest = _projectRequired(destination);
     final candidate = _project(source);
-    if (candidate != null && await _isProvidedDirectory(candidate)) {
+    if (candidate != null &&
+        !_hasLaterMutationInside(projectedDest, entryIndex) &&
+        await _isProvidedDirectory(candidate)) {
       _assertPath(candidate);
       _ops.add(ApplySymlink(linkPath: projectedDest, target: candidate));
       _providedLinks++;
@@ -205,6 +224,42 @@ final class _WorkPathProjector {
     if (candidateStat.isDirectory) return true;
     return candidateStat.isSymlink &&
         (await workFs.stat(candidate)).isDirectory;
+  }
+
+  bool _hasLaterMutationInside(String destination, int entryIndex) {
+    final context = sourceFs.pathContext;
+    final normalizedDestination = context.normalize(destination);
+    for (var i = entryIndex + 1; i < manifest.entries.length; i++) {
+      for (final path in _mutationPaths(manifest.entries[i])) {
+        final projected = _project(path);
+        if (projected == null) continue;
+        final normalizedPath = context.normalize(projected);
+        if (normalizedPath == normalizedDestination ||
+            context.isWithin(normalizedDestination, normalizedPath)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  Iterable<String> _mutationPaths(LaunchManifestEntry entry) sync* {
+    switch (entry) {
+      case ManifestWriteFile(:final path):
+        yield path;
+      case ManifestRemoveRecursive(:final path):
+        yield path;
+      case ManifestRename(:final from, :final to):
+        yield from;
+        yield to;
+      case ManifestSymlink(:final linkPath):
+        yield linkPath;
+      case ManifestCopyFile(:final destination) ||
+          ManifestCopyTree(:final destination):
+        yield destination;
+      case ManifestEnsureDir():
+        break;
+    }
   }
 
   Future<String> _storeBlob(List<int> bytes) async {

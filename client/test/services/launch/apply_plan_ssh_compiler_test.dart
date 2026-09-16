@@ -124,6 +124,62 @@ void main() {
     expect(decoded.findFile('tree/gone/file.bin'), isNull);
   });
 
+  test('later inline write removes the matching tree member', () async {
+    final blobs = MemoryBlobStore();
+    final hash = contentSha256Hex([3]);
+    await blobs.put(hash, [3]);
+
+    final payload = await compileApplyPlanForSsh(
+      plan: ApplyPlan(
+        workRoot: '/w',
+        ops: [
+          ApplyTree(
+            dest: '/w/cursor',
+            entries: [
+              ApplyTreeEntry(rel: 'settings.json', sha256: hash),
+              ApplyTreeEntry(rel: 'keep.json', sha256: hash),
+            ],
+          ),
+          ApplyWriteInline(path: '/w/cursor/settings.json', content: 'session'),
+        ],
+      ),
+      blobs: blobs,
+    );
+
+    final decoded = TarDecoder().decodeBytes(
+      GZipDecoder().decodeBytes(payload.gzipTar!),
+    );
+    expect(decoded.findFile('cursor/settings.json'), isNull);
+    expect(decoded.findFile('cursor/keep.json'), isNotNull);
+    expect(payload.script, contains('session'));
+  });
+
+  test(
+    'later blob write removes an earlier inline write from script',
+    () async {
+      final blobs = MemoryBlobStore();
+      final hash = contentSha256Hex([4]);
+      await blobs.put(hash, [4]);
+
+      final payload = await compileApplyPlanForSsh(
+        plan: ApplyPlan(
+          workRoot: '/w',
+          ops: [
+            ApplyWriteInline(path: '/w/settings.json', content: 'session'),
+            ApplyWriteBlob(path: '/w/settings.json', sha256: hash),
+          ],
+        ),
+        blobs: blobs,
+      );
+
+      expect(payload.script, isNull);
+      final decoded = TarDecoder().decodeBytes(
+        GZipDecoder().decodeBytes(payload.gzipTar!),
+      );
+      expect(decoded.findFile('settings.json')!.content, [4]);
+    },
+  );
+
   test('inline heredoc cannot be terminated by its content', () async {
     const content = 'before\n__TP_MANIFEST_1__\nafter';
     final payload = await compileApplyPlanForSsh(

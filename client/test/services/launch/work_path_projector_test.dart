@@ -53,6 +53,29 @@ void main() {
     expect(bytes, [0, 1, 255]);
   });
 
+  test('provided copyTree is materialized when later op mutates it', () async {
+    final sourceFs = InMemoryFilesystem();
+    final workFs = InMemoryFilesystem();
+    await sourceFs.writeString('/h/plugins/installed/foo/a.txt', 'A');
+    await workFs.ensureDir('/w/plugins/installed/foo');
+    final manifest = LaunchManifest()
+      ..copyTree(source: '/h/plugins/installed/foo', destination: '/w/sess/foo')
+      ..writeFile('/w/sess/foo/stamp.json', '{}');
+
+    final built = await buildApplyPlan(
+      manifest: manifest,
+      sourceFs: sourceFs,
+      workFs: workFs,
+      homeRoot: '/h',
+      workRoot: '/w',
+    );
+
+    expect(built.providedLinks, 0);
+    expect(built.plan.ops.whereType<ApplySymlink>(), isEmpty);
+    expect(built.plan.ops.whereType<ApplyTree>(), hasLength(1));
+    expect(built.plan.ops.whereType<ApplyWriteInline>(), hasLength(1));
+  });
+
   test('same path string different file bytes is not provided', () async {
     final sourceFs = InMemoryFilesystem();
     final workFs = InMemoryFilesystem();
