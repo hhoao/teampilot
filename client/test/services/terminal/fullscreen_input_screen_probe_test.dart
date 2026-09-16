@@ -60,6 +60,43 @@ void main() {
     expect(anchor!.row, 0);
   });
 
+  test(
+    'bottomPad counts from the last text row, so a high footer never becomes baseline',
+    () {
+      // Real cursor grid: the composer box (r8 paste) sits ABOVE a tall blank
+      // tail (r12..r38 empty). Sending "teampilot" collides with the cwd footer
+      // at r11. Excluding the last N PHYSICAL rows skips empty rows and still
+      // lets the footer drive expensive baseline/anchor — the pad must be
+      // measured from the last NON-BLANK row.
+      final rows = List<String>.filled(39, '');
+      rows[8] = '  → teampilot';
+      rows[9] = '▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀';
+      rows[10] = 'Cursor Grok 4.6 High                                 Run Everything';
+      rows[11] = '/home/hhoa/git/hhoa/teampilot · main';
+      final grid = _FakeGrid.wrappedWideLines(columns: 120, lineTexts: rows);
+
+      // Without the pad the footer at r11 (last text row) wins the bottom-up scan.
+      expect(
+        locateFullscreenPromptNeedle(grid, 'teampilot', scanRows: 39)?.row,
+        11,
+      );
+
+      // With pad=2 the cwd footer is excluded from the baseline/ACK scan.
+      final anchor = locateFullscreenPromptNeedle(
+        grid,
+        'teampilot',
+        scanRows: 39,
+        bottomPad: 2,
+      );
+      expect(anchor, isNotNull);
+      expect(
+        anchor!.row,
+        8,
+        reason: 'baseline/ACK must hit the real paste, not the cwd footer',
+      );
+    },
+  );
+
   test('locateNeedle matches CJK with wide-char spacer columns', () {
     final grid = _FakeGrid.wideCjkRow(row: 1, prefix: '> ', text: '和你的队员打个招呼吧');
     final anchor = locateFullscreenPromptNeedle(grid, '和你的队员打个招呼吧');

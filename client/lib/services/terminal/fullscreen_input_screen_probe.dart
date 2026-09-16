@@ -63,11 +63,14 @@ FullscreenPromptAnchor? locateFullscreenPromptNeedle(
   final rows = grid.rows;
   if (rows == 0 || grid.columns == 0) return null;
 
-  // Search the last [scanRows] rows, excluding the bottom [bottomPad] rows on
-  // the screen (cursor-agent's footer cwd / model rows) so needle text that
-  // happens to sit BELOW the input box (status/footer) is never ACKed as
-  // staged input and never forms a paste baseline.
-  final bottom = rows - bottomPad;
+  // Search the last [scanRows] rows of TEXT, excluding the bottom [bottomPad]
+  // of them. The pad counts from the LAST NON-BLANK row, not the grid's
+  // physical bottom: cursor-agent's composer box may sit far above a blank
+  // tail (a tall terminal), with its footer (model / cwd) just below the box —
+  // needle text duplicating that footer must never be ACKed as staged input
+  // nor form a paste baseline.
+  final lastContent = _lastContentRow(grid);
+  final bottom = lastContent + 1 - bottomPad;
   if (bottom <= 0) return null;
   final windowStart = (bottom - scanRows).clamp(0, bottom - 1);
   final needleRunes = needle.runes.toList();
@@ -78,6 +81,14 @@ FullscreenPromptAnchor? locateFullscreenPromptNeedle(
     }
   }
   return null;
+}
+
+/// Highest grid row that has any non-blank content, or -1.
+int _lastContentRow(TerminalScreenGrid grid) {
+  for (var r = grid.rows - 1; r >= 0; r--) {
+    if (!_rowIsBlank(grid, r)) return r;
+  }
+  return -1;
 }
 
 /// Locate [needle] in the **cursor input zone**: the cursor row plus a small
@@ -152,7 +163,8 @@ FullscreenPromptAnchor? locateCollapsedPasteNeedle(
 }) {
   final rows = grid.rows;
   if (rows == 0 || grid.columns == 0) return null;
-  final bottom = rows - bottomPad;
+  final lastContent = _lastContentRow(grid);
+  final bottom = lastContent + 1 - bottomPad;
   if (bottom <= 0) return null;
   final windowStart = (bottom - scanRows).clamp(0, bottom - 1);
   for (var r = bottom - 1; r >= windowStart; r--) {

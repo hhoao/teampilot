@@ -141,7 +141,7 @@ abort（shell 断开 / fence 关闭）从任意非终态 → aborted
 - **粘贴 ACK 分两种机制**：
   - **光标输入区（默认）**：窗口 `[cursor-4, cursor]`（多行粘贴尾部上探），仅扫描光标及其上方——opencode/claude/codex/flashskyai。
   - **底部扫描 + 基线（cursor）**：cursor-agent 的镜像终端光标停在输入框下方的空行（与文字无关），光标区会从粘贴中间开始、漏掉 needle 起始行 → 永远 ACK 不上。cursor 改用底部输入区扫描 + "贴前后基线行号对比"：清空后先记录基线（残留的相同 transcript echo），粘贴后命中行必须**严格低于**基线（`<=` 拒绝），防止旧 echo 冒充新贴。
-  - **footer 排除**：cursor 的输入框下方还有 footer（`Composer …` / cwd `~/…`）。若待发文本恰好撞上 footer 文字，基线会被钉在框**下**，新粘贴（框内）永远不满足"基线下面" → 卡死。`pasteZoneBottomPad`（cursor=2）把最后 N 行排除出底部扫描，footer 不参与基线/落点判定。
+  - **footer 排除**：cursor 的输入框下方有 footer（`Cursor …` / cwd `~/…/teampilot`）。若待发文本恰好撞上 footer 文字，基线会被钉在框**下**，新粘贴（框内）永远不满足"基线下面" → 卡死。`pasteZoneBottomPad`（cursor=2）从**最后一个有文本的行**往上排除 N 行（footer 可能不在网格物理底部上方，后面还跟着整片空行），footer 不参与基线/落点判定。
 - **向下不扩**：光标下方的行（status/footer）不参与，避免单字符 needle（如 "1"）撞上状态行的 "17%"。
 - 窗口内逐行匹配 needle（`_matchesNeedleAt`：跨行软换行拼接、CJK 宽字符、wrap 空格折叠）。
 - 光标不可用时（`cursorRow < 0`）回退到"屏幕底部 scanRows 行"搜索。
