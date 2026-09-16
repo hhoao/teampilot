@@ -70,7 +70,6 @@ import 'services/storage/home_storage.dart';
 import 'services/storage/home_storage_invalidator.dart';
 import 'services/storage/home_target_controller.dart';
 import 'services/storage/workspace_directory_picker.dart';
-import 'services/app/desktop_window_actions.dart';
 import 'services/ssh/ssh_client_factory.dart';
 import 'services/ssh/ssh_profile_connection_coordinator.dart';
 import 'services/terminal/terminal_transport_factory.dart';
@@ -106,6 +105,7 @@ import 'services/automation/automation_scheduler.dart';
 import 'utils/logging/logger.dart';
 import 'widgets/app_text_scale_boundary.dart';
 import 'widgets/app_update_available_dialog.dart';
+import 'widgets/desktop_drag_to_resize_host.dart';
 import 'widgets/ui_zoom.dart';
 
 /// Live [ShortcutContext] used by [ShortcutDispatcherHost].
@@ -347,9 +347,6 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
   Widget build(BuildContext context) => widget.child;
 }
 
-/// Wraps [child] with [DragToResizeArea] only when the window is not maximized
-/// or in fullscreen, so resize cursors don't appear on window edges that can't
-/// be dragged.
 /// Triggers the silent startup update check once the UI is mounted, and shows
 /// the update dialog when [AppUpdateCubit] raises a one-shot prompt.
 class _AppUpdateAutoCheck extends StatefulWidget {
@@ -400,59 +397,6 @@ class _AppUpdateAutoCheckState extends State<_AppUpdateAutoCheck> {
       },
       child: widget.child,
     );
-  }
-}
-
-class _DragToResizeWrapper extends StatefulWidget {
-  const _DragToResizeWrapper({required this.child});
-
-  final Widget child;
-
-  @override
-  State<_DragToResizeWrapper> createState() => _DragToResizeWrapperState();
-}
-
-class _DragToResizeWrapperState extends State<_DragToResizeWrapper>
-    with WindowListener {
-  bool _isMaximized = false;
-
-  @override
-  void initState() {
-    super.initState();
-    windowManager.addListener(this);
-    _syncExpanded();
-  }
-
-  @override
-  void dispose() {
-    windowManager.removeListener(this);
-    super.dispose();
-  }
-
-  Future<void> _syncExpanded() async {
-    final expanded = await isDesktopWindowExpanded();
-    if (!mounted) return;
-    setState(() => _isMaximized = expanded);
-  }
-
-  @override
-  void onWindowMaximize() => unawaited(_syncExpanded());
-
-  @override
-  void onWindowUnmaximize() => unawaited(_syncExpanded());
-
-  @override
-  void onWindowEnterFullScreen() => unawaited(_syncExpanded());
-
-  @override
-  void onWindowLeaveFullScreen() => unawaited(_syncExpanded());
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isMaximized) {
-      return widget.child;
-    }
-    return DragToResizeArea(child: widget.child);
   }
 }
 
@@ -1055,8 +999,10 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
               // Linux/GTK also strips the resize-border grips. DragToResizeArea
               // re-adds invisible resize handles on all edges/corners so the
               // frameless window can still be resized from its borders.
+              // Keep that wrapper mounted when maximized — disable edges
+              // instead of removing it — or the route subtree remounts.
               if (!Platform.isAndroid) {
-                content = _DragToResizeWrapper(child: content);
+                content = DesktopDragToResizeScope(child: content);
               }
               return content;
             },
