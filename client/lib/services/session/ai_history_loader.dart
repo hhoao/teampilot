@@ -700,7 +700,9 @@ final class AiHistoryLoader {
       // published window (`_messages`) as a reason to skip: a later token
       // change must re-read the latest page instead of falling through to a
       // full locate/parse while the background index is still running.
-      if (!skipPaging && !_hasWarmIncremental(cacheKey)) {
+      if (!skipPaging &&
+          cap.pageReader != null &&
+          !_hasWarmIncremental(cacheKey)) {
         final paged = await _tryPageFirst(
           session: session,
           cacheKey: cacheKey,
@@ -711,6 +713,30 @@ final class AiHistoryLoader {
           effectiveMemberId: effectiveMemberId,
         );
         if (paged != null && !_hasWarmIncremental(cacheKey)) return paged;
+        if (!_hasWarmIncremental(cacheKey)) {
+          _complete[cacheKey] = false;
+          unawaited(
+            _scheduleFullIndex(
+              session: session,
+              cli: cli,
+              effectiveMemberId: effectiveMemberId,
+              ctx: ctx,
+              cacheKey: cacheKey,
+            ),
+          );
+          final previous =
+              _messages[cacheKey] ??
+              _fullIndexes[cacheKey]?.messages ??
+              const <AiMessage>[];
+          return _result(
+            cacheKey: cacheKey,
+            messages: previous,
+            cli: cli,
+            subagentAttachments:
+                _attachments[cacheKey] ??
+                const <String, AiSubagentAttachment>{},
+          );
+        }
       }
 
       // 增量优先:数据库行级增量(如 opencode SQLite)——跳过全量 locate +
@@ -724,7 +750,7 @@ final class AiHistoryLoader {
       if (dbDelta != null) {
         final parentPath = dbDelta.parentPath;
         if (parentPath != null) _parentPaths[cacheKey] = parentPath;
-        return _finishIncremental(
+      return await _finishIncremental(
           cacheKey: cacheKey,
           cli: cli,
           ctx: ctx,
@@ -761,7 +787,7 @@ final class AiHistoryLoader {
         parentPath: parentPath,
       );
       if (tail != null) {
-        return _finishIncremental(
+      return await _finishIncremental(
           cacheKey: cacheKey,
           cli: cli,
           ctx: ctx,
@@ -878,7 +904,10 @@ final class AiHistoryLoader {
       );
       _fullIndexes[cacheKey] = complete;
       _fullIndexFutures[cacheKey] = Future.value(complete);
-      if (skipPaging) return complete;
+      if (skipPaging) {
+        _tokens[cacheKey] = token ?? 'changed-$cacheKey';
+        return complete;
+      }
       _messages[cacheKey] = messages;
       _attachments.putIfAbsent(cacheKey, () => {});
       _attachmentSigs[cacheKey] = collectTaskCallSignatures(
@@ -1001,6 +1030,32 @@ final class AiHistoryLoader {
     );
   }
 
+  Future<AiHistoryLoadResult> _scheduleFullIndex({
+    required AppSession session,
+    required CliTool cli,
+    required String effectiveMemberId,
+    required SessionHistoryContext ctx,
+    required String cacheKey,
+  }) {
+    final existing = _fullIndexFutures[cacheKey];
+    if (existing != null && _fullIndexes[cacheKey] == null) return existing;
+
+    final future = Future<AiHistoryLoadResult>(() {
+      return _loadOnce(
+        session: session,
+        cli: cli,
+        effectiveMemberId: effectiveMemberId,
+        ctx: ctx,
+        cacheKey: cacheKey,
+        force: true,
+        skipPaging: true,
+      );
+    });
+    _fullIndexFutures[cacheKey] = future;
+    future.ignore();
+    return future;
+  }
+
   Future<AiHistoryLoadResult?> _tryPageFirst({
     required AppSession session,
     required String cacheKey,
@@ -1113,19 +1168,12 @@ final class AiHistoryLoader {
             'msgs=${messages.length}',
           );
         }
-        _fullIndexFutures.putIfAbsent(
-          cacheKey,
-          () => Future(() {
-            return _loadOnce(
-              session: session,
-              cli: cli,
-              effectiveMemberId: effectiveMemberId,
-              ctx: ctx,
-              cacheKey: cacheKey,
-              force: true,
-              skipPaging: true,
-            );
-          }),
+        _scheduleFullIndex(
+          session: session,
+          cli: cli,
+          effectiveMemberId: effectiveMemberId,
+          ctx: ctx,
+          cacheKey: cacheKey,
         );
       }
       final published = AiHistoryLoadResult(

@@ -344,35 +344,16 @@ void main() {
 
     final session = simpleSession();
     final ctx = launchContextFor(session);
-    expect(
-      (await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      )).messages,
-      isEmpty,
-    );
+    await loader.load(session: session, memberId: '', launchContext: ctx);
+    await loader.fullIndex(sessionId: session.sessionId, memberId: '');
     expect(locateCalls, 1);
 
-    expect(
-      (await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      )).messages,
-      isEmpty,
-    );
+    await loader.load(session: session, memberId: '', launchContext: ctx);
     expect(locateCalls, 1);
 
     mtimeToken = 'mtime-2';
-    expect(
-      (await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      )).messages,
-      isEmpty,
-    );
+    await loader.load(session: session, memberId: '', launchContext: ctx);
+    await loader.fullIndex(sessionId: session.sessionId, memberId: '');
     expect(locateCalls, 2);
   });
 
@@ -386,34 +367,15 @@ void main() {
     final session = simpleSession();
     final ctx = launchContextFor(session);
 
-    expect(
-      (await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      )).messages,
-      isEmpty,
-    );
+    await loader.load(session: session, memberId: '', launchContext: ctx);
+    await loader.fullIndex(sessionId: session.sessionId, memberId: '');
     expect(locateCalls, 1);
-    expect(
-      (await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      )).messages,
-      isEmpty,
-    );
+    await loader.load(session: session, memberId: '', launchContext: ctx);
     expect(locateCalls, 1);
 
     loader.clearCache();
-    expect(
-      (await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      )).messages,
-      isEmpty,
-    );
+    await loader.load(session: session, memberId: '', launchContext: ctx);
+    await loader.fullIndex(sessionId: session.sessionId, memberId: '');
     expect(locateCalls, 2);
   });
 
@@ -2514,7 +2476,7 @@ void main() {
     final adapter = _GatedParseAdapter(all, Completer<void>()..complete());
     final session = simpleSession();
 
-    Future<AiHistoryLoadResult> loadWith(AiTranscriptPageReader? reader) {
+    AiHistoryLoader buildWith(AiTranscriptPageReader? reader) {
       return buildLoader(
         locator: _CountingLocator(
           () async => const AiTranscriptBundle(
@@ -2531,25 +2493,94 @@ void main() {
             fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
           ),
         ),
-      ).load(
-        session: session,
-        memberId: '',
-        launchContext: launchContextFor(session),
       );
     }
 
-    adapter.parseCalls = 0;
-    final fromNull = await loadWith(_NullPageReader());
-    expect(fromNull.isComplete, isTrue);
-    expect(fromNull.messages, hasLength(all.length));
-    expect(adapter.parseCalls, greaterThan(0));
+    final fromNullLoader = buildWith(_NullPageReader());
+    final fromNull = await fromNullLoader.load(
+      session: session,
+      memberId: '',
+      launchContext: launchContextFor(session),
+    );
+    expect(fromNull.isComplete, isFalse);
+    expect(fromNull.messages, isEmpty);
+    final fromNullFull = await fromNullLoader.fullIndex(
+      sessionId: session.sessionId,
+      memberId: '',
+    );
+    expect(fromNullFull?.isComplete, isTrue);
+    expect(fromNullFull?.messages, hasLength(all.length));
 
     adapter.parseCalls = 0;
-    final fromThrow = await loadWith(_ThrowingPageReader());
-    expect(fromThrow.isComplete, isTrue);
-    expect(fromThrow.messages, hasLength(all.length));
+    final fromThrowLoader = buildWith(_ThrowingPageReader());
+    final fromThrow = await fromThrowLoader.load(
+      session: session,
+      memberId: '',
+      launchContext: launchContextFor(session),
+    );
+    expect(fromThrow.isComplete, isFalse);
+    expect(fromThrow.messages, isEmpty);
+    final fromThrowFull = await fromThrowLoader.fullIndex(
+      sessionId: session.sessionId,
+      memberId: '',
+    );
+    expect(fromThrowFull?.isComplete, isTrue);
+    expect(fromThrowFull?.messages, hasLength(all.length));
     expect(adapter.parseCalls, greaterThan(0));
   });
+
+  test(
+    'page miss publishes loading state without awaiting full index',
+    () async {
+      final parseGate = Completer<HistoryParseResult>();
+      final executor = _GateHistoryParseExecutor(parseGate.future);
+      final session = simpleSession();
+      final loader = buildLoader(
+        parseExecutor: executor,
+        registry: fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: const _ThrowingParseAdapter(),
+          pageReader: _NullPageReader(),
+          locate: (_) async => _largeBundle(),
+        ),
+      );
+
+      final result = await loader
+          .load(
+            session: session,
+            memberId: '',
+            launchContext: launchContextFor(session),
+            force: true,
+          )
+          .timeout(const Duration(seconds: 2));
+
+      expect(result.isComplete, isFalse);
+      expect(result.messages, isEmpty);
+      await Future<void>.delayed(Duration.zero);
+      expect(executor.parseStarted, isTrue);
+
+      final pending = loader.fullIndex(
+        sessionId: session.sessionId,
+        memberId: '',
+      );
+      expect(pending, isA<Future<AiHistoryLoadResult?>>());
+
+      parseGate.complete(
+        const HistoryParseResult(
+          messages: [
+            AiMessage(
+              id: 'full-message',
+              role: AiRole.assistant,
+              parts: [AiTextPart(text: 'full result')],
+            ),
+          ],
+        ),
+      );
+      final full = await pending;
+      expect(full, isNotNull);
+      expect(full!.isComplete, isTrue);
+    },
+  );
 
   test(
     'concatenated pages match background full parse for fixture families',
@@ -2947,6 +2978,28 @@ final class _RecordingHistoryParseExecutor implements HistoryParseExecutor {
       parseTime: const Duration(milliseconds: 12),
       enrichTime: const Duration(milliseconds: 8),
     );
+  }
+
+  @override
+  Future<void> dispose() async {}
+}
+
+final class _GateHistoryParseExecutor implements HistoryParseExecutor {
+  _GateHistoryParseExecutor(this._result);
+
+  final Future<HistoryParseResult> _result;
+  var parseStarted = false;
+
+  @override
+  Future<HistoryParseResult> parse({
+    required String adapterId,
+    required AiTranscriptBundle bundle,
+    String? workerEnricherId,
+    String? sourceToken,
+    String? rootTranscriptPath,
+  }) {
+    parseStarted = true;
+    return _result;
   }
 
   @override

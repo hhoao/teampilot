@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/ai_history_seat.dart';
@@ -11,6 +13,7 @@ import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/ai_history_loader.dart';
 import 'package:teampilot/services/session/ai_history_locator.dart';
+import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/session/failed_message_store.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 import 'package:teampilot/services/session/session_history_context_builder.dart';
@@ -34,6 +37,18 @@ class _HolderAdapter implements AiTranscriptAdapter {
   @override
   Future<List<AiMessage>> parse(AiTranscriptBundle bundle) async =>
       List.of(messages());
+}
+
+class _GatedAdapter implements AiTranscriptAdapter {
+  _GatedAdapter(this.result);
+
+  final Future<List<AiMessage>> result;
+
+  @override
+  String get id => 'claude';
+
+  @override
+  Future<List<AiMessage>> parse(AiTranscriptBundle bundle) => result;
 }
 
 /// Locator that hands back a canned bundle when [emitBundle] is true.
@@ -78,7 +93,7 @@ void main() {
       folders: s.folders,
       createdAt: 0,
     ),
-                                                                      usesPosixPaths: false,
+    usesPosixPaths: false,
   );
 
   List<AiMessage> messages(int count) => [
@@ -234,45 +249,42 @@ void main() {
     expect(await store.load(current.workspaceId, current.sessionId), isEmpty);
   });
 
-  test(
-    'a new CLI message clears a hydrated failed pending overlay',
-    () async {
-      holderMessages = messages(1);
-      final current = session();
-      await seat.load(
-        session: current,
-        memberId: '',
-        launchContext: ctx(current),
-      );
-      final store = FailedMessageStore(
-        fs: InMemoryFilesystem(),
-        rootPath: '/teampilot',
-      );
-      final failed = FailedMessageRecord(
-        id: 'pending:failed',
-        text: 'failed first',
-        createdAt: DateTime.utc(2026),
-        status: FailedMessageStatus.failed,
-      );
-      await store.save(current.workspaceId, current.sessionId, failed);
-      await seat.hydratePendingUsers(
-        store: store,
-        workspaceId: current.workspaceId,
-        sessionId: current.sessionId,
-      );
+  test('a new CLI message clears a hydrated failed pending overlay', () async {
+    holderMessages = messages(1);
+    final current = session();
+    await seat.load(
+      session: current,
+      memberId: '',
+      launchContext: ctx(current),
+    );
+    final store = FailedMessageStore(
+      fs: InMemoryFilesystem(),
+      rootPath: '/teampilot',
+    );
+    final failed = FailedMessageRecord(
+      id: 'pending:failed',
+      text: 'failed first',
+      createdAt: DateTime.utc(2026),
+      status: FailedMessageStatus.failed,
+    );
+    await store.save(current.workspaceId, current.sessionId, failed);
+    await seat.hydratePendingUsers(
+      store: store,
+      workspaceId: current.workspaceId,
+      sessionId: current.sessionId,
+    );
 
-      holderMessages = messages(2);
-      bumpCacheToken();
-      await seat.softReload();
-      await Future<void>.delayed(Duration.zero);
+    holderMessages = messages(2);
+    bumpCacheToken();
+    await seat.softReload();
+    await Future<void>.delayed(Duration.zero);
 
-      expect(
-        seat.runtime.messages.map((message) => message.id),
-        isNot(contains(failed.id)),
-      );
-      expect(await store.load(current.workspaceId, current.sessionId), isEmpty);
-    },
-  );
+    expect(
+      seat.runtime.messages.map((message) => message.id),
+      isNot(contains(failed.id)),
+    );
+    expect(await store.load(current.workspaceId, current.sessionId), isEmpty);
+  });
 
   test(
     'first load with no content emits loading (initialLoading path)',
@@ -289,10 +301,63 @@ void main() {
     },
   );
 
+  test(
+    'background full index replaces the initial empty window without a wipe',
+    () async {
+      final parseGate = Completer<List<AiMessage>>();
+      final fullMessages = messages(3);
+      final current = session();
+      final fs = LocalFilesystem();
+      await seat.close();
+      loader = AiHistoryLoader(
+        contextBuilder: const SessionHistoryContextBuilder(),
+        resolveWorkContext: (_, {String? memberId}) async => RuntimeContext(
+          target: RuntimeTarget.local(),
+          filesystem: fs,
+          home: '/tmp/history-seat-no-blank',
+          cwd: '/tmp/history-seat-no-blank',
+          appDataRoot: '/tmp/history-seat-no-blank',
+          paths: AppPaths('/tmp/history-seat-no-blank'),
+        ),
+        locator: locator,
+        registry: fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: _GatedAdapter(parseGate.future),
+          pageReader: _NullPageReader(),
+        ),
+        resolveCacheToken: (_) async => cacheToken,
+      );
+      seat = AiHistorySeat(loader: loader);
+
+      await seat.load(
+        session: current,
+        memberId: '',
+        launchContext: ctx(current),
+        force: true,
+      );
+      expect(seat.runtime.messages, isEmpty);
+      expect(seat.state.status, AiHistoryViewStatus.empty);
+
+      parseGate.complete(fullMessages);
+      await pumpEventQueue();
+
+      expect(seat.runtime.messages, hasLength(fullMessages.length));
+      expect(
+        seat.runtime.messages.map((message) => message.id),
+        fullMessages.map((message) => message.id),
+      );
+      expect(seat.state.status, AiHistoryViewStatus.ready);
+    },
+  );
+
   test('loadOlder keeps runtime content and never blanks', () async {
     holderMessages = messages(40);
     bumpCacheToken();
-    await seat.load(session: session(), memberId: '', launchContext: ctx(session()));
+    await seat.load(
+      session: session(),
+      memberId: '',
+      launchContext: ctx(session()),
+    );
     expect(seat.runtime.messages, isNotEmpty);
     final before = List<AiMessage>.from(seat.runtime.messages);
     expect(seat.runtime.status, isNot(AiThreadStatus.loading));
@@ -307,21 +372,24 @@ void main() {
   });
 
   group('timeline identity on refresh', () {
-    test('softReload with unchanged transcript preserves message instances', () async {
-      holderMessages = messages(2);
-      await seat.load(
-        session: session(),
-        memberId: '',
-        launchContext: ctx(session()),
-      );
-      final before = List<AiMessage>.from(seat.loadedMessages);
+    test(
+      'softReload with unchanged transcript preserves message instances',
+      () async {
+        holderMessages = messages(2);
+        await seat.load(
+          session: session(),
+          memberId: '',
+          launchContext: ctx(session()),
+        );
+        final before = List<AiMessage>.from(seat.loadedMessages);
 
-      await seat.softReload();
+        await seat.softReload();
 
-      expect(seat.loadedMessages, hasLength(2));
-      expect(identical(seat.loadedMessages[0], before[0]), isTrue);
-      expect(identical(seat.loadedMessages[1], before[1]), isTrue);
-    });
+        expect(seat.loadedMessages, hasLength(2));
+        expect(identical(seat.loadedMessages[0], before[0]), isTrue);
+        expect(identical(seat.loadedMessages[1], before[1]), isTrue);
+      },
+    );
 
     test('softReload append preserves prior message instances', () async {
       holderMessages = messages(2);
@@ -342,7 +410,7 @@ void main() {
       expect(identical(seat.loadedMessages[1], beforeSecond), isTrue);
     });
 
-test('softReload tip growth after persist drops pending overlay', () async {
+    test('softReload tip growth after persist drops pending overlay', () async {
       holderMessages = messages(1);
       final current = session();
       await seat.load(
@@ -468,4 +536,19 @@ test('softReload tip growth after persist drops pending overlay', () async {
       expect(seat.runtime.messages.length, before);
     });
   });
+}
+
+class _NullPageReader implements AiTranscriptPageReader {
+  @override
+  Future<AiHistoryPage?> readLatest({
+    required SessionHistoryContext ctx,
+    required int limit,
+  }) async => null;
+
+  @override
+  Future<AiHistoryPage?> readOlder({
+    required SessionHistoryContext ctx,
+    required AiHistoryCursor cursor,
+    required int limit,
+  }) async => null;
 }
