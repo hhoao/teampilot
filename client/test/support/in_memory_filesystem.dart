@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/services/io/filesystem.dart';
@@ -168,8 +170,14 @@ class InMemoryFilesystem implements Filesystem {
   Future<String?> readString(String path) async {
     final direct = files[path];
     if (direct != null) return direct;
+    final bytes = byteFiles[path];
+    if (bytes != null) return utf8.decode(bytes);
     final followed = _follow(path);
-    return followed == path ? null : files[followed];
+    if (followed == path) return null;
+    final followedText = files[followed];
+    if (followedText != null) return followedText;
+    final followedBytes = byteFiles[followed];
+    return followedBytes != null ? utf8.decode(followedBytes) : null;
   }
 
   @override

@@ -77,54 +77,45 @@ void main() {
       },
     );
 
-    test(
-      'listDir stays empty for brand-new overlay-only dirs',
-      () async {
-        final disk = InMemoryFilesystem();
-        const fresh = '/teampilot/workspace/ws/sessions/s1/runtime/cursor/home';
+    test('listDir stays empty for brand-new overlay-only dirs', () async {
+      final disk = InMemoryFilesystem();
+      const fresh = '/teampilot/workspace/ws/sessions/s1/runtime/cursor/home';
 
-        final staging = ManifestFilesystem(
-          manifest: LaunchManifest(),
-          readDelegate: disk,
-        );
-        await staging.ensureDir(fresh);
+      final staging = ManifestFilesystem(
+        manifest: LaunchManifest(),
+        readDelegate: disk,
+      );
+      await staging.ensureDir(fresh);
 
-        expect(await staging.listDir(fresh), isEmpty);
-      },
-    );
+      expect(await staging.listDir(fresh), isEmpty);
+    });
 
-    test(
-      'copyTree is readable back within the same staging pass',
-      () async {
-        final disk = InMemoryFilesystem();
-        await disk.ensureDir('/src/demo/.plugin');
-        await disk.writeString(
-          '/src/demo/.plugin/plugin.json',
-          '{"name":"demo"}',
-        );
+    test('copyTree is readable back within the same staging pass', () async {
+      final disk = InMemoryFilesystem();
+      await disk.ensureDir('/src/demo/.plugin');
+      await disk.writeString(
+        '/src/demo/.plugin/plugin.json',
+        '{"name":"demo"}',
+      );
 
-        final staging = ManifestFilesystem(
-          manifest: LaunchManifest(),
-          readDelegate: disk,
-        );
-        await staging.copyTree(
-          source: '/src/demo',
-          destination: '/pool/demo',
-        );
-        // Chained copy FROM a just-staged dir (flavor projection pattern).
-        await staging.copyTree(
-          source: '/pool/demo/.plugin',
-          destination: '/pool/demo/.claude-plugin',
-        );
+      final staging = ManifestFilesystem(
+        manifest: LaunchManifest(),
+        readDelegate: disk,
+      );
+      await staging.copyTree(source: '/src/demo', destination: '/pool/demo');
+      // Chained copy FROM a just-staged dir (flavor projection pattern).
+      await staging.copyTree(
+        source: '/pool/demo/.plugin',
+        destination: '/pool/demo/.claude-plugin',
+      );
 
-        final poolEntries = await staging.listDir('/pool');
-        expect(poolEntries.map((e) => e.name), contains('demo'));
-        expect(
-          await staging.readString('/pool/demo/.claude-plugin/plugin.json'),
-          '{"name":"demo"}',
-        );
-      },
-    );
+      final poolEntries = await staging.listDir('/pool');
+      expect(poolEntries.map((e) => e.name), contains('demo'));
+      expect(
+        await staging.readString('/pool/demo/.claude-plugin/plugin.json'),
+        '{"name":"demo"}',
+      );
+    });
 
     test(
       'cross-plane flush expands a copy from a previously staged tree',
@@ -155,6 +146,8 @@ void main() {
           manifest: manifest,
           targetFs: target,
           sourceFs: source,
+          symlinkProjectionRoot: '/runtime',
+          homeRoot: '/runtime',
         );
 
         expect(
@@ -339,10 +332,7 @@ void main() {
           '{"name":"demo"}',
         );
         await disk.ensureDir('/installed/demo/skills/foo');
-        await disk.writeString(
-          '/installed/demo/skills/foo/SKILL.md',
-          '# foo',
-        );
+        await disk.writeString('/installed/demo/skills/foo/SKILL.md', '# foo');
 
         final staging = ManifestFilesystem(
           manifest: LaunchManifest(),
@@ -385,10 +375,9 @@ void main() {
           manifest: manifest,
           readDelegate: disk,
         );
-        await CursorMemberHomePassthrough(fs: staging).mirror(
-          realHomeRoot: realHome,
-          memberHomeRoot: memberHome,
-        );
+        await CursorMemberHomePassthrough(
+          fs: staging,
+        ).mirror(realHomeRoot: realHome, memberHomeRoot: memberHome);
 
         expect(
           manifest.entries.whereType<ManifestSymlink>().map((e) => e.linkPath),
@@ -399,6 +388,8 @@ void main() {
           manifest: manifest,
           targetFs: disk,
           sourceFs: disk,
+          symlinkProjectionRoot: realHome,
+          homeRoot: realHome,
         );
         expect(
           await disk.readSymlinkTarget('$memberHome/.pub-cache'),
@@ -437,6 +428,8 @@ void main() {
             manifest: manifest,
             targetFs: target,
             sourceFs: source,
+            symlinkProjectionRoot: '/dest',
+            homeRoot: '/dest',
           ),
           throwsA(
             isA<StateError>().having(
@@ -461,7 +454,10 @@ void main() {
       final manifest = LaunchManifest()
         ..ensureDir('/session/home')
         ..symlink(linkPath: '/session/home/.cache', target: '/root/.cache')
-        ..copyTree(source: '/cli-defaults/cursor', destination: '/session/cursor')
+        ..copyTree(
+          source: '/cli-defaults/cursor',
+          destination: '/session/cursor',
+        )
         ..copyFile(
           source: '/cli-defaults/cursor/settings.json',
           destination: '/session/cursor/settings.json',
@@ -498,6 +494,8 @@ void main() {
         manifest: manifest,
         targetFs: target,
         sourceFs: source,
+        symlinkProjectionRoot: '/',
+        homeRoot: '/',
       );
 
       expect(target.files.containsKey('/old'), isFalse);

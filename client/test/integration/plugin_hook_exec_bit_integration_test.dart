@@ -120,6 +120,8 @@ void main() {
         manifest: staged.manifest,
         targetFs: fs,
         sourceFs: fs,
+        symlinkProjectionRoot: root,
+        homeRoot: root,
       );
 
       final claudeDir = layout.sessionRuntimeToolDir(

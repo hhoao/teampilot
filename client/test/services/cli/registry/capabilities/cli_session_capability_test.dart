@@ -104,4 +104,12 @@ final class _RecordingRunner implements WorkPlaneScriptRunner {
   }) async {
     onRun(script);
   }
+
+  @override
+  Future<void> runStdinCommand({
+    required String command,
+    required List<int> stdin,
+    required String operation,
+    Duration? timeout,
+  }) async {}
 }

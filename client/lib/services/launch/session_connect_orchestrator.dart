@@ -339,15 +339,15 @@ class SessionConnectOrchestrator {
 
     report(CliInstallPhase.syncingRemoteWorkspace, detail: 'manifest-flush');
     final flushStarted = Stopwatch()..start();
-    // SSH/Termux work plane (including Android home-on-SSH): batch via one
-    // remote script. Local/WSL keep per-op apply. Off-home still expands
-    // control-plane copies first inside ManifestExecutor.
+    // ManifestExecutor compiles the staged manifest for the selected work
+    // plane, using SSH payloads remotely and the local applier otherwise.
     final workSshProfileId = launchTarget.sshProfileId?.trim();
     await manifestExecutor.flush(
       manifest: staged.manifest,
       targetFs: workContext.fs,
       sourceFs: offHome ? homeContext().fs : workContext.fs,
       symlinkProjectionRoot: workContext.appDataRoot,
+      homeRoot: homeContext().appDataRoot,
       sshProfileId: (workSshProfileId != null && workSshProfileId.isNotEmpty)
           ? workSshProfileId
           : null,

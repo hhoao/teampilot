@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../../models/ssh_profile.dart';
 import '../ssh/ssh_client_factory.dart';
 import '../ssh/ssh_run_result.dart';
@@ -11,6 +13,13 @@ import '../ssh/ssh_storage_io.dart';
 abstract interface class WorkPlaneScriptRunner {
   Future<void> runScript(
     String script, {
+    required String operation,
+    Duration? timeout,
+  });
+
+  Future<void> runStdinCommand({
+    required String command,
+    required List<int> stdin,
     required String operation,
     Duration? timeout,
   });
@@ -49,10 +58,40 @@ final class SshWorkPlaneScriptRunner implements WorkPlaneScriptRunner {
     String script, {
     required String operation,
     Duration? timeout,
+  }) {
+    return _run(
+      command: 'bash -s',
+      stdin: utf8.encode(script),
+      operation: operation,
+      timeout: timeout,
+    );
+  }
+
+  @override
+  Future<void> runStdinCommand({
+    required String command,
+    required List<int> stdin,
+    required String operation,
+    Duration? timeout,
+  }) {
+    return _run(
+      command: command,
+      stdin: stdin,
+      operation: operation,
+      timeout: timeout,
+    );
+  }
+
+  Future<void> _run({
+    required String command,
+    required List<int> stdin,
+    required String operation,
+    Duration? timeout,
   }) async {
-    final result = await sshClientFactory.runOnStorage(
+    final result = await sshClientFactory.runOnStorageWithStdin(
       profile,
-      script,
+      command,
+      stdin: stdin,
       timeout: timeout ?? SshStorageIo.provisionPhaseTimeout,
     );
     if (sshRunFailed(result)) {

@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import '../../cubits/chat/model/chat_tab.dart';
 import '../../cubits/chat/session_launch_host.dart';
 import '../../models/app_session.dart';
@@ -8,7 +10,16 @@ import '../../models/team_config.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../services/launch/session_shell_connector.dart';
 import '../../utils/logging/logger.dart';
+import 'connect_shell_result.dart';
 import 'session_launch_workspace_index.dart';
+
+@visibleForTesting
+void throwIfReconnectConnectFailed(ConnectShellResult result) {
+  if (result == ConnectShellResult.failed ||
+      result == ConnectShellResult.aborted) {
+    throw StateError('session reconnect ${result.name}');
+  }
+}
 
 typedef ScheduleMemberConnectFn =
     void Function(
@@ -45,25 +56,35 @@ class SessionSshProfileReconnect {
     if (_host.isClosed) return;
     appLogger.i('[session-launch] reconnectSshProfile profile=$profileId');
 
+    Object? firstError;
+    StackTrace? firstStack;
     for (final tab in _openTabs()) {
-      final session = tab.persistedSession;
-      if (session == null) continue;
+      try {
+        final session = tab.persistedSession;
+        if (session == null) continue;
 
-      if (session.sessionTeam.trim().isEmpty) {
-        await _reconnectPersonalTab(tab, session, profileId);
-      } else {
-        final team = await _host.teamProfileById(session.sessionTeam.trim());
-        if (team == null) continue;
-        for (final member in team.members.where((m) => m.isValid)) {
-          await _reconnectTeamMemberTab(
-            tab: tab,
-            team: team,
-            member: member,
-            session: session,
-            profileId: profileId,
-          );
+        if (session.sessionTeam.trim().isEmpty) {
+          await _reconnectPersonalTab(tab, session, profileId);
+        } else {
+          final team = await _host.teamProfileById(session.sessionTeam.trim());
+          if (team == null) continue;
+          for (final member in team.members.where((m) => m.isValid)) {
+            await _reconnectTeamMemberTab(
+              tab: tab,
+              team: team,
+              member: member,
+              session: session,
+              profileId: profileId,
+            );
+          }
         }
+      } on Object catch (e, st) {
+        firstError ??= e;
+        firstStack ??= st;
       }
+    }
+    if (firstError != null) {
+      Error.throwWithStackTrace(firstError, firstStack!);
     }
   }
 
@@ -125,13 +146,14 @@ class SessionSshProfileReconnect {
     tab.membersPendingConnect.add(session.sessionId);
     _host.beginSessionConnect(tab.info.id);
     try {
-      await _shellConnector.connect(
+      final result = await _shellConnector.connect(
         tab: tab,
         session: session,
         shell: shell,
         launched: session.launchState == AppSessionLaunchState.started,
         workspace: workspace,
       );
+      throwIfReconnectConnectFailed(result);
       _host.updateTabRunning(tab.info.id);
     } on Object catch (e, st) {
       appLogger.e(
@@ -140,6 +162,9 @@ class SessionSshProfileReconnect {
         stackTrace: st,
       );
       _host.failSessionConnect(tab.info.id, 'Failed to reconnect: $e');
+      // Follow-up: failSessionConnect already records this failure; rethrow
+      // surfaces the same root cause to the session-plane callback.
+      rethrow;
     } finally {
       tab.membersPendingConnect.remove(session.sessionId);
     }

@@ -125,8 +125,10 @@ class SshClientFactory {
   /// Interactive session work (PTY, reverse bus tunnels, exec probes) must use
   /// [createMemberClient] via [SshMemberSession.open] instead.
   ///
-  /// Reuses a pooled client only after a short keepalive probe so half-dead
-  /// sockets (FIN not yet observed) are rebuilt instead of hanging callers.
+  /// Idle cached clients are keepalive-probed before reuse. When another
+  /// storage op is already in flight (`_inFlight > 0`, including this caller's
+  /// own tracked increment), the probe is skipped so a long stdin write is
+  /// not evicted by a probe timeout.
   Future<SSHClient> clientForStorage(
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
@@ -139,7 +141,12 @@ class SshClientFactory {
         _sftpByProfile.remove(profile.id);
       } else if (cached.hostIdentifier == profile.hostIdentifier) {
         await cached.ready;
-        if (!probeCached || await _probeStorageClient(cached.client)) {
+        final inFlight = _inFlight[profile.id] ?? 0;
+        final skipProbe = !probeCached || inFlight > 0;
+        if (skipProbe || await _probeStorageClient(cached.client)) {
+          return cached.client;
+        }
+        if ((_inFlight[profile.id] ?? 0) > 0) {
           return cached.client;
         }
         _evictProfile(
@@ -236,6 +243,9 @@ class SshClientFactory {
     }
   }
 
+  /// Rejects exec argv longer than this so large payloads go on stdin.
+  static const maxExecCommandBytes = 1024;
+
   /// Runs [command] on the storage-plane client with an I/O timeout.
   ///
   /// On timeout the pooled client is evicted so the next caller rebuilds.
@@ -261,6 +271,38 @@ class SshClientFactory {
       rethrow;
     }
   });
+
+  /// Runs [command] on the storage plane, writing [stdin] then closing it.
+  Future<SSHRunResult> runOnStorageWithStdin(
+    SshProfile profile,
+    String command, {
+    required List<int> stdin,
+    Duration timeout = SshStorageIo.provisionPhaseTimeout,
+    bool stderr = true,
+  }) {
+    if (utf8.encode(command).length > maxExecCommandBytes) {
+      throw StateError(
+        'storage exec command exceeds $maxExecCommandBytes bytes',
+      );
+    }
+    return _tracked(profile.id, () async {
+      final client = await clientForStorage(profile);
+      try {
+        return await SshStorageIo.awaitOrThrow(
+          client.runWithResult(command, stderr: stderr, stdin: stdin),
+          timeout: timeout,
+          operation: 'storage exec stdin',
+        );
+      } on TimeoutException {
+        _evictProfile(
+          profile.id,
+          closePooled: true,
+          reason: SshTransportCloseReason.transportError,
+        );
+        rethrow;
+      }
+    });
+  }
 
   /// Tracks a storage operation so an evicted client is not closed underneath
   /// an SFTP channel or storage exec that is already using it.

@@ -255,7 +255,12 @@ class FullscreenPtyAutomation {
               continue;
             }
             machine.noteStagingMiss();
-            _logProbeMiss(port, PtyAutomationNeedle.forText(text), text, outcome: 'pasteNotFound');
+            _logProbeMiss(
+              port,
+              PtyAutomationNeedle.forText(text),
+              text,
+              outcome: 'pasteNotFound',
+            );
             return _machineOutcome(machine, stagingExhausted: true);
           }
           continue;
@@ -272,9 +277,9 @@ class FullscreenPtyAutomation {
           );
           continue;
         case FullscreenPtySubmissionPhase.idle ||
-        FullscreenPtySubmissionPhase.done ||
-        FullscreenPtySubmissionPhase.failed ||
-        FullscreenPtySubmissionPhase.aborted:
+            FullscreenPtySubmissionPhase.done ||
+            FullscreenPtySubmissionPhase.failed ||
+            FullscreenPtySubmissionPhase.aborted:
           return _machineOutcome(machine, stagingExhausted: true);
       }
     }
@@ -302,9 +307,17 @@ class FullscreenPtyAutomation {
     // STRICTLY below that row — a fresh paste lands in the bottom-pinned input
     // box, and any match at or above the baseline is the old copy, not this
     // message. Other CLIs use the cursor input zone and need no baseline.
-    final preBaseline = port.crAckConfig.pasteBaseline
-        ? _locatePasteAck(port, needle)
-        : null;
+    //
+    // Drain AFTER clear: Ctrl-U updates the live TUI immediately, but the
+    // probe grid lags until [FullscreenPtyDeliveryPort.syncDisplayGrid]
+    // (`drainForTest`). A pre-clear snapshot still holds leftover composer
+    // text, so a same-row re-paste (e.g. needle "A") is rejected forever as
+    // stale-baseline.
+    FullscreenPromptAnchor? preBaseline;
+    if (port.crAckConfig.pasteBaseline) {
+      await port.syncDisplayGrid();
+      preBaseline = _locatePasteAck(port, needle);
+    }
     await port.pasteText(text, canExecute: canExecute);
     final anchor = await _pollForNeedle(
       port,
@@ -471,7 +484,8 @@ class FullscreenPtyAutomation {
     if (remainingTotal <= Duration.zero) {
       return isAcked?.call() ?? false;
     }
-    final timeout = _timing.pollTimeout > Duration.zero &&
+    final timeout =
+        _timing.pollTimeout > Duration.zero &&
             _timing.pollTimeout < remainingTotal
         ? _timing.pollTimeout
         : remainingTotal;
@@ -781,16 +795,16 @@ class FullscreenPtyAutomation {
     FullscreenPtySubmission machine, {
     bool? stagingExhausted,
   }) => switch (machine.phase) {
-    FullscreenPtySubmissionPhase.done =>
-      FullscreenPtyDeliveryOutcome.submitted,
-    FullscreenPtySubmissionPhase.failed =>
-      switch (machine.failedReason) {
-        FullscreenPtySubmissionOutcome.crStuck =>
-          FullscreenPtyDeliveryOutcome.crStuck,
-        _ => FullscreenPtyDeliveryOutcome.pasteNotFound,
-      },
+    FullscreenPtySubmissionPhase.done => FullscreenPtyDeliveryOutcome.submitted,
+    FullscreenPtySubmissionPhase.failed => switch (machine.failedReason) {
+      FullscreenPtySubmissionOutcome.crStuck =>
+        FullscreenPtyDeliveryOutcome.crStuck,
+      _ => FullscreenPtyDeliveryOutcome.pasteNotFound,
+    },
     FullscreenPtySubmissionPhase.aborted =>
       FullscreenPtyDeliveryOutcome.aborted,
-    _ => throw StateError('submission machine ended non-terminal: ${machine.phase}'),
+    _ => throw StateError(
+      'submission machine ended non-terminal: ${machine.phase}',
+    ),
   };
 }

@@ -27,7 +27,7 @@ void main() {
     () async {
       final lifecycle = SessionLifecycleService(
         appDataBasePath: testHomeStorage.paths.basePath,
-                                                 storage: testHomeStorage,
+        storage: testHomeStorage,
       );
       final roots = await lifecycle.resolveWorkContextForTargetId('local');
       final svc = await lifecycle.configProfileServiceFor(roots);
@@ -45,6 +45,8 @@ void main() {
         manifest: staged.manifest,
         targetFs: roots.fs,
         sourceFs: roots.fs,
+        symlinkProjectionRoot: roots.appDataRoot,
+        homeRoot: roots.appDataRoot,
       );
     },
   );
@@ -65,10 +67,13 @@ void main() {
           updatedAt: 1,
         ),
       ],
-                                               storage: testHomeStorage,
+      storage: testHomeStorage,
     );
     final roots = await lifecycle.resolveWorkContextForTargetId('local');
-    final repository = AppProviderRepository(basePath: roots.appDataRoot, storage: testHomeStorage, );
+    final repository = AppProviderRepository(
+      basePath: roots.appDataRoot,
+      storage: testHomeStorage,
+    );
     await repository.saveProviders(CliTool.claude, [
       AppProviderConfig(
         id: providerId,
@@ -126,6 +131,8 @@ void main() {
       manifest: staged.manifest,
       targetFs: roots.fs,
       sourceFs: roots.fs,
+      symlinkProjectionRoot: roots.appDataRoot,
+      homeRoot: roots.appDataRoot,
     );
   });
 }
