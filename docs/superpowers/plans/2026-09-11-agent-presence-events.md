@@ -658,7 +658,8 @@ git commit -m "feat(event): deduping presence publish bridge"
 - 构造加 `this.onPresenceInputsChanged`（`final void Function()? onPresenceInputsChanged;`）。
 - 在**既有** `TerminalActivityTracker` 构造处（`terminal_session.dart:87-88`，`launchController?.activityTracker ?? TerminalActivityTracker()`）传入 `onBootFrameChanged: (_) => onPresenceInputsChanged?.call()`。注意：这条 tracker 可能是外部注入的（`launchController?.activityTracker`）——若注入的 tracker 已带自己的回调，**不要覆盖**；仅在自建 tracker 时传入（实现时按此判断，并在报告里说明所选分支）。
 - `_bindObservation` 末尾：`presenceSeat` 由 `seat.sessionId`/`seat.memberId` 构造；**两者任一为空则不设置**（未绑定 seat 不发事件）。
-- `_unbindObservation` 中：`activityTracker.disposePresencePush()`（仅当 tracker 为本 session 自建时）+ 清 `presenceSeat`。
+- `_unbindObservation` 中：**用 `activityTracker.setBootFrameListener(null)` 解绑（不要调用 `disposePresencePush()`）**——tracker 跨 bind/unbind 复用，终止式 dispose 会让重连后推送静默失效（Task 3 review 确认的 gap）；再清 `presenceSeat`。
+- session 真正销毁（`dispose`）时才调用 `activityTracker.disposePresencePush()`。
 - `markUserTurnStarted()` / `markUserTurnIdle()` 中各自追加 `onPresenceInputsChanged?.call()`（**在既有语句之后**，不改既有行为）。
 
 - [ ] **Step 1: 写失败测试**（用构造注入的 fake tracker / 直接调用 latch，断言回调次数）

@@ -808,7 +808,7 @@ final class EventTransportServer {
 
 `stop`：`_dispatcher.unregister` 每个 handler、`await _socket.close()`、`_fs.delete(advertisementPath)`（缺文件吞掉）。
 
-注意：先拷贝 snapshot、再 `registerFamily`、再写 snapshot 行——中间不要 await。`pid` 用 `Pid.current` 或注入。`Filesystem.writeAsString` / `delete` 跟现有 `InMemoryFilesystem` API 对齐；若 fake 没有 `delete`，用 `fs.file(path).delete()` 或该 fake 已有的方法，实施前打开 `client/test/support/in_memory_filesystem.dart` 抄同一调用。
+注意：先拷贝 snapshot、再 `registerFamily`（presence 与 sessionLifecycle **各自独立**判断 families.contains，不要把 sessionLifecycle 注册嵌在 presence 的 if 里）、再写 snapshot 行——拷贝与注册之间不要 await。`pid` 用注入的 `int Function() pid`，测试传固定值。`Filesystem` 写/删广告：打开 `client/test/support/in_memory_filesystem.dart` 抄该 fake 已有的 write/delete 方法名，不要臆造 `writeAsString`。
 
 - [ ] **Step 4: 跑测试确认通过**
 

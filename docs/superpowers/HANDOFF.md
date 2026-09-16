@@ -8,7 +8,7 @@
 
 ## 一句话现状
 
-**期 1（中央事件发布层）与期 2（agent presence 事件化）均已完成并合入 `main`。** 期 3 第一刀（Event Transport）spec 已写，待审：`docs/superpowers/specs/2026-09-12-event-transport-design.md`。
+**期 1（中央事件发布层）与期 2（agent presence 事件化）均已完成并合入 `main`。** 期 3 第一刀（Event Transport）spec 与计划已写：`docs/superpowers/specs/2026-09-12-event-transport-design.md`、`docs/superpowers/plans/2026-09-12-event-transport.md`。
 
 ---
 
