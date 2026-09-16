@@ -94,6 +94,17 @@ void main() {
         8,
         reason: 'baseline/ACK must hit the real paste, not the cwd footer',
       );
+
+      // pad=3 (box bottom border + 2 footer lines, cursor's value) keeps the
+      // paste at r8 reachable while the footer stays excluded.
+      final anchor3 = locateFullscreenPromptNeedle(
+        grid,
+        'teampilot',
+        scanRows: 39,
+        bottomPad: 3,
+      );
+      expect(anchor3, isNotNull);
+      expect(anchor3!.row, 8);
     },
   );
 

@@ -144,7 +144,7 @@ final class RowAwareFakeFullscreenPtyDeliveryPort
         const FullscreenCrAckConfig(
           strategy: FullscreenCrAckStrategy.composerMovesDown,
           pasteBaseline: true,
-          pasteZoneBottomPad: 2,
+          pasteZoneBottomPad: 3,
         ),
     this.pasteFailsToStage = false,
     this.staleEcho,

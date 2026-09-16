@@ -55,7 +55,7 @@ final class CursorTerminalBehavior
   @override
   bool get usesPasteBaseline => true;
   @override
-  int get pasteZoneBottomPad => 2;
+  int get pasteZoneBottomPad => 3;
 
 
   @override
