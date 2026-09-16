@@ -10,6 +10,8 @@ import 'package:teampilot/services/cli/flashskyai/capabilities/history/ai_transc
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/session/ai_history_page.dart';
 import 'package:teampilot/services/session/ai_transcript_tail_reader.dart';
+import 'package:teampilot/services/session/jsonl_page_worker.dart';
+import 'package:teampilot/services/session/jsonl_transcript_page_parser.dart';
 import 'package:teampilot/services/session/jsonl_transcript_page_reader.dart';
 import 'package:teampilot/services/session/session_history_context.dart';
 
@@ -23,6 +25,61 @@ EventDecoder _syncDecoder() {
 }
 
 void main() {
+  test(
+    'worker timeout returns a page miss without synchronous decoding',
+    () async {
+      final pageWorker = JsonlPageWorker.instance;
+      pageWorker.readyTimeout = const Duration(milliseconds: 20);
+      pageWorker.debugInstallZombieWorker();
+      addTearDown(() {
+        pageWorker.readyTimeout = const Duration(seconds: 10);
+        pageWorker.dispose();
+      });
+
+      final fs = InMemoryFilesystem();
+      const path = '/transcript.jsonl';
+      await fs.writeString(path, _userLine('u1', 'one'));
+
+      expect(
+        await _claudeReader(fs, path).readLatest(ctx: _ctxFor(fs), limit: 1),
+        isNull,
+      );
+    },
+  );
+
+  test('page worker preserves the reader page contract', () async {
+    final fs = InMemoryFilesystem();
+    const path = '/transcript.jsonl';
+    final fixture = [
+      _userLine('u1', 'one'),
+      _userLine('u2', 'two'),
+      _userLine('u3', 'three'),
+      _userLine('u4', 'four'),
+    ].join();
+    await fs.writeString(path, fixture);
+    final bytes = await fs.readBytes(path);
+    final lines = <JsonlTranscriptLine>[];
+    var offset = 0;
+    for (final line in const LineSplitter().convert(utf8.decode(bytes!))) {
+      final lineBytes = utf8.encode(line);
+      lines.add(JsonlTranscriptLine(offset: offset, bytes: lineBytes));
+      offset += lineBytes.length + 1;
+    }
+
+    final page = await JsonlPageWorker.instance.parse(
+      adapterId: 'claude',
+      lines: lines,
+      sourceToken: 'fixture-token',
+      rebuilt: true,
+      limit: 3,
+    );
+
+    expect(page, isNotNull);
+    expect(page!.messages, hasLength(3));
+    expect(page.hasOlder, isTrue);
+    expect(page.nextCursor, isNotNull);
+  });
+
   test('cursor rejects a changed source token', () async {
     final fs = InMemoryFilesystem();
     final path = '/transcript.jsonl';
@@ -500,31 +557,28 @@ void main() {
     },
   );
 
-  test(
-    'recovers when noise precedes a truncated assistant run',
-    () async {
-      final fs = InMemoryFilesystem();
-      const path = '/transcript.jsonl';
-      await fs.writeString(
-        path,
-        [
-          _userLine('u1', 'prefix'),
-          _assistantLine('a1', 'x' * 50),
-          '{"type":"progress","message":{"id":"noise"}}\n',
-          _assistantLine('a2', 'x' * 50),
-        ].join(),
-      );
+  test('recovers when noise precedes a truncated assistant run', () async {
+    final fs = InMemoryFilesystem();
+    const path = '/transcript.jsonl';
+    await fs.writeString(
+      path,
+      [
+        _userLine('u1', 'prefix'),
+        _assistantLine('a1', 'x' * 50),
+        '{"type":"progress","message":{"id":"noise"}}\n',
+        _assistantLine('a2', 'x' * 50),
+      ].join(),
+    );
 
-      final page = await _claudeReader(
-        fs,
-        path,
-        windowSizes: const [120],
-      ).readLatest(ctx: _ctxFor(fs), limit: 1);
+    final page = await _claudeReader(
+      fs,
+      path,
+      windowSizes: const [120],
+    ).readLatest(ctx: _ctxFor(fs), limit: 1);
 
-      expect(page, isNotNull);
-      expect(page!.messages, isNotEmpty);
-    },
-  );
+    expect(page, isNotNull);
+    expect(page!.messages, isNotEmpty);
+  });
 
   test('invalidates a cursor when an earlier same-size line changes', () async {
     final fs = InMemoryFilesystem();

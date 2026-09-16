@@ -1,11 +1,45 @@
 import 'dart:convert';
 
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/session/jsonl_decode_worker.dart';
+import 'package:teampilot/services/session/jsonl_page_worker.dart';
+import 'package:teampilot/services/session/jsonl_transcript_page_parser.dart';
 
 void main() {
   tearDown(() {
     JsonlDecodeWorker.instance.dispose();
+    JsonlPageWorker.instance.dispose();
+  });
+
+  test('page worker decodes and assembles with the selected adapter', () async {
+    final page = await JsonlPageWorker.instance.parse(
+      adapterId: 'claude',
+      lines: [
+        JsonlTranscriptLine(
+          offset: 0,
+          bytes: utf8.encode(
+            '{"type":"user","uuid":"u1","message":'
+            '{"id":"u1","content":"hello"}}',
+          ),
+        ),
+        JsonlTranscriptLine(
+          offset: 76,
+          bytes: utf8.encode(
+            '{"type":"user","uuid":"u2","message":'
+            '{"id":"u2","content":"world"}}',
+          ),
+        ),
+      ],
+      sourceToken: 'worker-token',
+      rebuilt: true,
+      limit: 1,
+    );
+
+    expect(page, isNotNull);
+    expect(page!.messages, hasLength(1));
+    expect((page.messages.single.parts.single as AiTextPart).text, 'world');
+    expect(page.hasOlder, isTrue);
   });
 
   test('decodes a batch of jsonl lines via the resident worker', () async {
