@@ -272,6 +272,7 @@ class _UserBubble extends StatelessWidget {
                         style: aiTheme.markdown.userBubble(
                           aiTheme.resolveUserForeground(scheme),
                         ),
+                        textHeightBehavior: kUserBubbleTextHeightBehavior,
                         child: parts,
                       ),
                     ),

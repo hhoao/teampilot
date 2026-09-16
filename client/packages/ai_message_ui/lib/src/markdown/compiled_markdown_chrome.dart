@@ -38,8 +38,11 @@ extension MarkdownTokensChrome on MarkdownTokens {
   TextStyle statusBanner(Color onErrorContainer) =>
       codeLanguage.copyWith(color: onErrorContainer);
 
-  TextStyle userBubble(Color foreground) =>
-      body.copyWith(color: foreground, height: 1.5);
+  TextStyle userBubble(Color foreground) => body.copyWith(
+    color: foreground,
+    height: 1.5,
+    leadingDistribution: TextLeadingDistribution.even,
+  );
 
   TextStyle assistantBody(Color onSurface) => body.copyWith(color: onSurface);
 }
