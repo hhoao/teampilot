@@ -236,6 +236,69 @@ void main() {
     },
   );
 
+  test(
+    'off-home copyTree without provided work dir counts each tree blob',
+    () async {
+      final execs = <_RecordedExec>[];
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'example.com',
+        username: 'alice',
+      );
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          return _RunnableClient(
+            onRun: (command, stdin) {
+              execs.add(_RecordedExec(command: command, stdin: stdin));
+            },
+          );
+        },
+      );
+      final sourceFs = InMemoryFilesystem();
+      final workFs = InMemoryFilesystem();
+      const fileA = 'alpha';
+      const fileB = 'beta';
+      await sourceFs.writeString('/h/plugins/installed/foo/a.txt', fileA);
+      await sourceFs.writeString('/h/plugins/installed/foo/b.txt', fileB);
+      final manifest = LaunchManifest()
+        ..copyTree(
+          source: '/h/plugins/installed/foo',
+          destination: '/w/sessions/pool/foo',
+        );
+
+      final before = await appLogger.getPendingLogLines();
+      await ManifestExecutor(
+        sshClientFactory: factory,
+        profileById: (_) => profile,
+      ).flush(
+        manifest: manifest,
+        targetFs: workFs,
+        sourceFs: sourceFs,
+        sshProfileId: profile.id,
+        symlinkProjectionRoot: '/w',
+        homeRoot: '/h',
+      );
+      final lines = (await appLogger.getPendingLogLines()).skip(before.length);
+
+      final applyPlanLine = lines.firstWhere(
+        (l) => l.contains('[session-launch] apply-plan protocol='),
+      );
+      final blobCount = RegExp(
+        r'blobs=(\d+)',
+      ).firstMatch(applyPlanLine)!.group(1)!;
+      final blobBytes = RegExp(
+        r'blobBytes=(\d+)',
+      ).firstMatch(applyPlanLine)!.group(1)!;
+      expect(int.parse(blobCount), 2);
+      expect(int.parse(blobBytes), fileA.length + fileB.length);
+      expect(execs, hasLength(1));
+      expect(execs.single.command, contains('gzip -dc | tar -x'));
+    },
+  );
+
   test('cross-machine ssh flush copies home files through tar stdin', () async {
     final execs = <_RecordedExec>[];
     const profile = SshProfile(
