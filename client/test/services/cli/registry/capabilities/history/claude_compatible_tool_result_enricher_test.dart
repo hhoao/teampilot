@@ -389,6 +389,66 @@ void main() {
       );
     });
 
+    test(
+      'changed source token with the same byte size is not reusable',
+      () async {
+        final counted = countingEnricher();
+        final original =
+            '${truncatedUserLine(toolUseId: 'call_02', stdout: 'old')}\n';
+        final rewritten =
+            '${truncatedUserLine(toolUseId: 'call_02', stdout: 'new')}\n';
+        expect(utf8.encode(rewritten).length, utf8.encode(original).length);
+        const identity = 'session.jsonl';
+
+        await enrich(
+          messages: truncatedBashMessage(),
+          bundle: AiTranscriptBundle(
+            adapterId: 'claude',
+            fragments: [
+              AiTranscriptFragment(
+                name: 'session.jsonl',
+                bytes: utf8.encode(original),
+              ),
+            ],
+          ),
+          enricher: counted.enricher,
+          sourceToken: '$identity|t1|${utf8.encode(original).length}',
+        );
+        expect(counted.lines(), 1);
+
+        expect(
+          counted.enricher.canReuseIndex(
+            sourceToken: '$identity|t2|${utf8.encode(rewritten).length}',
+            rootTranscriptPath: null,
+            contentLength: utf8.encode(rewritten).length,
+          ),
+          isFalse,
+        );
+
+        final result = await enrich(
+          messages: truncatedBashMessage(),
+          bundle: AiTranscriptBundle(
+            adapterId: 'claude',
+            fragments: [
+              AiTranscriptFragment(
+                name: 'session.jsonl',
+                bytes: utf8.encode(rewritten),
+              ),
+            ],
+          ),
+          enricher: counted.enricher,
+          sourceToken: '$identity|t2|${utf8.encode(rewritten).length}',
+        );
+        expect((result.single.parts.single as AiToolCallPart).result, 'new');
+        expect(
+          counted.lines(),
+          2,
+          reason:
+              'same-sized token change must rebuild, not reuse stale records',
+        );
+      },
+    );
+
     test('canReuseIndex follows path identity used by enrich', () async {
       final counted = countingEnricher();
       final jsonl =

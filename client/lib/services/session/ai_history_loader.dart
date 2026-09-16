@@ -1339,8 +1339,16 @@ final class AiHistoryLoader {
       if (!_needsToolResultEnrichment(result.messages, enricher)) {
         return result.messages;
       }
+      final reuseStillValid =
+          reuse &&
+          indexCache.canReuseIndex(
+            sourceToken: sourceToken,
+            rootTranscriptPath: parentPath,
+            contentLength: totalBytes,
+          );
       if (reuse &&
           reusableIndexSnapshot != null &&
+          reuseStillValid &&
           indexCache is ToolResultIndexSnapshotApplier) {
         return _timed(
           AiHistoryLoadPhase.enrich,
@@ -1352,6 +1360,30 @@ final class AiHistoryLoader {
                 rootTranscriptPath: parentPath,
               ),
         );
+      }
+      if (reuse && !reuseStillValid && enricher.workerId != null) {
+        final refreshed = await _parseExecutor.parse(
+          adapterId: adapter.id,
+          bundle: bundle,
+          workerEnricherId: enricher.workerId,
+          sourceToken: sourceToken,
+          rootTranscriptPath: parentPath,
+        );
+        indexCache.importIndex(refreshed.indexSnapshot);
+        _recordTimedPhase(
+          AiHistoryLoadPhase.parse,
+          refreshed.parseTime.inMicroseconds,
+        );
+        if (refreshed.enrichTime > Duration.zero) {
+          _recordTimedPhase(
+            AiHistoryLoadPhase.enrich,
+            refreshed.enrichTime.inMicroseconds,
+          );
+        }
+        return refreshed.messages;
+      }
+      if (reuse && !reuseStillValid && !enricher.requiresFilesystem) {
+        return result.messages;
       }
       if (enricher.requiresFilesystem || reuse || enricher.workerId == null) {
         return _enrichMessages(

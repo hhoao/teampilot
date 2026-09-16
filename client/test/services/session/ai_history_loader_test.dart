@@ -1041,7 +1041,7 @@ void main() {
   );
 
   test(
-    'large bundle applies the pre-worker reusable cache if invalidated while parsing',
+    'large bundle re-enriches in worker if reusable cache is invalidated while parsing',
     () async {
       final executor = _CompletingHistoryParseExecutor(
         messages: _toolResultMessages(),
@@ -1076,12 +1076,15 @@ void main() {
 
       loader.invalidate(sessionId: session.sessionId, memberId: '');
       executor.complete(1);
+      await executor.waitForCall(2);
+      executor.complete(2);
       final result = await load;
 
-      expect(executor.lastWorkerEnricherId, isNull);
+      expect(executor.calls, 3);
+      expect(executor.workerEnricherIds, [isNull, isNull, 'claude-compatible']);
       expect(enricher.fullDecodeAttempts, 0);
-      expect(enricher.appliedSnapshotCount, 2);
-      expect(result.messages.single.id, 'cached-enriched');
+      expect(enricher.appliedSnapshotCount, 1);
+      expect(result.messages.single.id, 'worker-fresh-enriched');
     },
   );
 
@@ -2788,6 +2791,7 @@ final class _CompletingHistoryParseExecutor implements HistoryParseExecutor {
   final List<AiMessage> messages;
   final _calls = <Completer<void>>[];
   final _completions = <Completer<void>>[];
+  final workerEnricherIds = <String?>[];
   var calls = 0;
   String? lastWorkerEnricherId;
 
@@ -2817,8 +2821,21 @@ final class _CompletingHistoryParseExecutor implements HistoryParseExecutor {
     _completions.add(completion);
     calls++;
     lastWorkerEnricherId = workerEnricherId;
+    workerEnricherIds.add(workerEnricherId);
     called.complete();
     await completion.future;
+    if (workerEnricherId == 'claude-compatible') {
+      return const HistoryParseResult(
+        messages: [
+          AiMessage(
+            id: 'worker-fresh-enriched',
+            role: AiRole.assistant,
+            parts: [AiTextPart(text: 'fresh worker result')],
+          ),
+        ],
+        indexSnapshot: {'valid': true},
+      );
+    }
     return HistoryParseResult(messages: messages);
   }
 
