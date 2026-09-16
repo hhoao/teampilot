@@ -64,6 +64,28 @@ abstract final class CursorCliConfigPolicy {
     return merged;
   }
 
+  /// Merges session SSH MCP allows into [config] for mixed **and** simple.
+  static Map<String, Object?> applySessionSshMcpPolicy(
+    Map<String, Object?> config, {
+    required List<String> cursorEntries,
+  }) {
+    final merged = Map<String, Object?>.from(config);
+    final permissions = Map<String, Object?>.from(
+      (merged['permissions'] as Map?)?.cast<String, Object?>() ?? const {},
+    );
+    final existingAllow = <String>[
+      for (final entry in (permissions['allow'] as List?) ?? const [])
+        if (entry is String) entry,
+    ];
+    permissions['allow'] = <String>{
+      ...existingAllow,
+      ...cursorEntries,
+    }.toList(growable: false);
+    merged['permissions'] = permissions;
+    merged.putIfAbsent('version', () => defaultVersion);
+    return merged;
+  }
+
   static Map<String, Object?>? parseConfigJson(String raw) {
     try {
       final decoded = jsonDecode(raw);

@@ -280,6 +280,10 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/ssh/ssh_connection_events.dart';
 import '../widgets/ssh/ssh_host_key_prompt_dialog.dart';
 import '../services/ssh/ssh_profile_connection_coordinator.dart';
+import '../services/ssh/mcp/session_ssh_mcp_executor.dart';
+import '../services/ssh/mcp/session_ssh_mcp_http.dart';
+import '../services/ssh/mcp/session_ssh_mcp_operations.dart';
+import '../services/ssh/mcp/session_ssh_mcp_resolver.dart';
 import '../services/ssh/ssh_transport_close.dart';
 import '../services/ssh/android_ssh_connect_home.dart';
 import '../services/terminal/terminal_transport_factory.dart';
@@ -2033,6 +2037,38 @@ Future<AppShell> buildAppShell({
     teammateBusMcpGateway.attachCatalogHandler(
       catalogRuntime.handler,
       resolveSession: catalogRuntime.resolveSession,
+    );
+    teammateBusMcpGateway.attachSessionSshMcp(
+      SessionSshMcpHttpAdapter(
+        operations: SessionSshMcpOperations(
+          executor: SshClientFactorySessionSshMcpExecutor(sshClientFactory),
+        ),
+        resolveContext: (sessionId, memberId) async {
+          final session = await sessionRepo.findById(sessionId);
+          if (session == null) return null;
+          final workspace = (await sessionRepo.loadWorkspacesIndex())
+              .firstWhereOrNull((w) => w.workspaceId == session.workspaceId);
+          if (workspace == null) return null;
+          final profileIds = <String>{};
+          for (final folder in workspace.folders) {
+            final profileId = sshProfileIdOfId(folder.targetId);
+            if (profileId != null) profileIds.add(profileId);
+          }
+          final profiles = <String, SshProfile>{};
+          for (final id in profileIds) {
+            final profile = await sshProfileRepo.findById(id);
+            if (profile != null) profiles[id] = profile;
+          }
+          return resolveSessionSshMcpContext(
+            session: session,
+            workspace: workspace,
+            profileOf: (id) => profiles[id],
+            localFs: homeStorage.fs,
+            localUsesPosixPaths: homeStorage.usesPosixPaths,
+            memberId: memberId,
+          );
+        },
+      ),
     );
     catalogRuntime.bus.listen().listen((event) {
       unawaited(skillCubit.loadAll());

@@ -1,4 +1,5 @@
 import '../../../catalog/catalog_mcp_policy.dart';
+import '../../../ssh/mcp/session_ssh_mcp_policy.dart';
 import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../provider/cursor_cli_config_policy.dart';
 
@@ -69,11 +70,14 @@ abstract final class CursorCliConfigMerger {
       }
     }
 
-    return CursorCliConfigPolicy.applyCatalogReadPolicy(
-      CursorCliConfigPolicy.applyMixedTeamSessionPolicy(merged),
-      cursorEntries: CatalogMcpPolicy.cursorAllowEntries(
-        CatalogMcpPolicy.advertisedRegistry(),
+    return CursorCliConfigPolicy.applySessionSshMcpPolicy(
+      CursorCliConfigPolicy.applyCatalogReadPolicy(
+        CursorCliConfigPolicy.applyMixedTeamSessionPolicy(merged),
+        cursorEntries: CatalogMcpPolicy.cursorAllowEntries(
+          CatalogMcpPolicy.advertisedRegistry(),
+        ),
       ),
+      cursorEntries: SessionSshMcpPolicy.cursorAllowEntries,
     );
   }
 

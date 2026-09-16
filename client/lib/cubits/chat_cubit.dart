@@ -2020,6 +2020,7 @@ class ChatCubit extends Cubit<ChatState>
     String? display,
     String? defaultProfileId,
     bool? rootSandboxEnvOptIn,
+    bool? injectSessionSshMcp,
   }) async {
     final snap = await _dataStore.updateWorkspaceMetadata(
       stateSnapshot(),
@@ -2028,6 +2029,7 @@ class ChatCubit extends Cubit<ChatState>
       display: display,
       defaultProfileId: defaultProfileId,
       rootSandboxEnvOptIn: rootSandboxEnvOptIn,
+      injectSessionSshMcp: injectSessionSshMcp,
     );
     if (snap != null) _emitSnapshot(snap);
   }

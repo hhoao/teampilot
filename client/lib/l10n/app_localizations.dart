@@ -5702,6 +5702,18 @@ abstract class AppLocalizations {
   /// **'Keep skip-permissions when Claude runs as root.'**
   String get rootSandboxEnvOptInSubtitle;
 
+  /// No description provided for @injectSessionSshMcpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Inject Session SSH MCP for local members'**
+  String get injectSessionSshMcpTitle;
+
+  /// No description provided for @injectSessionSshMcpSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Local seats can run commands and transfer files on this workspace\'s remote machines. Reconnect sessions after changing.'**
+  String get injectSessionSshMcpSubtitle;
+
   /// No description provided for @rootSandboxEnvConfirmTitle.
   ///
   /// In en, this message translates to:

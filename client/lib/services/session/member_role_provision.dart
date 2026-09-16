@@ -349,4 +349,30 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
     merged['permissions'] = permissions;
     return merged;
   }
+
+  /// Merges session SSH MCP allow entries into `permissions.allow`.
+  ///
+  /// Used for every Claude/flashskyai launch (simple, native team, mixed).
+  /// [claudeEntries] is the already-built list from
+  /// `SessionSshMcpPolicy.claudeAllowEntries` so this file does not import SSH
+  /// policy.
+  static Map<String, Object?> applySessionSshMcpAllows(
+    Map<String, Object?> settings, {
+    required List<String> claudeEntries,
+  }) {
+    final merged = Map<String, Object?>.from(settings);
+    final permissions = Map<String, Object?>.from(
+      (merged['permissions'] as Map?)?.cast<String, Object?>() ?? const {},
+    );
+    final existingAllow = <String>[
+      for (final entry in (permissions['allow'] as List?) ?? const [])
+        if (entry is String) entry,
+    ];
+    permissions['allow'] = <String>{
+      ...existingAllow,
+      ...claudeEntries,
+    }.toList(growable: false);
+    merged['permissions'] = permissions;
+    return merged;
+  }
 }
