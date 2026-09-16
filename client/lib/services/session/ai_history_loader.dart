@@ -22,7 +22,6 @@ import 'ai_history_incremental.dart';
 import 'ai_history_load_result.dart';
 import 'ai_history_load_timings.dart';
 import 'ai_history_locator.dart';
-import 'ai_history_page.dart';
 import 'ai_history_watch_meta.dart';
 import 'ai_transcript_tail_reader.dart';
 import 'history_parse_worker.dart';
@@ -814,6 +813,28 @@ final class AiHistoryLoader {
           ctx: ctx,
           parentPath: parentPath,
           sourceToken: token,
+        );
+      }
+
+      // 临时空结果保护:定位/parse 短暂失败(如超大 WAL 写并发下 sqlite
+      // 瞬时不可读、或 adapter 一次空产出)绝不能覆盖已加载的非空 transcript。
+      // 直接返回先前的缓存(不换 token、不 markComplete、不 seed 空增量),
+      // 让 live refresh 继续走热路径,等到 store 可读/token 变化后自然重读 —
+      // 否则空结果会被当作"完整"落库,后续缓存命中一直返回空,线程空白。
+      final priorFull = _fullIndexes[cacheKey];
+      final priorMessages = _messages[cacheKey] ?? const <AiMessage>[];
+      if (messages.isEmpty &&
+          ((priorFull?.messages.isNotEmpty ?? false) ||
+              priorMessages.isNotEmpty)) {
+        return _result(
+          cacheKey: cacheKey,
+          messages: priorFull?.messages.isNotEmpty == true
+              ? priorFull!.messages
+              : priorMessages,
+          cli: cli,
+          subagentAttachments: priorFull?.subagentAttachments.isNotEmpty == true
+              ? priorFull!.subagentAttachments
+              : (_attachments[cacheKey] ?? const {}),
         );
       }
 

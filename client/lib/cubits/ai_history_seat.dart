@@ -1120,6 +1120,11 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         memberId: memberId,
       );
       if (full == null || gen != _loadGeneration || isClosed) return;
+      // No-blank guard: a transient empty full index (locate missed while the
+      // CLI store was mid-write) must never wipe an already-loaded transcript.
+      // Keep the current page content; the next live refresh re-resolves once
+      // the store is readable again.
+      if (full.messages.isEmpty && _cliMessages.isNotEmpty) return;
       _cliMessages = reuseHistoryMessageIdentity(
         previous: _cliMessages,
         next: full.messages,
