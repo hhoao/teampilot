@@ -129,7 +129,12 @@ void main() {
       expect(
         lines.where(
           (l) =>
-              l.contains('apply-plan protocol=1') && l.contains('provided='),
+              l.contains('apply-plan protocol=1') &&
+              l.contains('provided=') &&
+              l.contains('ops=') &&
+              l.contains('blobs=') &&
+              l.contains('blobBytes=') &&
+              l.contains('inlineBytes='),
         ),
         isNotEmpty,
       );

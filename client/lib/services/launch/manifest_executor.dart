@@ -66,7 +66,7 @@ class ManifestExecutor {
           blobCount += 1;
           blobBytes += (await built.blobs.open(sha256)).length;
         case ApplyTree(:final entries):
-          blobCount += 1;
+          blobCount += entries.length;
           for (final entry in entries) {
             blobBytes += (await built.blobs.open(entry.sha256)).length;
           }
