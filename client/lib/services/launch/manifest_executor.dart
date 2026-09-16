@@ -1,14 +1,15 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as p;
 
 import '../../models/ssh_profile.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
 import '../ssh/ssh_client_factory.dart';
-import 'launch_manifest.dart';
+import 'apply_plan_ssh_compiler.dart';
 import 'manifest_ssh_flush_plan.dart';
+import 'work_path_projector.dart';
+import 'work_plane_applier.dart';
 import 'work_plane_script_runner.dart';
 
 /// Applies a staged [LaunchManifest] in one batch (local disk or SSH script).
@@ -24,330 +25,77 @@ class ManifestExecutor {
     required Filesystem sourceFs,
     String? sshProfileId,
     String? symlinkProjectionRoot,
+    String? homeRoot,
   }) async {
     final runner = SshWorkPlaneScriptRunner.tryCreate(
       sshProfileId: sshProfileId,
       sshClientFactory: sshClientFactory,
       profileById: profileById,
     );
+    final workRoot = (symlinkProjectionRoot ?? '').trim();
+    final home = (homeRoot ?? workRoot).trim();
+    final sameHost = identical(sourceFs, targetFs);
     if (runner != null) {
-      final sameHost = identical(sourceFs, targetFs);
-      final workRoot = (symlinkProjectionRoot ?? '').trim();
       if (!sameHost && workRoot.isEmpty) {
         throw StateError(
           'off-home SSH manifest flush requires a non-empty work app-data root',
         );
       }
-      final epochs = await buildManifestSshFlushPlan(
-        manifest: manifest,
-        sourceFs: sourceFs,
-        workRoot: workRoot,
-        sameHost: sameHost,
+    }
+
+    final effectiveWorkRoot = workRoot.isNotEmpty ? workRoot : home;
+    if (effectiveWorkRoot.isEmpty) {
+      throw StateError(
+        'manifest flush requires a non-empty work app-data root',
+      );
+    }
+    final built = await buildApplyPlan(
+      manifest: manifest,
+      sourceFs: sourceFs,
+      workFs: targetFs,
+      homeRoot: home.isNotEmpty ? home : effectiveWorkRoot,
+      workRoot: effectiveWorkRoot,
+    );
+
+    if (runner != null) {
+      final payload = await compileApplyPlanForSsh(
+        plan: built.plan,
+        blobs: built.blobs,
       );
       appLogger.d(
         '[session-launch] manifest flush via ssh '
-        'ops=${manifest.entries.length}',
+        'ops=${built.plan.ops.length}',
       );
-      var tarEpochs = 0;
       var scriptEpochs = 0;
+      var tarEpochs = 0;
       var stdinBytes = 0;
-      for (final epoch in epochs) {
-        switch (epoch.kind) {
-          case ManifestSshEpochKind.script:
-            scriptEpochs++;
-            stdinBytes += utf8.encode(epoch.script!).length;
-            await runner.runScript(
-              epoch.script!,
-              operation: 'Launch manifest apply',
-            );
-          case ManifestSshEpochKind.tar:
-            tarEpochs++;
-            stdinBytes += epoch.gzipTar!.length;
-            await runner.runStdinCommand(
-              command: epoch.extractCommand!,
-              stdin: epoch.gzipTar!,
-              operation: 'Launch overlay extract',
-            );
-        }
+      if (payload.script case final script?) {
+        scriptEpochs = 1;
+        stdinBytes += utf8.encode(script).length;
+        await runner.runScript(script, operation: 'Launch manifest apply');
+      }
+      if (payload.gzipTar case final gzipTar?) {
+        tarEpochs = 1;
+        stdinBytes += gzipTar.length;
+        await runner.runStdinCommand(
+          command: payload.extractCommand!,
+          stdin: gzipTar,
+          operation: 'Launch overlay extract',
+        );
       }
       appLogger.d(
         '[session-launch] manifest flush via ssh '
-        'ops=${manifest.entries.length} epochs=${epochs.length} '
+        'ops=${built.plan.ops.length} epochs=${scriptEpochs + tarEpochs} '
         'scriptEpochs=$scriptEpochs tarEpochs=$tarEpochs stdinBytes=$stdinBytes',
       );
       return;
     }
-    await _flushLocal(
-      manifest: manifest,
-      targetFs: targetFs,
-      sourceFs: sourceFs,
-      symlinkProjectionRoot: symlinkProjectionRoot,
-    );
-  }
 
-  Future<void> _flushLocal({
-    required LaunchManifest manifest,
-    required Filesystem targetFs,
-    required Filesystem sourceFs,
-    String? symlinkProjectionRoot,
-  }) async {
-    final expandSw = Stopwatch()..start();
-    final applied = identical(sourceFs, targetFs)
-        ? manifest
-        : await _expandCopies(
-            manifest,
-            sourceFs,
-            symlinkProjectionRoot: symlinkProjectionRoot,
-          );
-    if (!identical(sourceFs, targetFs)) {
-      appLogger.d(
-        '[session-launch] manifest expand-copies '
-        'in=${manifest.entries.length} out=${applied.entries.length} '
-        'ms=${expandSw.elapsedMilliseconds}',
-      );
-    }
-    final byKindMs = <String, int>{};
-    final byKindCount = <String, int>{};
-    const slowMs = 50;
-    for (final entry in applied.entries) {
-      final kind = switch (entry) {
-        ManifestEnsureDir() => 'ensureDir',
-        ManifestWriteFile() => 'writeFile',
-        ManifestSymlink() => 'symlink',
-        ManifestCopyFile() => 'copyFile',
-        ManifestCopyTree() => 'copyTree',
-        ManifestRemoveRecursive() => 'removeRecursive',
-        ManifestRename() => 'rename',
-      };
-      final sw = Stopwatch()..start();
-      switch (entry) {
-        case ManifestEnsureDir(:final path):
-          await targetFs.ensureDir(path);
-        case ManifestWriteFile(:final path, :final content):
-          await targetFs.atomicWrite(path, content);
-        case ManifestSymlink(:final linkPath, :final target):
-          await targetFs.createSymlink(target: target, linkPath: linkPath);
-        case ManifestCopyFile(:final source, :final destination):
-          await targetFs.copyFile(source, destination);
-        case ManifestCopyTree(:final source, :final destination):
-          await targetFs.copyTree(source: source, destination: destination);
-        case ManifestRemoveRecursive(:final path):
-          await targetFs.removeRecursive(path);
-        case ManifestRename(:final from, :final to):
-          await targetFs.rename(from, to);
-      }
-      final ms = sw.elapsedMilliseconds;
-      byKindMs[kind] = (byKindMs[kind] ?? 0) + ms;
-      byKindCount[kind] = (byKindCount[kind] ?? 0) + 1;
-      if (ms >= slowMs) {
-        final detail = switch (entry) {
-          ManifestEnsureDir(:final path) => path,
-          ManifestWriteFile(:final path) => path,
-          ManifestSymlink(:final linkPath) => linkPath,
-          ManifestCopyFile(:final destination) => destination,
-          ManifestCopyTree(:final source, :final destination) =>
-            '$source -> $destination',
-          ManifestRemoveRecursive(:final path) => path,
-          ManifestRename(:final from, :final to) => '$from -> $to',
-        };
-        appLogger.d(
-          '[session-launch] manifest slow-op kind=$kind ms=$ms detail=$detail',
-        );
-      }
-    }
-    final summary = byKindCount.keys
-        .map((k) => '$k=${byKindCount[k]}x/${byKindMs[k]}ms')
-        .join(' ');
-    appLogger.d(
-      '[session-launch] manifest flush-local '
-      'ops=${applied.entries.length} $summary',
-    );
-  }
-
-  /// Expands copy ops into concrete file writes for SSH (sources read on control plane).
-  Future<LaunchManifest> _expandCopies(
-    LaunchManifest manifest,
-    Filesystem sourceFs, {
-    String? symlinkProjectionRoot,
-  }) async {
-    final out = LaunchManifest(pathContext: manifest.pathContext);
-    for (final entry in manifest.entries) {
-      switch (entry) {
-        case ManifestEnsureDir(:final path):
-          out.ensureDir(path);
-        case ManifestWriteFile(:final path, :final content):
-          out.writeFile(path, content);
-        case ManifestSymlink(:final linkPath, :final target):
-          if (_isSymlinkTargetWithinRoot(
-            target: target,
-            linkPath: linkPath,
-            root: symlinkProjectionRoot,
-            pathContext: manifest.pathContext,
-          )) {
-            out.symlink(linkPath: linkPath, target: target);
-          } else if (symlinkProjectionRoot == null) {
-            out.symlink(linkPath: linkPath, target: target);
-          } else {
-            await _expandExternalSymlink(
-              sourceFs: sourceFs,
-              target: target,
-              linkPath: linkPath,
-              manifest: out,
-            );
-          }
-        case ManifestRemoveRecursive(:final path):
-          out.removeRecursive(path);
-        case ManifestRename(:final from, :final to):
-          out.rename(from: from, to: to);
-        case ManifestCopyFile(:final source, :final destination):
-          await _expandCopyFile(
-            sourceFs: sourceFs,
-            source: source,
-            destination: destination,
-            manifest: out,
-          );
-        case ManifestCopyTree(:final source, :final destination):
-          await _expandCopyTree(
-            sourceFs: sourceFs,
-            source: source,
-            destination: destination,
-            manifest: out,
-          );
-      }
-    }
-    return out;
-  }
-
-  Future<void> _expandExternalSymlink({
-    required Filesystem sourceFs,
-    required String target,
-    required String linkPath,
-    required LaunchManifest manifest,
-    Set<String>? visited,
-  }) async {
-    final currentTarget = _resolveSymlinkTarget(
-      target: target,
-      linkPath: linkPath,
-      pathContext: manifest.pathContext,
-    );
-    final seen = visited ?? <String>{};
-    if (!seen.add(currentTarget)) {
-      throw StateError(
-        'Launch manifest external symlink cycle: $currentTarget',
-      );
-    }
-
-    final stat = await sourceFs.lstat(currentTarget);
-    if (stat.isFile) {
-      await _expandCopyFile(
-        sourceFs: sourceFs,
-        source: currentTarget,
-        destination: linkPath,
-        manifest: manifest,
-      );
-      return;
-    }
-    if (stat.isDirectory) {
-      await _expandCopyTree(
-        sourceFs: sourceFs,
-        source: currentTarget,
-        destination: linkPath,
-        manifest: manifest,
-      );
-      return;
-    }
-    if (stat.isSymlink) {
-      final nextTarget = await sourceFs.readSymlinkTarget(currentTarget);
-      if (nextTarget != null) {
-        await _expandExternalSymlink(
-          sourceFs: sourceFs,
-          target: nextTarget,
-          linkPath: currentTarget,
-          manifest: manifest,
-          visited: seen,
-        );
-        return;
-      }
-    }
-    throw StateError(
-      'Launch manifest external symlink target missing on control plane: '
-      '$currentTarget',
-    );
-  }
-
-  static bool _isSymlinkTargetWithinRoot({
-    required String target,
-    required String linkPath,
-    required String? root,
-    required p.Context pathContext,
-  }) {
-    if (root == null) return false;
-    final normalizedRoot = pathContext.normalize(pathContext.absolute(root));
-    final effectiveTarget = pathContext.isAbsolute(target)
-        ? target
-        : pathContext.join(pathContext.dirname(linkPath), target);
-    final normalizedTarget = pathContext.normalize(
-      pathContext.absolute(effectiveTarget),
-    );
-    return normalizedTarget == normalizedRoot ||
-        pathContext.isWithin(normalizedRoot, normalizedTarget);
-  }
-
-  static String _resolveSymlinkTarget({
-    required String target,
-    required String linkPath,
-    required p.Context pathContext,
-  }) {
-    final effectiveTarget = pathContext.isAbsolute(target)
-        ? target
-        : pathContext.join(pathContext.dirname(linkPath), target);
-    return pathContext.normalize(effectiveTarget);
-  }
-
-  Future<void> _expandCopyFile({
-    required Filesystem sourceFs,
-    required String source,
-    required String destination,
-    required LaunchManifest manifest,
-  }) async {
-    final bytes = await sourceFs.readBytes(source);
-    if (bytes == null) {
-      throw StateError(
-        'Launch manifest copy source missing on control plane: $source',
-      );
-    }
-    manifest.ensureDir(manifest.pathContext.dirname(destination));
-    manifest.writeFile(destination, utf8.decode(bytes, allowMalformed: true));
-  }
-
-  Future<void> _expandCopyTree({
-    required Filesystem sourceFs,
-    required String source,
-    required String destination,
-    required LaunchManifest manifest,
-  }) async {
-    final entries = await sourceFs.listDirRecursive(source);
-    if (entries.isEmpty) {
-      final stat = await sourceFs.stat(source);
-      if (!stat.isDirectory) {
-        throw StateError(
-          'Launch manifest copy tree source missing on control plane: $source',
-        );
-      }
-      return;
-    }
-    final ctx = manifest.pathContext;
-    for (final entry in entries) {
-      if (entry.isDirectory) continue;
-      final srcPath = ctx.join(source, entry.name);
-      final destPath = ctx.join(destination, entry.name);
-      await _expandCopyFile(
-        sourceFs: sourceFs,
-        source: srcPath,
-        destination: destPath,
-        manifest: manifest,
-      );
-    }
+    await WorkPlaneApplier(
+      fs: targetFs,
+      blobs: built.blobs,
+      workRoot: effectiveWorkRoot,
+    ).apply(built.plan);
   }
 
   @visibleForTesting

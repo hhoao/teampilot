@@ -20,7 +20,6 @@ import 'package:teampilot/services/team_generation/providers/team_builder_skill_
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
-
 /// Test-local stand-in for `TeamGenerationGraph.resourceProvidersForSession`
 /// (now an instance member on the graph): injects the managed team-builder
 /// skill for builder sessions only.
@@ -30,7 +29,8 @@ ResourceProviderSet _graphResourceProvidersForSession(
 ) {
   if (session.purpose != SessionPurpose.teamGeneration) return defaults;
   if (defaults.skills.any(
-    (provider) => provider.providerId == ManagedTeamBuilderSkillProvider.skillId,
+    (provider) =>
+        provider.providerId == ManagedTeamBuilderSkillProvider.skillId,
   )) {
     return defaults;
   }
@@ -232,6 +232,8 @@ void main() {
         manifest: staged.manifest,
         targetFs: roots.fs,
         sourceFs: roots.fs,
+        symlinkProjectionRoot: roots.appDataRoot,
+        homeRoot: roots.appDataRoot,
       );
 
       final managedSkill = roots.fs.pathContext.join(

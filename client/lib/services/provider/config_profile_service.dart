@@ -1329,7 +1329,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
       injectedResourceProviders: injectedResourceProviders,
     );
     final executor = manifestExecutor ?? const ManifestExecutor();
-    await executor.flush(manifest: staged.manifest, targetFs: fs, sourceFs: fs);
+    await executor.flush(
+      manifest: staged.manifest,
+      targetFs: fs,
+      sourceFs: fs,
+      symlinkProjectionRoot: basePath,
+      homeRoot: basePath,
+    );
     await provisionNativePlugins(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -1695,7 +1701,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
       agentStatus: agentStatus,
     );
     final executor = manifestExecutor ?? const ManifestExecutor();
-    await executor.flush(manifest: staged.manifest, targetFs: fs, sourceFs: fs);
+    await executor.flush(
+      manifest: staged.manifest,
+      targetFs: fs,
+      sourceFs: fs,
+      symlinkProjectionRoot: basePath,
+      homeRoot: basePath,
+    );
     await provisionNativePlugins(
       workspaceId: workspaceId,
       sessionId: sessionId,

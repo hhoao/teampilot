@@ -58,7 +58,13 @@ final class _WorkPathProjector {
     for (final entry in manifest.entries) {
       switch (entry) {
         case ManifestEnsureDir(:final path):
-          _ops.add(ApplyEnsureDir(_projectRequired(path)));
+          final projected = _project(path);
+          if (projected != null) {
+            _assertPath(projected);
+            _ops.add(ApplyEnsureDir(projected));
+          } else if (!_isAncestorOfWorkRoot(path)) {
+            throw StateError('path cannot be projected: $path');
+          }
         case ManifestWriteFile(:final path, :final content):
           await _addWriteFile(path, content);
         case ManifestRemoveRecursive(:final path):
@@ -229,6 +235,12 @@ final class _WorkPathProjector {
       );
     }
     return null;
+  }
+
+  bool _isAncestorOfWorkRoot(String path) {
+    final context = sourceFs.pathContext;
+    final normalized = context.normalize(path);
+    return context.isWithin(normalized, workRoot);
   }
 
   void _assertPath(String path) {
