@@ -1140,6 +1140,77 @@ void main() {
   );
 
   test(
+    'invalidation during attachment preparation cannot overwrite a newer full index',
+    () async {
+      final staleMessages = const [
+        AiMessage(
+          id: 'stale-message',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'stale')],
+        ),
+      ];
+      final freshMessages = const [
+        AiMessage(
+          id: 'fresh-message',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'fresh')],
+        ),
+      ];
+      final executor = _RecordingHistoryParseExecutor()
+        ..messages = staleMessages;
+      final resolver = _GatedFingerprintSideResolver();
+      final session = simpleSession();
+      final loader = buildLoader(
+        registry: fakeAiHistoryRegistry(
+          cli: CliTool.claude,
+          adapter: const _ThrowingParseAdapter(),
+          pageReader: _NullPageReader(),
+          subagentSideResolver: resolver,
+          locate: (_) async => _largeBundle(),
+        ),
+        parseExecutor: executor,
+      );
+
+      await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: launchContextFor(session),
+      );
+      final stalePending = loader.fullIndex(
+        sessionId: session.sessionId,
+        memberId: '',
+      );
+      await resolver.waitForFirstFingerprint();
+
+      loader.invalidate(sessionId: session.sessionId, memberId: '');
+      executor.messages = freshMessages;
+      await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: launchContextFor(session),
+        force: true,
+      );
+      final fresh = await loader.fullIndex(
+        sessionId: session.sessionId,
+        memberId: '',
+      );
+      expect(fresh, isNotNull);
+      expect(fresh!.messages.single.id, 'fresh-message');
+
+      resolver.releaseFirstFingerprint();
+      final stale = await stalePending;
+      expect(stale, isNotNull);
+      expect(stale!.isComplete, isFalse);
+      final afterStale = await loader.fullIndex(
+        sessionId: session.sessionId,
+        memberId: '',
+      );
+      expect(afterStale, isNotNull);
+      expect(afterStale!.messages.single.id, 'fresh-message');
+    },
+  );
+
+  test(
     'invalidation prevents a stale background worker snapshot from being imported',
     () async {
       final executor = _CompletingHistoryParseExecutor(
@@ -3074,6 +3145,41 @@ class _CountingSubagentSideResolver implements SubagentSideResolver {
     required SessionHistoryContext ctx,
     required String? rootTranscriptPath,
   }) async => 'fp-static';
+}
+
+final class _GatedFingerprintSideResolver implements SubagentSideResolver {
+  final _fingerprintGate = Completer<void>();
+  final _firstFingerprintStarted = Completer<void>();
+  var _fingerprintCalls = 0;
+
+  Future<void> waitForFirstFingerprint() => _firstFingerprintStarted.future;
+
+  void releaseFirstFingerprint() {
+    if (!_fingerprintGate.isCompleted) _fingerprintGate.complete();
+  }
+
+  @override
+  Future<SubagentSideResolveResult?> resolve({
+    required AiToolCallPart part,
+    required SessionHistoryContext ctx,
+    required SubagentSideHandle? parentHandle,
+    required String? rootTranscriptPath,
+    DateTime? toolCallAt,
+  }) async => null;
+
+  @override
+  Future<String?> fingerprint({
+    required SessionHistoryContext ctx,
+    required String? rootTranscriptPath,
+  }) async {
+    _fingerprintCalls++;
+    if (_fingerprintCalls == 1) {
+      _firstFingerprintStarted.complete();
+      await _fingerprintGate.future;
+      return 'stale-fingerprint';
+    }
+    return 'fresh-fingerprint';
+  }
 }
 
 class _EchoAdapter implements AiTranscriptAdapter {

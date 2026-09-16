@@ -933,6 +933,9 @@ final class AiHistoryLoader {
           rootTranscriptPath: parentPath,
         ),
       );
+      if (_isStaleGeneration(cacheKey, expectedGeneration)) {
+        return _incompleteResult(cacheKey: cacheKey, cli: cli);
+      }
 
       // 全量 parse 完成后对齐增量状态:让下一次 refresh 变成纯增量
       // (只重读指纹变化的行,原地合并进 messages 同一实例)。
