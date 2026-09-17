@@ -1,3 +1,6 @@
+import 'package:teampilot_scheduler/teampilot_scheduler.dart'
+    show SessionScheduler, SessionSpawnSpec;
+
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/runtime_target.dart';
@@ -22,9 +25,11 @@ import '../storage/runtime_context.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
 import '../agent_status/member_agent_status_endpoint.dart';
 import '../../utils/logging/logger.dart';
+import 'delegating_session_cli_plugin.dart';
 import 'launch_manifest.dart';
 import 'launch_manifest_paths.dart';
 import 'manifest_executor.dart';
+import 'session_init_request_mapper.dart';
 import 'session_runtime_plan.dart';
 import 'session_runtime_plan_builder.dart';
 import 'work_plane_script_runner.dart';
@@ -262,150 +267,213 @@ class SessionConnectOrchestrator {
       offHome ? homeContext() : workContext,
     );
 
+    final resolvedWorkingDirectory = isSimple
+        ? (workingDirectory.isNotEmpty
+              ? workingDirectory
+              : session.firstFolderPath)
+        : workingDirectory;
+    final resolvedAdditionalDirectories = isSimple
+        ? (additionalDirectories.isNotEmpty
+              ? additionalDirectories
+              : session.extraFolderPaths)
+        : additionalDirectories;
+    final teamId = team?.id.trim() ?? '';
+    final resolvedCliTeamName = isSimple
+        ? session.cliTeamName.trim()
+        : (session.cliTeamName.trim().isNotEmpty
+              ? session.cliTeamName.trim()
+              : session.sessionId);
+    final connectWorkspaceId = isSimple
+        ? workspace.workspaceId
+        : effectiveLaunchWorkspaceId(
+            workspaceId: session.workspaceId,
+            teamId: teamId,
+          );
+
+    final request = sessionInitRequestFromConnect(
+      workspaceId: connectWorkspaceId,
+      sessionId: session.sessionId,
+      memberId: plan.memberId,
+      cli: cli.value,
+      cliExecutablePath: remoteCliPath,
+      homeRoot: homeContext().appDataRoot,
+      workRoot: workContext.appDataRoot,
+      providerId: member.provider,
+      identityId: plan.expertKey,
+      workingDirectory: resolvedWorkingDirectory,
+      additionalDirectories: resolvedAdditionalDirectories,
+      cliTeamName: resolvedCliTeamName,
+      securityPolicy: LaunchSecurityPolicy.fullAccess,
+      skillIds: plan.runtimeBundle.skillIds,
+      pluginIds: plan.runtimeBundle.pluginIds,
+      mcpIds: plan.runtimeBundle.mcpServerIds,
+    );
+
     late final ({TeamLaunchOutcome outcome, LaunchManifest manifest}) staged;
-    if (isSimple) {
-      // Purpose-scoped providers (e.g. managed team-builder skill) must be
-      // injected here — this is the live Simple staging path. Lifecycle's
-      // prepareSimpleSessionLaunch is not used for connect.
-      staged = await catalogProfile.stageSimpleSessionLaunch(
-        readDelegate: offHome ? homeContext().fs : workContext.fs,
-        workTeampilotRoot: workContext.appDataRoot,
-        workspaceId: workspace.workspaceId,
-        sessionId: session.sessionId,
-        runtimeBundle: plan.runtimeBundle,
-        member: member,
-        workingDirectory: workingDirectory.isNotEmpty
-            ? workingDirectory
-            : session.firstFolderPath,
-        additionalDirectories: additionalDirectories.isNotEmpty
-            ? additionalDirectories
-            : session.extraFolderPaths,
-        extraMcpServers: extraMcpServers,
-        busIdle: busIdle,
-        agentStatus: agentStatus,
-        injectedResourceProviders: lifecycle.resourceProvidersForSession(
-          session,
-          ResourceProviderSet.empty,
-        ),
-      );
-    } else {
-      final teamId = team!.id.trim();
-      final cliTeamName = session.cliTeamName.trim();
-      final runtimeTeamId = cliTeamName.isNotEmpty
-          ? cliTeamName
-          : session.sessionId;
-      final leadTaskId = memberBinding?.taskId.trim() ?? '';
-      final leadSessionId =
-          TeamMemberNaming.isTeamLead(member) && leadTaskId.isNotEmpty
-          ? leadTaskId
-          : null;
-      staged = await catalogProfile.stageTeamLaunch(
-        readDelegate: offHome ? homeContext().fs : workContext.fs,
-        workTeampilotRoot: workContext.appDataRoot,
-        workspaceId: effectiveLaunchWorkspaceId(
-          workspaceId: session.workspaceId,
-          teamId: teamId,
-        ),
-        sessionId: session.sessionId,
-        teamId: teamId,
-        cliTeamName: runtimeTeamId,
-        cli: cli,
-        members: cliTeamRosterMembers(session, team),
-        member: member,
-        workingDirectory: workingDirectory,
-        additionalDirectories: additionalDirectories,
-        team: team,
-        runtimeBundle: plan.runtimeBundle,
-        leadSessionId: leadSessionId,
-        extraMcpServers: extraMcpServers,
-        busIdle: busIdle,
-        agentStatus: agentStatus,
-      );
+    final workSshProfileId = launchTarget.sshProfileId?.trim();
 
-      await maybeRemoveStaleProjectTeammateBus(
-        fs: workContext.fs,
-        extraServers: extraMcpServers,
-        projectRoots: projectMcpRootsFromLaunch(
-          workingDirectory: workingDirectory,
-          additionalDirectories: additionalDirectories,
-        ),
-      );
-    }
+    final plugin = DelegatingSessionCliPlugin(
+      toolId: cli.value,
+      onContribute:
+          ({
+            required request,
+            required layout,
+            required homeFs,
+            required workFs,
+            required manifest,
+          }) async {
+            if (isSimple) {
+              // Purpose-scoped providers (e.g. managed team-builder skill) must
+              // be injected here — this is the live Simple staging path.
+              // Lifecycle's prepareSimpleSessionLaunch is not used for connect.
+              staged = await catalogProfile.stageSimpleSessionLaunch(
+                readDelegate: homeFs,
+                workTeampilotRoot: workContext.appDataRoot,
+                workspaceId: workspace.workspaceId,
+                sessionId: session.sessionId,
+                runtimeBundle: plan.runtimeBundle,
+                member: member,
+                workingDirectory: resolvedWorkingDirectory,
+                additionalDirectories: resolvedAdditionalDirectories,
+                extraMcpServers: extraMcpServers,
+                busIdle: busIdle,
+                agentStatus: agentStatus,
+                injectedResourceProviders: lifecycle
+                    .resourceProvidersForSession(
+                      session,
+                      ResourceProviderSet.empty,
+                    ),
+              );
+            } else {
+              final leadTaskId = memberBinding?.taskId.trim() ?? '';
+              final leadSessionId =
+                  TeamMemberNaming.isTeamLead(member) && leadTaskId.isNotEmpty
+                  ? leadTaskId
+                  : null;
+              staged = await catalogProfile.stageTeamLaunch(
+                readDelegate: homeFs,
+                workTeampilotRoot: workContext.appDataRoot,
+                workspaceId: connectWorkspaceId,
+                sessionId: session.sessionId,
+                teamId: teamId,
+                cliTeamName: resolvedCliTeamName,
+                cli: cli,
+                members: cliTeamRosterMembers(session, team!),
+                member: member,
+                workingDirectory: workingDirectory,
+                additionalDirectories: additionalDirectories,
+                team: team,
+                runtimeBundle: plan.runtimeBundle,
+                leadSessionId: leadSessionId,
+                extraMcpServers: extraMcpServers,
+                busIdle: busIdle,
+                agentStatus: agentStatus,
+              );
 
-    appLogger.d(
-      '[session-launch] stage-session done '
-      'session=${session.sessionId} ops=${staged.manifest.entries.length}',
+              await maybeRemoveStaleProjectTeammateBus(
+                fs: workFs,
+                extraServers: extraMcpServers,
+                projectRoots: projectMcpRootsFromLaunch(
+                  workingDirectory: workingDirectory,
+                  additionalDirectories: additionalDirectories,
+                ),
+              );
+            }
+
+            appLogger.d(
+              '[session-launch] stage-session done '
+              'session=${session.sessionId} '
+              'ops=${staged.manifest.entries.length}',
+            );
+            _replayLaunchManifest(staged.manifest, manifest);
+          },
+      onSessionConfigDir: (layout, request) => layout.sessionRuntimeToolDir(
+        request.workspaceId,
+        request.sessionId,
+        request.cli,
+        memberId: request.memberId,
+      ),
+      onAfterApply:
+          ({required workFs, required layout, required environment}) async {
+            // The normal connect path stages through ManifestFilesystem and
+            // applies here, rather than calling ConfigProfileService.prepare*.
+            // Native CLI plugin installation must happen after apply so Codex
+            // can see the marketplace source on the target machine.
+            final postFlushProfile = await configProfileFor(workContext);
+            final nativeMemberId = !isSimple && team?.teamMode == TeamMode.mixed
+                ? ClaudeTeamRosterService.safeClaudePathSegment(member.id)
+                : null;
+            final nativePluginStarted = Stopwatch()..start();
+            await postFlushProfile.provisionNativePlugins(
+              workspaceId: connectWorkspaceId,
+              sessionId: session.sessionId,
+              runtimeBundle: plan.runtimeBundle,
+              cli: cli,
+              memberId: nativeMemberId,
+              team: team,
+              executable: remoteCliPath,
+            );
+            appLogger.d(
+              '[session-launch] native-plugin-install done '
+              'session=${session.sessionId} cli=${cli.value} '
+              'ms=${nativePluginStarted.elapsedMilliseconds}',
+            );
+
+            final postFlush = registry.capability<CliSessionCapability>(cli);
+            if (postFlush != null) {
+              await postFlush.afterManifestFlush(
+                PostManifestFlushContext(
+                  workFs: workFs,
+                  workHome: workContext.home,
+                  environment: staged.outcome.environment,
+                  remoteRunner: SshWorkPlaneScriptRunner.tryCreate(
+                    sshProfileId: workSshProfileId,
+                    sshClientFactory: manifestExecutor.sshClientFactory,
+                    profileById: manifestExecutor.profileById,
+                  ),
+                  reportDetail: (detail) {
+                    report(
+                      CliInstallPhase.syncingRemoteWorkspace,
+                      detail: detail,
+                    );
+                  },
+                ),
+              );
+            }
+
+            final env = offHome
+                ? normalizeWorkEnvironment(
+                    workContext.fs,
+                    staged.outcome.environment,
+                  )
+                : staged.outcome.environment;
+            environment.addAll(env);
+          },
+      onBuildSpawn:
+          ({required request, required layout, required environment}) {
+            return SessionSpawnSpec(
+              executable: request.cliExecutablePath,
+              argv: const [],
+              env: Map<String, String>.from(environment),
+              cwd: request.workingDirectory,
+            );
+          },
     );
 
     report(CliInstallPhase.syncingRemoteWorkspace, detail: 'manifest-flush');
     final flushStarted = Stopwatch()..start();
-    // ManifestExecutor compiles the staged manifest for the selected work
-    // plane, using SSH payloads remotely and the local applier otherwise.
-    final workSshProfileId = launchTarget.sshProfileId?.trim();
-    await manifestExecutor.flush(
-      manifest: staged.manifest,
-      targetFs: workContext.fs,
-      sourceFs: offHome ? homeContext().fs : workContext.fs,
-      symlinkProjectionRoot: workContext.appDataRoot,
-      homeRoot: homeContext().appDataRoot,
-      sshProfileId: (workSshProfileId != null && workSshProfileId.isNotEmpty)
-          ? workSshProfileId
-          : null,
+    final initResult = await const SessionScheduler().init(
+      request: request,
+      homeFs: offHome ? homeContext().fs : workContext.fs,
+      workFs: workContext.fs,
+      plugin: plugin,
     );
     appLogger.d(
-      '[session-launch] manifest-flush done '
+      '[session-launch] scheduler-init done '
       'session=${session.sessionId} ops=${staged.manifest.entries.length} '
-      'sshBatch=${workSshProfileId != null && workSshProfileId.isNotEmpty} '
+      'executable=${initResult.spawn.executable} '
       'ms=${flushStarted.elapsedMilliseconds}',
     );
-
-    // The normal connect path stages through ManifestFilesystem and flushes
-    // here, rather than calling ConfigProfileService.prepare*. Native CLI
-    // plugin installation must happen after that flush so Codex can see the
-    // marketplace source on the target machine.
-    final postFlushProfile = await configProfileFor(workContext);
-    final nativeMemberId = !isSimple && team?.teamMode == TeamMode.mixed
-        ? ClaudeTeamRosterService.safeClaudePathSegment(member.id)
-        : null;
-    final nativePluginStarted = Stopwatch()..start();
-    await postFlushProfile.provisionNativePlugins(
-      workspaceId: isSimple
-          ? workspace.workspaceId
-          : effectiveLaunchWorkspaceId(
-              workspaceId: workspace.workspaceId,
-              teamId: team?.id ?? '',
-            ),
-      sessionId: session.sessionId,
-      runtimeBundle: plan.runtimeBundle,
-      cli: cli,
-      memberId: nativeMemberId,
-      team: team,
-      executable: remoteCliPath,
-    );
-    appLogger.d(
-      '[session-launch] native-plugin-install done '
-      'session=${session.sessionId} cli=${cli.value} '
-      'ms=${nativePluginStarted.elapsedMilliseconds}',
-    );
-
-    final postFlush = registry.capability<CliSessionCapability>(cli);
-    if (postFlush != null) {
-      await postFlush.afterManifestFlush(
-        PostManifestFlushContext(
-          workFs: workContext.fs,
-          workHome: workContext.home,
-          environment: staged.outcome.environment,
-          remoteRunner: SshWorkPlaneScriptRunner.tryCreate(
-            sshProfileId: workSshProfileId,
-            sshClientFactory: manifestExecutor.sshClientFactory,
-            profileById: manifestExecutor.profileById,
-          ),
-          reportDetail: (detail) {
-            report(CliInstallPhase.syncingRemoteWorkspace, detail: detail);
-          },
-        ),
-      );
-    }
 
     final environment = offHome
         ? normalizeWorkEnvironment(workContext.fs, staged.outcome.environment)
@@ -425,7 +493,11 @@ class SessionConnectOrchestrator {
 
     return (
       shellLaunch: shellLaunch,
-      warnings: [...staged.outcome.warnings, ...shellLaunch.plan.warnings],
+      warnings: [
+        ...staged.outcome.warnings,
+        ...initResult.warnings,
+        ...shellLaunch.plan.warnings,
+      ],
       remoteCliPath: remoteCliPath,
     );
   }
@@ -471,6 +543,27 @@ class SessionConnectOrchestrator {
 
   TeamRosterSlot _slotForMember(TeamProfile team, TeamMemberConfig member) =>
       teamRosterSlotForMember(team, member);
+}
+
+void _replayLaunchManifest(LaunchManifest from, LaunchManifest dest) {
+  for (final entry in from.entries) {
+    switch (entry) {
+      case ManifestEnsureDir(:final path):
+        dest.ensureDir(path);
+      case ManifestWriteFile(:final path, :final content):
+        dest.writeFile(path, content);
+      case ManifestSymlink(:final linkPath, :final target):
+        dest.symlink(linkPath: linkPath, target: target);
+      case ManifestCopyFile(:final source, :final destination):
+        dest.copyFile(source: source, destination: destination);
+      case ManifestCopyTree(:final source, :final destination):
+        dest.copyTree(source: source, destination: destination);
+      case ManifestRemoveRecursive(:final path):
+        dest.removeRecursive(path);
+      case ManifestRename(:final from, :final to):
+        dest.rename(from: from, to: to);
+    }
+  }
 }
 
 /// Same preset merge as [SessionLifecycleService] shell launch (team only).
