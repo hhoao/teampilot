@@ -1,13 +1,32 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/mcp_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/skill_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/workspace_base_info_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/resource/providers/hook_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/mcp_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/skill_contribution_provider.dart';
 import 'package:teampilot/services/resource/resource_provider_set.dart';
+
+/// Claude/Cursor/Codex/FlashskyAI register [WorkspaceBaseInfoCapability] as a
+/// second [PromptContributionProvider]. OpenCode stays at one until Task 3.
+const _workspaceBaseInfoPromptClis = {
+  CliTool.claude,
+  CliTool.cursor,
+  CliTool.codex,
+  CliTool.flashskyai,
+};
+
+Set<String> _expectedPromptProviderIds(CliTool cli) {
+  final ids = {cli.value};
+  if (_workspaceBaseInfoPromptClis.contains(cli)) {
+    ids.add(workspaceBaseInfoProviderId);
+  }
+  return ids;
+}
 
 void main() {
   test('every launchable CLI wires all resource target capabilities', () {
@@ -47,15 +66,20 @@ void main() {
         final providers = registry
             .providersOf<PromptContributionProvider>(definition.id)
             .toList();
+        final expectedIds = _expectedPromptProviderIds(definition.id);
         expect(
           providers,
-          hasLength(1),
+          hasLength(expectedIds.length),
           reason: '${definition.id.value} prompt provider count',
         );
-        expect(providers.single.providerId, definition.id.value);
         expect(
-          providers.single,
-          same(registry.capability<PromptCapability>(definition.id)),
+          providers.map((provider) => provider.providerId).toSet(),
+          expectedIds,
+          reason: '${definition.id.value} prompt provider ids',
+        );
+        expect(
+          providers,
+          contains(same(registry.capability<PromptCapability>(definition.id))),
           reason: '${definition.id.value} target/provider capability identity',
         );
       }
@@ -72,7 +96,11 @@ void main() {
           cli: definition.id,
           registry: registry,
         );
-        expect(set.prompts, hasLength(1), reason: definition.id.value);
+        expect(
+          set.prompts.map((provider) => provider.providerId).toSet(),
+          _expectedPromptProviderIds(definition.id),
+          reason: definition.id.value,
+        );
         expect(
           registry.providersOf<SkillContributionProvider>(definition.id),
           isEmpty,
