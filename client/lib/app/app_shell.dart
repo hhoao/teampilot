@@ -1388,6 +1388,7 @@ Future<AppShell> buildAppShell({
       cliPresetsRepository: cliPresetsRepo,
       loadPresets: () => cliPresetsCubit.state.presets,
       projectConfigRepository: workspaceProjectConfigRepository,
+      sshProfileById: sshProfileById,
     );
     sessionRepo = SessionRepository(
       storage: homeStorage,

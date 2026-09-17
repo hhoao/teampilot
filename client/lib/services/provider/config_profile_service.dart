@@ -32,6 +32,7 @@ import '../mcp/mcp_registry_service.dart';
 import '../resource/resource_scope.dart';
 import '../resource/cli_resource_provisioner.dart';
 import '../resource/resource_provider_set.dart';
+import '../cli/registry/capabilities/workspace_base_info_capability.dart';
 import '../catalog/providers/catalog_prompt_provider.dart';
 import '../catalog/providers/managed_catalog_skill_provider.dart';
 import '../resource/providers/catalog_skill_contribution_provider.dart';
@@ -257,6 +258,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
     required ConfigBundle runtimeBundle,
     required String workingDirectory,
     required List<String> additionalDirectories,
+    WorkspaceBaseInfoPromptInputs workspaceBaseInfo =
+        WorkspaceBaseInfoPromptInputs.empty,
     required MemberBusIdleEndpoint? busIdle,
     required MemberAgentStatusEndpoint? agentStatus,
     required List<String> hookIds,
@@ -329,6 +332,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           members: [member],
           workingDirectory: workingDirectory,
           additionalDirectories: additionalDirectories,
+          workspaceBaseInfo: workspaceBaseInfo,
           mixed: mixed,
           pushDelivery: mixed,
           hooksDir: hookPaths.hooksDir,
@@ -693,6 +697,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
     Iterable<String> projectMcpRoots = const [],
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
+    WorkspaceBaseInfoPromptInputs workspaceBaseInfo =
+        WorkspaceBaseInfoPromptInputs.empty,
     MemberBusIdleEndpoint? busIdle,
     bool provisionResources = true,
   }) async {
@@ -917,6 +923,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
     Map<String, String>? resourceEnvironment,
     String workingDirectory = '',
     Iterable<String> additionalDirectories = const [],
+    WorkspaceBaseInfoPromptInputs workspaceBaseInfo =
+        WorkspaceBaseInfoPromptInputs.empty,
     ResourceProviderSet injectedResourceProviders = ResourceProviderSet.empty,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
@@ -1076,6 +1084,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           members: members,
           workingDirectory: workingDirectory,
           additionalDirectories: additionalDirectories,
+          workspaceBaseInfo: workspaceBaseInfo,
           memberHome: memberHome,
           hooksDir: hookPaths.hooksDir,
           hookConfigPath: hookPaths.configPath,
@@ -1213,6 +1222,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
     required TeamMemberConfig member,
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
+    WorkspaceBaseInfoPromptInputs workspaceBaseInfo =
+        WorkspaceBaseInfoPromptInputs.empty,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
@@ -1264,6 +1275,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       resourceEnvironment: resourceEnvironment,
       workingDirectory: workingDirectory,
       additionalDirectories: additionalDirectories,
+      workspaceBaseInfo: workspaceBaseInfo,
       projectMcpRoots: projectMcpRootsFromLaunch(
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,
@@ -1308,6 +1320,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
     required TeamMemberConfig member,
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
+    WorkspaceBaseInfoPromptInputs workspaceBaseInfo =
+        WorkspaceBaseInfoPromptInputs.empty,
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
     MemberAgentStatusEndpoint? agentStatus,
@@ -1323,6 +1337,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       member: member,
       workingDirectory: workingDirectory,
       additionalDirectories: additionalDirectories,
+      workspaceBaseInfo: workspaceBaseInfo,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
       agentStatus: agentStatus,
@@ -1360,6 +1375,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
     TeamMemberConfig? member,
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
+    WorkspaceBaseInfoPromptInputs workspaceBaseInfo =
+        WorkspaceBaseInfoPromptInputs.empty,
     TeamProfile? team,
     required ConfigBundle runtimeBundle,
     String? leadSessionId,
@@ -1441,6 +1458,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
         ),
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,
+        workspaceBaseInfo: workspaceBaseInfo,
         busIdle: busIdle,
         provisionResources: false,
       ),
@@ -1528,6 +1546,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
         pushDelivery: team?.teamMode == TeamMode.mixed,
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,
+        workspaceBaseInfo: workspaceBaseInfo,
         memberHome: launchCli == CliTool.cursor && launchMember != null
             ? stagingFs.pathContext.join(hookMemberToolDir, 'home')
             : null,
@@ -1598,6 +1617,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
         runtimeBundle: runtimeBundle,
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,
+        workspaceBaseInfo: workspaceBaseInfo,
         busIdle: busIdle,
         agentStatus: agentStatus,
         hookIds: runtimeBundle.hookIds,
@@ -1673,6 +1693,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
     TeamMemberConfig? member,
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
+    WorkspaceBaseInfoPromptInputs workspaceBaseInfo =
+        WorkspaceBaseInfoPromptInputs.empty,
     TeamProfile? team,
     required ConfigBundle runtimeBundle,
     String? leadSessionId,
@@ -1693,6 +1715,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       member: member,
       workingDirectory: workingDirectory,
       additionalDirectories: additionalDirectories,
+      workspaceBaseInfo: workspaceBaseInfo,
       team: team,
       runtimeBundle: runtimeBundle,
       leadSessionId: leadSessionId,

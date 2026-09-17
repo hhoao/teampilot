@@ -18,6 +18,7 @@ import '../resource/resource_provider_set.dart';
 import '../session/session_continue_overrides_apply.dart';
 import '../session/session_launch_config_snapshot.dart';
 import '../session/session_lifecycle_service.dart';
+import '../cli/registry/capabilities/workspace_base_info_capability.dart';
 import '../storage/runtime_context.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
 import '../agent_status/member_agent_status_endpoint.dart';
@@ -281,6 +282,11 @@ class SessionConnectOrchestrator {
             ? additionalDirectories
             : session.extraFolderPaths,
         extraMcpServers: extraMcpServers,
+        workspaceBaseInfo: workspaceBaseInfoPromptInputs(
+          extraMcpServers: extraMcpServers,
+          folders: workspace.folders,
+          profileOf: lifecycle.sshProfileById,
+        ),
         busIdle: busIdle,
         agentStatus: agentStatus,
         injectedResourceProviders: lifecycle.resourceProvidersForSession(
@@ -318,6 +324,11 @@ class SessionConnectOrchestrator {
         runtimeBundle: plan.runtimeBundle,
         leadSessionId: leadSessionId,
         extraMcpServers: extraMcpServers,
+        workspaceBaseInfo: workspaceBaseInfoPromptInputs(
+          extraMcpServers: extraMcpServers,
+          folders: workspace.folders,
+          profileOf: lifecycle.sshProfileById,
+        ),
         busIdle: busIdle,
         agentStatus: agentStatus,
       );

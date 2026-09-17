@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/cli/registry/capabilities/workspace_base_info_capability.dart';
+import 'package:teampilot/services/session/member_role_provision.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/flashskyai/capabilities/provider.dart';
@@ -178,6 +180,40 @@ void main() {
 
       final trustPath = CursorWorkspaceTrust.trustMarkerPath(home, workspace);
       expect(await File(trustPath).exists(), isTrue);
+    },
+  );
+
+  test(
+    'prepareSimpleSessionLaunch writes remote prompt when ssh MCP is injected',
+    () async {
+      const workspaceId = 'proj-simple-ssh';
+      const sessionId = 'sess-simple-ssh';
+      final outcome = await service.prepareSimpleSessionLaunch(
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+        runtimeBundle: const ConfigBundle(),
+        member: const TeamMemberConfig(id: 'solo', name: 'solo', agent: 'solo'),
+        workingDirectory: '/workspace/simple',
+        workspaceBaseInfo: const WorkspaceBaseInfoPromptInputs(
+          sshMcpInjected: true,
+          remoteFolders: [
+            WorkspaceRemoteFolderInfo(
+              profileId: 'home-server',
+              name: 'Home',
+              endpoint: 'alice@192.168.1.8:22',
+              folderPaths: ['/home/alice/proj'],
+            ),
+          ],
+        ),
+      );
+
+      final promptPath =
+          outcome.environment[MemberRoleProvision.appendSystemPromptFileEnvKey];
+      expect(promptPath, isNotNull);
+      final prompt = await File(promptPath!).readAsString();
+      expect(prompt, contains('## Remote projects'));
+      expect(prompt, contains('home-server'));
+      expect(prompt, contains('/home/alice/proj'));
     },
   );
 }

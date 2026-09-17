@@ -7,6 +7,7 @@ import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/skill.dart';
+import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import '../../models/launch_security_policy.dart';
 import '../../models/member_instance.dart';
@@ -28,6 +29,7 @@ import '../storage/runtime_layout.dart';
 import '../storage/work_target_canonicalizer.dart';
 import '../cli/registry/capabilities/ai_history_capability.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
+import '../cli/registry/capabilities/workspace_base_info_capability.dart';
 import '../cli/preset_resolver.dart';
 import '../agent_runtime/agent_runtime.dart';
 import '../cli/registry/launch/cli_launch_context.dart';
@@ -83,6 +85,7 @@ class SessionLifecycleService {
     String Function(CliTool cli)? cliExecutableResolver,
     String Function()? toolchainNodeResolver,
     SessionResourceProviderResolver? resourceProviderResolver,
+    this.sshProfileById,
   }) : _storage = storage,
        _appDataBasePath = appDataBasePath,
        _configProfileService = configProfileService,
@@ -136,6 +139,7 @@ class SessionLifecycleService {
   final String Function()? _toolchainNodeResolver;
   SessionRuntimePlanBuilder? _runtimePlanBuilder;
   SessionResourceProviderResolver? _resourceProviderResolver;
+  final SshProfile? Function(String id)? sshProfileById;
 
   /// Current app home target (local, SSH, or WSL).
   RuntimeTarget get currentHome => _homeTarget();
@@ -886,6 +890,11 @@ class SessionLifecycleService {
     final cwd = workingDirectory.isNotEmpty
         ? workingDirectory
         : memberDirs.workingDirectory;
+    final workspaceBaseInfo = workspaceBaseInfoPromptInputs(
+      extraMcpServers: extraMcpServers,
+      folders: workspace.folders,
+      profileOf: sshProfileById,
+    );
 
     if (plan.mode == SessionRuntimeMode.simple) {
       final outcome = await service.prepareSimpleSessionLaunch(
@@ -895,6 +904,7 @@ class SessionLifecycleService {
         member: member,
         workingDirectory: cwd,
         additionalDirectories: memberDirs.addDirs,
+        workspaceBaseInfo: workspaceBaseInfo,
         extraMcpServers: extraMcpServers,
         busIdle: busIdle,
         agentStatus: agentStatus,
@@ -931,6 +941,7 @@ class SessionLifecycleService {
           ? memberDirs.workingDirectory
           : cwd,
       additionalDirectories: memberDirs.addDirs,
+      workspaceBaseInfo: workspaceBaseInfo,
       team: team,
       runtimeBundle: plan.runtimeBundle,
       leadSessionId: leadSessionId,

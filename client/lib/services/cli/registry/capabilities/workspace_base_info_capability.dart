@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:teampilot/models/ssh_profile.dart';
+import 'package:teampilot/models/workspace_folder.dart';
+import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_constants.dart';
 import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_targets.dart';
 
 import '../../../resource/contribution/prompt_document.dart';
@@ -74,6 +77,26 @@ List<WorkspaceRemoteFolderInfo> workspaceRemoteFoldersFromTargets(
 ) => [
   for (final target in targets) WorkspaceRemoteFolderInfo.fromTarget(target),
 ];
+
+WorkspaceBaseInfoPromptInputs workspaceBaseInfoPromptInputs({
+  Map<String, Map<String, Object?>>? extraMcpServers,
+  List<WorkspaceFolder> folders = const [],
+  SshProfile? Function(String id)? profileOf,
+}) {
+  final injected = extraMcpServers?[sessionSshMcpServerName] != null;
+  final remotes = profileOf == null
+      ? const <WorkspaceRemoteFolderInfo>[]
+      : workspaceRemoteFoldersFromTargets(
+          sessionSshMcpTargetsFromFolders(
+            folders: folders,
+            profileOf: profileOf,
+          ),
+        );
+  return WorkspaceBaseInfoPromptInputs(
+    sshMcpInjected: injected,
+    remoteFolders: remotes,
+  );
+}
 
 String composeWorkspaceBaseInfoPrompt(WorkspaceSeatSnapshot snapshot) {
   final extras = [
