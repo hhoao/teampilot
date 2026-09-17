@@ -1,6 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
+import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/cli/claude/capabilities/workspace_base_info.dart';
 import 'package:teampilot/services/cli/registry/capabilities/workspace_base_info_capability.dart';
+import 'package:teampilot/services/resource/providers/prompt_contribution_provider.dart';
 import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_targets.dart';
 
 void main() {
@@ -34,10 +37,7 @@ void main() {
       ),
     );
     final text = composeWorkspaceBaseInfoPrompt(
-      WorkspaceSeatSnapshot(
-        sshMcpInjected: true,
-        remoteFolders: [remote],
-      ),
+      WorkspaceSeatSnapshot(sshMcpInjected: true, remoteFolders: [remote]),
     );
     expect(text, isNot(contains('## Workspace directories')));
     expect(text, contains('## Remote projects'));
@@ -89,7 +89,10 @@ void main() {
     );
     expect(text, contains('## Workspace directories'));
     expect(text, contains('## Remote projects'));
-    expect(text.indexOf('## Workspace directories'), lessThan(text.indexOf('## Remote projects')));
+    expect(
+      text.indexOf('## Workspace directories'),
+      lessThan(text.indexOf('## Remote projects')),
+    );
   });
 
   test('customPromptSections append after remote', () {
@@ -112,4 +115,51 @@ void main() {
     expect(text, contains('## Remote projects'));
     expect(text, contains('list-servers'));
   });
+
+  test(
+    'provide includes remote section when workspaceBaseInfo injects ssh',
+    () async {
+      final contributions = await const ClaudeWorkspaceBaseInfo().provide(
+        PromptProviderContext(
+          cli: CliTool.claude,
+          workspaceBaseInfo: WorkspaceBaseInfoPromptInputs(
+            sshMcpInjected: true,
+            remoteFolders: [
+              WorkspaceRemoteFolderInfo(
+                profileId: 'home-server',
+                name: 'Home',
+                endpoint: 'alice@192.168.1.8:22',
+                folderPaths: const ['/home/alice/proj'],
+              ),
+            ],
+          ),
+        ),
+      );
+      expect(contributions.single.content, contains('## Remote projects'));
+      expect(contributions.single.content, contains('home-server'));
+    },
+  );
+
+  test(
+    'provide omits remote section when folders exist but not injected',
+    () async {
+      final contributions = await const ClaudeWorkspaceBaseInfo().provide(
+        PromptProviderContext(
+          cli: CliTool.claude,
+          workspaceBaseInfo: WorkspaceBaseInfoPromptInputs(
+            sshMcpInjected: false,
+            remoteFolders: [
+              WorkspaceRemoteFolderInfo(
+                profileId: 'home-server',
+                name: 'Home',
+                endpoint: 'alice@h:22',
+                folderPaths: const ['/r'],
+              ),
+            ],
+          ),
+        ),
+      );
+      expect(contributions, isEmpty);
+    },
+  );
 }

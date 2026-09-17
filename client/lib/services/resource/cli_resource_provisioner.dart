@@ -8,6 +8,7 @@ import '../cli/registry/capabilities/hook_capability.dart';
 import '../cli/registry/capabilities/mcp_capability.dart';
 import '../cli/registry/capabilities/prompt_capability.dart';
 import '../cli/registry/capabilities/skill_capability.dart';
+import '../cli/registry/capabilities/workspace_base_info_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
 import '../hook/glue_script_builder.dart';
@@ -57,6 +58,7 @@ class CliResourceProvisionContext {
     this.hooksDir,
     this.hookConfigPath,
     this.hookRenderContext,
+    this.workspaceBaseInfo = WorkspaceBaseInfoPromptInputs.empty,
   }) : members = List.unmodifiable(members),
        additionalDirectories = List.unmodifiable(additionalDirectories);
 
@@ -91,6 +93,7 @@ class CliResourceProvisionContext {
   /// than from [configDir].
   final String? hookConfigPath;
   final HookRenderContext? hookRenderContext;
+  final WorkspaceBaseInfoPromptInputs workspaceBaseInfo;
 }
 
 /// Per-kind result retained by the launch staging caller for diagnostics and
@@ -321,6 +324,7 @@ final class CliResourceProvisioner {
               pushDelivery: context.pushDelivery,
               additionalDirectories: context.additionalDirectories,
               memberHome: context.memberHome,
+              workspaceBaseInfo: context.workspaceBaseInfo,
             ),
             document: prompt,
           );
@@ -717,6 +721,7 @@ final class CliResourceProvisioner {
           pushDelivery: context.pushDelivery,
           additionalDirectories: context.additionalDirectories,
           memberHome: context.memberHome,
+          workspaceBaseInfo: context.workspaceBaseInfo,
         ),
         providers: providers.prompts,
       );

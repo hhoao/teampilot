@@ -155,15 +155,15 @@ abstract base class WorkspaceBaseInfoCapabilityBase
   FutureOr<Iterable<PromptContribution>> provide(
     PromptProviderContext context,
   ) {
-    final extras = [
-      for (final directory in context.additionalDirectories)
-        if (directory.trim().isNotEmpty) directory.trim(),
-    ];
+    final inputs = context.workspaceBaseInfo;
     final snapshot = WorkspaceSeatSnapshot(
-      sameHostExtraDirs: extras,
-      sshMcpInjected: false,
-      remoteFolders: const [],
-      customPromptSections: const [],
+      sameHostExtraDirs: [
+        for (final directory in context.additionalDirectories)
+          if (directory.trim().isNotEmpty) directory.trim(),
+      ],
+      sshMcpInjected: inputs.sshMcpInjected,
+      remoteFolders: inputs.remoteFolders,
+      customPromptSections: inputs.customPromptSections,
     );
     final content = composeWorkspaceBaseInfoPrompt(snapshot);
     if (content.isEmpty) return const [];

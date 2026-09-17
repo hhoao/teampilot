@@ -4,6 +4,7 @@ import '../../../resource/contribution/resource_assembly_result.dart';
 import '../../../resource/contribution/prompt_document.dart';
 import '../cli_capability.dart';
 import '../config_profile/config_profile_context.dart';
+import 'workspace_base_info_capability.dart';
 
 export '../../../resource/contribution/prompt_document.dart';
 export '../../../resource/providers/prompt_contribution_provider.dart';
@@ -21,6 +22,7 @@ class PromptVirtualizeContext {
     this.pushDelivery = false,
     this.additionalDirectories = const [],
     this.memberHome,
+    this.workspaceBaseInfo = WorkspaceBaseInfoPromptInputs.empty,
   });
 
   final ConfigProfileDelegate? paths;
@@ -35,6 +37,7 @@ class PromptVirtualizeContext {
 
   /// cursor 专用：fake HOME，由装配点解析后传入。
   final String? memberHome;
+  final WorkspaceBaseInfoPromptInputs workspaceBaseInfo;
 }
 
 /// Each CLI declares a target writer for an assembled prompt document.
@@ -62,6 +65,7 @@ class PromptMaterializeContext {
     this.pushDelivery = false,
     this.additionalDirectories = const [],
     this.memberHome,
+    this.workspaceBaseInfo = WorkspaceBaseInfoPromptInputs.empty,
   });
 
   final ConfigProfileDelegate? paths;
@@ -76,6 +80,7 @@ class PromptMaterializeContext {
 
   /// cursor 专用：fake HOME，由装配点解析后传入。
   final String? memberHome;
+  final WorkspaceBaseInfoPromptInputs workspaceBaseInfo;
 }
 
 class PromptMaterializeResult {
