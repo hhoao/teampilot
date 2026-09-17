@@ -642,6 +642,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
         fs: ctx.paths.fs,
         credentials: credentials,
         layout: homeLayout,
+        runtimeLayout: ctx.paths.layout,
       ).provisionOverlayOnly(
         memberHome: memberHome,
         member: member,
@@ -649,7 +650,10 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
         forceTeamLeadDelegateMode: team.forceTeamLeadDelegateMode,
         cliConfigJson: baseJson,
         sharedMcpBasePath: mcpBasePath,
-        warmCacheHomeRoot: ctx.paths.home,
+        workspaceId: ctx.workspaceId,
+        sessionId: ctx.sessionId,
+        memberId: ctx.memberId,
+        providerId: ctx.resolvedProviderId,
       );
     }
 

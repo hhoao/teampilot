@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
 import 'apply_plan.dart';
 import 'blob_store.dart';
@@ -79,7 +80,11 @@ final class _WorkPathProjector {
             ApplyRename(from: _projectRequired(from), to: _projectRequired(to)),
           );
         case ManifestSymlink(:final linkPath, :final target):
-          await _addSymlink(linkPath: linkPath, target: target);
+          await _addSymlink(
+            linkPath: linkPath,
+            target: target,
+            entryIndex: entryIndex,
+          );
         case ManifestCopyFile(:final source, :final destination):
           await _addCopyFile(
             source: source,
@@ -114,17 +119,100 @@ final class _WorkPathProjector {
   Future<void> _addSymlink({
     required String linkPath,
     required String target,
+    required int entryIndex,
   }) async {
     final projectedLink = _projectRequired(linkPath);
-    final projectedTarget = _project(target);
+    final resolvedTarget = _resolveTarget(target: target, linkPath: linkPath);
+    final projectedTarget = _project(resolvedTarget);
     if (projectedTarget == null) {
-      throw StateError('symlink target cannot be projected: $target');
+      await _materializeUnprojectable(
+        source: resolvedTarget,
+        destination: linkPath,
+        entryIndex: entryIndex,
+      );
+      return;
     }
-    _assertPath(projectedTarget);
-    if (await _isProvided(target, projectedTarget)) {
+    if (await _isProvided(resolvedTarget, projectedTarget)) {
       _providedLinks++;
+      _ops.add(ApplySymlink(linkPath: projectedLink, target: projectedTarget));
+      return;
     }
-    _ops.add(ApplySymlink(linkPath: projectedLink, target: projectedTarget));
+    // Keep the link when the target is created in this plan, or when it is a
+    // workRoot first-fill hole (empty CLI cache file). Copy only when
+    // sourceFs already has content that remote does not.
+    if (_planCreates(resolvedTarget) ||
+        !await _sourceHasContent(resolvedTarget)) {
+      _ops.add(ApplySymlink(linkPath: projectedLink, target: projectedTarget));
+      return;
+    }
+    await _materializeUnprojectable(
+      source: resolvedTarget,
+      destination: linkPath,
+      entryIndex: entryIndex,
+    );
+  }
+
+  Future<bool> _sourceHasContent(String path) async {
+    final stat = await sourceFs.lstat(path);
+    return stat.isFile || stat.isDirectory || stat.isSymlink;
+  }
+
+  Future<void> _materializeUnprojectable({
+    required String source,
+    required String destination,
+    required int entryIndex,
+    Set<String>? visited,
+  }) async {
+    final seen = visited ?? <String>{};
+    if (!seen.add(source)) {
+      throw StateError('symlink target cycle: $source');
+    }
+    final stat = await sourceFs.lstat(source);
+    if (stat.isFile) {
+      appLogger.d(
+        '[session-launch] apply-plan materialize file not on work plane '
+        'dest=$destination source=$source',
+      );
+      await _addCopyFile(
+        source: source,
+        destination: destination,
+        entryIndex: entryIndex,
+      );
+      return;
+    }
+    if (stat.isDirectory) {
+      appLogger.d(
+        '[session-launch] apply-plan materialize dir not on work plane '
+        'dest=$destination source=$source',
+      );
+      await _addCopyTree(
+        source: source,
+        destination: destination,
+        entryIndex: entryIndex,
+      );
+      return;
+    }
+    if (stat.isSymlink) {
+      final nextTarget = await sourceFs.readSymlinkTarget(source);
+      if (nextTarget != null) {
+        await _materializeUnprojectable(
+          source: _resolveTarget(target: nextTarget, linkPath: source),
+          destination: destination,
+          entryIndex: entryIndex,
+          visited: seen,
+        );
+        return;
+      }
+    }
+    throw StateError('symlink target cannot be projected: $source');
+  }
+
+  String _resolveTarget({required String target, required String linkPath}) {
+    final context = sourceFs.pathContext;
+    final effective = context.isAbsolute(target)
+        ? target
+        : context.join(context.dirname(linkPath), target);
+    return context.normalize(effective);
   }
 
   Future<void> _addCopyFile({
@@ -224,6 +312,57 @@ final class _WorkPathProjector {
     if (candidateStat.isDirectory) return true;
     return candidateStat.isSymlink &&
         (await workFs.stat(candidate)).isDirectory;
+  }
+
+  bool _planCreates(String path) {
+    final context = sourceFs.pathContext;
+    final normalized = context.normalize(path);
+    for (final entry in manifest.entries) {
+      for (final created in _createdContentPaths(entry)) {
+        final projected = _project(created);
+        if (projected == null) continue;
+        final n = context.normalize(projected);
+        if (n == normalized || context.isWithin(normalized, n)) {
+          return true;
+        }
+        // copyTree/symlink of a parent covers children (plugin root → skills/).
+        // EnsureDir of an ancestor does not — mkdir /tp must not keep every ln.
+        if (_coversDescendants(entry) && context.isWithin(n, normalized)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  bool _coversDescendants(LaunchManifestEntry entry) {
+    return switch (entry) {
+      ManifestCopyTree() ||
+      ManifestCopyFile() ||
+      ManifestSymlink() ||
+      ManifestRename() => true,
+      ManifestEnsureDir() ||
+      ManifestWriteFile() ||
+      ManifestRemoveRecursive() => false,
+    };
+  }
+
+  Iterable<String> _createdContentPaths(LaunchManifestEntry entry) sync* {
+    switch (entry) {
+      case ManifestEnsureDir(:final path):
+        yield path;
+      case ManifestWriteFile(:final path):
+        yield path;
+      case ManifestCopyFile(:final destination) ||
+          ManifestCopyTree(:final destination):
+        yield destination;
+      case ManifestRename(:final to):
+        yield to;
+      case ManifestSymlink(:final linkPath):
+        yield linkPath;
+      case ManifestRemoveRecursive():
+        break;
+    }
   }
 
   bool _hasLaterMutationInside(String destination, int entryIndex) {

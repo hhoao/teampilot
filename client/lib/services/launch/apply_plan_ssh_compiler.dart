@@ -54,16 +54,15 @@ String? _compileMutationScript(
     final op = ops[opIndex];
     switch (op) {
       case ApplyEnsureDir(:final path):
-        buffer.writeln('mkdir -p ${posixShellQuote(path)}');
+        _writeEnsureDir(buffer, path);
       case ApplyRemove(:final path):
         buffer.writeln('rm -rf ${posixShellQuote(path)}');
       case ApplyRename(:final from, :final to):
-        buffer
-          ..writeln('mkdir -p ${posixShellQuote(_posixDirname(to))}')
-          ..writeln('mv ${posixShellQuote(from)} ${posixShellQuote(to)}');
+        _writeEnsureDir(buffer, _posixDirname(to));
+        buffer.writeln('mv ${posixShellQuote(from)} ${posixShellQuote(to)}');
       case ApplySymlink(:final linkPath, :final target):
+        _writeEnsureDir(buffer, _posixDirname(linkPath));
         buffer
-          ..writeln('mkdir -p ${posixShellQuote(_posixDirname(linkPath))}')
           ..writeln('rm -rf -- ${posixShellQuote(linkPath)}')
           ..writeln(
             'ln -sfn -- ${posixShellQuote(target)} '
@@ -78,8 +77,8 @@ String? _compileMutationScript(
         );
         if (supersededByBlob) break;
         final delimiter = _heredocDelimiter(content);
+        _writeEnsureDir(buffer, _posixDirname(path));
         buffer
-          ..writeln('mkdir -p ${posixShellQuote(_posixDirname(path))}')
           ..writeln("cat > ${posixShellQuote(path)} <<'$delimiter'")
           ..writeln(content)
           ..writeln(delimiter);
@@ -88,7 +87,7 @@ String? _compileMutationScript(
     }
   }
   if (buffer.isEmpty) return null;
-  return 'set -e\n$buffer';
+  return 'set -e\n$_ensureDirFn$buffer';
 }
 
 Map<String, _BlobMember> _compactedBlobMembers(ApplyPlan plan) {
@@ -197,6 +196,58 @@ final class _BlobMember {
 String _posixDirname(String path) {
   final index = path.lastIndexOf('/');
   return index <= 0 ? '/' : path.substring(0, index);
+}
+
+/// Match local ensureDir: a directory or symlink (including a dangling
+/// marketplace link) is already present. Walk components so `mkdir` never
+/// runs `mkdir -p` through a dangling ancestor (GNU mkdir: File exists).
+/// `[ -d ]` follows live directory links so children are still created in
+/// the target; `[ -L ]` after that is only the dangling / non-dir case.
+const _ensureDirFn = r'''
+_tp_ensure_dir() {
+  q=$1
+  if [ -d "$q" ]; then
+    return 0
+  fi
+  if [ -L "$q" ]; then
+    return 0
+  fi
+  accum=
+  case $q in
+    /*) accum=/ ;;
+  esac
+  rest=$q
+  case $rest in
+    /*) rest=${rest#/} ;;
+  esac
+  while [ -n "$rest" ]; do
+    part=${rest%%/*}
+    if [ "$part" = "$rest" ]; then
+      rest=
+    else
+      rest=${rest#*/}
+    fi
+    [ -z "$part" ] && continue
+    if [ "$accum" = / ]; then
+      accum="/$part"
+    elif [ -n "$accum" ]; then
+      accum="$accum/$part"
+    else
+      accum=$part
+    fi
+    if [ -d "$accum" ]; then
+      continue
+    fi
+    if [ -L "$accum" ]; then
+      return 0
+    fi
+    mkdir "$accum" || return 1
+  done
+}
+''';
+
+void _writeEnsureDir(StringBuffer buffer, String path) {
+  buffer.writeln('_tp_ensure_dir ${posixShellQuote(path)}');
 }
 
 String _heredocDelimiter(String content) {

@@ -323,6 +323,33 @@ void main() {
     );
 
     test(
+      'ensureDir under an overlay symlink does not record the link or children',
+      () async {
+        final disk = InMemoryFilesystem();
+        await disk.ensureDir('/flavor/.claude-plugin');
+        await disk.writeString('/flavor/.claude-plugin/marketplace.json', '{}');
+
+        final manifest = LaunchManifest();
+        final staging = ManifestFilesystem(
+          manifest: manifest,
+          readDelegate: disk,
+        );
+        const dest = '/session/plugins/marketplaces/claude-plugins-official';
+        await staging.createSymlink(target: '/flavor', linkPath: dest);
+        await staging.ensureDir('$dest/.cursor-plugin');
+
+        expect(
+          manifest.entries.whereType<ManifestEnsureDir>().map((e) => e.path),
+          isNot(contains(dest)),
+        );
+        expect(
+          manifest.entries.whereType<ManifestEnsureDir>().map((e) => e.path),
+          isNot(contains('$dest/.cursor-plugin')),
+        );
+      },
+    );
+
+    test(
       'reads and lists through overlay symlinks via the readDelegate target',
       () async {
         final disk = InMemoryFilesystem();

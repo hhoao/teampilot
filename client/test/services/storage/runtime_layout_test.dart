@@ -2,9 +2,11 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
+import 'package:teampilot/services/storage/workspace_cli_cache.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -206,12 +208,19 @@ void main() {
       base = await Directory.systemTemp.createTemp('runtime_layout_');
     });
 
-    test('Codex session owns a real plugin cache', () async {
+    test('Codex session tmp plugins inherit workspace cache', () async {
       final fs = InMemoryFilesystem();
       final layout = RuntimeLayout(teampilotRoot: '/tp', fs: fs);
-      final shared = p.join(layout.appToolRoot('codex'), '.tmp', 'plugins');
-      await fs.ensureDir(shared);
-      await fs.writeString(p.join(shared, 'stale.json'), 'stale');
+      final cache = WorkspaceCliCache(layout: layout);
+      final global = cache.globalEntryPath(
+        tool: 'codex',
+        providerId: null,
+        cacheRel: WorkspaceCliCache.codexTmpPluginsCacheRel,
+      );
+      await fs.writeString(
+        p.join(layout.appToolRoot('codex'), '.tmp', 'plugins', 'stale.json'),
+        'stale',
+      );
 
       await layout.ensureSessionOwnsCodexTmpPlugins(workspaceId, 'sess-1');
 
@@ -220,8 +229,14 @@ void main() {
         '.tmp',
         'plugins',
       );
-      expect((await fs.lstat(sessionPlugins)).isDirectory, isTrue);
-      expect((await fs.lstat(sessionPlugins)).isSymlink, isFalse);
+      final workspace = cache.workspaceToolRelPath(
+        workspaceId: workspaceId,
+        tool: 'codex',
+        toolRel: '.tmp/plugins',
+      );
+      expect(await fs.readSymlinkTarget(sessionPlugins), workspace);
+      expect(await fs.readSymlinkTarget(workspace), global);
+      expect((await fs.stat(global)).isDirectory, isTrue);
       expect(await fs.readString(p.join(sessionPlugins, 'stale.json')), isNull);
     });
 
@@ -502,11 +517,13 @@ void main() {
           teampilotRoot: base.path,
           fs: LocalFilesystem(),
         );
-        await layout.ensureAppToolLayout('opencode');
-        final app = layout.appToolRoot('opencode');
-        await File(p.join(app, 'package.json')).writeAsString(
-          '{"dependencies":{"@opencode-ai/plugin":"1.0.0"}}',
-        );
+        final app = WorkspaceCliCache(
+          layout: layout,
+        ).globalRoot(tool: CliTool.opencode.value);
+        await Directory(app).create(recursive: true);
+        await File(
+          p.join(app, 'package.json'),
+        ).writeAsString('{"dependencies":{"@opencode-ai/plugin":"1.0.0"}}');
         await Directory(
           p.join(app, 'node_modules', '@opencode-ai', 'plugin'),
         ).create(recursive: true);
@@ -530,19 +547,14 @@ void main() {
         final linkedPkg = _posixPath.join(sessionDir, 'package.json');
         expect(_inheritedPathExists(linkedNm), isTrue);
         expect(
-          await Directory(
-            p.join(linkedNm, '@opencode-ai', 'plugin'),
-          ).exists(),
+          await Directory(p.join(linkedNm, '@opencode-ai', 'plugin')).exists(),
           isTrue,
         );
         expect(
           await File(linkedPkg).readAsString(),
           contains('@opencode-ai/plugin'),
         );
-        expect(
-          Directory(p.join(linkedNm, 'old')).existsSync(),
-          isFalse,
-        );
+        expect(Directory(p.join(linkedNm, 'old')).existsSync(), isFalse);
       },
     );
 
@@ -553,11 +565,13 @@ void main() {
           teampilotRoot: base.path,
           fs: LocalFilesystem(),
         );
-        await layout.ensureAppToolLayout('opencode');
-        final app = layout.appToolRoot('opencode');
-        await File(p.join(app, 'package.json')).writeAsString(
-          '{"dependencies":{"@opencode-ai/plugin":"1.18.5"}}',
-        );
+        final app = WorkspaceCliCache(
+          layout: layout,
+        ).globalRoot(tool: CliTool.opencode.value);
+        await Directory(app).create(recursive: true);
+        await File(
+          p.join(app, 'package.json'),
+        ).writeAsString('{"dependencies":{"@opencode-ai/plugin":"1.18.5"}}');
         await File(p.join(app, 'package-lock.json')).writeAsString(
           '{"packages":{"":{"dependencies":{"@opencode-ai/plugin":"1.18.5"}}}}',
         );
@@ -593,12 +607,14 @@ void main() {
           teampilotRoot: base.path,
           fs: LocalFilesystem(),
         );
-        await layout.ensureAppToolLayout('opencode');
-        final app = layout.appToolRoot('opencode');
+        final app = WorkspaceCliCache(
+          layout: layout,
+        ).globalRoot(tool: CliTool.opencode.value);
+        await Directory(app).create(recursive: true);
         final pkgSource = p.join(app, 'package.json');
-        await File(pkgSource).writeAsString(
-          '{"dependencies":{"@opencode-ai/plugin":"1.18.5"}}',
-        );
+        await File(
+          pkgSource,
+        ).writeAsString('{"dependencies":{"@opencode-ai/plugin":"1.18.5"}}');
         await File(p.join(app, 'package-lock.json')).writeAsString(
           '{"packages":{"":{"dependencies":{"@opencode-ai/plugin":"1.18.5"}}}}',
         );
@@ -637,11 +653,13 @@ void main() {
           teampilotRoot: base.path,
           fs: LocalFilesystem(),
         );
-        await layout.ensureAppToolLayout('opencode');
-        final app = layout.appToolRoot('opencode');
-        await File(p.join(app, 'package.json')).writeAsString(
-          '{"dependencies":{"@opencode-ai/plugin":"1.0.0"}}',
-        );
+        final app = WorkspaceCliCache(
+          layout: layout,
+        ).globalRoot(tool: CliTool.opencode.value);
+        await Directory(app).create(recursive: true);
+        await File(
+          p.join(app, 'package.json'),
+        ).writeAsString('{"dependencies":{"@opencode-ai/plugin":"1.0.0"}}');
         await Directory(
           p.join(app, 'node_modules', '@opencode-ai', 'plugin'),
         ).create(recursive: true);
@@ -664,9 +682,7 @@ void main() {
         final linkedPkg = _posixPath.join(sessionDir, 'package.json');
         expect(_inheritedPathExists(linkedNm), isTrue);
         expect(
-          await Directory(
-            p.join(linkedNm, '@opencode-ai', 'plugin'),
-          ).exists(),
+          await Directory(p.join(linkedNm, '@opencode-ai', 'plugin')).exists(),
           isTrue,
         );
         expect(
@@ -683,28 +699,21 @@ void main() {
           teampilotRoot: base.path,
           fs: LocalFilesystem(),
         );
-        await layout.ensureAppToolLayout('opencode');
-        final app = layout.appToolRoot('opencode');
-        await File(p.join(app, 'package.json')).writeAsString(
-          '{"dependencies":{"@opencode-ai/plugin":"1.0.0"}}',
-        );
+        final app = WorkspaceCliCache(
+          layout: layout,
+        ).globalRoot(tool: CliTool.opencode.value);
+        await Directory(app).create(recursive: true);
+        await File(
+          p.join(app, 'package.json'),
+        ).writeAsString('{"dependencies":{"@opencode-ai/plugin":"1.0.0"}}');
         await Directory(
           p.join(app, 'node_modules', '@opencode-ai', 'plugin'),
         ).create(recursive: true);
 
         await Future.wait([
-          layout.ensureSessionInheritsOpencodePluginDeps(
-            workspaceId,
-            'sess-a',
-          ),
-          layout.ensureSessionInheritsOpencodePluginDeps(
-            workspaceId,
-            'sess-b',
-          ),
-          layout.ensureSessionInheritsOpencodePluginDeps(
-            workspaceId,
-            'sess-c',
-          ),
+          layout.ensureSessionInheritsOpencodePluginDeps(workspaceId, 'sess-a'),
+          layout.ensureSessionInheritsOpencodePluginDeps(workspaceId, 'sess-b'),
+          layout.ensureSessionInheritsOpencodePluginDeps(workspaceId, 'sess-c'),
         ]);
 
         for (final sessionId in ['sess-a', 'sess-b', 'sess-c']) {
@@ -766,6 +775,140 @@ void main() {
         );
       },
     );
+  });
+
+  group('RuntimeLayout.ensureSessionInheritsCliCache', () {
+    test(
+      'session cursor plugins cache inherits global workspace cache',
+      () async {
+        final fs = InMemoryFilesystem();
+        final layout = RuntimeLayout(teampilotRoot: '/tp', fs: fs);
+        final cache = WorkspaceCliCache(layout: layout);
+        final global = cache.globalEntryPath(
+          tool: 'cursor',
+          providerId: 'acct-1',
+          cacheRel: WorkspaceCliCache.cursorPluginsCacheRel,
+        );
+        await fs.writeString('$global/keep.txt', 'ok');
+
+        await layout.ensureSessionInheritsCliCache(
+          workspaceId: 'proj-1',
+          sessionId: 's1',
+          tool: CliTool.cursor,
+          providerId: 'acct-1',
+        );
+
+        final workspace = cache.workspaceToolRelPath(
+          workspaceId: 'proj-1',
+          tool: 'cursor',
+          toolRel: 'home/.cursor/plugins/cache',
+        );
+        final session = layout.pathContext.join(
+          layout.sessionRuntimeToolDir('proj-1', 's1', 'cursor'),
+          'home/.cursor/plugins/cache',
+        );
+        expect(await fs.readSymlinkTarget(workspace), global);
+        expect(await fs.readSymlinkTarget(session), workspace);
+      },
+    );
+
+    test('empty global cursor plugins cache is created then linked', () async {
+      final fs = InMemoryFilesystem();
+      final layout = RuntimeLayout(teampilotRoot: '/tp', fs: fs);
+      final cache = WorkspaceCliCache(layout: layout);
+      final global = cache.globalEntryPath(
+        tool: 'cursor',
+        providerId: 'acct-1',
+        cacheRel: WorkspaceCliCache.cursorPluginsCacheRel,
+      );
+
+      await layout.ensureSessionInheritsCliCache(
+        workspaceId: 'proj-1',
+        sessionId: 's1',
+        tool: CliTool.cursor,
+        providerId: 'acct-1',
+      );
+
+      expect((await fs.stat(global)).isDirectory, isTrue);
+      final workspace = cache.workspaceToolRelPath(
+        workspaceId: 'proj-1',
+        tool: 'cursor',
+        toolRel: 'home/.cursor/plugins/cache',
+      );
+      final session = layout.pathContext.join(
+        layout.sessionRuntimeToolDir('proj-1', 's1', 'cursor'),
+        'home/.cursor/plugins/cache',
+      );
+      expect(await fs.readSymlinkTarget(workspace), global);
+      expect(await fs.readSymlinkTarget(session), workspace);
+    });
+
+    test('workspace real cache dir is kept and session links to it', () async {
+      final fs = InMemoryFilesystem();
+      final layout = RuntimeLayout(teampilotRoot: '/tp', fs: fs);
+      final cache = WorkspaceCliCache(layout: layout);
+      final global = cache.globalEntryPath(
+        tool: 'cursor',
+        providerId: 'acct-1',
+        cacheRel: WorkspaceCliCache.cursorPluginsCacheRel,
+      );
+      await fs.writeString('$global/from-global.txt', 'g');
+      final workspace = cache.workspaceToolRelPath(
+        workspaceId: 'proj-1',
+        tool: 'cursor',
+        toolRel: 'home/.cursor/plugins/cache',
+      );
+      await fs.writeString('$workspace/from-workspace.txt', 'w');
+
+      await layout.ensureSessionInheritsCliCache(
+        workspaceId: 'proj-1',
+        sessionId: 's1',
+        tool: CliTool.cursor,
+        providerId: 'acct-1',
+      );
+
+      expect((await fs.lstat(workspace)).isDirectory, isTrue);
+      expect((await fs.lstat(workspace)).isSymlink, isFalse);
+      expect(await fs.readString('$workspace/from-workspace.txt'), 'w');
+      final session = layout.pathContext.join(
+        layout.sessionRuntimeToolDir('proj-1', 's1', 'cursor'),
+        'home/.cursor/plugins/cache',
+      );
+      expect(await fs.readSymlinkTarget(session), workspace);
+    });
+
+    test('session replaces a stale real cache directory', () async {
+      final fs = InMemoryFilesystem();
+      final layout = RuntimeLayout(teampilotRoot: '/tp', fs: fs);
+      final cache = WorkspaceCliCache(layout: layout);
+      final global = cache.globalEntryPath(
+        tool: 'cursor',
+        providerId: 'acct-1',
+        cacheRel: WorkspaceCliCache.cursorPluginsCacheRel,
+      );
+      await fs.writeString('$global/keep.txt', 'ok');
+      final session = layout.pathContext.join(
+        layout.sessionRuntimeToolDir('proj-1', 's1', 'cursor'),
+        'home/.cursor/plugins/cache',
+      );
+      await fs.writeString('$session/stale.txt', 'old');
+
+      await layout.ensureSessionInheritsCliCache(
+        workspaceId: 'proj-1',
+        sessionId: 's1',
+        tool: CliTool.cursor,
+        providerId: 'acct-1',
+      );
+
+      final workspace = cache.workspaceToolRelPath(
+        workspaceId: 'proj-1',
+        tool: 'cursor',
+        toolRel: 'home/.cursor/plugins/cache',
+      );
+      expect(await fs.readSymlinkTarget(session), workspace);
+      expect(await fs.readString('$session/stale.txt'), isNull);
+      expect(await fs.readString('$global/keep.txt'), 'ok');
+    });
   });
 }
 

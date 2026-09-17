@@ -146,9 +146,13 @@ class ManifestFilesystem implements Filesystem {
     for (final part in pathContext.split(path)) {
       if (part == current || part.isEmpty) continue;
       current = current.isEmpty ? part : pathContext.join(current, part);
+      if (_overlaySymlinks.containsKey(current)) {
+        return;
+      }
       _overlayDirs.add(current);
       manifest.ensureDir(current);
     }
+    if (_overlaySymlinks.containsKey(path)) return;
     _overlayDirs.add(path);
     manifest.ensureDir(path);
   }

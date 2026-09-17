@@ -385,6 +385,7 @@ final class CursorProviderCapability extends CatalogModelCapability
       fs: paths.fs,
       credentials: credentials,
       layout: layout,
+      runtimeLayout: paths.layout,
     ).provision(
       memberHome: home,
       providerId: providerId.isEmpty ? null : providerId,
@@ -398,7 +399,9 @@ final class CursorProviderCapability extends CatalogModelCapability
       // home (slow on Android SSH). Post-flush uses one remote find+ln script
       // when an SSH profile is available, otherwise the local FS mirror.
       realHomeRoot: null,
-      warmCacheHomeRoot: ctx.paths.home,
+      workspaceId: ctx.scope.workspaceId,
+      sessionId: ctx.scope.sessionId,
+      memberId: ctx.scope.memberId,
     );
 
     if (!ctx.hooksAlreadyMaterialized) {

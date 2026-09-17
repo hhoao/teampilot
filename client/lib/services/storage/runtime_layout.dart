@@ -6,6 +6,7 @@ import '../../models/team_config.dart';
 import '../../utils/lock_pool.dart';
 import '../io/filesystem.dart';
 import '../session/launch_command_builder.dart';
+import 'workspace_cli_cache.dart';
 import 'workspace_layout.dart';
 
 /// Tools with a `cli-defaults/{tool}/` tree (see [RuntimeLayout]).
@@ -329,89 +330,119 @@ class RuntimeLayout {
     String sessionId, {
     String? memberId,
   }) async {
-    final trimmedWorkspace = workspaceId.trim();
-    final trimmedSession = sessionId.trim();
-    if (trimmedWorkspace.isEmpty || trimmedSession.isEmpty) return;
-
-    await _workspaceInheritLocks.synchronized(
-      _workspaceInheritLockKey(trimmedWorkspace, 'opencode'),
-      () async {
-        await ensureAppToolLayout('opencode');
-        final sessionRoot = sessionRuntimeToolDir(
-          trimmedWorkspace,
-          trimmedSession,
-          'opencode',
-          memberId: memberId,
-        );
-        await _fs.ensureDir(sessionRoot);
-        final appRoot = appToolRoot('opencode');
-
-        await _ensureInheritedChild(
-          childName: 'node_modules',
-          parentToolRoot: appRoot,
-          ownToolRoot: sessionRoot,
-        );
-
-        // Files cannot use _ensureInheritedChild (ensureDir/copyTree).
-        // Also inherit package-lock.json so OpenCode's Npm.checkDirty does not
-        // reify a second ~55MB tree into the session config dir on every launch.
-        await _ensureInheritedFile(
-          fileName: 'package.json',
-          parentToolRoot: appRoot,
-          ownToolRoot: sessionRoot,
-        );
-        await _ensureInheritedFile(
-          fileName: 'package-lock.json',
-          parentToolRoot: appRoot,
-          ownToolRoot: sessionRoot,
-        );
-      },
+    await ensureSessionInheritsCliCache(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      tool: CliTool.opencode,
+      memberId: memberId,
     );
   }
 
-  /// Creates the session-owned Codex plugin cache.
-  ///
-  /// The shared `cli-defaults/codex/.tmp/plugins` tree is control-plane cache
-  /// state and is never inherited by a session. Native Codex plugin
-  /// provisioning populates this directory from the active launch closure.
-  Future<void> ensureSessionOwnsCodexTmpPlugins(
-    String workspaceId,
-    String sessionId, {
+  /// Inherit CLI runtime cache: global `workspace/cache` → workspace
+  /// `config/{tool}` → session tool dir. Empty global dirs are created so the
+  /// CLI can fill them on first launch.
+  Future<void> ensureSessionInheritsCliCache({
+    required String workspaceId,
+    required String sessionId,
+    required CliTool tool,
+    String? providerId,
     String? memberId,
   }) async {
     final trimmedWorkspace = workspaceId.trim();
     final trimmedSession = sessionId.trim();
     if (trimmedWorkspace.isEmpty || trimmedSession.isEmpty) return;
+    final bindings = WorkspaceCliCache.bindingFor(tool);
+    if (bindings.isEmpty) return;
 
-    final sessionRoot = sessionRuntimeToolDir(
-      trimmedWorkspace,
-      trimmedSession,
-      'codex',
-      memberId: memberId,
+    await _workspaceInheritLocks.synchronized(
+      '${_workspaceInheritLockKey(trimmedWorkspace, tool.value)}|cli-cache',
+      () async {
+        final cache = WorkspaceCliCache(layout: this);
+        final workspaceRoot = workspaceConfigToolDir(
+          trimmedWorkspace,
+          tool.value,
+        );
+        final sessionRoot = sessionRuntimeToolDir(
+          trimmedWorkspace,
+          trimmedSession,
+          tool.value,
+          memberId: memberId,
+        );
+        await _fs.ensureDir(workspaceRoot);
+        await _fs.ensureDir(sessionRoot);
+        for (final binding in bindings) {
+          final global = cache.globalEntryPath(
+            tool: tool.value,
+            providerId: providerId,
+            cacheRel: binding.cacheRel,
+          );
+          final workspaceDest = _pathContext.join(
+            workspaceRoot,
+            binding.toolRel,
+          );
+          final sessionDest = _pathContext.join(sessionRoot, binding.toolRel);
+          await _ensureInheritedPath(
+            source: global,
+            dest: workspaceDest,
+            isFile: binding.isFile,
+            keepDirectoryOverride: true,
+          );
+          await _ensureInheritedPath(
+            source: workspaceDest,
+            dest: sessionDest,
+            isFile: binding.isFile,
+          );
+        }
+      },
     );
-    final sessionPlugins = _pathContext.join(sessionRoot, '.tmp', 'plugins');
-    await _fs.removeRecursive(sessionPlugins);
-    await _fs.ensureDir(sessionPlugins);
   }
 
-  Future<void> _ensureInheritedFile({
-    required String fileName,
-    required String parentToolRoot,
-    required String ownToolRoot,
+  /// Session Codex `.tmp/plugins` and `plugins/cache` inherit the workspace
+  /// CLI cache. Empty global dirs are created so Codex can fill them.
+  Future<void> ensureSessionOwnsCodexTmpPlugins(
+    String workspaceId,
+    String sessionId, {
+    String? memberId,
   }) async {
-    final source = _pathContext.join(parentToolRoot, fileName);
-    final target = _pathContext.join(ownToolRoot, fileName);
-    if (!(await _fs.stat(source)).exists) return;
-    if (await _inheritLinkCurrent(source: source, target: target)) {
+    await ensureSessionInheritsCliCache(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      tool: CliTool.codex,
+      memberId: memberId,
+    );
+  }
+
+  Future<void> _ensureInheritedPath({
+    required String source,
+    required String dest,
+    required bool isFile,
+    bool keepDirectoryOverride = false,
+  }) async {
+    if (isFile) {
+      await _fs.ensureDir(_pathContext.dirname(source));
+    } else if (!(await _fs.lstat(source)).exists) {
+      await _fs.ensureDir(source);
+    }
+    await _fs.ensureDir(_pathContext.dirname(dest));
+    final destStat = await _fs.lstat(dest);
+    if (keepDirectoryOverride && destStat.isDirectory && !destStat.isSymlink) {
       return;
     }
-    if ((await _fs.stat(target)).exists) {
-      await _fs.removeRecursive(target);
+    if (await _inheritLinkCurrent(source: source, target: dest)) {
+      return;
     }
-    final linked = await _fs.createSymlink(target: source, linkPath: target);
-    if (!linked) {
-      await _fs.copyFile(source, target);
+    if (destStat.exists) {
+      await _fs.removeRecursive(dest);
     }
+    final linked = await _fs.createSymlink(target: source, linkPath: dest);
+    if (linked) return;
+    if (isFile) {
+      if ((await _fs.stat(source)).exists) {
+        await _fs.copyFile(source, dest);
+      }
+      return;
+    }
+    await _fs.copyTree(source: source, destination: dest);
   }
 
   Future<void> _ensureInheritedChild({

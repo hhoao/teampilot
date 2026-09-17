@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/services/launch/apply_plan.dart';
 import 'package:teampilot/services/launch/apply_plan_ssh_compiler.dart';
 import 'package:teampilot/services/launch/blob_store.dart';
@@ -234,4 +237,71 @@ void main() {
     expect(payload.gzipTar, isNull);
     expect(payload.extractCommand, isNull);
   });
+
+  test(
+    'ensureDir succeeds when the path is already a dangling symlink',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('apply-ensure-dir');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final dest = p.join(tmp.path, 'claude-plugins-official');
+      await Link(dest).create(p.join(tmp.path, 'missing-marketplace'));
+
+      final payload = await compileApplyPlanForSsh(
+        plan: ApplyPlan(workRoot: tmp.path, ops: [ApplyEnsureDir(dest)]),
+        blobs: MemoryBlobStore(),
+      );
+      expect(payload.script, isNotNull);
+
+      final result = await Process.run('bash', ['-c', payload.script!]);
+      expect(result.exitCode, 0, reason: '${result.stderr}\n${result.stdout}');
+      expect(FileSystemEntity.isLinkSync(dest), isTrue);
+    },
+  );
+
+  test(
+    'ensureDir of a child does not mkdir through a dangling marketplace symlink',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('apply-ensure-dir');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final dest = p.join(tmp.path, 'claude-plugins-official');
+      await Link(dest).create(p.join(tmp.path, 'missing-marketplace'));
+      final nested = p.join(dest, '.cursor-plugin');
+
+      final payload = await compileApplyPlanForSsh(
+        plan: ApplyPlan(workRoot: tmp.path, ops: [ApplyEnsureDir(nested)]),
+        blobs: MemoryBlobStore(),
+      );
+      expect(payload.script, isNotNull);
+
+      final result = await Process.run('bash', ['-c', payload.script!]);
+      expect(result.exitCode, 0, reason: '${result.stderr}\n${result.stdout}');
+      expect(FileSystemEntity.isLinkSync(dest), isTrue);
+    },
+  );
+
+  test(
+    'ensureDir of a child follows a live marketplace symlink into the target',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('apply-ensure-dir');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final flavor = Directory(p.join(tmp.path, 'flavor'))..createSync();
+      final dest = p.join(tmp.path, 'claude-plugins-official');
+      await Link(dest).create(flavor.path);
+      final nested = p.join(dest, '.cursor-plugin');
+
+      final payload = await compileApplyPlanForSsh(
+        plan: ApplyPlan(workRoot: tmp.path, ops: [ApplyEnsureDir(nested)]),
+        blobs: MemoryBlobStore(),
+      );
+      expect(payload.script, isNotNull);
+
+      final result = await Process.run('bash', ['-c', payload.script!]);
+      expect(result.exitCode, 0, reason: '${result.stderr}\n${result.stdout}');
+      expect(FileSystemEntity.isLinkSync(dest), isTrue);
+      expect(
+        Directory(p.join(flavor.path, '.cursor-plugin')).existsSync(),
+        isTrue,
+      );
+    },
+  );
 }

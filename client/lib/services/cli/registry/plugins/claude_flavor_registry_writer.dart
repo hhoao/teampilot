@@ -419,10 +419,7 @@ class ClaudeFlavorRegistryWriter {
         return (
           stamp: stamp,
           knownEntry: MapEntry(name, {
-            'source': {
-              'source': 'github',
-              'repo': entry.repo,
-            },
+            'source': {'source': 'github', 'repo': entry.repo},
             'installLocation': cliInstallLocation,
             'lastUpdated': now,
           }),
@@ -527,8 +524,17 @@ class ClaudeFlavorRegistryWriter {
     // A pre-seeded symlink already shares the per-tool flavor dir (created by
     // MarketplaceSharedStore): keep it instead of reverting to a full copy.
     // Never write a stamp through the link into the shared dir.
+    // Project onto the *target* path. Writing through [dest] records
+    // EnsureDir/copyTree under the session link; on SSH that link is dangling
+    // (flavor is a provided-link) and GNU mkdir -p fails with File exists.
     if ((await fs.lstat(dest)).isSymlink) {
-      await CliPluginLayout.projectBundleToFlavor(fs, dest, paths);
+      final target = await fs.readSymlinkTarget(dest);
+      if (target != null) {
+        final resolved = ctx.normalize(
+          ctx.isAbsolute(target) ? target : ctx.join(ctx.dirname(dest), target),
+        );
+        await CliPluginLayout.projectBundleToFlavor(fs, resolved, paths);
+      }
       return dest;
     }
     if (await CliPluginProvisionCache.isMarketplaceMaterializationCurrent(

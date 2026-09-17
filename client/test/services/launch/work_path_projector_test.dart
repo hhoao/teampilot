@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/launch/apply_plan.dart';
 import 'package:teampilot/services/launch/work_path_projector.dart';
@@ -124,5 +126,229 @@ void main() {
       ),
       throwsStateError,
     );
+  });
+
+  test('unprojectable symlink to a directory becomes a hashed tree', () async {
+    final sourceFs = InMemoryFilesystem();
+    final workFs = InMemoryFilesystem();
+    await sourceFs.writeBytes('/home/hhoa/.cursor/plugins/cache/plug.bin', [
+      9,
+      8,
+      7,
+    ]);
+    final manifest = LaunchManifest()
+      ..symlink(
+        linkPath: '/w/sessions/s/runtime/cursor/home/.cursor/plugins/cache',
+        target: '/home/hhoa/.cursor/plugins/cache',
+      );
+    final built = await buildApplyPlan(
+      manifest: manifest,
+      sourceFs: sourceFs,
+      workFs: workFs,
+      homeRoot: '/h',
+      workRoot: '/w',
+    );
+    expect(built.providedLinks, 0);
+    expect(built.plan.ops.whereType<ApplySymlink>(), isEmpty);
+    final tree = built.plan.ops.whereType<ApplyTree>().single;
+    expect(
+      tree.dest,
+      '/w/sessions/s/runtime/cursor/home/.cursor/plugins/cache',
+    );
+    expect(tree.entries.single.rel, 'plug.bin');
+    expect(await built.blobs.open(tree.entries.single.sha256), [9, 8, 7]);
+  });
+
+  test(
+    'projectable symlink whose target is missing on workFs is materialized',
+    () async {
+      final sourceFs = InMemoryFilesystem();
+      final workFs = InMemoryFilesystem();
+      const target =
+          '/tp/identities-runtime/p/home/.cursor/agent-cli-state.json';
+      const linkPath =
+          '/tp/workspace/workspaces/ws/sessions/s/runtime/cursor/home/'
+          '.cursor/agent-cli-state.json';
+      await sourceFs.writeString(target, '{"hasShownAgentCommandTip":true}');
+      final manifest = LaunchManifest()
+        ..symlink(linkPath: linkPath, target: target);
+      final built = await buildApplyPlan(
+        manifest: manifest,
+        sourceFs: sourceFs,
+        workFs: workFs,
+        homeRoot: '/tp',
+        workRoot: '/tp',
+      );
+      expect(built.providedLinks, 0);
+      expect(built.plan.ops.whereType<ApplySymlink>(), isEmpty);
+      final op = built.plan.ops.single as ApplyWriteBlob;
+      expect(op.path, linkPath);
+      expect(
+        await built.blobs.open(op.sha256),
+        utf8.encode('{"hasShownAgentCommandTip":true}'),
+      );
+    },
+  );
+
+  test(
+    'symlink to a workRoot path created in the same plan stays a link',
+    () async {
+      final sourceFs = InMemoryFilesystem();
+      final workFs = InMemoryFilesystem();
+      const catalog =
+          '/tp/workspace/ws/sessions/s/runtime/cursor/home/.cursor/'
+          '.teampilot-managed/teampilot-catalog';
+      const linkPath =
+          '/tp/workspace/ws/sessions/s/runtime/cursor/home/.cursor/skills/'
+          'teampilot-catalog';
+      final manifest = LaunchManifest()
+        ..ensureDir(catalog)
+        ..writeFile('$catalog/SKILL.md', '# catalog')
+        ..symlink(linkPath: linkPath, target: catalog);
+      final built = await buildApplyPlan(
+        manifest: manifest,
+        sourceFs: sourceFs,
+        workFs: workFs,
+        homeRoot: '/tp',
+        workRoot: '/tp',
+      );
+      expect(built.providedLinks, 0);
+      final op = built.plan.ops.whereType<ApplySymlink>().single;
+      expect(op.linkPath, linkPath);
+      expect(op.target, catalog);
+      expect(built.plan.ops.whereType<ApplyWriteInline>().map((e) => e.path), [
+        '$catalog/SKILL.md',
+      ]);
+    },
+  );
+
+  test('symlink to a child of a plan copyTree dest stays a link', () async {
+    final sourceFs = InMemoryFilesystem();
+    final workFs = InMemoryFilesystem();
+    const installed = '/tp/plugins/installed/superpowers';
+    const plugin =
+        '/tp/workspace/ws/sessions/s/runtime/cursor/plugins/'
+        'anthropics__claude-plugins-official__superpowers';
+    const skills = '$plugin/skills';
+    const linkPath =
+        '/tp/workspace/ws/sessions/s/runtime/cursor/home/.cursor/skills/'
+        'superpowers';
+    await sourceFs.writeString('$installed/skills/x/SKILL.md', '# x');
+    final manifest = LaunchManifest()
+      ..copyTree(source: installed, destination: plugin)
+      ..symlink(linkPath: linkPath, target: skills);
+    final built = await buildApplyPlan(
+      manifest: manifest,
+      sourceFs: sourceFs,
+      workFs: workFs,
+      homeRoot: '/tp',
+      workRoot: '/tp',
+    );
+    final op = built.plan.ops.whereType<ApplySymlink>().single;
+    expect(op.linkPath, linkPath);
+    expect(op.target, skills);
+  });
+
+  test('symlink to a child of a plan overlay symlink stays a link', () async {
+    final sourceFs = InMemoryFilesystem();
+    final workFs = InMemoryFilesystem();
+    const installed = '/tp/plugins/installed/superpowers';
+    const plugin =
+        '/tp/workspace/ws/sessions/s/runtime/cursor/plugins/'
+        'anthropics__claude-plugins-official__superpowers';
+    const skills = '$plugin/skills';
+    const linkPath =
+        '/tp/workspace/ws/sessions/s/runtime/cursor/home/.cursor/skills/'
+        'superpowers';
+    await sourceFs.writeString('$installed/skills/x/SKILL.md', '# x');
+    final manifest = LaunchManifest()
+      ..symlink(linkPath: plugin, target: installed)
+      ..symlink(linkPath: linkPath, target: skills);
+    final built = await buildApplyPlan(
+      manifest: manifest,
+      sourceFs: sourceFs,
+      workFs: workFs,
+      homeRoot: '/tp',
+      workRoot: '/tp',
+    );
+    expect(
+      built.plan.ops.whereType<ApplySymlink>().map((e) => e.linkPath),
+      contains(linkPath),
+    );
+    expect(
+      built.plan.ops.whereType<ApplySymlink>().map((e) => e.target),
+      contains(skills),
+    );
+  });
+
+  test(
+    'projectable symlink whose target exists on workFs stays a provided link',
+    () async {
+      final fs = InMemoryFilesystem();
+      const target =
+          '/tp/identities-runtime/p/home/.cursor/agent-cli-state.json';
+      const linkPath =
+          '/tp/workspace/workspaces/ws/sessions/s/runtime/cursor/home/'
+          '.cursor/agent-cli-state.json';
+      await fs.writeString(target, '{"hasShownAgentCommandTip":true}');
+      final manifest = LaunchManifest()
+        ..symlink(linkPath: linkPath, target: target);
+      final built = await buildApplyPlan(
+        manifest: manifest,
+        sourceFs: fs,
+        workFs: fs,
+        homeRoot: '/tp',
+        workRoot: '/tp',
+      );
+      expect(built.providedLinks, 1);
+      final op = built.plan.ops.single as ApplySymlink;
+      expect(op.linkPath, linkPath);
+      expect(op.target, target);
+    },
+  );
+
+  test('dangling workRoot cache file symlink is kept for first fill', () async {
+    final sourceFs = InMemoryFilesystem();
+    final workFs = InMemoryFilesystem();
+    const cache =
+        '/tp/workspace/cache/cli/cursor/cursor-account2/statsig-cache.json';
+    const linkPath =
+        '/tp/workspace/ws/sessions/s/runtime/cursor/home/.cursor/'
+        'statsig-cache.json';
+    final manifest = LaunchManifest()
+      ..ensureDir('/tp/workspace/cache/cli/cursor/cursor-account2')
+      ..symlink(linkPath: linkPath, target: cache);
+    final built = await buildApplyPlan(
+      manifest: manifest,
+      sourceFs: sourceFs,
+      workFs: workFs,
+      homeRoot: '/tp',
+      workRoot: '/tp',
+    );
+    final op = built.plan.ops.whereType<ApplySymlink>().single;
+    expect(op.linkPath, linkPath);
+    expect(op.target, cache);
+  });
+
+  test('unprojectable symlink to a file becomes a blob write', () async {
+    final sourceFs = InMemoryFilesystem();
+    final workFs = InMemoryFilesystem();
+    await sourceFs.writeBytes('/home/alice/.claude.json', [0, 1, 255]);
+    final manifest = LaunchManifest()
+      ..symlink(
+        linkPath: '/w/home/.claude.json',
+        target: '/home/alice/.claude.json',
+      );
+    final built = await buildApplyPlan(
+      manifest: manifest,
+      sourceFs: sourceFs,
+      workFs: workFs,
+      homeRoot: '/h',
+      workRoot: '/w',
+    );
+    expect(built.plan.ops.single, isA<ApplyWriteBlob>());
+    final op = built.plan.ops.single as ApplyWriteBlob;
+    expect(op.path, '/w/home/.claude.json');
+    expect(await built.blobs.open(op.sha256), [0, 1, 255]);
   });
 }

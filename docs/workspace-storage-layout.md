@@ -23,6 +23,7 @@ Typical `<teampilotRoot>` paths:
   launch-profiles/{id}/profile.json  # TeamProfile documents only
   launch-profiles-index.json     # derived snapshot for fast startup
   workspace/
+    cache/cli/{tool}/{providerKey}/  # CLI runtime cache (global; `_shared` if no provider)
     workspaces-index.json
     workspaces/{workspaceId}/      # see below
   providers/{tool}/providers.json  # per-CLI provider catalog
@@ -55,9 +56,9 @@ workspace/workspaces/{workspaceId}/
   sessions-index.json            # derived sidebar snapshot (source remains session.json)
   workbench-layout.json          # workbench split-layout snapshot (center + floating groups)
   assets/icon.*                  # custom workspace icon
-  config/                        # workspace-level CLI overrides (inherits app → identity)
+  config/                        # workspace-level CLI tree (trust + inherit cache)
     mcp/servers.json
-    {tool}/plugins/
+    {tool}/                      # derived config + inherited cache children
   automations/
     simple.json                  # Simple (unteamed) automation rules + run history
     {teamProfileId}.json         # team-scoped automation rules + run history
@@ -79,13 +80,17 @@ At launch, `RuntimeLayout` links each layer into the session runtime tree (PTY `
 3. **Workspace** — `workspace/workspaces/{workspaceId}/config/{tool}/`
 4. **Session** — `workspace/workspaces/{workspaceId}/sessions/{sessionId}/runtime/…`
 
-For `opencode`, `cli-defaults/opencode/{package.json,package-lock.json,node_modules}` holds a shared `@opencode-ai/plugin` install (seeded on the home/control plane). Session `runtime/…/opencode/` inherits those three names (symlink preferred). Remote work machines receive the tree via `WorkMachineMaterializer`’s `cli-defaults` copy, then inherit in-root.
+For CLI **runtime cache** (Cursor `plugins/cache` / statsig, OpenCode `node_modules`, Codex `.tmp/plugins` and `plugins/cache`):
 
-For `codex`, `cli-defaults/codex/.tmp/plugins/` is a control-plane cache and is
-never inherited by remote sessions. Each session creates an owned
-`runtime/…/codex/.tmp/plugins` directory; the native plugin capability fills it
-from the active launch closure. Remote materialization deliberately excludes
-the shared cache and repository metadata.
+1. **Global** — `workspace/cache/cli/{tool}/{providerKey}/` (empty dirs are created; the CLI fills them on first launch; OpenCode `npm install` writes here)
+2. **Workspace** — `workspace/workspaces/{workspaceId}/config/{tool}/…` inherits the global entry (a real directory at this layer is kept as an override)
+3. **Session** — `runtime/…` only `ln`s the workspace entry
+
+This tree is **not** `~/.cursor` and **not** `cli-defaults`. `cli-defaults/{tool}/` remains app-level templates (`agents`). Cache children are not inherited from `cli-defaults`.
+
+For `opencode`, `workspace/cache/cli/opencode/_shared/{package.json,package-lock.json,node_modules}` holds `@opencode-ai/plugin`. A one-shot migrate moves those names out of `cli-defaults/opencode/` when the cache is empty.
+
+For `codex`, session `.tmp/plugins` and `plugins/cache` inherit `workspace/cache/cli/codex/_shared/`. Native plugin writes go through the session `CODEX_HOME` symlink into that cache. `cli-defaults/codex/.tmp` stays excluded from remote `cli-defaults` copy.
 
 Session skills/plugins/MCP ids merge as `team > expert > workspace` via `LayeredConfigBundle` / `SessionRuntimePlan` (see [2026-07-10 expert capability pack](superpowers/specs/2026-07-10-expert-capability-pack-design.md)).
 

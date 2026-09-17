@@ -7,6 +7,7 @@ import '../../../ssh/mcp/session_ssh_mcp_policy.dart';
 import '../../../host/host_script_runner.dart';
 import '../../../hook/glue_script_builder.dart';
 import '../../../io/filesystem.dart';
+import '../../../storage/runtime_layout.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/capabilities/hook_capability.dart';
 import '../../registry/capabilities/prompt_capability.dart';
@@ -32,9 +33,11 @@ final class CursorHomeProvisioner {
     CursorHomeLayout? layout,
     CursorProviderCredentialsService? credentials,
     PromptCapability? promptProvision,
+    RuntimeLayout? runtimeLayout,
   }) : _fs = fs,
        _layout = layout ?? CursorHomeLayout(pathContext: fs.pathContext),
        _credentials = credentials,
+       _runtimeLayout = runtimeLayout,
        _promptProvision =
            promptProvision ??
            CursorPromptCapability(
@@ -45,6 +48,7 @@ final class CursorHomeProvisioner {
   final Filesystem _fs;
   final CursorHomeLayout _layout;
   final CursorProviderCredentialsService? _credentials;
+  final RuntimeLayout? _runtimeLayout;
   final PromptCapability _promptProvision;
 
   Future<void> provision({
@@ -56,7 +60,9 @@ final class CursorHomeProvisioner {
     required bool mixed,
     bool promptAlreadyMaterialized = false,
     String? realHomeRoot,
-    String? warmCacheHomeRoot,
+    String? workspaceId,
+    String? sessionId,
+    String? memberId,
   }) async {
     await _ensureCursorDirs(memberHome);
     await _mirrorRealHomePassthrough(
@@ -76,7 +82,12 @@ final class CursorHomeProvisioner {
 
     if (!member.isValid) return;
 
-    await _seedWarmCaches(memberHome, warmCacheHomeRoot: warmCacheHomeRoot);
+    await _inheritCliCache(
+      providerId: providerId,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      memberId: memberId,
+    );
     await _stampLaunchModel(memberHome, member.model);
 
     if (!mixed) {
@@ -102,7 +113,10 @@ final class CursorHomeProvisioner {
       member: member,
       busIdle: busIdle,
       forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
-      warmCacheHomeRoot: warmCacheHomeRoot,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      memberId: memberId,
+      providerId: providerId,
     );
   }
 
@@ -116,14 +130,22 @@ final class CursorHomeProvisioner {
     required bool forceTeamLeadDelegateMode,
     String? cliConfigJson,
     String? sharedMcpBasePath,
-    String? warmCacheHomeRoot,
+    String? workspaceId,
+    String? sessionId,
+    String? memberId,
+    String? providerId,
   }) async {
     if (!member.isValid) return;
 
     await _ensureOverlayDirs(memberHome);
     await _ensureAgentCommandTipSuppressed(memberHome);
     await _mergeTeamBusPermissions(memberHome, cliConfigJson: cliConfigJson);
-    await _seedWarmCaches(memberHome, warmCacheHomeRoot: warmCacheHomeRoot);
+    await _inheritCliCache(
+      providerId: providerId,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      memberId: memberId,
+    );
     await _stampLaunchModel(memberHome, member.model);
     await const PromptHubService().provisionForCli(
       cli: CliTool.cursor,
@@ -248,90 +270,23 @@ final class CursorHomeProvisioner {
     await _fs.atomicWrite(path, _jsonPretty(merged));
   }
 
-  Future<void> _seedWarmCaches(
-    String memberHome, {
-    String? warmCacheHomeRoot,
+  Future<void> _inheritCliCache({
+    required String? providerId,
+    required String? workspaceId,
+    required String? sessionId,
+    String? memberId,
   }) async {
-    final warm = warmCacheHomeRoot?.trim() ?? '';
-    if (warm.isEmpty) return;
-
-    await _copyFileIfMissing(
-      src: _layout.statsigCache(warm),
-      dest: _layout.statsigCache(memberHome),
+    final layout = _runtimeLayout;
+    final workspace = workspaceId?.trim() ?? '';
+    final session = sessionId?.trim() ?? '';
+    if (layout == null || workspace.isEmpty || session.isEmpty) return;
+    await layout.ensureSessionInheritsCliCache(
+      workspaceId: workspace,
+      sessionId: session,
+      tool: CliTool.cursor,
+      providerId: providerId,
+      memberId: memberId,
     );
-    await _linkDirectoryIfSourceExists(
-      source: _layout.pluginsCache(warm),
-      dest: _layout.pluginsCache(memberHome),
-    );
-    await _seedMissingCliConfigFields(
-      memberHome: memberHome,
-      warmHome: warm,
-      keys: const ['serverConfigCache', 'authInfo'],
-    );
-  }
-
-  Future<void> _copyFileIfMissing({
-    required String src,
-    required String dest,
-  }) async {
-    if ((await _fs.stat(dest)).isFile) return;
-    if (!(await _fs.stat(src)).isFile) return;
-    await _fs.ensureDir(_fs.pathContext.dirname(dest));
-    final raw = await _fs.readString(src);
-    if (raw == null) return;
-    await _fs.atomicWrite(dest, raw);
-  }
-
-  /// Symlinks [source] at [dest] when possible, otherwise projects the
-  /// external control-plane directory into the launch manifest.
-  Future<void> _linkDirectoryIfSourceExists({
-    required String source,
-    required String dest,
-  }) async {
-    if (!(await _fs.stat(source)).exists) return;
-    if (await _linkAlreadyPointsTo(source: source, dest: dest)) return;
-    if ((await _fs.lstat(dest)).exists) {
-      await _fs.removeRecursive(dest);
-    }
-    await _fs.ensureDir(_fs.pathContext.dirname(dest));
-    final linked = await _fs.createSymlink(target: source, linkPath: dest);
-    if (!linked) {
-      await _fs.copyTree(source: source, destination: dest);
-    }
-  }
-
-  Future<bool> _linkAlreadyPointsTo({
-    required String source,
-    required String dest,
-  }) async {
-    final current = await _fs.readSymlinkTarget(dest);
-    if (current == null) return false;
-    return _fs.pathContext.normalize(current) ==
-        _fs.pathContext.normalize(source);
-  }
-
-  Future<void> _seedMissingCliConfigFields({
-    required String memberHome,
-    required String warmHome,
-    required List<String> keys,
-  }) async {
-    final destPath = _layout.cliConfig(memberHome);
-    final dest = await _readCliConfig(destPath) ?? <String, Object?>{};
-    final warm = await _readCliConfig(_layout.cliConfig(warmHome));
-    if (warm == null) return;
-
-    var changed = false;
-    for (final key in keys) {
-      if (dest[key] != null) continue;
-      final value = warm[key];
-      if (value == null) continue;
-      dest[key] = value;
-      changed = true;
-    }
-    if (!changed) return;
-    dest.putIfAbsent('version', () => CursorCliConfigPolicy.defaultVersion);
-    await _fs.ensureDir(_fs.pathContext.dirname(destPath));
-    await _fs.atomicWrite(destPath, _jsonPretty(dest));
   }
 
   Future<void> _stampLaunchModel(String memberHome, String pickerId) async {

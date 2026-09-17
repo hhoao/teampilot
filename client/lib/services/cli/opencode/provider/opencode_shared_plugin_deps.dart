@@ -7,11 +7,12 @@ import '../../../../utils/lock_pool.dart';
 import '../../cli_tool_locator.dart';
 import '../../../io/filesystem.dart';
 import '../../../storage/runtime_layout.dart';
+import '../../../storage/workspace_cli_cache.dart';
 
 typedef OpencodePluginVersionResolver = Future<String?> Function();
 typedef OpencodeNpmInstall = Future<int> Function(String cwd);
 
-/// Seeds `<teampilotRoot>/cli-defaults/opencode/{package.json,package-lock.json,node_modules}`
+/// Seeds `<teampilotRoot>/workspace/cache/cli/opencode/_shared/{package.json,package-lock.json,node_modules}`
 /// for OpenCode local plugins (`@opencode-ai/plugin`).
 ///
 /// Sessions inherit those three names into `OPENCODE_CONFIG_DIR` so OpenCode's
@@ -36,7 +37,8 @@ final class OpencodeSharedPluginDeps {
   static final _locks = LockPool();
   static const _lockKey = 'opencode|plugin-deps';
 
-  String get sharedRoot => layout.appToolRoot('opencode');
+  String get sharedRoot =>
+      WorkspaceCliCache(layout: layout).globalRoot(tool: 'opencode');
 
   String get _pluginPackageDir =>
       p.join(sharedRoot, 'node_modules', '@opencode-ai', 'plugin');
@@ -50,6 +52,7 @@ final class OpencodeSharedPluginDeps {
   }
 
   Future<void> _ensureSharedInstalledUnlocked() async {
+    await _migrateLegacyAppRootIfNeeded();
     if (await isComplete) return;
 
     final version =
@@ -111,5 +114,20 @@ final class OpencodeSharedPluginDeps {
       runInShell: Platform.isWindows,
     );
     return result.exitCode;
+  }
+
+  Future<void> _migrateLegacyAppRootIfNeeded() async {
+    final cacheRoot = sharedRoot;
+    final legacy = layout.appToolRoot('opencode');
+    if (p.equals(cacheRoot, legacy)) return;
+    const names = ['node_modules', 'package.json', 'package-lock.json'];
+    for (final name in names) {
+      final from = p.join(legacy, name);
+      final to = p.join(cacheRoot, name);
+      if ((await fs.stat(to)).exists) continue;
+      if (!(await fs.stat(from)).exists) continue;
+      await fs.ensureDir(cacheRoot);
+      await fs.rename(from, to);
+    }
   }
 }

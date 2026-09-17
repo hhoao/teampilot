@@ -7,6 +7,9 @@ import 'package:teampilot/services/cli/cursor/provider/cursor_cli_config_policy.
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_provisioner.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_provider_credentials_service.dart';
+import 'package:teampilot/services/io/filesystem.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
+import 'package:teampilot/services/storage/workspace_cli_cache.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 
@@ -48,7 +51,11 @@ void main() {
   setUp(() {
     fs = InMemoryFilesystem();
     layout = CursorHomeLayout(pathContext: fs.pathContext);
-    credentials = CursorProviderCredentialsService(fs: fs, basePath: base, storage: fakeHomeStorage(filesystem: fs), );
+    credentials = CursorProviderCredentialsService(
+      fs: fs,
+      basePath: base,
+      storage: fakeHomeStorage(filesystem: fs),
+    );
     provisioner = CursorHomeProvisioner(fs: fs, credentials: credentials);
   });
 
@@ -243,48 +250,45 @@ void main() {
       },
     );
 
-    test(
-      'provision replaces auth when switching cursor providers',
-      () async {
-        const memberHome = '/data/tp/members/planner/cursor/home';
-        await writeLoggedInProvider('acct-a');
-        final bHome = fs.pathContext.join(
-          base,
-          'providers',
-          'cursor',
-          'acct-b',
-          'home',
-        );
-        await fs.writeString(
-          layout.cliConfig(bHome),
-          '{"authInfo":{"userId":"u-b","authId":"a-b"}}',
-        );
-        await fs.writeString(
-          layout.authJson(bHome),
-          '{"accessToken":"at-b","refreshToken":"rt-b"}',
-        );
+    test('provision replaces auth when switching cursor providers', () async {
+      const memberHome = '/data/tp/members/planner/cursor/home';
+      await writeLoggedInProvider('acct-a');
+      final bHome = fs.pathContext.join(
+        base,
+        'providers',
+        'cursor',
+        'acct-b',
+        'home',
+      );
+      await fs.writeString(
+        layout.cliConfig(bHome),
+        '{"authInfo":{"userId":"u-b","authId":"a-b"}}',
+      );
+      await fs.writeString(
+        layout.authJson(bHome),
+        '{"accessToken":"at-b","refreshToken":"rt-b"}',
+      );
 
-        await provisioner.provision(
-          memberHome: memberHome,
-          providerId: 'acct-a',
-          member: member,
-          busIdle: null,
-          forceTeamLeadDelegateMode: false,
-          mixed: false,
-        );
-        await provisioner.provision(
-          memberHome: memberHome,
-          providerId: 'acct-b',
-          member: member,
-          busIdle: null,
-          forceTeamLeadDelegateMode: false,
-          mixed: false,
-        );
+      await provisioner.provision(
+        memberHome: memberHome,
+        providerId: 'acct-a',
+        member: member,
+        busIdle: null,
+        forceTeamLeadDelegateMode: false,
+        mixed: false,
+      );
+      await provisioner.provision(
+        memberHome: memberHome,
+        providerId: 'acct-b',
+        member: member,
+        busIdle: null,
+        forceTeamLeadDelegateMode: false,
+        mixed: false,
+      );
 
-        final authBytes = await fs.readBytes(layout.authJson(memberHome));
-        expect(utf8.decode(authBytes!), contains('at-b'));
-      },
-    );
+      final authBytes = await fs.readBytes(layout.authJson(memberHome));
+      expect(utf8.decode(authBytes!), contains('at-b'));
+    });
 
     test('provision merges team-bus MCP into existing mcp.json', () async {
       const memberHome = '/data/tp/members/planner/cursor/home';
@@ -413,50 +417,59 @@ void main() {
       },
     );
 
-    test(
-      'provision stamps picker model into cli-config and seeds warm caches',
-      () async {
-        const memberHome = '/data/tp/members/planner/cursor/home';
-        const realHome = '/home/user';
-        await fs.writeString(
-          layout.cliConfig(realHome),
-          jsonEncode({
-            'serverConfigCache': {'backendUrl': 'https://api2.cursor.sh'},
-            'authInfo': {'userId': 'real'},
-          }),
-        );
-        await fs.writeString(layout.statsigCache(realHome), '{"statsig":true}');
+    test('provision stamps picker model into cli-config', () async {
+      const memberHome = '/data/tp/members/planner/cursor/home';
 
-        await provisioner.provision(
-          memberHome: memberHome,
-          providerId: null,
-          member: const TeamMemberConfig(
-            id: 'planner',
-            name: 'Planner',
-            model: 'cursor-grok-4.6-high',
-          ),
-          busIdle: null,
-          forceTeamLeadDelegateMode: false,
-          mixed: false,
-          promptAlreadyMaterialized: true,
-          warmCacheHomeRoot: realHome,
-        );
+      await provisioner.provision(
+        memberHome: memberHome,
+        providerId: null,
+        member: const TeamMemberConfig(
+          id: 'planner',
+          name: 'Planner',
+          model: 'cursor-grok-4.6-high',
+        ),
+        busIdle: null,
+        forceTeamLeadDelegateMode: false,
+        mixed: false,
+        promptAlreadyMaterialized: true,
+      );
 
-        expect(
-          await fs.readString(layout.statsigCache(memberHome)),
-          '{"statsig":true}',
-        );
-        final cliConfig =
-            jsonDecode((await fs.readString(layout.cliConfig(memberHome)))!)
-                as Map<String, Object?>;
-        expect(cliConfig['serverConfigCache'], {
-          'backendUrl': 'https://api2.cursor.sh',
-        });
-        expect(cliConfig['authInfo'], {'userId': 'real'});
-        expect((cliConfig['model'] as Map)['modelId'], 'grok-4.6');
-        expect(cliConfig['hasChangedDefaultModel'], isTrue);
-      },
-    );
+      final cliConfig =
+          jsonDecode((await fs.readString(layout.cliConfig(memberHome)))!)
+              as Map<String, Object?>;
+      expect((cliConfig['model'] as Map)['modelId'], 'grok-4.6');
+      expect(cliConfig['hasChangedDefaultModel'], isTrue);
+      expect(cliConfig['serverConfigCache'], isNull);
+      expect(cliConfig['authInfo'], isNull);
+    });
+
+    test('provision does not copy statsig from OS home', () async {
+      const osHome = '/home/user';
+      await fs.writeString(layout.statsigCache(osHome), '{"statsig":true}');
+
+      final runtime = RuntimeLayout(teampilotRoot: '/tp', fs: fs);
+      final memberHome = runtime.pathContext.join(
+        runtime.sessionRuntimeToolDir('proj-1', 's1', 'cursor'),
+        'home',
+      );
+      await CursorHomeProvisioner(fs: fs, runtimeLayout: runtime).provision(
+        memberHome: memberHome,
+        providerId: 'acct-1',
+        member: member,
+        busIdle: null,
+        forceTeamLeadDelegateMode: false,
+        mixed: false,
+        promptAlreadyMaterialized: true,
+        workspaceId: 'proj-1',
+        sessionId: 's1',
+      );
+
+      expect(
+        await fs.readString(layout.statsigCache(osHome)),
+        '{"statsig":true}',
+      );
+      expect(await fs.readString(layout.statsigCache(memberHome)), isNull);
+    });
 
     test('provision stamps composer-2.5 picker id into cli-config', () async {
       const memberHome = '/data/tp/sessions/sess/cursor/home';
@@ -486,39 +499,53 @@ void main() {
       expect(cliConfig['hasChangedDefaultModel'], isTrue);
     });
 
-    test('provision symlinks plugins/cache from the warm home', () async {
-      const memberHome = '/data/tp/members/planner/cursor/home';
-      const realHome = '/home/user';
-      final warmCache = layout.pluginsCache(realHome);
+    test('provision symlinks plugins/cache from workspace cli cache', () async {
+      const osHome = '/home/user';
       await fs.writeString(
         fs.pathContext.join(
-          warmCache,
-          'cursor-public',
-          'demo',
+          layout.pluginsCache(osHome),
+          'from-os',
           '.cache-complete',
         ),
         '',
       );
 
-      await provisioner.provision(
+      final runtime = RuntimeLayout(teampilotRoot: '/tp', fs: fs);
+      final cache = WorkspaceCliCache(layout: runtime);
+      final memberHome = runtime.pathContext.join(
+        runtime.sessionRuntimeToolDir('proj-1', 's1', 'cursor'),
+        'home',
+      );
+      await CursorHomeProvisioner(fs: fs, runtimeLayout: runtime).provision(
         memberHome: memberHome,
-        providerId: null,
+        providerId: 'acct-1',
         member: member,
         busIdle: null,
         forceTeamLeadDelegateMode: false,
         mixed: false,
         promptAlreadyMaterialized: true,
-        warmCacheHomeRoot: realHome,
+        workspaceId: 'proj-1',
+        sessionId: 's1',
       );
 
       final dest = layout.pluginsCache(memberHome);
-      expect((await fs.stat(dest)).isSymlink, isTrue);
-      expect(await fs.readSymlinkTarget(dest), warmCache);
+      final workspace = cache.workspaceToolRelPath(
+        workspaceId: 'proj-1',
+        tool: 'cursor',
+        toolRel: 'home/.cursor/plugins/cache',
+      );
+      final global = cache.globalEntryPath(
+        tool: 'cursor',
+        providerId: 'acct-1',
+        cacheRel: WorkspaceCliCache.cursorPluginsCacheRel,
+      );
+      expect((await fs.lstat(dest)).isSymlink, isTrue);
+      expect(await fs.readSymlinkTarget(dest), workspace);
+      expect(await fs.readSymlinkTarget(workspace), global);
+      expect((await fs.stat(global)).isDirectory, isTrue);
       expect(
-        await fs.readString(
-          fs.pathContext.join(dest, 'cursor-public', 'demo', '.cache-complete'),
-        ),
-        '',
+        await fs.readSymlinkTarget(dest),
+        isNot(layout.pluginsCache(osHome)),
       );
     });
   });
