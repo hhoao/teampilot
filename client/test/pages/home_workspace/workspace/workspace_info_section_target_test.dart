@@ -73,6 +73,27 @@ void main() {
   );
 
   testWidgets(
+    'WorkspaceInfoSection shows inject Session SSH MCP toggle for remote-only ssh folders',
+    (tester) async {
+      await tester.runAsync(() async {
+        await _pumpWorkspaceInfo(
+          tester,
+          workspace: Workspace(
+            workspaceId: 'w1',
+            folders: const [
+              WorkspaceFolder(path: '/home', targetId: 'ssh:home'),
+            ],
+            createdAt: 1,
+          ),
+        );
+
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        expect(find.text(l10n.injectSessionSshMcpTitle), findsOneWidget);
+      });
+    },
+  );
+
+  testWidgets(
     'WorkspaceInfoSection does not show per-team member machine cards',
     (tester) async {
       await tester.runAsync(() async {

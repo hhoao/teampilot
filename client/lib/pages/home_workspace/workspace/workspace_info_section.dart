@@ -9,6 +9,7 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../models/workspace_topology.dart';
+import '../../../services/ssh/mcp/session_ssh_mcp_transport.dart';
 import '../../../widgets/workspace_topology_chip.dart';
 import '../../../utils/workspace/workspace_display_name.dart';
 import '../workspace_actions.dart';
@@ -109,7 +110,7 @@ class WorkspaceInfoSection extends StatelessWidget {
           TpCard.outlined(
             child: WorkspaceRootSandboxEnvOptInCard(workspace: live),
           ),
-          if (workspaceTopologyOf(live.folders) == WorkspaceTopology.mixed) ...[
+          if (workspaceHasSshMcpFolder(live)) ...[
             const SizedBox(height: 12),
             TpCard.outlined(
               child: WorkspaceInjectSessionSshMcpCard(workspace: live),

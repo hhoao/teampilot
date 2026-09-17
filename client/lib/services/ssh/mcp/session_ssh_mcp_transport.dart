@@ -1,38 +1,46 @@
 import '../../../models/runtime_target.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
-import '../../../models/workspace_topology.dart';
 import '../../cli/registry/capabilities/team_behavior_capability.dart';
 import '../../cli/registry/cli_tool_registry.dart';
 import '../../team_bus/mcp/bus_bridge_locator.dart';
 import '../../team_bus/mcp/teammate_bus_mcp_config.dart';
+import '../../team_bus/remote/member_bus_mcp_config.dart';
 import 'session_ssh_mcp_constants.dart';
 
-/// Whether a local mixed-workspace seat should receive the session SSH MCP.
-///
-/// Requires mixed topology with at least one `ssh:*` folder,
-/// [Workspace.injectSessionSshMcp] not false, and a non-SSH launch kind.
-bool shouldInjectSessionSshMcp({
-  required Workspace workspace,
-  required RuntimeKind launchKind,
-}) {
-  if (!workspace.injectSessionSshMcp) return false;
-  if (usesSshTransport(launchKind)) return false;
-  if (workspaceTopologyOf(workspace.folders) != WorkspaceTopology.mixed) {
-    return false;
-  }
+/// Whether [workspace] has at least one `ssh:*` folder.
+bool workspaceHasSshMcpFolder(Workspace workspace) {
   for (final folder in workspace.folders) {
     if (runtimeKindOfId(folder.targetId) == RuntimeKind.ssh) return true;
   }
   return false;
 }
 
-/// Session SSH MCP transport for one local seat (catalog LOCAL path only).
+/// Whether session SSH MCP is enabled for this workspace (toggle + `ssh:*`).
+bool workspaceSessionSshMcpEnabled(Workspace workspace) {
+  return workspace.injectSessionSshMcp && workspaceHasSshMcpFolder(workspace);
+}
+
+/// Whether a seat should receive the session SSH MCP in extra MCP servers.
 ///
-/// No remoteBinding / token branch — SSH MCP is injected only on host-local
-/// seats. Claude native + [TeamBehaviorCapability.supportsLocalStdioBridge]
-/// + locator path uses `teammate_bus_bridge` with `--bus-url` set to the full
-/// SSH MCP URL.
+/// Requires [workspaceSessionSshMcpEnabled]. SSH/Termux launches also need a
+/// [remoteBinding] (idle HTTP tunnel); local and WSL seats inject without it.
+bool shouldInjectSessionSshMcp({
+  required Workspace workspace,
+  required RuntimeKind launchKind,
+  RemoteBusBinding? remoteBinding,
+}) {
+  if (!workspaceSessionSshMcpEnabled(workspace)) return false;
+  if (usesSshTransport(launchKind) && remoteBinding == null) return false;
+  return true;
+}
+
+/// Session SSH MCP transport for one seat.
+///
+/// Remote always uses the idle HTTP tunnel + [sessionSshMcpPath] (never relay
+/// argv). Local stdio/HTTP when [remoteBinding] is null: Claude native +
+/// [TeamBehaviorCapability.supportsLocalStdioBridge] + locator path uses
+/// `teammate_bus_bridge` with `--bus-url` set to the full SSH MCP URL.
 Map<String, Object?> resolveSessionSshMcpTransportConfig({
   required CliToolRegistry cliRegistry,
   required Uri sessionSshMcpEndpoint,
@@ -40,8 +48,22 @@ Map<String, Object?> resolveSessionSshMcpTransportConfig({
   required String memberId,
   required CliTool cli,
   required bool isLocalNative,
+  RemoteBusBinding? remoteBinding,
   String? Function()? bridgeLocator,
 }) {
+  if (remoteBinding != null) {
+    return {
+      'type': 'http',
+      'url':
+          'http://127.0.0.1:${remoteBinding.idleHttpTunnelPort}$sessionSshMcpPath',
+      'headers': <String, String>{
+        teammateBusMcpMemberHeader: memberId,
+        teammateBusMcpSessionHeader: sessionId,
+        teammateBusTokenHeader: remoteBinding.token,
+      },
+    };
+  }
+
   String? localBridge;
   final supportsBridge =
       cliRegistry

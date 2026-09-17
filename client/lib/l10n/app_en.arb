@@ -1550,8 +1550,8 @@
   "credentialPushConfirmAction": "Push credentials",
   "rootSandboxEnvOptInTitle": "Inject IS_SANDBOX for root",
   "rootSandboxEnvOptInSubtitle": "Keep skip-permissions when Claude runs as root.",
-  "injectSessionSshMcpTitle": "Inject Session SSH MCP for local members",
-  "injectSessionSshMcpSubtitle": "Local seats can run commands and transfer files on this workspace's remote machines. Reconnect sessions after changing.",
+  "injectSessionSshMcpTitle": "Inject Session SSH MCP",
+  "injectSessionSshMcpSubtitle": "Local and remote seats can run commands and transfer files on this workspace's SSH machines via MCP. Reconnect sessions after changing.",
   "rootSandboxEnvConfirmTitle": "Enable root sandbox env?",
   "rootSandboxEnvConfirmBody": "TeamPilot will set IS_SANDBOX=1 when launching Claude as root on {host}, keeping --dangerously-skip-permissions. Only enable on machines you trust.",
   "@rootSandboxEnvConfirmBody": {

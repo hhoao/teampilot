@@ -1,5 +1,4 @@
 import 'package:teampilot/models/app_session.dart';
-import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -19,10 +18,7 @@ SessionSshMcpContext resolveSessionSshMcpContext({
   String? memberId,
 }) {
   return SessionSshMcpContext(
-    enabled: shouldInjectSessionSshMcp(
-      workspace: workspace,
-      launchKind: RuntimeKind.local,
-    ),
+    enabled: workspaceSessionSshMcpEnabled(workspace),
     targets: sessionSshMcpTargetsFromFolders(
       folders: workspace.folders,
       profileOf: profileOf,

@@ -154,7 +154,7 @@ void main() {
     expect(withMember.localAllowedRoots, isNot(withoutMember.localAllowedRoots));
   });
 
-  test('enabled uses local launch kind only', () {
+  test('local-only workspace resolves enabled false', () {
     final session = AppSession(
       sessionId: 'sess-1',
       workspaceId: 'ws',
@@ -175,5 +175,28 @@ void main() {
     );
 
     expect(context.enabled, isFalse);
+  });
+
+  test('pure remote ssh workspace resolves enabled', () {
+    final session = AppSession(
+      sessionId: 'sess-1',
+      workspaceId: 'ws',
+      createdAt: 1,
+    );
+    final workspace = _workspace(
+      folders: const [WorkspaceFolder(path: '/home', targetId: 'ssh:home')],
+    );
+    final home = _profile('home');
+
+    final context = resolveSessionSshMcpContext(
+      session: session,
+      workspace: workspace,
+      profileOf: (_) => home,
+      localFs: localFs,
+      localUsesPosixPaths: true,
+    );
+
+    expect(context.enabled, isTrue);
+    expect(context.targets.map((t) => t.profile.id), ['home']);
   });
 }

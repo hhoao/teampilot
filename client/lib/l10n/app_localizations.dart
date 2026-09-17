@@ -5705,13 +5705,13 @@ abstract class AppLocalizations {
   /// No description provided for @injectSessionSshMcpTitle.
   ///
   /// In en, this message translates to:
-  /// **'Inject Session SSH MCP for local members'**
+  /// **'Inject Session SSH MCP'**
   String get injectSessionSshMcpTitle;
 
   /// No description provided for @injectSessionSshMcpSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Local seats can run commands and transfer files on this workspace\'s remote machines. Reconnect sessions after changing.'**
+  /// **'Local and remote seats can run commands and transfer files on this workspace\'s SSH machines via MCP. Reconnect sessions after changing.'**
   String get injectSessionSshMcpSubtitle;
 
   /// No description provided for @rootSandboxEnvConfirmTitle.

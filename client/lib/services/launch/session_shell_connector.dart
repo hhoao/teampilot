@@ -138,6 +138,7 @@ Map<String, Map<String, Object?>> composeRuntimeExtraMcpServers({
       shouldInjectSessionSshMcp(
         workspace: workspace,
         launchKind: launchKind,
+        remoteBinding: remoteBinding,
       )) {
     return extraMcpServersWithSessionSsh(
       extra: servers,
@@ -148,6 +149,7 @@ Map<String, Map<String, Object?>> composeRuntimeExtraMcpServers({
         memberId: memberId,
         cli: cli,
         isLocalNative: isLocalNative,
+        remoteBinding: usesSshTransport(launchKind) ? remoteBinding : null,
       ),
     );
   }

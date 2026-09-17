@@ -3039,11 +3039,11 @@ class AppLocalizationsZh extends AppLocalizations {
       'root 启动 Claude 时保留 skip-permissions。';
 
   @override
-  String get injectSessionSshMcpTitle => '为本地成员注入 Session SSH MCP';
+  String get injectSessionSshMcpTitle => '注入 Session SSH MCP';
 
   @override
   String get injectSessionSshMcpSubtitle =>
-      '本机座位可通过 MCP 在本工作区的远程机器上执行命令和传文件。更改后需重连 session。';
+      '本机和远程座位都可通过 MCP 在本工作区的 SSH 机器上执行命令和传文件。更改后需重连 session。';
 
   @override
   String get rootSandboxEnvConfirmTitle => '确认为 root 启用 sandbox 环境变量？';

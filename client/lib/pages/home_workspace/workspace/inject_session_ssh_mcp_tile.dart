@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../l10n/l10n_extensions.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-/// Workspace-scoped toggle to inject Session SSH MCP for local members on
-/// mixed-topology workspaces. Default **on**; no confirm dialog.
+/// Workspace-scoped toggle to inject Session SSH MCP when the workspace has
+/// `ssh:*` folders. Default **on**; no confirm dialog.
 class InjectSessionSshMcpTile extends StatelessWidget {
   const InjectSessionSshMcpTile({
     required this.enabled,
