@@ -97,7 +97,7 @@ final class SessionScheduler {
     } on SessionInitException {
       rethrow;
     } on Object catch (e) {
-      throw SessionInitException(stage, cause: e);
+      throw SessionInitException(stage, cause: e, message: '$e');
     }
   }
 }

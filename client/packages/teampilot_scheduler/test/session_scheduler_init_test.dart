@@ -159,6 +159,28 @@ void main() {
     },
   );
 
+  test(
+    'projector failure SessionInitException.toString contains original error',
+    () async {
+      final home = InMemoryFilesystem(pathContext: posix);
+      final work = InMemoryFilesystem(pathContext: posix);
+      await work.ensureDir('/work-tp');
+
+      try {
+        await const SessionScheduler().init(
+          request: req(),
+          homeFs: home,
+          workFs: work,
+          plugin: _UnprojectableWritePlugin(),
+        );
+        fail('expected SessionInitException');
+      } on SessionInitException catch (e) {
+        expect(e.stage, SessionInitStage.project);
+        expect(e.toString(), contains('path cannot be projected'));
+      }
+    },
+  );
+
   test('plugin tool mismatch becomes SessionInitException layout', () async {
     final home = InMemoryFilesystem(pathContext: posix);
     final work = InMemoryFilesystem(pathContext: posix);
@@ -208,5 +230,18 @@ class _BadLinkPlugin extends _WritePlugin {
       linkPath: '${request.workRoot}/l',
       target: '/not/in/roots',
     );
+  }
+}
+
+class _UnprojectableWritePlugin extends _WritePlugin {
+  @override
+  Future<void> contribute({
+    required SessionInitRequest request,
+    required SessionLayout layout,
+    required Filesystem homeFs,
+    required Filesystem workFs,
+    required LaunchManifest manifest,
+  }) async {
+    manifest.writeFile('/outside/hello.txt', 'x');
   }
 }

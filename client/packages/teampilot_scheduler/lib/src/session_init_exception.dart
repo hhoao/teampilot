@@ -7,5 +7,6 @@ final class SessionInitException implements Exception {
   final Object? cause;
   final String? message;
   @override
-  String toString() => 'SessionInitException($stage, path: $path, $message)';
+  String toString() =>
+      'SessionInitException($stage, path: $path, $message, cause: $cause)';
 }
