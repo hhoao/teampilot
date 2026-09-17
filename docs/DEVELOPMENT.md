@@ -145,6 +145,8 @@ cd client/packages/teampilot_search
 cargo test --manifest-path rust/Cargo.toml && flutter test
 ```
 
+Pure Dart `teampilot_*` packages under `client/packages/` (e.g. `teampilot_fs`): run `dart test` in that package directory — not `flutter test` or `tool/run_tests.dart`.
+
 Linux PTY integration tests (local) — filter by secondary tag (see table below):
 
 ```bash
