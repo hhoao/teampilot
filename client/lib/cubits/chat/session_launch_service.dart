@@ -544,12 +544,14 @@ class SessionLaunchService
     required AppSession session,
     required ChatTab tab,
     String? remoteMemberKeyForRollback,
+    Map<String, Map<String, Object?>>? extraMcpServers,
   }) => _lifecycleCoordinator.gateBeforeAttach(
     team: team,
     member: member,
     session: session,
     tab: tab,
     remoteMemberKeyForRollback: remoteMemberKeyForRollback,
+    extraMcpServers: extraMcpServers,
   );
 
   /// Compose-landing direct PTY inject waits past lifecycle gate, not only boot frame.

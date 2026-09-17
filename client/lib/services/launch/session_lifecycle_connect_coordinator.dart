@@ -9,8 +9,6 @@ import '../../models/team_config.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../services/cli/registry/capabilities/workspace_base_info_capability.dart';
 import '../../services/launch/connect_shell_result.dart';
-import '../../services/ssh/mcp/session_ssh_mcp_constants.dart';
-import '../../services/ssh/mcp/session_ssh_mcp_transport.dart';
 import '../../utils/logging/logger.dart';
 
 typedef ScheduleMemberConnectFn =
@@ -47,7 +45,9 @@ class SessionLifecycleConnectCoordinator {
   final Duration _retryDelay;
   final _retryTimers = <(String, String), Timer>{};
 
-  MemberLifecycleConnectGate _gate() => MemberLifecycleConnectGate(
+  MemberLifecycleConnectGate _gate({
+    Map<String, Map<String, Object?>>? extraMcpServers,
+  }) => MemberLifecycleConnectGate(
     cliRegistry: _host.cliRegistry,
     teammateBusMcpGateway: _host.teammateBusMcpGateway,
     globalPresets: () => _host.lifecycle.globalPresets,
@@ -69,9 +69,7 @@ class SessionLifecycleConnectCoordinator {
     workspaceBaseInfoFor: (session) {
       final launchCtx = _launchContextFor(session);
       return workspaceBaseInfoPromptInputs(
-        extraMcpServers: workspaceSessionSshMcpEnabled(launchCtx.workspace)
-            ? {sessionSshMcpServerName: const <String, Object?>{}}
-            : null,
+        extraMcpServers: extraMcpServers,
         folders: launchCtx.workspace.folders,
         profileOf: _host.lifecycle.sshProfileById,
       );
@@ -104,8 +102,9 @@ class SessionLifecycleConnectCoordinator {
     required AppSession session,
     required ChatTab tab,
     String? remoteMemberKeyForRollback,
+    Map<String, Map<String, Object?>>? extraMcpServers,
   }) async {
-    final outcome = await _gate().evaluate(
+    final outcome = await _gate(extraMcpServers: extraMcpServers).evaluate(
       team: team,
       member: member,
       session: session,

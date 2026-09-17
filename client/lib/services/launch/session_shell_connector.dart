@@ -178,6 +178,7 @@ abstract interface class SessionShellConnectorDelegate {
     required AppSession session,
     required ChatTab tab,
     String? remoteMemberKeyForRollback,
+    Map<String, Map<String, Object?>>? extraMcpServers,
   });
 
   void cancelLifecycleConnectRetry(String sessionId, String memberId);
@@ -382,6 +383,7 @@ class SessionShellConnector {
       ShellLaunchSpec shellLaunch;
       final launchWarnings = <String>[];
       MemberAgentStatusEndpoint? agentStatus;
+      late final Map<String, Map<String, Object?>> extraMcpServers;
 
       if (isPersonal) {
         if (workspace == null) {
@@ -402,6 +404,16 @@ class SessionShellConnector {
           launchWarnings: launchWarnings,
         );
         final progressMemberId = activeSession.sessionId;
+        extraMcpServers = _extraMcpServersWithCatalog(
+          extra: const {},
+          session: activeSession,
+          memberId: activeSession.sessionId,
+          cli: launchCli,
+          launchKind: launchTarget.kind,
+          mixedRemoteBinding: null,
+          agentStatus: agentStatus,
+          workspace: workspace,
+        );
         final connectResult = await _prepareConnectWithProvisionUi(
           tab: tab,
           memberId: progressMemberId,
@@ -410,16 +422,7 @@ class SessionShellConnector {
             session: activeSession,
             workspace: workspace,
             launchTarget: launchTarget,
-            extraMcpServers: _extraMcpServersWithCatalog(
-              extra: const {},
-              session: activeSession,
-              memberId: activeSession.sessionId,
-              cli: launchCli,
-              launchKind: launchTarget.kind,
-              mixedRemoteBinding: null,
-              agentStatus: agentStatus,
-              workspace: workspace,
-            ),
+            extraMcpServers: extraMcpServers,
             agentStatus: agentStatus,
             onProvisionProgress: onProgress,
           ),
@@ -469,6 +472,33 @@ class SessionShellConnector {
           usesPosixPaths: _host.lifecycle.storage.usesPosixPaths,
         );
         final progressMemberId = launchMember!.id;
+        extraMcpServers = _extraMcpServersWithCatalog(
+          extra: mixedBus
+              ? {
+                  teammateBusMcpServerName: resolveMemberBusMcpTransportConfig(
+                    cliRegistry: _host.cliRegistry,
+                    endpoint: _host.teammateBusMcpGateway.mcpEndpoint,
+                    sessionId: activeSession.sessionId,
+                    memberId: launchMember.id,
+                    cli: sessionMemberLaunchCli(
+                      session: activeSession,
+                      team: team,
+                      member: launchMember,
+                      globalPresets: _host.lifecycle.globalPresets,
+                    ),
+                    isLocalNative: _isLocalNative(),
+                    remoteBinding: remoteBinding,
+                  ),
+                }
+              : const {},
+          session: activeSession,
+          memberId: launchMember.id,
+          cli: launchCli,
+          launchKind: launchTarget.kind,
+          mixedRemoteBinding: remoteBinding,
+          agentStatus: agentStatus,
+          workspace: workspace,
+        );
         final connectResult = await _prepareConnectWithProvisionUi(
           tab: tab,
           memberId: progressMemberId,
@@ -482,34 +512,7 @@ class SessionShellConnector {
             launchTarget: launchTarget,
             workingDirectory: memberWork.workingDirectory,
             additionalDirectories: memberWork.addDirs,
-            extraMcpServers: _extraMcpServersWithCatalog(
-              extra: mixedBus
-                  ? {
-                      teammateBusMcpServerName:
-                          resolveMemberBusMcpTransportConfig(
-                            cliRegistry: _host.cliRegistry,
-                            endpoint: _host.teammateBusMcpGateway.mcpEndpoint,
-                            sessionId: activeSession.sessionId,
-                            memberId: launchMember.id,
-                            cli: sessionMemberLaunchCli(
-                              session: activeSession,
-                              team: team,
-                              member: launchMember,
-                              globalPresets: _host.lifecycle.globalPresets,
-                            ),
-                            isLocalNative: _isLocalNative(),
-                            remoteBinding: remoteBinding,
-                          ),
-                    }
-                  : const {},
-              session: activeSession,
-              memberId: launchMember.id,
-              cli: launchCli,
-              launchKind: launchTarget.kind,
-              mixedRemoteBinding: remoteBinding,
-              agentStatus: agentStatus,
-              workspace: workspace,
-            ),
+            extraMcpServers: extraMcpServers,
             busIdle: mixedBus
                 ? switch (remoteBinding) {
                     final binding? => MemberBusIdleEndpoint.remote(binding),
@@ -558,6 +561,7 @@ class SessionShellConnector {
           session: activeSession,
           tab: tab,
           remoteMemberKeyForRollback: remoteMemberKeyForRollback,
+          extraMcpServers: extraMcpServers,
         );
         if (gateStop != null) {
           remoteMemberKeyForRollback = null;
