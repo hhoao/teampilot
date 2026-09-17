@@ -6,6 +6,8 @@ import '../../../../models/app_provider_config.dart';
 import '../../../../models/team_config.dart';
 import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/headless_capability.dart';
+import '../../registry/capabilities/workspace_base_info_capability.dart';
+import '../../registry/cli_tool_registry.dart';
 import '../../registry/headless/headless_provision_support.dart';
 import '../../registry/launch/cli_launch_arg_contribution.dart';
 import '../../registry/launch/cli_launch_capability_error.dart';
@@ -13,7 +15,6 @@ import '../../registry/launch/cli_headless_launch_context.dart';
 import '../../registry/launch/headless_launch_context_adapter.dart';
 import '../../registry/launch/user_extra_args_provider.dart';
 import 'permission_launch.dart';
-import 'workspace_base_info.dart';
 import '../provider/codex_auth_artifacts.dart';
 import '../provider/codex_home_provisioner.dart';
 import '../provider/codex_official_provider.dart';
@@ -87,7 +88,9 @@ final class CodexHeadlessCapability
         args: ['-c', 'model_reasoning_effort=$effort'],
       );
     }
-    yield* const CodexWorkspaceBaseInfo().buildLaunchArgs(interactive);
+    yield* CliToolRegistry.builtIn()
+        .capability<WorkspaceBaseInfoCapability>(CliTool.codex)!
+        .buildLaunchArgs(interactive);
     yield* const CodexPermissionLaunch().buildLaunchArgs(interactive);
     // `-` makes `codex exec` read the instructions from stdin.
     yield CliLaunchArgContribution(

@@ -7,6 +7,8 @@ import '../../../../models/credential_link_result.dart';
 import '../../../../models/team_config.dart';
 import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/headless_capability.dart';
+import '../../registry/capabilities/workspace_base_info_capability.dart';
+import '../../registry/cli_tool_registry.dart';
 import '../../registry/headless/headless_provision_support.dart';
 import '../../registry/launch/cli_launch_arg_contribution.dart';
 import '../../registry/launch/cli_headless_launch_context.dart';
@@ -20,7 +22,6 @@ import '../provider/cursor_provider_settings_resolver.dart';
 import 'model_launch.dart';
 import 'permission_launch.dart';
 import 'session_selection_launch.dart';
-import 'workspace_base_info.dart';
 
 /// Cursor one-shot via `cursor-agent -p`.
 ///
@@ -76,7 +77,9 @@ final class CursorHeadlessCapability
       args: ['-p'],
     );
     yield* const CursorSessionSelectionLaunch().buildLaunchArgs(interactive);
-    yield* const CursorWorkspaceBaseInfo().buildLaunchArgs(interactive);
+    yield* CliToolRegistry.builtIn()
+        .capability<WorkspaceBaseInfoCapability>(CliTool.cursor)!
+        .buildLaunchArgs(interactive);
     yield* const CursorModelLaunch().buildLaunchArgs(interactive);
     yield* const CursorPermissionLaunch().buildLaunchArgs(interactive);
     // In stdin mode the piped content is the prompt; no positional prompt.

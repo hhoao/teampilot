@@ -7,6 +7,8 @@ import 'package:path/path.dart' as p;
 
 import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/headless_capability.dart';
+import '../../registry/capabilities/workspace_base_info_capability.dart';
+import '../../registry/cli_tool_registry.dart';
 import '../../registry/headless/headless_provision_support.dart';
 import '../../registry/launch/cli_launch_arg_contribution.dart';
 import '../../registry/launch/headless_launch_context_adapter.dart';
@@ -14,7 +16,6 @@ import '../../registry/launch/user_extra_args_provider.dart';
 import 'model_launch.dart';
 import 'permission_launch.dart';
 import 'session_selection_launch.dart';
-import 'workspace_base_info.dart';
 import 'provider.dart';
 
 /// flashskyai one-shot via `-p` print mode (Claude-style CLI), plus
@@ -62,7 +63,9 @@ final class FlashskyaiHeadlessCapability
     yield* const FlashskyaiSessionSelectionLaunch().buildLaunchArgs(
       interactive,
     );
-    yield* const FlashskyaiWorkspaceBaseInfo().buildLaunchArgs(interactive);
+    yield* CliToolRegistry.builtIn()
+        .capability<WorkspaceBaseInfoCapability>(CliTool.flashskyai)!
+        .buildLaunchArgs(interactive);
     yield* const FlashskyaiModelLaunch().buildLaunchArgs(interactive);
     yield* const FlashskyaiPermissionLaunch().buildLaunchArgs(interactive);
     yield CliLaunchArgContribution(
