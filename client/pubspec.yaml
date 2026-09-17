@@ -42,6 +42,12 @@ dependencies:
     path: packages/teampilot_tree_sitter
   teampilot_search:
     path: packages/teampilot_search
+  teampilot_fs:
+    path: packages/teampilot_fs
+  teampilot_apply:
+    path: packages/teampilot_apply
+  teampilot_scheduler:
+    path: packages/teampilot_scheduler
   flutter_bloc: ^9.1.0
   bloc_concurrency: ^0.3.0
   equatable: ^2.0.5

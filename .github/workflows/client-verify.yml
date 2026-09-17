@@ -138,6 +138,30 @@ jobs:
         working-directory: client/packages/teampilot_search
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
+      - name: teampilot_fs Dart tests
+        working-directory: client/packages/teampilot_fs
+        run: dart test
+
+      - name: teampilot_fs analyze
+        working-directory: client/packages/teampilot_fs
+        run: dart analyze
+
+      - name: teampilot_apply Dart tests
+        working-directory: client/packages/teampilot_apply
+        run: dart test
+
+      - name: teampilot_apply analyze
+        working-directory: client/packages/teampilot_apply
+        run: dart analyze
+
+      - name: teampilot_scheduler Dart tests
+        working-directory: client/packages/teampilot_scheduler
+        run: dart test
+
+      - name: teampilot_scheduler analyze
+        working-directory: client/packages/teampilot_scheduler
+        run: dart analyze
+
       - name: Unit and widget tests
         run: dart run tool/run_tests.dart
 
