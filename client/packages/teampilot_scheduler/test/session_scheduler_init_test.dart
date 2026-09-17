@@ -116,6 +116,29 @@ void main() {
   });
 
   test(
+    'off-home init copies home identity file onto workFs without a script runner',
+    () async {
+      final home = InMemoryFilesystem(pathContext: posix);
+      final work = InMemoryFilesystem(pathContext: posix);
+      await home.writeString(
+        '/home-tp/identities-runtime/x/cursor/a.json',
+        '{"k":1}',
+      );
+      await work.ensureDir('/work-tp');
+      await const SessionScheduler().init(
+        request: req(),
+        homeFs: home,
+        workFs: work,
+        plugin: _CopyIdentityPlugin(),
+      );
+      expect(
+        await work.readString('/work-tp/identities-runtime/x/cursor/a.json'),
+        '{"k":1}',
+      );
+    },
+  );
+
+  test(
     'unprojectable missing source becomes SessionInitException project',
     () async {
       final home = InMemoryFilesystem(pathContext: posix);
@@ -154,6 +177,22 @@ void main() {
       expect(e.message, 'plugin/tool mismatch');
     }
   });
+}
+
+class _CopyIdentityPlugin extends _WritePlugin {
+  @override
+  Future<void> contribute({
+    required SessionInitRequest request,
+    required SessionLayout layout,
+    required Filesystem homeFs,
+    required Filesystem workFs,
+    required LaunchManifest manifest,
+  }) async {
+    manifest.copyFile(
+      source: '/home-tp/identities-runtime/x/cursor/a.json',
+      destination: '/work-tp/identities-runtime/x/cursor/a.json',
+    );
+  }
 }
 
 class _BadLinkPlugin extends _WritePlugin {

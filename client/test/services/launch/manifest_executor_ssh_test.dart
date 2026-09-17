@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:archive/archive.dart';
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
@@ -147,7 +145,7 @@ void main() {
   });
 
   test(
-    'off-home provided copyTree flushes one ln script without tar exec',
+    'off-home provided copyTree applies as a symlink on workFs',
     () async {
       final execs = <_RecordedExec>[];
       const profile = SshProfile(
@@ -189,17 +187,16 @@ void main() {
         homeRoot: '/h',
       );
 
-      expect(execs, hasLength(1));
-      expect(execs.single.command, 'bash -s');
+      expect(execs, isEmpty);
       expect(
-        utf8.decode(execs.single.stdin!),
-        contains("ln -sfn -- '/w/plugins/installed/foo'"),
+        await workFs.readSymlinkTarget('/w/sessions/pool/foo'),
+        '/w/plugins/installed/foo',
       );
     },
   );
 
   test(
-    'off-home copyTree without provided work dir counts each tree blob',
+    'off-home copyTree without provided work dir writes blobs onto workFs',
     () async {
       final execs = <_RecordedExec>[];
       const profile = SshProfile(
@@ -256,12 +253,13 @@ void main() {
       ).firstMatch(applyPlanLine)!.group(1)!;
       expect(int.parse(blobCount), 2);
       expect(int.parse(blobBytes), fileA.length + fileB.length);
-      expect(execs, hasLength(1));
-      expect(execs.single.command, contains('gzip -dc | tar -x'));
+      expect(execs, isEmpty);
+      expect(await workFs.readString('/w/sessions/pool/foo/a.txt'), fileA);
+      expect(await workFs.readString('/w/sessions/pool/foo/b.txt'), fileB);
     },
   );
 
-  test('cross-machine ssh flush copies home files through tar stdin', () async {
+  test('cross-machine flush copies home files onto targetFs', () async {
     final execs = <_RecordedExec>[];
     const profile = SshProfile(
       id: 'p1',
@@ -302,21 +300,11 @@ void main() {
       sshProfileId: profile.id,
     );
 
-    expect(execs, hasLength(1));
+    expect(execs, isEmpty);
     expect(
-      execs.single.command,
-      "mkdir -p '$workRoot' && gzip -dc | tar -x -C '$workRoot'",
+      await target.readString('$workRoot/.config/claude.json'),
+      'credentials',
     );
-    final stdin = execs.single.stdin!;
-    expect(stdin.length, greaterThan(2));
-    expect(stdin[0], 0x1f);
-    expect(stdin[1], 0x8b);
-    final scriptText = utf8.decode(stdin, allowMalformed: true);
-    expect(scriptText, isNot(contains('credentials')));
-    final tar = GZipDecoder().decodeBytes(stdin);
-    final decoded = TarDecoder().decodeBytes(tar);
-    final file = decoded.findFile('.config/claude.json')!;
-    expect(utf8.decode(file.content as List<int>), 'credentials');
   });
 
   test('ssh symlink apply replaces leftover Codex plugins directory', () async {
