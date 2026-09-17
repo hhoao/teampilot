@@ -1585,6 +1585,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.4.1+2"
+  teampilot_apply:
+    dependency: "direct main"
+    description:
+      path: "packages/teampilot_apply"
+      relative: true
+    source: path
+    version: "0.1.0"
   teampilot_fs:
     dependency: "direct main"
     description:
