@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_session_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/workspace_base_info_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/config_profile_context.dart';
 import 'package:teampilot/services/cli/session_lifecycle/cli_session_manifest_store.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/session_lifecycle.dart';
@@ -55,6 +56,9 @@ void main() {
   CliSessionInitContext initContext({
     String memberId = TeamMemberNaming.teamLeadName,
     TeamProfile? team,
+    List<String> additionalDirectories = const [],
+    WorkspaceBaseInfoPromptInputs workspaceBaseInfo =
+        WorkspaceBaseInfoPromptInputs.empty,
   }) {
     return CliSessionInitContext(
       workspaceId: workspaceId,
@@ -65,6 +69,8 @@ void main() {
       team: team ?? mixedCursorTeam(),
       busIdle: busIdle,
       workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
+      workspaceBaseInfo: workspaceBaseInfo,
     );
   }
 
@@ -221,6 +227,41 @@ void main() {
       );
       expect(manifest!.phase, CliSessionPhase.ready);
     });
+
+    test(
+      'overlay rematerialize keeps Remote projects from init workspaceBaseInfo',
+      () async {
+        await seedPersisted();
+
+        final cap = await capability();
+        await cap.initialize(
+          initContext(
+            additionalDirectories: const ['/repo/a'],
+            workspaceBaseInfo: const WorkspaceBaseInfoPromptInputs(
+              sshMcpInjected: true,
+              remoteFolders: [
+                WorkspaceRemoteFolderInfo(
+                  profileId: 'home-server',
+                  name: 'Home',
+                  endpoint: 'alice@192.168.1.8:22',
+                  folderPaths: ['/home/alice/proj'],
+                ),
+              ],
+            ),
+          ),
+        );
+
+        final memberHome = lifecyclePaths.memberHomeRoot(
+          TeamMemberNaming.teamLeadName,
+        );
+        final roleRule = await fs.readString(homeLayout.roleRule(memberHome));
+        expect(roleRule, contains('## Workspace directories'));
+        expect(roleRule, contains('- /repo/a'));
+        expect(roleRule, contains('## Remote projects'));
+        expect(roleRule, contains('home-server'));
+        expect(roleRule, contains('/home/alice/proj'));
+      },
+    );
   });
 }
 

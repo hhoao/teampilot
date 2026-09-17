@@ -6,6 +6,7 @@ import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../cli_capability.dart';
 import '../cli_tool_registry.dart';
 import '../config_profile/config_profile_context.dart';
+import 'workspace_base_info_capability.dart';
 
 /// Phased initialization for a CLI session on the work plane.
 enum CliSessionPhase { persisted, auth, config, overlay, ready, degraded }
@@ -54,6 +55,7 @@ class CliSessionInitContext {
     this.busIdle,
     this.workingDirectory = '',
     this.additionalDirectories = const [],
+    this.workspaceBaseInfo = WorkspaceBaseInfoPromptInputs.empty,
     this.crossMachine = false,
     this.resolvedProviderId,
     this.credentialBasePath,
@@ -68,6 +70,7 @@ class CliSessionInitContext {
   final MemberBusIdleEndpoint? busIdle;
   final String workingDirectory;
   final List<String> additionalDirectories;
+  final WorkspaceBaseInfoPromptInputs workspaceBaseInfo;
   final bool crossMachine;
 
   /// Launch-resolved Cursor provider id (preset / member / team), when known.

@@ -8,6 +8,7 @@ import 'package:teampilot/services/cli/cursor/provider/cursor_auth_artifacts.dar
 import 'package:teampilot/services/cli/cursor/provider/cursor_cli_config_policy.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_provisioner.dart';
+import 'package:teampilot/services/cli/registry/capabilities/workspace_base_info_capability.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/storage/workspace_cli_cache.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
@@ -260,6 +261,52 @@ void main() {
         final roleRule = await fs.readString(layout.roleRule(memberHome));
         expect(roleRule, contains('## Workspace directories'));
         expect(roleRule, contains('- /repo/a'));
+      },
+    );
+
+    test(
+      'ssh rematerialize keeps Remote projects in role.mdc after extras overlay',
+      () async {
+        const emptyRoleMember = TeamMemberConfig(id: 'm1', name: 'Member');
+        const sshInfo = WorkspaceBaseInfoPromptInputs(
+          sshMcpInjected: true,
+          remoteFolders: [
+            WorkspaceRemoteFolderInfo(
+              profileId: 'home-server',
+              name: 'Home',
+              endpoint: 'alice@192.168.1.8:22',
+              folderPaths: ['/home/alice/proj'],
+            ),
+          ],
+        );
+
+        await provisioner.provisionOverlayOnly(
+          memberHome: memberHome,
+          member: emptyRoleMember,
+          busIdle: null,
+          forceTeamLeadDelegateMode: false,
+          workspaceBaseInfo: sshInfo,
+        );
+        expect(
+          await fs.readString(layout.roleRule(memberHome)),
+          contains('## Remote projects'),
+        );
+
+        await provisioner.provisionOverlayOnly(
+          memberHome: memberHome,
+          member: emptyRoleMember,
+          busIdle: null,
+          forceTeamLeadDelegateMode: false,
+          additionalDirectories: const ['/repo/a'],
+          workspaceBaseInfo: sshInfo,
+        );
+
+        final roleRule = await fs.readString(layout.roleRule(memberHome));
+        expect(roleRule, contains('## Workspace directories'));
+        expect(roleRule, contains('- /repo/a'));
+        expect(roleRule, contains('## Remote projects'));
+        expect(roleRule, contains('home-server'));
+        expect(roleRule, contains('/home/alice/proj'));
       },
     );
 

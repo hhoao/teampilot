@@ -7,7 +7,10 @@ import '../../models/app_session.dart';
 import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace_launch_context.dart';
+import '../../services/cli/registry/capabilities/workspace_base_info_capability.dart';
 import '../../services/launch/connect_shell_result.dart';
+import '../../services/ssh/mcp/session_ssh_mcp_constants.dart';
+import '../../services/ssh/mcp/session_ssh_mcp_transport.dart';
 import '../../utils/logging/logger.dart';
 
 typedef ScheduleMemberConnectFn =
@@ -63,6 +66,16 @@ class SessionLifecycleConnectCoordinator {
         _host.lifecycle.memberWorkDirs(_launchContextFor(session), memberId),
     launchWorkTarget: (session, {String? memberId}) =>
         _launchWorkTarget(session, memberId: memberId),
+    workspaceBaseInfoFor: (session) {
+      final launchCtx = _launchContextFor(session);
+      return workspaceBaseInfoPromptInputs(
+        extraMcpServers: workspaceSessionSshMcpEnabled(launchCtx.workspace)
+            ? {sessionSshMcpServerName: const <String, Object?>{}}
+            : null,
+        folders: launchCtx.workspace.folders,
+        profileOf: _host.lifecycle.sshProfileById,
+      );
+    },
   );
 
   void cancelRetry(String sessionId, String memberId) {

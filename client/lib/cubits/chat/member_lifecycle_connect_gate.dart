@@ -4,6 +4,7 @@ import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/cli_session_capability.dart';
+import '../../services/cli/registry/capabilities/workspace_base_info_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/config_profile/config_profile_context.dart';
 import '../../services/team_bus/member_bus_idle_endpoint.dart';
@@ -77,6 +78,7 @@ final class MemberLifecycleConnectGate {
     required this.memberWorkDirs,
     required this.launchWorkTarget,
     required this.globalPresets,
+    this.workspaceBaseInfoFor,
   });
 
   final CliToolRegistry cliRegistry;
@@ -94,6 +96,8 @@ final class MemberLifecycleConnectGate {
   final RuntimeTarget Function(AppSession session, {String? memberId})
   launchWorkTarget;
   final List<CliPreset> Function() globalPresets;
+  final WorkspaceBaseInfoPromptInputs Function(AppSession session)?
+  workspaceBaseInfoFor;
 
   Future<LifecycleConnectGateOutcome> evaluate({
     required TeamProfile team,
@@ -162,6 +166,9 @@ final class MemberLifecycleConnectGate {
         busIdle: busIdle,
         workingDirectory: memberWork.workingDirectory,
         additionalDirectories: memberWork.addDirs,
+        workspaceBaseInfo:
+            workspaceBaseInfoFor?.call(session) ??
+            WorkspaceBaseInfoPromptInputs.empty,
         crossMachine: usesSshTransport(launchTarget.kind),
         resolvedProviderId: resolvedProviderId.isNotEmpty
             ? resolvedProviderId

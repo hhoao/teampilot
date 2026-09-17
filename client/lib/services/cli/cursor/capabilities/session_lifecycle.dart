@@ -655,6 +655,7 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
         memberId: ctx.memberId,
         providerId: ctx.resolvedProviderId,
         additionalDirectories: ctx.additionalDirectories,
+        workspaceBaseInfo: ctx.workspaceBaseInfo,
       );
     }
 
