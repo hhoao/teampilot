@@ -2,7 +2,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../registry/capabilities/ai_history_capability.dart';
-import '../../../../session/session_history_context.dart';
+import '../../../../session/history/session_history_context.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 import '../../../registry/capabilities/history/tool_result_enricher.dart';
 import '../native_session_id.dart';
@@ -57,8 +57,9 @@ final class OpencodeAiHistoryCapability implements AiHistoryCapability {
   final ToolResultEnricher toolResultEnricher;
 
   @override
-  Future<String?> resolveParentTranscriptPath(SessionHistoryContext ctx) async =>
-      null;
+  Future<String?> resolveParentTranscriptPath(
+    SessionHistoryContext ctx,
+  ) async => null;
 
   @override
   Future<String?> liveCacheToken(SessionHistoryContext ctx) =>

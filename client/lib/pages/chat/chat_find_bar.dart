@@ -3,7 +3,7 @@ import 'package:flutter/services.dart'; // ShortcutActivator, SingleActivator, I
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../services/session/chat_transcript_find_controller.dart';
+import '../../services/session/history/chat_transcript_find_controller.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/find/find_bar_palette.dart';
 import '../../widgets/find/find_bar_widgets.dart';
@@ -196,13 +196,12 @@ class _ChatFindBarState extends State<ChatFindBar> {
                                   alignment: Alignment.centerLeft,
                                   child: Text(
                                     l10n.chatFindResults,
-                                    style: TpTextStyles.of(
-                                      context,
-                                    ).mdSemibold.copyWith(
-                                      color: FindBarPalette.of(
-                                        context,
-                                      ).mutedText,
-                                    ),
+                                    style: TpTextStyles.of(context).mdSemibold
+                                        .copyWith(
+                                          color: FindBarPalette.of(
+                                            context,
+                                          ).mutedText,
+                                        ),
                                   ),
                                 ),
                               ),
@@ -268,10 +267,7 @@ class _ResultsList extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: _HighlightedSnippet(
-                    text: hit.snippet,
-                    query: query,
-                  ),
+                  child: _HighlightedSnippet(text: hit.snippet, query: query),
                 ),
               ],
             ),
@@ -293,7 +289,9 @@ class _HighlightedSnippet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = FindBarPalette.of(context);
-    final style = TpTextStyles.of(context).md.copyWith(color: palette.mutedText);
+    final style = TpTextStyles.of(
+      context,
+    ).md.copyWith(color: palette.mutedText);
     final q = query.trim();
     if (q.isEmpty) {
       return Text(

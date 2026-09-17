@@ -5,7 +5,7 @@ import 'package:teampilot/services/cli/flashskyai/capabilities/history/ai_histor
 import 'package:teampilot/services/cli/flashskyai/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
 
 void main() {
   late Directory tmp;
@@ -30,14 +30,14 @@ void main() {
   }
 
   ResumeContext resumeCtx({String? persisted}) => ResumeContext(
-        fs: fs,
-        toolValue: 'flashskyai',
-        taskId: 'new-task-id',
-        env: const {},
-        transcriptRoots: [toolRoot],
-        bucket: 'b1',
-        persistedNativeId: persisted,
-      );
+    fs: fs,
+    toolValue: 'flashskyai',
+    taskId: 'new-task-id',
+    env: const {},
+    transcriptRoots: [toolRoot],
+    bucket: 'b1',
+    persistedNativeId: persisted,
+  );
 
   SessionHistoryContext historyCtx({String? persisted}) =>
       SessionHistoryContext(
@@ -65,18 +65,20 @@ void main() {
     expect(id, 'old-session-id');
   });
 
-  test('detect falls back to taskId probe when persisted transcript misses',
-      () async {
-    await writeTranscript('new-task-id');
-    final id = await capability.detectNativeId(resumeCtx(persisted: 'gone'));
-    expect(id, 'new-task-id');
-  });
+  test(
+    'detect falls back to taskId probe when persisted transcript misses',
+    () async {
+      await writeTranscript('new-task-id');
+      final id = await capability.detectNativeId(resumeCtx(persisted: 'gone'));
+      expect(id, 'new-task-id');
+    },
+  );
 
   test('locate prefers the persisted transcript', () async {
     await writeTranscript('old-session-id');
-    final bundle = await locateFlashskyaiTranscript(historyCtx(
-      persisted: 'old-session-id',
-    ));
+    final bundle = await locateFlashskyaiTranscript(
+      historyCtx(persisted: 'old-session-id'),
+    );
     expect(bundle, isNotNull);
     expect(bundle!.fragments.single.name, 'old-session-id.jsonl');
   });

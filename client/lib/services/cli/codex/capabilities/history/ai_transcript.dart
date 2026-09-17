@@ -2,9 +2,9 @@ import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
 
-import '../../../../session/ai_history_cache_token.dart';
-import '../../../../session/ai_history_watch_meta.dart';
-import '../../../../session/session_history_context.dart';
+import '../../../../session/history/ai_history_cache_token.dart';
+import '../../../../session/history/ai_history_watch_meta.dart';
+import '../../../../session/history/session_history_context.dart';
 import 'root_rollout.dart';
 
 /// Locate Codex rollout JSONL under `$CODEX_HOME/sessions/**/rollout-*.jsonl`.

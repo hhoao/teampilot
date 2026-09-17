@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import '../../services/session/ai_history_loader.dart';
-import '../../services/session/history_seat_key.dart';
+import '../../services/session/history/ai_history_loader.dart';
+import '../../services/session/history/history_seat_key.dart';
 import '../../services/team_bus/persistence/bus_message_log.dart';
 import '../ai_history_seat.dart';
 
@@ -48,10 +48,7 @@ class HistoryStore {
     return seat;
   }
 
-  AiHistorySeat? seatOf({
-    required String sessionId,
-    required String memberId,
-  }) {
+  AiHistorySeat? seatOf({required String sessionId, required String memberId}) {
     final key = historySeatKey(
       sessionId: sessionId,
       selectedMemberId: memberId,

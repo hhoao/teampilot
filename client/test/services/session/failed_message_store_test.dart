@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/failed_message_record.dart';
-import 'package:teampilot/services/session/failed_message_store.dart';
+import 'package:teampilot/services/session/history/failed_message_store.dart';
 
 import '../../support/in_memory_filesystem.dart';
 

@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/claude/capabilities/history/compatible_side_resolver.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
 
 /// Memo 行为测试:ClaudeCompatibleSideResolver 必须在子会话(side 文件)
 /// 未变化时返回同一消息列表实例,让 loader/seat 的 identical 快速路径生效;
@@ -65,9 +65,9 @@ void main() {
   }
 
   void writeMeta() {
-    File(p.join(subagentsDir, 'agent-abc.meta.json')).writeAsStringSync(
-      jsonEncode({'toolUseId': 'toolu_1'}),
-    );
+    File(
+      p.join(subagentsDir, 'agent-abc.meta.json'),
+    ).writeAsStringSync(jsonEncode({'toolUseId': 'toolu_1'}));
   }
 
   void writeSideFile(String content) {
@@ -100,7 +100,8 @@ void main() {
       expect(
         identical(first.messages, second!.messages),
         isTrue,
-        reason: 'side 文件未变化时重复 resolve 必须复用同一消息列表实例——'
+        reason:
+            'side 文件未变化时重复 resolve 必须复用同一消息列表实例——'
             'seat 的 identical 快速路径依赖它,否则每次刷新都要做内容比较'
             '(性能回归)',
       );
@@ -137,30 +138,32 @@ void main() {
     );
   });
 
-  test('memo evicts and re-parses when the side file changes size only',
-      () async {
-    writeMeta();
-    writeSideFile(sideJsonl(lines: 2));
-    final ctx = runCtx();
+  test(
+    'memo evicts and re-parses when the side file changes size only',
+    () async {
+      writeMeta();
+      writeSideFile(sideJsonl(lines: 2));
+      final ctx = runCtx();
 
-    final first = await resolver.resolve(
-      part: agentPart(),
-      ctx: ctx,
-      parentHandle: null,
-      rootTranscriptPath: parentPath,
-    );
-    expect(first!.messages, hasLength(2));
+      final first = await resolver.resolve(
+        part: agentPart(),
+        ctx: ctx,
+        parentHandle: null,
+        rootTranscriptPath: parentPath,
+      );
+      expect(first!.messages, hasLength(2));
 
-    // 覆盖写为更短内容(size 变小,mtime 前进)→ 必须重新解析。
-    writeSideFile(sideJsonl(lines: 1));
-    final second = await resolver.resolve(
-      part: agentPart(),
-      ctx: ctx,
-      parentHandle: null,
-      rootTranscriptPath: parentPath,
-    );
+      // 覆盖写为更短内容(size 变小,mtime 前进)→ 必须重新解析。
+      writeSideFile(sideJsonl(lines: 1));
+      final second = await resolver.resolve(
+        part: agentPart(),
+        ctx: ctx,
+        parentHandle: null,
+        rootTranscriptPath: parentPath,
+      );
 
-    expect(second, isNotNull);
-    expect(second!.messages, hasLength(1));
-  });
+      expect(second, isNotNull);
+      expect(second!.messages, hasLength(1));
+    },
+  );
 }

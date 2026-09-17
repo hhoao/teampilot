@@ -22,7 +22,7 @@ import '../../services/ai_history/special_tool_resolvers.dart';
 import '../../services/ai_history/workspace_edit_line_highlighter.dart';
 import '../../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../../services/cli/tasks/cli_task_board_controller.dart';
-import '../../services/session/chat_transcript_find_controller.dart';
+import '../../services/session/history/chat_transcript_find_controller.dart';
 import '../../services/workbench/ai_tool_file_open_coordinator.dart';
 import '../../services/workbench/session_member_filesystem.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
@@ -222,8 +222,8 @@ class SessionChatMessageArea extends StatelessWidget {
                                 name.trim().toLowerCase(),
                               ),
                         onOpenSubagent: (id) async {
-                          final attachment =
-                              await historySeat.loadSubagentAttachment(id);
+                          final attachment = await historySeat
+                              .loadSubagentAttachment(id);
                           if (!context.mounted) return;
                           if (attachment == null) {
                             AppToast.show(
@@ -259,44 +259,45 @@ class SessionChatMessageArea extends StatelessWidget {
                                 Builder(
                                   builder: (context) {
                                     final sid = session.sessionId;
-                                    final activity = seatSelect<
-                                      ChatCubit,
-                                      ({
-                                        bool isBusy,
-                                        bool isDelivering,
-                                        bool isInTurn,
-                                        bool isAttention,
-                                      })
-                                    >(
-                                      context,
-                                      (c) {
-                                        final a =
-                                            c.state.sessionActivities[sid];
-                                        return (
-                                          isBusy: a?.isBusy ?? false,
-                                          isDelivering:
-                                              a?.isDelivering ?? false,
-                                          isInTurn: a?.isInTurn ?? false,
-                                          isAttention:
-                                              a?.isAttention ?? false,
-                                        );
-                                      },
-                                    );
+                                    final activity =
+                                        seatSelect<
+                                          ChatCubit,
+                                          ({
+                                            bool isBusy,
+                                            bool isDelivering,
+                                            bool isInTurn,
+                                            bool isAttention,
+                                          })
+                                        >(context, (c) {
+                                          final a =
+                                              c.state.sessionActivities[sid];
+                                          return (
+                                            isBusy: a?.isBusy ?? false,
+                                            isDelivering:
+                                                a?.isDelivering ?? false,
+                                            isInTurn: a?.isInTurn ?? false,
+                                            isAttention:
+                                                a?.isAttention ?? false,
+                                          );
+                                        });
                                     final sessionConnecting =
                                         seatSelect<ChatCubit, bool>(
-                                      context,
-                                      (c) =>
-                                          c.podFor(sid)?.phase.isLaunching ??
-                                          false,
-                                    );
+                                          context,
+                                          (c) =>
+                                              c
+                                                  .podFor(sid)
+                                                  ?.phase
+                                                  .isLaunching ??
+                                              false,
+                                        );
                                     final memberRunning =
                                         seatSelect<ChatCubit, bool>(
-                                      context,
-                                      (c) => c.isMemberRunning(
-                                        sessionId: sid,
-                                        memberId: shellMemberId,
-                                      ),
-                                    );
+                                          context,
+                                          (c) => c.isMemberRunning(
+                                            sessionId: sid,
+                                            memberId: shellMemberId,
+                                          ),
+                                        );
                                     final liveChrome =
                                         SessionHistoryLiveChromeX.resolve(
                                           turnInFlight: historyTurnInFlight(
@@ -329,10 +330,9 @@ class SessionChatMessageArea extends StatelessWidget {
                                         revealRequest: revealController,
                                         visibleOwnerId: visibleOwnerId,
                                         scrollAnchorKey: session.sessionId,
-                                        scrollAnchors:
-                                            context
-                                                .read<ChatCubit>()
-                                                .sessionScrollAnchors,
+                                        scrollAnchors: context
+                                            .read<ChatCubit>()
+                                            .sessionScrollAnchors,
                                       ),
                                     );
                                   },

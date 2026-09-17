@@ -9,7 +9,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_session_config_dir.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_session_config_dir.dart';
-import 'package:teampilot/services/session/session_history_context_builder.dart';
+import 'package:teampilot/services/session/history/session_history_context_builder.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -74,10 +74,7 @@ void main() {
       layout.sessionRuntimeToolDir('ws-1', 'session-1', 'claude'),
     ];
     expect(ctx.transcriptRoots, expectedRoots);
-    expect(
-      ctx.bucket,
-      RuntimeLayout.workspaceBucketForPrimaryPath(cwd),
-    );
+    expect(ctx.bucket, RuntimeLayout.workspaceBucketForPrimaryPath(cwd));
     expect(ctx.taskId, 'session-1');
     expect(ctx.workspaceId, 'ws-1');
     expect(ctx.sessionId, 'session-1');
@@ -303,11 +300,13 @@ void main() {
         cli: CliTool.claude,
         workingDirectory: '/work/project',
       ),
-      throwsA(isA<StateError>().having(
-        (e) => e.message,
-        'message',
-        contains('teamId'),
-      )),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('teamId'),
+        ),
+      ),
     );
   });
 
@@ -329,11 +328,13 @@ void main() {
         cli: CliTool.claude,
         workingDirectory: '/work/project',
       ),
-      throwsA(isA<StateError>().having(
-        (e) => e.message,
-        'message',
-        contains('workspaceId'),
-      )),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('workspaceId'),
+        ),
+      ),
     );
   });
 }

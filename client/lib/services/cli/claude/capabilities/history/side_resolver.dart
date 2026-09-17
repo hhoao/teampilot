@@ -1,6 +1,6 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
-import '../../../../session/session_history_context.dart';
+import '../../../../session/history/session_history_context.dart';
 import 'compatible_side_resolver.dart';
 import 'workflow_resolver.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
@@ -51,7 +51,10 @@ final class ClaudeSideResolver implements SubagentSideResolver {
   }) {
     // Workflow run dirs (`subagents/workflows/wf_*/`) live inside the same
     // `subagents/` tree the compatible resolver fingerprints.
-    return compatible.fingerprint(ctx: ctx, rootTranscriptPath: rootTranscriptPath);
+    return compatible.fingerprint(
+      ctx: ctx,
+      rootTranscriptPath: rootTranscriptPath,
+    );
   }
 
   static String? _parentTranscriptPath(

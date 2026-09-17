@@ -8,10 +8,10 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/ai_history_loader.dart';
-import 'package:teampilot/services/session/ai_history_locator.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
-import 'package:teampilot/services/session/session_history_context_builder.dart';
+import 'package:teampilot/services/session/history/ai_history_loader.dart';
+import 'package:teampilot/services/session/history/ai_history_locator.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
+import 'package:teampilot/services/session/history/session_history_context_builder.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/utils/logging/logger.dart';
@@ -47,12 +47,17 @@ class _ScriptedLocator extends AiHistoryLocator {
   }
 }
 
-AiToolCallPart _tool(String callId, {Object? result, String name = 'question'}) {
+AiToolCallPart _tool(
+  String callId, {
+  Object? result,
+  String name = 'question',
+}) {
   return AiToolCallPart(
     toolCallId: callId,
     toolName: name,
-    status:
-        result == null ? AiToolCallStatus.incomplete : AiToolCallStatus.complete,
+    status: result == null
+        ? AiToolCallStatus.incomplete
+        : AiToolCallStatus.complete,
     result: result,
   );
 }
@@ -64,8 +69,8 @@ void main() {
   late AiHistoryLoader loader;
   late AiHistorySeat seat;
 
-  void bumpCacheToken() =>
-      cacheToken = 'token-${cacheToken.hashCode.abs()}-${holderMessages.length}';
+  void bumpCacheToken() => cacheToken =
+      'token-${cacheToken.hashCode.abs()}-${holderMessages.length}';
 
   AppSession session() => AppSession(
     sessionId: 'sess-a',
@@ -82,7 +87,7 @@ void main() {
       folders: s.folders,
       createdAt: 0,
     ),
-                                                                      usesPosixPaths: false,
+    usesPosixPaths: false,
   );
 
   setUp(() {
@@ -116,87 +121,97 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  test('duplicate assistant pair in the live list publishes only the winner',
-      () async {
-    holderMessages = [
-      AiMessage(
-        id: 'u1',
-        role: AiRole.user,
-        parts: const [AiTextPart(text: 'question?')],
-      ),
-      AiMessage(
-        id: 'asst-pending',
-        role: AiRole.assistant,
-        parts: [
-          const AiTextPart(text: "I've traced the full back-navigation path"),
-          _tool('call_q1'),
-        ],
-      ),
-      AiMessage(
-        id: 'asst-completed',
-        role: AiRole.assistant,
-        parts: [
-          const AiTextPart(text: "I've traced the full back-navigation path"),
-          _tool('call_q1', result: '{"answers":[]}'),
-        ],
-      ),
-    ];
-    await seat.load(session: session(), memberId: '', launchContext: ctx(session()));
+  test(
+    'duplicate assistant pair in the live list publishes only the winner',
+    () async {
+      holderMessages = [
+        AiMessage(
+          id: 'u1',
+          role: AiRole.user,
+          parts: const [AiTextPart(text: 'question?')],
+        ),
+        AiMessage(
+          id: 'asst-pending',
+          role: AiRole.assistant,
+          parts: [
+            const AiTextPart(text: "I've traced the full back-navigation path"),
+            _tool('call_q1'),
+          ],
+        ),
+        AiMessage(
+          id: 'asst-completed',
+          role: AiRole.assistant,
+          parts: [
+            const AiTextPart(text: "I've traced the full back-navigation path"),
+            _tool('call_q1', result: '{"answers":[]}'),
+          ],
+        ),
+      ];
+      await seat.load(
+        session: session(),
+        memberId: '',
+        launchContext: ctx(session()),
+      );
 
-    expect(seat.runtime.messages, hasLength(2));
-    expect(
-      seat.runtime.messages.map((m) => m.id),
-      ['u1', 'asst-completed'],
-      reason: '同文本 pending/completed 双份只发布 completed 版',
-    );
-  });
+      expect(seat.runtime.messages, hasLength(2));
+      expect(seat.runtime.messages.map((m) => m.id), [
+        'u1',
+        'asst-completed',
+      ], reason: '同文本 pending/completed 双份只发布 completed 版');
+    },
+  );
 
-  test('duplicate pair logs [ai-history] duplicate-messages once per fingerprint',
-      () async {
-    final before = await AppLogger.instance.getPendingLogLines();
-    holderMessages = [
-      AiMessage(
-        id: 'u1',
-        role: AiRole.user,
-        parts: const [AiTextPart(text: 'question?')],
-      ),
-      AiMessage(
-        id: 'asst-pending',
-        role: AiRole.assistant,
-        parts: [
-          const AiTextPart(text: 'same prose'),
-          _tool('call_q1'),
-        ],
-      ),
-      AiMessage(
-        id: 'asst-completed',
-        role: AiRole.assistant,
-        parts: [
-          const AiTextPart(text: 'same prose'),
-          _tool('call_q1', result: 'answer'),
-        ],
-      ),
-    ];
-    await seat.load(session: session(), memberId: '', launchContext: ctx(session()));
+  test(
+    'duplicate pair logs [ai-history] duplicate-messages once per fingerprint',
+    () async {
+      final before = await AppLogger.instance.getPendingLogLines();
+      holderMessages = [
+        AiMessage(
+          id: 'u1',
+          role: AiRole.user,
+          parts: const [AiTextPart(text: 'question?')],
+        ),
+        AiMessage(
+          id: 'asst-pending',
+          role: AiRole.assistant,
+          parts: [
+            const AiTextPart(text: 'same prose'),
+            _tool('call_q1'),
+          ],
+        ),
+        AiMessage(
+          id: 'asst-completed',
+          role: AiRole.assistant,
+          parts: [
+            const AiTextPart(text: 'same prose'),
+            _tool('call_q1', result: 'answer'),
+          ],
+        ),
+      ];
+      await seat.load(
+        session: session(),
+        memberId: '',
+        launchContext: ctx(session()),
+      );
 
-    var lines = await AppLogger.instance.getPendingLogLines();
-    final firstLogs = lines.skip(before.length).where(
-      (l) => l.contains('[ai-history] duplicate-messages'),
-    );
-    expect(firstLogs, hasLength(1), reason: '去重触发必须打日志');
+      var lines = await AppLogger.instance.getPendingLogLines();
+      final firstLogs = lines
+          .skip(before.length)
+          .where((l) => l.contains('[ai-history] duplicate-messages'));
+      expect(firstLogs, hasLength(1), reason: '去重触发必须打日志');
 
-    // 同指纹再次出现（soft reload 同列表）→ 不再打。
-    bumpCacheToken();
-    await seat.softReload();
-    lines = await AppLogger.instance.getPendingLogLines();
-    final secondLogs = lines.skip(before.length).where(
-      (l) => l.contains('[ai-history] duplicate-messages'),
-    );
-    expect(secondLogs, hasLength(1), reason: '相同重复指纹防刷屏，只打一次');
-  });
+      // 同指纹再次出现（soft reload 同列表）→ 不再打。
+      bumpCacheToken();
+      await seat.softReload();
+      lines = await AppLogger.instance.getPendingLogLines();
+      final secondLogs = lines
+          .skip(before.length)
+          .where((l) => l.contains('[ai-history] duplicate-messages'));
+      expect(secondLogs, hasLength(1), reason: '相同重复指纹防刷屏，只打一次');
+    },
+  );
 
-  test('unresolvable pair keeps both and logs action=kept-both once',
-      () async {
+  test('unresolvable pair keeps both and logs action=kept-both once', () async {
     final before = await AppLogger.instance.getPendingLogLines();
     holderMessages = [
       AiMessage(
@@ -221,18 +236,22 @@ void main() {
         ],
       ),
     ];
-    await seat.load(session: session(), memberId: '', launchContext: ctx(session()));
-
-    expect(
-      seat.runtime.messages.map((m) => m.id),
-      ['u1', 'asst-3step', 'asst-10step'],
-      reason: '规则不命中的同文本对两条都保留',
+    await seat.load(
+      session: session(),
+      memberId: '',
+      launchContext: ctx(session()),
     );
+
+    expect(seat.runtime.messages.map((m) => m.id), [
+      'u1',
+      'asst-3step',
+      'asst-10step',
+    ], reason: '规则不命中的同文本对两条都保留');
 
     var lines = await AppLogger.instance.getPendingLogLines();
-    final firstLogs = lines.skip(before.length).where(
-      (l) => l.contains('[ai-history] duplicate-messages'),
-    );
+    final firstLogs = lines
+        .skip(before.length)
+        .where((l) => l.contains('[ai-history] duplicate-messages'));
     expect(firstLogs, hasLength(1), reason: 'kept-both 触发必须打日志');
     expect(firstLogs.single, contains('action=kept-both'));
 
@@ -240,9 +259,9 @@ void main() {
     bumpCacheToken();
     await seat.softReload();
     lines = await AppLogger.instance.getPendingLogLines();
-    final secondLogs = lines.skip(before.length).where(
-      (l) => l.contains('[ai-history] duplicate-messages'),
-    );
+    final secondLogs = lines
+        .skip(before.length)
+        .where((l) => l.contains('[ai-history] duplicate-messages'));
     expect(secondLogs, hasLength(1), reason: 'kept-both 防刷屏，只打一次');
   });
 }

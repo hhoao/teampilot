@@ -8,12 +8,12 @@ import 'package:teampilot/services/cli/codex/capabilities/history/ai_transcript.
 import 'package:teampilot/services/cli/cursor/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/cli/flashskyai/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/io/filesystem.dart';
-import 'package:teampilot/services/session/ai_history_page.dart';
-import 'package:teampilot/services/session/ai_transcript_tail_reader.dart';
-import 'package:teampilot/services/session/jsonl_page_worker.dart';
-import 'package:teampilot/services/session/jsonl_transcript_page_parser.dart';
-import 'package:teampilot/services/session/jsonl_transcript_page_reader.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
+import 'package:teampilot/services/session/history/ai_history_page.dart';
+import 'package:teampilot/services/session/history/ai_transcript_tail_reader.dart';
+import 'package:teampilot/services/session/history/jsonl_page_worker.dart';
+import 'package:teampilot/services/session/history/jsonl_transcript_page_parser.dart';
+import 'package:teampilot/services/session/history/jsonl_transcript_page_reader.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
 
 import '../../support/in_memory_filesystem.dart' as test_fs;
 

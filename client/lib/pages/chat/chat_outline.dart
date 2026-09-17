@@ -1,7 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
 
-import '../../services/session/session_history_pagination.dart';
+import '../../services/session/history/session_history_pagination.dart';
 
 const int kChatOutlinePreviewLimit = 160;
 

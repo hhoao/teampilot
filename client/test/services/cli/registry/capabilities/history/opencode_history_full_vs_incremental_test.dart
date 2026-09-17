@@ -16,11 +16,11 @@ import 'package:teampilot/services/cli/opencode/capabilities/history/ai_transcri
 import 'package:teampilot/services/cli/opencode/capabilities/sqlite_worker_pool.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/ai_history_load_result.dart';
-import 'package:teampilot/services/session/ai_history_locator.dart';
-import 'package:teampilot/services/session/ai_history_loader.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
-import 'package:teampilot/services/session/session_history_context_builder.dart';
+import 'package:teampilot/services/session/history/ai_history_load_result.dart';
+import 'package:teampilot/services/session/history/ai_history_locator.dart';
+import 'package:teampilot/services/session/history/ai_history_loader.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
+import 'package:teampilot/services/session/history/session_history_context_builder.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -96,7 +96,7 @@ void main() {
           folders: session.folders,
           createdAt: 1,
         ),
-                              usesPosixPaths: false,
+        usesPosixPaths: false,
       );
 
   RuntimeContext fixedRoots() => RuntimeContext(
@@ -167,10 +167,10 @@ void main() {
       data TEXT NOT NULL,
       time_created INTEGER NOT NULL
     )''');
-    writer.execute(
-      'INSERT INTO session (id, time_updated) VALUES (?, ?)',
-      ['ses_1', 1000],
-    );
+    writer.execute('INSERT INTO session (id, time_updated) VALUES (?, ?)', [
+      'ses_1',
+      1000,
+    ]);
   }
 
   void insertMessage({
@@ -270,7 +270,10 @@ void main() {
       [
         messageId,
         'ses_1',
-        jsonEncode({'role': 'assistant', 'time': {'created': created}}),
+        jsonEncode({
+          'role': 'assistant',
+          'time': {'created': created},
+        }),
         created,
         created,
       ],
@@ -307,7 +310,10 @@ void main() {
       [
         messageId * 100,
         childSessionId,
-        jsonEncode({'role': 'user', 'time': {'created': created + 2}}),
+        jsonEncode({
+          'role': 'user',
+          'time': {'created': created + 2},
+        }),
         created + 2,
         created + 2,
       ],
@@ -339,7 +345,10 @@ void main() {
       [
         messageId,
         'ses_1',
-        jsonEncode({'role': 'assistant', 'time': {'created': created}}),
+        jsonEncode({
+          'role': 'assistant',
+          'time': {'created': created},
+        }),
         created,
         created,
       ],
@@ -355,7 +364,10 @@ void main() {
           'type': 'tool',
           'tool': 'task',
           'callID': toolCallId,
-          'state': {'status': 'running', 'input': {'prompt': 'x'}},
+          'state': {
+            'status': 'running',
+            'input': {'prompt': 'x'},
+          },
         }),
         created,
         created,
@@ -372,7 +384,10 @@ void main() {
       [
         messageId * 100,
         childSessionId,
-        jsonEncode({'role': 'user', 'time': {'created': created + 2}}),
+        jsonEncode({
+          'role': 'user',
+          'time': {'created': created + 2},
+        }),
         created + 2,
         created + 2,
       ],
@@ -436,74 +451,71 @@ void main() {
   }
 
   group('chat live refresh (modern schema, part.time_updated exists)', () {
-    test('idle seat: token gate + seat memo skip locate/parse entirely', () async {
-      openModernDb();
-      seedConversation();
-      final loader = buildLoader();
-      final session = opencodeSession();
-      final ctx = launchContextFor(session);
+    test(
+      'idle seat: token gate + seat memo skip locate/parse entirely',
+      () async {
+        openModernDb();
+        seedConversation();
+        final loader = buildLoader();
+        final session = opencodeSession();
+        final ctx = launchContextFor(session);
 
-      final first = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
-      expect(first.messages, hasLength(2));
-      expect(locator.calls, 0, reason: '首屏 page-first,不 locate');
-      expect(
-        first.isComplete,
-        isTrue,
-        reason: '首页已覆盖全部消息 → 直接 complete(免二次解码)',
-      );
+        final first = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        expect(first.messages, hasLength(2));
+        expect(locator.calls, 0, reason: '首屏 page-first,不 locate');
+        expect(
+          first.isComplete,
+          isTrue,
+          reason: '首页已覆盖全部消息 → 直接 complete(免二次解码)',
+        );
 
-      final full = await warmFullIndex(loader, session);
-      expect(
-        locator.calls,
-        0,
-        reason: 'page 已覆盖全文 → full index 复用 page 结果,不再二次 locate',
-      );
-      expect(
-        identical(full.messages, first.messages),
-        isTrue,
-        reason: 'double-decode 规避:full index 复用 page-first 的解码实例',
-      );
+        final full = await warmFullIndex(loader, session);
+        expect(
+          locator.calls,
+          0,
+          reason: 'page 已覆盖全文 → full index 复用 page 结果,不再二次 locate',
+        );
+        expect(
+          identical(full.messages, first.messages),
+          isTrue,
+          reason: 'double-decode 规避:full index 复用 page-first 的解码实例',
+        );
 
-      // 聊天界面空闲轮询:store 级 token 未变 → 缓存命中,零 locate。
-      final second = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
-      expect(locator.calls, 0, reason: '未变化时连 locate 都不进');
-      expect(
-        identical(second.messages, full.messages),
-        isTrue,
-        reason: '缓存命中必须复用同一 List 实例',
-      );
+        // 聊天界面空闲轮询:store 级 token 未变 → 缓存命中,零 locate。
+        final second = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        expect(locator.calls, 0, reason: '未变化时连 locate 都不进');
+        expect(
+          identical(second.messages, full.messages),
+          isTrue,
+          reason: '缓存命中必须复用同一 List 实例',
+        );
 
-      // seat 级 _parentBundles memo:直接 locate 两次,指纹未变 → 同一实例。
-      final locateCtx = const SessionHistoryContextBuilder().build(
-        fs: fs,
-        layout: layout,
-        appDataRoot: base.path,
-        session: session,
-        memberId: '',
-        cli: CliTool.opencode,
-      );
-      final b1 = await locator.locate(
-        ctx: locateCtx,
-        cli: CliTool.opencode,
-      );
-      final b2 = await locator.locate(
-        ctx: locateCtx,
-        cli: CliTool.opencode,
-      );
-      expect(
-        identical(b1, b2),
-        isTrue,
-        reason: 'seat 指纹未变时 parentBundles memo 直接命中,不重跑 SQL',
-      );
-    });
+        // seat 级 _parentBundles memo:直接 locate 两次,指纹未变 → 同一实例。
+        final locateCtx = const SessionHistoryContextBuilder().build(
+          fs: fs,
+          layout: layout,
+          appDataRoot: base.path,
+          session: session,
+          memberId: '',
+          cli: CliTool.opencode,
+        );
+        final b1 = await locator.locate(ctx: locateCtx, cli: CliTool.opencode);
+        final b2 = await locator.locate(ctx: locateCtx, cli: CliTool.opencode);
+        expect(
+          identical(b1, b2),
+          isTrue,
+          reason: 'seat 指纹未变时 parentBundles memo 直接命中,不重跑 SQL',
+        );
+      },
+    );
 
     test(
       'token change before full index re-reads the page without locating',
@@ -520,23 +532,17 @@ void main() {
           launchContext: ctx,
         );
         expect(locator.calls, 0, reason: '首屏 page-first');
-        expect(
-          first.isComplete,
-          isTrue,
-          reason: '首页覆盖全部消息 → 直接 complete',
-        );
+        expect(first.isComplete, isTrue, reason: '首页覆盖全部消息 → 直接 complete');
 
         writer.execute(
           "UPDATE part SET data = ?, time_updated = 3000 WHERE id = 2",
-          [jsonEncode({'type': 'text', 'text': 'hello chunk'})],
+          [
+            jsonEncode({'type': 'text', 'text': 'hello chunk'}),
+          ],
         );
 
         final second = await loader
-            .load(
-              session: session,
-              memberId: '',
-              launchContext: ctx,
-            )
+            .load(session: session, memberId: '', launchContext: ctx)
             .timeout(
               const Duration(seconds: 2),
               onTimeout: () => fail(
@@ -558,416 +564,431 @@ void main() {
           ),
           isTrue,
         );
+        expect(locator.calls, 0, reason: 'live refresh 仍走 page-first,不 locate');
+      },
+    );
+
+    test(
+      'streaming append (new rows + in-place growth): incremental in-place merge',
+      () async {
+        openModernDb();
+        seedConversation();
+        final loader = buildLoader();
+        final session = opencodeSession();
+        final ctx = launchContextFor(session);
+
+        final first = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        expect(locator.calls, 0, reason: '首屏 page-first');
+        final baseline = await warmFullIndex(loader, session);
+        expect(locator.calls, 0, reason: 'full index 复用 page 结果,不 locate');
+
+        // CLI 流式写入:新增 assistant 消息 + 原地增长已有 text part 行
+        // (time_updated 前进,count 与行内容都变)。
+        writer.execute(
+          "UPDATE part SET data = ?, time_updated = 3000 WHERE id = 2",
+          [
+            jsonEncode({'type': 'text', 'text': 'hello chunk'}),
+          ],
+        );
+        insertMessage(id: 3, role: 'assistant', created: 3000);
+        insertPart(id: 3, messageId: 3, text: 'world', created: 3000);
+
+        final second = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        expect(locator.calls, 0, reason: 'store 动了 → 走 DB 行级增量,不 locate');
         expect(
-          locator.calls,
-          0,
-          reason: 'live refresh 仍走 page-first,不 locate',
+          second.messages.any(
+            (m) => m.parts.any(
+              (p) => p is AiTextPart && p.text.contains('hello chunk'),
+            ),
+          ),
+          isTrue,
+        );
+        expect(
+          second.messages.any(
+            (m) =>
+                m.parts.any((p) => p is AiTextPart && p.text.contains('world')),
+          ),
+          isTrue,
+        );
+        expect(
+          identical(second.messages, baseline.messages),
+          isFalse,
+          reason:
+              '增量路径必须返回新 List 实例:state 列表被原地变异,若复用同一'
+              '实例,seat 的 identical 判定("CLI 未变化")会把新内容当成没变而'
+              '跳过,页面永远不出现增量消息',
+        );
+        expect(
+          identical(second.messages[0], baseline.messages[0]),
+          isTrue,
+          reason: '未变化消息保持实例身份(附件/下游 identical 快速路径)',
+        );
+        expect(first.isComplete, isTrue);
+      },
+    );
+
+    test(
+      'task call appended after first load enters subagent attachments',
+      () async {
+        openModernDb();
+        seedConversation();
+        // 第一个已完成 task 调用 + 其子会话(结果字符串携带子会话 id)。
+        insertTaskCallAndChild(
+          messageId: 3,
+          created: 3000,
+          toolCallId: 'toolu_1',
+          childSessionId: 'ses_2',
+          output: '<task id="ses_2" state="completed">done 1</task>',
+        );
+        final loader = buildLoader();
+        final session = opencodeSession();
+        final ctx = launchContextFor(session);
+
+        final first = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        expect(first.subagentAttachments, isEmpty, reason: '首屏不 eager inflate');
+        final full = await warmFullIndex(loader, session);
+        final firstAttachment = await loadAttachment(
+          loader: loader,
+          session: session,
+          ctx: ctx,
+          toolCallId: 'toolu_1',
+          messages: full.messages,
+        );
+        expect(firstAttachment, isNotNull);
+        expect(firstAttachment!.toolCallId, 'toolu_1');
+
+        // CLI 追加第二个 task 调用 + 第二个子会话:store 级增量只重读变化的
+        // 行,不会重跑全量 parse——附件索引必须跟上新出现的调用。
+        insertTaskCallAndChild(
+          messageId: 4,
+          created: 4000,
+          toolCallId: 'toolu_2',
+          childSessionId: 'ses_3',
+          output: '<task id="ses_3" state="completed">done 2</task>',
+        );
+        final second = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+
+        expect(
+          second.subagentAttachments.keys,
+          contains('toolu_1'),
+          reason: '已按需加载的附件在签名未变时必须保留',
+        );
+        expect(
+          second.subagentAttachments.keys,
+          isNot(contains('toolu_2')),
+          reason: '增量 tick 不得 eager inflate 尚未打开的子会话',
+        );
+        final secondAttachment = await loadAttachment(
+          loader: loader,
+          session: session,
+          ctx: ctx,
+          toolCallId: 'toolu_2',
+          messages: second.messages,
+        );
+        expect(secondAttachment, isNotNull);
+        expect(
+          second.subagentAttachments.keys,
+          containsAll(['toolu_1', 'toolu_2']),
+          reason:
+              'DB 增量 tick 后新出现的 task 调用必须能按需 inflate——否则'
+              '点击预览会提示"无法打开该子会话预览"(subagentPreviewUnavailable)',
         );
       },
     );
 
-    test('streaming append (new rows + in-place growth): incremental in-place merge',
-        () async {
-      openModernDb();
-      seedConversation();
-      final loader = buildLoader();
-      final session = opencodeSession();
-      final ctx = launchContextFor(session);
+    test(
+      'running child growth stays on the snapshot until the task completes',
+      () async {
+        openModernDb();
+        seedConversation();
+        // 运行中的 task:父 part 为 running 且 output 为空(adapter 契约:
+        // running 状态不带 result);子会话 ses_2 有一条消息(等待 discovery)。
+        insertRunningTaskCall(
+          messageId: 3,
+          created: 3000,
+          toolCallId: 'toolu_1',
+          childSessionId: 'ses_2',
+        );
+        final loader = buildLoader();
+        final session = opencodeSession();
+        final ctx = launchContextFor(session);
 
-      final first = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
-      expect(locator.calls, 0, reason: '首屏 page-first');
-      final baseline = await warmFullIndex(loader, session);
-      expect(locator.calls, 0, reason: 'full index 复用 page 结果,不 locate');
+        final first = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        expect(first.subagentAttachments, isEmpty);
+        final full = await warmFullIndex(loader, session);
+        final firstAttachment = await loadAttachment(
+          loader: loader,
+          session: session,
+          ctx: ctx,
+          toolCallId: 'toolu_1',
+          messages: full.messages,
+        );
+        expect(
+          firstAttachment,
+          isNotNull,
+          reason: '运行中的 task 必须通过 discovery 找到子会话',
+        );
+        expect(
+          firstAttachment!.messages,
+          hasLength(1),
+          reason: '首次解析时子会话只有一条消息',
+        );
 
-      // CLI 流式写入:新增 assistant 消息 + 原地增长已有 text part 行
-      // (time_updated 前进,count 与行内容都变)。
-      writer.execute(
-        "UPDATE part SET data = ?, time_updated = 3000 WHERE id = 2",
-        [jsonEncode({'type': 'text', 'text': 'hello chunk'})],
-      );
-      insertMessage(id: 3, role: 'assistant', created: 3000);
-      insertPart(id: 3, messageId: 3, text: 'world', created: 3000);
-
-      final second = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
-      expect(locator.calls, 0, reason: 'store 动了 → 走 DB 行级增量,不 locate');
-      expect(
-        second.messages.any(
-          (m) => m.parts.any(
-            (p) => p is AiTextPart && p.text.contains('hello chunk'),
+        // 子 agent 继续输出(子会话追加消息),但父 part 冻结:签名不变 →
+        // 附件索引必须复用,不空转重解析,预览停留在快照。
+        writer.execute(
+          'INSERT INTO message (id, session_id, data, time_created, '
+          'time_updated) VALUES (?, ?, ?, ?, ?)',
+          [
+            301,
+            'ses_2',
+            jsonEncode({
+              'role': 'assistant',
+              'time': {'created': 3500},
+            }),
+            3500,
+            3500,
+          ],
+        );
+        writer.execute(
+          'INSERT INTO part (id, session_id, message_id, data, time_created, '
+          'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
+          [
+            3003,
+            'ses_2',
+            301,
+            jsonEncode({'type': 'text', 'text': 'more progress'}),
+            3500,
+            3500,
+          ],
+        );
+        final middle = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        expect(
+          identical(
+            middle.subagentAttachments['toolu_1']!.messages,
+            firstAttachment.messages,
           ),
-        ),
-        isTrue,
-      );
-      expect(
-        second.messages.any(
-          (m) => m.parts.any(
-            (p) => p is AiTextPart && p.text.contains('world'),
+          isTrue,
+          reason:
+              '父 part 冻结时子会话增长不可见(签名不变 → 复用快照),'
+              '不产生无谓的重解析',
+        );
+
+        // 任务完成:父 part 更新为 completed + 输出携带子会话 id → 签名变化
+        // → 重新 inflate,预览刷新到子会话的最新完整内容。
+        writer.execute(
+          'UPDATE part SET data = ?, time_updated = 3600 WHERE id = 3000',
+          [
+            jsonEncode({
+              'type': 'tool',
+              'tool': 'task',
+              'callID': 'toolu_1',
+              'state': {
+                'status': 'completed',
+                'input': {'prompt': 'x'},
+                'output': '<task id="ses_2" state="completed">done</task>',
+              },
+            }),
+          ],
+        );
+        final second = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+
+        final secondAttachment = await loadAttachment(
+          loader: loader,
+          session: session,
+          ctx: ctx,
+          toolCallId: 'toolu_1',
+          messages: second.messages,
+        );
+        expect(secondAttachment, isNotNull);
+        expect(
+          secondAttachment!.messages,
+          hasLength(2),
+          reason:
+              '调用完成(part 状态/结果变化)后必须重新解析,预览跟随到'
+              '子会话的最新完整内容',
+        );
+        expect(
+          (secondAttachment.messages.last.parts.single as AiTextPart).text,
+          'more progress',
+        );
+      },
+    );
+
+    test(
+      'in-place growth only (count unchanged): incremental replace',
+      () async {
+        openModernDb();
+        seedConversation();
+        final loader = buildLoader();
+        final session = opencodeSession();
+        final ctx = launchContextFor(session);
+
+        final first = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        expect(locator.calls, 0, reason: '首屏 page-first');
+        final baseline = await warmFullIndex(loader, session);
+        expect(locator.calls, 0);
+
+        // 只有一条流式 text 原地增长:行数不变,MAX(time_updated) 前进。
+        writer.execute(
+          "UPDATE part SET data = ?, time_updated = 4000 WHERE id = 2",
+          [
+            jsonEncode({'type': 'text', 'text': 'hello grow'}),
+          ],
+        );
+
+        final second = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        expect(locator.calls, 0, reason: '原地增长 → 行级增量,不 locate');
+        expect(
+          second.messages.any(
+            (m) => m.parts.any(
+              (p) => p is AiTextPart && p.text.contains('hello grow'),
+            ),
           ),
-        ),
-        isTrue,
-      );
-      expect(
-        identical(second.messages, baseline.messages),
-        isFalse,
-        reason: '增量路径必须返回新 List 实例:state 列表被原地变异,若复用同一'
-            '实例,seat 的 identical 判定("CLI 未变化")会把新内容当成没变而'
-            '跳过,页面永远不出现增量消息',
-      );
-      expect(
-        identical(second.messages[0], baseline.messages[0]),
-        isTrue,
-        reason: '未变化消息保持实例身份(附件/下游 identical 快速路径)',
-      );
-      expect(first.isComplete, isTrue);
-    });
+          isTrue,
+        );
+        expect(
+          identical(second.messages, baseline.messages),
+          isFalse,
+          reason: '原地增长也必须返回新 List 实例(同 seat identical 判定问题)',
+        );
+        expect(
+          identical(second.messages[0], baseline.messages[0]),
+          isTrue,
+          reason: '未变化消息保持实例身份',
+        );
+        expect(first.isComplete, isTrue);
+      },
+    );
 
-    test('task call appended after first load enters subagent attachments',
-        () async {
-      openModernDb();
-      seedConversation();
-      // 第一个已完成 task 调用 + 其子会话(结果字符串携带子会话 id)。
-      insertTaskCallAndChild(
-        messageId: 3,
-        created: 3000,
-        toolCallId: 'toolu_1',
-        childSessionId: 'ses_2',
-        output: '<task id="ses_2" state="completed">done 1</task>',
-      );
-      final loader = buildLoader();
-      final session = opencodeSession();
-      final ctx = launchContextFor(session);
+    test(
+      'task child session becoming newest must not flip the seat transcript',
+      () async {
+        openModernDb();
+        seedConversation();
+        // 无 persisted native id → _resolveSessionId 走"最新会话"回退,
+        // 模拟未捕获绑定(或旧会话)的 seat。
+        final session = AppSession(
+          sessionId: 'sess-ui',
+          workspaceId: 'ws-1',
+          folders: const [WorkspaceFolder(path: '/work/project')],
+          cli: CliTool.opencode,
+          createdAt: 1,
+          updatedAt: 1,
+        );
+        final ctx = launchContextFor(session);
+        final loader = buildLoader();
 
-      final first = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
-      expect(first.subagentAttachments, isEmpty, reason: '首屏不 eager inflate');
-      final full = await warmFullIndex(loader, session);
-      final firstAttachment = await loadAttachment(
-        loader: loader,
-        session: session,
-        ctx: ctx,
-        toolCallId: 'toolu_1',
-        messages: full.messages,
-      );
-      expect(firstAttachment, isNotNull);
-      expect(firstAttachment!.toolCallId, 'toolu_1');
+        final first = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        expect(locator.calls, 0, reason: '首屏 page-first');
+        expect(first.messages, hasLength(2));
+        await warmFullIndex(loader, session);
+        expect(locator.calls, 0);
 
-      // CLI 追加第二个 task 调用 + 第二个子会话:store 级增量只重读变化的
-      // 行,不会重跑全量 parse——附件索引必须跟上新出现的调用。
-      insertTaskCallAndChild(
-        messageId: 4,
-        created: 4000,
-        toolCallId: 'toolu_2',
-        childSessionId: 'ses_3',
-        output: '<task id="ses_3" state="completed">done 2</task>',
-      );
-      final second = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
+        // task 子会话创建并写入:time_updated 最新 → 旧实现把"最新会话"
+        // 解析成子会话,指纹/重读全落在子会话上。
+        writer.execute(
+          'INSERT INTO session (id, time_created, time_updated) VALUES (?, ?, ?)',
+          ['ses_2', 9000, 9000],
+        );
+        writer.execute(
+          'INSERT INTO message (id, session_id, data, time_created, time_updated) '
+          'VALUES (?, ?, ?, ?, ?)',
+          [
+            10,
+            'ses_2',
+            jsonEncode({
+              'role': 'assistant',
+              'time': {'created': 9000},
+            }),
+            9000,
+            9000,
+          ],
+        );
+        writer.execute(
+          'INSERT INTO part (id, session_id, message_id, data, time_created, '
+          'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
+          [
+            10,
+            'ses_2',
+            10,
+            jsonEncode({'type': 'text', 'text': 'task output'}),
+            9000,
+            9000,
+          ],
+        );
+        // 同时 seat 会话自己新增一条消息。
+        insertMessage(id: 5, role: 'assistant', created: 5000);
+        insertPart(id: 5, messageId: 5, text: 'seat grow', created: 5000);
 
-      expect(
-        second.subagentAttachments.keys,
-        contains('toolu_1'),
-        reason: '已按需加载的附件在签名未变时必须保留',
-      );
-      expect(
-        second.subagentAttachments.keys,
-        isNot(contains('toolu_2')),
-        reason: '增量 tick 不得 eager inflate 尚未打开的子会话',
-      );
-      final secondAttachment = await loadAttachment(
-        loader: loader,
-        session: session,
-        ctx: ctx,
-        toolCallId: 'toolu_2',
-        messages: second.messages,
-      );
-      expect(secondAttachment, isNotNull);
-      expect(
-        second.subagentAttachments.keys,
-        containsAll(['toolu_1', 'toolu_2']),
-        reason: 'DB 增量 tick 后新出现的 task 调用必须能按需 inflate——否则'
-            '点击预览会提示"无法打开该子会话预览"(subagentPreviewUnavailable)',
-      );
-    });
-
-    test('running child growth stays on the snapshot until the task completes',
-        () async {
-      openModernDb();
-      seedConversation();
-      // 运行中的 task:父 part 为 running 且 output 为空(adapter 契约:
-      // running 状态不带 result);子会话 ses_2 有一条消息(等待 discovery)。
-      insertRunningTaskCall(
-        messageId: 3,
-        created: 3000,
-        toolCallId: 'toolu_1',
-        childSessionId: 'ses_2',
-      );
-      final loader = buildLoader();
-      final session = opencodeSession();
-      final ctx = launchContextFor(session);
-
-      final first = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
-      expect(first.subagentAttachments, isEmpty);
-      final full = await warmFullIndex(loader, session);
-      final firstAttachment = await loadAttachment(
-        loader: loader,
-        session: session,
-        ctx: ctx,
-        toolCallId: 'toolu_1',
-        messages: full.messages,
-      );
-      expect(
-        firstAttachment,
-        isNotNull,
-        reason: '运行中的 task 必须通过 discovery 找到子会话',
-      );
-      expect(
-        firstAttachment!.messages,
-        hasLength(1),
-        reason: '首次解析时子会话只有一条消息',
-      );
-
-      // 子 agent 继续输出(子会话追加消息),但父 part 冻结:签名不变 →
-      // 附件索引必须复用,不空转重解析,预览停留在快照。
-      writer.execute(
-        'INSERT INTO message (id, session_id, data, time_created, '
-        'time_updated) VALUES (?, ?, ?, ?, ?)',
-        [
-          301,
-          'ses_2',
-          jsonEncode({'role': 'assistant', 'time': {'created': 3500}}),
-          3500,
-          3500,
-        ],
-      );
-      writer.execute(
-        'INSERT INTO part (id, session_id, message_id, data, time_created, '
-        'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
-        [
-          3003,
-          'ses_2',
-          301,
-          jsonEncode({'type': 'text', 'text': 'more progress'}),
-          3500,
-          3500,
-        ],
-      );
-      final middle = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
-      expect(
-        identical(
-          middle.subagentAttachments['toolu_1']!.messages,
-          firstAttachment.messages,
-        ),
-        isTrue,
-        reason: '父 part 冻结时子会话增长不可见(签名不变 → 复用快照),'
-            '不产生无谓的重解析',
-      );
-
-      // 任务完成:父 part 更新为 completed + 输出携带子会话 id → 签名变化
-      // → 重新 inflate,预览刷新到子会话的最新完整内容。
-      writer.execute(
-        'UPDATE part SET data = ?, time_updated = 3600 WHERE id = 3000',
-        [
-          jsonEncode({
-            'type': 'tool',
-            'tool': 'task',
-            'callID': 'toolu_1',
-            'state': {
-              'status': 'completed',
-              'input': {'prompt': 'x'},
-              'output': '<task id="ses_2" state="completed">done</task>',
-            },
-          }),
-        ],
-      );
-      final second = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
-
-      final secondAttachment = await loadAttachment(
-        loader: loader,
-        session: session,
-        ctx: ctx,
-        toolCallId: 'toolu_1',
-        messages: second.messages,
-      );
-      expect(secondAttachment, isNotNull);
-      expect(
-        secondAttachment!.messages,
-        hasLength(2),
-        reason: '调用完成(part 状态/结果变化)后必须重新解析,预览跟随到'
-            '子会话的最新完整内容',
-      );
-      expect(
-        (secondAttachment.messages.last.parts.single as AiTextPart).text,
-        'more progress',
-      );
-    });
-
-    test('in-place growth only (count unchanged): incremental replace', () async {
-      openModernDb();
-      seedConversation();
-      final loader = buildLoader();
-      final session = opencodeSession();
-      final ctx = launchContextFor(session);
-
-      final first = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
-      expect(locator.calls, 0, reason: '首屏 page-first');
-      final baseline = await warmFullIndex(loader, session);
-      expect(locator.calls, 0);
-
-      // 只有一条流式 text 原地增长:行数不变,MAX(time_updated) 前进。
-      writer.execute(
-        "UPDATE part SET data = ?, time_updated = 4000 WHERE id = 2",
-        [jsonEncode({'type': 'text', 'text': 'hello grow'})],
-      );
-
-      final second = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
-      expect(locator.calls, 0, reason: '原地增长 → 行级增量,不 locate');
-      expect(
-        second.messages.any(
-          (m) => m.parts.any(
-            (p) => p is AiTextPart && p.text.contains('hello grow'),
+        final second = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        expect(locator.calls, 0, reason: '子会话变成最新会话不得触发全量回退(旧实现每轮重复解析)');
+        expect(
+          second.messages.any(
+            (m) => m.parts.any((p) => p is AiTextPart && p.text == 'seat grow'),
           ),
-        ),
-        isTrue,
-      );
-      expect(
-        identical(second.messages, baseline.messages),
-        isFalse,
-        reason: '原地增长也必须返回新 List 实例(同 seat identical 判定问题)',
-      );
-      expect(
-        identical(second.messages[0], baseline.messages[0]),
-        isTrue,
-        reason: '未变化消息保持实例身份',
-      );
-      expect(first.isComplete, isTrue);
-    });
-
-    test('task child session becoming newest must not flip the seat transcript',
-        () async {
-      openModernDb();
-      seedConversation();
-      // 无 persisted native id → _resolveSessionId 走"最新会话"回退,
-      // 模拟未捕获绑定(或旧会话)的 seat。
-      final session = AppSession(
-        sessionId: 'sess-ui',
-        workspaceId: 'ws-1',
-        folders: const [WorkspaceFolder(path: '/work/project')],
-        cli: CliTool.opencode,
-        createdAt: 1,
-        updatedAt: 1,
-      );
-      final ctx = launchContextFor(session);
-      final loader = buildLoader();
-
-      final first = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
-      expect(locator.calls, 0, reason: '首屏 page-first');
-      expect(first.messages, hasLength(2));
-      await warmFullIndex(loader, session);
-      expect(locator.calls, 0);
-
-      // task 子会话创建并写入:time_updated 最新 → 旧实现把"最新会话"
-      // 解析成子会话,指纹/重读全落在子会话上。
-      writer.execute(
-        'INSERT INTO session (id, time_created, time_updated) VALUES (?, ?, ?)',
-        ['ses_2', 9000, 9000],
-      );
-      writer.execute(
-        'INSERT INTO message (id, session_id, data, time_created, time_updated) '
-        'VALUES (?, ?, ?, ?, ?)',
-        [
-          10,
-          'ses_2',
-          jsonEncode({'role': 'assistant', 'time': {'created': 9000}}),
-          9000,
-          9000,
-        ],
-      );
-      writer.execute(
-        'INSERT INTO part (id, session_id, message_id, data, time_created, '
-        'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
-        [
-          10,
-          'ses_2',
-          10,
-          jsonEncode({'type': 'text', 'text': 'task output'}),
-          9000,
-          9000,
-        ],
-      );
-      // 同时 seat 会话自己新增一条消息。
-      insertMessage(id: 5, role: 'assistant', created: 5000);
-      insertPart(id: 5, messageId: 5, text: 'seat grow', created: 5000);
-
-      final second = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
-      expect(
-        locator.calls,
-        0,
-        reason: '子会话变成最新会话不得触发全量回退(旧实现每轮重复解析)',
-      );
-      expect(
-        second.messages.any(
-          (m) =>
-              m.parts.any((p) => p is AiTextPart && p.text == 'seat grow'),
-        ),
-        isTrue,
-        reason: 'seat 会话的新消息必须出现',
-      );
-      expect(
-        second.messages.any(
-          (m) =>
-              m.parts.any((p) => p is AiTextPart && p.text == 'task output'),
-        ),
-        isFalse,
-        reason: '子会话消息不得混入 seat 列表(同内容不同 id = 重复气泡)',
-      );
-      expect(
-        second.messages,
-        hasLength(2),
-        reason: '相邻 assistant 合并语义与全量 parse 一致',
-      );
-    });
+          isTrue,
+          reason: 'seat 会话的新消息必须出现',
+        );
+        expect(
+          second.messages.any(
+            (m) =>
+                m.parts.any((p) => p is AiTextPart && p.text == 'task output'),
+          ),
+          isFalse,
+          reason: '子会话消息不得混入 seat 列表(同内容不同 id = 重复气泡)',
+        );
+        expect(
+          second.messages,
+          hasLength(2),
+          reason: '相邻 assistant 合并语义与全量 parse 一致',
+        );
+      },
+    );
   });
 
   group('legacy schema (part without time_updated)', () {
@@ -995,11 +1016,7 @@ void main() {
         memberId: '',
         launchContext: ctx,
       );
-      expect(
-        locator.calls,
-        2,
-        reason: 'schema 不兼容时增量不可用,永远回退全量',
-      );
+      expect(locator.calls, 2, reason: 'schema 不兼容时增量不可用,永远回退全量');
       expect(
         identical(second.messages, first.messages),
         isFalse,
@@ -1037,16 +1054,11 @@ void main() {
         memberId: '',
         launchContext: ctx,
       );
-      expect(
-        locator.calls,
-        1,
-        reason: '删除无法用增量表达 → 回退全量重建',
-      );
+      expect(locator.calls, 1, reason: '删除无法用增量表达 → 回退全量重建');
       expect(
         second.messages.any(
-          (m) => m.parts.any(
-            (p) => p is AiTextPart && p.text.contains('compact'),
-          ),
+          (m) =>
+              m.parts.any((p) => p is AiTextPart && p.text.contains('compact')),
         ),
         isTrue,
       );
@@ -1079,58 +1091,58 @@ void main() {
       );
       expect(
         third.messages.any(
-          (m) => m.parts.any(
-            (p) => p is AiTextPart && p.text == 'again',
-          ),
+          (m) => m.parts.any((p) => p is AiTextPart && p.text == 'again'),
         ),
         isTrue,
       );
     });
 
-    test('coalescing preserved: new assistant adjacent to assistant merges',
-        () async {
-      openModernDb();
-      seedConversation();
-      final loader = buildLoader();
-      final session = opencodeSession();
-      final ctx = launchContextFor(session);
+    test(
+      'coalescing preserved: new assistant adjacent to assistant merges',
+      () async {
+        openModernDb();
+        seedConversation();
+        final loader = buildLoader();
+        final session = opencodeSession();
+        final ctx = launchContextFor(session);
 
-      final first = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
-      expect(first.messages, hasLength(2)); // user + assistant
-      expect(locator.calls, 0, reason: '首屏 page-first');
-      final baseline = await warmFullIndex(loader, session);
-      expect(locator.calls, 0);
+        final first = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        expect(first.messages, hasLength(2)); // user + assistant
+        expect(locator.calls, 0, reason: '首屏 page-first');
+        final baseline = await warmFullIndex(loader, session);
+        expect(locator.calls, 0);
 
-      // 流式分片:第二条 assistant 消息紧邻上一条(全量 parse 会合并)。
-      insertMessage(id: 3, role: 'assistant', created: 3000);
-      insertPart(id: 3, messageId: 3, text: 'chunk2', created: 3000);
+        // 流式分片:第二条 assistant 消息紧邻上一条(全量 parse 会合并)。
+        insertMessage(id: 3, role: 'assistant', created: 3000);
+        insertPart(id: 3, messageId: 3, text: 'chunk2', created: 3000);
 
-      final second = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
-      expect(locator.calls, 0, reason: '增量路径');
-      expect(
-        identical(second.messages, baseline.messages),
-        isFalse,
-        reason: '增量 tick 必须返回新 List 实例,seat 才渲染新消息',
-      );
-      expect(
-        second.messages,
-        hasLength(2),
-        reason: '相邻 assistant 必须合并成一条(与全量 parse 语义一致)',
-      );
-      expect(
-        (second.messages[1].parts.last as AiTextPart).text,
-        'chunk2',
-        reason: '合并消息拼接了新分片',
-      );
-    });
+        final second = await loader.load(
+          session: session,
+          memberId: '',
+          launchContext: ctx,
+        );
+        expect(locator.calls, 0, reason: '增量路径');
+        expect(
+          identical(second.messages, baseline.messages),
+          isFalse,
+          reason: '增量 tick 必须返回新 List 实例,seat 才渲染新消息',
+        );
+        expect(
+          second.messages,
+          hasLength(2),
+          reason: '相邻 assistant 必须合并成一条(与全量 parse 语义一致)',
+        );
+        expect(
+          (second.messages[1].parts.last as AiTextPart).text,
+          'chunk2',
+          reason: '合并消息拼接了新分片',
+        );
+      },
+    );
   });
 }
 

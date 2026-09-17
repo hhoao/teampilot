@@ -2,8 +2,8 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/ai_history_seat.dart';
 import 'package:teampilot/models/failed_message_record.dart';
-import 'package:teampilot/services/session/ai_history_loader.dart';
-import 'package:teampilot/services/session/failed_message_store.dart';
+import 'package:teampilot/services/session/history/ai_history_loader.dart';
+import 'package:teampilot/services/session/history/failed_message_store.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -96,21 +96,24 @@ void main() {
     );
   });
 
-  test('removePendingById drops the overlay before transcript reload', () async {
-    final history = seat();
-    final record = await history.persistPendingUser(
-      store: store,
-      workspaceId: 'workspace-a',
-      sessionId: 'session-a',
-      text: 'delivered once',
-    );
+  test(
+    'removePendingById drops the overlay before transcript reload',
+    () async {
+      final history = seat();
+      final record = await history.persistPendingUser(
+        store: store,
+        workspaceId: 'workspace-a',
+        sessionId: 'session-a',
+        text: 'delivered once',
+      );
 
-    await history.removePendingById(record.id);
+      await history.removePendingById(record.id);
 
-    expect(history.runtime.messages, isEmpty);
-    expect(await store.load('workspace-a', 'session-a'), isEmpty);
-    expect(history.state.awaitingAssistant, isFalse);
-  });
+      expect(history.runtime.messages, isEmpty);
+      expect(await store.load('workspace-a', 'session-a'), isEmpty);
+      expect(history.state.awaitingAssistant, isFalse);
+    },
+  );
 
   test('hydrates a failed bubble into a fresh history seat', () async {
     final record = FailedMessageRecord(

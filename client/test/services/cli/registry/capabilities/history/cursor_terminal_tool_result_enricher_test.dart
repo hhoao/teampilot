@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/terminal_tool_result_enricher.dart';
 import 'package:teampilot/services/ai_history/tool_call_resolvers.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
 
 void main() {
   late Directory tmp;
@@ -30,7 +30,10 @@ void main() {
     bucket: 'bucket',
   );
 
-  String buildTranscriptPath({String project = 'project', String chatId = 'chat'}) {
+  String buildTranscriptPath({
+    String project = 'project',
+    String chatId = 'chat',
+  }) {
     return fs.pathContext.join(
       tmp.path,
       project,
@@ -40,10 +43,7 @@ void main() {
     );
   }
 
-  Future<void> writeTerminal(
-    String relativePath,
-    String content,
-  ) async {
+  Future<void> writeTerminal(String relativePath, String content) async {
     final path = fs.pathContext.join(tmp.path, relativePath);
     await fs.ensureDir(fs.pathContext.dirname(path));
     await fs.writeString(path, content);
@@ -83,13 +83,18 @@ $trailer''';
     required String rootTranscriptPath,
   }) {
     return const CursorTerminalToolResultEnricher(
-        shellResolver: ConfigurableAiShellToolTargetResolver(
-          toolNames: {
-            'bash', 'shell', 'shell_command', 'exec_command',
-            'run_shell_command', 'run_terminal_cmd', 'execute',
-          },
-        ),
-      ).enrich(
+      shellResolver: ConfigurableAiShellToolTargetResolver(
+        toolNames: {
+          'bash',
+          'shell',
+          'shell_command',
+          'exec_command',
+          'run_shell_command',
+          'run_terminal_cmd',
+          'execute',
+        },
+      ),
+    ).enrich(
       messages: messages,
       ctx: ctx(),
       rootTranscriptPath: rootTranscriptPath,
@@ -117,16 +122,16 @@ $trailer''';
             AiToolCallPart(
               toolCallId: 't1',
               toolName: 'Shell',
-              args: {
-                'command': 'git status',
-                'description': 'git status',
-              },
+              args: {'command': 'git status', 'description': 'git status'},
             ),
           ],
         ),
       ];
 
-      final enriched = await enrich(messages: messages, rootTranscriptPath: root);
+      final enriched = await enrich(
+        messages: messages,
+        rootTranscriptPath: root,
+      );
       final part = enriched.single.parts.single as AiToolCallPart;
 
       expect(part.result, 'On branch main');
@@ -156,7 +161,10 @@ $trailer''';
         ),
       ];
 
-      final enriched = await enrich(messages: messages, rootTranscriptPath: root);
+      final enriched = await enrich(
+        messages: messages,
+        rootTranscriptPath: root,
+      );
       final part = enriched.single.parts.single as AiToolCallPart;
 
       expect(part.result, 'already here');
@@ -166,11 +174,7 @@ $trailer''';
       final root = buildTranscriptPath();
       await writeTerminal(
         'project/terminals/1.txt',
-        terminalFile(
-          command: 'false',
-          body: 'command failed',
-          exitCode: 1,
-        ),
+        terminalFile(command: 'false', body: 'command failed', exitCode: 1),
       );
 
       final messages = [
@@ -187,7 +191,10 @@ $trailer''';
         ),
       ];
 
-      final enriched = await enrich(messages: messages, rootTranscriptPath: root);
+      final enriched = await enrich(
+        messages: messages,
+        rootTranscriptPath: root,
+      );
       final part = enriched.single.parts.single as AiToolCallPart;
 
       expect(part.result, 'command failed');
@@ -225,7 +232,10 @@ $trailer''';
         ),
       ];
 
-      final enriched = await enrich(messages: messages, rootTranscriptPath: root);
+      final enriched = await enrich(
+        messages: messages,
+        rootTranscriptPath: root,
+      );
       final parts = enriched.single.parts.cast<AiToolCallPart>();
 
       expect(parts[0].result, 'first terminal');
@@ -248,7 +258,10 @@ $trailer''';
         ),
       ];
 
-      final enriched = await enrich(messages: messages, rootTranscriptPath: root);
+      final enriched = await enrich(
+        messages: messages,
+        rootTranscriptPath: root,
+      );
       final part = enriched.single.parts.single as AiToolCallPart;
 
       expect(part.result, isNull);
@@ -276,7 +289,10 @@ $trailer''';
         ),
       ];
 
-      final enriched = await enrich(messages: messages, rootTranscriptPath: root);
+      final enriched = await enrich(
+        messages: messages,
+        rootTranscriptPath: root,
+      );
       final part = enriched.single.parts.single as AiToolCallPart;
 
       expect(part.result, 'filled output');
@@ -288,8 +304,13 @@ $trailer''';
     const enricher = CursorTerminalToolResultEnricher(
       shellResolver: ConfigurableAiShellToolTargetResolver(
         toolNames: {
-          'bash', 'shell', 'shell_command', 'exec_command',
-          'run_shell_command', 'run_terminal_cmd', 'execute',
+          'bash',
+          'shell',
+          'shell_command',
+          'exec_command',
+          'run_shell_command',
+          'run_terminal_cmd',
+          'execute',
         },
       ),
     );
@@ -310,10 +331,7 @@ $trailer''';
     });
 
     test('false for a part with a real result', () {
-      expect(
-        enricher.needsEnrichment(part(result: 'On branch main')),
-        isFalse,
-      );
+      expect(enricher.needsEnrichment(part(result: 'On branch main')), isFalse);
     });
   });
 }

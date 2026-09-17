@@ -5,7 +5,7 @@ import 'package:meta/meta.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 import '../../../../../utils/logging/logger.dart';
-import '../../../../session/session_history_context.dart';
+import '../../../../session/history/session_history_context.dart';
 import 'ai_transcript.dart';
 import '../native_session_id.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
@@ -219,7 +219,8 @@ final class OpencodeSideResolver implements SubagentSideResolver {
     final dataDir = opencodeDataDirFromEnv(ctx);
     if (dataDir.isEmpty) return null;
 
-    final memoKey = '$dataDir\u0000$parent\u0000$toolCallId'
+    final memoKey =
+        '$dataDir\u0000$parent\u0000$toolCallId'
         '\u0000${toolCallAt?.toUtc().millisecondsSinceEpoch ?? ''}';
 
     final sqliteFingerprint = await _sqliteFingerprint(ctx, dataDir);
@@ -254,7 +255,9 @@ final class OpencodeSideResolver implements SubagentSideResolver {
     for (final suffix in const ['', '-wal', '-shm']) {
       final st = await ctx.fs.stat('$dbPath$suffix');
       if (!st.isFile) continue;
-      parts.add('$suffix|${st.size ?? 0}|${st.mtime?.toUtc().toIso8601String() ?? ''}');
+      parts.add(
+        '$suffix|${st.size ?? 0}|${st.mtime?.toUtc().toIso8601String() ?? ''}',
+      );
     }
     return parts.isEmpty ? null : parts.join('\n');
   }
@@ -271,7 +274,11 @@ final class OpencodeSideResolver implements SubagentSideResolver {
     return memo.fingerprint == fingerprint ? memo.childId : null;
   }
 
-  static void _rememberDiscovery(String key, String fingerprint, String childId) {
+  static void _rememberDiscovery(
+    String key,
+    String fingerprint,
+    String childId,
+  ) {
     if (_discoveryMemo.length >= _discoveryMemoCap) {
       _discoveryMemo.clear();
     }
@@ -409,20 +416,14 @@ final class OpencodeSideResolver implements SubagentSideResolver {
 }
 
 class _ChildDiscoveryMemo {
-  const _ChildDiscoveryMemo({
-    required this.fingerprint,
-    required this.childId,
-  });
+  const _ChildDiscoveryMemo({required this.fingerprint, required this.childId});
 
   final String fingerprint;
   final String childId;
 }
 
 class _ChildBundleMemo {
-  const _ChildBundleMemo({
-    required this.fingerprint,
-    required this.bundle,
-  });
+  const _ChildBundleMemo({required this.fingerprint, required this.bundle});
 
   final String fingerprint;
   final AiTranscriptBundle bundle;
@@ -430,10 +431,7 @@ class _ChildBundleMemo {
 
 /// 子会话解析结果 memo(见 [OpencodeSideResolver.resolve] 的注释)。
 class _ChildResultMemo {
-  const _ChildResultMemo({
-    required this.fingerprint,
-    required this.result,
-  });
+  const _ChildResultMemo({required this.fingerprint, required this.result});
 
   final String fingerprint;
   final SubagentSideResolveResult result;

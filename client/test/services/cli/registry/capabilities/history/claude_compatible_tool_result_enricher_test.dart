@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/compatible_jsonl.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/compatible_tool_result_enricher.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
 
 void main() {
   late Directory tmp;
@@ -78,16 +78,15 @@ void main() {
     ClaudeCompatibleToolResultEnricher enricher,
     int Function() batches,
     int Function() lines,
-  }) countingEnricher() {
+  })
+  countingEnricher() {
     var batches = 0;
     var lines = 0;
     final enricher = ClaudeCompatibleToolResultEnricher(
       decodeLines: (rawLines) {
         batches++;
         lines += rawLines.length;
-        return [
-          for (final line in rawLines) tryDecodeJsonlLine(line),
-        ];
+        return [for (final line in rawLines) tryDecodeJsonlLine(line)];
       },
     );
     return (enricher: enricher, batches: () => batches, lines: () => lines);
@@ -120,12 +119,9 @@ void main() {
     test(
       'replaces truncated map toolUseResult with stdout and stderr',
       () async {
-        final path = await writeJsonl(
-          'truncated_map.jsonl',
-          '''
+        final path = await writeJsonl('truncated_map.jsonl', '''
 {"type":"user","message":{"role":"user","content":[{"tool_use_id":"call_02","type":"tool_result","content":"tool output truncated","is_error":false}]},"toolUseResult":{"stdout":"line1\\nline2","stderr":"err line","exitCode":1,"isTruncated":true}}
-''',
-        );
+''');
 
         final enriched = await enrich(
           messages: truncatedBashMessage(),
@@ -140,12 +136,9 @@ void main() {
     );
 
     test('replaces truncated result with string toolUseResult', () async {
-      final path = await writeJsonl(
-        'truncated_string.jsonl',
-        '''
+      final path = await writeJsonl('truncated_string.jsonl', '''
 {"type":"user","message":{"role":"user","content":[{"tool_use_id":"call_02","type":"tool_result","content":"tool output truncated","is_error":false}]},"toolUseResult":"Error: file not found"}
-''',
-      );
+''');
 
       final enriched = await enrich(
         messages: truncatedBashMessage(),
@@ -158,12 +151,9 @@ void main() {
     });
 
     test('leaves full non-truncated result unchanged', () async {
-      final path = await writeJsonl(
-        'full_result.jsonl',
-        '''
+      final path = await writeJsonl('full_result.jsonl', '''
 {"type":"user","message":{"role":"user","content":[{"tool_use_id":"call_02","type":"tool_result","content":"full output here","is_error":false}]},"toolUseResult":{"stdout":"ignored","stderr":"","exitCode":0}}
-''',
-      );
+''');
 
       final enriched = await enrich(
         messages: truncatedBashMessage(result: 'full output here'),
@@ -174,52 +164,52 @@ void main() {
       expect(part.result, 'full output here');
     });
 
-    test('leaves truncated result unchanged when toolUseResult is absent', () async {
-      final path = await writeJsonl(
-        'truncated_no_side.jsonl',
-        '''
+    test(
+      'leaves truncated result unchanged when toolUseResult is absent',
+      () async {
+        final path = await writeJsonl('truncated_no_side.jsonl', '''
 {"type":"user","message":{"role":"user","content":[{"tool_use_id":"call_02","type":"tool_result","content":"tool output truncated","is_error":false}]}}
-''',
-      );
+''');
 
-      final enriched = await enrich(
-        messages: truncatedBashMessage(),
-        rootTranscriptPath: path,
-      );
-      final part = enriched.single.parts.single as AiToolCallPart;
+        final enriched = await enrich(
+          messages: truncatedBashMessage(),
+          rootTranscriptPath: path,
+        );
+        final part = enriched.single.parts.single as AiToolCallPart;
 
-      expect(part.result, 'tool output truncated');
-    });
+        expect(part.result, 'tool output truncated');
+      },
+    );
 
-    test('reads transcript bytes from bundle fragments when provided', () async {
-      const jsonl = '''
+    test(
+      'reads transcript bytes from bundle fragments when provided',
+      () async {
+        const jsonl = '''
 {"type":"user","message":{"role":"user","content":[{"tool_use_id":"call_02","type":"tool_result","content":"tool output truncated","is_error":false}]},"toolUseResult":{"stdout":"from bundle","stderr":"","exitCode":0}}
 ''';
 
-      final enriched = await enrich(
-        messages: truncatedBashMessage(),
-        bundle: AiTranscriptBundle(
-          adapterId: 'claude',
-          fragments: [
-            AiTranscriptFragment(
-              name: 'session.jsonl',
-              bytes: utf8.encode(jsonl),
-            ),
-          ],
-        ),
-      );
-      final part = enriched.single.parts.single as AiToolCallPart;
+        final enriched = await enrich(
+          messages: truncatedBashMessage(),
+          bundle: AiTranscriptBundle(
+            adapterId: 'claude',
+            fragments: [
+              AiTranscriptFragment(
+                name: 'session.jsonl',
+                bytes: utf8.encode(jsonl),
+              ),
+            ],
+          ),
+        );
+        final part = enriched.single.parts.single as AiToolCallPart;
 
-      expect(part.result, 'from bundle');
-    });
+        expect(part.result, 'from bundle');
+      },
+    );
 
     test('uses stdout only when stderr is empty', () async {
-      final path = await writeJsonl(
-        'stdout_only.jsonl',
-        '''
+      final path = await writeJsonl('stdout_only.jsonl', '''
 {"type":"user","message":{"role":"user","content":[{"tool_use_id":"call_02","type":"tool_result","content":"tool output truncated","is_error":false}]},"toolUseResult":{"stdout":"only stdout","stderr":"","exitCode":0}}
-''',
-      );
+''');
 
       final enriched = await enrich(
         messages: truncatedBashMessage(),
@@ -244,7 +234,10 @@ void main() {
   group('tool-result index cache', () {
     test('reuses tool result index for unchanged transcript', () async {
       final counted = countingEnricher();
-      final line = truncatedUserLine(toolUseId: 'call_02', stdout: 'from cache');
+      final line = truncatedUserLine(
+        toolUseId: 'call_02',
+        stdout: 'from cache',
+      );
       final jsonl = '$line\n';
       final bundle = AiTranscriptBundle(
         adapterId: 'claude',
@@ -263,7 +256,10 @@ void main() {
         enricher: counted.enricher,
         sourceToken: token,
       );
-      expect((first.single.parts.single as AiToolCallPart).result, 'from cache');
+      expect(
+        (first.single.parts.single as AiToolCallPart).result,
+        'from cache',
+      );
       expect(counted.batches(), 1);
       expect(counted.lines(), 1);
 
@@ -273,7 +269,10 @@ void main() {
         enricher: counted.enricher,
         sourceToken: token,
       );
-      expect((second.single.parts.single as AiToolCallPart).result, 'from cache');
+      expect(
+        (second.single.parts.single as AiToolCallPart).result,
+        'from cache',
+      );
       expect(
         counted.batches(),
         1,
@@ -341,7 +340,8 @@ void main() {
 
     test('rebuilds tool result index when transcript is rewritten', () async {
       final counted = countingEnricher();
-      final original = '${truncatedUserLine(toolUseId: 'call_02', stdout: 'old')}\n'
+      final original =
+          '${truncatedUserLine(toolUseId: 'call_02', stdout: 'old')}\n'
           '${truncatedUserLine(toolUseId: 'call_extra', stdout: 'extra')}\n';
       const identity = 'session.jsonl';
 

@@ -8,11 +8,11 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/ai_history_loader.dart';
-import 'package:teampilot/services/session/ai_history_locator.dart';
-import 'package:teampilot/services/session/history_awaiting_working_sync.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
-import 'package:teampilot/services/session/session_history_context_builder.dart';
+import 'package:teampilot/services/session/history/ai_history_loader.dart';
+import 'package:teampilot/services/session/history/ai_history_locator.dart';
+import 'package:teampilot/services/session/history/history_awaiting_working_sync.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
+import 'package:teampilot/services/session/history/session_history_context_builder.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 
@@ -39,7 +39,7 @@ void main() {
       folders: s.folders,
       createdAt: 0,
     ),
-                                                                            usesPosixPaths: false,
+    usesPosixPaths: false,
   );
 
   setUp(() {
@@ -187,10 +187,7 @@ void main() {
     expect(seat.state.awaitingAssistant, isTrue);
 
     expect(
-      seat.applyWorkingSessionSync(
-        sessionWorking: false,
-        memberRunning: true,
-      ),
+      seat.applyWorkingSessionSync(sessionWorking: false, memberRunning: true),
       HistoryAwaitingWorkingAction.clearAwaiting,
     );
     expect(seat.state.awaitingAssistant, isFalse);

@@ -10,9 +10,9 @@ import 'package:teampilot/services/cli/registry/capabilities/history/tool_result
 import 'package:teampilot/services/cli/registry/capabilities/shared_tool_call_resolvers.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/compatible_jsonl.dart';
 import 'package:teampilot/services/io/filesystem.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
-import 'package:teampilot/services/session/subagent_attachment_inflater.dart';
-import 'package:teampilot/services/session/subagent_side_transcript_path.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
+import 'package:teampilot/services/session/history/subagent_attachment_inflater.dart';
+import 'package:teampilot/services/session/history/subagent_side_transcript_path.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -52,8 +52,9 @@ class _Cap implements AiHistoryCapability {
   ToolResultEnricher get toolResultEnricher => const NoOpToolResultEnricher();
 
   @override
-  Future<String?> resolveParentTranscriptPath(SessionHistoryContext ctx) async =>
-      null;
+  Future<String?> resolveParentTranscriptPath(
+    SessionHistoryContext ctx,
+  ) async => null;
 
   @override
   Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
@@ -331,34 +332,36 @@ void main() {
     expect(fs.listDirCount, 0);
   });
 
-  test('whitespace parentTranscriptPath is degrade-only without side FS',
-      () async {
-    final fs = _CountingListDirFilesystem();
+  test(
+    'whitespace parentTranscriptPath is degrade-only without side FS',
+    () async {
+      final fs = _CountingListDirFilesystem();
 
-    final index = await _inflate(
-      messages: [
-        AiMessage(
-          id: 'a1',
-          role: AiRole.assistant,
-          parts: [
-            const AiToolCallPart(
-              toolCallId: 'toolu_ws_parent',
-              toolName: 'Task',
-              args: {'agentId': 'abc'},
-              result: 'degraded',
-            ),
-          ],
-        ),
-      ],
-      fs: fs,
-      rootTranscriptPath: '   ',
-    );
+      final index = await _inflate(
+        messages: [
+          AiMessage(
+            id: 'a1',
+            role: AiRole.assistant,
+            parts: [
+              const AiToolCallPart(
+                toolCallId: 'toolu_ws_parent',
+                toolName: 'Task',
+                args: {'agentId': 'abc'},
+                result: 'degraded',
+              ),
+            ],
+          ),
+        ],
+        fs: fs,
+        rootTranscriptPath: '   ',
+      );
 
-    final attachment = index['toolu_ws_parent'];
-    expect(attachment, isNotNull);
-    expect(attachment!.source, AiSubagentAttachmentSource.toolResult);
-    expect(fs.listDirCount, 0);
-  });
+      final attachment = index['toolu_ws_parent'];
+      expect(attachment, isNotNull);
+      expect(attachment!.source, AiSubagentAttachmentSource.toolResult);
+      expect(fs.listDirCount, 0);
+    },
+  );
 
   test('nested side transcript meta under child stem', () async {
     final fs = InMemoryFilesystem();
@@ -466,92 +469,98 @@ void main() {
     );
   });
 
-  test('depth cap still degrade-attaches deepest Agent without past-cap recurse',
-      () async {
-    final fs = InMemoryFilesystem();
-    const maxDepth = 8;
+  test(
+    'depth cap still degrade-attaches deepest Agent without past-cap recurse',
+    () async {
+      final fs = InMemoryFilesystem();
+      const maxDepth = 8;
 
-    // Build a chain of side transcripts: each level's jsonl contains the next Agent.
-    var currentParentPath = parentPath;
-    for (var depth = 0; depth < maxDepth; depth++) {
-      final agentId = 'd$depth';
-      final toolCallId = 'toolu_d$depth';
-      final dir = claudeSubagentsDirFor(currentParentPath);
-      await fs.writeString(
-        claudeSubagentMetaPath(subagentsDir: dir, agentId: agentId),
-        jsonEncode({'toolUseId': toolCallId}),
-      );
-      final sidePath = claudeSubagentTranscriptPath(
-        subagentsDir: dir,
-        agentId: agentId,
-      );
-      final nextToolCallId = 'toolu_d${depth + 1}';
-      await fs.writeString(
-        sidePath,
-        _agentToolJsonl(
-          toolCallId: nextToolCallId,
-          agentIdHint: 'd${depth + 1}',
-          description: 'depth ${depth + 1}',
-          result: 'r$depth',
-        ),
-      );
-      currentParentPath = sidePath;
-    }
-
-    // Past-cap payload under the deepest side stem — must not be indexed.
-    final pastCapDir = claudeSubagentsDirFor(currentParentPath);
-    await fs.writeString(
-      claudeSubagentMetaPath(subagentsDir: pastCapDir, agentId: 'd$maxDepth'),
-      jsonEncode({'toolUseId': 'toolu_d$maxDepth'}),
-    );
-    await fs.writeString(
-      claudeSubagentTranscriptPath(
-        subagentsDir: pastCapDir,
-        agentId: 'd$maxDepth',
-      ),
-      _userAssistantJsonl(user: 'past', assistant: 'should not load'),
-    );
-
-    final rootMessages = [
-      AiMessage(
-        id: 'root',
-        role: AiRole.assistant,
-        parts: [
-          const AiToolCallPart(
-            toolCallId: 'toolu_d0',
-            toolName: 'Agent',
-            args: {'description': 'depth 0'},
+      // Build a chain of side transcripts: each level's jsonl contains the next Agent.
+      var currentParentPath = parentPath;
+      for (var depth = 0; depth < maxDepth; depth++) {
+        final agentId = 'd$depth';
+        final toolCallId = 'toolu_d$depth';
+        final dir = claudeSubagentsDirFor(currentParentPath);
+        await fs.writeString(
+          claudeSubagentMetaPath(subagentsDir: dir, agentId: agentId),
+          jsonEncode({'toolUseId': toolCallId}),
+        );
+        final sidePath = claudeSubagentTranscriptPath(
+          subagentsDir: dir,
+          agentId: agentId,
+        );
+        final nextToolCallId = 'toolu_d${depth + 1}';
+        await fs.writeString(
+          sidePath,
+          _agentToolJsonl(
+            toolCallId: nextToolCallId,
+            agentIdHint: 'd${depth + 1}',
+            description: 'depth ${depth + 1}',
+            result: 'r$depth',
           ),
-        ],
-      ),
-    ];
+        );
+        currentParentPath = sidePath;
+      }
 
-    final index = await _inflate(
-      messages: rootMessages,
-      fs: fs,
-      rootTranscriptPath: parentPath,
-      maxDepth: maxDepth,
-    );
-
-    for (var depth = 0; depth < maxDepth; depth++) {
-      expect(index.containsKey('toolu_d$depth'), isTrue, reason: 'depth $depth');
-      expect(
-        index['toolu_d$depth']!.source,
-        AiSubagentAttachmentSource.sideTranscript,
+      // Past-cap payload under the deepest side stem — must not be indexed.
+      final pastCapDir = claudeSubagentsDirFor(currentParentPath);
+      await fs.writeString(
+        claudeSubagentMetaPath(subagentsDir: pastCapDir, agentId: 'd$maxDepth'),
+        jsonEncode({'toolUseId': 'toolu_d$maxDepth'}),
       );
-    }
+      await fs.writeString(
+        claudeSubagentTranscriptPath(
+          subagentsDir: pastCapDir,
+          agentId: 'd$maxDepth',
+        ),
+        _userAssistantJsonl(user: 'past', assistant: 'should not load'),
+      );
 
-    // Agent at depth == maxDepth is still attached, but degrade-only.
-    expect(index.containsKey('toolu_d$maxDepth'), isTrue);
-    expect(
-      index['toolu_d$maxDepth']!.source,
-      AiSubagentAttachmentSource.toolResult,
-    );
-    expect(index['toolu_d$maxDepth']!.sidePath, isNull);
+      final rootMessages = [
+        AiMessage(
+          id: 'root',
+          role: AiRole.assistant,
+          parts: [
+            const AiToolCallPart(
+              toolCallId: 'toolu_d0',
+              toolName: 'Agent',
+              args: {'description': 'depth 0'},
+            ),
+          ],
+        ),
+      ];
 
-    // Nothing past the cap.
-    expect(index.containsKey('toolu_d${maxDepth + 1}'), isFalse);
-  });
+      final index = await _inflate(
+        messages: rootMessages,
+        fs: fs,
+        rootTranscriptPath: parentPath,
+        maxDepth: maxDepth,
+      );
+
+      for (var depth = 0; depth < maxDepth; depth++) {
+        expect(
+          index.containsKey('toolu_d$depth'),
+          isTrue,
+          reason: 'depth $depth',
+        );
+        expect(
+          index['toolu_d$depth']!.source,
+          AiSubagentAttachmentSource.sideTranscript,
+        );
+      }
+
+      // Agent at depth == maxDepth is still attached, but degrade-only.
+      expect(index.containsKey('toolu_d$maxDepth'), isTrue);
+      expect(
+        index['toolu_d$maxDepth']!.source,
+        AiSubagentAttachmentSource.toolResult,
+      );
+      expect(index['toolu_d$maxDepth']!.sidePath, isNull);
+
+      // Nothing past the cap.
+      expect(index.containsKey('toolu_d${maxDepth + 1}'), isFalse);
+    },
+  );
 
   test('Workflow run fans out into per-agent preview entries', () async {
     final fs = InMemoryFilesystem();
@@ -593,126 +602,127 @@ void main() {
     expect(childA.title, 'implementer');
     expect(childA.messages, isNotEmpty);
     expect(childA.sidePath, endsWith('agent-agent-a.jsonl'));
-    expect(
-      childA.messages.single.parts.single,
-      isA<AiTextPart>(),
-    );
+    expect(childA.messages.single.parts.single, isA<AiTextPart>());
   });
 
-  test('resolveByToolCallId finds workflow child in a later workflow run',
-      () async {
-    final fs = InMemoryFilesystem();
-    const firstRunId = 'wf_run1';
-    const secondRunId = 'wf_run2';
-    final childInSecond = subagentWorkflowChildToolCallId(
-      secondRunId,
-      'agent-b',
-    );
+  test(
+    'resolveByToolCallId finds workflow child in a later workflow run',
+    () async {
+      final fs = InMemoryFilesystem();
+      const firstRunId = 'wf_run1';
+      const secondRunId = 'wf_run2';
+      final childInSecond = subagentWorkflowChildToolCallId(
+        secondRunId,
+        'agent-b',
+      );
 
-    final messages = [
-      AiMessage(
-        id: 'root',
-        role: AiRole.assistant,
-        parts: [
-          const AiToolCallPart(
-            toolCallId: 'call_00_wf1',
-            toolName: 'Workflow',
-            args: {'script': 'first'},
-          ),
-          const AiToolCallPart(
-            toolCallId: 'call_00_wf2',
-            toolName: 'Workflow',
-            args: {'script': 'second'},
-          ),
-        ],
-      ),
-    ];
+      final messages = [
+        AiMessage(
+          id: 'root',
+          role: AiRole.assistant,
+          parts: [
+            const AiToolCallPart(
+              toolCallId: 'call_00_wf1',
+              toolName: 'Workflow',
+              args: {'script': 'first'},
+            ),
+            const AiToolCallPart(
+              toolCallId: 'call_00_wf2',
+              toolName: 'Workflow',
+              args: {'script': 'second'},
+            ),
+          ],
+        ),
+      ];
 
-    final cap = _MultiWorkflowCap(
-      const _MultiWorkflowStubResolver({
-        'call_00_wf1': firstRunId,
-        'call_00_wf2': secondRunId,
-      }),
-    );
-    final inflater = SubagentAttachmentInflater();
+      final cap = _MultiWorkflowCap(
+        const _MultiWorkflowStubResolver({
+          'call_00_wf1': firstRunId,
+          'call_00_wf2': secondRunId,
+        }),
+      );
+      final inflater = SubagentAttachmentInflater();
 
-    final attachment = await inflater.resolveByToolCallId(
-      toolCallId: childInSecond,
-      messages: messages,
-      ctx: _testCtx(fs),
-      capability: cap,
-      rootTranscriptPath: '/projects/enc/uuid.jsonl',
-    );
+      final attachment = await inflater.resolveByToolCallId(
+        toolCallId: childInSecond,
+        messages: messages,
+        ctx: _testCtx(fs),
+        capability: cap,
+        rootTranscriptPath: '/projects/enc/uuid.jsonl',
+      );
 
-    expect(attachment, isNotNull);
-    expect(attachment!.toolCallId, childInSecond);
-    expect(attachment.title, 'reviewer');
-    expect(
-      (attachment.messages.single.parts.single as AiTextPart).text,
-      'approved in second run',
-    );
-  });
+      expect(attachment, isNotNull);
+      expect(attachment!.toolCallId, childInSecond);
+      expect(attachment.title, 'reviewer');
+      expect(
+        (attachment.messages.single.parts.single as AiTextPart).text,
+        'approved in second run',
+      );
+    },
+  );
 
-  test('resolveByToolCallId resolves nested side-transcript tool call ids',
-      () async {
-    final fs = InMemoryFilesystem();
-    final parentSide = claudeSubagentTranscriptPath(
-      subagentsDir: subagentsDir,
-      agentId: 'abc',
-    );
-    await fs.writeString(
-      claudeSubagentMetaPath(subagentsDir: subagentsDir, agentId: 'abc'),
-      jsonEncode({'toolUseId': 'toolu_parent'}),
-    );
-    await fs.writeString(
-      parentSide,
-      _agentToolJsonl(
+  test(
+    'resolveByToolCallId resolves nested side-transcript tool call ids',
+    () async {
+      final fs = InMemoryFilesystem();
+      final parentSide = claudeSubagentTranscriptPath(
+        subagentsDir: subagentsDir,
+        agentId: 'abc',
+      );
+      await fs.writeString(
+        claudeSubagentMetaPath(subagentsDir: subagentsDir, agentId: 'abc'),
+        jsonEncode({'toolUseId': 'toolu_parent'}),
+      );
+      await fs.writeString(
+        parentSide,
+        _agentToolJsonl(
+          toolCallId: 'toolu_child',
+          agentIdHint: null,
+          description: 'child work',
+        ),
+      );
+
+      final childSubagents = claudeSubagentsDirFor(parentSide);
+      await fs.writeString(
+        claudeSubagentMetaPath(subagentsDir: childSubagents, agentId: 'child'),
+        jsonEncode({'toolUseId': 'toolu_child'}),
+      );
+      await fs.writeString(
+        claudeSubagentTranscriptPath(
+          subagentsDir: childSubagents,
+          agentId: 'child',
+        ),
+        _userAssistantJsonl(user: 'nested', assistant: 'child done'),
+      );
+
+      final messages = [
+        AiMessage(
+          id: 'a1',
+          role: AiRole.assistant,
+          parts: [
+            const AiToolCallPart(
+              toolCallId: 'toolu_parent',
+              toolName: 'Agent',
+              args: {'description': 'parent'},
+            ),
+          ],
+        ),
+      ];
+
+      final attachment = await SubagentAttachmentInflater().resolveByToolCallId(
         toolCallId: 'toolu_child',
-        agentIdHint: null,
-        description: 'child work',
-      ),
-    );
+        messages: messages,
+        ctx: _testCtx(fs),
+        capability: _Cap(const ClaudeCompatibleSideResolver()),
+        rootTranscriptPath: parentPath,
+      );
 
-    final childSubagents = claudeSubagentsDirFor(parentSide);
-    await fs.writeString(
-      claudeSubagentMetaPath(subagentsDir: childSubagents, agentId: 'child'),
-      jsonEncode({'toolUseId': 'toolu_child'}),
-    );
-    await fs.writeString(
-      claudeSubagentTranscriptPath(
-        subagentsDir: childSubagents,
-        agentId: 'child',
-      ),
-      _userAssistantJsonl(user: 'nested', assistant: 'child done'),
-    );
-
-    final messages = [
-      AiMessage(
-        id: 'a1',
-        role: AiRole.assistant,
-        parts: [
-          const AiToolCallPart(
-            toolCallId: 'toolu_parent',
-            toolName: 'Agent',
-            args: {'description': 'parent'},
-          ),
-        ],
-      ),
-    ];
-
-    final attachment = await SubagentAttachmentInflater().resolveByToolCallId(
-      toolCallId: 'toolu_child',
-      messages: messages,
-      ctx: _testCtx(fs),
-      capability: _Cap(const ClaudeCompatibleSideResolver()),
-      rootTranscriptPath: parentPath,
-    );
-
-    expect(attachment, isNotNull);
-    expect(attachment!.toolCallId, 'toolu_child');
-    expect(attachment.source, AiSubagentAttachmentSource.sideTranscript);
-    expect(attachment.sidePath, endsWith('agent-child.jsonl'));
-  });
+      expect(attachment, isNotNull);
+      expect(attachment!.toolCallId, 'toolu_child');
+      expect(attachment.source, AiSubagentAttachmentSource.sideTranscript);
+      expect(attachment.sidePath, endsWith('agent-child.jsonl'));
+    },
+  );
 
   group('loads one subagent attachment on demand', () {
     test('inflateOne resolves a single tool call at depth zero', () async {
@@ -748,25 +758,27 @@ void main() {
       expect(attachment.messages, isNotEmpty);
     });
 
-    test('inflateOne degrades to tool result when side transcript is missing',
-        () async {
-      const part = AiToolCallPart(
-        toolCallId: 'toolu_missing',
-        toolName: 'Agent',
-        args: {'description': 'offline'},
-        result: 'done offline',
-      );
+    test(
+      'inflateOne degrades to tool result when side transcript is missing',
+      () async {
+        const part = AiToolCallPart(
+          toolCallId: 'toolu_missing',
+          toolName: 'Agent',
+          args: {'description': 'offline'},
+          result: 'done offline',
+        );
 
-      final attachment = await SubagentAttachmentInflater().inflateOne(
-        part: part,
-        ctx: _testCtx(InMemoryFilesystem()),
-        capability: _Cap(const ClaudeCompatibleSideResolver()),
-        rootTranscriptPath: parentPath,
-      );
+        final attachment = await SubagentAttachmentInflater().inflateOne(
+          part: part,
+          ctx: _testCtx(InMemoryFilesystem()),
+          capability: _Cap(const ClaudeCompatibleSideResolver()),
+          rootTranscriptPath: parentPath,
+        );
 
-      expect(attachment.source, AiSubagentAttachmentSource.toolResult);
-      expect(attachment.messages, isNotEmpty);
-    });
+        expect(attachment.source, AiSubagentAttachmentSource.toolResult);
+        expect(attachment.messages, isNotEmpty);
+      },
+    );
   });
 }
 
@@ -798,8 +810,9 @@ class _WorkflowCap implements AiHistoryCapability {
   ToolResultEnricher get toolResultEnricher => const NoOpToolResultEnricher();
 
   @override
-  Future<String?> resolveParentTranscriptPath(SessionHistoryContext ctx) async =>
-      null;
+  Future<String?> resolveParentTranscriptPath(
+    SessionHistoryContext ctx,
+  ) async => null;
 
   @override
   Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
@@ -860,8 +873,9 @@ class _MultiWorkflowCap implements AiHistoryCapability {
   ToolResultEnricher get toolResultEnricher => const NoOpToolResultEnricher();
 
   @override
-  Future<String?> resolveParentTranscriptPath(SessionHistoryContext ctx) async =>
-      null;
+  Future<String?> resolveParentTranscriptPath(
+    SessionHistoryContext ctx,
+  ) async => null;
 
   @override
   Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;
@@ -933,7 +947,9 @@ class _MultiWorkflowStubResolver implements SubagentSideResolver {
                   parts: const [AiTextPart(text: 'implemented in first run')],
                 ),
               ],
-              handle: const SubagentFileHandle('/runs/wf_run1/agent-agent-a.jsonl'),
+              handle: const SubagentFileHandle(
+                '/runs/wf_run1/agent-agent-a.jsonl',
+              ),
             ),
           ],
         ),
@@ -961,7 +977,9 @@ class _MultiWorkflowStubResolver implements SubagentSideResolver {
                 parts: const [AiTextPart(text: 'approved in second run')],
               ),
             ],
-            handle: const SubagentFileHandle('/runs/wf_run2/agent-agent-b.jsonl'),
+            handle: const SubagentFileHandle(
+              '/runs/wf_run2/agent-agent-b.jsonl',
+            ),
           ),
         ],
       ),
@@ -972,8 +990,7 @@ class _MultiWorkflowStubResolver implements SubagentSideResolver {
   Future<String?> fingerprint({
     required SessionHistoryContext ctx,
     required String? rootTranscriptPath,
-  }) async =>
-      null;
+  }) async => null;
 }
 
 class _WorkflowStubResolver implements SubagentSideResolver {
@@ -1010,7 +1027,9 @@ class _WorkflowStubResolver implements SubagentSideResolver {
                 parts: const [AiTextPart(text: 'implemented')],
               ),
             ],
-            handle: const SubagentFileHandle('/runs/wf_run1/agent-agent-a.jsonl'),
+            handle: const SubagentFileHandle(
+              '/runs/wf_run1/agent-agent-a.jsonl',
+            ),
           ),
           SubagentWorkflowAgent(
             agentId: 'agent-b',
@@ -1023,7 +1042,9 @@ class _WorkflowStubResolver implements SubagentSideResolver {
                 parts: const [AiTextPart(text: 'approved')],
               ),
             ],
-            handle: const SubagentFileHandle('/runs/wf_run1/agent-agent-b.jsonl'),
+            handle: const SubagentFileHandle(
+              '/runs/wf_run1/agent-agent-b.jsonl',
+            ),
           ),
         ],
       ),

@@ -5,9 +5,9 @@ import '../../models/team_config.dart';
 import '../cli/registry/capabilities/ai_history_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
-import 'ai_history_locator.dart';
-import 'session_history_context.dart';
-import 'session_history_context_builder.dart';
+import 'history/ai_history_locator.dart';
+import 'history/session_history_context.dart';
+import 'history/session_history_context_builder.dart';
 import '../storage/runtime_layout.dart';
 
 /// Searchable plain-text projection of a session transcript, plus the start

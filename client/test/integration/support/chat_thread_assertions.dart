@@ -1,7 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/ai_history_cubit.dart';
-import 'package:teampilot/services/session/ai_history_pending_text.dart';
+import 'package:teampilot/services/session/history/ai_history_pending_text.dart';
 import 'package:teampilot/services/terminal/pending_user_message.dart';
 
 /// Plain text for any thread message (user or assistant).
@@ -93,9 +93,7 @@ void expectAssistantMarkers(
   );
   final match = matches ?? (haystack, marker) => haystack.contains(marker);
   final assistants = chatThreadAssistantMessages(history);
-  final haystacks = [
-    for (final m in assistants) chatThreadMessagePlainText(m),
-  ];
+  final haystacks = [for (final m in assistants) chatThreadMessagePlainText(m)];
   final missing = <String>[];
   for (final marker in markers) {
     if (!haystacks.any((h) => match(h, marker))) {
@@ -125,9 +123,7 @@ void expectMailboxQueuedThenTimeline({
 }) {
   final target = normalizeAiHistoryPendingText(text);
   final queuedHit = queuedSnapshot.any(
-    (m) =>
-        m.id == mailId &&
-        normalizeAiHistoryPendingText(m.content) == target,
+    (m) => m.id == mailId && normalizeAiHistoryPendingText(m.content) == target,
   );
   expect(
     queuedHit,
@@ -139,9 +135,9 @@ void expectMailboxQueuedThenTimeline({
   );
 
   final timelineId = 'mailbox:$mailId';
-  final merged = _historyRuntimeMessages(history).where(
-    (m) => m.role == AiRole.user && m.id == timelineId,
-  );
+  final merged = _historyRuntimeMessages(
+    history,
+  ).where((m) => m.role == AiRole.user && m.id == timelineId);
   expect(
     merged,
     isNotEmpty,
@@ -150,9 +146,7 @@ void expectMailboxQueuedThenTimeline({
         '${dumpThread(history)}',
   );
   expect(
-    normalizeAiHistoryPendingText(
-      chatThreadMessagePlainText(merged.first),
-    ),
+    normalizeAiHistoryPendingText(chatThreadMessagePlainText(merged.first)),
     target,
     reason:
         'Merged mailbox bubble text mismatch for $timelineId\n'
@@ -166,5 +160,6 @@ void expectMailboxQueuedThenTimeline({
         '${dumpThread(history)}',
   );
 }
+
 /// Tiny quote helper so failure reasons stay readable without `dart:convert`.
 String jsonQuote(String s) => '"${s.replaceAll('"', r'\"')}"';

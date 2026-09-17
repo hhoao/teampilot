@@ -5,8 +5,8 @@ import 'package:meta/meta.dart';
 
 import '../../../../../utils/logging/logger.dart';
 import '../../../../io/filesystem.dart';
-import '../../../../session/session_history_context.dart';
-import '../../../../session/subagent_side_transcript_path.dart';
+import '../../../../session/history/session_history_context.dart';
+import '../../../../session/history/subagent_side_transcript_path.dart';
 import 'compatible_jsonl.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 import '../../../../storage/storage_failure.dart';
@@ -106,9 +106,7 @@ final class ClaudeCompatibleSideResolver implements SubagentSideResolver {
 
   static void _evictMetaMemos() {
     if (_metaMemos.length <= _metaMemoCap) return;
-    _metaMemos.removeWhere(
-      (_, __) => _metaMemos.length > _metaMemoCap,
-    );
+    _metaMemos.removeWhere((_, __) => _metaMemos.length > _metaMemoCap);
   }
 
   /// side 文件解析 memo(见 [resolve] 的注释)。
@@ -117,9 +115,7 @@ final class ClaudeCompatibleSideResolver implements SubagentSideResolver {
 
   static void _evictSideMemos() {
     if (_sideMemos.length <= _sideMemoCap) return;
-    _sideMemos.removeWhere(
-      (_, __) => _sideMemos.length > _sideMemoCap,
-    );
+    _sideMemos.removeWhere((_, __) => _sideMemos.length > _sideMemoCap);
   }
 
   @visibleForTesting

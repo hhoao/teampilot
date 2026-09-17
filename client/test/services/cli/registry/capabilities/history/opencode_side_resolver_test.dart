@@ -9,7 +9,7 @@ import 'package:teampilot/services/cli/opencode/capabilities/history/ai_transcri
 import 'package:teampilot/services/cli/opencode/capabilities/history/side_resolver.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/sqlite_worker_pool.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
 
 void main() {
   late Directory base;
@@ -97,7 +97,10 @@ CREATE TABLE part (
         parentId,
         created,
         created,
-        jsonEncode({'id': sessionId, 'time': {'created': created}}),
+        jsonEncode({
+          'id': sessionId,
+          'time': {'created': created},
+        }),
       ],
     );
     final msgId = 'msg_u_$sessionId';
@@ -156,9 +159,7 @@ CREATE TABLE part (
   group('opencodeChildSessionId', () {
     test('reads sessionId from result map', () {
       expect(
-        opencodeChildSessionId(
-          taskPart(result: {'sessionId': childSessionId}),
-        ),
+        opencodeChildSessionId(taskPart(result: {'sessionId': childSessionId})),
         childSessionId,
       );
     });
@@ -166,9 +167,11 @@ CREATE TABLE part (
     test('reads metadata.sessionId from result map', () {
       expect(
         opencodeChildSessionId(
-          taskPart(result: {
-            'metadata': {'sessionId': childSessionId},
-          }),
+          taskPart(
+            result: {
+              'metadata': {'sessionId': childSessionId},
+            },
+          ),
         ),
         childSessionId,
       );
@@ -177,9 +180,7 @@ CREATE TABLE part (
     test('parses <task id="ses_…"> from result string', () {
       expect(
         opencodeChildSessionId(
-          taskPart(
-            result: '<task id="$childSessionId">done</task>',
-          ),
+          taskPart(result: '<task id="$childSessionId">done</task>'),
         ),
         childSessionId,
       );
@@ -190,63 +191,73 @@ CREATE TABLE part (
       expect(opencodeChildSessionId(taskPart()), isNull);
     });
 
-    test('extracts child session id from an adapter-parsed task part (G7)',
-        () async {
-      // 端到端：adapter 内联 state.output（含 <task id="ses_…"> 包裹）→
-      // opencodeChildSessionId 提取出非空子会话 id（agentId 非空语义）。
-      final messages = await const OpencodeAiTranscriptAdapter().parse(
-        AiTranscriptBundle(
-          adapterId: 'opencode',
-          fragments: [
-            AiTranscriptFragment(
-              name: 'message/msg_task.json',
-              bytes: utf8.encode(
-                jsonEncode({
-                  'id': 'msg_task',
-                  'role': 'assistant',
-                  'time': {'created': 1},
-                }),
+    test(
+      'extracts child session id from an adapter-parsed task part (G7)',
+      () async {
+        // 端到端：adapter 内联 state.output（含 <task id="ses_…"> 包裹）→
+        // opencodeChildSessionId 提取出非空子会话 id（agentId 非空语义）。
+        final messages = await const OpencodeAiTranscriptAdapter().parse(
+          AiTranscriptBundle(
+            adapterId: 'opencode',
+            fragments: [
+              AiTranscriptFragment(
+                name: 'message/msg_task.json',
+                bytes: utf8.encode(
+                  jsonEncode({
+                    'id': 'msg_task',
+                    'role': 'assistant',
+                    'time': {'created': 1},
+                  }),
+                ),
               ),
-            ),
-            AiTranscriptFragment(
-              name: 'part/msg_task/prt_task.json',
-              bytes: utf8.encode(
-                jsonEncode({
-                  'id': 'prt_task',
-                  'type': 'tool',
-                  'tool': 'task',
-                  'callID': 'call_task_1',
-                  'state': {
-                    'status': 'completed',
-                    'input': {'prompt': 'do work'},
-                    'output': '<task id="$childSessionId" state="completed">'
-                        '<task_result>done</task_result></task>',
-                  },
-                }),
+              AiTranscriptFragment(
+                name: 'part/msg_task/prt_task.json',
+                bytes: utf8.encode(
+                  jsonEncode({
+                    'id': 'prt_task',
+                    'type': 'tool',
+                    'tool': 'task',
+                    'callID': 'call_task_1',
+                    'state': {
+                      'status': 'completed',
+                      'input': {'prompt': 'do work'},
+                      'output':
+                          '<task id="$childSessionId" state="completed">'
+                          '<task_result>done</task_result></task>',
+                    },
+                  }),
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        );
+
+        final part = messages
+            .expand((m) => m.parts)
+            .whereType<AiToolCallPart>()
+            .single;
+        expect(part.toolName, 'task');
+        expect(part.result, isNotNull);
+        expect(opencodeChildSessionId(part), childSessionId);
+      },
+    );
+
+    test('trims whitespace-only session ids to null (G7 agentId 非空)', () async {
+      expect(
+        opencodeChildSessionId(taskPart(result: {'sessionId': '  '})),
+        isNull,
       );
-
-      final part = messages
-          .expand((m) => m.parts)
-          .whereType<AiToolCallPart>()
-          .single;
-      expect(part.toolName, 'task');
-      expect(part.result, isNotNull);
-      expect(opencodeChildSessionId(part), childSessionId);
-    });
-
-    test('trims whitespace-only session ids to null (G7 agentId 非空)',
-        () async {
-      expect(opencodeChildSessionId(taskPart(result: {'sessionId': '  '})),
-          isNull);
-      expect(opencodeChildSessionId(taskPart(result: {'sessionId': '\t'})),
-          isNull);
+      expect(
+        opencodeChildSessionId(taskPart(result: {'sessionId': '\t'})),
+        isNull,
+      );
       expect(
         opencodeChildSessionId(
-          taskPart(result: {'metadata': {'sessionId': ' '}}),
+          taskPart(
+            result: {
+              'metadata': {'sessionId': ' '},
+            },
+          ),
         ),
         isNull,
       );
@@ -255,7 +266,11 @@ CREATE TABLE part (
 
   test('resolves child session messages from task result sessionId', () async {
     final db = openDb();
-    insertChildSession(db, sessionId: childSessionId, parentId: parentSessionId);
+    insertChildSession(
+      db,
+      sessionId: childSessionId,
+      parentId: parentSessionId,
+    );
 
     final result = await resolver.resolve(
       part: taskPart(result: {'sessionId': childSessionId}),
@@ -267,10 +282,7 @@ CREATE TABLE part (
 
     expect(result, isNotNull);
     expect(result!.handle, isA<SubagentSessionHandle>());
-    expect(
-      (result.handle as SubagentSessionHandle).sessionId,
-      childSessionId,
-    );
+    expect((result.handle as SubagentSessionHandle).sessionId, childSessionId);
     expect(result.messages, hasLength(1));
     expect(result.messages.first.role, AiRole.user);
     expect(
@@ -288,7 +300,10 @@ CREATE TABLE part (
         sessionId: childSessionId,
         parentId: parentSessionId,
       );
-      final runCtx = ctx(dataDir: base.path, persistedNativeId: parentSessionId);
+      final runCtx = ctx(
+        dataDir: base.path,
+        persistedNativeId: parentSessionId,
+      );
 
       final first = await resolver.resolve(
         part: taskPart(result: {'sessionId': childSessionId}),
@@ -307,7 +322,8 @@ CREATE TABLE part (
       expect(
         identical(first!.messages, second!.messages),
         isTrue,
-        reason: '子会话未变化时重复 resolve 必须复用同一消息列表实例——'
+        reason:
+            '子会话未变化时重复 resolve 必须复用同一消息列表实例——'
             'seat 的 identical 快速路径依赖它,否则每次刷新都要做内容比较'
             '(性能回归)',
       );
@@ -384,7 +400,11 @@ CREATE TABLE part (
 
   test('resolves nested child using SubagentSessionHandle parent', () async {
     final db = openDb();
-    insertChildSession(db, sessionId: childSessionId, parentId: parentSessionId);
+    insertChildSession(
+      db,
+      sessionId: childSessionId,
+      parentId: parentSessionId,
+    );
     insertChildSession(
       db,
       sessionId: nestedChildSessionId,
@@ -426,7 +446,9 @@ CREATE TABLE part (
   test('does not read Claude subagents/ layout', () async {
     final claudeSubagentDir = Directory(p.join(base.path, 'subagents'));
     await claudeSubagentDir.create(recursive: true);
-    await File(p.join(claudeSubagentDir.path, 'agent-child.jsonl')).writeAsString(
+    await File(
+      p.join(claudeSubagentDir.path, 'agent-child.jsonl'),
+    ).writeAsString(
       '{"type":"user","message":{"role":"user","content":"claude side"}}\n',
     );
     final db = openDb();
@@ -478,33 +500,35 @@ CREATE TABLE part (
   });
 
   group('running child discovery (no tool result yet)', () {
-    test('discovers child via parent_id linkage when result carries no id',
-        () async {
-      final db = openDb();
-      insertChildSession(
-        db,
-        sessionId: childSessionId,
-        parentId: parentSessionId,
-        userText: 'child working',
-      );
+    test(
+      'discovers child via parent_id linkage when result carries no id',
+      () async {
+        final db = openDb();
+        insertChildSession(
+          db,
+          sessionId: childSessionId,
+          parentId: parentSessionId,
+          userText: 'child working',
+        );
 
-      final result = await resolver.resolve(
-        part: runningTaskPart(),
-        ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
-        parentHandle: null,
-        rootTranscriptPath: null,
-      );
+        final result = await resolver.resolve(
+          part: runningTaskPart(),
+          ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
+          parentHandle: null,
+          rootTranscriptPath: null,
+        );
 
-      expect(result, isNotNull);
-      expect(
-        (result!.handle as SubagentSessionHandle).sessionId,
-        childSessionId,
-      );
-      expect(
-        (result.messages.first.parts.single as AiTextPart).text,
-        'child working',
-      );
-    });
+        expect(result, isNotNull);
+        expect(
+          (result!.handle as SubagentSessionHandle).sessionId,
+          childSessionId,
+        );
+        expect(
+          (result.messages.first.parts.single as AiTextPart).text,
+          'child working',
+        );
+      },
+    );
 
     test('does not discover children of another parent', () async {
       final db = openDb();
@@ -561,39 +585,41 @@ CREATE TABLE part (
       );
     });
 
-    test('resolves nested running child via SubagentSessionHandle parent',
-        () async {
-      final db = openDb();
-      insertChildSession(
-        db,
-        sessionId: childSessionId,
-        parentId: parentSessionId,
-        userText: 'child',
-      );
-      insertChildSession(
-        db,
-        sessionId: nestedChildSessionId,
-        parentId: childSessionId,
-        userText: 'nested working',
-      );
+    test(
+      'resolves nested running child via SubagentSessionHandle parent',
+      () async {
+        final db = openDb();
+        insertChildSession(
+          db,
+          sessionId: childSessionId,
+          parentId: parentSessionId,
+          userText: 'child',
+        );
+        insertChildSession(
+          db,
+          sessionId: nestedChildSessionId,
+          parentId: childSessionId,
+          userText: 'nested working',
+        );
 
-      final result = await resolver.resolve(
-        part: runningTaskPart(),
-        ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
-        parentHandle: SubagentSessionHandle(childSessionId),
-        rootTranscriptPath: null,
-      );
+        final result = await resolver.resolve(
+          part: runningTaskPart(),
+          ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
+          parentHandle: SubagentSessionHandle(childSessionId),
+          rootTranscriptPath: null,
+        );
 
-      expect(result, isNotNull);
-      expect(
-        (result!.handle as SubagentSessionHandle).sessionId,
-        nestedChildSessionId,
-      );
-      expect(
-        (result.messages.first.parts.single as AiTextPart).text,
-        'nested working',
-      );
-    });
+        expect(result, isNotNull);
+        expect(
+          (result!.handle as SubagentSessionHandle).sessionId,
+          nestedChildSessionId,
+        );
+        expect(
+          (result.messages.first.parts.single as AiTextPart).text,
+          'nested working',
+        );
+      },
+    );
 
     test('discovery falls back to legacy data-blob parent linkage', () async {
       final db = sqlite3.open(p.join(base.path, 'opencode.db'));
@@ -605,18 +631,15 @@ CREATE TABLE session (
   time_created INTEGER
 );
 ''');
-      db.execute(
-        '''
+      db.execute('''
 INSERT INTO session(id, data, time_created)
 VALUES (
   'ses_child004',
   '{"id":"ses_child004","parentID":"ses_parent001","time":{"created":3}}',
   3
 )
-''',
-      );
-      db.execute(
-        '''
+''');
+      db.execute('''
 CREATE TABLE message (
   id TEXT PRIMARY KEY,
   session_id TEXT,
@@ -630,10 +653,8 @@ CREATE TABLE part (
   time_created INTEGER,
   data TEXT
 );
-''',
-      );
-      db.execute(
-        '''
+''');
+      db.execute('''
 INSERT INTO message(id, session_id, time_created, data)
 VALUES (
   'msg_child_user',
@@ -641,10 +662,8 @@ VALUES (
   4,
   '{"role":"user","time":{"created":4}}'
 )
-''',
-      );
-      db.execute(
-        '''
+''');
+      db.execute('''
 INSERT INTO part(id, message_id, session_id, time_created, data)
 VALUES (
   'prt_child_text',
@@ -653,8 +672,7 @@ VALUES (
   4,
   '{"type":"text","text":"legacy child"}'
 )
-''',
-      );
+''');
 
       final result = await resolver.resolve(
         part: runningTaskPart(),
@@ -674,33 +692,35 @@ VALUES (
       );
     });
 
-    test('does not discover for completed/error parts without a result id',
-        () async {
-      final db = openDb();
-      insertChildSession(
-        db,
-        sessionId: childSessionId,
-        parentId: parentSessionId,
-        userText: 'child',
-      );
+    test(
+      'does not discover for completed/error parts without a result id',
+      () async {
+        final db = openDb();
+        insertChildSession(
+          db,
+          sessionId: childSessionId,
+          parentId: parentSessionId,
+          userText: 'child',
+        );
 
-      // A completed part whose result carries no session id must degrade
-      // (null) instead of scanning the store for a "running" child.
-      expect(
-        await resolver.resolve(
-          part: AiToolCallPart(
-            toolCallId: 'call_task_1',
-            toolName: 'task',
-            args: const {'prompt': 'do work'},
-            status: AiToolCallStatus.complete,
+        // A completed part whose result carries no session id must degrade
+        // (null) instead of scanning the store for a "running" child.
+        expect(
+          await resolver.resolve(
+            part: AiToolCallPart(
+              toolCallId: 'call_task_1',
+              toolName: 'task',
+              args: const {'prompt': 'do work'},
+              status: AiToolCallStatus.complete,
+            ),
+            ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
+            parentHandle: null,
+            rootTranscriptPath: null,
           ),
-          ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
-          parentHandle: null,
-          rootTranscriptPath: null,
-        ),
-        isNull,
-      );
-    });
+          isNull,
+        );
+      },
+    );
 
     test('returns null when no running child exists', () async {
       openDb();

@@ -5,8 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/workflow_resolver.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/subagent_side_resolver.dart';
 import 'package:teampilot/services/io/filesystem.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
-import 'package:teampilot/services/session/subagent_side_transcript_path.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
+import 'package:teampilot/services/session/history/subagent_side_transcript_path.dart';
 
 import '../../../../../support/in_memory_filesystem.dart';
 
@@ -100,10 +100,7 @@ String _journalJsonl(List<({String agentId, String status})> entries) {
         'type': 'result',
         'key': 'v2:${e.agentId}',
         'agentId': e.agentId,
-        'result': {
-          'status': e.status,
-          'summary': 'agent ${e.agentId} summary',
-        },
+        'result': {'status': e.status, 'summary': 'agent ${e.agentId} summary'},
       }),
   ].join('\n');
 }
@@ -189,12 +186,26 @@ void main() {
     expect(result.workflow!.agents, hasLength(2));
   });
 
-  test('no task-notification for the tool call -> null (cancelled run)',
-      () async {
+  test(
+    'no task-notification for the tool call -> null (cancelled run)',
+    () async {
+      final fs = InMemoryFilesystem();
+      await fs.writeString(
+        _parentPath,
+        _parentJsonl('call_other', 'other-task'),
+      );
+      await _writeRunFixtures(fs);
+
+      final result = await _resolve(fs: fs, part: part);
+      expect(result, isNull);
+    },
+  );
+
+  test('run record missing for taskId -> null', () async {
     final fs = InMemoryFilesystem();
     await fs.writeString(
       _parentPath,
-      _parentJsonl('call_other', 'other-task'),
+      _parentJsonl(_toolCallId, 'unknown-task'),
     );
     await _writeRunFixtures(fs);
 
@@ -202,17 +213,7 @@ void main() {
     expect(result, isNull);
   });
 
-  test('run record missing for taskId -> null', () async {
-    final fs = InMemoryFilesystem();
-    await fs.writeString(_parentPath, _parentJsonl(_toolCallId, 'unknown-task'));
-    await _writeRunFixtures(fs);
-
-    final result = await _resolve(fs: fs, part: part);
-    expect(result, isNull);
-  });
-
-  test('run with no agent transcripts -> workflow with empty agents',
-      () async {
+  test('run with no agent transcripts -> workflow with empty agents', () async {
     final fs = InMemoryFilesystem();
     await fs.writeString(_parentPath, _parentJsonl(_toolCallId, _taskId));
     await _writeRunFixtures(fs, agentCount: 0);
@@ -232,67 +233,98 @@ void main() {
     expect(isWorkflowTool(''), isFalse);
   });
 
-  test('unchanged run reuses parsed agents across resolves (no re-read)',
-      () async {
-    final workflowsDir = claudeWorkflowsDirFor(_parentPath);
-    final runDir = claudeWorkflowRunDirFor(_parentPath, runId: _runId);
-    final fs = _CountingReadFilesystem();
-    await fs.writeString(_parentPath, _parentJsonl(_toolCallId, _taskId));
-    await _writeRunFixtures(fs);
-    fs.setMtime(_parentPath, DateTime.utc(2026, 8, 7, 10));
-    fs.setMtime(
-      '$workflowsDir/$_runId.json',
-      DateTime.utc(2026, 8, 7, 10, 1),
-    );
-    fs.setMtime('$runDir/agent-agent-0a.jsonl', DateTime.utc(2026, 8, 7, 10, 2));
-    fs.setMtime('$runDir/agent-agent-1a.jsonl', DateTime.utc(2026, 8, 7, 10, 3));
-    fs.setMtime('$runDir/journal.jsonl', DateTime.utc(2026, 8, 7, 10, 4));
+  test(
+    'unchanged run reuses parsed agents across resolves (no re-read)',
+    () async {
+      final workflowsDir = claudeWorkflowsDirFor(_parentPath);
+      final runDir = claudeWorkflowRunDirFor(_parentPath, runId: _runId);
+      final fs = _CountingReadFilesystem();
+      await fs.writeString(_parentPath, _parentJsonl(_toolCallId, _taskId));
+      await _writeRunFixtures(fs);
+      fs.setMtime(_parentPath, DateTime.utc(2026, 8, 7, 10));
+      fs.setMtime(
+        '$workflowsDir/$_runId.json',
+        DateTime.utc(2026, 8, 7, 10, 1),
+      );
+      fs.setMtime(
+        '$runDir/agent-agent-0a.jsonl',
+        DateTime.utc(2026, 8, 7, 10, 2),
+      );
+      fs.setMtime(
+        '$runDir/agent-agent-1a.jsonl',
+        DateTime.utc(2026, 8, 7, 10, 3),
+      );
+      fs.setMtime('$runDir/journal.jsonl', DateTime.utc(2026, 8, 7, 10, 4));
 
-    final first = await _resolve(fs: fs, part: part);
-    expect(first!.workflow!.agents, hasLength(2));
+      final first = await _resolve(fs: fs, part: part);
+      expect(first!.workflow!.agents, hasLength(2));
 
-    fs.agentReads.clear();
-    final second = await _resolve(fs: fs, part: part);
-    expect(second!.workflow!.agents, hasLength(2));
-    expect(second.workflow!.agents.first.role, contains('Implementer'));
-    expect(fs.agentReads, isEmpty,
-        reason: 'unchanged agent files must be reused, not re-read');
-  });
+      fs.agentReads.clear();
+      final second = await _resolve(fs: fs, part: part);
+      expect(second!.workflow!.agents, hasLength(2));
+      expect(second.workflow!.agents.first.role, contains('Implementer'));
+      expect(
+        fs.agentReads,
+        isEmpty,
+        reason: 'unchanged agent files must be reused, not re-read',
+      );
+    },
+  );
 
-  test('appended agent transcript is re-parsed; unchanged ones reused',
-      () async {
-    final workflowsDir = claudeWorkflowsDirFor(_parentPath);
-    final runDir = claudeWorkflowRunDirFor(_parentPath, runId: _runId);
-    final fs = _CountingReadFilesystem();
-    await fs.writeString(_parentPath, _parentJsonl(_toolCallId, _taskId));
-    await _writeRunFixtures(fs);
-    fs.setMtime(_parentPath, DateTime.utc(2026, 8, 7, 10));
-    fs.setMtime(
-      '$workflowsDir/$_runId.json',
-      DateTime.utc(2026, 8, 7, 10, 1),
-    );
-    fs.setMtime('$runDir/agent-agent-0a.jsonl', DateTime.utc(2026, 8, 7, 10, 2));
-    fs.setMtime('$runDir/agent-agent-1a.jsonl', DateTime.utc(2026, 8, 7, 10, 3));
-    fs.setMtime('$runDir/journal.jsonl', DateTime.utc(2026, 8, 7, 10, 4));
+  test(
+    'appended agent transcript is re-parsed; unchanged ones reused',
+    () async {
+      final workflowsDir = claudeWorkflowsDirFor(_parentPath);
+      final runDir = claudeWorkflowRunDirFor(_parentPath, runId: _runId);
+      final fs = _CountingReadFilesystem();
+      await fs.writeString(_parentPath, _parentJsonl(_toolCallId, _taskId));
+      await _writeRunFixtures(fs);
+      fs.setMtime(_parentPath, DateTime.utc(2026, 8, 7, 10));
+      fs.setMtime(
+        '$workflowsDir/$_runId.json',
+        DateTime.utc(2026, 8, 7, 10, 1),
+      );
+      fs.setMtime(
+        '$runDir/agent-agent-0a.jsonl',
+        DateTime.utc(2026, 8, 7, 10, 2),
+      );
+      fs.setMtime(
+        '$runDir/agent-agent-1a.jsonl',
+        DateTime.utc(2026, 8, 7, 10, 3),
+      );
+      fs.setMtime('$runDir/journal.jsonl', DateTime.utc(2026, 8, 7, 10, 4));
 
-    final first = await _resolve(fs: fs, part: part);
-    expect(first!.workflow!.agents, hasLength(2));
+      final first = await _resolve(fs: fs, part: part);
+      expect(first!.workflow!.agents, hasLength(2));
 
-    fs.agentReads.clear();
-    await fs.writeString(
-      '$runDir/agent-agent-0a.jsonl',
-      _agentJsonl('You are the Implementer for task 0 (updated)', 'done 0 v2'),
-    );
-    fs.setMtime('$runDir/agent-agent-0a.jsonl', DateTime.utc(2026, 8, 7, 10, 5));
+      fs.agentReads.clear();
+      await fs.writeString(
+        '$runDir/agent-agent-0a.jsonl',
+        _agentJsonl(
+          'You are the Implementer for task 0 (updated)',
+          'done 0 v2',
+        ),
+      );
+      fs.setMtime(
+        '$runDir/agent-agent-0a.jsonl',
+        DateTime.utc(2026, 8, 7, 10, 5),
+      );
 
-    final second = await _resolve(fs: fs, part: part);
-    expect(second!.workflow!.agents, hasLength(2));
-    expect(fs.agentReads, contains('$runDir/agent-agent-0a.jsonl'),
-        reason: 'the grown agent must be re-read');
-    expect(fs.agentReads, isNot(contains('$runDir/agent-agent-1a.jsonl')),
-        reason: 'the unchanged agent must be reused');
-    expect(second.workflow!.agents.first.role, contains('updated'));
-  });
+      final second = await _resolve(fs: fs, part: part);
+      expect(second!.workflow!.agents, hasLength(2));
+      expect(
+        fs.agentReads,
+        contains('$runDir/agent-agent-0a.jsonl'),
+        reason: 'the grown agent must be re-read',
+      );
+      expect(
+        fs.agentReads,
+        isNot(contains('$runDir/agent-agent-1a.jsonl')),
+        reason: 'the unchanged agent must be reused',
+      );
+      expect(second.workflow!.agents.first.role, contains('updated'));
+    },
+  );
 }
 
 class _MtimeFilesystem extends InMemoryFilesystem {
@@ -304,11 +336,7 @@ class _MtimeFilesystem extends InMemoryFilesystem {
   Future<FsStat> stat(String path) async {
     final base = await super.stat(path);
     if (!base.exists) return base;
-    return FsStat(
-      kind: base.kind,
-      size: base.size,
-      mtime: mtimes[path],
-    );
+    return FsStat(kind: base.kind, size: base.size, mtime: mtimes[path]);
   }
 }
 

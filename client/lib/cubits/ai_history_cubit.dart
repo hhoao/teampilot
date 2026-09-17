@@ -6,9 +6,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../models/workspace_launch_context.dart';
-import '../services/session/ai_history_loader.dart';
-import '../services/session/ai_history_pending_text.dart';
-import '../services/session/history_seat_key.dart';
+import '../services/session/history/ai_history_loader.dart';
+import '../services/session/history/ai_history_pending_text.dart';
+import '../services/session/history/history_seat_key.dart';
 import '../services/team_bus/persistence/bus_message_log.dart';
 import 'ai_history_seat.dart';
 
@@ -53,8 +53,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
   }
 
   /// True when the focused seat has a held assistant tip.
-  bool get hasHeldAssistantTip =>
-      _focusedSeat?.hasHeldAssistantTip ?? false;
+  bool get hasHeldAssistantTip => _focusedSeat?.hasHeldAssistantTip ?? false;
 
   /// Subagent attachment index for the focused seat (empty when none).
   Map<String, AiSubagentAttachment> get subagentAttachments =>
@@ -285,8 +284,7 @@ class AiHistoryCubit extends Cubit<AiHistoryState> {
     for (final entryKey in _seedPendingByKey.keys.toList()) {
       if (!entryKey.startsWith(prefix)) continue;
       final seedText = _seedPendingByKey[entryKey];
-      if (seedText != null &&
-          normalizeAiHistoryPendingText(seedText) == norm) {
+      if (seedText != null && normalizeAiHistoryPendingText(seedText) == norm) {
         _seedPendingByKey.remove(entryKey);
       }
     }

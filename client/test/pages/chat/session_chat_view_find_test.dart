@@ -5,11 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/chat/chat_find_bar.dart';
-import 'package:teampilot/services/session/chat_transcript_find_controller.dart';
+import 'package:teampilot/services/session/history/chat_transcript_find_controller.dart';
 
 void main() {
-  testWidgets('ChatFindBar shows counter and navigates through hits',
-      (tester) async {
+  testWidgets('ChatFindBar shows counter and navigates through hits', (
+    tester,
+  ) async {
     final messages = <AiMessage>[
       for (var i = 0; i < 4; i++)
         AiMessage(
@@ -20,8 +21,9 @@ void main() {
           ],
         ),
     ];
-    final controller =
-        ChatTranscriptFindController(messagesProvider: () => messages);
+    final controller = ChatTranscriptFindController(
+      messagesProvider: () => messages,
+    );
     addTearDown(controller.dispose);
     final query = TextEditingController();
     final focus = FocusNode();
@@ -60,8 +62,9 @@ void main() {
     expect(navigated.last, 'm-1');
   });
 
-  testWidgets('ChatFindBar zero-match query shows the no-results label',
-      (tester) async {
+  testWidgets('ChatFindBar zero-match query shows the no-results label', (
+    tester,
+  ) async {
     final messages = <AiMessage>[
       AiMessage(
         id: 'm-0',
@@ -69,8 +72,9 @@ void main() {
         parts: const [AiTextPart(text: 'alpha note')],
       ),
     ];
-    final controller =
-        ChatTranscriptFindController(messagesProvider: () => messages);
+    final controller = ChatTranscriptFindController(
+      messagesProvider: () => messages,
+    );
     addTearDown(controller.dispose);
     final query = TextEditingController();
     final focus = FocusNode();
@@ -103,8 +107,9 @@ void main() {
     expect(find.text('Loading conversation…'), findsNothing);
   });
 
-  testWidgets('ChatFindBar tapping a result row syncs the n/N counter',
-      (tester) async {
+  testWidgets('ChatFindBar tapping a result row syncs the n/N counter', (
+    tester,
+  ) async {
     // Space the matches well beyond the snippet window (lead 48 / trail 96) so
     // each row's snippet is unique, letting the tap target a single row.
     final messages = <AiMessage>[
@@ -124,8 +129,9 @@ void main() {
         parts: [AiTextPart(text: '${'2' * 200} alpha two')],
       ),
     ];
-    final controller =
-        ChatTranscriptFindController(messagesProvider: () => messages);
+    final controller = ChatTranscriptFindController(
+      messagesProvider: () => messages,
+    );
     addTearDown(controller.dispose);
     final query = TextEditingController();
     final focus = FocusNode();
@@ -165,8 +171,9 @@ void main() {
   });
 
   testWidgets('ChatFindBar Escape closes the find bar', (tester) async {
-    final controller =
-        ChatTranscriptFindController(messagesProvider: () => const []);
+    final controller = ChatTranscriptFindController(
+      messagesProvider: () => const [],
+    );
     addTearDown(controller.dispose);
     final query = TextEditingController();
     final focus = FocusNode();

@@ -9,7 +9,7 @@ import 'package:teampilot/models/failed_message_record.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/chat/history_continue_delivery.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/session/failed_message_store.dart';
+import 'package:teampilot/services/session/history/failed_message_store.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
@@ -18,7 +18,7 @@ class _RecordingChatCubit extends ChatCubit {
     : super(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
-             storage: testHomeStorage,
+        storage: testHomeStorage,
       );
 
   final connects = <SessionConnectRequest>[];

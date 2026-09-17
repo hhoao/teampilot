@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/compatible_jsonl.dart';
-import 'package:teampilot/services/session/ai_transcript_tail_reader.dart';
+import 'package:teampilot/services/session/history/ai_transcript_tail_reader.dart';
 
 import '../../support/in_memory_filesystem.dart';
 

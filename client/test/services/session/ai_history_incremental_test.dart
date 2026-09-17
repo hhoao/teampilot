@@ -1,7 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/ai_history/tool_call_categories.dart';
-import 'package:teampilot/services/session/ai_history_incremental.dart';
+import 'package:teampilot/services/session/history/ai_history_incremental.dart';
 
 void main() {
   const names = {'agent', 'task'};

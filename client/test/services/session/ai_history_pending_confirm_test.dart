@@ -1,7 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/failed_message_record.dart';
-import 'package:teampilot/services/session/ai_history_pending_confirm.dart';
+import 'package:teampilot/services/session/history/ai_history_pending_confirm.dart';
 
 void main() {
   final record = FailedMessageRecord(
@@ -132,9 +132,7 @@ void main() {
           AiMessage(
             id: 'u1',
             role: AiRole.user,
-            parts: const [
-              AiTextPart(text: 'hello world <rewritten-by-cli>'),
-            ],
+            parts: const [AiTextPart(text: 'hello world <rewritten-by-cli>')],
             createdAt: DateTime.utc(2026, 1, 1, 12, 0, 1),
           ),
         ],

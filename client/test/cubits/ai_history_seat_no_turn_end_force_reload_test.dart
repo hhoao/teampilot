@@ -8,11 +8,11 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/ai_history_loader.dart';
-import 'package:teampilot/services/session/ai_history_locator.dart';
-import 'package:teampilot/services/session/history_awaiting_working_sync.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
-import 'package:teampilot/services/session/session_history_context_builder.dart';
+import 'package:teampilot/services/session/history/ai_history_loader.dart';
+import 'package:teampilot/services/session/history/ai_history_locator.dart';
+import 'package:teampilot/services/session/history/history_awaiting_working_sync.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
+import 'package:teampilot/services/session/history/session_history_context_builder.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 
@@ -40,7 +40,7 @@ void main() {
       folders: s.folders,
       createdAt: 0,
     ),
-                                                                            usesPosixPaths: false,
+    usesPosixPaths: false,
   );
 
   List<AiMessage> transcript(String marker, {bool withFinal = false}) => [
@@ -122,9 +122,7 @@ void main() {
       expect(
         seat.loadedMessages
             .where((m) => m.role == AiRole.assistant)
-            .expand(
-              (m) => m.parts.whereType<AiTextPart>().map((p) => p.text),
-            ),
+            .expand((m) => m.parts.whereType<AiTextPart>().map((p) => p.text)),
         ['tools-A'],
         reason:
             'turn-end chrome must not force-reload; live watch owns late flush',
@@ -136,9 +134,7 @@ void main() {
 
 AiTranscriptBundle _bundleForSession(String sessionId) => AiTranscriptBundle(
   adapterId: 'claude',
-  fragments: const [
-    AiTranscriptFragment(name: 'canned.jsonl', bytes: []),
-  ],
+  fragments: const [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
   hints: {'sessionId': sessionId},
 );
 

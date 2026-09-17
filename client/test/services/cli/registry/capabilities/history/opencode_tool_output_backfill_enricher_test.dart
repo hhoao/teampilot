@@ -4,7 +4,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/history/tool_output_backfill_enricher.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
 
 void main() {
   late Directory tmp;
@@ -140,19 +140,26 @@ void main() {
       final enriched = await enrich(messages: messages);
       final part = enriched.single.parts.single as AiToolCallPart;
 
-      expect(part.result, (messages.single.parts.single as AiToolCallPart).result);
+      expect(
+        part.result,
+        (messages.single.parts.single as AiToolCallPart).result,
+      );
       expect(part.result, contains('...120935 bytes truncated...'));
     });
 
     test('keeps placeholder when result has no saved-to hint', () async {
       final messages = truncatedWebfetchMessage(
-        result: 'preview\n\n...5 lines truncated...\n\n'
+        result:
+            'preview\n\n...5 lines truncated...\n\n'
             'The tool call succeeded but the output was truncated.',
       );
       final enriched = await enrich(messages: messages);
       final part = enriched.single.parts.single as AiToolCallPart;
 
-      expect(part.result, (messages.single.parts.single as AiToolCallPart).result);
+      expect(
+        part.result,
+        (messages.single.parts.single as AiToolCallPart).result,
+      );
     });
 
     test('keeps placeholder when ctx is null', () async {
@@ -162,7 +169,10 @@ void main() {
       final enriched = await enrich(messages: messages, context: null);
       final part = enriched.single.parts.single as AiToolCallPart;
 
-      expect(part.result, (messages.single.parts.single as AiToolCallPart).result);
+      expect(
+        part.result,
+        (messages.single.parts.single as AiToolCallPart).result,
+      );
     });
 
     test('leaves non-truncated results untouched', () async {
@@ -198,7 +208,10 @@ void main() {
       final enriched = await enrich(messages: messages);
       final part = enriched.single.parts.single as AiToolCallPart;
 
-      expect(part.result, (messages.single.parts.single as AiToolCallPart).result);
+      expect(
+        part.result,
+        (messages.single.parts.single as AiToolCallPart).result,
+      );
       expect(part.result, contains('...120935 bytes truncated...'));
     });
 
@@ -235,11 +248,13 @@ void main() {
       final enrichedNull = await enrich(messages: nullMessages);
       final enrichedMap = await enrich(messages: mapMessages);
 
-      expect((enrichedNull.single.parts.single as AiToolCallPart).result, isNull);
       expect(
-        (enrichedMap.single.parts.single as AiToolCallPart).result,
-        {'stdout': 'x'},
+        (enrichedNull.single.parts.single as AiToolCallPart).result,
+        isNull,
       );
+      expect((enrichedMap.single.parts.single as AiToolCallPart).result, {
+        'stdout': 'x',
+      });
     });
 
     test('backfill forces status to complete from running', () async {

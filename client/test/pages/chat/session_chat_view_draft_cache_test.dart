@@ -41,8 +41,8 @@ import 'package:teampilot/services/commands/command_bus.dart';
 import 'package:teampilot/services/compose/compose_draft_cache.dart';
 import 'package:teampilot/services/compose/compose_draft_store.dart';
 import 'package:teampilot/services/follow_up/follow_up_queue.dart';
-import 'package:teampilot/services/session/history_awaiting_working_sync.dart';
-import 'package:teampilot/services/session/failed_message_store.dart';
+import 'package:teampilot/services/session/history/history_awaiting_working_sync.dart';
+import 'package:teampilot/services/session/history/failed_message_store.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/theme/app_theme.dart';
@@ -121,7 +121,11 @@ void main() {
     );
     registerFallbackValue(fbSession);
     registerFallbackValue(
-      WorkspaceLaunchContext(session: fbSession, workspace: fbWorkspace, usesPosixPaths: false, ),
+      WorkspaceLaunchContext(
+        session: fbSession,
+        workspace: fbWorkspace,
+        usesPosixPaths: false,
+      ),
     );
     registerFallbackValue(
       const TeamProfile(
@@ -278,7 +282,9 @@ void main() {
     when(
       () => chatCubit.followUpQueue,
     ).thenReturn(InMemoryFollowUpQueueStore());
-    when(() => chatCubit.tabStore).thenReturn(ChatTabStore(storage: testHomeStorage));
+    when(
+      () => chatCubit.tabStore,
+    ).thenReturn(ChatTabStore(storage: testHomeStorage));
     when(
       () => chatCubit.operatorMailboxQueued,
     ).thenAnswer((_) => const Stream<OperatorMailboxQueuedEvent>.empty());

@@ -7,7 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/codex/capabilities/history/ai_history_capability.dart';
 import 'package:teampilot/services/cli/codex/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
 void main() {
@@ -137,21 +137,18 @@ void main() {
     expect(bundle, isNull);
   });
 
-  test(
-    'locateCodexTranscript stays on the root rollout when a newer '
-    'spawn_agent child exists',
-    () async {
-      await _writeParentAndChildRollouts(base.path);
+  test('locateCodexTranscript stays on the root rollout when a newer '
+      'spawn_agent child exists', () async {
+    await _writeParentAndChildRollouts(base.path);
 
-      final bundle = await locateCodexTranscript(ctx(codexHome: base.path));
+    final bundle = await locateCodexTranscript(ctx(codexHome: base.path));
 
-      expect(bundle, isNotNull);
-      expect(
-        bundle!.fragments.single.name,
-        'rollout-2026-07-10T12-00-00-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.jsonl',
-      );
-    },
-  );
+    expect(bundle, isNotNull);
+    expect(
+      bundle!.fragments.single.name,
+      'rollout-2026-07-10T12-00-00-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.jsonl',
+    );
+  });
 
   test(
     'locateCodexTranscript ignores a persisted child uuid and keeps the root',
@@ -214,10 +211,8 @@ void main() {
     },
   );
 
-  test(
-      'parses user/assistant text from response_item.message (codex >=0.147 '
-      'rollout format)',
-      () async {
+  test('parses user/assistant text from response_item.message (codex >=0.147 '
+      'rollout format)', () async {
     final bytes = await File(
       'test/fixtures/session_history/codex/response_item_messages.jsonl',
     ).readAsBytes();
@@ -272,10 +267,8 @@ void main() {
     );
   });
 
-  test(
-      'response_item.message echo does not duplicate event_msg user/agent '
-      'text (older codex wrote both)',
-      () async {
+  test('response_item.message echo does not duplicate event_msg user/agent '
+      'text (older codex wrote both)', () async {
     final bytes = await File(
       'test/fixtures/session_history/codex/response_item_message_echo.jsonl',
     ).readAsBytes();
@@ -301,66 +294,65 @@ void main() {
     );
   });
 
-  test('parses reasoning summary and shell_command from real rollout shape',
-      () async {
-    final bytes = await File(
-      'test/fixtures/session_history/codex/reasoning_and_tools.jsonl',
-    ).readAsBytes();
-    final messages = await const CodexAiTranscriptAdapter().parse(
-      AiTranscriptBundle(
-        adapterId: 'codex',
-        fragments: [
-          AiTranscriptFragment(
-            name: 'reasoning_and_tools.jsonl',
-            bytes: bytes,
-          ),
-        ],
-      ),
-    );
-
-    expect(messages, hasLength(2));
-    expect(messages[0].role, AiRole.user);
-    expect((messages[0].parts.single as AiTextPart).text, 'create issue tracker');
-
-    final assistant = messages[1];
-    expect(assistant.role, AiRole.assistant);
-    expect(assistant.parts[0], isA<AiReasoningPart>());
-    expect(assistant.parts[1], isA<AiToolCallPart>());
-    expect(assistant.parts[2], isA<AiTextPart>());
-
-    final reasoning = assistant.parts[0] as AiReasoningPart;
-    expect(reasoning.text, contains('Issue management'));
-
-    final tool = assistant.parts[1] as AiToolCallPart;
-    expect(tool.toolName, 'shell_command');
-    expect(tool.toolCallId, 'call_demo1');
-    expect(tool.result, contains('/tmp/demo'));
-
-    expect(
-      (assistant.parts[2] as AiTextPart).text,
-      'I will inspect the plan first.',
-    );
-  });
-
   test(
-      'custom_tool_call String input that is JSON decodes into args, '
-      'argsText keeps the raw copy (G2)',
-      () {
+    'parses reasoning summary and shell_command from real rollout shape',
+    () async {
+      final bytes = await File(
+        'test/fixtures/session_history/codex/reasoning_and_tools.jsonl',
+      ).readAsBytes();
+      final messages = await const CodexAiTranscriptAdapter().parse(
+        AiTranscriptBundle(
+          adapterId: 'codex',
+          fragments: [
+            AiTranscriptFragment(
+              name: 'reasoning_and_tools.jsonl',
+              bytes: bytes,
+            ),
+          ],
+        ),
+      );
+
+      expect(messages, hasLength(2));
+      expect(messages[0].role, AiRole.user);
+      expect(
+        (messages[0].parts.single as AiTextPart).text,
+        'create issue tracker',
+      );
+
+      final assistant = messages[1];
+      expect(assistant.role, AiRole.assistant);
+      expect(assistant.parts[0], isA<AiReasoningPart>());
+      expect(assistant.parts[1], isA<AiToolCallPart>());
+      expect(assistant.parts[2], isA<AiTextPart>());
+
+      final reasoning = assistant.parts[0] as AiReasoningPart;
+      expect(reasoning.text, contains('Issue management'));
+
+      final tool = assistant.parts[1] as AiToolCallPart;
+      expect(tool.toolName, 'shell_command');
+      expect(tool.toolCallId, 'call_demo1');
+      expect(tool.result, contains('/tmp/demo'));
+
+      expect(
+        (assistant.parts[2] as AiTextPart).text,
+        'I will inspect the plan first.',
+      );
+    },
+  );
+
+  test('custom_tool_call String input that is JSON decodes into args, '
+      'argsText keeps the raw copy (G2)', () {
     final messages = <AiMessage>[];
-    final consumed = appendCodexJsonlEvent(
-      messages,
-      {
-        'type': 'response_item',
-        'timestamp': '2026-08-08T00:00:00.000Z',
-        'payload': {
-          'type': 'custom_tool_call',
-          'name': 'spawn_agent',
-          'call_id': 'call_custom_1',
-          'input': '{"agentId":"agent-1","task":"doc"}',
-        },
+    final consumed = appendCodexJsonlEvent(messages, {
+      'type': 'response_item',
+      'timestamp': '2026-08-08T00:00:00.000Z',
+      'payload': {
+        'type': 'custom_tool_call',
+        'name': 'spawn_agent',
+        'call_id': 'call_custom_1',
+        'input': '{"agentId":"agent-1","task":"doc"}',
       },
-      fallbackId: () => 'codex-0',
-    );
+    }, fallbackId: () => 'codex-0');
     expect(consumed, isTrue);
     final tool = (messages.single.parts.single as AiToolCallPart);
     expect(tool.toolCallId, 'call_custom_1');
@@ -377,54 +369,46 @@ void main() {
       String id() => 'codex-${messages.length}';
 
       expect(
-        appendCodexJsonlEvent(
-          messages,
-          {
-            'type': 'response_item',
-            'timestamp': '2026-08-25T11:23:14.000Z',
-            'payload': {
-              'type': 'function_call',
-              'name': 'spawn_agent',
-              'call_id': 'call_spawn_1',
-              'arguments':
-                  '{"task_name":"task6_review","fork_turns":"none","message":"cipher"}',
-            },
+        appendCodexJsonlEvent(messages, {
+          'type': 'response_item',
+          'timestamp': '2026-08-25T11:23:14.000Z',
+          'payload': {
+            'type': 'function_call',
+            'name': 'spawn_agent',
+            'call_id': 'call_spawn_1',
+            'arguments':
+                '{"task_name":"task6_review","fork_turns":"none","message":"cipher"}',
           },
-          fallbackId: id,
-        ),
+        }, fallbackId: id),
         isTrue,
       );
 
       expect(
-        appendCodexJsonlEvent(
-          messages,
-          {
-            'type': 'event_msg',
-            'timestamp': '2026-08-25T11:23:14.100Z',
-            'payload': {
-              'type': 'item_completed',
-              'item': {
-                'type': 'SubAgentActivity',
-                'id': 'call_spawn_1',
-                'kind': 'started',
-                'agent_thread_id': '01a038a8-fd40-77a2-bb5a-59452ffa9bf0',
-                'agent_path': '/root/task6_review',
-              },
+        appendCodexJsonlEvent(messages, {
+          'type': 'event_msg',
+          'timestamp': '2026-08-25T11:23:14.100Z',
+          'payload': {
+            'type': 'item_completed',
+            'item': {
+              'type': 'SubAgentActivity',
+              'id': 'call_spawn_1',
+              'kind': 'started',
+              'agent_thread_id': '01a038a8-fd40-77a2-bb5a-59452ffa9bf0',
+              'agent_path': '/root/task6_review',
             },
           },
-          fallbackId: id,
-        ),
+        }, fallbackId: id),
         isTrue,
       );
 
       final tool = messages.single.parts.single as AiToolCallPart;
       expect(tool.toolName, 'spawn_agent');
+      expect(tool.args?['agent_id'], '01a038a8-fd40-77a2-bb5a-59452ffa9bf0');
+      expect(tool.args?['task_name'], 'task6_review');
       expect(
-        tool.args?['agent_id'],
+        subagentAgentIdFromPart(tool),
         '01a038a8-fd40-77a2-bb5a-59452ffa9bf0',
       );
-      expect(tool.args?['task_name'], 'task6_review');
-      expect(subagentAgentIdFromPart(tool), '01a038a8-fd40-77a2-bb5a-59452ffa9bf0');
     },
   );
 
@@ -434,38 +418,30 @@ void main() {
       final messages = <AiMessage>[];
       String id() => 'codex-${messages.length}';
 
-      appendCodexJsonlEvent(
-        messages,
-        {
-          'type': 'response_item',
-          'timestamp': '2026-08-25T11:23:14.000Z',
-          'payload': {
-            'type': 'function_call',
-            'name': 'send_message',
-            'call_id': 'call_send_1',
-            'arguments': '{"target":"/root/task6_review","message":"hi"}',
-          },
+      appendCodexJsonlEvent(messages, {
+        'type': 'response_item',
+        'timestamp': '2026-08-25T11:23:14.000Z',
+        'payload': {
+          'type': 'function_call',
+          'name': 'send_message',
+          'call_id': 'call_send_1',
+          'arguments': '{"target":"/root/task6_review","message":"hi"}',
         },
-        fallbackId: id,
-      );
+      }, fallbackId: id);
       expect(
-        appendCodexJsonlEvent(
-          messages,
-          {
-            'type': 'event_msg',
-            'timestamp': '2026-08-25T11:23:14.100Z',
-            'payload': {
-              'type': 'item_completed',
-              'item': {
-                'type': 'SubAgentActivity',
-                'id': 'call_send_1',
-                'kind': 'interacted',
-                'agent_thread_id': '01a038a8-fd40-77a2-bb5a-59452ffa9bf0',
-              },
+        appendCodexJsonlEvent(messages, {
+          'type': 'event_msg',
+          'timestamp': '2026-08-25T11:23:14.100Z',
+          'payload': {
+            'type': 'item_completed',
+            'item': {
+              'type': 'SubAgentActivity',
+              'id': 'call_send_1',
+              'kind': 'interacted',
+              'agent_thread_id': '01a038a8-fd40-77a2-bb5a-59452ffa9bf0',
             },
           },
-          fallbackId: id,
-        ),
+        }, fallbackId: id),
         isFalse,
       );
 
@@ -475,25 +451,19 @@ void main() {
     },
   );
 
-  test(
-      'custom_tool_call non-JSON String input keeps args=null and '
-      'argsText as faithful copy (G2)',
-      () {
+  test('custom_tool_call non-JSON String input keeps args=null and '
+      'argsText as faithful copy (G2)', () {
     final messages = <AiMessage>[];
-    final consumed = appendCodexJsonlEvent(
-      messages,
-      {
-        'type': 'response_item',
-        'timestamp': '2026-08-08T00:00:00.000Z',
-        'payload': {
-          'type': 'custom_tool_call',
-          'name': 'apply_patch',
-          'call_id': 'call_custom_2',
-          'input': '*** Begin Patch\n+line',
-        },
+    final consumed = appendCodexJsonlEvent(messages, {
+      'type': 'response_item',
+      'timestamp': '2026-08-08T00:00:00.000Z',
+      'payload': {
+        'type': 'custom_tool_call',
+        'name': 'apply_patch',
+        'call_id': 'call_custom_2',
+        'input': '*** Begin Patch\n+line',
       },
-      fallbackId: () => 'codex-1',
-    );
+    }, fallbackId: () => 'codex-1');
     expect(consumed, isTrue);
     final tool = (messages.single.parts.single as AiToolCallPart);
     expect(tool.args, isNull);
@@ -501,12 +471,10 @@ void main() {
   });
 
   test(
-      'custom_tool_call Map input decodes into args, argsText stays null (G2)',
-      () {
-    final messages = <AiMessage>[];
-    final consumed = appendCodexJsonlEvent(
-      messages,
-      {
+    'custom_tool_call Map input decodes into args, argsText stays null (G2)',
+    () {
+      final messages = <AiMessage>[];
+      final consumed = appendCodexJsonlEvent(messages, {
         'type': 'response_item',
         'timestamp': '2026-08-08T00:00:00.000Z',
         'payload': {
@@ -515,19 +483,16 @@ void main() {
           'call_id': 'call_custom_3',
           'input': {'agentId': 'agent-2'},
         },
-      },
-      fallbackId: () => 'codex-2',
-    );
-    expect(consumed, isTrue);
-    final tool = (messages.single.parts.single as AiToolCallPart);
-    expect(tool.args, {'agentId': 'agent-2'});
-    expect(tool.argsText, isNull);
-  });
+      }, fallbackId: () => 'codex-2');
+      expect(consumed, isTrue);
+      final tool = (messages.single.parts.single as AiToolCallPart);
+      expect(tool.args, {'agentId': 'agent-2'});
+      expect(tool.argsText, isNull);
+    },
+  );
 
-  test(
-      'custom_tool_call dual-form fixture parses end-to-end: String patch '
-      'text → argsText; Map input → args (G2)',
-      () async {
+  test('custom_tool_call dual-form fixture parses end-to-end: String patch '
+      'text → argsText; Map input → args (G2)', () async {
     final bytes = await File(
       'test/fixtures/session_history/codex/custom_tool_call_dual_form.jsonl',
     ).readAsBytes();
@@ -581,18 +546,14 @@ void main() {
     expect(agent.status, AiToolCallStatus.complete);
   });
 
-  test(
-      'fallback message ids are lazy codex-{seq} and unique (G1)',
-      () async {
+  test('fallback message ids are lazy codex-{seq} and unique (G1)', () async {
     final bytes = await File(
       'test/fixtures/session_history/codex/basic.jsonl',
     ).readAsBytes();
     final messages = await const CodexAiTranscriptAdapter().parse(
       AiTranscriptBundle(
         adapterId: 'codex',
-        fragments: [
-          AiTranscriptFragment(name: 'rollout.jsonl', bytes: bytes),
-        ],
+        fragments: [AiTranscriptFragment(name: 'rollout.jsonl', bytes: bytes)],
       ),
     );
     final ids = messages.map((m) => m.id).toList();
@@ -603,43 +564,33 @@ void main() {
     expect(ids.toSet().length, ids.length);
   });
 
-  test(
-      'function_call_output / custom_tool_call_output have no error flag: '
-      'isError stays false even for failure-looking output (G6)',
-      () {
+  test('function_call_output / custom_tool_call_output have no error flag: '
+      'isError stays false even for failure-looking output (G6)', () {
     final messages = <AiMessage>[];
     var seq = 0;
     expect(
-      appendCodexJsonlEvent(
-        messages,
-        {
-          'type': 'response_item',
-          'timestamp': '2026-08-08T00:00:00.000Z',
-          'payload': {
-            'type': 'function_call',
-            'name': 'exec_command',
-            'call_id': 'call_fail1',
-            'arguments': '{"cmd":"ls /nope"}',
-          },
+      appendCodexJsonlEvent(messages, {
+        'type': 'response_item',
+        'timestamp': '2026-08-08T00:00:00.000Z',
+        'payload': {
+          'type': 'function_call',
+          'name': 'exec_command',
+          'call_id': 'call_fail1',
+          'arguments': '{"cmd":"ls /nope"}',
         },
-        fallbackId: () => 'codex-${seq++}',
-      ),
+      }, fallbackId: () => 'codex-${seq++}'),
       isTrue,
     );
     expect(
-      appendCodexJsonlEvent(
-        messages,
-        {
-          'type': 'response_item',
-          'timestamp': '2026-08-08T00:00:01.000Z',
-          'payload': {
-            'type': 'function_call_output',
-            'call_id': 'call_fail1',
-            'output': 'Exit code: 1\nNo such file',
-          },
+      appendCodexJsonlEvent(messages, {
+        'type': 'response_item',
+        'timestamp': '2026-08-08T00:00:01.000Z',
+        'payload': {
+          'type': 'function_call_output',
+          'call_id': 'call_fail1',
+          'output': 'Exit code: 1\nNo such file',
         },
-        fallbackId: () => 'codex-${seq++}',
-      ),
+      }, fallbackId: () => 'codex-${seq++}'),
       isTrue,
     );
     final tool = (messages.single.parts.single as AiToolCallPart);
@@ -651,9 +602,7 @@ void main() {
     expect(tool.isError, isFalse);
   });
 
-  test(
-      'empty call_id is dropped without consuming fallback seq (G4 既定语义)',
-      () {
+  test('empty call_id is dropped without consuming fallback seq (G4 既定语义)', () {
     // Codex rollout 的 function_call/custom_tool_call/custom_tool_call_output
     // 均恒带非空 call_id（夹具 + 真实 rollout 实测全部非空）；空 call_id 属
     // 损坏数据。与 cursor 不同（其 transcript 缺 id 是常态，需合成 id），codex
@@ -664,20 +613,16 @@ void main() {
     String fallbackId() => 'codex-${seq++}';
 
     expect(
-      appendCodexJsonlEvent(
-        messages,
-        {
-          'type': 'response_item',
-          'timestamp': '2026-08-08T00:00:00.000Z',
-          'payload': {
-            'type': 'function_call',
-            'name': 'exec_command',
-            'call_id': '',
-            'arguments': '{"cmd":"ls"}',
-          },
+      appendCodexJsonlEvent(messages, {
+        'type': 'response_item',
+        'timestamp': '2026-08-08T00:00:00.000Z',
+        'payload': {
+          'type': 'function_call',
+          'name': 'exec_command',
+          'call_id': '',
+          'arguments': '{"cmd":"ls"}',
         },
-        fallbackId: fallbackId,
-      ),
+      }, fallbackId: fallbackId),
       isFalse,
     );
     expect(messages, isEmpty);
@@ -685,62 +630,65 @@ void main() {
   });
 
   test(
-      'appendCodexJsonlEvent line-parse matches adapter (tailer dialect)',
-      () async {
-    final bytes = await File(
-      'test/fixtures/session_history/codex/basic.jsonl',
-    ).readAsBytes();
-    final content = String.fromCharCodes(bytes);
+    'appendCodexJsonlEvent line-parse matches adapter (tailer dialect)',
+    () async {
+      final bytes = await File(
+        'test/fixtures/session_history/codex/basic.jsonl',
+      ).readAsBytes();
+      final content = String.fromCharCodes(bytes);
 
-    final adapter = const CodexAiTranscriptAdapter();
-    final adapterMessages = await adapter.parse(
-      AiTranscriptBundle(
-        adapterId: 'codex',
-        fragments: [
-          AiTranscriptFragment(name: 'rollout.jsonl', bytes: bytes),
-        ],
-      ),
-    );
-
-    final raw = <AiMessage>[];
-    for (final line in const LineSplitter().convert(content)) {
-      final trimmed = line.trim();
-      if (trimmed.isEmpty) continue;
-      final event = _tryDecode(trimmed);
-      if (event == null) continue;
-      appendCodexJsonlEvent(raw, event, fallbackId: () => 't');
-    }
-    final lineMessages = finalizeAiMessagesForHistory(raw);
-
-    expect(lineMessages, hasLength(adapterMessages.length));
-    for (var i = 0; i < adapterMessages.length; i++) {
-      expect(lineMessages[i].role, adapterMessages[i].role);
-      expect(
-        lineMessages[i].parts.length,
-        adapterMessages[i].parts.length,
+      final adapter = const CodexAiTranscriptAdapter();
+      final adapterMessages = await adapter.parse(
+        AiTranscriptBundle(
+          adapterId: 'codex',
+          fragments: [
+            AiTranscriptFragment(name: 'rollout.jsonl', bytes: bytes),
+          ],
+        ),
       );
-      final a = lineMessages[i].parts;
-      final b = adapterMessages[i].parts;
-      for (var j = 0; j < a.length; j++) {
-        if (a[j] is AiTextPart && b[j] is AiTextPart) {
-          expect((a[j] as AiTextPart).text, (b[j] as AiTextPart).text);
-        }
-        if (a[j] is AiToolCallPart && b[j] is AiToolCallPart) {
-          expect((a[j] as AiToolCallPart).toolName, (b[j] as AiToolCallPart).toolName);
-          expect(
-            (a[j] as AiToolCallPart).toolCallId,
-            (b[j] as AiToolCallPart).toolCallId,
-          );
+
+      final raw = <AiMessage>[];
+      for (final line in const LineSplitter().convert(content)) {
+        final trimmed = line.trim();
+        if (trimmed.isEmpty) continue;
+        final event = _tryDecode(trimmed);
+        if (event == null) continue;
+        appendCodexJsonlEvent(raw, event, fallbackId: () => 't');
+      }
+      final lineMessages = finalizeAiMessagesForHistory(raw);
+
+      expect(lineMessages, hasLength(adapterMessages.length));
+      for (var i = 0; i < adapterMessages.length; i++) {
+        expect(lineMessages[i].role, adapterMessages[i].role);
+        expect(lineMessages[i].parts.length, adapterMessages[i].parts.length);
+        final a = lineMessages[i].parts;
+        final b = adapterMessages[i].parts;
+        for (var j = 0; j < a.length; j++) {
+          if (a[j] is AiTextPart && b[j] is AiTextPart) {
+            expect((a[j] as AiTextPart).text, (b[j] as AiTextPart).text);
+          }
+          if (a[j] is AiToolCallPart && b[j] is AiToolCallPart) {
+            expect(
+              (a[j] as AiToolCallPart).toolName,
+              (b[j] as AiToolCallPart).toolName,
+            );
+            expect(
+              (a[j] as AiToolCallPart).toolCallId,
+              (b[j] as AiToolCallPart).toolCallId,
+            );
+          }
         }
       }
-    }
-  });
+    },
+  );
 }
 
 Map<String, dynamic>? _tryDecode(String line) {
   try {
     final d = jsonDecode(line);
-    return d is Map<String, dynamic> ? d : (d is Map ? Map<String, dynamic>.from(d) : null);
+    return d is Map<String, dynamic>
+        ? d
+        : (d is Map ? Map<String, dynamic>.from(d) : null);
   } on FormatException {
     return null;
   }

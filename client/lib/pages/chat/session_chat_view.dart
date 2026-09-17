@@ -39,13 +39,13 @@ import '../../services/compose/compose_draft_cache.dart';
 import '../../services/compose/compose_file_attach.dart';
 import 'session_chat_voice_controller.dart';
 import '../../services/follow_up/follow_up_queue.dart';
-import '../../services/session/ai_history_live_refresh_controller.dart';
-import '../../services/session/failed_message_store.dart';
-import '../../services/session/chat_transcript_find_controller.dart';
-import '../../services/session/history_seat_key.dart';
+import '../../services/session/history/ai_history_live_refresh_controller.dart';
+import '../../services/session/history/failed_message_store.dart';
+import '../../services/session/history/chat_transcript_find_controller.dart';
+import '../../services/session/history/history_seat_key.dart';
 import 'ai_message_strings_from_l10n.dart';
-import '../../services/session/history_hydration_scope.dart';
-import '../../services/session/history_awaiting_working_sync.dart';
+import '../../services/session/history/history_hydration_scope.dart';
+import '../../services/session/history/history_awaiting_working_sync.dart';
 import 'pinned_session_history_column_width.dart';
 import '../../widgets/home_storage_scope.dart';
 import '../../services/terminal/pending_user_message.dart';
@@ -225,9 +225,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         widget.projectConfigRepository ??
         // Bare widget tests may construct this view without a repository;
         // homeStorageOf falls back to the native default there.
-        WorkspaceProjectConfigRepository(
-          storage: homeStorageOf(context),
-        );
+        WorkspaceProjectConfigRepository(storage: homeStorageOf(context));
     final homeStorage = homeStorageOf(context);
     _failedMessageStore =
         widget.failedMessageStore ??
@@ -852,6 +850,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     final previous = _liveRefresh;
     _liveRefresh = null;
     _liveRefreshScope = null;
+
     /// Drop the stale start single-flight too, or its future can return from
     /// `_startLiveRefresh` and let the new seat miss live refresh until the
     /// next busy/route event.

@@ -8,10 +8,10 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/ai_history_loader.dart';
-import 'package:teampilot/services/session/ai_history_locator.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
-import 'package:teampilot/services/session/session_history_context_builder.dart';
+import 'package:teampilot/services/session/history/ai_history_loader.dart';
+import 'package:teampilot/services/session/history/ai_history_locator.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
+import 'package:teampilot/services/session/history/session_history_context_builder.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/team_bus/persistence/bus_message_log.dart';
@@ -45,7 +45,7 @@ void main() {
       folders: s.folders,
       createdAt: 0,
     ),
-                                                                            usesPosixPaths: false,
+    usesPosixPaths: false,
   );
 
   setUp(() {
@@ -172,46 +172,47 @@ void main() {
     );
   });
 
-  test('expectMailboxQueuedThenTimeline checks Queued snapshot and merged id', () async {
-    var mailboxRecords = <LoggedMessage>[];
-    await cubit.close();
-    cubit = AiHistoryCubit(
-      loader: loader,
-      loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
-    );
+  test(
+    'expectMailboxQueuedThenTimeline checks Queued snapshot and merged id',
+    () async {
+      var mailboxRecords = <LoggedMessage>[];
+      await cubit.close();
+      cubit = AiHistoryCubit(
+        loader: loader,
+        loadMailboxRecords: (sessionId, memberId) async => mailboxRecords,
+      );
 
-    await cubit.load(
-      session: simpleSession(),
-      memberId: '',
-      launchContext: launchCtx(simpleSession()),
-    );
-    const mailId = 'mail-42';
-    const text = 'please handle this';
-    final queued = [
-      const PendingUserMessage(id: mailId, content: text),
-    ];
-    mailboxRecords = [
-      LoggedMessage(
-        seq: 0,
-        message: TeamMessage(
-          id: mailId,
-          from: TeamBus.userSenderId,
-          to: 'dev',
-          content: text,
+      await cubit.load(
+        session: simpleSession(),
+        memberId: '',
+        launchContext: launchCtx(simpleSession()),
+      );
+      const mailId = 'mail-42';
+      const text = 'please handle this';
+      final queued = [const PendingUserMessage(id: mailId, content: text)];
+      mailboxRecords = [
+        LoggedMessage(
+          seq: 0,
+          message: TeamMessage(
+            id: mailId,
+            from: TeamBus.userSenderId,
+            to: 'dev',
+            content: text,
+          ),
+          createdAt: 2000,
+          read: true,
         ),
-        createdAt: 2000,
-        read: true,
-      ),
-    ];
-    await cubit.refreshMailboxTimeline();
+      ];
+      await cubit.refreshMailboxTimeline();
 
-    expectMailboxQueuedThenTimeline(
-      queuedSnapshot: queued,
-      history: cubit,
-      text: text,
-      mailId: mailId,
-    );
-  });
+      expectMailboxQueuedThenTimeline(
+        queuedSnapshot: queued,
+        history: cubit,
+        text: text,
+        mailId: mailId,
+      );
+    },
+  );
 
   test('dumpThread includes roles and text for failure messages', () async {
     var mailboxRecords = <LoggedMessage>[];
@@ -250,9 +251,7 @@ void main() {
 
 AiTranscriptBundle _dummyBundle() => const AiTranscriptBundle(
   adapterId: 'claude',
-  fragments: [
-    AiTranscriptFragment(name: 'canned.jsonl', bytes: []),
-  ],
+  fragments: [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
 );
 
 class _HolderAdapter implements AiTranscriptAdapter {

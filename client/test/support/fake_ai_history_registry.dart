@@ -7,7 +7,7 @@ import 'package:teampilot/services/cli/registry/capabilities/shared_tool_call_re
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
 
 /// Minimal [AiHistoryCapability] for loader/locator tests.
 final class FakeAiHistoryCapability implements AiHistoryCapability {

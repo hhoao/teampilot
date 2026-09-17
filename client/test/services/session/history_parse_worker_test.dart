@@ -3,7 +3,7 @@ import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/session/history_parse_worker.dart';
+import 'package:teampilot/services/session/history/history_parse_worker.dart';
 
 void main() {
   test('reuses one resident worker for sequential parses', () async {

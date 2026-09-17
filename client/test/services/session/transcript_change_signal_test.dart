@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/transcript_change_signal.dart';
+import 'package:teampilot/services/session/history/transcript_change_signal.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -143,7 +143,8 @@ void main() {
         expect(
           notifies,
           1,
-          reason: 'watch stream closed silently → poll fallback must notify '
+          reason:
+              'watch stream closed silently → poll fallback must notify '
               'on transcript change',
         );
 

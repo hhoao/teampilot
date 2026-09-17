@@ -2,8 +2,8 @@ import 'package:ai_message_core/ai_message_core.dart';
 
 import '../../../registry/capabilities/ai_history_capability.dart';
 import '../../../../io/filesystem.dart';
-import '../../../../session/jsonl_transcript_page_reader.dart';
-import '../../../../session/session_history_context.dart';
+import '../../../../session/history/jsonl_transcript_page_reader.dart';
+import '../../../../session/history/session_history_context.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 import '../../../registry/capabilities/history/tool_result_enricher.dart';
 import '../../../registry/capabilities/resume/pinned_transcript_probe.dart';
@@ -61,8 +61,9 @@ final class ClaudeAiHistoryCapability implements AiHistoryCapability {
       _toolResultEnricher ?? _defaultEnricher;
 
   @override
-  Future<String?> resolveParentTranscriptPath(SessionHistoryContext ctx) async =>
-      null;
+  Future<String?> resolveParentTranscriptPath(
+    SessionHistoryContext ctx,
+  ) async => null;
 
   @override
   Future<String?> liveCacheToken(SessionHistoryContext ctx) async => null;

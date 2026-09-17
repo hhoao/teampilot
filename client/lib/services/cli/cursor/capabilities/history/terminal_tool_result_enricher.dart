@@ -3,14 +3,12 @@ import 'package:path/path.dart' as p;
 
 import '../../../../../utils/logging/logger.dart';
 import '../../../../io/filesystem.dart';
-import '../../../../session/session_history_context.dart';
+import '../../../../session/history/session_history_context.dart';
 import 'terminal_file.dart';
 import '../../../registry/capabilities/history/tool_result_enricher.dart';
 
 final class CursorTerminalToolResultEnricher implements ToolResultEnricher {
-  const CursorTerminalToolResultEnricher({
-    required this.shellResolver,
-  });
+  const CursorTerminalToolResultEnricher({required this.shellResolver});
 
   final AiShellToolTargetResolver shellResolver;
 
@@ -84,7 +82,8 @@ final class CursorTerminalToolResultEnricher implements ToolResultEnricher {
           parts[j] = part.copyWith(
             result: terminal.file.body,
             status: AiToolCallStatus.complete,
-            isError: part.isError ||
+            isError:
+                part.isError ||
                 (terminal.file.exitCode != null && terminal.file.exitCode != 0),
           );
           changed = true;

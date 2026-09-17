@@ -42,10 +42,10 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/ai_history_locator.dart';
-import 'package:teampilot/services/session/ai_history_loader.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
-import 'package:teampilot/services/session/session_history_context_builder.dart';
+import 'package:teampilot/services/session/history/ai_history_locator.dart';
+import 'package:teampilot/services/session/history/ai_history_loader.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
+import 'package:teampilot/services/session/history/session_history_context_builder.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -96,10 +96,7 @@ void main() {
               'long. Reply with the story only.',
         ],
         workingDirectory: workDir.path,
-        environment: {
-          ...Platform.environment,
-          'OPENCODE_DB': dbPath,
-        },
+        environment: {...Platform.environment, 'OPENCODE_DB': dbPath},
       );
       started = true;
       unawaited(process.exitCode.then((_) => exited = true));
@@ -139,7 +136,7 @@ void main() {
           folders: session.folders,
           createdAt: 1,
         ),
-                                          usesPosixPaths: false,
+        usesPosixPaths: false,
       );
 
       // 聊天界面 live refresh 循环:进程存活期间每 250ms 一次 load。
@@ -180,7 +177,8 @@ void main() {
       expect(
         polls.where((poll) => poll.locateCalls > 0),
         isNotEmpty,
-        reason: '首次 load 必须全量 locate。stdout:\n$stdoutBuf\n'
+        reason:
+            '首次 load 必须全量 locate。stdout:\n$stdoutBuf\n'
             'stderr:\n$stderrBuf',
       );
 
@@ -189,11 +187,7 @@ void main() {
       final locatedPolls = polls
           .where((poll) => poll.locateCalls > 0 && poll.bundle != null)
           .toList();
-      expect(
-        locatedPolls,
-        isNotEmpty,
-        reason: '首次 load 应产生全量 bundle',
-      );
+      expect(locatedPolls, isNotEmpty, reason: '首次 load 应产生全量 bundle');
       for (final poll in locatedPolls) {
         final hints = poll.bundle!.hints;
         expect(
@@ -216,7 +210,8 @@ void main() {
       expect(
         polls.last.locateCalls,
         polls[firstBundlePoll].locateCalls,
-        reason: '首次全量 locate 之后,流式期间不再全量 locate'
+        reason:
+            '首次全量 locate 之后,流式期间不再全量 locate'
             '(数据变动 = 行级增量)',
       );
 
@@ -266,177 +261,189 @@ void main() {
       );
     });
 
-    test('child session flipping newest must not mix into the seat transcript',
-        () async {
-      final opencode = IntegrationPrerequisites.requireOpencodePath();
-      if (opencode == null) return;
+    test(
+      'child session flipping newest must not mix into the seat transcript',
+      () async {
+        final opencode = IntegrationPrerequisites.requireOpencodePath();
+        if (opencode == null) return;
 
-      final base = Directory.systemTemp.createTempSync('opencode_live_flip_');
-      final fs = LocalFilesystem();
-      final layout = RuntimeLayout(teampilotRoot: base.path, fs: fs);
-      final toolRoot = layout.sessionRuntimeToolDir(
-        'ws-1',
-        'sess-ui',
-        'opencode',
-      );
-      Directory(toolRoot).createSync(recursive: true);
-      final dbPath = p.join(toolRoot, 'opencode.db');
-      final workDir = Directory(p.join(base.path, 'work'))..createSync();
+        final base = Directory.systemTemp.createTempSync('opencode_live_flip_');
+        final fs = LocalFilesystem();
+        final layout = RuntimeLayout(teampilotRoot: base.path, fs: fs);
+        final toolRoot = layout.sessionRuntimeToolDir(
+          'ws-1',
+          'sess-ui',
+          'opencode',
+        );
+        Directory(toolRoot).createSync(recursive: true);
+        final dbPath = p.join(toolRoot, 'opencode.db');
+        final workDir = Directory(p.join(base.path, 'work'))..createSync();
 
-      var started = false;
-      var exited = false;
-      final stdoutBuf = StringBuffer();
-      late Process process;
-      addTearDown(() async {
-        if (started && !exited) {
+        var started = false;
+        var exited = false;
+        final stdoutBuf = StringBuffer();
+        late Process process;
+        addTearDown(() async {
+          if (started && !exited) {
+            process.kill(ProcessSignal.sigkill);
+          }
+          if (base.existsSync()) {
+            base.deleteSync(recursive: true);
+          }
+        });
+
+        process = await Process.start(
+          opencode,
+          [
+            'run',
+            'Write a short story about a cat named Mochi, about five sentences '
+                'long. Reply with the story only.',
+          ],
+          workingDirectory: workDir.path,
+          environment: {...Platform.environment, 'OPENCODE_DB': dbPath},
+        );
+        started = true;
+        unawaited(process.exitCode.then((_) => exited = true));
+        process.stdout.transform(utf8.decoder).listen(stdoutBuf.write);
+        await process.stdin.close();
+
+        final locator = _RecordingLocator();
+        final loader = AiHistoryLoader(
+          contextBuilder: const SessionHistoryContextBuilder(),
+          resolveWorkContext: (_, {String? memberId}) async => RuntimeContext(
+            target: RuntimeTarget.local(),
+            filesystem: fs,
+            home: base.path,
+            cwd: base.path,
+            appDataRoot: base.path,
+            paths: AppPaths(base.path),
+          ),
+          registry: CliToolRegistry.builtIn(),
+          locator: locator,
+          // null → 真实 opencodeLiveCacheToken;session 无 nativeSessionIds
+          // → _resolveSessionId 走"最新会话"回退,复现无绑定场景。
+          resolveCacheToken: null,
+        );
+        final session = AppSession(
+          sessionId: 'sess-ui',
+          workspaceId: 'ws-1',
+          folders: const [WorkspaceFolder(path: '/work/project')],
+          cli: CliTool.opencode,
+          createdAt: 1,
+          updatedAt: 1,
+        );
+        final ctx = WorkspaceLaunchContext(
+          session: session,
+          workspace: Workspace(
+            workspaceId: session.workspaceId,
+            folders: session.folders,
+            createdAt: 1,
+          ),
+          usesPosixPaths: false,
+        );
+
+        // 轮询到首次真实 locate 成功(bundle 非空 = schema 已建、seed 完成)
+        // 再注入子会话。
+        final deadline = DateTime.now().add(const Duration(seconds: 60));
+        var firstLocate = 0;
+        while (DateTime.now().isBefore(deadline)) {
+          await loader.load(session: session, memberId: '', launchContext: ctx);
+          firstLocate = locator.calls;
+          if (locator.lastBundle != null && !exited) break;
+          await Future<void>.delayed(const Duration(milliseconds: 250));
+        }
+        expect(firstLocate, greaterThan(0), reason: '必须完成首次全量 locate');
+        expect(locator.lastBundle, isNotNull, reason: '首次 locate 必须成功');
+
+        // 注入 task 子会话:time_updated 最新 → 旧实现会把"最新会话"解析成
+        // 子会话,增量指纹/重读全落在子会话上 → 回退全量 + 子会话内容混入。
+        final marker = 'CHILD-MARKER-${DateTime.now().microsecondsSinceEpoch}';
+        final child = sqlite3.open(dbPath);
+        try {
+          final seatRows = child.select(
+            'SELECT id, time_updated FROM session ORDER BY time_updated DESC '
+            'LIMIT 1',
+          );
+          final seatUpdated = seatRows.isEmpty
+              ? 0
+              : (seatRows.first['time_updated'] as int?) ?? 0;
+          final newest = seatUpdated + 100000;
+          // 真实 schema 的 NOT NULL 列需全部提供(project_id/slug/...)。
+          child.execute(
+            'INSERT INTO session (id, project_id, slug, directory, title, '
+            'version, cost, tokens_input, tokens_output, tokens_reasoning, '
+            'tokens_cache_read, tokens_cache_write, time_created, time_updated) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+              'ses_child',
+              'global',
+              'child-test',
+              '/tmp/child',
+              'child-test',
+              '1.18.4',
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              newest,
+              newest,
+            ],
+          );
+          child.execute(
+            'INSERT INTO message (id, session_id, data, time_created, '
+            'time_updated) VALUES (?, ?, ?, ?, ?)',
+            [
+              'msg_child_1',
+              'ses_child',
+              jsonEncode({
+                'role': 'user',
+                'time': {'created': newest + 1},
+              }),
+              newest + 1,
+              newest + 1,
+            ],
+          );
+          child.execute(
+            'INSERT INTO part (id, session_id, message_id, data, time_created, '
+            'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
+            [
+              'part_child_1',
+              'ses_child',
+              'msg_child_1',
+              jsonEncode({'type': 'text', 'text': marker}),
+              newest + 1,
+              newest + 1,
+            ],
+          );
+        } finally {
+          child.dispose();
+        }
+
+        // 子会话活跃期间继续轮询到 CLI 退出。
+        final polls = <_Poll>[];
+        final pollDeadline = DateTime.now().add(const Duration(seconds: 90));
+        while (!exited && DateTime.now().isBefore(pollDeadline)) {
+          final result = await loader.load(
+            session: session,
+            memberId: '',
+            launchContext: ctx,
+          );
+          polls.add(
+            _Poll(
+              locateCalls: locator.calls,
+              bundle: locator.lastBundle,
+              messages: result.messages,
+            ),
+          );
+          await Future<void>.delayed(const Duration(milliseconds: 250));
+        }
+        if (!exited) {
           process.kill(ProcessSignal.sigkill);
         }
-        if (base.existsSync()) {
-          base.deleteSync(recursive: true);
-        }
-      });
-
-      process = await Process.start(
-        opencode,
-        [
-          'run',
-          'Write a short story about a cat named Mochi, about five sentences '
-              'long. Reply with the story only.',
-        ],
-        workingDirectory: workDir.path,
-        environment: {
-          ...Platform.environment,
-          'OPENCODE_DB': dbPath,
-        },
-      );
-      started = true;
-      unawaited(process.exitCode.then((_) => exited = true));
-      process.stdout.transform(utf8.decoder).listen(stdoutBuf.write);
-      await process.stdin.close();
-
-      final locator = _RecordingLocator();
-      final loader = AiHistoryLoader(
-        contextBuilder: const SessionHistoryContextBuilder(),
-        resolveWorkContext: (_, {String? memberId}) async => RuntimeContext(
-          target: RuntimeTarget.local(),
-          filesystem: fs,
-          home: base.path,
-          cwd: base.path,
-          appDataRoot: base.path,
-          paths: AppPaths(base.path),
-        ),
-        registry: CliToolRegistry.builtIn(),
-        locator: locator,
-        // null → 真实 opencodeLiveCacheToken;session 无 nativeSessionIds
-        // → _resolveSessionId 走"最新会话"回退,复现无绑定场景。
-        resolveCacheToken: null,
-      );
-      final session = AppSession(
-        sessionId: 'sess-ui',
-        workspaceId: 'ws-1',
-        folders: const [WorkspaceFolder(path: '/work/project')],
-        cli: CliTool.opencode,
-        createdAt: 1,
-        updatedAt: 1,
-      );
-      final ctx = WorkspaceLaunchContext(
-        session: session,
-        workspace: Workspace(
-          workspaceId: session.workspaceId,
-          folders: session.folders,
-          createdAt: 1,
-        ),
-                                          usesPosixPaths: false,
-      );
-
-      // 轮询到首次真实 locate 成功(bundle 非空 = schema 已建、seed 完成)
-      // 再注入子会话。
-      final deadline = DateTime.now().add(const Duration(seconds: 60));
-      var firstLocate = 0;
-      while (DateTime.now().isBefore(deadline)) {
-        await loader.load(
-          session: session,
-          memberId: '',
-          launchContext: ctx,
-        );
-        firstLocate = locator.calls;
-        if (locator.lastBundle != null && !exited) break;
-        await Future<void>.delayed(const Duration(milliseconds: 250));
-      }
-      expect(firstLocate, greaterThan(0), reason: '必须完成首次全量 locate');
-      expect(locator.lastBundle, isNotNull, reason: '首次 locate 必须成功');
-
-      // 注入 task 子会话:time_updated 最新 → 旧实现会把"最新会话"解析成
-      // 子会话,增量指纹/重读全落在子会话上 → 回退全量 + 子会话内容混入。
-      final marker = 'CHILD-MARKER-${DateTime.now().microsecondsSinceEpoch}';
-      final child = sqlite3.open(dbPath);
-      try {
-        final seatRows = child.select(
-          'SELECT id, time_updated FROM session ORDER BY time_updated DESC '
-          'LIMIT 1',
-        );
-        final seatUpdated = seatRows.isEmpty
-            ? 0
-            : (seatRows.first['time_updated'] as int?) ?? 0;
-        final newest = seatUpdated + 100000;
-        // 真实 schema 的 NOT NULL 列需全部提供(project_id/slug/...)。
-        child.execute(
-          'INSERT INTO session (id, project_id, slug, directory, title, '
-          'version, cost, tokens_input, tokens_output, tokens_reasoning, '
-          'tokens_cache_read, tokens_cache_write, time_created, time_updated) '
-          'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [
-            'ses_child',
-            'global',
-            'child-test',
-            '/tmp/child',
-            'child-test',
-            '1.18.4',
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            newest,
-            newest,
-          ],
-        );
-        child.execute(
-          'INSERT INTO message (id, session_id, data, time_created, '
-          'time_updated) VALUES (?, ?, ?, ?, ?)',
-          [
-            'msg_child_1',
-            'ses_child',
-            jsonEncode({
-              'role': 'user',
-              'time': {'created': newest + 1},
-            }),
-            newest + 1,
-            newest + 1,
-          ],
-        );
-        child.execute(
-          'INSERT INTO part (id, session_id, message_id, data, time_created, '
-          'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
-          [
-            'part_child_1',
-            'ses_child',
-            'msg_child_1',
-            jsonEncode({'type': 'text', 'text': marker}),
-            newest + 1,
-            newest + 1,
-          ],
-        );
-      } finally {
-        child.dispose();
-      }
-
-      // 子会话活跃期间继续轮询到 CLI 退出。
-      final polls = <_Poll>[];
-      final pollDeadline = DateTime.now().add(const Duration(seconds: 90));
-      while (!exited && DateTime.now().isBefore(pollDeadline)) {
-        final result = await loader.load(
+        await Future<void>.delayed(const Duration(milliseconds: 800));
+        final settled = await loader.load(
           session: session,
           memberId: '',
           launchContext: ctx,
@@ -445,58 +452,38 @@ void main() {
           _Poll(
             locateCalls: locator.calls,
             bundle: locator.lastBundle,
-            messages: result.messages,
+            messages: settled.messages,
           ),
         );
-        await Future<void>.delayed(const Duration(milliseconds: 250));
-      }
-      if (!exited) {
-        process.kill(ProcessSignal.sigkill);
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 800));
-      final settled = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
-      polls.add(
-        _Poll(
-          locateCalls: locator.calls,
-          bundle: locator.lastBundle,
-          messages: settled.messages,
-        ),
-      );
 
-      expect(
-        polls.map((poll) => poll.locateCalls).toSet().length,
-        1,
-        reason: '子会话变成最新会话不得触发全量回退(旧实现每轮重复解析)。'
-            'locate 次数: ${polls.map((p) => p.locateCalls).toSet()}',
-      );
-      for (var i = 0; i < polls.length; i++) {
-        final texts = [
-          for (final m in polls[i].messages)
-            for (final p in m.parts)
-              if (p is AiTextPart) p.text,
-        ];
         expect(
-          texts.any((t) => t.contains(marker)),
-          isFalse,
-          reason: 'poll #$i 混入了子会话消息(同内容不同 id → 重复气泡)',
+          polls.map((poll) => poll.locateCalls).toSet().length,
+          1,
+          reason:
+              '子会话变成最新会话不得触发全量回退(旧实现每轮重复解析)。'
+              'locate 次数: ${polls.map((p) => p.locateCalls).toSet()}',
         );
-        final ids = [for (final m in polls[i].messages) m.id];
+        for (var i = 0; i < polls.length; i++) {
+          final texts = [
+            for (final m in polls[i].messages)
+              for (final p in m.parts)
+                if (p is AiTextPart) p.text,
+          ];
+          expect(
+            texts.any((t) => t.contains(marker)),
+            isFalse,
+            reason: 'poll #$i 混入了子会话消息(同内容不同 id → 重复气泡)',
+          );
+          final ids = [for (final m in polls[i].messages) m.id];
+          expect(ids.toSet().length, ids.length, reason: 'poll #$i 出现重复消息 id');
+        }
         expect(
-          ids.toSet().length,
-          ids.length,
-          reason: 'poll #$i 出现重复消息 id',
+          _assistantText(settled.messages).trim(),
+          isNotEmpty,
+          reason: 'seat 会话的回答必须完整可见。stdout:\n$stdoutBuf',
         );
-      }
-      expect(
-        _assistantText(settled.messages).trim(),
-        isNotEmpty,
-        reason: 'seat 会话的回答必须完整可见。stdout:\n$stdoutBuf',
-      );
-    });
+      },
+    );
   });
 }
 

@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/codex/capabilities/history/side_resolver.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
 
 void main() {
   late Directory base;
@@ -46,10 +46,7 @@ void main() {
     return path;
   }
 
-  AiToolCallPart spawnAgentPart({
-    Map<String, Object?>? args,
-    Object? result,
-  }) {
+  AiToolCallPart spawnAgentPart({Map<String, Object?>? args, Object? result}) {
     return AiToolCallPart(
       toolCallId: 'call_spawn_1',
       toolName: 'spawn_agent',

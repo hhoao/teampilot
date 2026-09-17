@@ -13,10 +13,10 @@ import 'package:teampilot/services/cli/cursor/capabilities/history/ai_history_ca
 import 'package:teampilot/services/cli/registry/capabilities/cli_session_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/ai_history_loader.dart';
-import 'package:teampilot/services/session/ai_history_locator.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
-import 'package:teampilot/services/session/session_history_context_builder.dart';
+import 'package:teampilot/services/session/history/ai_history_loader.dart';
+import 'package:teampilot/services/session/history/ai_history_locator.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
+import 'package:teampilot/services/session/history/session_history_context_builder.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -74,7 +74,7 @@ void main() {
           folders: session.folders,
           createdAt: 1,
         ),
-                              usesPosixPaths: false,
+        usesPosixPaths: false,
       );
 
   AiHistoryLoader buildLoader() {
@@ -154,67 +154,61 @@ void main() {
     },
   );
 
-  test(
-    'Cursor append after warm keeps prior message identity',
-    () async {
-      final session = await installCursorFixture();
-      final loader = buildLoader();
-      final first = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: launchCtx(session),
-      );
-      expect(first.messages, isNotEmpty);
-      final firstUser = first.messages.first;
+  test('Cursor append after warm keeps prior message identity', () async {
+    final session = await installCursorFixture();
+    final loader = buildLoader();
+    final first = await loader.load(
+      session: session,
+      memberId: '',
+      launchContext: launchCtx(session),
+    );
+    expect(first.messages, isNotEmpty);
+    final firstUser = first.messages.first;
 
-      await loader.debugAwaitTailWarm(
-        sessionId: session.sessionId,
-        memberId: '',
-      );
+    await loader.debugAwaitTailWarm(sessionId: session.sessionId, memberId: '');
 
-      final toolRoot = sessionConfigDirForTool(
-        CliTool.cursor,
-        layout,
-        workspaceId: 'ws-1',
-        sessionId: session.sessionId,
-      );
-      final transcript = File(
-        p.join(
-          toolRoot,
-          'projects',
-          'home-me-proj',
-          'agent-transcripts',
-          chatId,
-          '$chatId.jsonl',
+    final toolRoot = sessionConfigDirForTool(
+      CliTool.cursor,
+      layout,
+      workspaceId: 'ws-1',
+      sessionId: session.sessionId,
+    );
+    final transcript = File(
+      p.join(
+        toolRoot,
+        'projects',
+        'home-me-proj',
+        'agent-transcripts',
+        chatId,
+        '$chatId.jsonl',
+      ),
+    );
+    expect(transcript.existsSync(), isTrue);
+    await transcript.writeAsString(
+      '\n${jsonlAssistantLine(id: 'a-late', text: 'final late flush')}\n',
+      mode: FileMode.append,
+    );
+
+    final second = await loader.load(
+      session: session,
+      memberId: '',
+      launchContext: launchCtx(session),
+    );
+    expect(
+      identical(second.messages.first, firstUser),
+      isTrue,
+      reason: 'warm JSONL tail must preserve prefix message instances',
+    );
+    expect(
+      second.messages.any(
+        (m) => m.parts.any(
+          (part) =>
+              part is AiTextPart && part.text.contains('final late flush'),
         ),
-      );
-      expect(transcript.existsSync(), isTrue);
-      await transcript.writeAsString(
-        '\n${jsonlAssistantLine(id: 'a-late', text: 'final late flush')}\n',
-        mode: FileMode.append,
-      );
-
-      final second = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: launchCtx(session),
-      );
-      expect(
-        identical(second.messages.first, firstUser),
-        isTrue,
-        reason: 'warm JSONL tail must preserve prefix message instances',
-      );
-      expect(
-        second.messages.any(
-          (m) => m.parts.any(
-            (part) =>
-                part is AiTextPart && part.text.contains('final late flush'),
-          ),
-        ),
-        isTrue,
-      );
-    },
-  );
+      ),
+      isTrue,
+    );
+  });
 }
 
 String jsonlAssistantLine({required String id, required String text}) =>

@@ -44,7 +44,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/file_tree/workspace_file_tree_store.dart';
 import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/ai_history_loader.dart';
+import 'package:teampilot/services/session/history/ai_history_loader.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
@@ -74,7 +74,10 @@ final Size _narrowSize = Size(
 );
 
 /// Comfortably above the breakpoint — the split view must render in full.
-final Size _wideSize = Size(WorkspacePanePolicy.narrowBreakpointWidth + 360, 900);
+final Size _wideSize = Size(
+  WorkspacePanePolicy.narrowBreakpointWidth + 360,
+  900,
+);
 
 class _SeededAppProviderCubit extends AppProviderCubit {
   _SeededAppProviderCubit() : super(storage: testHomeStorage) {
@@ -138,13 +141,22 @@ void _registerSession(
 /// created by splitting B out to the right).
 void _seedTwoGroups(ChatCubit chatCubit, WorkbenchCubit workbenchCubit) {
   _registerSession(
-    chatCubit, workbenchCubit, _session('sess-a1', 'Session A1'), 'Session A1',
+    chatCubit,
+    workbenchCubit,
+    _session('sess-a1', 'Session A1'),
+    'Session A1',
   );
   _registerSession(
-    chatCubit, workbenchCubit, _session('sess-a2', 'Session A2'), 'Session A2',
+    chatCubit,
+    workbenchCubit,
+    _session('sess-a2', 'Session A2'),
+    'Session A2',
   );
   _registerSession(
-    chatCubit, workbenchCubit, _session('sess-b', 'Session B'), 'Session B',
+    chatCubit,
+    workbenchCubit,
+    _session('sess-b', 'Session B'),
+    'Session B',
   );
   workbenchCubit.splitTab(
     _workspaceId,
@@ -211,8 +223,8 @@ class _NarrowHarness {
         supportedLocales: AppLocalizations.supportedLocales,
         home: MultiRepositoryProvider(
           providers: [
-            
-            RepositoryProvider<HomeStorage>.value(value: testHomeStorage),RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
+            RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
+            RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
             RepositoryProvider<WorkspaceFileTreeStore>(
               create: (_) => WorkspaceFileTreeStore(),
             ),
@@ -346,8 +358,9 @@ Future<_NarrowHarness> _setUpHarness(WidgetTester tester) async {
   );
   addTearDown(() => cliPresetsCubit.close());
 
-  final sessionPreferencesCubit =
-      (await tester.runAsync(testSessionPreferencesCubit))!;
+  final sessionPreferencesCubit = (await tester.runAsync(
+    testSessionPreferencesCubit,
+  ))!;
   addTearDown(() => sessionPreferencesCubit.close());
 
   final runCubit = RunCubit(

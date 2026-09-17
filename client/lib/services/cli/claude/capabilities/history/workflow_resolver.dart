@@ -4,8 +4,8 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:meta/meta.dart';
 
 import '../../../../io/filesystem.dart';
-import '../../../../session/session_history_context.dart';
-import '../../../../session/subagent_side_transcript_path.dart';
+import '../../../../session/history/session_history_context.dart';
+import '../../../../session/history/subagent_side_transcript_path.dart';
 import 'compatible_jsonl.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 
@@ -13,7 +13,9 @@ import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 /// (`Workflow`, `workflow`, `work_flow`).
 bool isWorkflowTool(String? toolName) {
   if (toolName == null || toolName.isEmpty) return false;
-  final compact = toolName.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+  final compact = toolName
+      .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')
+      .toLowerCase();
   return compact == 'workflow';
 }
 
@@ -221,8 +223,10 @@ final class ClaudeWorkflowResolver {
           !name.endsWith('.jsonl')) {
         continue;
       }
-      final agentId =
-          name.substring('agent-'.length, name.length - '.jsonl'.length);
+      final agentId = name.substring(
+        'agent-'.length,
+        name.length - '.jsonl'.length,
+      );
       if (agentId.isEmpty) continue;
 
       final filePath = path.join(runDir, name);
@@ -237,10 +241,9 @@ final class ClaudeWorkflowResolver {
       if (agent != null) agents.add(agent);
     }
     agents.sort(
-      (a, b) =>
-          (journal[a.agentId]?.order ?? 0).compareTo(
-            journal[b.agentId]?.order ?? 0,
-          ),
+      (a, b) => (journal[a.agentId]?.order ?? 0).compareTo(
+        journal[b.agentId]?.order ?? 0,
+      ),
     );
     return agents;
   }
@@ -323,9 +326,10 @@ final class ClaudeWorkflowResolver {
         if (result is Map) {
           final status = _trimmed(result['status']);
           final approved = result['approved'];
-          current.status = status ??
-              (approved is bool && approved ? 'approved' : null);
-          current.summary = _trimmed(result['summary']) ??
+          current.status =
+              status ?? (approved is bool && approved ? 'approved' : null);
+          current.summary =
+              _trimmed(result['summary']) ??
               _trimmed(result['notes']) ??
               current.summary;
         }
@@ -344,10 +348,12 @@ final class ClaudeWorkflowResolver {
           final text = part.text.trim();
           if (text.isEmpty) continue;
           final line = text.split('\n').first.trim();
-          final stripped = line.replaceFirst(
-            RegExp(r'^You are (the )?', caseSensitive: false),
-            '',
-          ).trim();
+          final stripped = line
+              .replaceFirst(
+                RegExp(r'^You are (the )?', caseSensitive: false),
+                '',
+              )
+              .trim();
           return stripped.isEmpty ? null : stripped;
         }
       }
@@ -355,11 +361,9 @@ final class ClaudeWorkflowResolver {
     return null;
   }
 
-  static List<AiMessage> _synthesizeRunSummary(
-    Map<String, Object?> runRecord,
-  ) {
-    final summary = _trimmed(runRecord['summary']) ??
-        _nestedSummary(runRecord['result']);
+  static List<AiMessage> _synthesizeRunSummary(Map<String, Object?> runRecord) {
+    final summary =
+        _trimmed(runRecord['summary']) ?? _nestedSummary(runRecord['result']);
     if (summary == null || summary.isEmpty) return const [];
     return [
       AiMessage(

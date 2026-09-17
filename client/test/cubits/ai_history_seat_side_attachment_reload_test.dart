@@ -9,10 +9,10 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/subagent_side_resolver.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/ai_history_loader.dart';
-import 'package:teampilot/services/session/ai_history_locator.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
-import 'package:teampilot/services/session/session_history_context_builder.dart';
+import 'package:teampilot/services/session/history/ai_history_loader.dart';
+import 'package:teampilot/services/session/history/ai_history_locator.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
+import 'package:teampilot/services/session/history/session_history_context_builder.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 
@@ -54,10 +54,7 @@ class _ScriptedLocator extends AiHistoryLocator {
 /// mimics a running sub-agent appending its own jsonl while the parent stays
 /// frozen.
 class _MutableSideResolver implements SubagentSideResolver {
-  _MutableSideResolver({
-    required this.messages,
-    required this.token,
-  });
+  _MutableSideResolver({required this.messages, required this.token});
 
   final List<AiMessage> Function() messages;
   final String Function() token;
@@ -109,7 +106,7 @@ void main() {
       folders: const [WorkspaceFolder(path: '/work/project')],
       createdAt: 0,
     ),
-                                                          usesPosixPaths: false,
+    usesPosixPaths: false,
   );
 
   List<AiMessage> parentWithAgentCall() => [
@@ -174,84 +171,55 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  test('side-only growth on an unchanged parent bumps the attachment epoch',
-      () async {
-    await seat.load(
-      session: session(),
-      memberId: '',
-      launchContext: ctx(),
-    );
-    expect(seat.state.status, AiHistoryViewStatus.ready);
-    await seat.loadSubagentAttachment('toolu_agent');
-    expect(
-      seat.subagentAttachments['toolu_agent']!.messages,
-      hasLength(1),
-    );
-    final epochBefore = seat.state.subagentAttachmentEpoch;
+  test(
+    'side-only growth on an unchanged parent bumps the attachment epoch',
+    () async {
+      await seat.load(session: session(), memberId: '', launchContext: ctx());
+      expect(seat.state.status, AiHistoryViewStatus.ready);
+      await seat.loadSubagentAttachment('toolu_agent');
+      expect(seat.subagentAttachments['toolu_agent']!.messages, hasLength(1));
+      final epochBefore = seat.state.subagentAttachmentEpoch;
 
-    // Running sub-agent appends its own transcript; parent + cache token stay
-    // frozen. softReload must pick up the grown attachment and bump the epoch
-    // so the preview overlay rebuilds.
-    sideMessages = side(2);
-    sideToken = 'fp-2';
-    await seat.softReload();
+      // Running sub-agent appends its own transcript; parent + cache token stay
+      // frozen. softReload must pick up the grown attachment and bump the epoch
+      // so the preview overlay rebuilds.
+      sideMessages = side(2);
+      sideToken = 'fp-2';
+      await seat.softReload();
 
-    expect(seat.state.subagentAttachmentEpoch, epochBefore + 1);
-    expect(
-      seat.subagentAttachments['toolu_agent']!.messages,
-      hasLength(2),
-    );
+      expect(seat.state.subagentAttachmentEpoch, epochBefore + 1);
+      expect(seat.subagentAttachments['toolu_agent']!.messages, hasLength(2));
 
-    // Nothing changed → no epoch churn.
-    final epochStable = seat.state.subagentAttachmentEpoch;
-    await seat.softReload();
-    expect(seat.state.subagentAttachmentEpoch, epochStable);
-  });
+      // Nothing changed → no epoch churn.
+      final epochStable = seat.state.subagentAttachmentEpoch;
+      await seat.softReload();
+      expect(seat.state.subagentAttachmentEpoch, epochStable);
+    },
+  );
 
   test(
     'load refresh after side dirty keeps materialized seat attachments',
     () async {
-      await seat.load(
-        session: session(),
-        memberId: '',
-        launchContext: ctx(),
-      );
+      await seat.load(session: session(), memberId: '', launchContext: ctx());
       await seat.loadSubagentAttachment('toolu_agent');
-      expect(
-        seat.subagentAttachments['toolu_agent']!.messages,
-        hasLength(1),
-      );
+      expect(seat.subagentAttachments['toolu_agent']!.messages, hasLength(1));
 
       sideMessages = side(2);
       sideToken = 'fp-2';
       await seat.softReload();
-      expect(
-        seat.subagentAttachments['toolu_agent']!.messages,
-        hasLength(2),
-      );
+      expect(seat.subagentAttachments['toolu_agent']!.messages, hasLength(2));
 
       // Parent token still frozen. A subsequent seat.load refresh must not
       // replace seat-owned lazy previews with the loader's empty map.
-      await seat.load(
-        session: session(),
-        memberId: '',
-        launchContext: ctx(),
-      );
-      expect(
-        seat.subagentAttachments['toolu_agent']!.messages,
-        hasLength(2),
-      );
+      await seat.load(session: session(), memberId: '', launchContext: ctx());
+      expect(seat.subagentAttachments['toolu_agent']!.messages, hasLength(2));
     },
   );
 
   test(
     'failed side resolve during dirty softReload keeps prior preview',
     () async {
-      await seat.load(
-        session: session(),
-        memberId: '',
-        launchContext: ctx(),
-      );
+      await seat.load(session: session(), memberId: '', launchContext: ctx());
       await seat.loadSubagentAttachment('toolu_agent');
       final prior = seat.subagentAttachments['toolu_agent']!;
       expect(prior.messages, hasLength(1));
@@ -260,14 +228,8 @@ void main() {
       sideResolver.failResolve = true;
       await seat.softReload();
 
-      expect(
-        seat.subagentAttachments['toolu_agent'],
-        same(prior),
-      );
-      expect(
-        seat.subagentAttachments['toolu_agent']!.messages,
-        hasLength(1),
-      );
+      expect(seat.subagentAttachments['toolu_agent'], same(prior));
+      expect(seat.subagentAttachments['toolu_agent']!.messages, hasLength(1));
     },
   );
 }

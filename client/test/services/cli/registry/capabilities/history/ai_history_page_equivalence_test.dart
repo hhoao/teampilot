@@ -16,8 +16,8 @@ import 'package:teampilot/services/cli/opencode/capabilities/sqlite_worker_pool.
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/jsonl_transcript_page_reader.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
+import 'package:teampilot/services/session/history/jsonl_transcript_page_reader.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import '../../../../../support/test_runtime_context.dart';
 
@@ -104,7 +104,8 @@ void main() {
     expect(
       page,
       isNotNull,
-      reason: 'production paging must stat/read via ctx.fs, not testHomeStorage.fs',
+      reason:
+          'production paging must stat/read via ctx.fs, not testHomeStorage.fs',
     );
     expect(sameMessageListContent(page!.messages, full), isTrue);
     expect(page.messages.map((m) => m.id), full.map((m) => m.id));

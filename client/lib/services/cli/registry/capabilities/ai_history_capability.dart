@@ -1,13 +1,13 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
 import '../../../io/filesystem.dart';
-import '../../../session/ai_history_page.dart';
-import '../../../session/session_history_context.dart';
+import '../../../session/history/ai_history_page.dart';
+import '../../../session/history/session_history_context.dart';
 import '../cli_capability.dart';
 import 'history/subagent_side_resolver.dart';
 import 'history/tool_result_enricher.dart';
 
-export '../../../session/ai_history_page.dart';
+export '../../../session/history/ai_history_page.dart';
 
 /// Optional paged source for transcript histories.
 abstract interface class AiTranscriptPageReader {
@@ -162,8 +162,9 @@ abstract interface class AiHistoryCapability implements CliCapability {
   /// probe (`projects/` / `workspaces/`). Post-captured JSONL CLIs (Cursor,
   /// Codex) whose transcripts sit outside that layout must return the same
   /// path their [pageReader] / locate use.
-  Future<String?> resolveParentTranscriptPath(SessionHistoryContext ctx) async =>
-      null;
+  Future<String?> resolveParentTranscriptPath(
+    SessionHistoryContext ctx,
+  ) async => null;
 
   /// Cheap live cache token for the loader's seat cache. Null → the loader
   /// falls back to its default path token ([resolveParentTranscriptPath] or

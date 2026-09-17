@@ -13,13 +13,13 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/ai_history_live_refresh_controller.dart';
-import 'package:teampilot/services/session/ai_history_loader.dart';
-import 'package:teampilot/services/session/ai_history_locator.dart';
-import 'package:teampilot/services/session/ai_history_watch_meta.dart';
-import 'package:teampilot/services/session/history_seat_key.dart';
-import 'package:teampilot/services/session/session_history_context.dart';
-import 'package:teampilot/services/session/session_history_context_builder.dart';
+import 'package:teampilot/services/session/history/ai_history_live_refresh_controller.dart';
+import 'package:teampilot/services/session/history/ai_history_loader.dart';
+import 'package:teampilot/services/session/history/ai_history_locator.dart';
+import 'package:teampilot/services/session/history/ai_history_watch_meta.dart';
+import 'package:teampilot/services/session/history/history_seat_key.dart';
+import 'package:teampilot/services/session/history/session_history_context.dart';
+import 'package:teampilot/services/session/history/session_history_context_builder.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/fake_ai_history_registry.dart';
@@ -50,7 +50,7 @@ void main() {
       folders: s.folders,
       createdAt: 0,
     ),
-                                                                            usesPosixPaths: false,
+    usesPosixPaths: false,
   );
 
   List<AiMessage> messages(int count, {String prefix = 'm'}) => [
@@ -62,10 +62,8 @@ void main() {
       ),
   ];
 
-  AiHistorySeat seatFor(AppSession session) => cubit.ensureSeat(
-    sessionId: session.sessionId,
-    selectedMemberId: '',
-  );
+  AiHistorySeat seatFor(AppSession session) =>
+      cubit.ensureSeat(sessionId: session.sessionId, selectedMemberId: '');
 
   AiHistoryLiveRefreshController buildController({
     AiHistorySeat? seat,
@@ -193,15 +191,9 @@ void main() {
     await pumpEventQueue();
 
     expect(seatA.state.totalMessageCount, 3);
-    expect(
-      seatA.runtime.messages.any((m) => m.id == 'a-tip'),
-      isTrue,
-    );
+    expect(seatA.runtime.messages.any((m) => m.id == 'a-tip'), isTrue);
     expect(seatB.state.totalMessageCount, 2);
-    expect(
-      seatB.runtime.messages.map((m) => m.id).toList(),
-      bIdsBefore,
-    );
+    expect(seatB.runtime.messages.map((m) => m.id).toList(), bIdsBefore);
 
     await controller.stop();
   });
@@ -296,93 +288,101 @@ void main() {
     },
   );
 
-  test('second change while reload in flight coalesces to one follow-up', () async {
-    final session = simpleSession();
-    messagesBySession[session.sessionId] = messages(1);
-    locator.emitBundle = true;
-    await cubit.load(
-      session: session,
-      memberId: '',
-      launchContext: launchCtx(session),
-    );
+  test(
+    'second change while reload in flight coalesces to one follow-up',
+    () async {
+      final session = simpleSession();
+      messagesBySession[session.sessionId] = messages(1);
+      locator.emitBundle = true;
+      await cubit.load(
+        session: session,
+        memberId: '',
+        launchContext: launchCtx(session),
+      );
 
-    final gate = Completer<void>();
-    var softReloadPasses = 0;
-    locator.onLocate = () async {
-      softReloadPasses++;
-      // Gate every signal-driven locate so we can fire coalesced changes while
-      // the first post-change softReload is in flight. start()'s initial
-      // refresh hits the token cache and does not locate.
-      await gate.future;
-      return _dummyBundle(session.sessionId);
-    };
+      final gate = Completer<void>();
+      var softReloadPasses = 0;
+      locator.onLocate = () async {
+        softReloadPasses++;
+        // Gate every signal-driven locate so we can fire coalesced changes while
+        // the first post-change softReload is in flight. start()'s initial
+        // refresh hits the token cache and does not locate.
+        await gate.future;
+        return _dummyBundle(session.sessionId);
+      };
 
-    final controller = buildController(seat: seatFor(session));
-    await controller.start();
-    expect(softReloadPasses, 0);
-    expect(lastSignal!.started, isTrue);
+      final controller = buildController(seat: seatFor(session));
+      await controller.start();
+      expect(softReloadPasses, 0);
+      expect(lastSignal!.started, isTrue);
 
-    messagesBySession[session.sessionId] = messages(2);
-    lastSignal!.fire();
-    await pumpEventQueue();
-    expect(softReloadPasses, 1); // in flight, waiting on gate
-
-    messagesBySession[session.sessionId] = messages(4);
-    lastSignal!.fire();
-    lastSignal!.fire();
-    await pumpEventQueue();
-    // Coalesced — still only one in-flight follow-up.
-    expect(softReloadPasses, 1);
-
-    gate.complete();
-    await pumpEventQueue();
-    // One coalesced follow-up after the in-flight reload finishes.
-    expect(softReloadPasses, 2);
-    expect(cubit.state.totalMessageCount, 4);
-
-    await controller.stop();
-  });
-
-
-  test('reloads are throttled to min interval under continuous change', () async {
-    final session = simpleSession();
-    messagesBySession[session.sessionId] = messages(1);
-    locator.emitBundle = true;
-    await cubit.load(
-      session: session,
-      memberId: '',
-      launchContext: launchCtx(session),
-    );
-
-    var softReloadPasses = 0;
-    locator.onLocate = () async {
-      softReloadPasses++;
-      return _dummyBundle(session.sessionId);
-    };
-
-    final controller = buildController(
-      seat: seatFor(session),
-      reloadMinInterval: const Duration(seconds: 1),
-    );
-    await controller.start();
-    expect(softReloadPasses, 0);
-
-    for (var i = 0; i < 5; i++) {
-      messagesBySession[session.sessionId] = messages(i + 2);
+      messagesBySession[session.sessionId] = messages(2);
       lastSignal!.fire();
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-    }
-    expect(softReloadPasses, lessThanOrEqualTo(2),
-        reason: '100ms 内 5 次变更被节流为至多 2 次 reload(1s 间隔)');
+      await pumpEventQueue();
+      expect(softReloadPasses, 1); // in flight, waiting on gate
 
-    // 节流窗口结束后,排队中的变更合并为一次 reload 并送达最新内容。
-    await Future<void>.delayed(const Duration(milliseconds: 1100));
-    await pumpEventQueue();
-    expect(softReloadPasses, 2);
-    expect(cubit.state.totalMessageCount, 6);
+      messagesBySession[session.sessionId] = messages(4);
+      lastSignal!.fire();
+      lastSignal!.fire();
+      await pumpEventQueue();
+      // Coalesced — still only one in-flight follow-up.
+      expect(softReloadPasses, 1);
 
-    await controller.stop();
-  });
+      gate.complete();
+      await pumpEventQueue();
+      // One coalesced follow-up after the in-flight reload finishes.
+      expect(softReloadPasses, 2);
+      expect(cubit.state.totalMessageCount, 4);
+
+      await controller.stop();
+    },
+  );
+
+  test(
+    'reloads are throttled to min interval under continuous change',
+    () async {
+      final session = simpleSession();
+      messagesBySession[session.sessionId] = messages(1);
+      locator.emitBundle = true;
+      await cubit.load(
+        session: session,
+        memberId: '',
+        launchContext: launchCtx(session),
+      );
+
+      var softReloadPasses = 0;
+      locator.onLocate = () async {
+        softReloadPasses++;
+        return _dummyBundle(session.sessionId);
+      };
+
+      final controller = buildController(
+        seat: seatFor(session),
+        reloadMinInterval: const Duration(seconds: 1),
+      );
+      await controller.start();
+      expect(softReloadPasses, 0);
+
+      for (var i = 0; i < 5; i++) {
+        messagesBySession[session.sessionId] = messages(i + 2);
+        lastSignal!.fire();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+      expect(
+        softReloadPasses,
+        lessThanOrEqualTo(2),
+        reason: '100ms 内 5 次变更被节流为至多 2 次 reload(1s 间隔)',
+      );
+
+      // 节流窗口结束后,排队中的变更合并为一次 reload 并送达最新内容。
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      await pumpEventQueue();
+      expect(softReloadPasses, 2);
+      expect(cubit.state.totalMessageCount, 6);
+
+      await controller.stop();
+    },
+  );
 
   test('stop cancels signal and ignores late callbacks', () async {
     final session = simpleSession();
@@ -430,53 +430,56 @@ void main() {
     await controller.stop();
   });
 
-  test('null watch meta keeps signal; later meta softReloads and rearms', () async {
-    final session = simpleSession();
-    messagesBySession[session.sessionId] = messages(1);
-    locator.emitBundle = true;
-    await cubit.load(
-      session: session,
-      memberId: '',
-      launchContext: launchCtx(session),
-    );
-    expect(cubit.state.totalMessageCount, 1);
+  test(
+    'null watch meta keeps signal; later meta softReloads and rearms',
+    () async {
+      final session = simpleSession();
+      messagesBySession[session.sessionId] = messages(1);
+      locator.emitBundle = true;
+      await cubit.load(
+        session: session,
+        memberId: '',
+        launchContext: launchCtx(session),
+      );
+      expect(cubit.state.totalMessageCount, 1);
 
-    AiHistoryWatchMeta? meta;
-    var resolveCount = 0;
-    final controller = buildController(
-      seat: seatFor(session),
-      metaRetryInterval: const Duration(milliseconds: 20),
-      resolveWatchMeta: () async {
-        resolveCount++;
-        return meta;
-      },
-    );
-    await controller.start();
+      AiHistoryWatchMeta? meta;
+      var resolveCount = 0;
+      final controller = buildController(
+        seat: seatFor(session),
+        metaRetryInterval: const Duration(milliseconds: 20),
+        resolveWatchMeta: () async {
+          resolveCount++;
+          return meta;
+        },
+      );
+      await controller.start();
 
-    expect(lastSignal, isNotNull);
-    expect(lastSignal!.started, isTrue);
-    final firstSignal = lastSignal!;
-    expect(resolveCount, greaterThanOrEqualTo(1));
-    expect(cubit.state.totalMessageCount, 1);
+      expect(lastSignal, isNotNull);
+      expect(lastSignal!.started, isTrue);
+      final firstSignal = lastSignal!;
+      expect(resolveCount, greaterThanOrEqualTo(1));
+      expect(cubit.state.totalMessageCount, 1);
 
-    meta = const AiHistoryWatchMeta(
-      changeWatchRoot: '/proj',
-      cacheTokenPaths: ['/proj/a.jsonl'],
-    );
-    messagesBySession[session.sessionId] = messages(3);
+      meta = const AiHistoryWatchMeta(
+        changeWatchRoot: '/proj',
+        cacheTokenPaths: ['/proj/a.jsonl'],
+      );
+      messagesBySession[session.sessionId] = messages(3);
 
-    // Interval re-resolve (pre-locate) must find meta without a prior onChanged.
-    await Future<void>.delayed(const Duration(milliseconds: 80));
-    await pumpEventQueue();
+      // Interval re-resolve (pre-locate) must find meta without a prior onChanged.
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      await pumpEventQueue();
 
-    expect(resolveCount, greaterThan(1));
-    expect(cubit.state.totalMessageCount, 3);
-    expect(lastSignal, isNot(same(firstSignal)));
-    expect(lastSignal!.started, isTrue);
-    expect(firstSignal.stopped, isTrue);
+      expect(resolveCount, greaterThan(1));
+      expect(cubit.state.totalMessageCount, 3);
+      expect(lastSignal, isNot(same(firstSignal)));
+      expect(lastSignal!.started, isTrue);
+      expect(firstSignal.stopped, isTrue);
 
-    await controller.stop();
-  });
+      await controller.stop();
+    },
+  );
 
   test('null meta probes at fixed cadence without reload storm', () async {
     final session = simpleSession();
@@ -517,132 +520,128 @@ void main() {
     await controller.stop();
   });
 
-  test('resolveWatchMeta throw keeps last meta and drains coalesced queue', () async {
-    final session = simpleSession();
-    messagesBySession[session.sessionId] = messages(1);
-    locator.emitBundle = true;
-    await cubit.load(
-      session: session,
-      memberId: '',
-      launchContext: launchCtx(session),
-    );
-
-    const stableMeta = AiHistoryWatchMeta(
-      changeWatchRoot: '/proj',
-      cacheTokenPaths: ['/proj/a.jsonl'],
-    );
-    final resolveBlock = Completer<void>();
-    var resolveCount = 0;
-
-    final controller = buildController(
-      seat: seatFor(session),
-      resolveWatchMeta: () async {
-        resolveCount++;
-        if (resolveCount == 2) {
-          await resolveBlock.future;
-          throw StateError('resolve failed');
-        }
-        return stableMeta;
-      },
-    );
-    await controller.start();
-    expect(resolveCount, 1);
-    expect(cubit.state.totalMessageCount, 1);
-
-    lastSignal!.fire();
-    await pumpEventQueue();
-    expect(resolveCount, 2); // blocked before throw
-
-    messagesBySession[session.sessionId] = messages(4);
-    lastSignal!.fire(); // coalesce while resolve #2 is in flight
-    await pumpEventQueue();
-    expect(resolveCount, 2);
-
-    resolveBlock.complete();
-    await pumpEventQueue();
-    // finally must reschedule queued work; last good meta kept for closures.
-    expect(resolveCount, greaterThanOrEqualTo(3));
-    expect(cubit.state.totalMessageCount, 4);
-
-    await controller.stop();
-  });
-
   test(
-    'live change reveals late flush after turn-end chrome clears',
+    'resolveWatchMeta throw keeps last meta and drains coalesced queue',
     () async {
-      locator.emitBundle = true;
       final session = simpleSession();
-      messagesBySession[session.sessionId] = [
-        const AiMessage(
-          id: 'u-A',
-          role: AiRole.user,
-          parts: [AiTextPart(text: 'ask-A')],
-        ),
-        const AiMessage(
-          id: 'a-A',
-          role: AiRole.assistant,
-          parts: [AiTextPart(text: 'tools-A')],
-        ),
-      ];
+      messagesBySession[session.sessionId] = messages(1);
+      locator.emitBundle = true;
       await cubit.load(
         session: session,
         memberId: '',
         launchContext: launchCtx(session),
       );
-      final seat = seatFor(session);
-      expect(seat.state.totalMessageCount, 2);
 
-      // Simulate turn chrome clear without seat settle reload.
-      seat.enqueuePendingUser('ask-A');
-      seat.applyWorkingSessionSync(sessionWorking: true);
-      seat.applyWorkingSessionSync(sessionWorking: false);
-      await pumpEventQueue();
-      expect(seat.state.awaitingAssistant, isFalse);
+      const stableMeta = AiHistoryWatchMeta(
+        changeWatchRoot: '/proj',
+        cacheTokenPaths: ['/proj/a.jsonl'],
+      );
+      final resolveBlock = Completer<void>();
+      var resolveCount = 0;
 
       final controller = buildController(
-        seat: seat,
-        reloadMinInterval: Duration.zero,
+        seat: seatFor(session),
+        resolveWatchMeta: () async {
+          resolveCount++;
+          if (resolveCount == 2) {
+            await resolveBlock.future;
+            throw StateError('resolve failed');
+          }
+          return stableMeta;
+        },
       );
-      await controller.start(skipInitialRefresh: true);
+      await controller.start();
+      expect(resolveCount, 1);
+      expect(cubit.state.totalMessageCount, 1);
 
-      messagesBySession[session.sessionId] = [
-        const AiMessage(
-          id: 'u-A',
-          role: AiRole.user,
-          parts: [AiTextPart(text: 'ask-A')],
-        ),
-        const AiMessage(
-          id: 'a-A',
-          role: AiRole.assistant,
-          parts: [
-            AiTextPart(text: 'tools-A'),
-            AiTextPart(text: 'final-A'),
-          ],
-        ),
-      ];
       lastSignal!.fire();
       await pumpEventQueue();
+      expect(resolveCount, 2); // blocked before throw
 
-      expect(
-        seat.loadedMessages
-            .where((m) => m.role == AiRole.assistant)
-            .expand(
-              (m) => m.parts.whereType<AiTextPart>().map((p) => p.text),
-            ),
-        contains('final-A'),
-        reason: 'late flush must arrive via live softReload(force: false)',
-      );
+      messagesBySession[session.sessionId] = messages(4);
+      lastSignal!.fire(); // coalesce while resolve #2 is in flight
+      await pumpEventQueue();
+      expect(resolveCount, 2);
+
+      resolveBlock.complete();
+      await pumpEventQueue();
+      // finally must reschedule queued work; last good meta kept for closures.
+      expect(resolveCount, greaterThanOrEqualTo(3));
+      expect(cubit.state.totalMessageCount, 4);
+
       await controller.stop();
     },
   );
+
+  test('live change reveals late flush after turn-end chrome clears', () async {
+    locator.emitBundle = true;
+    final session = simpleSession();
+    messagesBySession[session.sessionId] = [
+      const AiMessage(
+        id: 'u-A',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'ask-A')],
+      ),
+      const AiMessage(
+        id: 'a-A',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: 'tools-A')],
+      ),
+    ];
+    await cubit.load(
+      session: session,
+      memberId: '',
+      launchContext: launchCtx(session),
+    );
+    final seat = seatFor(session);
+    expect(seat.state.totalMessageCount, 2);
+
+    // Simulate turn chrome clear without seat settle reload.
+    seat.enqueuePendingUser('ask-A');
+    seat.applyWorkingSessionSync(sessionWorking: true);
+    seat.applyWorkingSessionSync(sessionWorking: false);
+    await pumpEventQueue();
+    expect(seat.state.awaitingAssistant, isFalse);
+
+    final controller = buildController(
+      seat: seat,
+      reloadMinInterval: Duration.zero,
+    );
+    await controller.start(skipInitialRefresh: true);
+
+    messagesBySession[session.sessionId] = [
+      const AiMessage(
+        id: 'u-A',
+        role: AiRole.user,
+        parts: [AiTextPart(text: 'ask-A')],
+      ),
+      const AiMessage(
+        id: 'a-A',
+        role: AiRole.assistant,
+        parts: [
+          AiTextPart(text: 'tools-A'),
+          AiTextPart(text: 'final-A'),
+        ],
+      ),
+    ];
+    lastSignal!.fire();
+    await pumpEventQueue();
+
+    expect(
+      seat.loadedMessages
+          .where((m) => m.role == AiRole.assistant)
+          .expand((m) => m.parts.whereType<AiTextPart>().map((p) => p.text)),
+      contains('final-A'),
+      reason: 'late flush must arrive via live softReload(force: false)',
+    );
+    await controller.stop();
+  });
 }
 
 AiTranscriptBundle _dummyBundle([String sessionId = 'sess-a']) =>
     AiTranscriptBundle(
       adapterId: 'claude',
-      fragments: const [
-        AiTranscriptFragment(name: 'canned.jsonl', bytes: []),
-      ],
+      fragments: const [AiTranscriptFragment(name: 'canned.jsonl', bytes: [])],
       hints: {'sessionId': sessionId},
     );
 
@@ -704,9 +703,6 @@ class _FakeSignal implements TranscriptChangeSignalHandle {
 class _WatchableFs extends InMemoryFilesystem implements FsWatcher {
   @override
   FsTreeWatch watchTree(String path) {
-    return FsTreeWatch(
-      events: const Stream.empty(),
-      close: () async {},
-    );
+    return FsTreeWatch(events: const Stream.empty(), close: () async {});
   }
 }

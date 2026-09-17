@@ -2,9 +2,9 @@ import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/session/jsonl_decode_worker.dart';
-import 'package:teampilot/services/session/jsonl_page_worker.dart';
-import 'package:teampilot/services/session/jsonl_transcript_page_parser.dart';
+import 'package:teampilot/services/session/history/jsonl_decode_worker.dart';
+import 'package:teampilot/services/session/history/jsonl_page_worker.dart';
+import 'package:teampilot/services/session/history/jsonl_transcript_page_parser.dart';
 
 void main() {
   tearDown(() {
