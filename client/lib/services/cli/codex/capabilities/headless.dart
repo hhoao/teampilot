@@ -13,7 +13,7 @@ import '../../registry/launch/cli_headless_launch_context.dart';
 import '../../registry/launch/headless_launch_context_adapter.dart';
 import '../../registry/launch/user_extra_args_provider.dart';
 import 'permission_launch.dart';
-import 'workspace_access_launch.dart';
+import 'workspace_base_info.dart';
 import '../provider/codex_auth_artifacts.dart';
 import '../provider/codex_home_provisioner.dart';
 import '../provider/codex_official_provider.dart';
@@ -87,7 +87,7 @@ final class CodexHeadlessCapability
         args: ['-c', 'model_reasoning_effort=$effort'],
       );
     }
-    yield* const CodexWorkspaceAccessLaunch().buildLaunchArgs(interactive);
+    yield* const CodexWorkspaceBaseInfo().buildLaunchArgs(interactive);
     yield* const CodexPermissionLaunch().buildLaunchArgs(interactive);
     // `-` makes `codex exec` read the instructions from stdin.
     yield CliLaunchArgContribution(

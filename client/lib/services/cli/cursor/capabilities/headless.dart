@@ -20,7 +20,7 @@ import '../provider/cursor_provider_settings_resolver.dart';
 import 'model_launch.dart';
 import 'permission_launch.dart';
 import 'session_selection_launch.dart';
-import 'workspace_access_launch.dart';
+import 'workspace_base_info.dart';
 
 /// Cursor one-shot via `cursor-agent -p`.
 ///
@@ -76,7 +76,7 @@ final class CursorHeadlessCapability
       args: ['-p'],
     );
     yield* const CursorSessionSelectionLaunch().buildLaunchArgs(interactive);
-    yield* const CursorWorkspaceAccessLaunch().buildLaunchArgs(interactive);
+    yield* const CursorWorkspaceBaseInfo().buildLaunchArgs(interactive);
     yield* const CursorModelLaunch().buildLaunchArgs(interactive);
     yield* const CursorPermissionLaunch().buildLaunchArgs(interactive);
     // In stdin mode the piped content is the prompt; no positional prompt.

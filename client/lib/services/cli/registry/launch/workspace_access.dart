@@ -1,5 +1,3 @@
-import 'cli_launch_arg_contribution.dart';
-import 'cli_launch_arg_provider.dart';
 import 'cli_launch_context.dart';
 
 /// Normalized workspace access inputs shared by CLI-specific encodings.
@@ -37,24 +35,4 @@ String? _normalizeOptionalPath(String? path, {required bool useWslPaths}) {
   final trimmed = path?.trim() ?? '';
   if (trimmed.isEmpty) return null;
   return normalizePathForCli(trimmed, useWslPaths: useWslPaths);
-}
-
-/// Base contract for CLI-specific encodings of workspace access.
-abstract base class WorkspaceAccessArgProvider implements CliLaunchArgProvider {
-  const WorkspaceAccessArgProvider();
-
-  /// Encodes the normalized primary and additional workspace directories.
-  Iterable<CliLaunchArgContribution> buildWorkspaceAccessArgs(
-    CliLaunchContext context,
-    WorkspaceAccess access,
-  );
-
-  @override
-  Iterable<CliLaunchArgContribution> buildLaunchArgs(
-    CliLaunchContext context,
-  ) sync* {
-    final access = WorkspaceAccess.fromContext(context);
-    if (access.isEmpty) return;
-    yield* buildWorkspaceAccessArgs(context, access);
-  }
 }

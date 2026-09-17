@@ -7,7 +7,7 @@ import '../registry/cli_tool_definition.dart';
 import 'capabilities/team_behavior.dart';
 import 'capabilities/native_commands.dart';
 import 'capabilities/session_selection_launch.dart';
-import 'capabilities/workspace_access_launch.dart';
+import 'capabilities/workspace_base_info.dart';
 import 'capabilities/model_launch.dart';
 import 'capabilities/permission_launch.dart';
 import 'capabilities/prompt_launch.dart';
@@ -40,7 +40,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   const FlashskyaiCliTool({
     this.teamBehavior = const FlashskyaiTeamBehavior(),
     this.sessionSelection = const FlashskyaiSessionSelectionLaunch(),
-    this.workspaceAccess = const FlashskyaiWorkspaceAccessLaunch(),
+    this.workspaceBaseInfo = const FlashskyaiWorkspaceBaseInfo(),
     this.modelLaunch = const FlashskyaiModelLaunch(),
     this.launchSecurity = const FullAccessOnlyCliLaunchSecurityCapability(),
     this.permissionLaunch = const FlashskyaiPermissionLaunch(),
@@ -75,7 +75,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
 
   final TeamBehaviorCapability teamBehavior;
   final FlashskyaiSessionSelectionLaunch sessionSelection;
-  final FlashskyaiWorkspaceAccessLaunch workspaceAccess;
+  final FlashskyaiWorkspaceBaseInfo workspaceBaseInfo;
   final FlashskyaiModelLaunch modelLaunch;
   final CliLaunchSecurityCapability launchSecurity;
   final FlashskyaiPermissionLaunch permissionLaunch;
@@ -99,7 +99,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   Iterable<CliCapability> get capabilities => [
     teamBehavior,
     sessionSelection,
-    workspaceAccess,
+    workspaceBaseInfo,
     modelLaunch,
     launchSecurity,
     permissionLaunch,

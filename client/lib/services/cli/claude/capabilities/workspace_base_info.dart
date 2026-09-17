@@ -1,9 +1,10 @@
+import '../../registry/capabilities/workspace_base_info_capability.dart';
 import '../../registry/launch/cli_launch_arg_contribution.dart';
 import '../../registry/launch/cli_launch_context.dart';
-import '../../registry/launch/workspace_access_arg_provider.dart';
+import '../../registry/launch/workspace_access.dart';
 
-final class ClaudeWorkspaceAccessLaunch extends WorkspaceAccessArgProvider {
-  const ClaudeWorkspaceAccessLaunch();
+final class ClaudeWorkspaceBaseInfo extends WorkspaceBaseInfoCapabilityBase {
+  const ClaudeWorkspaceBaseInfo();
 
   @override
   Iterable<CliLaunchArgContribution> buildWorkspaceAccessArgs(

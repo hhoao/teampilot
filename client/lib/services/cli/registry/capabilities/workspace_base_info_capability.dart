@@ -1,5 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_targets.dart';
+
+import '../../../resource/contribution/prompt_document.dart';
+import '../../../resource/contribution/resource_origin.dart';
+import '../../../resource/providers/prompt_contribution_provider.dart';
+import '../cli_capability.dart';
+import '../launch/cli_launch_arg_contribution.dart';
+import '../launch/cli_launch_arg_provider.dart';
+import '../launch/cli_launch_context.dart';
+import '../launch/workspace_access.dart';
 
 @immutable
 class WorkspaceRemoteFolderInfo {
@@ -60,7 +71,9 @@ class WorkspaceSeatSnapshot {
 
 List<WorkspaceRemoteFolderInfo> workspaceRemoteFoldersFromTargets(
   Iterable<SessionSshMcpTarget> targets,
-) => [for (final target in targets) WorkspaceRemoteFolderInfo.fromTarget(target)];
+) => [
+  for (final target in targets) WorkspaceRemoteFolderInfo.fromTarget(target),
+];
 
 String composeWorkspaceBaseInfoPrompt(WorkspaceSeatSnapshot snapshot) {
   final extras = [
@@ -109,4 +122,64 @@ String composeWorkspaceBaseInfoPrompt(WorkspaceSeatSnapshot snapshot) {
     if (trimmed.isNotEmpty) sections.add(trimmed);
   }
   return sections.join('\n\n');
+}
+
+const workspaceBaseInfoProviderId = 'workspace-base-info';
+
+abstract interface class WorkspaceBaseInfoCapability
+    implements
+        CliCapability,
+        CliLaunchArgProvider,
+        PromptContributionProvider {}
+
+abstract base class WorkspaceBaseInfoCapabilityBase
+    implements WorkspaceBaseInfoCapability {
+  const WorkspaceBaseInfoCapabilityBase();
+
+  @override
+  String get providerId => workspaceBaseInfoProviderId;
+
+  Iterable<CliLaunchArgContribution> buildWorkspaceAccessArgs(
+    CliLaunchContext context,
+    WorkspaceAccess access,
+  );
+
+  @override
+  Iterable<CliLaunchArgContribution> buildLaunchArgs(CliLaunchContext context) {
+    final access = WorkspaceAccess.fromContext(context);
+    if (access.isEmpty) return const [];
+    return buildWorkspaceAccessArgs(context, access);
+  }
+
+  @override
+  FutureOr<Iterable<PromptContribution>> provide(
+    PromptProviderContext context,
+  ) {
+    final extras = [
+      for (final directory in context.additionalDirectories)
+        if (directory.trim().isNotEmpty) directory.trim(),
+    ];
+    final snapshot = WorkspaceSeatSnapshot(
+      sameHostExtraDirs: extras,
+      sshMcpInjected: false,
+      remoteFolders: const [],
+      customPromptSections: const [],
+    );
+    final content = composeWorkspaceBaseInfoPrompt(snapshot);
+    if (content.isEmpty) return const [];
+    return [
+      PromptContribution(
+        id: workspaceBaseInfoProviderId,
+        title: 'Workspace',
+        content: content,
+        scope: PromptScope.workspace,
+        mergeRole: PromptMergeRole.append,
+        origin: const ContributionOrigin(
+          providerId: workspaceBaseInfoProviderId,
+          kind: ResourceOriginKind.cliBuiltIn,
+          sourceId: workspaceBaseInfoProviderId,
+        ),
+      ),
+    ];
+  }
 }

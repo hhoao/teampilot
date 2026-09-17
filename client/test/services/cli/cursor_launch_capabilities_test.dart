@@ -4,7 +4,7 @@ import 'package:teampilot/services/cli/cursor/capabilities/model_launch.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/permission_launch.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/session_selection_launch.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/team_behavior.dart';
-import 'package:teampilot/services/cli/cursor/capabilities/workspace_access_launch.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/workspace_base_info.dart';
 import 'package:teampilot/services/cli/cursor/cursor_tool.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_launch_security_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
@@ -205,7 +205,7 @@ void main() {
 
       expect(providers, contains(isA<CursorTeamBehavior>()));
       expect(providers, contains(isA<CursorSessionSelectionLaunch>()));
-      expect(providers, contains(isA<CursorWorkspaceAccessLaunch>()));
+      expect(providers, contains(isA<CursorWorkspaceBaseInfo>()));
       expect(providers, contains(isA<CursorModelLaunch>()));
       expect(providers, contains(isA<CursorPermissionLaunch>()));
       expect(providers, contains(isA<UserExtraArgsProvider>()));

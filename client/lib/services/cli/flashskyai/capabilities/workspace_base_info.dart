@@ -1,9 +1,11 @@
+import '../../registry/capabilities/workspace_base_info_capability.dart';
 import '../../registry/launch/cli_launch_arg_contribution.dart';
 import '../../registry/launch/cli_launch_context.dart';
-import '../../registry/launch/workspace_access_arg_provider.dart';
+import '../../registry/launch/workspace_access.dart';
 
-final class CursorWorkspaceAccessLaunch extends WorkspaceAccessArgProvider {
-  const CursorWorkspaceAccessLaunch();
+final class FlashskyaiWorkspaceBaseInfo
+    extends WorkspaceBaseInfoCapabilityBase {
+  const FlashskyaiWorkspaceBaseInfo();
 
   @override
   Iterable<CliLaunchArgContribution> buildWorkspaceAccessArgs(
@@ -13,15 +15,14 @@ final class CursorWorkspaceAccessLaunch extends WorkspaceAccessArgProvider {
     final args = <String>[];
     final workingDirectory = access.workingDirectory;
     if (workingDirectory != null) {
-      args.addAll(['--workspace', workingDirectory]);
+      args.addAll(['--dir', workingDirectory]);
     }
     for (final directory in access.additionalDirectories) {
       args.addAll(['--add-dir', directory]);
     }
-
     return [
       CliLaunchArgContribution(
-        key: 'cursor-workspace-access',
+        key: 'flashskyai-workspace-access',
         phase: LaunchArgPhase.workspace,
         args: args,
       ),

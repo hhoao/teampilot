@@ -1,9 +1,10 @@
+import '../../registry/capabilities/workspace_base_info_capability.dart';
 import '../../registry/launch/cli_launch_arg_contribution.dart';
 import '../../registry/launch/cli_launch_context.dart';
-import '../../registry/launch/workspace_access_arg_provider.dart';
+import '../../registry/launch/workspace_access.dart';
 
-final class CodexWorkspaceAccessLaunch extends WorkspaceAccessArgProvider {
-  const CodexWorkspaceAccessLaunch();
+final class CursorWorkspaceBaseInfo extends WorkspaceBaseInfoCapabilityBase {
+  const CursorWorkspaceBaseInfo();
 
   @override
   Iterable<CliLaunchArgContribution> buildWorkspaceAccessArgs(
@@ -13,7 +14,7 @@ final class CodexWorkspaceAccessLaunch extends WorkspaceAccessArgProvider {
     final args = <String>[];
     final workingDirectory = access.workingDirectory;
     if (workingDirectory != null) {
-      args.addAll(['--cd', workingDirectory]);
+      args.addAll(['--workspace', workingDirectory]);
     }
     for (final directory in access.additionalDirectories) {
       args.addAll(['--add-dir', directory]);
@@ -21,7 +22,7 @@ final class CodexWorkspaceAccessLaunch extends WorkspaceAccessArgProvider {
 
     return [
       CliLaunchArgContribution(
-        key: 'codex-workspace-access',
+        key: 'cursor-workspace-access',
         phase: LaunchArgPhase.workspace,
         args: args,
       ),

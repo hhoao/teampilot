@@ -3,7 +3,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/codex/capabilities/model_launch.dart';
 import 'package:teampilot/services/cli/codex/capabilities/permission_launch.dart';
 import 'package:teampilot/services/cli/codex/capabilities/session_selection_launch.dart';
-import 'package:teampilot/services/cli/codex/capabilities/workspace_access_launch.dart';
+import 'package:teampilot/services/cli/codex/capabilities/workspace_base_info.dart';
 import 'package:teampilot/services/cli/codex/codex_tool.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_launch_security_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
@@ -201,7 +201,7 @@ void main() {
     final providers = tool.capabilities.whereType<CliLaunchArgProvider>();
 
     expect(providers, contains(isA<CodexSessionSelectionLaunch>()));
-    expect(providers, contains(isA<CodexWorkspaceAccessLaunch>()));
+    expect(providers, contains(isA<CodexWorkspaceBaseInfo>()));
     expect(providers, contains(isA<CodexModelLaunch>()));
     expect(providers, contains(isA<CodexPermissionLaunch>()));
     expect(providers, contains(isA<UserExtraArgsProvider>()));

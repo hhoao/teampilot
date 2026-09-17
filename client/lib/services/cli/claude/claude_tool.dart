@@ -7,7 +7,7 @@ import '../registry/cli_tool_definition.dart';
 import 'capabilities/team_behavior.dart';
 import 'capabilities/native_commands.dart';
 import 'capabilities/session_selection_launch.dart';
-import 'capabilities/workspace_access_launch.dart';
+import 'capabilities/workspace_base_info.dart';
 import 'capabilities/model_launch.dart';
 import 'capabilities/permission_launch.dart';
 import 'capabilities/prompt_launch.dart';
@@ -40,7 +40,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   ClaudeCliTool({
     this.teamBehavior = const ClaudeTeamBehavior(),
     this.sessionSelection = const ClaudeSessionSelectionLaunch(),
-    this.workspaceAccess = const ClaudeWorkspaceAccessLaunch(),
+    this.workspaceBaseInfo = const ClaudeWorkspaceBaseInfo(),
     this.modelLaunch = const ClaudeModelLaunch(),
     this.launchSecurity = const FullAccessOnlyCliLaunchSecurityCapability(),
     this.permissionLaunch = const ClaudePermissionLaunch(),
@@ -80,7 +80,7 @@ final class ClaudeCliTool implements CliToolDefinition {
 
   final TeamBehaviorCapability teamBehavior;
   final ClaudeSessionSelectionLaunch sessionSelection;
-  final ClaudeWorkspaceAccessLaunch workspaceAccess;
+  final ClaudeWorkspaceBaseInfo workspaceBaseInfo;
   final ClaudeModelLaunch modelLaunch;
   final CliLaunchSecurityCapability launchSecurity;
   final ClaudePermissionLaunch permissionLaunch;
@@ -103,7 +103,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   Iterable<CliCapability> get capabilities => [
     teamBehavior,
     sessionSelection,
-    workspaceAccess,
+    workspaceBaseInfo,
     modelLaunch,
     launchSecurity,
     permissionLaunch,
