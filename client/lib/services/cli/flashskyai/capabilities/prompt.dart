@@ -29,7 +29,6 @@ final class FlashskyaiPromptCapability
               TeamMemberNaming.isTeamLead(member) &&
               ctx.forceTeamLeadDelegateMode,
           mixed: ctx.mixed,
-          additionalDirectories: const [],
         ),
         origin: const ContributionOrigin(
           providerId: toolId,

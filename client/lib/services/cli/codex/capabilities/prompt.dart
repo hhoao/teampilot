@@ -29,7 +29,6 @@ final class CodexPromptCapability
           member: member,
           forceTeamLeadDelegateMode: ctx.forceTeamLeadDelegateMode,
           mixed: ctx.mixed,
-          additionalDirectories: const [],
         ).trim(),
         origin: const ContributionOrigin(
           providerId: toolId,

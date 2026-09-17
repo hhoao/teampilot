@@ -5,8 +5,8 @@ import '../../../../services/session/member_role_provision.dart';
 import '../../../launch/work_plane_paths.dart';
 import '../../../resource/contribution/resource_origin.dart';
 
-/// opencode 把成员 prompt（role + workspace dirs 章节）写入会话配置目录的
-/// `AGENTS.md`；opencode 从 config dir 自动加载为全局指令，无 flag 传输。
+/// opencode 把成员 prompt 写入会话配置目录的 `AGENTS.md`；opencode 从
+/// config dir 自动加载为全局指令，无 flag 传输。
 final class OpencodePromptCapability
     implements PromptCapability, PromptContributionProvider {
   const OpencodePromptCapability();
@@ -27,20 +27,13 @@ final class OpencodePromptCapability
             mixed: ctx.mixed,
           ).trim()
         : '';
-    final dirsPrompt = MemberRoleProvision.composeWorkspaceDirectoriesPrompt(
-      ctx.additionalDirectories,
-    ).trim();
-    final body = <String>[
-      if (roleBody.isNotEmpty) roleBody,
-      if (dirsPrompt.isNotEmpty) dirsPrompt,
-    ].join('\n\n');
-    if (body.isEmpty) return const [];
+    if (roleBody.isEmpty) return const [];
     return [
       PromptContribution(
         id: 'opencode-member-role',
         title: 'Member role',
         scope: PromptScope.member,
-        content: body,
+        content: roleBody,
         origin: const ContributionOrigin(
           providerId: toolId,
           kind: ResourceOriginKind.cliBuiltIn,

@@ -8,6 +8,7 @@ import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/session/launch_command_builder.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/prompt.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/workspace_base_info.dart';
 import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';
 import 'package:teampilot/services/resource/assemblers/prompt_assembler.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -133,8 +134,8 @@ void main() {
     },
   );
 
-  test('OpencodePromptCapability provider includes workspace directories '
-      'section and mixed addenda matching materialize', () async {
+  test('OpencodePromptCapability provider includes mixed addenda matching '
+      'materialize without workspace directories', () async {
     const member = TeamMemberConfig(
       id: 'm1',
       name: 'Member',
@@ -149,9 +150,10 @@ void main() {
         additionalDirectories: ['/abs/missing/repo'],
       ),
     );
-    expect(specs.single.content, contains('## Workspace directories'));
-    expect(specs.single.content, contains('- /abs/missing/repo'));
+    expect(specs.single.content, contains('You are the reviewer.'));
     expect(specs.single.content, contains('Multi-agent teammate'));
+    expect(specs.single.content, isNot(contains('## Workspace directories')));
+    expect(specs.single.content, isNot(contains('- /abs/missing/repo')));
   });
 
   test('OpencodePromptCapability writes role + dirs into AGENTS.md', () async {
@@ -360,6 +362,9 @@ Future<PromptDocument> _document({
       mixed: mixed,
       additionalDirectories: additionalDirectories,
     ),
-    providers: [const OpencodePromptCapability()],
+    providers: const [
+      OpencodePromptCapability(),
+      OpencodeWorkspaceBaseInfo(),
+    ],
   )).document;
 }

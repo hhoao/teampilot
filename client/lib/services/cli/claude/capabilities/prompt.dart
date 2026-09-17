@@ -33,7 +33,6 @@ final class ClaudePromptCapability
               TeamMemberNaming.isTeamLead(member) &&
               ctx.forceTeamLeadDelegateMode,
           mixed: ctx.mixed,
-          additionalDirectories: const [],
         ),
         origin: const ContributionOrigin(
           providerId: toolId,

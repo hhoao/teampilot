@@ -41,7 +41,6 @@ final class CursorPromptCapability
           forceTeamLeadDelegateMode: ctx.forceTeamLeadDelegateMode,
           mixed: ctx.mixed,
           pushDelivery: ctx.pushDelivery,
-          additionalDirectories: const [],
         ).trim(),
         origin: const ContributionOrigin(
           providerId: 'cursor',
