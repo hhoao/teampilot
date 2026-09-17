@@ -10,69 +10,69 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/launch/session_default_materializer.dart';
-import 'package:teampilot/services/launch/session_launch_workspace_index.dart';
+import 'package:teampilot/services/launch/session/session_default_materializer.dart';
+import 'package:teampilot/services/launch/session/session_launch_workspace_index.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
   group('SessionDefaultMaterializer', () {
-    test('personal session patches the snapshot without a full reload', () async {
-      final workspace = Workspace(
-        workspaceId: 'ws-1',
-        folders: const [WorkspaceFolder(path: '/proj')],
-        createdAt: 1,
-        updatedAt: 1,
-      );
-      final host = _MaterializeHost(ChatState(workspaces: [workspace]));
-      final openedSessions = <String>[];
-      final materializer = SessionDefaultMaterializer(
-        host: host,
-        openSession: (request) async {
-          openedSessions.add(request.session.sessionId);
-          return SessionOpenStatus.opened;
-        },
-        workspaceIndex: () => SessionLaunchWorkspaceIndex(
-          workspaces: host.state.workspaces,
-          sessions: host.state.sessions,
-                                                           usesPosixPaths: false,
-        ),
-        isTabsEmpty: () => true,
-        activeBucketKey: () => 'ws-1',
-      );
-      final repo = _MaterializeRepo();
-      final newSession = AppSession(
-        sessionId: 'sess-new',
-        workspaceId: 'ws-1',
-        createdAt: 2,
-        updatedAt: 2,
-      );
-      repo.created = (
-        session: newSession,
-        workspace: workspace.copyWith(sessionIds: const ['sess-new']),
-      );
+    test(
+      'personal session patches the snapshot without a full reload',
+      () async {
+        final workspace = Workspace(
+          workspaceId: 'ws-1',
+          folders: const [WorkspaceFolder(path: '/proj')],
+          createdAt: 1,
+          updatedAt: 1,
+        );
+        final host = _MaterializeHost(ChatState(workspaces: [workspace]));
+        final openedSessions = <String>[];
+        final materializer = SessionDefaultMaterializer(
+          host: host,
+          openSession: (request) async {
+            openedSessions.add(request.session.sessionId);
+            return SessionOpenStatus.opened;
+          },
+          workspaceIndex: () => SessionLaunchWorkspaceIndex(
+            workspaces: host.state.workspaces,
+            sessions: host.state.sessions,
+            usesPosixPaths: false,
+          ),
+          isTabsEmpty: () => true,
+          activeBucketKey: () => 'ws-1',
+        );
+        final repo = _MaterializeRepo();
+        final newSession = AppSession(
+          sessionId: 'sess-new',
+          workspaceId: 'ws-1',
+          createdAt: 2,
+          updatedAt: 2,
+        );
+        repo.created = (
+          session: newSession,
+          workspace: workspace.copyWith(sessionIds: const ['sess-new']),
+        );
 
-      await materializer.materializePersonalSession(
-        workspace,
-        repo,
-        connectImmediately: false,
-      );
+        await materializer.materializePersonalSession(
+          workspace,
+          repo,
+          connectImmediately: false,
+        );
 
-      expect(repo.createCalls, 1);
-      expect(host.loadWorkspaceDataCalls, 0,
-          reason: 'materializer must not rescan after create');
-      expect(openedSessions, ['sess-new']);
-      expect(host.emitted, isNotEmpty);
-      final last = host.emitted.last;
-      expect(
-        last.sessions.map((s) => s.sessionId),
-        contains('sess-new'),
-      );
-      expect(
-        last.workspaces.single.sessionIds,
-        contains('sess-new'),
-      );
-    });
+        expect(repo.createCalls, 1);
+        expect(
+          host.loadWorkspaceDataCalls,
+          0,
+          reason: 'materializer must not rescan after create',
+        );
+        expect(openedSessions, ['sess-new']);
+        expect(host.emitted, isNotEmpty);
+        final last = host.emitted.last;
+        expect(last.sessions.map((s) => s.sessionId), contains('sess-new'));
+        expect(last.workspaces.single.sessionIds, contains('sess-new'));
+      },
+    );
 
     test('team session patches the snapshot without a full reload', () async {
       final workspace = Workspace(
@@ -101,7 +101,7 @@ void main() {
         workspaceIndex: () => SessionLaunchWorkspaceIndex(
           workspaces: host.state.workspaces,
           sessions: host.state.sessions,
-                                                           usesPosixPaths: false,
+          usesPosixPaths: false,
         ),
         isTabsEmpty: () => true,
         activeBucketKey: () => 'ws-1',
@@ -129,26 +129,26 @@ void main() {
 
       expect(repo.createCalls, 1);
       expect(repo.lastSessionTeam, 'team-1');
-      expect(host.loadWorkspaceDataCalls, 0,
-          reason: 'materializer must not rescan after create');
+      expect(
+        host.loadWorkspaceDataCalls,
+        0,
+        reason: 'materializer must not rescan after create',
+      );
       expect(openedSessions, ['sess-team']);
       expect(host.emitted, isNotEmpty);
       final last = host.emitted.last;
-      expect(
-        last.sessions.map((s) => s.sessionId),
-        contains('sess-team'),
-      );
-      expect(
-        last.workspaces.single.sessionIds,
-        contains('sess-team'),
-      );
+      expect(last.sessions.map((s) => s.sessionId), contains('sess-team'));
+      expect(last.workspaces.single.sessionIds, contains('sess-team'));
     });
   });
 }
 
 class _MaterializeHost implements SessionLaunchHost {
   _MaterializeHost(this.state)
-    : lifecycle = SessionLifecycleService(loadPresets: () => const [], storage: fakeHomeStorage(), );
+    : lifecycle = SessionLifecycleService(
+        loadPresets: () => const [],
+        storage: fakeHomeStorage(),
+      );
 
   @override
   ChatState state;
@@ -161,18 +161,20 @@ class _MaterializeHost implements SessionLaunchHost {
 
   @override
   SessionDataStore get dataStore => _dataStore;
-  final SessionDataStore _dataStore = SessionDataStore(storage: fakeHomeStorage());
+  final SessionDataStore _dataStore = SessionDataStore(
+    storage: fakeHomeStorage(),
+  );
 
   final emitted = <ChatDataSnapshot>[];
   int loadWorkspaceDataCalls = 0;
 
   @override
   ChatDataSnapshot stateSnapshot() => ChatDataSnapshot(
-        workspaces: state.workspaces,
-        sessions: state.sessions,
-        visibleWorkspaces: state.visibleWorkspaces,
-        visibleSessions: state.visibleSessions,
-      );
+    workspaces: state.workspaces,
+    sessions: state.sessions,
+    visibleWorkspaces: state.visibleWorkspaces,
+    visibleSessions: state.visibleSessions,
+  );
 
   @override
   void emitSnapshot(ChatDataSnapshot snapshot) {

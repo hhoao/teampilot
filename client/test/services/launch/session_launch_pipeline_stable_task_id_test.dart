@@ -21,12 +21,14 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/launch/launch_operation.dart';
-import 'package:teampilot/services/launch/launch_outcome.dart';
-import 'package:teampilot/services/launch/session_default_materializer.dart';
-import 'package:teampilot/services/launch/session_launch_pipeline.dart';
-import 'package:teampilot/services/launch/session_launch_workspace_index.dart';
-import 'package:teampilot/services/launch/session_tab_surface_coordinator.dart';
+import 'package:teampilot/services/launch/contracts/launch_operation.dart';
+import 'package:teampilot/services/launch/contracts/launch_outcome.dart';
+import 'package:teampilot/services/launch/session/session_default_materializer.dart';
+import 'package:teampilot/services/launch/connect/member_connect_stage.dart';
+import 'package:teampilot/services/launch/session/session_launch_pipeline.dart';
+import 'package:teampilot/services/launch/session/session_open_router.dart';
+import 'package:teampilot/services/launch/session/session_launch_workspace_index.dart';
+import 'package:teampilot/services/launch/tab/session_tab_surface_coordinator.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:uuid/uuid.dart';
@@ -373,21 +375,44 @@ SessionLaunchPipeline _pipelineForStaging({
       usesPosixPaths: false,
     ),
     tabSurface: tabSurface,
-    materializer: materializer,
-    scheduleMemberConnect: (_, __, ___, {selectMember = true}) {},
-    disconnectSession: () {},
-    ensureSession: (_) => null,
-    appendLocalTab: (_, {required emitChange}) =>
-        throw UnsupportedError('unused'),
-    ensureActiveSessionTab: (_, {required emitChange}) =>
-        throw UnsupportedError('unused'),
-    resetTeamConfigValidationSurface: () {},
-    scheduleTeamConfigValidation: (_) async {},
-    activeTab: () => host.activeTab,
-    autoLaunchAllMembersOnConnect: () => false,
+    openRouter: SessionOpenRouter(
+      tabStore: tabStore,
+      tabSurface: tabSurface,
+      workspaceById: _workspaceById(host),
+    ),
+    memberConnect: MemberConnectStage(
+      host: host,
+      tabStore: tabStore,
+      state: () => host.state,
+      materializer: materializer,
+      openRouter: SessionOpenRouter(
+        tabStore: tabStore,
+        tabSurface: tabSurface,
+        workspaceById: _workspaceById(host),
+      ),
+      scheduleMemberConnect: (_, __, ___, {selectMember = true}) {},
+      disconnectSession: () {},
+      ensureSession: (_) => null,
+      appendLocalTab: (_, {required emitChange}) =>
+          throw UnsupportedError('unused'),
+      ensureActiveSessionTab: (_, {required emitChange}) =>
+          throw UnsupportedError('unused'),
+      resetTeamConfigValidationSurface: () {},
+      scheduleTeamConfigValidation: (_) async {},
+      activeTab: () => host.activeTab,
+      autoLaunchAllMembersOnConnect: () => false,
+      workspaceById: _workspaceById(host),
+    ),
     uuid: const Uuid(),
   );
 }
+
+Workspace? Function(String) _workspaceById(_CapturingHost host) => (id) {
+  for (final w in host.state.workspaces) {
+    if (w.workspaceId == id) return w;
+  }
+  return null;
+};
 
 class _CreateSessionCall {
   const _CreateSessionCall({

@@ -10,7 +10,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
-import 'package:teampilot/services/launch/session_runtime_plan.dart';
+import 'package:teampilot/services/launch/staging/session_runtime_plan.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
@@ -72,7 +72,7 @@ void main() {
     appDataBasePath: base.path,
     storageRootsResolver: () async => _roots(base.path),
     cliPresetsRepository: cliPresetsRepository,
-                                 storage: testHomeStorage,
+    storage: testHomeStorage,
   );
 
   SessionRuntimePlan simplePlan({
@@ -379,7 +379,7 @@ void main() {
           updatedAt: 0,
         ),
       ],
-                                   storage: testHomeStorage,
+      storage: testHomeStorage,
     ).prepareLaunchFromRuntimePlan(
       session: session,
       workspace: workspace,

@@ -12,8 +12,8 @@ import 'package:teampilot/repositories/workspace_project_config_repository.dart'
 import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
 import 'package:teampilot/services/expert_hub/expert_capability_pack.dart';
 import 'package:teampilot/services/expert_hub/expert_capability_resolver.dart';
-import 'package:teampilot/services/launch/session_runtime_plan.dart';
-import 'package:teampilot/services/launch/session_runtime_plan_builder.dart';
+import 'package:teampilot/services/launch/staging/session_runtime_plan.dart';
+import 'package:teampilot/services/launch/staging/session_runtime_plan_builder.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -31,7 +31,10 @@ class _FakeExpertResolver extends ExpertCapabilityResolver {
         installSkill: (_) async => null,
         installPlugin: (_) async => null,
         installMcp: (_) async => null,
-             localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
+        localStore: LocalExpertStore(
+          fs: InMemoryFilesystem(),
+          dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
+        ),
       );
 
   final Map<String, ExpertCapabilityPack> packs;
@@ -56,7 +59,9 @@ Future<void> _installPlugin(
   String directory,
 ) async {
   final fs = testHomeStorage.fs;
-  await fs.ensureDir(p.join(root, 'plugins', 'installed', directory, '.plugin'));
+  await fs.ensureDir(
+    p.join(root, 'plugins', 'installed', directory, '.plugin'),
+  );
   await fs.writeString(
     p.join(root, 'plugins', 'installed', directory, '.plugin', 'plugin.json'),
     '{"name":"$name","version":"1.0.0","description":""}',
@@ -66,12 +71,7 @@ Future<void> _installPlugin(
     p.join(root, 'plugins', 'plugins.json'),
     jsonEncode({
       'plugins': [
-        {
-          'id': id,
-          'name': name,
-          'version': '1.0.0',
-          'directory': directory,
-        },
+        {'id': id, 'name': name, 'version': '1.0.0', 'directory': directory},
       ],
     }),
   );
@@ -89,8 +89,9 @@ Future<SessionRuntimePlan> _simplePlan({
   final builder = SessionRuntimePlanBuilder(
     expertResolver: resolver,
     loadWorkspaceBundle: (wid) async {
-      return (await
-          WorkspaceProjectConfigRepository(storage: testHomeStorage).load(wid)).bundle;
+      return (await WorkspaceProjectConfigRepository(
+        storage: testHomeStorage,
+      ).load(wid)).bundle;
     },
   );
   return builder.buildSimple(
@@ -110,134 +111,156 @@ void main() {
   });
   tearDown(tearDownTestAppStorage);
 
-  test('workspace-enabled plugin lands in the simple session CLI config',
-      () async {
-    // Pre-existing Windows failure: provisioning never writes
-    // installed_plugins.json (registry writer skips); Linux/macOS cover the
-    // merge + provision chain, Windows needs a file-system investigation.
-    if (Platform.isWindows) {
-      markTestSkipped('Windows provisioning does not emit installed_plugins.json');
-      return;
-    }
-    final root = testHomeStorage.paths.basePath;
-    final fs = testHomeStorage.fs;
-    final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
-    const workspaceId = 'ws-chain';
-    const sessionId = 'sess-chain';
+  test(
+    'workspace-enabled plugin lands in the simple session CLI config',
+    () async {
+      // Pre-existing Windows failure: provisioning never writes
+      // installed_plugins.json (registry writer skips); Linux/macOS cover the
+      // merge + provision chain, Windows needs a file-system investigation.
+      if (Platform.isWindows) {
+        markTestSkipped(
+          'Windows provisioning does not emit installed_plugins.json',
+        );
+        return;
+      }
+      final root = testHomeStorage.paths.basePath;
+      final fs = testHomeStorage.fs;
+      final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
+      const workspaceId = 'ws-chain';
+      const sessionId = 'sess-chain';
 
-    await _installPlugin(root, 'acme/demo', 'demo', 'demo-bundle');
-    await WorkspaceProjectConfigRepository(
-      storage: testHomeStorage,
-    ).save(
-      workspaceId,
-      const WorkspaceProjectConfig(
-        bundle: ConfigBundle(pluginIds: ['acme/demo']),
-      ),
-    );
+      await _installPlugin(root, 'acme/demo', 'demo', 'demo-bundle');
+      await WorkspaceProjectConfigRepository(storage: testHomeStorage).save(
+        workspaceId,
+        const WorkspaceProjectConfig(
+          bundle: ConfigBundle(pluginIds: ['acme/demo']),
+        ),
+      );
 
-    final plan = await _simplePlan(
-      workspaceId: workspaceId,
-      sessionId: sessionId,
-    );
-    expect(plan.runtimeBundle.pluginIds, contains('acme/demo'),
-        reason: 'workspace plugin ids are merged into the runtime bundle');
+      final plan = await _simplePlan(
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+      );
+      expect(
+        plan.runtimeBundle.pluginIds,
+        contains('acme/demo'),
+        reason: 'workspace plugin ids are merged into the runtime bundle',
+      );
 
-    await ConfigProfileService(
-      basePath: root,
-      fs: fs,
-      layout: layout,
-                                storage: testHomeStorage,
-    ).prepareSimpleSessionLaunch(
-      workspaceId: workspaceId,
-      sessionId: sessionId,
-      runtimeBundle: plan.runtimeBundle,
-      member: plan.member,
-      workingDirectory: '/workspace/simple',
-    );
+      await ConfigProfileService(
+        basePath: root,
+        fs: fs,
+        layout: layout,
+        storage: testHomeStorage,
+      ).prepareSimpleSessionLaunch(
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+        runtimeBundle: plan.runtimeBundle,
+        member: plan.member,
+        workingDirectory: '/workspace/simple',
+      );
 
-    final claudeDir = layout.sessionRuntimeToolDir(
-      workspaceId,
-      sessionId,
-      'claude',
-    );
-    final pluginsDir = p.join(claudeDir, 'plugins');
-    expect(
-      Directory(p.join(pluginsDir, 'demo-bundle')).existsSync(),
-      isTrue,
-      reason: 'pool must be populated with the workspace-enabled bundle',
-    );
-    final installed = jsonDecode(
-      File(p.join(pluginsDir, 'installed_plugins.json')).readAsStringSync(),
-    ) as Map;
-    expect((installed['plugins'] as Map).keys, contains('demo@local'));
-    final settings = jsonDecode(
-      File(p.join(claudeDir, 'settings.json')).readAsStringSync(),
-    ) as Map;
-    expect((settings['enabledPlugins'] as Map), contains('demo@local'));
-    // The CLI's effective settings file (--settings settings/<member>.json)
-    // must also enable the plugin, or the running CLI ignores it.
-    final memberSettings = jsonDecode(
-      File(
-        p.join(claudeDir, 'settings', '${plan.member.id}.json'),
-      ).readAsStringSync(),
-    ) as Map;
-    expect((memberSettings['enabledPlugins'] as Map), contains('demo@local'));
-  });
+      final claudeDir = layout.sessionRuntimeToolDir(
+        workspaceId,
+        sessionId,
+        'claude',
+      );
+      final pluginsDir = p.join(claudeDir, 'plugins');
+      expect(
+        Directory(p.join(pluginsDir, 'demo-bundle')).existsSync(),
+        isTrue,
+        reason: 'pool must be populated with the workspace-enabled bundle',
+      );
+      final installed =
+          jsonDecode(
+                File(
+                  p.join(pluginsDir, 'installed_plugins.json'),
+                ).readAsStringSync(),
+              )
+              as Map;
+      expect((installed['plugins'] as Map).keys, contains('demo@local'));
+      final settings =
+          jsonDecode(
+                File(p.join(claudeDir, 'settings.json')).readAsStringSync(),
+              )
+              as Map;
+      expect((settings['enabledPlugins'] as Map), contains('demo@local'));
+      // The CLI's effective settings file (--settings settings/<member>.json)
+      // must also enable the plugin, or the running CLI ignores it.
+      final memberSettings =
+          jsonDecode(
+                File(
+                  p.join(claudeDir, 'settings', '${plan.member.id}.json'),
+                ).readAsStringSync(),
+              )
+              as Map;
+      expect((memberSettings['enabledPlugins'] as Map), contains('demo@local'));
+    },
+  );
 
-  test('team plugin ids reach the session via the merged runtime bundle',
-      () async {
-    if (Platform.isWindows) {
-      markTestSkipped('Windows provisioning does not emit enabledPlugins settings');
-      return;
-    }
-    final root = testHomeStorage.paths.basePath;
-    final fs = testHomeStorage.fs;
-    final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
-    const workspaceId = 'ws-team';
-    const sessionId = 'sess-team';
+  test(
+    'team plugin ids reach the session via the merged runtime bundle',
+    () async {
+      if (Platform.isWindows) {
+        markTestSkipped(
+          'Windows provisioning does not emit enabledPlugins settings',
+        );
+        return;
+      }
+      final root = testHomeStorage.paths.basePath;
+      final fs = testHomeStorage.fs;
+      final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
+      const workspaceId = 'ws-team';
+      const sessionId = 'sess-team';
 
-    await _installPlugin(root, 'acme/demo', 'demo', 'demo-bundle');
+      await _installPlugin(root, 'acme/demo', 'demo', 'demo-bundle');
 
-    await ConfigProfileService(
-      basePath: root,
-      fs: fs,
-      layout: layout,
-                                storage: testHomeStorage,
-    ).prepareTeamLaunch(
-      workspaceId: workspaceId,
-      sessionId: sessionId,
-      teamId: 'team-t',
-      cliTeamName: 'team-t',
-      cli: CliTool.claude,
-      team: const TeamProfile(
-        id: 'team-t',
-        name: 'T',
+      await ConfigProfileService(
+        basePath: root,
+        fs: fs,
+        layout: layout,
+        storage: testHomeStorage,
+      ).prepareTeamLaunch(
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+        teamId: 'team-t',
+        cliTeamName: 'team-t',
         cli: CliTool.claude,
-        pluginIds: ['acme/demo'],
-      ),
-      runtimeBundle: const ConfigBundle(pluginIds: ['acme/demo']),
-    );
+        team: const TeamProfile(
+          id: 'team-t',
+          name: 'T',
+          cli: CliTool.claude,
+          pluginIds: ['acme/demo'],
+        ),
+        runtimeBundle: const ConfigBundle(pluginIds: ['acme/demo']),
+      );
 
-    final claudeDir = layout.sessionRuntimeToolDir(
-      workspaceId,
-      sessionId,
-      'claude',
-    );
-    final pluginsDir = p.join(claudeDir, 'plugins');
-    expect(
-      Directory(p.join(pluginsDir, 'demo-bundle')).existsSync(),
-      isTrue,
-      reason: 'identity-pool removal is safe: merged team bundle fills the pool',
-    );
-    final settings = jsonDecode(
-      File(p.join(claudeDir, 'settings.json')).readAsStringSync(),
-    ) as Map;
-    expect((settings['enabledPlugins'] as Map), contains('demo@local'));
-  });
+      final claudeDir = layout.sessionRuntimeToolDir(
+        workspaceId,
+        sessionId,
+        'claude',
+      );
+      final pluginsDir = p.join(claudeDir, 'plugins');
+      expect(
+        Directory(p.join(pluginsDir, 'demo-bundle')).existsSync(),
+        isTrue,
+        reason:
+            'identity-pool removal is safe: merged team bundle fills the pool',
+      );
+      final settings =
+          jsonDecode(
+                File(p.join(claudeDir, 'settings.json')).readAsStringSync(),
+              )
+              as Map;
+      expect((settings['enabledPlugins'] as Map), contains('demo@local'));
+    },
+  );
 
   test('workspace plugin registers for a flashskyai session too', () async {
     if (Platform.isWindows) {
-      markTestSkipped('Windows provisioning does not emit installed_plugins.json');
+      markTestSkipped(
+        'Windows provisioning does not emit installed_plugins.json',
+      );
       return;
     }
     final root = testHomeStorage.paths.basePath;
@@ -252,7 +275,7 @@ void main() {
       basePath: root,
       fs: fs,
       layout: layout,
-                                storage: testHomeStorage,
+      storage: testHomeStorage,
     ).prepareSimpleSessionLaunch(
       workspaceId: workspaceId,
       sessionId: sessionId,
@@ -276,104 +299,111 @@ void main() {
       isTrue,
       reason: 'the workspace plugin must materialize for flashskyai too',
     );
-    final installed = jsonDecode(
-      File(p.join(pluginsDir, 'installed_plugins.json')).readAsStringSync(),
-    ) as Map;
+    final installed =
+        jsonDecode(
+              File(
+                p.join(pluginsDir, 'installed_plugins.json'),
+              ).readAsStringSync(),
+            )
+            as Map;
     expect((installed['plugins'] as Map).keys, contains('demo@local'));
   });
 
-  test('workspace plugin lands in an opencode session pool (decompose CLI)',
-      () async {
-    final root = testHomeStorage.paths.basePath;
-    final fs = testHomeStorage.fs;
-    final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
-    const workspaceId = 'ws-op';
-    const sessionId = 'sess-op';
+  test(
+    'workspace plugin lands in an opencode session pool (decompose CLI)',
+    () async {
+      final root = testHomeStorage.paths.basePath;
+      final fs = testHomeStorage.fs;
+      final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
+      const workspaceId = 'ws-op';
+      const sessionId = 'sess-op';
 
-    await _installPlugin(root, 'acme/demo', 'demo', 'demo-bundle');
+      await _installPlugin(root, 'acme/demo', 'demo', 'demo-bundle');
 
-    await ConfigProfileService(
-      basePath: root,
-      fs: fs,
-      layout: layout,
-                                storage: testHomeStorage,
-    ).prepareSimpleSessionLaunch(
-      workspaceId: workspaceId,
-      sessionId: sessionId,
-      runtimeBundle: const ConfigBundle(pluginIds: ['acme/demo']),
-      member: const TeamMemberConfig(
-        id: 'solo',
-        name: 'solo',
-        cli: CliTool.opencode,
-      ),
-      workingDirectory: '/workspace/simple',
-    );
+      await ConfigProfileService(
+        basePath: root,
+        fs: fs,
+        layout: layout,
+        storage: testHomeStorage,
+      ).prepareSimpleSessionLaunch(
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+        runtimeBundle: const ConfigBundle(pluginIds: ['acme/demo']),
+        member: const TeamMemberConfig(
+          id: 'solo',
+          name: 'solo',
+          cli: CliTool.opencode,
+        ),
+        workingDirectory: '/workspace/simple',
+      );
 
-    final pluginsDir = p.join(
-      layout.sessionRuntimeToolDir(workspaceId, sessionId, 'opencode'),
-      'plugins',
-    );
-    expect(
-      Directory(p.join(pluginsDir, 'demo-bundle')).existsSync(),
-      isTrue,
-      reason: 'opencode decomposes from the same populated pool',
-    );
-  });
+      final pluginsDir = p.join(
+        layout.sessionRuntimeToolDir(workspaceId, sessionId, 'opencode'),
+        'plugins',
+      );
+      expect(
+        Directory(p.join(pluginsDir, 'demo-bundle')).existsSync(),
+        isTrue,
+        reason: 'opencode decomposes from the same populated pool',
+      );
+    },
+  );
 
-  test('re-launching without the plugin clears it from the session pool',
-      () async {
-    final root = testHomeStorage.paths.basePath;
-    final fs = testHomeStorage.fs;
-    final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
-    const workspaceId = 'ws-cleared';
-    const sessionId = 'sess-cleared';
+  test(
+    're-launching without the plugin clears it from the session pool',
+    () async {
+      final root = testHomeStorage.paths.basePath;
+      final fs = testHomeStorage.fs;
+      final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
+      const workspaceId = 'ws-cleared';
+      const sessionId = 'sess-cleared';
 
-    await _installPlugin(root, 'acme/demo', 'demo', 'demo-bundle');
-    await WorkspaceProjectConfigRepository(
-      storage: testHomeStorage,
-    ).save(
-      workspaceId,
-      const WorkspaceProjectConfig(
-        bundle: ConfigBundle(pluginIds: ['acme/demo']),
-      ),
-    );
-    final plan = await _simplePlan(
-      workspaceId: workspaceId,
-      sessionId: sessionId,
-    );
-    final service = ConfigProfileService(
-      basePath: root,
-      fs: fs,
-      layout: layout,
-                                          storage: testHomeStorage,
-    );
+      await _installPlugin(root, 'acme/demo', 'demo', 'demo-bundle');
+      await WorkspaceProjectConfigRepository(storage: testHomeStorage).save(
+        workspaceId,
+        const WorkspaceProjectConfig(
+          bundle: ConfigBundle(pluginIds: ['acme/demo']),
+        ),
+      );
+      final plan = await _simplePlan(
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+      );
+      final service = ConfigProfileService(
+        basePath: root,
+        fs: fs,
+        layout: layout,
+        storage: testHomeStorage,
+      );
 
-    await service.prepareSimpleSessionLaunch(
-      workspaceId: workspaceId,
-      sessionId: sessionId,
-      runtimeBundle: plan.runtimeBundle,
-      member: plan.member,
-      workingDirectory: '/workspace/simple',
-    );
-    final pluginsDir = p.join(
-      layout.sessionRuntimeToolDir(workspaceId, sessionId, 'claude'),
-      'plugins',
-    );
-    expect(Directory(p.join(pluginsDir, 'demo-bundle')).existsSync(), isTrue);
+      await service.prepareSimpleSessionLaunch(
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+        runtimeBundle: plan.runtimeBundle,
+        member: plan.member,
+        workingDirectory: '/workspace/simple',
+      );
+      final pluginsDir = p.join(
+        layout.sessionRuntimeToolDir(workspaceId, sessionId, 'claude'),
+        'plugins',
+      );
+      expect(Directory(p.join(pluginsDir, 'demo-bundle')).existsSync(), isTrue);
 
-    // Re-launch the same session without the plugin enabled.
-    await service.prepareSimpleSessionLaunch(
-      workspaceId: workspaceId,
-      sessionId: sessionId,
-      runtimeBundle: const ConfigBundle(),
-      member: plan.member,
-      workingDirectory: '/workspace/simple',
-    );
+      // Re-launch the same session without the plugin enabled.
+      await service.prepareSimpleSessionLaunch(
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+        runtimeBundle: const ConfigBundle(),
+        member: plan.member,
+        workingDirectory: '/workspace/simple',
+      );
 
-    expect(
-      Directory(p.join(pluginsDir, 'demo-bundle')).existsSync(),
-      isFalse,
-      reason: 'disabling a plugin must prune its bundle from the session pool',
-    );
-  });
+      expect(
+        Directory(p.join(pluginsDir, 'demo-bundle')).existsSync(),
+        isFalse,
+        reason:
+            'disabling a plugin must prune its bundle from the session pool',
+      );
+    },
+  );
 }

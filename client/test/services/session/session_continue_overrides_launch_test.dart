@@ -5,7 +5,7 @@ import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/session_continue_overrides.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/preset_resolver.dart';
-import 'package:teampilot/services/launch/session_runtime_plan.dart';
+import 'package:teampilot/services/launch/staging/session_runtime_plan.dart';
 import 'package:teampilot/services/session/session_continue_overrides_apply.dart';
 
 /// Mirrors [SessionLifecycleService._memberWithPreset] for unit tests.

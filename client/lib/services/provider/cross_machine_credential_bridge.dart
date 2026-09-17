@@ -1,7 +1,7 @@
 import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
-import '../launch/work_plane_paths.dart';
+import '../launch/staging/manifest/work_plane_paths.dart';
 import '../provider/credential_binding.dart';
 import '../cli/claude/provider/claude_provider_credentials_service.dart';
 import '../cli/codex/provider/codex_auth_artifacts.dart';
@@ -125,10 +125,7 @@ abstract final class CrossMachineCredentialBridge {
       final artifactBytes = await catalog.fs.readBytes(src);
       if (artifactBytes == null || artifactBytes.isEmpty) continue;
       final artifactDest = work.joinWork(destCursorDir, relativePath);
-      await ensureWorkDir(
-        work.fs,
-        work.workPathContext.dirname(artifactDest),
-      );
+      await ensureWorkDir(work.fs, work.workPathContext.dirname(artifactDest));
       await writeWorkBytes(work.fs, artifactDest, artifactBytes);
     }
     return true;
@@ -176,10 +173,10 @@ abstract final class CrossMachineCredentialBridge {
     );
     final dest = layout.providerAuthJsonPath(providerDir);
     return await OpencodeCredentialMaterializer.writeAuthArtifact(
-      fs: work.fs,
-      basePath: work.basePath,
-      provider: provider,
-    ) &&
+          fs: work.fs,
+          basePath: work.basePath,
+          provider: provider,
+        ) &&
         (await work.fs.stat(dest)).isFile;
   }
 

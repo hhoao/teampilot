@@ -56,7 +56,7 @@ import '../../../widgets/compose/compose_chrome.dart';
 import '../../../widgets/compose/compose_model_preset_chip.dart';
 import '../../../widgets/compose/simple_custom_launch_dialog.dart';
 import '../../../widgets/compose/workspace_compose_card.dart';
-import '../../../services/launch/workspace_landing_launch_gate.dart';
+import '../../../services/launch/workspace/workspace_landing_launch_gate.dart';
 import '../../../services/workbench/workbench_editor_opener.dart';
 import '../../../repositories/workspace_project_config_repository.dart';
 import '../../expert_hub/expert_landing_chip_menu.dart';
@@ -1562,119 +1562,120 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         ? launchWarningBlock.missing
         : null;
 
-    WorkspaceComposeCard buildCard(
-      BuildContext context,
-    ) => WorkspaceComposeCard(
-      controller: _controller,
-      clip: _clip,
-      focusNode: _focusNode,
-      hint: l10n.workspaceChatLandingInputHint,
-      isSubmitting: widget.isSubmitting,
-      canSubmit: _canSubmit,
-      onSubmit: _submit,
-      onChanged: (_) {},
-      chrome: UnboundComposeChrome(
-        conversationModeLabel: _conversationModeLabel(l10n),
-        autoChipLabel: _autoChipLabel(
-          context,
-          l10n,
-          presets: presets,
-          teams: teams,
-        ),
-        autoChipLeading: _autoChipLeading(context, presets: presets),
-        conversationModeSpecs: _conversationModeSpecs(l10n),
-        autoChipSpecs: _autoChipSpecs(l10n, presets: presets, teams: teams),
-        onConversationModeSelected: (value) {
-          if (value is _LandingConversationMode) {
-            _setConversationMode(value);
-          }
-        },
-        onAutoChipSelected: (value) async {
-          if (value == ComposeModelPresetChipAction.manage) {
-            _openPresetsManageDialog();
-            return;
-          }
-          final tuple = decodeComposeCascadeValue(value);
-          if (tuple != null) {
-            await _applyCascadeLaunch(tuple);
-            return;
-          }
-          if (value is CascadeCustomModelRequest) {
-            await _applyCustomModelId(request: value);
-            return;
-          }
-          if (value == ComposeModelPresetChipAction.savePreset) {
-            _openSaveAsPresetDialog();
-            return;
-          }
-          if (_conversationMode == _LandingConversationMode.team) {
-            _onTeamChipSelected(value);
-            return;
-          }
-          if (value is! String || value.isEmpty) return;
-          _selectPreset(value);
-        },
-        expertChipLabel: isSimple ? _expertChipLabel(l10n, hubState) : null,
-        expertChipSpecs: isSimple ? _expertChipSpecs(l10n, hubState) : const [],
-        onExpertChipSelected: isSimple ? _onExpertChipSelected : null,
-        teamSettingsTooltip: _generateLaunch
-            ? l10n.teamGenerateOpenSettings
-            : (selectedTeam != null ? l10n.teamSettings : null),
-        onTeamSettings: _generateLaunch
-            ? () => unawaited(_openGenerateSettings())
-            : (selectedTeam != null
-                  ? () => unawaited(_openTeamSettings(teams))
-                  : null),
-        showTeamSettingsAttention:
-            !_generateLaunch &&
-            selectedTeam != null &&
-            landingTeamSettingsNeedsAttention(
-              workspace: launchWorkspace,
-              team: selectedTeam,
-            ),
-      ),
-      dropTarget: _composeDropIngestor(),
-      attachTooltip: l10n.workspaceChatLandingAttach,
-      voiceTooltip: l10n.workspaceChatLandingVoice,
-      voiceCancelTooltip: l10n.workspaceChatLandingVoiceCancel,
-      voiceStopTooltip: l10n.workspaceChatLandingVoiceStop,
-      isVoiceListening: _voiceListening,
-      voiceElapsed: _voiceElapsed,
-      voiceSoundLevel: _voiceSoundLevel,
-      onAttach: () => unawaited(_attachFiles()),
-      onVoice: () => unawaited(_toggleVoice()),
-      onVoiceCancel: () => unawaited(_cancelVoice()),
-      onVoiceStop: () => unawaited(_stopVoice()),
-      onPasteImage: _pasteComposeImage,
-      workspaceRoot: _activeLaunchDirectory(),
-      skills: skills,
-      plugins: plugins,
-      slashBundle: slashBundle,
-      skillSyntax: skillSyntax,
-      nativeCommands: nativeCommands,
-      onOpenAtFile: (path) {
-        unawaited(
-          context.read<WorkbenchEditorOpener>().openFile(
-            widget.workspace.workspaceId,
-            path,
-            preview: true,
-            fs: filesystemForComposeAtFileOpen(
-              path,
-              workspaceFilesystem: _homeStorage.fs,
-            ),
-          ),
-        );
-      },
-      deferFieldMount: widget.deferFieldMount,
-      submitBlockedTooltip:
-          launchWarningBlock != null && _controller.text.trim().isNotEmpty
-          ? landingLaunchBlockMessage(
+    WorkspaceComposeCard buildCard(BuildContext context) =>
+        WorkspaceComposeCard(
+          controller: _controller,
+          clip: _clip,
+          focusNode: _focusNode,
+          hint: l10n.workspaceChatLandingInputHint,
+          isSubmitting: widget.isSubmitting,
+          canSubmit: _canSubmit,
+          onSubmit: _submit,
+          onChanged: (_) {},
+          chrome: UnboundComposeChrome(
+            conversationModeLabel: _conversationModeLabel(l10n),
+            autoChipLabel: _autoChipLabel(
+              context,
               l10n,
-              launchWarningBlock,
-              registry: registry,
-            )
-          : null,
-    );
+              presets: presets,
+              teams: teams,
+            ),
+            autoChipLeading: _autoChipLeading(context, presets: presets),
+            conversationModeSpecs: _conversationModeSpecs(l10n),
+            autoChipSpecs: _autoChipSpecs(l10n, presets: presets, teams: teams),
+            onConversationModeSelected: (value) {
+              if (value is _LandingConversationMode) {
+                _setConversationMode(value);
+              }
+            },
+            onAutoChipSelected: (value) async {
+              if (value == ComposeModelPresetChipAction.manage) {
+                _openPresetsManageDialog();
+                return;
+              }
+              final tuple = decodeComposeCascadeValue(value);
+              if (tuple != null) {
+                await _applyCascadeLaunch(tuple);
+                return;
+              }
+              if (value is CascadeCustomModelRequest) {
+                await _applyCustomModelId(request: value);
+                return;
+              }
+              if (value == ComposeModelPresetChipAction.savePreset) {
+                _openSaveAsPresetDialog();
+                return;
+              }
+              if (_conversationMode == _LandingConversationMode.team) {
+                _onTeamChipSelected(value);
+                return;
+              }
+              if (value is! String || value.isEmpty) return;
+              _selectPreset(value);
+            },
+            expertChipLabel: isSimple ? _expertChipLabel(l10n, hubState) : null,
+            expertChipSpecs: isSimple
+                ? _expertChipSpecs(l10n, hubState)
+                : const [],
+            onExpertChipSelected: isSimple ? _onExpertChipSelected : null,
+            teamSettingsTooltip: _generateLaunch
+                ? l10n.teamGenerateOpenSettings
+                : (selectedTeam != null ? l10n.teamSettings : null),
+            onTeamSettings: _generateLaunch
+                ? () => unawaited(_openGenerateSettings())
+                : (selectedTeam != null
+                      ? () => unawaited(_openTeamSettings(teams))
+                      : null),
+            showTeamSettingsAttention:
+                !_generateLaunch &&
+                selectedTeam != null &&
+                landingTeamSettingsNeedsAttention(
+                  workspace: launchWorkspace,
+                  team: selectedTeam,
+                ),
+          ),
+          dropTarget: _composeDropIngestor(),
+          attachTooltip: l10n.workspaceChatLandingAttach,
+          voiceTooltip: l10n.workspaceChatLandingVoice,
+          voiceCancelTooltip: l10n.workspaceChatLandingVoiceCancel,
+          voiceStopTooltip: l10n.workspaceChatLandingVoiceStop,
+          isVoiceListening: _voiceListening,
+          voiceElapsed: _voiceElapsed,
+          voiceSoundLevel: _voiceSoundLevel,
+          onAttach: () => unawaited(_attachFiles()),
+          onVoice: () => unawaited(_toggleVoice()),
+          onVoiceCancel: () => unawaited(_cancelVoice()),
+          onVoiceStop: () => unawaited(_stopVoice()),
+          onPasteImage: _pasteComposeImage,
+          workspaceRoot: _activeLaunchDirectory(),
+          skills: skills,
+          plugins: plugins,
+          slashBundle: slashBundle,
+          skillSyntax: skillSyntax,
+          nativeCommands: nativeCommands,
+          onOpenAtFile: (path) {
+            unawaited(
+              context.read<WorkbenchEditorOpener>().openFile(
+                widget.workspace.workspaceId,
+                path,
+                preview: true,
+                fs: filesystemForComposeAtFileOpen(
+                  path,
+                  workspaceFilesystem: _homeStorage.fs,
+                ),
+              ),
+            );
+          },
+          deferFieldMount: widget.deferFieldMount,
+          submitBlockedTooltip:
+              launchWarningBlock != null && _controller.text.trim().isNotEmpty
+              ? landingLaunchBlockMessage(
+                  l10n,
+                  launchWarningBlock,
+                  registry: registry,
+                )
+              : null,
+        );
 
     final cascadeCatalog = _cascadeCatalog;
     final composeCard =

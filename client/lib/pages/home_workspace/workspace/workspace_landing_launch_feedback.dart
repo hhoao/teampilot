@@ -7,7 +7,7 @@ import '../../../services/cli/registry/cli_display_name.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/remote/remote_cli_requirements.dart';
-import '../../../services/launch/workspace_landing_launch_gate.dart';
+import '../../../services/launch/workspace/workspace_landing_launch_gate.dart';
 
 String landingLaunchBlockMessage(
   AppLocalizations l10n,
@@ -40,7 +40,10 @@ String landingLaunchRemoteCliMissingMessage(
         final cliLabel = def != null
             ? cliDisplayName(def, l10n, registry: reg)
             : req.cli.value;
-        return l10n.landingLaunchRemoteCliMissingDetail(cliLabel, req.hostLabel);
+        return l10n.landingLaunchRemoteCliMissingDetail(
+          cliLabel,
+          req.hostLabel,
+        );
       })
       .join('; ');
   return '${l10n.landingLaunchRemoteCliMissing} $details';

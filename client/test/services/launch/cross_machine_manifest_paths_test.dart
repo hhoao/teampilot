@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/launch/launch_manifest.dart';
-import 'package:teampilot/services/launch/launch_manifest_paths.dart';
+import 'package:teampilot/services/launch/staging/manifest/launch_manifest.dart';
+import 'package:teampilot/services/launch/staging/manifest/launch_manifest_paths.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_launch_environment.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
@@ -57,7 +57,7 @@ void main() {
       );
       final lifecycle = SessionLifecycleService(
         appDataBasePath: testHomeStorage.paths.basePath,
-                                                 storage: testHomeStorage,
+        storage: testHomeStorage,
       );
       final homeRoots = await lifecycle.resolveWorkContextForTargetId('local');
       final svc = await lifecycle.configProfileServiceFor(homeRoots);

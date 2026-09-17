@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/services/launch/apply_plan.dart';
-import 'package:teampilot/services/launch/apply_plan_ssh_compiler.dart';
-import 'package:teampilot/services/launch/blob_store.dart';
+import 'package:teampilot/services/launch/staging/manifest/apply_plan.dart';
+import 'package:teampilot/services/launch/staging/manifest/apply_plan_ssh_compiler.dart';
+import 'package:teampilot/services/launch/staging/manifest/blob_store.dart';
 
 void main() {
   test('ensureDir symlink writeInline is one script and no tar', () async {

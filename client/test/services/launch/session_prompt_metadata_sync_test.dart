@@ -4,7 +4,7 @@ import 'package:teampilot/cubits/chat/session_data_store.dart';
 import 'package:teampilot/cubits/chat/session_launch_host.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/launch/session_prompt_metadata_sync.dart';
+import 'package:teampilot/services/launch/session/session_prompt_metadata_sync.dart';
 
 void main() {
   late _FakeHost host;

@@ -1,6 +1,6 @@
 import '../../../../models/team_config.dart';
 import '../../../io/filesystem.dart';
-import '../../../launch/work_plane_script_runner.dart';
+import '../../../launch/staging/manifest/work_plane_script_runner.dart';
 import '../../../storage/runtime_layout.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../cli_capability.dart';

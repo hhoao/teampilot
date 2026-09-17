@@ -14,7 +14,7 @@ import '../../../../utils/logging/logger.dart';
 import '../../../../utils/team/team_member_naming.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../hook/glue_script_builder.dart';
-import '../../../launch/work_plane_paths.dart';
+import '../../../launch/staging/manifest/work_plane_paths.dart';
 import '../../../provider/credential_binding.dart';
 import '../../../provider/api_model_catalog_service.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';

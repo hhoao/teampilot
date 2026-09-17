@@ -17,7 +17,7 @@ import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/launch/launch_factory.dart';
-import 'package:teampilot/services/launch/session_runtime_plan_builder.dart';
+import 'package:teampilot/services/launch/staging/session_runtime_plan_builder.dart';
 import 'package:teampilot/services/expert_hub/expert_capability_resolver.dart';
 import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import 'package:teampilot/repositories/workspace_project_config_repository.dart';

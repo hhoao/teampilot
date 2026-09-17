@@ -1,5 +1,5 @@
 import '../io/filesystem.dart';
-import '../launch/launch_manifest_paths.dart';
+import '../launch/staging/manifest/launch_manifest_paths.dart';
 import '../storage/runtime_layout.dart';
 import 'materialization_manifest.dart';
 import 'runtime_materialization_policy.dart';

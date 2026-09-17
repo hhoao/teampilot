@@ -7,7 +7,7 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/launch/session_shell_connector.dart';
+import 'package:teampilot/services/launch/connect/session_shell_connector.dart';
 import 'package:teampilot/services/remote/remote_cli_readiness.dart';
 import 'package:teampilot/services/resource/resource_provider_set.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';

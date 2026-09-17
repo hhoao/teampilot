@@ -588,11 +588,7 @@ void main() {
     test(
       'dangerous launch on an embedded profile resolves via host-info',
       () async {
-        const member = TeamMemberConfig(
-          id: 'member',
-          name: 'Member',
-          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-        );
+        const member = TeamMemberConfig(id: 'member', name: 'Member');
         final commands = <String>[];
         final embedded = session(
           embeddedTarget: true,

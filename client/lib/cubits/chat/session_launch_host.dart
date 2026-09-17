@@ -6,8 +6,8 @@ import '../../models/team_config.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/team/team_config_launch_validator.dart';
-import '../../services/launch/session_connect_orchestrator.dart';
-import '../../services/launch/workspace_provision_coordinator.dart';
+import '../../services/launch/staging/session_connect_orchestrator.dart';
+import '../../services/launch/workspace/workspace_provision_coordinator.dart';
 import '../../services/install/install_job_registry.dart';
 import '../../services/session/session_lifecycle_service.dart';
 import '../../services/agent_status/agent_status_seat_lookup.dart';
@@ -26,10 +26,23 @@ import 'tab_member_materializer.dart';
 import 'tab_session_runtime_coordinator.dart';
 import 'tab_team_bus_coordinator.dart';
 import 'chat_tab_store.dart';
+import 'host/chat_state_port.dart';
+import 'host/launch_environment_port.dart';
+import 'host/session_repository_port.dart';
+import 'host/tab_port.dart';
+
+// Re-exported so existing `import 'session_launch_host.dart'` call sites keep
+// resolving the ports. Note: `export` alone does NOT bring the names into this
+// library — the matching `import`s above are what make them usable here.
+export 'host/chat_state_port.dart';
+export 'host/launch_environment_port.dart';
+export 'host/session_repository_port.dart';
+export 'host/tab_port.dart';
 
 /// Connect-state transitions owned by [ChatCubit] (via [ChatConnectStateMixin]).
 abstract interface class SessionConnectStatePort {
   void beginSessionConnect(String sessionId);
+
   /// [error]/[stackTrace] carry the original failure when one exists.
   void failSessionConnect(
     String sessionId,
@@ -82,48 +95,20 @@ abstract interface class SessionSnapshotPort {
 /// (the service routes every state write through [applyState] / the connect
 /// state-machine methods).
 abstract interface class SessionLaunchHost
-    implements SessionConnectStatePort, SessionSnapshotPort {
-  ChatState get state;
-  bool get isClosed;
+    implements
+        ChatStatePort,
+        LaunchEnvironmentPort,
+        SessionConnectStatePort,
+        SessionRepositoryPort,
+        SessionSnapshotPort,
+        TabPort {
+  // Collaborators that are not themselves narrow enough to be a port. Each is
+  // a candidate for extraction; until then they stay on the host.
 
-  /// Current four-tuple snapshot of [state] (workspaces / sessions / visible*).
-  /// Lets the session domain patch in-memory state without a full rescan.
-  ChatDataSnapshot stateSnapshot();
-
-  /// Single emit entry point (wraps the cubit's protected emit).
-  void applyState(ChatState next);
-  void refreshActiveWorkspaceTabs();
-
-  void closeSessionTab(String sessionId);
-  void emitTeamConfigValidation(TeamConfigValidation validation);
-
-  // Cubit-owned facade methods the launch flow drives.
-  void assignSelectedMember(ChatTab tab, String memberId);
-  void selectMember(String memberId, {String? tabScopeId});
-  Future<void> renameSession(
-    SessionRepository repo,
-    String sessionId,
-    String newName,
-  );
-  Future<void> loadWorkspaceData(SessionRepository repo);
-  void pushPresenceTarget();
-
-  ChatTab? get activeTab;
-  set activeTeam(TeamProfile? team);
-
-  // Collaborators.
-  ChatTabStore get tabStore;
-  ChatSessionShellFactory get shellFactory;
   TabSessionRuntimeCoordinator get sessionRuntime;
   TabTeamBusCoordinator get teamBus;
   TabMemberMaterializer get memberMaterializer;
-  SessionLifecycleService get lifecycle;
   SessionDataStore get dataStore;
-
-  // Resolvers.
-  SessionRepository? get sessionRepository;
-  PostFrameScheduler get postFrameScheduler;
-  bool Function()? get autoLaunchAllMembersOnConnect;
 
   /// P3b (#1): resolves a remote member's reverse-tunnel bus binding. Null when
   /// remote-member-over-tunnel is not wired (then all members use local
@@ -150,24 +135,6 @@ abstract interface class SessionLaunchHost
 
   /// Shared OpenCode ask-answer pending map; cleared with attention on dispose.
   AskUserAnswerPendingStore? get askUserAnswerPendingStore;
-
-  /// Exposes workspace Phase A for team / mixed off-home paths.
-  WorkspaceProvisionCoordinator get workspaceProvision;
-
-  /// Optional install-job registry for remote CLI provision progress.
-  InstallJobRegistry? get installJobRegistry;
-
-  /// CLI registry for lifecycle gating and tool capabilities at connect time.
-  CliToolRegistry get cliRegistry;
-
-  Future<TeamProfile?> teamProfileById(String teamId);
-
-  /// Workspace opt-in: inject IS_SANDBOX when launching Claude as root over SSH.
-  Future<bool> isWorkspaceRootSandboxEnvOptIn(String workspaceId);
-
-  /// Terminal theme for member PTY spawn (COLORFGBG / Claude `theme: auto`).
-  /// Null skips apply — tests and early bootstrap may omit it.
-  TerminalTheme? resolveTerminalThemeForLaunch();
 }
 
 /// Drop attention + seat lookup (+ pending ask answers) for every seat in

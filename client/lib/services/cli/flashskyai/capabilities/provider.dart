@@ -11,7 +11,7 @@ import '../../../hook/glue_script_builder.dart';
 import '../../../catalog/catalog_mcp_policy.dart';
 import '../../../ssh/mcp/session_ssh_mcp_policy.dart';
 import '../../../io/filesystem.dart';
-import '../../../launch/work_plane_paths.dart';
+import '../../../launch/staging/manifest/work_plane_paths.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/passthrough_provider_form_capability.dart';
 import '../../../provider/workspace_trust_provisioner.dart';

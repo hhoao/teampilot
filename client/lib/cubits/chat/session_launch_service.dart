@@ -12,19 +12,21 @@ import '../../models/member_instance.dart';
 import '../../models/session_continue_overrides.dart';
 import '../../models/team_config.dart';
 import '../../repositories/session_repository.dart';
-import '../../services/launch/session_launch_readiness.dart';
-import '../../services/launch/connect_shell_result.dart';
-import '../../services/launch/launch_operation.dart';
-import '../../services/launch/launch_outcome.dart';
+import '../../services/launch/session/session_launch_readiness.dart';
+import '../../services/launch/contracts/connect_shell_result.dart';
+import '../../services/launch/contracts/launch_operation.dart';
+import '../../services/launch/contracts/launch_outcome.dart';
 import '../../services/launch/session_launch_bundle.dart';
-import '../../services/launch/session_launch_pipeline.dart';
-import '../../services/launch/session_member_connect_scheduler.dart';
-import '../../services/launch/session_ssh_profile_reconnect.dart';
-import '../../services/launch/session_lifecycle_connect_coordinator.dart';
-import '../../services/launch/session_prompt_metadata_sync.dart';
-import '../../services/launch/session_shell_connector.dart';
-import '../../services/launch/session_tab_connect_prep.dart';
-import '../../services/launch/session_launch_workspace_index.dart';
+import '../../services/launch/connect/member_connect_stage.dart';
+import '../../services/launch/session/session_launch_pipeline.dart';
+import '../../services/launch/connect/session_member_connect_scheduler.dart';
+import '../../services/launch/connect/session_ssh_profile_reconnect.dart';
+import '../../services/launch/connect/session_lifecycle_connect_coordinator.dart';
+import '../../services/launch/session/session_prompt_metadata_sync.dart';
+import '../../services/launch/connect/session_shell_connector.dart';
+import '../../services/launch/session/session_persistence_writer.dart';
+import '../../services/launch/tab/session_tab_connect_prep.dart';
+import '../../services/launch/session/session_launch_workspace_index.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/session/session_launch_config_snapshot.dart';
 import '../../services/session/session_member_cli_locks.dart';
@@ -74,9 +76,20 @@ class SessionLaunchService
     bool activate,
   })?
   onSessionTabOpened;
+  /// Session-row / snapshot writes used by the connect path. Owned here rather
+  /// than by `SessionShellConnector` — see [SessionPersistenceWriter].
+  late final SessionPersistenceWriter _persistence = SessionPersistenceWriter(
+    repository: _h,
+    snapshots: _h,
+    chatState: _h,
+    tabs: _h,
+    environment: _h,
+    dataStore: _h.dataStore,
+  );
   late final SessionShellConnector _shellConnector = SessionShellConnector(
     _h,
     this,
+    persister: _persistence,
     isLocalNative: () => _storage.context.mode == StorageBackendMode.native,
     termuxWorkOpsBlockFor: _termuxWorkOpsBlockFor,
   );
@@ -852,12 +865,7 @@ class SessionLaunchService
       team,
     ).where((m) => m.id == mid).firstOrNull;
     if (member == null || !member.isValid) return;
-    _memberConnectScheduler.schedule(
-      team,
-      member,
-      tab,
-      selectMember: false,
-    );
+    _memberConnectScheduler.schedule(team, member, tab, selectMember: false);
   }
 
   Future<void> restartWorkspaceSession(

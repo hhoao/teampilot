@@ -5,7 +5,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/launch/workspace_landing_launch_gate.dart';
+import 'package:teampilot/services/launch/workspace/workspace_landing_launch_gate.dart';
 import 'package:teampilot/services/remote/remote_cli_readiness.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
@@ -45,37 +45,40 @@ void main() {
       expect(block, isA<MixedMemberPlacementUninitializedLaunchBlock>());
     });
 
-    test('allows mixed when initialized even if non-lead has zero replicas', () {
-      final team = TeamProfile(
-        id: 'team-1',
-        name: 'Team',
-        members: const [
-          TeamMemberConfig(id: 'team-lead', name: 'Lead'),
-          TeamMemberConfig(id: 'dev', name: 'Dev', replicas: 0),
-        ],
-        createdAt: 1,
-      );
-      final workspace = Workspace(
-        workspaceId: 'ws-1',
-        folders: [
-          const WorkspaceFolder(path: '/a', targetId: 'local'),
-          const WorkspaceFolder(path: '/b', targetId: 'ssh:host-a'),
-        ],
-        createdAt: 1,
-        memberTargetsByTeam: {
-          team.id: {'team-lead': 'local'},
-        },
-        memberPlacementInitializedByTeam: {team.id: true},
-      );
-      expect(
-        gate.syncBlock(
-          workspace: workspace,
-          draft: LandingLaunchContext(isPersonal: false, teamId: team.id),
-          team: team,
-        ),
-        isNull,
-      );
-    });
+    test(
+      'allows mixed when initialized even if non-lead has zero replicas',
+      () {
+        final team = TeamProfile(
+          id: 'team-1',
+          name: 'Team',
+          members: const [
+            TeamMemberConfig(id: 'team-lead', name: 'Lead'),
+            TeamMemberConfig(id: 'dev', name: 'Dev', replicas: 0),
+          ],
+          createdAt: 1,
+        );
+        final workspace = Workspace(
+          workspaceId: 'ws-1',
+          folders: [
+            const WorkspaceFolder(path: '/a', targetId: 'local'),
+            const WorkspaceFolder(path: '/b', targetId: 'ssh:host-a'),
+          ],
+          createdAt: 1,
+          memberTargetsByTeam: {
+            team.id: {'team-lead': 'local'},
+          },
+          memberPlacementInitializedByTeam: {team.id: true},
+        );
+        expect(
+          gate.syncBlock(
+            workspace: workspace,
+            draft: LandingLaunchContext(isPersonal: false, teamId: team.id),
+            team: team,
+          ),
+          isNull,
+        );
+      },
+    );
 
     test('blocks when lead placement is invalid', () {
       final team = _singleMemberTeam();
@@ -113,9 +116,7 @@ void main() {
         id: 'team-1',
         name: 'Team',
         cli: CliTool.codex,
-        members: const [
-          TeamMemberConfig(id: 'dev', name: 'Dev'),
-        ],
+        members: const [TeamMemberConfig(id: 'dev', name: 'Dev')],
         createdAt: 1,
       );
       final workspace = Workspace(
@@ -145,9 +146,7 @@ void main() {
         id: 'team-1',
         name: 'Team',
         cli: CliTool.codex,
-        members: const [
-          TeamMemberConfig(id: 'dev', name: 'Dev'),
-        ],
+        members: const [TeamMemberConfig(id: 'dev', name: 'Dev')],
         createdAt: 1,
       );
       final workspace = Workspace(
@@ -260,9 +259,7 @@ TeamProfile _singleMemberTeam() {
   return TeamProfile(
     id: 'team-1',
     name: 'Team',
-    members: const [
-      TeamMemberConfig(id: 'team-lead', name: 'Lead'),
-    ],
+    members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
     createdAt: 1,
   );
 }

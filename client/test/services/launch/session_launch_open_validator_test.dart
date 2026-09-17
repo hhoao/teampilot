@@ -5,7 +5,7 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
-import 'package:teampilot/services/launch/session_launch_open_validator.dart';
+import 'package:teampilot/services/launch/session/session_launch_open_validator.dart';
 
 void main() {
   final workspace = Workspace(

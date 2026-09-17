@@ -10,7 +10,7 @@ import 'package:teampilot/services/cli/registry/capabilities/team_behavior_capab
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/launch/session_shell_connector.dart';
+import 'package:teampilot/services/launch/connect/session_shell_connector.dart';
 import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_constants.dart';
 import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_transport.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
@@ -293,50 +293,47 @@ void main() {
           sessionId: 'sess-1',
         ),
       );
-      expect(cfg['args'], containsAllInOrder(['--bus-url', sessionSshEndpoint]));
+      expect(
+        cfg['args'],
+        containsAllInOrder(['--bus-url', sessionSshEndpoint]),
+      );
     },
   );
 
-  test(
-    'non-native home plane stays HTTP even when locator returns a path',
-    () {
-      final cfg = resolve(
-        supportsBridge: true,
-        isLocalNative: false,
-        bridgeLocator: () => '/opt/teampilot/teammate_bus_bridge',
-      );
+  test('non-native home plane stays HTTP even when locator returns a path', () {
+    final cfg = resolve(
+      supportsBridge: true,
+      isLocalNative: false,
+      bridgeLocator: () => '/opt/teampilot/teammate_bus_bridge',
+    );
 
-      expect(cfg['type'], 'http');
-      expect(cfg['url'], sessionSshEndpoint);
-      expect(cfg['command'], isNull);
-    },
-  );
+    expect(cfg['type'], 'http');
+    expect(cfg['url'], sessionSshEndpoint);
+    expect(cfg['command'], isNull);
+  });
 
-  test(
-    'remote uses idle HTTP port + /ssh/mcp + token, never stdio',
-    () {
-      const remote = RemoteBusBinding(
-        token: 'bus-tok',
-        idleHttpTunnelPort: 18080,
-        mcpRawTunnelPort: 19090,
-        mcpRelayArgv: ['/usr/bin/teammate_bus_relay', '--port', '19090'],
-      );
-      final cfg = resolve(
-        supportsBridge: true,
-        remoteBinding: remote,
-        bridgeLocator: () => '/opt/teampilot/teammate_bus_bridge',
-      );
+  test('remote uses idle HTTP port + /ssh/mcp + token, never stdio', () {
+    const remote = RemoteBusBinding(
+      token: 'bus-tok',
+      idleHttpTunnelPort: 18080,
+      mcpRawTunnelPort: 19090,
+      mcpRelayArgv: ['/usr/bin/teammate_bus_relay', '--port', '19090'],
+    );
+    final cfg = resolve(
+      supportsBridge: true,
+      remoteBinding: remote,
+      bridgeLocator: () => '/opt/teampilot/teammate_bus_bridge',
+    );
 
-      expect(cfg['type'], 'http');
-      expect(cfg['url'], 'http://127.0.0.1:18080$sessionSshMcpPath');
-      expect(cfg['command'], isNull);
-      expect(cfg['args'], isNull);
-      final headers = cfg['headers'] as Map;
-      expect(headers[teammateBusMcpSessionHeader], 'sess-1');
-      expect(headers[teammateBusMcpMemberHeader], 'member-1');
-      expect(headers[teammateBusTokenHeader], 'bus-tok');
-    },
-  );
+    expect(cfg['type'], 'http');
+    expect(cfg['url'], 'http://127.0.0.1:18080$sessionSshMcpPath');
+    expect(cfg['command'], isNull);
+    expect(cfg['args'], isNull);
+    final headers = cfg['headers'] as Map;
+    expect(headers[teammateBusMcpSessionHeader], 'sess-1');
+    expect(headers[teammateBusMcpMemberHeader], 'member-1');
+    expect(headers[teammateBusTokenHeader], 'bus-tok');
+  });
 
   test('extraMcpServersWithSessionSsh adds key ssh', () {
     final extra = <String, Map<String, Object?>>{
@@ -350,7 +347,10 @@ void main() {
 
     final merged = extraMcpServersWithSessionSsh(extra: extra, config: config);
 
-    expect(merged.keys, containsAll([catalogMcpServerName, sessionSshMcpServerName]));
+    expect(
+      merged.keys,
+      containsAll([catalogMcpServerName, sessionSshMcpServerName]),
+    );
     expect(merged[sessionSshMcpServerName], config);
     expect(merged[catalogMcpServerName], extra[catalogMcpServerName]);
     expect(sessionSshMcpServerName, 'ssh');
@@ -364,30 +364,27 @@ void main() {
         sessionSshMcpEndpoint: sessionSshUri,
       );
 
-      expect(merged.keys, containsAll([catalogMcpServerName, sessionSshMcpServerName]));
+      expect(
+        merged.keys,
+        containsAll([catalogMcpServerName, sessionSshMcpServerName]),
+      );
       expect(merged[sessionSshMcpServerName]?['url'], sessionSshEndpoint);
     },
   );
 
-  test(
-    'composeRuntimeExtraMcpServers omits ssh without workspace',
-    () {
-      final merged = compose(sessionSshMcpEndpoint: sessionSshUri);
+  test('composeRuntimeExtraMcpServers omits ssh without workspace', () {
+    final merged = compose(sessionSshMcpEndpoint: sessionSshUri);
 
-      expect(merged.containsKey(sessionSshMcpServerName), isFalse);
-      expect(merged, contains(catalogMcpServerName));
-    },
-  );
+    expect(merged.containsKey(sessionSshMcpServerName), isFalse);
+    expect(merged, contains(catalogMcpServerName));
+  });
 
-  test(
-    'composeRuntimeExtraMcpServers omits ssh when endpoint is null',
-    () {
-      final merged = compose(workspace: _mixedLocalSsh());
+  test('composeRuntimeExtraMcpServers omits ssh when endpoint is null', () {
+    final merged = compose(workspace: _mixedLocalSsh());
 
-      expect(merged.containsKey(sessionSshMcpServerName), isFalse);
-      expect(merged, contains(catalogMcpServerName));
-    },
-  );
+    expect(merged.containsKey(sessionSshMcpServerName), isFalse);
+    expect(merged, contains(catalogMcpServerName));
+  });
 
   test(
     'composeRuntimeExtraMcpServers omits ssh when injectSessionSshMcp is false',
@@ -402,57 +399,48 @@ void main() {
     },
   );
 
-  test(
-    'composeRuntimeExtraMcpServers omits ssh when launchKind is ssh',
-    () {
-      final merged = compose(
-        workspace: _mixedLocalSsh(),
-        sessionSshMcpEndpoint: sessionSshUri,
-        launchKind: RuntimeKind.ssh,
-      );
+  test('composeRuntimeExtraMcpServers omits ssh when launchKind is ssh', () {
+    final merged = compose(
+      workspace: _mixedLocalSsh(),
+      sessionSshMcpEndpoint: sessionSshUri,
+      launchKind: RuntimeKind.ssh,
+    );
 
-      expect(merged.containsKey(sessionSshMcpServerName), isFalse);
-    },
-  );
+    expect(merged.containsKey(sessionSshMcpServerName), isFalse);
+  });
 
-  test(
-    'compose injects ssh tunnel URL for SSH launch with remoteBinding',
-    () {
-      const remote = RemoteBusBinding(
-        token: 'bus-tok',
-        idleHttpTunnelPort: 18080,
-      );
-      final merged = compose(
-        workspace: _mixedLocalSsh(),
-        sessionSshMcpEndpoint: sessionSshUri,
-        launchKind: RuntimeKind.ssh,
-        mixedRemoteBinding: remote,
-      );
+  test('compose injects ssh tunnel URL for SSH launch with remoteBinding', () {
+    const remote = RemoteBusBinding(
+      token: 'bus-tok',
+      idleHttpTunnelPort: 18080,
+    );
+    final merged = compose(
+      workspace: _mixedLocalSsh(),
+      sessionSshMcpEndpoint: sessionSshUri,
+      launchKind: RuntimeKind.ssh,
+      mixedRemoteBinding: remote,
+    );
 
-      expect(merged.containsKey(sessionSshMcpServerName), isTrue);
-      expect(
-        merged[sessionSshMcpServerName]?['url'],
-        'http://127.0.0.1:18080$sessionSshMcpPath',
-      );
-      final headers = merged[sessionSshMcpServerName]?['headers'] as Map;
-      expect(headers[teammateBusTokenHeader], 'bus-tok');
-      expect(headers[teammateBusMcpSessionHeader], 'sess-1');
-      expect(headers[teammateBusMcpMemberHeader], 'member-1');
-    },
-  );
+    expect(merged.containsKey(sessionSshMcpServerName), isTrue);
+    expect(
+      merged[sessionSshMcpServerName]?['url'],
+      'http://127.0.0.1:18080$sessionSshMcpPath',
+    );
+    final headers = merged[sessionSshMcpServerName]?['headers'] as Map;
+    expect(headers[teammateBusTokenHeader], 'bus-tok');
+    expect(headers[teammateBusMcpSessionHeader], 'sess-1');
+    expect(headers[teammateBusMcpMemberHeader], 'member-1');
+  });
 
-  test(
-    'compose injects ssh for remote-only workspace on local launch',
-    () {
-      final merged = compose(
-        workspace: _remoteOnlySsh(),
-        sessionSshMcpEndpoint: sessionSshUri,
-      );
+  test('compose injects ssh for remote-only workspace on local launch', () {
+    final merged = compose(
+      workspace: _remoteOnlySsh(),
+      sessionSshMcpEndpoint: sessionSshUri,
+    );
 
-      expect(merged.containsKey(sessionSshMcpServerName), isTrue);
-      expect(merged[sessionSshMcpServerName]?['url'], sessionSshEndpoint);
-    },
-  );
+    expect(merged.containsKey(sessionSshMcpServerName), isTrue);
+    expect(merged[sessionSshMcpServerName]?['url'], sessionSshEndpoint);
+  });
 
   test(
     'compose injects ssh tunnel URL for remote-only workspace on SSH launch',

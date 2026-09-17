@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
-import 'package:teampilot/services/launch/session_launch_connect_prep_runner.dart';
+import 'package:teampilot/services/launch/tab/session_launch_connect_prep_runner.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 import '../team_bus/support/fake_member_launcher.dart';
 

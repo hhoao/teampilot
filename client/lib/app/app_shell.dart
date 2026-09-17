@@ -177,7 +177,7 @@ import '../services/automation/automation_bus_gateway.dart';
 import '../services/automation/automation_dispatcher.dart';
 import '../services/automation/automation_schedule_calculator.dart';
 import '../services/automation/automation_scheduler.dart';
-import '../services/launch/session_runtime_plan_builder.dart';
+import '../services/launch/staging/session_runtime_plan_builder.dart';
 import '../services/home_workspace/home_workspace_ui_cache.dart';
 import '../services/team/team_clone_service.dart';
 import '../services/team_hub/composite_team_hub_source.dart';

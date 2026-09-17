@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/services/launch/manifest_ssh_overlay.dart';
+import 'package:teampilot/services/launch/staging/manifest/manifest_ssh_overlay.dart';
 
 void main() {
   final ctx = p.Context(style: p.Style.posix);
@@ -47,10 +47,7 @@ void main() {
     expect(gz.length, greaterThan(32));
     final tar = GZipDecoder().decodeBytes(gz);
     final decoded = TarDecoder().decodeBytes(tar);
-    expect(
-      decoded.files.map((f) => f.name),
-      containsAll(['a.txt', 'empty']),
-    );
+    expect(decoded.files.map((f) => f.name), containsAll(['a.txt', 'empty']));
     expect(utf8.decode(decoded.findFile('a.txt')!.content as List<int>), 'hi');
     final dir = decoded.findFile('empty')!;
     expect(dir.isDirectory, isTrue);

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,10 +31,9 @@ GitWorktree _wt(String p) => GitWorktree(
 );
 
 class _Harness {
-  _Harness({
-    required this.routeActive,
-    required this.target,
-  }) : isSubmitting = false : disabled = false;
+  _Harness({required this.routeActive, required this.target})
+    : isSubmitting = false,
+      disabled = false;
   final bool routeActive;
   final RuntimeTarget target;
   final bool isSubmitting;

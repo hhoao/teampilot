@@ -12,11 +12,11 @@ import '../session/session_lifecycle_service.dart';
 import '../ssh/ssh_client_factory.dart';
 import '../storage/home_storage.dart';
 import '../storage/runtime_context.dart';
-import 'session_connect_orchestrator.dart';
-import 'session_runtime_plan_builder.dart';
-import 'manifest_executor.dart';
-import 'workspace_provision_coordinator.dart';
-import 'workspace_provisioner.dart';
+import 'staging/session_connect_orchestrator.dart';
+import 'staging/session_runtime_plan_builder.dart';
+import 'staging/manifest/manifest_executor.dart';
+import 'workspace/workspace_provision_coordinator.dart';
+import 'workspace/workspace_provisioner.dart';
 
 SessionConnectOrchestrator buildSessionConnectOrchestrator({
   required SessionLifecycleService lifecycle,

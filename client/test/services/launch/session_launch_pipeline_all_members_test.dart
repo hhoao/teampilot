@@ -16,11 +16,13 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/launch/launch_operation.dart';
-import 'package:teampilot/services/launch/session_default_materializer.dart';
-import 'package:teampilot/services/launch/session_launch_pipeline.dart';
-import 'package:teampilot/services/launch/session_launch_workspace_index.dart';
-import 'package:teampilot/services/launch/session_tab_surface_coordinator.dart';
+import 'package:teampilot/services/launch/contracts/launch_operation.dart';
+import 'package:teampilot/services/launch/session/session_default_materializer.dart';
+import 'package:teampilot/services/launch/connect/member_connect_stage.dart';
+import 'package:teampilot/services/launch/session/session_launch_pipeline.dart';
+import 'package:teampilot/services/launch/session/session_open_router.dart';
+import 'package:teampilot/services/launch/session/session_launch_workspace_index.dart';
+import 'package:teampilot/services/launch/tab/session_tab_surface_coordinator.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:uuid/uuid.dart';
@@ -77,76 +79,88 @@ void main() {
   });
 
   group('native team connect schedules every valid member', () {
-    test('TeamSessionConnect with pref off still launches all members',
-        () async {
-      final tabStore = ChatTabStore(storage: fakeHomeStorage())..setActiveWorkspaceId('ws-1');
-      final workspace = Workspace(
-        workspaceId: 'ws-1',
-        folders: const [WorkspaceFolder(path: '/proj')],
-        createdAt: 1,
-        updatedAt: 1,
-      );
-      final nativeTeam = TeamProfile(
-        id: 'team-1',
-        name: 'Team',
-        members: const [
-          TeamMemberConfig(id: 'team-lead', name: 'Lead'),
-          TeamMemberConfig(id: 'builder', name: 'Builder'),
-        ],
-        cli: CliTool.claude,
-      );
-      final scheduled = <String>[];
-
-      final pipeline = _pipelineForAllMembers(
-        tabStore: tabStore,
-        workspace: workspace,
-        team: nativeTeam,
-        autoLaunchAllMembersOnConnect: () => false,
-        onScheduleMemberConnect: (member) => scheduled.add(member.id),
-      );
-
-      await pipeline.run(
-        ConnectWorkspaceOperation(TeamSessionConnect(nativeTeam)),
-      );
-
-      expect(scheduled, containsAll(['team-lead', 'builder']),
-          reason: 'native connect must schedule every valid member');
-    });
-
-    test('mixed team with pref off schedules only via single-member path',
-        () async {
-      final mixedTeam = TeamProfile(
-        id: 'team-1',
-        name: 'Team',
-        members: const [
-          TeamMemberConfig(id: 'team-lead', name: 'Lead'),
-          TeamMemberConfig(id: 'builder', name: 'Builder'),
-        ],
-        cli: CliTool.claude,
-        teamMode: TeamMode.mixed,
-      );
-      final scheduled = <String>[];
-
-      final pipeline = _pipelineForAllMembers(
-        tabStore: ChatTabStore(storage: fakeHomeStorage())..setActiveWorkspaceId('ws-1'),
-        workspace: Workspace(
+    test(
+      'TeamSessionConnect with pref off still launches all members',
+      () async {
+        final tabStore = ChatTabStore(storage: fakeHomeStorage())
+          ..setActiveWorkspaceId('ws-1');
+        final workspace = Workspace(
           workspaceId: 'ws-1',
           folders: const [WorkspaceFolder(path: '/proj')],
           createdAt: 1,
           updatedAt: 1,
-        ),
-        team: mixedTeam,
-        autoLaunchAllMembersOnConnect: () => false,
-        onScheduleMemberConnect: (member) => scheduled.add(member.id),
-      );
+        );
+        final nativeTeam = TeamProfile(
+          id: 'team-1',
+          name: 'Team',
+          members: const [
+            TeamMemberConfig(id: 'team-lead', name: 'Lead'),
+            TeamMemberConfig(id: 'builder', name: 'Builder'),
+          ],
+          cli: CliTool.claude,
+        );
+        final scheduled = <String>[];
 
-      await pipeline.run(
-        ConnectWorkspaceOperation(TeamSessionConnect(mixedTeam)),
-      );
+        final pipeline = _pipelineForAllMembers(
+          tabStore: tabStore,
+          workspace: workspace,
+          team: nativeTeam,
+          autoLaunchAllMembersOnConnect: () => false,
+          onScheduleMemberConnect: (member) => scheduled.add(member.id),
+        );
 
-      expect(scheduled, isNot(contains('builder')),
-          reason: 'mixed pref-off starts only the selected member');
-    });
+        await pipeline.run(
+          ConnectWorkspaceOperation(TeamSessionConnect(nativeTeam)),
+        );
+
+        expect(
+          scheduled,
+          containsAll(['team-lead', 'builder']),
+          reason: 'native connect must schedule every valid member',
+        );
+      },
+    );
+
+    test(
+      'mixed team with pref off schedules only via single-member path',
+      () async {
+        final mixedTeam = TeamProfile(
+          id: 'team-1',
+          name: 'Team',
+          members: const [
+            TeamMemberConfig(id: 'team-lead', name: 'Lead'),
+            TeamMemberConfig(id: 'builder', name: 'Builder'),
+          ],
+          cli: CliTool.claude,
+          teamMode: TeamMode.mixed,
+        );
+        final scheduled = <String>[];
+
+        final pipeline = _pipelineForAllMembers(
+          tabStore: ChatTabStore(storage: fakeHomeStorage())
+            ..setActiveWorkspaceId('ws-1'),
+          workspace: Workspace(
+            workspaceId: 'ws-1',
+            folders: const [WorkspaceFolder(path: '/proj')],
+            createdAt: 1,
+            updatedAt: 1,
+          ),
+          team: mixedTeam,
+          autoLaunchAllMembersOnConnect: () => false,
+          onScheduleMemberConnect: (member) => scheduled.add(member.id),
+        );
+
+        await pipeline.run(
+          ConnectWorkspaceOperation(TeamSessionConnect(mixedTeam)),
+        );
+
+        expect(
+          scheduled,
+          isNot(contains('builder')),
+          reason: 'mixed pref-off starts only the selected member',
+        );
+      },
+    );
   });
 }
 
@@ -221,19 +235,49 @@ SessionLaunchPipeline _pipelineForAllMembers({
       usesPosixPaths: false,
     ),
     tabSurface: tabSurface,
-    materializer: materializer,
-    scheduleMemberConnect:
-          (t, member, tab, {selectMember = true}) =>
-              onScheduleMemberConnect(member),
-    disconnectSession: () {},
-    ensureSession: (_) => null,
-    appendLocalTab: (_, {required emitChange}) =>
-        throw UnsupportedError('unused'),
-    ensureActiveSessionTab: (_, {required emitChange}) => tab,
-    resetTeamConfigValidationSurface: () {},
-    scheduleTeamConfigValidation: (_) async {},
-    activeTab: () => host.activeTab,
-    autoLaunchAllMembersOnConnect: autoLaunchAllMembersOnConnect,
+    openRouter: SessionOpenRouter(
+      tabStore: tabStore,
+      tabSurface: tabSurface,
+      workspaceById: (id) {
+        for (final w in host.state.workspaces) {
+          if (w.workspaceId == id) return w;
+        }
+        return null;
+      },
+    ),
+    memberConnect: MemberConnectStage(
+      host: host,
+      tabStore: tabStore,
+      state: () => host.state,
+      materializer: materializer,
+      openRouter: SessionOpenRouter(
+        tabStore: tabStore,
+        tabSurface: tabSurface,
+        workspaceById: (id) {
+          for (final w in host.state.workspaces) {
+            if (w.workspaceId == id) return w;
+          }
+          return null;
+        },
+      ),
+      scheduleMemberConnect: (t, member, tab, {selectMember = true}) =>
+          onScheduleMemberConnect(member),
+      disconnectSession: () {},
+      ensureSession: (_) => null,
+      appendLocalTab: (_, {required emitChange}) =>
+          throw UnsupportedError('unused'),
+      ensureActiveSessionTab: (_, {required emitChange}) => tab,
+      resetTeamConfigValidationSurface: () {},
+      scheduleTeamConfigValidation: (_) async {},
+      activeTab: () => host.activeTab,
+      autoLaunchAllMembersOnConnect: autoLaunchAllMembersOnConnect,
+      workspaceById: (id) {
+        for (final w in host.state.workspaces) {
+          if (w.workspaceId == id) return w;
+        }
+        return null;
+      },
+    ),
     uuid: const Uuid(),
   );
 }
@@ -258,7 +302,10 @@ class _CapturingHost implements SessionLaunchHost {
          executableResolver: () => 'true',
          terminalSessionFactory:
              ({required executable, scrollbackLines = 10000}) =>
-                 TerminalSession(executable: executable, fs: InMemoryFilesystem()),
+                 TerminalSession(
+                   executable: executable,
+                   fs: InMemoryFilesystem(),
+                 ),
          defaultTargetResolver: RuntimeTarget.local,
        ),
        sessionRuntime = TabSessionRuntimeCoordinator(
@@ -276,11 +323,11 @@ class _CapturingHost implements SessionLaunchHost {
 
   @override
   ChatDataSnapshot stateSnapshot() => ChatDataSnapshot(
-        workspaces: state.workspaces,
-        sessions: state.sessions,
-        visibleWorkspaces: state.visibleWorkspaces,
-        visibleSessions: state.visibleSessions,
-      );
+    workspaces: state.workspaces,
+    sessions: state.sessions,
+    visibleWorkspaces: state.visibleWorkspaces,
+    visibleSessions: state.visibleSessions,
+  );
 
   @override
   void emitSnapshot(ChatDataSnapshot snapshot) {
@@ -374,7 +421,8 @@ class _CapturingHost implements SessionLaunchHost {
   Future<void> loadWorkspaceData(SessionRepository repo) async {}
 
   @override
-  PostFrameScheduler get postFrameScheduler => (VoidCallback cb) => cb();
+  PostFrameScheduler get postFrameScheduler =>
+      (VoidCallback cb) => cb();
 
   @override
   void setPodView(String sessionId, SessionWorkbenchView view) {}
@@ -390,8 +438,8 @@ class _CapturingHost implements SessionLaunchHost {
 
   @override
   final SessionDataStore dataStore = SessionDataStore(
-      storage: fakeHomeStorage(),
-    );
+    storage: fakeHomeStorage(),
+  );
 
   @override
   bool get isMaterializingInFlight => false;

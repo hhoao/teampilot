@@ -9,7 +9,7 @@ import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/expert_hub/expert_hub_catalog.dart';
 import '../../services/expert_hub/local_expert_store.dart';
-import '../../services/launch/member_placement_save.dart';
+import '../launch/session/member_placement_save.dart';
 import '../../services/team_generation/models/team_generation_job.dart';
 import '../../services/team_generation/team_generation_context_payload.dart';
 import '../../services/team_generation/team_generation_job_store.dart';
@@ -521,16 +521,11 @@ final class GeneratedTeamCommitService {
     return [
       for (final raw in members)
         if (raw is Map)
-          if (_normalizedMemberId(raw).isNotEmpty)
-            _teamMember(job, raw, mode),
+          if (_normalizedMemberId(raw).isNotEmpty) _teamMember(job, raw, mode),
     ];
   }
 
-  TeamMemberConfig _teamMember(
-    TeamGenerationJob job,
-    Map raw,
-    TeamMode mode,
-  ) {
+  TeamMemberConfig _teamMember(TeamGenerationJob job, Map raw, TeamMode mode) {
     final explicit = '${raw['presetId'] ?? ''}'.trim();
     final entry = _poolEntry(job, explicit);
     return TeamMemberConfig(

@@ -1,4 +1,3 @@
-
 import 'package:flutter/foundation.dart';
 
 import '../../../../models/app_provider_config.dart';
@@ -8,7 +7,7 @@ import '../../../../models/hook_entry.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/logging/logger.dart';
 import '../../../hook/glue_script_builder.dart';
-import '../../../launch/work_plane_paths.dart';
+import '../../../launch/staging/manifest/work_plane_paths.dart';
 import '../../../provider/credential_binding.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/passthrough_provider_form_capability.dart';

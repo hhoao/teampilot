@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/runtime_target.dart';
-import 'package:teampilot/services/launch/work_plane_paths.dart';
+import 'package:teampilot/services/launch/staging/manifest/work_plane_paths.dart';
 import 'package:teampilot/services/cli/claude/provider/claude_provider_credentials_service.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_auth_artifacts.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_provider_credentials_service.dart';

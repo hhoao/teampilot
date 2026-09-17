@@ -9,13 +9,14 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/launch/connect_shell_result.dart';
-import 'package:teampilot/services/launch/session_member_connect_scheduler.dart';
-import 'package:teampilot/services/launch/session_shell_connector.dart';
+import 'package:teampilot/services/launch/contracts/connect_shell_result.dart';
+import 'package:teampilot/services/launch/connect/session_member_connect_scheduler.dart';
+import 'package:teampilot/services/launch/connect/session_shell_connector.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../../support/in_memory_filesystem.dart';
+import '../../support/test_session_persistence_writer.dart';
 
 void main() {
   test('schedule passes workspace from lookup into shell connect', () async {
@@ -24,7 +25,10 @@ void main() {
       workspaceId: workspaceId,
       createdAt: 1,
       folders: const [
-        WorkspaceFolder(path: '/local', targetId: WorkspaceFolder.localTargetId),
+        WorkspaceFolder(
+          path: '/local',
+          targetId: WorkspaceFolder.localTargetId,
+        ),
         WorkspaceFolder(path: '/home', targetId: 'ssh:home'),
       ],
     );
@@ -55,14 +59,14 @@ void main() {
     final scheduler = SessionMemberConnectScheduler(
       host: host,
       shellConnector: connector,
-      shellForLaunch: ({
-        required tab,
-        required shellKey,
-        required cli,
-        required session,
-        rosterMemberId,
-      }) =>
-          shell,
+      shellForLaunch:
+          ({
+            required tab,
+            required shellKey,
+            required cli,
+            required session,
+            rosterMemberId,
+          }) => shell,
       sessionForMemberConnect: (_, __) => session,
       tabStore: tabStore,
       workspaceById: (id) => id == workspaceId ? workspace : null,
@@ -77,7 +81,10 @@ void main() {
 
 class _RecordingConnector extends SessionShellConnector {
   _RecordingConnector(super.host, super.delegate)
-    : super(isLocalNative: () => true);
+    : super(
+        persister: inertSessionPersistenceWriter(),
+        isLocalNative: () => true,
+      );
 
   Workspace? lastWorkspace;
   AppSession? lastSession;
@@ -117,7 +124,8 @@ class _ImmediateFrameHost implements SessionLaunchHost {
   ChatState state;
 
   @override
-  PostFrameScheduler get postFrameScheduler => (cb) => cb();
+  PostFrameScheduler get postFrameScheduler =>
+      (cb) => cb();
 
   @override
   bool get hasConnectingSession => false;

@@ -13,7 +13,7 @@ import 'package:teampilot/cubits/chat/tab_session_runtime_coordinator.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
-import 'package:teampilot/services/launch/session_tab_surface_coordinator.dart';
+import 'package:teampilot/services/launch/tab/session_tab_surface_coordinator.dart';
 
 import '../../support/fake_terminal_session.dart';
 import '../../support/in_memory_filesystem.dart';
@@ -348,11 +348,11 @@ class _FakeHost implements SessionLaunchHost {
 
   @override
   ChatDataSnapshot stateSnapshot() => ChatDataSnapshot(
-        workspaces: state.workspaces,
-        sessions: state.sessions,
-        visibleWorkspaces: state.visibleWorkspaces,
-        visibleSessions: state.visibleSessions,
-      );
+    workspaces: state.workspaces,
+    sessions: state.sessions,
+    visibleWorkspaces: state.visibleWorkspaces,
+    visibleSessions: state.visibleSessions,
+  );
 
   final beginConnectIds = <String>[];
 

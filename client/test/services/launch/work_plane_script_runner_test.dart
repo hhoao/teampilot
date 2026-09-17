@@ -7,79 +7,85 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
-import 'package:teampilot/services/launch/work_plane_script_runner.dart';
+import 'package:teampilot/services/launch/staging/manifest/work_plane_script_runner.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 
 void main() {
-  test('SshWorkPlaneScriptRunner sends script on stdin not exec command', () async {
-    String? ran;
-    List<int>? stdin;
-    const profile = SshProfile(
-      id: 'p1',
-      name: 'dev',
-      host: 'example.com',
-      username: 'alice',
-    );
-    final factory = SshClientFactory(
-      credentialStore: InMemorySshCredentialStore(),
-      knownHostRepository: InMemorySshKnownHostRepository(),
-      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
-        return _RunnableClient(
-          onRun: (command, bytes) {
-            ran = command;
-            stdin = bytes;
-          },
-        );
-      },
-    );
+  test(
+    'SshWorkPlaneScriptRunner sends script on stdin not exec command',
+    () async {
+      String? ran;
+      List<int>? stdin;
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'example.com',
+        username: 'alice',
+      );
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          return _RunnableClient(
+            onRun: (command, bytes) {
+              ran = command;
+              stdin = bytes;
+            },
+          );
+        },
+      );
 
-    final runner = SshWorkPlaneScriptRunner(
-      sshClientFactory: factory,
-      profile: profile,
-    );
-    await runner.runScript('echo hi', operation: 'test-op');
+      final runner = SshWorkPlaneScriptRunner(
+        sshClientFactory: factory,
+        profile: profile,
+      );
+      await runner.runScript('echo hi', operation: 'test-op');
 
-    expect(ran, 'bash -s');
-    expect(utf8.decode(stdin!), 'echo hi');
-    expect(ran, isNot(contains('echo hi')));
-    expect(factory.hasLiveStorageClient(profile.id), isTrue);
-  });
+      expect(ran, 'bash -s');
+      expect(utf8.decode(stdin!), 'echo hi');
+      expect(ran, isNot(contains('echo hi')));
+      expect(factory.hasLiveStorageClient(profile.id), isTrue);
+    },
+  );
 
-  test('SshWorkPlaneScriptRunner.runStdinCommand keeps short exec command', () async {
-    String? ran;
-    List<int>? stdin;
-    const profile = SshProfile(
-      id: 'p1',
-      name: 'dev',
-      host: 'example.com',
-      username: 'alice',
-    );
-    final factory = SshClientFactory(
-      credentialStore: InMemorySshCredentialStore(),
-      knownHostRepository: InMemorySshKnownHostRepository(),
-      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
-        return _RunnableClient(
-          onRun: (command, bytes) {
-            ran = command;
-            stdin = bytes;
-          },
-        );
-      },
-    );
+  test(
+    'SshWorkPlaneScriptRunner.runStdinCommand keeps short exec command',
+    () async {
+      String? ran;
+      List<int>? stdin;
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'example.com',
+        username: 'alice',
+      );
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          return _RunnableClient(
+            onRun: (command, bytes) {
+              ran = command;
+              stdin = bytes;
+            },
+          );
+        },
+      );
 
-    final runner = SshWorkPlaneScriptRunner(
-      sshClientFactory: factory,
-      profile: profile,
-    );
-    await runner.runStdinCommand(
-      command: "mkdir -p '/tmp/root' && gzip -dc | tar -x -C '/tmp/root'",
-      stdin: Uint8List.fromList([1, 2, 3]),
-      operation: 'Launch overlay extract',
-    );
-    expect(ran, "mkdir -p '/tmp/root' && gzip -dc | tar -x -C '/tmp/root'");
-    expect(ran, "mkdir -p '/tmp/root' && gzip -dc | tar -x -C '/tmp/root'");
-    expect(stdin, [1, 2, 3]);
-  });
+      final runner = SshWorkPlaneScriptRunner(
+        sshClientFactory: factory,
+        profile: profile,
+      );
+      await runner.runStdinCommand(
+        command: "mkdir -p '/tmp/root' && gzip -dc | tar -x -C '/tmp/root'",
+        stdin: Uint8List.fromList([1, 2, 3]),
+        operation: 'Launch overlay extract',
+      );
+      expect(ran, "mkdir -p '/tmp/root' && gzip -dc | tar -x -C '/tmp/root'");
+      expect(ran, "mkdir -p '/tmp/root' && gzip -dc | tar -x -C '/tmp/root'");
+      expect(stdin, [1, 2, 3]);
+    },
+  );
 
   test('SshWorkPlaneScriptRunner.tryCreate returns null without profile', () {
     expect(
@@ -125,11 +131,8 @@ void main() {
 }
 
 class _RunnableClient extends SSHClient {
-  _RunnableClient({
-    this.onRun,
-    this.exitCode = 0,
-    this.stderr = '',
-  }) : super(_FakeSSHSocket(), username: 'test');
+  _RunnableClient({this.onRun, this.exitCode = 0, this.stderr = ''})
+    : super(_FakeSSHSocket(), username: 'test');
 
   final void Function(String command, List<int>? stdin)? onRun;
   final int exitCode;

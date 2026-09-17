@@ -7,8 +7,8 @@ import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_topology.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/launch/member_placement_save.dart';
-import 'package:teampilot/services/launch/team_settings_commit_service.dart';
+import 'package:teampilot/services/launch/session/member_placement_save.dart';
+import 'package:teampilot/services/launch/session/team_settings_commit_service.dart';
 
 import '../../support/post_frame_test_harness.dart';
 

@@ -11,22 +11,17 @@ import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../services/terminal/terminal_session.dart';
-import 'launch_operation.dart';
-import 'launch_outcome.dart';
-import 'session_default_materializer.dart';
-import 'session_launch_connect_prep_runner.dart';
-import 'session_launch_pipeline.dart';
-import 'session_launch_workspace_index.dart';
-import 'session_tab_connect_prep.dart';
-import 'session_tab_surface_coordinator.dart';
-
-typedef ScheduleMemberConnectFn =
-    void Function(
-      TeamProfile team,
-      TeamMemberConfig member,
-      ChatTab tab, {
-      bool selectMember,
-    });
+import 'contracts/launch_operation.dart';
+import 'contracts/launch_outcome.dart';
+import 'contracts/member_connect_types.dart';
+import 'session/session_default_materializer.dart';
+import 'tab/session_launch_connect_prep_runner.dart';
+import 'connect/member_connect_stage.dart';
+import 'session/session_launch_pipeline.dart';
+import 'session/session_open_router.dart';
+import 'session/session_launch_workspace_index.dart';
+import 'tab/session_tab_connect_prep.dart';
+import 'tab/session_tab_surface_coordinator.dart';
 
 /// Dependencies required to wire tab surface, materializer, and pipeline.
 class SessionLaunchBundleDeps {
@@ -112,7 +107,8 @@ class SessionLaunchBundleDeps {
     String sessionId, {
     bool preview,
     bool activate,
-  })? onSessionTabOpened;
+  })?
+  onSessionTabOpened;
 }
 
 /// Composition root for launch pipeline collaborators.
@@ -183,13 +179,18 @@ class SessionLaunchBundle {
       activeBucketKey: deps.activeBucketKey,
     );
 
-    pipeline = SessionLaunchPipeline(
+    final openRouter = SessionOpenRouter(
+      tabStore: deps.tabStore,
+      tabSurface: tabSurface,
+      workspaceById: deps.workspaceById,
+    );
+
+    final memberConnect = MemberConnectStage(
       host: deps.host,
       tabStore: deps.tabStore,
       state: deps.state,
-      workspaceIndex: deps.workspaceIndex,
-      tabSurface: tabSurface,
       materializer: materializer,
+      openRouter: openRouter,
       scheduleMemberConnect: deps.scheduleMemberConnect,
       disconnectSession: deps.disconnectSession,
       ensureSession: deps.ensureSession,
@@ -199,6 +200,17 @@ class SessionLaunchBundle {
       scheduleTeamConfigValidation: deps.scheduleTeamConfigValidation,
       activeTab: deps.activeTab,
       autoLaunchAllMembersOnConnect: deps.autoLaunchAllMembersOnConnect,
+      workspaceById: deps.workspaceById,
+    );
+
+    pipeline = SessionLaunchPipeline(
+      host: deps.host,
+      tabStore: deps.tabStore,
+      state: deps.state,
+      workspaceIndex: deps.workspaceIndex,
+      tabSurface: tabSurface,
+      openRouter: openRouter,
+      memberConnect: memberConnect,
       uuid: deps.uuid,
     );
 

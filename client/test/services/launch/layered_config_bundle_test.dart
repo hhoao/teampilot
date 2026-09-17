@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/config_bundle.dart';
-import 'package:teampilot/services/launch/layered_config_bundle.dart';
+import 'package:teampilot/services/launch/staging/layered_config_bundle.dart';
 
 void main() {
   test('merge hookIds team > expert > workspace with dedupe', () {
@@ -20,10 +20,7 @@ void main() {
   });
 
   test('hookIds round-trip through toJson/fromJson', () {
-    const bundle = ConfigBundle(
-      skillIds: ['s1'],
-      hookIds: ['h1', 'h2'],
-    );
+    const bundle = ConfigBundle(skillIds: ['s1'], hookIds: ['h1', 'h2']);
     final restored = ConfigBundle.fromJson(bundle.toJson());
     expect(restored, bundle);
   });

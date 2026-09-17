@@ -17,8 +17,8 @@ import 'package:teampilot/services/cli/registry/capabilities/workspace_base_info
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/launch/session_lifecycle_connect_coordinator.dart';
-import 'package:teampilot/services/launch/session_shell_connector.dart';
+import 'package:teampilot/services/launch/connect/session_lifecycle_connect_coordinator.dart';
+import 'package:teampilot/services/launch/connect/session_shell_connector.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_constants.dart';
@@ -47,7 +47,10 @@ void main() {
         createdAt: 1,
         injectSessionSshMcp: true,
         folders: const [
-          WorkspaceFolder(path: '/home/alice/proj', targetId: 'ssh:home-server'),
+          WorkspaceFolder(
+            path: '/home/alice/proj',
+            targetId: 'ssh:home-server',
+          ),
         ],
       );
       expect(workspaceSessionSshMcpEnabled(workspace), isTrue);

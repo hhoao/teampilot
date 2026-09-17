@@ -1,6 +1,6 @@
 import '../../models/team_config.dart';
 import '../io/filesystem.dart';
-import '../launch/launch_manifest_paths.dart';
+import '../launch/staging/manifest/launch_manifest_paths.dart';
 import 'materialization_manifest.dart';
 
 /// One locally-generated credential file destined for `providers/{tool}/` on the
