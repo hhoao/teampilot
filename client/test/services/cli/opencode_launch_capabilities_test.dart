@@ -6,6 +6,7 @@ import 'package:teampilot/services/cli/opencode/capabilities/permission_launch.d
 import 'package:teampilot/services/cli/opencode/capabilities/session_selection_launch.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/team_behavior.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/user_extra_args_launch.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/workspace_base_info.dart';
 import 'package:teampilot/services/cli/opencode/opencode_tool.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_launch_security_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/team_behavior_capability.dart';
@@ -198,32 +199,27 @@ void main() {
     );
   });
 
-  test(
-    'OpenCode registers session/model/agent/user providers, not workspace',
-    () {
-      final tool = OpencodeCliTool();
-      final providers = tool.capabilities.whereType<CliLaunchArgProvider>();
+  test('OpenCode registers session/workspace/model/agent/user providers', () {
+    final tool = OpencodeCliTool();
+    final providers = tool.capabilities.whereType<CliLaunchArgProvider>();
 
-      expect(providers, contains(isA<OpencodeSessionSelectionLaunch>()));
-      expect(providers, contains(isA<OpencodeModelLaunch>()));
-      expect(providers, contains(isA<OpencodeAgentLaunch>()));
-      expect(providers, contains(isA<OpencodeUserExtraArgsLaunch>()));
-      expect(
-        tool.capabilities.whereType<CliLaunchConstraint>(),
-        contains(isA<OpencodePermissionLaunch>()),
-      );
-      expect(
-        tool.capabilities.whereType<CliHeadlessLaunchConstraint>(),
-        contains(isA<OpencodePermissionLaunch>()),
-      );
-      expect(providers, hasLength(4));
-      expect(tool.capabilities.whereType<OpencodeTeamBehavior>(), hasLength(1));
-      expect(
-        tool.capabilities.whereType<TeamBehaviorCapability>(),
-        hasLength(1),
-      );
-    },
-  );
+    expect(providers, contains(isA<OpencodeSessionSelectionLaunch>()));
+    expect(providers, contains(isA<OpencodeWorkspaceBaseInfo>()));
+    expect(providers, contains(isA<OpencodeModelLaunch>()));
+    expect(providers, contains(isA<OpencodeAgentLaunch>()));
+    expect(providers, contains(isA<OpencodeUserExtraArgsLaunch>()));
+    expect(
+      tool.capabilities.whereType<CliLaunchConstraint>(),
+      contains(isA<OpencodePermissionLaunch>()),
+    );
+    expect(
+      tool.capabilities.whereType<CliHeadlessLaunchConstraint>(),
+      contains(isA<OpencodePermissionLaunch>()),
+    );
+    expect(providers, hasLength(5));
+    expect(tool.capabilities.whereType<OpencodeTeamBehavior>(), hasLength(1));
+    expect(tool.capabilities.whereType<TeamBehaviorCapability>(), hasLength(1));
+  });
 
   test('OpenCode launch rejects a tool without launch providers', () {
     final context = CliLaunchContext(

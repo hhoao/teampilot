@@ -11,21 +11,8 @@ import 'package:teampilot/services/resource/providers/mcp_contribution_provider.
 import 'package:teampilot/services/resource/providers/skill_contribution_provider.dart';
 import 'package:teampilot/services/resource/resource_provider_set.dart';
 
-/// Claude/Cursor/Codex/FlashskyAI register [WorkspaceBaseInfoCapability] as a
-/// second [PromptContributionProvider]. OpenCode stays at one until Task 3.
-const _workspaceBaseInfoPromptClis = {
-  CliTool.claude,
-  CliTool.cursor,
-  CliTool.codex,
-  CliTool.flashskyai,
-};
-
 Set<String> _expectedPromptProviderIds(CliTool cli) {
-  final ids = {cli.value};
-  if (_workspaceBaseInfoPromptClis.contains(cli)) {
-    ids.add(workspaceBaseInfoProviderId);
-  }
-  return ids;
+  return {cli.value, workspaceBaseInfoProviderId};
 }
 
 void main() {

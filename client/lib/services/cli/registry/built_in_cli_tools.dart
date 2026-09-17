@@ -23,6 +23,7 @@ import 'capabilities/chat_interaction_capability.dart';
 import 'capabilities/runtime_event_capability.dart';
 import 'capabilities/terminal_behavior_capability.dart';
 import 'capabilities/plugin_capability.dart';
+import 'capabilities/workspace_base_info_capability.dart';
 import 'cli_bootstrap.dart';
 import 'cli_capability.dart';
 import 'cli_tool_registry.dart';
@@ -120,6 +121,7 @@ void registerBuiltInCliTools(
   _verifyRequired<PluginCapability>(registry);
   _verifyRequired<ChatInteractionCapability>(registry);
   _verifyRequired<RuntimeEventCapability>(registry);
+  _verifyRequired<WorkspaceBaseInfoCapability>(registry);
   _verifyNativeTeamRegistration(registry);
   _verifyMemberAgentPresetRegistration(registry);
 }

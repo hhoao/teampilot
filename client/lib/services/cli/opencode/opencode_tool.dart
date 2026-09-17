@@ -7,6 +7,7 @@ import '../registry/cli_tool_definition.dart';
 import 'capabilities/team_behavior.dart';
 import 'capabilities/native_commands.dart';
 import 'capabilities/session_selection_launch.dart';
+import 'capabilities/workspace_base_info.dart';
 import 'capabilities/model_launch.dart';
 import 'capabilities/permission_launch.dart';
 import 'capabilities/agent_launch.dart';
@@ -39,6 +40,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   OpencodeCliTool({
     this.teamBehavior = const OpencodeTeamBehavior(),
     this.sessionSelection = const OpencodeSessionSelectionLaunch(),
+    this.workspaceBaseInfo = const OpencodeWorkspaceBaseInfo(),
     this.modelLaunch = const OpencodeModelLaunch(),
     this.launchSecurity = const FullAccessOnlyCliLaunchSecurityCapability(),
     this.permissionLaunch = const OpencodePermissionLaunch(),
@@ -73,6 +75,7 @@ final class OpencodeCliTool implements CliToolDefinition {
 
   final TeamBehaviorCapability teamBehavior;
   final OpencodeSessionSelectionLaunch sessionSelection;
+  final OpencodeWorkspaceBaseInfo workspaceBaseInfo;
   final OpencodeModelLaunch modelLaunch;
   final CliLaunchSecurityCapability launchSecurity;
   final OpencodePermissionLaunch permissionLaunch;
@@ -96,6 +99,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   Iterable<CliCapability> get capabilities => [
     teamBehavior,
     sessionSelection,
+    workspaceBaseInfo,
     modelLaunch,
     launchSecurity,
     permissionLaunch,
