@@ -6,6 +6,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_cli_config_policy.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_provisioner.dart';
+import 'package:teampilot/services/cli/registry/capabilities/workspace_base_info_capability.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_provider_credentials_service.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -111,6 +112,52 @@ void main() {
       expect((await fs.stat(layout.hooksConfig(memberHome))).isFile, isFalse);
       expect((await fs.stat(layout.mcpConfig(memberHome))).isFile, isFalse);
     });
+
+    test(
+      'empty role still materializes workspace-base-info extras into role.mdc',
+      () async {
+        const memberHome = '/data/tp/members/planner/cursor/home';
+        const emptyRoleMember = TeamMemberConfig(id: 'm1', name: 'Member');
+
+        await provisioner.provision(
+          memberHome: memberHome,
+          providerId: null,
+          member: emptyRoleMember,
+          busIdle: null,
+          forceTeamLeadDelegateMode: false,
+          mixed: false,
+          additionalDirectories: const ['/repo/a'],
+        );
+
+        final roleRule = await fs.readString(layout.roleRule(memberHome));
+        expect(roleRule, contains('## Workspace directories'));
+        expect(roleRule, contains('- /repo/a'));
+      },
+    );
+
+    test(
+      'empty role still materializes ssh workspace-base-info into role.mdc',
+      () async {
+        const memberHome = '/data/tp/members/planner/cursor/home';
+        const emptyRoleMember = TeamMemberConfig(id: 'm1', name: 'Member');
+
+        await provisioner.provision(
+          memberHome: memberHome,
+          providerId: null,
+          member: emptyRoleMember,
+          busIdle: null,
+          forceTeamLeadDelegateMode: false,
+          mixed: false,
+          workspaceBaseInfo: const WorkspaceBaseInfoPromptInputs(
+            sshMcpInjected: true,
+          ),
+        );
+
+        final roleRule = await fs.readString(layout.roleRule(memberHome));
+        expect(roleRule, contains('## Remote projects'));
+        expect(roleRule, contains('list-servers'));
+      },
+    );
 
     test(
       'provision preserves a prompt already written by the coordinator',

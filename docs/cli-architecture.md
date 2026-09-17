@@ -18,6 +18,7 @@ services/cli/{cli_name}/
     terminal_behavior.dart          # TerminalBehaviorCapability（必需）
     plugin.dart                     # PluginCapability（必需）
     executable.dart                 # CliExecutableCapability（必需）
+    workspace_base_info.dart        # WorkspaceBaseInfoCapability（必需：argv + prompt）
     skill.dart                      # SkillCapability（codex/opencode 覆盖；claude/flashskyai 用共享 DefaultSkillCapability）
     mcp.dart                        # McpCapability（claude/flashskyai 共用 claude/capabilities/mcp.dart）
     prompt.dart                     # PromptCapability
@@ -247,6 +248,7 @@ tool 列表。
 | `TerminalBehaviorCapability` | `registry/capabilities/terminal_behavior_capability.dart` | turn interrupt、全屏输入与注入策略（观测走 TerminalObservationContributor） |
 | `CliExecutableCapability` | `registry/capabilities/cli_executable_capability.dart` | 可执行文件解析 / 安装 / UI |
 | `PluginCapability` | `registry/capabilities/plugin_capability.dart` | 插件物化 |
+| `WorkspaceBaseInfoCapability` | `registry/capabilities/workspace_base_info_capability.dart` | 工作区 extras argv + 条件 prompt；实现 `CliLaunchArgProvider` + `PromptContributionProvider`；OpenCode argv 为空 |
 
 以下能力根据 CLI 是否支持决定：
 
@@ -449,8 +451,8 @@ services/cli/flashskyai/remote_flashskyai_command_builder.dart
 
 ```dart
 // ✅ 新模式 — 交互式与 headless 均由每个 CLI 的语义能力注册 Provider
-claude/capabilities/workspace_access_launch.dart
-cursor/capabilities/workspace_access_launch.dart
+claude/capabilities/workspace_base_info.dart
+cursor/capabilities/workspace_base_info.dart
 claude/capabilities/headless.dart
 codex/capabilities/headless.dart
 ```
@@ -492,6 +494,7 @@ for (final def in CliToolRegistry.builtIn().launchable)
 | `ProviderCapability` | `registry/capabilities/provider_capability.dart` | Hub 契约 | ✅ |
 | `SkillCapability` | `registry/capabilities/skill_capability.dart` | Hub 契约 | - |
 | `PluginCapability` | `registry/capabilities/plugin_capability.dart` | Hub 契约 | ✅ |
+| `WorkspaceBaseInfoCapability` | `registry/capabilities/workspace_base_info_capability.dart` | 启动 argv + Prompt 来源 | ✅ |
 | `McpCapability` | `registry/capabilities/mcp_capability.dart` | Hub 契约 | - |
 | `HookCapability` | `registry/capabilities/hook_capability.dart` | Hub 契约 | - |
 | `PromptCapability` | `registry/capabilities/prompt_capability.dart` | Hub 契约 | - |
@@ -563,11 +566,11 @@ Provider 可以在语义未启用时返回空结果。是否存在某个 Provide
 
 | CLI | 已注册的启动 Provider 语义 |
 |-----|----------------------------|
-| Claude | 原生团队身份、会话、工作区、模型/设置、权限、提示、用户额外参数 |
-| FlashskyAI | 原生团队身份、会话、工作区、模型、权限、提示、用户额外参数 |
-| Codex | 会话、工作区、模型、权限、用户额外参数；不注册原生团队身份 Provider |
-| Cursor | 团队行为、会话、工作区、模型、权限、用户额外参数 |
-| OpenCode | 会话、模型、agent、用户额外参数；工作区外部目录走配置，不注册 argv Provider |
+| Claude | 原生团队身份、会话、工作区（`WorkspaceBaseInfoCapability`）、模型/设置、权限、提示、用户额外参数 |
+| FlashskyAI | 原生团队身份、会话、工作区（`WorkspaceBaseInfoCapability`）、模型、权限、提示、用户额外参数 |
+| Codex | 会话、工作区（`WorkspaceBaseInfoCapability`）、模型、权限、用户额外参数；不注册原生团队身份 Provider |
+| Cursor | 团队行为、会话、工作区（`WorkspaceBaseInfoCapability`）、模型、权限、用户额外参数 |
+| OpenCode | 会话、模型、agent、用户额外参数；`WorkspaceBaseInfoCapability` argv 为空，外部目录走 `permission.external_directory` 配置 |
 
 新增 CLI 时，先在该 CLI 的 `capabilities/` 中实现它实际支持的 Provider，再把实例按
 稳定语义顺序放入 `{cli_name}_tool.dart` 的 `capabilities` 列表。不要在测试或调用方为
@@ -651,9 +654,14 @@ product policy 的事实。
 - Cursor：主目录使用 `--workspace`，额外目录逐个使用 `--add-dir <path>`；
 - OpenCode：进程工作目录和外部目录是配置/运行时问题。额外目录写入 OpenCode 配置的
   `permission.external_directory`（由配置能力物化），保持配置-only，不生成
-  `--add-dir` argv。
+  `--add-dir` argv。`WorkspaceBaseInfoCapability` 仍必选，但 argv 贡献为空；
+  同机 extras / SSH MCP 章节仍由该能力作为 `PromptContributionProvider` 写入 prompt。
 
-因此，新增或修复工作区支持时应修改对应 CLI 的 workspace Provider 或配置能力；不要
+同机 extras 与远程 SSH MCP 的 prompt 章节由 `WorkspaceBaseInfoCapability` 独立贡献，
+不嵌入成员 role。`additionalDirectories` 与 `workspaceBaseInfo` 进入 prompt context 后
+由该能力 `provide()`，而不是 OpenCode 专属拼装。
+
+因此，新增或修复工作区支持时应修改对应 CLI 的 `WorkspaceBaseInfoCapability` 或配置能力；不要
 给 `CliLaunchContext` 增加 CLI 专属字段，也不要在通用启动边界按 CLI 身份拼接参数。
 
 ## Hook 管线（用户可配置 hooks）

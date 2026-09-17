@@ -402,6 +402,7 @@ final class CursorProviderCapability extends CatalogModelCapability
       workspaceId: ctx.scope.workspaceId,
       sessionId: ctx.scope.sessionId,
       memberId: ctx.scope.memberId,
+      additionalDirectories: ctx.additionalDirectories,
     );
 
     if (!ctx.hooksAlreadyMaterialized) {

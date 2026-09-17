@@ -244,6 +244,25 @@ void main() {
       },
     );
 
+    test(
+      'empty role still materializes workspace-base-info extras into role.mdc',
+      () async {
+        const emptyRoleMember = TeamMemberConfig(id: 'm1', name: 'Member');
+
+        await provisioner.provisionOverlayOnly(
+          memberHome: memberHome,
+          member: emptyRoleMember,
+          busIdle: null,
+          forceTeamLeadDelegateMode: false,
+          additionalDirectories: const ['/repo/a'],
+        );
+
+        final roleRule = await fs.readString(layout.roleRule(memberHome));
+        expect(roleRule, contains('## Workspace directories'));
+        expect(roleRule, contains('- /repo/a'));
+      },
+    );
+
     test('does not write auth.json', () async {
       await provisioner.provisionOverlayOnly(
         memberHome: memberHome,

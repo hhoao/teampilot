@@ -11,6 +11,8 @@ import '../../../storage/runtime_layout.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/capabilities/hook_capability.dart';
 import '../../registry/capabilities/prompt_capability.dart';
+import '../../registry/capabilities/workspace_base_info_capability.dart';
+import '../../registry/cli_tool_registry.dart';
 import '../../registry/prompt/prompt_hub_service.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/hook/managed_hook_provisioner.dart';
@@ -51,6 +53,13 @@ final class CursorHomeProvisioner {
   final RuntimeLayout? _runtimeLayout;
   final PromptCapability _promptProvision;
 
+  Iterable<PromptContributionProvider> get _promptProviders => [
+    _promptProvision as PromptContributionProvider,
+    ...CliToolRegistry.builtIn()
+        .providersOf<PromptContributionProvider>(CliTool.cursor)
+        .whereType<WorkspaceBaseInfoCapability>(),
+  ];
+
   Future<void> provision({
     required String memberHome,
     required String? providerId,
@@ -63,6 +72,9 @@ final class CursorHomeProvisioner {
     String? workspaceId,
     String? sessionId,
     String? memberId,
+    List<String> additionalDirectories = const [],
+    WorkspaceBaseInfoPromptInputs workspaceBaseInfo =
+        WorkspaceBaseInfoPromptInputs.empty,
   }) async {
     await _ensureCursorDirs(memberHome);
     await _mirrorRealHomePassthrough(
@@ -96,13 +108,15 @@ final class CursorHomeProvisioner {
       await const PromptHubService().provisionForCli(
         cli: CliTool.cursor,
         capability: _promptProvision,
-        providers: [_promptProvision as PromptContributionProvider],
+        providers: _promptProviders,
         ctx: PromptMaterializeContext(
           member: member,
           memberHome: memberHome,
           forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
           mixed: false,
           pushDelivery: false,
+          additionalDirectories: additionalDirectories,
+          workspaceBaseInfo: workspaceBaseInfo,
         ),
       );
       return;
@@ -117,6 +131,8 @@ final class CursorHomeProvisioner {
       sessionId: sessionId,
       memberId: memberId,
       providerId: providerId,
+      additionalDirectories: additionalDirectories,
+      workspaceBaseInfo: workspaceBaseInfo,
     );
   }
 
@@ -134,6 +150,9 @@ final class CursorHomeProvisioner {
     String? sessionId,
     String? memberId,
     String? providerId,
+    List<String> additionalDirectories = const [],
+    WorkspaceBaseInfoPromptInputs workspaceBaseInfo =
+        WorkspaceBaseInfoPromptInputs.empty,
   }) async {
     if (!member.isValid) return;
 
@@ -150,13 +169,15 @@ final class CursorHomeProvisioner {
     await const PromptHubService().provisionForCli(
       cli: CliTool.cursor,
       capability: _promptProvision,
-      providers: [_promptProvision as PromptContributionProvider],
+      providers: _promptProviders,
       ctx: PromptMaterializeContext(
         member: member,
         memberHome: memberHome,
         forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
         mixed: true,
         pushDelivery: true,
+        additionalDirectories: additionalDirectories,
+        workspaceBaseInfo: workspaceBaseInfo,
       ),
     );
 

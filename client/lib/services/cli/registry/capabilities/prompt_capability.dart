@@ -32,7 +32,8 @@ class PromptVirtualizeContext {
   final bool mixed;
   final bool pushDelivery;
 
-  /// 已 normalize 的工作面路径；只有 opencode 的实现把它拼进 prompt。
+  /// 已 normalize 的工作面路径；由 [WorkspaceBaseInfoCapability] 写入 prompt
+  ///（非 OpenCode 专属）。
   final List<String> additionalDirectories;
 
   /// cursor 专用：fake HOME，由装配点解析后传入。
@@ -75,7 +76,8 @@ class PromptMaterializeContext {
   final bool mixed;
   final bool pushDelivery;
 
-  /// 已 normalize 的工作面路径；只有 opencode 的实现把它拼进 prompt。
+  /// 已 normalize 的工作面路径；由 [WorkspaceBaseInfoCapability] 写入 prompt
+  ///（非 OpenCode 专属）。
   final List<String> additionalDirectories;
 
   /// cursor 专用：fake HOME，由装配点解析后传入。
