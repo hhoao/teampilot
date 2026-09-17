@@ -1599,6 +1599,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  teampilot_scheduler:
+    dependency: "direct main"
+    description:
+      path: "packages/teampilot_scheduler"
+      relative: true
+    source: path
+    version: "0.1.0"
   teampilot_search:
     dependency: "direct main"
     description:
