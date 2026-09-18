@@ -5,6 +5,8 @@ import 'package:teampilot/cubits/chat/chat_tab_store.dart';
 import 'package:teampilot/cubits/chat/model/chat_state.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
+import 'package:teampilot/cubits/chat/model/session_create_request.dart';
+import 'package:teampilot/cubits/chat/model/session_open_request.dart';
 import 'package:teampilot/cubits/chat/model/session_open_status.dart';
 import 'package:teampilot/cubits/chat/model/session_workbench_view.dart';
 import 'package:teampilot/cubits/chat/session_data_store.dart';
@@ -12,20 +14,19 @@ import 'package:teampilot/cubits/chat/session_launch_host.dart';
 import 'package:teampilot/cubits/chat/tab_session_runtime_coordinator.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/runtime_target.dart';
+import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/launch/contracts/launch_operation.dart';
-import 'package:teampilot/services/launch/session/session_default_materializer.dart';
+import 'package:teampilot/services/launch/connect/session_connect_job.dart';
 import 'package:teampilot/services/launch/connect/member_connect_stage.dart';
-import 'package:teampilot/services/launch/session/session_launch_pipeline.dart';
-import 'package:teampilot/services/launch/session/session_open_router.dart';
+import 'package:teampilot/services/launch/connect/session_connect_scheduler.dart';
+import 'package:teampilot/services/launch/session/session_default_materializer.dart';
+import 'package:teampilot/services/launch/session/session_launch_coordinator.dart';
 import 'package:teampilot/services/launch/session/session_launch_workspace_index.dart';
-import 'package:teampilot/services/launch/tab/session_tab_surface_coordinator.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -101,7 +102,7 @@ void main() {
         );
         final scheduled = <String>[];
 
-        final pipeline = _pipelineForAllMembers(
+        final stage = _stageForAllMembers(
           tabStore: tabStore,
           workspace: workspace,
           team: nativeTeam,
@@ -109,9 +110,7 @@ void main() {
           onScheduleMemberConnect: (member) => scheduled.add(member.id),
         );
 
-        await pipeline.run(
-          ConnectWorkspaceOperation(TeamSessionConnect(nativeTeam)),
-        );
+        await stage.run(TeamSessionConnect(nativeTeam));
 
         expect(
           scheduled,
@@ -136,7 +135,7 @@ void main() {
         );
         final scheduled = <String>[];
 
-        final pipeline = _pipelineForAllMembers(
+        final stage = _stageForAllMembers(
           tabStore: ChatTabStore(storage: fakeHomeStorage())
             ..setActiveWorkspaceId('ws-1'),
           workspace: Workspace(
@@ -150,9 +149,7 @@ void main() {
           onScheduleMemberConnect: (member) => scheduled.add(member.id),
         );
 
-        await pipeline.run(
-          ConnectWorkspaceOperation(TeamSessionConnect(mixedTeam)),
-        );
+        await stage.run(TeamSessionConnect(mixedTeam));
 
         expect(
           scheduled,
@@ -164,7 +161,7 @@ void main() {
   });
 }
 
-SessionLaunchPipeline _pipelineForAllMembers({
+MemberConnectStage _stageForAllMembers({
   required ChatTabStore tabStore,
   required Workspace workspace,
   required TeamProfile team,
@@ -179,10 +176,22 @@ SessionLaunchPipeline _pipelineForAllMembers({
   // and `_runLaunchAllMembers` takes the `_ensureActiveSessionTab` path
   // (no repository / materialization needed).
   final tab = tabStore.appendLocalTab(team, cliTeamName: 'cli-team-1');
+  tab.persistedSession = AppSession(
+    sessionId: tab.info.id,
+    workspaceId: workspace.workspaceId,
+    sessionTeam: team.id,
+    members: [
+      for (final member in team.members)
+        SessionMemberBinding(rosterMemberId: member.id, taskId: member.id),
+    ],
+    createdAt: 1,
+  );
+  final coordinator = _NoopLaunchCoordinator();
+  final scheduler = _RecordingScheduler(onScheduleMemberConnect);
 
   final materializer = SessionDefaultMaterializer(
     host: host,
-    openSession: (_) async => SessionOpenStatus.opened,
+    coordinator: coordinator,
     workspaceIndex: () => SessionLaunchWorkspaceIndex(
       workspaces: host.state.workspaces,
       sessions: host.state.sessions,
@@ -191,98 +200,71 @@ SessionLaunchPipeline _pipelineForAllMembers({
     isTabsEmpty: () => tabStore.activeTabsIsEmpty,
     activeBucketKey: () => tabStore.activeWorkspaceId,
   );
-  final tabSurface = SessionTabSurfaceCoordinator(
+  return MemberConnectStage(
     host: host,
     tabStore: tabStore,
+    state: () => host.state,
+    materializer: materializer,
+    coordinator: coordinator,
+    scheduler: scheduler,
+    sessionForMemberConnect: (_, __) => tab.persistedSession,
+    disconnectSession: () {},
+    ensureSession: (_) => null,
+    appendLocalTab: (_, {required emitChange}) =>
+        throw UnsupportedError('unused'),
+    ensureActiveSessionTab: (_, {required emitChange}) => tab,
+    resetTeamConfigValidationSurface: () {},
+    scheduleTeamConfigValidation: (_) async {},
+    activeTab: () => host.activeTab,
+    autoLaunchAllMembersOnConnect: autoLaunchAllMembersOnConnect,
     workspaceById: (id) {
       for (final w in host.state.workspaces) {
         if (w.workspaceId == id) return w;
       }
       return null;
     },
-    shouldAutoConnect: (_) => false,
-    prepareNewTabConnect:
-        ({
-          required generation,
-          required tab,
-          required session,
-          required request,
-          required workspace,
-          required connect,
-        }) async {},
-    prepareExistingTabConnect:
-        ({
-          required generation,
-          required tab,
-          required request,
-          required connect,
-        }) async {},
-    prepareDeferredTeamTab:
-        ({
-          required generation,
-          required tab,
-          required session,
-          required request,
-        }) async {},
-  );
-  return SessionLaunchPipeline(
-    host: host,
-    tabStore: tabStore,
-    state: () => host.state,
-    workspaceIndex: () => SessionLaunchWorkspaceIndex(
-      workspaces: host.state.workspaces,
-      sessions: host.state.sessions,
-      usesPosixPaths: false,
-    ),
-    tabSurface: tabSurface,
-    openRouter: SessionOpenRouter(
-      tabStore: tabStore,
-      tabSurface: tabSurface,
-      workspaceById: (id) {
-        for (final w in host.state.workspaces) {
-          if (w.workspaceId == id) return w;
-        }
-        return null;
-      },
-    ),
-    memberConnect: MemberConnectStage(
-      host: host,
-      tabStore: tabStore,
-      state: () => host.state,
-      materializer: materializer,
-      openRouter: SessionOpenRouter(
-        tabStore: tabStore,
-        tabSurface: tabSurface,
-        workspaceById: (id) {
-          for (final w in host.state.workspaces) {
-            if (w.workspaceId == id) return w;
-          }
-          return null;
-        },
-      ),
-      scheduleMemberConnect: (t, member, tab, {selectMember = true}) =>
-          onScheduleMemberConnect(member),
-      disconnectSession: () {},
-      ensureSession: (_) => null,
-      appendLocalTab: (_, {required emitChange}) =>
-          throw UnsupportedError('unused'),
-      ensureActiveSessionTab: (_, {required emitChange}) => tab,
-      resetTeamConfigValidationSurface: () {},
-      scheduleTeamConfigValidation: (_) async {},
-      activeTab: () => host.activeTab,
-      autoLaunchAllMembersOnConnect: autoLaunchAllMembersOnConnect,
-      workspaceById: (id) {
-        for (final w in host.state.workspaces) {
-          if (w.workspaceId == id) return w;
-        }
-        return null;
-      },
-    ),
-    uuid: const Uuid(),
   );
 }
 
-// Fake host copied (minimally) from session_launch_pipeline_stable_task_id_test.
+class _RecordingScheduler implements SessionConnectSchedulerPort {
+  _RecordingScheduler(this.onSchedule);
+
+  final void Function(TeamMemberConfig member) onSchedule;
+
+  @override
+  Future<void> enqueue(
+    SessionConnectJob job, {
+    bool waitForCompletion = false,
+  }) async {
+    onSchedule(job.member!);
+  }
+
+  @override
+  void cancelForTab(ChatTab tab) {}
+}
+
+class _NoopLaunchCoordinator implements SessionLaunchIntentPort {
+  @override
+  Future<SessionOpenStatus> createAndOpen(SessionCreateRequest request) async =>
+      SessionOpenStatus.opened;
+
+  @override
+  Future<SessionOpenStatus> open(
+    SessionOpenRequest request, {
+    LaunchReason reason = LaunchReason.openExisting,
+    bool waitForCompletion = false,
+  }) async => SessionOpenStatus.opened;
+
+  @override
+  Future<void> openMember(
+    TeamProfile team,
+    TeamMemberConfig member, {
+    SessionRepository? repo,
+    String? workspaceCwd,
+  }) async {}
+}
+
+// Fake host copied (minimally) from the stable-task-id launch test.
 class _CapturingHost implements SessionLaunchHost {
   _CapturingHost(
     this.state, {

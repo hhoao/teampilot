@@ -1,8 +1,11 @@
 import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
+import '../../cubits/chat/session_launch_service.dart';
+import '../../cubits/chat/session_launch_host.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_known_host_repository.dart';
+import '../../repositories/session_repository.dart';
 import '../../repositories/workspace_project_config_repository.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../expert_hub/expert_capability_resolver.dart';
@@ -17,6 +20,19 @@ import 'staging/session_runtime_plan_builder.dart';
 import 'staging/manifest/manifest_executor.dart';
 import 'workspace/workspace_provision_coordinator.dart';
 import 'workspace/workspace_provisioner.dart';
+import 'connect/member_connect_stage.dart';
+import 'connect/session_connect_executor.dart';
+import 'connect/session_connect_scheduler.dart';
+import 'connect/session_lifecycle_connect_coordinator.dart';
+import 'connect/session_shell_connector.dart';
+import 'connect/session_ssh_profile_reconnect.dart';
+import 'session/session_default_materializer.dart';
+import 'session/session_launch_coordinator.dart';
+import 'session/session_launch_workspace_index.dart';
+import 'session/session_prompt_metadata_sync.dart';
+import 'session/session_persistence_writer.dart';
+import 'tab/session_tab_surface_coordinator.dart';
+import '../team/team_config_launch_validator.dart';
 
 SessionConnectOrchestrator buildSessionConnectOrchestrator({
   required SessionLifecycleService lifecycle,
@@ -136,4 +152,139 @@ SessionConnectOrchestrator buildDefaultSessionConnectOrchestrator({
     localCliPath: localCliPath,
     runtimePlanBuilder: builder,
   );
+}
+
+/// Builds the complete session launch graph at the application composition
+/// root. The service is the typed preparation/delegate boundary used by the
+/// executor, while all queueing and intent collaborators are assembled here.
+SessionLaunchService buildSessionLaunchService({
+  required SessionLaunchHost host,
+  required HomeStorage storage,
+  TermuxWorkOpsBlockResolver? termuxWorkOpsBlockFor,
+  void Function(
+    String workspaceId,
+    String sessionId, {
+    bool preview,
+    bool activate,
+  })?
+  onSessionTabOpened,
+}) {
+  final dataStore = host.dataStore;
+  final postFrame = host.postFrameScheduler;
+  final tabStore = host.tabStore;
+  final service = SessionLaunchService(
+    host,
+    storage: storage,
+    onSessionTabOpened: onSessionTabOpened,
+  );
+  final persistence = SessionPersistenceWriter(
+    repository: host,
+    snapshots: host,
+    chatState: host,
+    tabs: host,
+    environment: host,
+    dataStore: dataStore,
+  );
+  final shellConnector = SessionShellConnector(
+    host,
+    service,
+    persister: persistence,
+    isLocalNative: () => storage.context.mode == StorageBackendMode.native,
+    termuxWorkOpsBlockFor: termuxWorkOpsBlockFor,
+  );
+  final executor = SessionConnectExecutor(
+    preparation: service,
+    shellConnector: shellConnector,
+    onResult: service.onConnectResult,
+  );
+  final scheduler = SessionConnectScheduler(
+    executor: executor,
+    postFrame: postFrame,
+    isJobValid: service.isValid,
+    onBegin: host.beginSessionConnect,
+    onFinish: (sessionId) {
+      if (host.isSessionConnecting(sessionId)) {
+        host.finishSessionConnect(sessionId);
+      }
+    },
+  );
+  final tabSurface = SessionTabSurfaceCoordinator(
+    host: host,
+    tabStore: tabStore,
+    onSessionTabOpened: onSessionTabOpened,
+  );
+  final workspaceIndex = () => SessionLaunchWorkspaceIndex(
+    workspaces: host.state.workspaces,
+    sessions: host.state.sessions,
+    usesPosixPaths: storage.usesPosixPaths,
+  );
+  late final MemberConnectStage memberConnect;
+  final coordinator = SessionLaunchCoordinator(
+    host: host,
+    tabStore: tabStore,
+    tabSurface: tabSurface,
+    scheduler: scheduler,
+    workspaceIndex: workspaceIndex,
+    openMemberIntent:
+        (team, member, {SessionRepository? repo, String? workspaceCwd}) =>
+            memberConnect.openMemberTab(
+              team,
+              member,
+              repo: repo,
+              workspaceCwd: workspaceCwd,
+            ),
+  );
+  final materializer = SessionDefaultMaterializer(
+    host: host,
+    coordinator: coordinator,
+    workspaceIndex: workspaceIndex,
+    isTabsEmpty: () => tabStore.activeTabsIsEmpty,
+    activeBucketKey: () => tabStore.activeWorkspaceId,
+  );
+  memberConnect = MemberConnectStage(
+    host: host,
+    tabStore: tabStore,
+    state: () => host.state,
+    materializer: materializer,
+    coordinator: coordinator,
+    scheduler: scheduler,
+    sessionForMemberConnect: service.sessionForMemberConnect,
+    disconnectSession: service.disconnectSession,
+    ensureSession: service.ensureSession,
+    appendLocalTab: service.appendLocalTab,
+    ensureActiveSessionTab: service.ensureActiveSessionTab,
+    resetTeamConfigValidationSurface: service.resetTeamConfigValidationSurface,
+    scheduleTeamConfigValidation: service.scheduleTeamConfigValidation,
+    activeTab: () => host.activeTab,
+    autoLaunchAllMembersOnConnect: () =>
+        host.autoLaunchAllMembersOnConnect?.call() == true,
+    workspaceById: service.workspaceById,
+  );
+  final sshReconnect = SessionSshProfileReconnect(
+    host: host,
+    coordinator: coordinator,
+    launchContextFor: service.launchContextFor,
+    workspaceIndex: workspaceIndex,
+    openTabs: () => tabStore.openTabs,
+  );
+  final lifecycleCoordinator = SessionLifecycleConnectCoordinator(
+    host: host,
+    launchContextFor: service.launchContextFor,
+    launchWorkTarget: service.launchWorkTarget,
+    scheduleMemberConnect: memberConnect.scheduleMemberConnect,
+    tabOpen: (sessionId) => tabStore.openTabBySessionId(sessionId) != null,
+  );
+  service.configureLaunchComponents(
+    connectScheduler: scheduler,
+    coordinator: coordinator,
+    memberConnect: memberConnect,
+    sshReconnect: sshReconnect,
+    lifecycleCoordinator: lifecycleCoordinator,
+    promptMetadata: SessionPromptMetadataSync(
+      host: host,
+      state: () => host.state,
+    ),
+    teamConfigValidator: TeamConfigLaunchValidator(storage: storage),
+  );
+  return service;
 }

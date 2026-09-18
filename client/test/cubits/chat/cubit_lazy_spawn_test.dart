@@ -51,6 +51,24 @@ void main() {
   });
 
   test(
+    'deferred team open installs TeamBus before lazy member spawning',
+    () async {
+      await openMixedSessionWithShells(
+        cubit: cubit,
+        repo: repo,
+        postFrame: postFrame,
+      );
+
+      expect(
+        cubit.activeTab?.teamBus,
+        isNotNull,
+        reason:
+            'connectImmediately:false must still run deferred team preparation',
+      );
+    },
+  );
+
+  test(
     'selecting a declared member with terminal view shown spawns it',
     () async {
       final opened = await openMixedSessionWithShells(

@@ -14,6 +14,7 @@ import '../models/workspace.dart';
 import '../models/workspace_folder.dart';
 import '../models/workspace_launch_context.dart';
 import '../models/app_session.dart';
+import '../models/member_instance.dart';
 import '../services/team/member_presence_service.dart';
 import '../models/workspace_icon_picker_result.dart';
 import '../models/workspace_icon_ref.dart';
@@ -48,6 +49,7 @@ import 'agent_attention_cubit.dart';
 import 'seat_lease_cubit.dart';
 import '../services/launch/launch_factory.dart';
 import '../services/launch/staging/session_connect_orchestrator.dart';
+import '../services/launch/connect/session_connect_job.dart';
 import '../services/launch/workspace/workspace_provision_coordinator.dart';
 import '../services/install/install_job_registry.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
@@ -174,6 +176,7 @@ class ChatCubit extends Cubit<ChatState>
          terminalScrollbackLinesResolver: terminalScrollbackLinesResolver,
        ),
        _postFrameScheduler = postFrameScheduler ?? _defaultPostFrameScheduler,
+       _awaitPublicLaunchCompletion = postFrameScheduler == null,
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
        _reclaimIdleTerminalsEnabled = reclaimIdleTerminalsEnabled,
        _reclaimIdleTerminalAfterSeconds = reclaimIdleTerminalAfterSeconds,
@@ -329,8 +332,8 @@ class ChatCubit extends Cubit<ChatState>
   static const _continueOverridesController =
       SessionContinueOverridesController();
   final Map<String, Future<void>> _sessionHydrationByWorkspace = {};
-  late final SessionLaunchService _launchService = SessionLaunchService(
-    this,
+  late final SessionLaunchService _launchService = buildSessionLaunchService(
+    host: this,
     storage: _storage,
     termuxWorkOpsBlockFor: _termuxWorkOpsBlockFor,
     onSessionTabOpened: _forwardSessionTabOpened,
@@ -518,6 +521,7 @@ class ChatCubit extends Cubit<ChatState>
   TeamProfile? _activeTeam;
   final ChatSessionShellFactory _shellFactory;
   final PostFrameScheduler _postFrameScheduler;
+  final bool _awaitPublicLaunchCompletion;
   final bool Function()? _autoLaunchAllMembersOnConnect;
   final bool Function()? _reclaimIdleTerminalsEnabled;
   final int Function()? _reclaimIdleTerminalAfterSeconds;
@@ -1206,7 +1210,11 @@ class ChatCubit extends Cubit<ChatState>
   /// Roster member by id from the active team, or null when the member is not
   /// in the team (personal sessions resolve their CLI via [AppSession.cli]).
   TeamMemberConfig? _rosterMemberFor(TeamProfile team, String memberId) {
-    for (final member in team.members) {
+    final session = _activeTab?.persistedSession;
+    final members = session == null
+        ? runtimeRosterMembers(team)
+        : sessionRosterMembers(session, team);
+    for (final member in members) {
       if (member.id == memberId) return member;
     }
     return null;
@@ -2120,13 +2128,35 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   Future<SessionOpenStatus> requestOpenSession(
-    SessionOpenRequest request,
-  ) async {
+    SessionOpenRequest request, {
+    LaunchReason reason = LaunchReason.openExisting,
+  }) async {
     final session = request.session;
     final hydrated =
         await hydrateSessionDocument(session.workspaceId, session.sessionId) ??
         session;
-    return _launchService.requestOpenSession(request.withSession(hydrated));
+    return _launchService.requestOpenSession(
+      request.withSession(hydrated),
+      reason: reason,
+      waitForCompletion:
+          _awaitPublicLaunchCompletion ||
+          !request.connectImmediately ||
+          _shouldAwaitLocalTeamLaunch(request),
+    );
+  }
+
+  bool _shouldAwaitLocalTeamLaunch(SessionOpenRequest request) {
+    if (request.team == null) return false;
+    final workspace =
+        request.workspace ??
+        state.workspaces.cast<Workspace?>().firstWhere(
+          (item) => item?.workspaceId == request.session.workspaceId,
+          orElse: () => null,
+        );
+    final folders = workspace?.folders ?? request.session.folders;
+    return folders.every(
+      (folder) => folder.targetId == WorkspaceFolder.localTargetId,
+    );
   }
 
   Future<void> scheduleTeamConfigValidation(TeamProfile team) =>
@@ -2295,11 +2325,14 @@ class ChatCubit extends Cubit<ChatState>
 
   void syncTeam(TeamProfile team) {
     final tab = _activeTab;
-    if (team.members.isEmpty) {
+    final members = tab?.persistedSession == null
+        ? runtimeRosterMembers(team)
+        : sessionRosterMembers(tab!.persistedSession!, team);
+    if (members.isEmpty) {
       if (tab != null) assignSelectedMember(tab, '');
       return;
     }
-    if (team.members.any((m) => m.id == tab?.selectedMemberId)) return;
+    if (members.any((m) => m.id == tab?.selectedMemberId)) return;
     if (tab != null) assignSelectedMember(tab, _tabStore.defaultMemberId(team));
   }
 
@@ -2367,10 +2400,14 @@ class ChatCubit extends Cubit<ChatState>
 
   String selectedMemberName(TeamProfile team) {
     final id = activeTab?.selectedMemberId ?? '';
-    for (final m in team.members) {
+    final session = activeTab?.persistedSession;
+    final members = session == null
+        ? runtimeRosterMembers(team)
+        : sessionRosterMembers(session, team);
+    for (final m in members) {
       if (m.id == id) return m.name;
     }
-    return team.members.isEmpty ? 'member' : team.members.first.name;
+    return members.isEmpty ? 'member' : members.first.name;
   }
 
   TerminalSession? ensureSession(TeamProfile team) =>
@@ -2415,13 +2452,21 @@ class ChatCubit extends Cubit<ChatState>
       );
       return;
     }
-    // Surface connecting immediately so Chat/sidebar show a spinner. The
-    // pipeline also begins connect, but that happens inside unawaited prep.
-    beginSessionConnect(id);
-    await connectWorkspaceSession(request);
+    await requestOpenSession(
+      SessionOpenRequest(
+        session: request.session,
+        workspace: request.workspace,
+        team: request.team,
+        member: request.member,
+        repo: _sessionRepository,
+        preserveWorkbenchView: request.preserveWorkbenchView,
+      ),
+      reason: LaunchReason.retry,
+    );
     if (isClosed) return;
-    // connectWorkspaceSession returns when tab surfacing schedules async shell
-    // prep — wait until the pod leaves launching before completing the retry.
+    // The completion-aware open above waits for the requested member's launch
+    // work; retain this settle guard for retries that finish through a
+    // terminal lifecycle callback.
     await awaitSessionConnectSettle(
       isConnecting: () => isSessionConnecting(id),
       isClosed: () => isClosed,
@@ -2795,6 +2840,7 @@ class ChatCubit extends Cubit<ChatState>
       busDisposals.add(_tearDownTab(tab));
     }
     await Future.wait(busDisposals);
+    await _teammateBusMcpGateway.dispose();
     _tabStore.clear();
     await _operatorMailboxQueued.close();
     await super.close();

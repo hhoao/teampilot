@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 
 import '../../models/app_session.dart';
+import '../../models/member_instance.dart';
 import '../../models/team_config.dart';
 import '../../utils/team/team_member_naming.dart';
 import 'model/session_connect_request.dart';
@@ -38,13 +39,16 @@ ExistingSessionConnect? buildRetryExistingSessionConnect({
   }
   if (team == null) return null;
 
+  final roster = session.members.isNotEmpty
+      ? sessionRosterMembers(session, team)
+      : runtimeRosterMembers(team);
   TeamMemberConfig? member;
   final mid = selectedMemberId.trim();
   if (mid.isNotEmpty) {
-    member = team.members.where((m) => m.id == mid).firstOrNull;
+    member = roster.where((m) => m.id == mid).firstOrNull;
   }
-  member ??= team.members.where(TeamMemberNaming.isTeamLead).firstOrNull;
-  member ??= team.members.firstOrNull;
+  member ??= roster.where(TeamMemberNaming.isTeamLead).firstOrNull;
+  member ??= roster.firstOrNull;
 
   return ExistingSessionConnect(
     session: session,

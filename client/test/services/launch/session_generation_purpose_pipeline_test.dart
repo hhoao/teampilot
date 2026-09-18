@@ -22,6 +22,7 @@ import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/team/team_config_launch_validator.dart';
+import 'package:teampilot/services/launch/launch_factory.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -107,7 +108,7 @@ class SessionGenerationHarness {
       ),
       sessionRepository: repository,
     );
-    service = SessionLaunchService(host, storage: fakeHomeStorage());
+    service = buildSessionLaunchService(host: host, storage: fakeHomeStorage());
   }
 
   final Workspace workspace;

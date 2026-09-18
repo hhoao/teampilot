@@ -1,48 +1,33 @@
-import 'dart:async';
-
-import 'package:flutter/foundation.dart';
-
 import '../../../cubits/chat/model/chat_tab.dart';
+import '../../../cubits/chat/model/session_open_request.dart';
 import '../../../cubits/chat/session_launch_host.dart';
 import '../../../models/app_session.dart';
+import '../../../models/member_instance.dart';
 import '../../../models/runtime_target.dart';
-import '../../../models/team_config.dart';
 import '../../../models/workspace_launch_context.dart';
-import 'session_shell_connector.dart';
 import '../../../utils/logging/logger.dart';
-import '../contracts/connect_shell_result.dart';
-import '../contracts/member_connect_types.dart';
+import '../session/session_launch_coordinator.dart';
 import '../session/session_launch_workspace_index.dart';
+import 'session_personal_shell.dart';
 
-@visibleForTesting
-void throwIfReconnectConnectFailed(ConnectShellResult result) {
-  if (result == ConnectShellResult.failed ||
-      result == ConnectShellResult.aborted) {
-    throw StateError('session reconnect ${result.name}');
-  }
-}
-
-/// Reconnects open session tabs after an SSH profile change.
+/// Re-enqueues affected open tabs after an SSH profile change.
 class SessionSshProfileReconnect {
   SessionSshProfileReconnect({
     required SessionLaunchHost host,
-    required SessionShellConnector shellConnector,
+    required SessionReconnectIntentPort coordinator,
     required WorkspaceLaunchContext Function(AppSession session)
     launchContextFor,
-    required ScheduleMemberConnectFn scheduleMemberConnect,
     required SessionLaunchWorkspaceIndex Function() workspaceIndex,
     required Iterable<ChatTab> Function() openTabs,
   }) : _host = host,
-       _shellConnector = shellConnector,
+       _coordinator = coordinator,
        _launchContextFor = launchContextFor,
-       _scheduleMemberConnect = scheduleMemberConnect,
        _workspaceIndex = workspaceIndex,
        _openTabs = openTabs;
 
   final SessionLaunchHost _host;
-  final SessionShellConnector _shellConnector;
+  final SessionReconnectIntentPort _coordinator;
   final WorkspaceLaunchContext Function(AppSession session) _launchContextFor;
-  final ScheduleMemberConnectFn _scheduleMemberConnect;
   final SessionLaunchWorkspaceIndex Function() _workspaceIndex;
   final Iterable<ChatTab> Function() _openTabs;
 
@@ -56,25 +41,15 @@ class SessionSshProfileReconnect {
       try {
         final session = tab.persistedSession;
         if (session == null) continue;
-
-        if (session.sessionTeam.trim().isEmpty) {
-          await _reconnectPersonalTab(tab, session, profileId);
-        } else {
-          final team = await _host.teamProfileById(session.sessionTeam.trim());
-          if (team == null) continue;
-          for (final member in team.members.where((m) => m.isValid)) {
-            await _reconnectTeamMemberTab(
-              tab: tab,
-              team: team,
-              member: member,
-              session: session,
-              profileId: profileId,
-            );
-          }
+        final requests = session.sessionTeam.trim().isEmpty
+            ? await _personalRequests(tab, session, profileId)
+            : await _teamRequests(tab, session, profileId);
+        if (requests.isNotEmpty) {
+          await _coordinator.reconnectTab(tab, requests);
         }
-      } on Object catch (e, st) {
-        firstError ??= e;
-        firstStack ??= st;
+      } on Object catch (error, stackTrace) {
+        firstError ??= error;
+        firstStack ??= stackTrace;
       }
     }
     if (firstError != null) {
@@ -82,48 +57,52 @@ class SessionSshProfileReconnect {
     }
   }
 
-  bool _targetUsesProfile(RuntimeTarget target, String profileId) {
-    if (!usesSshTransport(target.kind)) return false;
-    final id = target.sshProfileId ?? sshProfileIdOfId(target.id);
-    return id == profileId;
+  Future<List<SessionOpenRequest>> _teamRequests(
+    ChatTab tab,
+    AppSession session,
+    String profileId,
+  ) async {
+    final team = await _host.teamProfileById(session.sessionTeam.trim());
+    if (team == null) return const [];
+    final workspace = _workspaceIndex().byId(session.workspaceId);
+    final requests = <SessionOpenRequest>[];
+    final rosterMembers = session.members.isNotEmpty
+        ? sessionRosterMembers(session, team)
+        : runtimeRosterMembers(team);
+    for (final member in rosterMembers.where((member) => member.isValid)) {
+      final target = _host.lifecycle.launchWorkTarget(
+        _launchContextFor(session),
+        memberId: member.id,
+      );
+      if (!_targetUsesProfile(target, profileId)) continue;
+      final shell = tab.memberShells[member.id];
+      if (shell == null || shell.isDisposed || shell.isConnecting) continue;
+
+      shell.disconnect();
+      await tab.closeMemberRemotePlane(member.id);
+      _host.clearAgentStatusSeat(sessionId: tab.info.id, memberId: member.id);
+      requests.add(
+        SessionOpenRequest(
+          session: session,
+          workspace: workspace,
+          team: team,
+          member: member,
+          repo: _host.sessionRepository,
+        ),
+      );
+    }
+    return requests;
   }
 
-  Future<void> _reconnectTeamMemberTab({
-    required ChatTab tab,
-    required TeamProfile team,
-    required TeamMemberConfig member,
-    required AppSession session,
-    required String profileId,
-  }) async {
-    final target = _host.lifecycle.launchWorkTarget(
-      _launchContextFor(session),
-      memberId: member.id,
-    );
-    if (!_targetUsesProfile(target, profileId)) return;
-
-    final shell = tab.memberShells[member.id];
-    if (shell == null || shell.isDisposed || shell.isConnecting) return;
-
-    shell.disconnect();
-    await tab.closeMemberRemotePlane(member.id);
-    tab.membersPendingConnect.remove(member.id);
-    _host.clearAgentStatusSeat(sessionId: tab.info.id, memberId: member.id);
-    _scheduleMemberConnect(team, member, tab);
-  }
-
-  Future<void> _reconnectPersonalTab(
+  Future<List<SessionOpenRequest>> _personalRequests(
     ChatTab tab,
     AppSession session,
     String profileId,
   ) async {
     final target = _host.lifecycle.launchWorkTarget(_launchContextFor(session));
-    if (!_targetUsesProfile(target, profileId)) return;
-
-    final shell =
-        tab.resumeSession ??
-        tab.memberShells[session.sessionId] ??
-        (tab.memberShells.length == 1 ? tab.memberShells.values.first : null);
-    if (shell == null || shell.isDisposed || shell.isConnecting) return;
+    if (!_targetUsesProfile(target, profileId)) return const [];
+    final shell = displayedPersonalResumeShell(tab, session);
+    if (shell == null || shell.isConnecting) return const [];
 
     shell.disconnect();
     await tab.closeMemberRemotePlane(session.sessionId);
@@ -131,34 +110,21 @@ class SessionSshProfileReconnect {
       sessionId: tab.info.id,
       memberId: session.sessionId,
     );
-
     final workspace = _workspaceIndex().byId(session.workspaceId);
-    if (workspace == null) return;
-
-    tab.membersPendingConnect.add(session.sessionId);
-    _host.beginSessionConnect(tab.info.id);
-    try {
-      final result = await _shellConnector.connect(
-        tab: tab,
+    if (workspace == null) return const [];
+    return [
+      SessionOpenRequest(
         session: session,
-        shell: shell,
-        launched: session.launchState == AppSessionLaunchState.started,
         workspace: workspace,
-      );
-      throwIfReconnectConnectFailed(result);
-      _host.updateTabRunning(tab.info.id);
-    } on Object catch (e, st) {
-      appLogger.e(
-        '[session-launch] personal reconnect failed session=${session.sessionId}: $e',
-        error: e,
-        stackTrace: st,
-      );
-      _host.failSessionConnect(tab.info.id, 'Failed to reconnect: $e');
-      // Follow-up: failSessionConnect already records this failure; rethrow
-      // surfaces the same root cause to the session-plane callback.
-      rethrow;
-    } finally {
-      tab.membersPendingConnect.remove(session.sessionId);
-    }
+        repo: _host.sessionRepository,
+        shellAcquisition: SessionShellAcquisition.personalResumeSession,
+      ),
+    ];
+  }
+
+  bool _targetUsesProfile(RuntimeTarget target, String profileId) {
+    if (!usesSshTransport(target.kind)) return false;
+    final id = target.sshProfileId ?? sshProfileIdOfId(target.id);
+    return id == profileId;
   }
 }

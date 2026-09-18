@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../models/app_session.dart';
+import '../../models/member_instance.dart';
 import '../../models/team_config.dart';
 import '../../services/team/member_coordination.dart';
 import '../../services/team_bus/chat_cubit_member_launcher.dart';
@@ -352,12 +353,7 @@ class TabMemberMaterializer implements MemberMaterializer {
       '[member-materializer] materialize schedule-connect '
       'member=$memberId session=$sessionId',
     );
-    _connector.scheduleMemberConnect(
-      team,
-      member,
-      tab,
-      selectMember: false,
-    );
+    _connector.scheduleMemberConnect(team, member, tab, selectMember: false);
     await _awaitMemberReady(sessionId, memberId, ready);
   }
 
@@ -425,7 +421,7 @@ class TabMemberMaterializer implements MemberMaterializer {
         if (m.id == memberId) return m;
       }
     }
-    for (final m in team.members) {
+    for (final m in runtimeRosterMembers(team)) {
       if (m.id == memberId) return m;
     }
     return null;

@@ -98,11 +98,23 @@ openMixedSessionWithShells({
       connectImmediately: false,
     ),
   );
-  await drainPendingAsyncWork();
-  await postFrame.flush();
+  await waitUntil(
+    () => cubit.activeTab?.teamBus != null,
+    pump: () async {
+      await postFrame.flush();
+      await drainPendingAsyncWork();
+    },
+  );
 
   final tab = cubit.activeTab!;
-  final bus = tab.teamBus!;
+  final bus = tab.teamBus;
+  expect(
+    bus,
+    isNotNull,
+    reason:
+        'deferred team opens must complete launch preparation and install TeamBus',
+  );
+  final installedBus = bus!;
   final leadShell = await ConnectedRecordingShell.connect();
   final workerShell = await ConnectedRecordingShell.connect();
   tab.memberShells['team-lead'] = leadShell.session;
@@ -110,8 +122,8 @@ openMixedSessionWithShells({
   final bootAt = DateTime.now().subtract(const Duration(seconds: 5));
   leadShell.session.activityTracker.latchBootFrameReadyForTest(bootAt);
   workerShell.session.activityTracker.latchBootFrameReadyForTest(bootAt);
-  bus.markMemberRunning('team-lead');
-  bus.markMemberRunning('worker-1');
+  installedBus.markMemberRunning('team-lead');
+  installedBus.markMemberRunning('worker-1');
   cubit.pushPresenceTarget();
   await postFrame.flush();
   await pumpSchedulerFrames();

@@ -1,31 +1,31 @@
 import '../../../cubits/chat/model/session_open_request.dart';
 import '../../../cubits/chat/model/session_open_status.dart';
 import '../../../cubits/chat/session_launch_host.dart';
+import '../../../models/member_instance.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../repositories/session_repository.dart';
 import '../../session/session_member_cli_locks.dart';
 import '../../../utils/logging/logger.dart';
+import 'session_launch_coordinator.dart';
 import 'session_launch_workspace_index.dart';
-
-typedef SessionOpenFn = Future<SessionOpenStatus> Function(SessionOpenRequest);
 
 /// Creates and opens the first team/personal session when the tab store is empty.
 class SessionDefaultMaterializer {
   SessionDefaultMaterializer({
     required SessionLaunchHost host,
-    required SessionOpenFn openSession,
+    required SessionLaunchIntentPort coordinator,
     required SessionLaunchWorkspaceIndex Function() workspaceIndex,
     required bool Function() isTabsEmpty,
     required String Function() activeBucketKey,
   }) : _host = host,
-       _openSession = openSession,
+       _coordinator = coordinator,
        _workspaceIndex = workspaceIndex,
        _isTabsEmpty = isTabsEmpty,
        _activeBucketKey = activeBucketKey;
 
   final SessionLaunchHost _host;
-  final SessionOpenFn _openSession;
+  final SessionLaunchIntentPort _coordinator;
   final SessionLaunchWorkspaceIndex Function() _workspaceIndex;
   final bool Function() _isTabsEmpty;
   final String Function() _activeBucketKey;
@@ -34,6 +34,7 @@ class SessionDefaultMaterializer {
     TeamProfile team,
     SessionRepository repo, {
     required bool connectImmediately,
+    bool scheduleConnect = true,
     required TeamMemberConfig memberForInitialShell,
     String? workspaceCwd,
   }) async {
@@ -50,7 +51,7 @@ class SessionDefaultMaterializer {
       workspaceCwd: cwd,
     );
     if (existingSession != null) {
-      await _openSession(
+      await _coordinator.open(
         SessionOpenRequest(
           session: existingSession,
           workspace: index.byId(existingSession.workspaceId),
@@ -58,6 +59,8 @@ class SessionDefaultMaterializer {
           member: memberForInitialShell,
           repo: repo,
           connectImmediately: connectImmediately,
+          scheduleConnect: scheduleConnect,
+          waitForCompletion: true,
         ),
       );
       return;
@@ -85,10 +88,10 @@ class SessionDefaultMaterializer {
     final created = await repo.createSession(
       workspace.workspaceId,
       sessionTeam: team.id,
-      rosterMembers: team.members,
+      rosterMembers: runtimeRosterMembers(team),
       memberClis: resolveSessionMemberCliLocks(
         team: team,
-        rosterMembers: team.members,
+        rosterMembers: runtimeRosterMembers(team),
         globalPresets: _host.lifecycle.globalPresets,
       ),
     );
@@ -102,7 +105,7 @@ class SessionDefaultMaterializer {
     );
     _host.appendSessionSnapshot(session);
     if (_host.isClosed) return;
-    await _openSession(
+    await _coordinator.open(
       SessionOpenRequest(
         session: session,
         workspace: workspace,
@@ -110,6 +113,8 @@ class SessionDefaultMaterializer {
         member: memberForInitialShell,
         repo: repo,
         connectImmediately: connectImmediately,
+        scheduleConnect: scheduleConnect,
+        waitForCompletion: true,
       ),
     );
   }
@@ -127,12 +132,13 @@ class SessionDefaultMaterializer {
       workspace.workspaceId,
     );
     if (existingSession != null) {
-      await _openSession(
+      await _coordinator.open(
         SessionOpenRequest(
           session: existingSession,
           workspace: workspace,
           repo: repo,
           connectImmediately: connectImmediately,
+          waitForCompletion: true,
         ),
       );
       return;
@@ -151,12 +157,13 @@ class SessionDefaultMaterializer {
     );
     _host.appendSessionSnapshot(session);
     if (_host.isClosed) return;
-    await _openSession(
+    await _coordinator.open(
       SessionOpenRequest(
         session: session,
         workspace: workspace,
         repo: repo,
         connectImmediately: connectImmediately,
+        waitForCompletion: true,
       ),
     );
   }

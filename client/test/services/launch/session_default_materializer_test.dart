@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/model/chat_state.dart';
+import 'package:teampilot/cubits/chat/model/session_create_request.dart';
+import 'package:teampilot/cubits/chat/model/session_open_request.dart';
 import 'package:teampilot/cubits/chat/model/session_open_status.dart';
 import 'package:teampilot/cubits/chat/session_data_store.dart';
 import 'package:teampilot/cubits/chat/session_launch_host.dart';
@@ -11,7 +13,9 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/launch/session/session_default_materializer.dart';
+import 'package:teampilot/services/launch/session/session_launch_coordinator.dart';
 import 'package:teampilot/services/launch/session/session_launch_workspace_index.dart';
+import 'package:teampilot/services/launch/connect/session_connect_job.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import '../../support/in_memory_filesystem.dart';
 
@@ -27,13 +31,10 @@ void main() {
           updatedAt: 1,
         );
         final host = _MaterializeHost(ChatState(workspaces: [workspace]));
-        final openedSessions = <String>[];
+        final launchCoordinator = _RecordingLaunchCoordinator();
         final materializer = SessionDefaultMaterializer(
           host: host,
-          openSession: (request) async {
-            openedSessions.add(request.session.sessionId);
-            return SessionOpenStatus.opened;
-          },
+          coordinator: launchCoordinator,
           workspaceIndex: () => SessionLaunchWorkspaceIndex(
             workspaces: host.state.workspaces,
             sessions: host.state.sessions,
@@ -66,7 +67,7 @@ void main() {
           0,
           reason: 'materializer must not rescan after create',
         );
-        expect(openedSessions, ['sess-new']);
+        expect(launchCoordinator.openedSessionIds, ['sess-new']);
         expect(host.emitted, isNotEmpty);
         final last = host.emitted.last;
         expect(last.sessions.map((s) => s.sessionId), contains('sess-new'));
@@ -91,13 +92,10 @@ void main() {
         cli: CliTool.claude,
       );
       final host = _MaterializeHost(ChatState(workspaces: [workspace]));
-      final openedSessions = <String>[];
+      final launchCoordinator = _RecordingLaunchCoordinator();
       final materializer = SessionDefaultMaterializer(
         host: host,
-        openSession: (request) async {
-          openedSessions.add(request.session.sessionId);
-          return SessionOpenStatus.opened;
-        },
+        coordinator: launchCoordinator,
         workspaceIndex: () => SessionLaunchWorkspaceIndex(
           workspaces: host.state.workspaces,
           sessions: host.state.sessions,
@@ -134,13 +132,39 @@ void main() {
         0,
         reason: 'materializer must not rescan after create',
       );
-      expect(openedSessions, ['sess-team']);
+      expect(launchCoordinator.openedSessionIds, ['sess-team']);
       expect(host.emitted, isNotEmpty);
       final last = host.emitted.last;
       expect(last.sessions.map((s) => s.sessionId), contains('sess-team'));
       expect(last.workspaces.single.sessionIds, contains('sess-team'));
     });
   });
+}
+
+class _RecordingLaunchCoordinator implements SessionLaunchIntentPort {
+  final openedSessionIds = <String>[];
+
+  @override
+  Future<SessionOpenStatus> createAndOpen(SessionCreateRequest request) async =>
+      SessionOpenStatus.opened;
+
+  @override
+  Future<SessionOpenStatus> open(
+    SessionOpenRequest request, {
+    LaunchReason reason = LaunchReason.openExisting,
+    bool waitForCompletion = false,
+  }) async {
+    openedSessionIds.add(request.session.sessionId);
+    return SessionOpenStatus.opened;
+  }
+
+  @override
+  Future<void> openMember(
+    TeamProfile team,
+    TeamMemberConfig member, {
+    SessionRepository? repo,
+    String? workspaceCwd,
+  }) async {}
 }
 
 class _MaterializeHost implements SessionLaunchHost {

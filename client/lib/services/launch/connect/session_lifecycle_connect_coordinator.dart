@@ -10,6 +10,7 @@ import '../../../models/workspace_launch_context.dart';
 import '../../cli/registry/capabilities/workspace_base_info_capability.dart';
 import '../contracts/connect_shell_result.dart';
 import '../contracts/member_connect_types.dart';
+import 'session_connect_job.dart';
 import '../../../utils/logging/logger.dart';
 
 /// Lifecycle gate evaluation, deferred retries, and direct-PTY readiness checks.
@@ -85,7 +86,7 @@ class SessionLifecycleConnectCoordinator {
     _retryTimers[key] = Timer(_retryDelay, () {
       _retryTimers.remove(key);
       if (_host.isClosed || !_tabOpen(sessionId)) return;
-      _scheduleMemberConnect(team, member, tab);
+      _scheduleMemberConnect(team, member, tab, reason: LaunchReason.retry);
     });
   }
 

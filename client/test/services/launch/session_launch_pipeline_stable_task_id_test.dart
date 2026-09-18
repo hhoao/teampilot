@@ -21,12 +21,10 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/launch/contracts/launch_operation.dart';
-import 'package:teampilot/services/launch/contracts/launch_outcome.dart';
-import 'package:teampilot/services/launch/session/session_default_materializer.dart';
-import 'package:teampilot/services/launch/connect/member_connect_stage.dart';
-import 'package:teampilot/services/launch/session/session_launch_pipeline.dart';
-import 'package:teampilot/services/launch/session/session_open_router.dart';
+import 'package:teampilot/services/launch/connect/session_connect_job.dart';
+import 'package:teampilot/services/launch/connect/session_connect_scheduler.dart';
+import 'package:teampilot/services/launch/launch_factory.dart';
+import 'package:teampilot/services/launch/session/session_launch_coordinator.dart';
 import 'package:teampilot/services/launch/session/session_launch_workspace_index.dart';
 import 'package:teampilot/services/launch/tab/session_tab_surface_coordinator.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
@@ -60,23 +58,23 @@ void main() {
         ChatState(workspaces: [workspace]),
         tabStore: tabStore,
       );
-      final pipeline = _pipelineForStaging(host: host, tabStore: tabStore);
+      final coordinator = _coordinatorForStaging(
+        host: host,
+        tabStore: tabStore,
+      );
 
       const fixedSessionId = 'sess-fixed-aaaaaaaaaaaaaaaa';
-      final outcome = await pipeline.run(
-        CreateSessionOperation(
-          SessionCreateRequest(
-            workspace: workspace,
-            isPersonal: false,
-            team: team,
-            member: team.members.first,
-            fixedSessionId: fixedSessionId,
-          ),
+      final status = await coordinator.createAndOpen(
+        SessionCreateRequest(
+          workspace: workspace,
+          isPersonal: false,
+          team: team,
+          member: team.members.first,
+          fixedSessionId: fixedSessionId,
         ),
       );
 
-      expect(outcome, isA<LaunchOpened>());
-      expect((outcome as LaunchOpened).status, SessionOpenStatus.opened);
+      expect(status, SessionOpenStatus.opened);
       expect(host.appended, hasLength(1));
 
       final provisional = host.appended.single;
@@ -135,7 +133,10 @@ void main() {
         ),
         sessionRepository: repo,
       );
-      final service = SessionLaunchService(host, storage: fakeHomeStorage());
+      final service = buildSessionLaunchService(
+        host: host,
+        storage: fakeHomeStorage(),
+      );
 
       const fixedSessionId = 'sess-persist-bbbbbbbbbbbbbbbb';
       final status = await service.requestCreateAndOpenSession(
@@ -199,7 +200,10 @@ void main() {
           ),
           sessionRepository: capturer,
         );
-        final service = SessionLaunchService(host, storage: fakeHomeStorage());
+        final service = buildSessionLaunchService(
+          host: host,
+          storage: fakeHomeStorage(),
+        );
 
         const fixedSessionId = 'sess-forward-cccccccccccccccc';
         final status = await service.requestCreateAndOpenSession(
@@ -264,7 +268,10 @@ void main() {
         ),
         sessionRepository: capturer,
       );
-      final service = SessionLaunchService(host, storage: fakeHomeStorage());
+      final service = buildSessionLaunchService(
+        host: host,
+        storage: fakeHomeStorage(),
+      );
 
       const fixedSessionId = 'sess-title-cccccccccccccccc';
       final status = await service.requestCreateAndOpenSession(
@@ -316,95 +323,45 @@ Future<void> _waitUntil(
   }
 }
 
-SessionLaunchPipeline _pipelineForStaging({
+SessionLaunchCoordinator _coordinatorForStaging({
   required _CapturingHost host,
   required ChatTabStore tabStore,
 }) {
-  final materializer = SessionDefaultMaterializer(
-    host: host,
-    openSession: (_) async => SessionOpenStatus.opened,
-    workspaceIndex: () => SessionLaunchWorkspaceIndex(
-      workspaces: host.state.workspaces,
-      sessions: host.state.sessions,
-      usesPosixPaths: false,
-    ),
-    isTabsEmpty: () => tabStore.activeTabsIsEmpty,
-    activeBucketKey: () => tabStore.activeWorkspaceId,
-  );
   final tabSurface = SessionTabSurfaceCoordinator(
     host: host,
     tabStore: tabStore,
-    workspaceById: (id) {
-      for (final w in host.state.workspaces) {
-        if (w.workspaceId == id) return w;
-      }
-      return null;
-    },
-    shouldAutoConnect: (_) => false,
-    prepareNewTabConnect:
-        ({
-          required generation,
-          required tab,
-          required session,
-          required request,
-          required workspace,
-          required connect,
-        }) async {},
-    prepareExistingTabConnect:
-        ({
-          required generation,
-          required tab,
-          required request,
-          required connect,
-        }) async {},
-    prepareDeferredTeamTab:
-        ({
-          required generation,
-          required tab,
-          required session,
-          required request,
-        }) async {},
   );
-  return SessionLaunchPipeline(
+  final scheduler = _RecordingScheduler();
+  final coordinator = SessionLaunchCoordinator(
     host: host,
     tabStore: tabStore,
-    state: () => host.state,
+    tabSurface: tabSurface,
+    scheduler: scheduler,
     workspaceIndex: () => SessionLaunchWorkspaceIndex(
       workspaces: host.state.workspaces,
       sessions: host.state.sessions,
       usesPosixPaths: false,
     ),
-    tabSurface: tabSurface,
-    openRouter: SessionOpenRouter(
-      tabStore: tabStore,
-      tabSurface: tabSurface,
-      workspaceById: _workspaceById(host),
-    ),
-    memberConnect: MemberConnectStage(
-      host: host,
-      tabStore: tabStore,
-      state: () => host.state,
-      materializer: materializer,
-      openRouter: SessionOpenRouter(
-        tabStore: tabStore,
-        tabSurface: tabSurface,
-        workspaceById: _workspaceById(host),
-      ),
-      scheduleMemberConnect: (_, __, ___, {selectMember = true}) {},
-      disconnectSession: () {},
-      ensureSession: (_) => null,
-      appendLocalTab: (_, {required emitChange}) =>
-          throw UnsupportedError('unused'),
-      ensureActiveSessionTab: (_, {required emitChange}) =>
-          throw UnsupportedError('unused'),
-      resetTeamConfigValidationSurface: () {},
-      scheduleTeamConfigValidation: (_) async {},
-      activeTab: () => host.activeTab,
-      autoLaunchAllMembersOnConnect: () => false,
-      workspaceById: _workspaceById(host),
-    ),
-    uuid: const Uuid(),
   );
+  return coordinator;
+}
+
+class _RecordingScheduler implements SessionConnectSchedulerPort {
+  final jobs = <SessionConnectJob>[];
+  final cancelledTabs = <ChatTab>[];
+
+  @override
+  Future<void> enqueue(
+    SessionConnectJob job, {
+    bool waitForCompletion = false,
+  }) async {
+    jobs.add(job);
+  }
+
+  @override
+  void cancelForTab(ChatTab tab) {
+    cancelledTabs.add(tab);
+  }
 }
 
 Workspace? Function(String) _workspaceById(_CapturingHost host) => (id) {

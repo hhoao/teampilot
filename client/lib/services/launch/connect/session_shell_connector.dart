@@ -246,6 +246,35 @@ class SessionShellConnector {
     }
   }
 
+  /// Releases the temporary remote plane and, when requested, surfaces the
+  /// original attach failure caught by the owning connection executor.
+  Future<void> cleanupAfterFailure({
+    required ChatTab tab,
+    required String sessionId,
+    required String memberId,
+    required Object error,
+    required StackTrace stackTrace,
+    required bool reportFailure,
+  }) async {
+    try {
+      await tab.closeMemberRemotePlane(memberId);
+    } on Object catch (cleanupError, cleanupStackTrace) {
+      appLogger.e(
+        '[session-launch] remote plane cleanup failed '
+        'session=$sessionId member=$memberId',
+        error: cleanupError,
+        stackTrace: cleanupStackTrace,
+      );
+    }
+    if (!reportFailure) return;
+    _host.failSessionConnect(
+      sessionId,
+      'Failed to connect session: $error',
+      error: error,
+      stackTrace: stackTrace,
+    );
+  }
+
   Future<ConnectShellResult> connect({
     required ChatTab tab,
     required AppSession session,
@@ -728,12 +757,12 @@ class SessionShellConnector {
               _persister
                   .persistSessionStarted(activeSession.sessionId, repo: r)
                   .onError(
-                (e, st) => appLogger.w(
-                  '[session] persist after start failed: $e',
-                  error: e,
-                  stackTrace: st,
-                ),
-              ),
+                    (e, st) => appLogger.w(
+                      '[session] persist after start failed: $e',
+                      error: e,
+                      stackTrace: st,
+                    ),
+                  ),
             );
           }
         },
@@ -754,7 +783,6 @@ class SessionShellConnector {
       return ConnectShellResult.failed;
     }
   }
-
 
   Future<SessionMemberBinding> _resolveMemberBinding({
     required AppSession session,

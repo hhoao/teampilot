@@ -2,13 +2,12 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/failed_message_record.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/chat/history_continue_delivery.dart';
-import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/launch/connect/session_connect_job.dart';
 import 'package:teampilot/services/session/history/failed_message_store.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -21,22 +20,19 @@ class _RecordingChatCubit extends ChatCubit {
         storage: testHomeStorage,
       );
 
-  final connects = <SessionConnectRequest>[];
+  final opens = <({SessionOpenRequest request, LaunchReason reason})>[];
   final operatorMessages =
       <({String sessionId, String memberId, String message})>[];
   var connectSucceeds = true;
 
   @override
-  Future<void> connectWorkspaceSession(
-    SessionConnectRequest request, {
-    SessionRepository? repo,
+  Future<SessionOpenStatus> requestOpenSession(
+    SessionOpenRequest request, {
+    LaunchReason reason = LaunchReason.openExisting,
   }) async {
-    connects.add(request);
-    final sessionId = switch (request) {
-      ExistingSessionConnect(:final session) => session.sessionId,
-      _ => '',
-    };
-    if (sessionId.isEmpty) return;
+    opens.add((request: request, reason: reason));
+    final sessionId = request.session.sessionId;
+    if (sessionId.isEmpty) return SessionOpenStatus.opened;
     // Mirror production: connect returns before the shell finishes, then the
     // pod leaves launching. Callers wait for settle before completing retry.
     beginSessionConnect(sessionId);
@@ -50,6 +46,7 @@ class _RecordingChatCubit extends ChatCubit {
         failSessionConnect(sessionId, 'still broken');
       });
     }
+    return SessionOpenStatus.opened;
   }
 
   @override
@@ -100,8 +97,10 @@ void main() {
 
       await cubit.retrySessionLaunch(session.sessionId);
 
-      expect(cubit.connects, hasLength(1));
-      final request = cubit.connects.single as ExistingSessionConnect;
+      expect(cubit.opens, hasLength(1));
+      final opened = cubit.opens.single;
+      expect(opened.reason, LaunchReason.retry);
+      final request = opened.request;
       expect(request.preserveWorkbenchView, isTrue);
       expect(request.team, isNull);
       expect(request.member, isNull);
@@ -116,7 +115,7 @@ void main() {
 
     await cubit.retrySessionLaunch('missing');
 
-    expect(cubit.connects, isEmpty);
+    expect(cubit.opens, isEmpty);
     expect(cubit.operatorMessages, isEmpty);
   });
 
@@ -167,7 +166,7 @@ void main() {
 
       await cubit.retrySessionLaunch(session.sessionId);
 
-      expect(cubit.connects, hasLength(1));
+      expect(cubit.opens, hasLength(1));
       expect(cubit.operatorMessages, isEmpty);
 
       final remaining = await store.load(
@@ -218,7 +217,7 @@ void main() {
 
       await cubit.retrySessionLaunch(session.sessionId);
 
-      expect(cubit.connects, hasLength(1));
+      expect(cubit.opens, hasLength(1));
       expect(cubit.operatorMessages, isEmpty);
       final remaining = await store.load(
         session.workspaceId,

@@ -18,7 +18,7 @@ import 'package:teampilot/services/prompt_delivery/prompt_delivery_coordinator.d
 import 'package:teampilot/services/prompt_delivery/prompt_delivery_store.dart';
 
 void main() {
-  // SessionLaunchPipeline._restartTeamSession needs a full host fake; the
+  // restart-session path needs a full host fake; the
   // restart path calls clearAgentStatusSession → clearAgentStatusSessionSeats.
   group('clearAgentStatusSessionSeats', () {
     test('clears attention and seat lookup for session, keeps other sessions', () {

@@ -18,6 +18,7 @@ import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/launch/connect/session_lifecycle_connect_coordinator.dart';
+import 'package:teampilot/services/launch/connect/session_connect_job.dart';
 import 'package:teampilot/services/launch/connect/session_shell_connector.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
@@ -116,7 +117,8 @@ void main() {
         ),
         launchWorkTarget: (s, {String? memberId}) =>
             RuntimeTarget.ssh('home-server', label: 'Home'),
-        scheduleMemberConnect: (_, _, _, {bool selectMember = false}) {},
+        scheduleMemberConnect:
+            (_, _, _, {bool selectMember = false, LaunchReason? reason}) {},
         tabOpen: (_) => true,
       );
       final tab = ChatTab(

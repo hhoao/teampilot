@@ -11,6 +11,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/chat/chat_workbench_terminal.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_session_actions.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/launch/connect/session_connect_job.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -72,12 +73,15 @@ class _RecordingChatCubit extends ChatCubit {
   final openRequests = <SessionOpenRequest>[];
 
   @override
-  Future<SessionOpenStatus> requestOpenSession(SessionOpenRequest request) {
+  Future<SessionOpenStatus> requestOpenSession(
+    SessionOpenRequest request, {
+    LaunchReason reason = LaunchReason.openExisting,
+  }) {
     openRequests.add(request);
     if (!forwardOpen) {
       return Future.value(SessionOpenStatus.opened);
     }
-    return super.requestOpenSession(request);
+    return super.requestOpenSession(request, reason: reason);
   }
 }
 
@@ -131,7 +135,7 @@ void main() {
 
     Future<void> boot({required bool forwardOpen}) async {
       tmp = await Directory.systemTemp.createTemp('open_existing_gate_');
-      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
+      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       postFrame = PostFrameTestHarness();
       shells.clear();
       chatCubit = _RecordingChatCubit(

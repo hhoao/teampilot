@@ -1,5 +1,8 @@
 import '../../../cubits/chat/model/chat_tab.dart';
+import '../../../models/app_session.dart';
 import '../../../models/team_config.dart';
+import '../../../models/workspace.dart';
+import '../connect/session_connect_job.dart';
 
 /// Schedules a per-member PTY connect on [tab].
 ///
@@ -13,4 +16,10 @@ typedef ScheduleMemberConnectFn =
       TeamMemberConfig member,
       ChatTab tab, {
       bool selectMember,
+      LaunchReason? reason,
     });
+
+typedef SessionForMemberConnectFn =
+    AppSession? Function(ChatTab tab, TeamProfile team);
+
+typedef WorkspaceByIdFn = Workspace? Function(String workspaceId);

@@ -9,33 +9,32 @@ import '../../../cubits/chat/model/session_connect_request.dart';
 import '../../../cubits/chat/model/session_open_request.dart';
 import '../../../cubits/chat/session_launch_host.dart';
 import '../../../models/app_session.dart';
+import '../../../models/member_instance.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/terminal/terminal_session.dart';
 import '../../../utils/logging/logger.dart';
-import '../contracts/launch_outcome.dart';
 import '../contracts/member_connect_types.dart';
 import '../session/session_default_materializer.dart';
-import '../session/session_open_router.dart';
+import '../session/session_launch_coordinator.dart';
+import 'session_connect_job.dart';
+import 'session_connect_scheduler.dart';
 
 /// Flow B — connecting a member's seat.
 ///
-/// Extracted from `SessionLaunchPipeline`, which is Flow A's router ("make this
-/// session exist"). This stage owns "make this member's terminal run": choosing
-/// the target member, materializing a first session when none is open,
-/// scheduling per-seat connects, and tearing shells down on restart.
-///
-/// `SessionLaunchPipeline.run` dispatches the four Flow B operations here; the
-/// two flows no longer share a class.
+/// Owns member-terminal intent: choosing the target member, materializing a
+/// first session when none is open, scheduling per-seat connects, and tearing
+/// shells down on restart.
 class MemberConnectStage {
   MemberConnectStage({
     required SessionLaunchHost host,
     required ChatTabStore tabStore,
     required ChatState Function() state,
     required SessionDefaultMaterializer materializer,
-    required SessionOpenRouter openRouter,
-    required ScheduleMemberConnectFn scheduleMemberConnect,
+    required SessionLaunchIntentPort coordinator,
+    required SessionConnectSchedulerPort scheduler,
+    required SessionForMemberConnectFn sessionForMemberConnect,
     required void Function() disconnectSession,
     required TerminalSession? Function(TeamProfile team) ensureSession,
     required ChatTab Function(TeamProfile team, {required bool emitChange})
@@ -52,8 +51,9 @@ class MemberConnectStage {
        _tabStore = tabStore,
        _state = state,
        _materializer = materializer,
-       _openRouter = openRouter,
-       _scheduleMemberConnect = scheduleMemberConnect,
+       _coordinator = coordinator,
+       _scheduler = scheduler,
+       _sessionForMemberConnect = sessionForMemberConnect,
        _disconnectSession = disconnectSession,
        _ensureSession = ensureSession,
        _appendLocalTab = appendLocalTab,
@@ -68,8 +68,9 @@ class MemberConnectStage {
   final ChatTabStore _tabStore;
   final ChatState Function() _state;
   final SessionDefaultMaterializer _materializer;
-  final SessionOpenRouter _openRouter;
-  final ScheduleMemberConnectFn _scheduleMemberConnect;
+  final SessionLaunchIntentPort _coordinator;
+  final SessionConnectSchedulerPort _scheduler;
+  final SessionForMemberConnectFn _sessionForMemberConnect;
   final void Function() _disconnectSession;
   final TerminalSession? Function(TeamProfile team) _ensureSession;
   final ChatTab Function(TeamProfile team, {required bool emitChange})
@@ -84,7 +85,7 @@ class MemberConnectStage {
 
   /// Connects [request]'s target. Returns [LaunchSkipped] when an in-flight
   /// connect already owns it.
-  Future<LaunchOutcome> run(
+  Future<void> run(
     SessionConnectRequest request, {
     SessionRepository? repo,
   }) async {
@@ -99,7 +100,7 @@ class MemberConnectStage {
       isSessionConnecting: _host.isSessionConnecting,
       isMaterializingInFlight: _host.isMaterializingInFlight,
     )) {
-      return LaunchSkipped();
+      return;
     }
 
     switch (request) {
@@ -127,11 +128,10 @@ class MemberConnectStage {
           repo: repo,
         );
     }
-    return LaunchCompleted();
   }
 
   /// Tears the current seat down first, then reconnects.
-  Future<LaunchOutcome> restart(
+  Future<void> restart(
     SessionConnectRequest request, {
     SessionRepository? repo,
   }) async {
@@ -145,10 +145,9 @@ class MemberConnectStage {
         _disconnectSession();
         await run(request, repo: repo);
     }
-    return LaunchCompleted();
   }
 
-  Future<LaunchCompleted> openMemberTab(
+  Future<void> openMemberTab(
     TeamProfile team,
     TeamMemberConfig member, {
     SessionRepository? repo,
@@ -169,11 +168,17 @@ class MemberConnectStage {
           memberForInitialShell: member,
           workspaceCwd: workspaceCwd,
         );
-        if (_host.isClosed) return LaunchCompleted();
+        if (_host.isClosed) return;
         if (team.teamMode == TeamMode.mixed) {
           final tab = _activeTab();
           if (tab != null) {
-            _scheduleMemberConnect(team, member, tab);
+            await scheduleMemberConnectAndWait(
+              team,
+              member,
+              tab,
+              repo: r,
+              reason: LaunchReason.memberSelected,
+            );
           }
         }
       } on Object catch (e, st) {
@@ -188,21 +193,32 @@ class MemberConnectStage {
           stackTrace: st,
         );
       }
-      return LaunchCompleted();
+      return;
     }
     final tab = _ensureActiveSessionTab(team, emitChange: true);
-    _scheduleMemberConnect(team, member, tab);
-    return LaunchCompleted();
+    await scheduleMemberConnectAndWait(
+      team,
+      member,
+      tab,
+      repo: r,
+      reason: LaunchReason.memberSelected,
+    );
   }
 
-  Future<LaunchCompleted> launchAllMembers(
+  Future<void> launchAllMembers(
     TeamProfile team, {
     SessionRepository? repo,
     String? workspaceCwd,
   }) async {
     final r = repo ?? _host.sessionRepository;
-    final validMembers = team.members.where((m) => m.isValid).toList();
-    if (validMembers.isEmpty) return LaunchCompleted();
+    final existingSession = _activeTab()?.persistedSession;
+    final validMembers =
+        (existingSession == null
+                ? runtimeRosterMembers(team)
+                : sessionRosterMembers(existingSession, team))
+            .where((m) => m.isValid)
+            .toList();
+    if (validMembers.isEmpty) return;
 
     if (_tabStore.activeTabsIsEmpty && r != null) {
       try {
@@ -210,19 +226,18 @@ class MemberConnectStage {
         await _materializer.materializeTeamSession(
           team,
           r,
-          connectImmediately: true,
+          // All members are scheduled below through the completion-aware
+          // fan-out. Avoid leaving the initial member on a fire-and-forget
+          // scheduler callback that this public operation cannot await.
+          connectImmediately: false,
+          scheduleConnect: false,
           memberForInitialShell: initialMember,
           workspaceCwd: workspaceCwd,
         );
-        if (_host.isClosed) return LaunchCompleted();
+        if (_host.isClosed) return;
         final tab = _activeTab();
         if (tab != null) {
-          // The materializer already schedules the initial member's shell
-          // connect; scheduling it here too would connect that shell twice.
-          for (final member in validMembers) {
-            if (member.id == initialMember.id) continue;
-            _scheduleMemberConnect(team, member, tab, selectMember: false);
-          }
+          await _scheduleMembersAndWait(tab, team, repo: r);
         }
       } on Object catch (e, st) {
         appLogger.e(
@@ -230,16 +245,158 @@ class MemberConnectStage {
           stackTrace: st,
         );
       }
-      return LaunchCompleted();
+      return;
     }
 
     final tab = _ensureActiveSessionTab(team, emitChange: true);
-    for (final member in validMembers) {
-      // Callers own the final member selection (see _connectTeamSession /
-      // _restartTeamSession); background members must not stomp it.
-      _scheduleMemberConnect(team, member, tab, selectMember: false);
+    await _scheduleMembersAndWait(tab, team, repo: r);
+  }
+
+  /// Enqueues a member connect through the shared scheduler.
+  void scheduleMemberConnect(
+    TeamProfile team,
+    TeamMemberConfig member,
+    ChatTab tab, {
+    bool selectMember = true,
+    LaunchReason? reason,
+  }) {
+    unawaited(
+      _scheduleMemberConnect(
+        team,
+        member,
+        tab,
+        selectMember: selectMember,
+        reason: reason,
+      ),
+    );
+  }
+
+  /// Enqueues a member connect and waits for its shell/materialization work.
+  ///
+  /// Public launch operations use this completion-aware path. The
+  /// [MemberConnector] callback above intentionally remains fire-and-forget
+  /// for background materialization and restore work.
+  Future<void> scheduleMemberConnectAndWait(
+    TeamProfile team,
+    TeamMemberConfig member,
+    ChatTab tab, {
+    SessionRepository? repo,
+    bool selectMember = true,
+    LaunchReason? reason,
+  }) => _scheduleMemberConnect(
+    team,
+    member,
+    tab,
+    repo: repo,
+    selectMember: selectMember,
+    reason: reason,
+    waitForCompletion: true,
+  );
+
+  Future<void> _scheduleMemberConnect(
+    TeamProfile team,
+    TeamMemberConfig member,
+    ChatTab tab, {
+    SessionRepository? repo,
+    bool selectMember = true,
+    LaunchReason? reason,
+    bool waitForCompletion = false,
+  }) async {
+    final memberId = member.id.trim();
+    if (memberId.isEmpty || !member.isValid) return;
+    if (selectMember) {
+      _host.assignSelectedMember(tab, memberId);
     }
-    return LaunchCompleted();
+    final activeSession =
+        tab.persistedSession ?? _sessionForMemberConnect(tab, team);
+    if (activeSession == null) {
+      _host.failSessionConnect(
+        tab.info.id,
+        'No persisted session for this tab. Create a team session first.',
+      );
+      return;
+    }
+    tab.persistedSession = activeSession;
+    final shell = tab.memberShells[memberId];
+    final memberConnectPending = tab.membersPendingConnect.contains(memberId);
+    if (shell != null &&
+        (shell.isRunning || shell.isConnecting) &&
+        !(waitForCompletion && memberConnectPending)) {
+      _host.memberMaterializer.markMemberReady(tab.info.id, memberId);
+      _host.updateTabRunning(tab.info.id);
+      return;
+    }
+    // Re-submit a pending identity for completion-aware callers so the
+    // scheduler returns the existing member future instead of an early no-op.
+    if (memberConnectPending && !waitForCompletion) return;
+    _tabStore.workingDirectoryAndAddDirsForTab(
+      tab,
+      _state().sessions,
+      workspaces: _state().workspaces,
+    );
+    final request = SessionOpenRequest(
+      session: activeSession,
+      workspace: _workspaceById(activeSession.workspaceId),
+      team: team,
+      member: member,
+      repo: repo ?? _host.sessionRepository,
+    );
+    final job = SessionConnectJob(
+      tab: tab,
+      session: activeSession,
+      request: request,
+      generation: tab.launchGeneration,
+      workspace: request.workspace,
+      team: team,
+      member: member,
+      reason: reason ?? LaunchReason.memberSelected,
+    );
+    appLogger.d(
+      '[session-launch] scheduleMemberConnect '
+      'session=${job.sessionId} member=${job.memberId} reason=${job.reason.name}',
+    );
+    await _scheduler.enqueue(job, waitForCompletion: waitForCompletion);
+  }
+
+  List<TeamMemberConfig> _membersForTab(ChatTab? tab, TeamProfile team) {
+    final session = tab?.persistedSession;
+    final members = session == null
+        ? runtimeRosterMembers(team)
+        : sessionRosterMembers(session, team);
+    return members.where((member) => member.isValid).toList();
+  }
+
+  Future<void> _scheduleMembersAndWait(
+    ChatTab tab,
+    TeamProfile team, {
+    SessionRepository? repo,
+  }) async {
+    final members = _membersForTab(tab, team);
+    if (members.isEmpty) return;
+    // The first member owns team-runtime installation. Complete that boundary
+    // before fanning out the remaining seats, which may still connect in
+    // parallel without racing the shared per-tab runtime setup.
+    await scheduleMemberConnectAndWait(
+      team,
+      members.first,
+      tab,
+      repo: repo,
+      selectMember: false,
+      reason: LaunchReason.restore,
+    );
+    await Future.wait([
+      for (final member in members.skip(1))
+        // Callers own the final member selection; background members must not
+        // stomp it.
+        scheduleMemberConnectAndWait(
+          team,
+          member,
+          tab,
+          repo: repo,
+          selectMember: false,
+          reason: LaunchReason.restore,
+        ),
+    ]);
   }
 
   Future<void> _connectPersonalSession({
@@ -286,12 +443,13 @@ class MemberConnectStage {
       _host.failSessionConnect('pending', 'No active personal session tab.');
       return;
     }
-    await _openRouter.run(
+    await _coordinator.open(
       SessionOpenRequest(
         session: session,
         workspace: _workspaceById(session.workspaceId),
         repo: r,
         connectImmediately: true,
+        waitForCompletion: true,
       ),
     );
   }
@@ -353,7 +511,7 @@ class MemberConnectStage {
       return;
     }
 
-    await _openRouter.run(
+    await _coordinator.open(
       SessionOpenRequest(
         session: launchSession,
         workspace: workspace ?? _workspaceById(session.workspaceId),
@@ -362,6 +520,7 @@ class MemberConnectStage {
         repo: r,
         connectImmediately: true,
         preserveWorkbenchView: preserveWorkbenchView,
+        waitForCompletion: true,
       ),
     );
   }
@@ -388,7 +547,7 @@ class MemberConnectStage {
         return;
       }
       await launchAllMembers(team, repo: r);
-      if (team.members.any((m) => m.id == keepId)) {
+      if (_membersForTab(_activeTab(), team).any((m) => m.id == keepId)) {
         _host.selectMember(keepId);
       }
       return;
@@ -434,7 +593,8 @@ class MemberConnectStage {
         _host.updateTabRunning(tab.info.id);
       }
       await launchAllMembers(team, repo: r);
-      if (keepId.isNotEmpty && team.members.any((m) => m.id == keepId)) {
+      if (keepId.isNotEmpty &&
+          _membersForTab(_activeTab(), team).any((m) => m.id == keepId)) {
         _host.selectMember(keepId);
       }
       return;
@@ -451,13 +611,14 @@ class MemberConnectStage {
 
   TeamMemberConfig? _resolveConnectMember(TeamProfile team) {
     final memberId = _selectedMemberIdOrDefault(team);
-    if (memberId.isEmpty || team.members.isEmpty) {
+    final members = _membersForTab(_activeTab(), team);
+    if (memberId.isEmpty || members.isEmpty) {
       _failNoMemberSelected(team);
       return null;
     }
-    return team.members.firstWhere(
+    return members.firstWhere(
       (m) => m.id == memberId,
-      orElse: () => team.members.first,
+      orElse: () => members.first,
     );
   }
 
@@ -502,7 +663,6 @@ bool shouldSerializeConnect({
 /// Native teams break when any member is missing (the CLI coordinates the
 /// roster itself), so they always launch all members regardless of the user
 /// preference. Mixed teams honor [autoLaunchAllMembersOnConnect].
-@visibleForTesting
 bool shouldLaunchAllMembers({
   required TeamProfile team,
   required bool autoLaunchAllMembersOnConnect,

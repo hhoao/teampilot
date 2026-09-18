@@ -5,12 +5,12 @@ import 'package:teampilot/cubits/chat/model/chat_state.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
 import 'package:teampilot/cubits/chat/model/session_open_request.dart';
-import 'package:teampilot/cubits/chat/model/session_open_status.dart';
 import 'package:teampilot/cubits/chat/model/session_workbench_view.dart';
 import 'package:teampilot/cubits/chat/session_data_store.dart';
 import 'package:teampilot/cubits/chat/session_launch_host.dart';
 import 'package:teampilot/cubits/chat/tab_session_runtime_coordinator.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/launch/tab/session_tab_surface_coordinator.dart';
@@ -52,31 +52,6 @@ void main() {
       coordinator = SessionTabSurfaceCoordinator(
         host: host,
         tabStore: tabStore,
-        workspaceById: (_) => null,
-        shouldAutoConnect: (_) => true,
-        prepareNewTabConnect:
-            ({
-              required generation,
-              required tab,
-              required session,
-              required request,
-              required workspace,
-              required connect,
-            }) async {},
-        prepareExistingTabConnect:
-            ({
-              required generation,
-              required tab,
-              required request,
-              required connect,
-            }) async {},
-        prepareDeferredTeamTab:
-            ({
-              required generation,
-              required tab,
-              required session,
-              required request,
-            }) async {},
         onSessionTabOpened:
             (workspaceId, sessionId, {preview = false, activate = true}) {
               openedCalls.add((
@@ -94,37 +69,45 @@ void main() {
     });
 
     test('connectImmediately defaults to Terminal workbench view', () {
-      final status = coordinator.surfaceExistingTab(
+      final result = coordinator.surfaceExistingTab(
         request: SessionOpenRequest(session: session, connectImmediately: true),
         existing: existing,
+        workspace: null,
+        connect: true,
       );
 
-      expect(status, SessionOpenStatus.opened);
+      expect(result.tab, same(existing));
+      expect(result.connect, isTrue);
       expect(host.podViews['sess-1'], SessionWorkbenchView.terminal);
     });
 
     test('Chat continue connect preserves Chat when preserveWorkbenchView', () {
-      final status = coordinator.surfaceExistingTab(
+      final result = coordinator.surfaceExistingTab(
         request: SessionOpenRequest(
           session: session,
           connectImmediately: true,
           preserveWorkbenchView: true,
         ),
         existing: existing,
+        workspace: null,
+        connect: true,
       );
 
-      expect(status, SessionOpenStatus.opened);
+      expect(result.tab, same(existing));
+      expect(result.connect, isTrue);
       expect(host.podViews['sess-1'], isNull);
-      expect(host.beginConnectIds, ['sess-1']);
+      expect(host.beginConnectIds, isEmpty);
     });
 
     test('feeds onSessionTabOpened once when reusing an existing tab', () {
-      final status = coordinator.surfaceExistingTab(
+      final result = coordinator.surfaceExistingTab(
         request: SessionOpenRequest(session: session, connectImmediately: true),
         existing: existing,
+        workspace: null,
+        connect: true,
       );
 
-      expect(status, SessionOpenStatus.opened);
+      expect(result.generation, existing.launchGeneration);
       expect(openedCalls, [
         (
           workspaceId: 'ws-1',
@@ -136,15 +119,17 @@ void main() {
     });
 
     test('feeds preview: true when history-reviewing an existing tab', () {
-      final status = coordinator.surfaceExistingTab(
+      final result = coordinator.surfaceExistingTab(
         request: SessionOpenRequest(
           session: session,
           connectImmediately: false,
         ),
         existing: existing,
+        workspace: null,
+        connect: false,
       );
 
-      expect(status, SessionOpenStatus.opened);
+      expect(result.connect, isFalse);
       expect(openedCalls, [
         (
           workspaceId: 'ws-1',
@@ -156,21 +141,52 @@ void main() {
     });
 
     test(
+      'does not suppress a distinct member while another member connects',
+      () {
+        final teamSession = AppSession(
+          sessionId: 'sess-1',
+          workspaceId: 'ws-1',
+          sessionTeam: 'team-1',
+          createdAt: 1,
+        );
+        existing.persistedSession = teamSession;
+        existing.membersPendingConnect.add('member-a');
+        host.connectingSessionIds.add('sess-1');
+
+        final result = coordinator.surfaceExistingTab(
+          request: SessionOpenRequest(
+            session: teamSession,
+            member: const TeamMemberConfig(id: 'member-b', name: 'Member B'),
+            connectImmediately: true,
+          ),
+          existing: existing,
+          workspace: null,
+          connect: true,
+        );
+
+        expect(result.connect, isTrue);
+        expect(existing.membersPendingConnect, contains('member-a'));
+      },
+    );
+
+    test(
       'reuse of a RUNNING tab pins preview: false even when not connecting',
       () {
         final running = FakeTerminalSession(fs: InMemoryFilesystem());
         running.connect(workingDirectory: '/tmp');
         existing.resumeSession = running;
 
-        final status = coordinator.surfaceExistingTab(
+        final result = coordinator.surfaceExistingTab(
           request: SessionOpenRequest(
             session: session,
             connectImmediately: false,
           ),
           existing: existing,
+          workspace: null,
+          connect: false,
         );
 
-        expect(status, SessionOpenStatus.opened);
+        expect(result.connect, isFalse);
         expect(openedCalls, [
           (
             workspaceId: 'ws-1',
@@ -214,31 +230,6 @@ void main() {
       coordinator = SessionTabSurfaceCoordinator(
         host: host,
         tabStore: tabStore,
-        workspaceById: (_) => workspace,
-        shouldAutoConnect: (_) => true,
-        prepareNewTabConnect:
-            ({
-              required generation,
-              required tab,
-              required session,
-              required request,
-              required workspace,
-              required connect,
-            }) async {},
-        prepareExistingTabConnect:
-            ({
-              required generation,
-              required tab,
-              required request,
-              required connect,
-            }) async {},
-        prepareDeferredTeamTab:
-            ({
-              required generation,
-              required tab,
-              required session,
-              required request,
-            }) async {},
         onSessionTabOpened:
             (workspaceId, sessionId, {preview = false, activate = true}) {
               openedCalls.add((
@@ -256,23 +247,26 @@ void main() {
     });
 
     test('connectImmediately defaults to Terminal workbench view', () {
-      final status = coordinator.surfaceNewTab(
+      final result = coordinator.surfaceNewTab(
         request: SessionOpenRequest(
           session: session,
           workspace: workspace,
           connectImmediately: true,
         ),
         session: session,
+        workspace: workspace,
+        connect: true,
       );
 
-      expect(status, SessionOpenStatus.opened);
+      expect(result.session, same(session));
+      expect(result.connect, isTrue);
       final tab = tabStore.openTabBySessionId('sess-new');
       expect(tab, isNotNull);
       expect(host.podViews['sess-new'], SessionWorkbenchView.terminal);
     });
 
     test('preserveWorkbenchView keeps Chat on new-tab create', () {
-      final status = coordinator.surfaceNewTab(
+      final result = coordinator.surfaceNewTab(
         request: SessionOpenRequest(
           session: session,
           workspace: workspace,
@@ -280,26 +274,31 @@ void main() {
           preserveWorkbenchView: true,
         ),
         session: session,
+        workspace: workspace,
+        connect: true,
       );
 
-      expect(status, SessionOpenStatus.opened);
+      expect(result.tab.info.id, session.sessionId);
       final tab = tabStore.openTabBySessionId('sess-new');
       expect(tab, isNotNull);
+      expect(result.connect, isTrue);
       expect(host.podViews['sess-new'], isNull);
-      expect(host.beginConnectIds, ['sess-new']);
+      expect(host.beginConnectIds, isEmpty);
     });
 
     test('feeds onSessionTabOpened once with the tab id and activate', () {
-      final status = coordinator.surfaceNewTab(
+      final result = coordinator.surfaceNewTab(
         request: SessionOpenRequest(
           session: session,
           workspace: workspace,
           connectImmediately: true,
         ),
         session: session,
+        workspace: workspace,
+        connect: true,
       );
 
-      expect(status, SessionOpenStatus.opened);
+      expect(result.generation, result.tab.launchGeneration);
       expect(openedCalls, [
         (
           workspaceId: 'ws-1',
@@ -311,16 +310,18 @@ void main() {
     });
 
     test('feeds preview: true when connectImmediately is false', () {
-      final status = coordinator.surfaceNewTab(
+      final result = coordinator.surfaceNewTab(
         request: SessionOpenRequest(
           session: session,
           workspace: workspace,
           connectImmediately: false,
         ),
         session: session,
+        workspace: workspace,
+        connect: false,
       );
 
-      expect(status, SessionOpenStatus.opened);
+      expect(result.connect, isFalse);
       expect(openedCalls, [
         (
           workspaceId: 'ws-1',
@@ -355,6 +356,7 @@ class _FakeHost implements SessionLaunchHost {
   );
 
   final beginConnectIds = <String>[];
+  final connectingSessionIds = <String>{};
 
   @override
   final TabSessionRuntimeCoordinator sessionRuntime;
@@ -373,6 +375,11 @@ class _FakeHost implements SessionLaunchHost {
     beginConnectIds.add(sessionId);
   }
 
+  @override
+  void assignSelectedMember(ChatTab tab, String memberId) {
+    tab.selectedMemberId = memberId;
+  }
+
   /// Records pod view writes so tests can assert the canonical source.
   final podViews = <String, SessionWorkbenchView>{};
 
@@ -382,7 +389,8 @@ class _FakeHost implements SessionLaunchHost {
   }
 
   @override
-  bool isSessionConnecting(String sessionId) => false;
+  bool isSessionConnecting(String sessionId) =>
+      connectingSessionIds.contains(sessionId);
 
   @override
   bool get hasConnectingSession => false;
