@@ -49,7 +49,9 @@ class TerminalActivityTracker {
     this.bootMaxWait = defaultBootMaxWait,
     this.fingerprintTailLines = defaultFingerprintTailLines,
     this.onBootFrameChanged,
-  }) : assert(fingerprintTailLines >= 1) {
+    DateTime Function()? now,
+  }) : assert(fingerprintTailLines >= 1),
+       _now = now ?? DateTime.now {
     _bootFrameListener = onBootFrameChanged;
   }
 
@@ -87,6 +89,12 @@ class TerminalActivityTracker {
   /// Live boot-frame listener; seeded from [onBootFrameChanged]. Mutable so a
   /// reused tracker can be detached on unbind and re-attached on rebind.
   void Function(bool bootReady)? _bootFrameListener;
+
+  /// Time source for quiet/max-wait windows. Must be the same clock the
+  /// one-shot [Timer] is scheduled against — wall `DateTime.now` in production,
+  /// a FakeAsync clock in tests (`fakeAsync.elapse` does not advance
+  /// `DateTime.now()`).
+  final DateTime Function() _now;
 
   static const int _fnvOffsetBasis = 0x811C9DC5;
   static const int _fnvPrime = 0x01000193;
@@ -138,7 +146,7 @@ class TerminalActivityTracker {
   bool get isBootFrameReady {
     if (_bootFrameLatched) return true;
     if (!_bootPtyObserved || !_bootVisibleContentSeen) return false;
-    final now = DateTime.now();
+    final now = _now();
     final since = _fingerprintStableSince;
     if (since != null && now.difference(since) >= bootQuietAfter) {
       _bootFrameLatched = true;
@@ -161,11 +169,11 @@ class TerminalActivityTracker {
     final since = _fingerprintStableSince;
     final stableMs = since == null
         ? null
-        : DateTime.now().difference(since).inMilliseconds;
+        : _now().difference(since).inMilliseconds;
     final firstVisible = _bootFirstVisibleAt;
     final visibleMs = firstVisible == null
         ? null
-        : DateTime.now().difference(firstVisible).inMilliseconds;
+        : _now().difference(firstVisible).inMilliseconds;
     final maxWaitMs = bootMaxWait?.inMilliseconds;
     return 'latched=$_bootFrameLatched '
         'ptyObserved=$_bootPtyObserved '
@@ -184,7 +192,7 @@ class TerminalActivityTracker {
   void latchTurnQuietBaseline([DateTime? at]) {
     _turnPtyObserved = false;
     _fingerprintStableSince = null;
-    _turnLatchedAt = at ?? DateTime.now();
+    _turnLatchedAt = at ?? _now();
   }
 
   /// True when the fingerprint has been unchanged for [idleAfter] since the
@@ -194,14 +202,14 @@ class TerminalActivityTracker {
     if (!_turnPtyObserved) return false;
     final since = _fingerprintStableSince;
     if (since == null) return false;
-    return DateTime.now().difference(since) >= idleAfter;
+    return _now().difference(since) >= idleAfter;
   }
 
   /// Records PTY output; skips [noteOutput] when the fingerprint hash is unchanged.
   void notePtyBytes(List<int> bytes, [DateTime? at]) {
     if (bytes.isEmpty) return;
     final raw = bytes is Uint8List ? bytes : Uint8List.fromList(bytes);
-    final now = at ?? DateTime.now();
+    final now = at ?? _now();
     final scan = _scanVisibleTail(raw, tailLines: fingerprintTailLines);
     final hash = scan.hash;
 
@@ -388,7 +396,7 @@ class TerminalActivityTracker {
   }
 
   void noteOutput([DateTime? at]) {
-    final now = at ?? DateTime.now();
+    final now = at ?? _now();
     if (_armed) {
       _lastActivity = now;
     } else {
@@ -471,7 +479,7 @@ class TerminalActivityTracker {
     final firstVisible = _bootFirstVisibleAt;
     if (!_bootVisibleContentSeen || firstVisible == null) return;
 
-    final now = DateTime.now();
+    final now = _now();
     Duration? delay;
     final quietSince = _fingerprintStableSince;
     if (quietSince != null) {
@@ -494,7 +502,7 @@ class TerminalActivityTracker {
 
   /// Tests: latch a stable boot frame without waiting real time.
   void latchBootFrameReadyForTest([DateTime? at]) {
-    final now = at ?? DateTime.now();
+    final now = at ?? _now();
     _bootPtyObserved = true;
     _bootVisibleContentSeen = true;
     _bootFrameLatched = true;
@@ -512,7 +520,7 @@ class TerminalActivityTracker {
     if (!_armed) return false;
     final last = _lastActivity;
     if (last == null) return false;
-    return DateTime.now().difference(last) < idleAfter;
+    return _now().difference(last) < idleAfter;
   }
 
   void _tryArmAfterBootQuiet() {
@@ -523,7 +531,7 @@ class TerminalActivityTracker {
     // recorded as post-boot activity and falsely lights session-working.
     final bootAt = _bootOutputAt;
     if (bootAt == null) return;
-    if (DateTime.now().difference(bootAt) >= idleAfter) {
+    if (_now().difference(bootAt) >= idleAfter) {
       _armed = true;
       _bootOutputAt = null;
     }

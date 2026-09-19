@@ -102,8 +102,10 @@ void main() {
       expect(stat.exists, isTrue);
       final resolved = await fs.resolveSymlink(p.join(link, '.'));
       expect(resolved, isNotNull);
+      // macOS realpath expands /var → /private/var; compare canonical paths.
+      final canonicalB = await File(targetB).resolveSymbolicLinks();
       expect(
-        p.equals(p.normalize(resolved!), p.normalize(targetB)),
+        p.equals(p.normalize(resolved!), p.normalize(canonicalB)),
         isTrue,
         reason: 'link must now point at target B',
       );

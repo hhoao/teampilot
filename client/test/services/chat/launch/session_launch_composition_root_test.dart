@@ -67,8 +67,13 @@ void main() {
 
       expect(status, isNotNull);
       expect(postFrame.hasPendingCallbacks, isTrue);
-      await postFrame.flush();
-      await drainPendingAsyncWork(rounds: 15);
+      await waitUntil(
+        () => shells.isNotEmpty && shells.single.isRunning,
+        pump: () async {
+          await postFrame.flush();
+          await drainPendingAsyncWork();
+        },
+      );
 
       expect(shells, hasLength(1));
       expect(shells.single.isRunning, isTrue);
