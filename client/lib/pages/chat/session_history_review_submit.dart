@@ -1,5 +1,5 @@
-import '../../cubits/chat/member_input_ready_wait.dart';
-import '../../cubits/chat/model/session_connect_request.dart';
+import '../../services/chat/team_bus/member_input_ready_wait.dart';
+import '../../services/chat/model/session_connect_request.dart';
 import '../../utils/logging/logger.dart';
 import 'history_continue_delivery.dart';
 

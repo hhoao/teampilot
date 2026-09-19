@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/chat_state.dart';
-import 'package:teampilot/cubits/chat/model/session_create_request.dart';
-import 'package:teampilot/cubits/chat/model/session_open_request.dart';
-import 'package:teampilot/cubits/chat/model/session_open_status.dart';
-import 'package:teampilot/cubits/chat/session_data_store.dart';
-import 'package:teampilot/cubits/chat/session_launch_host.dart';
+import 'package:teampilot/cubits/chat_state.dart';
+import 'package:teampilot/services/chat/model/session_create_request.dart';
+import 'package:teampilot/services/chat/model/session_open_request.dart';
+import 'package:teampilot/services/chat/model/session_open_status.dart';
+import 'package:teampilot/services/chat/session/session_data_store.dart';
+import 'package:teampilot/services/chat/host/session_launch_host.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_continue_overrides.dart';
 import 'package:teampilot/models/session_member_binding.dart';
@@ -12,11 +12,11 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/launch/session/session_default_materializer.dart';
-import 'package:teampilot/services/launch/session/session_launch_coordinator.dart';
-import 'package:teampilot/services/launch/session/session_launch_workspace_index.dart';
-import 'package:teampilot/services/launch/connect/session_connect_job.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/launch/session/session_default_materializer.dart';
+import 'package:teampilot/services/chat/launch/session/session_launch_coordinator.dart';
+import 'package:teampilot/services/chat/launch/session/session_launch_workspace_index.dart';
+import 'package:teampilot/services/chat/launch/connect/session_connect_job.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {

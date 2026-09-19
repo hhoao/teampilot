@@ -1,5 +1,5 @@
-import 'package:teampilot/services/session/shell_launch_spec.dart';
-import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
+import 'package:teampilot/services/chat/session/shell_launch_spec.dart';
+import 'package:teampilot/services/chat/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 /// Recording [TerminalSession] for cubit / smoke tests that assert connect args.

@@ -1,10 +1,10 @@
-import 'package:teampilot/cubits/chat/chat_tab_store.dart';
-import 'package:teampilot/cubits/chat/model/chat_state.dart';
-import 'package:teampilot/cubits/chat/session_data_store.dart';
-import 'package:teampilot/cubits/chat/session_launch_host.dart';
+import 'package:teampilot/services/chat/chat_tab_store.dart';
+import 'package:teampilot/cubits/chat_state.dart';
+import 'package:teampilot/services/chat/session/session_data_store.dart';
+import 'package:teampilot/services/chat/host/session_launch_host.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/launch/session/session_persistence_writer.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/launch/session/session_persistence_writer.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 
 import 'in_memory_filesystem.dart';
 

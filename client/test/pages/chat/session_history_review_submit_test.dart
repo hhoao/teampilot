@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/member_input_ready_wait.dart';
-import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
+import 'package:teampilot/services/chat/team_bus/member_input_ready_wait.dart';
+import 'package:teampilot/services/chat/model/session_connect_request.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/chat/history_continue_delivery.dart';
@@ -92,10 +92,7 @@ void main() {
     });
 
     test('pty fails when the terminal cannot confirm submission', () async {
-      final result = await runSubmit(
-        'continue here',
-        ptyDeliveryId: null,
-      );
+      final result = await runSubmit('continue here', ptyDeliveryId: null);
 
       expect(result.ok, isFalse);
       expect(result.channel, HistoryContinueChannel.pty);
@@ -294,15 +291,18 @@ void main() {
       expect(titleCalls, isEmpty);
     });
 
-    test('cancelled after connect skips ready-wait, deliver, and title', () async {
-      final result = await runSubmit('hello', cancelled: () => true);
+    test(
+      'cancelled after connect skips ready-wait, deliver, and title',
+      () async {
+        final result = await runSubmit('hello', cancelled: () => true);
 
-      expect(result.ok, isFalse);
-      expect(connectCalls, [connectRequest]);
-      expect(readyCalls, isEmpty);
-      expect(deliverCalls, isEmpty);
-      expect(titleCalls, isEmpty);
-    });
+        expect(result.ok, isFalse);
+        expect(connectCalls, [connectRequest]);
+        expect(readyCalls, isEmpty);
+        expect(deliverCalls, isEmpty);
+        expect(titleCalls, isEmpty);
+      },
+    );
 
     test('operator stop during ready-wait prevents the PTY deliver', () async {
       var stopped = false;
@@ -342,16 +342,19 @@ void main() {
       expect(titleCalls, isEmpty);
     });
 
-    test('operator stop before mailbox deliver skips the bus enqueue', () async {
-      final result = await runSubmit(
-        'hello',
-        channel: HistoryContinueChannel.mailbox,
-        cancelled: () => true,
-      );
+    test(
+      'operator stop before mailbox deliver skips the bus enqueue',
+      () async {
+        final result = await runSubmit(
+          'hello',
+          channel: HistoryContinueChannel.mailbox,
+          cancelled: () => true,
+        );
 
-      expect(result.ok, isFalse);
-      expect(result.channel, HistoryContinueChannel.mailbox);
-      expect(deliverCalls, isEmpty);
-    });
+        expect(result.ok, isFalse);
+        expect(result.channel, HistoryContinueChannel.mailbox);
+        expect(deliverCalls, isEmpty);
+      },
+    );
   });
 }

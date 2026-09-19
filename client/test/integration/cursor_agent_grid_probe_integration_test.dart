@@ -19,8 +19,8 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/terminal/fullscreen_input_screen_probe.dart';
-import 'package:teampilot/services/terminal/pty_automation_needle.dart';
+import 'package:teampilot/services/chat/terminal/fullscreen_input_screen_probe.dart';
+import 'package:teampilot/services/chat/terminal/pty_automation_needle.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import 'support/integration_prerequisites.dart';
@@ -98,7 +98,9 @@ void main() {
 
       // Real HOME: the probe needs the logged-in TUI (isolated HOME lands on
       // the login screen, which has no input box to paste into).
-      final tmpWork = await Directory.systemTemp.createTemp('cursor_probe_work_');
+      final tmpWork = await Directory.systemTemp.createTemp(
+        'cursor_probe_work_',
+      );
       addTearDown(() async {
         try {
           await tmpWork.delete(recursive: true);
@@ -115,11 +117,15 @@ void main() {
 
       final painted = await _waitForTuiPaint(session);
       // ignore: avoid_print
-      print('--- cursor-agent boot frame (painted=$painted) ---\n'
-          '${session.probe.describeProbeWindow(scanRows: 24)}');
+      print(
+        '--- cursor-agent boot frame (painted=$painted) ---\n'
+        '${session.probe.describeProbeWindow(scanRows: 24)}',
+      );
       if (!painted) {
-        fail('cursor-agent TUI never painted anything\n'
-            '${session.probe.describeProbeWindow(scanRows: 24)}');
+        fail(
+          'cursor-agent TUI never painted anything\n'
+          '${session.probe.describeProbeWindow(scanRows: 24)}',
+        );
       }
 
       // Fresh workspace shows a trust dialog before the input box.
@@ -135,24 +141,30 @@ void main() {
         timeout: const Duration(seconds: 20),
       );
       if (!promptReady) {
-        fail('input prompt (→) never appeared\n'
-            '${session.probe.describeProbeWindow(scanRows: 24)}');
+        fail(
+          'input prompt (→) never appeared\n'
+          '${session.probe.describeProbeWindow(scanRows: 24)}',
+        );
       }
 
       // Give the TUI extra settle after first paint (auth prompt / input box).
       await Future<void>.delayed(const Duration(seconds: 3));
       await session.probe.syncDisplayGrid();
       // ignore: avoid_print
-      print('--- pre-paste frame ---\n'
-          '${session.probe.describeProbeWindow(scanRows: 24)}');
+      print(
+        '--- pre-paste frame ---\n'
+        '${session.probe.describeProbeWindow(scanRows: 24)}',
+      );
 
       const needle = 'grid-probe-hello-42';
       await session.input.pasteText(needle);
 
       final anchor = await _pollNeedle(session, needle);
       // ignore: avoid_print
-      print('--- after paste (anchor=$anchor) ---\n'
-          '${session.probe.describeProbeWindow(scanRows: 24)}');
+      print(
+        '--- after paste (anchor=$anchor) ---\n'
+        '${session.probe.describeProbeWindow(scanRows: 24)}',
+      );
 
       // No CR on purpose: submitting would start a real agent turn on the
       // user's cursor account. Paste visibility alone answers the grid-ACK
@@ -177,13 +189,16 @@ void main() {
       await session.input.pasteText(doorbell);
       final doorbellAnchor = await _pollNeedle(session, doorbellNeedle);
       // ignore: avoid_print
-      print('--- after doorbell paste (anchor=$doorbellAnchor, '
-          'needle="$doorbellNeedle") ---\n'
-          '${session.probe.describeProbeWindow(scanRows: 24)}');
+      print(
+        '--- after doorbell paste (anchor=$doorbellAnchor, '
+        'needle="$doorbellNeedle") ---\n'
+        '${session.probe.describeProbeWindow(scanRows: 24)}',
+      );
       expect(
         doorbellAnchor,
         isNotNull,
-        reason: 'doorbell needle should be locatable even when the long text '
+        reason:
+            'doorbell needle should be locatable even when the long text '
             'wraps inside the cursor input box',
       );
     });

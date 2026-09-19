@@ -13,7 +13,7 @@ import '../../../models/workspace.dart';
 import '../../../models/workspace_launch_context.dart';
 import '../../../pages/home_workspace/workspace/member_config_directory_opener.dart';
 import '../../../services/cli/member_config/member_config_detail.dart';
-import '../../../services/session/session_lifecycle_service.dart';
+import '../../../services/chat/session/session_lifecycle_service.dart';
 import '../../../services/storage/home_storage.dart';
 import '../../../services/storage/runtime_context.dart';
 import '../home_workspace_content_header.dart';
@@ -257,10 +257,7 @@ class _OverviewTab extends StatelessWidget {
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: Text(
-                source,
-                style: TpTextStyles.of(context).md,
-              ),
+              child: Text(source, style: TpTextStyles.of(context).md),
             ),
           ),
         const SizedBox(height: 8),
@@ -282,10 +279,7 @@ class _OverviewTab extends StatelessWidget {
         children: [
           SizedBox(
             width: 110,
-            child: Text(
-              k,
-              style: TpTextStyles(theme).mutedMd,
-            ),
+            child: Text(k, style: TpTextStyles(theme).mutedMd),
           ),
           Expanded(child: SelectableText(v, style: TpTextStyles(theme).md)),
         ],
@@ -348,9 +342,9 @@ class _ListTab extends StatelessWidget {
               Expanded(
                 child: Text(
                   l10n.memberDetailLoadError,
-                  style: TpTextStyles.of(context).mdColored(
-                    cs.onErrorContainer,
-                  ),
+                  style: TpTextStyles.of(
+                    context,
+                  ).mdColored(cs.onErrorContainer),
                 ),
               ),
             ],

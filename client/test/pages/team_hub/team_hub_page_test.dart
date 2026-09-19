@@ -8,7 +8,7 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:teampilot/pages/team_hub/team_hub_page.dart';
-import 'package:teampilot/services/team/team_clone_service.dart';
+import 'package:teampilot/services/team_config/team_clone_service.dart';
 import 'package:teampilot/services/team_hub/team_hub_source.dart';
 
 class _FakeSource implements TeamHubSource {
@@ -16,9 +16,7 @@ class _FakeSource implements TeamHubSource {
   bool? lastForceRefresh;
 
   @override
-  Future<List<DiscoverableTeam>> fetchTeams({
-    bool forceRefresh = false,
-  }) async {
+  Future<List<DiscoverableTeam>> fetchTeams({bool forceRefresh = false}) async {
     fetchCount++;
     lastForceRefresh = forceRefresh;
     return const [

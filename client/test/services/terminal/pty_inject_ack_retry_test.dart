@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/terminal/pty_inject_ack_retry.dart';
+import 'package:teampilot/services/chat/terminal/pty_inject_ack_retry.dart';
 
 void main() {
   test('ptyAckPollRetry succeeds when acked before retry budget', () async {

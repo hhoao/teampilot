@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/operator_delivery_in_flight.dart';
+import 'package:teampilot/services/chat/runtime/inflight/operator_delivery_in_flight.dart';
 
 void main() {
   test('run lights isInFlight until action completes', () async {
@@ -42,16 +42,19 @@ void main() {
     expect(tracker.isInFlight('sess'), isFalse);
   });
 
-  test('clear zeros count while run is outstanding; later end is a no-op', () async {
-    final tracker = OperatorDeliveryInFlight();
-    final gate = Completer<void>();
-    final done = tracker.run('sess', () => gate.future);
-    tracker.clear('sess');
-    expect(tracker.isInFlight('sess'), isFalse);
-    gate.complete();
-    await done;
-    expect(tracker.isInFlight('sess'), isFalse);
-  });
+  test(
+    'clear zeros count while run is outstanding; later end is a no-op',
+    () async {
+      final tracker = OperatorDeliveryInFlight();
+      final gate = Completer<void>();
+      final done = tracker.run('sess', () => gate.future);
+      tracker.clear('sess');
+      expect(tracker.isInFlight('sess'), isFalse);
+      gate.complete();
+      await done;
+      expect(tracker.isInFlight('sess'), isFalse);
+    },
+  );
 
   test('stale wrap after clear must not drop a newer send', () async {
     final tracker = OperatorDeliveryInFlight();

@@ -2,7 +2,7 @@
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../services/team/team_config_launch_validator.dart';
+import '../../services/chat/launch/team_config_launch_validator.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../team_config/team_config_section.dart';
 
@@ -154,15 +154,9 @@ class _IssueRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    group.title,
-                    style: TpTextStyles(theme).mdSemibold,
-                  ),
+                  Text(group.title, style: TpTextStyles(theme).mdSemibold),
                   const SizedBox(height: 2),
-                  Text(
-                    aspects,
-                    style: TpTextStyles(theme).mutedSm,
-                  ),
+                  Text(aspects, style: TpTextStyles(theme).mutedSm),
                 ],
               ),
             ),

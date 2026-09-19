@@ -8,10 +8,10 @@ import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_provider.d
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_capability_error.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/session/launch_command_builder.dart';
-import 'package:teampilot/services/session/shell_launch_spec.dart';
+import 'package:teampilot/services/chat/session/launch_command_builder.dart';
+import 'package:teampilot/services/chat/session/shell_launch_spec.dart';
 import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
-import 'package:teampilot/services/session/member_role_provision.dart';
+import 'package:teampilot/services/chat/session/member_role_provision.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 

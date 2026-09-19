@@ -8,7 +8,7 @@ import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import 'connected_recording_shell.dart';

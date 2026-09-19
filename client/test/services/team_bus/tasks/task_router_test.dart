@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/tasks/task_router.dart';
-import 'package:teampilot/services/team_bus/tasks/team_task.dart';
+import 'package:teampilot/services/chat/team_bus/tasks/task_router.dart';
+import 'package:teampilot/services/chat/team_bus/tasks/team_task.dart';
 
 TeamTask task({
   Set<String> required = const {},
@@ -222,21 +222,18 @@ void main() {
       );
     });
 
-    test(
-      'widened → open immediately when no eligible member exists (A\')',
-      () {
-        final t = task(stage: RoutingStage.widened, escalatedAt: 0);
-        expect(
-          TaskRouter.nextStage(
-            t,
-            0,
-            hasEligibleLiveMember: false,
-            hasEligibleEngageableMember: false,
-          ),
-          RoutingStage.open,
-        );
-      },
-    );
+    test('widened → open immediately when no eligible member exists (A\')', () {
+      final t = task(stage: RoutingStage.widened, escalatedAt: 0);
+      expect(
+        TaskRouter.nextStage(
+          t,
+          0,
+          hasEligibleLiveMember: false,
+          hasEligibleEngageableMember: false,
+        ),
+        RoutingStage.open,
+      );
+    });
 
     test('open is terminal', () {
       final t = task(stage: RoutingStage.open, escalatedAt: 0);

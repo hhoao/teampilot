@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/ai_history_seat.dart';
 import 'package:teampilot/pages/chat/chat_workbench_overlay.dart';
-import 'package:teampilot/cubits/chat/model/session_workbench_view.dart';
+import 'package:teampilot/services/chat/model/session_workbench_view.dart';
 import 'package:teampilot/cubits/session/session_phase.dart';
 import 'package:teampilot/cubits/session/workbench_overlay_resolver.dart';
 

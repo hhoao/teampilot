@@ -17,7 +17,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
-import 'package:teampilot/services/team_generation/team_generation_settings_store.dart';
+import 'package:teampilot/services/chat/team_generation/team_generation_settings_store.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 import '../../../support/post_frame_test_harness.dart';

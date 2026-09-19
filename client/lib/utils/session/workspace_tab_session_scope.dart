@@ -1,7 +1,7 @@
 import '../../cubits/chat_cubit.dart';
-import '../../cubits/chat/model/chat_tab.dart';
+import '../../services/chat/model/chat_tab.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
-import '../../services/team_bus/team_bus.dart';
+import '../../services/chat/team_bus/team_bus.dart';
 
 /// Session id highlighted in a kept-alive workspace sidebar for [tabScopeId].
 ///
@@ -28,8 +28,7 @@ TeamBus? scopedTeamBus(
   WorkbenchCubit workbench,
   ChatCubit chat,
   String tabScopeId,
-) =>
-    scopedActiveChatTab(workbench, chat, tabScopeId)?.teamBus;
+) => scopedActiveChatTab(workbench, chat, tabScopeId)?.teamBus;
 
 /// Active session's selected member id for [tabScopeId], or '' when the tab
 /// is absent. Same bar-derived source as the sidebar highlight.

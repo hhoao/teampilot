@@ -2,7 +2,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../registry/capabilities/ai_history_capability.dart';
-import '../../../../session/history/session_history_context.dart';
+import '../../../../chat/session/history/session_history_context.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 import '../../../registry/capabilities/history/tool_result_enricher.dart';
 import '../native_session_id.dart';

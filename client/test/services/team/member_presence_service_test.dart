@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/team/member_presence_service.dart';
-import 'package:teampilot/services/team_bus/agent_node.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/session/member_presence_service.dart';
+import 'package:teampilot/services/chat/team_bus/agent_node.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../team_bus/support/fake_member_launcher.dart';

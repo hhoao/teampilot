@@ -1,7 +1,7 @@
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
-import '../terminal/session_member_cli_resolver.dart';
+import '../chat/terminal/session_member_cli_resolver.dart';
 
 /// Team-level default launch package (preset or custom defaults).
 class TeamLaunchBundle {

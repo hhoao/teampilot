@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/session_team_counter.dart';
+import 'package:teampilot/services/chat/session/session_team_counter.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 
 void main() {
@@ -17,7 +17,9 @@ void main() {
     expect(await counter.nextCliTeamName('team-a'), 'team-a-2');
     expect(await counter.nextCliTeamName('team-b'), 'team-b-1');
     expect(
-      await counter.nextCliTeamName(LaunchProfileProvisioner.defaultNativeTeamId),
+      await counter.nextCliTeamName(
+        LaunchProfileProvisioner.defaultNativeTeamId,
+      ),
       'default-native-team-1',
     );
   });

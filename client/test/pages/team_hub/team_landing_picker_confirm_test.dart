@@ -11,7 +11,7 @@ import 'package:teampilot/pages/team_hub/team_landing_picker_sheet.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
-import 'package:teampilot/services/team/team_clone_service.dart';
+import 'package:teampilot/services/team_config/team_clone_service.dart';
 import 'package:teampilot/services/team_hub/team_hub_source.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -21,8 +21,9 @@ class _FakeSource implements TeamHubSource {
   final List<DiscoverableTeam> teams;
 
   @override
-  Future<List<DiscoverableTeam>> fetchTeams({bool forceRefresh = false}) async =>
-      teams;
+  Future<List<DiscoverableTeam>> fetchTeams({
+    bool forceRefresh = false,
+  }) async => teams;
 
   @override
   Future<List<String>> categories({bool forceRefresh = false}) async =>
@@ -104,8 +105,9 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('confirm on undeclared team shows clone-options dialog first',
-      (tester) async {
+  testWidgets('confirm on undeclared team shows clone-options dialog first', (
+    tester,
+  ) async {
     final cubit = await pumpCubit();
     addTearDown(cubit.close);
     final launch = pumpLaunch();
@@ -131,13 +133,19 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pump(const Duration(milliseconds: 600));
     // 进 catalog，点 Squad 卡片 → 详情
-    expect(find.text('Squad'), findsOneWidget,
-        reason: 'catalog should list the hub team');
+    expect(
+      find.text('Squad'),
+      findsOneWidget,
+      reason: 'catalog should list the hub team',
+    );
 
     await tester.tap(find.text('Squad'));
     await tester.pump(const Duration(milliseconds: 600));
-    expect(find.text('Confirm'), findsOneWidget,
-        reason: 'detail overlay should show Confirm');
+    expect(
+      find.text('Confirm'),
+      findsOneWidget,
+      reason: 'detail overlay should show Confirm',
+    );
 
     // 详情里点 Confirm → 应弹克隆选项对话框（teamMode 未声明）
     await tester.tap(find.text('Confirm'));

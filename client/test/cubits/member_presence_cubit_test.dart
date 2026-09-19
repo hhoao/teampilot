@@ -4,8 +4,8 @@ import 'dart:io';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/session_connect_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
@@ -15,9 +15,9 @@ import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/team/member_presence_service.dart';
-import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/session/member_presence_service.dart';
+import 'package:teampilot/services/chat/team_bus/bus_user_line_capture.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 import 'package:teampilot/services/workbench/workbench_shell_actions.dart';
@@ -158,9 +158,9 @@ void main() {
       final service = _DelayedPresenceService(const {});
       final harness = PostFrameTestHarness();
       final cubit = MemberPresenceCubit(
-          storage: fakeHomeStorage(),
-          memberPresenceService: service,
-        );
+        storage: fakeHomeStorage(),
+        memberPresenceService: service,
+      );
       addTearDown(cubit.close);
 
       const team = TeamProfile(
@@ -240,9 +240,9 @@ void main() {
             ),
           });
           final cubit = MemberPresenceCubit(
-          storage: fakeHomeStorage(),
-          memberPresenceService: service,
-        );
+            storage: fakeHomeStorage(),
+            memberPresenceService: service,
+          );
           addTearDown(() async {
             await cubit.close();
           });
@@ -372,9 +372,7 @@ void main() {
             info: ChatTabInfo(id: 'a1', title: 'a1', subtitle: ''),
             cliTeamName: 'a1',
           );
-          tabA.memberShells['m-lead'] = _FakeTerminalSession(
-            executable: 'a',
-          );
+          tabA.memberShells['m-lead'] = _FakeTerminalSession(executable: 'a');
           chatCubit.tabStore.registerSession(tabA);
           bridge.onSessionTabOpened('A', 'a1');
 
@@ -384,9 +382,7 @@ void main() {
             info: ChatTabInfo(id: 'b1', title: 'b1', subtitle: ''),
             cliTeamName: 'b1',
           );
-          tabB.memberShells['b-lead'] = _FakeTerminalSession(
-            executable: 'b',
-          );
+          tabB.memberShells['b-lead'] = _FakeTerminalSession(executable: 'b');
           chatCubit.tabStore.registerSession(tabB);
           bridge.onSessionTabOpened('B', 'b1');
 
@@ -419,11 +415,9 @@ void main() {
           async.elapse(const Duration(milliseconds: 80));
           async.flushMicrotasks();
           pumpFrame();
-          expect(
-            service.lastShells?.keys,
-            ['b-lead'],
-            reason: 'B connect must repoint the target to B\'s session',
-          );
+          expect(service.lastShells?.keys, [
+            'b-lead',
+          ], reason: 'B connect must repoint the target to B\'s session');
 
           // Switch BACK to A: the target must be re-pushed for A's session,
           // otherwise ticks compute A's roster against B's shells and every
@@ -507,7 +501,11 @@ void main() {
           chatCubit.activeTeam = team;
 
           final teamTab = ChatTab(
-            info: const ChatTabInfo(id: 'team-sess', title: 'team', subtitle: ''),
+            info: const ChatTabInfo(
+              id: 'team-sess',
+              title: 'team',
+              subtitle: '',
+            ),
             cliTeamName: 'team-1',
           );
           teamTab.persistedSession = AppSession(
@@ -516,7 +514,9 @@ void main() {
             sessionTeam: team.id,
             createdAt: 0,
           );
-          teamTab.memberShells['m-lead'] = _FakeTerminalSession(executable: 't');
+          teamTab.memberShells['m-lead'] = _FakeTerminalSession(
+            executable: 't',
+          );
           chatCubit.tabStore.registerSession(teamTab);
           bridge.onSessionTabOpened(workspaceId, 'team-sess');
 
@@ -606,9 +606,9 @@ void main() {
             ),
           });
           final cubit = MemberPresenceCubit(
-          storage: fakeHomeStorage(),
-          memberPresenceService: service,
-        );
+            storage: fakeHomeStorage(),
+            memberPresenceService: service,
+          );
           addTearDown(() async {
             await cubit.close();
           });

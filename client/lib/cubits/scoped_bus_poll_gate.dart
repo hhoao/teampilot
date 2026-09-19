@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../services/team_bus/team_bus.dart';
+import '../services/chat/team_bus/team_bus.dart';
 
 typedef BusPollTick = Future<void> Function(TeamBus? bus);
 

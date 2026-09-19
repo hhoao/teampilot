@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:mcp_dart/mcp_dart.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:teampilot/utils/logging/logger.dart';
 
 import 'session_ssh_mcp_constants.dart';
@@ -31,7 +31,10 @@ class SessionSshMcpHttpAdapter {
        _resolveContext = resolveContext;
 
   final SessionSshMcpOperations _operations;
-  final Future<SessionSshMcpContext?> Function(String sessionId, String? memberId)
+  final Future<SessionSshMcpContext?> Function(
+    String sessionId,
+    String? memberId,
+  )
   _resolveContext;
   final _transports = <String, StreamableHTTPServerTransport>{};
 

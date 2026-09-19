@@ -11,7 +11,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/chat/chat_workbench_terminal.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_session_actions.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/launch/connect/session_connect_job.dart';
+import 'package:teampilot/services/chat/launch/connect/session_connect_job.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../../support/post_frame_test_harness.dart';

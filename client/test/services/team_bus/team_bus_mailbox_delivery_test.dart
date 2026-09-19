@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/agent_node.dart';
-import 'package:teampilot/services/team_bus/mailbox_delivery.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
-import 'package:teampilot/services/team_bus/team_message.dart';
+import 'package:teampilot/services/chat/team_bus/agent_node.dart';
+import 'package:teampilot/services/chat/team_bus/mailbox_delivery.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/team_bus/team_message.dart';
 
 import 'support/fake_member_launcher.dart';
 
@@ -18,18 +18,10 @@ void main() {
       )..doorbelled = true;
       bus.declareMember(node);
       node.inbox.deliver(
-        TeamMessage(
-          id: 'm1',
-          from: 'lead',
-          to: 'worker',
-          content: 'ping',
-        ),
+        TeamMessage(id: 'm1', from: 'lead', to: 'worker', content: 'ping'),
       );
 
-      bus.markMailDeliveryFailed(
-        'worker',
-        error: MailboxDeliveryError.crStuck,
-      );
+      bus.markMailDeliveryFailed('worker', error: MailboxDeliveryError.crStuck);
 
       expect(node.deliveryPhase, MailboxDeliveryPhase.failed);
       // failed 非终态:未读即欠门铃
@@ -46,17 +38,9 @@ void main() {
       )..doorbelled = true;
       bus.declareMember(node);
       node.inbox.deliver(
-        TeamMessage(
-          id: 'm1',
-          from: 'lead',
-          to: 'worker',
-          content: 'ping',
-        ),
+        TeamMessage(id: 'm1', from: 'lead', to: 'worker', content: 'ping'),
       );
-      bus.markMailDeliveryFailed(
-        'worker',
-        error: MailboxDeliveryError.crStuck,
-      );
+      bus.markMailDeliveryFailed('worker', error: MailboxDeliveryError.crStuck);
 
       bus.reengageIdleWorkers();
 
@@ -91,18 +75,10 @@ void main() {
           activity: MemberActivity.turnDoneReady,
         ),
       );
-      bus.markMailDeliveryFailed(
-        'worker',
-        error: MailboxDeliveryError.crStuck,
-      );
+      bus.markMailDeliveryFailed('worker', error: MailboxDeliveryError.crStuck);
 
       await bus.send(
-        TeamMessage(
-          id: 'm2',
-          from: 'lead',
-          to: 'worker',
-          content: 'again',
-        ),
+        TeamMessage(id: 'm2', from: 'lead', to: 'worker', content: 'again'),
       );
 
       final node = bus.memberById('worker')!;
@@ -110,25 +86,28 @@ void main() {
       expect(bus.pendingDoorbellNoticeFor('worker'), isNotNull);
     });
 
-    test('shouldDeferPtyIdleEnd is true when delivery failed (doorbell still owed)', () {
-      final bus = TeamBus(launcher: FakeMemberLauncher());
-      final node = AgentNode.test(
-        memberId: 'worker',
-        lifecycle: MemberLifecycle.running,
-        activity: MemberActivity.active,
-      )..doorbelled = true;
-      bus.declareMember(node);
-      node.inbox.deliver(
-        TeamMessage(id: 'm1', from: 'lead', to: 'worker', content: 'ping'),
-      );
-      bus.markMailDeliveryFailed(
-        'worker',
-        error: MailboxDeliveryError.crStuck,
-      );
+    test(
+      'shouldDeferPtyIdleEnd is true when delivery failed (doorbell still owed)',
+      () {
+        final bus = TeamBus(launcher: FakeMemberLauncher());
+        final node = AgentNode.test(
+          memberId: 'worker',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+        )..doorbelled = true;
+        bus.declareMember(node);
+        node.inbox.deliver(
+          TeamMessage(id: 'm1', from: 'lead', to: 'worker', content: 'ping'),
+        );
+        bus.markMailDeliveryFailed(
+          'worker',
+          error: MailboxDeliveryError.crStuck,
+        );
 
-      // failed 非终态:门铃仍欠着,PTY 安静不该提前结束回合
-      expect(bus.shouldDeferPtyIdleEnd('worker'), isTrue);
-    });
+        // failed 非终态:门铃仍欠着,PTY 安静不该提前结束回合
+        expect(bus.shouldDeferPtyIdleEnd('worker'), isTrue);
+      },
+    );
 
     test('noteMailDeliverySubmitted marks agent in-turn', () {
       final bus = TeamBus(launcher: FakeMemberLauncher());

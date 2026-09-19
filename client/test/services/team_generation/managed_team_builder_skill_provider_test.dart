@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/resource/contribution/resource_origin.dart';
 import 'package:teampilot/services/resource/providers/skill_contribution_provider.dart';
-import 'package:teampilot/services/team_generation/providers/managed_team_builder_skill_provider.dart';
-import 'package:teampilot/services/team_generation/providers/team_builder_skill_md.dart';
+import 'package:teampilot/services/chat/team_generation/providers/managed_team_builder_skill_provider.dart';
+import 'package:teampilot/services/chat/team_generation/providers/team_builder_skill_md.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -13,7 +13,9 @@ void main() {
   test(
     'managed builder skill source and materialized mirror are identical',
     () async {
-      final provider = ManagedTeamBuilderSkillProvider(storage: fakeHomeStorage());
+      final provider = ManagedTeamBuilderSkillProvider(
+        storage: fakeHomeStorage(),
+      );
       final resource = await provider.resolve(
         ManagedTeamBuilderSkillProvider.skillId,
       );
@@ -61,7 +63,9 @@ void main() {
     () async {
       final fs = InMemoryFilesystem();
       const targetConfigDir = '/session/config';
-      final provider = ManagedTeamBuilderSkillProvider(storage: fakeHomeStorage());
+      final provider = ManagedTeamBuilderSkillProvider(
+        storage: fakeHomeStorage(),
+      );
       final contributions = await provider.provide(
         SkillProviderContext(
           cli: CliTool.claude,
@@ -84,7 +88,9 @@ void main() {
   );
 
   test('resolve returns null for unrelated skill ids', () async {
-    final provider = ManagedTeamBuilderSkillProvider(storage: fakeHomeStorage());
+    final provider = ManagedTeamBuilderSkillProvider(
+      storage: fakeHomeStorage(),
+    );
     expect(await provider.resolve('some-other-skill'), isNull);
     expect(
       await provider.resolve(ManagedTeamBuilderSkillProvider.skillId),

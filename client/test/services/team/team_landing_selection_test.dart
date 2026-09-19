@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/team/team_clone_service.dart';
-import 'package:teampilot/services/team/team_landing_selection.dart';
+import 'package:teampilot/services/team_config/team_clone_service.dart';
+import 'package:teampilot/services/team_config/team_landing_selection.dart';
 
 DiscoverableTeam hub(String key) => DiscoverableTeam(
   key: key,
@@ -41,40 +41,43 @@ void main() {
     );
   });
 
-  test('resolveHub reuses earliest hubSourceKey match without cloning', () async {
-    var clones = 0;
-    final selection = TeamLandingSelection(
-      cloneTeam: (_, {teamMode, cli}) async {
-        clones++;
-        return const CloneResult(
-          teamId: 'new',
-          installed: CloneDepInstallSummary(),
-          failedDeps: [],
-        );
-      },
-      touchRecent: (_) async {},
-    );
-    final teams = [
-      const TeamProfile(
-        id: 'newer',
-        name: 'N',
-        hubSourceKey: 'o/r/s',
-        createdAt: 200,
-        sortOrder: 0,
-      ),
-      const TeamProfile(
-        id: 'older',
-        name: 'O',
-        hubSourceKey: 'o/r/s',
-        createdAt: 100,
-        sortOrder: 0,
-      ),
-    ];
-    final ok = await selection.resolveHub(team: hub('o/r/s'), teams: teams);
-    expect(ok.teamId, 'older');
-    expect(ok.cloneResult, isNull);
-    expect(clones, 0);
-  });
+  test(
+    'resolveHub reuses earliest hubSourceKey match without cloning',
+    () async {
+      var clones = 0;
+      final selection = TeamLandingSelection(
+        cloneTeam: (_, {teamMode, cli}) async {
+          clones++;
+          return const CloneResult(
+            teamId: 'new',
+            installed: CloneDepInstallSummary(),
+            failedDeps: [],
+          );
+        },
+        touchRecent: (_) async {},
+      );
+      final teams = [
+        const TeamProfile(
+          id: 'newer',
+          name: 'N',
+          hubSourceKey: 'o/r/s',
+          createdAt: 200,
+          sortOrder: 0,
+        ),
+        const TeamProfile(
+          id: 'older',
+          name: 'O',
+          hubSourceKey: 'o/r/s',
+          createdAt: 100,
+          sortOrder: 0,
+        ),
+      ];
+      final ok = await selection.resolveHub(team: hub('o/r/s'), teams: teams);
+      expect(ok.teamId, 'older');
+      expect(ok.cloneResult, isNull);
+      expect(clones, 0);
+    },
+  );
 
   test('resolveHub clones when no match and touches new id', () async {
     final touched = <String>[];

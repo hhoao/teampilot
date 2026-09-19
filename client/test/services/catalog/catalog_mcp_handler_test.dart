@@ -7,7 +7,7 @@ import 'package:teampilot/services/catalog/catalog_kind_registry.dart';
 import 'package:teampilot/services/catalog/catalog_mcp_constants.dart';
 import 'package:teampilot/services/catalog/catalog_mcp_handler.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/team_bus/mcp/jsonrpc.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/jsonrpc.dart';
 
 import 'support/fake_catalog_module.dart';
 

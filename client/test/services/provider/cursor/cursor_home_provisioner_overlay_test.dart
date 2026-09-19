@@ -11,8 +11,8 @@ import 'package:teampilot/services/cli/cursor/provider/cursor_home_provisioner.d
 import 'package:teampilot/services/cli/registry/capabilities/workspace_base_info_capability.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/storage/workspace_cli_cache.dart';
-import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/member_bus_idle_endpoint.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 

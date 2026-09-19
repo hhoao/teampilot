@@ -17,9 +17,9 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
-import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
-import 'package:teampilot/services/terminal/terminal_fullscreen_pty_port.dart';
+import 'package:teampilot/services/chat/terminal/fullscreen_cr_ack_config.dart';
+import 'package:teampilot/services/chat/terminal/fullscreen_pty_automation.dart';
+import 'package:teampilot/services/chat/terminal/terminal_fullscreen_pty_port.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import 'support/integration_prerequisites.dart';
@@ -60,7 +60,8 @@ Future<void> _bootCodexPrompt(
     // "Press enter to continue". Each is confirmed with Enter (default option
     // is "Yes, continue").
     final now = DateTime.now();
-    final needsEnter = frame.contains('Press enter') ||
+    final needsEnter =
+        frame.contains('Press enter') ||
         frame.contains('trust') ||
         frame.contains('Yes, continue') ||
         frame.contains('Sign in with ChatGPT');
@@ -70,8 +71,10 @@ Future<void> _bootCodexPrompt(
     }
     await Future<void>.delayed(const Duration(milliseconds: 200));
   }
-  fail('codex composer never appeared\n'
-      '${session.probe.describeProbeWindow(scanRows: scanRows)}');
+  fail(
+    'codex composer never appeared\n'
+    '${session.probe.describeProbeWindow(scanRows: scanRows)}',
+  );
 }
 
 void main() {
@@ -90,10 +93,12 @@ void main() {
           // Isolated CODEX_HOME under the real HOME (codex refuses helper
           // aliases under /tmp) so the test never touches real codex config.
           final realHome = Platform.environment['HOME'] ?? '/tmp';
-          final tmpHome = await Directory(realHome)
-              .createTemp('.codex_deliver_home_');
-          final tmpWork =
-              await Directory.systemTemp.createTemp('codex_deliver_work_');
+          final tmpHome = await Directory(
+            realHome,
+          ).createTemp('.codex_deliver_home_');
+          final tmpWork = await Directory.systemTemp.createTemp(
+            'codex_deliver_work_',
+          );
           addTearDown(() async {
             try {
               await tmpHome.delete(recursive: true);
@@ -105,7 +110,9 @@ void main() {
           // composer instead of the sign-in landing (no real config is mutated).
           final realAuth = File('$realHome/.codex/auth.json');
           if (!realAuth.existsSync()) {
-            markTestSkipped('~/.codex/auth.json not found — codex not signed in');
+            markTestSkipped(
+              '~/.codex/auth.json not found — codex not signed in',
+            );
             return;
           }
           await realAuth.copy('${tmpHome.path}/auth.json');
@@ -136,9 +143,11 @@ void main() {
 
           final grid = session.engine.grid;
           // ignore: avoid_print
-          print('--- pre-deliver ${viewport.cols}x${viewport.rows} '
-              'grid=${grid.columns}x${grid.rows} ---\n'
-              '${session.probe.describeProbeWindow(scanRows: viewport.rows)}');
+          print(
+            '--- pre-deliver ${viewport.cols}x${viewport.rows} '
+            'grid=${grid.columns}x${grid.rows} ---\n'
+            '${session.probe.describeProbeWindow(scanRows: viewport.rows)}',
+          );
 
           // Unique marker so a matched needle can only be our just-sent text,
           // never a codex placeholder / tip row.
@@ -160,14 +169,17 @@ void main() {
           );
 
           await session.probe.syncDisplayGrid();
-          final afterDeliver = session.probe.describeProbeWindow(scanRows: viewport.rows);
+          final afterDeliver = session.probe.describeProbeWindow(
+            scanRows: viewport.rows,
+          );
           // ignore: avoid_print
           print('--- deliver outcome=$outcome ---\n$afterDeliver');
 
           expect(
             outcome,
             FullscreenPtyDeliveryOutcome.submitted,
-            reason: 'codex composerMovesDown ACK must pass at '
+            reason:
+                'codex composerMovesDown ACK must pass at '
                 '${viewport.cols}x${viewport.rows}. Dump:\n$afterDeliver',
           );
         },

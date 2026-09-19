@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/config_bundle.dart';
-import 'package:teampilot/services/launch/staging/layered_config_bundle.dart';
+import 'package:teampilot/services/chat/launch/staging/layered_config_bundle.dart';
 
 void main() {
   test('merge hookIds team > expert > workspace with dedupe', () {

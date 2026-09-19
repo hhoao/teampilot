@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_bus_overlay.dart';
-import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/member_bus_idle_endpoint.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 
 void main() {
   const localIdle = MemberBusIdleEndpoint(

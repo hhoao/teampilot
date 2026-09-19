@@ -2,9 +2,9 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/conversation_timeline/mailbox_user_source.dart';
 import 'package:teampilot/services/conversation_timeline/timeline_models.dart';
-import 'package:teampilot/services/team_bus/persistence/bus_message_log.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
-import 'package:teampilot/services/team_bus/team_message.dart';
+import 'package:teampilot/services/chat/team_bus/persistence/bus_message_log.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/team_bus/team_message.dart';
 
 LoggedMessage _record({
   required String id,

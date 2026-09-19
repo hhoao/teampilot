@@ -1,14 +1,14 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/agent_node.dart';
-import 'package:teampilot/services/team_bus/mcp/toolkit/teammate_bus_tool_format.dart';
-import 'package:teampilot/services/team_bus/persistence/bus_message_page.dart';
-import 'package:teampilot/services/team_bus/tasks/task_queue.dart';
-import 'package:teampilot/services/team_bus/tasks/team_task.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
-import 'package:teampilot/services/team_bus/team_message.dart';
-import 'package:teampilot/services/team_bus/teammate_roster_profile.dart';
+import 'package:teampilot/services/chat/team_bus/agent_node.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/toolkit/teammate_bus_tool_format.dart';
+import 'package:teampilot/services/chat/team_bus/persistence/bus_message_page.dart';
+import 'package:teampilot/services/chat/team_bus/tasks/task_queue.dart';
+import 'package:teampilot/services/chat/team_bus/tasks/team_task.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/team_bus/team_message.dart';
+import 'package:teampilot/services/chat/team_bus/teammate_roster_profile.dart';
 
 import '../support/fake_member_launcher.dart';
 

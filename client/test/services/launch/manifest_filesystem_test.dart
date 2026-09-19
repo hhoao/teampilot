@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/launch/staging/manifest/launch_manifest.dart';
-import 'package:teampilot/services/launch/staging/manifest/manifest_executor.dart';
-import 'package:teampilot/services/launch/staging/manifest/manifest_filesystem.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/launch_manifest.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/manifest_executor.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/manifest_filesystem.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_member_home_passthrough.dart';
 
 import '../../support/in_memory_filesystem.dart';

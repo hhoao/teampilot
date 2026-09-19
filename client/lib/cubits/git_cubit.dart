@@ -6,8 +6,8 @@ import 'dart:io';
 import '../models/ai_feature_setting.dart';
 import '../models/git_status.dart';
 import '../models/runtime_target.dart';
-import '../services/ai/commit_message_prompt.dart';
-import '../services/ai/headless_ai_service.dart';
+import '../services/ai_generation/commit_message_prompt.dart';
+import '../services/ai_generation/headless_ai_service.dart';
 import '../services/git/git_changes_visible_rows.dart';
 import '../services/git/git_service.dart';
 import '../services/io/local_filesystem.dart';
@@ -157,7 +157,8 @@ class GitCubit extends Cubit<GitState> {
        _headless =
            headless ??
            HeadlessAiService(
-             storage: storage ??
+             storage:
+                 storage ??
                  HomeStorage(
                    RuntimeContext(
                      target: RuntimeTarget.local(),

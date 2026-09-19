@@ -5,9 +5,9 @@ import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/config_profile/hook_seat_context_completer.dart';
 import 'package:teampilot/services/host/team_pilot_hook_scripts.dart';
-import 'package:teampilot/services/team/team_lead_settings_merge.dart';
-import 'package:teampilot/services/team_bus/bus_awareness_prompt.dart';
-import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
+import 'package:teampilot/services/team_config/team_lead_settings_merge.dart';
+import 'package:teampilot/services/chat/team_bus/bus_awareness_prompt.dart';
+import 'package:teampilot/services/chat/team_bus/member_bus_idle_endpoint.dart';
 
 void main() {
   const completer = HookSeatContextCompleter();

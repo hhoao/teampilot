@@ -1,6 +1,6 @@
 // test/services/workbench/workbench_chat_bridge_test.dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
@@ -23,7 +23,7 @@ void main() {
     chat = ChatCubit(
       executableResolver: () => '/bin/true',
       automationRepository: testAutomationRepository(),
-                      storage: testHomeStorage,
+      storage: testHomeStorage,
     );
     bridge = WorkbenchChatBridge(workbench: cubit, chat: chat);
   });

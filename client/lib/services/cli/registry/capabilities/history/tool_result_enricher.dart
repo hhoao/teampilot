@@ -1,6 +1,6 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
-import '../../../../session/history/session_history_context.dart';
+import '../../../../chat/session/history/session_history_context.dart';
 
 abstract interface class ToolResultEnricher {
   /// Stable ID for a pure bundle-only enricher that can run in

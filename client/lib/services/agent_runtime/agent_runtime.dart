@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import '../../utils/logging/logger.dart';
-import '../prompt_delivery/prompt_delivery_coordinator.dart';
+import '../chat/prompt_delivery/prompt_delivery_coordinator.dart';
 import 'agent_event_gateway.dart';
 import 'runtime_event.dart';
 import 'runtime_event_projection.dart';
@@ -41,30 +41,31 @@ final class AgentRuntime {
     _enqueueApply(event.seat, () => promptDeliveries.onRuntimeEvent(event));
   }
 
-  void _enqueueApply(
-    RuntimeSeatKey seat,
-    Future<void> Function() apply,
-  ) {
+  void _enqueueApply(RuntimeSeatKey seat, Future<void> Function() apply) {
     final previous = _seatTails[seat] ?? Future<void>.value();
     _seatTails[seat] = previous
         .then((_) => apply())
-        .then<void>((_) {}, onError: (Object error, StackTrace stackTrace) {
-          // A failed delivery apply (store IO error or projection throw) would
-          // otherwise silently leave the delivery submitIssued with the fence
-          // open. Log loud so the missed re-application is visible to
-          // diagnostics.
-          appLogger.w(
-            '[agent-runtime] coordinator event apply failed '
-            'seat=${seat.sessionId}/${seat.memberId}: $error',
-            error: error,
-            stackTrace: stackTrace,
-          );
-        });
+        .then<void>(
+          (_) {},
+          onError: (Object error, StackTrace stackTrace) {
+            // A failed delivery apply (store IO error or projection throw) would
+            // otherwise silently leave the delivery submitIssued with the fence
+            // open. Log loud so the missed re-application is visible to
+            // diagnostics.
+            appLogger.w(
+              '[agent-runtime] coordinator event apply failed '
+              'seat=${seat.sessionId}/${seat.memberId}: $error',
+              error: error,
+              stackTrace: stackTrace,
+            );
+          },
+        );
   }
 
   /// Completes when every runtime event already published for [seat] has
   /// been applied by the coordinator.
-  Future<void> settle(RuntimeSeatKey seat) => _seatTails[seat] ?? Future.value();
+  Future<void> settle(RuntimeSeatKey seat) =>
+      _seatTails[seat] ?? Future.value();
 
   /// Opens and replays the durable journal + delivery records for one
   /// session. Called during launch preparation so an unconfirmed submitted

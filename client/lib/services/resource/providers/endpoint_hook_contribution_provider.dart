@@ -1,7 +1,7 @@
 import '../../../models/hook_entry.dart';
 import '../../../models/hook_event.dart';
 import '../../cli/registry/config_profile/hook_seat_context_completer.dart';
-import '../../team_bus/member_bus_idle_endpoint.dart';
+import '../../chat/team_bus/member_bus_idle_endpoint.dart';
 import '../contribution/resource_origin.dart';
 import 'hook_contribution_provider.dart';
 

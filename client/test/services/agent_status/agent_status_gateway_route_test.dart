@@ -6,10 +6,10 @@ import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_runtime/agent_event_gateway.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_handler.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_handler.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 
 import '../team_bus/support/fake_member_launcher.dart';
 
@@ -68,26 +68,26 @@ void main() {
     return req.close();
   }
 
-  test('POST /agent-status with X-Session + X-Member applies waiting', () async {
-    gateway.registerAgentStatusSession(sessionId: 's1');
+  test(
+    'POST /agent-status with X-Session + X-Member applies waiting',
+    () async {
+      gateway.registerAgentStatusSession(sessionId: 's1');
 
-    final resp = await postAgentStatus(
-      sessionId: 's1',
-      member: 'm1',
-      body: {
-        'hook_event_name': 'PermissionRequest',
-        'tool_name': 'Bash',
-      },
-    );
-    expect(resp.statusCode, HttpStatus.ok);
-    await resp.drain<void>();
+      final resp = await postAgentStatus(
+        sessionId: 's1',
+        member: 'm1',
+        body: {'hook_event_name': 'PermissionRequest', 'tool_name': 'Bash'},
+      );
+      expect(resp.statusCode, HttpStatus.ok);
+      await resp.drain<void>();
 
-    expect(cubit.state.sessionHasWaiting('s1'), isTrue);
-    expect(
-      cubit.state.attentionFor(sessionId: 's1', memberId: 'm1'),
-      AgentSeatAttention.waiting,
-    );
-  });
+      expect(cubit.state.sessionHasWaiting('s1'), isTrue);
+      expect(
+        cubit.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+        AgentSeatAttention.waiting,
+      );
+    },
+  );
 
   test('missing X-Member → 200 no-op (Stop hooks must not 4xx)', () async {
     gateway.registerAgentStatusSession(sessionId: 's1');
@@ -132,32 +132,29 @@ void main() {
     final resp = await postAgentStatus(
       sessionId: 'status-only',
       member: 'm1',
-      body: {
-        'hook_event_name': 'PermissionRequest',
-        'tool_name': 'Bash',
-      },
+      body: {'hook_event_name': 'PermissionRequest', 'tool_name': 'Bash'},
     );
     expect(resp.statusCode, HttpStatus.ok);
     await resp.drain<void>();
     expect(cubit.state.sessionHasWaiting('status-only'), isTrue);
   });
 
-  test('status-only X-Bus-Token auth without X-Session applies waiting', () async {
-    final token = gateway.registerAgentStatusSession(sessionId: 'remote-s1');
-    expect(gateway.isSessionRegistered('remote-s1'), isFalse);
+  test(
+    'status-only X-Bus-Token auth without X-Session applies waiting',
+    () async {
+      final token = gateway.registerAgentStatusSession(sessionId: 'remote-s1');
+      expect(gateway.isSessionRegistered('remote-s1'), isFalse);
 
-    final resp = await postAgentStatus(
-      busToken: token,
-      member: 'm1',
-      body: {
-        'hook_event_name': 'PermissionRequest',
-        'tool_name': 'Bash',
-      },
-    );
-    expect(resp.statusCode, HttpStatus.ok);
-    await resp.drain<void>();
-    expect(cubit.state.sessionHasWaiting('remote-s1'), isTrue);
-  });
+      final resp = await postAgentStatus(
+        busToken: token,
+        member: 'm1',
+        body: {'hook_event_name': 'PermissionRequest', 'tool_name': 'Bash'},
+      );
+      expect(resp.statusCode, HttpStatus.ok);
+      await resp.drain<void>();
+      expect(cubit.state.sessionHasWaiting('remote-s1'), isTrue);
+    },
+  );
 
   test('TeamBus-registered session can POST /agent-status', () async {
     final bus = TeamBus(launcher: FakeMemberLauncher());
@@ -169,10 +166,7 @@ void main() {
     final resp = await postAgentStatus(
       sessionId: 'teambus-sess',
       member: 'm1',
-      body: {
-        'hook_event_name': 'PermissionRequest',
-        'tool_name': 'Bash',
-      },
+      body: {'hook_event_name': 'PermissionRequest', 'tool_name': 'Bash'},
     );
     expect(resp.statusCode, HttpStatus.ok);
     await resp.drain<void>();
@@ -187,10 +181,7 @@ void main() {
     final ok = await postAgentStatus(
       sessionId: 's1',
       member: 'm1',
-      body: {
-        'hook_event_name': 'PermissionRequest',
-        'tool_name': 'Bash',
-      },
+      body: {'hook_event_name': 'PermissionRequest', 'tool_name': 'Bash'},
     );
     expect(ok.statusCode, HttpStatus.ok);
     await ok.drain<void>();
@@ -218,10 +209,7 @@ void main() {
     final wait = await postAgentStatus(
       sessionId: 'idle-sess',
       member: 'm1',
-      body: {
-        'hook_event_name': 'PermissionRequest',
-        'tool_name': 'Bash',
-      },
+      body: {'hook_event_name': 'PermissionRequest', 'tool_name': 'Bash'},
     );
     expect(wait.statusCode, HttpStatus.ok);
     await wait.drain<void>();
@@ -246,10 +234,7 @@ void main() {
       memberId: 'm1',
     );
     // Member-scoped clear stamps done; empty-member fallback clears the seat.
-    expect(
-      attention == null || attention == AgentSeatAttention.done,
-      isTrue,
-    );
+    expect(attention == null || attention == AgentSeatAttention.done, isTrue);
 
     await gateway.unregister('idle-sess');
   });
@@ -265,10 +250,7 @@ void main() {
     final wait = await postAgentStatus(
       sessionId: 'idle-no-member',
       member: 'm1',
-      body: {
-        'hook_event_name': 'PermissionRequest',
-        'tool_name': 'Bash',
-      },
+      body: {'hook_event_name': 'PermissionRequest', 'tool_name': 'Bash'},
     );
     await wait.drain<void>();
     expect(cubit.state.sessionHasWaiting('idle-no-member'), isTrue);

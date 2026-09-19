@@ -27,7 +27,7 @@ import '../services/home_workspace/home_workspace_ui_cache.dart';
 import '../services/storage/home_storage.dart';
 import '../services/storage/launch_profile_provisioner.dart';
 import '../utils/ui/yield_ui_frame.dart';
-import '../services/team/default_workspace_service.dart';
+import '../services/team_config/default_workspace_service.dart';
 import '../utils/logging/logger.dart';
 
 typedef BootLog = void Function(String message);
@@ -334,11 +334,7 @@ abstract final class AppDataBootstrap {
     final phaseSw = Stopwatch()..start();
     boot('prepareInteractiveShell start');
 
-    await _timed(
-      boot,
-      'sshProfiles',
-      () => sshProfileCubit.load(),
-    );
+    await _timed(boot, 'sshProfiles', () => sshProfileCubit.load());
     await yieldUiFrame();
     await _timed(boot, 'cliPresets', cliPresetsCubit.load);
     await yieldUiFrame();

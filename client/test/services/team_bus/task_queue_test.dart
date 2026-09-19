@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/tasks/in_memory_task_log.dart';
-import 'package:teampilot/services/team_bus/tasks/task_queue.dart';
-import 'package:teampilot/services/team_bus/tasks/team_task.dart';
+import 'package:teampilot/services/chat/team_bus/tasks/in_memory_task_log.dart';
+import 'package:teampilot/services/chat/team_bus/tasks/task_queue.dart';
+import 'package:teampilot/services/chat/team_bus/tasks/team_task.dart';
 
 void main() {
   late int idSeq;

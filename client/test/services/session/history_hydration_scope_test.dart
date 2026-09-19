@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/session/history/history_hydration_scope.dart';
+import 'package:teampilot/services/chat/session/history/history_hydration_scope.dart';
 
 void main() {
   test('rapid A to B switch rejects A load continuation for B seat', () {

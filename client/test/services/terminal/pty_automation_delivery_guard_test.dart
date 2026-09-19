@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/agent_node.dart';
-import 'package:teampilot/services/team_bus/mailbox_delivery.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
-import 'package:teampilot/services/team_bus/team_message.dart';
-import 'package:teampilot/services/terminal/pty_automation_delivery_guard.dart';
+import 'package:teampilot/services/chat/team_bus/agent_node.dart';
+import 'package:teampilot/services/chat/team_bus/mailbox_delivery.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/team_bus/team_message.dart';
+import 'package:teampilot/services/chat/terminal/pty_automation_delivery_guard.dart';
 
 import '../team_bus/support/fake_member_launcher.dart';
 
@@ -20,7 +20,10 @@ void main() {
       );
 
       expect(
-        PtyAutomationDeliveryGuard.shouldSkipRetry(bus: bus, memberId: 'worker'),
+        PtyAutomationDeliveryGuard.shouldSkipRetry(
+          bus: bus,
+          memberId: 'worker',
+        ),
         isTrue,
       );
     });
@@ -36,7 +39,10 @@ void main() {
       );
 
       expect(
-        PtyAutomationDeliveryGuard.shouldSkipRetry(bus: bus, memberId: 'worker'),
+        PtyAutomationDeliveryGuard.shouldSkipRetry(
+          bus: bus,
+          memberId: 'worker',
+        ),
         isTrue,
       );
     });
@@ -54,7 +60,10 @@ void main() {
       );
 
       expect(
-        PtyAutomationDeliveryGuard.shouldSkipRetry(bus: bus, memberId: 'worker'),
+        PtyAutomationDeliveryGuard.shouldSkipRetry(
+          bus: bus,
+          memberId: 'worker',
+        ),
         isFalse,
       );
       expect(bus.pendingDoorbellNoticeFor('worker'), isNotNull);
@@ -138,21 +147,24 @@ void main() {
       node.inbox.deliver(
         TeamMessage(id: 'm1', from: 'lead', to: 'worker', content: 'ping'),
       );
-      bus.markMailDeliveryFailed(
-        'worker',
-        error: MailboxDeliveryError.crStuck,
-      );
+      bus.markMailDeliveryFailed('worker', error: MailboxDeliveryError.crStuck);
 
       // failed 非终态:门铃仍欠着,重试不跳过
       expect(
-        PtyAutomationDeliveryGuard.shouldSkipRetry(bus: bus, memberId: 'worker'),
+        PtyAutomationDeliveryGuard.shouldSkipRetry(
+          bus: bus,
+          memberId: 'worker',
+        ),
         isFalse,
       );
     });
 
     test('null bus never skips', () {
       expect(
-        PtyAutomationDeliveryGuard.shouldSkipRetry(bus: null, memberId: 'worker'),
+        PtyAutomationDeliveryGuard.shouldSkipRetry(
+          bus: null,
+          memberId: 'worker',
+        ),
         isFalse,
       );
     });

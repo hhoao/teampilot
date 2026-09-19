@@ -10,8 +10,8 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
-import 'package:teampilot/services/launch/staging/manifest/launch_manifest.dart';
-import 'package:teampilot/services/launch/staging/manifest/manifest_executor.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/launch_manifest.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/manifest_executor.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/utils/logging/logger.dart';
 

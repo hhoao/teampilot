@@ -1,6 +1,6 @@
 import 'package:path/path.dart' as p;
 
-import '../../../session/launch_command_builder.dart';
+import '../../../chat/session/launch_command_builder.dart';
 
 abstract final class CursorLaunchEnvironment {
   /// Force `cursor-agent` to read/write OAuth tokens as `auth.json` under the
@@ -29,10 +29,8 @@ abstract final class CursorLaunchEnvironment {
   static Map<String, String> forStandalone({
     required String homeRoot,
     required String cursorConfigDir,
-  }) => _isolatedHomeEnv(
-    homeRoot,
-    extra: {'CURSOR_CONFIG_DIR': cursorConfigDir},
-  );
+  }) =>
+      _isolatedHomeEnv(homeRoot, extra: {'CURSOR_CONFIG_DIR': cursorConfigDir});
 
   /// Env that pins every credential anchor cursor-agent consults
   /// (`getAuthFilePath`) inside the isolated home:

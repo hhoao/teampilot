@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/agent_node.dart';
-import 'package:teampilot/services/team_bus/env/bus_environment.dart';
-import 'package:teampilot/services/team_bus/env/bus_event_sink.dart';
-import 'package:teampilot/services/team_bus/env/bus_observation.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
-import 'package:teampilot/services/team_bus/team_message.dart';
+import 'package:teampilot/services/chat/team_bus/agent_node.dart';
+import 'package:teampilot/services/chat/team_bus/env/bus_environment.dart';
+import 'package:teampilot/services/chat/team_bus/env/bus_event_sink.dart';
+import 'package:teampilot/services/chat/team_bus/env/bus_observation.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/team_bus/team_message.dart';
 
 import '../support/fake_member_launcher.dart';
 

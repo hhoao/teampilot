@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/launch/session/session_launch_readiness.dart';
+import 'package:teampilot/services/chat/launch/session/session_launch_readiness.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {

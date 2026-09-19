@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/team_generation_settings.dart';
-import 'package:teampilot/services/team_generation/team_generation_settings_store.dart';
+import 'package:teampilot/services/chat/team_generation/team_generation_settings_store.dart';
 
 import '../../support/in_memory_filesystem.dart';
 

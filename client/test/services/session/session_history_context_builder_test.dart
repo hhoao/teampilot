@@ -9,7 +9,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_session_config_dir.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_session_config_dir.dart';
-import 'package:teampilot/services/session/history/session_history_context_builder.dart';
+import 'package:teampilot/services/chat/session/history/session_history_context_builder.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../../support/post_frame_test_harness.dart';

@@ -1,18 +1,18 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
-import 'package:teampilot/cubits/chat/model/session_open_request.dart';
-import 'package:teampilot/cubits/chat/session_launch_host.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab_info.dart';
+import 'package:teampilot/services/chat/model/session_open_request.dart';
+import 'package:teampilot/services/chat/host/session_launch_host.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/launch/connect/session_connect_executor.dart';
-import 'package:teampilot/services/launch/connect/session_connect_job.dart';
-import 'package:teampilot/services/launch/connect/session_shell_connector.dart';
-import 'package:teampilot/services/launch/contracts/connect_shell_result.dart';
+import 'package:teampilot/services/chat/launch/connect/session_connect_executor.dart';
+import 'package:teampilot/services/chat/launch/connect/session_connect_job.dart';
+import 'package:teampilot/services/chat/launch/connect/session_shell_connector.dart';
+import 'package:teampilot/services/chat/launch/contracts/connect_shell_result.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../../support/fake_terminal_session.dart';

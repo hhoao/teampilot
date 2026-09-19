@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/session/member_role_provision.dart';
-import 'package:teampilot/services/team_bus/bus_awareness_prompt.dart';
+import 'package:teampilot/services/chat/session/member_role_provision.dart';
+import 'package:teampilot/services/chat/team_bus/bus_awareness_prompt.dart';
 
 void main() {
   const lead = TeamMemberConfig(id: 'team-lead', name: 'Team Lead');
@@ -45,20 +45,23 @@ void main() {
     );
   });
 
-  test('claude SessionStart stdout uses hookSpecificOutput.additionalContext', () {
-    final context = BusAwarenessPrompt.additionalContext(
-      member: worker,
-      pushDelivery: false,
-    );
-    final payload = BusAwarenessPrompt.sessionStartStdout(
-      cli: CliTool.claude,
-      additionalContext: context,
-    );
-    expect(payload['additional_context'], isNull);
-    final hook = payload['hookSpecificOutput'] as Map;
-    expect(hook['hookEventName'], 'SessionStart');
-    expect(hook['additionalContext'], context);
-  });
+  test(
+    'claude SessionStart stdout uses hookSpecificOutput.additionalContext',
+    () {
+      final context = BusAwarenessPrompt.additionalContext(
+        member: worker,
+        pushDelivery: false,
+      );
+      final payload = BusAwarenessPrompt.sessionStartStdout(
+        cli: CliTool.claude,
+        additionalContext: context,
+      );
+      expect(payload['additional_context'], isNull);
+      final hook = payload['hookSpecificOutput'] as Map;
+      expect(hook['hookEventName'], 'SessionStart');
+      expect(hook['additionalContext'], context);
+    },
+  );
 
   test('cursor SessionStart stdout uses additional_context', () {
     final context = BusAwarenessPrompt.additionalContext(

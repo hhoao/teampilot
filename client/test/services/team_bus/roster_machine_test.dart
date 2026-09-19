@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
-import 'package:teampilot/services/team_bus/roster_machine.dart';
+import 'package:teampilot/services/chat/team_bus/roster_machine.dart';
 
 void main() {
   test('local → machine/id/kind all local', () {

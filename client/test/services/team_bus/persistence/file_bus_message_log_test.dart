@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/persistence/file_bus_message_log.dart';
-import 'package:teampilot/services/team_bus/team_message.dart';
+import 'package:teampilot/services/chat/team_bus/persistence/file_bus_message_log.dart';
+import 'package:teampilot/services/chat/team_bus/team_message.dart';
 import '../../../support/in_memory_filesystem.dart';
 
 void main() {

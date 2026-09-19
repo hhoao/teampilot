@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/agent_node.dart';
-import 'package:teampilot/services/team_bus/coordination/coordination_policy.dart';
-import 'package:teampilot/services/team_bus/coordination/leader_star_coordination_policy.dart';
-import 'package:teampilot/services/team_bus/env/bus_environment.dart';
-import 'package:teampilot/services/team_bus/idle_notification.dart';
+import 'package:teampilot/services/chat/team_bus/agent_node.dart';
+import 'package:teampilot/services/chat/team_bus/coordination/coordination_policy.dart';
+import 'package:teampilot/services/chat/team_bus/coordination/leader_star_coordination_policy.dart';
+import 'package:teampilot/services/chat/team_bus/env/bus_environment.dart';
+import 'package:teampilot/services/chat/team_bus/idle_notification.dart';
 
 class _FakeView implements CoordinationView {
   _FakeView(this._members, this.teamLeadId);

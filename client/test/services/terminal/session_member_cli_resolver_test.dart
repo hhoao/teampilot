@@ -3,7 +3,7 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/terminal/session_member_cli_resolver.dart';
+import 'package:teampilot/services/chat/terminal/session_member_cli_resolver.dart';
 
 void main() {
   group('SessionMemberCliResolver', () {
@@ -55,11 +55,7 @@ void main() {
         name: 'Team',
         cli: CliTool.claude,
         members: [
-          TeamMemberConfig(
-            id: 'worker',
-            name: 'Worker',
-            cli: CliTool.cursor,
-          ),
+          TeamMemberConfig(id: 'worker', name: 'Worker', cli: CliTool.cursor),
         ],
       );
 
@@ -148,10 +144,7 @@ void main() {
         workspaceId: 'w1',
         sessionTeam: 't1',
         members: [
-          SessionMemberBinding(
-            rosterMemberId: 'worker',
-            taskId: 'task',
-          ),
+          SessionMemberBinding(rosterMemberId: 'worker', taskId: 'task'),
         ],
         createdAt: 1,
       );

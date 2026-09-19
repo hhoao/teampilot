@@ -1,5 +1,5 @@
 import '../../../../models/team_config.dart';
-import '../../../team_bus/bus_awareness_prompt.dart';
+import '../../../chat/team_bus/bus_awareness_prompt.dart';
 
 const opencodeAwarenessPluginFileName = 'teampilot-bus-awareness.js';
 
@@ -40,9 +40,5 @@ Map<String, Object?> mergeOpencodeBusAwarenessPlugin(
   return {...config, 'plugin': plugins};
 }
 
-String opencodeBusAwarenessPrompt({
-  required TeamMemberConfig member,
-}) => BusAwarenessPrompt.additionalContext(
-  member: member,
-  pushDelivery: false,
-);
+String opencodeBusAwarenessPrompt({required TeamMemberConfig member}) =>
+    BusAwarenessPrompt.additionalContext(member: member, pushDelivery: false);

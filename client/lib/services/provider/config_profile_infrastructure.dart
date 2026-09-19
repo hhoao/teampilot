@@ -19,7 +19,7 @@ import '../host/script_file_hook_provisioner.dart';
 import '../host/team_pilot_hook_scripts.dart';
 import '../io/filesystem.dart';
 import '../storage/home_storage.dart';
-import '../team/team_lead_settings_merge.dart';
+import '../team_config/team_lead_settings_merge.dart';
 
 /// Claude / flashskyai global metadata key for per-project trust flags.
 const claudeProjectsMetadataKey = 'projects';

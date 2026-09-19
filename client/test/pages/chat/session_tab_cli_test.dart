@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab_info.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -110,47 +110,40 @@ void main() {
     expect(resolved, CliTool.claude);
   });
 
-  test(
-    'team tab uses builder-0 binding cli not lead or live type',
-    () {
-      final replicaTeam = TeamProfile(
-        id: 't1',
-        name: 'Team',
-        cli: CliTool.claude,
-        teamMode: TeamMode.mixed,
+  test('team tab uses builder-0 binding cli not lead or live type', () {
+    final replicaTeam = TeamProfile(
+      id: 't1',
+      name: 'Team',
+      cli: CliTool.claude,
+      teamMode: TeamMode.mixed,
+      members: [
+        TeamMemberConfig(id: 'team-lead', name: 'Lead'),
+        TeamMemberConfig(id: 'builder', name: 'Builder', cli: CliTool.cursor),
+      ],
+    );
+    final resolved = resolveSessionTabCli(
+      tab: tab(
+        id: 's1',
+        memberId: 'builder-0',
+        sessionTeam: 't1',
         members: [
-          TeamMemberConfig(id: 'team-lead', name: 'Lead'),
-          TeamMemberConfig(
-            id: 'builder',
-            name: 'Builder',
-            cli: CliTool.cursor,
+          SessionMemberBinding(
+            rosterMemberId: 'team-lead',
+            taskId: 'task-lead',
+            cli: CliTool.claude,
+          ),
+          SessionMemberBinding(
+            rosterMemberId: 'builder-0',
+            typeId: 'builder',
+            taskId: 'task-b0',
+            cli: CliTool.opencode,
           ),
         ],
-      );
-      final resolved = resolveSessionTabCli(
-        tab: tab(
-          id: 's1',
-          memberId: 'builder-0',
-          sessionTeam: 't1',
-          members: [
-            SessionMemberBinding(
-              rosterMemberId: 'team-lead',
-              taskId: 'task-lead',
-              cli: CliTool.claude,
-            ),
-            SessionMemberBinding(
-              rosterMemberId: 'builder-0',
-              typeId: 'builder',
-              taskId: 'task-b0',
-              cli: CliTool.opencode,
-            ),
-          ],
-        ),
-        sessions: const [],
-        isPersonal: false,
-        team: replicaTeam,
-      );
-      expect(resolved, CliTool.opencode);
-    },
-  );
+      ),
+      sessions: const [],
+      isPersonal: false,
+      team: replicaTeam,
+    );
+    expect(resolved, CliTool.opencode);
+  });
 }

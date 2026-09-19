@@ -9,12 +9,12 @@ import 'package:teampilot/services/catalog/catalog_kind_registry.dart';
 import 'package:teampilot/services/catalog/catalog_mcp_handler.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
-import 'package:teampilot/services/team_generation/catalog/catalog_generation_stager.dart';
-import 'package:teampilot/services/team_generation/models/team_generation_job.dart';
-import 'package:teampilot/services/team_generation/models/team_generation_launch.dart';
-import 'package:teampilot/services/team_generation/team_generation_job_store.dart';
-import 'package:teampilot/services/team_generation/team_generation_workflow_executor.dart';
-import 'package:teampilot/services/team_bus/mcp/jsonrpc.dart';
+import 'package:teampilot/services/chat/team_generation/catalog/catalog_generation_stager.dart';
+import 'package:teampilot/services/chat/team_generation/models/team_generation_job.dart';
+import 'package:teampilot/services/chat/team_generation/models/team_generation_launch.dart';
+import 'package:teampilot/services/chat/team_generation/team_generation_job_store.dart';
+import 'package:teampilot/services/chat/team_generation/team_generation_workflow_executor.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/jsonrpc.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 import '../../catalog/support/fake_catalog_module.dart';

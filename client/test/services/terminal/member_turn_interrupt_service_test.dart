@@ -2,9 +2,9 @@ import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/team/terminal_activity_tracker.dart';
-import 'package:teampilot/services/terminal/member_turn_interrupt_service.dart';
-import 'package:teampilot/services/terminal/terminal_launch_controller.dart';
+import 'package:teampilot/services/chat/terminal/terminal_activity_tracker.dart';
+import 'package:teampilot/services/chat/terminal/member_turn_interrupt_service.dart';
+import 'package:teampilot/services/chat/terminal/terminal_launch_controller.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import '../../support/rust_lib_test_init.dart';
 import '../../support/in_memory_filesystem.dart';
@@ -23,7 +23,7 @@ class _FakeShell extends TerminalSession {
           confirmFallback: const Duration(milliseconds: 50),
           validateLaunch: false,
         ),
-             fs: InMemoryFilesystem(),
+        fs: InMemoryFilesystem(),
       );
 
   final bool connected;
@@ -70,21 +70,24 @@ void main() {
     expect(writes, isEmpty);
   });
 
-  test('aborts inject when shell is null (starting / not connected yet)', () async {
-    final aborted = <String>[];
-    final writes = <String>[];
-    final service = MemberTurnInterruptService(
-      cliToolRegistry: CliToolRegistry.builtIn(),
-      abortMemberInject: (s, m) => aborted.add('$s:$m'),
-      writePty: (_, text) => writes.add(text),
-    );
-    await service.interrupt(
-      sessionId: 's1',
-      memberId: 'm1',
-      shell: null,
-      cli: CliTool.claude,
-    );
-    expect(aborted, ['s1:m1']);
-    expect(writes, isEmpty);
-  });
+  test(
+    'aborts inject when shell is null (starting / not connected yet)',
+    () async {
+      final aborted = <String>[];
+      final writes = <String>[];
+      final service = MemberTurnInterruptService(
+        cliToolRegistry: CliToolRegistry.builtIn(),
+        abortMemberInject: (s, m) => aborted.add('$s:$m'),
+        writePty: (_, text) => writes.add(text),
+      );
+      await service.interrupt(
+        sessionId: 's1',
+        memberId: 'm1',
+        shell: null,
+        cli: CliTool.claude,
+      );
+      expect(aborted, ['s1:m1']);
+      expect(writes, isEmpty);
+    },
+  );
 }

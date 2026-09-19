@@ -1,14 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/chat_tab_store.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
-import 'package:teampilot/cubits/chat/model/session_workbench_view.dart';
-import 'package:teampilot/cubits/chat/tab_member_reclaim_watch.dart';
+import 'package:teampilot/services/chat/chat_tab_store.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab_info.dart';
+import 'package:teampilot/services/chat/model/session_workbench_view.dart';
+import 'package:teampilot/services/chat/runtime/tab_member_reclaim_watch.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/team_bus/agent_node.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
-import 'package:teampilot/services/terminal/terminal_reclaim_policy.dart';
+import 'package:teampilot/services/chat/team_bus/agent_node.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/terminal/terminal_reclaim_policy.dart';
 
 import '../../support/fake_terminal_session.dart';
 import '../../support/in_memory_filesystem.dart';
@@ -49,7 +49,11 @@ ChatTab _simpleTab({required SessionWorkbenchView view}) {
   return tab;
 }
 
-TeamBus _busWith(String memberId, MemberLifecycle lifecycle, MemberActivity activity) {
+TeamBus _busWith(
+  String memberId,
+  MemberLifecycle lifecycle,
+  MemberActivity activity,
+) {
   final bus = TeamBus(launcher: FakeMemberLauncher());
   bus.declareMember(
     AgentNode.test(
@@ -86,7 +90,11 @@ void main() {
     final store = ChatTabStore(storage: fakeHomeStorage());
     final tab = _tabWithBus();
     store.registerSession(tab);
-    final bus = _busWith('team-lead', MemberLifecycle.running, MemberActivity.turnDoneReady);
+    final bus = _busWith(
+      'team-lead',
+      MemberLifecycle.running,
+      MemberActivity.turnDoneReady,
+    );
     bus.declareMember(
       AgentNode.test(
         memberId: 'worker-1',
@@ -100,7 +108,11 @@ void main() {
 
     final discarded = <(String, String)>[];
     var now = DateTime(2026, 8, 9, 12, 0, 0);
-    final watch = _watch(store, onDiscard: (s, m) => discarded.add((s, m)), now: () => now);
+    final watch = _watch(
+      store,
+      onDiscard: (s, m) => discarded.add((s, m)),
+      now: () => now,
+    );
 
     watch.tick(); // seeds idleSince
     expect(discarded, isEmpty);
@@ -115,7 +127,11 @@ void main() {
     final store = ChatTabStore(storage: fakeHomeStorage());
     final tab = _tabWithBus();
     store.registerSession(tab);
-    final bus = _busWith('worker-1', MemberLifecycle.running, MemberActivity.active);
+    final bus = _busWith(
+      'worker-1',
+      MemberLifecycle.running,
+      MemberActivity.active,
+    );
     tab.teamBus = bus;
     tab.memberShells['worker-1'] = _runningShell();
     // Seed an unread so hasUnread also guards.
@@ -308,7 +324,10 @@ void main() {
 }
 
 FakeTerminalSession _runningShell() {
-  final shell = FakeTerminalSession(executable: 'claude', fs: InMemoryFilesystem());
+  final shell = FakeTerminalSession(
+    executable: 'claude',
+    fs: InMemoryFilesystem(),
+  );
   shell.connect(workingDirectory: '/work');
   return shell;
 }

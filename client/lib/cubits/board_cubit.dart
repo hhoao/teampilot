@@ -2,8 +2,8 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/board_column.dart';
-import '../services/team_bus/tasks/team_task.dart';
-import '../services/team_bus/team_bus.dart';
+import '../services/chat/team_bus/tasks/team_task.dart';
+import '../services/chat/team_bus/team_bus.dart';
 import 'scoped_bus_poll_gate.dart';
 
 /// Immutable projection of a [TeamTask] for display. Derived per tick; never

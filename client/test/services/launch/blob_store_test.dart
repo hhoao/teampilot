@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/launch/staging/manifest/apply_plan.dart';
-import 'package:teampilot/services/launch/staging/manifest/blob_store.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/apply_plan.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/blob_store.dart';
 
 void main() {
   test('put then open returns bytes; missing throws', () async {

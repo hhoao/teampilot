@@ -14,7 +14,7 @@ import '../../repositories/app_settings_repository.dart';
 import '../../services/app/onboarding_service.dart';
 import '../../widgets/home_storage_scope.dart';
 import '../../services/storage/home_target_controller.dart';
-import '../../services/team/default_workspace_service.dart';
+import '../../services/team_config/default_workspace_service.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 import 'onboarding_wizard.dart';
 
@@ -73,9 +73,9 @@ class OnboardingGateState extends State<OnboardingGate> {
         }
       }
       if (defaultWorkspace != null) {
-        GoRouter.of(context).go(
-          '/home-v2/workspace/${defaultWorkspace.workspaceId}',
-        );
+        GoRouter.of(
+          context,
+        ).go('/home-v2/workspace/${defaultWorkspace.workspaceId}');
       }
     }
 

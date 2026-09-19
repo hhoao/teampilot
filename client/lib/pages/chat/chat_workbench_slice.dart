@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../../cubits/chat/model/chat_state.dart';
+import '../../cubits/chat_state.dart';
 
 /// Narrow projection of [ChatState] for [ChatWorkbench] layout — ignores
 /// [ChatState.sessionActivities], [ChatState.provisionVersion], and other
@@ -42,9 +42,6 @@ class ChatWorkbenchSlice {
   }
 
   @override
-  int get hashCode => Object.hash(
-    activeSessionId,
-    selectedMemberId,
-    sessionLaunchError,
-  );
+  int get hashCode =>
+      Object.hash(activeSessionId, selectedMemberId, sessionLaunchError);
 }

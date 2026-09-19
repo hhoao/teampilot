@@ -8,7 +8,7 @@ import '../../../host/host_script_runner.dart';
 import '../../../hook/glue_script_builder.dart';
 import '../../../io/filesystem.dart';
 import '../../../storage/runtime_layout.dart';
-import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../../chat/team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/capabilities/hook_capability.dart';
 import '../../registry/capabilities/prompt_capability.dart';
 import '../../registry/capabilities/workspace_base_info_capability.dart';

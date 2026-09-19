@@ -3,11 +3,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/agent_node.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_handler.dart';
-import 'package:teampilot/services/team_bus/remote/bus_raw_socket_server.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
-import 'package:teampilot/services/team_bus/team_message.dart';
+import 'package:teampilot/services/chat/team_bus/agent_node.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_handler.dart';
+import 'package:teampilot/services/chat/team_bus/remote/bus_raw_socket_server.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/team_bus/team_message.dart';
 
 import 'support/fake_member_launcher.dart';
 
@@ -136,17 +136,20 @@ void main() {
       final stale = await Socket.connect('127.0.0.1', port);
       final staleLines = <String>[];
       final staleDone = Completer<void>();
-      utf8.decoder.bind(stale).transform(const LineSplitter()).listen(
-        (l) {
-          if (l.trim().isNotEmpty) staleLines.add(l);
-        },
-        onDone: () {
-          if (!staleDone.isCompleted) staleDone.complete();
-        },
-        onError: (_) {
-          if (!staleDone.isCompleted) staleDone.complete();
-        },
-      );
+      utf8.decoder
+          .bind(stale)
+          .transform(const LineSplitter())
+          .listen(
+            (l) {
+              if (l.trim().isNotEmpty) staleLines.add(l);
+            },
+            onDone: () {
+              if (!staleDone.isCompleted) staleDone.complete();
+            },
+            onError: (_) {
+              if (!staleDone.isCompleted) staleDone.complete();
+            },
+          );
       stale.add(utf8.encode('{"token":"T","memberId":"worker"}\n'));
       stale.add(
         utf8.encode(
@@ -171,14 +174,17 @@ void main() {
       );
       await Future<void>.delayed(const Duration(milliseconds: 120));
 
-      bus.memberById('worker')!.inbox.deliver(
-        TeamMessage(
-          id: 'm1',
-          from: 'lead',
-          to: 'worker',
-          content: 'only-live',
-        ),
-      );
+      bus
+          .memberById('worker')!
+          .inbox
+          .deliver(
+            TeamMessage(
+              id: 'm1',
+              from: 'lead',
+              to: 'worker',
+              content: 'only-live',
+            ),
+          );
       await Future<void>.delayed(const Duration(milliseconds: 250));
 
       expect(
@@ -257,67 +263,73 @@ void main() {
     },
   );
 
-  test('socket disconnect cancels parked wait so a new wait can take mail', () async {
-    bus.declareMember(
-      AgentNode.test(
-        memberId: 'worker',
-        lifecycle: MemberLifecycle.running,
-        activity: MemberActivity.active,
-      ),
-    );
+  test(
+    'socket disconnect cancels parked wait so a new wait can take mail',
+    () async {
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'worker',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+        ),
+      );
 
-    final stale = await Socket.connect('127.0.0.1', port);
-    stale.add(utf8.encode('{"token":"T","memberId":"worker"}\n'));
-    stale.add(
-      utf8.encode(
-        '{"jsonrpc":"2.0","id":30,"method":"tools/call",'
-        '"params":{"name":"wait_for_message","arguments":{}}}\n',
-      ),
-    );
-    await Future<void>.delayed(const Duration(milliseconds: 80));
-    expect(bus.isWaitingForMessage('worker'), isTrue);
+      final stale = await Socket.connect('127.0.0.1', port);
+      stale.add(utf8.encode('{"token":"T","memberId":"worker"}\n'));
+      stale.add(
+        utf8.encode(
+          '{"jsonrpc":"2.0","id":30,"method":"tools/call",'
+          '"params":{"name":"wait_for_message","arguments":{}}}\n',
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(bus.isWaitingForMessage('worker'), isTrue);
 
-    // Abrupt peer death (tunnel gone) — must cancel the parked wait promptly,
-    // not leave turnDoneBusWait until the next mail wake.
-    stale.destroy();
-    await Future<void>.delayed(const Duration(milliseconds: 150));
-    expect(
-      bus.isWaitingForMessage('worker'),
-      isFalse,
-      reason: 'socket disconnect must cancel the in-flight wait',
-    );
+      // Abrupt peer death (tunnel gone) — must cancel the parked wait promptly,
+      // not leave turnDoneBusWait until the next mail wake.
+      stale.destroy();
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      expect(
+        bus.isWaitingForMessage('worker'),
+        isFalse,
+        reason: 'socket disconnect must cancel the in-flight wait',
+      );
 
-    final live = await Socket.connect('127.0.0.1', port);
-    final liveLines = <String>[];
-    utf8.decoder.bind(live).transform(const LineSplitter()).listen((l) {
-      if (l.trim().isNotEmpty) liveLines.add(l);
-    });
-    live.add(utf8.encode('{"token":"T","memberId":"worker"}\n'));
-    live.add(
-      utf8.encode(
-        '{"jsonrpc":"2.0","id":31,"method":"tools/call",'
-        '"params":{"name":"wait_for_message","arguments":{}}}\n',
-      ),
-    );
-    await Future<void>.delayed(const Duration(milliseconds: 100));
+      final live = await Socket.connect('127.0.0.1', port);
+      final liveLines = <String>[];
+      utf8.decoder.bind(live).transform(const LineSplitter()).listen((l) {
+        if (l.trim().isNotEmpty) liveLines.add(l);
+      });
+      live.add(utf8.encode('{"token":"T","memberId":"worker"}\n'));
+      live.add(
+        utf8.encode(
+          '{"jsonrpc":"2.0","id":31,"method":"tools/call",'
+          '"params":{"name":"wait_for_message","arguments":{}}}\n',
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 100));
 
-    bus.memberById('worker')!.inbox.deliver(
-      TeamMessage(
-        id: 'm2',
-        from: 'lead',
-        to: 'worker',
-        content: 'after-disconnect',
-      ),
-    );
-    await Future<void>.delayed(const Duration(milliseconds: 250));
+      bus
+          .memberById('worker')!
+          .inbox
+          .deliver(
+            TeamMessage(
+              id: 'm2',
+              from: 'lead',
+              to: 'worker',
+              content: 'after-disconnect',
+            ),
+          );
+      await Future<void>.delayed(const Duration(milliseconds: 250));
 
-    expect(
-      liveLines.any((l) => l.contains('after-disconnect')),
-      isTrue,
-      reason: 'disconnect must free the wait so the new socket can receive',
-    );
-    await live.close();
-  });
+      expect(
+        liveLines.any((l) => l.contains('after-disconnect')),
+        isTrue,
+        reason: 'disconnect must free the wait so the new socket can receive',
+      );
+      await live.close();
+    },
+  );
 
   test(
     'raw-socket wait parks past short idle with no bus-side timeout',
@@ -359,14 +371,17 @@ void main() {
         reason: 'no result and no ping frames on raw socket',
       );
 
-      bus.memberById('worker')!.inbox.deliver(
-        TeamMessage(
-          id: 'late',
-          from: 'lead',
-          to: 'worker',
-          content: 'after-idle',
-        ),
-      );
+      bus
+          .memberById('worker')!
+          .inbox
+          .deliver(
+            TeamMessage(
+              id: 'late',
+              from: 'lead',
+              to: 'worker',
+              content: 'after-idle',
+            ),
+          );
       await Future<void>.delayed(const Duration(milliseconds: 250));
       expect(lines.any((l) => l.contains('after-idle')), isTrue);
       await sock.close();
@@ -463,7 +478,8 @@ void main() {
       expect(
         bus.isWaitingForMessage('worker'),
         isFalse,
-        reason: 'cancel must be handled while wait is parked, not queued behind it',
+        reason:
+            'cancel must be handled while wait is parked, not queued behind it',
       );
       await sock.close();
     },

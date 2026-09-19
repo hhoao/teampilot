@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
-import 'package:teampilot/cubits/chat/session_launch_host.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab_info.dart';
+import 'package:teampilot/services/chat/host/session_launch_host.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
@@ -17,14 +17,14 @@ import 'package:teampilot/services/cli/registry/capabilities/workspace_base_info
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/launch/connect/session_lifecycle_connect_coordinator.dart';
-import 'package:teampilot/services/launch/connect/session_connect_job.dart';
-import 'package:teampilot/services/launch/connect/session_shell_connector.dart';
+import 'package:teampilot/services/chat/runtime/inflight/session_lifecycle_connect_coordinator.dart';
+import 'package:teampilot/services/chat/launch/connect/session_connect_job.dart';
+import 'package:teampilot/services/chat/launch/connect/session_shell_connector.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_constants.dart';
 import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_transport.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 
 import '../../support/in_memory_filesystem.dart';
 

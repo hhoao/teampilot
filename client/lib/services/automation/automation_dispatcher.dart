@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../cubits/chat/model/session_create_request.dart';
-import '../../cubits/chat/model/session_open_request.dart';
-import '../../cubits/chat/model/session_open_status.dart';
+import '../chat/model/session_create_request.dart';
+import '../chat/model/session_open_request.dart';
+import '../chat/model/session_open_status.dart';
 import '../../models/app_session.dart';
 import '../../models/automation.dart';
 import '../../models/cli_preset.dart';

@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/launch/staging/manifest/apply_plan.dart';
-import 'package:teampilot/services/launch/staging/manifest/work_path_projector.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/apply_plan.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/work_path_projector.dart';
 
 import '../../support/in_memory_filesystem.dart';
 

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:teampilot/services/team_bus/remote/reverse_tunnel.dart';
+import 'package:teampilot/services/chat/team_bus/remote/reverse_tunnel.dart';
 
 /// In-memory [ReverseTunnel] for tests: [open] returns a fixed port and
 /// [emitChannel] injects a remote connection without any real SSH.

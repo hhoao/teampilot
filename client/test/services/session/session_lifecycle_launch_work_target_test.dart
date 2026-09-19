@@ -4,17 +4,22 @@ import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
   test('launchWorkTarget rewrites folder local when home is ssh', () {
     final home = RuntimeTarget.ssh('p1', label: 'box');
-    final lifecycle = SessionLifecycleService(homeTarget: () => home, storage: fakeHomeStorage(), );
+    final lifecycle = SessionLifecycleService(
+      homeTarget: () => home,
+      storage: fakeHomeStorage(),
+    );
     final session = AppSession(
       sessionId: 's1',
       workspaceId: 'w1',
-      folders: const [WorkspaceFolder(path: '/repo')], // targetId defaults to local
+      folders: const [
+        WorkspaceFolder(path: '/repo'),
+      ], // targetId defaults to local
       createdAt: 1,
     );
     final ctx = WorkspaceLaunchContext(
@@ -24,7 +29,7 @@ void main() {
         folders: session.folders,
         createdAt: 1,
       ),
-                                        usesPosixPaths: false,
+      usesPosixPaths: false,
     );
     final target = lifecycle.launchWorkTarget(ctx);
     expect(target.kind, RuntimeKind.ssh);

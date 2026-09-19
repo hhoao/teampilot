@@ -9,11 +9,11 @@ import '../utils/logging/logger.dart';
 import '../services/event/agent_presence_event.dart';
 import '../services/event/agent_presence_projection.dart';
 import '../services/event/presence_event_bridge.dart';
-import '../services/team/runtime_roster_cache.dart';
+import '../services/team_config/runtime_roster_cache.dart';
 import '../models/app_session.dart';
 import '../models/member_presence.dart';
 import '../models/team_config.dart';
-import '../services/team/member_presence_service.dart';
+import '../services/chat/session/member_presence_service.dart';
 import '../services/storage/home_storage.dart';
 import '../services/terminal/terminal_session.dart';
 
@@ -250,7 +250,8 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
 
   void _onProjectionSeatChanged(PresenceSeatKey seat) {
     _onProjectionChanged?.call();
-    final occupied = _presenceProjection?.occupiedSessionIds ?? const <String>{};
+    final occupied =
+        _presenceProjection?.occupiedSessionIds ?? const <String>{};
     if (!setEquals(state.occupiedSessionIds, occupied)) {
       emit(state.copyWith(occupiedSessionIds: occupied));
     }

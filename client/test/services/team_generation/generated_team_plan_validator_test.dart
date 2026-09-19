@@ -3,8 +3,8 @@ import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/team_generation_settings.dart';
 import 'package:teampilot/models/workspace_folder.dart';
-import 'package:teampilot/services/team_generation/generated_team_plan_validator.dart';
-import 'package:teampilot/services/team_generation/models/team_target_probe.dart';
+import 'package:teampilot/services/chat/team_generation/generated_team_plan_validator.dart';
+import 'package:teampilot/services/chat/team_generation/models/team_target_probe.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
 
 CliPreset preset(String id, CliTool cli) => CliPreset(

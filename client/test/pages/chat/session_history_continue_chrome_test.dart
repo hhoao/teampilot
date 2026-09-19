@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/session_continue_overrides_controller.dart';
+import 'package:teampilot/services/chat/session/session_continue_overrides_controller.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/cli_preset.dart';
@@ -14,7 +14,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/cli/preset_resolver.dart';
 import 'package:teampilot/services/compose/compose_file_drop_ingestor.dart';
-import 'package:teampilot/services/session/session_continue_overrides_apply.dart';
+import 'package:teampilot/services/chat/session/session_continue_overrides_apply.dart';
 import 'package:teampilot/widgets/compose/compose_chrome.dart';
 import 'package:teampilot/widgets/compose/compose_file_drop_region.dart';
 import 'package:teampilot/widgets/compose/compose_menu_chip.dart';

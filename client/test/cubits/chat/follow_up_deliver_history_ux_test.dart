@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/failed_message_record.dart';
@@ -91,7 +91,7 @@ final class _RecordingChatCubit extends ChatCubit {
     : super(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
-             storage: testHomeStorage,
+        storage: testHomeStorage,
       );
 
   HistoryContinueChannel peekChannel = HistoryContinueChannel.pty;

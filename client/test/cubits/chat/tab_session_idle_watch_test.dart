@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/chat_tab_store.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
-import 'package:teampilot/cubits/chat/tab_member_coordination_factory.dart';
-import 'package:teampilot/cubits/chat/tab_session_idle_watch.dart';
+import 'package:teampilot/services/chat/chat_tab_store.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab_info.dart';
+import 'package:teampilot/services/chat/tab_member_coordination_factory.dart';
+import 'package:teampilot/services/chat/runtime/tab_session_idle_watch.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/team/session_working_resolver.dart';
+import 'package:teampilot/services/chat/session/session_working_resolver.dart';
 
 import '../../integration/support/connected_recording_shell.dart';
 import '../../support/rust_lib_test_init.dart';

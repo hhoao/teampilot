@@ -8,7 +8,7 @@ import 'package:teampilot/services/cli/cursor/capabilities/terminal_behavior.dar
 import 'package:teampilot/services/terminal/observation/terminal_observation_bus.dart';
 import 'package:teampilot/services/terminal/observation/terminal_observation_events.dart';
 import 'package:teampilot/services/terminal/observation/terminal_observation_seat.dart';
-import 'package:teampilot/services/terminal/terminal_launch_phase.dart';
+import 'package:teampilot/services/chat/terminal/terminal_launch_phase.dart';
 
 void main() {
   late AgentAttentionCubit attention;
@@ -49,10 +49,7 @@ void main() {
   test('bare Cursor Agent never marks waiting', () {
     const CursorTerminalBehavior().bind(bus, seat);
     bus.dispatchOutput(osc('Cursor Agent'));
-    expect(
-      attention.state.attentionFor(sessionId: 's', memberId: 'm'),
-      isNull,
-    );
+    expect(attention.state.attentionFor(sessionId: 's', memberId: 'm'), isNull);
   });
 
   test('non-matching title after waiting clears to done', () {
@@ -79,10 +76,7 @@ void main() {
     skipPermissions = true;
     const CursorTerminalBehavior().bind(bus, seat);
     bus.dispatchOutput(osc('Cursor - action required'));
-    expect(
-      attention.state.attentionFor(sessionId: 's', memberId: 'm'),
-      isNull,
-    );
+    expect(attention.state.attentionFor(sessionId: 's', memberId: 'm'), isNull);
   });
 
   test('OSC 997 is stripped at transform order 200', () {
@@ -92,7 +86,14 @@ void main() {
     bus.addInputTransform(_Capture(order: 199, seen: before));
     bus.addInputTransform(_Capture(order: 201, seen: after));
     final report = Uint8List.fromList([
-      0x1b, 0x5d, 0x39, 0x39, 0x37, 0x3b, 0x31, 0x07,
+      0x1b,
+      0x5d,
+      0x39,
+      0x39,
+      0x37,
+      0x3b,
+      0x31,
+      0x07,
     ]);
     expect(bus.transformInput(report), isEmpty);
     expect(before, [report]);

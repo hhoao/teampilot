@@ -9,8 +9,8 @@ import 'package:teampilot/services/cli/registry/capabilities/plugin_capability.d
 import 'package:teampilot/services/cli/registry/capabilities/plugin_manifest_paths.dart';
 import 'package:teampilot/services/cli/registry/plugins/claude_flavor_registry_writer.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/launch/staging/manifest/launch_manifest.dart';
-import 'package:teampilot/services/launch/staging/manifest/manifest_filesystem.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/launch_manifest.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/manifest_filesystem.dart';
 
 import '../../support/in_memory_filesystem.dart';
 

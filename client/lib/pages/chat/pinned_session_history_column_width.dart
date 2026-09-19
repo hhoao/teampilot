@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:tp_markdown/tp_markdown.dart';
 
-import '../../services/session/history/session_history_pagination.dart';
+import '../../services/chat/session/history/session_history_pagination.dart';
 import '../../theme/app_markdown_style_sheet.dart';
 
 /// Rebuilds history [Theme] / markdown tokens only when the stepped column

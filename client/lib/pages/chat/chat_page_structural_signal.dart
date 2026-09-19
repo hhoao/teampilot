@@ -1,8 +1,8 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 
-import '../../cubits/chat/chat_tab_store.dart';
-import '../../cubits/chat/model/chat_state.dart';
+import '../../services/chat/chat_tab_store.dart';
+import '../../cubits/chat_state.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 
@@ -25,6 +25,7 @@ class ChatPageStructuralSignal {
   final int activeTabIndex;
   final bool newChatActive;
   final String selectedMemberId;
+
   /// Mirrors [ChatState.memberSelectionVersion] so [buildWhen] can detect member
   /// switches even though [selectedMemberId] is mutated on [ChatTab] before emit.
   final int memberSelectionVersion;
@@ -65,7 +66,8 @@ ChatPageStructuralSignal chatPageStructuralSignal({
       if (t.kind == WorkbenchTabKind.session) t.id,
   ];
   final isForeground = tabStore.activeWorkspaceId == tabScopeId;
-  final activeTab = activeId == null || activeId.kind != WorkbenchTabKind.session
+  final activeTab =
+      activeId == null || activeId.kind != WorkbenchTabKind.session
       ? null
       : tabStore.openTabBySessionId(activeId.id);
   return ChatPageStructuralSignal(

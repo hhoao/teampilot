@@ -7,15 +7,15 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/launch/connect/session_shell_connector.dart';
+import 'package:teampilot/services/chat/launch/connect/session_shell_connector.dart';
 import 'package:teampilot/services/remote/remote_cli_readiness.dart';
 import 'package:teampilot/services/resource/resource_provider_set.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/runtime_target_registry.dart';
-import 'package:teampilot/services/team_generation/mcp/team_composer_mcp_handler.dart';
-import 'package:teampilot/services/team_generation/providers/managed_team_builder_skill_provider.dart';
-import 'package:teampilot/services/team_generation/team_generation_authorizer.dart';
-import 'package:teampilot/services/team_generation/catalog/catalog_generation_stager.dart';
+import 'package:teampilot/services/chat/team_generation/mcp/team_composer_mcp_handler.dart';
+import 'package:teampilot/services/chat/team_generation/providers/managed_team_builder_skill_provider.dart';
+import 'package:teampilot/services/chat/team_generation/team_generation_authorizer.dart';
+import 'package:teampilot/services/chat/team_generation/catalog/catalog_generation_stager.dart';
 
 import '../support/post_frame_test_harness.dart';
 

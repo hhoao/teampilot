@@ -4,7 +4,7 @@ import 'package:flutter_pty_new/flutter_pty_new.dart';
 
 import '../cli/cli_tool_locator.dart';
 import '../../utils/logging/logger.dart';
-import 'local_pty_transport.dart';
+import '../chat/terminal/local_pty_transport.dart';
 import 'terminal_transport.dart';
 
 typedef TransportStarter =

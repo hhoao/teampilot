@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/chat_session_shell_factory.dart';
+import 'package:teampilot/services/chat/chat_session_shell_factory.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -19,7 +19,10 @@ void main() {
       cliExecutableResolver: (cli) => 'exec-${cli.value}',
       terminalSessionFactory: ({required executable, scrollbackLines = 10000}) {
         seenExecutable = executable;
-        return TerminalSession(executable: executable, fs: InMemoryFilesystem(), );
+        return TerminalSession(
+          executable: executable,
+          fs: InMemoryFilesystem(),
+        );
       },
       defaultTargetResolver: RuntimeTarget.local,
     );
@@ -37,7 +40,10 @@ void main() {
       cliExecutableResolver: (cli) => 'exec-${cli.value}',
       terminalSessionFactory: ({required executable, scrollbackLines = 10000}) {
         seenExecutable = executable;
-        return TerminalSession(executable: executable, fs: InMemoryFilesystem(), );
+        return TerminalSession(
+          executable: executable,
+          fs: InMemoryFilesystem(),
+        );
       },
       // ssh kind but no transportFactory/profile → falls back to local PTY,
       // matching the legacy connectionMode==ssh-without-profile behavior.
@@ -84,7 +90,7 @@ void main() {
       executableResolver: () => 'flashskyai',
       terminalSessionFactory:
           ({required executable, scrollbackLines = 10000}) =>
-              TerminalSession(executable: executable, fs: InMemoryFilesystem(), ),
+              TerminalSession(executable: executable, fs: InMemoryFilesystem()),
     );
     const team = TeamProfile(id: 't', name: 'T', members: []);
 
@@ -107,8 +113,9 @@ void main() {
     final factory = ChatSessionShellFactory(
       executableResolver: () => 'cursor-agent',
       cliExecutableResolver: (cli) => 'exec-${cli.value}',
-      terminalSessionFactory: ({required executable, scrollbackLines = 10000}) =>
-          _RunningFakeShell(executable: executable),
+      terminalSessionFactory:
+          ({required executable, scrollbackLines = 10000}) =>
+              _RunningFakeShell(executable: executable),
       defaultTargetResolver: RuntimeTarget.local,
     );
 

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/session_connect_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
@@ -20,7 +20,7 @@ class _RecordingChatCubit extends ChatCubit {
     : super(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
-             storage: testHomeStorage,
+        storage: testHomeStorage,
       );
 
   final connects = <SessionConnectRequest>[];
@@ -82,17 +82,18 @@ void main() {
     );
     chat.tabStore.registerSession(
       ChatTab(
-        info: ChatTabInfo(id: sessionId, title: 'S', subtitle: ''),
-        cliTeamName: '',
-      )
+          info: ChatTabInfo(id: sessionId, title: 'S', subtitle: ''),
+          cliTeamName: '',
+        )
         ..persistedSession = session
         ..selectedMemberId = selectedMemberId,
     );
     workbench.openSession('w1', sessionId);
   }
 
-  testWidgets('capsule renders both Chat and Terminal segments',
-      (tester) async {
+  testWidgets('capsule renders both Chat and Terminal segments', (
+    tester,
+  ) async {
     final chat = _RecordingChatCubit();
     final workbench = WorkbenchCubit();
     addTearDown(chat.close);
@@ -126,7 +127,12 @@ void main() {
       addTearDown(workbench.close);
       surfaceSession(chat, workbench, sessionId: 's1');
 
-      await pumpToggle(tester, chat: chat, workbench: workbench, sessionId: 's1');
+      await pumpToggle(
+        tester,
+        chat: chat,
+        workbench: workbench,
+        sessionId: 's1',
+      );
 
       await tester.tap(find.byIcon(Icons.terminal_rounded));
       await tester.pump();
@@ -136,8 +142,10 @@ void main() {
       expect(request.session.sessionId, 's1');
       expect(request.preserveWorkbenchView, isFalse);
       // The capsule switched the tab's view to Terminal before connecting.
-      expect(chat.tabStore.openTabBySessionId('s1')!.workbenchView,
-          SessionWorkbenchView.terminal);
+      expect(
+        chat.tabStore.openTabBySessionId('s1')!.workbenchView,
+        SessionWorkbenchView.terminal,
+      );
     },
   );
 
@@ -174,35 +182,39 @@ void main() {
     },
   );
 
-  testWidgets(
-    'pod forced Terminal: tapping Chat switches the session back',
-    (tester) async {
-      final chat = _RecordingChatCubit();
-      final workbench = WorkbenchCubit();
-      addTearDown(chat.close);
-      addTearDown(workbench.close);
-      surfaceSession(chat, workbench, sessionId: 's1');
+  testWidgets('pod forced Terminal: tapping Chat switches the session back', (
+    tester,
+  ) async {
+    final chat = _RecordingChatCubit();
+    final workbench = WorkbenchCubit();
+    addTearDown(chat.close);
+    addTearDown(workbench.close);
+    surfaceSession(chat, workbench, sessionId: 's1');
 
-      // Connect-time force: the launch surface writes the pod view through the
-      // host port. The tab must follow so the capsule reports Terminal, not a
-      // stale Chat.
-      chat.setPodView('s1', SessionWorkbenchView.terminal);
+    // Connect-time force: the launch surface writes the pod view through the
+    // host port. The tab must follow so the capsule reports Terminal, not a
+    // stale Chat.
+    chat.setPodView('s1', SessionWorkbenchView.terminal);
 
-      await pumpToggle(tester, chat: chat, workbench: workbench, sessionId: 's1');
-      expect(chat.tabStore.openTabBySessionId('s1')!.workbenchView,
-          SessionWorkbenchView.terminal);
+    await pumpToggle(tester, chat: chat, workbench: workbench, sessionId: 's1');
+    expect(
+      chat.tabStore.openTabBySessionId('s1')!.workbenchView,
+      SessionWorkbenchView.terminal,
+    );
 
-      await tester.tap(find.byIcon(Icons.chat_bubble_outline_rounded));
-      await tester.pump();
+    await tester.tap(find.byIcon(Icons.chat_bubble_outline_rounded));
+    await tester.pump();
 
-      expect(chat.connects, isEmpty);
-      expect(chat.tabStore.openTabBySessionId('s1')!.workbenchView,
-          SessionWorkbenchView.chat);
-    },
-  );
+    expect(chat.connects, isEmpty);
+    expect(
+      chat.tabStore.openTabBySessionId('s1')!.workbenchView,
+      SessionWorkbenchView.chat,
+    );
+  });
 
-  testWidgets('capsule reads the pod view even when the tab copy is stale',
-      (tester) async {
+  testWidgets('capsule reads the pod view even when the tab copy is stale', (
+    tester,
+  ) async {
     final chat = _RecordingChatCubit();
     final workbench = WorkbenchCubit();
     addTearDown(chat.close);

@@ -8,7 +8,7 @@ import 'package:teampilot/services/catalog/catalog_kind_registry.dart';
 import 'package:teampilot/services/catalog/catalog_mcp_policy.dart';
 import 'package:teampilot/services/catalog/modules/skill_catalog_tools.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/member_role_provision.dart';
+import 'package:teampilot/services/chat/session/member_role_provision.dart';
 import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_policy.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 
@@ -90,29 +90,32 @@ void main() {
     expect(body, contains('send_message'));
   });
 
-  test('mixed mode writes member.responsibilities without team-lead addendum', () async {
-    final tmp = Directory.systemTemp.createTempSync('role_mixed_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-    final fs = LocalFilesystem(
-      pathContext: AppPaths.pathContextForDataRoot(tmp.path),
-    );
-    const lead = TeamMemberConfig(
-      id: 'team-lead',
-      name: 'team-lead',
-      responsibilities: 'Coordinate.',
-    );
+  test(
+    'mixed mode writes member.responsibilities without team-lead addendum',
+    () async {
+      final tmp = Directory.systemTemp.createTempSync('role_mixed_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final fs = LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(tmp.path),
+      );
+      const lead = TeamMemberConfig(
+        id: 'team-lead',
+        name: 'team-lead',
+        responsibilities: 'Coordinate.',
+      );
 
-    final path = await MemberRoleProvision.syncRolePromptFile(
-      fs: fs,
-      memberToolDir: tmp.path,
-      member: lead,
-      mixed: true,
-    );
+      final path = await MemberRoleProvision.syncRolePromptFile(
+        fs: fs,
+        memberToolDir: tmp.path,
+        member: lead,
+        mixed: true,
+      );
 
-    final body = await fs.readString(path!);
-    expect(body, contains('Coordinate.'));
-    expect(body, isNot(contains('Team Leader (Swarm)')));
-  });
+      final body = await fs.readString(path!);
+      expect(body, contains('Coordinate.'));
+      expect(body, isNot(contains('Team Leader (Swarm)')));
+    },
+  );
 
   test('syncRolePromptFile adds delegate addendum when flag is on', () async {
     final fs = LocalFilesystem();
@@ -137,7 +140,9 @@ void main() {
     }
   });
 
-  test('applyTeamSessionPolicy leaves permissions deny unset for native team', () {
+  test(
+    'applyTeamSessionPolicy leaves permissions deny unset for native team',
+    () {
       final settings = MemberRoleProvision.applyTeamSessionPolicy(const {});
       final permissions = settings['permissions']! as Map;
       expect(permissions['deny'], isNull);
@@ -165,29 +170,33 @@ void main() {
     expect(allow, isNot(contains('mcp__teampilot__install_skill')));
   });
 
-  test('applySessionSshMcpAllows merges ssh tools and keeps existing allows', () {
-    final settings = MemberRoleProvision.applySessionSshMcpAllows(
-      const {
+  test(
+    'applySessionSshMcpAllows merges ssh tools and keeps existing allows',
+    () {
+      final settings = MemberRoleProvision.applySessionSshMcpAllows(const {
         'permissions': {
           'allow': ['mcp__teampilot__search_skills'],
         },
-      },
-      claudeEntries: SessionSshMcpPolicy.claudeAllowEntries,
-    );
-    final allow = (settings['permissions']! as Map)['allow'] as List;
-    expect(allow, contains('mcp__teampilot__search_skills'));
-    expect(allow, containsAll(SessionSshMcpPolicy.claudeAllowEntries));
-  });
+      }, claudeEntries: SessionSshMcpPolicy.claudeAllowEntries);
+      final allow = (settings['permissions']! as Map)['allow'] as List;
+      expect(allow, contains('mcp__teampilot__search_skills'));
+      expect(allow, containsAll(SessionSshMcpPolicy.claudeAllowEntries));
+    },
+  );
 
   test('disallowedToolsForMixedClaude worker omits Agent', () {
-    final tools = MemberRoleProvision.disallowedToolsForMixedClaude(isLead: false);
+    final tools = MemberRoleProvision.disallowedToolsForMixedClaude(
+      isLead: false,
+    );
     expect(tools, containsAll(MemberRoleProvision.mixedClaudeDisallowedTools));
     expect(tools, isNot(contains('Agent')));
     expect(tools, isNot(contains('Bash')));
   });
 
   test('disallowedToolsForMixedClaude lead includes Agent', () {
-    final tools = MemberRoleProvision.disallowedToolsForMixedClaude(isLead: true);
+    final tools = MemberRoleProvision.disallowedToolsForMixedClaude(
+      isLead: true,
+    );
     expect(tools, containsAll(MemberRoleProvision.mixedClaudeDisallowedTools));
     expect(tools, contains('Agent'));
     expect(

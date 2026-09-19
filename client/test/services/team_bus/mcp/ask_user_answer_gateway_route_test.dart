@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/agent_status/ask_user_answer_pending_store.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 
 void main() {
   setUpAll(() {
@@ -35,9 +35,7 @@ void main() {
     String? requestId,
   }) async {
     final uri = gateway.askUserAnswerEndpoint.replace(
-      queryParameters: {
-        if (requestId != null) 'request_id': requestId,
-      },
+      queryParameters: {if (requestId != null) 'request_id': requestId},
     );
     final req = await client.getUrl(uri);
     if (sessionId != null) {
@@ -77,8 +75,9 @@ void main() {
       requestId: 'req_1',
     );
     expect(hit.statusCode, HttpStatus.ok);
-    final body = jsonDecode(await hit.transform(utf8.decoder).join())
-        as Map<String, Object?>;
+    final body =
+        jsonDecode(await hit.transform(utf8.decoder).join())
+            as Map<String, Object?>;
     expect(body['request_id'], 'req_1');
     expect(body['answers'], [
       ['Label'],
@@ -98,10 +97,7 @@ void main() {
     store.put(
       sessionId: 'sess-a',
       memberId: 'member-1',
-      entry: const AskUserAnswerPendingEntry(
-        requestId: 'req_1',
-        reject: true,
-      ),
+      entry: const AskUserAnswerPendingEntry(requestId: 'req_1', reject: true),
     );
 
     final hit = await getAskUserAnswer(
@@ -110,45 +106,49 @@ void main() {
       requestId: 'req_1',
     );
     expect(hit.statusCode, HttpStatus.ok);
-    final body = jsonDecode(await hit.transform(utf8.decoder).join())
-        as Map<String, Object?>;
+    final body =
+        jsonDecode(await hit.transform(utf8.decoder).join())
+            as Map<String, Object?>;
     expect(body['request_id'], 'req_1');
     expect(body['reject'], true);
     expect(body.containsKey('answers'), isFalse);
   });
 
-  test('GET /ask-user-answer permission reply → 200 with permission_reply',
-      () async {
-    store.put(
-      sessionId: 'sess-a',
-      memberId: 'member-1',
-      entry: const AskUserAnswerPendingEntry(
+  test(
+    'GET /ask-user-answer permission reply → 200 with permission_reply',
+    () async {
+      store.put(
+        sessionId: 'sess-a',
+        memberId: 'member-1',
+        entry: const AskUserAnswerPendingEntry(
+          requestId: 'perm-1',
+          permissionReply: 'once',
+        ),
+      );
+
+      final hit = await getAskUserAnswer(
+        sessionId: 'sess-a',
+        member: 'member-1',
         requestId: 'perm-1',
-        permissionReply: 'once',
-      ),
-    );
+      );
+      expect(hit.statusCode, HttpStatus.ok);
+      final body =
+          jsonDecode(await hit.transform(utf8.decoder).join())
+              as Map<String, Object?>;
+      expect(body['request_id'], 'perm-1');
+      expect(body['permission_reply'], 'once');
+      expect(body['reject'], false);
+      expect(body.containsKey('answers'), isFalse);
 
-    final hit = await getAskUserAnswer(
-      sessionId: 'sess-a',
-      member: 'member-1',
-      requestId: 'perm-1',
-    );
-    expect(hit.statusCode, HttpStatus.ok);
-    final body = jsonDecode(await hit.transform(utf8.decoder).join())
-        as Map<String, Object?>;
-    expect(body['request_id'], 'perm-1');
-    expect(body['permission_reply'], 'once');
-    expect(body['reject'], false);
-    expect(body.containsKey('answers'), isFalse);
-
-    final miss = await getAskUserAnswer(
-      sessionId: 'sess-a',
-      member: 'member-1',
-      requestId: 'perm-1',
-    );
-    expect(miss.statusCode, HttpStatus.noContent);
-    await miss.drain<void>();
-  });
+      final miss = await getAskUserAnswer(
+        sessionId: 'sess-a',
+        member: 'member-1',
+        requestId: 'perm-1',
+      );
+      expect(miss.statusCode, HttpStatus.noContent);
+      await miss.drain<void>();
+    },
+  );
 
   test('GET /ask-user-answer without request_id → 204', () async {
     store.put(

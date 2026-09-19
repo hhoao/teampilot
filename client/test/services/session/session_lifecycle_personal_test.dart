@@ -4,11 +4,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import '../../support/in_memory_filesystem.dart';
 
 class _Svc extends SessionLifecycleService {
-  _Svc() : super(appDataBasePath: Directory.systemTemp.path, storage: fakeHomeStorage(), );
+  _Svc()
+    : super(
+        appDataBasePath: Directory.systemTemp.path,
+        storage: fakeHomeStorage(),
+      );
   bool personalFor(Workspace p, AppSession s) => debugIsPersonalLaunch(p, s);
 }
 

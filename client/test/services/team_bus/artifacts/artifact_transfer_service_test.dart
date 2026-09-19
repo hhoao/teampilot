@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/io/filesystem.dart';
-import 'package:teampilot/services/team_bus/artifacts/artifact_exceptions.dart';
-import 'package:teampilot/services/team_bus/artifacts/artifact_registry.dart';
-import 'package:teampilot/services/team_bus/artifacts/artifact_transfer_service.dart';
+import 'package:teampilot/services/chat/team_bus/artifacts/artifact_exceptions.dart';
+import 'package:teampilot/services/chat/team_bus/artifacts/artifact_registry.dart';
+import 'package:teampilot/services/chat/team_bus/artifacts/artifact_transfer_service.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 
@@ -391,7 +391,10 @@ void main() {
       );
       expect(r.sizeBytes, 0);
       expect(await f.fetcherFs.readBytes(r.finalPath), <int>[]);
-      expect((await f.fetcherFs.stat('${r.finalPath}.tp-partial')).exists, isFalse);
+      expect(
+        (await f.fetcherFs.stat('${r.finalPath}.tp-partial')).exists,
+        isFalse,
+      );
     });
 
     test('resume continues from partial after interrupt', () async {
@@ -424,8 +427,7 @@ void main() {
         throwsA(isA<StateError>()),
       );
 
-      final dest =
-          '/remote/sessions/s1/runtime/members/B/inbox/delivered.bin';
+      final dest = '/remote/sessions/s1/runtime/members/B/inbox/delivered.bin';
       expect((await fetcherInner.stat('$dest.tp-partial')).exists, isTrue);
 
       // Second attempt uses a clean wrapper (no fail) on the same store.
@@ -467,14 +469,13 @@ void main() {
         name: 'out',
       );
 
-      final dest =
-          '/remote/sessions/s1/runtime/members/B/inbox/delivered.bin';
+      final dest = '/remote/sessions/s1/runtime/members/B/inbox/delivered.bin';
       await fetcherInner.writeBytes('$dest.tp-partial', bytes.sublist(0, 4));
       await fetcherInner.writeString(
         '$dest.tp-partial.meta.json',
         '{"artifactName":"out","publisherMemberId":"A","sourceTargetId":"local",'
-        '"sourcePath":"/work/out.bin","expectedSizeBytes":12,"bytesWritten":4,'
-        '"chunkSize":4}',
+            '"sourcePath":"/work/out.bin","expectedSizeBytes":12,"bytesWritten":4,'
+            '"chunkSize":4}',
       );
 
       final r = await service.fetch(
@@ -497,15 +498,14 @@ void main() {
         path: '/work/out.bin',
         name: 'out',
       );
-      final dest =
-          '/remote/sessions/s1/runtime/members/B/inbox/delivered.bin';
+      final dest = '/remote/sessions/s1/runtime/members/B/inbox/delivered.bin';
       await f.fetcherFs.writeBytes('$dest.tp-partial', [9, 9, 9, 9]);
       await f.fetcherFs.writeString(
         '$dest.tp-partial.meta.json',
         // identity that will not match (wrong sourcePath)
         '{"artifactName":"out","publisherMemberId":"A","sourceTargetId":"local",'
-        '"sourcePath":"/work/OTHER.bin","expectedSizeBytes":8,"bytesWritten":4,'
-        '"chunkSize":4}',
+            '"sourcePath":"/work/OTHER.bin","expectedSizeBytes":8,"bytesWritten":4,'
+            '"chunkSize":4}',
       );
       final r = await f.service.fetch(
         fetcherMemberId: 'B',
@@ -524,14 +524,13 @@ void main() {
         path: '/work/out.bin',
         name: 'out',
       );
-      final dest =
-          '/remote/sessions/s1/runtime/members/B/inbox/delivered.bin';
+      final dest = '/remote/sessions/s1/runtime/members/B/inbox/delivered.bin';
       await f.fetcherFs.writeBytes('$dest.tp-partial', bytes);
       await f.fetcherFs.writeString(
         '$dest.tp-partial.meta.json',
         '{"artifactName":"out","publisherMemberId":"A","sourceTargetId":"local",'
-        '"sourcePath":"/work/out.bin","expectedSizeBytes":8,"bytesWritten":8,'
-        '"chunkSize":4}',
+            '"sourcePath":"/work/out.bin","expectedSizeBytes":8,"bytesWritten":8,'
+            '"chunkSize":4}',
       );
       final r = await f.service.fetch(
         fetcherMemberId: 'B',
@@ -585,17 +584,13 @@ void main() {
         path: '/work/out.bin',
         name: 'out',
       );
-      final dest =
-          '/remote/sessions/s1/runtime/members/B/inbox/delivered.bin';
-      await f.fetcherFs.writeBytes(
-        '$dest.tp-partial',
-        bytes.sublist(0, 8),
-      );
+      final dest = '/remote/sessions/s1/runtime/members/B/inbox/delivered.bin';
+      await f.fetcherFs.writeBytes('$dest.tp-partial', bytes.sublist(0, 8));
       await f.fetcherFs.writeString(
         '$dest.tp-partial.meta.json',
         '{"artifactName":"out","publisherMemberId":"A","sourceTargetId":"local",'
-        '"sourcePath":"/work/out.bin","expectedSizeBytes":12,"bytesWritten":8,'
-        '"chunkSize":4}',
+            '"sourcePath":"/work/out.bin","expectedSizeBytes":12,"bytesWritten":8,'
+            '"chunkSize":4}',
       );
       // Shrink source below bytesWritten.
       await f.publisherFs.writeBytes('/work/out.bin', bytes.sublist(0, 4));

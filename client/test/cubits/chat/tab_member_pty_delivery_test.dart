@@ -1,20 +1,20 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/chat_session_shell_factory.dart';
-import 'package:teampilot/cubits/chat/chat_tab_store.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
-import 'package:teampilot/cubits/chat/tab_member_coordination_factory.dart';
-import 'package:teampilot/cubits/chat/tab_member_pty_delivery.dart';
+import 'package:teampilot/services/chat/chat_session_shell_factory.dart';
+import 'package:teampilot/services/chat/chat_tab_store.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab_info.dart';
+import 'package:teampilot/services/chat/tab_member_coordination_factory.dart';
+import 'package:teampilot/services/chat/runtime/tab_member_pty_delivery.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_runtime/runtime_event.dart';
-import 'package:teampilot/services/prompt_delivery/prompt_delivery.dart';
-import 'package:teampilot/services/prompt_delivery/prompt_delivery_coordinator.dart';
-import 'package:teampilot/services/prompt_delivery/prompt_delivery_store.dart';
-import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
-import 'package:teampilot/services/terminal/terminal_input_command_queue.dart';
+import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery.dart';
+import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery_coordinator.dart';
+import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery_store.dart';
+import 'package:teampilot/services/chat/terminal/fullscreen_pty_automation.dart';
+import 'package:teampilot/services/chat/terminal/terminal_input_command_queue.dart';
 
 import '../../integration/support/connected_recording_shell.dart';
 import '../../support/rust_lib_test_init.dart';
@@ -40,30 +40,32 @@ void main() {
     );
 
     expect(id, isNotEmpty);
-    expect(
-      (harness.pty! as _RecordingPromptCommands).submittedPrompts,
-      ['first', 'retry'],
-    );
+    expect((harness.pty! as _RecordingPromptCommands).submittedPrompts, [
+      'first',
+      'retry',
+    ]);
   });
 
-  test('one landing send with delayed Codex confirmation has one submit', () async {
-    final harness = _DeliveryHarness();
+  test(
+    'one landing send with delayed Codex confirmation has one submit',
+    () async {
+      final harness = _DeliveryHarness();
 
-    final id = await harness.delivery.deliverUserCommandToMember(
-      's',
-      'm',
-      'inspect this',
-      directToPty: true,
-    );
-    await harness.publishCodexPromptSubmitted('inspect this');
-    await harness.flushQueuedAutomation();
+      final id = await harness.delivery.deliverUserCommandToMember(
+        's',
+        'm',
+        'inspect this',
+        directToPty: true,
+      );
+      await harness.publishCodexPromptSubmitted('inspect this');
+      await harness.flushQueuedAutomation();
 
-    expect(id, isNotEmpty);
-    expect(
-      (harness.pty! as _RecordingPromptCommands).submittedPrompts,
-      ['inspect this'],
-    );
-  });
+      expect(id, isNotEmpty);
+      expect((harness.pty! as _RecordingPromptCommands).submittedPrompts, [
+        'inspect this',
+      ]);
+    },
+  );
 
   test('tracked workflow delivery id reuses one PTY submission', () async {
     final harness = _DeliveryHarness();
@@ -84,30 +86,31 @@ void main() {
     expect(first.submitted, isTrue);
     expect(repeated.submitted, isTrue);
     expect(repeated.deliveryId, first.deliveryId);
-    expect(
-      (harness.pty! as _RecordingPromptCommands).submittedPrompts,
-      ['Build the optimal TeamPilot team'],
-    );
+    expect((harness.pty! as _RecordingPromptCommands).submittedPrompts, [
+      'Build the optimal TeamPilot team',
+    ]);
   });
 
-  test('interrupt invalidates a queued direct prompt before its PTY write',
-      () async {
-    final commands = _BlockedQueuedPromptCommands();
-    final harness = _DeliveryHarness.withCommands(commands);
+  test(
+    'interrupt invalidates a queued direct prompt before its PTY write',
+    () async {
+      final commands = _BlockedQueuedPromptCommands();
+      final harness = _DeliveryHarness.withCommands(commands);
 
-    final send = harness.delivery.deliverUserCommandToMember(
-      's',
-      'm',
-      'inspect this',
-      directToPty: true,
-    );
-    await commands.submitStarted.future;
-    harness.delivery.abortMemberInject('s', 'm');
-    commands.release.complete();
-    await send;
+      final send = harness.delivery.deliverUserCommandToMember(
+        's',
+        'm',
+        'inspect this',
+        directToPty: true,
+      );
+      await commands.submitStarted.future;
+      harness.delivery.abortMemberInject('s', 'm');
+      commands.release.complete();
+      await send;
 
-    expect(commands.ptyWrites, isEmpty);
-  });
+      expect(commands.ptyWrites, isEmpty);
+    },
+  );
 
   test('successful direct submit latches the operator turn once', () async {
     final shell = await ConnectedRecordingShell.connect();
@@ -178,9 +181,9 @@ void main() {
     final submit = commands
         .submit(delivery, canExecute: () => true, isAcked: () => hookConfirmed)
         .then((result) {
-      completed = true;
-      return result;
-    });
+          completed = true;
+          return result;
+        });
 
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(
@@ -198,21 +201,23 @@ void main() {
     expect(await submit, PromptSubmissionResult.submitted);
   });
 
-  test('unconfirmed direct submit does not return a successful delivery id',
-      () async {
-    final harness = _DeliveryHarness.withCommands(
-      _UnconfirmedPromptCommands(),
-    );
+  test(
+    'unconfirmed direct submit does not return a successful delivery id',
+    () async {
+      final harness = _DeliveryHarness.withCommands(
+        _UnconfirmedPromptCommands(),
+      );
 
-    final id = await harness.delivery.deliverUserCommandToMember(
-      's',
-      'm',
-      'inspect this',
-      directToPty: true,
-    );
+      final id = await harness.delivery.deliverUserCommandToMember(
+        's',
+        'm',
+        'inspect this',
+        directToPty: true,
+      );
 
-    expect(id, isNull);
-  });
+      expect(id, isNull);
+    },
+  );
 
   test(
     'hook confirmation racing a stale grid ACK returns a delivery id',
@@ -276,33 +281,35 @@ void main() {
     },
   );
 
-  test('interrupt racing delivery creation prevents any direct PTY write',
-      () async {
-    final commands = _RecordingPromptCommands();
-    final store = _GatedCreationStore();
-    final harness = _DeliveryHarness.withCommands(commands, store: store);
+  test(
+    'interrupt racing delivery creation prevents any direct PTY write',
+    () async {
+      final commands = _RecordingPromptCommands();
+      final store = _GatedCreationStore();
+      final harness = _DeliveryHarness.withCommands(commands, store: store);
 
-    final send = harness.delivery.deliverUserCommandToMember(
-      's',
-      'm',
-      'inspect this',
-      directToPty: true,
-    );
-    await store.started.future;
-    // The interrupt lands while creation is still awaiting, before any
-    // delivery id is registered for the seat.
-    harness.delivery.abortMemberInject('s', 'm');
-    store.release.complete();
+      final send = harness.delivery.deliverUserCommandToMember(
+        's',
+        'm',
+        'inspect this',
+        directToPty: true,
+      );
+      await store.started.future;
+      // The interrupt lands while creation is still awaiting, before any
+      // delivery id is registered for the seat.
+      harness.delivery.abortMemberInject('s', 'm');
+      store.release.complete();
 
-    final id = await send;
+      final id = await send;
 
-    expect(id, isNull);
-    expect(commands.submittedPrompts, isEmpty);
-    final records = await store.recordsFor(
-      const RuntimeSeatKey(sessionId: 's', memberId: 'm'),
-    );
-    expect(records.single.state, PromptDeliveryState.failed);
-  });
+      expect(id, isNull);
+      expect(commands.submittedPrompts, isEmpty);
+      final records = await store.recordsFor(
+        const RuntimeSeatKey(sessionId: 's', memberId: 'm'),
+      );
+      expect(records.single.state, PromptDeliveryState.failed);
+    },
+  );
 
   test('no-shell direct submit does not latch the operator turn', () async {
     final afterTurn = <String>[];
@@ -414,7 +421,8 @@ final class _DeliveryHarness {
   factory _DeliveryHarness.connected({
     required ConnectedRecordingShell shell,
     required PromptDeliveryCommands commands,
-    required void Function(String sessionId, String memberId) onAfterTurnLatched,
+    required void Function(String sessionId, String memberId)
+    onAfterTurnLatched,
   }) {
     final tabStore = _connectedTabStore(shell);
     final coordinator = PromptDeliveryCoordinator(
@@ -440,7 +448,8 @@ final class _DeliveryHarness {
 
   factory _DeliveryHarness.connectedReal({
     required ConnectedRecordingShell shell,
-    required void Function(String sessionId, String memberId) onAfterTurnLatched,
+    required void Function(String sessionId, String memberId)
+    onAfterTurnLatched,
   }) {
     final tabStore = _connectedTabStore(shell);
     final coordinator = PromptDeliveryCoordinator(
@@ -465,7 +474,8 @@ final class _DeliveryHarness {
   }
 
   factory _DeliveryHarness.shellLess({
-    required void Function(String sessionId, String memberId) onAfterTurnLatched,
+    required void Function(String sessionId, String memberId)
+    onAfterTurnLatched,
   }) {
     final tabStore = ChatTabStore(storage: fakeHomeStorage());
     final delivery = TabMemberPtyDelivery(
@@ -486,16 +496,18 @@ final class _DeliveryHarness {
 
   static ChatTabStore _connectedTabStore(ConnectedRecordingShell shell) {
     final tabStore = ChatTabStore(storage: fakeHomeStorage());
-    final tab = ChatTab(
-      info: const ChatTabInfo(id: 's', title: 'S', subtitle: ''),
-      cliTeamName: '',
-    )..persistedSession = AppSession(
-        sessionId: 's',
-        workspaceId: 'workspace',
-        sessionTeam: '',
-        cli: CliTool.codex,
-        createdAt: 0,
-      );
+    final tab =
+        ChatTab(
+            info: const ChatTabInfo(id: 's', title: 'S', subtitle: ''),
+            cliTeamName: '',
+          )
+          ..persistedSession = AppSession(
+            sessionId: 's',
+            workspaceId: 'workspace',
+            sessionTeam: '',
+            cli: CliTool.codex,
+            createdAt: 0,
+          );
     tab.memberShells['m'] = shell.session;
     tabStore.registerSession(tab);
     return tabStore;
@@ -526,8 +538,9 @@ final class _BlockedQueuedPromptCommands implements PromptDeliveryCommands {
   final submitStarted = Completer<void>();
   final release = Completer<void>();
   final ptyWrites = <String>[];
-  late final TerminalInputCommandQueue _queue =
-      TerminalInputCommandQueue(write: ptyWrites.add);
+  late final TerminalInputCommandQueue _queue = TerminalInputCommandQueue(
+    write: ptyWrites.add,
+  );
 
   @override
   Future<void> stage(
@@ -585,8 +598,7 @@ final class _UnconfirmedPromptCommands implements PromptDeliveryCommands {
     PromptDelivery delivery, {
     required bool Function() canExecute,
     bool Function()? isAcked,
-  }) async =>
-      PromptSubmissionResult.unconfirmed;
+  }) async => PromptSubmissionResult.unconfirmed;
 }
 
 final class _GatedCreationStore implements PromptDeliveryStore {

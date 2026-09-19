@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/chat_state.dart';
-import 'package:teampilot/cubits/chat/session_data_store.dart';
-import 'package:teampilot/cubits/chat/session_launch_host.dart';
+import 'package:teampilot/cubits/chat_state.dart';
+import 'package:teampilot/services/chat/session/session_data_store.dart';
+import 'package:teampilot/services/chat/host/session_launch_host.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/launch/session/session_prompt_metadata_sync.dart';
+import 'package:teampilot/services/chat/launch/session/session_prompt_metadata_sync.dart';
 
 void main() {
   late _FakeHost host;

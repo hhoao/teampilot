@@ -8,8 +8,8 @@ import 'package:shared_ui/shared_ui.dart';
 import '../widgets/app_toast/app_toast.dart';
 import '../widgets/home_storage_scope.dart';
 
-import '../cubits/chat/model/session_connect_request.dart';
-import '../cubits/chat/model/chat_tab.dart';
+import '../services/chat/model/session_connect_request.dart';
+import '../services/chat/model/chat_tab.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/launch_profile_cubit.dart';
@@ -915,17 +915,18 @@ class _ChatWorkbenchBody extends StatelessWidget {
             resolveChannel: resolveChannel,
             cancelled: cancelled,
             connectWorkspaceSession: chatCubit.connectWorkspaceSession,
-            ensureMemberInputReady: (
-              sessionId,
-              mid, {
-              bool directToPty = false,
-              bool Function()? aborted,
-            }) => chatCubit.memberMaterializer.ensureMemberInputReady(
-              sessionId,
-              mid,
-              directToPty: directToPty,
-              aborted: aborted,
-            ),
+            ensureMemberInputReady:
+                (
+                  sessionId,
+                  mid, {
+                  bool directToPty = false,
+                  bool Function()? aborted,
+                }) => chatCubit.memberMaterializer.ensureMemberInputReady(
+                  sessionId,
+                  mid,
+                  directToPty: directToPty,
+                  aborted: aborted,
+                ),
             deliverUserCommandToMember:
                 (sessionId, mid, text, {bool directToPty = false}) =>
                     chatCubit.sessionRuntime.deliverUserCommandToMember(

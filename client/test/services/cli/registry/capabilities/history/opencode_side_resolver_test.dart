@@ -9,7 +9,7 @@ import 'package:teampilot/services/cli/opencode/capabilities/history/ai_transcri
 import 'package:teampilot/services/cli/opencode/capabilities/history/side_resolver.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/sqlite_worker_pool.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/history/session_history_context.dart';
+import 'package:teampilot/services/chat/session/history/session_history_context.dart';
 
 void main() {
   late Directory base;

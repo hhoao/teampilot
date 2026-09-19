@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
-import 'package:teampilot/services/team/team_landing_recent_store.dart';
+import 'package:teampilot/services/team_config/team_landing_recent_store.dart';
 
 import '../../support/in_memory_filesystem.dart';
 

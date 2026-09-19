@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/chat_state.dart';
+import 'package:teampilot/cubits/chat_state.dart';
 import 'package:teampilot/pages/chat/chat_workbench_slice.dart';
 
 void main() {

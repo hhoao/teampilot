@@ -2,13 +2,13 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
+import 'package:teampilot/services/chat/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/terminal/observation/modules/team_bus_intercept_module.dart';
 import 'package:teampilot/services/terminal/observation/modules/user_line_module.dart';
 import 'package:teampilot/services/terminal/observation/terminal_observation_bus.dart';
 import 'package:teampilot/services/terminal/observation/terminal_observation_seat.dart';
-import 'package:teampilot/services/terminal/pending_user_message.dart';
-import 'package:teampilot/services/terminal/terminal_launch_phase.dart';
+import 'package:teampilot/services/chat/terminal/pending_user_message.dart';
+import 'package:teampilot/services/chat/terminal/terminal_launch_phase.dart';
 
 void main() {
   late TerminalObservationSeat seat;

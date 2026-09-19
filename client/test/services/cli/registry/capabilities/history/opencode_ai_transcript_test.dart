@@ -7,8 +7,8 @@ import 'package:path/path.dart' as p;
 import 'package:sqlite3/sqlite3.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/sqlite_worker_pool.dart';
-import 'package:teampilot/services/session/history/ai_history_watch_meta.dart';
-import 'package:teampilot/services/session/history/session_history_context.dart';
+import 'package:teampilot/services/chat/session/history/ai_history_watch_meta.dart';
+import 'package:teampilot/services/chat/session/history/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
 void main() {

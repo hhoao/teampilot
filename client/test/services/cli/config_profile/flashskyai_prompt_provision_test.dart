@@ -7,7 +7,7 @@ import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.d
 import 'package:teampilot/services/resource/assemblers/prompt_assembler.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
-import 'package:teampilot/services/session/member_role_provision.dart';
+import 'package:teampilot/services/chat/session/member_role_provision.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import '../../../support/in_memory_filesystem.dart';
 
@@ -43,7 +43,7 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-                                          storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     const member = TeamMemberConfig(
       id: 'm1',

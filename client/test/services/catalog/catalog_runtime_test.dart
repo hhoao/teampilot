@@ -3,10 +3,10 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/cubits/team/launch_profile_cubit_host.dart';
-import 'package:teampilot/cubits/team/model/launch_profile_state.dart';
-import 'package:teampilot/cubits/team/team_profile_provisioner.dart';
-import 'package:teampilot/cubits/team/team_resource_sync_service.dart';
+import 'package:teampilot/services/launch_profile/team/launch_profile_cubit_host.dart';
+import 'package:teampilot/cubits/launch_profile_state.dart';
+import 'package:teampilot/services/launch_profile/team/team_profile_provisioner.dart';
+import 'package:teampilot/services/launch_profile/team/team_resource_sync_service.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/mcp_repository.dart';
@@ -19,7 +19,7 @@ import 'package:teampilot/services/mcp/profile_mcp_linker_service.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
-import 'package:teampilot/services/team_bus/mcp/jsonrpc.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/jsonrpc.dart';
 
 void main() {
   late Directory tmp;

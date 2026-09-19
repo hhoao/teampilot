@@ -1,6 +1,6 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/session/history/ai_history_message_dedup.dart';
+import 'package:teampilot/services/chat/session/history/ai_history_message_dedup.dart';
 
 AiMessage _msg(
   String id, {

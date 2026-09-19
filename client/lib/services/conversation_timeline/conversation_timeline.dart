@@ -1,7 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
-import '../team_bus/persistence/bus_message_log.dart';
-import '../team_bus/team_bus.dart';
+import '../chat/team_bus/persistence/bus_message_log.dart';
+import '../chat/team_bus/team_bus.dart';
 import 'mailbox_user_source.dart';
 import 'timeline_merge.dart';
 import 'timeline_models.dart';

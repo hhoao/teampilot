@@ -1,4 +1,4 @@
-import '../../cubits/chat/model/chat_tab.dart';
+import '../chat/model/chat_tab.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/git_worktree.dart';
 import '../../models/team_config.dart';
@@ -53,9 +53,7 @@ List<WorkspaceShellRef> workspaceShellRefsForWorkspace({
       WorkspaceShellRef(
         workspaceId: workspaceId,
         entryId: entry.id,
-        titleLabel: entry.titleLabel.isNotEmpty
-            ? entry.titleLabel
-            : 'Terminal',
+        titleLabel: entry.titleLabel.isNotEmpty ? entry.titleLabel : 'Terminal',
         cwd: entry.cwd,
         connected: entry.connected || entry.session.isRunning,
         livePid: entry.session.pid,

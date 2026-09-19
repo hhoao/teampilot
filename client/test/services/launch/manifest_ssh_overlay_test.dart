@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/services/launch/staging/manifest/manifest_ssh_overlay.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/manifest_ssh_overlay.dart';
 
 void main() {
   final ctx = p.Context(style: p.Style.posix);

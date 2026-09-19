@@ -6,8 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/cursor/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/tool_call_resolvers.dart';
-import 'package:teampilot/services/session/history/ai_history_watch_meta.dart';
-import 'package:teampilot/services/session/history/session_history_context.dart';
+import 'package:teampilot/services/chat/session/history/ai_history_watch_meta.dart';
+import 'package:teampilot/services/chat/session/history/session_history_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
 void main() {

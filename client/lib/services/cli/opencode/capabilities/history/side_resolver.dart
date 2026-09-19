@@ -5,7 +5,7 @@ import 'package:meta/meta.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 import '../../../../../utils/logging/logger.dart';
-import '../../../../session/history/session_history_context.dart';
+import '../../../../chat/session/history/session_history_context.dart';
 import 'ai_transcript.dart';
 import '../native_session_id.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';

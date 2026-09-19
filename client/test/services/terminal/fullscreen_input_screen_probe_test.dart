@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
-import 'package:teampilot/services/terminal/fullscreen_input_screen_probe.dart';
-import 'package:teampilot/services/terminal/pty_automation_needle.dart';
+import 'package:teampilot/services/chat/terminal/fullscreen_cr_ack_config.dart';
+import 'package:teampilot/services/chat/terminal/fullscreen_input_screen_probe.dart';
+import 'package:teampilot/services/chat/terminal/pty_automation_needle.dart';
 
 void main() {
   test('locateNeedle finds bottommost row match', () {
@@ -24,12 +24,7 @@ void main() {
 
     // Footer row 2 (~/agent · main) holds the needle: excluded → not found.
     expect(
-      locateFullscreenPromptNeedle(
-        grid,
-        '~/agent',
-        scanRows: 8,
-        bottomPad: 2,
-      ),
+      locateFullscreenPromptNeedle(grid, '~/agent', scanRows: 8, bottomPad: 2),
       isNull,
       reason: 'needle only in the bottom-padded footer must not be found',
     );
@@ -71,7 +66,8 @@ void main() {
       final rows = List<String>.filled(39, '');
       rows[8] = '  → teampilot';
       rows[9] = '▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀';
-      rows[10] = 'Cursor Grok 4.6 High                                 Run Everything';
+      rows[10] =
+          'Cursor Grok 4.6 High                                 Run Everything';
       rows[11] = '/home/hhoa/git/hhoa/teampilot · main';
       final grid = _FakeGrid.wrappedWideLines(columns: 120, lineTexts: rows);
 

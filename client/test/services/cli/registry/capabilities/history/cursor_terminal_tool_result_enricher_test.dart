@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/terminal_tool_result_enricher.dart';
 import 'package:teampilot/services/ai_history/tool_call_resolvers.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/history/session_history_context.dart';
+import 'package:teampilot/services/chat/session/history/session_history_context.dart';
 
 void main() {
   late Directory tmp;

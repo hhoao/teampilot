@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:dartssh2/dartssh2.dart';
 
 import '../../models/ssh_profile.dart';
-import '../team_bus/remote/reverse_tunnel.dart';
+import '../chat/team_bus/remote/reverse_tunnel.dart';
 import 'ssh_client_factory.dart';
 import 'ssh_transport_close.dart';
 

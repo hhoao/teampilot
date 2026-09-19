@@ -6,7 +6,7 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/session_groups_cubit.dart';
 import 'package:teampilot/cubits/shortcut_cubit.dart';

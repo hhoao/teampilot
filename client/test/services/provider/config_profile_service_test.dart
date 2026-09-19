@@ -20,14 +20,14 @@ import 'package:teampilot/services/cli/registry/capabilities/provider_capability
 import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
-import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
+import 'package:teampilot/services/chat/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/member_role_provision.dart';
-import 'package:teampilot/services/team/team_lead_delegate_settings_merge.dart';
-import 'package:teampilot/services/team/team_lead_settings_merge.dart';
+import 'package:teampilot/services/chat/session/member_role_provision.dart';
+import 'package:teampilot/services/chat/team_lead_delegate_settings_merge.dart';
+import 'package:teampilot/services/team_config/team_lead_settings_merge.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import '../../support/in_memory_filesystem.dart';
 
@@ -176,7 +176,7 @@ void main() {
         loadScript: (_) async =>
             '#!/usr/bin/env bash\n# teampilot-team-lead-delegate-only\n',
       ),
-                                    storage: homeStorage,
+      storage: homeStorage,
     );
   });
 
@@ -993,7 +993,7 @@ base_url = "https://api.example.com/v1"
             updatedAt: 1,
           ),
         ],
-                                                  storage: fakeHomeStorage(),
+        storage: fakeHomeStorage(),
       );
       const builder = TeamMemberConfig(
         id: 'builder',
@@ -1054,7 +1054,7 @@ base_url = "https://api.example.com/v1"
       await AppProviderRepository(
         basePath: homeBase.path,
         fs: homeFs,
-                                   storage: fakeHomeStorage(),
+        storage: fakeHomeStorage(),
       ).saveProviders(CliTool.claude, [
         AppProviderConfig(
           id: 'deepseek',
@@ -1089,7 +1089,7 @@ base_url = "https://api.example.com/v1"
           isWindowsHost: false,
           storageMode: StorageBackendMode.native,
         ),
-                                                storage: fakeHomeStorage(),
+        storage: fakeHomeStorage(),
       );
 
       await workService.prepareTeamLaunch(

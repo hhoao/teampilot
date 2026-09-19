@@ -1,6 +1,6 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
-import '../../../../session/history/session_history_context.dart';
+import '../../../../chat/session/history/session_history_context.dart';
 import 'compatible_side_resolver.dart';
 import 'workflow_resolver.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';

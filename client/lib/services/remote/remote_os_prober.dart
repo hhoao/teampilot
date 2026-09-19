@@ -1,5 +1,6 @@
 import '../../models/runtime_target.dart';
-import '../team_bus/remote/relay_provisioner.dart' show RemoteCommandRunner;
+import '../chat/team_bus/remote/relay_provisioner.dart'
+    show RemoteCommandRunner;
 
 /// P3e §3: detect a freshly-connected SSH host's OS family so the rest of the
 /// remote stack can branch (relay selection, symlink→copy inheritance, login

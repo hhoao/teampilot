@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
+import 'package:teampilot/services/chat/team_bus/bus_user_line_capture.dart';
 
 void main() {
   test('passes keystrokes through for echo and steals the submitted line', () {
@@ -160,9 +160,7 @@ void main() {
 
     // Enter after paste → one bus mail with embedded newlines.
     expect(capture.filter(Uint8List.fromList([0x0d])), [0x15]);
-    expect(submitted, [
-      '-H Accept \\\ncurl https://example \\\n-H Origin: x',
-    ]);
+    expect(submitted, ['-H Accept \\\ncurl https://example \\\n-H Origin: x']);
   });
 
   test('non-bracketed multiline chunk submits once at trailing newline', () {
@@ -222,22 +220,25 @@ void main() {
     expect(submitted, ['line1\nline2']);
   });
 
-  test('non-parked bracketed multiline paste fires onTurnStart once on Enter', () {
-    var turnStarts = 0;
-    final capture = BusUserLineCapture(
-      BusUserInputRouting(
-        shouldIntercept: () => false,
-        onUserLine: (_) => '',
-        onTurnStart: () => turnStarts++,
-      ),
-    );
+  test(
+    'non-parked bracketed multiline paste fires onTurnStart once on Enter',
+    () {
+      var turnStarts = 0;
+      final capture = BusUserLineCapture(
+        BusUserInputRouting(
+          shouldIntercept: () => false,
+          onUserLine: (_) => '',
+          onTurnStart: () => turnStarts++,
+        ),
+      );
 
-    capture.filter(
-      Uint8List.fromList(utf8.encode('\x1b[200~a\nb\nc\x1b[201~')),
-    );
-    expect(turnStarts, 0);
+      capture.filter(
+        Uint8List.fromList(utf8.encode('\x1b[200~a\nb\nc\x1b[201~')),
+      );
+      expect(turnStarts, 0);
 
-    capture.filter(Uint8List.fromList(utf8.encode('\r')));
-    expect(turnStarts, 1);
-  });
+      capture.filter(Uint8List.fromList(utf8.encode('\r')));
+      expect(turnStarts, 1);
+    },
+  );
 }

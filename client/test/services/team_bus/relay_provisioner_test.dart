@@ -6,7 +6,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/team_bus/remote/relay_provisioner.dart';
+import 'package:teampilot/services/chat/team_bus/remote/relay_provisioner.dart';
 
 void main() {
   group('TeamBehaviorCapability per CLI', () {

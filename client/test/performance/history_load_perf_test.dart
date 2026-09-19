@@ -16,12 +16,12 @@ import 'package:teampilot/services/cli/claude/capabilities/history/compatible_to
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/subagent_side_resolver.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/history/ai_history_load_timings.dart';
-import 'package:teampilot/services/session/history/ai_history_loader.dart';
-import 'package:teampilot/services/session/history/ai_history_locator.dart';
-import 'package:teampilot/services/session/history/session_history_context.dart';
-import 'package:teampilot/services/session/history/session_history_context_builder.dart';
-import 'package:teampilot/services/session/history/session_history_pagination.dart';
+import 'package:teampilot/services/chat/session/history/ai_history_load_timings.dart';
+import 'package:teampilot/services/chat/session/history/ai_history_loader.dart';
+import 'package:teampilot/services/chat/session/history/ai_history_locator.dart';
+import 'package:teampilot/services/chat/session/history/session_history_context.dart';
+import 'package:teampilot/services/chat/session/history/session_history_context_builder.dart';
+import 'package:teampilot/services/chat/session/history/session_history_pagination.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 

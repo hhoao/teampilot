@@ -1,6 +1,6 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
-import '../../../../session/history/session_history_context.dart';
+import '../../../../chat/session/history/session_history_context.dart';
 
 class SubagentSideResolveResult {
   const SubagentSideResolveResult({

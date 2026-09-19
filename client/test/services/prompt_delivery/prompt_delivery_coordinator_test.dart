@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_runtime/runtime_event.dart';
-import 'package:teampilot/services/prompt_delivery/prompt_delivery.dart';
-import 'package:teampilot/services/prompt_delivery/prompt_delivery_coordinator.dart';
-import 'package:teampilot/services/prompt_delivery/prompt_delivery_store.dart';
+import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery.dart';
+import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery_coordinator.dart';
+import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery_store.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
@@ -64,16 +64,18 @@ void main() {
     expect((await store.activeFor(seat)).single.id, second.id);
   });
 
-  test('a later submit fails an unissued leftover and claims the seat',
-      () async {
-    final first = await coordinator.submit(request(text: 'stuck'));
+  test(
+    'a later submit fails an unissued leftover and claims the seat',
+    () async {
+      final first = await coordinator.submit(request(text: 'stuck'));
 
-    final second = await coordinator.submit(request(text: 'retry'));
+      final second = await coordinator.submit(request(text: 'retry'));
 
-    expect((await store.read(first.id))!.state, PromptDeliveryState.failed);
-    expect(second.text, 'retry');
-    expect((await store.activeFor(seat)).single.id, second.id);
-  });
+      expect((await store.read(first.id))!.state, PromptDeliveryState.failed);
+      expect(second.text, 'retry');
+      expect((await store.activeFor(seat)).single.id, second.id);
+    },
+  );
 
   test('does not confirm a delivery before its submit is issued', () async {
     final delivery = await coordinator.submit(request(text: 'same'));
@@ -273,10 +275,7 @@ void main() {
       );
       await restored.restoreSeat(seat);
 
-      expect(
-        (await store.read('d1'))!.state,
-        PromptDeliveryState.failed,
-      );
+      expect((await store.read('d1'))!.state, PromptDeliveryState.failed);
       // A seat wedged by an orphaned non-terminal delivery must accept a new
       // submit after restore.
       final next = await restored.submit(request(text: 'recovered'));
@@ -297,37 +296,36 @@ void main() {
     final delivery = await failing.submit(request(text: 'same'));
     await failing.issueSubmit(delivery.id);
 
-    expect(
-      (await store.read(delivery.id))!.state,
-      PromptDeliveryState.failed,
-    );
+    expect((await store.read(delivery.id))!.state, PromptDeliveryState.failed);
     expect(outcomeCommands.submitAttempts, 1);
   });
 
-  test('abort landing during the submitIssued persist writes nothing',
-      () async {
-    final gatedStore = _GatedSaveStore(store);
-    final gated = PromptDeliveryCoordinator(
-      store: gatedStore,
-      commands: commands,
-      clock: () => now,
-    );
+  test(
+    'abort landing during the submitIssued persist writes nothing',
+    () async {
+      final gatedStore = _GatedSaveStore(store);
+      final gated = PromptDeliveryCoordinator(
+        store: gatedStore,
+        commands: commands,
+        clock: () => now,
+      );
 
-    final delivery = await gated.submit(request(text: 'same'));
-    gatedStore.gateNextSave();
-    final issuing = gated.issueSubmit(delivery.id);
-    // The abort lands while the `submitIssued` persist is still unresolved.
-    gated.invalidateSubmittedDelivery(delivery.id);
-    gatedStore.releaseAll();
-    final result = await issuing;
+      final delivery = await gated.submit(request(text: 'same'));
+      gatedStore.gateNextSave();
+      final issuing = gated.issueSubmit(delivery.id);
+      // The abort lands while the `submitIssued` persist is still unresolved.
+      gated.invalidateSubmittedDelivery(delivery.id);
+      gatedStore.releaseAll();
+      final result = await issuing;
 
-    expect(result, PromptSubmissionResult.dropped);
-    expect(commands.writes, isEmpty);
-    expect(
-      (await store.read(delivery.id))!.state,
-      PromptDeliveryState.submittedUnknown,
-    );
-  });
+      expect(result, PromptSubmissionResult.dropped);
+      expect(commands.writes, isEmpty);
+      expect(
+        (await store.read(delivery.id))!.state,
+        PromptDeliveryState.submittedUnknown,
+      );
+    },
+  );
 
   test('file-backed records keep their transitions across reopen', () async {
     final fs = InMemoryFilesystem();
@@ -349,10 +347,10 @@ void main() {
     );
     await reopened.restoreSeat(seat);
 
-    final record =
-        (await FilePromptDeliveryStore(root: '/deliveries', fs: fs)
-                .forSeat(seat))
-            .single;
+    final record = (await FilePromptDeliveryStore(
+      root: '/deliveries',
+      fs: fs,
+    ).forSeat(seat)).single;
     expect(record.state, PromptDeliveryState.submittedUnknown);
     expect(commands.writes.length, writesBeforeRestore);
     expect(commands.writes.last, 'submit:${delivery.id}');

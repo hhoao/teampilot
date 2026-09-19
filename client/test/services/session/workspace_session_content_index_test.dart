@@ -4,7 +4,7 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
-import 'package:teampilot/services/session/workspace_session_content_index.dart';
+import 'package:teampilot/services/chat/session/workspace_session_content_index.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../../support/fake_ai_history_registry.dart';

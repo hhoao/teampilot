@@ -7,8 +7,8 @@ import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_capability_error.dart';
-import 'package:teampilot/services/session/remote_ssh_launch_constraints.dart';
-import 'package:teampilot/services/session/shell_launch_spec.dart';
+import 'package:teampilot/services/chat/session/remote_ssh_launch_constraints.dart';
+import 'package:teampilot/services/chat/session/shell_launch_spec.dart';
 import 'package:teampilot/services/ssh/ssh_member_session.dart';
 import 'package:tp_sshd/tp_sshd.dart';
 

@@ -6,7 +6,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/expert_hub_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
-import '../../cubits/team/launch_profile_selectors.dart';
+import '../../services/launch_profile/team/launch_profile_selectors.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
 import '../../models/team_config.dart';

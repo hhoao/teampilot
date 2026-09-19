@@ -15,7 +15,7 @@ import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/credential_binding.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
-import 'package:teampilot/services/session/member_role_provision.dart';
+import 'package:teampilot/services/chat/session/member_role_provision.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -37,11 +37,10 @@ void main() {
   );
 
   test('mergeApprovedCustomApiKeyMetadata stores last-20 suffix', () {
-    final merged =
-        ClaudeProviderCapability.mergeApprovedCustomApiKeyMetadata(
-          const {},
-          'sk-ant-api03-abcdefghijklmnop',
-        );
+    final merged = ClaudeProviderCapability.mergeApprovedCustomApiKeyMetadata(
+      const {},
+      'sk-ant-api03-abcdefghijklmnop',
+    );
     final approved =
         ((merged['customApiKeyResponses'] as Map)['approved'] as List)
             .cast<String>();
@@ -74,7 +73,8 @@ void main() {
       cliTeamName: 'session-1',
     );
 
-    final contribution = await contribute(capability,
+    final contribution = await contribute(
+      capability,
       ConfigProfileLaunchContext(
         workspaceId: 'workspace-1',
         teamId: 'team-a',
@@ -98,8 +98,9 @@ void main() {
   test(
     'contributeLaunch contributes prompt env only for the launched member',
     () async {
-      final base =
-          await Directory.systemTemp.createTemp('claude_cap_prompt_gate_');
+      final base = await Directory.systemTemp.createTemp(
+        'claude_cap_prompt_gate_',
+      );
       addTearDown(() async {
         if (await base.exists()) await base.delete(recursive: true);
       });
@@ -112,8 +113,8 @@ void main() {
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       );
       final capability = ClaudeProviderCapability(
-      storage: _homeStorageFor(base.path, fs),
-    );
+        storage: _homeStorageFor(base.path, fs),
+      );
       const launched = TeamMemberConfig(
         id: 'm1',
         name: 'Member',
@@ -139,7 +140,8 @@ void main() {
         cliTeamName: 'session-1',
       );
 
-      final contribution = await contribute(capability,
+      final contribution = await contribute(
+        capability,
         ConfigProfileLaunchContext(
           workspaceId: 'workspace-1',
           teamId: 'team-a',
@@ -233,7 +235,8 @@ void main() {
       memberId: 'm1',
     );
 
-    final contribution = await contribute(capability,
+    final contribution = await contribute(
+      capability,
       ConfigProfileLaunchContext(
         workspaceId: 'workspace-1',
         teamId: 'team-a',
@@ -363,7 +366,8 @@ void main() {
       memberId: 'm1',
     );
 
-    await contribute(capability,
+    await contribute(
+      capability,
       ConfigProfileLaunchContext(
         workspaceId: 'workspace-1',
         teamId: 'team-a',
@@ -473,7 +477,8 @@ void main() {
         memberId: 'member',
       );
 
-      final contribution = await contribute(capability,
+      final contribution = await contribute(
+        capability,
         ConfigProfileLaunchContext(
           workspaceId: 'workspace-1',
           teamId: 'team-a',
@@ -573,7 +578,8 @@ void main() {
         cliTeamName: 'session-simple',
       );
 
-      final contribution = await contribute(capability,
+      final contribution = await contribute(
+        capability,
         ConfigProfileLaunchContext(
           workspaceId: 'workspace-1',
           teamId: '',
@@ -614,13 +620,16 @@ void main() {
       updatedAt: 0,
     );
 
-    Future<({
-      Directory base,
-      HomeStorage storage,
-      ConfigProfileService service,
-      TeamProfile team,
-      List<TeamMemberConfig> launchMembers,
-    })> setupFixture() async {
+    Future<
+      ({
+        Directory base,
+        HomeStorage storage,
+        ConfigProfileService service,
+        TeamProfile team,
+        List<TeamMemberConfig> launchMembers,
+      })
+    >
+    setupFixture() async {
       final base = await Directory.systemTemp.createTemp('claude_cap_preset_');
       final fs = LocalFilesystem();
       final storage = _homeStorageFor(base.path, fs);
@@ -675,7 +684,13 @@ void main() {
         globalPresets: [thirdPartyPreset],
       );
 
-      return (base: base, storage: storage, service: service, team: team, launchMembers: launchMembers);
+      return (
+        base: base,
+        storage: storage,
+        service: service,
+        team: team,
+        launchMembers: launchMembers,
+      );
     }
 
     String memberSettingsPath(String base, String sessionId, String memberId) =>
@@ -724,7 +739,9 @@ void main() {
           updatedAt: 0,
         );
 
-        final base = await Directory.systemTemp.createTemp('claude_cap_member_preset_');
+        final base = await Directory.systemTemp.createTemp(
+          'claude_cap_member_preset_',
+        );
         addTearDown(() async {
           if (await base.exists()) await base.delete(recursive: true);
         });
@@ -789,8 +806,8 @@ void main() {
         final override = launchMembers.firstWhere((m) => m.id == 'override');
 
         final capability = ClaudeProviderCapability(
-      storage: _homeStorageFor(base.path, fs),
-    );
+          storage: _homeStorageFor(base.path, fs),
+        );
         const sessionId = 'session-member-preset';
         final scope = resolveLaunchProfileScope(
           workspaceId: 'workspace-1',
@@ -799,7 +816,8 @@ void main() {
           cliTeamName: sessionId,
         );
 
-        await contribute(capability,
+        await contribute(
+          capability,
           ConfigProfileLaunchContext(
             workspaceId: 'workspace-1',
             teamId: 'team-a',
@@ -831,8 +849,14 @@ void main() {
 
         final inheritEnv = inheritSettings['env'] as Map;
         final overrideEnv = overrideSettings['env'] as Map;
-        expect(inheritEnv['ANTHROPIC_BASE_URL'], 'https://api.team.example/anthropic');
-        expect(overrideEnv['ANTHROPIC_BASE_URL'], 'https://api.member.example/anthropic');
+        expect(
+          inheritEnv['ANTHROPIC_BASE_URL'],
+          'https://api.team.example/anthropic',
+        );
+        expect(
+          overrideEnv['ANTHROPIC_BASE_URL'],
+          'https://api.member.example/anthropic',
+        );
         expect(
           overrideEnv['ANTHROPIC_AUTH_TOKEN']?.toString() ??
               overrideEnv['ANTHROPIC_API_KEY']?.toString(),
@@ -851,11 +875,11 @@ void main() {
           }
         });
 
-        final capability = ClaudeProviderCapability(
-          storage: fixture.storage,
-        );
+        final capability = ClaudeProviderCapability(storage: fixture.storage);
         const sessionId = 'session-preset-roster';
-        final lead = fixture.launchMembers.firstWhere((m) => m.id == 'team-lead');
+        final lead = fixture.launchMembers.firstWhere(
+          (m) => m.id == 'team-lead',
+        );
         final scope = resolveLaunchProfileScope(
           workspaceId: 'workspace-1',
           teamId: 'team-a',
@@ -863,7 +887,8 @@ void main() {
           cliTeamName: sessionId,
         );
 
-        await contribute(capability,
+        await contribute(
+          capability,
           ConfigProfileLaunchContext(
             workspaceId: 'workspace-1',
             teamId: 'team-a',
@@ -879,7 +904,11 @@ void main() {
         );
 
         for (final memberId in ['team-lead', 'developer-0', 'developer-1']) {
-          final settingsPath = memberSettingsPath(fixture.base.path, sessionId, memberId);
+          final settingsPath = memberSettingsPath(
+            fixture.base.path,
+            sessionId,
+            memberId,
+          );
           expect(await File(settingsPath).exists(), isTrue, reason: memberId);
           final settings =
               jsonDecode(await File(settingsPath).readAsString()) as Map;
@@ -898,12 +927,14 @@ void main() {
           }
         });
 
-        final capability = ClaudeProviderCapability(
-          storage: fixture.storage,
-        );
+        final capability = ClaudeProviderCapability(storage: fixture.storage);
         const sessionId = 'session-preset-seq';
-        final dev0 = fixture.launchMembers.firstWhere((m) => m.id == 'developer-0');
-        final dev1 = fixture.launchMembers.firstWhere((m) => m.id == 'developer-1');
+        final dev0 = fixture.launchMembers.firstWhere(
+          (m) => m.id == 'developer-0',
+        );
+        final dev1 = fixture.launchMembers.firstWhere(
+          (m) => m.id == 'developer-1',
+        );
         final scope = resolveLaunchProfileScope(
           workspaceId: 'workspace-1',
           teamId: 'team-a',
@@ -911,7 +942,8 @@ void main() {
           cliTeamName: sessionId,
         );
 
-        await contribute(capability,
+        await contribute(
+          capability,
           ConfigProfileLaunchContext(
             workspaceId: 'workspace-1',
             teamId: 'team-a',
@@ -926,7 +958,8 @@ void main() {
           ),
         );
 
-        await contribute(capability,
+        await contribute(
+          capability,
           ConfigProfileLaunchContext(
             workspaceId: 'workspace-1',
             teamId: 'team-a',
@@ -942,7 +975,11 @@ void main() {
         );
 
         for (final memberId in ['team-lead', 'developer-0', 'developer-1']) {
-          final settingsPath = memberSettingsPath(fixture.base.path, sessionId, memberId);
+          final settingsPath = memberSettingsPath(
+            fixture.base.path,
+            sessionId,
+            memberId,
+          );
           final settings =
               jsonDecode(await File(settingsPath).readAsString()) as Map;
           expectProviderEnv(settings);

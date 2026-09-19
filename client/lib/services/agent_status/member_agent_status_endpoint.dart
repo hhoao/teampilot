@@ -1,6 +1,6 @@
-import '../team_bus/mcp/teammate_bus_mcp_config.dart';
-import '../team_bus/mcp/teammate_bus_mcp_gateway.dart';
-import '../team_bus/remote/member_bus_mcp_config.dart';
+import '../chat/team_bus/mcp/teammate_bus_mcp_config.dart';
+import '../chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
+import '../chat/team_bus/remote/member_bus_mcp_config.dart';
 
 /// Launch env key for seat status hooks (OpenCode plugin fallback, etc.).
 const agentStatusUrlEnvKey = 'TEAMPILOT_AGENT_STATUS_URL';

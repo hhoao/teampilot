@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team/terminal_activity_tracker.dart';
+import 'package:teampilot/services/chat/terminal/terminal_activity_tracker.dart';
 
 void main() {
   // Stamps are wall-clock based; `isWorking` re-reads DateTime.now(), so a
@@ -160,7 +160,9 @@ void main() {
       utf8.encode('› hello\ndefault · /path\n'),
     );
     final erase = Uint8List.fromList(
-      utf8.encode('\x1b[1;55H                          \x1b[2;2H\x1b[K\x1b[3;62H  '),
+      utf8.encode(
+        '\x1b[1;55H                          \x1b[2;2H\x1b[K\x1b[3;62H  ',
+      ),
     );
     tracker.notePtyBytes(visible, now.subtract(bootQuiet * 2));
     // Erase chunks arrive at +300ms — inside the 500ms quiet window, with a
@@ -173,28 +175,31 @@ void main() {
     );
   });
 
-  test('boot frame latches after bootMaxWait despite continuous visible churn', () {
-    // Animated TUIs (Codex startup flicker) repaint VISIBLE content forever;
-    // byte-level quiet never happens. Visible content alive for bootMaxWait
-    // proves the CLI booted — latch instead of blocking indefinitely.
-    final tracker = TerminalActivityTracker(
-      bootQuietAfter: const Duration(milliseconds: 500),
-      bootMaxWait: const Duration(milliseconds: 200),
-    );
-    tracker.reset();
-    final now = DateTime.now();
-    for (var i = 0; i < 6; i++) {
-      tracker.notePtyBytes(
-        Uint8List.fromList('flicker frame $i\n› prompt\n'.codeUnits),
-        now.subtract(Duration(milliseconds: 400 - i * 50)),
+  test(
+    'boot frame latches after bootMaxWait despite continuous visible churn',
+    () {
+      // Animated TUIs (Codex startup flicker) repaint VISIBLE content forever;
+      // byte-level quiet never happens. Visible content alive for bootMaxWait
+      // proves the CLI booted — latch instead of blocking indefinitely.
+      final tracker = TerminalActivityTracker(
+        bootQuietAfter: const Duration(milliseconds: 500),
+        bootMaxWait: const Duration(milliseconds: 200),
       );
-    }
-    expect(
-      tracker.isBootFrameReady,
-      isTrue,
-      reason: 'visible content present beyond bootMaxWait must latch',
-    );
-  });
+      tracker.reset();
+      final now = DateTime.now();
+      for (var i = 0; i < 6; i++) {
+        tracker.notePtyBytes(
+          Uint8List.fromList('flicker frame $i\n› prompt\n'.codeUnits),
+          now.subtract(Duration(milliseconds: 400 - i * 50)),
+        );
+      }
+      expect(
+        tracker.isBootFrameReady,
+        isTrue,
+        reason: 'visible content present beyond bootMaxWait must latch',
+      );
+    },
+  );
 
   test('bootMaxWait still requires visible content', () {
     final tracker = TerminalActivityTracker(

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/ai/team_config_draft.dart';
-import 'package:teampilot/services/ai/team_draft_roster_mapper.dart';
+import 'package:teampilot/services/ai_generation/team_config_draft.dart';
+import 'package:teampilot/services/ai_generation/team_draft_roster_mapper.dart';
 import 'package:teampilot/services/expert_hub/local_expert_writer.dart';
 import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';

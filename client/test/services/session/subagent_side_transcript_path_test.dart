@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/services/session/history/subagent_side_transcript_path.dart';
+import 'package:teampilot/services/chat/session/history/subagent_side_transcript_path.dart';
 
 void main() {
   test('claude subagents dir + agent paths', () {

@@ -8,12 +8,12 @@ import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
-import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
+import 'package:teampilot/services/chat/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/awareness_plugin.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/idle_plugin.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../../support/in_memory_filesystem.dart';
 
 void main() {
@@ -53,11 +53,9 @@ void main() {
         basePath: base.path,
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-                                            storage: fakeHomeStorage(),
-      );
-      final capability = OpencodeProviderCapability(
         storage: fakeHomeStorage(),
       );
+      final capability = OpencodeProviderCapability(storage: fakeHomeStorage());
       const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
       const team = TeamProfile(
         id: 'team-a',
@@ -74,7 +72,8 @@ void main() {
         memberId: 'm1',
       );
 
-      await contribute(capability,
+      await contribute(
+        capability,
         ConfigProfileLaunchContext(
           workspaceId: 'workspace-1',
           teamId: 'team-a',
@@ -115,9 +114,11 @@ void main() {
           './$opencodeAwarenessPluginFileName',
         ]),
       );
-      final idleEntry = plugin.firstWhere(
-        (e) => (e as List).first == './$opencodeIdlePluginFileName',
-      ) as List;
+      final idleEntry =
+          plugin.firstWhere(
+                (e) => (e as List).first == './$opencodeIdlePluginFileName',
+              )
+              as List;
       expect(idleEntry[0], './$opencodeIdlePluginFileName');
       final opts = idleEntry[1] as Map;
       expect(opts['member'], 'm1');
@@ -215,13 +216,13 @@ void main() {
         basePath: base.path,
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-                                            storage: fakeHomeStorage(),
+        storage: fakeHomeStorage(),
       );
 
       await AppProviderRepository(
         basePath: base.path,
         fs: fs,
-                                   storage: fakeHomeStorage(),
+        storage: fakeHomeStorage(),
       ).saveProviders(CliTool.opencode, const [
         AppProviderConfig(
           id: 'team-openai',
@@ -256,22 +257,22 @@ void main() {
       );
 
       final contribution = await materializeOpenCode(
-            ConfigProfileLaunchContext(
-              workspaceId: 'workspace-1',
-              teamId: 'team-a',
-              sessionId: scope.sessionId,
-              scope: scope,
-              team: team,
-              member: member,
-              members: const [member],
-              paths: service,
-              catalog: service,
-              busIdle: MemberBusIdleEndpoint(
-                url: 'http://127.0.0.1:54321/idle',
-                sessionId: 'session-1',
-              ),
-            ),
-          );
+        ConfigProfileLaunchContext(
+          workspaceId: 'workspace-1',
+          teamId: 'team-a',
+          sessionId: scope.sessionId,
+          scope: scope,
+          team: team,
+          member: member,
+          members: const [member],
+          paths: service,
+          catalog: service,
+          busIdle: MemberBusIdleEndpoint(
+            url: 'http://127.0.0.1:54321/idle',
+            sessionId: 'session-1',
+          ),
+        ),
+      );
 
       final opencodeDir = service.sessionToolDir(
         scope.workspaceId,

@@ -1,6 +1,6 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
-import '../team_bus/persistence/bus_message_log.dart';
+import '../chat/team_bus/persistence/bus_message_log.dart';
 
 class TimelineSeat {
   const TimelineSeat({required this.sessionId, required this.memberId});

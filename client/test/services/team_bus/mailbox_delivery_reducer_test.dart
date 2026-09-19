@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/mailbox_delivery.dart';
-import 'package:teampilot/services/team_bus/mailbox_delivery_reducer.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/team_bus/mailbox_delivery.dart';
+import 'package:teampilot/services/chat/team_bus/mailbox_delivery_reducer.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 
 void main() {
   group('MailboxDeliveryReducer', () {
@@ -17,7 +17,9 @@ void main() {
     });
 
     test('MailDeliveryStarted increments attempts and → inFlight', () {
-      const state = MailboxDeliverySnapshot(phase: MailboxDeliveryPhase.pending);
+      const state = MailboxDeliverySnapshot(
+        phase: MailboxDeliveryPhase.pending,
+      );
       final next = MailboxDeliveryReducer.reduce(
         state,
         const MailDeliveryStarted(),
@@ -28,21 +30,24 @@ void main() {
       expect(next.attempts, 1);
     });
 
-    test('MailDeliveryFailed at budget → failed (attempts not double-counted)', () {
-      const state = MailboxDeliverySnapshot(
-        phase: MailboxDeliveryPhase.inFlight,
-        attempts: 6,
-      );
-      final next = MailboxDeliveryReducer.reduce(
-        state,
-        const MailDeliveryFailed(MailboxDeliveryError.crStuck),
-        hasUnread: true,
-        maxAttempts: 6,
-      );
-      expect(next.phase, MailboxDeliveryPhase.failed);
-      expect(next.attempts, 6); // 次数由 Started 计,Failed 不叠加
-      expect(next.lastError, MailboxDeliveryError.crStuck);
-    });
+    test(
+      'MailDeliveryFailed at budget → failed (attempts not double-counted)',
+      () {
+        const state = MailboxDeliverySnapshot(
+          phase: MailboxDeliveryPhase.inFlight,
+          attempts: 6,
+        );
+        final next = MailboxDeliveryReducer.reduce(
+          state,
+          const MailDeliveryFailed(MailboxDeliveryError.crStuck),
+          hasUnread: true,
+          maxAttempts: 6,
+        );
+        expect(next.phase, MailboxDeliveryPhase.failed);
+        expect(next.attempts, 6); // 次数由 Started 计,Failed 不叠加
+        expect(next.lastError, MailboxDeliveryError.crStuck);
+      },
+    );
 
     test('MailDeliveryFailed does not double-count attempts', () {
       const state = MailboxDeliverySnapshot(
@@ -75,7 +80,9 @@ void main() {
     });
 
     test('MailDeliverySubmitted with unread → pending', () {
-      const state = MailboxDeliverySnapshot(phase: MailboxDeliveryPhase.inFlight);
+      const state = MailboxDeliverySnapshot(
+        phase: MailboxDeliveryPhase.inFlight,
+      );
       final next = MailboxDeliveryReducer.reduce(
         state,
         const MailDeliverySubmitted(),

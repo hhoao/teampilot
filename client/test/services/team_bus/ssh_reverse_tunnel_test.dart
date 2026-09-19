@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/remote/reverse_tunnel.dart';
+import 'package:teampilot/services/chat/team_bus/remote/reverse_tunnel.dart';
 
 /// SshReverseTunnel is a thin wrapper over dartssh2 forwardRemote; the part with
 /// logic is the channel mapping, captured by StreamTunnelChannel (which

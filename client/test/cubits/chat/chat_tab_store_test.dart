@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/chat_tab_store.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
+import 'package:teampilot/services/chat/chat_tab_store.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab_info.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
@@ -16,34 +16,41 @@ ChatTab _tab(String id) => ChatTab(
 
 void main() {
   test('effectiveCliTeamName prefers persisted session over provisional', () {
-    final tab = ChatTab(
-      info: ChatTabInfo(id: 's1', title: 'S', subtitle: ''),
-      cliTeamName: '',
-    )..persistedSession = AppSession(
-        sessionId: 's1',
-        workspaceId: 'ws',
-        folders: const [],
-        sessionTeam: 'team-1',
-        cliTeamName: 'default-native-team-3',
-        createdAt: 0,
-      );
+    final tab =
+        ChatTab(
+            info: ChatTabInfo(id: 's1', title: 'S', subtitle: ''),
+            cliTeamName: '',
+          )
+          ..persistedSession = AppSession(
+            sessionId: 's1',
+            workspaceId: 'ws',
+            folders: const [],
+            sessionTeam: 'team-1',
+            cliTeamName: 'default-native-team-3',
+            createdAt: 0,
+          );
 
     expect(tab.effectiveCliTeamName, 'default-native-team-3');
   });
 
   test('registerSession keys by session id; workspace scope filters', () {
-    final store = ChatTabStore(storage: fakeHomeStorage())..setActiveWorkspaceId('w1');
+    final store = ChatTabStore(storage: fakeHomeStorage())
+      ..setActiveWorkspaceId('w1');
     store.registerSession(_tab('a'));
     store.registerSession(_tab('b'));
 
     expect(store.openTabs.length, 2);
     expect(store.openTabBySessionId('b')!.cliTeamName, 'b');
-    expect(store.tabsForWorkspace('w1').map((t) => t.info.id).toList(),
-        ['a', 'b']);
+    expect(store.tabsForWorkspace('w1').map((t) => t.info.id).toList(), [
+      'a',
+      'b',
+    ]);
     store.setActiveWorkspaceId('w2');
     store.registerSession(_tab('c'));
-    expect(store.tabsForWorkspace('w1').map((t) => t.info.id).toList(),
-        ['a', 'b']);
+    expect(store.tabsForWorkspace('w1').map((t) => t.info.id).toList(), [
+      'a',
+      'b',
+    ]);
     expect(store.tabsForWorkspace('w2').map((t) => t.info.id).toList(), ['c']);
     expect(store.sessionsForWorkspace('w2'), ['c']);
   });
@@ -142,9 +149,8 @@ void main() {
     );
 
     expect(store.sessionForTab(tab, [fresh]), fresh);
-    expect(
-      store.sessionForTab(tab, [fresh])!.nativeSessionIds,
-      const {'claude': 'native-1'},
-    );
+    expect(store.sessionForTab(tab, [fresh])!.nativeSessionIds, const {
+      'claude': 'native-1',
+    });
   });
 }

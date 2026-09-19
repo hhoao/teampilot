@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../chat/model/session_workbench_view.dart';
+import '../../services/chat/model/session_workbench_view.dart';
 import 'history_store.dart';
 import 'session_phase.dart';
 
@@ -36,11 +36,13 @@ class SessionPodState {
     SessionWorkbenchView? view,
   }) {
     final nextPhase = phase ?? this.phase;
-    final nextError =
-        clearLaunchError ? null : (launchError ?? this.launchError);
+    final nextError = clearLaunchError
+        ? null
+        : (launchError ?? this.launchError);
     final nextMember = selectedMemberId ?? this.selectedMemberId;
     final nextView = view ?? this.view;
-    final changed = nextPhase != this.phase ||
+    final changed =
+        nextPhase != this.phase ||
         nextError != this.launchError ||
         nextMember != this.selectedMemberId ||
         nextView != this.view;
@@ -89,8 +91,9 @@ class SessionPod extends ChangeNotifier {
     required this.workspaceId,
     this.history,
     SessionPodState? initial,
-  }) : _state = initial ??
-            SessionPodState(sessionId: sessionId, workspaceId: workspaceId);
+  }) : _state =
+           initial ??
+           SessionPodState(sessionId: sessionId, workspaceId: workspaceId);
 
   final String sessionId;
   final String workspaceId;

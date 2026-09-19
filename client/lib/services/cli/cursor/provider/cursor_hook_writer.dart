@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../../../../models/hook_entry.dart';
 import '../../../../models/hook_event.dart';
 import '../../../../models/team_config.dart';
-import '../../../team_bus/mcp/teammate_bus_mcp_handler.dart';
+import '../../../chat/team_bus/mcp/teammate_bus_mcp_handler.dart';
 import '../../registry/capabilities/hook_registry.dart';
 import '../../registry/capabilities/hook_capability.dart';
 
@@ -56,8 +56,9 @@ class CursorHookWriter implements HookCapability {
             content: _httpForwardScript(http, entry.blockOnDecision),
           ),
         );
-        final hooksList =
-            List<Object?>.from((hooks[native] as List?) ?? const []);
+        final hooksList = List<Object?>.from(
+          (hooks[native] as List?) ?? const [],
+        );
         final hookJson = <String, Object?>{
           'command': "bash '${ctx.hooksDir}/$scriptFileName'",
           if (entry.timeout != null) 'timeout': entry.timeout!.inSeconds,
@@ -75,8 +76,8 @@ class CursorHookWriter implements HookCapability {
       if (entry.policy != HookPolicy.none && !entry.event.isIntercepting) {
         warnings.add('hook_policy_ignored_${entry.id}_${entry.event.name}');
       }
-      final decisionJson = entry.policy == HookPolicy.none ||
-              !entry.event.isIntercepting
+      final decisionJson =
+          entry.policy == HookPolicy.none || !entry.event.isIntercepting
           ? null
           : entry.policy == HookPolicy.allow
           ? '{"permission":"allow"}'
@@ -105,8 +106,9 @@ class CursorHookWriter implements HookCapability {
         if (entry.timeout != null) 'timeout': entry.timeout!.inSeconds,
         if (entry.event == HookEvent.stop) 'loop_limit': null,
       };
-      final hooksList =
-          List<Object?>.from((hooks[native] as List?) ?? const []);
+      final hooksList = List<Object?>.from(
+        (hooks[native] as List?) ?? const [],
+      );
       if (!hooksList.any(
         (e) => e is Map && e['command'] == hookJson['command'],
       )) {
@@ -191,13 +193,15 @@ Map<String, Object?> mergeCursorHooksConfig(
   final hooks = Map<String, Object?>.from(
     (existing['hooks'] as Map?)?.cast<String, Object?>() ?? const {},
   );
-  final incoming = (hooksFragment['hooks'] as Map?)?.cast<String, Object?>() ??
+  final incoming =
+      (hooksFragment['hooks'] as Map?)?.cast<String, Object?>() ??
       const <String, Object?>{};
   for (final entry in incoming.entries) {
     final event = entry.key;
     final incomingList = List<Object?>.from((entry.value as List?) ?? const []);
-    final existingList =
-        List<Object?>.from((hooks[event] as List?) ?? const []);
+    final existingList = List<Object?>.from(
+      (hooks[event] as List?) ?? const [],
+    );
     for (final inc in incomingList) {
       if (inc is! Map) continue;
       final command = inc['command'];

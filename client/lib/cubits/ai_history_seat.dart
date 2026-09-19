@@ -14,17 +14,17 @@ import '../models/workspace_launch_context.dart';
 import '../services/conversation_timeline/conversation_timeline.dart';
 import '../services/conversation_timeline/mailbox_user_source.dart';
 import '../services/conversation_timeline/timeline_models.dart';
-import '../services/session/history/ai_history_load_result.dart';
-import '../services/session/history/ai_history_loader.dart';
-import '../services/session/history/ai_history_message_dedup.dart';
-import '../services/session/history/ai_history_page.dart';
-import '../services/session/history/ai_history_pending_confirm.dart';
-import '../services/session/history/ai_history_pending_text.dart';
-import '../services/session/history/failed_message_store.dart';
-import '../services/session/history/history_awaiting_working_sync.dart';
-import '../services/session/history/session_history_pagination.dart';
-import '../services/session/history/subagent_attachment_inflater.dart';
-import '../services/team_bus/persistence/bus_message_log.dart';
+import '../services/chat/session/history/ai_history_load_result.dart';
+import '../services/chat/session/history/ai_history_loader.dart';
+import '../services/chat/session/history/ai_history_message_dedup.dart';
+import '../services/chat/session/history/ai_history_page.dart';
+import '../services/chat/session/history/ai_history_pending_confirm.dart';
+import '../services/chat/session/history/ai_history_pending_text.dart';
+import '../services/chat/session/history/failed_message_store.dart';
+import '../services/chat/session/history/history_awaiting_working_sync.dart';
+import '../services/chat/session/history/session_history_pagination.dart';
+import '../services/chat/session/history/subagent_attachment_inflater.dart';
+import '../services/chat/team_bus/persistence/bus_message_log.dart';
 import '../utils/logging/logger.dart';
 
 /// Host-local AI history status — not session connect / "starting…".

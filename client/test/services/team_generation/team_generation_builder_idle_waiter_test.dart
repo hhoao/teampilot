@@ -5,8 +5,8 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/simple_launch_identity.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
-import 'package:teampilot/services/team_generation/team_generation_builder_idle_waiter.dart';
-import 'package:teampilot/services/team_generation/team_generation_session_port.dart';
+import 'package:teampilot/services/chat/team_generation/team_generation_builder_idle_waiter.dart';
+import 'package:teampilot/services/chat/team_generation/team_generation_session_port.dart';
 
 class _FakePort implements TeamGenerationSessionPort {
   final _controllers = <String, StreamController<PortActivity>>{};

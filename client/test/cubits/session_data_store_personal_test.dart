@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/session_data_store.dart';
+import 'package:teampilot/services/chat/session/session_data_store.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -40,7 +40,10 @@ void main() {
     () async {
       const primaryPath = '/tmp/personal-workspace';
       final store = SessionDataStore(storage: fakeHomeStorage());
-      final base = store.deriveSnapshot(workspaces: const [], sessions: const []);
+      final base = store.deriveSnapshot(
+        workspaces: const [],
+        sessions: const [],
+      );
 
       final result = await store.createWorkspaceWithFirstSession(
         base,
@@ -76,7 +79,10 @@ void main() {
     'createWorkspaceWithFirstSession creates personal session on mixed workspace',
     () async {
       final store = SessionDataStore(storage: fakeHomeStorage());
-      final base = store.deriveSnapshot(workspaces: const [], sessions: const []);
+      final base = store.deriveSnapshot(
+        workspaces: const [],
+        sessions: const [],
+      );
 
       final result = await store.createWorkspaceWithFirstSession(
         base,

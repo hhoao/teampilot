@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
-import 'package:teampilot/services/terminal/pending_user_message.dart';
+import 'package:teampilot/services/chat/terminal/pending_user_message.dart';
 import 'package:teampilot/widgets/terminal/parked_send_overlay.dart';
 
 Widget _host(Widget child) => MaterialApp(

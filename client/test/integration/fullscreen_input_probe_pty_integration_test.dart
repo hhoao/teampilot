@@ -3,8 +3,8 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/terminal/fullscreen_input_screen_probe.dart';
-import 'package:teampilot/services/terminal/pty_inject_ack_retry.dart';
+import 'package:teampilot/services/chat/terminal/fullscreen_input_screen_probe.dart';
+import 'package:teampilot/services/chat/terminal/pty_inject_ack_retry.dart';
 import 'package:teampilot/services/terminal/terminal_export.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
@@ -90,7 +90,10 @@ void main() {
       final beforeSync = session.probe.locateFullscreenPromptNeedle(
         LocalPtyProbeHarness.needle,
       );
-      final afterSync = await _waitForNeedle(session, LocalPtyProbeHarness.needle);
+      final afterSync = await _waitForNeedle(
+        session,
+        LocalPtyProbeHarness.needle,
+      );
 
       expect(
         afterSync,

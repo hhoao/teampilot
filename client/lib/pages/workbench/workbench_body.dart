@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../cubits/chat/model/chat_tab.dart';
+import '../../services/chat/model/chat_tab.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/workbench/tab_strip.dart';
 import '../../cubits/workbench/workbench_tab.dart';
@@ -154,7 +154,9 @@ class _SessionKeepAliveHosts extends StatelessWidget {
     final _ = context.select<ChatCubit, String>((c) {
       final tabs = c.tabStore.tabsForWorkspace(tabScopeId);
       return tabs
-          .map((t) => '${t.info.id}:${t.selectedMemberId}:${t.info.launchError}')
+          .map(
+            (t) => '${t.info.id}:${t.selectedMemberId}:${t.info.launchError}',
+          )
           .join(',');
     });
     final groupSessions = sessionIds.toSet();

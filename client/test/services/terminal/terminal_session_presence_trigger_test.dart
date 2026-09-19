@@ -5,8 +5,8 @@ import 'dart:typed_data';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/event/agent_presence_event.dart';
-import 'package:teampilot/services/team/terminal_activity_tracker.dart';
-import 'package:teampilot/services/terminal/terminal_launch_controller.dart';
+import 'package:teampilot/services/chat/terminal/terminal_activity_tracker.dart';
+import 'package:teampilot/services/chat/terminal/terminal_launch_controller.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport.dart';
 
@@ -158,48 +158,51 @@ void main() {
     expect(sessionCalls, 0, reason: 'session must not adopt a foreign tracker');
   });
 
-  test('presenceSeat binds identity and rebind revives the boot push', () async {
-    var calls = 0;
-    final s = connectable(onPresenceInputsChanged: () => calls++);
-    addTearDown(s.dispose);
+  test(
+    'presenceSeat binds identity and rebind revives the boot push',
+    () async {
+      var calls = 0;
+      final s = connectable(onPresenceInputsChanged: () => calls++);
+      addTearDown(s.dispose);
 
-    s.connect(
-      workingDirectory: Directory.systemTemp.path,
-      observation: const TerminalObservationAttach(
-        sessionId: 's1',
-        memberId: 'm1',
-      ),
-    );
-    await waitFor(() => s.isConnected);
-    expect(
-      s.presenceSeat,
-      const PresenceSeatKey(sessionId: 's1', memberId: 'm1'),
-    );
+      s.connect(
+        workingDirectory: Directory.systemTemp.path,
+        observation: const TerminalObservationAttach(
+          sessionId: 's1',
+          memberId: 'm1',
+        ),
+      );
+      await waitFor(() => s.isConnected);
+      expect(
+        s.presenceSeat,
+        const PresenceSeatKey(sessionId: 's1', memberId: 'm1'),
+      );
 
-    s.activityTracker.latchBootFrameReadyForTest();
-    s.activityTracker.notePtyBytes(Uint8List.fromList([0x41, 0x0a]));
-    expect(calls, 1, reason: 'boot latch pushes while bound');
+      s.activityTracker.latchBootFrameReadyForTest();
+      s.activityTracker.notePtyBytes(Uint8List.fromList([0x41, 0x0a]));
+      expect(calls, 1, reason: 'boot latch pushes while bound');
 
-    s.disconnect();
-    expect(s.presenceSeat, isNull, reason: 'unbind clears the seat');
+      s.disconnect();
+      expect(s.presenceSeat, isNull, reason: 'unbind clears the seat');
 
-    s.connect(
-      workingDirectory: Directory.systemTemp.path,
-      observation: const TerminalObservationAttach(
-        sessionId: 's1',
-        memberId: 'm1',
-      ),
-    );
-    await waitFor(() => s.isConnected);
-    expect(
-      s.presenceSeat,
-      const PresenceSeatKey(sessionId: 's1', memberId: 'm1'),
-    );
+      s.connect(
+        workingDirectory: Directory.systemTemp.path,
+        observation: const TerminalObservationAttach(
+          sessionId: 's1',
+          memberId: 'm1',
+        ),
+      );
+      await waitFor(() => s.isConnected);
+      expect(
+        s.presenceSeat,
+        const PresenceSeatKey(sessionId: 's1', memberId: 'm1'),
+      );
 
-    s.activityTracker.latchBootFrameReadyForTest();
-    s.activityTracker.notePtyBytes(Uint8List.fromList([0x42, 0x0a]));
-    expect(calls, 2, reason: 'rebind must re-attach the boot push');
-  });
+      s.activityTracker.latchBootFrameReadyForTest();
+      s.activityTracker.notePtyBytes(Uint8List.fromList([0x42, 0x0a]));
+      expect(calls, 2, reason: 'rebind must re-attach the boot push');
+    },
+  );
 
   test('an observation without identity leaves presenceSeat null', () async {
     var calls = 0;

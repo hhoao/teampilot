@@ -1,17 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/chat_tab_store.dart';
-import 'package:teampilot/cubits/chat/model/chat_state.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
-import 'package:teampilot/cubits/chat/session_data_store.dart';
-import 'package:teampilot/cubits/chat/session_launch_host.dart';
+import 'package:teampilot/services/chat/chat_tab_store.dart';
+import 'package:teampilot/cubits/chat_state.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab_info.dart';
+import 'package:teampilot/services/chat/session/session_data_store.dart';
+import 'package:teampilot/services/chat/host/session_launch_host.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/launch/session/session_persistence_writer.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import 'package:teampilot/services/session/shell_launch_spec.dart';
+import 'package:teampilot/services/chat/launch/session/session_persistence_writer.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/session/shell_launch_spec.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -50,11 +50,7 @@ void main() {
     launchState: launchState,
     members: [
       for (final m in members)
-        SessionMemberBinding(
-          rosterMemberId: m.id,
-          taskId: m.id,
-          cli: m.cli,
-        ),
+        SessionMemberBinding(rosterMemberId: m.id, taskId: m.id, cli: m.cli),
     ],
   );
 
@@ -79,8 +75,7 @@ void main() {
   });
 
   group('persistSessionStarted', () {
-    test('marks launched, syncs the tab cache, and emits a snapshot',
-        () async {
+    test('marks launched, syncs the tab cache, and emits a snapshot', () async {
       final session = makeSession();
       final tab = makeTab()..persistedSession = session;
       tabs.tabStore
@@ -91,10 +86,7 @@ void main() {
       await build().persistSessionStarted('sess-1');
 
       expect(repository.repo.launched, ['sess-1']);
-      expect(
-        tab.persistedSession!.launchState,
-        AppSessionLaunchState.started,
-      );
+      expect(tab.persistedSession!.launchState, AppSessionLaunchState.started);
       expect(snapshots.emitted, hasLength(1));
       expect(
         snapshots.emitted.single.sessions.single.launchState,
@@ -240,8 +232,7 @@ class _RecordingSnapshots implements SessionSnapshotPort {
   void emitSnapshot(ChatDataSnapshot snapshot) => emitted.add(snapshot);
 
   @override
-  void replaceSessionSnapshot(AppSession session) =>
-      replacements.add(session);
+  void replaceSessionSnapshot(AppSession session) => replacements.add(session);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => null;

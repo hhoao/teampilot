@@ -22,7 +22,7 @@ import '../../services/ai_history/special_tool_resolvers.dart';
 import '../../services/ai_history/workspace_edit_line_highlighter.dart';
 import '../../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../../services/cli/tasks/cli_task_board_controller.dart';
-import '../../services/session/history/chat_transcript_find_controller.dart';
+import '../../services/chat/session/history/chat_transcript_find_controller.dart';
 import '../../services/workbench/ai_tool_file_open_coordinator.dart';
 import '../../services/workbench/session_member_filesystem.dart';
 import '../../services/workbench/workbench_editor_opener.dart';

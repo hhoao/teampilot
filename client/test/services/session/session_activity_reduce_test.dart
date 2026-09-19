@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/session_activity.dart';
-import 'package:teampilot/services/session/session_activity_reduce.dart';
+import 'package:teampilot/services/chat/session/session_activity_reduce.dart';
 
 void main() {
   test('delivering only is busy, not ready', () {

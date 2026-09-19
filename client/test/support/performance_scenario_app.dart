@@ -114,7 +114,10 @@ class PerformanceScenarioApp {
     final repoDir = await Directory.systemTemp.createTemp('perf_sess_repo_');
     final cache = HomeWorkspaceUiCache(storage: fakeHomeStorage());
     return PerformanceScenarioApp(
-      sessionRepository: SessionRepository(rootDir: repoDir.path, storage: fakeHomeStorage()),
+      sessionRepository: SessionRepository(
+        rootDir: repoDir.path,
+        storage: fakeHomeStorage(),
+      ),
       homeWorkspaceUiCache: cache,
     );
   }
@@ -260,15 +263,11 @@ class PerformanceScenarioApp {
           RepositoryProvider<WorkspaceChromeCommands>(
             create: (_) => WorkspaceChromeCommands(),
           ),
-          RepositoryProvider<UiZoomBaseline>(
-            create: (_) => UiZoomBaseline(),
-          ),
+          RepositoryProvider<UiZoomBaseline>(create: (_) => UiZoomBaseline()),
           RepositoryProvider<WorkspaceRunRegistry>.value(
             value: workspaceRunRegistry,
           ),
-          RepositoryProvider<RunCommandHost>(
-            create: (_) => RunCommandHost(),
-          ),
+          RepositoryProvider<RunCommandHost>(create: (_) => RunCommandHost()),
           RepositoryProvider<WorkspaceSearchHost>(
             create: (_) => WorkspaceSearchHost(),
           ),
@@ -324,7 +323,9 @@ class PerformanceScenarioApp {
               ),
             ),
             BlocProvider(create: (_) => WorkspaceToolsCubit()),
-            BlocProvider(create: (_) => NotificationCubit(storage: fakeHomeStorage())),
+            BlocProvider(
+              create: (_) => NotificationCubit(storage: fakeHomeStorage()),
+            ),
             BlocProvider(
               create: (context) => ProgressActivityCubit(
                 historyRecorder: context.read<NotificationCubit>(),
@@ -355,9 +356,8 @@ class PerformanceScenarioApp {
               },
             ),
             BlocProvider(
-              create: (_) => testAutomationCubit(
-                sessionRepository: sessionRepository,
-              ),
+              create: (_) =>
+                  testAutomationCubit(sessionRepository: sessionRepository),
             ),
             BlocProvider(
               create: (_) => CliPresetsCubit(
@@ -399,9 +399,8 @@ class PerformanceScenarioApp {
               ),
             ),
             BlocProvider(
-              create: (_) => ManagedProviderCubit(
-                repository: managedProviderRepository,
-              ),
+              create: (_) =>
+                  ManagedProviderCubit(repository: managedProviderRepository),
             ),
             BlocProvider(
               create: (_) => ManagedProviderUsageCubit(
@@ -479,7 +478,6 @@ Future<LaunchProfileCubit> createPerformanceTeamCubit(
     sessionRepository: SessionRepository(storage: fakeHomeStorage()),
     storage: fakeHomeStorage(),
     executableResolver: () => performanceTestExecutable,
-    launcher: (_, __) async {},
     appDataBasePath: appData!.path,
   );
   await tester.runAsync(cubit.load);

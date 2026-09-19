@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/ai/commit_message_prompt.dart';
+import 'package:teampilot/services/ai_generation/commit_message_prompt.dart';
 
 void main() {
   test('prompt includes the diff and Conventional Commits guidance', () {

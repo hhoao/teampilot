@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/workspace/workspace_tools_scope_registry.dart';
 
 import '../../support/test_runtime_context.dart';
@@ -15,7 +15,7 @@ void main() {
       final lifecycle = SessionLifecycleService(
         storageRootsResolver: () async => home,
         workContextResolver: (_) async => home,
-                                                 storage: fakeHomeStorage(),
+        storage: fakeHomeStorage(),
       );
       final registry = WorkspaceToolsScopeRegistry();
       addTearDown(registry.dispose);

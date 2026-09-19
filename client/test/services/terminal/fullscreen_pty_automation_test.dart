@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/terminal_behavior.dart';
-import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
-import 'package:teampilot/services/terminal/fullscreen_input_screen_probe.dart';
-import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
-import 'package:teampilot/services/terminal/fullscreen_pty_submission_machine.dart';
-import 'package:teampilot/services/terminal/fullscreen_pty_delivery_port.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/terminal/fullscreen_cr_ack_config.dart';
+import 'package:teampilot/services/chat/terminal/fullscreen_input_screen_probe.dart';
+import 'package:teampilot/services/chat/terminal/fullscreen_pty_automation.dart';
+import 'package:teampilot/services/chat/terminal/fullscreen_pty_submission_machine.dart';
+import 'package:teampilot/services/chat/terminal/fullscreen_pty_delivery_port.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 
 import 'support/fake_fullscreen_pty_delivery_port.dart';
 

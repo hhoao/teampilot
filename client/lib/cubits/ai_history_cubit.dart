@@ -6,10 +6,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../models/workspace_launch_context.dart';
-import '../services/session/history/ai_history_loader.dart';
-import '../services/session/history/ai_history_pending_text.dart';
-import '../services/session/history/history_seat_key.dart';
-import '../services/team_bus/persistence/bus_message_log.dart';
+import '../services/chat/session/history/ai_history_loader.dart';
+import '../services/chat/session/history/ai_history_pending_text.dart';
+import '../services/chat/session/history/history_seat_key.dart';
+import '../services/chat/team_bus/persistence/bus_message_log.dart';
 import 'ai_history_seat.dart';
 
 export 'ai_history_seat.dart'

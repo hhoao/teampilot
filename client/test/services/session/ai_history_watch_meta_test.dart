@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/session/history/ai_history_watch_meta.dart';
+import 'package:teampilot/services/chat/session/history/ai_history_watch_meta.dart';
 
 void main() {
   group('AiHistoryWatchMeta', () {

@@ -1,7 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/failed_message_record.dart';
-import 'package:teampilot/services/session/history/ai_history_pending_confirm.dart';
+import 'package:teampilot/services/chat/session/history/ai_history_pending_confirm.dart';
 
 void main() {
   final record = FailedMessageRecord(

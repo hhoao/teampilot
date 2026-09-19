@@ -2,7 +2,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 
 import '../../models/workspace.dart';
 import '../file_tree/workspace_file_index.dart';
-import '../session/workspace_session_content_index.dart';
+import '../chat/session/workspace_session_content_index.dart';
 import '../storage/home_storage.dart';
 import '../storage/runtime_layout.dart';
 
@@ -38,30 +38,21 @@ class WorkspaceSearchIndexes {
   /// Shared transcript content index for [workspaceId], built lazily against
   /// the current home storage backend.
   WorkspaceSessionContentIndex contentIndexFor(String workspaceId) {
-    return _contentByWorkspace.putIfAbsent(
-      workspaceId.trim(),
-      () {
-        final fs = _storage.fs;
-        return WorkspaceSessionContentIndex(
-          fs: fs,
-          layout: RuntimeLayout(
-            teampilotRoot: _storage.paths.basePath,
-            fs: fs,
-          ),
-          appDataRoot: _storage.appDataRoot,
-          cachedHistoryMessages: ({
-            required sessionId,
-            required memberId,
-            required token,
-          }) =>
-              cachedHistoryMessages?.call(
-                sessionId: sessionId,
-                memberId: memberId,
-                token: token,
-              ),
-        );
-      },
-    );
+    return _contentByWorkspace.putIfAbsent(workspaceId.trim(), () {
+      final fs = _storage.fs;
+      return WorkspaceSessionContentIndex(
+        fs: fs,
+        layout: RuntimeLayout(teampilotRoot: _storage.paths.basePath, fs: fs),
+        appDataRoot: _storage.appDataRoot,
+        cachedHistoryMessages:
+            ({required sessionId, required memberId, required token}) =>
+                cachedHistoryMessages?.call(
+                  sessionId: sessionId,
+                  memberId: memberId,
+                  token: token,
+                ),
+      );
+    });
   }
 
   /// Drops the indexes for [workspace] when its editor tab closes.

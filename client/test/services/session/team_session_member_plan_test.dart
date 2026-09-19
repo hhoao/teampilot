@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
-import 'package:teampilot/services/session/team_session_member_plan.dart';
+import 'package:teampilot/services/chat/session/team_session_member_plan.dart';
 
 void main() {
   var seq = 0;
@@ -34,10 +34,7 @@ void main() {
     final ids = plan.members.map((m) => m.taskId).toSet();
     expect(ids.length, plan.members.length);
     expect(ids.contains(sessionId), isFalse);
-    expect(
-      plan.members.any((m) => m.rosterMemberId == 'team-lead'),
-      isTrue,
-    );
+    expect(plan.members.any((m) => m.rosterMemberId == 'team-lead'), isTrue);
   });
 
   test('mixed workspace omits unpinned instances from members', () {

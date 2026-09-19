@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/compatible_tool_result_enricher.dart';
 import 'package:teampilot/services/cli/codex/capabilities/history/ai_transcript.dart';
-import 'package:teampilot/services/session/history/history_parse_worker_adapters.dart';
+import 'package:teampilot/services/chat/session/history/history_parse_worker_adapters.dart';
 
 void main() {
   test('dispatches Claude bundle through the canonical adapter', () async {

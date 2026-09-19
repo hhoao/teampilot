@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/mcp/bus_bridge_locator.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/bus_bridge_locator.dart';
 
 void main() {
   group('BusBridgeLocator.isRunnableExecutable', () {

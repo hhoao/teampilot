@@ -4,7 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/layout_cubit.dart';
-import '../../cubits/team/launch_profile_selectors.dart';
+import '../../services/launch_profile/team/launch_profile_selectors.dart';
 import '../../models/launch_profile_kind.dart';
 import '../../models/layout_preferences.dart';
 import '../../models/team_config.dart';
@@ -193,13 +193,11 @@ class _HomePageState extends State<HomePage> {
 
     return WorkspacePageCardShell(
       child: isMobile
-          ? _HomeMobileSlideBody(
-              sidebar: sidebar,
-              rightPane: rightPane,
-            )
+          ? _HomeMobileSlideBody(sidebar: sidebar, rightPane: rightPane)
           : BlocBuilder<LayoutCubit, LayoutState>(
               buildWhen: (a, b) =>
-                  a.preferences.homeSidebarWidth != b.preferences.homeSidebarWidth,
+                  a.preferences.homeSidebarWidth !=
+                  b.preferences.homeSidebarWidth,
               builder: (context, layoutState) {
                 return TwoPaneSplitView(
                   axis: Axis.horizontal,
@@ -208,7 +206,8 @@ class _HomePageState extends State<HomePage> {
                   initialSize: layoutState.preferences.homeSidebarWidth,
                   minSize: LayoutPreferences.minHomeSidebarWidth,
                   maxSize: double.infinity,
-                  minSecondarySize: LayoutPreferences.minWorkspaceHubContentWidth,
+                  minSecondarySize:
+                      LayoutPreferences.minWorkspaceHubContentWidth,
                   onSizeChanged: (width) {
                     context.read<LayoutCubit>().setHomeSidebarWidth(width);
                   },
@@ -222,10 +221,7 @@ class _HomePageState extends State<HomePage> {
 /// Mobile home body: custom slide panel (same motion as workspace drawer),
 /// not [TpSidebar] Material offcanvas.
 class _HomeMobileSlideBody extends StatelessWidget {
-  const _HomeMobileSlideBody({
-    required this.sidebar,
-    required this.rightPane,
-  });
+  const _HomeMobileSlideBody({required this.sidebar, required this.rightPane});
 
   final Widget sidebar;
   final Widget rightPane;
@@ -234,9 +230,9 @@ class _HomeMobileSlideBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final scope = TpSidebarScope.maybeOf(context);
     final routeActive = HomeRouteActiveScope.routeActiveOf(context);
-    final width = TpTheme.of(context).sidebarTheme.resolveMobileDrawerWidth(
-      MediaQuery.sizeOf(context).width,
-    );
+    final width = TpTheme.of(
+      context,
+    ).sidebarTheme.resolveMobileDrawerWidth(MediaQuery.sizeOf(context).width);
     return MobileSlidePanelHost(
       open: scope?.openMobile ?? false,
       overlayActive: routeActive,

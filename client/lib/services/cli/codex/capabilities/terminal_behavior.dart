@@ -1,5 +1,5 @@
-import '../../../terminal/fullscreen_cr_ack_config.dart';
-import '../../../terminal/fullscreen_input_readiness.dart';
+import '../../../chat/terminal/fullscreen_cr_ack_config.dart';
+import '../../../chat/terminal/fullscreen_input_readiness.dart';
 import '../../registry/capabilities/terminal_behavior_capability.dart';
 
 final class CodexTerminalBehavior implements TerminalBehaviorCapability {
@@ -21,7 +21,6 @@ final class CodexTerminalBehavior implements TerminalBehaviorCapability {
   bool get usesPasteBaseline => false;
   @override
   int get pasteZoneBottomPad => 0;
-
 
   @override
   TerminalPathDropBehavior get pathDropBehavior =>

@@ -11,7 +11,7 @@ import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../io/filesystem.dart';
 import '../../../provider/credential_binding.dart';
 import '../../../remote/remote_credential_materializer.dart';
-import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../../chat/team_bus/member_bus_idle_endpoint.dart';
 import '../cli_capability.dart';
 import '../config_profile/config_profile_context.dart';
 import '../../../resource/providers/hook_contribution_provider.dart';

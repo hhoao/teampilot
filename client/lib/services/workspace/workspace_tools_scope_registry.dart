@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../services/session/session_lifecycle_service.dart';
+import '../chat/session/session_lifecycle_service.dart';
 import 'workspace_tools_scope.dart';
 
 /// Retains resolved [WorkspaceToolsScopeCubit]s per title-bar tab scope so

@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import 'package:teampilot/services/agent_status/exit_plan_mode_hook_gate.dart';
-import 'package:teampilot/services/terminal/exit_plan_mode_approval_service.dart';
+import 'package:teampilot/services/chat/terminal/exit_plan_mode_approval_service.dart';
 
 import '../support/post_frame_test_harness.dart';
 

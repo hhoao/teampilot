@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/team_bus/teammate_roster_profile.dart';
+import 'package:teampilot/services/chat/team_bus/teammate_roster_profile.dart';
 
 void main() {
   TeamProfile team() => const TeamProfile(

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ai_feature_setting.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/ai/headless_ai_service.dart';
+import 'package:teampilot/services/ai_generation/headless_ai_service.dart';
 import 'package:teampilot/services/cli/registry/capabilities/headless_capability.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_contribution.dart';
 import '../../support/in_memory_filesystem.dart';

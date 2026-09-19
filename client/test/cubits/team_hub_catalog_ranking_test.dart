@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/team_hub_cubit.dart';
 import 'package:teampilot/models/catalog/catalog_types.dart';
 import 'package:teampilot/models/discoverable_team.dart';
-import 'package:teampilot/services/team/team_clone_service.dart';
+import 'package:teampilot/services/team_config/team_clone_service.dart';
 import 'package:teampilot/services/team_hub/team_hub_source.dart';
 
 class _Source implements TeamHubSource, TeamHubSourceContributions {

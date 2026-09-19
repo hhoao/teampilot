@@ -1,8 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../services/team_bus/bus_feed_entry.dart';
-import '../services/team_bus/team_bus.dart';
+import '../services/chat/team_bus/bus_feed_entry.dart';
+import '../services/chat/team_bus/team_bus.dart';
 import 'scoped_bus_poll_gate.dart';
 
 class MailboxState extends Equatable {

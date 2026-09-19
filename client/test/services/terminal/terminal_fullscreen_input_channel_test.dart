@@ -1,20 +1,23 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/terminal/terminal_fullscreen_input_channel.dart';
-import 'package:teampilot/services/terminal/terminal_input_command_queue.dart';
+import 'package:teampilot/services/chat/terminal/terminal_fullscreen_input_channel.dart';
+import 'package:teampilot/services/chat/terminal/terminal_input_command_queue.dart';
 
 void main() {
-  test('submitFullScreenInput writes bracketed paste then a standalone CR', () async {
-    final writes = <String>[];
-    final channel = TerminalFullscreenInputChannel(writeToPty: writes.add);
+  test(
+    'submitFullScreenInput writes bracketed paste then a standalone CR',
+    () async {
+      final writes = <String>[];
+      final channel = TerminalFullscreenInputChannel(writeToPty: writes.add);
 
-    await channel.submitFullScreenInput(
-      'hello team',
-      defaultSettleDelay: Duration.zero,
-      onTurnStart: () {},
-    );
+      await channel.submitFullScreenInput(
+        'hello team',
+        defaultSettleDelay: Duration.zero,
+        onTurnStart: () {},
+      );
 
-    expect(writes, ['\x1B[200~hello team\x1B[201~', '\r']);
-  });
+      expect(writes, ['\x1B[200~hello team\x1B[201~', '\r']);
+    },
+  );
 
   test('pasteText chunks large bracketed paste payloads', () async {
     final writes = <String>[];
@@ -39,22 +42,22 @@ void main() {
     expect(writes, ['hello team\r']);
   });
 
-  test('confirmation before queued CR drops it in the production channel',
-      () async {
-    final writes = <String>[];
-    var confirmed = false;
-    final commands = TerminalInputCommandQueue(write: writes.add);
-    final channel = TerminalFullscreenInputChannel(commands: commands);
+  test(
+    'confirmation before queued CR drops it in the production channel',
+    () async {
+      final writes = <String>[];
+      var confirmed = false;
+      final commands = TerminalInputCommandQueue(write: writes.add);
+      final channel = TerminalFullscreenInputChannel(commands: commands);
 
-    await channel.submitPendingCr(canExecute: () => true);
-    final queuedCr = channel.submitPendingCr(
-      canExecute: () => !confirmed,
-    );
-    confirmed = true;
-    await queuedCr;
+      await channel.submitPendingCr(canExecute: () => true);
+      final queuedCr = channel.submitPendingCr(canExecute: () => !confirmed);
+      confirmed = true;
+      await queuedCr;
 
-    expect(writes.where((write) => write == '\r'), hasLength(1));
-  });
+      expect(writes.where((write) => write == '\r'), hasLength(1));
+    },
+  );
 
   test('confirmation during staged clear fences every later Ctrl-U', () async {
     final writes = <String>[];
@@ -66,10 +69,7 @@ void main() {
       },
     );
 
-    await channel.clearStagedInput(
-      canExecute: () => !confirmed,
-      killLines: 3,
-    );
+    await channel.clearStagedInput(canExecute: () => !confirmed, killLines: 3);
 
     expect(writes.where((write) => write == '\x15'), hasLength(1));
   });

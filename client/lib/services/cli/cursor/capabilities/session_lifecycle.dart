@@ -15,7 +15,7 @@ import '../provider/cursor_workspace_warm_tier.dart';
 import '../provider/cursor_workspace_trust_provisioner.dart';
 import '../../../storage/home_storage.dart';
 import '../../../storage/runtime_layout.dart';
-import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../../chat/team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/capabilities/cli_session_capability.dart';
 import '../../session_lifecycle/cli_session_manifest.dart';

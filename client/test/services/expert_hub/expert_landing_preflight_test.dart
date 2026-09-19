@@ -6,7 +6,7 @@ import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
 import 'package:teampilot/services/expert_hub/expert_capability_pack.dart';
 import 'package:teampilot/services/expert_hub/expert_capability_resolver.dart';
 import 'package:teampilot/services/expert_hub/expert_landing_preflight.dart';
-import 'package:teampilot/services/team/team_clone_service.dart';
+import 'package:teampilot/services/team_config/team_clone_service.dart';
 import '../../support/in_memory_filesystem.dart';
 import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
@@ -147,7 +147,10 @@ class _RecordingResolver extends ExpertCapabilityResolver {
         installSkill: (_) async => null,
         installPlugin: (_) async => null,
         installMcp: (_) async => null,
-             localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
+        localStore: LocalExpertStore(
+          fs: InMemoryFilesystem(),
+          dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
+        ),
       );
 
   final Future<ExpertCapabilityPack?> Function(String key) onPreflight;

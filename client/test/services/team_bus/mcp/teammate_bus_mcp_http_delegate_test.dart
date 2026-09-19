@@ -2,11 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/agent_node.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_handler.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_http_delegate.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
-import 'package:teampilot/services/team_bus/team_message.dart';
+import 'package:teampilot/services/chat/team_bus/agent_node.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_handler.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_http_delegate.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/team_bus/team_message.dart';
 
 import '../support/fake_member_launcher.dart';
 
@@ -171,65 +171,72 @@ void main() {
     );
   });
 
-  test('newer wait_for_message supersedes stale stream; live wait gets mail', () async {
-    bus.declareMember(
-      AgentNode.test(
-        memberId: 'worker',
-        lifecycle: MemberLifecycle.running,
-        activity: MemberActivity.active,
-      ),
-    );
-
-    Future<HttpClientResponse> openWait(int id) async {
-      final req = await client.postUrl(mcpEndpoint());
-      req.headers.set('content-type', 'application/json');
-      req.headers.set('accept', 'application/json, text/event-stream');
-      req.headers.set('X-Member', 'worker');
-      req.add(
-        utf8.encode(
-          jsonEncode({
-            'jsonrpc': '2.0',
-            'id': id,
-            'method': 'tools/call',
-            'params': {
-              'name': 'wait_for_message',
-              'arguments': <String, Object?>{},
-            },
-          }),
+  test(
+    'newer wait_for_message supersedes stale stream; live wait gets mail',
+    () async {
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'worker',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
         ),
       );
-      return req.close();
-    }
 
-    final staleResp = await openWait(10);
-    final staleDrained = staleResp.drain<void>().catchError((Object _) {});
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(bus.isWaitingForMessage('worker'), isTrue);
+      Future<HttpClientResponse> openWait(int id) async {
+        final req = await client.postUrl(mcpEndpoint());
+        req.headers.set('content-type', 'application/json');
+        req.headers.set('accept', 'application/json, text/event-stream');
+        req.headers.set('X-Member', 'worker');
+        req.add(
+          utf8.encode(
+            jsonEncode({
+              'jsonrpc': '2.0',
+              'id': id,
+              'method': 'tools/call',
+              'params': {
+                'name': 'wait_for_message',
+                'arguments': <String, Object?>{},
+              },
+            }),
+          ),
+        );
+        return req.close();
+      }
 
-    final liveFuture = () async {
-      final resp = await openWait(11);
-      final text = await resp.transform(utf8.decoder).join();
-      final line = text.split('\n').firstWhere((l) => l.startsWith('data:'));
-      return jsonDecode(line.substring(5).trim()) as Map<String, Object?>;
-    }();
+      final staleResp = await openWait(10);
+      final staleDrained = staleResp.drain<void>().catchError((Object _) {});
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(bus.isWaitingForMessage('worker'), isTrue);
 
-    await Future<void>.delayed(const Duration(milliseconds: 80));
-    bus.memberById('worker')!.inbox.deliver(
-      TeamMessage(id: 'm1', from: 'lead', to: 'worker', content: 'ping'),
-    );
+      final liveFuture = () async {
+        final resp = await openWait(11);
+        final text = await resp.transform(utf8.decoder).join();
+        final line = text.split('\n').firstWhere((l) => l.startsWith('data:'));
+        return jsonDecode(line.substring(5).trim()) as Map<String, Object?>;
+      }();
 
-    final live = await liveFuture.timeout(const Duration(seconds: 3));
-    final text = ((live['result'] as Map)['content'] as List).first as Map;
-    expect(text['text'], contains('ping'));
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      bus
+          .memberById('worker')!
+          .inbox
+          .deliver(
+            TeamMessage(id: 'm1', from: 'lead', to: 'worker', content: 'ping'),
+          );
 
-    await staleDrained.timeout(const Duration(seconds: 2));
-    expect(delegate.activeWaitStreamCount, 0);
+      final live = await liveFuture.timeout(const Duration(seconds: 3));
+      final text = ((live['result'] as Map)['content'] as List).first as Map;
+      expect(text['text'], contains('ping'));
 
-    final page = await bus.memberById('worker')!.inbox.readPage();
-    expect(
-      page.messages,
-      isEmpty,
-      reason: 'live stream consumed the mail; stale must not leave a ghost unread',
-    );
-  });
+      await staleDrained.timeout(const Duration(seconds: 2));
+      expect(delegate.activeWaitStreamCount, 0);
+
+      final page = await bus.memberById('worker')!.inbox.readPage();
+      expect(
+        page.messages,
+        isEmpty,
+        reason:
+            'live stream consumed the mail; stale must not leave a ghost unread',
+      );
+    },
+  );
 }

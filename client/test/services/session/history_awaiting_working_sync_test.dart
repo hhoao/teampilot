@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/session/history/history_awaiting_working_sync.dart';
+import 'package:teampilot/services/chat/session/history/history_awaiting_working_sync.dart';
 
 void main() {
   group('resolveHistoryAwaitingWorkingAction', () {

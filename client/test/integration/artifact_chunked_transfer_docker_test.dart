@@ -12,8 +12,8 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/io/sftp_filesystem.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/storage/remote_file_store.dart';
-import 'package:teampilot/services/team_bus/artifacts/artifact_registry.dart';
-import 'package:teampilot/services/team_bus/artifacts/artifact_transfer_service.dart';
+import 'package:teampilot/services/chat/team_bus/artifacts/artifact_registry.dart';
+import 'package:teampilot/services/chat/team_bus/artifacts/artifact_transfer_service.dart';
 
 import 'support/docker_ssh_server.dart';
 
@@ -37,10 +37,7 @@ void main() {
     server = await DockerSshServer.start(clientRoot: Directory.current.path);
 
     final credentials = InMemorySshCredentialStore();
-    await credentials.savePassword(
-      _profileId,
-      DockerSshServer.defaultPassword,
-    );
+    await credentials.savePassword(_profileId, DockerSshServer.defaultPassword);
     sshFactory = SshClientFactory(
       credentialStore: credentials,
       knownHostRepository: InMemorySshKnownHostRepository(),
@@ -89,8 +86,7 @@ void main() {
 
       final service = ArtifactTransferService(
         registry: ArtifactRegistry(),
-        resolveFs: (targetId) async =>
-            targetId == 'local' ? localFs : remoteFs,
+        resolveFs: (targetId) async => targetId == 'local' ? localFs : remoteFs,
         targetForMember: (memberId) =>
             memberId == 'publisher' ? 'local' : 'ssh:docker',
         inboxDirFor: (memberId) =>
@@ -123,77 +119,70 @@ void main() {
     timeout: const Timeout(Duration(minutes: 5)),
   );
 
-  test(
-    'resume continues Local→SFTP after seeded partial',
-    () async {
-      if (server == null || sshFactory == null || profile == null) {
-        markTestSkipped('Docker is not available');
-      }
-      final localFs = LocalFilesystem();
-      final store = RemoteFileStore(
-        profile: profile!,
-        clientFactory: sshFactory!,
-      );
-      final remoteFs = SftpFilesystem(store);
+  test('resume continues Local→SFTP after seeded partial', () async {
+    if (server == null || sshFactory == null || profile == null) {
+      markTestSkipped('Docker is not available');
+    }
+    final localFs = LocalFilesystem();
+    final store = RemoteFileStore(
+      profile: profile!,
+      clientFactory: sshFactory!,
+    );
+    final remoteFs = SftpFilesystem(store);
 
-      const remoteInbox = '/home/testuser/artifact-inbox-resume';
-      await remoteFs.ensureDir(remoteInbox);
+    const remoteInbox = '/home/testuser/artifact-inbox-resume';
+    await remoteFs.ensureDir(remoteInbox);
 
-      final sourcePath = p.join(localRoot!.path, 'resume.bin');
-      const chunkSize = 4 * 1024;
-      final bytes = List<int>.generate(chunkSize * 2 + 9, (i) => (i * 3) % 256);
-      await localFs.writeBytes(sourcePath, bytes);
+    final sourcePath = p.join(localRoot!.path, 'resume.bin');
+    const chunkSize = 4 * 1024;
+    final bytes = List<int>.generate(chunkSize * 2 + 9, (i) => (i * 3) % 256);
+    await localFs.writeBytes(sourcePath, bytes);
 
-      final service = ArtifactTransferService(
-        registry: ArtifactRegistry(),
-        resolveFs: (targetId) async =>
-            targetId == 'local' ? localFs : remoteFs,
-        targetForMember: (memberId) =>
-            memberId == 'publisher' ? 'local' : 'ssh:docker',
-        inboxDirFor: (memberId) =>
-            memberId == 'publisher' ? localRoot!.path : remoteInbox,
-        chunkSize: chunkSize,
-      );
+    final service = ArtifactTransferService(
+      registry: ArtifactRegistry(),
+      resolveFs: (targetId) async => targetId == 'local' ? localFs : remoteFs,
+      targetForMember: (memberId) =>
+          memberId == 'publisher' ? 'local' : 'ssh:docker',
+      inboxDirFor: (memberId) =>
+          memberId == 'publisher' ? localRoot!.path : remoteInbox,
+      chunkSize: chunkSize,
+    );
 
-      await service.publish(
-        publisherMemberId: 'publisher',
-        path: sourcePath,
-        name: 'resume-payload',
-      );
+    await service.publish(
+      publisherMemberId: 'publisher',
+      path: sourcePath,
+      name: 'resume-payload',
+    );
 
-      final dest = '$remoteInbox/resume.bin';
-      final firstChunk = bytes.sublist(0, chunkSize);
-      await remoteFs.writeBytes('$dest.tp-partial', firstChunk);
-      await remoteFs.writeString(
-        '$dest.tp-partial.meta.json',
-        '{"artifactName":"resume-payload",'
-        '"publisherMemberId":"publisher",'
-        '"sourceTargetId":"local",'
-        '"sourcePath":${_jsonString(sourcePath)},'
-        '"expectedSizeBytes":${bytes.length},'
-        '"bytesWritten":$chunkSize,'
-        '"chunkSize":$chunkSize}',
-      );
+    final dest = '$remoteInbox/resume.bin';
+    final firstChunk = bytes.sublist(0, chunkSize);
+    await remoteFs.writeBytes('$dest.tp-partial', firstChunk);
+    await remoteFs.writeString(
+      '$dest.tp-partial.meta.json',
+      '{"artifactName":"resume-payload",'
+          '"publisherMemberId":"publisher",'
+          '"sourceTargetId":"local",'
+          '"sourcePath":${_jsonString(sourcePath)},'
+          '"expectedSizeBytes":${bytes.length},'
+          '"bytesWritten":$chunkSize,'
+          '"chunkSize":$chunkSize}',
+    );
 
-      final result = await service.fetch(
-        fetcherMemberId: 'fetcher',
-        name: 'resume-payload',
-        destPath: 'resume.bin',
-      );
+    final result = await service.fetch(
+      fetcherMemberId: 'fetcher',
+      name: 'resume-payload',
+      destPath: 'resume.bin',
+    );
 
-      expect(result.finalPath, dest);
-      expect(await remoteFs.readBytes(dest), bytes);
-      expect((await remoteFs.stat('$dest.tp-partial')).exists, isFalse);
-    },
-    timeout: const Timeout(Duration(minutes: 5)),
-  );
+    expect(result.finalPath, dest);
+    expect(await remoteFs.readBytes(dest), bytes);
+    expect((await remoteFs.stat('$dest.tp-partial')).exists, isFalse);
+  }, timeout: const Timeout(Duration(minutes: 5)));
 }
 
 const _profileId = 'docker-artifact-it';
 
 String _jsonString(String value) {
-  final escaped = value
-      .replaceAll(r'\', r'\\')
-      .replaceAll('"', r'\"');
+  final escaped = value.replaceAll(r'\', r'\\').replaceAll('"', r'\"');
   return '"$escaped"';
 }

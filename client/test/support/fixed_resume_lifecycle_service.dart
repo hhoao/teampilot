@@ -5,10 +5,10 @@ import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
-import 'package:teampilot/services/launch/staging/session_runtime_plan.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/launch/staging/session_runtime_plan.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
-import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
+import 'package:teampilot/services/chat/team_bus/member_bus_idle_endpoint.dart';
 import 'in_memory_filesystem.dart';
 
 /// Forces [LaunchPlan.resume] so open-session tests can assert session-id vs resume.

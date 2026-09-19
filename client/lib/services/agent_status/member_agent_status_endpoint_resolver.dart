@@ -1,6 +1,6 @@
 import '../../models/runtime_target.dart';
-import '../team_bus/mcp/teammate_bus_mcp_gateway.dart';
-import '../team_bus/remote/member_bus_mcp_config.dart';
+import '../chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
+import '../chat/team_bus/remote/member_bus_mcp_config.dart';
 import 'member_agent_status_endpoint.dart';
 
 /// Whether this SSH seat needs a status-only HTTP reverse tunnel.
@@ -10,8 +10,7 @@ import 'member_agent_status_endpoint.dart';
 bool needsAgentStatusOnlyHttpTunnel({
   required RuntimeKind launchKind,
   required RemoteBusBinding? mixedRemoteBinding,
-}) =>
-    launchKind == RuntimeKind.ssh && mixedRemoteBinding == null;
+}) => launchKind == RuntimeKind.ssh && mixedRemoteBinding == null;
 
 /// Pick the stamped agent-status endpoint once any SSH tunnel (or null) is known.
 ///

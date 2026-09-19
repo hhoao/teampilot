@@ -1,9 +1,9 @@
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/cancellation.dart';
-import 'package:teampilot/services/team_bus/member_inbox.dart';
-import 'package:teampilot/services/team_bus/persistence/in_memory_bus_message_log.dart';
-import 'package:teampilot/services/team_bus/team_message.dart';
+import 'package:teampilot/services/chat/team_bus/cancellation.dart';
+import 'package:teampilot/services/chat/team_bus/member_inbox.dart';
+import 'package:teampilot/services/chat/team_bus/persistence/in_memory_bus_message_log.dart';
+import 'package:teampilot/services/chat/team_bus/team_message.dart';
 
 TeamMessage _msg(String id) =>
     TeamMessage(id: id, from: 'a', to: 'b', content: id);
@@ -95,28 +95,31 @@ void main() {
     });
   });
 
-  test('newest waiter takes mail; older waiter cannot steal or mark-consume', () {
-    fakeAsync((async) {
-      final box = _inbox();
-      final olderCancel = CancellationToken();
-      List<TeamMessage>? older;
-      List<TeamMessage>? newer;
-      box.waitAndTake(cancel: olderCancel).then((b) => older = b);
-      box.waitAndTake().then((b) => newer = b);
-      async.flushMicrotasks();
+  test(
+    'newest waiter takes mail; older waiter cannot steal or mark-consume',
+    () {
+      fakeAsync((async) {
+        final box = _inbox();
+        final olderCancel = CancellationToken();
+        List<TeamMessage>? older;
+        List<TeamMessage>? newer;
+        box.waitAndTake(cancel: olderCancel).then((b) => older = b);
+        box.waitAndTake().then((b) => newer = b);
+        async.flushMicrotasks();
 
-      box.deliver(_msg('1'));
-      async.elapse(const Duration(milliseconds: 50));
+        box.deliver(_msg('1'));
+        async.elapse(const Duration(milliseconds: 50));
 
-      expect(newer!.map((m) => m.id), ['1']);
-      expect(box.isEmpty, isTrue);
-      expect(older, isNull, reason: 'stale wait must not take the batch');
+        expect(newer!.map((m) => m.id), ['1']);
+        expect(box.isEmpty, isTrue);
+        expect(older, isNull, reason: 'stale wait must not take the batch');
 
-      olderCancel.cancel();
-      async.flushMicrotasks();
-      expect(older, isEmpty);
-    });
-  });
+        olderCancel.cancel();
+        async.flushMicrotasks();
+        expect(older, isEmpty);
+      });
+    },
+  );
 
   test('re-parking loops on one inbox settle instead of ping-ponging', () {
     fakeAsync((async) {

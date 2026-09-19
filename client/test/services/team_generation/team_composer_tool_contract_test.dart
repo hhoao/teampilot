@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_generation/mcp/team_composer_mcp_constants.dart';
-import 'package:teampilot/services/team_generation/mcp/toolkit/team_composer_tool_registry.dart';
+import 'package:teampilot/services/chat/team_generation/mcp/team_composer_mcp_constants.dart';
+import 'package:teampilot/services/chat/team_generation/mcp/toolkit/team_composer_tool_registry.dart';
 
 void main() {
   test('plan schemas advertise no fixed roster maximum', () {
@@ -38,8 +38,8 @@ void main() {
 
     final validate = byName[TeamComposerToolName.validatePlan]!;
     expect(validate['description'], contains('field-by-field'));
-    final plan = ((validate['inputSchema'] as Map)['properties'] as Map)['plan']
-        as Map;
+    final plan =
+        ((validate['inputSchema'] as Map)['properties'] as Map)['plan'] as Map;
     expect(plan['required'], containsAll(['team', 'members']));
     expect((plan['properties'] as Map)['team'], isA<Map>());
     expect((validate['annotations'] as Map)['idempotentHint'], isTrue);
@@ -53,8 +53,8 @@ void main() {
     final probe = byName[TeamComposerToolName.probeTargets]!;
     expect(probe['description'], contains('validatedRevision'));
     expect(
-      (((probe['inputSchema'] as Map)['properties'] as Map)['refresh'] as Map)
-          ['description'],
+      (((probe['inputSchema'] as Map)['properties'] as Map)['refresh']
+          as Map)['description'],
       isNotEmpty,
     );
   });

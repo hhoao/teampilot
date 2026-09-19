@@ -3,7 +3,7 @@ import 'package:path/path.dart' as p;
 
 import '../../../../../utils/logging/logger.dart';
 import '../../../../io/filesystem.dart';
-import '../../../../session/history/session_history_context.dart';
+import '../../../../chat/session/history/session_history_context.dart';
 import 'terminal_file.dart';
 import '../../../registry/capabilities/history/tool_result_enricher.dart';
 

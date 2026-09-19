@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/teambus_prompt.dart';
+import 'package:teampilot/services/chat/team_bus/teambus_prompt.dart';
 
 void main() {
   test('formats a teambus element with type first', () {

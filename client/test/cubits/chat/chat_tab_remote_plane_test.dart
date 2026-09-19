@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab_info.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/team_bus/remote/remote_bus_mount.dart';
+import 'package:teampilot/services/chat/team_bus/remote/remote_bus_mount.dart';
 
 import '../../services/team_bus/support/fake_reverse_tunnel.dart';
 

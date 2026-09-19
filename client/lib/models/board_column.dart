@@ -1,4 +1,4 @@
-import '../services/team_bus/tasks/team_task.dart';
+import '../services/chat/team_bus/tasks/team_task.dart';
 
 /// Read-only board lanes. Collapses TaskStatus's three terminals into a
 /// single [done] lane (per-card outcome icon distinguishes done/failed/

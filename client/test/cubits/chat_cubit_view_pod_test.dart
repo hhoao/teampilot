@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -45,13 +45,17 @@ void main() {
   test('setPodView keeps ChatTab.workbenchView in sync', () {
     surfaceTab('s1');
     cubit.ensurePodRuntime('s1');
-    expect(cubit.tabStore.openTabBySessionId('s1')!.workbenchView,
-        SessionWorkbenchView.chat);
+    expect(
+      cubit.tabStore.openTabBySessionId('s1')!.workbenchView,
+      SessionWorkbenchView.chat,
+    );
 
     cubit.setPodView('s1', SessionWorkbenchView.terminal);
 
-    expect(cubit.tabStore.openTabBySessionId('s1')!.workbenchView,
-        SessionWorkbenchView.terminal);
+    expect(
+      cubit.tabStore.openTabBySessionId('s1')!.workbenchView,
+      SessionWorkbenchView.terminal,
+    );
     expect(cubit.podFor('s1')!.view, SessionWorkbenchView.terminal);
   });
 
@@ -67,7 +71,9 @@ void main() {
 
     cubit.setSessionWorkbenchView('s1', SessionWorkbenchView.terminal);
 
-    expect(cubit.tabStore.openTabBySessionId('s1')!.workbenchView,
-        SessionWorkbenchView.terminal);
+    expect(
+      cubit.tabStore.openTabBySessionId('s1')!.workbenchView,
+      SessionWorkbenchView.terminal,
+    );
   });
 }

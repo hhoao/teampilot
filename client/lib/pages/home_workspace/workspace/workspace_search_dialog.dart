@@ -13,7 +13,7 @@ import '../../../models/app_session.dart';
 import '../../../services/file_tree/workspace_file_search.dart';
 import '../../../services/search/multi_root_content_search.dart';
 import '../../../services/search/workspace_search_indexes.dart';
-import '../../../services/session/workspace_session_content_index.dart';
+import '../../../services/chat/session/workspace_session_content_index.dart';
 import '../../../services/workbench/workbench_editor_opener.dart';
 import '../../../services/workspace/workspace_pane_policy.dart';
 import '../../../utils/debounce/debounce.dart';
@@ -278,14 +278,13 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
       });
       return;
     }
-    if (folders.any(
-          (f) => !widget.indexes.fileIndexFor(f.path).isReady,
-        ) &&
+    if (folders.any((f) => !widget.indexes.fileIndexFor(f.path).isReady) &&
         mounted) {
       setState(() => _searchingFiles = true);
     }
     await Future.wait([
-      for (final f in folders) widget.indexes.fileIndexFor(f.path).ensureFresh(),
+      for (final f in folders)
+        widget.indexes.fileIndexFor(f.path).ensureFresh(),
     ]);
     if (!mounted || seq != _searchSeq) return;
     final groups = <_FileFolderGroup>[
@@ -299,7 +298,10 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
     ];
     setState(() {
       _searchingFiles = false;
-      _fileGroups = [for (final g in groups) if (g.matches.isNotEmpty) g];
+      _fileGroups = [
+        for (final g in groups)
+          if (g.matches.isNotEmpty) g,
+      ];
     });
   }
 

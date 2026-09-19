@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/automation_state.dart';
-import 'package:teampilot/cubits/chat/model/session_open_status.dart';
+import 'package:teampilot/services/chat/model/session_open_status.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/automation.dart';
 import 'package:teampilot/models/workspace.dart';
@@ -173,56 +173,59 @@ void main() {
     expect(reenabled.nextRunAtMs, isNotNull);
   });
 
-  test('loadForWorkspace keeps automations from every launch context', () async {
-    final layout = WorkspaceLayout(
-      teampilotRoot: testHomeStorage.paths.basePath,
-      fs: testHomeStorage.fs,
-    );
-    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
-    final calculator = AutomationScheduleCalculator();
-    final dispatcher = AutomationDispatcher(
-      repository: repo,
-      scheduleCalculator: calculator,
-      sessionRepository: _FakeSessionRepository(),
-      busGateway: _NoopBusGateway(),
-      requestOpenSession: (_) async => SessionOpenStatus.opened,
-      requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
-      workspaceById: (_) => Workspace(workspaceId: 'ws1', createdAt: 1),
-      teamById: (_) => null,
-      nowMs: () => 1_700_000_000_000,
-    );
-    final scheduler = AutomationScheduler(
-      repository: repo,
-      dispatcher: dispatcher,
-      scheduleCalculator: calculator,
-      nowMs: () => 1_700_000_000_000,
-    );
-    final cubit = AutomationCubit(
-      repository: repo,
-      scheduler: scheduler,
-      scheduleCalculator: calculator,
-      nowMs: () => 1_700_000_000_000,
-    );
-    addTearDown(cubit.close);
+  test(
+    'loadForWorkspace keeps automations from every launch context',
+    () async {
+      final layout = WorkspaceLayout(
+        teampilotRoot: testHomeStorage.paths.basePath,
+        fs: testHomeStorage.fs,
+      );
+      final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+      final calculator = AutomationScheduleCalculator();
+      final dispatcher = AutomationDispatcher(
+        repository: repo,
+        scheduleCalculator: calculator,
+        sessionRepository: _FakeSessionRepository(),
+        busGateway: _NoopBusGateway(),
+        requestOpenSession: (_) async => SessionOpenStatus.opened,
+        requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
+        workspaceById: (_) => Workspace(workspaceId: 'ws1', createdAt: 1),
+        teamById: (_) => null,
+        nowMs: () => 1_700_000_000_000,
+      );
+      final scheduler = AutomationScheduler(
+        repository: repo,
+        dispatcher: dispatcher,
+        scheduleCalculator: calculator,
+        nowMs: () => 1_700_000_000_000,
+      );
+      final cubit = AutomationCubit(
+        repository: repo,
+        scheduler: scheduler,
+        scheduleCalculator: calculator,
+        nowMs: () => 1_700_000_000_000,
+      );
+      addTearDown(cubit.close);
 
-    await repo.upsert(_sampleAutomation(id: 'personal'));
-    await repo.upsert(
-      _sampleAutomation(id: 'team').copyWith(
-        isPersonal: false,
-        clearPresetId: true,
-        teamId: 'team-1',
-        action: AutomationAction.launchPrompt,
-        clearSessionId: true,
-      ),
-    );
-    await cubit.loadForWorkspace('ws1');
+      await repo.upsert(_sampleAutomation(id: 'personal'));
+      await repo.upsert(
+        _sampleAutomation(id: 'team').copyWith(
+          isPersonal: false,
+          clearPresetId: true,
+          teamId: 'team-1',
+          action: AutomationAction.launchPrompt,
+          clearSessionId: true,
+        ),
+      );
+      await cubit.loadForWorkspace('ws1');
 
-    expect(cubit.state.listScope?.isWorkspace, isTrue);
-    expect(cubit.state.visibleAutomations.map((a) => a.id), containsAll([
-      'personal',
-      'team',
-    ]));
-  });
+      expect(cubit.state.listScope?.isWorkspace, isTrue);
+      expect(
+        cubit.state.visibleAutomations.map((a) => a.id),
+        containsAll(['personal', 'team']),
+      );
+    },
+  );
 
   test('save disables enabled once automation with past runAtMs', () async {
     final layout = WorkspaceLayout(
@@ -258,10 +261,7 @@ void main() {
 
     await cubit.load();
     await cubit.save(
-      _onceAutomation(
-        id: 'a1',
-        runAtMs: 1_700_000_000_000 - 60_000,
-      ),
+      _onceAutomation(id: 'a1', runAtMs: 1_700_000_000_000 - 60_000),
     );
 
     final saved = (await repo.listForWorkspace('ws1')).single;

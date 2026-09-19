@@ -1,15 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/terminal/fullscreen_pty_submission_machine.dart';
+import 'package:teampilot/services/chat/terminal/fullscreen_pty_submission_machine.dart';
 
 void main() {
   var current = DateTime(2026, 9, 12, 10, 0, 0);
-  FullscreenPtySubmission newMachine({
-    FullscreenPtySubmissionBudget? budget,
-  }) => FullscreenPtySubmission(
-    budget: budget ??
-        const FullscreenPtySubmissionBudget(stagingMaxAttempts: 3),
-    now: () => current,
-  );
+  FullscreenPtySubmission newMachine({FullscreenPtySubmissionBudget? budget}) =>
+      FullscreenPtySubmission(
+        budget:
+            budget ??
+            const FullscreenPtySubmissionBudget(stagingMaxAttempts: 3),
+        now: () => current,
+      );
 
   group('FullscreenPtySubmission staging', () {
     test('starts idle and begin enters staging', () {
@@ -73,26 +73,29 @@ void main() {
       expect(machine.phase, FullscreenPtySubmissionPhase.done);
     });
 
-    test('send exhaustion while awaitingAck fails as crStuck, never re-pastes', () {
-      final machine = FullscreenPtySubmission(
-        budget: const FullscreenPtySubmissionBudget(
-          stagingMaxAttempts: 3,
-          sendMaxCrAttempts: 2,
-        ),
-        now: () => current,
-      );
-      machine.begin();
-      machine.noteStagingAttempt();
-      machine.noteNeedleFound();
-      machine.noteCrIssued();
-      expect(machine.canRetryCr, isTrue);
-      machine.noteCrRetry();
-      machine.noteCrRetry();
-      expect(machine.canRetryCr, isFalse);
-      machine.noteSendExhausted();
-      expect(machine.phase, FullscreenPtySubmissionPhase.failed);
-      expect(machine.isTerminal, isTrue);
-    });
+    test(
+      'send exhaustion while awaitingAck fails as crStuck, never re-pastes',
+      () {
+        final machine = FullscreenPtySubmission(
+          budget: const FullscreenPtySubmissionBudget(
+            stagingMaxAttempts: 3,
+            sendMaxCrAttempts: 2,
+          ),
+          now: () => current,
+        );
+        machine.begin();
+        machine.noteStagingAttempt();
+        machine.noteNeedleFound();
+        machine.noteCrIssued();
+        expect(machine.canRetryCr, isTrue);
+        machine.noteCrRetry();
+        machine.noteCrRetry();
+        expect(machine.canRetryCr, isFalse);
+        machine.noteSendExhausted();
+        expect(machine.phase, FullscreenPtySubmissionPhase.failed);
+        expect(machine.isTerminal, isTrue);
+      },
+    );
 
     test('awaitingAck expires after sendAckTimeout', () {
       final machine = newMachine(

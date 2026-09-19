@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../../models/workspace_folder.dart';
-import '../../services/session/launch_command_builder.dart';
+import '../../services/chat/session/launch_command_builder.dart';
 
 /// Normalizes a filesystem path for stable comparison and storage.
 ///
@@ -11,10 +11,7 @@ import '../../services/session/launch_command_builder.dart';
 /// On Windows + WSL storage ([usesPosixPaths] — the app's storage backend
 /// spells paths POSIX while the host is Windows), Windows picker paths are
 /// converted to `/mnt/...`.
-String normalizeWorkspacePath(
-  String path, {
-  required bool usesPosixPaths,
-}) {
+String normalizeWorkspacePath(String path, {required bool usesPosixPaths}) {
   final trimmed = path.trim();
   if (trimmed.isEmpty || trimmed.startsWith('~')) return trimmed;
   final String normalized;
@@ -32,11 +29,7 @@ String normalizeWorkspacePath(
   return normalized;
 }
 
-bool workspacePathsEqual(
-  String a,
-  String b, {
-  required bool usesPosixPaths,
-}) {
+bool workspacePathsEqual(String a, String b, {required bool usesPosixPaths}) {
   return normalizeWorkspacePath(a, usesPosixPaths: usesPosixPaths) ==
       normalizeWorkspacePath(b, usesPosixPaths: usesPosixPaths);
 }
@@ -46,7 +39,10 @@ bool workspacePathsContains(
   String target, {
   required bool usesPosixPaths,
 }) {
-  final normalized = normalizeWorkspacePath(target, usesPosixPaths: usesPosixPaths);
+  final normalized = normalizeWorkspacePath(
+    target,
+    usesPosixPaths: usesPosixPaths,
+  );
   for (final existing in paths) {
     if (normalizeWorkspacePath(existing, usesPosixPaths: usesPosixPaths) ==
         normalized) {
@@ -225,7 +221,10 @@ Set<String> _windowsWorkspaceMetadataKeys(
     addWindowsPathKeys(trimmed);
   }
 
-  final normalized = normalizeWorkspacePath(original, usesPosixPaths: usesPosixPaths);
+  final normalized = normalizeWorkspacePath(
+    original,
+    usesPosixPaths: usesPosixPaths,
+  );
   if (normalized.startsWith('/')) {
     addPosixPathKeys(normalized);
   } else if (normalized.isNotEmpty) {

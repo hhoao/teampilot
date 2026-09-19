@@ -7,8 +7,8 @@ import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/session/shell_launch_spec.dart';
-import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
+import 'package:teampilot/services/chat/session/shell_launch_spec.dart';
+import 'package:teampilot/services/chat/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 import 'package:teampilot/services/workbench/workbench_strip_navigator.dart';
@@ -99,7 +99,7 @@ void main() {
 
     setUp(() async {
       tmp = await Directory.systemTemp.createTemp('workbench_strip_nav_');
-      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
+      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       postFrame = PostFrameTestHarness();
       sessionIds.clear();
       chat = ChatCubit(
@@ -110,7 +110,7 @@ void main() {
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
                 _FakeTerminalSession(executable: executable),
-                        storage: testHomeStorage,
+        storage: testHomeStorage,
       );
       workbench = WorkbenchCubit();
       final bridge = WorkbenchChatBridge(workbench: workbench, chat: chat);
@@ -249,10 +249,7 @@ void main() {
         workbench.openSession(workspaceId, 'session-1', preview: false);
         workbench.enterLanding(workspaceId);
 
-        expect(
-          workbench.centerLandingInitialText(workspaceId),
-          isNull,
-        );
+        expect(workbench.centerLandingInitialText(workspaceId), isNull);
       },
     );
 
@@ -265,10 +262,7 @@ void main() {
         ..enterLanding(workspaceId, initialText: prefill)
         ..closeOthers(workspaceId, first);
 
-      expect(
-        workbench.centerLandingInitialText(workspaceId),
-        prefill,
-      );
+      expect(workbench.centerLandingInitialText(workspaceId), prefill);
     });
 
     test('closeRight preserves an active Landing prefill', () {
@@ -280,10 +274,7 @@ void main() {
         ..enterLanding(workspaceId, initialText: prefill)
         ..closeRight(workspaceId, first);
 
-      expect(
-        workbench.centerLandingInitialText(workspaceId),
-        prefill,
-      );
+      expect(workbench.centerLandingInitialText(workspaceId), prefill);
     });
 
     test('closeAll clears an active Landing prefill', () {

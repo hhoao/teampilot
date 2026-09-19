@@ -9,8 +9,8 @@ import 'package:teampilot/services/cli/cursor/capabilities/history/ai_history_ca
 import 'package:teampilot/services/cli/flashskyai/capabilities/history/ai_history_capability.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/history/ai_history_watch_meta.dart';
-import 'package:teampilot/services/session/history/session_history_context.dart';
+import 'package:teampilot/services/chat/session/history/ai_history_watch_meta.dart';
+import 'package:teampilot/services/chat/session/history/session_history_context.dart';
 
 void main() {
   late Directory base;

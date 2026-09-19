@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/artifacts/artifact_exceptions.dart';
-import 'package:teampilot/services/team_bus/artifacts/artifact_handle.dart';
-import 'package:teampilot/services/team_bus/artifacts/artifact_registry.dart';
+import 'package:teampilot/services/chat/team_bus/artifacts/artifact_exceptions.dart';
+import 'package:teampilot/services/chat/team_bus/artifacts/artifact_handle.dart';
+import 'package:teampilot/services/chat/team_bus/artifacts/artifact_registry.dart';
 
 ArtifactHandle _handle(
   String name, {

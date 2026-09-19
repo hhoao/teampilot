@@ -1,6 +1,6 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/session/history/chat_transcript_find_controller.dart';
+import 'package:teampilot/services/chat/session/history/chat_transcript_find_controller.dart';
 
 List<AiMessage> _messages(List<String> texts) => [
   for (final (i, text) in texts.indexed)

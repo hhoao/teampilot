@@ -7,7 +7,7 @@ import '../../../services/cli/registry/cli_display_name.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/remote/remote_cli_requirements.dart';
-import '../../../services/launch/workspace/workspace_landing_launch_gate.dart';
+import '../../../services/chat/launch/workspace/workspace_landing_launch_gate.dart';
 
 String landingLaunchBlockMessage(
   AppLocalizations l10n,

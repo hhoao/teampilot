@@ -1,6 +1,6 @@
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
-import 'package:teampilot/services/team_bus/teammate_snapshot.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/team_bus/teammate_snapshot.dart';
 
 /// Reads live bus roster state for integration tests (no MCP round-trip).
 TeammateSnapshot? memberSnapshot(TeamBus? bus, String memberId) {
@@ -38,13 +38,10 @@ Future<void> waitUntilWorkerParked({
   DateTime? parkedSince;
   while (DateTime.now().isBefore(deadline)) {
     final snap = memberSnapshot(bus, memberId);
-    final streamOpen =
-        (gateway?.activeWaitStreamCountFor(sessionId) ?? 0) > 0;
+    final streamOpen = (gateway?.activeWaitStreamCountFor(sessionId) ?? 0) > 0;
     final busWait = snap?.waitingForMessage ?? false;
     final parked =
-        busWait ||
-        snap?.activity.name == 'turnDoneBusWait' ||
-        streamOpen;
+        busWait || snap?.activity.name == 'turnDoneBusWait' || streamOpen;
     if (parked) {
       parkedSince ??= DateTime.now();
       if (DateTime.now().difference(parkedSince) >= stableFor) return;

@@ -2,29 +2,29 @@ import '../../models/workspace.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/expert_hub/expert_hub_catalog.dart';
 import '../../services/expert_hub/local_expert_store.dart';
-import '../../services/team_generation/generated_team_commit_service.dart';
-import '../../services/team_generation/generated_team_plan_validator.dart';
-import '../../services/team_generation/team_generation_authorizer.dart';
-import '../../services/team_generation/team_generation_cleanup_service.dart';
-import '../../services/team_generation/team_generation_coordinator.dart';
-import '../../services/team_generation/team_generation_compatibility.dart';
-import '../../services/team_generation/team_generation_handoff_service.dart';
-import '../../services/team_generation/team_generation_job_store.dart';
-import '../../services/team_generation/team_generation_settings_store.dart';
-import '../../services/team_generation/mcp/team_composer_mcp_handler.dart';
-import '../../services/team_generation/team_generation_workflow_executor.dart';
-import '../../services/team_generation/catalog/catalog_generation_stager.dart';
+import '../services/chat/team_generation/generated_team_commit_service.dart';
+import '../services/chat/team_generation/generated_team_plan_validator.dart';
+import '../services/chat/team_generation/team_generation_authorizer.dart';
+import '../services/chat/team_generation/team_generation_cleanup_service.dart';
+import '../services/chat/team_generation/team_generation_coordinator.dart';
+import '../services/chat/team_generation/team_generation_compatibility.dart';
+import '../services/chat/team_generation/team_generation_handoff_service.dart';
+import '../services/chat/team_generation/team_generation_job_store.dart';
+import '../services/chat/team_generation/team_generation_settings_store.dart';
+import '../services/chat/team_generation/mcp/team_composer_mcp_handler.dart';
+import '../services/chat/team_generation/team_generation_workflow_executor.dart';
+import '../services/chat/team_generation/catalog/catalog_generation_stager.dart';
 import '../../services/catalog/catalog_kind_registry.dart';
-import '../../services/team_generation/team_target_probe_service.dart';
-import '../../services/team_generation/runtime_team_target_probe_runner.dart';
+import '../services/chat/team_generation/team_target_probe_service.dart';
+import '../services/chat/team_generation/runtime_team_target_probe_runner.dart';
 import '../../services/remote/remote_cli_readiness.dart';
 import '../../services/resource/resource_provider_set.dart';
-import '../../services/session/session_lifecycle_service.dart';
+import '../services/chat/session/session_lifecycle_service.dart';
 import '../../services/storage/runtime_target_registry.dart';
-import '../../services/team_generation/providers/managed_team_builder_skill_provider.dart';
+import '../services/chat/team_generation/providers/managed_team_builder_skill_provider.dart';
 import '../../repositories/launch_profile_repository.dart';
-import '../../services/prompt_delivery/prompt_delivery_coordinator.dart';
-import '../../services/prompt_delivery/prompt_delivery_store.dart';
+import '../services/chat/prompt_delivery/prompt_delivery_coordinator.dart';
+import '../services/chat/prompt_delivery/prompt_delivery_store.dart';
 import '../../models/app_session.dart';
 import 'package:uuid/uuid.dart';
 import '../cubits/workbench/workbench_cubit.dart';
@@ -32,12 +32,12 @@ import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/storage/home_storage.dart';
 import '../../models/team_config.dart';
 
-import '../../services/team_generation/team_generation_context_payload.dart';
-import '../../services/team_generation/models/team_target_probe.dart';
+import '../services/chat/team_generation/team_generation_context_payload.dart';
+import '../services/chat/team_generation/models/team_target_probe.dart';
 
-import '../cubits/chat/tab_member_pty_delivery.dart';
+import '../services/chat/runtime/tab_member_pty_delivery.dart';
 import '../cubits/launch_profile_cubit.dart';
-import '../cubits/team/cubit_team_generation_session_port.dart';
+import '../services/launch_profile/team/cubit_team_generation_session_port.dart';
 import '../cubits/chat_cubit.dart';
 
 /// Control-plane holder for the team-generation workflow graph. Built once in
@@ -86,6 +86,7 @@ final class TeamGenerationGraph {
       hooks: defaults.hooks,
     );
   }
+
   /// Issues a fresh workflow token for a builder session connect.
   String? tokenForSession(AppSession session) {
     if (session.purpose != SessionPurpose.teamGeneration ||

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
-import 'package:teampilot/cubits/chat/session_launch_retry.dart';
+import 'package:teampilot/services/chat/model/session_connect_request.dart';
+import 'package:teampilot/services/chat/launch/session_launch_retry.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -66,22 +66,25 @@ void main() {
       );
     });
 
-    test('connects stopped session with no error (wake on Terminal reveal)', () {
-      expect(
-        shouldConnectStoppedSessionOnTerminalReveal(
-          isRunning: false,
-          launchError: null,
-        ),
-        isTrue,
-      );
-      expect(
-        shouldConnectStoppedSessionOnTerminalReveal(
-          isRunning: false,
-          launchError: '  ',
-        ),
-        isTrue,
-      );
-    });
+    test(
+      'connects stopped session with no error (wake on Terminal reveal)',
+      () {
+        expect(
+          shouldConnectStoppedSessionOnTerminalReveal(
+            isRunning: false,
+            launchError: null,
+          ),
+          isTrue,
+        );
+        expect(
+          shouldConnectStoppedSessionOnTerminalReveal(
+            isRunning: false,
+            launchError: '  ',
+          ),
+          isTrue,
+        );
+      },
+    );
   });
 
   test('simple session has no team/member and preserves workbench', () {

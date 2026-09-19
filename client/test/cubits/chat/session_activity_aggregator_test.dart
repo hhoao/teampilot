@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/chat_tab_store.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
-import 'package:teampilot/cubits/chat/session_activity_aggregator.dart';
+import 'package:teampilot/services/chat/chat_tab_store.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab_info.dart';
+import 'package:teampilot/services/chat/session/session_activity_aggregator.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_activity.dart';
-import 'package:teampilot/services/team/session_working_resolver.dart';
+import 'package:teampilot/services/chat/session/session_working_resolver.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -55,8 +55,10 @@ void main() {
         ),
       );
       expect(
-        aggregator(store: store, deliveryInFlight: (_) => false)
-            .computeReasons()['sess'],
+        aggregator(
+          store: store,
+          deliveryInFlight: (_) => false,
+        ).computeReasons()['sess'],
         isEmpty,
       );
     },
@@ -90,10 +92,10 @@ void main() {
       attention: (id) => id == 'sess',
       deliveryInFlight: (id) => id == 'sess',
     ).computeReasons();
-    expect(
-      reasons['sess'],
-      {SessionBusyReason.delivering, SessionBusyReason.attention},
-    );
+    expect(reasons['sess'], {
+      SessionBusyReason.delivering,
+      SessionBusyReason.attention,
+    });
     expect(reasons['sess']!.contains(SessionBusyReason.inTurn), isFalse);
   });
 
@@ -105,9 +107,9 @@ void main() {
       ..markUserTurnStarted();
 
     return ChatTab(
-      info: const ChatTabInfo(id: 'personal-1', title: 'P', subtitle: ''),
-      cliTeamName: '',
-    )
+        info: const ChatTabInfo(id: 'personal-1', title: 'P', subtitle: ''),
+        cliTeamName: '',
+      )
       ..persistedSession = AppSession(
         sessionId: 'personal-1',
         workspaceId: 'ws',
@@ -120,10 +122,9 @@ void main() {
   test('inTurn from member working yields inTurn only', () {
     final store = ChatTabStore(storage: fakeHomeStorage());
     store.registerSession(personalInTurnTab());
-    expect(
-      aggregator(store: store).computeReasons()['personal-1'],
-      {SessionBusyReason.inTurn},
-    );
+    expect(aggregator(store: store).computeReasons()['personal-1'], {
+      SessionBusyReason.inTurn,
+    });
   });
 
   test('all three reasons when inTurn plus attention and delivery', () {
@@ -134,14 +135,11 @@ void main() {
       attention: (id) => id == 'personal-1',
       deliveryInFlight: (id) => id == 'personal-1',
     ).computeReasons();
-    expect(
-      reasons['personal-1'],
-      {
-        SessionBusyReason.delivering,
-        SessionBusyReason.inTurn,
-        SessionBusyReason.attention,
-      },
-    );
+    expect(reasons['personal-1'], {
+      SessionBusyReason.delivering,
+      SessionBusyReason.inTurn,
+      SessionBusyReason.attention,
+    });
   });
 
   test('two tabs: idle and delivering both appear in map', () {

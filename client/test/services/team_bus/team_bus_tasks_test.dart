@@ -1,11 +1,11 @@
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/agent_node.dart';
-import 'package:teampilot/services/team_bus/idle_notification.dart';
-import 'package:teampilot/services/team_bus/tasks/task_queue.dart';
-import 'package:teampilot/services/team_bus/tasks/team_task.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
-import 'package:teampilot/services/team_bus/team_message.dart';
+import 'package:teampilot/services/chat/team_bus/agent_node.dart';
+import 'package:teampilot/services/chat/team_bus/idle_notification.dart';
+import 'package:teampilot/services/chat/team_bus/tasks/task_queue.dart';
+import 'package:teampilot/services/chat/team_bus/tasks/team_task.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/team_bus/team_message.dart';
 
 import 'support/fake_member_launcher.dart';
 
@@ -325,7 +325,10 @@ void main() {
         // (coordinator decides nudge CR vs re-paste; fake records the call).
         now += TeamBus.doorbellRetryMs;
         bus.reengageIdleWorkers();
-        expect(launcher.woken.length, 1); // no second full-notice paste from bus
+        expect(
+          launcher.woken.length,
+          1,
+        ); // no second full-notice paste from bus
         expect(launcher.retried.length, 1);
         expect(launcher.retried.single.memberId, 'w1');
 

@@ -1,13 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/chat_session_shell_factory.dart';
-import 'package:teampilot/cubits/chat/chat_tab_store.dart';
-import 'package:teampilot/cubits/chat/tab_member_coordination_factory.dart';
-import 'package:teampilot/cubits/chat/tab_member_pty_delivery.dart';
-import 'package:teampilot/services/terminal/member_pty_inject_service.dart';
+import 'package:teampilot/services/chat/chat_session_shell_factory.dart';
+import 'package:teampilot/services/chat/chat_tab_store.dart';
+import 'package:teampilot/services/chat/tab_member_coordination_factory.dart';
+import 'package:teampilot/services/chat/runtime/tab_member_pty_delivery.dart';
+import 'package:teampilot/services/chat/terminal/member_pty_inject_service.dart';
 import '../../support/in_memory_filesystem.dart';
 
-({TabMemberPtyDelivery delivery, MemberPtyInjectService ptyInject})
-_delivery({
+({TabMemberPtyDelivery delivery, MemberPtyInjectService ptyInject}) _delivery({
   void Function(String sessionId)? onUserActivity,
   MemberPtyInjectService? ptyInject,
 }) {
@@ -56,19 +55,22 @@ void main() {
     expect(activity, ['sess-1']);
   });
 
-  test('deliverUserCommandToMember reports user activity for mailbox', () async {
-    final activity = <String>[];
-    final delivery = _delivery(onUserActivity: activity.add).delivery;
+  test(
+    'deliverUserCommandToMember reports user activity for mailbox',
+    () async {
+      final activity = <String>[];
+      final delivery = _delivery(onUserActivity: activity.add).delivery;
 
-    await delivery.deliverUserCommandToMember(
-      'sess-1',
-      'member-1',
-      'hello',
-      directToPty: false,
-    );
+      await delivery.deliverUserCommandToMember(
+        'sess-1',
+        'member-1',
+        'hello',
+        directToPty: false,
+      );
 
-    expect(activity, ['sess-1']);
-  });
+      expect(activity, ['sess-1']);
+    },
+  );
 
   test('deliverUserCommandToMember skips blank inject', () async {
     final activity = <String>[];

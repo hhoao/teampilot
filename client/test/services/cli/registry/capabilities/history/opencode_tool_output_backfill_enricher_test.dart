@@ -4,7 +4,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/history/tool_output_backfill_enricher.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/history/session_history_context.dart';
+import 'package:teampilot/services/chat/session/history/session_history_context.dart';
 
 void main() {
   late Directory tmp;

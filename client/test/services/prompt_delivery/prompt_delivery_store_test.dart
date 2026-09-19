@@ -3,8 +3,8 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_runtime/runtime_event.dart';
-import 'package:teampilot/services/prompt_delivery/prompt_delivery.dart';
-import 'package:teampilot/services/prompt_delivery/prompt_delivery_store.dart';
+import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery.dart';
+import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery_store.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
@@ -57,9 +57,9 @@ void main() {
     final sessionEntries = await fs.listDir(sessionDir);
     expect(sessionEntries.map((e) => e.name).toSet(), {'d1.json', 'd2.json'});
     expect(
-      await fs.listDir('/runtime/deliveries/${_seg('other')}').then(
-        (entries) => entries.map((e) => e.name),
-      ),
+      await fs
+          .listDir('/runtime/deliveries/${_seg('other')}')
+          .then((entries) => entries.map((e) => e.name)),
       ['d3.json'],
     );
 
@@ -80,15 +80,14 @@ PromptDelivery _delivery(
   String id,
   RuntimeSeatKey seat,
   PromptDeliveryState state,
-) =>
-    PromptDelivery(
-      id: id,
-      seat: seat,
-      cli: CliTool.codex,
-      text: 'msg $id',
-      normalizedText: 'msg $id',
-      promptEpoch: 1,
-      state: state,
-      createdAt: DateTime.utc(2026, 8, 25),
-      updatedAt: DateTime.utc(2026, 8, 25),
-    );
+) => PromptDelivery(
+  id: id,
+  seat: seat,
+  cli: CliTool.codex,
+  text: 'msg $id',
+  normalizedText: 'msg $id',
+  promptEpoch: 1,
+  state: state,
+  createdAt: DateTime.utc(2026, 8, 25),
+  updatedAt: DateTime.utc(2026, 8, 25),
+);

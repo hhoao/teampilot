@@ -1,7 +1,7 @@
 import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
-import '../launch/staging/manifest/work_plane_paths.dart';
+import '../chat/launch/staging/manifest/work_plane_paths.dart';
 import '../provider/credential_binding.dart';
 import '../cli/claude/provider/claude_provider_credentials_service.dart';
 import '../cli/codex/provider/codex_auth_artifacts.dart';

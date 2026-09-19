@@ -4,8 +4,8 @@ import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/session_continue_overrides.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/session/session_continue_overrides_apply.dart';
-import 'package:teampilot/services/session/session_launch_config_snapshot.dart';
+import 'package:teampilot/services/chat/session/session_continue_overrides_apply.dart';
+import 'package:teampilot/services/chat/session/session_launch_config_snapshot.dart';
 
 void main() {
   const claudePresetA = CliPreset(
@@ -30,45 +30,44 @@ void main() {
     updatedAt: 0,
   );
 
-  test('snapshotTeamSessionContinueOverrides pins create-time preset per binding',
-      () {
-    const team = TeamProfile(
-      id: 'team',
-      name: 'Team',
-      teamMode: TeamMode.mixed,
-      cli: CliTool.claude,
-      activePresetId: 'preset-claude-a',
-      members: [
-        TeamMemberConfig(
-          id: 'team-lead',
-          name: 'Lead',
-          activePresetId: TeamProfile.inheritPresetId,
-        ),
-      ],
-    );
-    const bindings = [
-      SessionMemberBinding(
-        rosterMemberId: 'team-lead-0',
-        typeId: 'team-lead',
-        taskId: 'task-1',
+  test(
+    'snapshotTeamSessionContinueOverrides pins create-time preset per binding',
+    () {
+      const team = TeamProfile(
+        id: 'team',
+        name: 'Team',
+        teamMode: TeamMode.mixed,
         cli: CliTool.claude,
-      ),
-    ];
+        activePresetId: 'preset-claude-a',
+        members: [
+          TeamMemberConfig(
+            id: 'team-lead',
+            name: 'Lead',
+            activePresetId: TeamProfile.inheritPresetId,
+          ),
+        ],
+      );
+      const bindings = [
+        SessionMemberBinding(
+          rosterMemberId: 'team-lead-0',
+          typeId: 'team-lead',
+          taskId: 'task-1',
+          cli: CliTool.claude,
+        ),
+      ];
 
-    final snap = snapshotTeamSessionContinueOverrides(
-      base: const SessionContinueOverrides(),
-      team: team,
-      bindings: bindings,
-      globalPresets: const [claudePresetA, codexPreset],
-    );
+      final snap = snapshotTeamSessionContinueOverrides(
+        base: const SessionContinueOverrides(),
+        team: team,
+        bindings: bindings,
+        globalPresets: const [claudePresetA, codexPreset],
+      );
 
-    expect(
-      snap.memberOverrides['team-lead-0']?.presetId,
-      'preset-claude-a',
-    );
-    expect(snap.memberOverrides['team-lead-0']?.provider, 'anthropic');
-    expect(snap.memberOverrides['team-lead-0']?.model, 'claude-a');
-  });
+      expect(snap.memberOverrides['team-lead-0']?.presetId, 'preset-claude-a');
+      expect(snap.memberOverrides['team-lead-0']?.provider, 'anthropic');
+      expect(snap.memberOverrides['team-lead-0']?.model, 'claude-a');
+    },
+  );
 
   test(
     'presetForSessionConnect uses snapshot when team preset changed cross-CLI',

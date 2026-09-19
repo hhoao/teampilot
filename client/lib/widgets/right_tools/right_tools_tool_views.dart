@@ -9,7 +9,7 @@ import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/content_search/content_search_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
-import '../../cubits/chat/model/session_workbench_view.dart';
+import '../../services/chat/model/session_workbench_view.dart';
 import '../../cubits/file_tree_cubit.dart';
 import '../../cubits/mailbox_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';

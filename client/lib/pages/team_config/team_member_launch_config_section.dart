@@ -8,7 +8,7 @@ import '../../widgets/settings/configured_status_badge.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
-import '../../cubits/team/launch_profile_selectors.dart';
+import '../../services/launch_profile/team/launch_profile_selectors.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/cli_preset.dart';
 import '../../models/app_provider_config.dart';

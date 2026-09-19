@@ -1,6 +1,6 @@
 import '../../../workspace_dnd/path_reference_formatter.dart';
-import '../../../terminal/fullscreen_cr_ack_config.dart';
-import '../../../terminal/fullscreen_input_readiness.dart';
+import '../../../chat/terminal/fullscreen_cr_ack_config.dart';
+import '../../../chat/terminal/fullscreen_input_readiness.dart';
 import '../cli_capability.dart';
 
 /// How a dropped file path is injected into a CLI's input box.

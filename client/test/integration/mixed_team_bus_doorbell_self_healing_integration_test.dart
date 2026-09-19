@@ -2,10 +2,10 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/agent_node.dart';
-import 'package:teampilot/services/team_bus/persistence/in_memory_bus_message_log.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
-import 'package:teampilot/services/team_bus/team_message.dart';
+import 'package:teampilot/services/chat/team_bus/agent_node.dart';
+import 'package:teampilot/services/chat/team_bus/persistence/in_memory_bus_message_log.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/team_bus/team_message.dart';
 
 import '../services/team_bus/support/fake_member_launcher.dart';
 import 'support/integration_prerequisites.dart';
@@ -28,10 +28,7 @@ void main() {
   setUp(() {
     IntegrationPrerequisites.resetHttpOverrides();
     launcher = FakeMemberLauncher();
-    bus = TeamBus(
-      launcher: launcher,
-      messageLog: InMemoryBusMessageLog(),
-    );
+    bus = TeamBus(launcher: launcher, messageLog: InMemoryBusMessageLog());
     bus.declareMember(
       AgentNode.test(
         memberId: 'team-lead',
@@ -83,7 +80,11 @@ void main() {
           isNotNull,
           reason: '$w owes a doorbell',
         );
-        expect(bus.isMemberInTurn(w), isFalse, reason: '$w not falsely working');
+        expect(
+          bus.isMemberInTurn(w),
+          isFalse,
+          reason: '$w not falsely working',
+        );
       }
 
       // 2. 走几轮看门狗(真实环境由 1s idle watch 驱动;这里受 5s doorbellRetryMs

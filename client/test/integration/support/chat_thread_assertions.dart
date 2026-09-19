@@ -1,8 +1,8 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/ai_history_cubit.dart';
-import 'package:teampilot/services/session/history/ai_history_pending_text.dart';
-import 'package:teampilot/services/terminal/pending_user_message.dart';
+import 'package:teampilot/services/chat/session/history/ai_history_pending_text.dart';
+import 'package:teampilot/services/chat/terminal/pending_user_message.dart';
 
 /// Plain text for any thread message (user or assistant).
 String chatThreadMessagePlainText(AiMessage m) =>

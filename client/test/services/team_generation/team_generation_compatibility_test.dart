@@ -9,7 +9,7 @@ import 'package:teampilot/services/cli/registry/capabilities/skill_capability.da
 import 'package:teampilot/services/cli/registry/capabilities/team_behavior_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/team_generation/team_generation_compatibility.dart';
+import 'package:teampilot/services/chat/team_generation/team_generation_compatibility.dart';
 
 CliPreset preset(String id, CliTool cli) => CliPreset(
   id: id,

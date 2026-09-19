@@ -3,7 +3,7 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/session_continue_overrides.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/session/session_continue_overrides_apply.dart';
+import 'package:teampilot/services/chat/session/session_continue_overrides_apply.dart';
 
 void main() {
   test(

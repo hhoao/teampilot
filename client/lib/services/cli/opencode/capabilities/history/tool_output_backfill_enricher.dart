@@ -4,7 +4,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 
 import '../../../../../utils/logging/logger.dart';
 import '../../../../io/filesystem.dart';
-import '../../../../session/history/session_history_context.dart';
+import '../../../../chat/session/history/session_history_context.dart';
 import '../../../registry/capabilities/history/tool_result_enricher.dart';
 
 /// opencode core-truncation marker: `...N bytes truncated...` /

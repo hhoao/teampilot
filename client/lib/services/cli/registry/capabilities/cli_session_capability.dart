@@ -1,8 +1,8 @@
 import '../../../../models/team_config.dart';
 import '../../../io/filesystem.dart';
-import '../../../launch/staging/manifest/work_plane_script_runner.dart';
+import '../../../chat/launch/staging/manifest/work_plane_script_runner.dart';
 import '../../../storage/runtime_layout.dart';
-import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../../chat/team_bus/member_bus_idle_endpoint.dart';
 import '../cli_capability.dart';
 import '../cli_tool_registry.dart';
 import '../config_profile/config_profile_context.dart';

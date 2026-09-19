@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
-import 'package:teampilot/services/launch/staging/manifest/work_plane_script_runner.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/work_plane_script_runner.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 
 void main() {

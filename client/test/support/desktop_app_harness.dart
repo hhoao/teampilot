@@ -86,7 +86,7 @@ import 'package:teampilot/services/run/workspace_run_platform_factory.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
-import 'package:teampilot/services/session/history/ai_history_loader.dart';
+import 'package:teampilot/services/chat/session/history/ai_history_loader.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
@@ -535,7 +535,7 @@ Future<SessionPreferencesCubit> testSessionPreferencesCubit() async {
   );
 }
 
-Future<LaunchProfileCubit> createTeamCubit({TeamLauncher? launcher}) async {
+Future<LaunchProfileCubit> createTeamCubit() async {
   final tmp = await Directory.systemTemp.createTemp('teams_widget_');
   final appData = await Directory.systemTemp.createTemp('teams_widget_app_');
   final repository = testLaunchProfileRepository(tmp);
@@ -544,7 +544,6 @@ Future<LaunchProfileCubit> createTeamCubit({TeamLauncher? launcher}) async {
     sessionRepository: SessionRepository(storage: fakeHomeStorage()),
     storage: fakeHomeStorage(),
     executableResolver: desktopHarnessExecutable,
-    launcher: launcher ?? (_, __) async {},
     appDataBasePath: appData.path,
     configProfileService: ConfigProfileService(
       basePath: appData.path,
@@ -585,13 +584,8 @@ class _HarnessProviderHttp implements ProviderUsageHttpClient {
 
 /// [testWidgets] uses a fake-async zone; futures from real disk I/O (temp dirs,
 /// team JSON) must be created inside [WidgetTester.runAsync] or they never complete.
-Future<LaunchProfileCubit> createTeamCubitInTest(
-  WidgetTester tester, {
-  TeamLauncher? launcher,
-}) async {
-  final cubit = await tester.runAsync(
-    () => createTeamCubit(launcher: launcher),
-  );
+Future<LaunchProfileCubit> createTeamCubitInTest(WidgetTester tester) async {
+  final cubit = await tester.runAsync(() => createTeamCubit());
   expect(cubit, isNotNull);
   return cubit!;
 }

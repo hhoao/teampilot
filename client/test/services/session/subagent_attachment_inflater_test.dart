@@ -10,9 +10,9 @@ import 'package:teampilot/services/cli/registry/capabilities/history/tool_result
 import 'package:teampilot/services/cli/registry/capabilities/shared_tool_call_resolvers.dart';
 import 'package:teampilot/services/cli/claude/capabilities/history/compatible_jsonl.dart';
 import 'package:teampilot/services/io/filesystem.dart';
-import 'package:teampilot/services/session/history/session_history_context.dart';
-import 'package:teampilot/services/session/history/subagent_attachment_inflater.dart';
-import 'package:teampilot/services/session/history/subagent_side_transcript_path.dart';
+import 'package:teampilot/services/chat/session/history/session_history_context.dart';
+import 'package:teampilot/services/chat/session/history/subagent_attachment_inflater.dart';
+import 'package:teampilot/services/chat/session/history/subagent_side_transcript_path.dart';
 
 import '../../support/in_memory_filesystem.dart';
 

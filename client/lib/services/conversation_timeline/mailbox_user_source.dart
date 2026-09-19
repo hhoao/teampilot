@@ -1,7 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
-import '../team_bus/persistence/bus_message_log.dart';
-import '../team_bus/team_bus.dart';
+import '../chat/team_bus/persistence/bus_message_log.dart';
+import '../chat/team_bus/team_bus.dart';
 import 'timeline_models.dart';
 
 /// Splits mailbox log records into timeline body events (read user mail) and
@@ -26,10 +26,7 @@ partitionMailboxUserRecords(List<LoggedMessage> records) {
       );
     } else {
       unread.add(
-        UnreadUserMail(
-          id: record.message.id,
-          content: record.message.content,
-        ),
+        UnreadUserMail(id: record.message.id, content: record.message.content),
       );
     }
   }

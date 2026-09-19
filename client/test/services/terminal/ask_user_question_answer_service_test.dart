@@ -11,9 +11,9 @@ import 'package:teampilot/services/cli/registry/capabilities/chat_interaction_ca
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/team/terminal_activity_tracker.dart';
-import 'package:teampilot/services/terminal/ask_user_question_answer_service.dart';
-import 'package:teampilot/services/terminal/terminal_launch_controller.dart';
+import 'package:teampilot/services/chat/terminal/terminal_activity_tracker.dart';
+import 'package:teampilot/services/chat/terminal/ask_user_question_answer_service.dart';
+import 'package:teampilot/services/chat/terminal/terminal_launch_controller.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import '../../support/rust_lib_test_init.dart';
 import '../../support/in_memory_filesystem.dart';
@@ -32,7 +32,7 @@ class _FakeShell extends TerminalSession {
           confirmFallback: const Duration(milliseconds: 50),
           validateLaunch: false,
         ),
-             fs: InMemoryFilesystem(),
+        fs: InMemoryFilesystem(),
       );
 
   final bool connected;
@@ -337,34 +337,37 @@ void main() {
     expect((result as AskUserAnswerFailed).reason, 'missing_request_id');
   });
 
-  test('answerPermission unsupported cli without gate returns failed', () async {
-    final store = AskUserAnswerPendingStore();
-    final service = AskUserQuestionAnswerService(
-      registry: _registryWith(
-        const ClaudeChatInteraction(),
+  test(
+    'answerPermission unsupported cli without gate returns failed',
+    () async {
+      final store = AskUserAnswerPendingStore();
+      final service = AskUserQuestionAnswerService(
+        registry: _registryWith(
+          const ClaudeChatInteraction(),
+          cli: CliTool.claude,
+        ),
+        store: store,
+      );
+      final result = await service.answerPermission(
         cli: CliTool.claude,
-      ),
-      store: store,
-    );
-    final result = await service.answerPermission(
-      cli: CliTool.claude,
-      sessionId: 'sess-a',
-      memberId: 'member-1',
-      requestId: 'perm-1',
-      kind: AgentPermissionReplyKind.allowOnce,
-    );
-
-    expect(result, isA<AskUserAnswerFailed>());
-    expect((result as AskUserAnswerFailed).reason, 'unsupported');
-    expect(
-      store.take(
         sessionId: 'sess-a',
         memberId: 'member-1',
         requestId: 'perm-1',
-      ),
-      isNull,
-    );
-  });
+        kind: AgentPermissionReplyKind.allowOnce,
+      );
+
+      expect(result, isA<AskUserAnswerFailed>());
+      expect((result as AskUserAnswerFailed).reason, 'unsupported');
+      expect(
+        store.take(
+          sessionId: 'sess-a',
+          memberId: 'member-1',
+          requestId: 'perm-1',
+        ),
+        isNull,
+      );
+    },
+  );
 
   test('hook-hold channel completes the gate with an allow reply', () async {
     final gate = GeneralPermissionRequestGate();
@@ -470,7 +473,11 @@ void main() {
       kind: AgentPermissionReplyKind.always,
     );
     expect(result, isA<AskUserAnswerOk>());
-    final entry = store.take(sessionId: 's', memberId: 'm', requestId: 'perm-1');
+    final entry = store.take(
+      sessionId: 's',
+      memberId: 'm',
+      requestId: 'perm-1',
+    );
     expect(entry?.permissionReply, 'always');
   });
 

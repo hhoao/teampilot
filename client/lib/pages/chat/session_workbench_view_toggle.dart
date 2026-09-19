@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../cubits/chat/session_launch_retry.dart';
+import '../../services/chat/launch/session_launch_retry.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';

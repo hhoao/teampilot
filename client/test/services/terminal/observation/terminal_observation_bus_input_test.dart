@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/terminal/observation/terminal_observation_bus.dart';
 import 'package:teampilot/services/terminal/observation/terminal_observation_events.dart';
 import 'package:teampilot/services/terminal/observation/terminal_observation_seat.dart';
-import 'package:teampilot/services/terminal/terminal_launch_phase.dart';
+import 'package:teampilot/services/chat/terminal/terminal_launch_phase.dart';
 
 void main() {
   late TerminalObservationSeat seat;
@@ -30,12 +30,15 @@ void main() {
     expect(out, [0, 2]);
   });
 
-  test('transforms run by ascending order; equal order keeps bind sequence', () {
-    bus.addInputTransform(_Append(order: 200, suffix: 2));
-    bus.addInputTransform(_Append(order: 100, suffix: 1));
-    bus.addInputTransform(_Append(order: 100, suffix: 9));
-    expect(bus.transformInput(Uint8List.fromList([0])), [0, 1, 9, 2]);
-  });
+  test(
+    'transforms run by ascending order; equal order keeps bind sequence',
+    () {
+      bus.addInputTransform(_Append(order: 200, suffix: 2));
+      bus.addInputTransform(_Append(order: 100, suffix: 1));
+      bus.addInputTransform(_Append(order: 100, suffix: 9));
+      expect(bus.transformInput(Uint8List.fromList([0])), [0, 1, 9, 2]);
+    },
+  );
 
   test('throwing transform is skipped; later transform still runs', () {
     bus.addInputTransform(_ThrowingTransform(order: 100));

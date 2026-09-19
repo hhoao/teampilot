@@ -6,7 +6,7 @@ import 'package:teampilot/services/cli/session_lifecycle/cli_session_manifest_st
 import 'package:teampilot/services/cli/cursor/capabilities/session_lifecycle.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
-import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
+import 'package:teampilot/services/chat/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
 
 import '../../../../support/cursor_warm_tier_manifest_paths.dart';

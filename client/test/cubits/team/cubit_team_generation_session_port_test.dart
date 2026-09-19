@@ -1,15 +1,15 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/team/cubit_team_generation_session_port.dart';
+import 'package:teampilot/services/launch_profile/team/cubit_team_generation_session_port.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/history/ai_history_loader.dart';
-import 'package:teampilot/services/session/history/failed_message_store.dart';
-import 'package:teampilot/services/session/history/session_history_context_builder.dart';
+import 'package:teampilot/services/chat/session/history/ai_history_loader.dart';
+import 'package:teampilot/services/chat/session/history/failed_message_store.dart';
+import 'package:teampilot/services/chat/session/history/session_history_context_builder.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 

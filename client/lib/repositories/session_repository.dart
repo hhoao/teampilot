@@ -16,9 +16,9 @@ import '../models/session_member_binding.dart';
 import '../models/team_config.dart';
 import '../services/storage/runtime_layout.dart';
 import '../services/io/filesystem.dart';
-import '../services/session/session_member_cli_locks.dart';
-import '../services/session/session_team_counter.dart';
-import '../services/session/team_session_member_plan.dart';
+import '../services/chat/session/session_member_cli_locks.dart';
+import '../services/chat/session/session_team_counter.dart';
+import '../services/chat/session/team_session_member_plan.dart';
 import '../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/storage/home_storage.dart';
@@ -28,7 +28,7 @@ import '../services/workspace/target_liveness.dart';
 import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
 import '../services/workspace/workspace_target_remap.dart';
-import '../services/session/session_lifecycle_service.dart';
+import '../services/chat/session/session_lifecycle_service.dart';
 import '../services/provider/workspace_trust_provisioner.dart';
 import '../utils/lock_pool.dart';
 import '../utils/logging/logger.dart';
@@ -110,10 +110,10 @@ class SessionRepository {
     final key = _workspacesIndexCacheKey();
     final current = _workspacesIndexByRoot[key];
     if (current != null) {
-      _workspacesIndexByRoot[key] = List<Workspace>.unmodifiable(
-        [for (final existing in current)
-          if (existing.workspaceId != workspaceId) existing],
-      );
+      _workspacesIndexByRoot[key] = List<Workspace>.unmodifiable([
+        for (final existing in current)
+          if (existing.workspaceId != workspaceId) existing,
+      ]);
     }
     await WorkspaceIndexStore(await _fs()).remove(workspaceId);
   }
@@ -457,8 +457,7 @@ class SessionRepository {
           : existing.defaultProfileId,
       folders: existing.folders,
       rootSandboxEnvOptIn: rootSandboxEnvOptIn ?? existing.rootSandboxEnvOptIn,
-      injectSessionSshMcp:
-          injectSessionSshMcp ?? existing.injectSessionSshMcp,
+      injectSessionSshMcp: injectSessionSshMcp ?? existing.injectSessionSshMcp,
       updatedAt: now,
     );
     await _writeManifest(fs, updated);
@@ -716,17 +715,13 @@ class SessionRepository {
     // Return the full session list — sessions that did not reference the
     // from target are unchanged but must still be present, or callers that
     // patch in-memory snapshots would drop them.
-    final writtenById = {
-      for (final s in writtenSessions) s.sessionId: s,
-    };
-    final allSessions = [
-      for (final s in sessions)
-        writtenById[s.sessionId] ?? s,
-    ]..sort((a, b) {
-      final au = a.updatedAt != 0 ? a.updatedAt : a.createdAt;
-      final bu = b.updatedAt != 0 ? b.updatedAt : b.createdAt;
-      return bu.compareTo(au);
-    });
+    final writtenById = {for (final s in writtenSessions) s.sessionId: s};
+    final allSessions =
+        [for (final s in sessions) writtenById[s.sessionId] ?? s]..sort((a, b) {
+          final au = a.updatedAt != 0 ? a.updatedAt : a.createdAt;
+          final bu = b.updatedAt != 0 ? b.updatedAt : b.createdAt;
+          return bu.compareTo(au);
+        });
     return (workspace: updated, sessions: allSessions);
   }
 
@@ -798,8 +793,8 @@ class SessionRepository {
     // Launch already has the workspace snapshot; skip re-reading every
     // session.json (listSessionIdsForWorkspace) — create only needs folders /
     // placement fields, and directory listing happens lazily on manifest read.
-    Workspace? workspace = knownWorkspace != null &&
-            knownWorkspace.workspaceId == workspaceId
+    Workspace? workspace =
+        knownWorkspace != null && knownWorkspace.workspaceId == workspaceId
         ? knownWorkspace
         : null;
     if (workspace != null) {
@@ -825,12 +820,8 @@ class SessionRepository {
       );
 
       if (members != null) {
-        final stagedIds = {
-          for (final m in members) m.rosterMemberId,
-        };
-        final planIds = {
-          for (final m in plan.members) m.rosterMemberId,
-        };
+        final stagedIds = {for (final m in members) m.rosterMemberId};
+        final planIds = {for (final m in plan.members) m.rosterMemberId};
         if (stagedIds.length != members.length ||
             !setEquals(stagedIds, planIds)) {
           throw StateError(
@@ -882,7 +873,8 @@ class SessionRepository {
     final now = DateTime.now().millisecondsSinceEpoch;
     final resolvedExpertKey = expertKey?.trim() ?? '';
     final resolvedWorkflowId = purpose == SessionPurpose.teamGeneration
-        ? (workflowId.trim().isEmpty || !isValidTeamGenerationWorkflowId(workflowId.trim())
+        ? (workflowId.trim().isEmpty ||
+                  !isValidTeamGenerationWorkflowId(workflowId.trim())
               ? throw ArgumentError.value(
                   workflowId,
                   'workflowId',
@@ -948,9 +940,7 @@ class SessionRepository {
     await _rememberWorkspace(
       baseIds.contains(sessionId)
           ? workspace
-          : workspace.copyWith(
-              sessionIds: [sessionId, ...baseIds],
-            ),
+          : workspace.copyWith(sessionIds: [sessionId, ...baseIds]),
     );
     return (session: session, workspace: workspace);
   }

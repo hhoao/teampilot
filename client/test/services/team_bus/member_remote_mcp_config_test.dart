@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
-import 'package:teampilot/services/team_bus/remote/member_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/remote/member_bus_mcp_config.dart';
 
 void main() {
   final localEndpoint = Uri.parse('http://127.0.0.1:5005/mcp');

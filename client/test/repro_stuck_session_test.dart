@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/history/ai_history_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/history/session_history_context.dart';
+import 'package:teampilot/services/chat/session/history/session_history_context.dart';
 
 void main() {
   const realDbPath =

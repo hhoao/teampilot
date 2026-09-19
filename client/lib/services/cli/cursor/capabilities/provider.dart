@@ -4,7 +4,7 @@ import '../../../../models/app_provider_config.dart';
 import '../../../../models/credential_action_result.dart';
 import '../../../../models/credential_probe.dart';
 import '../../../../models/team_config.dart';
-import '../../../launch/staging/manifest/work_plane_paths.dart';
+import '../../../chat/launch/staging/manifest/work_plane_paths.dart';
 import '../../../provider/credential_binding.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/passthrough_provider_form_capability.dart';

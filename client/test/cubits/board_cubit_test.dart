@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/board_cubit.dart';
 import 'package:teampilot/models/board_column.dart';
-import 'package:teampilot/services/team_bus/tasks/team_task.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/team_bus/tasks/team_task.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 
 /// Minimal double exposing only listTasks(), which is all BoardCubit reads.
 class _StubBus implements TeamBus {

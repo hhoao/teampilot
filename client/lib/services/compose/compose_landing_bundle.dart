@@ -5,7 +5,7 @@ import '../../models/landing_launch_context.dart';
 import '../../models/team_config.dart';
 import '../expert_hub/expert_landing_preflight.dart';
 import '../expert_hub/expert_member_resolver.dart';
-import '../launch/staging/layered_config_bundle.dart';
+import '../chat/launch/staging/layered_config_bundle.dart';
 
 /// Slash enable-list for Landing / review compose.
 ///

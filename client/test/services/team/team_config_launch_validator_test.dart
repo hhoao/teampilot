@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/team/team_config_launch_validator.dart';
+import 'package:teampilot/services/chat/launch/team_config_launch_validator.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -133,26 +133,29 @@ void main() {
       },
     );
 
-    test('flags stale team preset id as missing team default and member provider', () async {
-      final team = TeamProfile(
-        id: 'team',
-        name: 'Team',
-        cli: CliTool.claude,
-        teamMode: TeamMode.native,
-        activePresetId: 'missing-preset',
-        members: [inheritMember('alice')],
-      );
+    test(
+      'flags stale team preset id as missing team default and member provider',
+      () async {
+        final team = TeamProfile(
+          id: 'team',
+          name: 'Team',
+          cli: CliTool.claude,
+          teamMode: TeamMode.native,
+          activePresetId: 'missing-preset',
+          members: [inheritMember('alice')],
+        );
 
-      final result = await validator.validate(team);
+        final result = await validator.validate(team);
 
-      expect(
-        result.issues.map((i) => i.kind),
-        containsAll([
-          TeamConfigIssueKind.teamDefaultProviderMissing,
-          TeamConfigIssueKind.memberProviderMissing,
-        ]),
-      );
-    });
+        expect(
+          result.issues.map((i) => i.kind),
+          containsAll([
+            TeamConfigIssueKind.teamDefaultProviderMissing,
+            TeamConfigIssueKind.memberProviderMissing,
+          ]),
+        );
+      },
+    );
 
     test('passes when members inherit team preset via globalPresets', () async {
       const preset = CliPreset(

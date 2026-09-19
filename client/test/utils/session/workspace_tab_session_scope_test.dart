@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 import 'package:teampilot/utils/session/workspace_tab_session_scope.dart';
@@ -8,7 +8,9 @@ import '../../support/post_frame_test_harness.dart';
 
 ChatCubit _cubit() => ChatCubit(
   executableResolver: () => '/bin/true',
-  automationRepository: testAutomationRepository(), storage: testHomeStorage, );
+  automationRepository: testAutomationRepository(),
+  storage: testHomeStorage,
+);
 
 ChatTab _tab(String id) => ChatTab(
   info: ChatTabInfo(id: id, title: id, subtitle: ''),
@@ -129,7 +131,7 @@ void main() {
       chat = ChatCubit(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
-                        storage: testHomeStorage,
+        storage: testHomeStorage,
       );
     });
 

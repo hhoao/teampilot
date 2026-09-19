@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/artifacts/artifact_partial_meta.dart';
+import 'package:teampilot/services/chat/team_bus/artifacts/artifact_partial_meta.dart';
 
 void main() {
   final base = ArtifactPartialMeta(

@@ -1,7 +1,7 @@
 import '../../models/workspace_launch_context.dart';
 import '../../models/workspace_topology.dart';
 import '../io/filesystem.dart';
-import '../session/session_lifecycle_service.dart';
+import '../chat/session/session_lifecycle_service.dart';
 import '../workspace/workspace_tools_scope.dart';
 
 /// Resolves the work-plane [Filesystem] for a session seat.

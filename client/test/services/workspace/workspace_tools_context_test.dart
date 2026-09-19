@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/workspace_folder.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/workspace/workspace_tools_context.dart';
 import 'package:teampilot/services/workspace/workspace_tools_scope.dart';

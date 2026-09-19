@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/terminal/pty_automation_needle.dart';
+import 'package:teampilot/services/chat/terminal/pty_automation_needle.dart';
 
 void main() {
   test('forText uses bus prefix for doorbell notices', () {
@@ -33,7 +33,10 @@ void main() {
     expect(needle.contains('\n'), isFalse);
     expect(needle.contains('\r'), isFalse);
     expect(needle, contains('}'));
-    expect(needle.length, lessThanOrEqualTo(PtyAutomationNeedle.maxNeedleChars));
+    expect(
+      needle.length,
+      lessThanOrEqualTo(PtyAutomationNeedle.maxNeedleChars),
+    );
   });
 
   test('collapsedPasteNeedle extracts Claude Code paste chrome', () {

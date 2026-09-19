@@ -1,19 +1,19 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/chat_session_shell_factory.dart';
-import 'package:teampilot/cubits/chat/chat_tab_store.dart';
-import 'package:teampilot/cubits/chat/member_connector.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
-import 'package:teampilot/cubits/chat/tab_member_coordination_factory.dart';
-import 'package:teampilot/cubits/chat/member_input_ready_wait.dart';
-import 'package:teampilot/cubits/chat/tab_member_materializer.dart';
-import 'package:teampilot/cubits/chat/tab_member_pty_delivery.dart';
-import 'package:teampilot/cubits/chat/tab_session_runtime_coordinator.dart';
+import 'package:teampilot/services/chat/chat_session_shell_factory.dart';
+import 'package:teampilot/services/chat/chat_tab_store.dart';
+import 'package:teampilot/services/chat/launch/member_connector.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab_info.dart';
+import 'package:teampilot/services/chat/tab_member_coordination_factory.dart';
+import 'package:teampilot/services/chat/team_bus/member_input_ready_wait.dart';
+import 'package:teampilot/services/chat/team_bus/tab_member_materializer.dart';
+import 'package:teampilot/services/chat/runtime/tab_member_pty_delivery.dart';
+import 'package:teampilot/services/chat/runtime/tab_session_runtime_coordinator.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
-import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
-import 'package:teampilot/services/terminal/member_pty_inject_service.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/terminal/fullscreen_pty_automation.dart';
+import 'package:teampilot/services/chat/terminal/member_pty_inject_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../../integration/support/connected_recording_shell.dart';
@@ -246,11 +246,7 @@ void main() {
       );
 
       await harness.delivery
-          .retryMemberDelivery(
-            _sessionId,
-            _memberId,
-            TeamBus.doorbellNotice,
-          )
+          .retryMemberDelivery(_sessionId, _memberId, TeamBus.doorbellNotice)
           .timeout(const Duration(seconds: 5));
 
       expect(

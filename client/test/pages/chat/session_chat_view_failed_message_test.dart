@@ -2,8 +2,8 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/ai_history_seat.dart';
 import 'package:teampilot/models/failed_message_record.dart';
-import 'package:teampilot/services/session/history/ai_history_loader.dart';
-import 'package:teampilot/services/session/history/failed_message_store.dart';
+import 'package:teampilot/services/chat/session/history/ai_history_loader.dart';
+import 'package:teampilot/services/chat/session/history/failed_message_store.dart';
 
 import '../../support/in_memory_filesystem.dart';
 

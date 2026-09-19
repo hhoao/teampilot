@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/tasks/file_task_log.dart';
-import 'package:teampilot/services/team_bus/tasks/team_task.dart';
+import 'package:teampilot/services/chat/team_bus/tasks/file_task_log.dart';
+import 'package:teampilot/services/chat/team_bus/tasks/team_task.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 

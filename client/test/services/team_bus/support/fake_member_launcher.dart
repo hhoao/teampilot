@@ -1,5 +1,5 @@
-import 'package:teampilot/services/team_bus/member_launcher.dart';
-import 'package:teampilot/services/team_bus/team_message.dart';
+import 'package:teampilot/services/chat/team_bus/member_launcher.dart';
+import 'package:teampilot/services/chat/team_bus/team_message.dart';
 
 /// 手写 fake（仓库无 mock 库）：记录调用以供断言。
 class FakeMemberLauncher implements MemberLauncher {

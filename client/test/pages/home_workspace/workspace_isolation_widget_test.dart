@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
 import 'package:teampilot/models/workspace_terminal_session_spec.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
@@ -10,7 +10,9 @@ import '../../support/in_memory_filesystem.dart';
 TerminalSession _testSession() => TerminalSession(
   executable: '/bin/bash',
   validateLaunch: false,
-  parseExecutable: false, fs: InMemoryFilesystem(), );
+  parseExecutable: false,
+  fs: InMemoryFilesystem(),
+);
 
 ChatTab _tab(String id) => ChatTab(
   info: ChatTabInfo(id: id, title: id, subtitle: ''),
@@ -24,7 +26,7 @@ void main() {
     final cubit = ChatCubit(
       executableResolver: () => '/bin/true',
       automationRepository: testAutomationRepository(),
-                             storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     cubit.setActiveWorkspace('personal-A');
     cubit.tabStore.registerSession(_tab('a-sess'));

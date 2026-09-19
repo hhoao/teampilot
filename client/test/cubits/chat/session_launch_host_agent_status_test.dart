@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
-import 'package:teampilot/cubits/chat/session_data_store.dart';
-import 'package:teampilot/cubits/chat/session_launch_host.dart';
+import 'package:teampilot/services/chat/session/session_data_store.dart';
+import 'package:teampilot/services/chat/host/session_launch_host.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_runtime/agent_event_gateway.dart';
 import 'package:teampilot/services/agent_runtime/agent_runtime.dart';
@@ -13,86 +13,84 @@ import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import 'package:teampilot/services/agent_status/agent_status_seat_lookup.dart';
 import 'package:teampilot/services/agent_status/ask_user_answer_pending_store.dart';
-import 'package:teampilot/services/prompt_delivery/prompt_delivery.dart';
-import 'package:teampilot/services/prompt_delivery/prompt_delivery_coordinator.dart';
-import 'package:teampilot/services/prompt_delivery/prompt_delivery_store.dart';
+import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery.dart';
+import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery_coordinator.dart';
+import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery_store.dart';
 
 void main() {
   // restart-session path needs a full host fake; the
   // restart path calls clearAgentStatusSession → clearAgentStatusSessionSeats.
   group('clearAgentStatusSessionSeats', () {
-    test('clears attention and seat lookup for session, keeps other sessions', () {
-      final attention = AgentAttentionCubit(pruneInterval: null);
-      addTearDown(attention.close);
-      final seats = AgentStatusSeatLookup();
-      final pending = AskUserAnswerPendingStore();
+    test(
+      'clears attention and seat lookup for session, keeps other sessions',
+      () {
+        final attention = AgentAttentionCubit(pruneInterval: null);
+        addTearDown(attention.close);
+        final seats = AgentStatusSeatLookup();
+        final pending = AskUserAnswerPendingStore();
 
-      attention.applyEvent(
-        sessionId: 's1',
-        memberId: 'm1',
-        event: const AgentStatusEvent(state: AgentSeatAttention.waiting),
-        skipPermissions: false,
-      );
-      attention.applyEvent(
-        sessionId: 's2',
-        memberId: 'm1',
-        event: const AgentStatusEvent(state: AgentSeatAttention.waiting),
-        skipPermissions: false,
-      );
-      seats.registerSeat(
-        sessionId: 's1',
-        memberId: 'm1',
-        cli: CliTool.claude,
-        skipPermissions: false,
-      );
-      seats.registerSeat(
-        sessionId: 's2',
-        memberId: 'm1',
-        cli: CliTool.codex,
-        skipPermissions: false,
-      );
-      pending.put(
-        sessionId: 's1',
-        memberId: 'm1',
-        entry: const AskUserAnswerPendingEntry(requestId: 'req-1'),
-      );
-      pending.put(
-        sessionId: 's2',
-        memberId: 'm1',
-        entry: const AskUserAnswerPendingEntry(requestId: 'req-2'),
-      );
-
-      clearAgentStatusSessionSeats(
-        attention: attention,
-        seatLookup: seats,
-        askUserAnswerPendingStore: pending,
-        sessionId: 's1',
-      );
-
-      expect(attention.state.attentionFor(sessionId: 's1', memberId: 'm1'), isNull);
-      expect(
-        attention.state.attentionFor(sessionId: 's2', memberId: 'm1'),
-        AgentSeatAttention.waiting,
-      );
-      expect(seats.resolveCli('s1', 'm1'), isNull);
-      expect(seats.resolveCli('s2', 'm1'), CliTool.codex);
-      expect(
-        pending.take(
+        attention.applyEvent(
           sessionId: 's1',
           memberId: 'm1',
-          requestId: 'req-1',
-        ),
-        isNull,
-      );
-      expect(
-        pending.take(
+          event: const AgentStatusEvent(state: AgentSeatAttention.waiting),
+          skipPermissions: false,
+        );
+        attention.applyEvent(
           sessionId: 's2',
           memberId: 'm1',
-          requestId: 'req-2',
-        ),
-        isNotNull,
-      );
-    });
+          event: const AgentStatusEvent(state: AgentSeatAttention.waiting),
+          skipPermissions: false,
+        );
+        seats.registerSeat(
+          sessionId: 's1',
+          memberId: 'm1',
+          cli: CliTool.claude,
+          skipPermissions: false,
+        );
+        seats.registerSeat(
+          sessionId: 's2',
+          memberId: 'm1',
+          cli: CliTool.codex,
+          skipPermissions: false,
+        );
+        pending.put(
+          sessionId: 's1',
+          memberId: 'm1',
+          entry: const AskUserAnswerPendingEntry(requestId: 'req-1'),
+        );
+        pending.put(
+          sessionId: 's2',
+          memberId: 'm1',
+          entry: const AskUserAnswerPendingEntry(requestId: 'req-2'),
+        );
+
+        clearAgentStatusSessionSeats(
+          attention: attention,
+          seatLookup: seats,
+          askUserAnswerPendingStore: pending,
+          sessionId: 's1',
+        );
+
+        expect(
+          attention.state.attentionFor(sessionId: 's1', memberId: 'm1'),
+          isNull,
+        );
+        expect(
+          attention.state.attentionFor(sessionId: 's2', memberId: 'm1'),
+          AgentSeatAttention.waiting,
+        );
+        expect(seats.resolveCli('s1', 'm1'), isNull);
+        expect(seats.resolveCli('s2', 'm1'), CliTool.codex);
+        expect(
+          pending.take(sessionId: 's1', memberId: 'm1', requestId: 'req-1'),
+          isNull,
+        );
+        expect(
+          pending.take(sessionId: 's2', memberId: 'm1', requestId: 'req-2'),
+          isNotNull,
+        );
+      },
+    );
   });
 
   group('SessionLaunchHost.clearAgentStatusSeat', () {
@@ -121,19 +119,11 @@ void main() {
       host.clearAgentStatusSeat(sessionId: 's1', memberId: 'm1');
 
       expect(
-        pending.take(
-          sessionId: 's1',
-          memberId: 'm1',
-          requestId: 'req-1',
-        ),
+        pending.take(sessionId: 's1', memberId: 'm1', requestId: 'req-1'),
         isNull,
       );
       expect(
-        pending.take(
-          sessionId: 's1',
-          memberId: 'm2',
-          requestId: 'req-2',
-        ),
+        pending.take(sessionId: 's1', memberId: 'm2', requestId: 'req-2'),
         isNotNull,
       );
     });
@@ -158,24 +148,26 @@ void main() {
       expect(harness.attention.stateFor(seat).isWorking, isTrue);
     });
 
-    test('restoreSession replays journal and resolves unknown submits',
-        () async {
-      final harness = _RuntimeCompositionHarness();
-      addTearDown(harness.dispose);
-      const seat = RuntimeSeatKey(sessionId: 's1', memberId: 'm1');
-      await harness.submit(seat, 'recover me');
+    test(
+      'restoreSession replays journal and resolves unknown submits',
+      () async {
+        final harness = _RuntimeCompositionHarness();
+        addTearDown(harness.dispose);
+        const seat = RuntimeSeatKey(sessionId: 's1', memberId: 'm1');
+        await harness.submit(seat, 'recover me');
 
-      // Simulate an app restart: a fresh runtime over the same journal/store
-      // must replay the journaled hook state and flip the unconfirmed submit.
-      final restored = _RuntimeCompositionHarness.restartOf(harness);
-      addTearDown(restored.dispose);
-      await restored.restoreSession(seat.sessionId);
+        // Simulate an app restart: a fresh runtime over the same journal/store
+        // must replay the journaled hook state and flip the unconfirmed submit.
+        final restored = _RuntimeCompositionHarness.restartOf(harness);
+        addTearDown(restored.dispose);
+        await restored.restoreSession(seat.sessionId);
 
-      expect(
-        (await restored.deliveryStore.activeFor(seat)).single.state,
-        PromptDeliveryState.submittedUnknown,
-      );
-    });
+        expect(
+          (await restored.deliveryStore.activeFor(seat)).single.state,
+          PromptDeliveryState.submittedUnknown,
+        );
+      },
+    );
   });
 }
 
@@ -199,11 +191,11 @@ class _AttentionView {
   final AgentAttentionCubit _cubit;
 
   _AttentionState stateFor(RuntimeSeatKey seat) => _AttentionState(
-        _cubit.state.attentionFor(
-          sessionId: seat.sessionId,
-          memberId: seat.memberId,
-        ),
-      );
+    _cubit.state.attentionFor(
+      sessionId: seat.sessionId,
+      memberId: seat.memberId,
+    ),
+  );
 }
 
 class _AttentionState {
@@ -342,11 +334,11 @@ class _HostWithAgentStatus implements SessionLaunchHost {
 
   @override
   ChatDataSnapshot stateSnapshot() => const ChatDataSnapshot(
-        workspaces: [],
-        sessions: [],
-        visibleWorkspaces: [],
-        visibleSessions: [],
-      );
+    workspaces: [],
+    sessions: [],
+    visibleWorkspaces: [],
+    visibleSessions: [],
+  );
 
   @override
   void setMaterializingInFlight(bool value) {}

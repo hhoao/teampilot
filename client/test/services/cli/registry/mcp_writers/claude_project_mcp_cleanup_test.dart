@@ -7,7 +7,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/mcp/mcp_registry_service.dart';
 import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../../support/in_memory_filesystem.dart';

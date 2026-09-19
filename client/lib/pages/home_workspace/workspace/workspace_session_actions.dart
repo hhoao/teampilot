@@ -9,7 +9,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../../widgets/app_toast/app_toast.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../cubits/chat/member_input_ready_wait.dart';
+import '../../../services/chat/team_bus/member_input_ready_wait.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/expert_hub_cubit.dart';

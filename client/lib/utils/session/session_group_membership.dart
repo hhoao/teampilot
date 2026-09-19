@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../../cubits/chat/model/chat_state.dart';
+import '../../cubits/chat_state.dart';
 import '../../models/app_session.dart';
 import '../../models/session_group.dart';
 import '../../models/workspace.dart';

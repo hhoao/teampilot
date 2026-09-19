@@ -5,8 +5,8 @@ import 'package:path/path.dart' as p;
 
 import '../../../../../utils/logging/logger.dart';
 import '../../../../io/filesystem.dart';
-import '../../../../session/history/session_history_context.dart';
-import '../../../../session/history/subagent_side_transcript_path.dart';
+import '../../../../chat/session/history/session_history_context.dart';
+import '../../../../chat/session/history/subagent_side_transcript_path.dart';
 import 'ai_transcript.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 import '../../../../storage/storage_failure.dart';

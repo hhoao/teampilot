@@ -9,8 +9,8 @@ import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_shell_launch_plan.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
-import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
-import 'package:teampilot/services/terminal/pending_user_message.dart';
+import 'package:teampilot/services/chat/team_bus/bus_user_line_capture.dart';
+import 'package:teampilot/services/chat/terminal/pending_user_message.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport.dart';
 
@@ -87,7 +87,7 @@ void main() {
           }) {
             return Future.value(transport);
           },
-                               fs: InMemoryFilesystem(),
+      fs: InMemoryFilesystem(),
     );
   });
 

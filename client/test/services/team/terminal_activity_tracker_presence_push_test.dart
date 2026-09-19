@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team/terminal_activity_tracker.dart';
+import 'package:teampilot/services/chat/terminal/terminal_activity_tracker.dart';
 
 /// Minimal visible-content PTY payload (a few printable glyphs).
 Uint8List _visible(String s) => Uint8List.fromList(s.codeUnits);
@@ -49,7 +49,9 @@ void main() {
     await _waitFor(() => seen.isNotEmpty);
     // Give a wrongly-armed second push time to surface before asserting dedupe.
     await Future<void>.delayed(const Duration(milliseconds: 200));
-    expect(seen, [true], reason: 'deduped: only the false→true flip is reported');
+    expect(seen, [
+      true,
+    ], reason: 'deduped: only the false→true flip is reported');
   });
 
   test('bootMaxWait path fires without a quiet window', () async {
@@ -67,19 +69,22 @@ void main() {
     expect(seen, [true]);
   });
 
-  test('reset cancels the pending timer and clears the reported value', () async {
-    final seen = <bool>[];
-    final t = TerminalActivityTracker(
-      bootQuietAfter: const Duration(milliseconds: 50),
-      bootMaxWait: const Duration(milliseconds: 200),
-      onBootFrameChanged: seen.add,
-    );
-    t.notePtyBytes(_visible('booting'));
-    t.reset();
-    // Negative case: wait well past bootMaxWait so a leaked timer would fire.
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    expect(seen, isEmpty, reason: 'reset must cancel the one-shot push');
-  });
+  test(
+    'reset cancels the pending timer and clears the reported value',
+    () async {
+      final seen = <bool>[];
+      final t = TerminalActivityTracker(
+        bootQuietAfter: const Duration(milliseconds: 50),
+        bootMaxWait: const Duration(milliseconds: 200),
+        onBootFrameChanged: seen.add,
+      );
+      t.notePtyBytes(_visible('booting'));
+      t.reset();
+      // Negative case: wait well past bootMaxWait so a leaked timer would fire.
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+      expect(seen, isEmpty, reason: 'reset must cancel the one-shot push');
+    },
+  );
 
   test('disposePresencePush stops further pushes', () async {
     final seen = <bool>[];
@@ -94,19 +99,21 @@ void main() {
     expect(seen, isEmpty);
   });
 
-  test('listener attached after bytes arrived still gets the transition',
-      () async {
-    final t = TerminalActivityTracker(
-      bootQuietAfter: const Duration(milliseconds: 50),
-      bootMaxWait: const Duration(milliseconds: 400),
-    );
-    // Bytes arrive with no listener wired — no timer is armed.
-    t.notePtyBytes(_visible('late attach'));
-    final seen = <bool>[];
-    t.setBootFrameListener(seen.add);
-    await _waitFor(() => seen.isNotEmpty);
-    expect(seen, [true], reason: 'attach must arm the pending transition');
-  });
+  test(
+    'listener attached after bytes arrived still gets the transition',
+    () async {
+      final t = TerminalActivityTracker(
+        bootQuietAfter: const Duration(milliseconds: 50),
+        bootMaxWait: const Duration(milliseconds: 400),
+      );
+      // Bytes arrive with no listener wired — no timer is armed.
+      t.notePtyBytes(_visible('late attach'));
+      final seen = <bool>[];
+      t.setBootFrameListener(seen.add);
+      await _waitFor(() => seen.isNotEmpty);
+      expect(seen, [true], reason: 'attach must arm the pending transition');
+    },
+  );
 
   test('detach then reattach (rebind) delivers the next transition', () async {
     final first = <bool>[];
@@ -129,8 +136,9 @@ void main() {
 
     t.notePtyBytes(_visible('boot two'));
     await _waitFor(() => revived.isNotEmpty);
-    expect(revived, [true],
-        reason: 'rebind must revive the push on the reused tracker');
+    expect(revived, [
+      true,
+    ], reason: 'rebind must revive the push on the reused tracker');
     expect(first, [true], reason: 'the detached listener stays detached');
   });
 

@@ -7,8 +7,8 @@ import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_constants.dart';
 import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_http.dart';
 import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_operations.dart';
 import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_targets.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 
@@ -57,8 +57,7 @@ void main() {
   }) => SessionSshMcpHttpAdapter(
     operations: SessionSshMcpOperations(executor: executor),
     resolveContext:
-        resolveContext ??
-        (id, _) async => id == 'sess-1' ? context() : null,
+        resolveContext ?? (id, _) async => id == 'sess-1' ? context() : null,
   );
 
   Future<HttpClientResponse> postSsh({

@@ -1,13 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import '../support/post_frame_test_harness.dart';
 import '../support/in_memory_filesystem.dart';
 
 ChatCubit _cubit() => ChatCubit(
   executableResolver: () => '/bin/true',
-  automationRepository: testAutomationRepository(), storage: fakeHomeStorage(), );
+  automationRepository: testAutomationRepository(),
+  storage: fakeHomeStorage(),
+);
 
 ChatTab _tab(String id) => ChatTab(
   info: ChatTabInfo(id: id, title: id, subtitle: ''),
@@ -15,7 +17,7 @@ ChatTab _tab(String id) => ChatTab(
 );
 
 class _RunningShell extends TerminalSession {
-  _RunningShell() : super(executable: '/bin/true', fs: InMemoryFilesystem(), );
+  _RunningShell() : super(executable: '/bin/true', fs: InMemoryFilesystem());
 
   @override
   bool get isRunning => true;
@@ -30,14 +32,16 @@ void main() {
       cubit.setActiveWorkspace('A');
       cubit.tabStore.registerSession(_tab('a1'));
       expect(cubit.tabStore.activeWorkspaceId, 'A');
-      expect(cubit.tabStore.tabsForWorkspace('A').map((t) => t.info.id),
-          ['a1']);
+      expect(cubit.tabStore.tabsForWorkspace('A').map((t) => t.info.id), [
+        'a1',
+      ]);
 
       cubit.setActiveWorkspace('B');
       expect(cubit.tabStore.activeWorkspaceId, 'B');
       // The registry is global; per-workspace scoping filters by workspaceId.
-      expect(cubit.tabStore.tabsForWorkspace('A').map((t) => t.info.id),
-          ['a1']);
+      expect(cubit.tabStore.tabsForWorkspace('A').map((t) => t.info.id), [
+        'a1',
+      ]);
 
       cubit.setActiveWorkspace('A');
       expect(cubit.tabStore.activeWorkspaceId, 'A');

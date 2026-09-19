@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_invocation.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
-import 'package:teampilot/services/session/launch_command_builder.dart';
+import 'package:teampilot/services/chat/session/launch_command_builder.dart';
 
 void main() {
   test('splits a wsl command into executable and prefix args', () {

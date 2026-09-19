@@ -7,11 +7,11 @@ import 'package:teampilot/models/team_generation_settings.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
-import 'package:teampilot/services/team_generation/models/team_generation_job.dart';
-import 'package:teampilot/services/team_generation/models/team_generation_launch.dart';
-import 'package:teampilot/services/team_generation/team_generation_job_store.dart';
-import 'package:teampilot/services/team_generation/team_generation_recovery_service.dart';
-import 'package:teampilot/services/team_generation/team_generation_session_port.dart';
+import 'package:teampilot/services/chat/team_generation/models/team_generation_job.dart';
+import 'package:teampilot/services/chat/team_generation/models/team_generation_launch.dart';
+import 'package:teampilot/services/chat/team_generation/team_generation_job_store.dart';
+import 'package:teampilot/services/chat/team_generation/team_generation_recovery_service.dart';
+import 'package:teampilot/services/chat/team_generation/team_generation_session_port.dart';
 
 import '../../support/in_memory_filesystem.dart';
 

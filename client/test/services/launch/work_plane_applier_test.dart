@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/launch/staging/manifest/apply_plan.dart';
-import 'package:teampilot/services/launch/staging/manifest/blob_store.dart';
-import 'package:teampilot/services/launch/staging/manifest/work_plane_applier.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/apply_plan.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/blob_store.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/work_plane_applier.dart';
 
 import '../../support/in_memory_filesystem.dart';
 

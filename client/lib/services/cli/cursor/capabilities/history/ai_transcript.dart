@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'package:ai_message_core/ai_message_core.dart';
 
 import '../../provider/cursor_windows_home_junction.dart';
-import '../../../../session/history/ai_history_cache_token.dart';
-import '../../../../session/history/ai_history_watch_meta.dart';
-import '../../../../session/history/session_history_context.dart';
+import '../../../../chat/session/history/ai_history_cache_token.dart';
+import '../../../../chat/session/history/ai_history_watch_meta.dart';
+import '../../../../chat/session/history/session_history_context.dart';
 
 /// Locate Cursor agent transcript under CURSOR_CONFIG_DIR / projects.
 Future<AiTranscriptBundle?> locateCursorTranscript(

@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
+import '../../../chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 
 /// Mixed-mode defaults merged into `$HOME/.cursor/cli-config.json`.
 ///

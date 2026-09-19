@@ -17,7 +17,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';

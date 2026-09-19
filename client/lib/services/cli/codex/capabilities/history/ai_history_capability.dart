@@ -2,9 +2,9 @@ import 'package:ai_message_core/ai_message_core.dart';
 
 import '../../../registry/capabilities/ai_history_capability.dart';
 import '../../../../io/filesystem.dart';
-import '../../../../session/history/ai_history_cache_token.dart';
-import '../../../../session/history/jsonl_transcript_page_reader.dart';
-import '../../../../session/history/session_history_context.dart';
+import '../../../../chat/session/history/ai_history_cache_token.dart';
+import '../../../../chat/session/history/jsonl_transcript_page_reader.dart';
+import '../../../../chat/session/history/session_history_context.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 import '../../../registry/capabilities/history/tool_result_enricher.dart';
 import '../../../registry/capabilities/shared_tool_call_resolvers.dart';

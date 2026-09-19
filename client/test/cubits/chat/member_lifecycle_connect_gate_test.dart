@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/member_lifecycle_connect_gate.dart';
+import 'package:teampilot/services/chat/launch/member_lifecycle_connect_gate.dart';
 
 void main() {
   group('lifecycle gate reason helpers', () {

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:teampilot/services/team/terminal_activity_tracker.dart';
+import 'package:teampilot/services/chat/terminal/terminal_activity_tracker.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../../support/recording_pty_transport.dart';
@@ -53,7 +53,7 @@ class ConnectedRecordingShell {
           }) {
             return Future.value(transport);
           },
-                                     fs: InMemoryFilesystem(),
+      fs: InMemoryFilesystem(),
     );
     session.connect(workingDirectory: Directory.systemTemp.path);
     session.onViewportResize(80, 24);

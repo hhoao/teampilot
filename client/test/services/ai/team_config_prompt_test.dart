@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/ai/team_config_prompt.dart';
+import 'package:teampilot/services/ai_generation/team_config_prompt.dart';
 
 void main() {
   test(

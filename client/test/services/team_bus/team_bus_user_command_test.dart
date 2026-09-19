@@ -1,8 +1,8 @@
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/agent_node.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
-import 'package:teampilot/services/team_bus/team_message.dart';
+import 'package:teampilot/services/chat/team_bus/agent_node.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/team_bus/team_message.dart';
 
 import 'support/fake_member_launcher.dart';
 
@@ -83,24 +83,27 @@ void main() {
     expect(bus.deliverUserCommand('leader', '   '), isEmpty);
   });
 
-  test('memberMailRecords contains unread user mail after deliverUserCommand', () async {
-    final bus = TeamBus(launcher: FakeMemberLauncher());
-    bus.declareMember(
-      AgentNode.test(
-        memberId: 'leader',
-        lifecycle: MemberLifecycle.running,
-        activity: MemberActivity.active,
-      ),
-    );
+  test(
+    'memberMailRecords contains unread user mail after deliverUserCommand',
+    () async {
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'leader',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+        ),
+      );
 
-    final id = bus.deliverUserCommand('leader', 'hello');
-    expect(id, isNotEmpty);
+      final id = bus.deliverUserCommand('leader', 'hello');
+      expect(id, isNotEmpty);
 
-    final records = await bus.memberMailRecords('leader');
-    expect(records, hasLength(1));
-    expect(records.single.message.id, id);
-    expect(records.single.message.from, TeamBus.userSenderId);
-    expect(records.single.message.content, 'hello');
-    expect(records.single.read, isFalse);
-  });
+      final records = await bus.memberMailRecords('leader');
+      expect(records, hasLength(1));
+      expect(records.single.message.id, id);
+      expect(records.single.message.from, TeamBus.userSenderId);
+      expect(records.single.message.content, 'hello');
+      expect(records.single.read, isFalse);
+    },
+  );
 }

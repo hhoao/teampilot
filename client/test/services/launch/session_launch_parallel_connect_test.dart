@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/chat_tab_store.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
-import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
-import 'package:teampilot/cubits/chat/session_launch_service.dart';
+import 'package:teampilot/services/chat/chat_tab_store.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab_info.dart';
+import 'package:teampilot/services/chat/model/session_connect_request.dart';
+import 'package:teampilot/services/chat/launch/session_launch_service.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
-import 'package:teampilot/services/launch/connect/member_connect_stage.dart';
+import 'package:teampilot/services/chat/launch/connect/member_connect_stage.dart';
 
 import '../../support/in_memory_filesystem.dart';
 

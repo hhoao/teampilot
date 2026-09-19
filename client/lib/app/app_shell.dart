@@ -38,25 +38,25 @@ import '../services/event/event_transport_server.dart';
 import '../services/event/presence_event_bridge.dart';
 import '../services/event/session_lifecycle_transport_codec.dart';
 import 'event_transport_home.dart';
-import '../services/prompt_delivery/prompt_delivery_coordinator.dart';
-import '../services/prompt_delivery/prompt_delivery_store.dart';
+import '../services/chat/prompt_delivery/prompt_delivery_coordinator.dart';
+import '../services/chat/prompt_delivery/prompt_delivery_store.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
 import '../services/agent_status/ask_user_answer_pending_store.dart';
 import '../services/agent_status/ask_user_question_hook_gate.dart';
 import '../services/agent_status/exit_plan_mode_hook_gate.dart';
 import '../services/agent_status/general_permission_request_gate.dart';
-import '../services/terminal/ask_user_question_answer_service.dart';
-import '../services/terminal/exit_plan_mode_approval_service.dart';
-import '../services/team_generation/mcp/team_composer_mcp_handler.dart';
+import '../services/chat/terminal/ask_user_question_answer_service.dart';
+import '../services/chat/terminal/exit_plan_mode_approval_service.dart';
+import '../services/chat/team_generation/mcp/team_composer_mcp_handler.dart';
 import '../models/app_session.dart';
 import '../services/catalog/catalog_runtime.dart';
 import '../services/catalog/catalog_production.dart';
-import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
-import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
+import '../services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
+import '../services/chat/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/remote/local_credential_exporter.dart';
 import '../services/remote/remote_cli_readiness.dart';
 import '../services/editor_platform/editor_platform.dart';
-import '../services/launch/launch_factory.dart';
+import '../services/chat/launch/launch_factory.dart';
 import '../cubits/board_cubit.dart';
 import '../utils/session/workspace_tab_session_scope.dart';
 import '../cubits/mailbox_cubit.dart';
@@ -92,8 +92,8 @@ import '../services/workbench/workbench_layout_persistence.dart';
 import '../services/workbench/workbench_shell_launcher.dart';
 import '../services/workbench/workbench_strip_navigator.dart';
 import '../services/editor/markdown_view_mode_store.dart';
-import '../services/session/history/ai_history_loader.dart';
-import '../services/session/history/session_history_context_builder.dart';
+import '../services/chat/session/history/ai_history_loader.dart';
+import '../services/chat/session/history/session_history_context_builder.dart';
 import '../cubits/ai_feature_settings_cubit.dart';
 import '../cubits/discovery_settings_cubit.dart';
 import '../cubits/config_cubit.dart';
@@ -177,9 +177,9 @@ import '../services/automation/automation_bus_gateway.dart';
 import '../services/automation/automation_dispatcher.dart';
 import '../services/automation/automation_schedule_calculator.dart';
 import '../services/automation/automation_scheduler.dart';
-import '../services/launch/staging/session_runtime_plan_builder.dart';
+import '../services/chat/launch/staging/session_runtime_plan_builder.dart';
 import '../services/home_workspace/home_workspace_ui_cache.dart';
-import '../services/team/team_clone_service.dart';
+import '../services/team_config/team_clone_service.dart';
 import '../services/team_hub/composite_team_hub_source.dart';
 import '../services/team_hub/git_registry_team_hub_source.dart';
 import '../services/team_hub/team_hub_favorites_store.dart';
@@ -230,7 +230,7 @@ import '../services/cli/opencode/provider/opencode_models_service.dart';
 import '../services/provider/api_model_catalog_service.dart';
 import '../services/cli/cursor/provider/cursor_agent_models_service.dart';
 import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart';
-import '../cubits/chat/tab_member_pty_delivery.dart';
+import '../services/chat/runtime/tab_member_pty_delivery.dart';
 import '../services/provider/provider_credential_host_runner.dart';
 import '../services/provider_usage/managed_provider_secret_store.dart';
 import '../services/provider_usage/managed_provider_cli_row_janitor.dart';
@@ -260,7 +260,7 @@ import '../services/termux/termux_transport_profile.dart';
 import '../services/termux/termux_work_ops_message.dart';
 import '../services/ssh/ssh_profile_connection_tester.dart';
 import '../services/notification/notification_recorder.dart';
-import '../services/session/session_lifecycle_service.dart';
+import '../services/chat/session/session_lifecycle_service.dart';
 import '../services/skill/skill_acquisition_engine.dart';
 import '../services/skill/skill_fetch_service.dart';
 import '../services/plugin/marketplace_shared_store.dart';
@@ -1441,7 +1441,6 @@ Future<AppShell> buildAppShell({
       identityProvisioner: identityProvisioner,
       storage: homeStorage,
       executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
-      cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
       llmConfigPathOverride: llmConfigPathOverrideForLaunch,
       storageRootsResolver: () async => homeStorage.context,
       lifecycleService: sessionLifecycleService,

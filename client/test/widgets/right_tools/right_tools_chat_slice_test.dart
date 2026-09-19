@@ -1,6 +1,6 @@
 // test/widgets/right_tools/right_tools_chat_slice_test.dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/widgets/right_tools/right_tools_tool_views.dart';
@@ -68,7 +68,7 @@ void main() {
       chat = ChatCubit(
         executableResolver: () => '/bin/true',
         automationRepository: testAutomationRepository(),
-                        storage: testHomeStorage,
+        storage: testHomeStorage,
       );
     });
     tearDown(() async {

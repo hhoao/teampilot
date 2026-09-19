@@ -8,7 +8,7 @@ import '../../models/runtime_target.dart';
 import '../host/host_shell_argv.dart';
 import '../host/host_wsl_argv.dart';
 import '../host/process_run_handle.dart';
-import '../session/launch_command_builder.dart';
+import '../chat/session/launch_command_builder.dart';
 import '../storage/remote_file_store.dart';
 import 'run_target_resolver.dart';
 
@@ -46,10 +46,7 @@ typedef SshProcessSpawner =
     });
 
 class ProcessRunResult {
-  const ProcessRunResult({
-    required this.exitCode,
-    required this.stop,
-  });
+  const ProcessRunResult({required this.exitCode, required this.stop});
 
   final Future<int> exitCode;
   final Future<void> Function() stop;
@@ -58,11 +55,9 @@ class ProcessRunResult {
 /// Spawns built-in `process` launch configs on the resolved local / WSL / SSH
 /// target (mirrors [WorkspaceShellConnector] transport selection).
 class ProcessRunExecutor {
-  ProcessRunExecutor({
-    ProcessSpawner? spawner,
-    SshProcessSpawner? sshSpawner,
-  }) : _spawner = spawner ?? _defaultSpawner,
-       _sshSpawner = sshSpawner;
+  ProcessRunExecutor({ProcessSpawner? spawner, SshProcessSpawner? sshSpawner})
+    : _spawner = spawner ?? _defaultSpawner,
+      _sshSpawner = sshSpawner;
 
   final ProcessSpawner _spawner;
   final SshProcessSpawner? _sshSpawner;

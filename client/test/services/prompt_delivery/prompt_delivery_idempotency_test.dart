@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_runtime/runtime_event.dart';
-import 'package:teampilot/services/prompt_delivery/prompt_delivery.dart';
-import 'package:teampilot/services/prompt_delivery/prompt_delivery_coordinator.dart';
-import 'package:teampilot/services/prompt_delivery/prompt_delivery_store.dart';
+import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery.dart';
+import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery_coordinator.dart';
+import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery_store.dart';
 
 class _RecordingCommands implements PromptDeliveryCommands {
   int submitCount = 0;

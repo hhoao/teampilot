@@ -1,6 +1,6 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/session/history/session_history_pagination.dart';
+import 'package:teampilot/services/chat/session/history/session_history_pagination.dart';
 
 void main() {
   AiMessage msg(String id, String text) => AiMessage(

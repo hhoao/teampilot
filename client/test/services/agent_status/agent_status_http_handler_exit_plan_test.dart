@@ -7,8 +7,8 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_runtime/agent_event_gateway.dart';
 import 'package:teampilot/services/agent_status/exit_plan_mode_hook_gate.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 
 void main() {
   setUpAll(() {

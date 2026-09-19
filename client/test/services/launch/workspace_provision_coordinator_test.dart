@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/runtime_target.dart';
-import 'package:teampilot/services/launch/workspace/workspace_provision_coordinator.dart';
-import 'package:teampilot/services/launch/workspace/workspace_provisioner.dart';
+import 'package:teampilot/services/chat/launch/workspace/workspace_provision_coordinator.dart';
+import 'package:teampilot/services/chat/launch/workspace/workspace_provisioner.dart';
 import 'package:teampilot/services/storage/work_target_canonicalizer.dart';
 
 void main() {

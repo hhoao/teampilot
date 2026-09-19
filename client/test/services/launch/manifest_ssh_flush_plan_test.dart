@@ -1,7 +1,7 @@
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/launch/staging/manifest/launch_manifest.dart';
-import 'package:teampilot/services/launch/staging/manifest/manifest_ssh_flush_plan.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/launch_manifest.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/manifest_ssh_flush_plan.dart';
 
 import '../../support/in_memory_filesystem.dart';
 

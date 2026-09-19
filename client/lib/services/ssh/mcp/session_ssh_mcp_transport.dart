@@ -3,9 +3,9 @@ import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../cli/registry/capabilities/team_behavior_capability.dart';
 import '../../cli/registry/cli_tool_registry.dart';
-import '../../team_bus/mcp/bus_bridge_locator.dart';
-import '../../team_bus/mcp/teammate_bus_mcp_config.dart';
-import '../../team_bus/remote/member_bus_mcp_config.dart';
+import '../../chat/team_bus/mcp/bus_bridge_locator.dart';
+import '../../chat/team_bus/mcp/teammate_bus_mcp_config.dart';
+import '../../chat/team_bus/remote/member_bus_mcp_config.dart';
 import 'session_ssh_mcp_constants.dart';
 
 /// Whether [workspace] has at least one `ssh:*` folder.

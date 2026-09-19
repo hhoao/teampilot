@@ -10,7 +10,7 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/editor/markdown_view_mode_store.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/workbench/ai_tool_file_open_coordinator.dart';
 import 'package:teampilot/services/workbench/session_member_filesystem.dart';
@@ -35,87 +35,84 @@ void main() {
         usesPosixPaths: false,
       );
 
-  test(
-    'prefers member ssh filesystem over active local tools plane',
-    () async {
-      final localFs = InMemoryFilesystem();
-      final remoteFs = InMemoryFilesystem();
-      remoteFs.files['/remote/src/foo.dart'] = 'remote\n';
+  test('prefers member ssh filesystem over active local tools plane', () async {
+    final localFs = InMemoryFilesystem();
+    final remoteFs = InMemoryFilesystem();
+    remoteFs.files['/remote/src/foo.dart'] = 'remote\n';
 
-      final home = testRuntimeContext('/home-root');
-      final localCtx = RuntimeContext(
-        target: RuntimeTarget.local(),
-        filesystem: localFs,
-        home: '/local-home',
-        cwd: '/local',
-        appDataRoot: '/local-home',
-        paths: home.paths,
-      );
-      final lifecycle = SessionLifecycleService(
-        storage: fakeHomeStorage(),
-        storageRootsResolver: () async => localCtx,
-        workContextResolver: (target) async {
-          if (target.kind == RuntimeKind.ssh) {
-            return RuntimeContext(
-              target: target,
-              filesystem: remoteFs,
-              home: '/remote',
-              cwd: '/remote',
-              appDataRoot: '/remote/app',
-              paths: home.paths,
-            );
-          }
-          return localCtx;
-        },
-      );
+    final home = testRuntimeContext('/home-root');
+    final localCtx = RuntimeContext(
+      target: RuntimeTarget.local(),
+      filesystem: localFs,
+      home: '/local-home',
+      cwd: '/local',
+      appDataRoot: '/local-home',
+      paths: home.paths,
+    );
+    final lifecycle = SessionLifecycleService(
+      storage: fakeHomeStorage(),
+      storageRootsResolver: () async => localCtx,
+      workContextResolver: (target) async {
+        if (target.kind == RuntimeKind.ssh) {
+          return RuntimeContext(
+            target: target,
+            filesystem: remoteFs,
+            home: '/remote',
+            cwd: '/remote',
+            appDataRoot: '/remote/app',
+            paths: home.paths,
+          );
+        }
+        return localCtx;
+      },
+    );
 
-      final session = AppSession(
-        sessionId: 's1',
-        workspaceId: workspaceId,
-        sessionTeam: 'team',
-        cliTeamName: 'team-1',
-        folders: const [
-          WorkspaceFolder(path: '/local', targetId: 'local'),
-          WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
-        ],
-        memberTargets: const {'builder': 'ssh:p1'},
-        createdAt: 1,
-      );
-      final ctx = launchCtx(session);
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: workspaceId,
+      sessionTeam: 'team',
+      cliTeamName: 'team-1',
+      folders: const [
+        WorkspaceFolder(path: '/local', targetId: 'local'),
+        WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ],
+      memberTargets: const {'builder': 'ssh:p1'},
+      createdAt: 1,
+    );
+    final ctx = launchCtx(session);
 
-      // Active tools plane follows local cwd — the bug source for remote seats.
-      final toolsScope = WorkspaceToolsScopeState(
-        tools: WorkspaceToolsContext(targetId: 'local', context: localCtx),
-        roots: const ['/local'],
-        targetSlices: [
-          WorkspaceTargetSlice(
-            targetId: 'local',
-            tools: WorkspaceToolsContext(targetId: 'local', context: localCtx),
-            roots: const ['/local'],
-          ),
-        ],
-        effectiveFolders: session.folders,
-        resolving: false,
-      );
+    // Active tools plane follows local cwd — the bug source for remote seats.
+    final toolsScope = WorkspaceToolsScopeState(
+      tools: WorkspaceToolsContext(targetId: 'local', context: localCtx),
+      roots: const ['/local'],
+      targetSlices: [
+        WorkspaceTargetSlice(
+          targetId: 'local',
+          tools: WorkspaceToolsContext(targetId: 'local', context: localCtx),
+          roots: const ['/local'],
+        ),
+      ],
+      effectiveFolders: session.folders,
+      resolving: false,
+    );
 
-      final resolved = await resolveSessionMemberFilesystem(
+    final resolved = await resolveSessionMemberFilesystem(
+      lifecycle: lifecycle,
+      launchContext: ctx,
+      memberId: 'builder',
+      toolsScope: toolsScope,
+    );
+
+    expect(identical(resolved, remoteFs), isTrue);
+    expect(
+      sessionMemberFolderPaths(
         lifecycle: lifecycle,
         launchContext: ctx,
         memberId: 'builder',
-        toolsScope: toolsScope,
-      );
-
-      expect(identical(resolved, remoteFs), isTrue);
-      expect(
-        sessionMemberFolderPaths(
-          lifecycle: lifecycle,
-          launchContext: ctx,
-          memberId: 'builder',
-        ),
-        ['/remote'],
-      );
-    },
-  );
+      ),
+      ['/remote'],
+    );
+  });
 
   test(
     'tool file open uses member filesystem so remote absolute paths resolve',
@@ -219,10 +216,9 @@ void main() {
 
       expect(result.isMissing, isFalse);
       expect(result.resolvedPath, '/remote/src/foo.dart');
-      expect(
-        editor.state.bucket(workspaceId).openFilePaths,
-        ['/remote/src/foo.dart'],
-      );
+      expect(editor.state.bucket(workspaceId).openFilePaths, [
+        '/remote/src/foo.dart',
+      ]);
     },
   );
 
@@ -297,46 +293,47 @@ void main() {
     },
   );
 
-  test('falls back to launchWorkContext when tools scope omits member target', () async {
-    final remoteFs = InMemoryFilesystem();
-    final home = testRuntimeContext('/home-root');
-    final lifecycle = SessionLifecycleService(
-      storage: fakeHomeStorage(),
-      storageRootsResolver: () async => home,
-      workContextResolver: (target) async {
-        if (target.kind == RuntimeKind.ssh) {
-          return RuntimeContext(
-            target: target,
-            filesystem: remoteFs,
-            home: '/remote',
-            cwd: '/remote',
-            appDataRoot: '/remote/app',
-            paths: home.paths,
-          );
-        }
-        return home;
-      },
-    );
-    final session = AppSession(
-      sessionId: 's1',
-      workspaceId: workspaceId,
-      folders: const [
-        WorkspaceFolder(path: '/local', targetId: 'local'),
-        WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
-      ],
-      memberTargets: const {'builder': 'ssh:p1'},
-      createdAt: 1,
-    );
+  test(
+    'falls back to launchWorkContext when tools scope omits member target',
+    () async {
+      final remoteFs = InMemoryFilesystem();
+      final home = testRuntimeContext('/home-root');
+      final lifecycle = SessionLifecycleService(
+        storage: fakeHomeStorage(),
+        storageRootsResolver: () async => home,
+        workContextResolver: (target) async {
+          if (target.kind == RuntimeKind.ssh) {
+            return RuntimeContext(
+              target: target,
+              filesystem: remoteFs,
+              home: '/remote',
+              cwd: '/remote',
+              appDataRoot: '/remote/app',
+              paths: home.paths,
+            );
+          }
+          return home;
+        },
+      );
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: workspaceId,
+        folders: const [
+          WorkspaceFolder(path: '/local', targetId: 'local'),
+          WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+        ],
+        memberTargets: const {'builder': 'ssh:p1'},
+        createdAt: 1,
+      );
 
-    final fs = await resolveSessionMemberFilesystem(
-      lifecycle: lifecycle,
-      launchContext: launchCtx(session),
-      memberId: 'builder',
-      toolsScope: const WorkspaceToolsScopeState(
-        resolving: false,
-      ),
-    );
+      final fs = await resolveSessionMemberFilesystem(
+        lifecycle: lifecycle,
+        launchContext: launchCtx(session),
+        memberId: 'builder',
+        toolsScope: const WorkspaceToolsScopeState(resolving: false),
+      );
 
-    expect(identical(fs, remoteFs), isTrue);
-  });
+      expect(identical(fs, remoteFs), isTrue);
+    },
+  );
 }

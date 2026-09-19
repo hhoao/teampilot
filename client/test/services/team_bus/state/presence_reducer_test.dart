@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/member_state.dart';
-import 'package:teampilot/services/team_bus/state/bus_effect.dart';
-import 'package:teampilot/services/team_bus/state/bus_event.dart';
-import 'package:teampilot/services/team_bus/state/presence.dart';
-import 'package:teampilot/services/team_bus/state/presence_reducer.dart';
-import 'package:teampilot/services/team_bus/team_message.dart';
+import 'package:teampilot/services/chat/team_bus/member_state.dart';
+import 'package:teampilot/services/chat/team_bus/state/bus_effect.dart';
+import 'package:teampilot/services/chat/team_bus/state/bus_event.dart';
+import 'package:teampilot/services/chat/team_bus/state/presence.dart';
+import 'package:teampilot/services/chat/team_bus/state/presence_reducer.dart';
+import 'package:teampilot/services/chat/team_bus/team_message.dart';
 
 PresenceTransition _run(
   Presence s,
@@ -14,11 +14,7 @@ PresenceTransition _run(
 }) => PresenceReducer.reduce(
   s,
   e,
-  PresenceContext(
-    memberId: 'm',
-    hasUnread: hasUnread,
-    doorbelled: doorbelled,
-  ),
+  PresenceContext(memberId: 'm', hasUnread: hasUnread, doorbelled: doorbelled),
 );
 
 const _declared = Presence.declared();
@@ -67,14 +63,17 @@ void main() {
     expect(t.effects, isEmpty);
   });
 
-  test('MaterializeCompleted → running + turnDoneReady + Doorbell (honest: active only on real turn)', () {
-    final t = _run(
-      const Presence(MemberLifecycle.materializing, MemberActivity.none),
-      const MaterializeCompleted(),
-    );
-    expect(t.presence, _atPrompt);
-    expect(t.effects.single, isA<DoorbellEffect>());
-  });
+  test(
+    'MaterializeCompleted → running + turnDoneReady + Doorbell (honest: active only on real turn)',
+    () {
+      final t = _run(
+        const Presence(MemberLifecycle.materializing, MemberActivity.none),
+        const MaterializeCompleted(),
+      );
+      expect(t.presence, _atPrompt);
+      expect(t.effects.single, isA<DoorbellEffect>());
+    },
+  );
 
   group('MailArrived', () {
     test('declared + unread → mailQueued, no doorbell', () {

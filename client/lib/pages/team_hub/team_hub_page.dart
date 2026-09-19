@@ -8,7 +8,7 @@ import '../../cubits/team_hub_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_team.dart';
 import '../../services/app/platform_utils.dart';
-import '../../services/team/team_clone_service.dart';
+import '../../services/team_config/team_clone_service.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../../widgets/settings/workspace_pane_header.dart';
 import '../home_workspace/home_workspace_route.dart';

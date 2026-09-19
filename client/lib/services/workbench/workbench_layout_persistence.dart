@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import '../../cubits/chat_cubit.dart';
-import '../../cubits/chat/model/chat_tab.dart';
+import '../chat/model/chat_tab.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../cubits/workbench/workbench_tab_bar.dart';
@@ -159,9 +159,7 @@ class WorkbenchLayoutPersistence {
           if (_chat.tabStore.openTabBySessionId(sessionId) != null) continue;
           final session = _chat.state.sessions
               .where(
-                (s) =>
-                    s.sessionId == sessionId &&
-                    s.workspaceId == workspaceId,
+                (s) => s.sessionId == sessionId && s.workspaceId == workspaceId,
               )
               .firstOrNull;
           if (session == null) continue;

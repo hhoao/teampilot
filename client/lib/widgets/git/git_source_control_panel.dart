@@ -14,7 +14,7 @@ import '../../cubits/app_provider_cubit.dart';
 import '../../models/ai_feature_setting.dart';
 import '../../models/diff_identity.dart';
 import '../../pages/git_graph/open_git_graph.dart';
-import '../../services/ai/ai_feature_setting_resolver.dart';
+import '../../services/ai_generation/ai_feature_setting_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_status.dart';

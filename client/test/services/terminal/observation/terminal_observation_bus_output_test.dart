@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/terminal/observation/terminal_observation_bus.dart';
 import 'package:teampilot/services/terminal/observation/terminal_observation_events.dart';
 import 'package:teampilot/services/terminal/observation/terminal_observation_seat.dart';
-import 'package:teampilot/services/terminal/terminal_launch_phase.dart';
+import 'package:teampilot/services/chat/terminal/terminal_launch_phase.dart';
 
 void main() {
   late TerminalObservationSeat seat;

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/agent_node.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
-import 'package:teampilot/services/team_bus/team_message.dart';
+import 'package:teampilot/services/chat/team_bus/agent_node.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/team_bus/team_message.dart';
 
 import 'support/fake_member_launcher.dart';
 
@@ -227,28 +227,31 @@ void main() {
     expect(node.activity, MemberActivity.turnDoneReady);
   });
 
-  test('onMemberIdle retries delivery instead of re-pasting when already doorbelled', () {
-    final launcher = FakeMemberLauncher();
-    final bus = TeamBus(launcher: launcher);
-    final node = AgentNode.test(
-      memberId: 'leader',
-      lifecycle: MemberLifecycle.running,
-      activity: MemberActivity.active,
-    );
-    bus.declareMember(node);
-    node.doorbelled = true;
-    node.inbox.deliver(
-      TeamMessage(id: '1', from: 'w', to: 'leader', content: 'x'),
-    );
+  test(
+    'onMemberIdle retries delivery instead of re-pasting when already doorbelled',
+    () {
+      final launcher = FakeMemberLauncher();
+      final bus = TeamBus(launcher: launcher);
+      final node = AgentNode.test(
+        memberId: 'leader',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      );
+      bus.declareMember(node);
+      node.doorbelled = true;
+      node.inbox.deliver(
+        TeamMessage(id: '1', from: 'w', to: 'leader', content: 'x'),
+      );
 
-    bus.onMemberIdle('leader');
+      bus.onMemberIdle('leader');
 
-    expect(launcher.woken, isEmpty);
-    expect(launcher.retried, [
-      (memberId: 'leader', notice: TeamBus.doorbellNotice),
-    ]);
-    expect(node.activity, MemberActivity.turnDoneReady);
-  });
+      expect(launcher.woken, isEmpty);
+      expect(launcher.retried, [
+        (memberId: 'leader', notice: TeamBus.doorbellNotice),
+      ]);
+      expect(node.activity, MemberActivity.turnDoneReady);
+    },
+  );
 
   test(
     'repeated idle edges with one unread ring the doorbell exactly once',

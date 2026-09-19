@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/workspace_folder.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -21,7 +21,7 @@ void main() {
         resolved.add(target.id);
         return home;
       },
-                                               storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     final session = AppSession(
       sessionId: 's1',
@@ -56,7 +56,7 @@ void main() {
           resolved.add(target.id);
           return target.kind == RuntimeKind.ssh ? remote : home;
         },
-                                                 storage: fakeHomeStorage(),
+        storage: fakeHomeStorage(),
       );
       final session = AppSession(
         sessionId: 's2',
@@ -91,7 +91,7 @@ void main() {
                 )
               : home;
         },
-                                                 storage: fakeHomeStorage(filesystem: InMemoryFilesystem()),
+        storage: fakeHomeStorage(filesystem: InMemoryFilesystem()),
       );
       final session = AppSession(
         sessionId: 's3',

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/session/session_member_cli_locks.dart';
+import 'package:teampilot/services/chat/session/session_member_cli_locks.dart';
 
 void main() {
   group('resolveSessionMemberCliLocks', () {
@@ -35,28 +35,27 @@ void main() {
       expect(locks.containsKey('builder-1'), isFalse);
     });
 
-    test('mixed member with explicit cli locks that tool, not team default', () {
-      const team = TeamProfile(
-        id: 't1',
-        name: 'Team',
-        teamMode: TeamMode.mixed,
-        cli: CliTool.claude,
-        members: [
-          TeamMemberConfig(
-            id: 'worker',
-            name: 'Worker',
-            cli: CliTool.cursor,
-          ),
-        ],
-      );
+    test(
+      'mixed member with explicit cli locks that tool, not team default',
+      () {
+        const team = TeamProfile(
+          id: 't1',
+          name: 'Team',
+          teamMode: TeamMode.mixed,
+          cli: CliTool.claude,
+          members: [
+            TeamMemberConfig(id: 'worker', name: 'Worker', cli: CliTool.cursor),
+          ],
+        );
 
-      final locks = resolveSessionMemberCliLocks(
-        team: team,
-        rosterMembers: team.members,
-      );
+        final locks = resolveSessionMemberCliLocks(
+          team: team,
+          rosterMembers: team.members,
+        );
 
-      expect(locks, {'worker': CliTool.cursor});
-    });
+        expect(locks, {'worker': CliTool.cursor});
+      },
+    );
 
     test('keys use type id builder, never builder-0 instance ids', () {
       const team = TeamProfile(

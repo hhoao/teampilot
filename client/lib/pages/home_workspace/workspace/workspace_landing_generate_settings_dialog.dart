@@ -10,12 +10,12 @@ import '../../../models/ai_feature_setting.dart';
 import '../../../models/cli_preset.dart';
 import '../../../models/team_config.dart';
 import '../../../models/team_generation_settings.dart';
-import '../../../services/ai/ai_feature_setting_resolver.dart';
+import '../../../services/ai_generation/ai_feature_setting_resolver.dart';
 import '../../../services/cli/registry/cli_display_name.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/storage/home_storage.dart';
-import '../../../services/team_generation/team_generation_settings_store.dart';
+import '../../../services/chat/team_generation/team_generation_settings_store.dart';
 import '../../../widgets/cli_launch_config/launch_four_tuple_picker.dart';
 import '../../../widgets/compose/compose_model_preset_chip.dart';
 

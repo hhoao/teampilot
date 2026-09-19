@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/awareness_plugin.dart';
-import 'package:teampilot/services/session/member_role_provision.dart';
-import 'package:teampilot/services/team_bus/bus_awareness_prompt.dart';
+import 'package:teampilot/services/chat/session/member_role_provision.dart';
+import 'package:teampilot/services/chat/team_bus/bus_awareness_prompt.dart';
 
 void main() {
   test('awareness plugin injects via experimental.chat.system.transform', () {
@@ -29,10 +29,7 @@ void main() {
     final prompt = opencodeBusAwarenessPrompt(member: member);
     expect(
       prompt,
-      BusAwarenessPrompt.additionalContext(
-        member: member,
-        pushDelivery: false,
-      ),
+      BusAwarenessPrompt.additionalContext(member: member, pushDelivery: false),
     );
     expect(
       prompt,
