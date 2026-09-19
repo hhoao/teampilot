@@ -25,7 +25,9 @@ void main() {
         final count = RegExp(
           r'AgentPresenceProjection\(\)',
         ).allMatches(text).length;
-        if (count > 0) constructions.add('${f.path}: $count');
+        if (count > 0) {
+          constructions.add('${f.path.replaceAll(r'\', '/')}: $count');
+        }
       }
       expect(
         constructions,

@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 
 import '../../cubits/git_cubit.dart';
 import '../../cubits/git_graph_cubit.dart';
+import '../storage/app_paths.dart';
 import '../storage/home_storage.dart';
 import '../storage/runtime_context.dart';
 import 'git_history_actions.dart';
@@ -76,7 +77,7 @@ class GitRepoStore {
   final int _maxRetained;
   final DateTime Function() _now;
   final HomeStorage? _storage;
-  final p.Context _ctx = p.Context();
+
 
   final _headChanged = StreamController<String>.broadcast(sync: true);
 
@@ -111,7 +112,10 @@ class GitRepoStore {
       _cubits[key] = existing;
       return existing;
     }
-    final cubit = _cubitFactory(_ctx.normalize(root), workContext);
+    final cubit = _cubitFactory(
+      AppPaths.pathContextForDataRoot(root).normalize(root),
+      workContext,
+    );
     _cubits[key] = cubit;
     _evict();
     return cubit;
@@ -132,7 +136,7 @@ class GitRepoStore {
       return existing;
     }
     final cubit = (_injectedGraphFactory ?? _defaultGraphFactory)(
-      _ctx.normalize(root),
+      AppPaths.pathContextForDataRoot(root).normalize(root),
       workContext,
     );
     unawaited(cubit.setRepoRoot(root));

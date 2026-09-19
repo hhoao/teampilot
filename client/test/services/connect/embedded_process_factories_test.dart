@@ -37,6 +37,7 @@ void main() {
       {'PATH': '/usr/bin', 'HOME': '/home/u'},
       toolchainBin:
           '/home/u/.local/share/com.hhoa.teampilot/toolchain/node/current/bin',
+      isWindows: false,
     );
     // POSIX mirrors the remote export being replaced: toolchain bin plus
     // ~/.local/bin (npm --prefix ~/.local shims), then the inherited PATH.

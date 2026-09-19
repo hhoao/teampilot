@@ -49,13 +49,15 @@ final class _WorkPathProjector {
   final LaunchManifest manifest;
   final Filesystem sourceFs;
   final Filesystem workFs;
-  final String homeRoot;
-  final String workRoot;
+  String homeRoot;
+  String workRoot;
   final MemoryBlobStore blobs = MemoryBlobStore();
   final List<ApplyOp> _ops = [];
   int _providedLinks = 0;
 
   Future<ApplyPlanBuild> build() async {
+    homeRoot = await _canonicalize(homeRoot);
+    workRoot = await _canonicalize(workRoot);
     for (
       var entryIndex = 0;
       entryIndex < manifest.entries.length;
@@ -429,6 +431,11 @@ final class _WorkPathProjector {
       );
     }
     return null;
+  }
+
+  Future<String> _canonicalize(String path) async {
+    final resolved = await sourceFs.resolveSymlink(path);
+    return sourceFs.pathContext.normalize(resolved ?? path);
   }
 
   bool _isAncestorOfWorkRoot(String path) {

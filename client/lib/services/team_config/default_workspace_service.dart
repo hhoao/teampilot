@@ -37,7 +37,10 @@ abstract final class DefaultWorkspaceService {
     final pathCtx = AppPaths.pathContextForDataRoot(storage.home);
     final path = pathCtx.join(storage.home, 'TeamPilot');
     await storage.fs.ensureDir(path);
-    return path;
+    return normalizeWorkspacePath(
+      path,
+      usesPosixPaths: storage.usesPosixPaths,
+    );
   }
 
   /// Ensures the default workspace exists with Simple + team launch sessions.

@@ -224,7 +224,7 @@ void main() {
 
       await layout.ensureSessionOwnsCodexTmpPlugins(workspaceId, 'sess-1');
 
-      final sessionPlugins = p.join(
+      final sessionPlugins = fs.pathContext.join(
         layout.sessionRuntimeToolDir(workspaceId, 'sess-1', 'codex'),
         '.tmp',
         'plugins',

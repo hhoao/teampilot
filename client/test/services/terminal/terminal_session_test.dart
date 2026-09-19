@@ -1214,6 +1214,7 @@ void main() {
         'default-team-0',
         '--member',
         'member',
+        '--dangerously-skip-permissions',
       ]);
     }
   });

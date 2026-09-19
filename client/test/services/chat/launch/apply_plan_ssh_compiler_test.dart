@@ -256,6 +256,9 @@ void main() {
       expect(result.exitCode, 0, reason: '${result.stderr}\n${result.stdout}');
       expect(FileSystemEntity.isLinkSync(dest), isTrue);
     },
+    skip: Platform.isWindows
+        ? 'executes the remote bash payload; Windows CI bash is a WSL stub'
+        : false,
   );
 
   test(
@@ -277,6 +280,9 @@ void main() {
       expect(result.exitCode, 0, reason: '${result.stderr}\n${result.stdout}');
       expect(FileSystemEntity.isLinkSync(dest), isTrue);
     },
+    skip: Platform.isWindows
+        ? 'executes the remote bash payload; Windows CI bash is a WSL stub'
+        : false,
   );
 
   test(
@@ -303,5 +309,8 @@ void main() {
         isTrue,
       );
     },
+    skip: Platform.isWindows
+        ? 'executes the remote bash payload; Windows CI bash is a WSL stub'
+        : false,
   );
 }
