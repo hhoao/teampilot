@@ -270,6 +270,7 @@ void main() {
               CursorHomeLayout.configCursorDirName,
               CursorHomeLayout.authFileName,
             ),
+            layout.authJson(homeRoot),
           ],
         );
       });

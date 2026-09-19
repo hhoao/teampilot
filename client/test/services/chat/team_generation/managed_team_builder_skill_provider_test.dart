@@ -22,7 +22,7 @@ void main() {
 
       // git checkout on Windows converts the mirror to CRLF; compare LF-normalized.
       final mirror = (await File(
-        'lib/services/team_generation/managed_skills/team-builder/SKILL.md',
+        'lib/services/chat/team_generation/managed_skills/team-builder/SKILL.md',
       ).readAsString()).replaceAll('\r\n', '\n');
 
       expect(resource, isNotNull);

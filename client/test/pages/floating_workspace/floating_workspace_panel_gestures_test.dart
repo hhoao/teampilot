@@ -280,10 +280,11 @@ void main() {
     expect(chrome, findsOneWidget);
     expect(tester.getTopRight(add).dx, lessThan(tester.getTopLeft(chrome).dx));
 
-    // Fixed gap between + and chrome receives double-tap.
+    // Fixed 28px IgnorePointer gap immediately left of chrome receives
+    // double-tap. Measure from chrome so tab-strip width cannot miss it.
     final title = find.byKey(const Key('floating_workspace_title_drag'));
     final gapPoint = Offset(
-      tester.getTopRight(add).dx + 14,
+      tester.getTopLeft(chrome).dx - 14,
       tester.getCenter(title).dy,
     );
     await tester.tapAt(gapPoint);

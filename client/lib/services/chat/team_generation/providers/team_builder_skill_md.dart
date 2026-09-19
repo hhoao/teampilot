@@ -1,7 +1,7 @@
 /// Source-of-truth Dart string for the app-managed Team Builder skill.
 ///
 /// Mirrored on disk at
-/// `lib/services/team_generation/managed_skills/team-builder/SKILL.md`; a test
+/// `lib/services/chat/team_generation/managed_skills/team-builder/SKILL.md`; a test
 /// keeps the two byte-identical.
 const String teamBuilderSkillMd = r'''
 ---

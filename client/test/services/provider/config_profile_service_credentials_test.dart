@@ -218,9 +218,13 @@ void main() {
       );
 
       final sessionDir = outcome.environment['CLAUDE_CONFIG_DIR']!;
+      final sessionCred = fs.pathContext.join(sessionDir, '.credentials.json');
+      // ApplyPlan copies out-of-plane global credentials onto the work
+      // plane (symlink target is outside teampilot home). The session file
+      // must still carry the official OAuth payload.
       expect(
-        fs.symlinks[fs.pathContext.join(sessionDir, '.credentials.json')],
-        fs.pathContext.join(home, '.claude', '.credentials.json'),
+        await fs.readString(sessionCred),
+        contains('"accessToken":"global"'),
       );
       expect(outcome.warnings, isNot(contains('claude_credentials_missing')));
     },

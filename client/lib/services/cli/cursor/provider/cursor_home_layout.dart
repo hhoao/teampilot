@@ -170,12 +170,20 @@ final class CursorHomeLayout {
               platformEnv['XDG_CONFIG_HOME']?.trim() ??
               (Platform.isLinux ? _hostEnv('XDG_CONFIG_HOME')?.trim() : null) ??
               '';
-          final configRoot = xdg.isNotEmpty
-              ? xdg
-              : _pathContext.join(home, configDirName);
-          candidates.add(
-            _pathContext.join(configRoot, configCursorDirName, authFileName),
+          final homeAuth = _pathContext.join(
+            home,
+            configDirName,
+            configCursorDirName,
+            authFileName,
           );
+          if (xdg.isNotEmpty) {
+            candidates.add(
+              _pathContext.join(xdg, configCursorDirName, authFileName),
+            );
+          }
+          if (candidates.isEmpty || candidates.last != homeAuth) {
+            candidates.add(homeAuth);
+          }
         }
     }
     return candidates;

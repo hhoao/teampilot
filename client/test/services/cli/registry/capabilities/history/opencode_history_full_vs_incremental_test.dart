@@ -992,7 +992,7 @@ void main() {
   });
 
   group('legacy schema (part without time_updated)', () {
-    test('idle reload is ALWAYS full — the silent degradation repro', () async {
+    test('page-first misses and full index still locates sqlite', () async {
       openLegacyDb();
       seedConversation(legacy: true);
       final loader = buildLoader();
@@ -1004,24 +1004,27 @@ void main() {
         memberId: '',
         launchContext: ctx,
       );
-      expect(first.messages, hasLength(2));
+      expect(
+        first.messages,
+        isEmpty,
+        reason:
+            'page-first cannot fingerprint stores without part.time_updated',
+      );
+      expect(locator.calls, 0);
+
+      final indexed = await warmFullIndex(loader, session);
+      expect(indexed.messages, hasLength(2));
       expect(locator.calls, 1);
       expect(locator.lastBundle!.hints['source'], 'sqlite');
 
-      // 完全空闲的第二次 load:没有 time_updated 列 →
-      // 增量聚合查询抛错(no such column)被吞 → 增量不可用 →
-      // loader 每轮都全量 locate + 全量 parse。
+      // Incremental fingerprints need part.time_updated, so idle reload
+      // cannot delta-merge. The cached full index still paints the seat.
       final second = await loader.load(
         session: session,
         memberId: '',
         launchContext: ctx,
       );
-      expect(locator.calls, 2, reason: 'schema 不兼容时增量不可用,永远回退全量');
-      expect(
-        identical(second.messages, first.messages),
-        isFalse,
-        reason: '每轮都是全新 parse',
-      );
+      expect(second.messages, hasLength(2));
     });
   });
 

@@ -1606,7 +1606,7 @@ void main() {
 
   group('ChatCubit list hydrate vs document hydrate', () {
     test(
-      'ensureSessionsForWorkspace loads list rows without folders',
+      'ensureSessionsForWorkspace loads list rows without marking them as documents',
       () async {
         final tmp = await Directory.systemTemp.createTemp('chat_list_hydrate_');
         final repo = SessionRepository(
@@ -1785,7 +1785,9 @@ void main() {
       final row = cubit.state.sessions.singleWhere(
         (s) => s.sessionId == created.sessionId,
       );
-      expect(row.folders, isEmpty);
+      expect(row.folders, isNotEmpty);
+      expect(row.members, isEmpty);
+      expect(cubit.sessionHasDocument(created.sessionId), isFalse);
 
       final status = await cubit.requestOpenSession(
         SessionOpenRequest(

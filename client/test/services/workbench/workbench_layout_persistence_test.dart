@@ -365,12 +365,11 @@ void main() {
       expect(created.folders, isNotEmpty);
       await chat.ensureSessionsForWorkspace(ws.workspaceId);
       expect(chat.sessionHasDocument(created.sessionId), isFalse);
-      expect(
-        chat.state.sessions
-            .singleWhere((s) => s.sessionId == created.sessionId)
-            .folders,
-        isEmpty,
+      final listRow = chat.state.sessions.singleWhere(
+        (s) => s.sessionId == created.sessionId,
       );
+      expect(listRow.folders, isNotEmpty);
+      expect(listRow.members, isEmpty);
 
       final seeder = WorkbenchCubit()
         ..openSession(ws.workspaceId, created.sessionId);

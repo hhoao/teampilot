@@ -194,10 +194,9 @@ void main() {
       final listed = await repo.loadSessionListForWorkspace(ws.workspaceId);
       expect(counting.sessionJsonReads, 0);
       expect(listed.map((s) => s.sessionId), contains(created.sessionId));
-      expect(
-        listed.firstWhere((s) => s.sessionId == created.sessionId).folders,
-        isEmpty,
-      );
+      final row = listed.firstWhere((s) => s.sessionId == created.sessionId);
+      expect(row.folders, isNotEmpty);
+      expect(row.members, isEmpty);
       final full = await repo.loadSession(ws.workspaceId, created.sessionId);
       expect(full!.folders, isNotEmpty);
     },
