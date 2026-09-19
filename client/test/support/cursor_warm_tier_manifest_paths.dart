@@ -21,5 +21,7 @@ CliSessionManifestShared cursorTestSharedManifest({
   );
 }
 
-String cursorTestMemberHomeRelative(String memberId, {String teamId = cursorTestTeamId}) =>
-    'runtime/teams/$teamId/$memberId/cursor/home';
+String cursorTestMemberHomeRelative(
+  String memberId, {
+  String teamId = cursorTestTeamId,
+}) => 'runtime/teams/$teamId/$memberId/cursor/home';

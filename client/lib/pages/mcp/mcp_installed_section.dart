@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../widgets/app_toast/app_toast.dart';
@@ -38,9 +38,7 @@ class McpInstalledSection extends StatefulWidget {
 }
 
 class _McpInstalledSectionState extends State<McpInstalledSection> {
-  late final _credentials = McpCredentialsStore(
-    fs: homeStorageOf(context).fs,
-  );
+  late final _credentials = McpCredentialsStore(fs: homeStorageOf(context).fs);
   Map<String, bool>? _oauthStatus;
   int _oauthStatusEpoch = 0;
 
@@ -61,9 +59,7 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
   Future<void> _reloadOAuthStatus() async {
     final epoch = ++_oauthStatusEpoch;
     final servers = widget.state.servers;
-    final configDir = McpOAuthFlow.claudeAppConfigDir(
-      homeStorageOf(context),
-    );
+    final configDir = McpOAuthFlow.claudeAppConfigDir(homeStorageOf(context));
     final data = await _credentials.read(configDir);
     final next = <String, bool>{};
     for (final server in servers) {
@@ -138,9 +134,9 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
                 state.errorMessage ?? 'Error',
-                style: TpTextStyles.of(context).mdColored(
-                  Theme.of(context).colorScheme.error,
-                ),
+                style: TpTextStyles.of(
+                  context,
+                ).mdColored(Theme.of(context).colorScheme.error),
               ),
             )
           else if (servers.isEmpty)

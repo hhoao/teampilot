@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/painting.dart';
 import 'package:path/path.dart' as p;

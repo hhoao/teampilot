@@ -12,7 +12,10 @@ void main() {
 
   setUp(() {
     fs = InMemoryFilesystem();
-    provisioner = CursorWorkspaceTrustProvisioner(fs: fs, usesPosixPaths: false, );
+    provisioner = CursorWorkspaceTrustProvisioner(
+      fs: fs,
+      usesPosixPaths: false,
+    );
   });
 
   group('CursorWorkspaceTrustProvisioner', () {
@@ -20,7 +23,7 @@ void main() {
       final keys = CursorWorkspaceTrustProvisioner.workspacePathKeys(
         workingDirectory: '/workspace/workspace',
         additionalDirectories: const ['/workspace/workspace', ''],
-                                                                      usesPosixPaths: false,
+        usesPosixPaths: false,
       );
       expect(keys, {'/workspace/workspace'});
     });

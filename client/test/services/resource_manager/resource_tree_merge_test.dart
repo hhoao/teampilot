@@ -106,10 +106,12 @@ void main() {
       ),
     ];
     final vm = mergeResourceTree(bindings: bindings, snapshot: null);
-    expect(
-      vm.groups.map((g) => g.groupKey).toList(),
-      ['main', 'main-worktree', 'feature-a', 'zebra'],
-    );
+    expect(vm.groups.map((g) => g.groupKey).toList(), [
+      'main',
+      'main-worktree',
+      'feature-a',
+      'zebra',
+    ]);
   });
 
   test('leaves within a group are sorted by title', () {
@@ -146,10 +148,11 @@ void main() {
       ),
     ];
     final vm = mergeResourceTree(bindings: bindings, snapshot: null);
-    expect(
-      vm.groups.single.leaves.map((l) => l.title).toList(),
-      ['Alpha', 'Middle', 'Zebra'],
-    );
+    expect(vm.groups.single.leaves.map((l) => l.title).toList(), [
+      'Alpha',
+      'Middle',
+      'Zebra',
+    ]);
   });
 
   test('aggregates cpu and memory across matched leaves excluding nulls', () {

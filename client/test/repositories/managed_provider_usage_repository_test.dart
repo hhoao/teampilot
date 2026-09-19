@@ -117,22 +117,25 @@ void main() {
       expect(snapshots.single.providerId, 'valid');
     });
 
-    test('expired cache is returned with preserved data instead of discarded', () async {
-      final repo = ManagedProviderUsageRepository(
-        storage: fakeHomeStorage(filesystem: fs),
-        fs: fs,
-        cachePath: path,
-        now: () => 300,
-      );
-      await repo.save(_snapshot('p1', fetchedAt: 100, staleAt: 200));
+    test(
+      'expired cache is returned with preserved data instead of discarded',
+      () async {
+        final repo = ManagedProviderUsageRepository(
+          storage: fakeHomeStorage(filesystem: fs),
+          fs: fs,
+          cachePath: path,
+          now: () => 300,
+        );
+        await repo.save(_snapshot('p1', fetchedAt: 100, staleAt: 200));
 
-      final result = await repo.load();
+        final result = await repo.load();
 
-      expect(result.single.status, ProviderUsageStatus.ready);
-      expect(result.single.fetchedAt, 100);
-      expect(result.single.staleAt, 200);
-      expect(result.single.measures.single.remaining, '12.50');
-    });
+        expect(result.single.status, ProviderUsageStatus.ready);
+        expect(result.single.fetchedAt, 100);
+        expect(result.single.staleAt, 200);
+        expect(result.single.measures.single.remaining, '12.50');
+      },
+    );
 
     test('save preserves unknown top-level and snapshot fields', () async {
       await fs.writeString(
@@ -364,9 +367,15 @@ void main() {
       'concurrent saves from separate instances do not lose updates',
       () async {
         final first = ManagedProviderUsageRepository(
-          storage: fakeHomeStorage(filesystem: fs), fs: fs, cachePath: path);
+          storage: fakeHomeStorage(filesystem: fs),
+          fs: fs,
+          cachePath: path,
+        );
         final second = ManagedProviderUsageRepository(
-          storage: fakeHomeStorage(filesystem: fs), fs: fs, cachePath: path);
+          storage: fakeHomeStorage(filesystem: fs),
+          fs: fs,
+          cachePath: path,
+        );
 
         await Future.wait([
           first.save(_snapshot('p1')),

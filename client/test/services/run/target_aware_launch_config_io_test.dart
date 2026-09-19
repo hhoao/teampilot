@@ -24,17 +24,20 @@ void main() {
     expect(resolvedTargetId, 'ssh:p1');
   });
 
-  test('localFallback throws for ssh-home local without custom resolver', () async {
-    final io = TargetAwareLaunchConfigIo.localFallback(
-      homeFilesystem: InMemoryFilesystem(),
-      homeTarget: () => sshHome,
-    );
+  test(
+    'localFallback throws for ssh-home local without custom resolver',
+    () async {
+      final io = TargetAwareLaunchConfigIo.localFallback(
+        homeFilesystem: InMemoryFilesystem(),
+        homeTarget: () => sshHome,
+      );
 
-    expect(
-      () => io.exists('/repo/.teampilot/launch.json', targetId: 'local'),
-      throwsA(isA<StateError>()),
-    );
-  });
+      expect(
+        () => io.exists('/repo/.teampilot/launch.json', targetId: 'local'),
+        throwsA(isA<StateError>()),
+      );
+    },
+  );
 
   test('canonicalize decision maps local to home id', () {
     expect(

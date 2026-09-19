@@ -306,14 +306,10 @@ class AppUpdateCubit extends Cubit<AppUpdateState> {
           installingSubtitle: 'Installing update…',
         );
     final registry = _installJobRegistry;
-    final runner = _appUpdateRunner ?? AppUpdateInstallJobRunner(service: _service);
+    final runner =
+        _appUpdateRunner ?? AppUpdateInstallJobRunner(service: _service);
 
-    emit(
-      state.copyWith(
-        status: AppUpdateStatus.downloading,
-        clearError: true,
-      ),
-    );
+    emit(state.copyWith(status: AppUpdateStatus.downloading, clearError: true));
 
     try {
       if (registry != null) {
@@ -350,10 +346,7 @@ class AppUpdateCubit extends Cubit<AppUpdateState> {
     } catch (e) {
       final message = _messageFor(e);
       emit(
-        state.copyWith(
-          status: AppUpdateStatus.error,
-          errorMessage: message,
-        ),
+        state.copyWith(status: AppUpdateStatus.error, errorMessage: message),
       );
     }
   }

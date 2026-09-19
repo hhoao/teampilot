@@ -19,7 +19,8 @@ class SessionRepositoryFs {
     required Filesystem fs,
     WorkspaceLayout? layout,
   }) : fs = fs,
-       _layout = layout ?? WorkspaceLayout(teampilotRoot: teampilotRoot, fs: fs);
+       _layout =
+           layout ?? WorkspaceLayout(teampilotRoot: teampilotRoot, fs: fs);
 
   final String teampilotRoot;
   final Filesystem fs;

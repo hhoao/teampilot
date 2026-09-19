@@ -29,7 +29,14 @@ import '../../../support/post_frame_test_harness.dart';
 /// ([aConnectImmediately] false = A surfaces as a replaceable preview tab,
 /// mirroring a plain sidebar click under default preferences).
 Future<
-  (ChatCubit, WorkbenchCubit, Workspace, AppSession, AppSession, SessionRepository)
+  (
+    ChatCubit,
+    WorkbenchCubit,
+    Workspace,
+    AppSession,
+    AppSession,
+    SessionRepository,
+  )
 >
 setupWorkspace({bool aConnectImmediately = true}) async {
   final tmp = await Directory.systemTemp.createTemp('open_to_side_');
@@ -80,9 +87,7 @@ void main() {
       );
       addTearDown(sessionPreferencesCubit.close);
 
-      final result = await tester.runAsync(
-        () => setupWorkspace(),
-      );
+      final result = await tester.runAsync(() => setupWorkspace());
       expect(result, isNotNull);
       final (chatCubit, workbench, workspace, sessionA, sessionB, repo) =
           result!;
@@ -135,14 +140,12 @@ void main() {
 
       final layout = workbench.centerLayout(workspace.workspaceId);
       expect(layout.leafGroupIds, hasLength(2));
-      expect(
-        layout.groups[layout.leafGroupIds.first]!.order,
-        [WorkbenchTabId.session(sessionA.sessionId)],
-      );
-      expect(
-        layout.groups[layout.leafGroupIds.last]!.order,
-        [WorkbenchTabId.session(sessionB.sessionId)],
-      );
+      expect(layout.groups[layout.leafGroupIds.first]!.order, [
+        WorkbenchTabId.session(sessionA.sessionId),
+      ]);
+      expect(layout.groups[layout.leafGroupIds.last]!.order, [
+        WorkbenchTabId.session(sessionB.sessionId),
+      ]);
       expect(layout.focusedGroupId, layout.leafGroupIds.last);
       expect(validateLayout(layout), isTrue);
     },
@@ -216,14 +219,12 @@ void main() {
       // right group.
       final layout = workbench.centerLayout(workspace.workspaceId);
       expect(layout.leafGroupIds, hasLength(2));
-      expect(
-        layout.groups[layout.leafGroupIds.first]!.order,
-        [WorkbenchTabId.session(sessionA.sessionId)],
-      );
-      expect(
-        layout.groups[layout.leafGroupIds.last]!.order,
-        [WorkbenchTabId.session(sessionB.sessionId)],
-      );
+      expect(layout.groups[layout.leafGroupIds.first]!.order, [
+        WorkbenchTabId.session(sessionA.sessionId),
+      ]);
+      expect(layout.groups[layout.leafGroupIds.last]!.order, [
+        WorkbenchTabId.session(sessionB.sessionId),
+      ]);
       expect(layout.focusedGroupId, layout.leafGroupIds.last);
       expect(validateLayout(layout), isTrue);
     },

@@ -31,10 +31,7 @@ const _claudeProviders = AppProviderState(
   },
 );
 
-Widget _host({
-  required AppProviderCubit providers,
-  required Widget home,
-}) {
+Widget _host({required AppProviderCubit providers, required Widget home}) {
   // Scope + cubit must wrap MaterialApp so showDialog overlays inherit them.
   return CliToolRegistryScope(
     registry: CliToolRegistry.builtIn(),

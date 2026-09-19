@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import '../../services/chat/session/history/ai_history_loader.dart';
-import '../../services/chat/session/history/history_seat_key.dart';
+import '../../services/chat/conversation/history/ai_history_loader.dart';
+import '../../services/chat/conversation/history/history_seat_key.dart';
 import '../../services/chat/team_bus/persistence/bus_message_log.dart';
 import '../ai_history_seat.dart';
 

@@ -17,9 +17,9 @@ void main() {
       var called = false;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (_) async {
-        called = true;
-        return true;
-      });
+            called = true;
+            return true;
+          });
 
       final probe = TermuxPackageProbe(isAndroid: false);
       expect(await probe.isTermuxInstalled(), isFalse);
@@ -29,10 +29,10 @@ void main() {
     test('returns true when channel reports Termux installed', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (call) async {
-        expect(call.method, 'isPackageInstalled');
-        expect(call.arguments, {'packageName': 'com.termux'});
-        return true;
-      });
+            expect(call.method, 'isPackageInstalled');
+            expect(call.arguments, {'packageName': 'com.termux'});
+            return true;
+          });
 
       final probe = TermuxPackageProbe(isAndroid: true);
       expect(await probe.isTermuxInstalled(), isTrue);
@@ -57,8 +57,8 @@ void main() {
     test('returns false when channel throws', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (_) async {
-        throw PlatformException(code: 'error');
-      });
+            throw PlatformException(code: 'error');
+          });
 
       final probe = TermuxPackageProbe(isAndroid: true);
       expect(await probe.isTermuxInstalled(), isFalse);

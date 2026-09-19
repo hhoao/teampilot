@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/chat/history_mailbox_queued_strip.dart';
-import 'package:teampilot/services/chat/terminal/pending_user_message.dart';
+import 'package:teampilot/services/chat/runtime/pty/pending_user_message.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 
 Widget _host(Widget child) {

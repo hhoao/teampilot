@@ -138,7 +138,9 @@ void main() {
 
     expect(find.byKey(const Key('managed-provider-brand-p1')), findsOneWidget);
     expect(find.byIcon(Icons.account_balance_outlined), findsNothing);
-    final icon = tester.getRect(find.byKey(const Key('managed-provider-brand-p1')));
+    final icon = tester.getRect(
+      find.byKey(const Key('managed-provider-brand-p1')),
+    );
     final name = tester.getRect(find.text('Codex').first);
     expect((icon.center.dy - name.center.dy).abs(), lessThanOrEqualTo(1));
     expect(tester.takeException(), isNull);
@@ -215,7 +217,9 @@ void main() {
     );
     await tester.pump();
 
-    final icon = tester.getRect(find.byKey(const Key('managed-provider-brand-p1')));
+    final icon = tester.getRect(
+      find.byKey(const Key('managed-provider-brand-p1')),
+    );
     final name = tester.getRect(find.text('Codex').first);
     final meter = tester.getRect(
       find.byKey(const Key('managed-provider-quota-meter')),
@@ -314,16 +318,17 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byKey(const Key('managed-provider-quota-meter')), findsNWidgets(3));
+    expect(
+      find.byKey(const Key('managed-provider-quota-meter')),
+      findsNWidgets(3),
+    );
     expect(find.text('5h · 90% remaining'), findsOneWidget);
     expect(find.text('Weekly · 88% remaining'), findsOneWidget);
     expect(find.text('Monthly · 68% remaining'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('panel omits disabled providers from the list', (
-    tester,
-  ) async {
+  testWidgets('panel omits disabled providers from the list', (tester) async {
     final fs = InMemoryFilesystem();
     final usage = ManagedProviderUsageRepository(
       storage: fakeHomeStorage(filesystem: fs),
@@ -527,7 +532,9 @@ void main() {
       expect(find.byIcon(Icons.pause_circle_outline), findsOneWidget);
       expect(find.byIcon(Icons.play_circle_outline), findsNothing);
 
-      await tester.tap(find.byKey(const Key('managed-provider-usage-enabled-p1')));
+      await tester.tap(
+        find.byKey(const Key('managed-provider-usage-enabled-p1')),
+      );
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 50)),
       );
@@ -605,7 +612,9 @@ void main() {
       );
       await tester.pump();
 
-      await tester.tap(find.byKey(const Key('managed-provider-usage-enabled-p1')));
+      await tester.tap(
+        find.byKey(const Key('managed-provider-usage-enabled-p1')),
+      );
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 50)),
       );

@@ -60,8 +60,7 @@ List<TeamMemberConfig> sessionRosterMembers(
 List<TeamMemberConfig> cliTeamRosterMembers(
   AppSession session,
   TeamProfile team,
-) =>
-    sessionRosterMembers(session, team);
+) => sessionRosterMembers(session, team);
 
 TeamMemberConfig? _sessionBindingMemberType(
   SessionMemberBinding binding,

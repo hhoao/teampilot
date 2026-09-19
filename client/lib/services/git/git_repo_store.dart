@@ -119,7 +119,8 @@ class GitRepoStore {
 
   /// Returns the retained graph cubit for [root] on [workContext], creating it
   /// on first access and warming it asynchronously.
-  GitGraphCubit graphCubitFor(    String root, {
+  GitGraphCubit graphCubitFor(
+    String root, {
     required RuntimeContext workContext,
   }) {
     final key = _cacheKey(root, workContext);
@@ -163,8 +164,7 @@ class GitRepoStore {
     final now = _now();
     final last = _lastBackgroundRefreshAt[key];
     final backgroundDue =
-        last == null ||
-        now.difference(last) >= backgroundRefreshInterval;
+        last == null || now.difference(last) >= backgroundRefreshInterval;
     for (final root in nonEmpty) {
       if (root == active || backgroundDue) {
         cubitFor(root, workContext: workContext).refresh();

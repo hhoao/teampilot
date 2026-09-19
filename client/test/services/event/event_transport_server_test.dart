@@ -342,38 +342,41 @@ void main() {
     expect(client.closed, isTrue);
   });
 
-  test('a reset peer completing done with an error does not take down accept', () async {
-    final wrappers = <_ErrorOnDoneSocket>[];
-    final h = _Harness(
-      bind: (host, port) async => _MappedServerSocket(
-        await ServerSocket.bind(host, port),
-        (socket) {
-          final wrapped = _ErrorOnDoneSocket(socket);
-          wrappers.add(wrapped);
-          return wrapped;
-        },
-      ),
-    );
-    await h.start();
-    addTearDown(h.dispose);
+  test(
+    'a reset peer completing done with an error does not take down accept',
+    () async {
+      final wrappers = <_ErrorOnDoneSocket>[];
+      final h = _Harness(
+        bind: (host, port) async =>
+            _MappedServerSocket(await ServerSocket.bind(host, port), (socket) {
+              final wrapped = _ErrorOnDoneSocket(socket);
+              wrappers.add(wrapped);
+              return wrapped;
+            }),
+      );
+      await h.start();
+      addTearDown(h.dispose);
 
-    final first = _LineClient(await Socket.connect('127.0.0.1', await h.port()));
-    addTearDown(first.destroy);
-    await first.subscribe();
-    await first.waitUntilSnapshotEnd();
-    await _waitFor(() => wrappers.isNotEmpty);
+      final first = _LineClient(
+        await Socket.connect('127.0.0.1', await h.port()),
+      );
+      addTearDown(first.destroy);
+      await first.subscribe();
+      await first.waitUntilSnapshotEnd();
+      await _waitFor(() => wrappers.isNotEmpty);
 
-    wrappers.first.completeDoneWithError();
-    await Future<void>.delayed(const Duration(milliseconds: 50));
+      wrappers.first.completeDoneWithError();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
 
-    final second = _LineClient(
-      await Socket.connect('127.0.0.1', await h.port()),
-    );
-    addTearDown(second.destroy);
-    await second.subscribe();
-    await second.waitUntilSnapshotEnd();
-    expect(second.lines.any((l) => l['type'] == 'snapshotEnd'), isTrue);
-  });
+      final second = _LineClient(
+        await Socket.connect('127.0.0.1', await h.port()),
+      );
+      addTearDown(second.destroy);
+      await second.subscribe();
+      await second.waitUntilSnapshotEnd();
+      expect(second.lines.any((l) => l['type'] == 'snapshotEnd'), isTrue);
+    },
+  );
 
   test('stop closes the listen socket before tearing down handlers', () async {
     late _HoldUntilCloseServerSocket held;

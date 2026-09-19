@@ -29,19 +29,20 @@ class UnifiedDiffEditHunkCodec implements AiEditHunkCodec {
 
   /// Codex apply_patch freeform file header, e.g.
   /// `*** Update File: lib/foo.dart` (spl@93c9991 codex-full.md:558-560).
-  static final _codexFileHeader =
-      RegExp(r'^\*\*\* (?:Update|Add|Delete) File:\s*(.+)$');
+  static final _codexFileHeader = RegExp(
+    r'^\*\*\* (?:Update|Add|Delete) File:\s*(.+)$',
+  );
 
   @override
-  bool matches(String toolName) =>
-      toolNames.contains(toolName.toLowerCase());
+  bool matches(String toolName) => toolNames.contains(toolName.toLowerCase());
 
   @override
   AiEditHunk? encode(AiToolCallPart part) {
     if (!matches(part.toolName)) return null;
 
     final args = toolCallArgsMap(part);
-    var patch = firstNonEmptyString(args, patchKeys) ?? _freeformPatchText(part);
+    var patch =
+        firstNonEmptyString(args, patchKeys) ?? _freeformPatchText(part);
     if (patch == null) return null;
 
     var path = firstNonEmptyString(args, pathKeys);
@@ -83,36 +84,24 @@ class UnifiedDiffEditHunkCodec implements AiEditHunkCodec {
       if (prefix == '+') {
         _addEncodedLine(
           lines,
-          AiEditLine(
-            kind: AiEditLineKind.add,
-            text: rawLine.substring(1),
-          ),
+          AiEditLine(kind: AiEditLineKind.add, text: rawLine.substring(1)),
         );
         addedCount++;
       } else if (prefix == '-') {
         _addEncodedLine(
           lines,
-          AiEditLine(
-            kind: AiEditLineKind.remove,
-            text: rawLine.substring(1),
-          ),
+          AiEditLine(kind: AiEditLineKind.remove, text: rawLine.substring(1)),
         );
         removedCount++;
       } else if (prefix == ' ') {
         _addEncodedLine(
           lines,
-          AiEditLine(
-            kind: AiEditLineKind.context,
-            text: rawLine.substring(1),
-          ),
+          AiEditLine(kind: AiEditLineKind.context, text: rawLine.substring(1)),
         );
       } else {
         _addEncodedLine(
           lines,
-          AiEditLine(
-            kind: AiEditLineKind.context,
-            text: rawLine,
-          ),
+          AiEditLine(kind: AiEditLineKind.context, text: rawLine),
         );
       }
     }

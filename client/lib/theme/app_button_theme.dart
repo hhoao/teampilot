@@ -18,11 +18,11 @@ const Color kFilledButtonForeground = Colors.white;
 /// arrow on non-web desktop, so we opt every button family into a hand pointer.
 final WidgetStateProperty<MouseCursor> kTpClickableMouseCursor =
     WidgetStateProperty.resolveWith((states) {
-  if (states.contains(WidgetState.disabled)) {
-    return SystemMouseCursors.basic;
-  }
-  return SystemMouseCursors.click;
-});
+      if (states.contains(WidgetState.disabled)) {
+        return SystemMouseCursors.basic;
+      }
+      return SystemMouseCursors.click;
+    });
 
 /// Geometry for [size] (default medium = theme). Does not set foreground —
 /// filled chrome uses [kFilledButtonForeground]; outline/text use onSurface.
@@ -50,12 +50,16 @@ AppButtonThemes buildAppButtonThemes({
   );
   final fallbackShape = ButtonStyle(
     shape: WidgetStatePropertyAll(
-      RoundedRectangleBorder(borderRadius: BorderRadius.circular(control.radius)),
+      RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(control.radius),
+      ),
     ),
   );
 
   ButtonStyle merge(ButtonStyle? base, {Color? foreground}) {
-    var style = base == null ? fallbackShape.merge(geometry) : base.merge(geometry);
+    var style = base == null
+        ? fallbackShape.merge(geometry)
+        : base.merge(geometry);
     if (foreground != null) {
       style = style.merge(
         ButtonStyle(
@@ -108,12 +112,8 @@ ButtonStyle _buttonGeometry({
   required double radius,
 }) {
   return ButtonStyle(
-    minimumSize: WidgetStatePropertyAll(
-      Size(metrics.minWidth, metrics.height),
-    ),
-    maximumSize: WidgetStatePropertyAll(
-      Size(double.infinity, metrics.height),
-    ),
+    minimumSize: WidgetStatePropertyAll(Size(metrics.minWidth, metrics.height)),
+    maximumSize: WidgetStatePropertyAll(Size(double.infinity, metrics.height)),
     padding: WidgetStatePropertyAll(
       EdgeInsets.symmetric(horizontal: metrics.horizontalPadding),
     ),

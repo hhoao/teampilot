@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../services/chat/terminal/pending_user_message.dart';
+import '../../services/chat/runtime/pty/pending_user_message.dart';
 
 /// Finder key for the History mailbox Queued strip.
 const Key kSessionHistoryMailboxQueuedStripKey = ValueKey(

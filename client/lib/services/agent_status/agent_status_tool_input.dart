@@ -31,14 +31,15 @@ String? deriveToolInputPreview(String? toolName, Object? toolInput) {
 
 List<String> _keysForTool(String toolName) {
   return switch (toolName) {
-    'Bash' || 'bash' || 'Execute' || 'run_shell_command' || 'run_terminal_cmd' =>
-      const ['command', 'cmd', 'CommandLine'],
-    'Read' || 'read' || 'read_file' || 'view' => const [
-      'file_path',
-      'filePath',
-      'path',
-      'AbsolutePath',
-    ],
+    'Bash' ||
+    'bash' ||
+    'Execute' ||
+    'run_shell_command' ||
+    'run_terminal_cmd' => const ['command', 'cmd', 'CommandLine'],
+    'Read' ||
+    'read' ||
+    'read_file' ||
+    'view' => const ['file_path', 'filePath', 'path', 'AbsolutePath'],
     'Write' ||
     'write' ||
     'write_file' ||
@@ -48,20 +49,19 @@ List<String> _keysForTool(String toolName) {
     'MultiEdit' ||
     'Create' ||
     'create' => const ['file_path', 'filePath', 'path', 'TargetFile'],
-    'Grep' || 'grep' || 'search_file_content' || 'grep_search' => const [
-      'pattern',
-      'Query',
-      'query',
-    ],
+    'Grep' ||
+    'grep' ||
+    'search_file_content' ||
+    'grep_search' => const ['pattern', 'Query', 'query'],
     'Glob' || 'glob' || 'find_by_name' => const ['pattern', 'Pattern', 'query'],
-    'WebFetch' || 'FetchUrl' || 'web_fetch' || 'read_url_content' => const [
-      'url',
-      'Url',
-    ],
-    'WebSearch' || 'web_search' || 'google_web_search' || 'search_web' => const [
-      'query',
-      'Query',
-    ],
+    'WebFetch' ||
+    'FetchUrl' ||
+    'web_fetch' ||
+    'read_url_content' => const ['url', 'Url'],
+    'WebSearch' ||
+    'web_search' ||
+    'google_web_search' ||
+    'search_web' => const ['query', 'Query'],
     _ => const <String>[],
   };
 }

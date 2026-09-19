@@ -86,8 +86,10 @@ class TeamExtensionsSectionState extends State<TeamExtensionsSection> {
                 const SizedBox(height: 6),
                 Text(
                   l10n.teamExtensionsSubtitle,
-                  style: TpTextStyles.of(context).smColored(Theme.of(
-                      context,).colorScheme.onSurface.withValues(alpha: 0.6),
+                  style: TpTextStyles.of(context).smColored(
+                    Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -140,18 +142,14 @@ class TeamExtensionRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    row.name,
-                    style: TpTextStyles.of(
-                      context,
-                    ).mdBold,
-                  ),
+                  Text(row.name, style: TpTextStyles.of(context).mdBold),
                   Text(
                     effective
                         ? (effectiveOnLabel ?? l10n.teamExtensionEffectiveOn)
                         : (effectiveOffLabel ?? l10n.teamExtensionEffectiveOff),
-                    style: TpTextStyles.of(context).smColored(cs.onSurface.withValues(alpha: 0.6),
-                    ),
+                    style: TpTextStyles.of(
+                      context,
+                    ).smColored(cs.onSurface.withValues(alpha: 0.6)),
                   ),
                 ],
               ),

@@ -109,11 +109,15 @@ void main() {
           ),
         ),
         isTrue,
-        reason: 'engine.grid cell/history ticks must not reconstruct the '
+        reason:
+            'engine.grid cell/history ticks must not reconstruct the '
             'scrollbar widget (ListenableBuilder rebuild storm)',
       );
       expect(
-        identical(gestureBefore, tester.widget<GestureDetector>(_trackGesture())),
+        identical(
+          gestureBefore,
+          tester.widget<GestureDetector>(_trackGesture()),
+        ),
         isTrue,
         reason: 'thumb motion must paint, not rebuild GestureDetector',
       );

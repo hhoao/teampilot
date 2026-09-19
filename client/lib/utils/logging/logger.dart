@@ -12,7 +12,10 @@ export 'logger_utils.dart' show AppLogger;
 final appLogger = AppLogger.instance;
 
 /// Initializes rotating file logs and global Flutter error hooks.
-Future<void> initAppLogging(String appDataRoot, {required Filesystem fs}) async {
+Future<void> initAppLogging(
+  String appDataRoot, {
+  required Filesystem fs,
+}) async {
   await AppLogger.instance.initFileLogging(appDataRoot);
   await ErrorLogService.instance.initialize(appDataRoot: appDataRoot, fs: fs);
 

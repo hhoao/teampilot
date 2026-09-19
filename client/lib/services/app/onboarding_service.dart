@@ -1,7 +1,6 @@
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
-import '../../models/app_provider_config.dart';
 import '../../repositories/app_settings_repository.dart';
 
 /// Decides whether the first-run setup wizard should appear.

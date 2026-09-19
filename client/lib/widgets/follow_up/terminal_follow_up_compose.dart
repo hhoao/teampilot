@@ -9,8 +9,8 @@ import '../../cubits/member_presence_cubit.dart';
 import '../../models/member_presence.dart';
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
-import '../../services/follow_up/follow_up_queue.dart';
-import '../../services/chat/session/history/history_seat_key.dart';
+import '../../services/chat/conversation/follow_up/follow_up_queue.dart';
+import '../../services/chat/conversation/history/history_seat_key.dart';
 import '../../pages/chat/session_seat_working.dart';
 import 'follow_up_queue_strip.dart';
 

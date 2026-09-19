@@ -1,4 +1,4 @@
-import '../chat/team_bus/tab_member_materializer.dart';
+import '../chat/launch/tab/tab_member_materializer.dart';
 import '../chat/runtime/tab_session_runtime_coordinator.dart';
 
 /// Delivery seam for automation dispatch (TeamBus / PTY inject path).

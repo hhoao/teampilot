@@ -1,5 +1,5 @@
-import '../../model/chat_tab.dart';
-import '../../model/session_open_request.dart';
+import '../../session/chat_tab.dart';
+import '../../session/session_open_request.dart';
 import '../../../../models/app_session.dart';
 import '../../../../models/team_config.dart';
 import '../../../../models/workspace.dart';

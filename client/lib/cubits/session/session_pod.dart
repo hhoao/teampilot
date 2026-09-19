@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../../services/chat/model/session_workbench_view.dart';
+import '../../services/chat/session/session_workbench_view.dart';
 import 'history_store.dart';
 import 'session_phase.dart';
 

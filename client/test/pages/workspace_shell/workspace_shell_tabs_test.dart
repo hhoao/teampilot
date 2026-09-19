@@ -59,10 +59,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final expectedChord = formatKeyChord(
-        KeyChord(
-          key: 'b',
-          mods: [KeyChordMod.mod, KeyChordMod.alt],
-        ),
+        KeyChord(key: 'b', mods: [KeyChordMod.mod, KeyChordMod.alt]),
         isMacOS: defaultIsMacOS(),
       );
       final button = tester.widget<TpIconButton>(
@@ -71,10 +68,7 @@ void main() {
       final l10n = AppLocalizations.of(
         tester.element(find.byKey(AppKeys.rightToolsVisibilityButton)),
       );
-      expect(
-        button.tooltip,
-        '${l10n.rightToolsPanelVisible} ($expectedChord)',
-      );
+      expect(button.tooltip, '${l10n.rightToolsPanelVisible} ($expectedChord)');
 
       await tester.tap(find.byKey(AppKeys.rightToolsVisibilityButton));
       await tester.pump();

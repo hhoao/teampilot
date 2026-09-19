@@ -55,8 +55,11 @@ void main() {
 
     cubit.setActiveWorkspace('ws-a');
     cubit.disposeWorkspace('ws-b');
-    expect(cubit.state.activeWorkspaceId, 'ws-a',
-        reason: 'other workspace chrome is untouched');
+    expect(
+      cubit.state.activeWorkspaceId,
+      'ws-a',
+      reason: 'other workspace chrome is untouched',
+    );
 
     cubit.disposeWorkspace('ws-a');
     expect(cubit.state.activeWorkspaceId, '');

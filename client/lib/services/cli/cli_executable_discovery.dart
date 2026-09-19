@@ -14,8 +14,7 @@ class CliExecutableDiscovery {
   Iterable<CliTool> get _localDiscoverable => _registry.launchable
       .map((definition) => definition.id)
       .where(
-        (cli) =>
-            _registry.capability<CliExecutableCapability>(cli) != null,
+        (cli) => _registry.capability<CliExecutableCapability>(cli) != null,
       );
 
   Iterable<CliTool> get _remoteDiscoverable => _localDiscoverable.where(
@@ -30,15 +29,10 @@ class CliExecutableDiscovery {
     final discoveries = await Future.wait([
       for (final cli in _localDiscoverable)
         () async {
-          final resolver = _registry.capability<CliExecutableCapability>(
-            cli,
-          )!;
+          final resolver = _registry.capability<CliExecutableCapability>(cli)!;
           final path = await CliToolLocator(
             resolver.defaultExecutableName,
-          ).locate(
-            runner: runner,
-            includeShellFallback: includeShellFallback,
-          );
+          ).locate(runner: runner, includeShellFallback: includeShellFallback);
           if (path == null || path.isEmpty) return null;
           return MapEntry(cli, path);
         }(),
@@ -56,10 +50,9 @@ class CliExecutableDiscovery {
   }) async {
     final resolver = _registry.capability<CliExecutableCapability>(cli);
     if (resolver == null) return null;
-    final path = await CliToolLocator(resolver.defaultExecutableName).locate(
-      runner: runner,
-      includeShellFallback: includeShellFallback,
-    );
+    final path = await CliToolLocator(
+      resolver.defaultExecutableName,
+    ).locate(runner: runner, includeShellFallback: includeShellFallback);
     final trimmed = path?.trim() ?? '';
     return trimmed.isEmpty ? null : trimmed;
   }

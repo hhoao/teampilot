@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import '../../../../cubits/chat_state.dart';
-import '../../host/session_launch_host.dart';
+import '../session_launch_host.dart';
 import '../../../../models/app_session.dart';
 import '../../../../repositories/session_repository.dart';
 import '../../../../utils/session/session_display_title.dart';

@@ -169,9 +169,9 @@ void main() {
     final rootEntries = await fs.listDir('/runtime/events');
     expect(rootEntries.where((e) => !e.isDirectory), isEmpty);
     expect(
-      await fs.listDir('/runtime/events/${_seg('session')}').then(
-        (entries) => entries.map((e) => e.name),
-      ),
+      await fs
+          .listDir('/runtime/events/${_seg('session')}')
+          .then((entries) => entries.map((e) => e.name)),
       ['${_seg('member')}.jsonl'],
     );
     expect(await journal.seatsForSession('session'), {seat});
@@ -211,32 +211,35 @@ void main() {
     expect(counting.rangeBytesRead, 0);
   });
 
-  test('reopened journal tails last sequence without parsing the prefix', () async {
-    final inner = InMemoryFilesystem();
-    const seat = RuntimeSeatKey(sessionId: 'reopen', memberId: 'member');
-    final first = FileRuntimeEventJournal(
-      journalRoot: '/runtime/events-reopen',
-      fs: inner,
-    );
-    for (var i = 0; i < 30; i++) {
-      await first.append(_prompt(seat, 'event-$i'));
-    }
-    final path = _fileFor(inner, '/runtime/events-reopen', seat);
-    final fileSize = (await inner.stat(path)).size!;
+  test(
+    'reopened journal tails last sequence without parsing the prefix',
+    () async {
+      final inner = InMemoryFilesystem();
+      const seat = RuntimeSeatKey(sessionId: 'reopen', memberId: 'member');
+      final first = FileRuntimeEventJournal(
+        journalRoot: '/runtime/events-reopen',
+        fs: inner,
+      );
+      for (var i = 0; i < 30; i++) {
+        await first.append(_prompt(seat, 'event-$i'));
+      }
+      final path = _fileFor(inner, '/runtime/events-reopen', seat);
+      final fileSize = (await inner.stat(path)).size!;
 
-    FileRuntimeEventJournal.debugResetSeatState();
-    final counting = _CountingFilesystem(inner);
-    final reopened = FileRuntimeEventJournal(
-      journalRoot: '/runtime/events-reopen',
-      fs: counting,
-    );
-    final next = await reopened.append(_prompt(seat, 'after-reopen'));
+      FileRuntimeEventJournal.debugResetSeatState();
+      final counting = _CountingFilesystem(inner);
+      final reopened = FileRuntimeEventJournal(
+        journalRoot: '/runtime/events-reopen',
+        fs: counting,
+      );
+      final next = await reopened.append(_prompt(seat, 'after-reopen'));
 
-    expect(next.sequence, 31);
-    expect(counting.readStringCalls, 0);
-    expect(counting.bytesRead, lessThan(fileSize));
-    expect(counting.bytesRead, lessThan(8 * 1024));
-  });
+      expect(next.sequence, 31);
+      expect(counting.readStringCalls, 0);
+      expect(counting.bytesRead, lessThan(fileSize));
+      expect(counting.bytesRead, lessThan(8 * 1024));
+    },
+  );
 
   test('seatsForSession does not read journal bodies', () async {
     final counting = _CountingFilesystem(InMemoryFilesystem());
@@ -254,72 +257,80 @@ void main() {
     expect(counting.rangeBytesRead, 0);
   });
 
-  test('replay afterSequence skips prefix bytes once offsets are warm', () async {
-    final counting = _CountingFilesystem(InMemoryFilesystem());
-    const seat = RuntimeSeatKey(sessionId: 'replay', memberId: 'member');
-    final journal = FileRuntimeEventJournal(
-      journalRoot: '/runtime/events-replay',
-      fs: counting,
-    );
-    RuntimeEventEnvelope? last;
-    for (var i = 0; i < 15; i++) {
-      last = await journal.append(_prompt(seat, 'event-$i'));
-    }
-    counting.reset();
+  test(
+    'replay afterSequence skips prefix bytes once offsets are warm',
+    () async {
+      final counting = _CountingFilesystem(InMemoryFilesystem());
+      const seat = RuntimeSeatKey(sessionId: 'replay', memberId: 'member');
+      final journal = FileRuntimeEventJournal(
+        journalRoot: '/runtime/events-replay',
+        fs: counting,
+      );
+      RuntimeEventEnvelope? last;
+      for (var i = 0; i < 15; i++) {
+        last = await journal.append(_prompt(seat, 'event-$i'));
+      }
+      counting.reset();
 
-    final tail = await journal.replay(seat, afterSequence: 14).toList();
+      final tail = await journal.replay(seat, afterSequence: 14).toList();
 
-    expect(tail.map((event) => event.prompt), [last!.prompt]);
-    expect(counting.readStringCalls, 0);
-    expect(counting.bytesRead, lessThan(512));
-  });
+      expect(tail.map((event) => event.prompt), [last!.prompt]);
+      expect(counting.readStringCalls, 0);
+      expect(counting.bytesRead, lessThan(512));
+    },
+  );
 
-  test('unicode prompt keeps byte offsets aligned for the next append', () async {
-    final counting = _CountingFilesystem(InMemoryFilesystem());
-    const seat = RuntimeSeatKey(sessionId: 'unicode', memberId: '成员');
-    final journal = FileRuntimeEventJournal(
-      journalRoot: '/runtime/events-unicode',
-      fs: counting,
-    );
+  test(
+    'unicode prompt keeps byte offsets aligned for the next append',
+    () async {
+      final counting = _CountingFilesystem(InMemoryFilesystem());
+      const seat = RuntimeSeatKey(sessionId: 'unicode', memberId: '成员');
+      final journal = FileRuntimeEventJournal(
+        journalRoot: '/runtime/events-unicode',
+        fs: counting,
+      );
 
-    await journal.append(_prompt(seat, '你好世界'));
-    counting.reset();
-    final second = await journal.append(_prompt(seat, '第二行'));
+      await journal.append(_prompt(seat, '你好世界'));
+      counting.reset();
+      final second = await journal.append(_prompt(seat, '第二行'));
 
-    expect(second.sequence, 2);
-    expect(counting.readStringCalls, 0);
-    expect(counting.rangeBytesRead, 0);
-    expect(
-      (await journal.replay(seat).toList()).map((event) => event.prompt),
-      ['你好世界', '第二行'],
-    );
-  });
+      expect(second.sequence, 2);
+      expect(counting.readStringCalls, 0);
+      expect(counting.rangeBytesRead, 0);
+      expect(
+        (await journal.replay(seat).toList()).map((event) => event.prompt),
+        ['你好世界', '第二行'],
+      );
+    },
+  );
 
-  test('partial trailing record is ignored when assigning the next sequence',
-      () async {
-    final fs = InMemoryFilesystem();
-    const seat = RuntimeSeatKey(sessionId: 'partial', memberId: 'member');
-    final journal = FileRuntimeEventJournal(
-      journalRoot: '/runtime/events-partial',
-      fs: fs,
-    );
-    final first = await journal.append(_prompt(seat, 'one'));
-    final path = _fileFor(fs, '/runtime/events-partial', seat);
-    await fs.appendBytes(path, utf8.encode('{"partial":true'));
-    FileRuntimeEventJournal.debugResetSeatState();
+  test(
+    'partial trailing record is ignored when assigning the next sequence',
+    () async {
+      final fs = InMemoryFilesystem();
+      const seat = RuntimeSeatKey(sessionId: 'partial', memberId: 'member');
+      final journal = FileRuntimeEventJournal(
+        journalRoot: '/runtime/events-partial',
+        fs: fs,
+      );
+      final first = await journal.append(_prompt(seat, 'one'));
+      final path = _fileFor(fs, '/runtime/events-partial', seat);
+      await fs.appendBytes(path, utf8.encode('{"partial":true'));
+      FileRuntimeEventJournal.debugResetSeatState();
 
-    final reopened = FileRuntimeEventJournal(
-      journalRoot: '/runtime/events-partial',
-      fs: fs,
-    );
-    final next = await reopened.append(_prompt(seat, 'two'));
+      final reopened = FileRuntimeEventJournal(
+        journalRoot: '/runtime/events-partial',
+        fs: fs,
+      );
+      final next = await reopened.append(_prompt(seat, 'two'));
 
-    expect(next.sequence, first.sequence + 1);
-    expect(
-      (await reopened.replay(seat).toList()).map((event) => event.prompt),
-      [first.prompt, next.prompt],
-    );
-  });
+      expect(next.sequence, first.sequence + 1);
+      expect(
+        (await reopened.replay(seat).toList()).map((event) => event.prompt),
+        [first.prompt, next.prompt],
+      );
+    },
+  );
 }
 
 RuntimeEventEnvelopeDraft _prompt(RuntimeSeatKey seat, String prompt) =>
@@ -333,12 +344,9 @@ RuntimeEventEnvelopeDraft _prompt(RuntimeSeatKey seat, String prompt) =>
 String _seg(String value) =>
     base64Url.encode(utf8.encode(value)).replaceAll('=', '');
 
-String _fileFor(Filesystem fs, String journalRoot, RuntimeSeatKey seat) =>
-    fs.pathContext.join(
-      journalRoot,
-      _seg(seat.sessionId),
-      '${_seg(seat.memberId)}.jsonl',
-    );
+String _fileFor(Filesystem fs, String journalRoot, RuntimeSeatKey seat) => fs
+    .pathContext
+    .join(journalRoot, _seg(seat.sessionId), '${_seg(seat.memberId)}.jsonl');
 
 class _CountingFilesystem implements Filesystem {
   _CountingFilesystem(this._inner);
@@ -374,11 +382,7 @@ class _CountingFilesystem implements Filesystem {
   }
 
   @override
-  Future<List<int>?> readBytesRange(
-    String path,
-    int offset,
-    int length,
-  ) async {
+  Future<List<int>?> readBytesRange(String path, int offset, int length) async {
     final bytes = await _inner.readBytesRange(path, offset, length);
     if (bytes != null) rangeBytesRead += bytes.length;
     return bytes;
@@ -519,8 +523,7 @@ class _FilesystemView implements Filesystem {
       _delegate.readSymlinkTarget(linkPath);
 
   @override
-  Future<String?> resolveSymlink(String path) =>
-      _delegate.resolveSymlink(path);
+  Future<String?> resolveSymlink(String path) => _delegate.resolveSymlink(path);
 
   @override
   Future<void> copyTree({

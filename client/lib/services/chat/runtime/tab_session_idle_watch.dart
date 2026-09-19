@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../../models/team_config.dart';
-import '../session/pty_quiet_turn_end.dart';
+import 'pty/pty_quiet_turn_end.dart';
 import 'member_turn_idle_sync.dart';
 import '../../../utils/logging/logger.dart';
-import '../chat_tab_store.dart';
-import '../model/chat_tab.dart';
-import '../tab_member_coordination_factory.dart';
+import '../session/chat_tab_store.dart';
+import '../session/chat_tab.dart';
+import 'tab_member_coordination_factory.dart';
 
 /// Cross-tab idle watch: TeamBus reengage and turn quiet sync.
 final class TabSessionIdleWatch {

@@ -9,7 +9,8 @@ class WorkspaceSessionGroupsRegistry {
   WorkspaceSessionGroupsRegistry({
     required HomeStorage storage,
     SessionGroupsCubit Function()? cubitFactory,
-  }) : _cubitFactory = cubitFactory ?? (() => SessionGroupsCubit(storage: storage));
+  }) : _cubitFactory =
+           cubitFactory ?? (() => SessionGroupsCubit(storage: storage));
 
   final SessionGroupsCubit Function() _cubitFactory;
   final Map<String, SessionGroupsCubit> _cubits = {};
@@ -19,7 +20,11 @@ class WorkspaceSessionGroupsRegistry {
   SessionGroupsCubit cubitFor(String workspaceId) {
     final ws = workspaceId.trim();
     if (ws.isEmpty) {
-      throw ArgumentError.value(workspaceId, 'workspaceId', 'must not be empty');
+      throw ArgumentError.value(
+        workspaceId,
+        'workspaceId',
+        'must not be empty',
+      );
     }
     final existing = _cubits[ws];
     if (existing != null && !existing.isClosed) return existing;

@@ -14,7 +14,8 @@ void main() {
 
     test('redacts values under sensitive key names', () {
       final out = stringifyEnvironmentForLog(const {
-        'OPENCODE_AUTH_CONTENT': '{"opencode-go":{"type":"api","key":"sk-abcd"}}',
+        'OPENCODE_AUTH_CONTENT':
+            '{"opencode-go":{"type":"api","key":"sk-abcd"}}',
         'ANTHROPIC_API_KEY': 'sk-ant-1234567890',
         'GITHUB_TOKEN': 'ghp_abcdefghijklmnopqrstuvwxyz1234567890',
       });
@@ -27,7 +28,9 @@ void main() {
     });
 
     test('keeps entry length hint so populated vars are distinguishable', () {
-      final out = stringifyEnvironmentForLog(const {'OPENCODE_AUTH_CONTENT': 'abcde'});
+      final out = stringifyEnvironmentForLog(const {
+        'OPENCODE_AUTH_CONTENT': 'abcde',
+      });
       expect(out, contains('OPENCODE_AUTH_CONTENT=<redacted(len=5)>'));
     });
 

@@ -121,6 +121,6 @@ const List<(String, AiToolCallCategory)> defaultToolCallPrefixRules = [
 
 const ConfigurableAiToolCallCategoryResolver defaultToolCallCategoryResolver =
     ConfigurableAiToolCallCategoryResolver(
-  nameRules: defaultToolCallNameRules,
-  prefixRules: defaultToolCallPrefixRules,
-);
+      nameRules: defaultToolCallNameRules,
+      prefixRules: defaultToolCallPrefixRules,
+    );

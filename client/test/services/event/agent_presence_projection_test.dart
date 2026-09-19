@@ -31,19 +31,22 @@ void main() {
     await p.close();
   });
 
-  test('repeated identical events are idempotent and do not re-broadcast', () async {
-    final p = AgentPresenceProjection();
-    final seen = <PresenceSeatKey>[];
-    final sub = p.changes.listen(seen.add);
+  test(
+    'repeated identical events are idempotent and do not re-broadcast',
+    () async {
+      final p = AgentPresenceProjection();
+      final seen = <PresenceSeatKey>[];
+      final sub = p.changes.listen(seen.add);
 
-    p.handle(_e('s', 'm', AgentPresenceKind.working));
-    p.handle(_e('s', 'm', AgentPresenceKind.working));
-    await Future<void>.delayed(Duration.zero);
+      p.handle(_e('s', 'm', AgentPresenceKind.working));
+      p.handle(_e('s', 'm', AgentPresenceKind.working));
+      await Future<void>.delayed(Duration.zero);
 
-    expect(seen.length, 1, reason: 'unchanged value must not re-notify');
-    await sub.cancel();
-    await p.close();
-  });
+      expect(seen.length, 1, reason: 'unchanged value must not re-notify');
+      await sub.cancel();
+      await p.close();
+    },
+  );
 
   test('removeSeat clears the entry', () async {
     final p = AgentPresenceProjection();
@@ -91,10 +94,10 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(p.snapshot, isEmpty);
     expect(p.occupiedSessionIds, isEmpty);
-    expect(
-      seen.map((k) => '${k.sessionId}/${k.memberId}').toSet(),
-      {'s1/a', 's2/b'},
-    );
+    expect(seen.map((k) => '${k.sessionId}/${k.memberId}').toSet(), {
+      's1/a',
+      's2/b',
+    });
     await sub.cancel();
     await p.close();
   });

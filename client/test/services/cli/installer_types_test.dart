@@ -20,21 +20,24 @@ void main() {
   });
 
   group('CliInstallerCommand.npmGlobalInstall', () {
-    test('wraps absolute npm path in shell with one-shot ~/.local --prefix', () {
-      final command = CliInstallerCommand.npmGlobalInstall(
-        npmCommand: '/usr/bin/npm',
-        package: 'some-package',
-      );
-      expect(command.executable, 'sh');
-      final script = command.arguments.last;
-      expect(script, isNot(contains('npm config set prefix')));
-      expect(
-        script,
-        contains(
-          r'/usr/bin/npm install -g --prefix "$HOME/.local" some-package',
-        ),
-      );
-    });
+    test(
+      'wraps absolute npm path in shell with one-shot ~/.local --prefix',
+      () {
+        final command = CliInstallerCommand.npmGlobalInstall(
+          npmCommand: '/usr/bin/npm',
+          package: 'some-package',
+        );
+        expect(command.executable, 'sh');
+        final script = command.arguments.last;
+        expect(script, isNot(contains('npm config set prefix')));
+        expect(
+          script,
+          contains(
+            r'/usr/bin/npm install -g --prefix "$HOME/.local" some-package',
+          ),
+        );
+      },
+    );
 
     test('wraps bootstrapped npm in shell with PATH for node shebang', () {
       final command = CliInstallerCommand.npmGlobalInstall(

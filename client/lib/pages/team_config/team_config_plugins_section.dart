@@ -99,8 +99,9 @@ class TeamPluginsSection extends StatelessWidget {
                     ),
                     child: Text(
                       l10n.teamPluginsMissing(missingIds.length),
-                      style: TpTextStyles.of(context).smColored(textBase.withValues(alpha: 0.75),
-                      ),
+                      style: TpTextStyles.of(
+                        context,
+                      ).smColored(textBase.withValues(alpha: 0.75)),
                     ),
                   ),
                 ],
@@ -193,22 +194,26 @@ class TeamPluginRow extends StatelessWidget {
                           plugin.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TpTextStyles.of(context).mdBoldColored(textBase,),
+                          style: TpTextStyles.of(
+                            context,
+                          ).mdBoldColored(textBase),
                         ),
                       ),
                       if (plugin.version.isNotEmpty) ...[
                         const SizedBox(width: 8),
                         Text(
                           'v${plugin.version}',
-                          style: TpTextStyles.of(context).xsSemiboldColored(textBase.withValues(alpha: 0.55),
-                          ),
+                          style: TpTextStyles.of(
+                            context,
+                          ).xsSemiboldColored(textBase.withValues(alpha: 0.55)),
                         ),
                       ],
                       const SizedBox(width: 8),
                       Text(
                         sourceLabel,
-                        style: TpTextStyles.of(context).xsColored(textBase.withValues(alpha: 0.5),
-                        ),
+                        style: TpTextStyles.of(
+                          context,
+                        ).xsColored(textBase.withValues(alpha: 0.5)),
                       ),
                     ],
                   ),
@@ -218,8 +223,9 @@ class TeamPluginRow extends StatelessWidget {
                       plugin.description,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TpTextStyles.of(context).smColored(textBase.withValues(alpha: 0.6),
-                      ),
+                      style: TpTextStyles.of(
+                        context,
+                      ).smColored(textBase.withValues(alpha: 0.6)),
                     ),
                   ],
                 ],
@@ -272,8 +278,9 @@ class TeamMissingPluginRow extends StatelessWidget {
                     pluginId,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TpTextStyles.of(context).mdSemiboldColored(textBase.withValues(alpha: 0.55),
-                    ),
+                    style: TpTextStyles.of(
+                      context,
+                    ).mdSemiboldColored(textBase.withValues(alpha: 0.55)),
                   ),
                   const SizedBox(height: 4),
                   Text(

@@ -1,0 +1,231 @@
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/catalog/catalog_kind.dart';
+import 'package:teampilot/services/catalog/catalog_kind_registry.dart';
+import 'package:teampilot/services/catalog/catalog_mcp_policy.dart';
+import 'package:teampilot/services/catalog/modules/skill_catalog_tools.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/chat/launch/session/member_role_provision.dart';
+import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_policy.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
+
+void main() {
+  test('syncRolePromptFile writes and removes role.md', () async {
+    final fs = LocalFilesystem();
+    final root = await fs.createTempDir(prefix: 'role_prompt_');
+    try {
+      const member = TeamMemberConfig(
+        id: 'developer-one',
+        name: 'Developer One',
+        responsibilities: 'Implement only assigned tasks.',
+      );
+      final path = await MemberRoleProvision.syncRolePromptFile(
+        fs: fs,
+        memberToolDir: root,
+        member: member,
+      );
+      expect(path, isNotNull);
+      expect(path, p.join(root, 'prompts', 'developer-one', 'role.md'));
+      expect(await fs.readString(path!), contains('Implement only'));
+
+      await MemberRoleProvision.syncRolePromptFile(
+        fs: fs,
+        memberToolDir: root,
+        member: member.copyWith(responsibilities: ''),
+      );
+      expect((await fs.stat(path)).exists, isFalse);
+    } finally {
+      await fs.removeRecursive(root);
+    }
+  });
+
+  test('syncRolePromptFile writes team-lead role addendum', () async {
+    final fs = LocalFilesystem();
+    final root = await fs.createTempDir(prefix: 'role_lead_');
+    try {
+      const lead = TeamMemberConfig(
+        id: 'team-lead',
+        name: 'team-lead',
+        responsibilities: '',
+      );
+      final path = await MemberRoleProvision.syncRolePromptFile(
+        fs: fs,
+        memberToolDir: root,
+        member: lead,
+      );
+      expect(path, isNotNull);
+      final text = await fs.readString(path!);
+      expect(text, contains('team-lead'));
+      expect(text, contains('Team Leader'));
+      expect(text, isNot(contains('Delegate-only mode')));
+    } finally {
+      await fs.removeRecursive(root);
+    }
+  });
+
+  test('mixed role file includes bus-coordination addendum', () async {
+    final tmp = Directory.systemTemp.createTempSync('role_busadd_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final fs = LocalFilesystem(
+      pathContext: AppPaths.pathContextForDataRoot(tmp.path),
+    );
+    const m = TeamMemberConfig(
+      id: 'worker',
+      name: 'worker',
+      responsibilities: 'Do X.',
+    );
+
+    final path = await MemberRoleProvision.syncRolePromptFile(
+      fs: fs,
+      memberToolDir: tmp.path,
+      member: m,
+      mixed: true,
+    );
+    final body = await fs.readString(path!);
+    expect(body, contains('Do X.'));
+    expect(body, contains('wait_for_message'));
+    expect(body, contains('send_message'));
+  });
+
+  test(
+    'mixed mode writes member.responsibilities without team-lead addendum',
+    () async {
+      final tmp = Directory.systemTemp.createTempSync('role_mixed_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final fs = LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(tmp.path),
+      );
+      const lead = TeamMemberConfig(
+        id: 'team-lead',
+        name: 'team-lead',
+        responsibilities: 'Coordinate.',
+      );
+
+      final path = await MemberRoleProvision.syncRolePromptFile(
+        fs: fs,
+        memberToolDir: tmp.path,
+        member: lead,
+        mixed: true,
+      );
+
+      final body = await fs.readString(path!);
+      expect(body, contains('Coordinate.'));
+      expect(body, isNot(contains('Team Leader (Swarm)')));
+    },
+  );
+
+  test('syncRolePromptFile adds delegate addendum when flag is on', () async {
+    final fs = LocalFilesystem();
+    final root = await fs.createTempDir(prefix: 'role_delegate_');
+    try {
+      const lead = TeamMemberConfig(
+        id: 'team-lead',
+        name: 'team-lead',
+        responsibilities: '',
+      );
+      await MemberRoleProvision.syncRolePromptFile(
+        fs: fs,
+        memberToolDir: root,
+        member: lead,
+        forceTeamLeadDelegateMode: true,
+      );
+      final path = MemberRoleProvision.rolePromptPath(root, lead);
+      final text = await fs.readString(path);
+      expect(text, contains('Delegate-only mode'));
+    } finally {
+      await fs.removeRecursive(root);
+    }
+  });
+
+  test(
+    'applyTeamSessionPolicy leaves permissions deny unset for native team',
+    () {
+      final settings = MemberRoleProvision.applyTeamSessionPolicy(const {});
+      final permissions = settings['permissions']! as Map;
+      expect(permissions['deny'], isNull);
+    },
+  );
+
+  test('applyTeamSessionPolicy omits swarm deny rules in mixed mode', () {
+    final mixed = MemberRoleProvision.applyTeamSessionPolicy(
+      const {},
+      mixed: true,
+    );
+    final permissions = mixed['permissions']! as Map;
+    expect(permissions['allow'], contains('mcp__teammate-bus'));
+    expect(permissions['deny'], isNull);
+  });
+
+  test('applyCatalogReadAllows pre-allows catalog reads not installs', () {
+    final settings = MemberRoleProvision.applyCatalogReadAllows(
+      const {},
+      claudeEntries: CatalogMcpPolicy.claudeAllowEntries(_skillRegistry()),
+    );
+    final allow = (settings['permissions']! as Map)['allow'] as List;
+    expect(allow, contains('mcp__teampilot__search_skills'));
+    expect(allow, contains('mcp__teampilot__list_installed'));
+    expect(allow, isNot(contains('mcp__teampilot__install_skill')));
+  });
+
+  test(
+    'applySessionSshMcpAllows merges ssh tools and keeps existing allows',
+    () {
+      final settings = MemberRoleProvision.applySessionSshMcpAllows(const {
+        'permissions': {
+          'allow': ['mcp__teampilot__search_skills'],
+        },
+      }, claudeEntries: SessionSshMcpPolicy.claudeAllowEntries);
+      final allow = (settings['permissions']! as Map)['allow'] as List;
+      expect(allow, contains('mcp__teampilot__search_skills'));
+      expect(allow, containsAll(SessionSshMcpPolicy.claudeAllowEntries));
+    },
+  );
+
+  test('disallowedToolsForMixedClaude worker omits Agent', () {
+    final tools = MemberRoleProvision.disallowedToolsForMixedClaude(
+      isLead: false,
+    );
+    expect(tools, containsAll(MemberRoleProvision.mixedClaudeDisallowedTools));
+    expect(tools, isNot(contains('Agent')));
+    expect(tools, isNot(contains('Bash')));
+  });
+
+  test('disallowedToolsForMixedClaude lead includes Agent', () {
+    final tools = MemberRoleProvision.disallowedToolsForMixedClaude(
+      isLead: true,
+    );
+    expect(tools, containsAll(MemberRoleProvision.mixedClaudeDisallowedTools));
+    expect(tools, contains('Agent'));
+    expect(
+      tools,
+      containsAllInOrder([
+        ...MemberRoleProvision.mixedClaudeDisallowedTools,
+        'Agent',
+      ]),
+    );
+  });
+}
+
+CatalogKindRegistry _skillRegistry() {
+  return CatalogKindRegistry()..register(_SkillAdvertiseModule());
+}
+
+class _SkillAdvertiseModule implements CatalogKindModule {
+  @override
+  String get kind => 'skill';
+  @override
+  bool get supportsCreate => true;
+  @override
+  bool get supportsImport => true;
+  @override
+  bool get supportsInstall => true;
+  @override
+  List<CatalogToolSpec> advertise() => skillCatalogTools;
+  @override
+  Future<CatalogResult> handle(CatalogOp op, CatalogRequest req) {
+    throw UnsupportedError('advertise-only');
+  }
+}

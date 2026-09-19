@@ -4,24 +4,30 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/git_status.dart';
 import 'package:teampilot/services/git/git_changes_visible_rows.dart';
 
-GitFileChange change(String path, {bool staged = false, GitChangeKind kind = GitChangeKind.modified}) =>
-    GitFileChange(path: path, kind: kind, staged: staged);
+GitFileChange change(
+  String path, {
+  bool staged = false,
+  GitChangeKind kind = GitChangeKind.modified,
+}) => GitFileChange(path: path, kind: kind, staged: staged);
 
 void main() {
-  test('mergeGitChangesByPath dedups partial-staged paths, staged side wins', () {
-    final merged = mergeGitChangesByPath(
-      staged: [
-        change('a/b.txt', staged: true, kind: GitChangeKind.added),
-        change('c.txt', staged: true),
-      ],
-      unstaged: [change('a/b.txt'), change('d.txt')],
-    );
-    final paths = merged.map((c) => c.path).toSet();
-    expect(paths, {'a/b.txt', 'c.txt', 'd.txt'});
-    final ab = merged.firstWhere((c) => c.path == 'a/b.txt');
-    expect(ab.staged, isTrue);
-    expect(ab.kind, GitChangeKind.added); // staged side kind wins
-  });
+  test(
+    'mergeGitChangesByPath dedups partial-staged paths, staged side wins',
+    () {
+      final merged = mergeGitChangesByPath(
+        staged: [
+          change('a/b.txt', staged: true, kind: GitChangeKind.added),
+          change('c.txt', staged: true),
+        ],
+        unstaged: [change('a/b.txt'), change('d.txt')],
+      );
+      final paths = merged.map((c) => c.path).toSet();
+      expect(paths, {'a/b.txt', 'c.txt', 'd.txt'});
+      final ab = merged.firstWhere((c) => c.path == 'a/b.txt');
+      expect(ab.staged, isTrue);
+      expect(ab.kind, GitChangeKind.added); // staged side kind wins
+    },
+  );
 
   test('unified tree gives folder tri-state subtree counts', () {
     final view = visibleGitChangesSections(
@@ -70,7 +76,10 @@ void main() {
     final folder = view.rows.singleWhere((r) => r.isFolder);
     expect(folder.subtreeTotalCount, 2);
     expect(folder.subtreeSelectedCount, 1);
-    expect(view.rows.where((r) => !r.isFolder), isEmpty); // children not emitted
+    expect(
+      view.rows.where((r) => !r.isFolder),
+      isEmpty,
+    ); // children not emitted
   });
 
   test('unified tree projects staged=true for selected paths only', () {
@@ -92,10 +101,7 @@ void main() {
   test('min content width accounts for checkbox + badge per row type', () {
     const style = TextStyle(fontSize: 12);
     // Equal-width labels (Ahem font: every glyph is fontSize wide).
-    final file = GitChangesVisibleRow.file(
-      change: change('aaaaa'),
-      depth: 0,
-    );
+    final file = GitChangesVisibleRow.file(change: change('aaaaa'), depth: 0);
     final folder = GitChangesVisibleRow.folder(
       folderPath: 'aaaaa',
       name: 'aaaaa',
@@ -160,12 +166,17 @@ void main() {
         change('new.ts', kind: GitChangeKind.untracked),
       ],
       expandedFolderPaths: const {},
-      selectedPaths: const {'a.txt', 'new.ts'}, // manual check of an unversioned file
+      selectedPaths: const {
+        'a.txt',
+        'new.ts',
+      }, // manual check of an unversioned file
     );
-    final a = sections.changes.rows
-        .firstWhere((r) => !r.isFolder && r.change!.path == 'a.txt');
-    final n = sections.unversioned.rows
-        .firstWhere((r) => !r.isFolder && r.change!.path == 'new.ts');
+    final a = sections.changes.rows.firstWhere(
+      (r) => !r.isFolder && r.change!.path == 'a.txt',
+    );
+    final n = sections.unversioned.rows.firstWhere(
+      (r) => !r.isFolder && r.change!.path == 'new.ts',
+    );
     expect(a.change!.staged, isTrue);
     expect(n.change!.staged, isTrue); // manual check survives projection
     expect(sections.changes.selectedCount, 1);

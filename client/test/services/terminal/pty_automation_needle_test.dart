@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/terminal/pty_automation_needle.dart';
+import 'package:teampilot/services/chat/runtime/pty/pty_automation_needle.dart';
 
 void main() {
   test('forText uses bus prefix for doorbell notices', () {

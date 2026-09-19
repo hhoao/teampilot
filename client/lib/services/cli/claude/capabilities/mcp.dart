@@ -10,8 +10,7 @@ import '../../registry/mcp_writers/metadata_mcp_merge.dart';
 final class ClaudeMcpCapability implements McpCapability {
   const ClaudeMcpCapability();
 
-  static const metadataFileName =
-      ClaudeProviderCapability.metadataFileName;
+  static const metadataFileName = ClaudeProviderCapability.metadataFileName;
 
   @override
   Future<void> write({
@@ -47,8 +46,7 @@ final class ClaudeMcpCapability implements McpCapability {
 final class FlashskyaiMcpCapability implements McpCapability {
   const FlashskyaiMcpCapability();
 
-  static const metadataFileName =
-      FlashskyaiProviderCapability.metadataFileName;
+  static const metadataFileName = FlashskyaiProviderCapability.metadataFileName;
 
   @override
   Future<void> write({

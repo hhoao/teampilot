@@ -16,10 +16,7 @@ import 'resource_memory_sparkline.dart';
 /// Layout mirrors Orca: header + totals are intrinsic; a fixed-height body
 /// owns column headers + scrollable tree; Space sits below the body.
 class ResourceManagerPanel extends StatelessWidget {
-  const ResourceManagerPanel({
-    this.onNavigateLeaf,
-    super.key,
-  });
+  const ResourceManagerPanel({this.onNavigateLeaf, super.key});
 
   /// Optional navigate hook (Task 9 wires workbench focus). Always closes panel.
   final void Function(ResourceTreeLeafVm leaf)? onNavigateLeaf;
@@ -38,14 +35,11 @@ class ResourceManagerPanel extends StatelessWidget {
         final styles = TpTextStyles.of(context);
         final cs = Theme.of(context).colorScheme;
         final cubit = context.read<ResourceManagerCubit>();
-        final tree = state.tree ??
-            const ResourceTreeViewModel(
-              terminalCount: 0,
-              groups: [],
-            );
+        final tree =
+            state.tree ??
+            const ResourceTreeViewModel(terminalCount: 0, groups: []);
         final snapshot = state.snapshot;
-        final showColumnHeader =
-            tree.groups.isNotEmpty || snapshot != null;
+        final showColumnHeader = tree.groups.isNotEmpty || snapshot != null;
 
         return SizedBox(
           width: panelWidth,
@@ -73,9 +67,7 @@ class ResourceManagerPanel extends StatelessWidget {
                       Expanded(
                         child: Text(
                           l10n.resourceManagerMetricsError,
-                          style: styles.xs.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
+                          style: styles.xs.copyWith(color: cs.onSurfaceVariant),
                         ),
                       ),
                     ],
@@ -365,9 +357,7 @@ class _SpaceStub extends StatelessWidget {
                     children: [
                       Text(
                         l10n.resourceManagerSpace,
-                        style: styles.xs.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: styles.xs.copyWith(fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(width: 6),
                       TpStatusBadge(

@@ -18,11 +18,7 @@ enum _TestSection { alpha, beta }
 void _noop() {}
 
 const _hubEntries = [
-  WorkspaceHubEntry(
-    title: 'Section',
-    icon: Icons.star_outline,
-    onTap: _noop,
-  ),
+  WorkspaceHubEntry(title: 'Section', icon: Icons.star_outline, onTap: _noop),
 ];
 
 class _TestSectionDescriptor implements WorkspaceSectionDescriptor {
@@ -44,11 +40,7 @@ class _TestSectionDescriptor implements WorkspaceSectionDescriptor {
 }
 
 void main() {
-  Widget wrap(
-    Widget child, {
-    double width = 900,
-    double height = 600,
-  }) {
+  Widget wrap(Widget child, {double width = 900, double height = 600}) {
     return MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -151,10 +143,12 @@ void main() {
     expect(shell.embedded, isFalse);
 
     final padding = tester.widget<Padding>(
-      find.descendant(
-        of: find.byType(WorkspaceHubDesktopShell),
-        matching: find.byType(Padding),
-      ).first,
+      find
+          .descendant(
+            of: find.byType(WorkspaceHubDesktopShell),
+            matching: find.byType(Padding),
+          )
+          .first,
     );
     expect(padding.padding, WorkspacePaneInsets.page);
   });
@@ -184,10 +178,7 @@ void main() {
           ),
         )
         .toList();
-    expect(
-      paddings.any((p) => p.padding == WorkspacePaneInsets.page),
-      isFalse,
-    );
+    expect(paddings.any((p) => p.padding == WorkspacePaneInsets.page), isFalse);
   });
 
   testWidgets('hub page shows title and hides subtitle by default', (
@@ -223,10 +214,12 @@ void main() {
     expect(page.embedded, isFalse);
 
     final padding = tester.widget<Padding>(
-      find.descendant(
-        of: find.byType(WorkspaceHubPage),
-        matching: find.byType(Padding),
-      ).first,
+      find
+          .descendant(
+            of: find.byType(WorkspaceHubPage),
+            matching: find.byType(Padding),
+          )
+          .first,
     );
     expect(padding.padding, WorkspacePaneInsets.page);
   });
@@ -254,10 +247,7 @@ void main() {
           ),
         )
         .toList();
-    expect(
-      paddings.any((p) => p.padding == WorkspacePaneInsets.page),
-      isFalse,
-    );
+    expect(paddings.any((p) => p.padding == WorkspacePaneInsets.page), isFalse);
   });
 
   testWidgets('enum nav panel invokes onSelect when entry tapped', (

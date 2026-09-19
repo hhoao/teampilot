@@ -199,18 +199,21 @@ void main() {
   });
 
   group('locked groups / openInNewGroup', () {
-    test('locked group sets are defensively copied at construction boundaries', () {
-      final supplied = <String>{'g0'};
-      final layout = _seed(_s1).copyWith(lockedGroupIds: supplied);
-      supplied.add('g1');
-      expect(layout.lockedGroupIds, {'g0'});
+    test(
+      'locked group sets are defensively copied at construction boundaries',
+      () {
+        final supplied = <String>{'g0'};
+        final layout = _seed(_s1).copyWith(lockedGroupIds: supplied);
+        supplied.add('g1');
+        expect(layout.lockedGroupIds, {'g0'});
 
-      final replacement = <String>{'g1'};
-      final copied = layout.copyWith(lockedGroupIds: replacement);
-      replacement.add('g2');
-      expect(copied.lockedGroupIds, {'g1'});
-      expect(() => copied.lockedGroupIds.add('g2'), throwsUnsupportedError);
-    });
+        final replacement = <String>{'g1'};
+        final copied = layout.copyWith(lockedGroupIds: replacement);
+        replacement.add('g2');
+        expect(copied.lockedGroupIds, {'g1'});
+        expect(() => copied.lockedGroupIds.add('g2'), throwsUnsupportedError);
+      },
+    );
 
     test('toggleLock sets and clears a live group lock', () {
       const reducer = SplitLayoutReducer();

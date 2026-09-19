@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../widgets/app_toast/app_toast.dart';
@@ -119,9 +119,7 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                                           .downloadAndInstall(
                                             copy: AppUpdateDownloadCopy(
                                               title: l10n.appUpdateNewVersion(
-                                                state
-                                                    .availableRelease!
-                                                    .version
+                                                state.availableRelease!.version
                                                     .toString(),
                                               ),
                                               downloadingSubtitle:
@@ -240,9 +238,6 @@ class _ReleaseNotesPreview extends StatelessWidget {
       return const SizedBox.shrink();
     }
     final preview = text.length > 600 ? '${text.substring(0, 600)}…' : text;
-    return SelectableText(
-      preview,
-      style: TpTextStyles.of(context).sm,
-    );
+    return SelectableText(preview, style: TpTextStyles.of(context).sm);
   }
 }

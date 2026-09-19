@@ -34,7 +34,10 @@ void main() {
     final fs = InMemoryFilesystem()
       ..files['/repo/docs/a.md'] = '# a\n[b](./b.md)\n'
       ..files['/repo/docs/b.md'] = '# b\n';
-    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs), );
+    final editor = EditorCubit(
+      fs: fs,
+      storage: fakeHomeStorage(filesystem: fs),
+    );
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit();
     final modes = MarkdownViewModeStore();
@@ -58,7 +61,9 @@ void main() {
 
     // Must stay POSIX even on Windows hosts (SSH / in-memory roots).
     expect(
-      workbench.mergedFloatingStrip('ws').order
+      workbench
+          .mergedFloatingStrip('ws')
+          .order
           .any(
             (t) => t.kind == WorkbenchTabKind.file && t.id == '/repo/docs/b.md',
           ),
@@ -74,7 +79,10 @@ void main() {
     final fs = InMemoryFilesystem()
       ..files['/repo/docs/a.md'] = '# a\n'
       ..files['/repo/docs/b.md'] = '# b\n';
-    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs), );
+    final editor = EditorCubit(
+      fs: fs,
+      storage: fakeHomeStorage(filesystem: fs),
+    );
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit();
     final modes = MarkdownViewModeStore();

@@ -33,9 +33,7 @@ List<RemoteCliRequirement> remoteCliRequirementsForPlacement({
   required List<CliPreset> globalPresets,
   required List<RuntimeTarget> selectableTargets,
 }) {
-  final byId = {
-    for (final t in selectableTargets) t.id: t,
-  };
+  final byId = {for (final t in selectableTargets) t.id: t};
   final out = <String, RemoteCliRequirement>{};
 
   for (final entry in placement.entries) {
@@ -45,7 +43,9 @@ List<RemoteCliRequirement> remoteCliRequirementsForPlacement({
 
     for (final memberEntry in entry.value.entries) {
       if (memberEntry.value <= 0) continue;
-      final member = team.members.where((m) => m.id == memberEntry.key).firstOrNull;
+      final member = team.members
+          .where((m) => m.id == memberEntry.key)
+          .firstOrNull;
       if (member == null || !member.isValid) continue;
       final cli = memberLaunchCli(
         team: team,
@@ -58,9 +58,7 @@ List<RemoteCliRequirement> remoteCliRequirementsForPlacement({
         () => RemoteCliRequirement(
           target: target,
           cli: cli,
-          hostLabel: target.label.trim().isNotEmpty
-              ? target.label
-              : target.id,
+          hostLabel: target.label.trim().isNotEmpty ? target.label : target.id,
         ),
       );
     }
@@ -94,15 +92,12 @@ RuntimeTarget? sshTargetForProjectFolder({
   folder ??= workspace.folders.firstOrNull;
   if (folder == null) return null;
 
-  final resolved = WorkTargetCanonicalizer.resolve(
-    folder.targetId,
-    home: home,
-  );
+  final resolved = WorkTargetCanonicalizer.resolve(folder.targetId, home: home);
   if (!usesSshTransport(resolved.kind)) return null;
 
   return selectableTargets
-      .where((t) => t.id == resolved.id && usesSshTransport(t.kind))
-      .firstOrNull ??
+          .where((t) => t.id == resolved.id && usesSshTransport(t.kind))
+          .firstOrNull ??
       resolved;
 }
 

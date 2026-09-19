@@ -68,9 +68,7 @@ void main() {
     test('returns ssh_mcp_disabled for every tool', () async {
       final disabled = ctx(enabled: false);
       final listed = await ops.listServers(disabled);
-      final executed = await ops.executeCommand(disabled, {
-        'cmdString': 'ls',
-      });
+      final executed = await ops.executeCommand(disabled, {'cmdString': 'ls'});
       final uploaded = await ops.upload(disabled, {
         'localPath': '/workspace/a.txt',
         'remotePath': '/home/alice/proj/a.txt',
@@ -175,20 +173,23 @@ void main() {
       expect(executor.lastProfile, isNull);
     });
 
-    test('quotes cwd with sessionSshMcpPosixQuote and calls executor', () async {
-      const folder = "/tmp/o'reilly";
-      final result = await ops.executeCommand(
-        ctx(targets: [homeTarget(folder: folder)]),
-        {'cmdString': 'pwd', 'cwd': folder},
-      );
+    test(
+      'quotes cwd with sessionSshMcpPosixQuote and calls executor',
+      () async {
+        const folder = "/tmp/o'reilly";
+        final result = await ops.executeCommand(
+          ctx(targets: [homeTarget(folder: folder)]),
+          {'cmdString': 'pwd', 'cwd': folder},
+        );
 
-      expect(result.isError, isFalse);
-      expect(executor.lastProfile?.id, 'home');
-      expect(
-        executor.lastCommand,
-        'cd -- ${sessionSshMcpPosixQuote(folder)} && pwd',
-      );
-    });
+        expect(result.isError, isFalse);
+        expect(executor.lastProfile?.id, 'home');
+        expect(
+          executor.lastCommand,
+          'cd -- ${sessionSshMcpPosixQuote(folder)} && pwd',
+        );
+      },
+    );
 
     test('maps TimeoutException to command_timeout', () async {
       executor.commandError = TimeoutException('slow');
@@ -200,11 +201,7 @@ void main() {
 
     test('returns OUTPUT_LIMIT_EXCEEDED with truncated text', () async {
       ops = SessionSshMcpOperations(executor: executor, maxOutputBytes: 8);
-      executor.commandResult = (
-        exitCode: 0,
-        stdout: '12345',
-        stderr: '67890',
-      );
+      executor.commandResult = (exitCode: 0, stdout: '12345', stderr: '67890');
 
       final result = await ops.executeCommand(ctx(), {'cmdString': 'cat'});
 
@@ -250,23 +247,26 @@ void main() {
       expect(executor.lastUploadedBytes, isNull);
     });
 
-    test('rejects symlink under root pointing outside without calling executor', () async {
-      await localFs.writeBytes('/outside/secret.txt', [9, 9, 9]);
-      await localFs.createSymlink(
-        target: '/outside/secret.txt',
-        linkPath: '/workspace/link.txt',
-      );
+    test(
+      'rejects symlink under root pointing outside without calling executor',
+      () async {
+        await localFs.writeBytes('/outside/secret.txt', [9, 9, 9]);
+        await localFs.createSymlink(
+          target: '/outside/secret.txt',
+          linkPath: '/workspace/link.txt',
+        );
 
-      final result = await ops.upload(ctx(), {
-        'localPath': '/workspace/link.txt',
-        'remotePath': '/home/alice/proj/a.txt',
-      });
+        final result = await ops.upload(ctx(), {
+          'localPath': '/workspace/link.txt',
+          'remotePath': '/home/alice/proj/a.txt',
+        });
 
-      expect(result.isError, isTrue);
-      expect(result.code, sessionSshMcpErrorPath);
-      expect(executor.lastRemotePath, isNull);
-      expect(executor.lastUploadedBytes, isNull);
-    });
+        expect(result.isError, isTrue);
+        expect(result.code, sessionSshMcpErrorPath);
+        expect(executor.lastRemotePath, isNull);
+        expect(executor.lastUploadedBytes, isNull);
+      },
+    );
 
     test('upload succeeds inside roots', () async {
       await localFs.writeBytes('/workspace/a.txt', [1, 2, 3]);

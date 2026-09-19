@@ -1,9 +1,9 @@
-import '../../chat_tab_store.dart';
-import '../../model/chat_tab.dart';
-import '../../model/chat_tab_info.dart';
-import '../../model/session_open_request.dart';
-import '../../model/session_workbench_view.dart';
-import '../../host/session_launch_host.dart';
+import '../../session/chat_tab_store.dart';
+import '../../session/chat_tab.dart';
+import '../../session/chat_tab_info.dart';
+import '../../session/session_open_request.dart';
+import '../../session/session_workbench_view.dart';
+import '../session_launch_host.dart';
 import '../../../../models/app_session.dart';
 import '../../../../models/workspace.dart';
 import '../../../../utils/logging/logger.dart';

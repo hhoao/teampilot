@@ -70,20 +70,21 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets(
-    'content filter runs a real search and lists file:line rows',
-    (tester) async {
-      await tester.pumpWidget(wrapSection(onOpenFile: (_) {}, root: fixture.path));
-      await runSearch(tester, 'hello');
-      expect(find.textContaining('a.dart:1'), findsOneWidget);
-      expect(find.textContaining('b.txt:1'), findsOneWidget);
-      // The line preview is the row's relative-path subtitle.
-      expect(find.text('hello world'), findsOneWidget);
-      expect(find.text('hello text'), findsOneWidget);
-      // Single slice: no group header (headers only appear for >1 slice).
-      expect(find.text('fixture'), findsNothing);
-    },
-  );
+  testWidgets('content filter runs a real search and lists file:line rows', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrapSection(onOpenFile: (_) {}, root: fixture.path),
+    );
+    await runSearch(tester, 'hello');
+    expect(find.textContaining('a.dart:1'), findsOneWidget);
+    expect(find.textContaining('b.txt:1'), findsOneWidget);
+    // The line preview is the row's relative-path subtitle.
+    expect(find.text('hello world'), findsOneWidget);
+    expect(find.text('hello text'), findsOneWidget);
+    // Single slice: no group header (headers only appear for >1 slice).
+    expect(find.text('fixture'), findsNothing);
+  });
 
   testWidgets('two roots render both directories behind group headers', (
     tester,
@@ -128,7 +129,11 @@ void main() {
         onOpenFile: (_) {},
         root: fixture.path,
         extraSlices: [
-          ContentSearchSlice(fs: LocalFilesystem(), root: goneRoot, label: 'gone'),
+          ContentSearchSlice(
+            fs: LocalFilesystem(),
+            root: goneRoot,
+            label: 'gone',
+          ),
         ],
       ),
     );
@@ -159,7 +164,9 @@ void main() {
     tester,
   ) async {
     final opened = <String>[];
-    await tester.pumpWidget(wrapSection(onOpenFile: opened.add, root: fixture.path));
+    await tester.pumpWidget(
+      wrapSection(onOpenFile: opened.add, root: fixture.path),
+    );
     await runSearch(tester, 'hello');
     // Tap the row that renders the a.dart name — the row's own onOpenFile
     // callback carries that row's match path, so the hit test is unambiguous.
@@ -174,7 +181,9 @@ void main() {
   });
 
   testWidgets('empty query shows the empty hint', (tester) async {
-    await tester.pumpWidget(wrapSection(onOpenFile: (_) {}, root: fixture.path));
+    await tester.pumpWidget(
+      wrapSection(onOpenFile: (_) {}, root: fixture.path),
+    );
     final l10n = l10nOf(tester);
     expect(find.text(l10n.workspaceSearchEmptyHint), findsOneWidget);
 
@@ -201,25 +210,33 @@ void main() {
   testWidgets('query with surrounding whitespace is trimmed before searching', (
     tester,
   ) async {
-    await tester.pumpWidget(wrapSection(onOpenFile: (_) {}, root: fixture.path));
+    await tester.pumpWidget(
+      wrapSection(onOpenFile: (_) {}, root: fixture.path),
+    );
     await runSearch(tester, '  hello  ');
     expect(find.textContaining('a.dart:1'), findsOneWidget);
     expect(find.textContaining('b.txt:1'), findsOneWidget);
   });
 
   testWidgets('whitespace-only query shows the empty hint', (tester) async {
-    await tester.pumpWidget(wrapSection(onOpenFile: (_) {}, root: fixture.path));
+    await tester.pumpWidget(
+      wrapSection(onOpenFile: (_) {}, root: fixture.path),
+    );
     final l10n = l10nOf(tester);
     await runSearch(tester, '   ');
     expect(find.text(l10n.workspaceSearchEmptyHint), findsOneWidget);
     expect(find.byType(WorkspaceSearchFileRow), findsNothing);
   });
 
-  testWidgets('results are capped at 500 with a truncation hint', (tester) async {
-    File('${fixture.path}/big.txt').writeAsStringSync(
-      List.generate(600, (i) => 'match line $i\n').join(),
+  testWidgets('results are capped at 500 with a truncation hint', (
+    tester,
+  ) async {
+    File(
+      '${fixture.path}/big.txt',
+    ).writeAsStringSync(List.generate(600, (i) => 'match line $i\n').join());
+    await tester.pumpWidget(
+      wrapSection(onOpenFile: (_) {}, root: fixture.path),
     );
-    await tester.pumpWidget(wrapSection(onOpenFile: (_) {}, root: fixture.path));
     final l10n = l10nOf(tester);
     await runSearch(tester, 'match');
     // The lazy list only builds visible rows; the cap keeps that extent
@@ -241,7 +258,9 @@ void main() {
   testWidgets('invalid regex shows the error row instead of crashing', (
     tester,
   ) async {
-    await tester.pumpWidget(wrapSection(onOpenFile: (_) {}, root: fixture.path));
+    await tester.pumpWidget(
+      wrapSection(onOpenFile: (_) {}, root: fixture.path),
+    );
     final l10n = l10nOf(tester);
     await runSearch(tester, '[unclosed');
     expect(tester.takeException(), isNull);

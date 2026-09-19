@@ -15,7 +15,7 @@ import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/credential_binding.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
-import 'package:teampilot/services/chat/session/member_role_provision.dart';
+import 'package:teampilot/services/chat/launch/session/member_role_provision.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';

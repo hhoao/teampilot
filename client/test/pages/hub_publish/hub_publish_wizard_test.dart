@@ -34,7 +34,9 @@ class _MemoryKv implements SecureKeyValueStore {
 }
 
 class FakeHubPublishService implements HubPublishApi {
-  FakeHubPublishService({this.prUrl = 'https://github.com/hhoao/teampilot/pull/42'});
+  FakeHubPublishService({
+    this.prUrl = 'https://github.com/hhoao/teampilot/pull/42',
+  });
 
   final String prUrl;
   var publishExpertCalls = 0;
@@ -110,9 +112,7 @@ TeamProfile _teamWithLocalExpert({List<String> skillIds = const []}) =>
       id: 'team-1',
       name: 'Platform',
       description: 'Platform team',
-      roster: const [
-        TeamRosterSlot(id: 'arch', expertKey: 'local/abc'),
-      ],
+      roster: const [TeamRosterSlot(id: 'arch', expertKey: 'local/abc')],
       skillIds: skillIds,
       createdAt: 1,
     );
@@ -137,49 +137,52 @@ Future<void> _pumpWizard(
   List<DiscoverableMember> remapCandidates = const [],
 }) async {
   final theme = ThemeData(useMaterial3: true);
-  await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
-        value: testHomeStorage,
-        child: MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      locale: const Locale('en'),
-      theme: theme,
-      home: TpTheme(
-        data: TpThemeData.fromColorScheme(
-          theme.colorScheme,
-          scale: 1.0,
-          controlScale: AppTypographyScale.standard.multiplier,
-        ),
-        child: Scaffold(
-          body: Builder(
-            builder: (context) => Center(
-              child: TextButton(
-                key: const Key('open-wizard'),
-                onPressed: () {
-                  showHubPublishWizard(
-                    context,
-                    kind: kind,
-                    member: member,
-                    team: team,
-                    publishApi: publishApi,
-                    credentials: credentials,
-                    lookup: lookup ??
-                        BundleProvenanceLookup(
-                          skills: const [],
-                          plugins: const [],
-                          mcps: const [],
-                        ),
-                    remapCandidates: remapCandidates,
-                  );
-                },
-                child: const Text('Open'),
+  await tester.pumpWidget(
+    RepositoryProvider<HomeStorage>.value(
+      value: testHomeStorage,
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        theme: theme,
+        home: TpTheme(
+          data: TpThemeData.fromColorScheme(
+            theme.colorScheme,
+            scale: 1.0,
+            controlScale: AppTypographyScale.standard.multiplier,
+          ),
+          child: Scaffold(
+            body: Builder(
+              builder: (context) => Center(
+                child: TextButton(
+                  key: const Key('open-wizard'),
+                  onPressed: () {
+                    showHubPublishWizard(
+                      context,
+                      kind: kind,
+                      member: member,
+                      team: team,
+                      publishApi: publishApi,
+                      credentials: credentials,
+                      lookup:
+                          lookup ??
+                          BundleProvenanceLookup(
+                            skills: const [],
+                            plugins: const [],
+                            mcps: const [],
+                          ),
+                      remapCandidates: remapCandidates,
+                    );
+                  },
+                  child: const Text('Open'),
+                ),
               ),
             ),
           ),
         ),
       ),
     ),
-      ));
+  );
   await tester.tap(find.byKey(const Key('open-wizard')));
   await tester.pumpAndSettle();
 }
@@ -189,7 +192,10 @@ Future<void> _goNext(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> _enterPatViaAdvancedPanel(WidgetTester tester, String token) async {
+Future<void> _enterPatViaAdvancedPanel(
+  WidgetTester tester,
+  String token,
+) async {
   await tester.tap(find.text('Use a personal access token'));
   await tester.pumpAndSettle();
   await tester.enterText(find.byKey(const Key('github-pat-field')), token);
@@ -212,46 +218,47 @@ void main() {
     fakeApi = FakeHubPublishService();
   });
 
-  testWidgets('missing token shows auth panel and cannot finish without token', (
-    tester,
-  ) async {
-    _largeSurface(tester);
-    await _pumpWizard(
-      tester,
-      kind: HubPublishKind.expert,
-      member: _localExpert(),
-      publishApi: fakeApi,
-      credentials: credentials,
-    );
+  testWidgets(
+    'missing token shows auth panel and cannot finish without token',
+    (tester) async {
+      _largeSurface(tester);
+      await _pumpWizard(
+        tester,
+        kind: HubPublishKind.expert,
+        member: _localExpert(),
+        publishApi: fakeApi,
+        credentials: credentials,
+      );
 
-    expect(find.byKey(const Key('hub-publish-auth')), findsOneWidget);
-    expect(find.byKey(const Key('github-sign-in')), findsOneWidget);
+      expect(find.byKey(const Key('hub-publish-auth')), findsOneWidget);
+      expect(find.byKey(const Key('github-sign-in')), findsOneWidget);
 
-    final next = tester.widget<FilledButton>(
-      find.byKey(const Key('hub-publish-next')),
-    );
-    expect(next.onPressed, isNull);
+      final next = tester.widget<FilledButton>(
+        find.byKey(const Key('hub-publish-next')),
+      );
+      expect(next.onPressed, isNull);
 
-    await _goNext(tester);
-    expect(find.byKey(const Key('hub-publish-auth')), findsOneWidget);
-    expect(fakeApi.publishExpertCalls, 0);
+      await _goNext(tester);
+      expect(find.byKey(const Key('hub-publish-auth')), findsOneWidget);
+      expect(fakeApi.publishExpertCalls, 0);
 
-    await _enterPatViaAdvancedPanel(tester, 'ghp_test');
-    await _goNext(tester);
+      await _enterPatViaAdvancedPanel(tester, 'ghp_test');
+      await _goNext(tester);
 
-    expect(find.byKey(const Key('hub-publish-slug')), findsOneWidget);
-    await tester.enterText(find.byKey(const Key('hub-publish-slug')), 'arch');
-    await _goNext(tester);
+      expect(find.byKey(const Key('hub-publish-slug')), findsOneWidget);
+      await tester.enterText(find.byKey(const Key('hub-publish-slug')), 'arch');
+      await _goNext(tester);
 
-    expect(find.byKey(const Key('hub-publish-publish')), findsOneWidget);
-    await tester.tap(find.byKey(const Key('hub-publish-publish')));
-    await tester.pumpAndSettle();
+      expect(find.byKey(const Key('hub-publish-publish')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('hub-publish-publish')));
+      await tester.pumpAndSettle();
 
-    expect(fakeApi.publishExpertCalls, 1);
-    expect((await credentials.readStored())?.token, 'ghp_test');
-    expect(find.byKey(const Key('hub-publish-pr-url')), findsOneWidget);
-    expect(find.textContaining(fakeApi.prUrl), findsOneWidget);
-  });
+      expect(fakeApi.publishExpertCalls, 1);
+      expect((await credentials.readStored())?.token, 'ghp_test');
+      expect(find.byKey(const Key('hub-publish-pr-url')), findsOneWidget);
+      expect(find.textContaining(fakeApi.prUrl), findsOneWidget);
+    },
+  );
 
   testWidgets('expert happy path shows PR link', (tester) async {
     _largeSurface(tester);
@@ -275,7 +282,9 @@ void main() {
     expect(find.text(fakeApi.prUrl), findsOneWidget);
   });
 
-  testWidgets('401 on publish returns to auth with expired message', (tester) async {
+  testWidgets('401 on publish returns to auth with expired message', (
+    tester,
+  ) async {
     _largeSurface(tester);
     await credentials.savePat('ghp_saved');
     fakeApi.lastError = const HubPublishException(
@@ -350,9 +359,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(fakeApi.publishTeamCalls, 1);
-      expect(fakeApi.lastExpertKeyRemap, {
-        'local/abc': published.key,
-      });
+      expect(fakeApi.lastExpertKeyRemap, {'local/abc': published.key});
       expect(find.byKey(const Key('hub-publish-pr-url')), findsOneWidget);
     },
   );
@@ -390,10 +397,7 @@ void main() {
     await tester.tap(find.text(_publishedExpert().name).last);
     await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(const Key('hub-publish-non-portable')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const Key('hub-publish-non-portable')), findsOneWidget);
     expect(find.textContaining('local-only-skill'), findsOneWidget);
 
     await _goNext(tester);

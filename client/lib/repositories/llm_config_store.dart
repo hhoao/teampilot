@@ -56,8 +56,8 @@ class FilesystemLlmConfigStore implements LlmConfigStore {
 
 @Deprecated('Use FilesystemLlmConfigStore')
 class LocalLlmConfigStore extends FilesystemLlmConfigStore {
-  LocalLlmConfigStore(String path, {required Filesystem fs})
-    : super(path: path, fs: fs);
+  LocalLlmConfigStore(String path, {required super.fs})
+    : super(path: path);
 }
 
 class RemoteLlmConfigStore implements LlmConfigStore {

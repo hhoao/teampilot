@@ -43,7 +43,9 @@ void main() {
   );
 
   test('SkillPackRegistry resolves garrytan/gstack install shape', () {
-    final pack = SkillPackRegistry(storage: fakeHomeStorage()).byId('garrytan/gstack');
+    final pack = SkillPackRegistry(
+      storage: fakeHomeStorage(),
+    ).byId('garrytan/gstack');
     expect(pack, isNotNull);
     expect(pack!.install, isNotEmpty);
     expect(pack.install.first, isA<FromInstruction>());
@@ -59,7 +61,7 @@ void main() {
         loads++;
         return [remoteGstackPack];
       }),
-                                        storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
 
     expect(registry.byId('garrytan/gstack'), isNull);
@@ -72,7 +74,7 @@ void main() {
   test('built-in pack wins over remote same id', () async {
     final registry = SkillPackRegistry(
       remote: _FakeSkillPackSource(() async => [remoteGstackPack]),
-                                        storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     await registry.ensureLoaded();
     expect(registry.byId('garrytan/gstack'), kGstackSkillPack);

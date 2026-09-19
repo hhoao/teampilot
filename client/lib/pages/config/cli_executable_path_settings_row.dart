@@ -9,7 +9,6 @@ import '../../cubits/ssh_profile_cubit.dart';
 import '../../cubits/termux_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/install_job/install_job_key.dart';
-import '../../models/session_preferences.dart';
 import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import '../../services/app/connection_mode_service.dart';
@@ -243,9 +242,7 @@ class CliExecutablePathSettingsRowState
       AppToast.show(
         context,
         message: result.message,
-        variant: result.success
-            ? TpToastVariant.success
-            : TpToastVariant.error,
+        variant: result.success ? TpToastVariant.success : TpToastVariant.error,
       );
     } catch (error) {
       if (!mounted) return;
@@ -333,10 +330,7 @@ class CliExecutablePathSettingsRowState
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Icon(
-                      Icons.download_outlined,
-                      size: context.tpIconSizes.md,
-                    ),
+                  : Icon(Icons.download_outlined, size: context.tpIconSizes.md),
               label: Text(
                 isInstalling
                     ? l10n.cliInstallInstalling

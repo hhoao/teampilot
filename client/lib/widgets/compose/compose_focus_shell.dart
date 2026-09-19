@@ -56,10 +56,7 @@ class ComposeFocusShell extends StatelessWidget {
               ),
               boxShadow: _shadows(focused: focused, isDark: isDark),
             ),
-            child: ClipRRect(
-              borderRadius: radius,
-              child: child,
-            ),
+            child: ClipRRect(borderRadius: radius, child: child),
           ),
         );
       },
@@ -108,11 +105,7 @@ class ComposeFocusShell extends StatelessWidget {
         offset: Offset(0, 4),
         spreadRadius: -8,
       ),
-      BoxShadow(
-        color: Color(0x0A000000),
-        blurRadius: 2,
-        offset: Offset(0, 1),
-      ),
+      BoxShadow(color: Color(0x0A000000), blurRadius: 2, offset: Offset(0, 1)),
     ];
   }
 }

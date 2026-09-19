@@ -6,7 +6,10 @@ void main() {
     final ctx = SkillAcquireContext(overwrite: false, expectedSkillId: 'x')
       ..syncRoot = '/tmp/sync';
     expect(ctx.resolveRelative('bin'), '/tmp/sync/bin');
-    expect(() => ctx.resolveRelative('/etc/passwd'), throwsA(isA<StateError>()));
+    expect(
+      () => ctx.resolveRelative('/etc/passwd'),
+      throwsA(isA<StateError>()),
+    );
     expect(() => ctx.resolveRelative('../outside'), throwsA(isA<StateError>()));
   });
 

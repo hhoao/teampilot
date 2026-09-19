@@ -10,10 +10,7 @@ import 'package:teampilot/services/event/event_transport_client.dart';
 import 'package:teampilot/services/event/event_transport_codec.dart';
 import 'package:teampilot/services/event/session_lifecycle_transport_codec.dart';
 
-Future<void> _waitFor(
-  bool Function() ok, {
-  required Duration timeout,
-}) async {
+Future<void> _waitFor(bool Function() ok, {required Duration timeout}) async {
   final end = DateTime.now().add(timeout);
   while (!ok()) {
     if (DateTime.now().isAfter(end)) {
@@ -74,10 +71,7 @@ class _Harness {
     client = EventTransportClient(
       dispatcher: dispatcher,
       presence: presence,
-      codecs: [
-        AgentPresenceTransportCodec(),
-        SessionLifecycleTransportCodec(),
-      ],
+      codecs: [AgentPresenceTransportCodec(), SessionLifecycleTransportCodec()],
       open: () async {
         openCount++;
         final channel = _FakeChannel();
@@ -225,15 +219,16 @@ void main() {
     await h.startAndWaitSubscribe();
     h.channel.inbound.add(
       utf8.encode(
-        '${jsonEncode({
-          'v': 2,
-          'type': 'event',
-          'family': eventTransportFamilyAgentPresence,
-          ...AgentPresenceTransportCodec().encode(_set()),
-        })}\n',
+        '${jsonEncode({'v': 2, 'type': 'event', 'family': eventTransportFamilyAgentPresence, ...AgentPresenceTransportCodec().encode(_set())})}\n',
       ),
     );
-    h.push(h.presenceLine(_set(seat: const PresenceSeatKey(sessionId: 's', memberId: 'kept'))));
+    h.push(
+      h.presenceLine(
+        _set(
+          seat: const PresenceSeatKey(sessionId: 's', memberId: 'kept'),
+        ),
+      ),
+    );
 
     const kept = PresenceSeatKey(sessionId: 's', memberId: 'kept');
     await _waitFor(
@@ -295,62 +290,68 @@ void main() {
     expect(h.openCount, 1);
   });
 
-  test('stop during in-flight open closes the returned channel and does not reopen', () async {
-    final dispatcher = AsyncDispatcher()..start();
-    final presence = AgentPresenceProjection();
-    final pending = Completer<EventTransportByteChannel>();
-    var openCount = 0;
-    final client = EventTransportClient(
-      dispatcher: dispatcher,
-      presence: presence,
-      codecs: [
-        AgentPresenceTransportCodec(),
-        SessionLifecycleTransportCodec(),
-      ],
-      open: () {
-        openCount++;
-        return pending.future;
-      },
-      backoff: (_) => Duration.zero,
-    );
-    addTearDown(() async {
-      await client.stop();
-      await dispatcher.stop();
-      await presence.close();
-    });
+  test(
+    'stop during in-flight open closes the returned channel and does not reopen',
+    () async {
+      final dispatcher = AsyncDispatcher()..start();
+      final presence = AgentPresenceProjection();
+      final pending = Completer<EventTransportByteChannel>();
+      var openCount = 0;
+      final client = EventTransportClient(
+        dispatcher: dispatcher,
+        presence: presence,
+        codecs: [
+          AgentPresenceTransportCodec(),
+          SessionLifecycleTransportCodec(),
+        ],
+        open: () {
+          openCount++;
+          return pending.future;
+        },
+        backoff: (_) => Duration.zero,
+      );
+      addTearDown(() async {
+        await client.stop();
+        await dispatcher.stop();
+        await presence.close();
+      });
 
-    await client.start();
-    await _waitFor(() => openCount == 1, timeout: _timeout);
-    final channel = _FakeChannel();
-    final stopping = client.stop();
-    pending.complete(channel);
-    await stopping;
-    await _waitFor(() => channel.closed, timeout: _timeout);
-    for (var i = 0; i < 20; i++) {
-      await Future<void>.delayed(Duration.zero);
-    }
-    expect(openCount, 1);
-  });
+      await client.start();
+      await _waitFor(() => openCount == 1, timeout: _timeout);
+      final channel = _FakeChannel();
+      final stopping = client.stop();
+      pending.complete(channel);
+      await stopping;
+      await _waitFor(() => channel.closed, timeout: _timeout);
+      for (var i = 0; i < 20; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      expect(openCount, 1);
+    },
+  );
 
-  test('oversize complete line is not dispatched and reconnects via close', () async {
-    final h = _Harness();
-    addTearDown(h.dispose);
+  test(
+    'oversize complete line is not dispatched and reconnects via close',
+    () async {
+      final h = _Harness();
+      addTearDown(h.dispose);
 
-    await h.startAndWaitSubscribe();
-    expect(h.openCount, 1);
-    expect(h.presence.snapshot, isEmpty);
+      await h.startAndWaitSubscribe();
+      expect(h.openCount, 1);
+      expect(h.presence.snapshot, isEmpty);
 
-    final payload = h.presenceLine(_set());
-    payload['pad'] = 'x' * (70 * 1024);
-    h.channel.inbound.add(utf8.encode(encodeTransportLine(payload)));
+      final payload = h.presenceLine(_set());
+      payload['pad'] = 'x' * (70 * 1024);
+      h.channel.inbound.add(utf8.encode(encodeTransportLine(payload)));
 
-    await _waitFor(
-      () => h.channels.first.closed && h.openCount >= 2,
-      timeout: _timeout,
-    );
-    expect(h.presence.availabilityFor(_seat), isNull);
-    expect(h.presence.snapshot, isEmpty);
-  });
+      await _waitFor(
+        () => h.channels.first.closed && h.openCount >= 2,
+        timeout: _timeout,
+      );
+      expect(h.presence.availabilityFor(_seat), isNull);
+      expect(h.presence.snapshot, isEmpty);
+    },
+  );
 
   test('stop then start does not overlap run loops', () async {
     final h = _Harness(backoff: (_) => const Duration(milliseconds: 80));
@@ -372,21 +373,24 @@ void main() {
     expect(h.openCount, afterStop + 1);
   });
 
-  test('stop during long backoff completes promptly and does not reopen', () async {
-    final h = _Harness(backoff: (_) => const Duration(seconds: 30));
-    addTearDown(h.dispose);
+  test(
+    'stop during long backoff completes promptly and does not reopen',
+    () async {
+      final h = _Harness(backoff: (_) => const Duration(seconds: 30));
+      addTearDown(h.dispose);
 
-    await h.startAndWaitSubscribe();
-    expect(h.openCount, 1);
+      await h.startAndWaitSubscribe();
+      expect(h.openCount, 1);
 
-    await h.channel.inbound.close();
-    await _waitFor(() => h.channels.first.closed, timeout: _timeout);
-    await Future<void>.delayed(const Duration(milliseconds: 20));
-    expect(h.openCount, 1);
+      await h.channel.inbound.close();
+      await _waitFor(() => h.channels.first.closed, timeout: _timeout);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(h.openCount, 1);
 
-    var stopped = false;
-    unawaited(h.client.stop().then((_) => stopped = true));
-    await _waitFor(() => stopped, timeout: const Duration(seconds: 1));
-    expect(h.openCount, 1);
-  });
+      var stopped = false;
+      unawaited(h.client.stop().then((_) => stopped = true));
+      await _waitFor(() => stopped, timeout: const Duration(seconds: 1));
+      expect(h.openCount, 1);
+    },
+  );
 }

@@ -37,10 +37,11 @@ FloatingWorkspaceTabBar _bar({
 void main() {
   testWidgets('pinned tab shows pin icon instead of close', (tester) async {
     var unpinned = false;
-    await tester.pumpWidget(_host(_bar(
-      pinnedTabIds: {'terminal:e1'},
-      onUnpin: (_) => unpinned = true,
-    )));
+    await tester.pumpWidget(
+      _host(
+        _bar(pinnedTabIds: {'terminal:e1'}, onUnpin: (_) => unpinned = true),
+      ),
+    );
 
     expect(find.byIcon(Icons.close), findsNothing);
     expect(find.byIcon(Icons.push_pin), findsOneWidget);
@@ -50,13 +51,15 @@ void main() {
     expect(unpinned, isTrue);
   });
 
-  testWidgets('preview tab renders italic title and double-tap fires',
-      (tester) async {
+  testWidgets('preview tab renders italic title and double-tap fires', (
+    tester,
+  ) async {
     final doubleTapped = <String>[];
-    await tester.pumpWidget(_host(_bar(
-      previewTabIds: {'terminal:e1'},
-      onDoubleTap: doubleTapped.add,
-    )));
+    await tester.pumpWidget(
+      _host(
+        _bar(previewTabIds: {'terminal:e1'}, onDoubleTap: doubleTapped.add),
+      ),
+    );
 
     expect(find.byIcon(Icons.close), findsOneWidget);
     final text = tester.widget<Text>(find.text('Shell 1'));
@@ -71,8 +74,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
   });
 
-  testWidgets('normal tab is not italic and pin callback not called',
-      (tester) async {
+  testWidgets('normal tab is not italic and pin callback not called', (
+    tester,
+  ) async {
     var pinned = false;
     await tester.pumpWidget(_host(_bar(onPin: (_) => pinned = true)));
 

@@ -19,5 +19,4 @@ bool mobileWorkspaceDrawerOpen({
 /// Drawer body when open: tools if right-tools intent is effective, else chat.
 MobileDrawerMode mobileWorkspaceDrawerDisplayMode({
   required bool rightToolsEffective,
-}) =>
-    rightToolsEffective ? MobileDrawerMode.tools : MobileDrawerMode.chat;
+}) => rightToolsEffective ? MobileDrawerMode.tools : MobileDrawerMode.chat;

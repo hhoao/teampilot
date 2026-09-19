@@ -153,11 +153,7 @@ class WslFilesystem implements Filesystem {
   }
 
   @override
-  Future<List<int>?> readBytesRange(
-    String path,
-    int offset,
-    int length,
-  ) async {
+  Future<List<int>?> readBytesRange(String path, int offset, int length) async {
     final quoted = RemoteFileStore.shellSingleQuote(path);
     final result = await _run([
       'sh',

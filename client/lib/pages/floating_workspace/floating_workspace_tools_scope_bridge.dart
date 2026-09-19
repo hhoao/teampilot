@@ -35,10 +35,11 @@ class FloatingWorkspaceToolsScopeBridge extends StatelessWidget {
         if (cubit == null) return child;
         return BlocProvider<WorkspaceToolsScopeCubit>.value(
           value: cubit,
-          child: BlocBuilder<WorkspaceToolsScopeCubit, WorkspaceToolsScopeState>(
-            builder: (context, state) =>
-                WorkspaceToolsScope(state: state, child: child),
-          ),
+          child:
+              BlocBuilder<WorkspaceToolsScopeCubit, WorkspaceToolsScopeState>(
+                builder: (context, state) =>
+                    WorkspaceToolsScope(state: state, child: child),
+              ),
         );
       },
     );

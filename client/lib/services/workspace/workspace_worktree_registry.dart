@@ -35,7 +35,8 @@ class WorkspaceWorktreeRegistry {
     if (existing != null && !existing.isClosed) return existing;
 
     final cubit = WorktreeCubit(
-      storage: storage ??
+      storage:
+          storage ??
           (throw StateError(
             'WorkspaceWorktreeRegistry requires HomeStorage for WorktreeCubit '
             'creation; pass storage at construction.',

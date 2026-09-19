@@ -266,7 +266,9 @@ class _WorkspaceSettingsInlineRow extends StatelessWidget {
                 width: 168,
                 child: Text(
                   label,
-                  style: TpTextStyles.of(context).mdMediumColored(cs.onSurfaceVariant),
+                  style: TpTextStyles.of(
+                    context,
+                  ).mdMediumColored(cs.onSurfaceVariant),
                 ),
               ),
               Expanded(
@@ -303,11 +305,7 @@ String _formatTimestamp(int ms) {
       '${two(dt.hour)}:${two(dt.minute)}';
 }
 
-void _copyText(
-  BuildContext context,
-  String text, {
-  String? toastMessage,
-}) {
+void _copyText(BuildContext context, String text, {String? toastMessage}) {
   Clipboard.setData(ClipboardData(text: text));
   AppToast.show(
     context,

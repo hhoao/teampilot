@@ -190,10 +190,7 @@ class _RunPanelState extends State<RunPanel> {
             ? ColoredBox(
                 color: cs.surfaceContainerLowest,
                 child: Center(
-                  child: Text(
-                    l10n.runEmptyOutputHint,
-                    style: styles.mutedMd,
-                  ),
+                  child: Text(l10n.runEmptyOutputHint, style: styles.mutedMd),
                 ),
               )
             : RunSessionPage(
@@ -254,8 +251,7 @@ class _RunPanelState extends State<RunPanel> {
                     working:
                         session.status == RunSessionStatus.running ||
                         session.status == RunSessionStatus.starting,
-                    onTap: () =>
-                        setState(() => _activeSessionId = session.id),
+                    onTap: () => setState(() => _activeSessionId = session.id),
                     onClose: () => unawaited(_closeSession(session)),
                     accentColor: cs.primary,
                     icon: Icons.play_arrow_rounded,

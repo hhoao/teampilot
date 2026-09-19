@@ -11,10 +11,7 @@ void main() {
         'serverConfigCache': {'feature': true},
         'network': {'proxy': 'http://127.0.0.1:7890'},
         'permissions': {
-          'allow': [
-            'Shell(ls)',
-            CursorCliConfigPolicy.teamBusMcpAllowEntry,
-          ],
+          'allow': ['Shell(ls)', CursorCliConfigPolicy.teamBusMcpAllowEntry],
           'deny': ['Shell(rm)'],
         },
       };
@@ -27,7 +24,10 @@ void main() {
 
       final allow = (warm['permissions']! as Map)['allow'] as List;
       expect(allow, contains('Shell(ls)'));
-      expect(allow, isNot(contains(CursorCliConfigPolicy.teamBusMcpAllowEntry)));
+      expect(
+        allow,
+        isNot(contains(CursorCliConfigPolicy.teamBusMcpAllowEntry)),
+      );
       expect((warm['permissions']! as Map)['deny'], ['Shell(rm)']);
     });
   });

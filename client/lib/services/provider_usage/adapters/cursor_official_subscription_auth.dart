@@ -58,9 +58,6 @@ class CursorOfficialSubscriptionAuthReader
     );
     final authInfo = cliConfig?['authInfo'];
     final fromCli = authInfo is Map ? '${authInfo['userId'] ?? ''}'.trim() : '';
-    return (
-      accessToken: access,
-      userId: fromCli.isEmpty ? null : fromCli,
-    );
+    return (accessToken: access, userId: fromCli.isEmpty ? null : fromCli);
   }
 }

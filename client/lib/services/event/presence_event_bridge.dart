@@ -20,9 +20,11 @@ import 'agent_presence_sink.dart';
 /// - [forget] clears the baseline so the next report publishes.
 /// - [dispose] stops all publishing.
 final class PresenceEventBridge {
-  PresenceEventBridge({required AgentPresenceSink sink, DateTime Function()? clock})
-      : _sink = sink,
-        _clock = clock ?? DateTime.now;
+  PresenceEventBridge({
+    required AgentPresenceSink sink,
+    DateTime Function()? clock,
+  }) : _sink = sink,
+       _clock = clock ?? DateTime.now;
 
   final AgentPresenceSink _sink;
   final DateTime Function() _clock;
@@ -36,25 +38,32 @@ final class PresenceEventBridge {
   /// when it differs from the last reported value. A `null` [availability]
   /// clears the baseline and publishes [AgentPresenceKind.cleared] when a
   /// baseline existed (see class docs).
-  void reportAvailability(PresenceSeatKey seat, AgentPresenceKind? availability) {
+  void reportAvailability(
+    PresenceSeatKey seat,
+    AgentPresenceKind? availability,
+  ) {
     if (_disposed) return;
     if (availability == null) {
       final had = _last.remove(seat);
       if (had == null) return;
-      _sink.publish(AgentPresenceEvent(
-        seat: seat,
-        eventKind: AgentPresenceKind.cleared,
-        timestamp: _clock(),
-      ));
+      _sink.publish(
+        AgentPresenceEvent(
+          seat: seat,
+          eventKind: AgentPresenceKind.cleared,
+          timestamp: _clock(),
+        ),
+      );
       return;
     }
     if (_last[seat] == availability) return;
     _last[seat] = availability;
-    _sink.publish(AgentPresenceEvent(
-      seat: seat,
-      eventKind: availability,
-      timestamp: _clock(),
-    ));
+    _sink.publish(
+      AgentPresenceEvent(
+        seat: seat,
+        eventKind: availability,
+        timestamp: _clock(),
+      ),
+    );
   }
 
   /// Drops [seat]'s baseline (unbind / session closed) so that its next report

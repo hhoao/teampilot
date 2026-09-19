@@ -70,9 +70,9 @@ class _SessionLaunchErrorBannerState extends State<SessionLaunchErrorBanner> {
               Expanded(
                 child: Text(
                   l10n.sessionFailedTitle,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
               TextButton(
@@ -120,9 +120,9 @@ class _SessionLaunchErrorBannerState extends State<SessionLaunchErrorBanner> {
                     child: SelectableText(
                       widget.view.message,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                            fontFamily: 'monospace',
-                          ),
+                        color: cs.onSurfaceVariant,
+                        fontFamily: 'monospace',
+                      ),
                     ),
                   ),
                 ),
@@ -156,9 +156,9 @@ class _SessionLaunchErrorBannerState extends State<SessionLaunchErrorBanner> {
           children: [
             Text(
               l10n.sessionFailedTitle,
-              style: TpTextStyles.of(context).smRelaxedColored(
-                cs.onErrorContainer,
-              ),
+              style: TpTextStyles.of(
+                context,
+              ).smRelaxedColored(cs.onErrorContainer),
             ),
             for (final action in widget.view.actions) ...[
               Align(

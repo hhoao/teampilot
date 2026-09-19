@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/codex/capabilities/terminal_behavior.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/terminal_behavior.dart';
-import 'package:teampilot/services/chat/terminal/fullscreen_input_readiness.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_input_readiness.dart';
 
 void main() {
   test('boot-frame-only surfaces are ready without a dwell', () {

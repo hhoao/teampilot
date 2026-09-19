@@ -63,14 +63,18 @@ WorkbenchTabId? workbenchTabIdFromTabInfo(TabInfo tab) {
 /// [onDrop] receives the dragged tab, the drop region's group id, and the
 /// computed zone — hosts wire it to [dispatchSplitDrop].
 class WorkspaceShellTabDrag {
-  const WorkspaceShellTabDrag({required this.sourceGroupId, required this.onDrop});
+  const WorkspaceShellTabDrag({
+    required this.sourceGroupId,
+    required this.onDrop,
+  });
 
   final String sourceGroupId;
   final void Function(
     WorkbenchTabId tab,
     String targetGroupId,
     SplitDropZone zone,
-  ) onDrop;
+  )
+  onDrop;
 }
 
 /// Sidebar + right-tools visibility toggles for the workspace IDE shell.
@@ -176,9 +180,7 @@ class WorkspaceShellSidebarVisibilityToggle extends StatelessWidget {
           ),
           tooltip: commandTooltip(
             context,
-            effectiveOpen
-                ? l10n.sidebarPanelHidden
-                : l10n.sidebarPanelVisible,
+            effectiveOpen ? l10n.sidebarPanelHidden : l10n.sidebarPanelVisible,
             CommandIds.toggleSidebar,
           ),
           color: effectiveOpen ? cs.primary : cs.onSurfaceVariant,
@@ -301,15 +303,11 @@ class WorkspaceShellTabRow extends StatelessWidget {
           onCloseOthers: () => onTabCloseOthers?.call(i),
           onCloseRight: () => onTabCloseRight?.call(i),
           onCloseAll: () => onTabCloseAll?.call(i),
-          onPin: tab.pinnable && onTabPin != null
-              ? () => onTabPin!(i)
-              : null,
+          onPin: tab.pinnable && onTabPin != null ? () => onTabPin!(i) : null,
           onSplitRight: onTabSplitRight != null
               ? () => onTabSplitRight!(i)
               : null,
-          onSplitDown: onTabSplitDown != null
-              ? () => onTabSplitDown!(i)
-              : null,
+          onSplitDown: onTabSplitDown != null ? () => onTabSplitDown!(i) : null,
           icon: tab.icon,
           cli: tab.cli,
           accentColor: tab.accentColor,
@@ -555,9 +553,11 @@ class WorkbenchStripTabChipState extends State<WorkbenchStripTabChip> {
     final l10n = context.l10n;
     final title = sessionId == null
         ? widget.title
-        : context.select<ChatCubit, SessionRowContent>(
-            (c) => SessionRowContent.fromChatState(c.state, sessionId),
-          ).titleForPaint(l10n);
+        : context
+              .select<ChatCubit, SessionRowContent>(
+                (c) => SessionRowContent.fromChatState(c.state, sessionId),
+              )
+              .titleForPaint(l10n);
     final cs = Theme.of(context).colorScheme;
     // Session tabs inject the same indicator as the sidebar list; run/other
     // tabs keep TpTabChip's default CircularProgressIndicator.

@@ -84,9 +84,9 @@ class _CheatsheetCategorySection extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
             child: Text(
               titleForCategory(l10n, category),
-              style: TpTextStyles.of(context).xsTrackColored(
-                Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+              style: TpTextStyles.of(
+                context,
+              ).xsTrackColored(Theme.of(context).colorScheme.onSurfaceVariant),
             ),
           ),
           for (final def in defs)
@@ -119,10 +119,7 @@ class _CheatsheetRow extends StatelessWidget {
           Expanded(child: Text(title)),
           const SizedBox(width: 12),
           if (chords.isEmpty)
-            Text(
-              l10n.shortcutsNotSet,
-              style: TpTextStyles.of(context).mutedSm,
-            )
+            Text(l10n.shortcutsNotSet, style: TpTextStyles.of(context).mutedSm)
           else
             Wrap(
               spacing: 6,

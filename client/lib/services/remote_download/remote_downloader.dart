@@ -21,8 +21,8 @@ class RemoteDownloader {
   RemoteDownloader({
     required http.Client client,
     required RemoteDownloadResolver resolver,
-  })  : _client = client,
-        _resolver = resolver;
+  }) : _client = client,
+       _resolver = resolver;
 
   final http.Client _client;
   final RemoteDownloadResolver _resolver;
@@ -59,7 +59,9 @@ class RemoteDownloader {
           RemoteDownloadAttempt(
             uri: candidate.uri,
             sourceId: candidate.sourceId,
-            statusCode: error is _CandidateHttpFailure ? error.statusCode : null,
+            statusCode: error is _CandidateHttpFailure
+                ? error.statusCode
+                : null,
             error: error is _CandidateHttpFailure ? null : error,
           ),
         );

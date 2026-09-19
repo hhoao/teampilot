@@ -39,7 +39,7 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-                                          storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     const member = TeamMemberConfig(
       id: 'm1',

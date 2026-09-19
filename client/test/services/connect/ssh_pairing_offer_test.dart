@@ -85,15 +85,9 @@ void main() {
     expect(decoded.appDataRoot, '/home/alice/.local/share/com.hhoa.teampilot');
     expect(
       decoded.endpoints.map((endpoint) => (endpoint.kind, endpoint.port)),
-      [
-        (SshEndpointKind.lan, 22),
-        (SshEndpointKind.extra, 2222),
-      ],
+      [(SshEndpointKind.lan, 22), (SshEndpointKind.extra, 2222)],
     );
-    expect(
-      decoded.hostKeyFingerprints,
-      const ['SHA256:abcdefgh'],
-    );
+    expect(decoded.hostKeyFingerprints, const ['SHA256:abcdefgh']);
     expect(decoded.pairing.token, offer.pairing.token);
     expect(decoded.pairing.tlsCertSha256, offer.pairing.tlsCertSha256);
     expect(decoded.pairing.url, 'https://192.168.1.20:2768/pair');
@@ -214,18 +208,20 @@ void main() {
   });
 
   group('offerMatchesProfile', () {
-    test('matches when a pinned fingerprint intersects and the port matches',
-        () {
-      const profile = SshProfile(
-        id: 'p',
-        name: 'Alice desktop',
-        host: '192.168.1.20',
-        port: 22,
-        username: 'alice',
-        hostKeyFingerprints: ['SHA256:abcdefgh'],
-      );
-      expect(offerMatchesProfile(_offer(), profile), isTrue);
-    });
+    test(
+      'matches when a pinned fingerprint intersects and the port matches',
+      () {
+        const profile = SshProfile(
+          id: 'p',
+          name: 'Alice desktop',
+          host: '192.168.1.20',
+          port: 22,
+          username: 'alice',
+          hostKeyFingerprints: ['SHA256:abcdefgh'],
+        );
+        expect(offerMatchesProfile(_offer(), profile), isTrue);
+      },
+    );
 
     test('mismatches when the desktop rotated its host key', () {
       const profile = SshProfile(

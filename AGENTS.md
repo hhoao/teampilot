@@ -9,7 +9,7 @@ All app code lives under `client/lib/` (cubits, pages, repositories, services, m
 
 | Doc | Read when |
 |-----|-----------|
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Core concepts (Workspace / Launch profile / Expert / Session), bootstrap, routing, storage & CLI config inheritance, TeamBus, "where to change code" map, routes |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Core concepts, `services/chat/` directory rules (stages vs features), ports, member placement, "where to change code", routes |
 | [docs/cli-architecture.md](docs/cli-architecture.md) | Adding or changing a CLI: tool definitions + capability pattern, anti-patterns |
 | [docs/pty-fullscreen-delivery.md](docs/pty-fullscreen-delivery.md) | Full-screen TUI prompt delivery: state machine (staging/pasted/awaitingAck), paste-ack vs submit-ack, time budgets |
 | [docs/workspace-storage-layout.md](docs/workspace-storage-layout.md) | On-disk layout under `<teampilotRoot>` |
@@ -26,6 +26,7 @@ All app code lives under `client/lib/` (cubits, pages, repositories, services, m
 - **Test loop: fast inner, slow outer.** Inner loop is `flutter analyze`; verify with one test file (`--plain-name` to narrow); full suite only once before claiming done, in the background (details: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#test-loop-fast-inner-slow-outer-do-not-invert-it)).
 - Before claiming done: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && dart run tool/run_tests.dart`.
 - **Member placement:** always `sessionRosterMembers(session, team)` (native writers: `cliTeamRosterMembers` / `runtimeRosterMembers`) — never raw `team.members` or stale `replicas` (details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#member-placement-machines)).
+- **`services/chat/` directories:** only lifecycle **stages** or named **features**; keep `team_bus` / `team_generation` names; ports live in the owning feature (details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#serviceschat--team-session-product-line)).
 - **Paths:** injected `HomeStorage` / `RuntimeContextRegistry` — never `Directory.current` for workspace or app data roots.
 - **CLIs:** add/extend a `CliToolDefinition` + capabilities under `services/cli/registry/`; never scatter `if (cli == …)` checks across features.
 - **Logging:** user errors → l10n; diagnostics → `AppLogger`; no `print`.

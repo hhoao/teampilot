@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/terminal/fullscreen_cr_ack_config.dart';
-import 'package:teampilot/services/chat/terminal/fullscreen_pty_automation.dart';
-import 'package:teampilot/services/chat/terminal/fullscreen_pty_delivery_port.dart';
-import 'package:teampilot/services/chat/terminal/fullscreen_pty_submission_machine.dart';
-import 'package:teampilot/services/chat/terminal/member_pty_inject_service.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_cr_ack_config.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_pty_automation.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_pty_delivery_port.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_pty_submission_machine.dart';
+import 'package:teampilot/services/chat/runtime/pty/member_pty_inject_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import '../../support/in_memory_filesystem.dart';
 

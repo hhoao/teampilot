@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import '../../models/default_team_roster.dart';
 import '../../models/team_config.dart';
 import '../../utils/team/team_member_naming.dart';
 

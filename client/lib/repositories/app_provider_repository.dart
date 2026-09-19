@@ -19,9 +19,8 @@ export 'provider_persistence/provider_persistence_strategy.dart'
 
 /// Returns the linked managed entry's secret value, or null when the entry
 /// or its secret is missing. Injected by the app shell.
-typedef LinkedCredentialLookup = Future<String?> Function(
-  String managedProviderId,
-);
+typedef LinkedCredentialLookup =
+    Future<String?> Function(String managedProviderId);
 
 class AppProviderRepository {
   AppProviderRepository({

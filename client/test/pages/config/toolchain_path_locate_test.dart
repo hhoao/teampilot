@@ -154,10 +154,7 @@ void main() {
     final cubit = await _makeCubit();
     addTearDown(cubit.close);
     await tester.pumpWidget(
-      _wrapRow(
-        cubit,
-        locateOverride: () async => '/usr/local/bin/git',
-      ),
+      _wrapRow(cubit, locateOverride: () async => '/usr/local/bin/git'),
     );
     await tester.pump();
     await tester.tap(find.byKey(AppKeys.gitToolchainPathResetButton));

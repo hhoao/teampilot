@@ -124,9 +124,7 @@ void main() {
     expect(find.text('Sending'), findsNothing);
   });
 
-  testWidgets('failed bubble exposes retry in the action bar', (
-    tester,
-  ) async {
+  testWidgets('failed bubble exposes retry in the action bar', (tester) async {
     String? retryId;
     final runtime = ExternalStoreAiThreadRuntime()
       ..setMessages([

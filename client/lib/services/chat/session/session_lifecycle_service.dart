@@ -9,7 +9,6 @@ import '../../../models/session_member_binding.dart';
 import '../../../models/skill.dart';
 import '../../../models/ssh_profile.dart';
 import '../../../models/team_config.dart';
-import '../../../models/launch_security_policy.dart';
 import '../../../models/member_instance.dart';
 import '../../../models/launch_profile.dart';
 import '../../../repositories/cli_presets_repository.dart';
@@ -48,9 +47,9 @@ import '../launch/staging/session_runtime_plan_builder.dart';
 import '../../expert_hub/builtin_member_templates.dart';
 import '../../skill/skill_pack_install_store.dart';
 import 'session_continue_overrides_apply.dart';
-import 'shell_launch_spec.dart';
+import '../launch/session/shell_launch_spec.dart';
 
-export 'shell_launch_spec.dart';
+export '../launch/session/shell_launch_spec.dart';
 
 typedef StorageRootsResolver = Future<RuntimeContext> Function();
 typedef SessionResourceProviderResolver =

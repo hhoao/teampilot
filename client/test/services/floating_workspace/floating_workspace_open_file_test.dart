@@ -14,85 +14,95 @@ import 'package:teampilot/services/workbench/workbench_editor_opener.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
-  test('pickAndOpenFloatingWorkspaceFile opens selected path via opener', () async {
-    final fs = InMemoryFilesystem()..files['/repo/a.txt'] = 'hello';
-    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs), );
-    final workbench = WorkbenchCubit();
-    final floating = FloatingWorkspaceCubit();
-    addTearDown(editor.close);
-    addTearDown(workbench.close);
-    addTearDown(floating.close);
+  test(
+    'pickAndOpenFloatingWorkspaceFile opens selected path via opener',
+    () async {
+      final fs = InMemoryFilesystem()..files['/repo/a.txt'] = 'hello';
+      final editor = EditorCubit(
+        fs: fs,
+        storage: fakeHomeStorage(filesystem: fs),
+      );
+      final workbench = WorkbenchCubit();
+      final floating = FloatingWorkspaceCubit();
+      addTearDown(editor.close);
+      addTearDown(workbench.close);
+      addTearDown(floating.close);
 
-    final opener = WorkbenchEditorOpener(
-      editor: editor,
-      workbench: workbench,
-      floating: floating,
-      markdownViewModes: MarkdownViewModeStore(),
-      readMarkdownOpenMode: () => MarkdownOpenMode.preview,
-    );
+      final opener = WorkbenchEditorOpener(
+        editor: editor,
+        workbench: workbench,
+        floating: floating,
+        markdownViewModes: MarkdownViewModeStore(),
+        readMarkdownOpenMode: () => MarkdownOpenMode.preview,
+      );
 
-    floating.setActiveWorkspace('ws-1');
-    final workspaces = [
-      Workspace(
-        workspaceId: 'ws-1',
-        createdAt: 0,
-        folders: [const WorkspaceFolder(path: '/repo')],
-      ),
-    ];
+      floating.setActiveWorkspace('ws-1');
+      final workspaces = [
+        Workspace(
+          workspaceId: 'ws-1',
+          createdAt: 0,
+          folders: [const WorkspaceFolder(path: '/repo')],
+        ),
+      ];
 
-    String? seenInitialDirectory;
-    await pickAndOpenFloatingWorkspaceFile(
-      floating: floating,
-      opener: opener,
-      workspaces: workspaces,
-      pickFiles: ({
-        type = FileType.any,
-        allowMultiple = false,
-        initialDirectory,
-      }) async {
-        seenInitialDirectory = initialDirectory;
-        return FilePickerResult([
-          PlatformFile(name: 'a.txt', size: 1, path: '/repo/a.txt'),
-        ]);
-      },
-    );
+      String? seenInitialDirectory;
+      await pickAndOpenFloatingWorkspaceFile(
+        floating: floating,
+        opener: opener,
+        workspaces: workspaces,
+        pickFiles:
+            ({
+              type = FileType.any,
+              allowMultiple = false,
+              initialDirectory,
+            }) async {
+              seenInitialDirectory = initialDirectory;
+              return FilePickerResult([
+                PlatformFile(name: 'a.txt', size: 1, path: '/repo/a.txt'),
+              ]);
+            },
+      );
 
-    expect(seenInitialDirectory, '/repo');
-    expect(
-      workbench.mergedFloatingStrip('ws-1').order,
-      [WorkbenchTabId.file('/repo/a.txt')],
-    );
-    expect(editor.state.bucket('ws-1').openFilePaths, ['/repo/a.txt']);
-  });
+      expect(seenInitialDirectory, '/repo');
+      expect(workbench.mergedFloatingStrip('ws-1').order, [
+        WorkbenchTabId.file('/repo/a.txt'),
+      ]);
+      expect(editor.state.bucket('ws-1').openFilePaths, ['/repo/a.txt']);
+    },
+  );
 
-  test('pickAndOpenFloatingWorkspaceFile no-ops when picker cancelled', () async {
-    final editor = EditorCubit(storage: fakeHomeStorage());
-    final workbench = WorkbenchCubit();
-    final floating = FloatingWorkspaceCubit();
-    addTearDown(editor.close);
-    addTearDown(workbench.close);
-    addTearDown(floating.close);
+  test(
+    'pickAndOpenFloatingWorkspaceFile no-ops when picker cancelled',
+    () async {
+      final editor = EditorCubit(storage: fakeHomeStorage());
+      final workbench = WorkbenchCubit();
+      final floating = FloatingWorkspaceCubit();
+      addTearDown(editor.close);
+      addTearDown(workbench.close);
+      addTearDown(floating.close);
 
-    final opener = WorkbenchEditorOpener(
-      editor: editor,
-      workbench: workbench,
-      floating: floating,
-      markdownViewModes: MarkdownViewModeStore(),
-      readMarkdownOpenMode: () => MarkdownOpenMode.preview,
-    );
+      final opener = WorkbenchEditorOpener(
+        editor: editor,
+        workbench: workbench,
+        floating: floating,
+        markdownViewModes: MarkdownViewModeStore(),
+        readMarkdownOpenMode: () => MarkdownOpenMode.preview,
+      );
 
-    floating.setActiveWorkspace('ws-1');
-    await pickAndOpenFloatingWorkspaceFile(
-      floating: floating,
-      opener: opener,
-      workspaces: const [],
-      pickFiles: ({
-        type = FileType.any,
-        allowMultiple = false,
-        initialDirectory,
-      }) async => null,
-    );
+      floating.setActiveWorkspace('ws-1');
+      await pickAndOpenFloatingWorkspaceFile(
+        floating: floating,
+        opener: opener,
+        workspaces: const [],
+        pickFiles:
+            ({
+              type = FileType.any,
+              allowMultiple = false,
+              initialDirectory,
+            }) async => null,
+      );
 
-    expect(workbench.mergedFloatingStrip('ws-1').order, isEmpty);
-  });
+      expect(workbench.mergedFloatingStrip('ws-1').order, isEmpty);
+    },
+  );
 }

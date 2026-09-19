@@ -33,8 +33,8 @@ void main() {
   }) {
     return ConnectRelayClient(
       validateDial: validateDial ?? (_) async => true,
-      resolveTarget:
-          (_) async => (host: InternetAddress.loopbackIPv4, port: localTarget.port),
+      resolveTarget: (_) async =>
+          (host: InternetAddress.loopbackIPv4, port: localTarget.port),
       connectSocket: connectSocket,
       retryDelay: const Duration(milliseconds: 5),
     );

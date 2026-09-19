@@ -95,7 +95,7 @@ class CliToolRegistry {
       capability<CliSessionCapability>(cli) ?? const NoopCliSessionCapability();
 
   CliLaunchSecurityCapability launchSecurityFor(CliTool id) {
-    final launchSecurity = this.capability<CliLaunchSecurityCapability>(id);
+    final launchSecurity = capability<CliLaunchSecurityCapability>(id);
     if (launchSecurity == null) {
       throw StateError(
         'CLI ${id.value} must register CliLaunchSecurityCapability',

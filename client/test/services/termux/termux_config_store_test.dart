@@ -31,9 +31,7 @@ void main() {
     });
 
     test('defaults host and port when omitted from json', () {
-      final config = TermuxConfig.fromJson({
-        'username': 'u0_a456',
-      });
+      final config = TermuxConfig.fromJson({'username': 'u0_a456'});
 
       expect(config.host, '127.0.0.1');
       expect(config.port, 8022);

@@ -31,7 +31,9 @@ void main() {
     }
   });
 
-  CliSessionManifest sampleManifest({CliSessionPhase phase = CliSessionPhase.persisted}) {
+  CliSessionManifest sampleManifest({
+    CliSessionPhase phase = CliSessionPhase.persisted,
+  }) {
     return CliSessionManifest(
       tool: tool,
       workspaceId: workspaceId,
@@ -40,9 +42,7 @@ void main() {
       workspaceSlug: 'home-hhoa-git-hhoa-teampilot',
       phase: phase,
       phaseUpdatedAtMs: 1_700_000_000_000,
-      shared: cursorTestSharedManifest(
-        slug: 'home-hhoa-git-hhoa-teampilot',
-      ),
+      shared: cursorTestSharedManifest(slug: 'home-hhoa-git-hhoa-teampilot'),
       members: {
         'team-lead': CliSessionManifestMember(
           homeRoot: cursorTestMemberHomeRelative('team-lead'),

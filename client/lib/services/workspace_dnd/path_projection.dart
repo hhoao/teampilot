@@ -1,4 +1,4 @@
-import '../chat/session/launch_command_builder.dart';
+import '../chat/launch/session/launch_command_builder.dart';
 import 'path_namespace.dart';
 import 'runtime_target.dart';
 import 'workspace_file_ref.dart';

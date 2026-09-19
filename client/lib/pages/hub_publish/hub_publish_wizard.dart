@@ -67,8 +67,7 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
     if (team == null) return const [];
     return [
       for (final slot in team.roster)
-        if (LocalExpertStore.isLocalKey(slot.expertKey))
-          slot.expertKey,
+        if (LocalExpertStore.isLocalKey(slot.expertKey)) slot.expertKey,
     ];
   }
 
@@ -227,9 +226,8 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
       _step = switch (_step) {
         HubPublishWizardStep.metadata => HubPublishWizardStep.auth,
         HubPublishWizardStep.gates => HubPublishWizardStep.metadata,
-        HubPublishWizardStep.confirm => _isTeam
-            ? HubPublishWizardStep.gates
-            : HubPublishWizardStep.metadata,
+        HubPublishWizardStep.confirm =>
+          _isTeam ? HubPublishWizardStep.gates : HubPublishWizardStep.metadata,
         HubPublishWizardStep.auth || HubPublishWizardStep.success => _step,
       };
     });
@@ -362,9 +360,9 @@ class _HubPublishWizardState extends State<HubPublishWizard> {
             Text(
               _stepError!,
               key: const Key('hub-publish-step-error'),
-              style: TpTextStyles.of(context).mdColored(
-                Theme.of(context).colorScheme.error,
-              ),
+              style: TpTextStyles.of(
+                context,
+              ).mdColored(Theme.of(context).colorScheme.error),
             ),
             const SizedBox(height: 12),
           ],

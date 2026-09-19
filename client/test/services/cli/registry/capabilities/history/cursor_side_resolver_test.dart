@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/side_resolver.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/subagent_side_resolver.dart';
 import 'package:teampilot/services/io/filesystem.dart';
-import 'package:teampilot/services/chat/session/history/session_history_context.dart';
+import 'package:teampilot/services/chat/conversation/history/session_history_context.dart';
 
 import '../../../../../support/in_memory_filesystem.dart';
 

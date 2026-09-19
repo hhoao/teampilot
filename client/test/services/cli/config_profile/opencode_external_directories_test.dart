@@ -6,7 +6,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
-import 'package:teampilot/services/chat/session/launch_command_builder.dart';
+import 'package:teampilot/services/chat/launch/session/launch_command_builder.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/prompt.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/workspace_base_info.dart';
 import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';

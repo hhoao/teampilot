@@ -27,19 +27,13 @@ void main() {
         stdout: '/usr/bin/claude\n',
       ),
     });
-    final path = await installer.locate(
-      cli: CliTool.claude,
-      run: run.call,
-    );
+    final path = await installer.locate(cli: CliTool.claude, run: run.call);
     expect(path, '/usr/bin/claude');
   });
 
   test('locate returns null when CLI is absent', () async {
     final run = _FakeRun({});
-    final path = await installer.locate(
-      cli: CliTool.claude,
-      run: run.call,
-    );
+    final path = await installer.locate(cli: CliTool.claude, run: run.call);
     expect(path, isNull);
   });
 
@@ -128,7 +122,10 @@ void main() {
         },
       );
       expect(path, '/usr/local/bin/codex');
-      expect(progress.map((p) => p.phase), contains(CliInstallPhase.installingCli));
+      expect(
+        progress.map((p) => p.phase),
+        contains(CliInstallPhase.installingCli),
+      );
       expect(progress.map((p) => p.detail), contains('codex'));
     },
   );

@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import '../../../models/provider_usage_snapshot.dart';
 import '../managed_provider_usage_adapter.dart';
 
 void throwOfficialHttpStatus(int statusCode) {

@@ -5,7 +5,7 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
-import 'package:teampilot/services/follow_up/follow_up_queue.dart';
+import 'package:teampilot/services/chat/conversation/follow_up/follow_up_queue.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 import 'package:teampilot/widgets/follow_up/follow_up_queue_strip.dart';
 import 'package:teampilot/widgets/follow_up/terminal_follow_up_compose.dart';

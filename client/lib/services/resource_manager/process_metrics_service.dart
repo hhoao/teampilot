@@ -17,11 +17,11 @@ class ProcessMetricsService {
     int Function()? appPid,
     List<ProcessTableRow> Function(String text)? parseProcessTable,
     int historyCapacity = 30,
-  })  : _readProcessTable = readProcessTable ?? _defaultReadProcessTable,
-        _readHostMemory = readHostMemory ?? _defaultReadHostMemory,
-        _appPid = appPid ?? (() => pid),
-        _parseProcessTable = parseProcessTable ?? _defaultParseProcessTable,
-        _historyCapacity = historyCapacity;
+  }) : _readProcessTable = readProcessTable ?? _defaultReadProcessTable,
+       _readHostMemory = readHostMemory ?? _defaultReadHostMemory,
+       _appPid = appPid ?? (() => pid),
+       _parseProcessTable = parseProcessTable ?? _defaultParseProcessTable,
+       _historyCapacity = historyCapacity;
 
   /// Test seam: when set, [GlobalResourceManagerHost] uses this instead of a
   /// real process-table sweep so widget tests never spawn `ps`/`powershell`
@@ -194,8 +194,7 @@ class ProcessMetricsService {
         error: e,
         stackTrace: st,
       );
-      return _lastGood ??
-          ResourceMemorySnapshot(collectedAt: DateTime.now());
+      return _lastGood ?? ResourceMemorySnapshot(collectedAt: DateTime.now());
     }
   }
 
@@ -246,11 +245,7 @@ class ProcessMetricsService {
       final result = await Process.run(
         'ps',
         unixPsArgs,
-        environment: {
-          ...Platform.environment,
-          'LC_ALL': 'C',
-          'LANG': 'C',
-        },
+        environment: {...Platform.environment, 'LC_ALL': 'C', 'LANG': 'C'},
         stdoutEncoding: const SystemEncoding(),
       ).timeout(_sweepTimeout);
       if (result.exitCode != 0) {
@@ -273,18 +268,15 @@ class ProcessMetricsService {
   static Future<String> _readWindowsProcessTable() async {
     // Prefer PowerShell CIM; fall back to wmic.
     try {
-      final result = await Process.run(
-        'powershell',
-        const [
-          '-NoProfile',
-          '-Command',
-          "Get-CimInstance Win32_Process | "
-              "ForEach-Object { "
-              "[string]::Join([char]9, @("
-              "\$_.ProcessId, \$_.ParentProcessId, \$_.WorkingSetSize"
-              ')) }',
-        ],
-      ).timeout(_sweepTimeout);
+      final result = await Process.run('powershell', const [
+        '-NoProfile',
+        '-Command',
+        "Get-CimInstance Win32_Process | "
+            "ForEach-Object { "
+            "[string]::Join([char]9, @("
+            "\$_.ProcessId, \$_.ParentProcessId, \$_.WorkingSetSize"
+            ')) }',
+      ]).timeout(_sweepTimeout);
       if (result.exitCode == 0) {
         final out = result.stdout as String;
         if (out.trim().isNotEmpty) return out;
@@ -293,15 +285,12 @@ class ProcessMetricsService {
       // Fall through to wmic.
     }
 
-    final result = await Process.run(
-      'wmic',
-      const [
-        'process',
-        'get',
-        'ProcessId,ParentProcessId,WorkingSetSize',
-        '/format:csv',
-      ],
-    ).timeout(_sweepTimeout);
+    final result = await Process.run('wmic', const [
+      'process',
+      'get',
+      'ProcessId,ParentProcessId,WorkingSetSize',
+      '/format:csv',
+    ]).timeout(_sweepTimeout);
     if (result.exitCode != 0) {
       throw ProcessException(
         'wmic',

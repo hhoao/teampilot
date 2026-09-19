@@ -411,22 +411,19 @@ void main() {
     },
   );
 
-  test(
-    'selectProject applies preferWorktreePath without re-listing',
-    () async {
-      final lister = _CountingLister(
-        (_) => [_wt('/repo', main: true), _wt('/wt/a')],
-      );
-      final cubit = WorktreeCubit(lister: lister, storage: fakeHomeStorage());
-      await cubit.load('/repo');
-      expect(cubit.state.currentWorktreePath, '/repo');
-      expect(lister.calls, 1);
+  test('selectProject applies preferWorktreePath without re-listing', () async {
+    final lister = _CountingLister(
+      (_) => [_wt('/repo', main: true), _wt('/wt/a')],
+    );
+    final cubit = WorktreeCubit(lister: lister, storage: fakeHomeStorage());
+    await cubit.load('/repo');
+    expect(cubit.state.currentWorktreePath, '/repo');
+    expect(lister.calls, 1);
 
-      await cubit.selectProject('/repo', preferWorktreePath: '/wt/a/lib/x.dart');
-      expect(lister.calls, 1);
-      expect(cubit.state.currentWorktreePath, '/wt/a');
-    },
-  );
+    await cubit.selectProject('/repo', preferWorktreePath: '/wt/a/lib/x.dart');
+    expect(lister.calls, 1);
+    expect(cubit.state.currentWorktreePath, '/wt/a');
+  });
 
   test('prefetchProjects notifies listeners after caching a project', () async {
     final store = WorkspaceWorktreeStore();
@@ -455,45 +452,48 @@ void main() {
       await cubit.close();
     });
 
-    test('reloads the active repo with force and republishes worktrees',
-        () async {
-      var list = [_wt('/repo', main: true), _wt('/wt/a')];
-      final lister = _CountingLister((_) => list);
-      final cubit = WorktreeCubit(
-        storage: fakeHomeStorage(),
-        lister: lister,
-        initialRepoPath: '/repo',
-      );
-      await cubit.reloadActiveRepo();
-      expect(lister.calls, 1);
-      expect(cubit.state.worktrees, hasLength(2));
+    test(
+      'reloads the active repo with force and republishes worktrees',
+      () async {
+        var list = [_wt('/repo', main: true), _wt('/wt/a')];
+        final lister = _CountingLister((_) => list);
+        final cubit = WorktreeCubit(
+          storage: fakeHomeStorage(),
+          lister: lister,
+          initialRepoPath: '/repo',
+        );
+        await cubit.reloadActiveRepo();
+        expect(lister.calls, 1);
+        expect(cubit.state.worktrees, hasLength(2));
 
-      list = [_wt('/repo', main: true), _wt('/wt/a'), _wt('/wt/b')];
-      await cubit.reloadActiveRepo();
-      expect(lister.calls, 2);
-      expect(cubit.state.worktrees, hasLength(3));
-      await cubit.close();
-    });
+        list = [_wt('/repo', main: true), _wt('/wt/a'), _wt('/wt/b')];
+        await cubit.reloadActiveRepo();
+        expect(lister.calls, 2);
+        expect(cubit.state.worktrees, hasLength(3));
+        await cubit.close();
+      },
+    );
 
-    test('coalesces concurrent reloads into one in-flight plus one trailing',
-        () async {
-      final lister = _CountingDelayedLister(
-        [_wt('/repo', main: true)],
-        const Duration(milliseconds: 20),
-      );
-      final cubit = WorktreeCubit(
-        storage: fakeHomeStorage(),
-        lister: lister,
-        initialRepoPath: '/repo',
-      );
-      final first = cubit.reloadActiveRepo();
-      final second = cubit.reloadActiveRepo();
-      final third = cubit.reloadActiveRepo();
-      await Future.wait([first, second, third]);
-      // 第一条执行中；第二条排队；第三条看到已排队直接返回 → 共 2 次 list。
-      expect(lister.calls, 2);
-      await cubit.close();
-    });
+    test(
+      'coalesces concurrent reloads into one in-flight plus one trailing',
+      () async {
+        final lister = _CountingDelayedLister([
+          _wt('/repo', main: true),
+        ], const Duration(milliseconds: 20));
+        final cubit = WorktreeCubit(
+          storage: fakeHomeStorage(),
+          lister: lister,
+          initialRepoPath: '/repo',
+        );
+        final first = cubit.reloadActiveRepo();
+        final second = cubit.reloadActiveRepo();
+        final third = cubit.reloadActiveRepo();
+        await Future.wait([first, second, third]);
+        // 第一条执行中；第二条排队；第三条看到已排队直接返回 → 共 2 次 list。
+        expect(lister.calls, 2);
+        await cubit.close();
+      },
+    );
 
     test('absorbs git errors without leaving loading stuck', () async {
       final cubit = WorktreeCubit(

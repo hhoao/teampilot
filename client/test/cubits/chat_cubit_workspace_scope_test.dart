@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
-import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import '../support/post_frame_test_harness.dart';
 import '../support/in_memory_filesystem.dart';

@@ -1,6 +1,6 @@
 import 'package:path/path.dart' as p;
 
-import '../../../chat/session/launch_command_builder.dart';
+import '../../../chat/launch/session/launch_command_builder.dart';
 
 abstract final class CursorLaunchEnvironment {
   /// Force `cursor-agent` to read/write OAuth tokens as `auth.json` under the

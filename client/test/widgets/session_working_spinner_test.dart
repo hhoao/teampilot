@@ -35,10 +35,7 @@ void main() {
             'vsync ticks must repaint the spinner layer, not rebuild '
             'CustomPaint / AnimatedBuilder (DevTools widget rebuild storm)',
       );
-      expect(
-        identical(painterBefore, paintAfter.painter),
-        isTrue,
-      );
+      expect(identical(painterBefore, paintAfter.painter), isTrue);
       expect(
         find.descendant(
           of: find.byType(SessionWorkingSpinner),

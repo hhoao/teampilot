@@ -31,10 +31,7 @@ class CliInstallProgressPanel extends StatelessWidget {
               backgroundColor: cs.surfaceContainerHighest,
             ),
             const SizedBox(height: 10),
-            Text(
-              _phaseLabel(l10n, phase),
-              style: styles.mdMedium,
-            ),
+            Text(_phaseLabel(l10n, phase), style: styles.mdMedium),
             if (logLines.isNotEmpty) ...[
               const SizedBox(height: 8),
               Container(

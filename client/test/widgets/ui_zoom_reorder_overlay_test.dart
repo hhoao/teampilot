@@ -16,10 +16,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           // Production wraps the Navigator/Overlay with UiZoom (see main.dart).
-          builder: (context, child) => UiZoom(
-            scale: 0.5,
-            child: child ?? const SizedBox.shrink(),
-          ),
+          builder: (context, child) =>
+              UiZoom(scale: 0.5, child: child ?? const SizedBox.shrink()),
           home: const Scaffold(body: _HorizontalReorderStrip()),
         ),
       );

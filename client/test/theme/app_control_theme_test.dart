@@ -4,7 +4,9 @@ import 'package:teampilot/theme/app_typography_scale.dart';
 
 void main() {
   test('fromScale uses medium baselines at multiplier 1', () {
-    final c = TpControlMetrics.fromScale(AppTypographyScale.standard.multiplier);
+    final c = TpControlMetrics.fromScale(
+      AppTypographyScale.standard.multiplier,
+    );
     expect(c.height, TpControlMetrics.heightBase);
     expect(c.minWidth, TpControlMetrics.minWidthBase);
     expect(c.horizontalPadding, TpControlMetrics.horizontalPaddingBase);
@@ -33,7 +35,9 @@ void main() {
   });
 
   test('metricsFor returns size presets', () {
-    final c = TpControlMetrics.fromScale(AppTypographyScale.standard.multiplier);
+    final c = TpControlMetrics.fromScale(
+      AppTypographyScale.standard.multiplier,
+    );
     expect(c.metricsFor(TpControlSize.small).height, c.small.height);
     expect(c.metricsFor(TpControlSize.medium).height, c.medium.height);
     expect(c.metricsFor(TpControlSize.large).height, c.large.height);

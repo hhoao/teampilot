@@ -54,9 +54,7 @@ ExpertEditorDepsResult resolveExpertEditorDeps({
   final existingPluginsById = {
     for (final dep in existingPluginDeps) dep.expectedLocalId: dep,
   };
-  final existingMcpsById = {
-    for (final dep in existingMcpDeps) dep.id: dep,
-  };
+  final existingMcpsById = {for (final dep in existingMcpDeps) dep.id: dep};
 
   final skillDeps = <SkillDependencyRef>[];
   final pluginDeps = <PluginDependencyRef>[];
@@ -126,13 +124,13 @@ ExpertEditorDepsResult resolveExpertEditorDeps({
 }
 
 /// Local ids currently represented by [deps] (for switch initial state).
-Set<String> expertEditorSelectedSkillIds(
-  List<SkillDependencyRef> deps,
-) => {for (final d in deps) d.expectedLocalId};
+Set<String> expertEditorSelectedSkillIds(List<SkillDependencyRef> deps) => {
+  for (final d in deps) d.expectedLocalId,
+};
 
-Set<String> expertEditorSelectedPluginIds(
-  List<PluginDependencyRef> deps,
-) => {for (final d in deps) d.expectedLocalId};
+Set<String> expertEditorSelectedPluginIds(List<PluginDependencyRef> deps) => {
+  for (final d in deps) d.expectedLocalId,
+};
 
 Set<String> expertEditorSelectedMcpIds(List<McpDependencyRef> deps) => {
   for (final d in deps) d.id,

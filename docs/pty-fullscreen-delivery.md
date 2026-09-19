@@ -52,7 +52,7 @@ continueSubmission(machine, port, text, settle, {isAcked, dismissMentionPopup})
 
 ## 2. 投递状态机 `FullscreenPtySubmission`
 
-代码：`client/lib/services/terminal/fullscreen_pty_submission_machine.dart`
+代码：`client/lib/services/chat/runtime/pty/fullscreen_pty_submission_machine.dart`
 
 ```
                     begin()
@@ -171,11 +171,14 @@ abort（shell 断开 / fence 关闭）从任意非终态 → aborted
 
 ## 5. 相关文件
 
-- `services/terminal/fullscreen_pty_submission_machine.dart` — 投递状态机（纯逻辑、阶段、预算）
-- `services/terminal/fullscreen_pty_automation.dart` — 状态机驱动（`deliverPasteAndSubmit` / `continueSubmission`）、grid 探针 + CR（I/O）
-- `services/terminal/member_pty_inject_service.dart` — 门铃投递：per-seat `FullscreenPtySubmission`，`deliver`/`retry` 复用同一机器
-- `services/terminal/fullscreen_input_screen_probe.dart` — 网格 needle / anchor 探测
-- `services/terminal/pty_inject_ack_retry.dart` — 延迟/重试常量（`afterClear`/`afterPaste`/`crMaxAttempts` 等）
-- `services/prompt_delivery/prompt_delivery_coordinator.dart` — 持久化投递状态机（`issueSubmit` / `isAcked`）
+目录约定见 [ARCHITECTURE.md](ARCHITECTURE.md#serviceschat--team-session-product-line)。Agent PTY 在 `services/chat/runtime/pty/`，持久化投递在 `conversation/prompt_delivery/`。`services/terminal/` 只剩工作区 shell，不是这条投递链。
+
+- `services/chat/runtime/pty/fullscreen_pty_submission_machine.dart` — 投递状态机（纯逻辑、阶段、预算）
+- `services/chat/runtime/pty/fullscreen_pty_automation.dart` — 状态机驱动（`deliverPasteAndSubmit` / `continueSubmission`）、grid 探针 + CR（I/O）
+- `services/chat/runtime/pty/member_pty_inject_service.dart` — 门铃投递：per-seat `FullscreenPtySubmission`，`deliver`/`retry` 复用同一机器
+- `services/chat/runtime/pty/fullscreen_input_screen_probe.dart` — 网格 needle / anchor 探测
+- `services/chat/runtime/pty/pty_inject_ack_retry.dart` — 延迟/重试常量（`afterClear`/`afterPaste`/`crMaxAttempts` 等）
+- `services/chat/runtime/pty/tab_member_pty_delivery.dart` — operator / 会话首条直投入口
+- `services/chat/conversation/prompt_delivery/prompt_delivery_coordinator.dart` — 持久化投递状态机（`issueSubmit` / `isAcked`）
 - `services/cli/{cli}/capabilities/terminal_behavior.dart` — 每个 CLI 的投递配置
   （`fullscreenCrAckStrategy` / `fullscreenComposerPrefix` / `inputReadiness` / `mentionAutocompletePopup`）

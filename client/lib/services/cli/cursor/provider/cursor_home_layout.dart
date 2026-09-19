@@ -44,7 +44,8 @@ enum CursorHomePlatform {
 final class CursorHomeLayout {
   CursorHomeLayout({p.Context? pathContext, CursorHomePlatform? platform})
     : _pathContext = pathContext ?? p.context,
-      _platform = platform ?? CursorHomePlatform.resolve(pathContext ?? p.context);
+      _platform =
+          platform ?? CursorHomePlatform.resolve(pathContext ?? p.context);
 
   final p.Context _pathContext;
   final CursorHomePlatform _platform;
@@ -84,7 +85,11 @@ final class CursorHomeLayout {
   static const windowsCursorDirName = 'Cursor';
 
   /// macOS: Cursor IDE stores `auth.json` here.
-  static const macOsIdeSupportSegments = ['Library', 'Application Support', 'Cursor'];
+  static const macOsIdeSupportSegments = [
+    'Library',
+    'Application Support',
+    'Cursor',
+  ];
 
   String cursorDir(String homeRoot) =>
       _pathContext.join(homeRoot, cursorDirName);
@@ -141,7 +146,9 @@ final class CursorHomeLayout {
             (Platform.isWindows ? _hostEnv('APPDATA')?.trim() : null) ??
             '';
         if (appData.isNotEmpty) {
-          candidates.add(_pathContext.join(appData, windowsCursorDirName, authFileName));
+          candidates.add(
+            _pathContext.join(appData, windowsCursorDirName, authFileName),
+          );
         }
         if (home.isNotEmpty) {
           candidates.add(authJson(home));
@@ -149,7 +156,11 @@ final class CursorHomeLayout {
       case CursorHomePlatform.macos:
         if (home.isNotEmpty) {
           candidates.add(
-            _pathContext.joinAll([home, ...macOsIdeSupportSegments, authFileName]),
+            _pathContext.joinAll([
+              home,
+              ...macOsIdeSupportSegments,
+              authFileName,
+            ]),
           );
           candidates.add(_pathContext.join(cursorDir(home), authFileName));
         }
@@ -160,8 +171,8 @@ final class CursorHomeLayout {
               (Platform.isLinux ? _hostEnv('XDG_CONFIG_HOME')?.trim() : null) ??
               '';
           final configRoot = xdg.isNotEmpty
-                  ? xdg
-                  : _pathContext.join(home, configDirName);
+              ? xdg
+              : _pathContext.join(home, configDirName);
           candidates.add(
             _pathContext.join(configRoot, configCursorDirName, authFileName),
           );

@@ -31,8 +31,7 @@ class LaunchProfileIndexStore {
     'launch-profiles-index.json',
   );
 
-  Lock get _mutationLock =>
-      _mutationLocks.putIfAbsent(_indexFile, Lock.new);
+  Lock get _mutationLock => _mutationLocks.putIfAbsent(_indexFile, Lock.new);
 
   /// Decodes a team profile. Legacy `personal` kind records throw and must be
   /// skipped by callers.

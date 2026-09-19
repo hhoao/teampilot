@@ -86,10 +86,8 @@ class LaunchTypeRegistrar {
     required LaunchConfigIo io,
     List<OwnedLaunchConfiguration> existing = const [],
   }) {
-    return LaunchDiscover(io: io).discover(
-      folders: folders,
-      registry: registry,
-      existing: existing,
-    );
+    return LaunchDiscover(
+      io: io,
+    ).discover(folders: folders, registry: registry, existing: existing);
   }
 }

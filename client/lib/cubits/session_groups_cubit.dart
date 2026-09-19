@@ -55,7 +55,7 @@ class SessionGroupsCubit extends Cubit<SessionGroupsState> {
     SessionGroupRepository? repository,
     this.knownSessionIds,
   }) : _repository = repository ?? SessionGroupRepository(storage: storage),
-      super(const SessionGroupsState());
+       super(const SessionGroupsState());
 
   final SessionGroupRepository _repository;
 
@@ -73,18 +73,26 @@ class SessionGroupsCubit extends Cubit<SessionGroupsState> {
   Future<void> load(String workspaceId) async {
     final id = workspaceId.trim();
     final generation = ++_generation;
-    emit(SessionGroupsState(status: SessionGroupsStatus.loading, workspaceId: id));
+    emit(
+      SessionGroupsState(status: SessionGroupsStatus.loading, workspaceId: id),
+    );
     SessionGroupsFile file;
     try {
       file = await _repository.load(id);
     } on Object {
       if (generation != _generation || isClosed) return;
-      emit(SessionGroupsState(status: SessionGroupsStatus.ready, workspaceId: id));
+      emit(
+        SessionGroupsState(status: SessionGroupsStatus.ready, workspaceId: id),
+      );
       return;
     }
     if (generation != _generation || isClosed) return;
     emit(
-      SessionGroupsState(status: SessionGroupsStatus.ready, workspaceId: id, groups: file.groups),
+      SessionGroupsState(
+        status: SessionGroupsStatus.ready,
+        workspaceId: id,
+        groups: file.groups,
+      ),
     );
   }
 
@@ -92,7 +100,10 @@ class SessionGroupsCubit extends Cubit<SessionGroupsState> {
     final trimmed = name.trim();
     if (!state.ready || trimmed.isEmpty) return state;
     return state.copyWith(
-      groups: [...state.groups, SessionGroup(id: const Uuid().v4(), name: trimmed)],
+      groups: [
+        ...state.groups,
+        SessionGroup(id: const Uuid().v4(), name: trimmed),
+      ],
     );
   });
 
@@ -122,31 +133,38 @@ class SessionGroupsCubit extends Cubit<SessionGroupsState> {
 
   /// Tag-style toggle: joining never leaves other groups, leaving never
   /// touches the session itself.
-  void setMembership(String groupId, String sessionId, {required bool member}) =>
-      _mutate((state) {
-        if (!state.ready || sessionId.trim().isEmpty) return state;
-        return state.copyWith(
-          groups: [
-            for (final group in state.groups)
-              if (group.id == groupId)
-                group.copyWith(
-                  sessionIds: member
-                      ? group.sessionIds.contains(sessionId)
-                            ? group.sessionIds
-                            : [...group.sessionIds, sessionId]
-                      : group.sessionIds.where((id) => id != sessionId).toList(),
-                )
-              else group,
-          ],
-        );
-      });
+  void setMembership(
+    String groupId,
+    String sessionId, {
+    required bool member,
+  }) => _mutate((state) {
+    if (!state.ready || sessionId.trim().isEmpty) return state;
+    return state.copyWith(
+      groups: [
+        for (final group in state.groups)
+          if (group.id == groupId)
+            group.copyWith(
+              sessionIds: member
+                  ? group.sessionIds.contains(sessionId)
+                        ? group.sessionIds
+                        : [...group.sessionIds, sessionId]
+                  : group.sessionIds.where((id) => id != sessionId).toList(),
+            )
+          else
+            group,
+      ],
+    );
+  });
 
   void toggleCollapsed(String groupId) => _mutate((state) {
     if (!state.ready) return state;
     return state.copyWith(
       groups: [
         for (final group in state.groups)
-          if (group.id == groupId) group.copyWith(collapsed: !group.collapsed) else group,
+          if (group.id == groupId)
+            group.copyWith(collapsed: !group.collapsed)
+          else
+            group,
       ],
     );
   });
@@ -161,8 +179,9 @@ class SessionGroupsCubit extends Cubit<SessionGroupsState> {
   /// Serializes whole-file writes so an older snapshot can never land after a
   /// newer one; the last mutation always wins.
   Future<void> _enqueuePersist(SessionGroupsState next) {
-    final task = (_pendingPersist ?? Future<void>.value())
-        .then((_) => _persist(next));
+    final task = (_pendingPersist ?? Future<void>.value()).then(
+      (_) => _persist(next),
+    );
     _pendingPersist = task;
     return task;
   }
@@ -182,7 +201,10 @@ class SessionGroupsCubit extends Cubit<SessionGroupsState> {
             ),
         ];
       }
-      await _repository.save(next.workspaceId, SessionGroupsFile(groups: groups));
+      await _repository.save(
+        next.workspaceId,
+        SessionGroupsFile(groups: groups),
+      );
     } on Object {
       // Callback or IO failures keep the optimistic state; the next mutation
       // retries the save.

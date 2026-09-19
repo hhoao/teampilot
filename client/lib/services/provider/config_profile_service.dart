@@ -795,7 +795,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             layout: layout,
             tool: cli,
             memberProvisionJson: poolResult.memberProvisionStampJson,
-            assembledMcpServers: mcpAssembly?.result.servers ?? const [],
+            assembledMcpServers: mcpAssembly.result.servers ?? const [],
             mcpConfigFileName: warmTier
                 ? CursorWorkspaceWarmTier.mcpBaseFileName
                 : null,

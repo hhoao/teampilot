@@ -23,23 +23,25 @@ void main() {
     }
   });
 
-  test('cursor provisioning is not ready without provider or global login',
-      () async {
-    setUpTestAppStorage();
-    addTearDown(tearDownTestAppStorage);
-    final cap = registry.capability<HeadlessCapability>(CliTool.cursor);
-    expect(cap, isNotNull);
-    final result = await cap!.provision(
-      const HeadlessProvisionContext(
-        provider: null,
-        providerId: 'cursor-official',
-        model: '',
-        effort: '',
-        configDir: '/tmp/cfg',
-      ),
-    );
-    expect(result.credentialsReady, isFalse);
-    expect(result.warnings, ['cursor_credentials_missing']);
-    expect(result.extraEnvironment, isEmpty);
-  });
+  test(
+    'cursor provisioning is not ready without provider or global login',
+    () async {
+      setUpTestAppStorage();
+      addTearDown(tearDownTestAppStorage);
+      final cap = registry.capability<HeadlessCapability>(CliTool.cursor);
+      expect(cap, isNotNull);
+      final result = await cap!.provision(
+        const HeadlessProvisionContext(
+          provider: null,
+          providerId: 'cursor-official',
+          model: '',
+          effort: '',
+          configDir: '/tmp/cfg',
+        ),
+      );
+      expect(result.credentialsReady, isFalse);
+      expect(result.warnings, ['cursor_credentials_missing']);
+      expect(result.extraEnvironment, isEmpty);
+    },
+  );
 }

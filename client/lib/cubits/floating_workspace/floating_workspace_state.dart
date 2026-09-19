@@ -1,7 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 
-import '../../models/floating_workspace_tab.dart';
 import '../../services/floating_workspace/floating_workspace_toggle_metrics.dart';
 
 import 'floating_panel_placement.dart';

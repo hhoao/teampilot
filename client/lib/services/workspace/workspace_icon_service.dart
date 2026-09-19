@@ -66,10 +66,9 @@ class WorkspaceIconService {
     final cached = _bytesCache[cacheKey];
     if (cached != null) return cached;
 
-    final bytes = await _disk(filesystem).readBytes(
-      workspaceDir: workspaceDir,
-      relativePath: relativePath,
-    );
+    final bytes = await _disk(
+      filesystem,
+    ).readBytes(workspaceDir: workspaceDir, relativePath: relativePath);
     if (bytes == null || bytes.isEmpty) return null;
     _bytesCache[cacheKey] = bytes;
     return bytes;
@@ -139,10 +138,9 @@ class WorkspaceIconService {
     if (icon case WorkspaceIconCustom(
       :final relativePath,
     ) when relativePath.isNotEmpty) {
-      await _disk(filesystem).deleteFile(
-        workspaceDir: workspaceDir,
-        relativePath: relativePath,
-      );
+      await _disk(
+        filesystem,
+      ).deleteFile(workspaceDir: workspaceDir, relativePath: relativePath);
     }
     await _disk(filesystem).deleteAllForWorkspace(
       workspaceDir: workspaceDir,

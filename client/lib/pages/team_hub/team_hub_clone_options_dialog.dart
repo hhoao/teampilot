@@ -56,9 +56,9 @@ class _TeamHubCloneOptionsDialogState extends State<TeamHubCloneOptionsDialog> {
     _cli = widget.team.cli;
   }
 
-  void _confirm() => Navigator.of(context).pop(
-    TeamHubCloneOptions(teamMode: _mode, cli: _cli),
-  );
+  void _confirm() => Navigator.of(
+    context,
+  ).pop(TeamHubCloneOptions(teamMode: _mode, cli: _cli));
 
   @override
   Widget build(BuildContext context) {
@@ -203,10 +203,7 @@ class _OptionCard extends StatelessWidget {
               children: [
                 Text(title, style: styles.mdBoldColored(cs.onSurface)),
                 const SizedBox(height: 2),
-                Text(
-                  description,
-                  style: styles.smColored(cs.onSurfaceVariant),
-                ),
+                Text(description, style: styles.smColored(cs.onSurfaceVariant)),
               ],
             ),
           ),

@@ -117,16 +117,12 @@ class TeamMcpRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    server.name,
-                    style: TpTextStyles.of(
-                      context,
-                    ).mdBold,
-                  ),
+                  Text(server.name, style: TpTextStyles.of(context).mdBold),
                   Text(
                     server.server['type']?.toString() ?? 'stdio',
-                    style: TpTextStyles.of(context).smColored(cs.onSurface.withValues(alpha: 0.6),
-                    ),
+                    style: TpTextStyles.of(
+                      context,
+                    ).smColored(cs.onSurface.withValues(alpha: 0.6)),
                   ),
                 ],
               ),

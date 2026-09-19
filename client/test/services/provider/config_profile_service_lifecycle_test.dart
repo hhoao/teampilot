@@ -80,7 +80,7 @@ void main() {
         storageMode: StorageBackendMode.native,
       ),
       cliRegistry: _registryWithLifecycle(CliTool.cursor, recording),
-                                    storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
   });
 

@@ -38,19 +38,25 @@ void main() {
     );
   }
 
-  test('pinnable + onPin includes builtin.pin with pin label when unpinned', () {
-    final items = source.buildItems(ctx(pinnable: true, onPin: () {}));
-    final pin = items.singleWhere((item) => item.id == 'builtin.pin');
-    expect(pin.label, l10n.pinConversation);
-  });
+  test(
+    'pinnable + onPin includes builtin.pin with pin label when unpinned',
+    () {
+      final items = source.buildItems(ctx(pinnable: true, onPin: () {}));
+      final pin = items.singleWhere((item) => item.id == 'builtin.pin');
+      expect(pin.label, l10n.pinConversation);
+    },
+  );
 
-  test('pinnable + onPin includes builtin.pin with unpin label when pinned', () {
-    final items = source.buildItems(
-      ctx(pinnable: true, pinned: true, onPin: () {}),
-    );
-    final pin = items.singleWhere((item) => item.id == 'builtin.pin');
-    expect(pin.label, l10n.unpinConversation);
-  });
+  test(
+    'pinnable + onPin includes builtin.pin with unpin label when pinned',
+    () {
+      final items = source.buildItems(
+        ctx(pinnable: true, pinned: true, onPin: () {}),
+      );
+      final pin = items.singleWhere((item) => item.id == 'builtin.pin');
+      expect(pin.label, l10n.unpinConversation);
+    },
+  );
 
   test('not pinnable omits builtin.pin even when onPin is set', () {
     final items = source.buildItems(ctx(onPin: () {}));

@@ -4,7 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
-import '../../services/compose/compose_clip.dart';
+import '../../services/chat/conversation/compose/compose_clip.dart';
 
 /// Compact bar shown above the compose field when an oversized paste has been
 /// collapsed into a [ComposeClip]: a "Pasted text · N lines" badge plus a
@@ -53,11 +53,7 @@ class ComposePasteClipBar extends StatelessWidget {
               SizedBox(width: spacing.xs),
               Text(label, style: styles.smColored(palette.muted)),
               SizedBox(width: spacing.xs),
-              Icon(
-                Icons.open_in_full,
-                size: icons.sm,
-                color: palette.muted,
-              ),
+              Icon(Icons.open_in_full, size: icons.sm, color: palette.muted),
             ],
           ),
         ),

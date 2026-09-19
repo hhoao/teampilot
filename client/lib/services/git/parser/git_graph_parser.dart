@@ -31,8 +31,10 @@ class GitGraphParser {
     for (var n = 0; n < lines.length; n++) {
       final line = lines[n];
       final sepIndex = line.indexOf(recordSep);
-      final graphPart =
-          line.substring(0, sepIndex < 0 ? line.length : sepIndex);
+      final graphPart = line.substring(
+        0,
+        sepIndex < 0 ? line.length : sepIndex,
+      );
       final nextPart = _graphPartOf(lines, n + 1);
       final edges = _parseGeometry(graphPart, nextPart, state);
       if (sepIndex < 0) {
@@ -40,24 +42,30 @@ class GitGraphParser {
         rows.add(GitGraphSpacerRow(edges: edges));
         continue;
       }
-      final fields = line.substring(sepIndex + recordSep.length).split(fieldSep);
+      final fields = line
+          .substring(sepIndex + recordSep.length)
+          .split(fieldSep);
       if (fields.length < 7) continue;
       final ts = int.tryParse(fields[4]);
       if (ts == null) continue;
-      rows.add(GitCommitRow(
-        edges: edges,
-        node: GitGraphNode(state.nodeSlot ?? 0, state.nodeColor),
-        hash: fields[0],
-        parents: fields[1].trim().isEmpty
-            ? const []
-            : fields[1].trim().split(' '),
-        authorName: fields[2],
-        authorEmail: fields[3],
-        authorDate:
-            DateTime.fromMillisecondsSinceEpoch(ts * 1000, isUtc: true),
-        subject: fields[6],
-        refs: parseGitDecorations(fields[5], remotePrefixes: remotePrefixes),
-      ));
+      rows.add(
+        GitCommitRow(
+          edges: edges,
+          node: GitGraphNode(state.nodeSlot ?? 0, state.nodeColor),
+          hash: fields[0],
+          parents: fields[1].trim().isEmpty
+              ? const []
+              : fields[1].trim().split(' '),
+          authorName: fields[2],
+          authorEmail: fields[3],
+          authorDate: DateTime.fromMillisecondsSinceEpoch(
+            ts * 1000,
+            isUtc: true,
+          ),
+          subject: fields[6],
+          refs: parseGitDecorations(fields[5], remotePrefixes: remotePrefixes),
+        ),
+      );
     }
     return rows;
   }
@@ -138,7 +146,8 @@ class GitGraphParser {
 
     // 两侧 lane 中心在本行都无线（无 `|`/`*`），且下一行右侧 slot 有线：
     // 两条 lane 线交换位置（左右各一条，同时移动），ASCII 只画一个 '/'。
-    if (!_isLineChar(g, left) && !_isLineChar(g, right) &&
+    if (!_isLineChar(g, left) &&
+        !_isLineChar(g, right) &&
         _isLineChar(next, right)) {
       final leftColor = state.colorFor(leftLane);
       final rightColor = state.colorFor(rightLane);
@@ -154,8 +163,7 @@ class GitGraphParser {
     final fromSlot = transitColor != null ? i + 2 : right;
     final color = transitColor ?? state.colorFor(rightLane);
     // 下一行继续左移（或竖在空隙位）→ 本行止于空隙；否则落到左侧 lane 中心。
-    final continues =
-        _hasChar(next, i - 2, '/') || _hasChar(next, i, '|');
+    final continues = _hasChar(next, i - 2, '/') || _hasChar(next, i, '|');
     final toSlot = continues ? i : left;
     if (continues) state.setTransit(i, color);
     addEdge(fromSlot, toSlot, color);

@@ -48,10 +48,12 @@ void main() {
     'teamGenerateDeliveryRetryBody',
   };
 
-  final en = jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
-      as Map<String, dynamic>;
-  final zh = jsonDecode(File('lib/l10n/app_zh.arb').readAsStringSync())
-      as Map<String, dynamic>;
+  final en =
+      jsonDecode(File('lib/l10n/app_en.arb').readAsStringSync())
+          as Map<String, dynamic>;
+  final zh =
+      jsonDecode(File('lib/l10n/app_zh.arb').readAsStringSync())
+          as Map<String, dynamic>;
 
   test('every team-generation key exists in both ARBs and is non-blank', () {
     for (final key in requiredKeys) {
@@ -80,5 +82,4 @@ void main() {
       }
     }
   });
-
 }

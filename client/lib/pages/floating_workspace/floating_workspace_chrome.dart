@@ -14,11 +14,7 @@ import '../../services/commands/command_tooltip.dart';
 /// Maximize toggles to a restore glyph while maximized (same convention as
 /// the desktop window chrome). Minimize stays a distinct dash.
 class FloatingWorkspaceChrome extends StatelessWidget {
-  const FloatingWorkspaceChrome({
-    this.onMaximize,
-    this.onMinimize,
-    super.key,
-  });
+  const FloatingWorkspaceChrome({this.onMaximize, this.onMinimize, super.key});
 
   /// Defaults to [CommandIds.floatingMaximize] (or cubit toggle) when null.
   final VoidCallback? onMaximize;
@@ -66,9 +62,7 @@ class FloatingWorkspaceChrome extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             TpIconButton(
-              icon: maximized
-                  ? Icons.filter_none
-                  : Icons.crop_square_outlined,
+              icon: maximized ? Icons.filter_none : Icons.crop_square_outlined,
               compact: true,
               tooltip: commandTooltip(
                 context,

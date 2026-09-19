@@ -101,7 +101,10 @@ void main() {
     final layoutCubit = LayoutCubit();
     addTearDown(() => layoutCubit.close());
 
-    final editorCubit = EditorCubit(fs: LocalFilesystem(), storage: testHomeStorage);
+    final editorCubit = EditorCubit(
+      fs: LocalFilesystem(),
+      storage: testHomeStorage,
+    );
     addTearDown(() => editorCubit.close());
 
     final workbenchCubit = WorkbenchCubit();
@@ -143,8 +146,9 @@ void main() {
     );
     addTearDown(() => cliPresetsCubit.close());
 
-    final sessionPreferencesCubit =
-        (await tester.runAsync(testSessionPreferencesCubit))!;
+    final sessionPreferencesCubit = (await tester.runAsync(
+      testSessionPreferencesCubit,
+    ))!;
     addTearDown(() => sessionPreferencesCubit.close());
 
     chatCubit.ingestWorkspaceSessionSnapshot(

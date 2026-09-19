@@ -60,8 +60,7 @@ class RunUiPrefsStore {
     await _fs.atomicWrite(
       _path,
       jsonEncode({
-        for (final e in all.entries)
-          e.key: {'selectedKey': e.value},
+        for (final e in all.entries) e.key: {'selectedKey': e.value},
       }),
     );
   }

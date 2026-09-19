@@ -198,9 +198,13 @@ void main() {
     providerCubit = ManagedProviderCubit(repository: providerRepository);
     usageCubit = ManagedProviderUsageCubit(coordinator: coordinator);
     appProviderCubit = AppProviderCubit(
-      repository: AppProviderRepository(fs: fs, basePath: '/tp', storage: testHomeStorage, ),
+      repository: AppProviderRepository(
+        fs: fs,
+        basePath: '/tp',
+        storage: testHomeStorage,
+      ),
       basePath: '/tp',
-                                         storage: testHomeStorage,
+      storage: testHomeStorage,
     );
   });
 
@@ -300,9 +304,7 @@ void main() {
       ),
     );
     usageCubit.emit(
-      ManagedProviderUsageState(
-        status: ManagedProviderUsageLoadStatus.ready,
-      ),
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
     );
 
     await pumpPage(tester);
@@ -457,10 +459,7 @@ void main() {
         scrollable: _verticalScrollable(),
       );
       final windows = tester.widget<TpTextareaFormField>(
-        find.byKey(
-          const Key('managed-provider-windows'),
-          skipOffstage: false,
-        ),
+        find.byKey(const Key('managed-provider-windows'), skipOffstage: false),
       );
       expect(
         windows.controller!.text,
@@ -563,11 +562,11 @@ void main() {
         find.byKey(const Key('managed-provider-credential-secret')),
         findsNothing,
       );
-      expect(find.byKey(const Key('managed-provider-endpoint')), findsOneWidget);
       expect(
-        find.text('https://cursor.com/api/usage-summary'),
+        find.byKey(const Key('managed-provider-endpoint')),
         findsOneWidget,
       );
+      expect(find.text('https://cursor.com/api/usage-summary'), findsOneWidget);
     },
   );
 
@@ -618,10 +617,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const Key('managed-provider-endpoint')), findsNothing);
-    expect(
-      find.byKey(const Key('managed-provider-windows')),
-      findsNothing,
-    );
+    expect(find.byKey(const Key('managed-provider-windows')), findsNothing);
     expect(
       find.byKey(const Key('managed-provider-credential-ref')),
       findsNothing,
@@ -1033,53 +1029,7 @@ void main() {
     },
   );
 
-  testWidgets(
-    'kind is editable only for custom HTTP advanced settings',
-    (tester) async {
-      providerCubit.emit(
-        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
-      );
-      usageCubit.emit(
-        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
-      );
-      await pumpPage(tester);
-
-      await openNewEditor(tester);
-      await applyPreset(tester, 'Codex');
-      expect(
-        find.byKey(const Key('managed-provider-section-advanced')),
-        findsNothing,
-      );
-      expect(find.byKey(const Key('managed-provider-kind')), findsNothing);
-
-      await tester.tap(find.byKey(const Key('managed-provider-editor-back')));
-      await tester.pumpAndSettle();
-      await openNewEditor(tester);
-      await tester.scrollUntilVisible(
-        find.byKey(const Key('managed-provider-section-advanced')),
-        500,
-        scrollable: _verticalScrollable(),
-      );
-      await tester.tap(
-        find.byKey(const Key('managed-provider-section-advanced')),
-      );
-      await tester.pumpAndSettle();
-      expect(
-        find.byType(TpSelect<ManagedProviderKind>),
-        findsOneWidget,
-      );
-      expect(
-        tester
-            .widget<TpSelect<ManagedProviderKind>>(
-              find.byKey(const Key('managed-provider-kind')),
-            )
-            .enabled,
-        isTrue,
-      );
-    },
-  );
-
-  testWidgets('advanced section appears only when adapter or kind is editable', (
+  testWidgets('kind is editable only for custom HTTP advanced settings', (
     tester,
   ) async {
     providerCubit.emit(
@@ -1091,43 +1041,86 @@ void main() {
     await pumpPage(tester);
 
     await openNewEditor(tester);
-    expect(
-      find.byKey(const Key('managed-provider-section-advanced')),
-      findsOneWidget,
-    );
-    await tester.scrollUntilVisible(
-      find.text('Advanced'),
-      500,
-      scrollable: _verticalScrollable(),
-    );
-    await tester.tap(find.text('Advanced'));
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('managed-provider-adapter'), skipOffstage: false),
-      500,
-      scrollable: _verticalScrollable(),
-    );
-    expect(
-      tester
-          .widget<TpInputFormField>(
-            find.byKey(
-              const Key('managed-provider-adapter'),
-              skipOffstage: false,
-            ),
-          )
-          .readOnly,
-      isFalse,
-    );
-
-    await tester.tap(find.byKey(const Key('managed-provider-editor-back')));
-    await tester.pumpAndSettle();
-    await openNewEditor(tester);
     await applyPreset(tester, 'Codex');
     expect(
       find.byKey(const Key('managed-provider-section-advanced')),
       findsNothing,
     );
+    expect(find.byKey(const Key('managed-provider-kind')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('managed-provider-editor-back')));
+    await tester.pumpAndSettle();
+    await openNewEditor(tester);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('managed-provider-section-advanced')),
+      500,
+      scrollable: _verticalScrollable(),
+    );
+    await tester.tap(
+      find.byKey(const Key('managed-provider-section-advanced')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(TpSelect<ManagedProviderKind>), findsOneWidget);
+    expect(
+      tester
+          .widget<TpSelect<ManagedProviderKind>>(
+            find.byKey(const Key('managed-provider-kind')),
+          )
+          .enabled,
+      isTrue,
+    );
   });
+
+  testWidgets(
+    'advanced section appears only when adapter or kind is editable',
+    (tester) async {
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      await pumpPage(tester);
+
+      await openNewEditor(tester);
+      expect(
+        find.byKey(const Key('managed-provider-section-advanced')),
+        findsOneWidget,
+      );
+      await tester.scrollUntilVisible(
+        find.text('Advanced'),
+        500,
+        scrollable: _verticalScrollable(),
+      );
+      await tester.tap(find.text('Advanced'));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('managed-provider-adapter'), skipOffstage: false),
+        500,
+        scrollable: _verticalScrollable(),
+      );
+      expect(
+        tester
+            .widget<TpInputFormField>(
+              find.byKey(
+                const Key('managed-provider-adapter'),
+                skipOffstage: false,
+              ),
+            )
+            .readOnly,
+        isFalse,
+      );
+
+      await tester.tap(find.byKey(const Key('managed-provider-editor-back')));
+      await tester.pumpAndSettle();
+      await openNewEditor(tester);
+      await applyPreset(tester, 'Codex');
+      expect(
+        find.byKey(const Key('managed-provider-section-advanced')),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets(
     'CRUD actions are dispatched through the managed provider cubit',
@@ -1270,10 +1263,7 @@ void main() {
         url: 'https://example.test/usage',
         headers: {'X-Client': 'teampilot'},
         windows: const [
-          ManagedProviderUsageWindow(
-            label: 'Usage',
-            remaining: r'$.balance',
-          ),
+          ManagedProviderUsageWindow(label: 'Usage', remaining: r'$.balance'),
         ],
         unknownFields: {'endpointExtension': 'keep'},
       ),
@@ -1304,10 +1294,7 @@ void main() {
 
     final saved = (await providerRepository.load()).single;
     expect(saved.endpointConfig.headers, {'X-Client': 'teampilot'});
-    expect(
-      saved.endpointConfig.windows.single.remaining,
-      r'$.balance',
-    );
+    expect(saved.endpointConfig.windows.single.remaining, r'$.balance');
     expect(saved.endpointConfig.unknownFields['endpointExtension'], 'keep');
     expect(saved.unknownFields['providerExtension'], 'keep');
   });
@@ -1402,10 +1389,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Collapsed but still mounted: hidden on stage, present off stage.
-    expect(
-      find.byKey(const Key('managed-provider-endpoint')),
-      findsNothing,
-    );
+    expect(find.byKey(const Key('managed-provider-endpoint')), findsNothing);
     expect(
       find.byKey(const Key('managed-provider-endpoint'), skipOffstage: false),
       findsOneWidget,
@@ -1468,7 +1452,9 @@ void main() {
     expect(find.byKey(const Key('managed-provider-brand-p1')), findsOneWidget);
     expect(find.byIcon(Icons.account_balance_wallet_outlined), findsNothing);
 
-    final icon = tester.getRect(find.byKey(const Key('managed-provider-brand-p1')));
+    final icon = tester.getRect(
+      find.byKey(const Key('managed-provider-brand-p1')),
+    );
     final name = tester.getRect(find.text('Codex').first);
     final subtitle = tester.getRect(find.text('Subscription quota · Codex'));
     final infoMidY = (name.top + subtitle.bottom) / 2;
@@ -1505,122 +1491,105 @@ void main() {
     );
   });
 
-  testWidgets(
-    'enabled master switch is on basics without expanding advanced',
-    (tester) async {
-      providerCubit.emit(
-        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
-      );
-      usageCubit.emit(
-        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
-      );
-      await pumpPage(tester);
+  testWidgets('enabled master switch is on basics without expanding advanced', (
+    tester,
+  ) async {
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
 
-      await openNewEditor(tester);
-      await applyPreset(tester, 'Codex');
+    await openNewEditor(tester);
+    await applyPreset(tester, 'Codex');
 
-      expect(
-        find.byKey(const Key('managed-provider-kind')),
-        findsNothing,
-      );
-      expect(
-        find.byKey(const Key('managed-provider-enabled')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(
-          const Key('managed-provider-enabled'),
-          skipOffstage: false,
-        ),
-        findsOneWidget,
-      );
-      expect(
-        find.text('Hides the provider and stops queries when off.'),
-        findsOneWidget,
-      );
-      expect(
-        find.text('Include this provider in refresh actions.'),
-        findsNothing,
-      );
+    expect(find.byKey(const Key('managed-provider-kind')), findsNothing);
+    expect(find.byKey(const Key('managed-provider-enabled')), findsOneWidget);
+    expect(
+      find.byKey(const Key('managed-provider-enabled'), skipOffstage: false),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Hides the provider and stops queries when off.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Include this provider in refresh actions.'),
+      findsNothing,
+    );
 
-      await tester.tap(find.byKey(const Key('managed-provider-enabled')));
-      await tester.pumpAndSettle();
-      await _scrollToEditorBottom(tester);
-      await tester.runAsync(() async {
-        tester
-            .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
-            .onPressed!
-            .call();
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-      });
-      await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('managed-provider-enabled')));
+    await tester.pumpAndSettle();
+    await _scrollToEditorBottom(tester);
+    await tester.runAsync(() async {
+      tester
+          .widget<TpButton>(find.byKey(const Key('managed-provider-save')))
+          .onPressed!
+          .call();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    });
+    await tester.pumpAndSettle();
 
-      expect(providerCubit.state.providers, hasLength(1));
-      expect(providerCubit.state.providers.single.enabled, isFalse);
-      expect(
-        find.byKey(
-          Key('managed-provider-${providerCubit.state.providers.single.id}'),
-        ),
-        findsOneWidget,
-      );
-      expect(find.text('Disabled'), findsOneWidget);
-    },
-  );
+    expect(providerCubit.state.providers, hasLength(1));
+    expect(providerCubit.state.providers.single.enabled, isFalse);
+    expect(
+      find.byKey(
+        Key('managed-provider-${providerCubit.state.providers.single.id}'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Disabled'), findsOneWidget);
+  });
 
-  testWidgets(
-    'Cursor preset login binds to a per-entry dedicated row',
-    (tester) async {
-      providerCubit = ManagedProviderCubit(
-        repository: providerRepository,
-        appProviderCubit: appProviderCubit,
-      );
-      providerCubit.emit(
-        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
-      );
-      usageCubit.emit(
-        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
-      );
-      await pumpPage(tester);
+  testWidgets('Cursor preset login binds to a per-entry dedicated row', (
+    tester,
+  ) async {
+    providerCubit = ManagedProviderCubit(
+      repository: providerRepository,
+      appProviderCubit: appProviderCubit,
+    );
+    providerCubit.emit(
+      ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+    );
+    usageCubit.emit(
+      ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+    );
+    await pumpPage(tester);
 
-      await openNewEditor(tester);
-      await applyPreset(tester, 'Cursor');
+    await openNewEditor(tester);
+    await applyPreset(tester, 'Cursor');
 
-      // The official credentials bar is present and reads the per-entry
-      // binding (row id appears in the AppProviderCubit after login flow
-      // start — here we assert the source field shows the per-entry form).
-      expect(
-        find.byKey(const Key('managed-provider-official-credentials')),
-        findsOneWidget,
-      );
-      expect(find.text('Sign in with Cursor'), findsOneWidget);
+    // The official credentials bar is present and reads the per-entry
+    // binding (row id appears in the AppProviderCubit after login flow
+    // start — here we assert the source field shows the per-entry form).
+    expect(
+      find.byKey(const Key('managed-provider-official-credentials')),
+      findsOneWidget,
+    );
+    expect(find.text('Sign in with Cursor'), findsOneWidget);
 
-      // Save the entry; the dedicated cursor row must be created.
-      await tester.enterText(
-        find.byKey(const Key('managed-provider-name')),
-        'Team Cursor',
-      );
-      await _scrollToEditorBottom(tester);
-      await tester.tap(find.byKey(const Key('managed-provider-save')));
-      await tester.pumpAndSettle();
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 50)),
-      );
-      // Advance past the saved-success toast auto-dismiss timer.
-      await tester.pump(const Duration(seconds: 3));
-      await tester.pumpAndSettle();
+    // Save the entry; the dedicated cursor row must be created.
+    await tester.enterText(
+      find.byKey(const Key('managed-provider-name')),
+      'Team Cursor',
+    );
+    await _scrollToEditorBottom(tester);
+    await tester.tap(find.byKey(const Key('managed-provider-save')));
+    await tester.pumpAndSettle();
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    // Advance past the saved-success toast auto-dismiss timer.
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
 
-      final cursorRows = appProviderCubit.state.providersFor(CliTool.cursor);
-      expect(
-        cursorRows.any((row) => row.id.startsWith('cursor-mp-')),
-        isTrue,
-      );
-      final saved = providerCubit.state.providers.first;
-      expect(
-        saved.endpointConfig.credentialSource,
-        startsWith('cli:cursor-mp-'),
-      );
-    },
-  );
+    final cursorRows = appProviderCubit.state.providersFor(CliTool.cursor);
+    expect(cursorRows.any((row) => row.id.startsWith('cursor-mp-')), isTrue);
+    final saved = providerCubit.state.providers.first;
+    expect(saved.endpointConfig.credentialSource, startsWith('cli:cursor-mp-'));
+  });
 
   testWidgets(
     'reopened per-entry provider still shows the official login bar',

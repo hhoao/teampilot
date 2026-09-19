@@ -22,14 +22,14 @@ class FilePathTabMenuSource implements WorkbenchTabMenuSource {
 
     final l10n = ctx.l10n;
     final pathContext = ctx.workContext?.fs.pathContext;
-    final relativeEnabled = tryRelativeWorkspacePath(
+    final relativeEnabled =
+        tryRelativeWorkspacePath(
           absolutePath: path,
           workspaceRoot: ctx.workspaceRoot,
           pathContext: pathContext,
         ) !=
         null;
-    final showReveal =
-        ctx.desktopShellActions || ctx.remoteFileManagerActions;
+    final showReveal = ctx.desktopShellActions || ctx.remoteFileManagerActions;
 
     final items = <WorkbenchTabMenuItem>[
       WorkbenchTabMenuItem(
@@ -104,7 +104,10 @@ class FilePathTabMenuSource implements WorkbenchTabMenuSource {
   Future<void> _openInTerminal(WorkbenchTabMenuContext ctx, String path) async {
     final buildContext = ctx.buildContext;
     if (buildContext == null) return;
-    final workspaceId = buildContext.read<ChatCubit>().tabStore.activeWorkspaceId;
+    final workspaceId = buildContext
+        .read<ChatCubit>()
+        .tabStore
+        .activeWorkspaceId;
     final ok = await openWorkspaceTerminalAtPath(
       context: buildContext,
       workspaceId: workspaceId,

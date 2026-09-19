@@ -19,16 +19,18 @@ void main() {
     final cache = newCache(fs);
 
     await cache.save('p1', const {CliTool.claude: '/remote/bin/claude'});
-    await cache.save(
-      'p2',
-      const {CliTool.codex: '/remote/bin/codex', CliTool.cursor: '/usr/bin/cu'},
-    );
+    await cache.save('p2', const {
+      CliTool.codex: '/remote/bin/codex',
+      CliTool.cursor: '/usr/bin/cu',
+    });
 
-    expect(await cache.load('p1'), const {CliTool.claude: '/remote/bin/claude'});
-    expect(
-      await cache.load('p2'),
-      const {CliTool.codex: '/remote/bin/codex', CliTool.cursor: '/usr/bin/cu'},
-    );
+    expect(await cache.load('p1'), const {
+      CliTool.claude: '/remote/bin/claude',
+    });
+    expect(await cache.load('p2'), const {
+      CliTool.codex: '/remote/bin/codex',
+      CliTool.cursor: '/usr/bin/cu',
+    });
   });
 
   test('load for a missing profile returns an empty map', () async {
@@ -56,7 +58,9 @@ void main() {
     );
     final cache = newCache(fs);
 
-    expect(await cache.load('p1'), const {CliTool.claude: '/remote/bin/claude'});
+    expect(await cache.load('p1'), const {
+      CliTool.claude: '/remote/bin/claude',
+    });
     expect(await cache.load('p2'), isEmpty);
   });
 
@@ -98,11 +102,8 @@ void main() {
     await cache.save('p1', const {CliTool.claude: '/remote/bin/claude'});
 
     final raw = await fs.readString(filePath);
-    expect(
-      jsonDecode(raw!),
-      {
-        'p1': {'claude': '/remote/bin/claude'},
-      },
-    );
+    expect(jsonDecode(raw!), {
+      'p1': {'claude': '/remote/bin/claude'},
+    });
   });
 }

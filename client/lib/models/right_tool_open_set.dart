@@ -59,7 +59,10 @@ class RightToolOpenSet {
 
   List<String> visibleOpenIds(Iterable<String> catalog) {
     final available = catalog.toSet();
-    return [for (final id in openIds) if (available.contains(id)) id];
+    return [
+      for (final id in openIds)
+        if (available.contains(id)) id,
+    ];
   }
 
   String? visibleSelectedId(Iterable<String> catalog) {
@@ -72,7 +75,10 @@ class RightToolOpenSet {
     if (!knownIds.contains(toolId)) return this;
     final open = [...openIds];
     if (!open.contains(toolId)) open.add(toolId);
-    final dismissed = [for (final id in dismissedIds) if (id != toolId) id];
+    final dismissed = [
+      for (final id in dismissedIds)
+        if (id != toolId) id,
+    ];
     if (_listEquals(open, openIds) &&
         selectedId == toolId &&
         _listEquals(dismissed, dismissedIds)) {
@@ -99,7 +105,10 @@ class RightToolOpenSet {
       final available = catalog.toSet();
       final before = visibleOpenIds(catalog);
       final visibleIndex = before.indexOf(toolId);
-      final after = [for (final id in open) if (available.contains(id)) id];
+      final after = [
+        for (final id in open)
+          if (available.contains(id)) id,
+      ];
       if (after.isEmpty) {
         selected = null;
       } else if (visibleIndex > 0) {
@@ -128,10 +137,12 @@ class RightToolOpenSet {
       added.add(id);
     }
     if (added.isEmpty) return this;
-    final visible = [for (final id in open) if (available.contains(id)) id];
+    final visible = [
+      for (final id in open)
+        if (available.contains(id)) id,
+    ];
     var selected = selectedId;
-    final hasVisibleSelection =
-        selected != null && visible.contains(selected);
+    final hasVisibleSelection = selected != null && visible.contains(selected);
     if (!hasVisibleSelection && visible.isNotEmpty) {
       if (added.contains('members') && visible.contains('members')) {
         selected = 'members';

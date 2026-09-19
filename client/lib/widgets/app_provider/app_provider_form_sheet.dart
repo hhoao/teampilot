@@ -79,9 +79,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
       CliToolRegistry.builtIn();
 
   ProviderCapability _formCap([BuildContext? context]) {
-    final cap = _registry(
-      context,
-    ).capability<ProviderCapability>(widget.cli);
+    final cap = _registry(context).capability<ProviderCapability>(widget.cli);
     assert(cap != null, '${widget.cli.value} missing ProviderCapability');
     return cap!;
   }
@@ -249,8 +247,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
       credentialUpdatedAt: widget.existing?.credentialUpdatedAt ?? 0,
       unknownFields: widget.existing?.unknownFields ?? const {},
     );
-    final bindingCap = _registry()
-        .capability<ProviderCapability>(widget.cli);
+    final bindingCap = _registry().capability<ProviderCapability>(widget.cli);
     if (bindingCap != null &&
         bindingCap.supportsCredentialBinding &&
         bindingCap.appliesTo(draft)) {
@@ -437,8 +434,14 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                       final bodyStyle = TpTextStyles.of(context).md;
                       return TpTextarea(
                         controller: _jsonCtl,
-                        minHeight: tpTextareaHeightForLines(bodyStyle, lines: 16),
-                        maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 28),
+                        minHeight: tpTextareaHeightForLines(
+                          bodyStyle,
+                          lines: 16,
+                        ),
+                        maxHeight: tpTextareaHeightForLines(
+                          bodyStyle,
+                          lines: 28,
+                        ),
                         decoration: const InputDecoration(),
                       );
                     },
@@ -461,17 +464,26 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                       final bodyStyle = TpTextStyles.of(context).md;
                       return TpTextarea(
                         controller: _notesCtl,
-                        minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
-                        maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 4),
+                        minHeight: tpTextareaHeightForLines(
+                          bodyStyle,
+                          lines: 2,
+                        ),
+                        maxHeight: tpTextareaHeightForLines(
+                          bodyStyle,
+                          lines: 4,
+                        ),
                         decoration: InputDecoration(labelText: l10n.notes),
                       );
                     },
                   ),
                   if (!_hidesApiKeyFields(context)) ...[
                     const SizedBox(height: 12),
-                    if (_canPickCredentialLink) _buildCredentialLinkPicker(context),
+                    if (_canPickCredentialLink)
+                      _buildCredentialLinkPicker(context),
                     if (_credentialLink.isNotEmpty)
-                      _LinkedCredentialChip(entryName: _linkedEntryName(context))
+                      _LinkedCredentialChip(
+                        entryName: _linkedEntryName(context),
+                      )
                     else
                       TextField(
                         controller: _apiKeyCtl,
@@ -658,9 +670,12 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   /// provider row (cycle) are excluded.
   List<(String, String)> _credentialLinkOptions(BuildContext context) {
     final l10n = context.l10n;
-    final managed = _managedCubitOf(context)?.state.providers ?? const <ManagedProvider>[];
+    final managed =
+        _managedCubitOf(context)?.state.providers ?? const <ManagedProvider>[];
     final ownId = widget.existing?.id ?? '';
-    final options = <(String, String)>[('', l10n.appProviderCredentialLinkOwnKey)];
+    final options = <(String, String)>[
+      ('', l10n.appProviderCredentialLinkOwnKey),
+    ];
     for (final entry in managed) {
       final ref = entry.credentialRef?.trim() ?? '';
       if (ref.isEmpty) continue;
@@ -719,11 +734,9 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   String _linkedEntryName(BuildContext context) {
     final link = _credentialLink.trim();
     if (link.isEmpty) return '';
-    final entry = _managedCubitOf(context)
-        ?.state
-        .providers
-        .where((e) => e.id == link)
-        .firstOrNull;
+    final entry = _managedCubitOf(
+      context,
+    )?.state.providers.where((e) => e.id == link).firstOrNull;
     return entry?.name ?? '';
   }
 }

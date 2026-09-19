@@ -21,19 +21,20 @@ void main() {
     expect(mac.meta, isTrue);
     expect(mac.control, isFalse);
 
-    final win = KeyChord(
-      key: 'w',
-      mods: [KeyChordMod.mod],
-    ).toActivator(isMacOS: false) as SingleActivator;
+    final win =
+        KeyChord(key: 'w', mods: [KeyChordMod.mod]).toActivator(isMacOS: false)
+            as SingleActivator;
     expect(win.control, isTrue);
     expect(win.meta, isFalse);
   });
 
   test('explicit ctrl stays ctrl on macOS', () {
-    final a = KeyChord(
-      key: 'tab',
-      mods: [KeyChordMod.ctrl],
-    ).toActivator(isMacOS: true) as SingleActivator;
+    final a =
+        KeyChord(
+              key: 'tab',
+              mods: [KeyChordMod.ctrl],
+            ).toActivator(isMacOS: true)
+            as SingleActivator;
     expect(a.control, isTrue);
     expect(a.meta, isFalse);
   });

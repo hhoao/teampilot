@@ -38,20 +38,17 @@ void main() {
     String workspaceId,
     bool Function(List<SessionGroup> groups) predicate,
   ) {
-    return waitUntil(
-      () {
-        final file = File(layout.sessionGroupsFile(workspaceId));
-        if (!file.existsSync()) return false;
-        try {
-          return predicate(
-            SessionGroupsFile.fromRawJson(file.readAsStringSync()).groups,
-          );
-        } on FileSystemException {
-          return false;
-        }
-      },
-      pump: () => drainPendingAsyncWork(rounds: 1),
-    );
+    return waitUntil(() {
+      final file = File(layout.sessionGroupsFile(workspaceId));
+      if (!file.existsSync()) return false;
+      try {
+        return predicate(
+          SessionGroupsFile.fromRawJson(file.readAsStringSync()).groups,
+        );
+      } on FileSystemException {
+        return false;
+      }
+    }, pump: () => drainPendingAsyncWork(rounds: 1));
   }
 
   test('load degrades to an empty ready state when IO fails', () async {
@@ -190,31 +187,33 @@ void main() {
     expect(cubit.state.groupById(groupId)!.containsSession('s-stale'), isTrue);
   });
 
-  test('throwing knownSessionIds callback cannot poison the persist chain',
-      () async {
-    var failCallback = false;
-    final cubit = SessionGroupsCubit(
-      storage: testHomeStorage,
-      knownSessionIds: () {
-        if (failCallback) throw StateError('callback boom');
-        return const {'sess-1'};
-      },
-    );
-    addTearDown(cubit.close);
-    await cubit.load('ws-1');
-    cubit.createGroup('G');
-    final groupId = cubit.state.groups.single.id;
-    cubit.setMembership(groupId, 'sess-1', member: true);
+  test(
+    'throwing knownSessionIds callback cannot poison the persist chain',
+    () async {
+      var failCallback = false;
+      final cubit = SessionGroupsCubit(
+        storage: testHomeStorage,
+        knownSessionIds: () {
+          if (failCallback) throw StateError('callback boom');
+          return const {'sess-1'};
+        },
+      );
+      addTearDown(cubit.close);
+      await cubit.load('ws-1');
+      cubit.createGroup('G');
+      final groupId = cubit.state.groups.single.id;
+      cubit.setMembership(groupId, 'sess-1', member: true);
 
-    // First persist runs with a throwing callback and is swallowed.
-    failCallback = true;
-    await Future<void>.delayed(Duration.zero);
+      // First persist runs with a throwing callback and is swallowed.
+      failCallback = true;
+      await Future<void>.delayed(Duration.zero);
 
-    failCallback = false;
-    cubit.toggleCollapsed(groupId);
-    await waitForPersisted(
-      'ws-1',
-      (groups) => groups.single.name == 'G' && groups.single.collapsed,
-    );
-  });
+      failCallback = false;
+      cubit.toggleCollapsed(groupId);
+      await waitForPersisted(
+        'ws-1',
+        (groups) => groups.single.name == 'G' && groups.single.collapsed,
+      );
+    },
+  );
 }

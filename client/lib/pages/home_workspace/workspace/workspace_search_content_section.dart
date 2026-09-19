@@ -13,11 +13,7 @@ typedef _ContentHit = (ContentSearchSlice slice, TpSearchMatch match);
 
 /// One render row of the results list: a group header (multi-slice only), a
 /// match row, or a per-slice error row.
-typedef _Row = ({
-  String? header,
-  _ContentHit? hit,
-  String? sliceError,
-});
+typedef _Row = ({String? header, _ContentHit? hit, String? sliceError});
 
 /// Content-search section for the search dialog's `content` filter: query +
 /// regex/case chips, streaming file:line results over every workspace slice.
@@ -123,23 +119,21 @@ class _WorkspaceSearchContentSectionState
     final search = MultiRootContentSearch(slices: widget.slices);
     _search = search;
     try {
-      await for (final event in search.run(TpSearchOptions(
-        pattern: query,
-        isRegex: _isRegex,
-        caseSensitive: _caseSensitive,
-        maxResults: _maxDialogContentResults,
-      ))) {
+      await for (final event in search.run(
+        TpSearchOptions(
+          pattern: query,
+          isRegex: _isRegex,
+          caseSensitive: _caseSensitive,
+          maxResults: _maxDialogContentResults,
+        ),
+      )) {
         if (seq != _seq || !mounted) return;
         if (event.isError) {
           sliceErrors[event.slice.root] = event.slice.label;
           continue;
         }
         anyMatch = true;
-        counts.update(
-          event.slice.root,
-          (v) => v + 1,
-          ifAbsent: () => 1,
-        );
+        counts.update(event.slice.root, (v) => v + 1, ifAbsent: () => 1);
         hits.add((event.slice, event.match!));
       }
     } on Object {

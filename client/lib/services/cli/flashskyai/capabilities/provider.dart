@@ -16,7 +16,7 @@ import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/passthrough_provider_form_capability.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../remote/remote_credential_materializer.dart';
-import '../../../chat/session/member_role_provision.dart';
+import '../../../chat/launch/session/member_role_provision.dart';
 import '../../../storage/home_storage.dart';
 import '../../../chat/team_bus/member_bus_idle_endpoint.dart';
 import '../../claude/provider/claude_effort_catalog.dart';

@@ -18,15 +18,17 @@ class FloatingPanelPlacement extends Equatable {
   });
 
   /// Preferred open size near the toggle (insets match default toggle clearance).
-  static const FloatingPanelPlacement defaultNearToggle = FloatingPanelPlacement(
-    width: 720,
-    height: 480,
-    rightInset: kFloatingWorkspaceToggleDefaultRight,
-    // toggle bottom inset + toggle height + gap
-    bottomInset: kFloatingWorkspaceToggleDefaultBottom +
-        kFloatingWorkspaceToggleSize +
-        kFloatingWorkspacePanelToggleGap,
-  );
+  static const FloatingPanelPlacement defaultNearToggle =
+      FloatingPanelPlacement(
+        width: 720,
+        height: 480,
+        rightInset: kFloatingWorkspaceToggleDefaultRight,
+        // toggle bottom inset + toggle height + gap
+        bottomInset:
+            kFloatingWorkspaceToggleDefaultBottom +
+            kFloatingWorkspaceToggleSize +
+            kFloatingWorkspacePanelToggleGap,
+      );
 
   final double width;
   final double height;
@@ -61,11 +63,7 @@ class FloatingPanelPlacement extends Equatable {
   }
 
   /// Resolves to a host-local [Rect], clamped to [host] and minimum size.
-  Rect resolve(
-    Size host, {
-    double minWidth = 320,
-    double minHeight = 240,
-  }) {
+  Rect resolve(Size host, {double minWidth = 320, double minHeight = 240}) {
     if (host.width <= 0 || host.height <= 0) {
       return Rect.fromLTWH(0, 0, width, height);
     }

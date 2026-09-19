@@ -140,8 +140,9 @@ Widget _buildCliRow(
   AppLocalizations l10n,
 ) {
   final registry = CliToolRegistry.builtIn();
-  final spec =
-      registry.capability<CliExecutableCapability>(cli)?.executablePathRowSpec;
+  final spec = registry
+      .capability<CliExecutableCapability>(cli)
+      ?.executablePathRowSpec;
   if (spec == null) return const SizedBox.shrink();
 
   final label = l10n.appProviderToolLabel(cli);
@@ -154,11 +155,11 @@ Widget _buildCliRow(
         : l10n.cliExecutablePathLabelFor(label),
     subtitle: spec.isCustomTitle
         ? isSshMode
-            ? l10n.claudeCliExecutablePathDescriptionSsh
-            : l10n.claudeCliExecutablePathDescription
+              ? l10n.claudeCliExecutablePathDescriptionSsh
+              : l10n.claudeCliExecutablePathDescription
         : isSshMode
-            ? l10n.cliExecutablePathDescriptionSshFor(label)
-            : l10n.cliExecutablePathDescriptionFor(label),
+        ? l10n.cliExecutablePathDescriptionSshFor(label)
+        : l10n.cliExecutablePathDescriptionFor(label),
     fieldKey: ValueKey(spec.fieldKey),
     browseKey: ValueKey(spec.browseKey),
     resetKey: ValueKey(spec.resetKey),

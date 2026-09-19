@@ -11,7 +11,7 @@ import '../../../models/team_config.dart'
 import '../../../repositories/launch_profile_repository.dart';
 import '../../../repositories/session_repository.dart';
 import '../../catalog/workspace_catalog.dart' show ChatDataSnapshot;
-import 'session_member_cli_locks.dart';
+import '../launch/session/session_member_cli_locks.dart';
 import '../../storage/home_storage.dart';
 import '../../../utils/logging/logger.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';

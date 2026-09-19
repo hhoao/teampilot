@@ -23,8 +23,7 @@ final class InstallJobRegistry {
 
   InstallJobRunnerRegistry? get runnerRegistry => _runnerRegistry;
   final Map<InstallJobKey, _ActiveJob> _active = {};
-  final Map<InstallJobKey, StreamController<InstallJobSnapshot>> _watchers =
-      {};
+  final Map<InstallJobKey, StreamController<InstallJobSnapshot>> _watchers = {};
 
   Future<T> enqueue<T>(InstallJobSpec<T> spec) {
     final existing = _active[spec.key];
@@ -57,11 +56,7 @@ final class InstallJobRegistry {
           totalItems: total,
           fraction: fraction,
         );
-        _emitSnapshot(
-          spec.key,
-          InstallJobPhase.running,
-          fraction: fraction,
-        );
+        _emitSnapshot(spec.key, InstallJobPhase.running, fraction: fraction);
       },
     );
 
@@ -92,11 +87,7 @@ final class InstallJobRegistry {
       kind: activityKindForInstall(spec.key.kind),
       onCancelRequested: () => _handleCancelRequest(spec.key),
     );
-    _emitSnapshot(
-      spec.key,
-      InstallJobPhase.running,
-      subtitle: spec.subtitle,
-    );
+    _emitSnapshot(spec.key, InstallJobPhase.running, subtitle: spec.subtitle);
 
     unawaited(_runJob(job));
     return completer.future.then((value) => value as T);

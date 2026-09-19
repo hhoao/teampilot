@@ -30,7 +30,8 @@ List<SshReachabilityEndpoint> planEndpointDials(
   ConnectPolicy policy = ConnectPolicy.automatic,
 }) {
   final byKind = {
-    for (final kind in SshEndpointKind.values) kind: <SshReachabilityEndpoint>[],
+    for (final kind in SshEndpointKind.values)
+      kind: <SshReachabilityEndpoint>[],
   };
   for (final endpoint in profile.endpoints) {
     if (policy == ConnectPolicy.lanOnly &&
@@ -55,8 +56,9 @@ SshProfile withLastGoodEndpoint(
   SshReachabilityEndpoint endpoint,
 ) {
   return switch (endpoint.kind) {
-    SshEndpointKind.relay =>
-      profile.copyWith(lastGoodKind: SshEndpointKind.relay),
+    SshEndpointKind.relay => profile.copyWith(
+      lastGoodKind: SshEndpointKind.relay,
+    ),
     _ => profile.copyWith(
       host: endpoint.host,
       port: endpoint.port,

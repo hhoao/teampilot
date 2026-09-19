@@ -11,7 +11,10 @@ void main() {
   test('defaultFolderTargetId follows home kind', () {
     expect(WorkTargetCanonicalizer.defaultFolderTargetId(localHome), 'local');
     expect(WorkTargetCanonicalizer.defaultFolderTargetId(sshHome), 'ssh:p1');
-    expect(WorkTargetCanonicalizer.defaultFolderTargetId(wslHome), 'wsl:Ubuntu');
+    expect(
+      WorkTargetCanonicalizer.defaultFolderTargetId(wslHome),
+      'wsl:Ubuntu',
+    );
   });
 
   test('resolve keeps local when home is local', () {
@@ -22,14 +25,8 @@ void main() {
   });
 
   test('resolve rewrites local to non-local home', () {
-    expect(
-      WorkTargetCanonicalizer.resolve('local', home: sshHome),
-      sshHome,
-    );
-    expect(
-      WorkTargetCanonicalizer.resolve('local', home: wslHome),
-      wslHome,
-    );
+    expect(WorkTargetCanonicalizer.resolve('local', home: sshHome), sshHome);
+    expect(WorkTargetCanonicalizer.resolve('local', home: wslHome), wslHome);
   });
 
   test('resolve leaves explicit ssh/wsl ids unchanged', () {

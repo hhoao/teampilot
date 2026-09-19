@@ -7,9 +7,7 @@ void main() {
     const viewport = 24;
     const track = 400.0;
 
-    TerminalScrollbarGeometry geom({
-      double scrollOffset = 0,
-    }) =>
+    TerminalScrollbarGeometry geom({double scrollOffset = 0}) =>
         TerminalScrollbarGeometry(
           historySize: history,
           viewportRows: viewport,

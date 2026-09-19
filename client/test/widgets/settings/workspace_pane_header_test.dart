@@ -18,7 +18,9 @@ void main() {
     );
   }
 
-  testWidgets('shows title and divider; hides subtitle by default', (tester) async {
+  testWidgets('shows title and divider; hides subtitle by default', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       wrap(
         const WorkspacePaneHeader(
@@ -45,7 +47,9 @@ void main() {
     expect(find.text('Manage skills'), findsOneWidget);
   });
 
-  testWidgets('blank subtitle stays hidden even when showSubtitle is true', (tester) async {
+  testWidgets('blank subtitle stays hidden even when showSubtitle is true', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       wrap(
         const WorkspacePaneHeader(
@@ -61,12 +65,7 @@ void main() {
   testWidgets('onBack shows leading control', (tester) async {
     var tapped = false;
     await tester.pumpWidget(
-      wrap(
-        WorkspacePaneHeader(
-          title: 'Backable',
-          onBack: () => tapped = true,
-        ),
-      ),
+      wrap(WorkspacePaneHeader(title: 'Backable', onBack: () => tapped = true)),
     );
     await tester.tap(find.byIcon(Icons.arrow_back_rounded));
     expect(tapped, isTrue);

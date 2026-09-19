@@ -124,7 +124,9 @@ class InMemoryFilesystem implements Filesystem {
       for (final dir in directories.toList()) {
         if (pathContext.isWithin(from, dir) && dir != from) {
           directories.remove(dir);
-          directories.add(pathContext.join(to, pathContext.relative(dir, from: from)));
+          directories.add(
+            pathContext.join(to, pathContext.relative(dir, from: from)),
+          );
         }
       }
       for (final key in files.keys.toList()) {
@@ -135,14 +137,22 @@ class InMemoryFilesystem implements Filesystem {
       }
       for (final key in byteFiles.keys.toList()) {
         if (pathContext.isWithin(from, key)) {
-          byteFiles[pathContext.join(to, pathContext.relative(key, from: from))] =
-              byteFiles.remove(key)!;
+          byteFiles[pathContext.join(
+            to,
+            pathContext.relative(key, from: from),
+          )] = byteFiles.remove(
+            key,
+          )!;
         }
       }
       for (final key in symlinks.keys.toList()) {
         if (pathContext.isWithin(from, key)) {
-          symlinks[pathContext.join(to, pathContext.relative(key, from: from))] =
-              symlinks.remove(key)!;
+          symlinks[pathContext.join(
+            to,
+            pathContext.relative(key, from: from),
+          )] = symlinks.remove(
+            key,
+          )!;
         }
       }
       return;
@@ -209,11 +219,7 @@ class InMemoryFilesystem implements Filesystem {
   }
 
   @override
-  Future<List<int>?> readBytesRange(
-    String path,
-    int offset,
-    int length,
-  ) async {
+  Future<List<int>?> readBytesRange(String path, int offset, int length) async {
     final all = await readBytes(path);
     if (all == null) return null;
     if (offset < 0) throw ArgumentError.value(offset, 'offset');

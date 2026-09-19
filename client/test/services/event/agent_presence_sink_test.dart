@@ -20,11 +20,13 @@ void main() {
       rec,
     );
 
-    sink.publish(AgentPresenceEvent(
-      seat: const PresenceSeatKey(sessionId: 's', memberId: 'm'),
-      eventKind: AgentPresenceKind.working,
-      timestamp: DateTime(2026, 9, 11),
-    ));
+    sink.publish(
+      AgentPresenceEvent(
+        seat: const PresenceSeatKey(sessionId: 's', memberId: 'm'),
+        eventKind: AgentPresenceKind.working,
+        timestamp: DateTime(2026, 9, 11),
+      ),
+    );
     await d.stop();
 
     expect(rec.events.single.memberId, 'm');
@@ -32,10 +34,12 @@ void main() {
 
   test('noop sink accepts publishes without side effects', () {
     const sink = NoopAgentPresenceSink();
-    sink.publish(AgentPresenceEvent(
-      seat: const PresenceSeatKey(sessionId: 's', memberId: 'm'),
-      eventKind: AgentPresenceKind.idle,
-      timestamp: DateTime(2026, 9, 11),
-    ));
+    sink.publish(
+      AgentPresenceEvent(
+        seat: const PresenceSeatKey(sessionId: 's', memberId: 'm'),
+        eventKind: AgentPresenceKind.idle,
+        timestamp: DateTime(2026, 9, 11),
+      ),
+    );
   });
 }

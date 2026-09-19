@@ -47,7 +47,9 @@ class LaunchTypeRegistry {
   ///
   /// When two extensions claim the same [LaunchTypeContribution.type], the
   /// first registration wins and later calls return [LaunchTypeRegisterResult.isConflict].
-  LaunchTypeRegisterResult registerExtension(LaunchTypeContribution contribution) {
+  LaunchTypeRegisterResult registerExtension(
+    LaunchTypeContribution contribution,
+  ) {
     if (contribution.adapterRuntime != 'workspace') {
       return const LaunchTypeRegisterResult(isConflict: true);
     }

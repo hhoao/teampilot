@@ -4,62 +4,73 @@ import 'package:teampilot/services/cli/registry/capabilities/claude_family_agent
 
 void main() {
   group('ClaudeFamilyAgentStatusNormalizer', () {
-    test('PermissionRequest for a general tool carries a permissionRequest payload',
-        () {
-      final status = const ClaudeFamilyAgentStatusNormalizer().normalize({
-        'hook_event_name': 'PermissionRequest',
-        'tool_name': 'Bash',
-        'tool_input': {'command': 'rm -rf node_modules'},
-        'permission_suggestions': [
-          {
-            'type': 'addRules',
-            'rules': [
-              {'toolName': 'Bash', 'ruleContent': 'rm -rf node_modules'},
-            ],
-            'behavior': 'allow',
-            'destination': 'localSettings',
-          },
-        ],
-      });
-      expect(status, isNotNull);
-      expect(status!.state, AgentSeatAttention.waiting);
-      expect(status.permissionRequest, isNotNull);
-      expect(status.permissionRequest!.description, contains('Bash'));
-      expect(status.permissionRequest!.always, hasLength(1));
-      expect(status.permissionRequest!.always.first.label,
-          'Bash(rm -rf node_modules)');
-    });
-
-    test('PermissionRequest for ExitPlanMode carries no permissionRequest payload',
-        () {
-      final status = const ClaudeFamilyAgentStatusNormalizer().normalize({
-        'hook_event_name': 'PermissionRequest',
-        'tool_name': 'ExitPlanMode',
-        'tool_input': {'plan': 'Do the thing'},
-      });
-      expect(status, isNotNull);
-      expect(status!.state, AgentSeatAttention.waiting);
-      expect(status.permissionRequest, isNull);
-      expect(status.planText, isNotNull); // plan card path, unchanged
-    });
-
-    test('PermissionRequest for AskUserQuestion keeps the question payload',
-        () {
-      final status = const ClaudeFamilyAgentStatusNormalizer().normalize({
-        'hook_event_name': 'PermissionRequest',
-        'tool_name': 'AskUserQuestion',
-        'tool_input': {
-          'questions': [
-            {'question': 'Continue?', 'options': ['Yes', 'No']},
+    test(
+      'PermissionRequest for a general tool carries a permissionRequest payload',
+      () {
+        final status = const ClaudeFamilyAgentStatusNormalizer().normalize({
+          'hook_event_name': 'PermissionRequest',
+          'tool_name': 'Bash',
+          'tool_input': {'command': 'rm -rf node_modules'},
+          'permission_suggestions': [
+            {
+              'type': 'addRules',
+              'rules': [
+                {'toolName': 'Bash', 'ruleContent': 'rm -rf node_modules'},
+              ],
+              'behavior': 'allow',
+              'destination': 'localSettings',
+            },
           ],
-        },
-      });
-      expect(status, isNotNull);
-      expect(status!.state, AgentSeatAttention.waiting);
-      expect(status.permissionRequest, isNull);
-      expect(status.askUserQuestions, isNotNull);
-      expect(status.askUserQuestions!.first.question, 'Continue?');
-    });
+        });
+        expect(status, isNotNull);
+        expect(status!.state, AgentSeatAttention.waiting);
+        expect(status.permissionRequest, isNotNull);
+        expect(status.permissionRequest!.description, contains('Bash'));
+        expect(status.permissionRequest!.always, hasLength(1));
+        expect(
+          status.permissionRequest!.always.first.label,
+          'Bash(rm -rf node_modules)',
+        );
+      },
+    );
+
+    test(
+      'PermissionRequest for ExitPlanMode carries no permissionRequest payload',
+      () {
+        final status = const ClaudeFamilyAgentStatusNormalizer().normalize({
+          'hook_event_name': 'PermissionRequest',
+          'tool_name': 'ExitPlanMode',
+          'tool_input': {'plan': 'Do the thing'},
+        });
+        expect(status, isNotNull);
+        expect(status!.state, AgentSeatAttention.waiting);
+        expect(status.permissionRequest, isNull);
+        expect(status.planText, isNotNull); // plan card path, unchanged
+      },
+    );
+
+    test(
+      'PermissionRequest for AskUserQuestion keeps the question payload',
+      () {
+        final status = const ClaudeFamilyAgentStatusNormalizer().normalize({
+          'hook_event_name': 'PermissionRequest',
+          'tool_name': 'AskUserQuestion',
+          'tool_input': {
+            'questions': [
+              {
+                'question': 'Continue?',
+                'options': ['Yes', 'No'],
+              },
+            ],
+          },
+        });
+        expect(status, isNotNull);
+        expect(status!.state, AgentSeatAttention.waiting);
+        expect(status.permissionRequest, isNull);
+        expect(status.askUserQuestions, isNotNull);
+        expect(status.askUserQuestions!.first.question, 'Continue?');
+      },
+    );
   });
 
   group('background task lease signals', () {
@@ -93,7 +104,8 @@ void main() {
     test('UserPromptSubmit task notification carries the release id', () {
       final status = const ClaudeFamilyAgentStatusNormalizer().normalize({
         'hook_event_name': 'UserPromptSubmit',
-        'prompt': '<task-notification>\n'
+        'prompt':
+            '<task-notification>\n'
             '<task-id>bi6wlgsf3</task-id>\n'
             '<tool-use-id>call_f766b261fd9f4358a902b8d1</tool-use-id>\n'
             '<status>completed</status>\n'
@@ -102,10 +114,7 @@ void main() {
       expect(status, isNotNull);
       expect(status!.state, AgentSeatAttention.working);
       expect(status.hasExplicitPrompt, isTrue);
-      expect(
-        status.taskNotificationToolUseId,
-        'call_f766b261fd9f4358a902b8d1',
-      );
+      expect(status.taskNotificationToolUseId, 'call_f766b261fd9f4358a902b8d1');
       expect(status.backgroundTaskStarted, isFalse);
     });
 

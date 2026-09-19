@@ -56,8 +56,7 @@ class DiffHunkApplier {
         .replaceAll('\r\n', '\n')
         .replaceAll('\r', '\n');
     final rightLines = _splitLines(normalized);
-    final hadTrailingNl =
-        normalized.isNotEmpty && normalized.endsWith('\n');
+    final hadTrailingNl = normalized.isNotEmpty && normalized.endsWith('\n');
 
     final int startIdx;
     final int endIdx;

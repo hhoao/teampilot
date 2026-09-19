@@ -21,9 +21,8 @@ void main() {
     final projection = FloatingWorkspaceProjection<String?>(
       floating,
       workbench,
-      (c, w) => c.state.activeWorkspaceId.isEmpty
-          ? null
-          : c.state.activeWorkspaceId,
+      (c, w) =>
+          c.state.activeWorkspaceId.isEmpty ? null : c.state.activeWorkspaceId,
       initial: null,
     );
     addTearDown(projection.dispose);
@@ -35,49 +34,52 @@ void main() {
     expect(projection.value, 'ws-a');
   });
 
-  test('tab mutations recompute; unchanged projection is not notified', () async {
-    final floating = FloatingWorkspaceCubit();
-    final workbench = WorkbenchCubit();
-    addTearDown(floating.close);
-    addTearDown(workbench.close);
-    floating.setActiveWorkspace('ws-a');
-    workbench.openFloating('ws-a', WorkbenchTabId.file('/a.txt'));
+  test(
+    'tab mutations recompute; unchanged projection is not notified',
+    () async {
+      final floating = FloatingWorkspaceCubit();
+      final workbench = WorkbenchCubit();
+      addTearDown(floating.close);
+      addTearDown(workbench.close);
+      floating.setActiveWorkspace('ws-a');
+      workbench.openFloating('ws-a', WorkbenchTabId.file('/a.txt'));
 
-    var notifications = 0;
-    final projection = FloatingWorkspaceProjection<String?>(
-      floating,
-      workbench,
-      (c, w) => filePreviewPath(w, 'ws-a'),
-      initial: null,
-    );
-    addTearDown(projection.dispose);
-    projection.addListener(() => notifications++);
+      var notifications = 0;
+      final projection = FloatingWorkspaceProjection<String?>(
+        floating,
+        workbench,
+        (c, w) => filePreviewPath(w, 'ws-a'),
+        initial: null,
+      );
+      addTearDown(projection.dispose);
+      projection.addListener(() => notifications++);
 
-    expect(projection.value, '/a.txt', reason: 'initial recompute');
+      expect(projection.value, '/a.txt', reason: 'initial recompute');
 
-    // Opening an unrelated terminal tab changes the active tab → path clears.
-    workbench.openFloating('ws-a', WorkbenchTabId.shell('e1'));
-    await Future<void>.delayed(Duration.zero); // broadcast stream microtask
-    expect(notifications, 1);
-    expect(projection.value, isNull);
+      // Opening an unrelated terminal tab changes the active tab → path clears.
+      workbench.openFloating('ws-a', WorkbenchTabId.shell('e1'));
+      await Future<void>.delayed(Duration.zero); // broadcast stream microtask
+      expect(notifications, 1);
+      expect(projection.value, isNull);
 
-    // Back to the file preview → path returns.
-    workbench.activate('ws-a', WorkbenchTabId.file('/a.txt'));
-    await Future<void>.delayed(Duration.zero);
-    expect(notifications, 2);
-    expect(projection.value, '/a.txt');
+      // Back to the file preview → path returns.
+      workbench.activate('ws-a', WorkbenchTabId.file('/a.txt'));
+      await Future<void>.delayed(Duration.zero);
+      expect(notifications, 2);
+      expect(projection.value, '/a.txt');
 
-    // Re-ensure the SAME tab with the same path → active id + path unchanged →
-    // projection unchanged → dedup (no notification).
-    workbench.openFloating('ws-a', WorkbenchTabId.file('/a.txt'));
-    await Future<void>.delayed(Duration.zero);
-    expect(notifications, 2, reason: 'same path → dedup');
+      // Re-ensure the SAME tab with the same path → active id + path unchanged →
+      // projection unchanged → dedup (no notification).
+      workbench.openFloating('ws-a', WorkbenchTabId.file('/a.txt'));
+      await Future<void>.delayed(Duration.zero);
+      expect(notifications, 2, reason: 'same path → dedup');
 
-    // Chrome emit (visibility) with unchanged projection → dedup.
-    floating.ensureOpen();
-    await Future<void>.delayed(Duration.zero);
-    expect(notifications, 2, reason: 'chrome emit → dedup');
-  });
+      // Chrome emit (visibility) with unchanged projection → dedup.
+      floating.ensureOpen();
+      await Future<void>.delayed(Duration.zero);
+      expect(notifications, 2, reason: 'chrome emit → dedup');
+    },
+  );
 
   test('dispose unsubscribes from both change planes', () {
     final floating = FloatingWorkspaceCubit();

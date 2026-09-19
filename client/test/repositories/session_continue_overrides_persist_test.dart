@@ -9,8 +9,7 @@ import 'package:teampilot/repositories/session_repository.dart';
 import '../support/in_memory_filesystem.dart';
 
 void main() {
-  Future<({SessionRepository repo, AppSession session})>
-  simpleSession() async {
+  Future<({SessionRepository repo, AppSession session})> simpleSession() async {
     final tmp = await Directory.systemTemp.createTemp('fs_continue_overrides_');
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(

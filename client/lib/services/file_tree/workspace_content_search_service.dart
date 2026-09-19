@@ -19,14 +19,17 @@ class WorkspaceContentSearchService {
 
   /// Searches [root] with the Rust engine. Throws [StateError] when [root]
   /// is not locally readable — use [searchFilesystem] for remote paths.
-  Stream<TpSearchMatch> search(String root, String pattern,
-      {bool isRegex = true,
-      bool caseSensitive = false,
-      bool smartCase = false,
-      bool useGitignore = true,
-      List<String> filesToInclude = const [],
-      List<String> filesToExclude = const [],
-      int? maxResults}) {
+  Stream<TpSearchMatch> search(
+    String root,
+    String pattern, {
+    bool isRegex = true,
+    bool caseSensitive = false,
+    bool smartCase = false,
+    bool useGitignore = true,
+    List<String> filesToInclude = const [],
+    List<String> filesToExclude = const [],
+    int? maxResults,
+  }) {
     if (!_supportsPath(root)) {
       throw StateError('path not locally readable: $root');
     }

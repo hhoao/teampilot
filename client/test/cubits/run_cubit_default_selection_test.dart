@@ -35,15 +35,14 @@ OwnedLaunchConfiguration _shellScriptConfig({
 
 OwnedLaunchCompound _compound(String id) => OwnedLaunchCompound(
   owner: _folder,
-  compound: LaunchCompound(
-    id: id,
-    name: id,
-    configurationIds: const [],
-  ),
+  compound: LaunchCompound(id: id, name: id, configurationIds: const []),
 );
 
-RunUiPrefsStore _prefsStore(InMemoryFilesystem fs) =>
-    RunUiPrefsStore(fs: fs, pathOverride: _prefsPath, storage: fakeHomeStorage(filesystem: fs), );
+RunUiPrefsStore _prefsStore(InMemoryFilesystem fs) => RunUiPrefsStore(
+  fs: fs,
+  pathOverride: _prefsPath,
+  storage: fakeHomeStorage(filesystem: fs),
+);
 
 RunCubit _cubit({
   required FakeRunPlatform platform,
@@ -108,20 +107,23 @@ class _RecommendationAcceptPlatform extends FakeRunPlatform {
 }
 
 void main() {
-  test('load with no prefs selects first configuration and writes prefs', () async {
-    final fs = InMemoryFilesystem();
-    final prefs = _prefsStore(fs);
-    final a = _shellScriptConfig(id: 'a');
-    final b = _shellScriptConfig(id: 'b');
-    final platform = FakeRunPlatform(configurations: [a, b]);
-    final cubit = _cubit(platform: platform, prefsStore: prefs);
+  test(
+    'load with no prefs selects first configuration and writes prefs',
+    () async {
+      final fs = InMemoryFilesystem();
+      final prefs = _prefsStore(fs);
+      final a = _shellScriptConfig(id: 'a');
+      final b = _shellScriptConfig(id: 'b');
+      final platform = FakeRunPlatform(configurations: [a, b]);
+      final cubit = _cubit(platform: platform, prefsStore: prefs);
 
-    await cubit.load();
+      await cubit.load();
 
-    expect(cubit.state.selectedKey, a.selectionKey);
-    expect(await prefs.selectedKeyFor(_workspaceId), a.selectionKey);
-    await cubit.close();
-  });
+      expect(cubit.state.selectedKey, a.selectionKey);
+      expect(await prefs.selectedKeyFor(_workspaceId), a.selectionKey);
+      await cubit.close();
+    },
+  );
 
   test('load restores persisted selection key', () async {
     final fs = InMemoryFilesystem();
@@ -138,20 +140,23 @@ void main() {
     await cubit.close();
   });
 
-  test('load with stale prefs selects first config and rewrites prefs', () async {
-    final fs = InMemoryFilesystem();
-    final prefs = _prefsStore(fs);
-    final a = _shellScriptConfig(id: 'a');
-    await prefs.saveSelectedKey(_workspaceId, 'stale-key');
-    final platform = FakeRunPlatform(configurations: [a]);
-    final cubit = _cubit(platform: platform, prefsStore: prefs);
+  test(
+    'load with stale prefs selects first config and rewrites prefs',
+    () async {
+      final fs = InMemoryFilesystem();
+      final prefs = _prefsStore(fs);
+      final a = _shellScriptConfig(id: 'a');
+      await prefs.saveSelectedKey(_workspaceId, 'stale-key');
+      final platform = FakeRunPlatform(configurations: [a]);
+      final cubit = _cubit(platform: platform, prefsStore: prefs);
 
-    await cubit.load();
+      await cubit.load();
 
-    expect(cubit.state.selectedKey, a.selectionKey);
-    expect(await prefs.selectedKeyFor(_workspaceId), a.selectionKey);
-    await cubit.close();
-  });
+      expect(cubit.state.selectedKey, a.selectionKey);
+      expect(await prefs.selectedKeyFor(_workspaceId), a.selectionKey);
+      await cubit.close();
+    },
+  );
 
   test('load with only compounds selects first compound', () async {
     final fs = InMemoryFilesystem();
@@ -202,19 +207,25 @@ void main() {
     },
   );
 
-  test('load with empty configs and compounds clears selection and prefs', () async {
-    final fs = InMemoryFilesystem();
-    final prefs = _prefsStore(fs);
-    await prefs.saveSelectedKey(_workspaceId, 'orphan');
-    final platform = FakeRunPlatform(configurations: const [], compounds: const []);
-    final cubit = _cubit(platform: platform, prefsStore: prefs);
+  test(
+    'load with empty configs and compounds clears selection and prefs',
+    () async {
+      final fs = InMemoryFilesystem();
+      final prefs = _prefsStore(fs);
+      await prefs.saveSelectedKey(_workspaceId, 'orphan');
+      final platform = FakeRunPlatform(
+        configurations: const [],
+        compounds: const [],
+      );
+      final cubit = _cubit(platform: platform, prefsStore: prefs);
 
-    await cubit.load();
+      await cubit.load();
 
-    expect(cubit.state.selectedKey, isNull);
-    expect(await prefs.selectedKeyFor(_workspaceId), isNull);
-    await cubit.close();
-  });
+      expect(cubit.state.selectedKey, isNull);
+      expect(await prefs.selectedKeyFor(_workspaceId), isNull);
+      await cubit.close();
+    },
+  );
 
   test('select writes prefs for configuration', () async {
     final fs = InMemoryFilesystem();
@@ -250,8 +261,12 @@ void main() {
         prefsStore: prefs,
       );
       await cubit.load();
-      final first = cubit.state.configurations.firstWhere((c) => c.configId == 'a');
-      final second = cubit.state.configurations.firstWhere((c) => c.configId == 'b');
+      final first = cubit.state.configurations.firstWhere(
+        (c) => c.configId == 'a',
+      );
+      final second = cubit.state.configurations.firstWhere(
+        (c) => c.configId == 'b',
+      );
       await cubit.select(first.selectionKey);
       expect(await prefs.selectedKeyFor(_workspaceId), first.selectionKey);
 

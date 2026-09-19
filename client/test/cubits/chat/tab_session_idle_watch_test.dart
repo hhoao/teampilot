@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/chat_tab_store.dart';
-import 'package:teampilot/services/chat/model/chat_tab.dart';
-import 'package:teampilot/services/chat/model/chat_tab_info.dart';
-import 'package:teampilot/services/chat/tab_member_coordination_factory.dart';
+import 'package:teampilot/services/chat/session/chat_tab_store.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
+import 'package:teampilot/services/chat/session/chat_tab_info.dart';
+import 'package:teampilot/services/chat/runtime/tab_member_coordination_factory.dart';
 import 'package:teampilot/services/chat/runtime/tab_session_idle_watch.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';

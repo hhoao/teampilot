@@ -33,10 +33,8 @@ class WorkbenchEditorOpener {
        _workbench = workbench,
        _floating = floating,
        _readMarkdownOpenMode = readMarkdownOpenMode,
-       _readFilePreviewInFloating =
-           readFilePreviewInFloating ?? (() => true),
-       _readFloatingPreviewTabs =
-           readFloatingPreviewTabs ?? (() => true),
+       _readFilePreviewInFloating = readFilePreviewInFloating ?? (() => true),
+       _readFloatingPreviewTabs = readFloatingPreviewTabs ?? (() => true),
        _chat = chat,
        htmlViewModes = htmlViewModes ?? HtmlViewModeStore(),
        svgViewModes = svgViewModes ?? SvgViewModeStore();

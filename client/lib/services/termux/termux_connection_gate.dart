@@ -1,14 +1,15 @@
 import '../../models/runtime_target.dart';
 
 /// Whether work-plane operations may proceed for the current Termux home/target.
-bool allowTermuxWorkOps({required bool isTermuxHome, required bool connected}) =>
-    !isTermuxHome || connected;
+bool allowTermuxWorkOps({
+  required bool isTermuxHome,
+  required bool connected,
+}) => !isTermuxHome || connected;
 
 bool isTermuxWorkOpsBlocked({
   required bool isTermuxHome,
   required bool connected,
-}) =>
-    !allowTermuxWorkOps(isTermuxHome: isTermuxHome, connected: connected);
+}) => !allowTermuxWorkOps(isTermuxHome: isTermuxHome, connected: connected);
 
 /// Returns [message] when [target] or [home] is on the Termux plane but
 /// Termux is disconnected; otherwise null.

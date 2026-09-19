@@ -181,27 +181,32 @@ void main() {
     expect(killed, hasLength(2));
   });
 
-  test('kill failure sets error and does not remove leaf until bindings refresh',
-      () async {
-    cubit.setWorkspace('ws-1');
-    await cubit.openPanel();
-    expect(cubit.state.terminalCount, 2);
-    expect(cubit.state.tree?.terminalCount, 2);
+  test(
+    'kill failure sets error and does not remove leaf until bindings refresh',
+    () async {
+      cubit.setWorkspace('ws-1');
+      await cubit.openPanel();
+      expect(cubit.state.terminalCount, 2);
+      expect(cubit.state.tree?.terminalCount, 2);
 
-    killError = Exception('kill failed');
-    await cubit.killLeaf('chat:s1:m1');
+      killError = Exception('kill failed');
+      await cubit.killLeaf('chat:s1:m1');
 
-    expect(cubit.state.error, isNotNull);
-    expect(cubit.state.bindings.map((b) => b.key), contains('chat:s1:m1'));
-    expect(cubit.state.terminalCount, 2);
+      expect(cubit.state.error, isNotNull);
+      expect(cubit.state.bindings.map((b) => b.key), contains('chat:s1:m1'));
+      expect(cubit.state.terminalCount, 2);
 
-    killError = null;
-    bindings = [_binding(key: 'chat:s1:m2', title: 'B', livePid: 43)];
-    await cubit.refresh();
+      killError = null;
+      bindings = [_binding(key: 'chat:s1:m2', title: 'B', livePid: 43)];
+      await cubit.refresh();
 
-    expect(cubit.state.bindings.map((b) => b.key), isNot(contains('chat:s1:m1')));
-    expect(cubit.state.terminalCount, 1);
-  });
+      expect(
+        cubit.state.bindings.map((b) => b.key),
+        isNot(contains('chat:s1:m1')),
+      );
+      expect(cubit.state.terminalCount, 1);
+    },
+  );
 
   test('snapshot failure keeps last good snapshot and sets error', () async {
     cubit.setWorkspace('ws-1');
@@ -237,16 +242,12 @@ void main() {
   });
 
   test('syncRegistry skips emit when bindings are unchanged', () async {
-    bindings = [
-      _binding(key: 'chat:s1:m1', title: 'A', livePid: 42),
-    ];
+    bindings = [_binding(key: 'chat:s1:m1', title: 'A', livePid: 42)];
     cubit.setWorkspace('ws-1');
     final before = cubit.state;
 
     // New list instance, same visual fields.
-    bindings = [
-      _binding(key: 'chat:s1:m1', title: 'A', livePid: 42),
-    ];
+    bindings = [_binding(key: 'chat:s1:m1', title: 'A', livePid: 42)];
     cubit.syncRegistryFromBindings();
 
     expect(identical(cubit.state, before), isTrue);
@@ -263,8 +264,7 @@ void main() {
     expect(identical(cubit.state.snapshot, snap), isTrue);
   });
 
-  test('onRouteActiveChanged(false) closes panel and stops polling',
-      () async {
+  test('onRouteActiveChanged(false) closes panel and stops polling', () async {
     cubit.setWorkspace('ws-1');
     await cubit.openPanel();
     await Future<void>.delayed(pollInterval * 2);

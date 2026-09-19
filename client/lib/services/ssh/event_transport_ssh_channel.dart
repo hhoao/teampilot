@@ -11,7 +11,8 @@ import 'ssh_client_factory.dart';
 /// Wraps dartssh2 [SSHForwardChannel] as the event-package byte-stream seam.
 ///
 /// Lives next to the SSH layer so `services/event/` never imports dartssh2.
-final class SshForwardEventTransportChannel implements EventTransportByteChannel {
+final class SshForwardEventTransportChannel
+    implements EventTransportByteChannel {
   SshForwardEventTransportChannel(this._channel);
 
   final SSHForwardChannel _channel;

@@ -1,13 +1,13 @@
-import '../model/chat_tab.dart';
+import 'chat_tab.dart';
 import '../../../models/app_session.dart';
 import '../../../models/cli_preset.dart';
 import '../../../models/member_instance.dart';
 import '../../../models/member_presence.dart';
 import '../../../models/team_config.dart';
 import '../../cli/registry/cli_tool_registry.dart';
-import 'member_coordination.dart';
+import '../runtime/member_coordination.dart';
 
-export 'member_coordination.dart'
+export '../runtime/member_coordination.dart'
     show MemberCoordination, MemberCoordinationScope;
 
 /// Session-level working indicator — same rules as the members panel.

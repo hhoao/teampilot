@@ -84,7 +84,8 @@ void main() {
       );
       expect(
         codex.fields.any(
-          (candidate) => candidate.kind == ManagedProviderEditorFieldKind.secret,
+          (candidate) =>
+              candidate.kind == ManagedProviderEditorFieldKind.secret,
         ),
         isFalse,
       );
@@ -103,29 +104,32 @@ void main() {
     },
   );
 
-  test('legacy HTTP providers derive compatibility from endpoint declaration', () {
-    final legacyHttp = ManagedProviderEditorSchema.fromProvider(
-      ManagedProvider(
-        id: 'legacy',
-        name: 'Legacy HTTP',
-        kind: ManagedProviderKind.apiBalance,
-        adapterId: 'legacy-adapter',
-        endpointConfig: ManagedProviderEndpointConfig(
-          url: 'https://legacy.example.test/usage',
-          responsePath: r'$.data',
-          windows: const [
-            ManagedProviderUsageWindow(
-              label: 'Balance',
-              remaining: r'$.data.balance',
-            ),
-          ],
+  test(
+    'legacy HTTP providers derive compatibility from endpoint declaration',
+    () {
+      final legacyHttp = ManagedProviderEditorSchema.fromProvider(
+        ManagedProvider(
+          id: 'legacy',
+          name: 'Legacy HTTP',
+          kind: ManagedProviderKind.apiBalance,
+          adapterId: 'legacy-adapter',
+          endpointConfig: ManagedProviderEndpointConfig(
+            url: 'https://legacy.example.test/usage',
+            responsePath: r'$.data',
+            windows: const [
+              ManagedProviderUsageWindow(
+                label: 'Balance',
+                remaining: r'$.data.balance',
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
 
-    expect(legacyHttp.hasSection(ManagedProviderEditorSection.query), isTrue);
-    expect(legacyHttp.hasField('endpointConfig.url'), isTrue);
-  });
+      expect(legacyHttp.hasSection(ManagedProviderEditorSection.query), isTrue);
+      expect(legacyHttp.hasField('endpointConfig.url'), isTrue);
+    },
+  );
 
   test('derived schema omits internal credential reference field', () {
     final schema = ManagedProviderEditorSchema.fromProvider(
@@ -163,8 +167,17 @@ void main() {
       field(manual, 'endpointConfig.credentialName').defaultValue,
       'Authorization',
     );
-    expect(field(manual, 'endpointConfig.credentialField').defaultValue, 'accessToken');
-    expect(field(manual, 'endpointConfig.credentialPlacement').defaultValue, 'header');
-    expect(field(manual, 'endpointConfig.credentialPrefix').defaultValue, 'Bearer ');
+    expect(
+      field(manual, 'endpointConfig.credentialField').defaultValue,
+      'accessToken',
+    );
+    expect(
+      field(manual, 'endpointConfig.credentialPlacement').defaultValue,
+      'header',
+    );
+    expect(
+      field(manual, 'endpointConfig.credentialPrefix').defaultValue,
+      'Bearer ',
+    );
   });
 }

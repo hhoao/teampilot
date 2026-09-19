@@ -27,23 +27,26 @@ void main() {
     addTearDown(workbench.close);
   });
 
-  test('splitRight splits the focused center group active tab horizontally', () {
-    chat.tabStore.setActiveWorkspaceId('ws');
-    workbench.openSession('ws', 's1');
-    workbench.openSession('ws', 's2');
+  test(
+    'splitRight splits the focused center group active tab horizontally',
+    () {
+      chat.tabStore.setActiveWorkspaceId('ws');
+      workbench.openSession('ws', 's1');
+      workbench.openSession('ws', 's2');
 
-    bus.invoke(CommandIds.workbenchSplitRight);
+      bus.invoke(CommandIds.workbenchSplitRight);
 
-    final layout = workbench.centerLayout('ws');
-    expect(layout.groups.length, 2);
-    expect(layout.root, isA<SplitBranch>());
-    expect((layout.root as SplitBranch).axis, Axis.horizontal);
-    // The split tab lands in the new focused group.
-    expect(layout.groups[layout.focusedGroupId]!.order, [
-      WorkbenchTabId.session('s2'),
-    ]);
-    expect(layout.groups['g0']!.order, [WorkbenchTabId.session('s1')]);
-  });
+      final layout = workbench.centerLayout('ws');
+      expect(layout.groups.length, 2);
+      expect(layout.root, isA<SplitBranch>());
+      expect((layout.root as SplitBranch).axis, Axis.horizontal);
+      // The split tab lands in the new focused group.
+      expect(layout.groups[layout.focusedGroupId]!.order, [
+        WorkbenchTabId.session('s2'),
+      ]);
+      expect(layout.groups['g0']!.order, [WorkbenchTabId.session('s1')]);
+    },
+  );
 
   test('splitDown splits vertically', () {
     chat.tabStore.setActiveWorkspaceId('ws');

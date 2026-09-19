@@ -22,45 +22,45 @@ List<TabInfo> projectWorkbenchTabs({
     for (final tab in tabOrder)
       if (isCenterStripWorkbenchTab(tab.kind))
         switch (tab.kind) {
-        WorkbenchTabKind.session => TabInfo(
-          id: tab.id,
-          sessionId: tab.id,
-          title: sessionTitles[tab.id] ?? '',
-          working: sessionWorking[tab.id] ?? false,
-          cli: sessionCli[tab.id],
-          accentColor: sessionAccent,
-          icon: Icons.terminal_rounded,
-          preview: previewTabIds.contains(tab),
-          pinnable: true,
-          pinned: pinnedTabIds.contains(tab),
-          kind: WorkbenchTabKind.session,
-        ),
-        WorkbenchTabKind.file => TabInfo(
-          id: tab.id,
-          title: p.basename(tab.id),
-          icon: Icons.description_outlined,
-          preview: previewTabIds.contains(tab),
-          pinned: pinnedTabIds.contains(tab),
-          kind: WorkbenchTabKind.file,
-          filePath: tab.id,
-        ),
-        WorkbenchTabKind.diff => TabInfo(
-          id: tab.id,
-          title: _diffTitle(tab, editorBucket),
-          icon: Icons.difference_outlined,
-          preview: previewTabIds.contains(tab),
-          pinned: pinnedTabIds.contains(tab),
-          kind: WorkbenchTabKind.diff,
-          filePath: tab.diffAbsolutePath,
-        ),
-        WorkbenchTabKind.shell ||
-        WorkbenchTabKind.run ||
-        WorkbenchTabKind.htmlPreview ||
-        WorkbenchTabKind.gitGraph ||
-        WorkbenchTabKind.gitCompare => throw StateError(
-          'shell/run/htmlPreview/gitGraph/gitCompare tabs are filtered before center-strip projection',
-        ),
-      },
+          WorkbenchTabKind.session => TabInfo(
+            id: tab.id,
+            sessionId: tab.id,
+            title: sessionTitles[tab.id] ?? '',
+            working: sessionWorking[tab.id] ?? false,
+            cli: sessionCli[tab.id],
+            accentColor: sessionAccent,
+            icon: Icons.terminal_rounded,
+            preview: previewTabIds.contains(tab),
+            pinnable: true,
+            pinned: pinnedTabIds.contains(tab),
+            kind: WorkbenchTabKind.session,
+          ),
+          WorkbenchTabKind.file => TabInfo(
+            id: tab.id,
+            title: p.basename(tab.id),
+            icon: Icons.description_outlined,
+            preview: previewTabIds.contains(tab),
+            pinned: pinnedTabIds.contains(tab),
+            kind: WorkbenchTabKind.file,
+            filePath: tab.id,
+          ),
+          WorkbenchTabKind.diff => TabInfo(
+            id: tab.id,
+            title: _diffTitle(tab, editorBucket),
+            icon: Icons.difference_outlined,
+            preview: previewTabIds.contains(tab),
+            pinned: pinnedTabIds.contains(tab),
+            kind: WorkbenchTabKind.diff,
+            filePath: tab.diffAbsolutePath,
+          ),
+          WorkbenchTabKind.shell ||
+          WorkbenchTabKind.run ||
+          WorkbenchTabKind.htmlPreview ||
+          WorkbenchTabKind.gitGraph ||
+          WorkbenchTabKind.gitCompare => throw StateError(
+            'shell/run/htmlPreview/gitGraph/gitCompare tabs are filtered before center-strip projection',
+          ),
+        },
   ];
 }
 

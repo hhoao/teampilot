@@ -1,9 +1,8 @@
 import '../app/app_update_asset_selector.dart';
 
 /// GitHub REST endpoint for the latest `termux/termux-app` release metadata.
-Uri termuxLatestReleaseApiUri() => Uri.parse(
-  'https://api.github.com/repos/termux/termux-app/releases/latest',
-);
+Uri termuxLatestReleaseApiUri() =>
+    Uri.parse('https://api.github.com/repos/termux/termux-app/releases/latest');
 
 /// Picks the `browser_download_url` for the preferred Termux APK asset.
 ///

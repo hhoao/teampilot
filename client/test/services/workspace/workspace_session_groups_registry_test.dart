@@ -18,7 +18,10 @@ void main() {
     // The load is real file IO on a temp dir; pumpEventQueue's fixed 20
     // event-loop turns can miss the IO completion on a loaded CI host
     // (observed on the Windows runner), so poll with a deadline instead.
-    await waitUntil(() => cubit.state.ready, timeout: const Duration(seconds: 5));
+    await waitUntil(
+      () => cubit.state.ready,
+      timeout: const Duration(seconds: 5),
+    );
     expect(cubit.state.ready, isTrue);
   });
 

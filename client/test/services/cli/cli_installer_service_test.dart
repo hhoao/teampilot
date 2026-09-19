@@ -650,8 +650,10 @@ void main() {
       expect(result.success, isTrue, reason: result.message);
       expect(result.executablePath, '/home/alice/.local/bin/cursor-agent');
       expect(commands.length, greaterThanOrEqualTo(2));
-      expect(commands.any((c) => c.contains('curl https://cursor.com/install')),
-          isTrue);
+      expect(
+        commands.any((c) => c.contains('curl https://cursor.com/install')),
+        isTrue,
+      );
       expect(commands.any((c) => c == 'which cursor-agent'), isTrue);
     },
   );

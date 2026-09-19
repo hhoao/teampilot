@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/chat/session/member_coordination.dart';
+import 'package:teampilot/services/chat/runtime/member_coordination.dart';
 import 'package:teampilot/services/chat/team_bus/agent_node.dart';
 import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
-import '../team_bus/support/fake_member_launcher.dart';
+import '../chat/team_bus/support/fake_member_launcher.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {

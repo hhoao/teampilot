@@ -221,8 +221,7 @@ class LaunchConfigStore {
   }) async {
     final existing = await _readDocument(folder);
     if (existing == null) return;
-    final configs =
-        existing.configurations.where((c) => c.id != id).toList();
+    final configs = existing.configurations.where((c) => c.id != id).toList();
     if (configs.length == existing.configurations.length) return;
     await writeDocument(
       folder: folder,
@@ -236,7 +235,9 @@ class LaunchConfigStore {
   }) async {
     final normalized = document.normalized();
     final path = launchConfigPath(folder);
-    final json = const JsonEncoder.withIndent('  ').convert(normalized.toJson());
+    final json = const JsonEncoder.withIndent(
+      '  ',
+    ).convert(normalized.toJson());
     await _io.writeString(path, json, targetId: folder.targetId);
   }
 

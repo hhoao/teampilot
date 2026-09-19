@@ -34,8 +34,7 @@ class TermuxState extends Equatable {
   final bool connecting;
   final String? lastError;
 
-  bool get isConfigured =>
-      config != null && config!.username.trim().isNotEmpty;
+  bool get isConfigured => config != null && config!.username.trim().isNotEmpty;
 
   TermuxState copyWith({
     TermuxConfig? config,
@@ -124,7 +123,9 @@ class TermuxCubit extends Cubit<TermuxState> {
       return;
     }
 
-    emit(state.copyWith(connecting: true, connected: false, clearLastError: true));
+    emit(
+      state.copyWith(connecting: true, connected: false, clearLastError: true),
+    );
 
     try {
       await TermuxKeyMaterial.ensureKeyPair(
@@ -190,11 +191,7 @@ class TermuxCubit extends Cubit<TermuxState> {
       await disconnectTransport();
     }
     emit(
-      state.copyWith(
-        connected: false,
-        connecting: false,
-        clearLastError: true,
-      ),
+      state.copyWith(connected: false, connecting: false, clearLastError: true),
     );
   }
 
@@ -207,12 +204,7 @@ class TermuxCubit extends Cubit<TermuxState> {
     }
     await _deleteKeyFiles();
     await applyTermuxClearSetupHome(selectHome: _selectHome);
-    emit(
-      const TermuxState(
-        connected: false,
-        connecting: false,
-      ),
-    );
+    emit(const TermuxState(connected: false, connecting: false));
     _notifyConfigChanged(null);
   }
 

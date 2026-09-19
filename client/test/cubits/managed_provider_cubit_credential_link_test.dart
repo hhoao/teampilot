@@ -67,10 +67,7 @@ void main() {
         ),
       );
       await managedCubit.upsert(
-        entry(
-          'm1',
-          managedProviderLinkSourceValue(CliTool.claude, 'deepseek'),
-        ),
+        entry('m1', managedProviderLinkSourceValue(CliTool.claude, 'deepseek')),
       );
       // The cycle-forming upsert was rejected: entry not persisted.
       expect(managedCubit.state.providerFor('m1'), isNull);

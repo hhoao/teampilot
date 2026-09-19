@@ -1,5 +1,5 @@
-import '../../../chat/terminal/fullscreen_cr_ack_config.dart';
-import '../../../chat/terminal/fullscreen_input_readiness.dart';
+import '../../../chat/runtime/pty/fullscreen_cr_ack_config.dart';
+import '../../../chat/runtime/pty/fullscreen_input_readiness.dart';
 import '../../registry/capabilities/terminal_behavior_capability.dart';
 
 final class FlashskyaiTerminalBehavior implements TerminalBehaviorCapability {

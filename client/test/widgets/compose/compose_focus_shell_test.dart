@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/widgets/compose/compose_focus_shell.dart';
 
 void main() {
-  testWidgets('focus deepens border and lifts light-mode shadow', (tester) async {
+  testWidgets('focus deepens border and lifts light-mode shadow', (
+    tester,
+  ) async {
     final focusNode = FocusNode();
     addTearDown(focusNode.dispose);
 
@@ -119,7 +121,9 @@ void main() {
     );
   });
 
-  testWidgets('tapping shell padding focuses the compose field', (tester) async {
+  testWidgets('tapping shell padding focuses the compose field', (
+    tester,
+  ) async {
     final focusNode = FocusNode();
     addTearDown(focusNode.dispose);
 

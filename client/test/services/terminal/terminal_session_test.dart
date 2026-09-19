@@ -10,7 +10,7 @@ import 'package:teampilot/services/terminal/terminal_export.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/chat/session/shell_launch_spec.dart';
+import 'package:teampilot/services/chat/launch/session/shell_launch_spec.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/utils/logging/logger.dart';
 

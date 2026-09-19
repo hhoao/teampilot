@@ -19,9 +19,8 @@ class ConnectRelayDialRequest {
   final String? relayGrant;
 }
 
-typedef ValidateRelayDial = Future<bool> Function(
-  ConnectRelayDialRequest request,
-);
+typedef ValidateRelayDial =
+    Future<bool> Function(ConnectRelayDialRequest request);
 
 /// Resolves the loopback target for a channel; null rejects the dial.
 typedef ResolveRelayTarget =
@@ -85,10 +84,7 @@ class ConnectRelayClient {
     if (!_started || _url == null || _hostId == null) return;
     try {
       final socket = await _connectSocket(
-        _url!.replace(
-          path: '/register',
-          queryParameters: {'hostId': _hostId},
-        ),
+        _url!.replace(path: '/register', queryParameters: {'hostId': _hostId}),
       );
       _socket = socket;
       _subscription = socket.listen(

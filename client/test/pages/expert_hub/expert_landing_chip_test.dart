@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/config_bundle.dart';
-import 'package:teampilot/services/compose/compose_file_drop_ingestor.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_file_drop_ingestor.dart';
 import 'package:teampilot/widgets/compose/compose_chrome.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
 import 'package:teampilot/widgets/compose/workspace_compose_card.dart';

@@ -53,12 +53,17 @@ final class TeamGenerationBuilderIdleWaiter {
       unawaited(settle(TeamGenerationBuilderIdleResult.timeout));
     });
 
-    subscription = _sessionPort.activityStream(sessionId).listen((activity) {
-      if (activity.sessionId != sessionId) return;
-      restartQuietTimer(activity.readyToChat);
-    }, onError: (_) {
-      unawaited(settle(TeamGenerationBuilderIdleResult.missing));
-    });
+    subscription = _sessionPort
+        .activityStream(sessionId)
+        .listen(
+          (activity) {
+            if (activity.sessionId != sessionId) return;
+            restartQuietTimer(activity.readyToChat);
+          },
+          onError: (_) {
+            unawaited(settle(TeamGenerationBuilderIdleResult.missing));
+          },
+        );
 
     return ready.future;
   }

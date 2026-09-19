@@ -17,7 +17,7 @@ void main() {
     tmp = await Directory.systemTemp.createTemp('mcp_repo_test_');
     final path = p.join(tmp.path, 'mcp', 'mcp_servers.json');
     catalog = McpCatalogService(catalogPath: path, fs: LocalFilesystem());
-    repository = McpRepository(catalog: catalog, storage: fakeHomeStorage(), );
+    repository = McpRepository(catalog: catalog, storage: fakeHomeStorage());
   });
 
   tearDown(() async {

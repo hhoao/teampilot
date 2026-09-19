@@ -15,10 +15,7 @@ List<String> mergeGroupSessionReorder({
   var gi = 0;
   return [
     for (final id in workspaceOrderedIds)
-      if (groupSet.contains(id))
-        groupOrderedIds[gi++]
-      else
-        id,
+      if (groupSet.contains(id)) groupOrderedIds[gi++] else id,
   ];
 }
 

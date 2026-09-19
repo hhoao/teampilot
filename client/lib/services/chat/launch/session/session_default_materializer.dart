@@ -1,11 +1,10 @@
-import '../../model/session_open_request.dart';
-import '../../model/session_open_status.dart';
-import '../../host/session_launch_host.dart';
+import '../../session/session_open_request.dart';
+import '../session_launch_host.dart';
 import '../../../../models/member_instance.dart';
 import '../../../../models/team_config.dart';
 import '../../../../models/workspace.dart';
 import '../../../../repositories/session_repository.dart';
-import '../../session/session_member_cli_locks.dart';
+import 'session_member_cli_locks.dart';
 import '../../../../utils/logging/logger.dart';
 import 'session_launch_coordinator.dart';
 import 'session_launch_workspace_index.dart';

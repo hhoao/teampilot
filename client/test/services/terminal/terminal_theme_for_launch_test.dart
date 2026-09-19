@@ -94,7 +94,7 @@ void main() {
               capturedEnv = environment;
               return Future.value(handle);
             },
-                                       fs: InMemoryFilesystem(),
+        fs: InMemoryFilesystem(),
       );
       addTearDown(() async {
         session.dispose();
@@ -162,7 +162,7 @@ void main() {
               capturedEnv = environment;
               return Future.value(handle);
             },
-                                       fs: InMemoryFilesystem(),
+        fs: InMemoryFilesystem(),
       );
       addTearDown(() async {
         session.dispose();

@@ -24,7 +24,7 @@ import 'package:teampilot/repositories/workspace_project_config_repository.dart'
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
-import 'package:teampilot/services/compose/compose_slash_catalog.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_slash_catalog.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/utils/workspace/landing_draft_resolver.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
@@ -84,10 +84,12 @@ void main() {
   }) async {
     final workspace = Workspace(workspaceId: 'workspace-1', createdAt: 1);
     await tester.runAsync(() async {
-      await persistLandingDraft(workspace.workspaceId, draft, storage: testHomeStorage, );
-      await WorkspaceProjectConfigRepository(
+      await persistLandingDraft(
+        workspace.workspaceId,
+        draft,
         storage: testHomeStorage,
-      ).save(
+      );
+      await WorkspaceProjectConfigRepository(storage: testHomeStorage).save(
         workspace.workspaceId,
         const WorkspaceProjectConfig(
           bundle: ConfigBundle(
@@ -127,7 +129,7 @@ void main() {
         ],
         child: MultiBlocProvider(
           providers: [
-        RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
+            RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
             BlocProvider<ChatCubit>.value(value: chatCubit),
             BlocProvider<AppProviderCubit>.value(value: appProviderCubit),
             BlocProvider<CliPresetsCubit>.value(value: cliPresetsCubit),

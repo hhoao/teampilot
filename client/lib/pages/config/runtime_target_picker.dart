@@ -85,9 +85,7 @@ class _RuntimeTargetPickerState extends State<RuntimeTargetPicker> {
     return TpCompactSelect<String>(
       value: value,
       enabled: !_switching,
-      entries: [
-        for (final t in options) (t.id, t.label),
-      ],
+      entries: [for (final t in options) (t.id, t.label)],
       onChanged: (id) {
         if (id == null || id == currentId) return;
         _select(id);

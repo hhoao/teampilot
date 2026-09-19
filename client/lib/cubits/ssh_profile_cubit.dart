@@ -187,8 +187,7 @@ class SshProfileCubit extends Cubit<SshProfileState> {
     required String home,
     required String appDataRoot,
   }) async {
-    final existing =
-        state.profiles.where((p) => p.id == profileId).firstOrNull;
+    final existing = state.profiles.where((p) => p.id == profileId).firstOrNull;
     if (existing == null) return;
     final next = existing.copyWith(
       lastHome: home,

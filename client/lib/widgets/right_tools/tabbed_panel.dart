@@ -82,10 +82,7 @@ class _TabbedPanelState extends State<TabbedPanel> {
   @override
   void didUpdateWidget(covariant TabbedPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!listEquals(
-      [for (final v in oldWidget.views) v.id],
-      _catalogIds,
-    )) {
+    if (!listEquals([for (final v in oldWidget.views) v.id], _catalogIds)) {
       _schedulePrune();
     }
   }
@@ -155,8 +152,7 @@ class _TabbedPanelState extends State<TabbedPanel> {
         if (byId.containsKey(id)) id,
     ];
     final selectedId = _selectedId(context);
-    final effectiveSelected =
-        selectedId != null && openIds.contains(selectedId)
+    final effectiveSelected = selectedId != null && openIds.contains(selectedId)
         ? selectedId
         : (openIds.isEmpty ? null : openIds.last);
     final showPicker = _picking || openIds.isEmpty;
@@ -444,9 +440,7 @@ class _PickerTile extends StatelessWidget {
           children: [
             Icon(view.icon, size: context.tpIconSizes.md, color: cs.onSurface),
             SizedBox(width: spacing.sm),
-            Expanded(
-              child: Text(view.label, style: styles.md),
-            ),
+            Expanded(child: Text(view.label, style: styles.md)),
           ],
         ),
       ),

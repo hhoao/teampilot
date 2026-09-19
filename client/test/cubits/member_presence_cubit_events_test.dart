@@ -9,7 +9,7 @@ import 'package:teampilot/services/event/agent_presence_projection.dart';
 import 'package:teampilot/services/event/agent_presence_sink.dart';
 import 'package:teampilot/services/event/async_dispatcher.dart';
 import 'package:teampilot/services/event/presence_event_bridge.dart';
-import 'package:teampilot/services/chat/session/member_presence_service.dart';
+import 'package:teampilot/services/chat/runtime/member_presence_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../support/in_memory_filesystem.dart';

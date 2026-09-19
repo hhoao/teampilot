@@ -28,35 +28,26 @@ void main() {
     );
   });
 
-  test(
-    'autoUiZoomForDevicePixelRatio uses mobile standard baseline',
-    () {
-      // Product lock: denser than desktop 1.0 so more chrome fits on phone.
-      expect(kMobileUiZoomBaseline, 0.7);
-      expect(
-        autoUiZoomForDevicePixelRatio(
-          3.0,
-          compensateDisplayScaling: false,
-        ),
-        kMobileUiZoomBaseline,
-      );
-      expect(
-        autoUiZoomForDevicePixelRatio(
-          2.0,
-          compensateDisplayScaling: false,
-        ),
-        kMobileUiZoomBaseline,
-      );
-      expect(
-        resolveRelativeScale(
-          scaleId: 'standard',
-          customMultiplier: 1.0,
-          baseline: kMobileUiZoomBaseline,
-        ),
-        kMobileUiZoomBaseline,
-      );
-    },
-  );
+  test('autoUiZoomForDevicePixelRatio uses mobile standard baseline', () {
+    // Product lock: denser than desktop 1.0 so more chrome fits on phone.
+    expect(kMobileUiZoomBaseline, 0.7);
+    expect(
+      autoUiZoomForDevicePixelRatio(3.0, compensateDisplayScaling: false),
+      kMobileUiZoomBaseline,
+    );
+    expect(
+      autoUiZoomForDevicePixelRatio(2.0, compensateDisplayScaling: false),
+      kMobileUiZoomBaseline,
+    );
+    expect(
+      resolveRelativeScale(
+        scaleId: 'standard',
+        customMultiplier: 1.0,
+        baseline: kMobileUiZoomBaseline,
+      ),
+      kMobileUiZoomBaseline,
+    );
+  });
 
   test(
     'autoTextScaleForSystem = osTextScale × dpr (desktop text baseline)',
@@ -98,29 +89,18 @@ void main() {
     );
   });
 
-  test(
-    'autoTextScaleForSystem uses mobile baseline when not compensating',
-    () {
-      // Product lock: larger than desktop 1.0 for touch readability.
-      expect(kMobileTextScaleBaseline, 1.3);
-      expect(
-        autoTextScaleForSystem(
-          1.0,
-          3.0,
-          compensateDisplayScaling: false,
-        ),
-        closeTo(kMobileTextScaleBaseline, 0.0001),
-      );
-      expect(
-        autoTextScaleForSystem(
-          1.2,
-          3.0,
-          compensateDisplayScaling: false,
-        ),
-        closeTo(1.2 * kMobileTextScaleBaseline, 0.0001),
-      );
-    },
-  );
+  test('autoTextScaleForSystem uses mobile baseline when not compensating', () {
+    // Product lock: larger than desktop 1.0 for touch readability.
+    expect(kMobileTextScaleBaseline, 1.3);
+    expect(
+      autoTextScaleForSystem(1.0, 3.0, compensateDisplayScaling: false),
+      closeTo(kMobileTextScaleBaseline, 0.0001),
+    );
+    expect(
+      autoTextScaleForSystem(1.2, 3.0, compensateDisplayScaling: false),
+      closeTo(1.2 * kMobileTextScaleBaseline, 0.0001),
+    );
+  });
 
   test('resolveRelativeScale = baseline × preset multiplier', () {
     // standard == the baseline itself

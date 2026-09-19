@@ -16,8 +16,15 @@ void main() {
 
   setUp(() async {
     temp = await Directory.systemTemp.createTemp('llm_config_helpers_');
-    repository = AppProviderRepository(basePath: temp.path, storage: fakeHomeStorage(), );
-    cubit = AppProviderCubit(repository: repository, basePath: temp.path, storage: fakeHomeStorage(), );
+    repository = AppProviderRepository(
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+    );
+    cubit = AppProviderCubit(
+      repository: repository,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+    );
   });
 
   tearDown(() async {

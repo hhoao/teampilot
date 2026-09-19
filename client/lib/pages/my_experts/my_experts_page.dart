@@ -56,8 +56,7 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
         catalog: _readCatalog(),
         store: LocalExpertStore(
           fs: homeStorageOf(context).fs,
-          dirOverride:
-              homeStorageOf(context).paths.memberHubLocalTemplatesDir,
+          dirOverride: homeStorageOf(context).paths.memberHubLocalTemplatesDir,
         ),
       );
 
@@ -68,9 +67,9 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
       return null;
     }
   }
+
   late final HubPublishRecordStore _records =
-      widget.records ??
-      HubPublishRecordStore(storage: homeStorageOf(context));
+      widget.records ?? HubPublishRecordStore(storage: homeStorageOf(context));
   List<DiscoverableMember> _members = const [];
   var _loading = true;
   String? _highlightMemberKey;
@@ -91,7 +90,9 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
     if (fromRoute != null && fromRoute != _highlightMemberKey) {
       _highlightMemberKey = fromRoute;
       _didAutoOpenEditor = false;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoOpenEditor());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _maybeAutoOpenEditor(),
+      );
     }
   }
 
@@ -123,7 +124,9 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
         _loading = false;
         _recordsEpoch++;
       });
-      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoOpenEditor());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _maybeAutoOpenEditor(),
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -166,8 +169,7 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
     final launch = context.read<LaunchProfileCubit>();
     return [
       for (final team in launch.state.teams)
-        if (team.roster.any((slot) => slot.expertKey.trim() == expertKey))
-          team,
+        if (team.roster.any((slot) => slot.expertKey.trim() == expertKey)) team,
     ];
   }
 
@@ -351,11 +353,11 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
                     padding: const EdgeInsets.fromLTRB(0, 18, 0, 24),
                     gridDelegate:
                         const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 380,
-                      mainAxisExtent: 220,
-                      crossAxisSpacing: 14,
-                      mainAxisSpacing: 14,
-                    ),
+                          maxCrossAxisExtent: 380,
+                          mainAxisExtent: 220,
+                          crossAxisSpacing: 14,
+                          mainAxisSpacing: 14,
+                        ),
                     itemCount: _members.length,
                     itemBuilder: (context, index) {
                       final member = _members[index];

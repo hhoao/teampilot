@@ -12,6 +12,7 @@ import '../../pages/ssh_profiles/ssh_profile_form_dialog.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../../services/terminal/workspace_shell_connector.dart';
 import '../../services/terminal/workspace_terminal_launch_catalog.dart';
+
 typedef WorkspaceTerminalSessionSelected =
     void Function(WorkspaceTerminalSessionSpec spec, String? launchCwd);
 

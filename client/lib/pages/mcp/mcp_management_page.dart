@@ -90,9 +90,7 @@ class _McpManagementPageState extends State<McpManagementPage> {
       storage: homeStorageOf(context),
       discoverySettings: context.read<DiscoverySettingsCubit>(),
     );
-    _listingInstall = McpListingInstallService(
-      storage: homeStorageOf(context),
-    );
+    _listingInstall = McpListingInstallService(storage: homeStorageOf(context));
     context.read<McpCubit>().loadAll();
   }
 

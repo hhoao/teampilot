@@ -8,8 +8,10 @@ import 'git_service.dart' show GitException;
 import 'parser/git_graph_parser.dart';
 
 /// [GitHistoryService.refs] 的返回：分支与标签列表（单次 for-each-ref）。
-typedef GitRefsSnapshot =
-    ({List<GitBranchInfo> branches, List<GitTagInfo> tags});
+typedef GitRefsSnapshot = ({
+  List<GitBranchInfo> branches,
+  List<GitTagInfo> tags,
+});
 
 /// 只读历史查询：graph / commit 详情 / 分支标签 / stash（`git log/show/
 /// diff-tree/for-each-ref/stash list`），不做任何写操作。
@@ -30,8 +32,15 @@ class GitHistoryService {
   static const String _fieldSep = '\x1f';
   static final String _commitFormat =
       '%x1e${['%H', '%P', '%an', '%ae', '%at', '%d', '%s'].join(_fieldSep)}';
-  static final String _showFormat =
-      ['%H', '%P', '%an', '%ae', '%at', '%s', '%B'].join(_fieldSep);
+  static final String _showFormat = [
+    '%H',
+    '%P',
+    '%an',
+    '%ae',
+    '%at',
+    '%s',
+    '%B',
+  ].join(_fieldSep);
 
   final GitCommandRunner _runner;
 
@@ -65,16 +74,15 @@ class GitHistoryService {
   }
 
   Future<List<String>> remotes(String dir) async =>
-      (await _run(dir, [
-            'remote',
-          ]))
+      (await _run(dir, ['remote']))
           .split('\n')
           .map((e) => e.trim())
           .where((e) => e.isNotEmpty)
           .toList(growable: false);
 
-  Set<String> remotePrefixes(List<String> remotes) =>
-      {for (final r in remotes) '$r/'};
+  Set<String> remotePrefixes(List<String> remotes) => {
+    for (final r in remotes) '$r/',
+  };
 
   /// 提交拓扑行。query/mode 组成搜索过滤：
   /// message → `--grep=<q> -i`；author → `--author=<q>`；hash → 客户端过滤。
@@ -141,8 +149,7 @@ class GitHistoryService {
         '--grep=$query',
         '-i',
       ],
-      if (query.isNotEmpty && mode == GitSearchMode.author)
-        '--author=$query',
+      if (query.isNotEmpty && mode == GitSearchMode.author) '--author=$query',
     ];
     return GitGraphParser.parse(
       await _run(dir, args),
@@ -151,9 +158,12 @@ class GitHistoryService {
   }
 
   Future<GitCommitDetail> commitDetail(String dir, String hash) async {
-    final meta =
-        (await _run(dir, ['show', '-s', '--pretty=format:$_showFormat', hash]))
-            .trim();
+    final meta = (await _run(dir, [
+      'show',
+      '-s',
+      '--pretty=format:$_showFormat',
+      hash,
+    ])).trim();
     final fields = meta.startsWith(_recordSep)
         ? meta.substring(1).split(_fieldSep)
         : meta.split(_fieldSep);
@@ -164,7 +174,9 @@ class GitHistoryService {
     final files = await commitFiles(dir, hash);
     return GitCommitDetail(
       hash: fields[0],
-      parents: fields[1].trim().isEmpty ? const [] : fields[1].trim().split(' '),
+      parents: fields[1].trim().isEmpty
+          ? const []
+          : fields[1].trim().split(' '),
       authorName: fields[2],
       authorEmail: fields[3],
       authorDate: DateTime.fromMillisecondsSinceEpoch(ts * 1000, isUtc: true),
@@ -190,9 +202,7 @@ class GitHistoryService {
       final parts = trimmed.split('\t');
       if (parts.isEmpty) continue;
       final statusLetter = parts.first.trim();
-      final status = switch (statusLetter.isEmpty
-          ? ''
-          : statusLetter[0]) {
+      final status = switch (statusLetter.isEmpty ? '' : statusLetter[0]) {
         'A' => GitCommitFileStatus.added,
         'M' => GitCommitFileStatus.modified,
         'D' => GitCommitFileStatus.deleted,
@@ -217,18 +227,17 @@ class GitHistoryService {
     required String hash,
     String? parent,
     required String path,
-  }) =>
-      parent == null
-          ? _run(dir, [
-              'diff-tree',
-              '-p',
-              '--root',
-              '--no-commit-id',
-              hash,
-              '--',
-              path,
-            ])
-          : _run(dir, ['diff', parent, hash, '--', path]);
+  }) => parent == null
+      ? _run(dir, [
+          'diff-tree',
+          '-p',
+          '--root',
+          '--no-commit-id',
+          hash,
+          '--',
+          path,
+        ])
+      : _run(dir, ['diff', parent, hash, '--', path]);
 
   /// 分支 + 标签快照：一次 `for-each-ref` 取回（此前 branches+tags 是 3 次
   /// 子进程调用；SSH 后端每次调用都是一次网络往返）。
@@ -251,7 +260,9 @@ class GitHistoryService {
       if (full.startsWith('refs/tags/')) {
         tags.add(GitTagInfo(short, hash));
       } else if (full.startsWith('refs/remotes/')) {
-        branches.add(GitBranchInfo(short, hash, isRemote: true, isCurrent: false));
+        branches.add(
+          GitBranchInfo(short, hash, isRemote: true, isCurrent: false),
+        );
       } else if (full.startsWith('refs/heads/')) {
         branches.add(
           GitBranchInfo(
@@ -450,9 +461,7 @@ class GitHistoryService {
           ),
         );
       } else if (parts.length >= 2) {
-        files.add(
-          GitFileChange(path: parts[1], kind: kind, staged: false),
-        );
+        files.add(GitFileChange(path: parts[1], kind: kind, staged: false));
       }
     }
     return files;

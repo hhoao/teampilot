@@ -149,11 +149,7 @@ class _PresetDropdownOption extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(title, style: styles.mdColored(cs.onSurface)),
-          if (subtitle != null)
-            Text(
-              subtitle!,
-              style: styles.mutedSm,
-            ),
+          if (subtitle != null) Text(subtitle!, style: styles.mutedSm),
         ],
       ),
     );

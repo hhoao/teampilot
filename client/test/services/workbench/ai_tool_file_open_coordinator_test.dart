@@ -23,7 +23,10 @@ void main() {
 
   setUp(() {
     fs = InMemoryFilesystem();
-    editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs), );
+    editor = EditorCubit(
+      fs: fs,
+      storage: fakeHomeStorage(filesystem: fs),
+    );
     workbench = WorkbenchCubit();
     floating = FloatingWorkspaceCubit();
     opener = WorkbenchEditorOpener(
@@ -33,10 +36,7 @@ void main() {
       markdownViewModes: MarkdownViewModeStore(),
       readMarkdownOpenMode: () => MarkdownOpenMode.preview,
     );
-    coordinator = AiToolFileOpenCoordinator(
-      opener: opener,
-      editor: editor,
-    );
+    coordinator = AiToolFileOpenCoordinator(opener: opener, editor: editor);
   });
 
   tearDown(() {
@@ -45,22 +45,27 @@ void main() {
     floating.close();
   });
 
-  test('relative path resolves against session working directory first', () async {
-    fs.files['/session/src/foo.dart'] = 'line1\nline2\n';
-    fs.files['/workspace/src/foo.dart'] = 'other';
+  test(
+    'relative path resolves against session working directory first',
+    () async {
+      fs.files['/session/src/foo.dart'] = 'line1\nline2\n';
+      fs.files['/workspace/src/foo.dart'] = 'other';
 
-    final result = await coordinator.openToolFile(
-      workspaceId: workspaceId,
-      target: const AiToolFileTarget(path: 'src/foo.dart'),
-      sessionWorkingDirectory: '/session',
-      workspaceFolderPaths: const ['/workspace'],
-      fs: fs,
-    );
+      final result = await coordinator.openToolFile(
+        workspaceId: workspaceId,
+        target: const AiToolFileTarget(path: 'src/foo.dart'),
+        sessionWorkingDirectory: '/session',
+        workspaceFolderPaths: const ['/workspace'],
+        fs: fs,
+      );
 
-    expect(result.isMissing, isFalse);
-    expect(result.resolvedPath, '/session/src/foo.dart');
-    expect(editor.state.bucket(workspaceId).openFilePaths, ['/session/src/foo.dart']);
-  });
+      expect(result.isMissing, isFalse);
+      expect(result.resolvedPath, '/session/src/foo.dart');
+      expect(editor.state.bucket(workspaceId).openFilePaths, [
+        '/session/src/foo.dart',
+      ]);
+    },
+  );
 
   test('falls back to workspace folder when missing in session cwd', () async {
     fs.files['/workspace/src/foo.dart'] = 'line1\n';
@@ -75,7 +80,9 @@ void main() {
 
     expect(result.isMissing, isFalse);
     expect(result.resolvedPath, '/workspace/src/foo.dart');
-    expect(editor.state.bucket(workspaceId).openFilePaths, ['/workspace/src/foo.dart']);
+    expect(editor.state.bucket(workspaceId).openFilePaths, [
+      '/workspace/src/foo.dart',
+    ]);
   });
 
   test('absolute path is used as-is when it exists', () async {

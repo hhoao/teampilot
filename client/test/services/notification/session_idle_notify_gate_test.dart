@@ -15,7 +15,9 @@ void main() {
     hadTurn: true,
     disposition: SessionTurnDisposition.completed,
   );
-  const failedIdle = SessionActivity(disposition: SessionTurnDisposition.failed);
+  const failedIdle = SessionActivity(
+    disposition: SessionTurnDisposition.failed,
+  );
   const cancelled = SessionActivity(
     hadTurn: true,
     disposition: SessionTurnDisposition.cancelled,

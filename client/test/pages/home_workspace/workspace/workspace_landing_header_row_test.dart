@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_landing_selectors.dart';
 import 'package:shared_ui/shared_ui.dart';
+
 Widget _header({
   required double width,
   required String projectLabel,
@@ -40,40 +41,34 @@ Widget _header({
 }
 
 void main() {
-  testWidgets(
-    'WorkspaceLandingHeaderRow does not overflow in narrow width',
-    (tester) async {
-      await tester.pumpWidget(
-        _header(
-          width: 191,
-          projectLabel: 'very-long-project-directory-name',
-          worktreeLabel: 'feature/very-long-branch-name',
-        ),
-      );
-      await tester.pumpAndSettle();
+  testWidgets('WorkspaceLandingHeaderRow does not overflow in narrow width', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _header(
+        width: 191,
+        projectLabel: 'very-long-project-directory-name',
+        worktreeLabel: 'feature/very-long-branch-name',
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(tester.takeException(), isNull);
-    },
-  );
+    expect(tester.takeException(), isNull);
+  });
 
-  testWidgets(
-    'WorkspaceLandingHeaderRow keeps selectors left-aligned',
-    (tester) async {
-      await tester.pumpWidget(
-        _header(
-          width: 600,
-          projectLabel: 'proj',
-          worktreeLabel: 'main',
-        ),
-      );
-      await tester.pumpAndSettle();
+  testWidgets('WorkspaceLandingHeaderRow keeps selectors left-aligned', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _header(width: 600, projectLabel: 'proj', worktreeLabel: 'main'),
+    );
+    await tester.pumpAndSettle();
 
-      final project = tester.getTopLeft(find.text('proj'));
-      final worktree = tester.getTopLeft(find.text('main'));
+    final project = tester.getTopLeft(find.text('proj'));
+    final worktree = tester.getTopLeft(find.text('main'));
 
-      expect(project.dx, lessThan(24));
-      // Adjacent chips — not split across half the row (~300px).
-      expect(worktree.dx - project.dx, lessThan(120));
-    },
-  );
+    expect(project.dx, lessThan(24));
+    // Adjacent chips — not split across half the row (~300px).
+    expect(worktree.dx - project.dx, lessThan(120));
+  });
 }

@@ -395,16 +395,9 @@ class _WorkspacesPrimaryActionState extends State<WorkspacesPrimaryAction> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            widget.icon,
-            size: context.tpIconSizes.md,
-            color: cs.onPrimary,
-          ),
+          Icon(widget.icon, size: context.tpIconSizes.md, color: cs.onPrimary),
           const SizedBox(width: 7),
-          Text(
-            widget.label,
-            style: styles.mdColored(cs.onPrimary),
-          ),
+          Text(widget.label, style: styles.mdColored(cs.onPrimary)),
         ],
       ),
     );
@@ -615,7 +608,8 @@ class HomeEmptyWorkspaces extends StatelessWidget {
           ),
           Text(
             l10n.homeWorkspaceEmptyWorkspacesHint,
-            style: styles.smColored(cs.onSurfaceVariant.withValues(alpha: 0.75),
+            style: styles.smColored(
+              cs.onSurfaceVariant.withValues(alpha: 0.75),
             ),
           ),
         ],

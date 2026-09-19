@@ -1,6 +1,5 @@
 import 'dart:io' show Platform;
 
-import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart' hide buildTpDialogTheme;
@@ -347,9 +346,7 @@ ThemeData _applyTypography(
       iconButtonTheme: IconButtonThemeData(
         style: ButtonStyle(mouseCursor: kTpClickableMouseCursor),
       ),
-      checkboxTheme: CheckboxThemeData(
-        mouseCursor: kTpClickableMouseCursor,
-      ),
+      checkboxTheme: CheckboxThemeData(mouseCursor: kTpClickableMouseCursor),
       listTileTheme: buildAppListTileTheme(
         colorScheme: scheme,
         textTheme: textTheme,
@@ -417,9 +414,7 @@ ThemeData _applyTypography(
     iconButtonTheme: IconButtonThemeData(
       style: ButtonStyle(mouseCursor: kTpClickableMouseCursor),
     ),
-    checkboxTheme: CheckboxThemeData(
-      mouseCursor: kTpClickableMouseCursor,
-    ),
+    checkboxTheme: CheckboxThemeData(mouseCursor: kTpClickableMouseCursor),
     listTileTheme: buildAppListTileTheme(
       colorScheme: scheme,
       textTheme: mergedTextTheme,

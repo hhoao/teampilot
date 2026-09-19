@@ -135,7 +135,9 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
         const SizedBox(height: 4),
         Text(
           value,
-          style: styles.mdSemiboldColored(highlight ? cs.primary : cs.onSurface),
+          style: styles.mdSemiboldColored(
+            highlight ? cs.primary : cs.onSurface,
+          ),
         ),
       ],
     );

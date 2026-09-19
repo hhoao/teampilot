@@ -74,8 +74,7 @@ List<TpActionMenuSpec> gitCompareTargetSpecs({
             TpActionMenuSpec.item(
               value: GitCompareRef(row.hash),
               icon: Icons.commit,
-              label:
-                  '${GitCompareRef(row.hash).titleLabel()} ${row.subject}',
+              label: '${GitCompareRef(row.hash).titleLabel()} ${row.subject}',
               enabled: row.hash != source.nameOrHash,
             ),
         ],
@@ -105,11 +104,7 @@ Future<void> showGitCompareTargetMenu({
     menuBuilder: (overlayContext, complete) {
       final children = buildTpActionMenuChildren(
         context: overlayContext,
-        specs: gitCompareTargetSpecs(
-          l10n: l10n,
-          state: state,
-          source: source,
-        ),
+        specs: gitCompareTargetSpecs(l10n: l10n, state: state, source: source),
         menuController: TpActionMenuController(TpPopoverController()),
         onSelect: (value) => complete(value as GitCompareSide?),
       );
@@ -130,10 +125,6 @@ Future<void> showGitCompareTargetMenu({
   openGitCompareTab(
     context,
     workspaceId: workspaceId,
-    spec: GitCompareSpec(
-      repoRoot: state.repoRoot,
-      left: source,
-      right: target,
-    ),
+    spec: GitCompareSpec(repoRoot: state.repoRoot, left: source, right: target),
   );
 }

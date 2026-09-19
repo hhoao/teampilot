@@ -12,8 +12,8 @@ import '../../pages/home_workspace/workspace/workspace_chat_landing_voice_bar.da
 import '../../services/workspace_dnd/workspace_drop_target.dart';
 import '../../services/cli/registry/capabilities/native_command_capability.dart';
 import '../../services/cli/registry/capabilities/skill_capability.dart';
-import '../../services/compose/compose_at_file_refs.dart';
-import '../../services/compose/compose_clip.dart';
+import '../../services/chat/conversation/compose/compose_at_file_refs.dart';
+import '../../services/chat/conversation/compose/compose_clip.dart';
 import '../home_storage_scope.dart';
 import '../../utils/debounce/debounce.dart';
 import 'compose_at_file_chip_row.dart';

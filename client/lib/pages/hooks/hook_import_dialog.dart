@@ -60,7 +60,9 @@ class _HookImportDialogState extends State<HookImportDialog> {
     if (!mounted) return;
     final existing = <String>{};
     for (final draft in result.drafts) {
-      final saved = await context.read<HookRepository>().load(draft.definition.id);
+      final saved = await context.read<HookRepository>().load(
+        draft.definition.id,
+      );
       if (saved != null) existing.add(draft.definition.id);
     }
     if (!mounted) return;
@@ -207,17 +209,21 @@ class _HookImportDialogState extends State<HookImportDialog> {
   String? _inputError(HookImportResult? result, AppLocalizations l10n) {
     if (result == null || result.drafts.isNotEmpty) return null;
     if (result.warnings.isEmpty) return null;
-    return result.warnings.map((warning) {
-      if (warning == 'hook_import_no_hooks') return l10n.hookImportNoHooks;
-      if (warning.startsWith('hook_import_invalid_json')) {
-        final separator = warning.indexOf(': ');
-        final suffix = separator < 0 ? '' : warning.substring(separator + 2);
-        return suffix.isEmpty
-            ? l10n.hookImportInvalidJson
-            : '${l10n.hookImportInvalidJson}: $suffix';
-      }
-      return warning;
-    }).join('\n');
+    return result.warnings
+        .map((warning) {
+          if (warning == 'hook_import_no_hooks') return l10n.hookImportNoHooks;
+          if (warning.startsWith('hook_import_invalid_json')) {
+            final separator = warning.indexOf(': ');
+            final suffix = separator < 0
+                ? ''
+                : warning.substring(separator + 2);
+            return suffix.isEmpty
+                ? l10n.hookImportInvalidJson
+                : '${l10n.hookImportInvalidJson}: $suffix';
+          }
+          return warning;
+        })
+        .join('\n');
   }
 
   Widget _buildPreview(BuildContext context, HookImportResult result) {

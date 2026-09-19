@@ -29,17 +29,20 @@ void main() {
       expect(calls, 1);
     });
 
-    test('registerWorkspaceContentSearchCommands invokes the host on the bus', () {
-      final bus = CommandBus();
-      final host = WorkspaceContentSearchHost();
-      registerWorkspaceContentSearchCommands(bus, host);
-      var calls = 0;
-      host.bind(() => calls++);
+    test(
+      'registerWorkspaceContentSearchCommands invokes the host on the bus',
+      () {
+        final bus = CommandBus();
+        final host = WorkspaceContentSearchHost();
+        registerWorkspaceContentSearchCommands(bus, host);
+        var calls = 0;
+        host.bind(() => calls++);
 
-      bus.invoke(CommandIds.workspaceContentSearch);
+        bus.invoke(CommandIds.workspaceContentSearch);
 
-      expect(calls, 1);
-    });
+        expect(calls, 1);
+      },
+    );
   });
 
   group('searchToolIndex', () {
@@ -76,21 +79,8 @@ void main() {
 
     test('order is members, fileTree, git, mailbox, board then search', () {
       expect(index(), 5);
-      expect(
-        index(
-          showMailbox: false,
-          showBoard: false,
-        ),
-        3,
-      );
-      expect(
-        index(
-          gitVisible: false,
-          showMailbox: false,
-          showBoard: false,
-        ),
-        2,
-      );
+      expect(index(showMailbox: false, showBoard: false), 3);
+      expect(index(gitVisible: false, showMailbox: false, showBoard: false), 2);
       expect(
         index(
           fileTreeVisible: false,

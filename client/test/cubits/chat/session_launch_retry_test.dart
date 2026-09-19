@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/model/session_connect_request.dart';
+import 'package:teampilot/services/chat/session/session_connect_request.dart';
 import 'package:teampilot/services/chat/launch/session_launch_retry.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';

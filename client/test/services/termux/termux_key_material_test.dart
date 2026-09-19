@@ -28,10 +28,7 @@ void main() {
 
       final stored = await credentials.loadPrivateKey('termux');
       expect(stored, isNotEmpty);
-      expect(
-        stored,
-        await File(privateKeyPath).readAsString(),
-      );
+      expect(stored, await File(privateKeyPath).readAsString());
     });
 
     test('ensureKeyPair PEM round-trips through SSHKeyPair.fromPem', () async {
@@ -52,28 +49,31 @@ void main() {
       expect(SSHKeyPair.fromPem(pem), isNotEmpty);
     });
 
-    test('ensureKeyPair syncs credential from existing private key file', () async {
-      final native = await Directory.systemTemp.createTemp('termux_sync_');
-      addTearDown(() async {
-        if (await native.exists()) await native.delete(recursive: true);
-      });
+    test(
+      'ensureKeyPair syncs credential from existing private key file',
+      () async {
+        final native = await Directory.systemTemp.createTemp('termux_sync_');
+        addTearDown(() async {
+          if (await native.exists()) await native.delete(recursive: true);
+        });
 
-      final credentials = InMemorySshCredentialStore();
-      await TermuxKeyMaterial.ensureKeyPair(
-        nativeAppDataPath: native.path,
-        credentials: credentials,
-      );
-      final pem = await credentials.loadPrivateKey('termux');
-      expect(pem, isNotEmpty);
+        final credentials = InMemorySshCredentialStore();
+        await TermuxKeyMaterial.ensureKeyPair(
+          nativeAppDataPath: native.path,
+          credentials: credentials,
+        );
+        final pem = await credentials.loadPrivateKey('termux');
+        expect(pem, isNotEmpty);
 
-      final emptyCreds = InMemorySshCredentialStore();
-      await TermuxKeyMaterial.ensureKeyPair(
-        nativeAppDataPath: native.path,
-        credentials: emptyCreds,
-      );
+        final emptyCreds = InMemorySshCredentialStore();
+        await TermuxKeyMaterial.ensureKeyPair(
+          nativeAppDataPath: native.path,
+          credentials: emptyCreds,
+        );
 
-      expect(await emptyCreds.loadPrivateKey('termux'), pem);
-    });
+        expect(await emptyCreds.loadPrivateKey('termux'), pem);
+      },
+    );
 
     test('publicKeyOpenSsh returns ssh-ed25519 line', () async {
       final native = await Directory.systemTemp.createTemp('termux_pub_');

@@ -61,7 +61,7 @@ void main() {
             spawned.add(executable);
             return Future.value(_FakeTransport());
           },
-                                     fs: InMemoryFilesystem(),
+      fs: InMemoryFilesystem(),
     );
     return (session: session, spawned: spawned);
   }

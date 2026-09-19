@@ -46,10 +46,9 @@ class SimpleLaunchIdentity {
   }) {
     final resolvedCli = preset?.cli ?? cli ?? CliTool.claude;
     final fromPresetId = preset?.id.trim() ?? '';
-    final resolvedPresetId =
-        (presetId?.trim().isNotEmpty ?? false)
-            ? presetId!.trim()
-            : fromPresetId;
+    final resolvedPresetId = (presetId?.trim().isNotEmpty ?? false)
+        ? presetId!.trim()
+        : fromPresetId;
 
     var resolvedProvider = (preset?.provider.trim().isNotEmpty ?? false)
         ? preset!.provider.trim()

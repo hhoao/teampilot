@@ -56,7 +56,9 @@ void main() {
     final requirements = remoteCliRequirementsForPlacement(
       workspace: workspace,
       team: team,
-      placement: {'ssh:host-a': {'dev': 1}},
+      placement: {
+        'ssh:host-a': {'dev': 1},
+      },
       globalPresets: const [],
       selectableTargets: [localTarget],
     );
@@ -68,7 +70,9 @@ void main() {
     final requirements = remoteCliRequirementsForPlacement(
       workspace: workspace,
       team: team,
-      placement: {'ssh:host-a': {'dev': 2}},
+      placement: {
+        'ssh:host-a': {'dev': 2},
+      },
       globalPresets: const [],
       selectableTargets: [localTarget, sshTarget],
     );
@@ -89,7 +93,7 @@ void main() {
         projectFolderPath: '/local',
         selectableTargets: [home],
         home: home,
-                                                usesPosixPaths: false,
+        usesPosixPaths: false,
       );
       expect(target?.id, 'ssh:host-a');
     });
@@ -105,7 +109,7 @@ void main() {
         cli: CliTool.codex,
         selectableTargets: [localTarget, sshTarget],
         home: localHome,
-                                                                 usesPosixPaths: false,
+        usesPosixPaths: false,
       );
 
       expect(requirements, hasLength(1));
@@ -120,7 +124,7 @@ void main() {
         cli: CliTool.codex,
         selectableTargets: [localTarget, sshTarget],
         home: localHome,
-                                                                 usesPosixPaths: false,
+        usesPosixPaths: false,
       );
 
       expect(requirements, isEmpty);

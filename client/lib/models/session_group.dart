@@ -91,9 +91,7 @@ class SessionGroupsFile {
   factory SessionGroupsFile.fromJson(Map<String, Object?> json) {
     final rawGroups = json['groups'];
     return SessionGroupsFile(
-      version: json['version'] is int
-          ? json['version'] as int
-          : currentVersion,
+      version: json['version'] is int ? json['version'] as int : currentVersion,
       groups: [
         if (rawGroups is List)
           for (final entry in rawGroups)

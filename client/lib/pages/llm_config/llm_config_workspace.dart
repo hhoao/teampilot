@@ -121,10 +121,10 @@ class LlmProviderConfigPage extends StatelessWidget {
                 }
               },
               onShowModels: () {
-            if (CliToolRegistry.builtIn()
-                    .capability<ProviderCapability>(provider.cli)
-                    ?.hasModelPanel ==
-                true) {
+                if (CliToolRegistry.builtIn()
+                        .capability<ProviderCapability>(provider.cli)
+                        ?.hasModelPanel ==
+                    true) {
                   context.push(llmProviderModelsRoute(cli, provider.id));
                 }
               },

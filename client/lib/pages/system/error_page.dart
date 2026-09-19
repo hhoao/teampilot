@@ -148,9 +148,9 @@ ${AppLogger.instance.getFormattedPendingLogs()}
               WorkspacePaneHeader(title: l10n.initErrorTitle),
               Text(
                 versionLabel,
-                style: TpTextStyles.of(context).mdColored(
-                  cs.onSurface.withValues(alpha: 0.66),
-                ),
+                style: TpTextStyles.of(
+                  context,
+                ).mdColored(cs.onSurface.withValues(alpha: 0.66)),
               ),
               const SizedBox(height: 12),
               Expanded(

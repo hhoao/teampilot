@@ -41,9 +41,7 @@ Widget _wrapTitleBar({
         BlocProvider<LayoutCubit>.value(value: layoutCubit)
       else
         BlocProvider(create: (_) => LayoutCubit()),
-      BlocProvider(
-        create: (_) => ShortcutCubit(storage: testHomeStorage),
-      ),
+      BlocProvider(create: (_) => ShortcutCubit(storage: testHomeStorage)),
     ],
     child: child,
   );
@@ -175,9 +173,7 @@ void main() {
               theme: theme,
               home: const Scaffold(
                 body: HomeTitleBar(
-                  tabs: [
-                    HomeWorkspaceTab(id: 'ws-a', name: 'Solo Workspace'),
-                  ],
+                  tabs: [HomeWorkspaceTab(id: 'ws-a', name: 'Solo Workspace')],
                   activeTabKey: 'ws-a',
                 ),
               ),

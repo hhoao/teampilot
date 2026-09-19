@@ -44,15 +44,18 @@ void main() {
     await controller.apply(EventTransportRole.none);
   });
 
-  test('apply server then client stops server before starting client', () async {
-    await controller.apply(EventTransportRole.server);
-    await controller.apply(
-      EventTransportRole.client,
-      open: () async => _FakeChannel(),
-    );
+  test(
+    'apply server then client stops server before starting client',
+    () async {
+      await controller.apply(EventTransportRole.server);
+      await controller.apply(
+        EventTransportRole.client,
+        open: () async => _FakeChannel(),
+      );
 
-    expect(log, ['server.start', 'server.stop', 'client.start']);
-  });
+      expect(log, ['server.start', 'server.stop', 'client.start']);
+    },
+  );
 
   test('apply is idempotent for the same role', () async {
     await controller.apply(EventTransportRole.server);

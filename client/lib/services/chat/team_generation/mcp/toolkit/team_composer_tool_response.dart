@@ -26,10 +26,7 @@ abstract final class TeamComposerToolResponse {
         'id': requestId,
         'result': {
           'content': [
-            {
-              'type': 'text',
-              'text': jsonEncode(data),
-            },
+            {'type': 'text', 'text': jsonEncode(data)},
           ],
           'structuredContent': data,
         },
@@ -45,10 +42,7 @@ abstract final class TeamComposerToolResponse {
         'id': requestId,
         'result': {
           'content': [
-            {
-              'type': 'text',
-              'text': 'code=$code',
-            },
+            {'type': 'text', 'text': 'code=$code'},
           ],
           'isError': true,
           'structuredContent': {'code': code},

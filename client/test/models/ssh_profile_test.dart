@@ -111,8 +111,10 @@ void main() {
     expect(manual.toJson().containsKey('embeddedTarget'), isFalse);
     expect(SshProfile.fromJson(manual.toJson()).embeddedTarget, isFalse);
     expect(
-      SshProfile.fromJson({...manual.toJson(), 'embeddedTarget': true})
-          .embeddedTarget,
+      SshProfile.fromJson({
+        ...manual.toJson(),
+        'embeddedTarget': true,
+      }).embeddedTarget,
       isTrue,
     );
   });

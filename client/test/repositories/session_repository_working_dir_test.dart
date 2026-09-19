@@ -10,7 +10,10 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_wd_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
     final ws = await repo.createWorkspace([
       WorkspaceFolder(path: '/repo/main'),
     ]);
@@ -28,13 +31,14 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_wd_');
       addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: fakeHomeStorage(),
+      );
       final ws = await repo.createWorkspace([
         WorkspaceFolder(path: '/repo/main'),
       ]);
-      final session = (await repo.createSession(
-        ws.workspaceId,
-      )).session;
+      final session = (await repo.createSession(ws.workspaceId)).session;
       expect(session.firstFolderPath, '/repo/main');
     },
   );

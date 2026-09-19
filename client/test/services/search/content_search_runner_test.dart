@@ -11,7 +11,9 @@ void main() {
 
   setUp(() {
     fixture = Directory.systemTemp.createTempSync('tp_runner_');
-    File('${fixture.path}/a.dart').writeAsStringSync('hello world\nfoo hello\n');
+    File(
+      '${fixture.path}/a.dart',
+    ).writeAsStringSync('hello world\nfoo hello\n');
     File('${fixture.path}/b.txt').writeAsStringSync('no match here\n');
     Directory('${fixture.path}/.hidden').createSync();
     File('${fixture.path}/.hidden/x.dart').writeAsStringSync('hello hidden\n');
@@ -41,19 +43,21 @@ void main() {
     expect(runner.backendLabel, 'dart-fallback');
   });
 
-  test('non-local filesystem with forceFallback searches via fallback',
-      () async {
-    final runner = ContentSearchRunner(
-      fs: _FakeRemoteFs(fixture.path),
-      root: fixture.path,
-      forceFallback: true,
-    );
-    expect(runner.backendLabel, 'dart-fallback');
-    final matches = await runner
-        .run(const TpSearchOptions(pattern: 'hello'))
-        .toList();
-    expect(matches.where((m) => m.relativePath == 'a.dart').length, 2);
-  });
+  test(
+    'non-local filesystem with forceFallback searches via fallback',
+    () async {
+      final runner = ContentSearchRunner(
+        fs: _FakeRemoteFs(fixture.path),
+        root: fixture.path,
+        forceFallback: true,
+      );
+      expect(runner.backendLabel, 'dart-fallback');
+      final matches = await runner
+          .run(const TpSearchOptions(pattern: 'hello'))
+          .toList();
+      expect(matches.where((m) => m.relativePath == 'a.dart').length, 2);
+    },
+  );
 }
 
 class _FakeRemoteFs extends LocalFilesystem {

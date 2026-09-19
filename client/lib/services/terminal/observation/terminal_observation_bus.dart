@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import '../../../utils/logging/logger.dart';
-import '../../chat/terminal/terminal_launch_phase.dart';
+import '../../chat/runtime/pty/terminal_launch_phase.dart';
 import 'scanners/osc_title_scanner.dart';
 import 'scanners/user_line_scanner.dart';
 import 'terminal_observation_events.dart';

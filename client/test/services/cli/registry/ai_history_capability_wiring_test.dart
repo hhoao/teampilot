@@ -71,20 +71,22 @@ void main() {
     }
   });
 
-  test('every CliTool registers non-empty resolvers via AiHistoryCapability',
-      () {
-    final registry = CliToolRegistry.builtIn();
-    for (final cli in CliTool.values) {
-      final cap = registry.capability<AiHistoryCapability>(cli);
-      expect(cap, isNotNull, reason: '$cli');
-      expect(cap!.editResolver, isNotNull, reason: '$cli editResolver');
-      expect(cap.fileResolver, isNotNull, reason: '$cli fileResolver');
-      expect(cap.shellResolver, isNotNull, reason: '$cli shellResolver');
-      expect(
-        cap.categoryResolver,
-        isNotNull,
-        reason: '$cli categoryResolver',
-      );
-    }
-  });
+  test(
+    'every CliTool registers non-empty resolvers via AiHistoryCapability',
+    () {
+      final registry = CliToolRegistry.builtIn();
+      for (final cli in CliTool.values) {
+        final cap = registry.capability<AiHistoryCapability>(cli);
+        expect(cap, isNotNull, reason: '$cli');
+        expect(cap!.editResolver, isNotNull, reason: '$cli editResolver');
+        expect(cap.fileResolver, isNotNull, reason: '$cli fileResolver');
+        expect(cap.shellResolver, isNotNull, reason: '$cli shellResolver');
+        expect(
+          cap.categoryResolver,
+          isNotNull,
+          reason: '$cli categoryResolver',
+        );
+      }
+    },
+  );
 }

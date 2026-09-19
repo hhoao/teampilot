@@ -16,12 +16,10 @@ class SeatLeaseState extends Equatable {
   /// seatKey (`agentSeatKey`) → leaseId → lease.
   final Map<String, Map<String, SeatLease>> leases;
 
-  bool seatHasLeases({
-    required String sessionId,
-    required String memberId,
-  }) =>
+  bool seatHasLeases({required String sessionId, required String memberId}) =>
       (leases[agentSeatKey(sessionId: sessionId, memberId: memberId)] ??
-          const {}).isNotEmpty;
+              const {})
+          .isNotEmpty;
 
   bool sessionHasLeases(String sessionId) {
     final prefix = agentSeatKey(sessionId: sessionId, memberId: '');
@@ -64,12 +62,10 @@ class SeatLeaseState extends Equatable {
 /// by the idle terminal reclaim. Independent of attention semantics.
 class SeatLeaseCubit extends Cubit<SeatLeaseState> {
   SeatLeaseCubit({DateTime Function()? clock, Duration? pruneInterval})
-      : _clock = clock ?? DateTime.now,
-        super(const SeatLeaseState()) {
+    : _clock = clock ?? DateTime.now,
+      super(const SeatLeaseState()) {
     final interval = pruneInterval ?? seatLeasePruneInterval;
-    if (interval != null) {
-      _pruneTimer = Timer.periodic(interval, (_) => pruneStale());
-    }
+    _pruneTimer = Timer.periodic(interval, (_) => pruneStale());
   }
 
   final DateTime Function() _clock;

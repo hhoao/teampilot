@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import '../../../io/filesystem.dart';
-import '../../../io/local_filesystem.dart';
 import '../../../cli/claude/team_roster_service.dart';
 import 'bus_message_log.dart';
 import '../team_message.dart';

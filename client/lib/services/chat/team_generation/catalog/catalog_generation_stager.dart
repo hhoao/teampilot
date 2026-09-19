@@ -151,13 +151,15 @@ final class CatalogGenerationStager
       for (final resource in job.stagedResources) {
         if (resource.stagedPath.isEmpty) continue;
         final raw = await _fs.readString(resource.stagedPath);
-        if (raw == null)
+        if (raw == null) {
           throw StateError('missing staged resource: ${resource.refId}');
+        }
         final payload = (jsonDecode(raw) as Map).cast<String, Object?>();
         final op = CatalogOp.values.byName(payload['op'] as String);
         final module = registry.module(resource.kind);
-        if (module == null)
+        if (module == null) {
           throw StateError('unknown catalog kind: ${resource.kind}');
+        }
         final args = (payload['arguments'] as Map).cast<String, Object?>();
         await module.handle(
           op,

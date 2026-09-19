@@ -34,8 +34,17 @@ abstract final class WindowsJunction {
   static int Function(Pointer<Utf16>, Pointer<Void>)? _createDirectoryW;
   static int Function(Pointer<Utf16>, int, int, Pointer<Void>, int, int, int)?
   _createFileW;
-  static int Function(int, int, Pointer<Void>, int, Pointer<Void>, int,
-      Pointer<Uint32>, Pointer<Void>)? _deviceIoControl;
+  static int Function(
+    int,
+    int,
+    Pointer<Void>,
+    int,
+    Pointer<Void>,
+    int,
+    Pointer<Uint32>,
+    Pointer<Void>,
+  )?
+  _deviceIoControl;
   static int Function(int)? _closeHandle;
 
   /// Creates a junction at [linkPath] pointing at the absolute [target]
@@ -118,41 +127,51 @@ abstract final class WindowsJunction {
     final kernel32 = _kernel32;
     if (kernel32 == null) return false;
     try {
-      _createDirectoryW = kernel32.lookupFunction<
-        Int32 Function(Pointer<Utf16>, Pointer<Void>),
-        int Function(Pointer<Utf16>, Pointer<Void>)
-      >('CreateDirectoryW');
-      _createFileW = kernel32.lookupFunction<
-        IntPtr Function(Pointer<Utf16>, Uint32, Uint32, Pointer<Void>, Uint32,
-            Uint32, IntPtr),
-        int Function(
-          Pointer<Utf16>,
-          int,
-          int,
-          Pointer<Void>,
-          int,
-          int,
-          int,
-        )
-      >('CreateFileW');
-      _deviceIoControl = kernel32.lookupFunction<
-        Int32 Function(IntPtr, Uint32, Pointer<Void>, Uint32, Pointer<Void>,
-            Uint32, Pointer<Uint32>, Pointer<Void>),
-        int Function(
-          int,
-          int,
-          Pointer<Void>,
-          int,
-          Pointer<Void>,
-          int,
-          Pointer<Uint32>,
-          Pointer<Void>,
-        )
-      >('DeviceIoControl');
-      _closeHandle = kernel32.lookupFunction<
-        Int32 Function(IntPtr),
-        int Function(int)
-      >('CloseHandle');
+      _createDirectoryW = kernel32
+          .lookupFunction<
+            Int32 Function(Pointer<Utf16>, Pointer<Void>),
+            int Function(Pointer<Utf16>, Pointer<Void>)
+          >('CreateDirectoryW');
+      _createFileW = kernel32
+          .lookupFunction<
+            IntPtr Function(
+              Pointer<Utf16>,
+              Uint32,
+              Uint32,
+              Pointer<Void>,
+              Uint32,
+              Uint32,
+              IntPtr,
+            ),
+            int Function(Pointer<Utf16>, int, int, Pointer<Void>, int, int, int)
+          >('CreateFileW');
+      _deviceIoControl = kernel32
+          .lookupFunction<
+            Int32 Function(
+              IntPtr,
+              Uint32,
+              Pointer<Void>,
+              Uint32,
+              Pointer<Void>,
+              Uint32,
+              Pointer<Uint32>,
+              Pointer<Void>,
+            ),
+            int Function(
+              int,
+              int,
+              Pointer<Void>,
+              int,
+              Pointer<Void>,
+              int,
+              Pointer<Uint32>,
+              Pointer<Void>,
+            )
+          >('DeviceIoControl');
+      _closeHandle = kernel32
+          .lookupFunction<Int32 Function(IntPtr), int Function(int)>(
+            'CloseHandle',
+          );
       return true;
     } catch (_) {
       return false;

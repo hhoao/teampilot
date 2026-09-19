@@ -1,8 +1,5 @@
 import 'package:ai_message_core/ai_message_core.dart'
-    hide
-        StrReplaceEditHunkCodec,
-        WriteEditHunkCodec,
-        UnifiedDiffEditHunkCodec;
+    hide StrReplaceEditHunkCodec, WriteEditHunkCodec, UnifiedDiffEditHunkCodec;
 
 import '../../../ai_history/edit_codecs/str_replace_edit_hunk_codec.dart';
 import '../../../ai_history/edit_codecs/unified_diff_edit_hunk_codec.dart';
@@ -21,17 +18,12 @@ import '../../../ai_history/tool_call_resolvers.dart';
 /// The category table (`tool_call_categories.dart`) is a separate union of
 /// all five CLIs' tool names and is not governed here.
 abstract final class SharedToolCallResolverKeys {
-  static const editToolNames = {
-    'edit',
-    'notebookedit',
-  };
+  static const editToolNames = {'edit', 'notebookedit'};
   static const editPathKeys = ['file_path', 'notebook_path'];
   static const editOldStringKeys = ['old_string'];
   static const editNewStringKeys = ['new_string', 'new_source'];
 
-  static const writeToolNames = {
-    'write',
-  };
+  static const writeToolNames = {'write'};
   static const writePathKeys = ['file_path'];
   static const writeContentKeys = ['content'];
 
@@ -42,20 +34,10 @@ abstract final class SharedToolCallResolverKeys {
   static const diffPatchKeys = ['patch', 'diff', 'input'];
 
   static const fileReadToolNames = {'read'};
-  static const fileWriteToolNames = {
-    'write',
-  };
-  static const fileEditToolNames = {
-    'edit',
-    'applypatch',
-    'notebookedit',
-  };
+  static const fileWriteToolNames = {'write'};
+  static const fileEditToolNames = {'edit', 'applypatch', 'notebookedit'};
 
-  static const shellToolNames = {
-    'bash',
-    'shell_command',
-    'exec_command',
-  };
+  static const shellToolNames = {'bash', 'shell_command', 'exec_command'};
 }
 
 /// Shared edit/file/shell/category configuration for all built-in CLIs.

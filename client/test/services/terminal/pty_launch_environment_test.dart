@@ -9,7 +9,9 @@ void main() {
   // VTE-based terminal exports VTE_VERSION/TERM_PROGRAM which putIfAbsent
   // keeps, changing the injected values depending on the developer's setup.
   setUp(() {
-    PtyLaunchEnvironment.debugHostEnvironmentOverride = const {'PATH': '/usr/bin'};
+    PtyLaunchEnvironment.debugHostEnvironmentOverride = const {
+      'PATH': '/usr/bin',
+    };
   });
   tearDown(() {
     PtyLaunchEnvironment.debugHostEnvironmentOverride = null;
@@ -96,8 +98,11 @@ void main() {
 
   group('applyLocalLoginShellPath', () {
     if (Platform.isWindows) {
-      test('skipped on Windows — POSIX colon PATH semantics', () {},
-          skip: 'POSIX colon PATH semantics');
+      test(
+        'skipped on Windows — POSIX colon PATH semantics',
+        () {},
+        skip: 'POSIX colon PATH semantics',
+      );
       return;
     }
     late Directory tempDir;
@@ -201,29 +206,24 @@ void main() {
     });
   });
 
-  test(
-    'buildPtyEnvironment keeps inherited env untouched for SSH even when a '
-    'login-shell PATH is cached',
-    () {
-      HostShellPathResolver.debugSetCachedPath('/nvm/bin');
-      addTearDown(HostShellPathResolver.resetForTest);
-      final env = PtyLaunchEnvironment.buildPtyEnvironment(
-        const {'FOO': 'bar'},
-        inheritHostEnvironment: false,
-      );
-      expect(env.containsKey('PATH'), isFalse);
-    },
-  );
+  test('buildPtyEnvironment keeps inherited env untouched for SSH even when a '
+      'login-shell PATH is cached', () {
+    HostShellPathResolver.debugSetCachedPath('/nvm/bin');
+    addTearDown(HostShellPathResolver.resetForTest);
+    final env = PtyLaunchEnvironment.buildPtyEnvironment(const {
+      'FOO': 'bar',
+    }, inheritHostEnvironment: false);
+    expect(env.containsKey('PATH'), isFalse);
+  });
 
   test(
     'buildPtyEnvironment applies login-shell PATH for local POSIX launches',
     () {
       HostShellPathResolver.debugSetCachedPath('/nvm/bin');
       addTearDown(HostShellPathResolver.resetForTest);
-      final env = PtyLaunchEnvironment.buildPtyEnvironment(
-        const {'FOO': 'bar'},
-        inheritHostEnvironment: true,
-      );
+      final env = PtyLaunchEnvironment.buildPtyEnvironment(const {
+        'FOO': 'bar',
+      }, inheritHostEnvironment: true);
       // On macOS/Linux hosts the merged PATH must contain the resolved dir;
       // on other hosts this test would be skipped by the platform gate, so
       // guard explicitly.

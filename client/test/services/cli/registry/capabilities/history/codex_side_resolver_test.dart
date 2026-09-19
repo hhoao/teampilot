@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/codex/capabilities/history/side_resolver.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/chat/session/history/session_history_context.dart';
+import 'package:teampilot/services/chat/conversation/history/session_history_context.dart';
 
 void main() {
   late Directory base;

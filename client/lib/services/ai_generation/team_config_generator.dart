@@ -34,11 +34,7 @@ class TeamConfigGenerator {
   }) : _run =
            runHeadless ??
            (({required setting, required prompt, required expectJson}) async {
-             final svc =
-                 service ??
-                 HeadlessAiService(
-                   storage: storage,
-                 );
+             final svc = service ?? HeadlessAiService(storage: storage);
              final r = await svc.run(
                setting: setting,
                prompt: prompt,
@@ -49,11 +45,7 @@ class TeamConfigGenerator {
        _runStreaming =
            runHeadlessStream ??
            (({required setting, required prompt, required onEvent}) async {
-             final svc =
-                 service ??
-                 HeadlessAiService(
-                   storage: storage,
-                 );
+             final svc = service ?? HeadlessAiService(storage: storage);
              final r = await svc.runStreaming(
                setting: setting,
                prompt: prompt,

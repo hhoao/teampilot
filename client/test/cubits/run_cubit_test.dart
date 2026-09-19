@@ -476,23 +476,26 @@ void main() {
   });
 
   test('configureAction persists valid configuration and reloads', () async {
-    final platform = FakeRunPlatform(
-      validate: (config) {
-        final launch = config as LaunchConfiguration;
-        if (launch.type == 'flutter' && !launch.extras.containsKey('device')) {
-          return const ['device is required'];
-        }
-        return const [];
-      },
-    )..configureActionResult = const ConfigureActionResult(
-        persist: true,
-        configuration: {
-          'id': 'app',
-          'name': 'app',
-          'type': 'flutter',
-          'device': 'linux',
-        },
-      );
+    final platform =
+        FakeRunPlatform(
+            validate: (config) {
+              final launch = config as LaunchConfiguration;
+              if (launch.type == 'flutter' &&
+                  !launch.extras.containsKey('device')) {
+                return const ['device is required'];
+              }
+              return const [];
+            },
+          )
+          ..configureActionResult = const ConfigureActionResult(
+            persist: true,
+            configuration: {
+              'id': 'app',
+              'name': 'app',
+              'type': 'flutter',
+              'device': 'linux',
+            },
+          );
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     await cubit.load();
 
@@ -508,30 +511,29 @@ void main() {
     await cubit.close();
   });
 
-  test('configureAction sets errorMessage when persisted config fails schema', () async {
-    final platform = FakeRunPlatform(
-      validate: (_) => const ['device is required'],
-    )..configureActionResult = const ConfigureActionResult(
-        persist: true,
-        configuration: {
-          'id': 'app',
-          'name': 'app',
-          'type': 'flutter',
-        },
+  test(
+    'configureAction sets errorMessage when persisted config fails schema',
+    () async {
+      final platform =
+          FakeRunPlatform(validate: (_) => const ['device is required'])
+            ..configureActionResult = const ConfigureActionResult(
+              persist: true,
+              configuration: {'id': 'app', 'name': 'app', 'type': 'flutter'},
+            );
+      final cubit = RunCubit(platform: platform, folders: const [_folder]);
+      await cubit.load();
+
+      await cubit.configureAction(
+        actionId: 'pick_device',
+        type: 'flutter',
+        result: const {},
       );
-    final cubit = RunCubit(platform: platform, folders: const [_folder]);
-    await cubit.load();
 
-    await cubit.configureAction(
-      actionId: 'pick_device',
-      type: 'flutter',
-      result: const {},
-    );
-
-    expect(platform.persistConfigurationCalls, 0);
-    expect(cubit.state.errorMessage, contains('device'));
-    await cubit.close();
-  });
+      expect(platform.persistConfigurationCalls, 0);
+      expect(cubit.state.errorMessage, contains('device'));
+      await cubit.close();
+    },
+  );
 
   test('publishUiIntent broadcasts to uiIntents listeners', () async {
     final cubit = RunCubit(

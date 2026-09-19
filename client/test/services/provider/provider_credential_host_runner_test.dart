@@ -54,7 +54,9 @@ class _ScriptedStarter implements HostProcessStarter {
     this.stdoutChunks, {
     List<List<int>> stderrChunks = const [],
     this.onStart,
-  }) : exitCode = 0, startError = null, _stderrChunks = stderrChunks;
+  }) : exitCode = 0,
+       startError = null,
+       _stderrChunks = stderrChunks;
 
   final List<List<int>> stdoutChunks;
   final List<List<int>> _stderrChunks;

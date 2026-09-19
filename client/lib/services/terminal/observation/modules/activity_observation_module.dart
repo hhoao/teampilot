@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import '../../../cli/registry/capabilities/terminal_observation_contributor.dart';
-import '../../../chat/terminal/terminal_launch_phase.dart';
+import '../../../chat/runtime/pty/terminal_launch_phase.dart';
 import '../terminal_observation_bus.dart';
 import '../terminal_observation_events.dart';
 import '../terminal_observation_seat.dart';

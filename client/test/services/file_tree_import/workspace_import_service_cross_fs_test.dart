@@ -11,8 +11,7 @@ Future<ConflictChoice> _skipConflict({
   required bool destIsDirectory,
   required bool typeMismatch,
   required int remainingConflicts,
-}) async =>
-    ConflictChoice.skip;
+}) async => ConflictChoice.skip;
 
 Future<ImportPlan> _buildCrossFsPlan(
   WorkspaceImportService service,
@@ -94,8 +93,7 @@ class AppendFailingDestFilesystem implements Filesystem {
   Future<bool> createSymlink({
     required String target,
     required String linkPath,
-  }) =>
-      delegate.createSymlink(target: target, linkPath: linkPath);
+  }) => delegate.createSymlink(target: target, linkPath: linkPath);
 
   @override
   Future<String?> readSymlinkTarget(String linkPath) =>
@@ -108,8 +106,7 @@ class AppendFailingDestFilesystem implements Filesystem {
   Future<void> copyTree({
     required String source,
     required String destination,
-  }) =>
-      delegate.copyTree(source: source, destination: destination);
+  }) => delegate.copyTree(source: source, destination: destination);
 
   @override
   Future<void> copyFile(String source, String destination) =>
@@ -152,7 +149,9 @@ void main() {
         service,
         sourceFs,
         destFs,
-        sources: [const ImportSource(path: '/src/note.txt', isDirectory: false)],
+        sources: [
+          const ImportSource(path: '/src/note.txt', isDirectory: false),
+        ],
         destDir: '/dest',
         mode: ImportMode.copy,
       );
@@ -195,14 +194,19 @@ void main() {
     });
 
     test('cancel mid-file deletes partial and leaves source intact', () async {
-      await sourceFs.writeBytes('/src/large.bin', List<int>.generate(12, (i) => i));
+      await sourceFs.writeBytes(
+        '/src/large.bin',
+        List<int>.generate(12, (i) => i),
+      );
       await destFs.ensureDir('/dest');
 
       final plan = await _buildCrossFsPlan(
         service,
         sourceFs,
         destFs,
-        sources: [const ImportSource(path: '/src/large.bin', isDirectory: false)],
+        sources: [
+          const ImportSource(path: '/src/large.bin', isDirectory: false),
+        ],
         destDir: '/dest',
         mode: ImportMode.copy,
       );
@@ -219,9 +223,18 @@ void main() {
 
       expect(summary.cancelled, isTrue);
       expect(summary.succeeded, 0);
-      expect(await destFs.stat('/dest/large.bin').then((s) => s.exists), isFalse);
-      expect(await destFs.stat('/dest/large.bin.partial').then((s) => s.exists), isFalse);
-      expect(await sourceFs.readBytes('/src/large.bin'), List<int>.generate(12, (i) => i));
+      expect(
+        await destFs.stat('/dest/large.bin').then((s) => s.exists),
+        isFalse,
+      );
+      expect(
+        await destFs.stat('/dest/large.bin.partial').then((s) => s.exists),
+        isFalse,
+      );
+      expect(
+        await sourceFs.readBytes('/src/large.bin'),
+        List<int>.generate(12, (i) => i),
+      );
     });
 
     test('move mode on cross-FS copies without deleting source', () async {
@@ -232,7 +245,9 @@ void main() {
         service,
         sourceFs,
         destFs,
-        sources: [const ImportSource(path: '/src/move.txt', isDirectory: false)],
+        sources: [
+          const ImportSource(path: '/src/move.txt', isDirectory: false),
+        ],
         destDir: '/dest',
         mode: ImportMode.move,
       );
@@ -251,13 +266,18 @@ void main() {
     test('stale partial before copy does not corrupt final file', () async {
       await sourceFs.writeString('/src/note.txt', 'fresh');
       await destFs.ensureDir('/dest');
-      await destFs.writeBytes('/dest/note.txt.partial', 'stale-garbage'.codeUnits);
+      await destFs.writeBytes(
+        '/dest/note.txt.partial',
+        'stale-garbage'.codeUnits,
+      );
 
       final plan = await _buildCrossFsPlan(
         service,
         sourceFs,
         destFs,
-        sources: [const ImportSource(path: '/src/note.txt', isDirectory: false)],
+        sources: [
+          const ImportSource(path: '/src/note.txt', isDirectory: false),
+        ],
         destDir: '/dest',
         mode: ImportMode.copy,
       );
@@ -270,41 +290,55 @@ void main() {
 
       expect(summary.succeeded, 1);
       expect(await destFs.readBytes('/dest/note.txt'), 'fresh'.codeUnits);
-      expect(await destFs.stat('/dest/note.txt.partial').then((s) => s.exists), isFalse);
+      expect(
+        await destFs.stat('/dest/note.txt.partial').then((s) => s.exists),
+        isFalse,
+      );
     });
 
-    test('directory with one failing child counts as failed not succeeded', () async {
-      await sourceFs.ensureDir('/src/tree');
-      await sourceFs.writeString('/src/tree/ok.txt', 'ok');
-      await sourceFs.writeString('/src/tree/broken.txt', 'bad');
-      await destFs.ensureDir('/dest');
+    test(
+      'directory with one failing child counts as failed not succeeded',
+      () async {
+        await sourceFs.ensureDir('/src/tree');
+        await sourceFs.writeString('/src/tree/ok.txt', 'ok');
+        await sourceFs.writeString('/src/tree/broken.txt', 'bad');
+        await destFs.ensureDir('/dest');
 
-      final failingDestFs = AppendFailingDestFilesystem(
-        destFs,
-        failDestPath: '/dest/tree/broken.txt',
-      );
+        final failingDestFs = AppendFailingDestFilesystem(
+          destFs,
+          failDestPath: '/dest/tree/broken.txt',
+        );
 
-      final plan = await _buildCrossFsPlan(
-        service,
-        sourceFs,
-        failingDestFs,
-        sources: [const ImportSource(path: '/src/tree', isDirectory: true)],
-        destDir: '/dest',
-        mode: ImportMode.copy,
-      );
+        final plan = await _buildCrossFsPlan(
+          service,
+          sourceFs,
+          failingDestFs,
+          sources: [const ImportSource(path: '/src/tree', isDirectory: true)],
+          destDir: '/dest',
+          mode: ImportMode.copy,
+        );
 
-      final summary = await service.run(
-        plan,
-        onConflict: _skipConflict,
-        isCancelled: () => false,
-      );
+        final summary = await service.run(
+          plan,
+          onConflict: _skipConflict,
+          isCancelled: () => false,
+        );
 
-      expect(summary.failed, 1);
-      expect(summary.succeeded, 0);
-      expect(summary.failedPaths, contains('/dest/tree/broken.txt'));
-      expect(summary.failedPaths, contains('/dest/tree'));
-      expect(await failingDestFs.readBytes('/dest/tree/ok.txt'), 'ok'.codeUnits);
-      expect(await failingDestFs.stat('/dest/tree/broken.txt').then((s) => s.exists), isFalse);
-    });
+        expect(summary.failed, 1);
+        expect(summary.succeeded, 0);
+        expect(summary.failedPaths, contains('/dest/tree/broken.txt'));
+        expect(summary.failedPaths, contains('/dest/tree'));
+        expect(
+          await failingDestFs.readBytes('/dest/tree/ok.txt'),
+          'ok'.codeUnits,
+        );
+        expect(
+          await failingDestFs
+              .stat('/dest/tree/broken.txt')
+              .then((s) => s.exists),
+          isFalse,
+        );
+      },
+    );
   });
 }

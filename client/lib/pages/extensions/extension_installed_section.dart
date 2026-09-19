@@ -57,8 +57,10 @@ class ExtensionInstalledSection extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   l10n.extensionsSettingsDescription,
-                  style: TpTextStyles.of(context).smColored(Theme.of(
-                      context,).colorScheme.onSurface.withValues(alpha: 0.6),
+                  style: TpTextStyles.of(context).smColored(
+                    Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -111,9 +113,7 @@ class _CountBadge extends StatelessWidget {
       ),
       child: Text(
         '$count',
-        style: TpTextStyles.of(
-          context,
-        ).xsBoldColored(cs.primary),
+        style: TpTextStyles.of(context).xsBoldColored(cs.primary),
       ),
     );
   }
@@ -176,7 +176,8 @@ class _ExtensionRow extends StatelessWidget {
                           subtitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: styles.smColored(cs.onSurface.withValues(alpha: 0.6),
+                          style: styles.smColored(
+                            cs.onSurface.withValues(alpha: 0.6),
                           ),
                         ),
                       ],
@@ -263,8 +264,7 @@ class _DependencyRemediation extends StatelessWidget {
           children: [
             Text(
               l10n.extensionDependencyMissingHint(deps),
-              style: styles.smColored(cs.onSurface.withValues(alpha: 0.75),
-              ),
+              style: styles.smColored(cs.onSurface.withValues(alpha: 0.75)),
             ),
             const SizedBox(height: 8),
             Row(
@@ -286,7 +286,8 @@ class _DependencyRemediation extends StatelessWidget {
                       command,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.smColored(cs.onSurface.withValues(alpha: 0.85),
+                      style: styles.smColored(
+                        cs.onSurface.withValues(alpha: 0.85),
                       ),
                     ),
                   ),
@@ -339,9 +340,7 @@ class _StatusChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TpTextStyles.of(
-          context,
-        ).xsSemiboldColored(color),
+        style: TpTextStyles.of(context).xsSemiboldColored(color),
       ),
     );
   }

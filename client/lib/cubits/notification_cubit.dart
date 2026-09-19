@@ -26,12 +26,12 @@ class NotificationCubit extends Cubit<NotificationState>
     required HomeStorage storage,
     NotificationRepository? repository,
   }) : _repository =
-          repository ??
-          NotificationRepository(
-            fs: storage.fs,
-            storePath: storage.paths.notificationsJson,
-          ),
-      super(const NotificationState());
+           repository ??
+           NotificationRepository(
+             fs: storage.fs,
+             storePath: storage.paths.notificationsJson,
+           ),
+       super(const NotificationState());
 
   final NotificationRepository _repository;
   static const _uuid = Uuid();

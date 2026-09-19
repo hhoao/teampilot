@@ -44,9 +44,9 @@ class _GithubDeviceFlowPanelState extends State<GithubDeviceFlowPanel> {
           children.addAll([
             Text(
               state.errorMessage!,
-              style: TpTextStyles.of(context).smColored(
-                Theme.of(context).colorScheme.error,
-              ),
+              style: TpTextStyles.of(
+                context,
+              ).smColored(Theme.of(context).colorScheme.error),
             ),
             const SizedBox(height: 12),
           ]);
@@ -92,8 +92,7 @@ class _GithubDeviceFlowPanelState extends State<GithubDeviceFlowPanel> {
                     alignment: Alignment.centerLeft,
                     child: TpButton(
                       variant: TpButtonVariant.primary,
-                      onPressed: () =>
-                          _savePat(context, _patController.text),
+                      onPressed: () => _savePat(context, _patController.text),
                       child: Text(l10n.save),
                     ),
                   ),
@@ -158,10 +157,7 @@ class _GithubDeviceFlowPanelState extends State<GithubDeviceFlowPanel> {
     final cubit = context.read<GithubAccountCubit>();
 
     return [
-      Text(
-        l10n.githubBrowserOpened,
-        style: TpTextStyles.of(context).mutedSm,
-      ),
+      Text(l10n.githubBrowserOpened, style: TpTextStyles.of(context).mutedSm),
       const SizedBox(height: 8),
       SelectableText(
         state.userCode ?? '',
@@ -169,10 +165,7 @@ class _GithubDeviceFlowPanelState extends State<GithubDeviceFlowPanel> {
         style: TpTextStyles.of(context).mdBoldTightSnug,
       ),
       const SizedBox(height: 4),
-      Text(
-        l10n.githubWaitingCodeHint,
-        style: TpTextStyles.of(context).mutedSm,
-      ),
+      Text(l10n.githubWaitingCodeHint, style: TpTextStyles.of(context).mutedSm),
       const SizedBox(height: 12),
       SelectableText(
         state.verificationUri ?? '',
@@ -207,10 +200,7 @@ class _GithubDeviceFlowPanelState extends State<GithubDeviceFlowPanel> {
         : l10n.githubConnectedGeneric;
 
     return [
-      Text(
-        connectedText,
-        style: TpTextStyles.of(context).mdBoldTightSnug,
-      ),
+      Text(connectedText, style: TpTextStyles.of(context).mdBoldTightSnug),
       if (state.source != null) ...[
         const SizedBox(height: 4),
         Text(

@@ -6,42 +6,49 @@ import 'package:teampilot/models/provider_usage_snapshot.dart';
 import 'package:teampilot/widgets/managed_provider/managed_provider_quota_meter.dart';
 
 void main() {
-  testWidgets('quota meter shows progress bar, remaining label, and reset time', (
-    tester,
-  ) async {
-    const resetsAt = 1_800_000_000_000;
-    final now = DateTime.fromMillisecondsSinceEpoch(1_799_400_000_000);
+  testWidgets(
+    'quota meter shows progress bar, remaining label, and reset time',
+    (tester) async {
+      const resetsAt = 1_800_000_000_000;
+      final now = DateTime.fromMillisecondsSinceEpoch(1_799_400_000_000);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: ManagedProviderQuotaMeter(
-            measure: ProviderUsageMeasure(
-              label: '5h',
-              kind: ProviderUsageMeasureKind.quota,
-              total: '100',
-              used: '0',
-              remaining: '100',
-              unit: '%',
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: ManagedProviderQuotaMeter(
+              measure: ProviderUsageMeasure(
+                label: '5h',
+                kind: ProviderUsageMeasureKind.quota,
+                total: '100',
+                used: '0',
+                remaining: '100',
+                unit: '%',
+                resetsAt: resetsAt,
+              ),
+              display: ManagedProviderDisplayConfig(),
               resetsAt: resetsAt,
+              now: now,
             ),
-            display: ManagedProviderDisplayConfig(),
-            resetsAt: resetsAt,
-            now: now,
           ),
         ),
-      ),
-    );
-    await tester.pump();
+      );
+      await tester.pump();
 
-    expect(find.byKey(const Key('managed-provider-quota-meter')), findsOneWidget);
-    expect(find.byKey(const Key('managed-provider-usage-progress')), findsOneWidget);
-    expect(find.text('5h · 100% remaining'), findsOneWidget);
-    expect(find.textContaining('Resets in'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      expect(
+        find.byKey(const Key('managed-provider-quota-meter')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('managed-provider-usage-progress')),
+        findsOneWidget,
+      );
+      expect(find.text('5h · 100% remaining'), findsOneWidget);
+      expect(find.textContaining('Resets in'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('quota meter uses Chinese remaining label', (tester) async {
     await tester.pumpWidget(

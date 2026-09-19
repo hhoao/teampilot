@@ -92,10 +92,7 @@ class _TerminalFindBarState extends State<TerminalFindBar> {
             ),
             IconButton(
               tooltip: 'Previous',
-              icon: Icon(
-                Icons.keyboard_arrow_up,
-                size: context.tpIconSizes.md,
-              ),
+              icon: Icon(Icons.keyboard_arrow_up, size: context.tpIconSizes.md),
               onPressed: () => _step(false),
             ),
             IconButton(

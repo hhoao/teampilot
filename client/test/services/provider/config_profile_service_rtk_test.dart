@@ -79,7 +79,7 @@ void main() {
             },
           ),
         },
-                                      storage: fakeHomeStorage(),
+        storage: fakeHomeStorage(),
       );
     });
 
@@ -165,7 +165,7 @@ void main() {
         layout: RuntimeLayout(teampilotRoot: base.path, fs: LocalFilesystem()),
         loadEnabledExtensionIds: ({teamId, workspaceId}) async => {'rtk'},
         extensionDetector: ExtensionDetector(processRunner: _alwaysMissing),
-                                      storage: homeStorage,
+        storage: homeStorage,
       );
 
       final outcome = await service.prepareTeamLaunch(

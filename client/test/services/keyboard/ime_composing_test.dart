@@ -31,9 +31,7 @@ void main() {
       expect(imeCompositionActive(), isTrue);
 
       // Composition committed / cancelled — range resets to empty.
-      controller.value = controller.value.copyWith(
-        composing: TextRange.empty,
-      );
+      controller.value = controller.value.copyWith(composing: TextRange.empty);
       expect(imeCompositionActive(), isFalse);
     },
   );

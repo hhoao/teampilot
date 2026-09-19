@@ -10,7 +10,10 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('session_find_by_id_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
     final workspace = await repo.createWorkspace([
       WorkspaceFolder(path: '/tmp/find-by-id'),
     ]);

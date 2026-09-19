@@ -17,7 +17,11 @@ Future<HomeTargetController> _controllerWithSshProfiles(
   List<SshProfile> profiles,
 ) async {
   const root = '/tp-test-editor';
-  final sshRepo = SshProfileRepository(rootDir: root, fs: InMemoryFilesystem(), storage: fakeHomeStorage(), );
+  final sshRepo = SshProfileRepository(
+    rootDir: root,
+    fs: InMemoryFilesystem(),
+    storage: fakeHomeStorage(),
+  );
   for (final p in profiles) {
     await sshRepo.save(p);
   }
@@ -74,110 +78,97 @@ void main() {
     username: 'root',
   );
 
-  testWidgets(
-    'locked editor hides Change and Add-on-another-machine',
-    (tester) async {
-      final controller = await _controllerWithSshProfiles([serverA, serverB]);
-      await _pumpEditor(
-        tester,
-        controller: controller,
-        folders: const [WorkspaceFolder(path: '/proj')],
-        lockTargets: true,
-      );
+  testWidgets('locked editor hides Change and Add-on-another-machine', (
+    tester,
+  ) async {
+    final controller = await _controllerWithSshProfiles([serverA, serverB]);
+    await _pumpEditor(
+      tester,
+      controller: controller,
+      folders: const [WorkspaceFolder(path: '/proj')],
+      lockTargets: true,
+    );
 
-      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-      expect(
-        find.text(l10n.workspaceFoldersChangeTarget),
-        findsNothing,
-      );
-      expect(
-        find.text(l10n.workspaceFoldersAddOnAnotherMachine),
-        findsNothing,
-      );
-      // The row target chip is a plain label when locked, not a TextButton.
-      expect(find.widgetWithText(TextButton, 'This device'), findsNothing);
-    },
-  );
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(find.text(l10n.workspaceFoldersChangeTarget), findsNothing);
+    expect(find.text(l10n.workspaceFoldersAddOnAnotherMachine), findsNothing);
+    // The row target chip is a plain label when locked, not a TextButton.
+    expect(find.widgetWithText(TextButton, 'This device'), findsNothing);
+  });
 
-  testWidgets(
-    'no unused machine candidates hides Add-on-another-machine',
-    (tester) async {
-      final controller = await _controllerWithSshProfiles(const []);
-      await _pumpEditor(
-        tester,
-        controller: controller,
-        folders: const [WorkspaceFolder(path: '/proj')],
-      );
+  testWidgets('no unused machine candidates hides Add-on-another-machine', (
+    tester,
+  ) async {
+    final controller = await _controllerWithSshProfiles(const []);
+    await _pumpEditor(
+      tester,
+      controller: controller,
+      folders: const [WorkspaceFolder(path: '/proj')],
+    );
 
-      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-      expect(
-        find.text(l10n.workspaceFoldersAddOnAnotherMachine),
-        findsNothing,
-      );
-    },
-  );
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(find.text(l10n.workspaceFoldersAddOnAnotherMachine), findsNothing);
+  });
 
-  testWidgets(
-    'unlocked editor shows Change; group picker lists all machines',
-    (tester) async {
-      final controller = await _controllerWithSshProfiles([serverA, serverB]);
-      await _pumpEditor(
-        tester,
-        controller: controller,
-        folders: const [WorkspaceFolder(path: '/proj')],
-      );
+  testWidgets('unlocked editor shows Change; group picker lists all machines', (
+    tester,
+  ) async {
+    final controller = await _controllerWithSshProfiles([serverA, serverB]);
+    await _pumpEditor(
+      tester,
+      controller: controller,
+      folders: const [WorkspaceFolder(path: '/proj')],
+    );
 
-      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-      expect(find.text(l10n.workspaceFoldersChangeTarget), findsOneWidget);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(find.text(l10n.workspaceFoldersChangeTarget), findsOneWidget);
 
-      await tester.tap(find.text(l10n.workspaceFoldersChangeTarget));
-      await tester.pumpAndSettle();
-      expect(find.text(l10n.workspaceFoldersPickTarget), findsOneWidget);
-      final dialog = find.byType(SimpleDialog);
-      expect(
-        find.descendant(of: dialog, matching: find.text('This device')),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(of: dialog, matching: find.text('Server A')),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(of: dialog, matching: find.text('Server B')),
-        findsOneWidget,
-      );
-    },
-  );
+    await tester.tap(find.text(l10n.workspaceFoldersChangeTarget));
+    await tester.pumpAndSettle();
+    expect(find.text(l10n.workspaceFoldersPickTarget), findsOneWidget);
+    final dialog = find.byType(SimpleDialog);
+    expect(
+      find.descendant(of: dialog, matching: find.text('This device')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: dialog, matching: find.text('Server A')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: dialog, matching: find.text('Server B')),
+      findsOneWidget,
+    );
+  });
 
-  testWidgets(
-    'Add on another machine picker lists unused machines only',
-    (tester) async {
-      final controller = await _controllerWithSshProfiles([serverA, serverB]);
-      await _pumpEditor(
-        tester,
-        controller: controller,
-        folders: const [WorkspaceFolder(path: '/proj')],
-      );
+  testWidgets('Add on another machine picker lists unused machines only', (
+    tester,
+  ) async {
+    final controller = await _controllerWithSshProfiles([serverA, serverB]);
+    await _pumpEditor(
+      tester,
+      controller: controller,
+      folders: const [WorkspaceFolder(path: '/proj')],
+    );
 
-      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-      await tester.tap(find.text(l10n.workspaceFoldersAddOnAnotherMachine));
-      await tester.pumpAndSettle();
-      final dialog = find.byType(SimpleDialog);
-      expect(
-        find.descendant(of: dialog, matching: find.text('Server A')),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(of: dialog, matching: find.text('Server B')),
-        findsOneWidget,
-      );
-      // 'This device' is already used by /proj, so it is not a candidate.
-      expect(
-        find.descendant(of: dialog, matching: find.text('This device')),
-        findsNothing,
-      );
-    },
-  );
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await tester.tap(find.text(l10n.workspaceFoldersAddOnAnotherMachine));
+    await tester.pumpAndSettle();
+    final dialog = find.byType(SimpleDialog);
+    expect(
+      find.descendant(of: dialog, matching: find.text('Server A')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: dialog, matching: find.text('Server B')),
+      findsOneWidget,
+    );
+    // 'This device' is already used by /proj, so it is not a candidate.
+    expect(
+      find.descendant(of: dialog, matching: find.text('This device')),
+      findsNothing,
+    );
+  });
 
   testWidgets('mixed workspace is not locked', (tester) async {
     final controller = await _controllerWithSshProfiles([serverA, serverB]);
@@ -192,9 +183,6 @@ void main() {
 
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     expect(find.text(l10n.workspaceFoldersChangeTarget), findsNWidgets(2));
-    expect(
-      find.text(l10n.workspaceFoldersAddOnAnotherMachine),
-      findsOneWidget,
-    );
+    expect(find.text(l10n.workspaceFoldersAddOnAnotherMachine), findsOneWidget);
   });
 }

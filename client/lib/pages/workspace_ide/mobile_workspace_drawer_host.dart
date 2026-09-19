@@ -102,13 +102,8 @@ class _DrawerShell extends StatelessWidget {
             },
           ),
         ),
-        Expanded(
-          child: mode == MobileDrawerMode.chat ? chatBody : toolsBody,
-        ),
-        Divider(
-          height: 1,
-          color: cs.outlineVariant.withValues(alpha: 0.5),
-        ),
+        Expanded(child: mode == MobileDrawerMode.chat ? chatBody : toolsBody),
+        Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
         Padding(
           padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
           child: _ManageTile(
@@ -122,10 +117,7 @@ class _DrawerShell extends StatelessWidget {
 }
 
 class _ManageTile extends StatefulWidget {
-  const _ManageTile({
-    required this.label,
-    required this.onTap,
-  });
+  const _ManageTile({required this.label, required this.onTap});
 
   final String label;
   final VoidCallback onTap;
@@ -155,15 +147,9 @@ class _ManageTileState extends State<_ManageTile> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         child: Row(
           children: [
-            Icon(
-              Icons.tune_outlined,
-              size: iconSize,
-              color: cs.onSurface,
-            ),
+            Icon(Icons.tune_outlined, size: iconSize, color: cs.onSurface),
             const SizedBox(width: 10),
-            Expanded(
-              child: Text(widget.label, style: labelStyle),
-            ),
+            Expanded(child: Text(widget.label, style: labelStyle)),
           ],
         ),
       ),

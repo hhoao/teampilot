@@ -3,7 +3,7 @@ import 'package:teampilot/cubits/mailbox_cubit.dart';
 import 'package:teampilot/services/chat/team_bus/agent_node.dart';
 import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 
-import '../services/team_bus/support/fake_member_launcher.dart';
+import '../services/chat/team_bus/support/fake_member_launcher.dart';
 
 void main() {
   test(

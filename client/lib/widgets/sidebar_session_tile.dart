@@ -493,8 +493,8 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       targetPath: dir,
       isDirectory: true,
       remoteFileManagerActions:
-          home?.mode == StorageBackendMode.wsl ||
-          home?.mode == StorageBackendMode.ssh,
+          home.mode == StorageBackendMode.wsl ||
+          home.mode == StorageBackendMode.ssh,
       workContext: home,
     );
   }

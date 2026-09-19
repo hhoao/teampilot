@@ -125,12 +125,13 @@ abstract final class CatalogProduction {
     }
 
     try {
-      final config = await (registryConfig ??
-              McpRegistryConfigService(
-                  teampilotRoot: storage.appDataRoot,
-                  fs: storage.fs,
-                ))
-          .load();
+      final config =
+          await (registryConfig ??
+                  McpRegistryConfigService(
+                    teampilotRoot: storage.appDataRoot,
+                    fs: storage.fs,
+                  ))
+              .load();
       final official = config.byKind(McpRegistrySourceKind.officialRegistry);
       if (official != null && official.enabled) {
         final svc = browse ?? McpRegistryBrowseService();
@@ -179,9 +180,8 @@ abstract final class CatalogProduction {
     if (listing == null) {
       throw CatalogException('not_found', 'MCP listing not found: $listingId');
     }
-    final installer = listingInstall ?? McpListingInstallService(
-      storage: storage,
-    );
+    final installer =
+        listingInstall ?? McpListingInstallService(storage: storage);
     try {
       return await installer.draftFromListing(
         listing,
@@ -206,14 +206,13 @@ abstract final class CatalogProduction {
         'install_plugin requires id or key',
       );
     }
-    final cache = diskCache ??
+    final cache =
+        diskCache ??
         PluginRepoDiskCacheService(
           filesystem: storage.fs,
           teampilotRoot: storage.appDataRoot,
         );
-    final fetch = externalFetch ?? PluginExternalFetchService(
-      storage: storage,
-    );
+    final fetch = externalFetch ?? PluginExternalFetchService(storage: storage);
     DiscoverablePlugin? match;
     for (final marketplace in await repository.repos.loadMarketplaces()) {
       try {
@@ -293,12 +292,13 @@ abstract final class CatalogProduction {
     }
 
     try {
-      final config = await (registryConfig ??
-              McpRegistryConfigService(
-                  teampilotRoot: storage.appDataRoot,
-                  fs: storage.fs,
-                ))
-          .load();
+      final config =
+          await (registryConfig ??
+                  McpRegistryConfigService(
+                    teampilotRoot: storage.appDataRoot,
+                    fs: storage.fs,
+                  ))
+              .load();
       final official = config.byKind(McpRegistrySourceKind.officialRegistry);
       if (official != null && official.enabled) {
         final svc = McpRegistryBrowseService();

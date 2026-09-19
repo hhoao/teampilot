@@ -48,7 +48,7 @@ void main() {
     // Windows: an open sqlite handle blocks directory deletion (errno=32).
     // Worker close is asynchronous across isolates, so retry the deletion
     // for a bounded window instead of racing the handle release.
-    for (var attempt = 0;; attempt++) {
+    for (var attempt = 0; ; attempt++) {
       try {
         tmp.deleteSync(recursive: true);
         break;
@@ -82,10 +82,7 @@ void main() {
 
   test('query failure returns null and the worker survives', () async {
     final pool = OpencodeSqliteWorkerPool.instance;
-    final failed = await pool.run<String?>(
-      dbPath: dbPath,
-      query: _boomQuery,
-    );
+    final failed = await pool.run<String?>(dbPath: dbPath, query: _boomQuery);
     expect(failed, isNull);
 
     // 同一 worker 后续查询仍正常。
@@ -123,58 +120,55 @@ void main() {
     }
   });
 
-  test(
-    'worker idle-exit while queries wait on a busy lease fails them '
-    'instead of hanging forever',
-    () async {
-      final pool = OpencodeSqliteWorkerPool.instance;
-      pool.idleTimeout = const Duration(milliseconds: 80);
-      SqliteConnectionPool? holder;
-      ConnectionLease? heldLease;
-      try {
-        // 先让 worker 把原生池建好(名字=dbPath,进程内全局共享)。
-        final first = await pool.run<String?>(
-          dbPath: dbPath,
-          query: opencodeNewestSessionId,
-        );
-        expect(first, 'ses_1');
+  test('worker idle-exit while queries wait on a busy lease fails them '
+      'instead of hanging forever', () async {
+    final pool = OpencodeSqliteWorkerPool.instance;
+    pool.idleTimeout = const Duration(milliseconds: 80);
+    SqliteConnectionPool? holder;
+    ConnectionLease? heldLease;
+    try {
+      // 先让 worker 把原生池建好(名字=dbPath,进程内全局共享)。
+      final first = await pool.run<String?>(
+        dbPath: dbPath,
+        query: opencodeNewestSessionId,
+      );
+      expect(first, 'ses_1');
 
-        // 测试侧挂住唯一的 reader lease:worker 的下一个查询只能排队等。
-        holder = SqliteConnectionPool.open(
-          name: dbPath,
-          openConnections: () => throw StateError('pool should already exist'),
-        );
-        heldLease = await holder.reader();
+      // 测试侧挂住唯一的 reader lease:worker 的下一个查询只能排队等。
+      holder = SqliteConnectionPool.open(
+        name: dbPath,
+        openConnections: () => throw StateError('pool should already exist'),
+      );
+      heldLease = await holder.reader();
 
-        // 查询在 worker 上等 lease;worker 空闲超时退出时,挂起的查询必须
-        // 失败(而非永久等待)。
-        final pending = pool.run<String?>(
-          dbPath: dbPath,
-          query: opencodeNewestSessionId,
-        );
-        await expectLater(
-          pending.timeout(const Duration(seconds: 10)),
-          throwsA(isA<StateError>()),
-        );
+      // 查询在 worker 上等 lease;worker 空闲超时退出时,挂起的查询必须
+      // 失败(而非永久等待)。
+      final pending = pool.run<String?>(
+        dbPath: dbPath,
+        query: opencodeNewestSessionId,
+      );
+      await expectLater(
+        pending.timeout(const Duration(seconds: 10)),
+        throwsA(isA<StateError>()),
+      );
 
-        // 归还 lease 后,新 worker 正常服务。
-        heldLease.returnLease();
-        heldLease = null;
-        holder.close();
-        holder = null;
-        final recovered = await pool.run<String?>(
-          dbPath: dbPath,
-          query: opencodeNewestSessionId,
-        );
-        expect(recovered, 'ses_1');
-      } finally {
-        heldLease?.returnLease();
-        holder?.close();
-        pool.idleTimeout = const Duration(seconds: 30);
-        await pool.disposeAndWait(dbPath);
-      }
-    },
-  );
+      // 归还 lease 后,新 worker 正常服务。
+      heldLease.returnLease();
+      heldLease = null;
+      holder.close();
+      holder = null;
+      final recovered = await pool.run<String?>(
+        dbPath: dbPath,
+        query: opencodeNewestSessionId,
+      );
+      expect(recovered, 'ses_1');
+    } finally {
+      heldLease?.returnLease();
+      holder?.close();
+      pool.idleTimeout = const Duration(seconds: 30);
+      await pool.disposeAndWait(dbPath);
+    }
+  });
 
   test('query timeout fails a stuck query and the next run recovers', () async {
     final pool = OpencodeSqliteWorkerPool.instance;
@@ -184,11 +178,7 @@ void main() {
       // 慢查询超过 queryTimeout:客户端必须失败,而不是无限等待。
       await expectLater(
         pool
-            .run<String?>(
-              dbPath: dbPath,
-              query: _busyWaitQuery,
-              args: 1500,
-            )
+            .run<String?>(dbPath: dbPath, query: _busyWaitQuery, args: 1500)
             .timeout(const Duration(seconds: 10)),
         throwsA(isA<TimeoutException>()),
       );
@@ -247,32 +237,36 @@ void main() {
     await pool.disposeAndWait(dbPath);
   });
 
-  test('legacy layout without parent_id column filters children via data JSON',
-      () async {
-    final pool = OpencodeSqliteWorkerPool.instance;
-    final legacyDir = tmp.createTempSync('legacy-');
-    final legacyDbPath = p.join(legacyDir.path, 'opencode.db');
-    final db = sqlite3.open(legacyDbPath);
-    try {
-      db.execute(
-        'CREATE TABLE session (id TEXT, data TEXT, time_updated INTEGER)',
+  test(
+    'legacy layout without parent_id column filters children via data JSON',
+    () async {
+      final pool = OpencodeSqliteWorkerPool.instance;
+      final legacyDir = tmp.createTempSync('legacy-');
+      final legacyDbPath = p.join(legacyDir.path, 'opencode.db');
+      final db = sqlite3.open(legacyDbPath);
+      try {
+        db.execute(
+          'CREATE TABLE session (id TEXT, data TEXT, time_updated INTEGER)',
+        );
+        db.execute('INSERT INTO session VALUES (?, ?, ?)', [
+          'ses_child',
+          '{"parentID":"ses_p"}',
+          300,
+        ]);
+        db.execute('INSERT INTO session VALUES (?, ?, ?)', [
+          'ses_root',
+          '{}',
+          100,
+        ]);
+      } finally {
+        db.close();
+      }
+      final result = await pool.run<String?>(
+        dbPath: legacyDbPath,
+        query: opencodeNewestSessionId,
       );
-      db.execute(
-        'INSERT INTO session VALUES (?, ?, ?)',
-        ['ses_child', '{"parentID":"ses_p"}', 300],
-      );
-      db.execute(
-        'INSERT INTO session VALUES (?, ?, ?)',
-        ['ses_root', '{}', 100],
-      );
-    } finally {
-      db.close();
-    }
-    final result = await pool.run<String?>(
-      dbPath: legacyDbPath,
-      query: opencodeNewestSessionId,
-    );
-    expect(result, 'ses_root');
-    await pool.disposeAndWait(legacyDbPath);
-  });
+      expect(result, 'ses_root');
+      await pool.disposeAndWait(legacyDbPath);
+    },
+  );
 }

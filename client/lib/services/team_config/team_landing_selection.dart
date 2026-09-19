@@ -3,10 +3,7 @@ import '../../models/team_config.dart';
 import 'team_clone_service.dart';
 
 class TeamLandingResolveSuccess {
-  const TeamLandingResolveSuccess({
-    required this.teamId,
-    this.cloneResult,
-  });
+  const TeamLandingResolveSuccess({required this.teamId, this.cloneResult});
 
   final String teamId;
 
@@ -47,11 +44,12 @@ TeamProfile? earliestTeamWithHubSourceKey(
 
 /// Clones a hub team during landing selection, with optional clone-time
 /// teamMode/cli overrides for manifest-undeclared fields.
-typedef TeamLandingCloner = Future<CloneResult> Function(
-  DiscoverableTeam team, {
-  TeamMode? teamMode,
-  CliTool? cli,
-});
+typedef TeamLandingCloner =
+    Future<CloneResult> Function(
+      DiscoverableTeam team, {
+      TeamMode? teamMode,
+      CliTool? cli,
+    });
 
 class TeamLandingSelection {
   TeamLandingSelection({

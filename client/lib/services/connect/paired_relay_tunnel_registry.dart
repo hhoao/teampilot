@@ -37,7 +37,10 @@ class PairedRelayTunnelRegistry {
     }
     final hostId = profile.pairedDesktopId;
     final relayUrl = profile.relayUrl;
-    if (hostId == null || hostId.isEmpty || relayUrl == null || relayUrl.isEmpty) {
+    if (hostId == null ||
+        hostId.isEmpty ||
+        relayUrl == null ||
+        relayUrl.isEmpty) {
       throw const SocketException('profile has no relay endpoint');
     }
 
@@ -46,8 +49,8 @@ class PairedRelayTunnelRegistry {
       throw const SocketException('no relay grant stored for profile');
     }
 
-    final tunnel =
-        _tunnels[profile.id] = (tunnelFactory ?? PhoneRelayTunnel.new)();
+    final tunnel = _tunnels[profile.id] =
+        (tunnelFactory ?? PhoneRelayTunnel.new)();
     try {
       await tunnel.open(
         relayUrl: Uri.parse(relayUrl),
@@ -74,7 +77,9 @@ class PairedRelayTunnelRegistry {
   }
 
   /// Loopback target while a tunnel lives; null means dial directly.
-  Future<({InternetAddress address, int port})?> targetFor(String profileId) async {
+  Future<({InternetAddress address, int port})?> targetFor(
+    String profileId,
+  ) async {
     final tunnel = _tunnels[profileId];
     if (tunnel == null || tunnel.isClosed) return null;
     return (address: tunnel.address, port: tunnel.port);

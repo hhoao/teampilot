@@ -2,12 +2,12 @@ import 'dart:typed_data';
 
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/terminal/terminal_activity_tracker.dart';
+import 'package:teampilot/services/chat/runtime/pty/terminal_activity_tracker.dart';
 import 'package:teampilot/services/terminal/observation/terminal_observation_bus.dart';
 import 'package:teampilot/services/terminal/observation/terminal_observation_events.dart';
 import 'package:teampilot/services/terminal/observation/terminal_observation_seat.dart';
 import 'package:teampilot/services/terminal/terminal_export.dart';
-import 'package:teampilot/services/chat/terminal/terminal_launch_controller.dart';
+import 'package:teampilot/services/chat/runtime/pty/terminal_launch_controller.dart';
 
 import '../../support/flush_terminal_engine.dart';
 import '../../support/rust_lib_test_init.dart';

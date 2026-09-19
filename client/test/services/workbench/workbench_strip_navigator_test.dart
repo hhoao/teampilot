@@ -7,7 +7,7 @@ import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/chat/session/shell_launch_spec.dart';
+import 'package:teampilot/services/chat/launch/session/shell_launch_spec.dart';
 import 'package:teampilot/services/chat/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';

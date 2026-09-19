@@ -57,7 +57,10 @@ void main() {
         homeRoot: r'C:\tp\providers\cursor\work\home',
         useWslPaths: true,
       );
-      expect(env['XDG_CONFIG_HOME'], '/mnt/c/tp/providers/cursor/work/home/.config');
+      expect(
+        env['XDG_CONFIG_HOME'],
+        '/mnt/c/tp/providers/cursor/work/home/.config',
+      );
       expect(env.containsKey('APPDATA'), isFalse);
     });
 

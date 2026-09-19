@@ -90,8 +90,7 @@ void main() {
                 BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
                 BlocProvider<AgentAttentionCubit>.value(value: attentionCubit),
                 BlocProvider<SessionGroupsCubit>(
-                  create: (_) =>
-                      SessionGroupsCubit(storage: testHomeStorage),
+                  create: (_) => SessionGroupsCubit(storage: testHomeStorage),
                 ),
                 BlocProvider<ShortcutCubit>.value(value: shortcutCubit),
               ],

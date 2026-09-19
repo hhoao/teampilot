@@ -1,8 +1,5 @@
 /// Stable binding identity for a workspace terminal row in Resource Manager.
-enum ResourceBindingKind {
-  chatMember,
-  workspaceShell,
-}
+enum ResourceBindingKind { chatMember, workspaceShell }
 
 /// In-memory binding for one chat member shell or workspace shell tab.
 ///

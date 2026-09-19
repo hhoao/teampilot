@@ -1,4 +1,3 @@
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/plugin/cli_plugin_layout.dart';
 import 'package:teampilot/services/cli/registry/capabilities/plugin_manifest_paths.dart';

@@ -2,7 +2,6 @@ import '../../../models/runtime_target.dart';
 import '../../../models/ssh_profile.dart';
 import '../../../models/team_config.dart';
 import 'session_launch_service.dart';
-import '../host/session_launch_host.dart';
 import '../../../repositories/ssh_credential_store.dart';
 import '../../../repositories/ssh_known_host_repository.dart';
 import '../../../repositories/session_repository.dart';
@@ -23,7 +22,7 @@ import 'workspace/workspace_provisioner.dart';
 import 'connect/member_connect_stage.dart';
 import 'connect/session_connect_executor.dart';
 import 'connect/session_connect_scheduler.dart';
-import '../runtime/inflight/session_lifecycle_connect_coordinator.dart';
+import 'connect/session_lifecycle_connect_coordinator.dart';
 import 'connect/session_shell_connector.dart';
 import 'connect/session_ssh_profile_reconnect.dart';
 import 'session/session_default_materializer.dart';
@@ -213,7 +212,7 @@ SessionLaunchService buildSessionLaunchService({
     tabStore: tabStore,
     onSessionTabOpened: onSessionTabOpened,
   );
-  final workspaceIndex = () => SessionLaunchWorkspaceIndex(
+  SessionLaunchWorkspaceIndex workspaceIndex() => SessionLaunchWorkspaceIndex(
     workspaces: host.state.workspaces,
     sessions: host.state.sessions,
     usesPosixPaths: storage.usesPosixPaths,

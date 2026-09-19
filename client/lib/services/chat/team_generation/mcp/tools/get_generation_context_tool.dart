@@ -21,13 +21,15 @@ final class GetGenerationContextTool extends NamedTeamComposerTool {
   @override
   Map<String, Object?> get inputSchema => {
     'type': 'object',
-    'description': 'No arguments. Workflow identity comes from the session token.',
+    'description':
+        'No arguments. Workflow identity comes from the session token.',
     'properties': const <String, Object?>{},
     'additionalProperties': false,
   };
 
   @override
-  Map<String, Object?> get outputSchema => TeamComposerToolSchemas.contextOutput;
+  Map<String, Object?> get outputSchema =>
+      TeamComposerToolSchemas.contextOutput;
 
   @override
   Map<String, Object?> get annotations =>

@@ -31,10 +31,7 @@ class ClaudeCredentialBindingField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          l10n.appProviderClaudeCredentialBinding,
-          style: styles.mdSnug,
-        ),
+        Text(l10n.appProviderClaudeCredentialBinding, style: styles.mdSnug),
         const SizedBox(height: 6),
         TpSelect<CredentialBindingKind>(
           items: _items,

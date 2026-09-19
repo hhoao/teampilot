@@ -46,9 +46,7 @@ class ExpertHubCatalog {
     late final Future<MemberCatalogSnapshot> pending;
     pending = _source.fetchMembers().then(
       (members) {
-        final snap = MemberCatalogSnapshot({
-          for (final m in members) m.key: m,
-        });
+        final snap = MemberCatalogSnapshot({for (final m in members) m.key: m});
         if (identical(_pending, pending)) {
           _snapshot = snap;
           _pending = null;

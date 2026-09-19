@@ -97,14 +97,8 @@ void main() {
     await tester.pump();
     expect(find.byType(TextField), findsNWidgets(2));
     // VS Code-style replace actions: replace.svg + replace_all.svg.
-    expect(
-      find.byKey(const ValueKey('editor-replace-one')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('editor-replace-all')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('editor-replace-one')), findsOneWidget);
+    expect(find.byKey(const ValueKey('editor-replace-all')), findsOneWidget);
   });
 
   testWidgets('read-only files keep the find bar but hide replace', (

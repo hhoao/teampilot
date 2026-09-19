@@ -79,9 +79,6 @@ class _DesktopDragToResizeScopeState extends State<DesktopDragToResizeScope>
 
   @override
   Widget build(BuildContext context) {
-    return DesktopDragToResizeHost(
-      expanded: _expanded,
-      child: widget.child,
-    );
+    return DesktopDragToResizeHost(expanded: _expanded, child: widget.child);
   }
 }

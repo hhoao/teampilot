@@ -106,7 +106,9 @@ void main() {
       });
 
       final service = ProviderImportService(
-        storage: buildTestHomeStorage(), repository: repository);
+        storage: buildTestHomeStorage(),
+        repository: repository,
+      );
       final result = await service.importForCli(
         CliTool.claude,
         onlyIfEmpty: false,
@@ -170,7 +172,9 @@ void main() {
       );
 
       final service = ProviderImportService(
-        storage: buildTestHomeStorage(), repository: repository);
+        storage: buildTestHomeStorage(),
+        repository: repository,
+      );
 
       final result = await service.importForCli(
         CliTool.claude,
@@ -230,7 +234,9 @@ wire_api = "chat"
 ''');
 
     final service = ProviderImportService(
-        storage: buildTestHomeStorage(), repository: repository);
+      storage: buildTestHomeStorage(),
+      repository: repository,
+    );
 
     final result = await service.importForCli(
       CliTool.codex,
@@ -285,7 +291,9 @@ wire_api = "chat"
 ''');
 
       final service = ProviderImportService(
-        storage: buildTestHomeStorage(), repository: repository);
+        storage: buildTestHomeStorage(),
+        repository: repository,
+      );
 
       final result = await service.importForCli(
         CliTool.codex,
@@ -332,7 +340,9 @@ wire_api = "chat"
       });
 
       final service = ProviderImportService(
-        storage: buildTestHomeStorage(), repository: repository);
+        storage: buildTestHomeStorage(),
+        repository: repository,
+      );
       final result = await service.importForCli(
         CliTool.cursor,
         onlyIfEmpty: false,
@@ -356,7 +366,8 @@ wire_api = "chat"
       expect(
         await File(layout.authJson(providerHome)).exists(),
         isTrue,
-        reason: 'imported global auth must land at the platform auth.json '
+        reason:
+            'imported global auth must land at the platform auth.json '
             '(macOS ~/.cursor, others ~/.config/cursor)',
       );
     },
@@ -375,7 +386,9 @@ wire_api = "chat"
     );
 
     final service = ProviderImportService(
-        storage: buildTestHomeStorage(), repository: repository);
+      storage: buildTestHomeStorage(),
+      repository: repository,
+    );
     final result = await service.importForCli(
       CliTool.opencode,
       onlyIfEmpty: false,

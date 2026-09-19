@@ -23,10 +23,7 @@ String sshConnectionFailureLogMessage(Object error) {
 }
 
 /// Short user-facing explanation for SSH connect/test failures.
-String sshConnectionFailureUserMessage(
-  Object error,
-  AppLocalizations l10n,
-) {
+String sshConnectionFailureUserMessage(Object error, AppLocalizations l10n) {
   final cause = sshConnectionFailureCause(error);
   if (isSshdPenaltyRefusal(error)) {
     return l10n.sshPenaltyRefused;

@@ -35,8 +35,10 @@ void main() {
       ),
     );
 
-    FloatingWorkspacePersistence(layout: layout, floating: floating)
-        .hydrateFromLayout();
+    FloatingWorkspacePersistence(
+      layout: layout,
+      floating: floating,
+    ).hydrateFromLayout();
 
     expect(
       floating.state.panelPlacement,
@@ -51,20 +53,25 @@ void main() {
     expect(floating.state.isMaximized, isTrue);
   });
 
-  test('hydrateFromLayout keeps unset placement when prefs fields are null', () {
-    final layout = LayoutCubit();
-    final floating = FloatingWorkspaceCubit();
-    addTearDown(layout.close);
-    addTearDown(floating.close);
+  test(
+    'hydrateFromLayout keeps unset placement when prefs fields are null',
+    () {
+      final layout = LayoutCubit();
+      final floating = FloatingWorkspaceCubit();
+      addTearDown(layout.close);
+      addTearDown(floating.close);
 
-    FloatingWorkspacePersistence(layout: layout, floating: floating)
-        .hydrateFromLayout();
+      FloatingWorkspacePersistence(
+        layout: layout,
+        floating: floating,
+      ).hydrateFromLayout();
 
-    expect(floating.state.panelPlacement, isNull);
-    expect(floating.state.legacyAbsoluteBounds, isNull);
-    expect(floating.state.toggleOffset, const Offset(-24, -72));
-    expect(floating.state.isMaximized, isFalse);
-  });
+      expect(floating.state.panelPlacement, isNull);
+      expect(floating.state.legacyAbsoluteBounds, isNull);
+      expect(floating.state.toggleOffset, const Offset(-24, -72));
+      expect(floating.state.isMaximized, isFalse);
+    },
+  );
 
   test('hydrateFromLayout keeps legacy absolute for first-layout convert', () {
     final layout = LayoutCubit();
@@ -83,8 +90,10 @@ void main() {
       ),
     );
 
-    FloatingWorkspacePersistence(layout: layout, floating: floating)
-        .hydrateFromLayout();
+    FloatingWorkspacePersistence(
+      layout: layout,
+      floating: floating,
+    ).hydrateFromLayout();
 
     expect(floating.state.panelPlacement, isNull);
     expect(
@@ -114,9 +123,7 @@ void main() {
     );
     floating.setToggleOffset(const Offset(-12, -18));
     floating.setMaximized(true);
-    await waitUntil(
-      () => layout.state.preferences.floatingPanelWidth != null,
-    );
+    await waitUntil(() => layout.state.preferences.floatingPanelWidth != null);
 
     final p = floating.state.panelPlacement!;
     expect(layout.state.preferences.floatingPanelWidth, p.width);

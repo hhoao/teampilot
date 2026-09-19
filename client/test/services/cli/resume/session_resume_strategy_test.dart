@@ -120,16 +120,11 @@ CREATE TABLE session (
   time_updated INTEGER
 );
 ''');
-      db.execute(
-        "INSERT INTO session(id, time_updated) VALUES ('ses_db', 1)",
-      );
+      db.execute("INSERT INTO session(id, time_updated) VALUES ('ses_db', 1)");
       db.dispose();
 
       final got = await const OpencodeAiHistoryCapability().detectNativeId(
-        ctx(
-          env: {'OPENCODE_DB': dbPath},
-          persistedNativeId: 'ses_kept',
-        ),
+        ctx(env: {'OPENCODE_DB': dbPath}, persistedNativeId: 'ses_kept'),
       );
       expect(got, 'ses_kept');
     });
@@ -287,16 +282,19 @@ CREATE TABLE session (
       expect(got, 'task-1');
     });
 
-    test('detects transcript under projects (real flashskyai layout)', () async {
-      final projects = p.join(base.path, 'projects', 'home-me-proj');
-      await Directory(projects).create(recursive: true);
-      await File(p.join(projects, 'task-1.jsonl')).writeAsString('{}');
+    test(
+      'detects transcript under projects (real flashskyai layout)',
+      () async {
+        final projects = p.join(base.path, 'projects', 'home-me-proj');
+        await Directory(projects).create(recursive: true);
+        await File(p.join(projects, 'task-1.jsonl')).writeAsString('{}');
 
-      final got = await const FlashskyaiAiHistoryCapability().detectNativeId(
-        ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),
-      );
-      expect(got, 'task-1');
-    });
+        final got = await const FlashskyaiAiHistoryCapability().detectNativeId(
+          ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),
+        );
+        expect(got, 'task-1');
+      },
+    );
 
     test('returns null when no transcript exists', () async {
       final got = await const FlashskyaiAiHistoryCapability().detectNativeId(

@@ -276,8 +276,8 @@ class OnboardingDefaultPresetStepState
                     onEmptyTap: () => _openProviderConfig(context),
                     validator: (value) =>
                         (value == null || value.trim().isEmpty)
-                            ? l10n.selectProvider
-                            : null,
+                        ? l10n.selectProvider
+                        : null,
                     onChanged: (value) {
                       setState(() {
                         _effortId = '';

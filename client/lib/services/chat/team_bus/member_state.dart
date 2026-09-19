@@ -51,6 +51,7 @@ extension MemberActivitySemantics on MemberActivity {
     MemberActivity.active => TeammateBusStatus.busy,
     _ => TeammateBusStatus.idle,
   };
+
   /// Claude `TeamFile.members[].isActive`.
   bool get claudeIsActive => this == MemberActivity.active;
 

@@ -5,7 +5,7 @@ import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_folder.dart';
 import '../../repositories/session_repository.dart';
-import '../chat/session/session_member_cli_locks.dart';
+import '../chat/launch/session/session_member_cli_locks.dart';
 import '../storage/app_paths.dart';
 import '../storage/home_storage.dart';
 import '../storage/work_target_canonicalizer.dart';

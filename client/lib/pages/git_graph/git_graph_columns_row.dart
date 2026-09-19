@@ -78,10 +78,9 @@ class GitGraphColumnsRow extends StatelessWidget {
     List<GitGraphColumnId> visible,
     double maxWidth,
   ) {
-    final natural = {
-      for (final id in visible) id: layout.widthOf(id),
-    };
-    final fixed = layout.graphWidth +
+    final natural = {for (final id in visible) id: layout.widthOf(id)};
+    final fixed =
+        layout.graphWidth +
         GitGraphColumns.afterGraphGap +
         (visible.length + 1) * GitGraphColumns.metaGap;
     final available = maxWidth - fixed;
@@ -96,7 +95,8 @@ class GitGraphColumnsRow extends StatelessWidget {
         : excess / shrinkable;
     final floored = {
       for (final id in visible)
-        id: natural[id]! -
+        id:
+            natural[id]! -
             k * (natural[id]! - GitGraphColumnPrefs.minColumnWidth),
     };
     final flooredSum = floored.values.fold(0.0, (a, b) => a + b);

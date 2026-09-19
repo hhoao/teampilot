@@ -347,9 +347,7 @@ class GithubRegistryPublisher {
       root = {};
     }
     final existing = root[listKey];
-    final list = <Object?>[
-      if (existing is List) ...existing,
-    ];
+    final list = <Object?>[if (existing is List) ...existing];
     final already = _parseIndexSlugs(
       indexRaw,
       listKey: listKey,

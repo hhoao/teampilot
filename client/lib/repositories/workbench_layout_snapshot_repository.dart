@@ -108,13 +108,14 @@ class WorkbenchLayoutSnapshotRepository {
         Map<String, Object?>.from(floatingJson),
         tabResolves: resolve,
       );
-      center = decodedCenter == null ? null : _withoutRuntimeLanding(decodedCenter);
-      floating =
-          decodedFloating == null ? null : _withoutRuntimeLanding(decodedFloating);
+      center = decodedCenter == null
+          ? null
+          : _withoutRuntimeLanding(decodedCenter);
+      floating = decodedFloating == null
+          ? null
+          : _withoutRuntimeLanding(decodedFloating);
     } on Object catch (e) {
-      appLogger.w(
-        '[workbench-layout] corrupt snapshot ($workspaceId): $e',
-      );
+      appLogger.w('[workbench-layout] corrupt snapshot ($workspaceId): $e');
       return;
     }
 

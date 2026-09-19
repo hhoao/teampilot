@@ -34,7 +34,8 @@ class WorkspaceCardMetaRow extends StatelessWidget {
             primaryLabel,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: styles.smColored(hasPrimary
+            style: styles.smColored(
+              hasPrimary
                   ? cs.onSurfaceVariant
                   : cs.onSurfaceVariant.withValues(alpha: 0.7),
             ),

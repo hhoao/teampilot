@@ -2,7 +2,6 @@ import 'dart:async';
 
 import '../../models/app_provider_config.dart';
 import '../../models/managed_provider.dart';
-import '../../models/team_config.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
@@ -36,11 +35,7 @@ class ManagedProviderCliRowJanitor {
   /// boot would wipe the re-added row and its OAuth credentials in a loop.
   static const _sweptMarkerFile = '.managed-provider-shared-rows-swept';
 
-  static const _clis = <CliTool>{
-    CliTool.cursor,
-    CliTool.claude,
-    CliTool.codex,
-  };
+  static const _clis = <CliTool>{CliTool.cursor, CliTool.claude, CliTool.codex};
 
   final Filesystem _fs;
   final String _basePath;
@@ -85,9 +80,7 @@ class ManagedProviderCliRowJanitor {
     for (final cli in _clis) {
       final List<AppProviderConfig> rows;
       try {
-        rows = cubit == null
-            ? const []
-            : await cubit.loadProvidersFor(cli);
+        rows = cubit == null ? const [] : await cubit.loadProvidersFor(cli);
       } on Object catch (error, stackTrace) {
         allCatalogsLoaded = false;
         appLogger.w(
@@ -98,9 +91,9 @@ class ManagedProviderCliRowJanitor {
         continue;
       }
       for (final row in rows) {
-        final isShared =
-            !sharedRowsSwept && row.id == _sharedRowIds[cli];
-        final isOrphan = row.id.startsWith('${cli.value}-mp-') &&
+        final isShared = !sharedRowsSwept && row.id == _sharedRowIds[cli];
+        final isOrphan =
+            row.id.startsWith('${cli.value}-mp-') &&
             !liveRowIds.contains(row.id);
         if (!isShared && !isOrphan) continue;
         await removeDedicatedRow(cli: cli, rowId: row.id);
@@ -134,11 +127,8 @@ class ManagedProviderCliRowJanitor {
     }
   }
 
-  String get _sweptMarkerPath => _fs.pathContext.join(
-    _basePath,
-    'providers',
-    _sweptMarkerFile,
-  );
+  String get _sweptMarkerPath =>
+      _fs.pathContext.join(_basePath, 'providers', _sweptMarkerFile);
 
   Future<bool> _hasSweptMarker() async {
     try {

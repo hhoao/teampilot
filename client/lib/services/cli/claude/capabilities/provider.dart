@@ -24,7 +24,7 @@ import '../../../catalog/catalog_mcp_policy.dart';
 import '../../../ssh/mcp/session_ssh_mcp_policy.dart';
 import '../../../io/filesystem.dart';
 import '../../../remote/remote_credential_materializer.dart';
-import '../../../chat/session/member_role_provision.dart';
+import '../../../chat/launch/session/member_role_provision.dart';
 import '../../../storage/home_storage.dart';
 import '../../../chat/team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/capabilities/claude_family_hook_registry.dart';

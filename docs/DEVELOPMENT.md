@@ -351,9 +351,8 @@ OS-specific tooling matches the CI workflows. See [`client/linux/packaging/READM
 | Doc | Topic |
 |-----|--------|
 | [AGENTS.md](../AGENTS.md) | AI guide: hard rules, doc index |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Core concepts, key paths, change conventions |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Core concepts, `services/chat/` layout, TeamBus, change conventions |
 | [CODE_QUALITY.md](CODE_QUALITY.md) | File size, tests, Extension, tech-debt norms |
 | [DEBUGGING.md](DEBUGGING.md) | Debugging process (search-first, root cause) |
-| [TEAM_BUS_MEMBER_STATE.md](TEAM_BUS_MEMBER_STATE.md) | Mixed-team bus presence & member state |
 | [CLAUDE.md](../CLAUDE.md) | Claude Code entry point (links to AGENTS.md) |
 | [Linux packaging](../client/linux/packaging/README.md) | fastforge / deb / AppImage |

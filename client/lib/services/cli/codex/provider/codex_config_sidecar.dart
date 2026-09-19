@@ -8,9 +8,7 @@ import '../../../io/filesystem.dart';
 abstract final class CodexConfigSidecarCatalog {
   CodexConfigSidecarCatalog._();
 
-  static const relativePathKeys = <String>[
-    'model_catalog_json',
-  ];
+  static const relativePathKeys = <String>['model_catalog_json'];
 }
 
 /// One companion file referenced from Codex `config.toml`.

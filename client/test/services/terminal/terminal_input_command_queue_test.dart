@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/terminal/terminal_input_command_queue.dart';
+import 'package:teampilot/services/chat/runtime/pty/terminal_input_command_queue.dart';
 
 void main() {
   test('confirmation before queued CR execution drops that CR', () async {

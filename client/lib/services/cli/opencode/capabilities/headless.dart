@@ -3,12 +3,10 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/team_config.dart';
 import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/headless_capability.dart';
 import '../../registry/headless/headless_provision_support.dart';
 import '../../registry/launch/cli_launch_arg_contribution.dart';
-import '../../registry/launch/cli_headless_launch_context.dart';
 import '../../registry/launch/cli_launch_context.dart';
 import '../../registry/launch/headless_launch_context_adapter.dart';
 import '../../registry/launch/user_extra_args_provider.dart';
@@ -117,7 +115,9 @@ final class OpencodeHeadlessCapability
     await writeJson(configPath, config);
 
     final extraEnvironment = <String, String>{};
-    final authContent = OpencodeCredentialMaterializer.authJsonContent(resolved);
+    final authContent = OpencodeCredentialMaterializer.authJsonContent(
+      resolved,
+    );
     if (authContent != null) {
       extraEnvironment[OpencodeProviderCapability.authContentEnv] = authContent;
     } else if (OpencodeCredentialKindResolver.needsCredential(resolved)) {

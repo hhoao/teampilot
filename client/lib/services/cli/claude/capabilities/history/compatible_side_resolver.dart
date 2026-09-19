@@ -5,8 +5,8 @@ import 'package:meta/meta.dart';
 
 import '../../../../../utils/logging/logger.dart';
 import '../../../../io/filesystem.dart';
-import '../../../../chat/session/history/session_history_context.dart';
-import '../../../../chat/session/history/subagent_side_transcript_path.dart';
+import '../../../../chat/conversation/history/session_history_context.dart';
+import '../../../../chat/conversation/history/subagent_side_transcript_path.dart';
 import 'compatible_jsonl.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 import '../../../../storage/storage_failure.dart';

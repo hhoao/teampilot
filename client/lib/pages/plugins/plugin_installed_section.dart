@@ -100,10 +100,7 @@ class PluginInstalledSection extends StatelessWidget {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : Icon(
-                                Icons.refresh,
-                                size: context.tpIconSizes.md,
-                              ),
+                            : Icon(Icons.refresh, size: context.tpIconSizes.md),
                         label: Text(
                           state.updatesLoading
                               ? l10n.pluginsCheckingUpdates
@@ -275,8 +272,8 @@ class PluginInstalledRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final textBase = cs.onSurface;
     final hasUpdate = updateInfo != null;
-    final sourceLabel = plugin.marketplaceOwner != null &&
-            plugin.marketplaceName != null
+    final sourceLabel =
+        plugin.marketplaceOwner != null && plugin.marketplaceName != null
         ? '${plugin.marketplaceOwner}/${plugin.marketplaceName}'
         : l10n.pluginsLocal;
 
@@ -312,9 +309,9 @@ class PluginInstalledRow extends StatelessWidget {
                               'v${plugin.version}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TpTextStyles.of(context).xsColored(
-                                textBase.withValues(alpha: 0.45),
-                              ),
+                              style: TpTextStyles.of(
+                                context,
+                              ).xsColored(textBase.withValues(alpha: 0.45)),
                             ),
                           ],
                         ],
@@ -346,9 +343,9 @@ class PluginInstalledRow extends StatelessWidget {
                   sourceLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TpTextStyles.of(context).xsColored(
-                    textBase.withValues(alpha: 0.5),
-                  ),
+                  style: TpTextStyles.of(
+                    context,
+                  ).xsColored(textBase.withValues(alpha: 0.5)),
                 ),
                 PluginCliSupportDisclosure(capabilities: plugin.capabilities),
                 if (plugin.description.isNotEmpty) ...[
@@ -357,9 +354,9 @@ class PluginInstalledRow extends StatelessWidget {
                     plugin.description,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TpTextStyles.of(context).smColored(
-                      textBase.withValues(alpha: 0.6),
-                    ),
+                    style: TpTextStyles.of(
+                      context,
+                    ).smColored(textBase.withValues(alpha: 0.6)),
                   ),
                 ],
               ],
@@ -375,9 +372,7 @@ class PluginInstalledRow extends StatelessWidget {
                 if (hasUpdate)
                   IconButton(
                     tooltip: l10n.pluginsCardUpdate,
-                    onPressed: busy
-                        ? null
-                        : () => cubit.updatePlugin(plugin),
+                    onPressed: busy ? null : () => cubit.updatePlugin(plugin),
                     icon: busy
                         ? const SizedBox(
                             width: 16,

@@ -102,7 +102,9 @@ class MemberLaunchInheritSummary extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             subtitle,
-            style: styles.smMediumColored(bundle.isConfigured ? cs.onSurface : cs.onSurfaceVariant),
+            style: styles.smMediumColored(
+              bundle.isConfigured ? cs.onSurface : cs.onSurfaceVariant,
+            ),
           ),
         ],
       ),

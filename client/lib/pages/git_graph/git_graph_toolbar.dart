@@ -142,11 +142,7 @@ class GitGraphToolbar extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.history,
-              size: 14,
-              color: cs.onPrimaryContainer,
-            ),
+            Icon(Icons.history, size: 14, color: cs.onPrimaryContainer),
             const SizedBox(width: 3),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 140),
@@ -213,7 +209,10 @@ class GitGraphToolbar extends StatelessWidget {
         initialItem: state.searchMode,
         searchable: false,
         itemLabel: (mode) => _modeLabel(l10n, mode),
-        closedHeaderPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        closedHeaderPadding: const EdgeInsets.symmetric(
+          horizontal: 6,
+          vertical: 2,
+        ),
         expandedHeaderPadding: const EdgeInsets.symmetric(
           horizontal: 6,
           vertical: 2,
@@ -374,14 +373,16 @@ class _StashMenuState extends State<_StashMenu> {
           return buildTpActionMenuChildren(
             context: context,
             specs: [
-              TpActionMenuSpec.scroll(children: [
-                for (final stash in widget.state.stashList)
-                  TpActionMenuSpec.item(
-                    value: stash,
-                    icon: Icons.inventory_2_outlined,
-                    label: '${stash.selector} ${stash.subject}',
-                  ),
-              ]),
+              TpActionMenuSpec.scroll(
+                children: [
+                  for (final stash in widget.state.stashList)
+                    TpActionMenuSpec.item(
+                      value: stash,
+                      icon: Icons.inventory_2_outlined,
+                      label: '${stash.selector} ${stash.subject}',
+                    ),
+                ],
+              ),
             ],
             menuController: controller,
             onSelect: (value) {
@@ -406,10 +407,7 @@ class _ColumnsMenu extends StatelessWidget {
     final l10n = context.l10n;
     final layout = context.read<LayoutCubit>();
     return TpActionMenuButton(
-      icon: Icon(
-        Icons.view_column_outlined,
-        size: context.tpIconSizes.md,
-      ),
+      icon: Icon(Icons.view_column_outlined, size: context.tpIconSizes.md),
       tooltip: l10n.gitGraphColumns,
       size: 28,
       specs: [

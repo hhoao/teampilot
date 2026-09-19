@@ -21,20 +21,17 @@ List<TpActionMenuSpec> flattenItems(List<TpActionMenuSpec> specs) {
   return out;
 }
 
-GitGraphState sampleState({
-  required List<GitGraphRow> rows,
-}) =>
-    GitGraphState(
-      repoRoot: '/repo',
-      currentBranch: 'main',
-      branches: const [
-        GitBranchInfo('main', 'h0', isRemote: false, isCurrent: true),
-        GitBranchInfo('feature', 'h1', isRemote: false, isCurrent: false),
-        GitBranchInfo('origin/main', 'h0', isRemote: true, isCurrent: false),
-      ],
-      tags: const [GitTagInfo('v1.0', 'h1')],
-      rows: rows,
-    );
+GitGraphState sampleState({required List<GitGraphRow> rows}) => GitGraphState(
+  repoRoot: '/repo',
+  currentBranch: 'main',
+  branches: const [
+    GitBranchInfo('main', 'h0', isRemote: false, isCurrent: true),
+    GitBranchInfo('feature', 'h1', isRemote: false, isCurrent: false),
+    GitBranchInfo('origin/main', 'h0', isRemote: true, isCurrent: false),
+  ],
+  tags: const [GitTagInfo('v1.0', 'h1')],
+  rows: rows,
+);
 
 void main() {
   final l10n = AppLocalizationsEn();
@@ -68,29 +65,36 @@ void main() {
       'bbbbbbbb ${commitB.subject}',
     ]);
     expect(
-      flattenItems(specs).map((s) => s.value).whereType<GitCompareWorkingTree>(),
+      flattenItems(
+        specs,
+      ).map((s) => s.value).whereType<GitCompareWorkingTree>(),
       hasLength(1),
     );
   });
 
-  test('source commit hash is disabled; other commit and same-tip branch stay enabled', () {
-    final specs = gitCompareTargetSpecs(
-      l10n: l10n,
-      state: sampleState(rows: [commitA, commitB]),
-      source: GitCompareRef(commitA.hash),
-    );
-    final items = flattenItems(specs);
-    final sourceCommit = items.singleWhere(
-      (s) => s.value == GitCompareRef(commitA.hash),
-    );
-    final otherCommit = items.singleWhere(
-      (s) => s.value == GitCompareRef(commitB.hash),
-    );
-    final feature = items.singleWhere((s) => s.value == const GitCompareRef('feature'));
-    expect(sourceCommit.enabled, isFalse);
-    expect(otherCommit.enabled, isTrue);
-    expect(feature.enabled, isTrue);
-  });
+  test(
+    'source commit hash is disabled; other commit and same-tip branch stay enabled',
+    () {
+      final specs = gitCompareTargetSpecs(
+        l10n: l10n,
+        state: sampleState(rows: [commitA, commitB]),
+        source: GitCompareRef(commitA.hash),
+      );
+      final items = flattenItems(specs);
+      final sourceCommit = items.singleWhere(
+        (s) => s.value == GitCompareRef(commitA.hash),
+      );
+      final otherCommit = items.singleWhere(
+        (s) => s.value == GitCompareRef(commitB.hash),
+      );
+      final feature = items.singleWhere(
+        (s) => s.value == const GitCompareRef('feature'),
+      );
+      expect(sourceCommit.enabled, isFalse);
+      expect(otherCommit.enabled, isTrue);
+      expect(feature.enabled, isTrue);
+    },
+  );
 
   test('source branch name is disabled in the branch list', () {
     final specs = gitCompareTargetSpecs(
@@ -100,7 +104,9 @@ void main() {
     );
     final items = flattenItems(specs);
     expect(
-      items.singleWhere((s) => s.value == const GitCompareRef('feature')).enabled,
+      items
+          .singleWhere((s) => s.value == const GitCompareRef('feature'))
+          .enabled,
       isFalse,
     );
     expect(

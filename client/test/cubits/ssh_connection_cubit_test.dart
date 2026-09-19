@@ -181,56 +181,62 @@ void main() {
       },
     );
 
-    test('observation: pool change after disconnect → connected again', () async {
-      final harness = _Harness();
-      const profile = _p1;
-      final cubit = harness.createCubit();
-      cubit.syncProfiles(const [profile]);
+    test(
+      'observation: pool change after disconnect → connected again',
+      () async {
+        final harness = _Harness();
+        const profile = _p1;
+        final cubit = harness.createCubit();
+        cubit.syncProfiles(const [profile]);
 
-      await cubit.connect(profile.id);
-      await cubit.disconnect(profile.id);
-      expect(
-        cubit.state.hostsById[profile.id]!.status,
-        SshHostUiStatus.disconnected,
-      );
+        await cubit.connect(profile.id);
+        await cubit.disconnect(profile.id);
+        expect(
+          cubit.state.hostsById[profile.id]!.status,
+          SshHostUiStatus.disconnected,
+        );
 
-      await harness.factory.clientForStorage(profile);
-      await Future<void>.delayed(Duration.zero);
+        await harness.factory.clientForStorage(profile);
+        await Future<void>.delayed(Duration.zero);
 
-      expect(
-        cubit.state.hostsById[profile.id]!.status,
-        SshHostUiStatus.connected,
-      );
+        expect(
+          cubit.state.hostsById[profile.id]!.status,
+          SshHostUiStatus.connected,
+        );
 
-      await cubit.close();
-      harness.dispose();
-    });
+        await cubit.close();
+        harness.dispose();
+      },
+    );
 
-    test('monitor reconnecting → UI reconnecting when storage is cold', () async {
-      final harness = _Harness();
-      const profile = _p1;
-      final cubit = harness.createCubit();
-      cubit.syncProfiles(const [profile]);
+    test(
+      'monitor reconnecting → UI reconnecting when storage is cold',
+      () async {
+        final harness = _Harness();
+        const profile = _p1;
+        final cubit = harness.createCubit();
+        cubit.syncProfiles(const [profile]);
 
-      await cubit.connect(profile.id);
-      harness.factory.disconnectProfile(
-        profile.id,
-        reason: SshTransportCloseReason.remotePeerClosed,
-      );
-      // Allow async client.done → transport-closed markDown to settle first.
-      await Future<void>.delayed(const Duration(milliseconds: 200));
-      harness.coordinator.monitorFor(profile.id).reconnectStarted();
-      await Future<void>.delayed(Duration.zero);
+        await cubit.connect(profile.id);
+        harness.factory.disconnectProfile(
+          profile.id,
+          reason: SshTransportCloseReason.remotePeerClosed,
+        );
+        // Allow async client.done → transport-closed markDown to settle first.
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        harness.coordinator.monitorFor(profile.id).reconnectStarted();
+        await Future<void>.delayed(Duration.zero);
 
-      expect(harness.factory.hasLiveStorageClient(profile.id), isFalse);
-      expect(
-        cubit.state.hostsById[profile.id]!.status,
-        SshHostUiStatus.reconnecting,
-      );
+        expect(harness.factory.hasLiveStorageClient(profile.id), isFalse);
+        expect(
+          cubit.state.hostsById[profile.id]!.status,
+          SshHostUiStatus.reconnecting,
+        );
 
-      await cubit.close();
-      harness.dispose();
-    });
+        await cubit.close();
+        harness.dispose();
+      },
+    );
 
     test(
       'storage live stays connected after intentional memberSessionClosed',
@@ -331,7 +337,9 @@ void main() {
         await cubit.connect(_p1.id);
         final client = await harness.factory.clientForStorage(_p1);
         client.close();
-        final reconnectDeadline = DateTime.now().add(const Duration(seconds: 2));
+        final reconnectDeadline = DateTime.now().add(
+          const Duration(seconds: 2),
+        );
         while (DateTime.now().isBefore(reconnectDeadline)) {
           if (harness.coordinator.monitorFor(_p1.id).state.status ==
               RemoteConnectionStatus.reconnecting) {
@@ -374,10 +382,7 @@ void main() {
 
       final connectFuture = cubit.connect(_p1.id);
       await Future<void>.delayed(Duration.zero);
-      expect(
-        cubit.state.hostsById[_p1.id]!.status,
-        SshHostUiStatus.connecting,
-      );
+      expect(cubit.state.hostsById[_p1.id]!.status, SshHostUiStatus.connecting);
 
       await cubit.syncProfiles(const []);
       expect(cubit.state.isEmpty, isTrue);
@@ -407,10 +412,7 @@ void main() {
       cubit.syncProfiles(const [_p1, _p2]);
 
       await cubit.connect(_p1.id);
-      expect(
-        cubit.state.hostsById[_p1.id]!.status,
-        SshHostUiStatus.authFailed,
-      );
+      expect(cubit.state.hostsById[_p1.id]!.status, SshHostUiStatus.authFailed);
       expect(cubit.state.hostsById[_p1.id]!.errorDetail, isNotNull);
 
       await cubit.connect(_p2.id);
@@ -434,10 +436,7 @@ void main() {
       cubit.syncProfiles(const [_p1]);
 
       await cubit.connect(_p1.id);
-      expect(
-        cubit.state.hostsById[_p1.id]!.status,
-        SshHostUiStatus.authFailed,
-      );
+      expect(cubit.state.hostsById[_p1.id]!.status, SshHostUiStatus.authFailed);
 
       await cubit.close();
       harness.dispose();
@@ -450,9 +449,7 @@ void main() {
         },
       );
       final cubit = harness.createCubit(
-        pairedConnectAttempt: PairedConnectAttempt(
-          saveLastGood: (_) async {},
-        ),
+        pairedConnectAttempt: PairedConnectAttempt(saveLastGood: (_) async {}),
       );
       final paired = _paired.copyWith(
         hostKeyFingerprints: const ['SHA256:pinned-host-key'],
@@ -468,10 +465,7 @@ void main() {
         cubit.state.hostsById[paired.id]!.errorDetail,
         sshPairingStaleDetail,
       );
-      expect(
-        cubit.state.hostsById[paired.id]!.status,
-        SshHostUiStatus.error,
-      );
+      expect(cubit.state.hostsById[paired.id]!.status, SshHostUiStatus.error);
 
       await cubit.close();
       harness.dispose();
@@ -487,9 +481,7 @@ void main() {
         },
       );
       final cubit = harness.createCubit(
-        pairedConnectAttempt: PairedConnectAttempt(
-          saveLastGood: (_) async {},
-        ),
+        pairedConnectAttempt: PairedConnectAttempt(saveLastGood: (_) async {}),
       );
       final paired = _paired.copyWith(
         embeddedTarget: true,
@@ -507,47 +499,47 @@ void main() {
         cubit.state.hostsById[paired.id]!.errorDetail,
         sshPairingStaleDetail,
       );
-      expect(
-        cubit.state.hostsById[paired.id]!.status,
-        SshHostUiStatus.error,
-      );
+      expect(cubit.state.hostsById[paired.id]!.status, SshHostUiStatus.error);
 
       await cubit.close();
       harness.dispose();
     });
 
-    test('paired embedded profile network timeout keeps generic error', () async {
-      final harness = _Harness(
-        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
-          throw const SocketException(
-            'Timeout',
-            osError: OSError('timed out', 60),
-          );
-        },
-      );
-      final cubit = harness.createCubit(
-        pairedConnectAttempt: PairedConnectAttempt(
-          saveLastGood: (_) async {},
-        ),
-      );
-      final paired = _paired.copyWith(
-        embeddedTarget: true,
-        hostKeyFingerprints: const ['SHA256:pinned-host-key'],
-      );
-      cubit.syncProfiles([paired]);
+    test(
+      'paired embedded profile network timeout keeps generic error',
+      () async {
+        final harness = _Harness(
+          connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+            throw const SocketException(
+              'Timeout',
+              osError: OSError('timed out', 60),
+            );
+          },
+        );
+        final cubit = harness.createCubit(
+          pairedConnectAttempt: PairedConnectAttempt(
+            saveLastGood: (_) async {},
+          ),
+        );
+        final paired = _paired.copyWith(
+          embeddedTarget: true,
+          hostKeyFingerprints: const ['SHA256:pinned-host-key'],
+        );
+        cubit.syncProfiles([paired]);
 
-      await cubit.connect(paired.id);
+        await cubit.connect(paired.id);
 
-      // A timeout means the desktop never answered — indistinguishable from
-      // it being off/away, so no re-pair hint.
-      expect(
-        cubit.state.hostsById[paired.id]!.errorDetail,
-        isNot(sshPairingStaleDetail),
-      );
+        // A timeout means the desktop never answered — indistinguishable from
+        // it being off/away, so no re-pair hint.
+        expect(
+          cubit.state.hostsById[paired.id]!.errorDetail,
+          isNot(sshPairingStaleDetail),
+        );
 
-      await cubit.close();
-      harness.dispose();
-    });
+        await cubit.close();
+        harness.dispose();
+      },
+    );
 
     test('paired non-embedded profile refusal keeps generic error', () async {
       final harness = _Harness(
@@ -559,9 +551,7 @@ void main() {
         },
       );
       final cubit = harness.createCubit(
-        pairedConnectAttempt: PairedConnectAttempt(
-          saveLastGood: (_) async {},
-        ),
+        pairedConnectAttempt: PairedConnectAttempt(saveLastGood: (_) async {}),
       );
       // embeddedTarget defaults to false (v1 offer / system sshd pairing):
       // a refused port there does not imply a re-picked embedded port.
@@ -578,39 +568,42 @@ void main() {
       harness.dispose();
     });
 
-    test('paired profile plans endpoint dials and persists the winner', () async {
-      final dialedHosts = <String>[];
-      final harness = _Harness(
-        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
-          dialedHosts.add(profile.host);
-          if (profile.host == _pairedLanHost) {
-            throw const SocketException('LAN down');
-          }
-          return _InstantAuthClient();
-        },
-      );
-      final saved = <SshProfile>[];
-      final cubit = harness.createCubit(
-        pairedConnectAttempt: PairedConnectAttempt(
-          saveLastGood: (updated) async => saved.add(updated),
-        ),
-      );
-      cubit.syncProfiles([_paired]);
+    test(
+      'paired profile plans endpoint dials and persists the winner',
+      () async {
+        final dialedHosts = <String>[];
+        final harness = _Harness(
+          connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+            dialedHosts.add(profile.host);
+            if (profile.host == _pairedLanHost) {
+              throw const SocketException('LAN down');
+            }
+            return _InstantAuthClient();
+          },
+        );
+        final saved = <SshProfile>[];
+        final cubit = harness.createCubit(
+          pairedConnectAttempt: PairedConnectAttempt(
+            saveLastGood: (updated) async => saved.add(updated),
+          ),
+        );
+        cubit.syncProfiles([_paired]);
 
-      await cubit.connect(_paired.id);
+        await cubit.connect(_paired.id);
 
-      expect(dialedHosts, [_pairedLanHost, _pairedExtraHost]);
-      expect(saved.single.host, _pairedExtraHost);
-      expect(saved.single.lastGoodKind, SshEndpointKind.extra);
-      expect(cubit.state.hostsById[_paired.id]!.host, _pairedExtraHost);
-      expect(
-        cubit.state.hostsById[_paired.id]!.status,
-        SshHostUiStatus.connected,
-      );
+        expect(dialedHosts, [_pairedLanHost, _pairedExtraHost]);
+        expect(saved.single.host, _pairedExtraHost);
+        expect(saved.single.lastGoodKind, SshEndpointKind.extra);
+        expect(cubit.state.hostsById[_paired.id]!.host, _pairedExtraHost);
+        expect(
+          cubit.state.hostsById[_paired.id]!.status,
+          SshHostUiStatus.connected,
+        );
 
-      await cubit.close();
-      harness.dispose();
-    });
+        await cubit.close();
+        harness.dispose();
+      },
+    );
 
     test('manual profiles connect directly without last-good saves', () async {
       final harness = _Harness();
@@ -625,10 +618,7 @@ void main() {
       await cubit.connect(_p1.id);
 
       expect(saved, isEmpty);
-      expect(
-        cubit.state.hostsById[_p1.id]!.status,
-        SshHostUiStatus.connected,
-      );
+      expect(cubit.state.hostsById[_p1.id]!.status, SshHostUiStatus.connected);
 
       await cubit.close();
       harness.dispose();
@@ -662,44 +652,41 @@ void main() {
       harness.dispose();
     });
 
-    test('inactiveHosts sorts by label; connectedHosts filters connected', () async {
-      final harness = _Harness();
-      final cubit = harness.createCubit();
-      const zebra = SshProfile(
-        id: 'z',
-        name: 'Zebra',
-        host: 'z.example.com',
-        username: 'u',
-      );
-      const alpha = SshProfile(
-        id: 'a',
-        name: 'Alpha',
-        host: 'a.example.com',
-        username: 'u',
-      );
-      cubit.syncProfiles(const [zebra, alpha]);
+    test(
+      'inactiveHosts sorts by label; connectedHosts filters connected',
+      () async {
+        final harness = _Harness();
+        final cubit = harness.createCubit();
+        const zebra = SshProfile(
+          id: 'z',
+          name: 'Zebra',
+          host: 'z.example.com',
+          username: 'u',
+        );
+        const alpha = SshProfile(
+          id: 'a',
+          name: 'Alpha',
+          host: 'a.example.com',
+          username: 'u',
+        );
+        cubit.syncProfiles(const [zebra, alpha]);
 
-      await cubit.connect(alpha.id);
+        await cubit.connect(alpha.id);
 
-      expect(
-        cubit.state.connectedHosts.map((h) => h.profileId),
-        [alpha.id],
-      );
-      expect(
-        cubit.state.inactiveHosts.map((h) => h.label),
-        ['Zebra'],
-      );
+        expect(cubit.state.connectedHosts.map((h) => h.profileId), [alpha.id]);
+        expect(cubit.state.inactiveHosts.map((h) => h.label), ['Zebra']);
 
-      // Both inactive → sorted by label
-      await cubit.disconnect(alpha.id);
-      expect(
-        cubit.state.inactiveHosts.map((h) => h.label),
-        ['Alpha', 'Zebra'],
-      );
+        // Both inactive → sorted by label
+        await cubit.disconnect(alpha.id);
+        expect(cubit.state.inactiveHosts.map((h) => h.label), [
+          'Alpha',
+          'Zebra',
+        ]);
 
-      await cubit.close();
-      harness.dispose();
-    });
+        await cubit.close();
+        harness.dispose();
+      },
+    );
   });
 }
 
@@ -720,26 +707,27 @@ const _p2 = SshProfile(
 const _pairedLanHost = '192.168.1.20';
 const _pairedExtraHost = 'desktop.example.test';
 
-final _paired = const SshProfile(
-  id: 'paired',
-  name: 'Alice desktop',
-  host: _pairedLanHost,
-  username: 'alice',
-  pairedDesktopId: 'AbCdEf0123_-xyZ9',
-).copyWith(
-  endpoints: [
-    SshReachabilityEndpoint(
-      kind: SshEndpointKind.lan,
+final _paired =
+    const SshProfile(
+      id: 'paired',
+      name: 'Alice desktop',
       host: _pairedLanHost,
-      port: 22,
-    ),
-    SshReachabilityEndpoint(
-      kind: SshEndpointKind.extra,
-      host: _pairedExtraHost,
-      port: 2222,
-    ),
-  ],
-);
+      username: 'alice',
+      pairedDesktopId: 'AbCdEf0123_-xyZ9',
+    ).copyWith(
+      endpoints: [
+        SshReachabilityEndpoint(
+          kind: SshEndpointKind.lan,
+          host: _pairedLanHost,
+          port: 22,
+        ),
+        SshReachabilityEndpoint(
+          kind: SshEndpointKind.extra,
+          host: _pairedExtraHost,
+          port: 2222,
+        ),
+      ],
+    );
 
 class _Harness {
   _Harness({

@@ -16,7 +16,7 @@ void main() {
     service = CodexProviderCredentialsService(
       fs: LocalFilesystem(),
       basePath: root.path,
-                                               storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
   });
 

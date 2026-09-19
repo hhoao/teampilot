@@ -28,10 +28,7 @@ ProgressActivity _activity({
 void main() {
   group('resolveProgressFraction', () {
     test('uses explicit fraction when set', () {
-      expect(
-        resolveProgressFraction(_activity(fraction: 0.42)),
-        0.42,
-      );
+      expect(resolveProgressFraction(_activity(fraction: 0.42)), 0.42);
     });
 
     test('explicit fraction wins over items and bytes', () {
@@ -52,11 +49,7 @@ void main() {
     test('uses zero fraction without falling through to items', () {
       expect(
         resolveProgressFraction(
-          _activity(
-            fraction: 0,
-            completedItems: 5,
-            totalItems: 10,
-          ),
+          _activity(fraction: 0, completedItems: 5, totalItems: 10),
         ),
         0,
       );
@@ -70,10 +63,7 @@ void main() {
     });
 
     test('treats null completedItems as zero when totalItems is positive', () {
-      expect(
-        resolveProgressFraction(_activity(totalItems: 4)),
-        0,
-      );
+      expect(resolveProgressFraction(_activity(totalItems: 4)), 0);
     });
 
     test('skips items when totalItems is zero', () {
@@ -98,10 +88,7 @@ void main() {
     });
 
     test('treats null bytesDone as zero when bytesTotal is positive', () {
-      expect(
-        resolveProgressFraction(_activity(bytesTotal: 100)),
-        0,
-      );
+      expect(resolveProgressFraction(_activity(bytesTotal: 100)), 0);
     });
 
     test('skips bytes when bytesTotal is zero', () {

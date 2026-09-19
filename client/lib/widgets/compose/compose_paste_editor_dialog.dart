@@ -3,15 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../services/compose/compose_clip.dart';
+import '../../services/chat/conversation/compose/compose_clip.dart';
 
 /// Opens a bounded dialog for viewing/editing the collapsed paste block.
 /// Returns when the dialog closes. Callers should `unawaited(...)` the
 /// returned future.
-Future<void> showComposePasteEditor(
-  BuildContext context,
-  ComposeClip clip,
-) {
+Future<void> showComposePasteEditor(BuildContext context, ComposeClip clip) {
   return showDialog<void>(
     context: context,
     builder: (_) => ComposePasteEditorDialog(clip: clip),
@@ -27,7 +24,8 @@ class ComposePasteEditorDialog extends StatefulWidget {
   final ComposeClip clip;
 
   @override
-  State<ComposePasteEditorDialog> createState() => _ComposePasteEditorDialogState();
+  State<ComposePasteEditorDialog> createState() =>
+      _ComposePasteEditorDialogState();
 }
 
 class _ComposePasteEditorDialogState extends State<ComposePasteEditorDialog> {

@@ -18,10 +18,7 @@ class _MockSshClientFactory extends Mock implements SshClientFactory {}
 class _MockSftpClient extends Mock implements SftpClient {}
 
 class _FakePathResolver extends RemoteSshStoragePathResolver {
-  _FakePathResolver({
-    required super.clientFactory,
-    required this.onResolve,
-  });
+  _FakePathResolver({required super.clientFactory, required this.onResolve});
 
   final Future<RemoteSshStoragePaths> Function(SshProfile profile) onResolve;
 

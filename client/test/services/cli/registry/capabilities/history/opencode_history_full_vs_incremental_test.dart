@@ -16,11 +16,11 @@ import 'package:teampilot/services/cli/opencode/capabilities/history/ai_transcri
 import 'package:teampilot/services/cli/opencode/capabilities/sqlite_worker_pool.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/chat/session/history/ai_history_load_result.dart';
-import 'package:teampilot/services/chat/session/history/ai_history_locator.dart';
-import 'package:teampilot/services/chat/session/history/ai_history_loader.dart';
-import 'package:teampilot/services/chat/session/history/session_history_context.dart';
-import 'package:teampilot/services/chat/session/history/session_history_context_builder.dart';
+import 'package:teampilot/services/chat/conversation/history/ai_history_load_result.dart';
+import 'package:teampilot/services/chat/conversation/history/ai_history_locator.dart';
+import 'package:teampilot/services/chat/conversation/history/ai_history_loader.dart';
+import 'package:teampilot/services/chat/conversation/history/session_history_context.dart';
+import 'package:teampilot/services/chat/conversation/history/session_history_context_builder.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';

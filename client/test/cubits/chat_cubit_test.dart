@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_alacritty/flutter_alacritty.dart';
-import 'package:teampilot/services/chat/model/session_connect_request.dart';
-import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/session/session_connect_request.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
@@ -14,12 +14,12 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/chat/team_bus/bus_user_line_capture.dart';
-import 'package:teampilot/services/chat/session/shell_launch_spec.dart';
-import 'package:teampilot/services/chat/terminal/terminal_activity_tracker.dart';
+import 'package:teampilot/services/chat/launch/session/shell_launch_spec.dart';
+import 'package:teampilot/services/chat/runtime/pty/terminal_activity_tracker.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
-import 'package:teampilot/services/chat/terminal/terminal_launch_controller.dart';
-import 'package:teampilot/services/compose/compose_draft_cache.dart';
-import 'package:teampilot/services/compose/compose_draft_store.dart';
+import 'package:teampilot/services/chat/runtime/pty/terminal_launch_controller.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_draft_cache.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_draft_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/post_frame_test_harness.dart';

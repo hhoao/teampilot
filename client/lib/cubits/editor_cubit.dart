@@ -255,10 +255,10 @@ class EditorCubit extends Cubit<EditorState> {
     Filesystem? fs,
     TsWorkerPool? workerPool,
     LanguageRegistry? languageRegistry,
-  })  : _fs = fs ?? storage.fs,
-        _injectedPool = workerPool,
-        _injectedRegistry = languageRegistry,
-        super(const EditorState());
+  }) : _fs = fs ?? storage.fs,
+       _injectedPool = workerPool,
+       _injectedRegistry = languageRegistry,
+       super(const EditorState());
 
   final Filesystem _fs;
 

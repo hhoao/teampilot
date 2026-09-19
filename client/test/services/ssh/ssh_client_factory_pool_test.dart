@@ -42,45 +42,51 @@ void main() {
     expect(factory.hasLiveStorageClient(profile.id), isTrue);
   });
 
-  test('clientForStorage skips probe while another storage op is in flight', () async {
-    var pingCount = 0;
-    var createCount = 0;
-    final gate = Completer<void>();
-    late final _BlockingRunClient client;
-    final factory = SshClientFactory(
-      credentialStore: InMemorySshCredentialStore(),
-      knownHostRepository: InMemorySshKnownHostRepository(),
-      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
-        createCount += 1;
-        return client;
-      },
-    );
-    const profile = SshProfile(
-      id: 'p1', name: 'dev', host: 'example.com', username: 'alice',
-    );
-    client = _BlockingRunClient(gate.future, [])
-      ..onPing = () {
-        pingCount += 1;
-        throw StateError('probe should not run');
-      };
+  test(
+    'clientForStorage skips probe while another storage op is in flight',
+    () async {
+      var pingCount = 0;
+      var createCount = 0;
+      final gate = Completer<void>();
+      late final _BlockingRunClient client;
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          createCount += 1;
+          return client;
+        },
+      );
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'example.com',
+        username: 'alice',
+      );
+      client = _BlockingRunClient(gate.future, [])
+        ..onPing = () {
+          pingCount += 1;
+          throw StateError('probe should not run');
+        };
 
-    await factory.clientForStorage(profile);
-    pingCount = 0;
-    final op = factory.runOnStorageWithStdin(
-      profile,
-      'bash -s',
-      stdin: utf8.encode('sleep'),
-    );
-    await Future<void>.delayed(Duration.zero);
+      await factory.clientForStorage(profile);
+      pingCount = 0;
+      final op = factory.runOnStorageWithStdin(
+        profile,
+        'bash -s',
+        stdin: utf8.encode('sleep'),
+      );
+      await Future<void>.delayed(Duration.zero);
 
-    final second = await factory.clientForStorage(profile);
-    expect(identical(second, client), isTrue);
-    expect(createCount, 1);
-    expect(pingCount, 0);
+      final second = await factory.clientForStorage(profile);
+      expect(identical(second, client), isTrue);
+      expect(createCount, 1);
+      expect(pingCount, 0);
 
-    gate.complete();
-    await op;
-  });
+      gate.complete();
+      await op;
+    },
+  );
 
   test('runOnStorageWithStdin rejects exec commands over 1024 bytes', () async {
     final factory = SshClientFactory(
@@ -105,11 +111,7 @@ void main() {
         stdin: utf8.encode('ignored'),
       ),
       throwsA(
-        isA<StateError>().having(
-          (e) => e.message,
-          'message',
-          contains('1024'),
-        ),
+        isA<StateError>().having((e) => e.message, 'message', contains('1024')),
       ),
     );
   });
@@ -172,37 +174,40 @@ void main() {
     expect(createCount, 2);
   });
 
-  test('disconnectProfile drains tracked storage operations before closing', () async {
-    final disconnected = <String>[];
-    final factory = SshClientFactory(
-      credentialStore: InMemorySshCredentialStore(),
-      knownHostRepository: InMemorySshKnownHostRepository(),
-      drainGracePeriod: const Duration(seconds: 1),
-      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
-        return _RecordingDisconnectClient(disconnected, profile.id);
-      },
-    );
+  test(
+    'disconnectProfile drains tracked storage operations before closing',
+    () async {
+      final disconnected = <String>[];
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        drainGracePeriod: const Duration(seconds: 1),
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          return _RecordingDisconnectClient(disconnected, profile.id);
+        },
+      );
 
-    const profile = SshProfile(
-      id: 'p1',
-      name: 'dev',
-      host: 'example.com',
-      username: 'alice',
-    );
-    final client = await factory.clientForStorage(profile);
-    final operation = Completer<void>();
-    final tracked = factory.runTracked(profile.id, () => operation.future);
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'example.com',
+        username: 'alice',
+      );
+      final client = await factory.clientForStorage(profile);
+      final operation = Completer<void>();
+      final tracked = factory.runTracked(profile.id, () => operation.future);
 
-    factory.disconnectProfile(profile.id);
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(client.isClosed, isFalse);
-    expect(disconnected, isEmpty);
+      factory.disconnectProfile(profile.id);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(client.isClosed, isFalse);
+      expect(disconnected, isEmpty);
 
-    operation.complete();
-    await tracked;
-    await Future<void>.delayed(const Duration(milliseconds: 100));
-    expect(disconnected, [profile.id]);
-  });
+      operation.complete();
+      await tracked;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(disconnected, [profile.id]);
+    },
+  );
 
   test('clientForStorage reconnects when host identity changes', () async {
     var createCount = 0;
@@ -237,51 +242,57 @@ void main() {
     expect(createCount, 2);
   });
 
-  test('hasLiveStorageClient is false until clientForStorage succeeds', () async {
-    final factory = SshClientFactory(
-      credentialStore: InMemorySshCredentialStore(),
-      knownHostRepository: InMemorySshKnownHostRepository(),
-      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
-        return _InstantAuthClient();
-      },
-    );
+  test(
+    'hasLiveStorageClient is false until clientForStorage succeeds',
+    () async {
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          return _InstantAuthClient();
+        },
+      );
 
-    const profile = SshProfile(
-      id: 'p1',
-      name: 'dev',
-      host: 'example.com',
-      username: 'alice',
-    );
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'example.com',
+        username: 'alice',
+      );
 
-    expect(factory.hasLiveStorageClient(profile.id), isFalse);
-    await factory.clientForStorage(profile);
-    expect(factory.hasLiveStorageClient(profile.id), isTrue);
-  });
+      expect(factory.hasLiveStorageClient(profile.id), isFalse);
+      await factory.clientForStorage(profile);
+      expect(factory.hasLiveStorageClient(profile.id), isTrue);
+    },
+  );
 
-  test('hasLiveStorageClient stays false while authentication is pending', () async {
-    final authGate = Completer<void>();
-    final factory = SshClientFactory(
-      credentialStore: InMemorySshCredentialStore(),
-      knownHostRepository: InMemorySshKnownHostRepository(),
-      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
-        return _DelayedAuthClient(authGate.future);
-      },
-    );
+  test(
+    'hasLiveStorageClient stays false while authentication is pending',
+    () async {
+      final authGate = Completer<void>();
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          return _DelayedAuthClient(authGate.future);
+        },
+      );
 
-    const profile = SshProfile(
-      id: 'p1',
-      name: 'dev',
-      host: 'example.com',
-      username: 'alice',
-    );
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'example.com',
+        username: 'alice',
+      );
 
-    expect(factory.hasLiveStorageClient(profile.id), isFalse);
-    final pending = factory.clientForStorage(profile);
-    expect(factory.hasLiveStorageClient(profile.id), isFalse);
-    authGate.complete();
-    await pending;
-    expect(factory.hasLiveStorageClient(profile.id), isTrue);
-  });
+      expect(factory.hasLiveStorageClient(profile.id), isFalse);
+      final pending = factory.clientForStorage(profile);
+      expect(factory.hasLiveStorageClient(profile.id), isFalse);
+      authGate.complete();
+      await pending;
+      expect(factory.hasLiveStorageClient(profile.id), isTrue);
+    },
+  );
 
   test('storagePoolChanges emits on open and disconnectProfile', () async {
     final factory = SshClientFactory(
@@ -338,35 +349,38 @@ void main() {
     },
   );
 
-  test('storagePoolChanges emits when transport closes pooled client', () async {
-    final factory = SshClientFactory(
-      credentialStore: InMemorySshCredentialStore(),
-      knownHostRepository: InMemorySshKnownHostRepository(),
-      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
-        return _InstantAuthClient();
-      },
-    );
+  test(
+    'storagePoolChanges emits when transport closes pooled client',
+    () async {
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          return _InstantAuthClient();
+        },
+      );
 
-    const profile = SshProfile(
-      id: 'p1',
-      name: 'dev',
-      host: 'example.com',
-      username: 'alice',
-    );
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'example.com',
+        username: 'alice',
+      );
 
-    final client = await factory.clientForStorage(profile);
-    expect(factory.hasLiveStorageClient(profile.id), isTrue);
+      final client = await factory.clientForStorage(profile);
+      expect(factory.hasLiveStorageClient(profile.id), isTrue);
 
-    final events = <String>[];
-    final sub = factory.storagePoolChanges.listen(events.add);
-    client.close();
-    await client.done;
-    await Future<void>.delayed(Duration.zero);
+      final events = <String>[];
+      final sub = factory.storagePoolChanges.listen(events.add);
+      client.close();
+      await client.done;
+      await Future<void>.delayed(Duration.zero);
 
-    expect(events, [profile.id]);
-    expect(factory.hasLiveStorageClient(profile.id), isFalse);
-    await sub.cancel();
-  });
+      expect(events, [profile.id]);
+      expect(factory.hasLiveStorageClient(profile.id), isFalse);
+      await sub.cancel();
+    },
+  );
 
   test('handshake gate bounds concurrent connects per profile', () async {
     var inFlight = 0;
@@ -434,117 +448,124 @@ void main() {
     expect(maxInFlight, 2);
   });
 
-  test('disconnectProfile tears down with a protocol-level disconnect', () async {
-    final disconnected = <String>[];
-    final factory = SshClientFactory(
-      credentialStore: InMemorySshCredentialStore(),
-      knownHostRepository: InMemorySshKnownHostRepository(),
-      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
-        return _RecordingDisconnectClient(disconnected, profile.id);
-      },
-    );
+  test(
+    'disconnectProfile tears down with a protocol-level disconnect',
+    () async {
+      final disconnected = <String>[];
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          return _RecordingDisconnectClient(disconnected, profile.id);
+        },
+      );
 
-    const profile = SshProfile(
-      id: 'p1',
-      name: 'dev',
-      host: 'example.com',
-      username: 'alice',
-    );
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'example.com',
+        username: 'alice',
+      );
 
-    await factory.clientForStorage(profile);
-    expect(factory.hasLiveStorageClient(profile.id), isTrue);
+      await factory.clientForStorage(profile);
+      expect(factory.hasLiveStorageClient(profile.id), isTrue);
 
-    factory.disconnectProfile(profile.id);
-    await Future<void>.delayed(Duration.zero);
-    expect(disconnected, [profile.id]);
-    expect(factory.hasLiveStorageClient(profile.id), isFalse);
-  });
+      factory.disconnectProfile(profile.id);
+      await Future<void>.delayed(Duration.zero);
+      expect(disconnected, [profile.id]);
+      expect(factory.hasLiveStorageClient(profile.id), isFalse);
+    },
+  );
 
-  test('disconnectProfile waits for in-flight storage op before closing',
-      () async {
-    final gate = Completer<void>();
-    final disconnectCalls = <int>[];
-    late final _BlockingRunClient client;
-    final factory = SshClientFactory(
-      credentialStore: InMemorySshCredentialStore(),
-      knownHostRepository: InMemorySshKnownHostRepository(),
-      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
-        return client;
-      },
-    );
+  test(
+    'disconnectProfile waits for in-flight storage op before closing',
+    () async {
+      final gate = Completer<void>();
+      final disconnectCalls = <int>[];
+      late final _BlockingRunClient client;
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          return client;
+        },
+      );
 
-    const profile = SshProfile(
-      id: 'p1',
-      name: 'dev',
-      host: 'example.com',
-      username: 'alice',
-    );
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'example.com',
+        username: 'alice',
+      );
 
-    client = _BlockingRunClient(gate.future, disconnectCalls);
-    final op = factory.runOnStorage(profile, 'sleep 1');
-    // Let the op reach the pooled client's runWithResult.
-    await Future<void>.delayed(Duration.zero);
+      client = _BlockingRunClient(gate.future, disconnectCalls);
+      final op = factory.runOnStorage(profile, 'sleep 1');
+      // Let the op reach the pooled client's runWithResult.
+      await Future<void>.delayed(Duration.zero);
 
-    factory.disconnectProfile(profile.id);
-    await Future<void>.delayed(const Duration(milliseconds: 50));
+      factory.disconnectProfile(profile.id);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
 
-    // Evicted from the pool immediately — new callers dial fresh…
-    expect(factory.hasLiveStorageClient(profile.id), isFalse);
-    // …but the in-flight op must not be aborted.
-    expect(client.isClosed, isFalse);
-    expect(disconnectCalls, isEmpty);
+      // Evicted from the pool immediately — new callers dial fresh…
+      expect(factory.hasLiveStorageClient(profile.id), isFalse);
+      // …but the in-flight op must not be aborted.
+      expect(client.isClosed, isFalse);
+      expect(disconnectCalls, isEmpty);
 
-    gate.complete();
-    final result = await op;
-    expect(result.exitCode, 0);
+      gate.complete();
+      final result = await op;
+      expect(result.exitCode, 0);
 
-    // The client closes once the op has drained.
-    await Future<void>.delayed(const Duration(milliseconds: 100));
-    expect(disconnectCalls, [1]);
-    await client.done;
-    expect(client.isClosed, isTrue);
-  });
+      // The client closes once the op has drained.
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(disconnectCalls, [1]);
+      await client.done;
+      expect(client.isClosed, isTrue);
+    },
+  );
 
-  test('runTracked SFTP op survives disconnectProfile and closes after drain',
-      () async {
-    final gate = Completer<void>();
-    final disconnectCalls = <int>[];
-    late final _BlockingDisconnectClient client;
-    final factory = SshClientFactory(
-      credentialStore: InMemorySshCredentialStore(),
-      knownHostRepository: InMemorySshKnownHostRepository(),
-      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
-        return client;
-      },
-    );
+  test(
+    'runTracked SFTP op survives disconnectProfile and closes after drain',
+    () async {
+      final gate = Completer<void>();
+      final disconnectCalls = <int>[];
+      late final _BlockingDisconnectClient client;
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          return client;
+        },
+      );
 
-    const profile = SshProfile(
-      id: 'p1',
-      name: 'dev',
-      host: 'example.com',
-      username: 'alice',
-    );
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'example.com',
+        username: 'alice',
+      );
 
-    client = _BlockingDisconnectClient(disconnectCalls);
-    await factory.clientForStorage(profile);
+      client = _BlockingDisconnectClient(disconnectCalls);
+      await factory.clientForStorage(profile);
 
-    final op = factory.runTracked(profile.id, () async {
-      await gate.future;
-      return 'payload';
-    });
-    await Future<void>.delayed(Duration.zero);
+      final op = factory.runTracked(profile.id, () async {
+        await gate.future;
+        return 'payload';
+      });
+      await Future<void>.delayed(Duration.zero);
 
-    factory.disconnectProfile(profile.id);
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(factory.hasLiveStorageClient(profile.id), isFalse);
-    expect(disconnectCalls, isEmpty);
+      factory.disconnectProfile(profile.id);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(factory.hasLiveStorageClient(profile.id), isFalse);
+      expect(disconnectCalls, isEmpty);
 
-    gate.complete();
-    await expectLater(op, completion('payload'));
-    await Future<void>.delayed(const Duration(milliseconds: 100));
-    expect(disconnectCalls, [1]);
-    await client.done;
-  });
+      gate.complete();
+      await expectLater(op, completion('payload'));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(disconnectCalls, [1]);
+      await client.done;
+    },
+  );
 
   test('deferred close gives up after the drain timeout', () {
     fakeAsync((async) {

@@ -9,7 +9,8 @@ import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/repositories/workbench_layout_snapshot_repository.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
-import '../support/in_memory_filesystem.dart' show InMemoryFilesystem, fakeHomeStorage;
+import '../support/in_memory_filesystem.dart'
+    show InMemoryFilesystem, fakeHomeStorage;
 
 const _root = '/tp-root';
 const _ws = 'ws-1';
@@ -42,7 +43,13 @@ void main() {
       ..splitTab(_ws, _s2, axis: Axis.horizontal, before: false)
       ..openFloating(_ws, _shell1)
       ..openFloating(_ws, _shell2)
-      ..splitTab(_ws, _shell2, axis: Axis.vertical, before: true, floating: true);
+      ..splitTab(
+        _ws,
+        _shell2,
+        axis: Axis.vertical,
+        before: true,
+        floating: true,
+      );
     return cubit;
   }
 
@@ -65,7 +72,10 @@ void main() {
     test('writes into the workspace directory only', () async {
       final cubit = seedCubit();
       await repo.save(cubit.centerLayout(_ws), cubit.floatingLayout(_ws));
-      expect(fs.directories.contains('$_root/workspace/workspaces/$_ws'), isTrue);
+      expect(
+        fs.directories.contains('$_root/workspace/workspaces/$_ws'),
+        isTrue,
+      );
     });
   });
 
@@ -77,10 +87,7 @@ void main() {
       seeded.toggleGroupLock(_ws, centerGroup);
       seeded.toggleGroupLock(_ws, floatingGroup, floating: true);
 
-      await repo.save(
-        seeded.centerLayout(_ws),
-        seeded.floatingLayout(_ws),
-      );
+      await repo.save(seeded.centerLayout(_ws), seeded.floatingLayout(_ws));
 
       final restored = WorkbenchCubit();
       await repo.restore(restored);
@@ -103,11 +110,7 @@ void main() {
       final unknownId = 'missing-group';
       await repo.save(
         center.copyWith(
-          lockedGroupIds: {
-            center.leafGroupIds.first,
-            prunedGroup,
-            unknownId,
-          },
+          lockedGroupIds: {center.leafGroupIds.first, prunedGroup, unknownId},
         ),
         floating.copyWith(
           lockedGroupIds: {
@@ -124,18 +127,16 @@ void main() {
         tabResolves: (tab) => tab != _s2 && tab != _shell2,
       );
 
-      expect(
-        restored.centerLayout(_ws).lockedGroupIds,
-        {center.leafGroupIds.first},
-      );
+      expect(restored.centerLayout(_ws).lockedGroupIds, {
+        center.leafGroupIds.first,
+      });
       expect(
         restored.centerLayout(_ws).lockedGroupIds,
         isNot(contains(prunedGroup)),
       );
-      expect(
-        restored.floatingLayout(_ws).lockedGroupIds,
-        {floatingSurvivingGroup},
-      );
+      expect(restored.floatingLayout(_ws).lockedGroupIds, {
+        floatingSurvivingGroup,
+      });
       expect(
         restored.floatingLayout(_ws).lockedGroupIds,
         isNot(contains(floatingPrunedGroup)),
@@ -179,16 +180,18 @@ void main() {
       expect(validateLayout(restored.floatingLayout(_ws)), isTrue);
     });
 
-    test('persisted landing fields do not leak into the restored strips', () async {
-      final seeded = seedCubit()
-        ..enterLanding(_ws, initialText: 'draft');
-      await repo.save(seeded.centerLayout(_ws), seeded.floatingLayout(_ws));
+    test(
+      'persisted landing fields do not leak into the restored strips',
+      () async {
+        final seeded = seedCubit()..enterLanding(_ws, initialText: 'draft');
+        await repo.save(seeded.centerLayout(_ws), seeded.floatingLayout(_ws));
 
-      final restored = WorkbenchCubit();
-      await repo.restore(restored);
-      expect(restored.centerLandingInitialText(_ws), isNull);
-      expect(restored.centerLandingActive(_ws), isFalse);
-    });
+        final restored = WorkbenchCubit();
+        await repo.restore(restored);
+        expect(restored.centerLandingInitialText(_ws), isNull);
+        expect(restored.centerLandingActive(_ws), isFalse);
+      },
+    );
   });
 
   group('restore fallbacks', () {
@@ -241,27 +244,27 @@ void main() {
   });
 
   group('restore pruning', () {
-    test('unresolved session ids are pruned and empty groups rolled up', () async {
-      final seeded = seedCubit();
-      await repo.save(seeded.centerLayout(_ws), seeded.floatingLayout(_ws));
+    test(
+      'unresolved session ids are pruned and empty groups rolled up',
+      () async {
+        final seeded = seedCubit();
+        await repo.save(seeded.centerLayout(_ws), seeded.floatingLayout(_ws));
 
-      final restored = WorkbenchCubit();
-      await repo.restore(
-        restored,
-        tabResolves: (tab) => tab != _s2,
-      );
+        final restored = WorkbenchCubit();
+        await repo.restore(restored, tabResolves: (tab) => tab != _s2);
 
-      // s2's group vanished; s1's group rolled up to the root.
-      final center = restored.centerLayout(_ws);
-      expect(center.root, isA<SplitLeaf>());
-      expect(center.groups.length, 1);
-      expect(center.groups.values.single.order, [_s1]);
-      // Non-session tabs always resolve: the floating split survives intact.
-      expect(
-        toSnapshot(restored.floatingLayout(_ws)),
-        toSnapshot(seeded.floatingLayout(_ws)),
-      );
-    });
+        // s2's group vanished; s1's group rolled up to the root.
+        final center = restored.centerLayout(_ws);
+        expect(center.root, isA<SplitLeaf>());
+        expect(center.groups.length, 1);
+        expect(center.groups.values.single.order, [_s1]);
+        // Non-session tabs always resolve: the floating split survives intact.
+        expect(
+          toSnapshot(restored.floatingLayout(_ws)),
+          toSnapshot(seeded.floatingLayout(_ws)),
+        );
+      },
+    );
 
     test('snapshot with no surviving group keeps the current layout', () async {
       final seeded = seedCubit();

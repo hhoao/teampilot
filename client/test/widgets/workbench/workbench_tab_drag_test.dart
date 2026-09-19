@@ -29,9 +29,7 @@ WorkbenchGroupLayout _twoGroups() {
   const strip = TabStripReducer();
   final base = singleGroupLayout(_s1);
   final g0Two = base.copyWith(
-    groups: {
-      'g0': strip.add(base.groups['g0']!, _s2, preview: false).$1,
-    },
+    groups: {'g0': strip.add(base.groups['g0']!, _s2, preview: false).$1},
   );
   final split = r.split(g0Two, tab: _s2, axis: Axis.horizontal, before: false)!;
   final g1 = ((split.root as SplitBranch).second as SplitLeaf).groupId;
@@ -44,50 +42,80 @@ WorkbenchGroupLayout _twoGroups() {
 void main() {
   group('splitDropZoneForOffset (20% edge bands, horizontal wins corners)', () {
     test('center of the region is center', () {
-      expect(splitDropZoneForOffset(const Offset(50, 50), _size),
-          SplitDropZone.center);
+      expect(
+        splitDropZoneForOffset(const Offset(50, 50), _size),
+        SplitDropZone.center,
+      );
     });
 
     test('edge midpoints map to their edges', () {
-      expect(splitDropZoneForOffset(const Offset(95, 50), _size),
-          SplitDropZone.right);
-      expect(splitDropZoneForOffset(const Offset(5, 50), _size),
-          SplitDropZone.left);
       expect(
-          splitDropZoneForOffset(const Offset(50, 5), _size), SplitDropZone.up);
-      expect(splitDropZoneForOffset(const Offset(50, 95), _size),
-          SplitDropZone.down);
+        splitDropZoneForOffset(const Offset(95, 50), _size),
+        SplitDropZone.right,
+      );
+      expect(
+        splitDropZoneForOffset(const Offset(5, 50), _size),
+        SplitDropZone.left,
+      );
+      expect(
+        splitDropZoneForOffset(const Offset(50, 5), _size),
+        SplitDropZone.up,
+      );
+      expect(
+        splitDropZoneForOffset(const Offset(50, 95), _size),
+        SplitDropZone.down,
+      );
     });
 
     test('corners belong to the horizontal band regardless of y', () {
-      expect(splitDropZoneForOffset(const Offset(95, 5), _size),
-          SplitDropZone.right);
-      expect(splitDropZoneForOffset(const Offset(95, 95), _size),
-          SplitDropZone.right);
-      expect(splitDropZoneForOffset(const Offset(5, 5), _size),
-          SplitDropZone.left);
-      expect(splitDropZoneForOffset(const Offset(5, 95), _size),
-          SplitDropZone.left);
+      expect(
+        splitDropZoneForOffset(const Offset(95, 5), _size),
+        SplitDropZone.right,
+      );
+      expect(
+        splitDropZoneForOffset(const Offset(95, 95), _size),
+        SplitDropZone.right,
+      );
+      expect(
+        splitDropZoneForOffset(const Offset(5, 5), _size),
+        SplitDropZone.left,
+      );
+      expect(
+        splitDropZoneForOffset(const Offset(5, 95), _size),
+        SplitDropZone.left,
+      );
     });
 
     test('bands scale with the region size', () {
       const wide = Size(200, 100);
       // 20% of 200 = 40; x in [40, 160] is the horizontal center.
-      expect(splitDropZoneForOffset(const Offset(30, 50), wide),
-          SplitDropZone.left);
-      expect(splitDropZoneForOffset(const Offset(170, 50), wide),
-          SplitDropZone.right);
-      expect(splitDropZoneForOffset(const Offset(100, 50), wide),
-          SplitDropZone.center);
       expect(
-          splitDropZoneForOffset(const Offset(100, 5), wide), SplitDropZone.up);
-      expect(splitDropZoneForOffset(const Offset(100, 95), wide),
-          SplitDropZone.down);
+        splitDropZoneForOffset(const Offset(30, 50), wide),
+        SplitDropZone.left,
+      );
+      expect(
+        splitDropZoneForOffset(const Offset(170, 50), wide),
+        SplitDropZone.right,
+      );
+      expect(
+        splitDropZoneForOffset(const Offset(100, 50), wide),
+        SplitDropZone.center,
+      );
+      expect(
+        splitDropZoneForOffset(const Offset(100, 5), wide),
+        SplitDropZone.up,
+      );
+      expect(
+        splitDropZoneForOffset(const Offset(100, 95), wide),
+        SplitDropZone.down,
+      );
     });
 
     test('degenerate size resolves to center', () {
-      expect(splitDropZoneForOffset(const Offset(50, 50), Size.zero),
-          SplitDropZone.center);
+      expect(
+        splitDropZoneForOffset(const Offset(50, 50), Size.zero),
+        SplitDropZone.center,
+      );
     });
   });
 
@@ -180,8 +208,8 @@ void main() {
         targetGroupId: 'g0',
         zone: SplitDropZone.up,
       );
-      final upInner = (cubit.centerLayout(_ws).root as SplitBranch).first
-          as SplitBranch;
+      final upInner =
+          (cubit.centerLayout(_ws).root as SplitBranch).first as SplitBranch;
       expect(upInner.axis, Axis.vertical);
       expect((upInner.first as SplitLeaf).groupId, isNot('g0'));
       expect((upInner.second as SplitLeaf).groupId, 'g0');
@@ -252,11 +280,7 @@ void main() {
       final region = find.byType(WorkbenchTabDropRegions);
       final topLeft = tester.getTopLeft(region);
 
-      controller.begin(
-        tab: _s2,
-        sourceGroupId: 'g1',
-        onDrop: (_, _) {},
-      );
+      controller.begin(tab: _s2, sourceGroupId: 'g1', onDrop: (_, _) {});
       await tester.pump();
       // No pointer position recorded yet → no indicator.
       expect(find.byKey(_indicatorKey('center')), findsNothing);
@@ -346,11 +370,7 @@ void main() {
       expect(scope.onDrop, isNull);
 
       void onDrop(String targetGroupId, SplitDropZone zone) {}
-      controller.begin(
-        tab: _s2,
-        sourceGroupId: 'g0',
-        onDrop: onDrop,
-      );
+      controller.begin(tab: _s2, sourceGroupId: 'g0', onDrop: onDrop);
       expect(scope.isActive, isTrue);
       expect(scope.draggedTab, _s2);
       expect(scope.sourceGroupId, 'g0');
@@ -515,7 +535,14 @@ void main() {
 
       // Unmount the tree while the pointer is held.
       await tester.pumpWidget(
-        MaterialApp(home: Scaffold(body: WorkbenchTabDragHost(controller: controller, child: const SizedBox()))),
+        MaterialApp(
+          home: Scaffold(
+            body: WorkbenchTabDragHost(
+              controller: controller,
+              child: const SizedBox(),
+            ),
+          ),
+        ),
       );
       expect(controller.isActive, isFalse);
       expect(drops, isEmpty);

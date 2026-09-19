@@ -81,7 +81,9 @@ class WslHostProcessStarter implements HostProcessStarter {
       flavor: HostTtyScriptFlavor.gnu,
     );
     final env = launched.environment;
-    final executable = env != null && env.isNotEmpty ? 'env' : launched.executable;
+    final executable = env != null && env.isNotEmpty
+        ? 'env'
+        : launched.executable;
     final arguments = env != null && env.isNotEmpty
         ? [
             ...env.entries.map((e) => '${e.key}=${e.value}'),

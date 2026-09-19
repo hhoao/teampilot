@@ -5,9 +5,9 @@ import 'package:path/path.dart' as p;
 
 import '../../../registry/capabilities/ai_history_capability.dart';
 import '../../../../io/filesystem.dart';
-import '../../../../chat/session/history/ai_history_cache_token.dart';
-import '../../../../chat/session/history/jsonl_transcript_page_reader.dart';
-import '../../../../chat/session/history/session_history_context.dart';
+import '../../../../chat/conversation/history/ai_history_cache_token.dart';
+import '../../../../chat/conversation/history/jsonl_transcript_page_reader.dart';
+import '../../../../chat/conversation/history/session_history_context.dart';
 import '../../../registry/capabilities/history/subagent_side_resolver.dart';
 import '../../../registry/capabilities/history/tool_result_enricher.dart';
 import '../../provider/cursor_launch_environment.dart';

@@ -1,7 +1,7 @@
-import 'package:teampilot/services/chat/terminal/fullscreen_cr_ack_config.dart';
-import 'package:teampilot/services/chat/terminal/fullscreen_input_screen_probe.dart';
-import 'package:teampilot/services/chat/terminal/fullscreen_pty_delivery_port.dart';
-import 'package:teampilot/services/chat/terminal/pty_automation_needle.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_cr_ack_config.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_input_screen_probe.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_pty_delivery_port.dart';
+import 'package:teampilot/services/chat/runtime/pty/pty_automation_needle.dart';
 
 /// In-memory [FullscreenPtyDeliveryPort] for automation unit tests.
 final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {

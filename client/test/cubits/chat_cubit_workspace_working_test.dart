@@ -36,7 +36,7 @@ void main() {
 
     setUp(() async {
       tmp = await Directory.systemTemp.createTemp('chat_ws_working_');
-      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
+      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       postFrame = PostFrameTestHarness();
       created.clear();
       cubit = ChatCubit(
@@ -50,7 +50,7 @@ void main() {
               created.add(s);
               return s;
             },
-                         storage: testHomeStorage,
+        storage: testHomeStorage,
       );
     });
 
@@ -71,7 +71,9 @@ void main() {
         final workspaceB = await repo.createWorkspace([
           WorkspaceFolder(path: '/tmp/b'),
         ]);
-        final session = (await repo.createSession(workspaceA.workspaceId)).session;
+        final session = (await repo.createSession(
+          workspaceA.workspaceId,
+        )).session;
         await cubit.loadWorkspaceData(repo);
 
         cubit.setActiveWorkspace(workspaceA.workspaceId);
@@ -91,10 +93,7 @@ void main() {
         shell.activityTracker.markActive();
         cubit.debugTickIdleWatch();
         await drainPendingAsyncWork();
-        expect(
-          cubit.state.busySessionIds,
-          contains(session.sessionId),
-        );
+        expect(cubit.state.busySessionIds, contains(session.sessionId));
 
         cubit.setActiveWorkspace(workspaceB.workspaceId);
         cubit.debugTickIdleWatch();
@@ -103,8 +102,7 @@ void main() {
         expect(
           cubit.state.busySessionIds,
           contains(session.sessionId),
-          reason:
-              'background workspace session must stay in busySessionIds',
+          reason: 'background workspace session must stay in busySessionIds',
         );
       },
     );

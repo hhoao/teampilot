@@ -30,7 +30,8 @@ class SkillInstallService {
   }) : _storage = storage,
        fetch = fetch ?? SkillFetchService(),
        repoCache =
-           repoCache ?? SkillRepoDiskCacheService(storage: storage, fetch: fetch);
+           repoCache ??
+           SkillRepoDiskCacheService(storage: storage, fetch: fetch);
 
   final HomeStorage _storage;
   final SkillManifestService manifest;
@@ -119,11 +120,7 @@ class SkillInstallService {
     final override = idOverride?.trim();
     final id = (override != null && override.isNotEmpty)
         ? override
-        : _idFor(
-            repoOwner: repoOwner,
-            repoName: repoName,
-            basename: basename,
-          );
+        : _idFor(repoOwner: repoOwner, repoName: repoName, basename: basename);
     final skill = Skill(
       id: id,
       name: name,

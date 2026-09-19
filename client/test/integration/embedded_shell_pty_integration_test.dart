@@ -33,8 +33,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:dartssh2/dartssh2.dart'
-    show SSHClient, SSHKeyPair, SSHSocket;
+import 'package:dartssh2/dartssh2.dart' show SSHClient, SSHKeyPair, SSHSocket;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/connect/embedded_ssh_server.dart';
 import 'package:teampilot/services/connect/paired_device_store.dart';
@@ -127,9 +126,7 @@ void main() {
 
     // The pty-req dimensions (80x24 default) reached the real terminal —
     // `stty size` only works with a tty behind stdin/stdout.
-    session.stdin.add(
-      Uint8List.fromList(utf8.encode('stty size\r\n')),
-    );
+    session.stdin.add(Uint8List.fromList(utf8.encode('stty size\r\n')));
     await waitFor('24 80', 'initial dimensions');
     expect(output.toString(), isNot(contains('Inappropriate ioctl')));
 
@@ -137,9 +134,7 @@ void main() {
     session.resizeTerminal(120, 40);
     // Give the server a beat to apply the resize before probing it.
     await Future<void>.delayed(const Duration(milliseconds: 500));
-    session.stdin.add(
-      Uint8List.fromList(utf8.encode('stty size\r\n')),
-    );
+    session.stdin.add(Uint8List.fromList(utf8.encode('stty size\r\n')));
     await waitFor('40 120', 'resize');
 
     // The interactive round trip: a marker command echoes back.

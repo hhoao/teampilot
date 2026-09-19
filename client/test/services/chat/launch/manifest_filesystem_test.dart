@@ -1,0 +1,532 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/launch_manifest.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/manifest_executor.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/manifest_filesystem.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_member_home_passthrough.dart';
+
+import '../../../support/in_memory_filesystem.dart';
+
+void main() {
+  group('ManifestFilesystem', () {
+    test('removeRecursive stages op without mutating readDelegate', () async {
+      final home = InMemoryFilesystem();
+      const path =
+          '/teampilot/workspace/ws/sessions/s1/runtime/claude/creds.json';
+      home.files[path] = 'home-secret';
+
+      final manifest = LaunchManifest();
+      final staging = ManifestFilesystem(
+        manifest: manifest,
+        readDelegate: home,
+      );
+
+      await staging.removeRecursive(path);
+
+      expect(home.files[path], 'home-secret');
+      expect(
+        manifest.entries.whereType<ManifestRemoveRecursive>().map(
+          (e) => e.path,
+        ),
+        [path],
+      );
+    });
+
+    test(
+      'rename from readDelegate copies into manifest without mutating home',
+      () async {
+        final home = InMemoryFilesystem();
+        const from = '/teampilot/from.json';
+        const to = '/teampilot/to.json';
+        home.files[from] = '{"ok":true}';
+
+        final manifest = LaunchManifest();
+        final staging = ManifestFilesystem(
+          manifest: manifest,
+          readDelegate: home,
+        );
+
+        await staging.rename(from, to);
+
+        expect(home.files.containsKey(from), isTrue);
+        expect(home.files.containsKey(to), isFalse);
+        expect(manifest.files[to], '{"ok":true}');
+        expect(manifest.entries.whereType<ManifestRemoveRecursive>().length, 1);
+      },
+    );
+
+    test(
+      'listDir still sees real home after ensureDir under that home',
+      () async {
+        final disk = InMemoryFilesystem();
+        const realHome = '/home/user';
+        const pubCache = '$realHome/.pub-cache';
+        const memberHome =
+            '$realHome/.local/share/com.hhoa.teampilot/workspace/'
+            'ws/sessions/s1/runtime/cursor/home';
+        await disk.ensureDir(pubCache);
+        await disk.ensureDir(realHome);
+
+        final staging = ManifestFilesystem(
+          manifest: LaunchManifest(),
+          readDelegate: disk,
+        );
+        await staging.ensureDir(memberHome);
+
+        final names = (await staging.listDir(realHome)).map((e) => e.name);
+        expect(names, contains('.pub-cache'));
+      },
+    );
+
+    test('listDir stays empty for brand-new overlay-only dirs', () async {
+      final disk = InMemoryFilesystem();
+      const fresh = '/teampilot/workspace/ws/sessions/s1/runtime/cursor/home';
+
+      final staging = ManifestFilesystem(
+        manifest: LaunchManifest(),
+        readDelegate: disk,
+      );
+      await staging.ensureDir(fresh);
+
+      expect(await staging.listDir(fresh), isEmpty);
+    });
+
+    test('copyTree is readable back within the same staging pass', () async {
+      final disk = InMemoryFilesystem();
+      await disk.ensureDir('/src/demo/.plugin');
+      await disk.writeString(
+        '/src/demo/.plugin/plugin.json',
+        '{"name":"demo"}',
+      );
+
+      final staging = ManifestFilesystem(
+        manifest: LaunchManifest(),
+        readDelegate: disk,
+      );
+      await staging.copyTree(source: '/src/demo', destination: '/pool/demo');
+      // Chained copy FROM a just-staged dir (flavor projection pattern).
+      await staging.copyTree(
+        source: '/pool/demo/.plugin',
+        destination: '/pool/demo/.claude-plugin',
+      );
+
+      final poolEntries = await staging.listDir('/pool');
+      expect(poolEntries.map((e) => e.name), contains('demo'));
+      expect(
+        await staging.readString('/pool/demo/.claude-plugin/plugin.json'),
+        '{"name":"demo"}',
+      );
+    });
+
+    test(
+      'cross-plane flush expands a copy from a previously staged tree',
+      () async {
+        final source = InMemoryFilesystem();
+        await source.writeString(
+          '/installed/superpowers/.plugin/plugin.json',
+          '{"name":"superpowers"}',
+        );
+        final target = InMemoryFilesystem();
+        final manifest = LaunchManifest();
+        final staging = ManifestFilesystem(
+          manifest: manifest,
+          readDelegate: source,
+        );
+
+        await staging.copyTree(
+          source: '/installed/superpowers',
+          destination: '/runtime/cursor/plugins/superpowers',
+        );
+        await staging.copyTree(
+          source: '/runtime/cursor/plugins/superpowers/.plugin',
+          destination:
+              '/runtime/cursor/home/.cursor/plugins/local/superpowers/.cursor-plugin',
+        );
+
+        await const ManifestExecutor().flush(
+          manifest: manifest,
+          targetFs: target,
+          sourceFs: source,
+          symlinkProjectionRoot: '/runtime',
+          homeRoot: '/runtime',
+        );
+
+        expect(
+          await target.readString(
+            '/runtime/cursor/home/.cursor/plugins/local/superpowers/.cursor-plugin/plugin.json',
+          ),
+          '{"name":"superpowers"}',
+        );
+      },
+    );
+
+    test(
+      'copyTree of a symlink records a symlink instead of duplicating the tree',
+      () async {
+        final disk = InMemoryFilesystem();
+        await disk.writeString('/installed/superpowers/SKILL.md', '# skill');
+        await disk.createSymlink(
+          target: '/installed/superpowers',
+          linkPath: '/pool/superpowers',
+        );
+
+        final manifest = LaunchManifest();
+        final staging = ManifestFilesystem(
+          manifest: manifest,
+          readDelegate: disk,
+        );
+        await staging.copyTree(
+          source: '/pool/superpowers',
+          destination: '/home/.cursor/plugins/local/superpowers',
+        );
+
+        expect(manifest.entries.whereType<ManifestCopyTree>(), isEmpty);
+        expect(
+          manifest.entries.whereType<ManifestSymlink>().map(
+            (e) => (e.linkPath, e.target),
+          ),
+          contains((
+            '/home/.cursor/plugins/local/superpowers',
+            '/installed/superpowers',
+          )),
+        );
+      },
+    );
+
+    test('projects external symlinks as copy operations', () async {
+      final disk = InMemoryFilesystem();
+      await disk.writeString('/local/plugins/demo/plugin.json', '{}');
+      await disk.createSymlink(
+        target: '/local/plugins/demo',
+        linkPath: '/remote/pool/demo',
+      );
+
+      final manifest = LaunchManifest();
+      final staging = ManifestFilesystem(
+        manifest: manifest,
+        readDelegate: disk,
+        symlinkProjectionRoot: '/remote',
+      );
+
+      await staging.copyTree(
+        source: '/remote/pool/demo',
+        destination: '/remote/session/plugins/demo',
+      );
+
+      expect(manifest.entries.whereType<ManifestSymlink>(), isEmpty);
+      expect(
+        manifest.entries.whereType<ManifestCopyTree>().map(
+          (entry) => (entry.source, entry.destination),
+        ),
+        contains(('/local/plugins/demo', '/remote/session/plugins/demo')),
+      );
+    });
+
+    test('keeps symlinks whose target is inside the remote root', () async {
+      final disk = InMemoryFilesystem();
+      await disk.writeString('/remote/plugins/demo/plugin.json', '{}');
+      await disk.createSymlink(
+        target: '/remote/plugins/demo',
+        linkPath: '/remote/pool/demo',
+      );
+
+      final manifest = LaunchManifest();
+      final staging = ManifestFilesystem(
+        manifest: manifest,
+        readDelegate: disk,
+        symlinkProjectionRoot: '/remote',
+      );
+
+      await staging.copyTree(
+        source: '/remote/pool/demo',
+        destination: '/remote/session/plugins/demo',
+      );
+
+      expect(
+        manifest.entries.whereType<ManifestSymlink>().map(
+          (entry) => (entry.linkPath, entry.target),
+        ),
+        contains(('/remote/session/plugins/demo', '/remote/plugins/demo')),
+      );
+      expect(manifest.entries.whereType<ManifestCopyTree>(), isEmpty);
+    });
+
+    test(
+      'copyTree under a staged symlink records the resolved source path',
+      () async {
+        final disk = InMemoryFilesystem();
+        await disk.writeString(
+          '/installed/superpowers/.plugin/plugin.json',
+          '{"name":"superpowers"}',
+        );
+
+        final manifest = LaunchManifest();
+        final staging = ManifestFilesystem(
+          manifest: manifest,
+          readDelegate: disk,
+        );
+        await staging.createSymlink(
+          target: '/installed/superpowers',
+          linkPath: '/runtime/cursor/plugins/superpowers',
+        );
+
+        await staging.copyTree(
+          source: '/runtime/cursor/plugins/superpowers/.plugin',
+          destination: '/home/.cursor/plugins/local/superpowers/.cursor-plugin',
+        );
+
+        expect(
+          manifest.entries.whereType<ManifestCopyTree>().map(
+            (entry) => (entry.source, entry.destination),
+          ),
+          contains((
+            '/installed/superpowers/.plugin',
+            '/home/.cursor/plugins/local/superpowers/.cursor-plugin',
+          )),
+        );
+      },
+    );
+
+    test(
+      'copyFile under a staged symlink records the resolved source path',
+      () async {
+        final disk = InMemoryFilesystem();
+        await disk.writeString(
+          '/installed/superpowers/README.md',
+          '# superpowers',
+        );
+
+        final manifest = LaunchManifest();
+        final staging = ManifestFilesystem(
+          manifest: manifest,
+          readDelegate: disk,
+        );
+        await staging.createSymlink(
+          target: '/installed/superpowers',
+          linkPath: '/runtime/cursor/plugins/superpowers',
+        );
+
+        await staging.copyFile(
+          '/runtime/cursor/plugins/superpowers/README.md',
+          '/home/.cursor/plugins/local/superpowers/README.md',
+        );
+
+        expect(
+          manifest.entries.whereType<ManifestCopyFile>().map(
+            (entry) => (entry.source, entry.destination),
+          ),
+          contains((
+            '/installed/superpowers/README.md',
+            '/home/.cursor/plugins/local/superpowers/README.md',
+          )),
+        );
+      },
+    );
+
+    test(
+      'ensureDir under an overlay symlink does not record the link or children',
+      () async {
+        final disk = InMemoryFilesystem();
+        await disk.ensureDir('/flavor/.claude-plugin');
+        await disk.writeString('/flavor/.claude-plugin/marketplace.json', '{}');
+
+        final manifest = LaunchManifest();
+        final staging = ManifestFilesystem(
+          manifest: manifest,
+          readDelegate: disk,
+        );
+        const dest = '/session/plugins/marketplaces/claude-plugins-official';
+        await staging.createSymlink(target: '/flavor', linkPath: dest);
+        await staging.ensureDir('$dest/.cursor-plugin');
+
+        expect(
+          manifest.entries.whereType<ManifestEnsureDir>().map((e) => e.path),
+          isNot(contains(dest)),
+        );
+        expect(
+          manifest.entries.whereType<ManifestEnsureDir>().map((e) => e.path),
+          isNot(contains('$dest/.cursor-plugin')),
+        );
+      },
+    );
+
+    test(
+      'reads and lists through overlay symlinks via the readDelegate target',
+      () async {
+        final disk = InMemoryFilesystem();
+        await disk.ensureDir('/installed/demo/.plugin');
+        await disk.writeString(
+          '/installed/demo/.plugin/plugin.json',
+          '{"name":"demo"}',
+        );
+        await disk.ensureDir('/installed/demo/skills/foo');
+        await disk.writeString('/installed/demo/skills/foo/SKILL.md', '# foo');
+
+        final staging = ManifestFilesystem(
+          manifest: LaunchManifest(),
+          readDelegate: disk,
+        );
+        await staging.createSymlink(
+          target: '/installed/demo',
+          linkPath: '/pool/demo',
+        );
+
+        expect((await staging.stat('/pool/demo')).isSymlink, isTrue);
+        expect(
+          await staging.readString('/pool/demo/.plugin/plugin.json'),
+          '{"name":"demo"}',
+        );
+        expect(
+          (await staging.listDir('/pool/demo/skills')).map((e) => e.name),
+          contains('foo'),
+        );
+        expect(
+          await staging.readString('/pool/demo/skills/foo/SKILL.md'),
+          '# foo',
+        );
+      },
+    );
+
+    test(
+      'cursor home passthrough stages symlinks after ensureDir under real home',
+      () async {
+        final disk = InMemoryFilesystem();
+        const realHome = '/home/user';
+        const pubCache = '$realHome/.pub-cache';
+        const memberHome =
+            '$realHome/.local/share/com.hhoa.teampilot/workspace/'
+            'ws/sessions/s1/runtime/cursor/home';
+        await disk.ensureDir(pubCache);
+
+        final manifest = LaunchManifest();
+        final staging = ManifestFilesystem(
+          manifest: manifest,
+          readDelegate: disk,
+        );
+        await CursorMemberHomePassthrough(
+          fs: staging,
+        ).mirror(realHomeRoot: realHome, memberHomeRoot: memberHome);
+
+        expect(
+          manifest.entries.whereType<ManifestSymlink>().map((e) => e.linkPath),
+          contains('$memberHome/.pub-cache'),
+        );
+
+        await const ManifestExecutor().flush(
+          manifest: manifest,
+          targetFs: disk,
+          sourceFs: disk,
+          symlinkProjectionRoot: realHome,
+          homeRoot: realHome,
+        );
+        expect(
+          await disk.readSymlinkTarget('$memberHome/.pub-cache'),
+          pubCache,
+        );
+      },
+    );
+  });
+
+  group('LaunchManifest', () {
+    test('ensureDir dedupes repeated paths', () {
+      final manifest = LaunchManifest()
+        ..ensureDir('/a')
+        ..ensureDir('/a/b')
+        ..ensureDir('/a')
+        ..ensureDir('/a/b');
+
+      expect(
+        manifest.entries.whereType<ManifestEnsureDir>().map((e) => e.path),
+        ['/a', '/a/b'],
+      );
+    });
+  });
+
+  group('ManifestExecutor', () {
+    test(
+      'flush throws when copy source is missing across filesystems',
+      () async {
+        final source = InMemoryFilesystem();
+        final target = InMemoryFilesystem();
+        final manifest = LaunchManifest()
+          ..copyFile(source: '/missing', destination: '/dest/file.txt');
+
+        await expectLater(
+          const ManifestExecutor().flush(
+            manifest: manifest,
+            targetFs: target,
+            sourceFs: source,
+            symlinkProjectionRoot: '/dest',
+            homeRoot: '/dest',
+          ),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              contains('/missing'),
+            ),
+          ),
+        );
+      },
+    );
+
+    test('ssh script heredoc delimiter avoids content collision', () {
+      const content = 'data __TP_MANIFEST_42__ tail';
+      final manifest = LaunchManifest()..writeFile('/tmp/out', content);
+      final script = ManifestExecutor.debugBuildApplyScript(manifest);
+      expect(script, contains(content));
+      expect(script.split("<<'").length, greaterThan(1));
+    });
+
+    test('ssh same-host script keeps remote copyTree and symlink ops', () {
+      final manifest = LaunchManifest()
+        ..ensureDir('/session/home')
+        ..symlink(linkPath: '/session/home/.cache', target: '/root/.cache')
+        ..copyTree(
+          source: '/cli-defaults/cursor',
+          destination: '/session/cursor',
+        )
+        ..copyFile(
+          source: '/cli-defaults/cursor/settings.json',
+          destination: '/session/cursor/settings.json',
+        );
+
+      final script = ManifestExecutor.debugBuildApplyScript(manifest);
+      expect(script, contains("rm -rf -- '/session/home/.cache'"));
+      expect(
+        script,
+        contains("ln -sfn -- '/root/.cache' '/session/home/.cache'"),
+      );
+      expect(
+        script,
+        contains("cp -R -- '/cli-defaults/cursor/.' '/session/cursor'"),
+      );
+      expect(
+        script,
+        contains(
+          "cp -f -- '/cli-defaults/cursor/settings.json' "
+          "'/session/cursor/settings.json'",
+        ),
+      );
+    });
+
+    test('flush applies remove and rename on target', () async {
+      final source = InMemoryFilesystem();
+      final target = InMemoryFilesystem();
+      target.files['/old'] = 'x';
+      final manifest = LaunchManifest()
+        ..writeFile('/new', 'y')
+        ..removeRecursive('/old');
+
+      await const ManifestExecutor().flush(
+        manifest: manifest,
+        targetFs: target,
+        sourceFs: source,
+        symlinkProjectionRoot: '/',
+        homeRoot: '/',
+      );
+
+      expect(target.files.containsKey('/old'), isFalse);
+      expect(target.files['/new'], 'y');
+    });
+  });
+}

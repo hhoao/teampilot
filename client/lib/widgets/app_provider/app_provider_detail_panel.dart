@@ -40,8 +40,9 @@ class AppProviderDetailPanel extends StatelessWidget {
     final l10n = context.l10n;
     final styles = TpTextStyles.of(context);
     final requiresKey = provider.requiresApiKey;
-    final display = CliToolRegistry.builtIn()
-        .capability<ProviderCapability>(provider.cli);
+    final display = CliToolRegistry.builtIn().capability<ProviderCapability>(
+      provider.cli,
+    );
     final modelCount = display?.showModelCount == true
         ? providerModelCount(provider)
         : 0;
@@ -66,10 +67,7 @@ class AppProviderDetailPanel extends StatelessWidget {
                   runSpacing: 4,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Text(
-                      provider.name,
-                      style: styles.lgBold,
-                    ),
+                    Text(provider.name, style: styles.lgBold),
                     if (_credentialCapability(provider)?.appliesTo(provider) ==
                         true)
                       ProviderCredentialStatusBadge(
@@ -97,10 +95,7 @@ class AppProviderDetailPanel extends StatelessWidget {
               ),
             ],
           ),
-          Text(
-            provider.id,
-            style: styles.mutedSm,
-          ),
+          Text(provider.id, style: styles.mutedSm),
           const SizedBox(height: 16),
           if (provider.websiteUrl.isNotEmpty)
             _InfoRow(
@@ -152,12 +147,7 @@ class AppProviderDetailPanel extends StatelessWidget {
           const SizedBox(height: 24),
           Row(
             children: [
-              Expanded(
-                child: Text(
-                  l10n.jsonPreview,
-                  style: styles.mdSnug,
-                ),
-              ),
+              Expanded(child: Text(l10n.jsonPreview, style: styles.mdSnug)),
               _ProviderJsonPreviewCopyButton(provider: provider),
             ],
           ),
@@ -204,9 +194,11 @@ class _ProviderJsonPreviewState extends State<_ProviderJsonPreview> {
     setState(() => _json = null);
     Future<void>.microtask(() {
       if (!mounted || generation != _loadGeneration) return;
-      final json = CliToolRegistry.builtIn()
-          .capability<ProviderCapability>(widget.provider.cli)
-          ?.usesLlmConfigJsonPreview == true
+      final json =
+          CliToolRegistry.builtIn()
+                  .capability<ProviderCapability>(widget.provider.cli)
+                  ?.usesLlmConfigJsonPreview ==
+              true
           ? _generator
                 .buildFlashskyaiLlmConfig(widget.provider)
                 .toMaskedJsonString()
@@ -255,9 +247,11 @@ class _ProviderJsonPreviewCopyButtonState
   static const _generator = ToolConfigGenerator();
 
   Future<void> _copy(BuildContext context) async {
-    final json = CliToolRegistry.builtIn()
-          .capability<ProviderCapability>(widget.provider.cli)
-          ?.usesLlmConfigJsonPreview == true
+    final json =
+        CliToolRegistry.builtIn()
+                .capability<ProviderCapability>(widget.provider.cli)
+                ?.usesLlmConfigJsonPreview ==
+            true
         ? _generator
               .buildFlashskyaiLlmConfig(widget.provider)
               .toMaskedJsonString()
@@ -358,16 +352,14 @@ bool _supportsOAuth(AppProviderConfig provider) {
       true;
 }
 
-ProviderCapability? _credentialCapability(
-  AppProviderConfig provider,
-) {
-  return CliToolRegistry.builtIn()
-      .capability<ProviderCapability>(provider.cli);
+ProviderCapability? _credentialCapability(AppProviderConfig provider) {
+  return CliToolRegistry.builtIn().capability<ProviderCapability>(provider.cli);
 }
 
 ProviderCapability? _bindingCapability(AppProviderConfig provider) {
-  final capability = CliToolRegistry.builtIn()
-      .capability<ProviderCapability>(provider.cli);
+  final capability = CliToolRegistry.builtIn().capability<ProviderCapability>(
+    provider.cli,
+  );
   if (capability == null || !capability.supportsCredentialBinding) return null;
   return capability;
 }

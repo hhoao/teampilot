@@ -26,28 +26,31 @@ void main() {
     layout = CursorHomeLayout(pathContext: fs.pathContext);
   });
 
-  test('Claude auth reads only the per-entry isolated credential file', () async {
-    await fs.writeString(
-      '/tp/providers/claude/claude-mp-managed-1/.credentials.json',
-      jsonEncode({
-        'claudeAiOauth': {'accessToken': 'per-entry-token'},
-      }),
-    );
-    await fs.writeString(
-      '/home/.claude/.credentials.json',
-      jsonEncode({
-        'claudeAiOauth': {'accessToken': 'global-token'},
-      }),
-    );
+  test(
+    'Claude auth reads only the per-entry isolated credential file',
+    () async {
+      await fs.writeString(
+        '/tp/providers/claude/claude-mp-managed-1/.credentials.json',
+        jsonEncode({
+          'claudeAiOauth': {'accessToken': 'per-entry-token'},
+        }),
+      );
+      await fs.writeString(
+        '/home/.claude/.credentials.json',
+        jsonEncode({
+          'claudeAiOauth': {'accessToken': 'global-token'},
+        }),
+      );
 
-    final scope = await ClaudeOfficialSubscriptionAuthReader(
-      fs: fs,
-      basePath: '/tp',
-    ).read(_provider('claude-mp-managed-1'));
+      final scope = await ClaudeOfficialSubscriptionAuthReader(
+        fs: fs,
+        basePath: '/tp',
+      ).read(_provider('claude-mp-managed-1'));
 
-    expect(scope?.valueFor('accessToken'), 'per-entry-token');
-    expect(scope.toString(), isNot(contains('per-entry-token')));
-  });
+      expect(scope?.valueFor('accessToken'), 'per-entry-token');
+      expect(scope.toString(), isNot(contains('per-entry-token')));
+    },
+  );
 
   test('Claude auth never falls back to ~/.claude credentials', () async {
     await fs.writeString(
@@ -58,8 +61,10 @@ void main() {
     );
 
     await expectLater(
-      ClaudeOfficialSubscriptionAuthReader(fs: fs, basePath: '/tp')
-          .read(_provider('claude-mp-managed-1')),
+      ClaudeOfficialSubscriptionAuthReader(
+        fs: fs,
+        basePath: '/tp',
+      ).read(_provider('claude-mp-managed-1')),
       throwsA(
         isA<ManagedProviderUsageQueryError>().having(
           (error) => error.code,
@@ -95,28 +100,32 @@ void main() {
     expect(scope?.valueFor('accountId'), 'acct-1');
   });
 
-  test('Codex auth never falls back to ~/.codex and skips apikey mode',
-      () async {
-    await fs.writeString(
-      '/home/.codex/auth.json',
-      jsonEncode({
-        'auth_mode': 'apikey',
-        'tokens': {'access_token': 'api-mode'},
-      }),
-    );
+  test(
+    'Codex auth never falls back to ~/.codex and skips apikey mode',
+    () async {
+      await fs.writeString(
+        '/home/.codex/auth.json',
+        jsonEncode({
+          'auth_mode': 'apikey',
+          'tokens': {'access_token': 'api-mode'},
+        }),
+      );
 
-    await expectLater(
-      CodexOfficialSubscriptionAuthReader(fs: fs, basePath: '/tp')
-          .read(_provider('codex-mp-managed-1')),
-      throwsA(
-        isA<ManagedProviderUsageQueryError>().having(
-          (error) => error.code,
-          'code',
-          ManagedProviderUsageQueryErrorCode.missingCredential,
+      await expectLater(
+        CodexOfficialSubscriptionAuthReader(
+          fs: fs,
+          basePath: '/tp',
+        ).read(_provider('codex-mp-managed-1')),
+        throwsA(
+          isA<ManagedProviderUsageQueryError>().having(
+            (error) => error.code,
+            'code',
+            ManagedProviderUsageQueryErrorCode.missingCredential,
+          ),
         ),
-      ),
-    );
-  });
+      );
+    },
+  );
 
   test('Cursor auth reads only the per-entry isolated auth.json', () async {
     final home = '/tp/providers/cursor/cursor-mp-managed-1/home';
@@ -146,8 +155,10 @@ void main() {
     );
 
     await expectLater(
-      CursorOfficialSubscriptionAuthReader(fs: fs, basePath: '/tp')
-          .read(_provider('cursor-mp-managed-1')),
+      CursorOfficialSubscriptionAuthReader(
+        fs: fs,
+        basePath: '/tp',
+      ).read(_provider('cursor-mp-managed-1')),
       throwsA(
         isA<ManagedProviderUsageQueryError>().having(
           (error) => error.code,

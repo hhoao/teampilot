@@ -91,7 +91,9 @@ void main() {
     expect(find.byKey(const Key('progress-activities-pill')), findsNothing);
   });
 
-  testWidgets('single activity → shows short title and percent', (tester) async {
+  testWidgets('single activity → shows short title and percent', (
+    tester,
+  ) async {
     final cubit = ProgressActivityCubit(
       historyRecorder: _FakeNotificationRecorder(),
     );
@@ -143,12 +145,8 @@ void main() {
       historyRecorder: _FakeNotificationRecorder(),
     );
     addTearDown(cubit.close);
-    cubit.start(
-      _activity(id: 'a', title: 'Import A', workspaceId: 'ws-1'),
-    );
-    cubit.start(
-      _activity(id: 'b', title: 'Import B', workspaceId: 'ws-1'),
-    );
+    cubit.start(_activity(id: 'a', title: 'Import A', workspaceId: 'ws-1'));
+    cubit.start(_activity(id: 'b', title: 'Import B', workspaceId: 'ws-1'));
 
     await tester.pumpWidget(
       _host(
@@ -214,12 +212,8 @@ void main() {
       historyRecorder: _FakeNotificationRecorder(),
     );
     addTearDown(cubit.close);
-    cubit.start(
-      _activity(id: 'a', title: 'Import A', workspaceId: 'ws-1'),
-    );
-    cubit.start(
-      _activity(id: 'b', title: 'Import B', workspaceId: 'ws-1'),
-    );
+    cubit.start(_activity(id: 'a', title: 'Import A', workspaceId: 'ws-1'));
+    cubit.start(_activity(id: 'b', title: 'Import B', workspaceId: 'ws-1'));
 
     await tester.pumpWidget(
       _host(
@@ -247,10 +241,7 @@ void main() {
     addTearDown(cubit.close);
     final registry = InstallJobRegistry(progressCubit: cubit);
     addTearDown(registry.dispose);
-    const key = InstallJobKey(
-      kind: InstallJobKind.toolchain,
-      target: 'git',
-    );
+    const key = InstallJobKey(kind: InstallJobKind.toolchain, target: 'git');
     unawaited(
       registry.enqueue(
         InstallJobSpec<void>(

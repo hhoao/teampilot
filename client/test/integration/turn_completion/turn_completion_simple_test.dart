@@ -38,7 +38,10 @@ void main() {
   for (final cli in allCli) {
     test('$cli: done event clears working', () async {
       final tmp = await Directory.systemTemp.createTemp('tc_simple_');
-      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: fakeHomeStorage(),
+      );
       final postFrame = PostFrameTestHarness();
       final opened = await openSimpleTurnSession(
         cli: cli,
@@ -62,46 +65,55 @@ void main() {
       await deleteTempDirBestEffort(tmp);
     });
 
-    test('$cli: PTY-quiet fallback clears working only for fallback CLIs', () async {
-      final tmp = await Directory.systemTemp.createTemp('tc_simple_');
-      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
-      final postFrame = PostFrameTestHarness();
-      final opened = await openSimpleTurnSession(
-        cli: cli,
-        repo: repo,
-        postFrame: postFrame,
-      );
-      stampWorking(opened.attention, opened.sessionId, opened.sessionId);
-      opened.shell.markUserTurnStarted();
-      opened.cubit.debugTickIdleWatch();
-      await drainPendingAsyncWork();
-      expect(opened.cubit.state.busySessionIds, contains(opened.sessionId));
+    test(
+      '$cli: PTY-quiet fallback clears working only for fallback CLIs',
+      () async {
+        final tmp = await Directory.systemTemp.createTemp('tc_simple_');
+        final repo = SessionRepository(
+          rootDir: tmp.path,
+          storage: fakeHomeStorage(),
+        );
+        final postFrame = PostFrameTestHarness();
+        final opened = await openSimpleTurnSession(
+          cli: cli,
+          repo: repo,
+          postFrame: postFrame,
+        );
+        stampWorking(opened.attention, opened.sessionId, opened.sessionId);
+        opened.shell.markUserTurnStarted();
+        opened.cubit.debugTickIdleWatch();
+        await drainPendingAsyncWork();
+        expect(opened.cubit.state.busySessionIds, contains(opened.sessionId));
 
-      simulateFingerprintQuietGap(opened.shell);
-      opened.cubit.debugTickIdleWatch();
-      await drainPendingAsyncWork();
+        simulateFingerprintQuietGap(opened.shell);
+        opened.cubit.debugTickIdleWatch();
+        await drainPendingAsyncWork();
 
-      final shouldClear = {
-        CliTool.claude: false,
-        CliTool.flashskyai: false,
-        CliTool.codex: false,
-        CliTool.opencode: false,
-        CliTool.cursor: true,
-      }[cli]!;
-      expect(
-        opened.cubit.state.busySessionIds.isEmpty,
-        shouldClear,
-        reason: '$cli requiresPtyFallback=$shouldClear',
-      );
-      await opened.cubit.close();
-      await opened.attention.close();
-      await deleteTempDirBestEffort(tmp);
-    });
+        final shouldClear = {
+          CliTool.claude: false,
+          CliTool.flashskyai: false,
+          CliTool.codex: false,
+          CliTool.opencode: false,
+          CliTool.cursor: true,
+        }[cli]!;
+        expect(
+          opened.cubit.state.busySessionIds.isEmpty,
+          shouldClear,
+          reason: '$cli requiresPtyFallback=$shouldClear',
+        );
+        await opened.cubit.close();
+        await opened.attention.close();
+        await deleteTempDirBestEffort(tmp);
+      },
+    );
   }
 
   test('PTY-quiet fallback never clears a waiting seat', () async {
     final tmp = await Directory.systemTemp.createTemp('tc_wait_');
-    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
     final postFrame = PostFrameTestHarness();
     final opened = await openSimpleTurnSession(
       cli: CliTool.cursor,

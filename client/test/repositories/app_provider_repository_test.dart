@@ -17,7 +17,7 @@ void main() {
   setUp(() async {
     setUpTestAppStorage();
     root = await Directory.systemTemp.createTemp('app_providers_');
-    repo = AppProviderRepository(basePath: root.path, storage: testHomeStorage, );
+    repo = AppProviderRepository(basePath: root.path, storage: testHomeStorage);
   });
 
   tearDown(() async {

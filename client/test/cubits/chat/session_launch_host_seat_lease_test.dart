@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/host/session_launch_host.dart';
+import 'package:teampilot/services/chat/launch/session_launch_host.dart';
 import 'package:teampilot/cubits/seat_lease_cubit.dart';
 import 'package:teampilot/services/agent_status/seat_lease.dart';
 

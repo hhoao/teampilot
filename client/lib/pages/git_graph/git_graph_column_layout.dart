@@ -8,10 +8,7 @@ import 'git_graph_columns.dart';
 /// 一次解析后的列布局：图区宽 + 各元数据列宽（隐藏列为 0 且不参与行内排布）。
 @immutable
 class GitGraphColumnLayout {
-  const GitGraphColumnLayout({
-    required this.prefs,
-    required this.graphWidth,
-  });
+  const GitGraphColumnLayout({required this.prefs, required this.graphWidth});
 
   final GitGraphColumnPrefs prefs;
 
@@ -20,8 +17,7 @@ class GitGraphColumnLayout {
 
   bool isHidden(GitGraphColumnId id) => prefs.hiddenColumns.contains(id);
 
-  double widthOf(GitGraphColumnId id) =>
-      isHidden(id) ? 0 : prefs.widthOf(id);
+  double widthOf(GitGraphColumnId id) => isHidden(id) ? 0 : prefs.widthOf(id);
 
   static GitGraphColumnLayout resolve({
     required GitGraphColumnPrefs prefs,
@@ -46,10 +42,8 @@ class GitGraphColumnLayoutController extends ChangeNotifier {
   /// 当前已加载行的最大 slot；行数据翻页后由宿主更新。
   int maxSlot;
 
-  GitGraphColumnLayout get layout => GitGraphColumnLayout.resolve(
-    prefs: _prefs,
-    maxSlot: maxSlot,
-  );
+  GitGraphColumnLayout get layout =>
+      GitGraphColumnLayout.resolve(prefs: _prefs, maxSlot: maxSlot);
 
   /// 偏好变化（含首次挂载）时同步；maxSlot 变化也在此更新（不单独 notify
   /// 的调用方需要手动 [notify] 时除外——本方法总是通知）。

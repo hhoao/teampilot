@@ -1,7 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
 
-import '../../services/chat/chat_tab_store.dart';
+import '../../services/chat/session/chat_tab_store.dart';
 import '../../cubits/chat_state.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';

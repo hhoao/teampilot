@@ -14,8 +14,8 @@ class SshProfileRepository {
     Filesystem? fs,
     required HomeStorage storage,
   }) : _rootDirOverride = rootDir,
-      _fsOverride = fs,
-      _storage = storage;
+       _fsOverride = fs,
+       _storage = storage;
 
   final String? _rootDirOverride;
   final Filesystem? _fsOverride;

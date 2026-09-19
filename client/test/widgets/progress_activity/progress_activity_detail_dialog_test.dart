@@ -73,17 +73,17 @@ Widget _host({
         );
 }
 
-Future<void> _openDialog(WidgetTester tester, ProgressActivityCubit cubit) async {
+Future<void> _openDialog(
+  WidgetTester tester,
+  ProgressActivityCubit cubit,
+) async {
   await tester.pumpWidget(
     _host(
       cubit: cubit,
       child: Builder(
         builder: (context) => TextButton(
           onPressed: () {
-            showProgressActivityDetailDialog(
-              context,
-              activityId: 'activity-1',
-            );
+            showProgressActivityDetailDialog(context, activityId: 'activity-1');
           },
           child: const Text('open'),
         ),
@@ -151,10 +151,7 @@ void main() {
       addTearDown(cubit.close);
       final registry = InstallJobRegistry(progressCubit: cubit);
       addTearDown(registry.dispose);
-      const key = InstallJobKey(
-        kind: InstallJobKind.toolchain,
-        target: 'git',
-      );
+      const key = InstallJobKey(kind: InstallJobKind.toolchain, target: 'git');
       unawaited(
         registry.enqueue(
           InstallJobSpec<void>(
@@ -208,10 +205,7 @@ void main() {
       await _openDialog(tester, cubit);
       expect(find.byType(Dialog), findsOneWidget);
 
-      cubit.complete(
-        'activity-1',
-        outcome: ProgressActivityPhase.succeeded,
-      );
+      cubit.complete('activity-1', outcome: ProgressActivityPhase.succeeded);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 

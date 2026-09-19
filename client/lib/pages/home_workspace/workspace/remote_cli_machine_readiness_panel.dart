@@ -134,9 +134,11 @@ class _RemoteCliMachineReadinessPanelState
         targetId: requirement.target.id,
         cli: requirement.cli,
       );
-      setState(() => _readinessByKey
-        ..clear()
-        ..addAll(next));
+      setState(
+        () => _readinessByKey
+          ..clear()
+          ..addAll(next),
+      );
 
       final result = await widget.readiness.probe(
         target: requirement.target,
@@ -253,7 +255,9 @@ class _RemoteCliMachineReadinessPanelState
                 const SizedBox(height: 8),
                 Text(
                   l10n.remoteCliMachineReadinessInstallHint,
-                  style: TpTextStyles.of(context).smColored(cs.onSurfaceVariant),
+                  style: TpTextStyles.of(
+                    context,
+                  ).smColored(cs.onSurfaceVariant),
                 ),
               ],
             ],
@@ -288,7 +292,9 @@ class _CliReadinessRow extends StatelessWidget {
         ? cliDisplayName(def, l10n, registry: registry)
         : requirement.cli.value;
     final supportsInstaller =
-        registry.capability<CliExecutableCapability>(requirement.cli)?.supportsInstaller ??
+        registry
+            .capability<CliExecutableCapability>(requirement.cli)
+            ?.supportsInstaller ??
         false;
 
     final (icon, color, subtitle) = switch (readiness) {

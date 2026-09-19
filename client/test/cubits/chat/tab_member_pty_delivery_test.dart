@@ -1,20 +1,20 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/chat_session_shell_factory.dart';
-import 'package:teampilot/services/chat/chat_tab_store.dart';
-import 'package:teampilot/services/chat/model/chat_tab.dart';
-import 'package:teampilot/services/chat/model/chat_tab_info.dart';
-import 'package:teampilot/services/chat/tab_member_coordination_factory.dart';
-import 'package:teampilot/services/chat/runtime/tab_member_pty_delivery.dart';
+import 'package:teampilot/services/chat/launch/connect/chat_session_shell_factory.dart';
+import 'package:teampilot/services/chat/session/chat_tab_store.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
+import 'package:teampilot/services/chat/session/chat_tab_info.dart';
+import 'package:teampilot/services/chat/runtime/tab_member_coordination_factory.dart';
+import 'package:teampilot/services/chat/runtime/pty/tab_member_pty_delivery.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_runtime/runtime_event.dart';
-import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery.dart';
-import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery_coordinator.dart';
-import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery_store.dart';
-import 'package:teampilot/services/chat/terminal/fullscreen_pty_automation.dart';
-import 'package:teampilot/services/chat/terminal/terminal_input_command_queue.dart';
+import 'package:teampilot/services/chat/conversation/prompt_delivery/prompt_delivery.dart';
+import 'package:teampilot/services/chat/conversation/prompt_delivery/prompt_delivery_coordinator.dart';
+import 'package:teampilot/services/chat/conversation/prompt_delivery/prompt_delivery_store.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_pty_automation.dart';
+import 'package:teampilot/services/chat/runtime/pty/terminal_input_command_queue.dart';
 
 import '../../integration/support/connected_recording_shell.dart';
 import '../../support/rust_lib_test_init.dart';

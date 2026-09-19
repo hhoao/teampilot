@@ -164,7 +164,9 @@ class SkillRepoGitService {
   Future<String?> readHeadSha(Filesystem fs, String workDirPath) async {
     final git = await _git;
     if (git == null) return null;
-    if (!(await fs.stat(fs.pathContext.join(workDirPath, '.git'))).isDirectory) {
+    if (!(await fs.stat(
+      fs.pathContext.join(workDirPath, '.git'),
+    )).isDirectory) {
       return null;
     }
     try {
@@ -217,5 +219,6 @@ class SkillRepoGitService {
     return text.split('\n').first.trim();
   }
 
-  String _stderrSnippet(ProcessResult result) => gitProcessStderrSnippet(result);
+  String _stderrSnippet(ProcessResult result) =>
+      gitProcessStderrSnippet(result);
 }

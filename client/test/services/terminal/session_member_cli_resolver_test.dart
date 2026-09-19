@@ -3,7 +3,7 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/chat/terminal/session_member_cli_resolver.dart';
+import 'package:teampilot/services/chat/session/session_member_cli_resolver.dart';
 
 void main() {
   group('SessionMemberCliResolver', () {

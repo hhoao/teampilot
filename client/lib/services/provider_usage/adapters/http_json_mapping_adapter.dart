@@ -434,9 +434,7 @@ class HttpJsonMappingAdapter implements ManagedProviderUsageAdapter {
       final clamped = percent.clamp(0, 100);
       resolvedUsed = formatOfficialPercent(clamped);
       resolvedTotal = '100';
-      resolvedRemaining = formatOfficialPercent(
-        (100 - clamped).clamp(0, 100),
-      );
+      resolvedRemaining = formatOfficialPercent((100 - clamped).clamp(0, 100));
     }
 
     final kind = window.kind == null || window.kind!.trim().isEmpty

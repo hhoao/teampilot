@@ -5,10 +5,10 @@ import 'package:teampilot/services/agent_status/agent_attention_state.dart'
 import 'package:teampilot/services/agent_status/seat_lease.dart';
 
 SeatLease _lease(String id, [DateTime? at]) => SeatLease(
-      kind: SeatLeaseKind.backgroundTask,
-      id: id,
-      acquiredAt: at ?? DateTime(2026, 1, 1),
-    );
+  kind: SeatLeaseKind.backgroundTask,
+  id: id,
+  acquiredAt: at ?? DateTime(2026, 1, 1),
+);
 
 void main() {
   group('SeatLeaseCubit', () {
@@ -17,10 +17,7 @@ void main() {
       addTearDown(cubit.close);
       cubit.acquire(sessionId: 's', memberId: 'm', lease: _lease('a'));
       cubit.acquire(sessionId: 's', memberId: 'm', lease: _lease('a'));
-      expect(
-        cubit.state.seatHasLeases(sessionId: 's', memberId: 'm'),
-        isTrue,
-      );
+      expect(cubit.state.seatHasLeases(sessionId: 's', memberId: 'm'), isTrue);
       expect(
         cubit.state.leases[agentSeatKey(sessionId: 's', memberId: 'm')],
         containsPair('a', anything),
@@ -38,10 +35,7 @@ void main() {
         ['b'],
       );
       cubit.release(sessionId: 's', memberId: 'm', leaseId: 'b');
-      expect(
-        cubit.state.seatHasLeases(sessionId: 's', memberId: 'm'),
-        isFalse,
-      );
+      expect(cubit.state.seatHasLeases(sessionId: 's', memberId: 'm'), isFalse);
     });
 
     test('release for an unknown id is a no-op', () {
@@ -73,38 +67,38 @@ void main() {
         cubit.state.seatHasLeases(sessionId: 's', memberId: 'm1'),
         isFalse,
       );
-      expect(
-        cubit.state.seatHasLeases(sessionId: 's', memberId: 'm2'),
-        isTrue,
-      );
+      expect(cubit.state.seatHasLeases(sessionId: 's', memberId: 'm2'), isTrue);
       cubit.clearSession('s');
       expect(cubit.state.leases, isEmpty);
     });
 
-    test('pruneStale drops leases past their kind TTL and keeps fresh ones',
-        () {
-      final clockBase = DateTime(2026, 1, 1, 12);
-      var now = clockBase;
-      final cubit = SeatLeaseCubit(
-        pruneInterval: null,
-        clock: () => now,
-      );
-      addTearDown(cubit.close);
-      // Fresh: acquired "now".
-      cubit.acquire(sessionId: 's', memberId: 'm', lease: _lease('fresh', now));
-      // Stale: backgroundTask TTL is 60 minutes.
-      cubit.acquire(
-        sessionId: 's',
-        memberId: 'm',
-        lease: _lease('stale', now.subtract(const Duration(minutes: 61))),
-      );
-      now = clockBase.add(const Duration(seconds: 1));
-      cubit.pruneStale();
-      expect(
-        cubit.state.leases[agentSeatKey(sessionId: 's', memberId: 'm')]?.keys,
-        ['fresh'],
-      );
-    });
+    test(
+      'pruneStale drops leases past their kind TTL and keeps fresh ones',
+      () {
+        final clockBase = DateTime(2026, 1, 1, 12);
+        var now = clockBase;
+        final cubit = SeatLeaseCubit(pruneInterval: null, clock: () => now);
+        addTearDown(cubit.close);
+        // Fresh: acquired "now".
+        cubit.acquire(
+          sessionId: 's',
+          memberId: 'm',
+          lease: _lease('fresh', now),
+        );
+        // Stale: backgroundTask TTL is 60 minutes.
+        cubit.acquire(
+          sessionId: 's',
+          memberId: 'm',
+          lease: _lease('stale', now.subtract(const Duration(minutes: 61))),
+        );
+        now = clockBase.add(const Duration(seconds: 1));
+        cubit.pruneStale();
+        expect(
+          cubit.state.leases[agentSeatKey(sessionId: 's', memberId: 'm')]?.keys,
+          ['fresh'],
+        );
+      },
+    );
 
     test('seatLeaseTtl — backgroundTask keeps a 60-minute safety net', () {
       expect(

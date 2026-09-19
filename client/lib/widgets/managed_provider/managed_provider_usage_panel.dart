@@ -249,7 +249,8 @@ class _ProviderUsageRow extends StatelessWidget {
     final isError = status == ProviderUsageStatus.error;
     final isUnsupported = status == ProviderUsageStatus.unsupported;
     final quotaMeasures = [
-      for (final measure in snapshot?.measures ?? const <ProviderUsageMeasure>[])
+      for (final measure
+          in snapshot?.measures ?? const <ProviderUsageMeasure>[])
         if (ManagedProviderQuotaMeter.supports(provider.displayConfig, measure))
           measure,
     ];
@@ -306,57 +307,49 @@ class _ProviderUsageRow extends StatelessWidget {
                       ],
                     )
                   else ...[
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 2,
-                        children: [
-                          Text(
-                            value ?? statusText,
-                            style: styles.xs.copyWith(
-                              color: isError
-                                  ? cs.error
-                                  : cs.onSurfaceVariant,
-                              fontFeatures: const [
-                                FontFeature.tabularFigures(),
-                              ],
-                            ),
-                          ),
-                          if (isError)
-                            Icon(
-                              Icons.warning_amber_rounded,
-                              key: const Key(
-                                'managed-provider-usage-warning',
-                              ),
-                              size: 13,
-                              color: cs.error,
-                            ),
-                          if (isUnsupported)
-                            Icon(
-                              Icons.block_outlined,
-                              key: const Key(
-                                'managed-provider-usage-unsupported',
-                              ),
-                              size: 13,
-                              color: cs.onSurfaceVariant,
-                            ),
-                          if (snapshot?.fetchedAt != null)
-                            Text(
-                              _timeLabel(context, snapshot!.fetchedAt!),
-                              style: styles.xs.copyWith(
-                                color: cs.onSurfaceVariant,
-                              ),
-                            ),
-                        ],
-                      ),
-                      if (snapshot?.measures.isNotEmpty == true &&
-                          snapshot!.measures.first.resetsAt != null)
-                        ManagedProviderResetCountdownLabel(
-                          resetsAt: snapshot!.measures.first.resetsAt,
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 2,
+                      children: [
+                        Text(
+                          value ?? statusText,
                           style: styles.xs.copyWith(
-                            color: cs.onSurfaceVariant,
+                            color: isError ? cs.error : cs.onSurfaceVariant,
+                            fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
-                    ],
+                        if (isError)
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            key: const Key('managed-provider-usage-warning'),
+                            size: 13,
+                            color: cs.error,
+                          ),
+                        if (isUnsupported)
+                          Icon(
+                            Icons.block_outlined,
+                            key: const Key(
+                              'managed-provider-usage-unsupported',
+                            ),
+                            size: 13,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        if (snapshot?.fetchedAt != null)
+                          Text(
+                            _timeLabel(context, snapshot!.fetchedAt!),
+                            style: styles.xs.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (snapshot?.measures.isNotEmpty == true &&
+                        snapshot!.measures.first.resetsAt != null)
+                      ManagedProviderResetCountdownLabel(
+                        resetsAt: snapshot!.measures.first.resetsAt,
+                        style: styles.xs.copyWith(color: cs.onSurfaceVariant),
+                      ),
+                  ],
                   if (status == ProviderUsageStatus.error &&
                       snapshot?.lastErrorMessage?.trim().isNotEmpty == true)
                     Padding(

@@ -87,9 +87,15 @@ hello from terminal
 
     test('returns null for garbage input', () {
       expect(parseCursorTerminalFile('not a terminal file'), isNull);
-      expect(parseCursorTerminalFile('---\nno command here\n---\nbody\n'), isNull);
+      expect(
+        parseCursorTerminalFile('---\nno command here\n---\nbody\n'),
+        isNull,
+      );
       expect(parseCursorTerminalFile('---\ncommand: ""\n---\nbody\n'), isNull);
-      expect(parseCursorTerminalFile('---\ncommand: "   "\n---\nbody\n'), isNull);
+      expect(
+        parseCursorTerminalFile('---\ncommand: "   "\n---\nbody\n'),
+        isNull,
+      );
     });
   });
 }

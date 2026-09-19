@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/services/chat/session/session_data_store.dart';
-import 'package:teampilot/services/chat/host/session_launch_host.dart';
+import 'package:teampilot/services/chat/launch/session_launch_host.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_runtime/agent_event_gateway.dart';
 import 'package:teampilot/services/agent_runtime/agent_runtime.dart';
@@ -13,9 +13,9 @@ import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import 'package:teampilot/services/agent_status/agent_status_seat_lookup.dart';
 import 'package:teampilot/services/agent_status/ask_user_answer_pending_store.dart';
-import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery.dart';
-import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery_coordinator.dart';
-import 'package:teampilot/services/chat/prompt_delivery/prompt_delivery_store.dart';
+import 'package:teampilot/services/chat/conversation/prompt_delivery/prompt_delivery.dart';
+import 'package:teampilot/services/chat/conversation/prompt_delivery/prompt_delivery_coordinator.dart';
+import 'package:teampilot/services/chat/conversation/prompt_delivery/prompt_delivery_store.dart';
 
 void main() {
   // restart-session path needs a full host fake; the

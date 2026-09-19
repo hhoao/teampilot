@@ -6,10 +6,7 @@ void main() {
   test('opencode official provider defaults to CLI-managed auth (none)', () {
     final preset = OpencodeProviderPresets.byId('opencode');
     expect(preset, isNotNull);
-    expect(
-      preset!.template.config['credentialKind'],
-      'none',
-    );
+    expect(preset!.template.config['credentialKind'], 'none');
     expect(preset.template.category, AppProviderCategory.official);
   });
 
@@ -17,10 +14,7 @@ void main() {
     final preset = OpencodeProviderPresets.byId('opencode-go');
     expect(preset, isNotNull);
     expect(preset!.label, 'OpenCode Go (subscription)');
-    expect(
-      preset.template.config['credentialKind'],
-      'none',
-    );
+    expect(preset.template.config['credentialKind'], 'none');
     expect(preset.template.category, AppProviderCategory.official);
     expect(preset.template.apiKeyUrl, 'https://opencode.ai/go');
     expect(preset.template.baseUrl, 'https://opencode.ai/zen/go/v1');

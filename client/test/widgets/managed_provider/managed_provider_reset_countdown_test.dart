@@ -8,7 +8,9 @@ void main() {
     test('label formats relative countdown', () {
       final l10n = lookupAppLocalizations(const Locale('en'));
       final now = DateTime.fromMillisecondsSinceEpoch(1_800_000_000_000);
-      final resetsAt = now.millisecondsSinceEpoch + const Duration(hours: 1, minutes: 40).inMilliseconds;
+      final resetsAt =
+          now.millisecondsSinceEpoch +
+          const Duration(hours: 1, minutes: 40).inMilliseconds;
 
       expect(
         ManagedProviderResetCountdown.label(l10n, resetsAt, now: now),
@@ -61,7 +63,10 @@ void main() {
     await tester.pump();
 
     await tester.pump(const Duration(seconds: 1));
-    expect(find.byKey(const Key('managed-provider-reset-countdown')), findsOneWidget);
+    expect(
+      find.byKey(const Key('managed-provider-reset-countdown')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 }

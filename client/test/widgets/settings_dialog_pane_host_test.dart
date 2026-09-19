@@ -89,11 +89,7 @@ void main() {
       var label = 'before';
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: _LabelPaneHostHarness(
-            labelBuilder: () => label,
-          ),
-        ),
+        MaterialApp(home: _LabelPaneHostHarness(labelBuilder: () => label)),
       );
 
       await tester.pump();
@@ -114,12 +110,7 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: _PaneHostHarness(
-          entries: const [
-            Text('pane-A'),
-            Text('pane-B'),
-          ],
-        ),
+        home: _PaneHostHarness(entries: const [Text('pane-A'), Text('pane-B')]),
       ),
     );
 

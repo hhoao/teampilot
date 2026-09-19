@@ -16,8 +16,8 @@ import 'package:teampilot/services/cli/opencode/capabilities/sqlite_worker_pool.
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/chat/session/history/jsonl_transcript_page_reader.dart';
-import 'package:teampilot/services/chat/session/history/session_history_context.dart';
+import 'package:teampilot/services/chat/conversation/history/jsonl_transcript_page_reader.dart';
+import 'package:teampilot/services/chat/conversation/history/session_history_context.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import '../../../../../support/test_runtime_context.dart';
 

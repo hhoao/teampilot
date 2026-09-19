@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/terminal/terminal_activity_tracker.dart';
+import 'package:teampilot/services/chat/runtime/pty/terminal_activity_tracker.dart';
 
 /// Minimal visible-content PTY payload (a few printable glyphs).
 Uint8List _visible(String s) => Uint8List.fromList(s.codeUnits);

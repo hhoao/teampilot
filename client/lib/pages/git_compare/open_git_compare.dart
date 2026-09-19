@@ -18,7 +18,8 @@ void openGitCompareTab(
   final floating = context.read<FloatingWorkspaceCubit>();
   floating.ensureOpen();
   floating.setActiveWorkspace(workspaceId);
-  context
-      .read<WorkbenchCubit>()
-      .openFloating(workspaceId, WorkbenchTabId.gitCompare(spec));
+  context.read<WorkbenchCubit>().openFloating(
+    workspaceId,
+    WorkbenchTabId.gitCompare(spec),
+  );
 }

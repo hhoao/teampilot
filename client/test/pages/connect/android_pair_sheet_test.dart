@@ -142,7 +142,7 @@ class _RecordingWriter extends PairedProfileWriter {
         profileRepository: SshProfileRepository(
           rootDir: '/unused',
           fs: InMemoryFilesystem(),
-                                                 storage: fakeHomeStorage(),
+          storage: fakeHomeStorage(),
         ),
         credentialStore: InMemorySshCredentialStore(),
         knownHostRepository: InMemorySshKnownHostRepository(),
@@ -231,7 +231,7 @@ class _Harness {
     profileRepository = SshProfileRepository(
       rootDir: '/profiles',
       fs: InMemoryFilesystem(),
-                                              storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     credentials = InMemorySshCredentialStore();
     profileCubit = SshProfileCubit(
@@ -457,10 +457,7 @@ void main() {
       await tester.tap(find.byKey(AppKeys.connectScanQr));
       await tester.pumpAndSettle();
 
-      expect(
-        find.textContaining('same Wi-Fi'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('same Wi-Fi'), findsOneWidget);
     },
   );
 

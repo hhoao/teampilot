@@ -83,34 +83,19 @@ class _MyTeamsCardState extends State<MyTeamsCard> {
           ),
         ),
         child: TeamHubWorkspaceCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TeamHubCardHeader(
-                  title: team.name,
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (widget.onUpload != null)
-                        IconButton(
-                          key: Key('my-teams-upload-${team.id}'),
-                          tooltip: l10n.myTeamsUpload,
-                          onPressed: widget.onUpload,
-                          visualDensity: VisualDensity.compact,
-                          style: IconButton.styleFrom(
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            minimumSize: const Size(32, 32),
-                            padding: const EdgeInsets.all(4),
-                          ),
-                          icon: Icon(
-                            Icons.upload_outlined,
-                            size: context.tpIconSizes.md,
-                          ),
-                        ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TeamHubCardHeader(
+                title: team.name,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (widget.onUpload != null)
                       IconButton(
-                        key: Key('my-teams-delete-${team.id}'),
-                        tooltip: l10n.deleteTeam,
-                        onPressed: widget.onDelete,
+                        key: Key('my-teams-upload-${team.id}'),
+                        tooltip: l10n.myTeamsUpload,
+                        onPressed: widget.onUpload,
                         visualDensity: VisualDensity.compact,
                         style: IconButton.styleFrom(
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -118,47 +103,62 @@ class _MyTeamsCardState extends State<MyTeamsCard> {
                           padding: const EdgeInsets.all(4),
                         ),
                         icon: Icon(
-                          Icons.delete_outline,
+                          Icons.upload_outlined,
                           size: context.tpIconSizes.md,
-                          color: cs.error,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  l10n.myTeamsMemberCount(team.roster.length),
-                  style: styles.smColored(cs.onSurfaceVariant),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '$cliLabel · $modeLabel',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: styles.smColored(cs.onSurfaceVariant),
-                ),
-                if (widget.publishRecord != null) ...[
-                  const SizedBox(height: 6),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: HubPublishBadge(
-                      key: Key('hub-publish-badge-team-${team.id}'),
-                      record: widget.publishRecord!,
+                    IconButton(
+                      key: Key('my-teams-delete-${team.id}'),
+                      tooltip: l10n.deleteTeam,
+                      onPressed: widget.onDelete,
+                      visualDensity: VisualDensity.compact,
+                      style: IconButton.styleFrom(
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        minimumSize: const Size(32, 32),
+                        padding: const EdgeInsets.all(4),
+                      ),
+                      icon: Icon(
+                        Icons.delete_outline,
+                        size: context.tpIconSizes.md,
+                        color: cs.error,
+                      ),
                     ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                l10n.myTeamsMemberCount(team.roster.length),
+                style: styles.smColored(cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$cliLabel · $modeLabel',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: styles.smColored(cs.onSurfaceVariant),
+              ),
+              if (widget.publishRecord != null) ...[
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: HubPublishBadge(
+                    key: Key('hub-publish-badge-team-${team.id}'),
+                    record: widget.publishRecord!,
                   ),
-                ],
-                const Spacer(),
-                Text(
-                  l10n.myTeamsCreatedAt(formatMyTeamsTimestamp(team.createdAt)),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: styles.xsColored(cs.onSurfaceVariant),
                 ),
               ],
-            ),
+              const Spacer(),
+              Text(
+                l10n.myTeamsCreatedAt(formatMyTeamsTimestamp(team.createdAt)),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: styles.xsColored(cs.onSurfaceVariant),
+              ),
+            ],
           ),
         ),
+      ),
     );
   }
 }

@@ -8,7 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:permission_handler/permission_handler.dart' show openAppSettings;
+import 'package:permission_handler/permission_handler.dart'
+    show openAppSettings;
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/ssh_connection_cubit.dart';
@@ -28,9 +29,7 @@ import '../../utils/ui/app_keys.dart';
 
 typedef SshDeviceKeyFactory = ({String pem, String openSshPublic}) Function();
 typedef RelayPairChannelOpener =
-    Future<({InternetAddress address, int port})> Function(
-      SshRelayOffer relay,
-    );
+    Future<({InternetAddress address, int port})> Function(SshRelayOffer relay);
 
 Future<void> showAndroidPairSheet(
   BuildContext context, {
@@ -576,8 +575,7 @@ class _ScannerErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final denied =
-        error?.errorCode == MobileScannerErrorCode.permissionDenied;
+    final denied = error?.errorCode == MobileScannerErrorCode.permissionDenied;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),

@@ -13,6 +13,7 @@ import '../../services/storage/runtime_context.dart';
 import '../../services/workbench/open_workspace_terminal_at_path.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../utils/debounce/debounce.dart';
+
 /// Right-click menu for a file-tree row.
 abstract final class FileTreeContextMenu {
   static Future<void> show({
@@ -428,11 +429,7 @@ abstract final class FileTreeContextMenu {
       await action();
       if (!context.mounted) return;
       onSuccess?.call();
-      AppToast.show(
-        context,
-        message: success,
-        variant: TpToastVariant.success,
-      );
+      AppToast.show(context, message: success, variant: TpToastVariant.success);
     } on FileTreeOperationException catch (e) {
       if (!context.mounted) return;
       AppToast.show(
@@ -460,5 +457,4 @@ abstract final class FileTreeContextMenu {
       _ => key,
     };
   }
-
 }

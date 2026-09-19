@@ -7,10 +7,11 @@ import 'package:timezone/timezone.dart' as tz;
 void main() {
   group('AutomationScheduleMode', () {
     test('exposes once, countdown, recurring', () {
-      expect(
-        AutomationScheduleMode.values.map((m) => m.name),
-        ['once', 'countdown', 'recurring'],
-      );
+      expect(AutomationScheduleMode.values.map((m) => m.name), [
+        'once',
+        'countdown',
+        'recurring',
+      ]);
     });
   });
 

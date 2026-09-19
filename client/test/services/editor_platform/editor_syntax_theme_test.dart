@@ -27,14 +27,23 @@ void main() {
   test('atomOneDark and atomOneLight factories exist and differ', () {
     final dark = EditorSyntaxTheme.atomOneDark();
     final light = EditorSyntaxTheme.atomOneLight();
-    expect(dark.styleFor('keyword')?.color, isNot(equals(light.styleFor('keyword')?.color)));
+    expect(
+      dark.styleFor('keyword')?.color,
+      isNot(equals(light.styleFor('keyword')?.color)),
+    );
   });
 
   test('forBrightness picks dark for Brightness.dark and light otherwise', () {
     final dark = EditorSyntaxTheme.forBrightness(Brightness.dark);
     final light = EditorSyntaxTheme.forBrightness(Brightness.light);
-    expect(dark.styleFor('keyword')?.color, EditorSyntaxTheme.atomOneDark().styleFor('keyword')?.color);
-    expect(light.styleFor('keyword')?.color, EditorSyntaxTheme.atomOneLight().styleFor('keyword')?.color);
+    expect(
+      dark.styleFor('keyword')?.color,
+      EditorSyntaxTheme.atomOneDark().styleFor('keyword')?.color,
+    );
+    expect(
+      light.styleFor('keyword')?.color,
+      EditorSyntaxTheme.atomOneLight().styleFor('keyword')?.color,
+    );
   });
 
   test('asStyleMap exposes an unmodifiable snapshot of scope styles', () {
@@ -46,6 +55,9 @@ void main() {
 
   test('nested fallback walks multiple dotted levels', () {
     final theme = EditorSyntaxTheme.atomOneDark();
-    expect(theme.styleFor('variable.parameter.builtin'), theme.styleFor('variable.parameter'));
+    expect(
+      theme.styleFor('variable.parameter.builtin'),
+      theme.styleFor('variable.parameter'),
+    );
   });
 }

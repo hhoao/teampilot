@@ -51,7 +51,8 @@ void main() {
         roster: [
           TeamRosterSlot(
             id: 'team-lead',
-            expertKey: 'hhoao/teampilot-resources/member-hub/gstack-office-hours',
+            expertKey:
+                'hhoao/teampilot-resources/member-hub/gstack-office-hours',
           ),
         ],
       );
@@ -70,11 +71,14 @@ void main() {
         roster: [
           TeamRosterSlot(
             id: 'team-lead',
-            expertKey: 'hhoao/teampilot-resources/member-hub/gstack-office-hours',
+            expertKey:
+                'hhoao/teampilot-resources/member-hub/gstack-office-hours',
           ),
         ],
       );
-      final snapshot = MemberCatalogSnapshot({registryExpert.key: registryExpert});
+      final snapshot = MemberCatalogSnapshot({
+        registryExpert.key: registryExpert,
+      });
 
       final out = ExpertMemberMaterializer.materializeTeam(team, snapshot);
 
@@ -95,8 +99,7 @@ void main() {
       member: DiscoverableTeamMember(name: key),
     );
 
-    TeamRosterSlot slot(String key) =>
-        TeamRosterSlot(id: key, expertKey: key);
+    TeamRosterSlot slot(String key) => TeamRosterSlot(id: key, expertKey: key);
 
     test('resolves every slot from one snapshot — no per-slot fetch', () {
       final snapshot = MemberCatalogSnapshot({

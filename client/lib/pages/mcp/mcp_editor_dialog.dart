@@ -24,11 +24,7 @@ Future<bool?> showMcpEditorDialog(
 /// 新建/编辑 MCP server 的对话框表单：id、name、可展开 metadata
 /// （description/tags/homepage/docs）、server JSON；保存走 [McpCubit.upsert]。
 class McpEditorDialog extends StatefulWidget {
-  const McpEditorDialog({
-    required this.cubit,
-    this.existing,
-    super.key,
-  });
+  const McpEditorDialog({required this.cubit, this.existing, super.key});
 
   final McpCubit cubit;
 

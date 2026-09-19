@@ -12,10 +12,10 @@ void main() {
         file: _FakeSurface(id: 'filePreview', emptyLabel: 'openFile'),
         terminal: _FakeSurface(id: 'terminal', emptyLabel: 'newTerminal'),
       );
-      expect(
-        registry.emptyActions.map((a) => a.commandId).toList(),
-        ['floatingWorkspace.newTerminal', 'floatingWorkspace.openFile'],
-      );
+      expect(registry.emptyActions.map((a) => a.commandId).toList(), [
+        'floatingWorkspace.newTerminal',
+        'floatingWorkspace.openFile',
+      ]);
     },
   );
 
@@ -25,14 +25,11 @@ void main() {
       terminal: _FakeSurface(id: 'terminal', emptyLabel: 'newTerminal'),
       html: _FakeSurface(id: 'htmlPreview', emptyLabel: 'openHtmlPreview'),
     );
-    expect(
-      registry.emptyActions.map((a) => a.commandId).toList(),
-      [
-        'floatingWorkspace.newTerminal',
-        'floatingWorkspace.openFile',
-        'floatingWorkspace.openHtmlPreview',
-      ],
-    );
+    expect(registry.emptyActions.map((a) => a.commandId).toList(), [
+      'floatingWorkspace.newTerminal',
+      'floatingWorkspace.openFile',
+      'floatingWorkspace.openHtmlPreview',
+    ]);
     expect(registry['htmlPreview'], isNotNull);
     expect(registry['htmlPreview']?.id, 'htmlPreview');
   });

@@ -47,29 +47,36 @@ void main() {
     expect(draft.definition.id, hasLength('import-'.length + 12));
   });
 
-  test('script copy rewrites quoted path when teampilotRoot contains spaces', () async {
-    await fs.writeString('/x/guard.sh', 'exit 2');
-    final result = await HookImportParser(fs: fs, teampilotRoot: '/root/App Support/tp')
-        .parseJson(
-          cli: CliTool.claude,
-          jsonText: '''
+  test(
+    'script copy rewrites quoted path when teampilotRoot contains spaces',
+    () async {
+      await fs.writeString('/x/guard.sh', 'exit 2');
+      final result =
+          await HookImportParser(
+            fs: fs,
+            teampilotRoot: '/root/App Support/tp',
+          ).parseJson(
+            cli: CliTool.claude,
+            jsonText: '''
 {"hooks": {"Stop": [
   {"hooks": [{"type": "command", "command": "bash /x/guard.sh"}]}
 ]}}''',
-        );
-    final draft = result.drafts.single;
-    final command = (draft.definition.action as CommandHookAction).command;
-    expect(
-      command,
-      'bash "/root/App Support/tp/hooks/${draft.definition.id}/guard.sh"',
-    );
-    // 整个路径必须是单个引号包裹的 token（不再被 shell 按空格拆词）。
-    expect(
-      RegExp(r'^bash "/root/App Support/tp/hooks/[^"]+/guard\.sh"$')
-          .hasMatch(command!),
-      isTrue,
-    );
-  });
+          );
+      final draft = result.drafts.single;
+      final command = (draft.definition.action as CommandHookAction).command;
+      expect(
+        command,
+        'bash "/root/App Support/tp/hooks/${draft.definition.id}/guard.sh"',
+      );
+      // 整个路径必须是单个引号包裹的 token（不再被 shell 按空格拆词）。
+      expect(
+        RegExp(
+          r'^bash "/root/App Support/tp/hooks/[^"]+/guard\.sh"$',
+        ).hasMatch(command!),
+        isTrue,
+      );
+    },
+  );
 
   test('script copy escapes backslashes in rewritten path', () async {
     await fs.writeString('/x/a\\b.sh', 'exit 2');
@@ -83,22 +90,25 @@ void main() {
     expect(command, 'bash "/root/hooks/${draft.definition.id}/a\\\\b.sh"');
   });
 
-  test('raw command stays raw; unsupported event dropped with warning', () async {
-    final result = await parser().parseJson(
-      cli: CliTool.claude,
-      jsonText: '''
+  test(
+    'raw command stays raw; unsupported event dropped with warning',
+    () async {
+      final result = await parser().parseJson(
+        cli: CliTool.claude,
+        jsonText: '''
 {"hooks": {
   "PostCompact": [{"hooks": [{"type": "command", "command": "echo a"}]}],
   "Stop": [{"hooks": [{"type": "command", "command": "echo done"}]}]
 }}''',
-    );
-    expect(result.drafts, hasLength(1));
-    expect(result.warnings, ['hook_import_event_unsupported_PostCompact']);
-    expect(
-      (result.drafts.single.definition.action as CommandHookAction).command,
-      'echo done',
-    );
-  });
+      );
+      expect(result.drafts, hasLength(1));
+      expect(result.warnings, ['hook_import_event_unsupported_PostCompact']);
+      expect(
+        (result.drafts.single.definition.action as CommandHookAction).command,
+        'echo done',
+      );
+    },
+  );
 
   test('cursor json maps lowercase events; http keeps url', () async {
     final result = await parser().parseJson(
@@ -138,15 +148,19 @@ void main() {
   });
 
   test('bad json produces warning and no drafts', () async {
-    final result =
-        await parser().parseJson(cli: CliTool.claude, jsonText: 'not json');
+    final result = await parser().parseJson(
+      cli: CliTool.claude,
+      jsonText: 'not json',
+    );
     expect(result.drafts, isEmpty);
     expect(result.warnings.single, startsWith('hook_import_invalid_json'));
   });
 
   test('opencode cli is unsupported', () async {
-    final result =
-        await parser().parseJson(cli: CliTool.opencode, jsonText: '{}');
+    final result = await parser().parseJson(
+      cli: CliTool.opencode,
+      jsonText: '{}',
+    );
     expect(result.drafts, isEmpty);
     expect(result.warnings, ['hook_import_cli_unsupported_opencode']);
   });

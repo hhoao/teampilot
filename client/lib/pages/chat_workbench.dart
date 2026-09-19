@@ -8,8 +8,8 @@ import 'package:shared_ui/shared_ui.dart';
 import '../widgets/app_toast/app_toast.dart';
 import '../widgets/home_storage_scope.dart';
 
-import '../services/chat/model/session_connect_request.dart';
-import '../services/chat/model/chat_tab.dart';
+import '../services/chat/session/session_connect_request.dart';
+import '../services/chat/session/chat_tab.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/launch_profile_cubit.dart';

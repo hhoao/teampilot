@@ -10,7 +10,8 @@ Future<CredentialActionResult> loginCommandResult({
   required String executable,
   Future<void> Function()? clearIncompleteCredentials,
 }) async {
-  final resolved = hostResult ??
+  final resolved =
+      hostResult ??
       (result != null
           ? HostRunResult.fromProcess(result)
           : (throw ArgumentError(

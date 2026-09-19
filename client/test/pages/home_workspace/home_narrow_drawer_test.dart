@@ -20,9 +20,9 @@ class _NarrowHomeSlideBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scope = TpSidebarScope.maybeOf(context);
-    final width = TpTheme.of(context).sidebarTheme.resolveMobileDrawerWidth(
-      MediaQuery.sizeOf(context).width,
-    );
+    final width = TpTheme.of(
+      context,
+    ).sidebarTheme.resolveMobileDrawerWidth(MediaQuery.sizeOf(context).width);
     return MobileSlidePanelHost(
       open: scope?.openMobile ?? false,
       width: width,
@@ -53,10 +53,7 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  Future<void> pumpHarness(
-    WidgetTester tester, {
-    String? activeTabKey,
-  }) async {
+  Future<void> pumpHarness(WidgetTester tester, {String? activeTabKey}) async {
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -65,14 +62,13 @@ void main() {
     final theme = ThemeData(useMaterial3: true);
     await tester.pumpWidget(
       TpTheme(
-        data: TpThemeData.fromColorScheme(
-          theme.colorScheme,
-          scale: 1.0,
-        ),
+        data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
         child: MultiBlocProvider(
           providers: [
             BlocProvider<ChatCubit>.value(value: chatCubit),
-            BlocProvider(create: (_) => NotificationCubit(storage: testHomeStorage)),
+            BlocProvider(
+              create: (_) => NotificationCubit(storage: testHomeStorage),
+            ),
             BlocProvider(
               create: (context) => ProgressActivityCubit(
                 historyRecorder: context.read<NotificationCubit>(),
@@ -93,9 +89,7 @@ void main() {
                       activeTabKey: activeTabKey,
                       tabs: activeTabKey == null
                           ? const []
-                          : const [
-                              HomeWorkspaceTab(id: 'ws-a', name: 'Solo'),
-                            ],
+                          : const [HomeWorkspaceTab(id: 'ws-a', name: 'Solo')],
                     ),
                     const Expanded(child: _NarrowHomeSlideBody()),
                   ],

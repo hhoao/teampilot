@@ -199,11 +199,7 @@ class LocalFilesystem implements Filesystem, FsWatcher {
   }
 
   @override
-  Future<List<int>?> readBytesRange(
-    String path,
-    int offset,
-    int length,
-  ) async {
+  Future<List<int>?> readBytesRange(String path, int offset, int length) async {
     final file = File(path);
     if (!await file.exists()) return null;
     final raf = await file.open(mode: FileMode.read);
@@ -350,7 +346,10 @@ class LocalFilesystem implements Filesystem, FsWatcher {
         await Link(linkPath).create(normalizedTarget);
         return true;
       } on FileSystemException {
-        if (_linkAlreadyPointsTo(target: normalizedTarget, linkPath: linkPath)) {
+        if (_linkAlreadyPointsTo(
+          target: normalizedTarget,
+          linkPath: linkPath,
+        )) {
           return true;
         }
         if (!Platform.isWindows) rethrow;
@@ -464,7 +463,10 @@ class LocalFilesystem implements Filesystem, FsWatcher {
   /// script hooks (e.g. Claude Code plugin `hooks/*`) stay runnable in
   /// materialized trees. Best-effort: on failure the copy keeps its default
   /// mode (matches today's behavior, a non-blocking warning in the CLI).
-  Future<void> _mirrorModeIfExecutable(String source, String destination) async {
+  Future<void> _mirrorModeIfExecutable(
+    String source,
+    String destination,
+  ) async {
     if (Platform.isWindows) return; // no POSIX exec bits
     try {
       final mode = (await File(source).stat()).mode;
@@ -534,25 +536,27 @@ class LocalFilesystem implements Filesystem, FsWatcher {
       );
     }
 
-    subscription = Directory(path).watch(recursive: true).listen(
-      (event) {
-        if (controller.isClosed) return;
-        controller.add(
-          FsChangeEvent(path: event.path, type: _mapFsChangeType(event)),
+    subscription = Directory(path)
+        .watch(recursive: true)
+        .listen(
+          (event) {
+            if (controller.isClosed) return;
+            controller.add(
+              FsChangeEvent(path: event.path, type: _mapFsChangeType(event)),
+            );
+          },
+          onError: (Object error, StackTrace stack) {
+            if (!controller.isClosed) {
+              controller.addError(error, stack);
+            }
+          },
+          onDone: () {
+            if (!controller.isClosed) {
+              unawaited(controller.close());
+            }
+          },
+          cancelOnError: false,
         );
-      },
-      onError: (Object error, StackTrace stack) {
-        if (!controller.isClosed) {
-          controller.addError(error, stack);
-        }
-      },
-      onDone: () {
-        if (!controller.isClosed) {
-          unawaited(controller.close());
-        }
-      },
-      cancelOnError: false,
-    );
 
     return FsTreeWatch(
       events: controller.stream,

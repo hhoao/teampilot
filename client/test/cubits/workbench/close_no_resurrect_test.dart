@@ -21,9 +21,10 @@ void main() {
     cubit.activate('ws', WorkbenchTabId.session('s1'));
     cubit.reorder('ws', 0, 1);
     cubit.openSession('ws', 's4');
-    expect(cubit.centerOrder('ws').map((t) => t.id),
-        ['s3', 's1', 's4']);
-    expect(cubit.centerOrder('ws').contains(WorkbenchTabId.session('s2')),
-        isFalse);
+    expect(cubit.centerOrder('ws').map((t) => t.id), ['s3', 's1', 's4']);
+    expect(
+      cubit.centerOrder('ws').contains(WorkbenchTabId.session('s2')),
+      isFalse,
+    );
   });
 }

@@ -187,7 +187,8 @@ class PluginCubit extends Cubit<PluginState> {
              filesystem: storage.fs,
              teampilotRoot: storage.appDataRoot,
            ),
-       _externalFetch = externalFetch ?? PluginExternalFetchService(storage: storage),
+       _externalFetch =
+           externalFetch ?? PluginExternalFetchService(storage: storage),
        _onPluginUninstalled = onPluginUninstalled,
        _onPluginUpdated = onPluginUpdated,
        _installJobRegistry = installJobRegistry,
@@ -225,7 +226,9 @@ class PluginCubit extends Cubit<PluginState> {
          ),
        );
   static final _dummyRepo = PluginRepository(storage: _dummyStorage);
-  static final _dummyInstallService = PluginInstallService(storage: _dummyStorage);
+  static final _dummyInstallService = PluginInstallService(
+    storage: _dummyStorage,
+  );
   static final _dummyRepoService = PluginRepoService(storage: _dummyStorage);
   // Test-only home: a bare native RuntimeContext wrapped in HomeStorage, so
   // the dummy repository has a non-null context without a real home binding.

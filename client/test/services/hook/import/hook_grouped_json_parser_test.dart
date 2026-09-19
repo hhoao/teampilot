@@ -7,9 +7,10 @@ void main() {
   const claude = ClaudeFamilyHooksJsonDialect();
   const codex = CodexHooksJsonDialect();
 
-  test('claude: settings.json hooks map with matcher group and command/http',
-      () {
-    const json = '''
+  test(
+    'claude: settings.json hooks map with matcher group and command/http',
+    () {
+      const json = '''
 {
   "apiKeyHelper": {"enabled": true},
   "hooks": {
@@ -22,26 +23,28 @@ void main() {
     ]
   }
 }''';
-    final warnings = <String>[];
-    final entries = claude.parseJson(json, warnings);
-    expect(warnings, isEmpty);
-    expect(entries, hasLength(2));
-    final cmd = entries[0];
-    expect(cmd.nativeEvent, 'PreToolUse');
-    expect(cmd.matcher, 'Bash');
-    expect(cmd.type, 'command');
-    expect(cmd.command, 'bash /x/guard.sh');
-    expect(cmd.timeoutSec, 5);
-    expect(cmd.native, {'if': 'Bash(rm *)', 'async': true});
-    expect(cmd.unsupportedFields, containsAll(['if', 'async']));
-    final http = entries[1];
-    expect(http.type, 'http');
-    expect(http.url, 'http://127.0.0.1:1/h');
-    expect(http.headers, {'X-A': 'b'});
-  });
+      final warnings = <String>[];
+      final entries = claude.parseJson(json, warnings);
+      expect(warnings, isEmpty);
+      expect(entries, hasLength(2));
+      final cmd = entries[0];
+      expect(cmd.nativeEvent, 'PreToolUse');
+      expect(cmd.matcher, 'Bash');
+      expect(cmd.type, 'command');
+      expect(cmd.command, 'bash /x/guard.sh');
+      expect(cmd.timeoutSec, 5);
+      expect(cmd.native, {'if': 'Bash(rm *)', 'async': true});
+      expect(cmd.unsupportedFields, containsAll(['if', 'async']));
+      final http = entries[1];
+      expect(http.type, 'http');
+      expect(http.url, 'http://127.0.0.1:1/h');
+      expect(http.headers, {'X-A': 'b'});
+    },
+  );
 
   test('claude: pasted hooks-only fragment works (no top-level hooks key)', () {
-    const json = '{"Stop": [{"hooks": [{"type": "command", "command": "echo done"}]}]}';
+    const json =
+        '{"Stop": [{"hooks": [{"type": "command", "command": "echo done"}]}]}';
     final warnings = <String>[];
     final entries = claude.parseJson(json, warnings);
     expect(entries.single.nativeEvent, 'Stop');
@@ -61,11 +64,14 @@ void main() {
     final warnings = <String>[];
     final entries = claude.parseJson(json, warnings);
     expect(entries, hasLength(1));
-    expect(warnings, containsAll([
-      'hook_import_type_unsupported_prompt',
-      'hook_import_type_unsupported_mcp_tool',
-      'hook_import_type_unsupported_agent',
-    ]));
+    expect(
+      warnings,
+      containsAll([
+        'hook_import_type_unsupported_prompt',
+        'hook_import_type_unsupported_mcp_tool',
+        'hook_import_type_unsupported_agent',
+      ]),
+    );
   });
 
   test('codex: description top-level ignored, statusMessage into native', () {

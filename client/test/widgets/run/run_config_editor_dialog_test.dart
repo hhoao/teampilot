@@ -47,10 +47,7 @@ class _FakeProcessLauncher implements RunProcessLauncher {
     required void Function(ProcessRunOutput output) onOutput,
     String? preferTerminalEntryId,
   }) async {
-    return RunLaunchHandle(
-      exitCode: Future.value(0),
-      stop: () async {},
-    );
+    return RunLaunchHandle(exitCode: Future.value(0), stop: () async {});
   }
 }
 
@@ -230,31 +227,31 @@ class _StoreBackedPlatform implements RunPlatformApi {
 
   @override
   List<LaunchTypeContribution> get launchTypes => [
-        LaunchTypeContribution(
-          type: ShellScriptLaunchSchema.typeName,
-          kinds: const ['run'],
-          adapterCommand: '',
-          adapterRuntime: 'workspace',
-          lifecycle: LaunchAdapterLifecycle.sticky,
-          configurationSchema: Map<String, Object?>.from(
-            ShellScriptLaunchSchema.configurationSchema,
-          ),
-        ),
-        const LaunchTypeContribution(
-          type: 'demo',
-          kinds: ['run'],
-          adapterCommand: 'demo',
-          adapterRuntime: 'workspace',
-          lifecycle: LaunchAdapterLifecycle.sticky,
-          configurationSchema: {
-            'type': 'object',
-            'properties': {
-              'device': {'type': 'string'},
-            },
-          },
-          extensionId: 'ext.demo',
-        ),
-      ];
+    LaunchTypeContribution(
+      type: ShellScriptLaunchSchema.typeName,
+      kinds: const ['run'],
+      adapterCommand: '',
+      adapterRuntime: 'workspace',
+      lifecycle: LaunchAdapterLifecycle.sticky,
+      configurationSchema: Map<String, Object?>.from(
+        ShellScriptLaunchSchema.configurationSchema,
+      ),
+    ),
+    const LaunchTypeContribution(
+      type: 'demo',
+      kinds: ['run'],
+      adapterCommand: 'demo',
+      adapterRuntime: 'workspace',
+      lifecycle: LaunchAdapterLifecycle.sticky,
+      configurationSchema: {
+        'type': 'object',
+        'properties': {
+          'device': {'type': 'string'},
+        },
+      },
+      extensionId: 'ext.demo',
+    ),
+  ];
 }
 
 Future<void> _pumpEditor(
@@ -392,7 +389,10 @@ void main() {
     expect(find.text('Add configuration'), findsOneWidget);
     expect(find.byKey(const Key('run-config-type-dropdown')), findsOneWidget);
     expect(find.text('Shell Script'), findsWidgets);
-    expect(find.byKey(const Key('launch-config-field-scriptPath')), findsOneWidget);
+    expect(
+      find.byKey(const Key('launch-config-field-scriptPath')),
+      findsOneWidget,
+    );
     await cubit.close();
   });
 
@@ -403,14 +403,20 @@ void main() {
 
     await _pumpEditor(tester, cubit: cubit, createNew: true);
 
-    expect(find.byKey(const Key('launch-config-field-scriptPath')), findsOneWidget);
+    expect(
+      find.byKey(const Key('launch-config-field-scriptPath')),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const Key('run-config-type-dropdown')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('demo').last);
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('launch-config-field-scriptPath')), findsNothing);
+    expect(
+      find.byKey(const Key('launch-config-field-scriptPath')),
+      findsNothing,
+    );
     expect(find.byKey(const Key('launch-config-field-device')), findsOneWidget);
     await cubit.close();
   });
@@ -418,10 +424,7 @@ void main() {
   testWidgets('multi-folder create shows folder dropdown', (tester) async {
     const other = WorkspaceFolder(path: '/other');
     final platform = _StoreBackedPlatform();
-    final cubit = RunCubit(
-      platform: platform,
-      folders: const [_folder, other],
-    );
+    final cubit = RunCubit(platform: platform, folders: const [_folder, other]);
     await cubit.load();
 
     await _pumpEditor(tester, cubit: cubit, createNew: true);

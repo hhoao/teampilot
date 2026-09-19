@@ -95,10 +95,7 @@ void main() {
         headers: {'X-Region': 'us', 'Authorization': 'Bearer header-secret'},
         body: {'scope': 'all', 'apiKey': 'body-secret'},
         windows: const [
-          ManagedProviderUsageWindow(
-            label: 'Usage',
-            remaining: r'$.remaining',
-          ),
+          ManagedProviderUsageWindow(label: 'Usage', remaining: r'$.remaining'),
         ],
       ),
     );

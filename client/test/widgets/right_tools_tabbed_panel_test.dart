@@ -88,12 +88,7 @@ void main() {
       matching: find.byType(TpHover),
     );
     final tabHover = tester.widget<MouseRegion>(
-      find
-          .descendant(
-            of: tabTpHover,
-            matching: find.byType(MouseRegion),
-          )
-          .first,
+      find.descendant(of: tabTpHover, matching: find.byType(MouseRegion)).first,
     );
     expect(tabHover.cursor, SystemMouseCursors.click);
 
@@ -106,10 +101,7 @@ void main() {
     );
     final pickerHover = tester.widget<MouseRegion>(
       find
-          .descendant(
-            of: pickerTpHover,
-            matching: find.byType(MouseRegion),
-          )
+          .descendant(of: pickerTpHover, matching: find.byType(MouseRegion))
           .first,
     );
     expect(pickerHover.cursor, SystemMouseCursors.click);
@@ -213,9 +205,7 @@ void main() {
     );
 
     final title = tester.widget<Text>(find.text('Open a tab'));
-    final styles = TpTextStyles.of(
-      tester.element(find.text('Open a tab')),
-    );
+    final styles = TpTextStyles.of(tester.element(find.text('Open a tab')));
     expect(title.style?.fontSize, styles.xl.fontSize);
   });
 

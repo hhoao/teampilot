@@ -52,9 +52,7 @@ class _OnboardingProviderImportStepState
   }
 
   List<AppProviderConfig> _allProviders(AppProviderCubit cubit) {
-    return [
-      for (final cli in CliTool.values) ...cubit.state.providersFor(cli),
-    ];
+    return [for (final cli in CliTool.values) ...cubit.state.providersFor(cli)];
   }
 
   Future<void> _import() async {
@@ -128,9 +126,7 @@ class _OnboardingProviderImportStepState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  TpSectionHeader(
-                    title: l10n.onboardingProviderImportResults,
-                  ),
+                  TpSectionHeader(title: l10n.onboardingProviderImportResults),
                   for (var i = 0; i < _providers.length; i++) ...[
                     ListTile(
                       leading: ProviderBrandIcon.fromConfig(
@@ -148,10 +144,7 @@ class _OnboardingProviderImportStepState
                             _providers[i].id,
                         ].join(' · '),
                       ),
-                      trailing: Icon(
-                        Icons.check,
-                        size: context.tpIconSizes.md,
-                      ),
+                      trailing: Icon(Icons.check, size: context.tpIconSizes.md),
                     ),
                     if (i < _providers.length - 1) const Divider(height: 1),
                   ],

@@ -4,14 +4,12 @@ import 'package:path/path.dart' as p;
 
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/credential_link_result.dart';
-import '../../../../models/team_config.dart';
 import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/headless_capability.dart';
 import '../../registry/capabilities/workspace_base_info_capability.dart';
 import '../../registry/cli_tool_registry.dart';
 import '../../registry/headless/headless_provision_support.dart';
 import '../../registry/launch/cli_launch_arg_contribution.dart';
-import '../../registry/launch/cli_headless_launch_context.dart';
 import '../../registry/launch/headless_launch_context_adapter.dart';
 import '../../registry/launch/user_extra_args_provider.dart';
 import '../provider/cursor_auth_artifacts.dart';

@@ -134,36 +134,41 @@ void main() {
       expect(result.phase, TermuxApkAcquirePhase.assetNotFound);
     });
 
-    test('reports install failure when installer returns non-success', () async {
-      final bytes = List<int>.generate(64, (i) => i);
-      client = MockClient((request) async {
-        if (request.url.path.endsWith('/releases/latest')) {
-          return http.Response(jsonEncode(releaseJson), 200);
-        }
-        return http.Response.bytes(bytes, 200);
-      });
-      final resolver = RemoteDownloadResolver(RemoteDownloadCatalog.defaults());
-      downloadHttp = RemoteDownloadHttp(client: client, resolver: resolver);
-      downloader = RemoteDownloader(client: client, resolver: resolver);
+    test(
+      'reports install failure when installer returns non-success',
+      () async {
+        final bytes = List<int>.generate(64, (i) => i);
+        client = MockClient((request) async {
+          if (request.url.path.endsWith('/releases/latest')) {
+            return http.Response(jsonEncode(releaseJson), 200);
+          }
+          return http.Response.bytes(bytes, 200);
+        });
+        final resolver = RemoteDownloadResolver(
+          RemoteDownloadCatalog.defaults(),
+        );
+        downloadHttp = RemoteDownloadHttp(client: client, resolver: resolver);
+        downloader = RemoteDownloader(client: client, resolver: resolver);
 
-      final acquisition = TermuxApkAcquisition(
-        http: downloadHttp,
-        downloader: downloader,
-        installApk: (_) async => 3,
-      );
+        final acquisition = TermuxApkAcquisition(
+          http: downloadHttp,
+          downloader: downloader,
+          installApk: (_) async => 3,
+        );
 
-      final result = await acquisition.downloadAndInstall(preferArm64: true);
-      addTearDown(() async {
-        final parent = Directory(result.apkFile?.parent.path ?? '');
-        if (await parent.exists()) {
-          await parent.delete(recursive: true);
-        }
-      });
+        final result = await acquisition.downloadAndInstall(preferArm64: true);
+        addTearDown(() async {
+          final parent = Directory(result.apkFile?.parent.path ?? '');
+          if (await parent.exists()) {
+            await parent.delete(recursive: true);
+          }
+        });
 
-      expect(result.success, isFalse);
-      expect(result.phase, TermuxApkAcquirePhase.installFailed);
-      expect(result.installStatusCode, 3);
-    });
+        expect(result.success, isFalse);
+        expect(result.phase, TermuxApkAcquirePhase.installFailed);
+        expect(result.installStatusCode, 3);
+      },
+    );
 
     test('forwards download progress callbacks', () async {
       final bytes = List<int>.generate(256, (i) => i % 256);

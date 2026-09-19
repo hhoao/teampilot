@@ -228,7 +228,10 @@ class _FakeHostRunner implements RepoCloneHostRunner {
 
 void main() {
   test('dirNameFromUrl strips .git and trailing slash', () {
-    expect(repoCloneDirNameFromUrl('https://github.com/owner/repo.git'), 'repo');
+    expect(
+      repoCloneDirNameFromUrl('https://github.com/owner/repo.git'),
+      'repo',
+    );
     expect(repoCloneDirNameFromUrl('https://github.com/owner/repo/'), 'repo');
     expect(repoCloneDirNameFromUrl('git@host:owner/repo.git'), 'repo');
     expect(repoCloneDirNameFromUrl('ssh://git@host/owner/repo.git'), 'repo');
@@ -254,33 +257,42 @@ void main() {
       0.45,
     );
     expect(repoCloneParseFraction('Resolving deltas: 100% (12/12)'), 1.0);
-    expect(repoCloneParseFraction('remote: Counting objects: 3, done.'), isNull);
+    expect(
+      repoCloneParseFraction('remote: Counting objects: 3, done.'),
+      isNull,
+    );
   });
 
-  test('clone builds git clone --progress with local plan and succeeds', () async {
-    final spawner = _RecordingSpawner();
-    final service = RepoCloneService(
-      executor: ProcessRunExecutor(spawner: spawner.spawner),
-      hostRunner: _FakeHostRunner(),
-    );
-    final result = await service.clone(
-      RepoCloneRequest(
-        url: 'https://github.com/o/r.git',
-        targetId: 'local',
-        parentDir: '/home/me/src',
-        dirName: 'r',
-      ),
-      onProgress: (_) {},
-      isCancelled: () => false,
-    );
-    expect(result.outcome, RepoCloneOutcome.succeeded);
-    expect(result.destPath, '/home/me/src/r');
-    expect(spawner.calls.single.executable, 'git');
-    expect(
-      spawner.calls.single.arguments,
-      ['clone', '--progress', '--', 'https://github.com/o/r.git', 'r'],
-    );
-  });
+  test(
+    'clone builds git clone --progress with local plan and succeeds',
+    () async {
+      final spawner = _RecordingSpawner();
+      final service = RepoCloneService(
+        executor: ProcessRunExecutor(spawner: spawner.spawner),
+        hostRunner: _FakeHostRunner(),
+      );
+      final result = await service.clone(
+        RepoCloneRequest(
+          url: 'https://github.com/o/r.git',
+          targetId: 'local',
+          parentDir: '/home/me/src',
+          dirName: 'r',
+        ),
+        onProgress: (_) {},
+        isCancelled: () => false,
+      );
+      expect(result.outcome, RepoCloneOutcome.succeeded);
+      expect(result.destPath, '/home/me/src/r');
+      expect(spawner.calls.single.executable, 'git');
+      expect(spawner.calls.single.arguments, [
+        'clone',
+        '--progress',
+        '--',
+        'https://github.com/o/r.git',
+        'r',
+      ]);
+    },
+  );
 
   test('clone reports fraction and subtitle from stderr', () async {
     final spawner = _RecordingSpawner()
@@ -307,7 +319,10 @@ void main() {
       isCancelled: () => false,
     );
     expect(progress.any((p) => p.fraction == 0.45), isTrue);
-    expect(progress.any((p) => p.subtitle?.contains('Receiving') ?? false), isTrue);
+    expect(
+      progress.any((p) => p.subtitle?.contains('Receiving') ?? false),
+      isTrue,
+    );
   });
 
   test('clone fails when destination exists', () async {
@@ -418,38 +433,40 @@ void main() {
     expect(host.fs.deleted, ['/src/r']);
   });
 
-  test('clone failure with already-exists stderr never deletes destination',
-      () async {
-    // Race: pre-check stat said absent, but git finds a non-empty directory
-    // and fails — the pre-existing directory must survive.
-    final spawner = _RecordingSpawner()
-      ..pendingHandle = _FakeHandle(
-        128,
-        stderrLines: [
-          "fatal: destination path 'r' already exists and is not an empty "
-          'directory.',
-        ],
+  test(
+    'clone failure with already-exists stderr never deletes destination',
+    () async {
+      // Race: pre-check stat said absent, but git finds a non-empty directory
+      // and fails — the pre-existing directory must survive.
+      final spawner = _RecordingSpawner()
+        ..pendingHandle = _FakeHandle(
+          128,
+          stderrLines: [
+            "fatal: destination path 'r' already exists and is not an empty "
+                'directory.',
+          ],
+        );
+      final host = _FakeHostRunner();
+      final service = RepoCloneService(
+        executor: ProcessRunExecutor(spawner: spawner.spawner),
+        hostRunner: host,
       );
-    final host = _FakeHostRunner();
-    final service = RepoCloneService(
-      executor: ProcessRunExecutor(spawner: spawner.spawner),
-      hostRunner: host,
-    );
-    final result = await service.clone(
-      RepoCloneRequest(
-        url: 'https://github.com/o/r.git',
-        targetId: 'local',
-        parentDir: '/src',
-        dirName: 'r',
-      ),
-      // The raced directory exists by the time git reports the failure.
-      onProgress: (_) => host.fs.dirs.add('/src/r'),
-      isCancelled: () => false,
-    );
-    expect(result.outcome, RepoCloneOutcome.failed);
-    expect(result.errorDetail, contains('already exists'));
-    expect(host.fs.deleted, isEmpty);
-  });
+      final result = await service.clone(
+        RepoCloneRequest(
+          url: 'https://github.com/o/r.git',
+          targetId: 'local',
+          parentDir: '/src',
+          dirName: 'r',
+        ),
+        // The raced directory exists by the time git reports the failure.
+        onProgress: (_) => host.fs.dirs.add('/src/r'),
+        isCancelled: () => false,
+      );
+      expect(result.outcome, RepoCloneOutcome.failed);
+      expect(result.errorDetail, contains('already exists'));
+      expect(host.fs.deleted, isEmpty);
+    },
+  );
 
   test('clone failure skips cleanup when pre-check stat threw', () async {
     // stat errors on the pre-check (permissions / transport hiccup):
@@ -476,29 +493,32 @@ void main() {
     expect(host.fs.deleted, isEmpty);
   });
 
-  test('spawn StateError surfaces as failed outcome, not an exception', () async {
-    final spawner = _RecordingSpawner()
-      ..pendingError = StateError('SSH process execution is not configured');
-    final service = RepoCloneService(
-      executor: ProcessRunExecutor(spawner: spawner.spawner),
-      hostRunner: _FakeHostRunner(),
-    );
-    final result = await service.clone(
-      RepoCloneRequest(
-        url: 'https://github.com/o/r.git',
-        targetId: 'local',
-        parentDir: '/src',
-        dirName: 'r',
-      ),
-      onProgress: (_) {},
-      isCancelled: () => false,
-    );
-    expect(result.outcome, RepoCloneOutcome.failed);
-    expect(
-      result.errorDetail,
-      contains('SSH process execution is not configured'),
-    );
-  });
+  test(
+    'spawn StateError surfaces as failed outcome, not an exception',
+    () async {
+      final spawner = _RecordingSpawner()
+        ..pendingError = StateError('SSH process execution is not configured');
+      final service = RepoCloneService(
+        executor: ProcessRunExecutor(spawner: spawner.spawner),
+        hostRunner: _FakeHostRunner(),
+      );
+      final result = await service.clone(
+        RepoCloneRequest(
+          url: 'https://github.com/o/r.git',
+          targetId: 'local',
+          parentDir: '/src',
+          dirName: 'r',
+        ),
+        onProgress: (_) {},
+        isCancelled: () => false,
+      );
+      expect(result.outcome, RepoCloneOutcome.failed);
+      expect(
+        result.errorDetail,
+        contains('SSH process execution is not configured'),
+      );
+    },
+  );
 
   test('stdout lines do not produce progress or fractions', () async {
     // A percent line on stdout (never a git --progress stream) must not be
@@ -525,8 +545,10 @@ void main() {
       isCancelled: () => false,
     );
     expect(progress.where((p) => p.fraction == 0.99), isEmpty);
-    expect(progress.where((p) => p.subtitle?.contains('99%') ?? false),
-        isEmpty);
+    expect(
+      progress.where((p) => p.subtitle?.contains('99%') ?? false),
+      isEmpty,
+    );
     expect(progress.where((p) => p.fraction == 0.45), isNotEmpty);
   });
 
@@ -603,35 +625,37 @@ void main() {
     },
   );
 
-  test('clone cancelled after success exit reports succeeded and keeps dir',
-      () async {
-    // Cancellation is observed only after git already exited 0 — the clone
-    // completed and must not be reported cancelled or deleted.
-    final handle = _ControllableHandle();
-    final spawner = _RecordingSpawner()..pendingHandle = handle;
-    final host = _FakeHostRunner();
-    final service = RepoCloneService(
-      executor: ProcessRunExecutor(spawner: spawner.spawner),
-      hostRunner: host,
-    );
-    var cancelled = false;
-    final cloneFuture = service.clone(
-      RepoCloneRequest(
-        url: 'https://github.com/o/r.git',
-        targetId: 'local',
-        parentDir: '/src',
-        dirName: 'r',
-      ),
-      onProgress: (_) => host.fs.dirs.add('/src/r'),
-      isCancelled: () => cancelled,
-    );
-    await Future<void>.delayed(Duration.zero);
-    handle.completeExit(0);
-    cancelled = true; // Flips after exit 0, before the result is judged.
-    final result = await cloneFuture;
-    expect(result.outcome, RepoCloneOutcome.succeeded);
-    expect(host.fs.deleted, isEmpty);
-  });
+  test(
+    'clone cancelled after success exit reports succeeded and keeps dir',
+    () async {
+      // Cancellation is observed only after git already exited 0 — the clone
+      // completed and must not be reported cancelled or deleted.
+      final handle = _ControllableHandle();
+      final spawner = _RecordingSpawner()..pendingHandle = handle;
+      final host = _FakeHostRunner();
+      final service = RepoCloneService(
+        executor: ProcessRunExecutor(spawner: spawner.spawner),
+        hostRunner: host,
+      );
+      var cancelled = false;
+      final cloneFuture = service.clone(
+        RepoCloneRequest(
+          url: 'https://github.com/o/r.git',
+          targetId: 'local',
+          parentDir: '/src',
+          dirName: 'r',
+        ),
+        onProgress: (_) => host.fs.dirs.add('/src/r'),
+        isCancelled: () => cancelled,
+      );
+      await Future<void>.delayed(Duration.zero);
+      handle.completeExit(0);
+      cancelled = true; // Flips after exit 0, before the result is judged.
+      final result = await cloneFuture;
+      expect(result.outcome, RepoCloneOutcome.succeeded);
+      expect(host.fs.deleted, isEmpty);
+    },
+  );
 }
 
 /// Host runner whose stat() throws — simulates transport/permission errors

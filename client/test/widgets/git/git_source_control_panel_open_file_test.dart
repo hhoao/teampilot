@@ -69,7 +69,8 @@ class _UnstagedGitStub extends GitService {
     return _fakeDiff(relativePath);
   }
 
-  String _fakeDiff(String path) => '--- a/$path\n'
+  String _fakeDiff(String path) =>
+      '--- a/$path\n'
       '+++ b/$path\n'
       '@@ -1 +1 @@\n'
       '-old\n'
@@ -82,9 +83,9 @@ class _RecordingOpener extends WorkbenchEditorOpener {
     required super.workbench,
     required super.floating,
   }) : super(
-    markdownViewModes: MarkdownViewModeStore(),
-    readMarkdownOpenMode: () => MarkdownOpenMode.preview,
-  );
+         markdownViewModes: MarkdownViewModeStore(),
+         readMarkdownOpenMode: () => MarkdownOpenMode.preview,
+       );
 
   final openedPaths = <String>[];
   final openedWorkspaceIds = <String>[];
@@ -142,7 +143,11 @@ void main() {
     final editor = EditorCubit(storage: testHomeStorage);
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit()..setActiveWorkspace('ws-test');
-    opener = _RecordingOpener(editor: editor, workbench: workbench, floating: floating);
+    opener = _RecordingOpener(
+      editor: editor,
+      workbench: workbench,
+      floating: floating,
+    );
     addTearDown(editor.close);
     addTearDown(workbench.close);
     addTearDown(floating.close);
@@ -356,7 +361,9 @@ void main() {
     );
   });
 
-  testWidgets('selecting a row enables Discard Selected Change', (tester) async {
+  testWidgets('selecting a row enables Discard Selected Change', (
+    tester,
+  ) async {
     await runOnDesktop(tester, () async {
       final aiSettingsCubit = AiFeatureSettingsCubit(
         repository: InMemoryAppSettingsRepository(),

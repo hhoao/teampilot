@@ -16,11 +16,7 @@ OwnedLaunchConfiguration _config(String id, {WorkspaceFolder? owner}) =>
 OwnedLaunchCompound _compound(String id, {WorkspaceFolder? owner}) =>
     OwnedLaunchCompound(
       owner: owner ?? _folder,
-      compound: LaunchCompound(
-        id: id,
-        name: id,
-        configurationIds: const [],
-      ),
+      compound: LaunchCompound(id: id, name: id, configurationIds: const []),
     );
 
 void main() {

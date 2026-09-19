@@ -77,7 +77,8 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   /// Stable id for the entry across the editor session: new entries get it
   /// at editor open so the per-entry CLI credential row can bind (and be
   /// logged into) even before the first save.
-  late final String _entryId = _provider?.id ?? 'managed-${DateTime.now().millisecondsSinceEpoch}';
+  late final String _entryId =
+      _provider?.id ?? 'managed-${DateTime.now().millisecondsSinceEpoch}';
 
   @override
   void initState() {
@@ -505,48 +506,48 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   ManagedProvider _draftProvider() {
     final windows = _decodeWindows(_windows.text);
     return ManagedProvider(
-    id: _provider?.id ?? '',
-    name: _name.text.trim(),
-    kind: _kind,
-    adapterId: _adapter.text.trim().isEmpty
-        ? 'http-json'
-        : _adapter.text.trim(),
-    endpointConfig: ManagedProviderEndpointConfig(
-      url: _endpoint.text.trim(),
-      method: _method,
-      responsePath: _responsePath.text.trim().isEmpty
+      id: _provider?.id ?? '',
+      name: _name.text.trim(),
+      kind: _kind,
+      adapterId: _adapter.text.trim().isEmpty
+          ? 'http-json'
+          : _adapter.text.trim(),
+      endpointConfig: ManagedProviderEndpointConfig(
+        url: _endpoint.text.trim(),
+        method: _method,
+        responsePath: _responsePath.text.trim().isEmpty
+            ? null
+            : _responsePath.text.trim(),
+        body: decodeJsonObject(_requestMapping.text) ?? const {},
+        headers: _decodeHeaders(_headers.text),
+        windows: windows,
+        credentialSource: _credentialSource.text.trim().isEmpty
+            ? 'secret'
+            : _credentialSource.text.trim(),
+        credentialTemplate: _credentialTemplate.text.trim().isEmpty
+            ? null
+            : _credentialTemplate.text.trim(),
+        credentialName: _credentialName.text.trim().isEmpty
+            ? null
+            : _credentialName.text.trim(),
+        credentialField: _credentialField.text.trim().isEmpty
+            ? null
+            : _credentialField.text.trim(),
+        credentialPlacement: _credentialPlacement.text.trim().isEmpty
+            ? 'header'
+            : _credentialPlacement.text.trim().toLowerCase(),
+        credentialPrefix: _credentialPrefix,
+      ),
+      credentialRef: _credentialRef.text.trim().isEmpty
           ? null
-          : _responsePath.text.trim(),
-      body: decodeJsonObject(_requestMapping.text) ?? const {},
-      headers: _decodeHeaders(_headers.text),
-      windows: windows,
-      credentialSource: _credentialSource.text.trim().isEmpty
-          ? 'secret'
-          : _credentialSource.text.trim(),
-      credentialTemplate: _credentialTemplate.text.trim().isEmpty
-          ? null
-          : _credentialTemplate.text.trim(),
-      credentialName: _credentialName.text.trim().isEmpty
-          ? null
-          : _credentialName.text.trim(),
-      credentialField: _credentialField.text.trim().isEmpty
-          ? null
-          : _credentialField.text.trim(),
-      credentialPlacement: _credentialPlacement.text.trim().isEmpty
-          ? 'header'
-          : _credentialPlacement.text.trim().toLowerCase(),
-      credentialPrefix: _credentialPrefix,
-    ),
-    credentialRef: _credentialRef.text.trim().isEmpty
-        ? null
-        : _credentialRef.text.trim(),
-    displayConfig: ManagedProviderDisplayConfig(
-      currency: _currency.text.trim().isEmpty ? null : _currency.text.trim(),
-      unit: _unit.text.trim().isEmpty ? null : _unit.text.trim(),
-      decimalPlaces: int.tryParse(_decimalPlaces.text.trim()),
-      showPercent: _showPercent,
-    ),
-    enabled: _enabled,
+          : _credentialRef.text.trim(),
+      displayConfig: ManagedProviderDisplayConfig(
+        currency: _currency.text.trim().isEmpty ? null : _currency.text.trim(),
+        unit: _unit.text.trim().isEmpty ? null : _unit.text.trim(),
+        decimalPlaces: int.tryParse(_decimalPlaces.text.trim()),
+        showPercent: _showPercent,
+      ),
+      enabled: _enabled,
     );
   }
 
@@ -615,11 +616,11 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
           items: [for (final option in options) option.$1],
           initialItem: _credentialLinkModeValue,
           itemLabel: (value) {
-        for (final option in options) {
-          if (option.$1 == value) return option.$2;
-        }
-        return value;
-      },
+            for (final option in options) {
+              if (option.$1 == value) return option.$2;
+            }
+            return value;
+          },
           onChanged: (value) {
             if (value != null) _handleCredentialLinkModeChanged(value);
           },

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart'; // ShortcutActivator, SingleActivator, I
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../services/chat/session/history/chat_transcript_find_controller.dart';
+import '../../services/chat/conversation/history/chat_transcript_find_controller.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/find/find_bar_palette.dart';
 import '../../widgets/find/find_bar_widgets.dart';

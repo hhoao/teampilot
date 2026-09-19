@@ -19,15 +19,19 @@ List<GitRefDecoration> parseGitDecorations(
     if (token == 'HEAD') {
       out.add(const GitRefDecoration(GitRefDecorationKind.head, ''));
     } else if (token.startsWith('HEAD -> ')) {
-      out.add(GitRefDecoration(
-        GitRefDecorationKind.head,
-        token.substring('HEAD -> '.length).trim(),
-      ));
+      out.add(
+        GitRefDecoration(
+          GitRefDecorationKind.head,
+          token.substring('HEAD -> '.length).trim(),
+        ),
+      );
     } else if (token.startsWith('tag: ')) {
-      out.add(GitRefDecoration(
-        GitRefDecorationKind.tag,
-        token.substring('tag: '.length).trim(),
-      ));
+      out.add(
+        GitRefDecoration(
+          GitRefDecorationKind.tag,
+          token.substring('tag: '.length).trim(),
+        ),
+      );
     } else if (remotePrefixes.any((p) => token.startsWith(p))) {
       out.add(GitRefDecoration(GitRefDecorationKind.remoteBranch, token));
     } else {

@@ -19,11 +19,7 @@ void main() {
       bus = CommandBus();
       layout = LayoutCubit();
       baseline = 1.0;
-      registerLayoutCommands(
-        bus,
-        layout,
-        uiZoomBaseline: () => baseline,
-      );
+      registerLayoutCommands(bus, layout, uiZoomBaseline: () => baseline);
     });
 
     tearDown(() => layout.close());
@@ -59,8 +55,7 @@ void main() {
           await Future<void>.delayed(Duration.zero);
         }
 
-        final atHalfBaseline =
-            layout.state.preferences.uiZoomCustomMultiplier;
+        final atHalfBaseline = layout.state.preferences.uiZoomCustomMultiplier;
 
         await layout.zoomReset();
         baseline = 1.0;
@@ -69,8 +64,7 @@ void main() {
           await Future<void>.delayed(Duration.zero);
         }
 
-        final atUnitBaseline =
-            layout.state.preferences.uiZoomCustomMultiplier;
+        final atUnitBaseline = layout.state.preferences.uiZoomCustomMultiplier;
 
         expect(atHalfBaseline, closeTo(kTypographyCustomMultiplierMax, 0.0001));
         expect(atUnitBaseline, closeTo(kUiZoomMax, 0.0001));
@@ -132,12 +126,16 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(calls, 1);
-      expect(layout.state.preferences.workspaceTerminalVisible, terminalVisible);
+      expect(
+        layout.state.preferences.workspaceTerminalVisible,
+        terminalVisible,
+      );
       expect(floating.state.visibility, FloatingPanelVisibility.open);
       expect(
-        workbench.mergedFloatingStrip('ws').order.any(
-          (t) => t.kind == WorkbenchTabKind.shell && t.id == 'e1',
-        ),
+        workbench
+            .mergedFloatingStrip('ws')
+            .order
+            .any((t) => t.kind == WorkbenchTabKind.shell && t.id == 'e1'),
         isTrue,
       );
     });
@@ -151,22 +149,25 @@ void main() {
       expect(layout.state.preferences.rightToolsVisible, !initial);
     });
 
-    test('toggleSecondarySidebar on compose flips override not prefs', () async {
-      final composeBus = CommandBus();
-      var compose = true;
-      registerLayoutCommands(
-        composeBus,
-        layout,
-        uiZoomBaseline: () => baseline,
-        composeLanding: () => compose,
-      );
-      final intent = layout.state.preferences.rightToolsVisible;
+    test(
+      'toggleSecondarySidebar on compose flips override not prefs',
+      () async {
+        final composeBus = CommandBus();
+        var compose = true;
+        registerLayoutCommands(
+          composeBus,
+          layout,
+          uiZoomBaseline: () => baseline,
+          composeLanding: () => compose,
+        );
+        final intent = layout.state.preferences.rightToolsVisible;
 
-      composeBus.invoke(CommandIds.toggleSecondarySidebar);
-      await Future<void>.delayed(Duration.zero);
+        composeBus.invoke(CommandIds.toggleSecondarySidebar);
+        await Future<void>.delayed(Duration.zero);
 
-      expect(layout.state.landingRightToolsOverride, isTrue);
-      expect(layout.state.preferences.rightToolsVisible, intent);
-    });
+        expect(layout.state.landingRightToolsOverride, isTrue);
+        expect(layout.state.preferences.rightToolsVisible, intent);
+      },
+    );
   });
 }

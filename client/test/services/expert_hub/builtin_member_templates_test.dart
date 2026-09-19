@@ -4,20 +4,17 @@ import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
 void main() {
   test('builtin catalog keeps default trio and Superpowers quartet only', () {
     final keys = builtinExpertMembers().map((m) => m.key).toSet();
-    expect(
-      keys,
-      {
-        kBuiltinDefaultExpertKey,
-        kBuiltinTeamBuilderExpertKey,
-        'teampilot/builtin/team-lead',
-        'teampilot/builtin/developer',
-        'teampilot/builtin/reviewer',
-        'teampilot/builtin/superpowers-lead',
-        'teampilot/builtin/superpowers-architect',
-        'teampilot/builtin/superpowers-builder',
-        'teampilot/builtin/superpowers-reviewer',
-      },
-    );
+    expect(keys, {
+      kBuiltinDefaultExpertKey,
+      kBuiltinTeamBuilderExpertKey,
+      'teampilot/builtin/team-lead',
+      'teampilot/builtin/developer',
+      'teampilot/builtin/reviewer',
+      'teampilot/builtin/superpowers-lead',
+      'teampilot/builtin/superpowers-architect',
+      'teampilot/builtin/superpowers-builder',
+      'teampilot/builtin/superpowers-reviewer',
+    });
   });
 
   test('role experts ship Superpowers skillDeps matching their playbooks', () {
@@ -34,20 +31,19 @@ void main() {
     );
     expect(
       byKey['teampilot/builtin/reviewer']!.skillDeps.map((d) => d.name),
-      containsAll([
-        'Requesting Code Review',
-        'Verification Before Completion',
-      ]),
+      containsAll(['Requesting Code Review', 'Verification Before Completion']),
     );
 
     expect(
-      byKey['teampilot/builtin/superpowers-architect']!.skillDeps
-          .map((d) => d.name),
+      byKey['teampilot/builtin/superpowers-architect']!.skillDeps.map(
+        (d) => d.name,
+      ),
       containsAll(['Brainstorming', 'Writing Plans']),
     );
     expect(
-      byKey['teampilot/builtin/superpowers-builder']!.skillDeps
-          .map((d) => d.name),
+      byKey['teampilot/builtin/superpowers-builder']!.skillDeps.map(
+        (d) => d.name,
+      ),
       containsAll([
         'Executing Plans',
         'Test-Driven Development',
@@ -55,12 +51,10 @@ void main() {
       ]),
     );
     expect(
-      byKey['teampilot/builtin/superpowers-reviewer']!.skillDeps
-          .map((d) => d.name),
-      containsAll([
-        'Requesting Code Review',
-        'Verification Before Completion',
-      ]),
+      byKey['teampilot/builtin/superpowers-reviewer']!.skillDeps.map(
+        (d) => d.name,
+      ),
+      containsAll(['Requesting Code Review', 'Verification Before Completion']),
     );
   });
 

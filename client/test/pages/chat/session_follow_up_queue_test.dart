@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/pages/chat/session_follow_up_compose_submit.dart';
-import 'package:teampilot/services/follow_up/follow_up_submit_gate.dart';
+import 'package:teampilot/services/chat/conversation/follow_up/follow_up_submit_gate.dart';
 
 void main() {
   test('working member with text enqueues without deliver', () {

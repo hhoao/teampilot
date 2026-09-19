@@ -27,11 +27,7 @@ void main() {
       final cubit = WorkspaceToolsCubit(persist: persisted.add)
         ..ensureOpenAndSelect('p1', 'members')
         ..ensureOpenAndSelect('p1', 'mailbox');
-      cubit.closeTool(
-        'p1',
-        'mailbox',
-        catalog: const ['members', 'mailbox'],
-      );
+      cubit.closeTool('p1', 'mailbox', catalog: const ['members', 'mailbox']);
       expect(cubit.openIdsFor('p1'), ['members']);
       expect(cubit.state.openSet.dismissedIds, ['mailbox']);
       expect(persisted.last.dismissedIds, ['mailbox']);
@@ -61,10 +57,7 @@ void main() {
       final persisted = <RightToolOpenSet>[];
       final cubit = WorkspaceToolsCubit(persist: persisted.add);
       cubit.hydrate(
-        const RightToolOpenSet(
-          openIds: ['mailbox'],
-          selectedId: 'mailbox',
-        ),
+        const RightToolOpenSet(openIds: ['mailbox'], selectedId: 'mailbox'),
       );
       expect(cubit.openIdsFor('p1'), ['mailbox']);
       expect(persisted, isEmpty);

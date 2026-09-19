@@ -75,7 +75,10 @@ void main() {
         cliEffortLevels: {'claude': 'medium'},
       );
 
-      final bundle = resolveTeamLaunchBundle(team: team, globalPresets: const []);
+      final bundle = resolveTeamLaunchBundle(
+        team: team,
+        globalPresets: const [],
+      );
 
       expect(bundle.cli, CliTool.claude);
       expect(bundle.provider, isEmpty);

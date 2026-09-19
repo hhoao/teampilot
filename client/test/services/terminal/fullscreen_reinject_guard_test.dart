@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/terminal/fullscreen_cr_ack_config.dart';
-import 'package:teampilot/services/chat/terminal/fullscreen_reinject_guard.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_cr_ack_config.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_reinject_guard.dart';
 
 void main() {
   group('shouldSkipReinjectAfterCrStuck', () {

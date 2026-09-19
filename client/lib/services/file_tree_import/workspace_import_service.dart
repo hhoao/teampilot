@@ -5,13 +5,14 @@ import 'package:path/path.dart' as p;
 import 'import_models.dart';
 import '../io/filesystem.dart';
 
-typedef ConflictResolver = Future<ConflictChoice> Function({
-  required String destPath,
-  required bool sourceIsDirectory,
-  required bool destIsDirectory,
-  required bool typeMismatch,
-  required int remainingConflicts,
-});
+typedef ConflictResolver =
+    Future<ConflictChoice> Function({
+      required String destPath,
+      required bool sourceIsDirectory,
+      required bool destIsDirectory,
+      required bool typeMismatch,
+      required int remainingConflicts,
+    });
 
 class WorkspaceImportService {
   WorkspaceImportService({this.chunkSize = 256 * 1024});
@@ -343,11 +344,7 @@ class WorkspaceImportService {
     required Filesystem destFs,
     required String sourcePath,
     required String destPath,
-    required void Function({
-      String currentName,
-      int bytesDone,
-      int bytesTotal,
-    })
+    required void Function({String currentName, int bytesDone, int bytesTotal})
     emitProgress,
     required bool Function() isCancelled,
     required List<String> failedPaths,
@@ -400,11 +397,7 @@ class WorkspaceImportService {
     required String sourcePath,
     required String destPath,
     required String currentName,
-    required void Function({
-      String currentName,
-      int bytesDone,
-      int bytesTotal,
-    })
+    required void Function({String currentName, int bytesDone, int bytesTotal})
     emitProgress,
     required bool Function() isCancelled,
   }) async {

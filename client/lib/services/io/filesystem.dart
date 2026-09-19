@@ -47,8 +47,10 @@ class FsChangeEvent {
 /// Callers must [close] the watch when done so the native subscription is
 /// cancelled before a replacement watch is started.
 class FsTreeWatch {
-  const FsTreeWatch({required this.events, required Future<void> Function() close})
-    : _close = close;
+  const FsTreeWatch({
+    required this.events,
+    required Future<void> Function() close,
+  }) : _close = close;
 
   final Stream<FsChangeEvent> events;
   final Future<void> Function() _close;

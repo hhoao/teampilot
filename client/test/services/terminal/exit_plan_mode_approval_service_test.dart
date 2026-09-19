@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/agent_status/exit_plan_mode_hook_gate.dart';
-import 'package:teampilot/services/chat/terminal/exit_plan_mode_approval_service.dart';
+import 'package:teampilot/services/chat/conversation/approvals/exit_plan_mode_approval_service.dart';
 
 void main() {
   test('approve completes the held hook with allow', () async {

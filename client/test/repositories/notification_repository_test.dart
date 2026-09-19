@@ -101,11 +101,7 @@ void main() {
   test('markRead markAllRead delete clearAll', () async {
     final fs = InMemoryFilesystem();
     final repo = _repo(fs);
-    await repo.append(
-      id: 'a',
-      message: 'one',
-      variant: TpToastVariant.success,
-    );
+    await repo.append(id: 'a', message: 'one', variant: TpToastVariant.success);
     await repo.append(id: 'b', message: 'two', variant: TpToastVariant.error);
 
     await repo.markRead('a');

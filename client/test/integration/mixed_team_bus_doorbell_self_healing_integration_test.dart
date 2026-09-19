@@ -7,7 +7,7 @@ import 'package:teampilot/services/chat/team_bus/persistence/in_memory_bus_messa
 import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 import 'package:teampilot/services/chat/team_bus/team_message.dart';
 
-import '../services/team_bus/support/fake_member_launcher.dart';
+import '../services/chat/team_bus/support/fake_member_launcher.dart';
 import 'support/integration_prerequisites.dart';
 
 const _workers = ['architect', 'builder-0', 'builder-1', 'reviewer'];

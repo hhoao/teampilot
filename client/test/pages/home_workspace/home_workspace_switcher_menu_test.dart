@@ -14,9 +14,7 @@ Widget _wrap(Widget child) {
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       theme: theme,
-      home: Scaffold(
-        body: Center(child: child),
-      ),
+      home: Scaffold(body: Center(child: child)),
     ),
   );
 }
@@ -26,22 +24,23 @@ void main() {
     expect(homeWorkspaceSwitcherShouldShowOpenSection(const []), isFalse);
   });
 
-  test('homeWorkspaceSwitcherShouldShowOpenSection is true when tabs exist', () {
-    expect(
-      homeWorkspaceSwitcherShouldShowOpenSection(const [
-        HomeWorkspaceTab(id: 'a', name: 'A'),
-      ]),
-      isTrue,
-    );
-  });
+  test(
+    'homeWorkspaceSwitcherShouldShowOpenSection is true when tabs exist',
+    () {
+      expect(
+        homeWorkspaceSwitcherShouldShowOpenSection(const [
+          HomeWorkspaceTab(id: 'a', name: 'A'),
+        ]),
+        isTrue,
+      );
+    },
+  );
 
   testWidgets('tap anchor opens menu with create and sections', (tester) async {
     await tester.pumpWidget(
       _wrap(
         HomeWorkspaceSwitcherMenu(
-          openTabs: const [
-            HomeWorkspaceTab(id: 'open-1', name: 'Open One'),
-          ],
+          openTabs: const [HomeWorkspaceTab(id: 'open-1', name: 'Open One')],
           activeTabKey: 'open-1',
           recentlyClosed: const [
             HomeClosedWorkspaceEntry(
@@ -119,9 +118,7 @@ void main() {
     await tester.pumpWidget(
       _wrap(
         HomeWorkspaceSwitcherMenu(
-          openTabs: const [
-            HomeWorkspaceTab(id: 'open-1', name: 'Open One'),
-          ],
+          openTabs: const [HomeWorkspaceTab(id: 'open-1', name: 'Open One')],
           activeTabKey: 'open-1',
           recentlyClosed: const [],
           onCreate: () {},

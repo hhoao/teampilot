@@ -64,10 +64,7 @@ abstract final class LaunchConfigValidationCodes {
 }
 
 /// Maps a shell-script validation code to a localized UI message.
-String localizeLaunchConfigValidation(
-  AppLocalizations l10n,
-  String code,
-) {
+String localizeLaunchConfigValidation(AppLocalizations l10n, String code) {
   return switch (code) {
     LaunchConfigValidationCodes.configurationMustBeMap =>
       l10n.runValidationConfigurationMustBeMap,

@@ -110,7 +110,10 @@ void main() {
         'terminal_transport_factory_test_',
       );
       addTearDown(() => temp.delete(recursive: true));
-      final profileRepository = SshProfileRepository(rootDir: temp.path, storage: fakeHomeStorage(), );
+      final profileRepository = SshProfileRepository(
+        rootDir: temp.path,
+        storage: fakeHomeStorage(),
+      );
       final profile = SshProfile(
         id: 'p1',
         name: 'dev',
@@ -170,70 +173,67 @@ void main() {
     },
   );
 
-  test(
-    'embedded profile sends a tp1: structured exec payload',
-    () async {
-      final temp = await Directory.systemTemp.createTemp(
-        'terminal_transport_factory_test_',
-      );
-      addTearDown(() => temp.delete(recursive: true));
-      final profileRepository = SshProfileRepository(
-        rootDir: temp.path,
-        storage: fakeHomeStorage(),
-      );
-      final profile = SshProfile(
-        id: 'p1',
-        name: 'desktop',
-        host: 'example.com',
-        username: 'alice',
-        embeddedTarget: true,
-      );
-      await profileRepository.save(profile);
+  test('embedded profile sends a tp1: structured exec payload', () async {
+    final temp = await Directory.systemTemp.createTemp(
+      'terminal_transport_factory_test_',
+    );
+    addTearDown(() => temp.delete(recursive: true));
+    final profileRepository = SshProfileRepository(
+      rootDir: temp.path,
+      storage: fakeHomeStorage(),
+    );
+    final profile = SshProfile(
+      id: 'p1',
+      name: 'desktop',
+      host: 'example.com',
+      username: 'alice',
+      embeddedTarget: true,
+    );
+    await profileRepository.save(profile);
 
-      String? startedCommand;
-      final factory = TerminalTransportFactory(
-        sshProfileRepository: profileRepository,
-        sshCredentialStore: InMemorySshCredentialStore(),
-        sshKnownHostRepository: InMemorySshKnownHostRepository(),
-        sshStarter:
-            ({
-              required SshMemberSession memberSession,
-              required String command,
-              required int columns,
-              required int rows,
-            }) async {
-              startedCommand = command;
-              return _FakeTransport();
-            },
-      );
+    String? startedCommand;
+    final factory = TerminalTransportFactory(
+      sshProfileRepository: profileRepository,
+      sshCredentialStore: InMemorySshCredentialStore(),
+      sshKnownHostRepository: InMemorySshKnownHostRepository(),
+      sshStarter:
+          ({
+            required SshMemberSession memberSession,
+            required String command,
+            required int columns,
+            required int rows,
+          }) async {
+            startedCommand = command;
+            return _FakeTransport();
+          },
+    );
 
-      final memberSession = SshMemberSession.testing(
-        profile: profile,
-        client: _InstantAuthClient(),
-      );
+    final memberSession = SshMemberSession.testing(
+      profile: profile,
+      client: _InstantAuthClient(),
+    );
 
-      await factory.startTransport(
-        const LaunchTarget.ssh(
-          sshProfileId: 'p1',
-          remoteExecutable: 'claude',
-          remoteWorkingDirectory: '~/repo',
-          remoteEnvironment: {'LLM_CONFIG_PATH': '~/.claude/config.json'},
-          useLoginShell: true,
-        ),
-        arguments: const ['--resume', 's1'],
-        columns: 80,
-        rows: 24,
-        memberSession: memberSession,
-      );
+    await factory.startTransport(
+      const LaunchTarget.ssh(
+        sshProfileId: 'p1',
+        remoteExecutable: 'claude',
+        remoteWorkingDirectory: '~/repo',
+        remoteEnvironment: {'LLM_CONFIG_PATH': '~/.claude/config.json'},
+        useLoginShell: true,
+      ),
+      arguments: const ['--resume', 's1'],
+      columns: 80,
+      rows: 24,
+      memberSession: memberSession,
+    );
 
-      // Structured exec payload — no shell wrapping, no PATH export, and the
-      // login-shell flag is irrelevant (there is no shell to log into).
-      expect(
-        startedCommand,
-        'tp1:{"argv":["claude","--resume","s1"],"cwd":"~/repo",'
-        '"env":{"LLM_CONFIG_PATH":"~/.claude/config.json"}}',
-      );
-      expect(startedCommand, isNot(contains('bash')));
-    },
-  );
+    // Structured exec payload — no shell wrapping, no PATH export, and the
+    // login-shell flag is irrelevant (there is no shell to log into).
+    expect(
+      startedCommand,
+      'tp1:{"argv":["claude","--resume","s1"],"cwd":"~/repo",'
+      '"env":{"LLM_CONFIG_PATH":"~/.claude/config.json"}}',
+    );
+    expect(startedCommand, isNot(contains('bash')));
+  });
 }

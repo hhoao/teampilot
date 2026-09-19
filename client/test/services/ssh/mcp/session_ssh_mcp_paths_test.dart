@@ -52,17 +52,17 @@ void main() {
         resolveSessionSshMcpRemoteCwd(cwd: '/home/alice/proj', folderPaths: []),
         isNull,
       );
-      expect(
-        resolveSessionSshMcpRemoteCwd(cwd: null, folderPaths: []),
-        isNull,
-      );
+      expect(resolveSessionSshMcpRemoteCwd(cwd: null, folderPaths: []), isNull);
     });
   });
 
   group('sessionSshMcpRemotePathAllowed', () {
     test('allows absolute path under folder', () {
       expect(
-        sessionSshMcpRemotePathAllowed('/home/alice/proj/src/file.txt', folders),
+        sessionSshMcpRemotePathAllowed(
+          '/home/alice/proj/src/file.txt',
+          folders,
+        ),
         isTrue,
       );
     });

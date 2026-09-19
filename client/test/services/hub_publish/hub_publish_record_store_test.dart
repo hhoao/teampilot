@@ -6,7 +6,11 @@ import '../../support/in_memory_filesystem.dart';
 void main() {
   test('records publish badge fields', () async {
     final fs = InMemoryFilesystem();
-    final records = HubPublishRecordStore(fs: fs, pathOverride: '/p.json', storage: fakeHomeStorage(filesystem: fs), );
+    final records = HubPublishRecordStore(
+      fs: fs,
+      pathOverride: '/p.json',
+      storage: fakeHomeStorage(filesystem: fs),
+    );
     await records.upsert(
       HubPublishRecord(
         kind: HubPublishKind.expert,
@@ -22,7 +26,8 @@ void main() {
       contains('/pull/1'),
     );
     expect(
-      records.findByLocalId(kind: HubPublishKind.expert, localId: 'local/abc')
+      records
+          .findByLocalId(kind: HubPublishKind.expert, localId: 'local/abc')
           ?.slug,
       'arch',
     );
@@ -30,7 +35,11 @@ void main() {
 
   test('load restores records for badge lookup', () async {
     final fs = InMemoryFilesystem();
-    final writer = HubPublishRecordStore(fs: fs, pathOverride: '/p.json', storage: fakeHomeStorage(filesystem: fs), );
+    final writer = HubPublishRecordStore(
+      fs: fs,
+      pathOverride: '/p.json',
+      storage: fakeHomeStorage(filesystem: fs),
+    );
     await writer.upsert(
       HubPublishRecord(
         kind: HubPublishKind.team,
@@ -42,10 +51,15 @@ void main() {
       ),
     );
 
-    final reader = HubPublishRecordStore(fs: fs, pathOverride: '/p.json', storage: fakeHomeStorage(filesystem: fs), );
+    final reader = HubPublishRecordStore(
+      fs: fs,
+      pathOverride: '/p.json',
+      storage: fakeHomeStorage(filesystem: fs),
+    );
     await reader.load();
     expect(
-      reader.findByLocalId(kind: HubPublishKind.team, localId: 'team-alpha')
+      reader
+          .findByLocalId(kind: HubPublishKind.team, localId: 'team-alpha')
           ?.prUrl,
       contains('/pull/2'),
     );

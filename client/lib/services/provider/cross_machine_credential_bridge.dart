@@ -1,5 +1,4 @@
 import '../../models/app_provider_config.dart';
-import '../../models/team_config.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
 import '../chat/launch/staging/manifest/work_plane_paths.dart';
 import '../provider/credential_binding.dart';

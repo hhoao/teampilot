@@ -56,7 +56,8 @@ class TeamLandingPickerCatalogBody extends StatelessWidget {
       favoriteKeys: hubState.favorites,
       category: category,
     );
-    final loading = hubState.status == TeamHubLoadStatus.loading &&
+    final loading =
+        hubState.status == TeamHubLoadStatus.loading &&
         hubState.allTeams.isEmpty;
 
     return Column(
@@ -114,22 +115,19 @@ class TeamLandingPickerCatalogBody extends StatelessWidget {
                         sliver: SliverGrid(
                           gridDelegate:
                               const SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: 380,
-                            mainAxisExtent: 160,
-                            crossAxisSpacing: 14,
-                            mainAxisSpacing: 14,
-                          ),
-                          delegate: SliverChildBuilderDelegate(
-                            (context, i) {
-                              final entry = sections.mine[i];
-                              return TeamLandingPickerLocalCard(
-                                team: entry.team,
-                                selected: entry.team.id == selectedTeamId,
-                                onTap: () => onOpen(entry),
-                              );
-                            },
-                            childCount: sections.mine.length,
-                          ),
+                                maxCrossAxisExtent: 380,
+                                mainAxisExtent: 160,
+                                crossAxisSpacing: 14,
+                                mainAxisSpacing: 14,
+                              ),
+                          delegate: SliverChildBuilderDelegate((context, i) {
+                            final entry = sections.mine[i];
+                            return TeamLandingPickerLocalCard(
+                              team: entry.team,
+                              selected: entry.team.id == selectedTeamId,
+                              onTap: () => onOpen(entry),
+                            );
+                          }, childCount: sections.mine.length),
                         ),
                       ),
                     ],
@@ -142,29 +140,26 @@ class TeamLandingPickerCatalogBody extends StatelessWidget {
                         sliver: SliverGrid(
                           gridDelegate:
                               const SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: 380,
-                            mainAxisExtent: 200,
-                            crossAxisSpacing: 14,
-                            mainAxisSpacing: 14,
-                          ),
-                          delegate: SliverChildBuilderDelegate(
-                            (context, i) {
-                              final entry = sections.discovery[i];
-                              return TeamHubCard(
-                                team: entry.team,
-                                favorited: hubState.favorites.contains(
-                                  entry.team.key,
-                                ),
-                                busy: hubState.cloningKeys.contains(
-                                  entry.team.key,
-                                ),
-                                onTap: () => onOpen(entry),
-                                onToggleFavorite: () =>
-                                    onToggleFavorite(entry.team.key),
-                              );
-                            },
-                            childCount: sections.discovery.length,
-                          ),
+                                maxCrossAxisExtent: 380,
+                                mainAxisExtent: 200,
+                                crossAxisSpacing: 14,
+                                mainAxisSpacing: 14,
+                              ),
+                          delegate: SliverChildBuilderDelegate((context, i) {
+                            final entry = sections.discovery[i];
+                            return TeamHubCard(
+                              team: entry.team,
+                              favorited: hubState.favorites.contains(
+                                entry.team.key,
+                              ),
+                              busy: hubState.cloningKeys.contains(
+                                entry.team.key,
+                              ),
+                              onTap: () => onOpen(entry),
+                              onToggleFavorite: () =>
+                                  onToggleFavorite(entry.team.key),
+                            );
+                          }, childCount: sections.discovery.length),
                         ),
                       ),
                     ],

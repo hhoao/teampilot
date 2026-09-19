@@ -76,19 +76,15 @@ void main() {
   test('nativeTeamLaunchable requires TeamBehaviorCapability', () {
     final registry = CliToolRegistry();
     registry.register(
-      const _FakeTool(
-        CliTool.claude,
-        true,
-        [_FakeTeamBehavior(supportsNativeTeam: true)],
-      ),
+      const _FakeTool(CliTool.claude, true, [
+        _FakeTeamBehavior(supportsNativeTeam: true),
+      ]),
     );
     registry.register(const _FakeTool(CliTool.codex, true, []));
     registry.register(
-      const _FakeTool(
-        CliTool.flashskyai,
-        true,
-        [_FakeTeamBehavior(supportsNativeTeam: true)],
-      ),
+      const _FakeTool(CliTool.flashskyai, true, [
+        _FakeTeamBehavior(supportsNativeTeam: true),
+      ]),
     );
     expect(registry.nativeTeamLaunchable.map((d) => d.id), [
       CliTool.claude,
@@ -103,8 +99,7 @@ void main() {
     registerBuiltInCliTools(registry);
     expect(registry.supportsMemberAgentPreset(CliTool.codex), isFalse);
     expect(
-      registry
-          .all
+      registry.all
           .where((d) => registry.memberAgentPresetStyle(d.id) != null)
           .map((d) => d.id)
           .toSet(),
@@ -208,21 +203,22 @@ void main() {
     }
   });
 
-  test('lifecycleFor returns no-op when tool registers no session capability', () {
-    final registry = CliToolRegistry();
-    registry.register(const _FakeTool(CliTool.codex, true, []));
-    expect(
-      registry.lifecycleFor(CliTool.codex),
-      isA<NoopCliSessionCapability>(),
-    );
-  });
+  test(
+    'lifecycleFor returns no-op when tool registers no session capability',
+    () {
+      final registry = CliToolRegistry();
+      registry.register(const _FakeTool(CliTool.codex, true, []));
+      expect(
+        registry.lifecycleFor(CliTool.codex),
+        isA<NoopCliSessionCapability>(),
+      );
+    },
+  );
 
   test('lifecycleFor returns registered session capability', () {
     const lifecycle = NoopCliSessionCapability();
     final registry = CliToolRegistry();
-    registry.register(
-      const _FakeTool(CliTool.codex, true, [lifecycle]),
-    );
+    registry.register(const _FakeTool(CliTool.codex, true, [lifecycle]));
     expect(identical(registry.lifecycleFor(CliTool.codex), lifecycle), isTrue);
   });
 }

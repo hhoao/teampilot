@@ -7,11 +7,13 @@ import 'package:teampilot/services/storage/targets_repository.dart';
 import 'in_memory_filesystem.dart';
 
 /// Minimal [SshProfileRepository] for widget tests (in-memory fs).
-SshProfileRepository testSshProfileRepository({String root = '/tp-test-home-target'}) {
+SshProfileRepository testSshProfileRepository({
+  String root = '/tp-test-home-target',
+}) {
   return SshProfileRepository(
     rootDir: root,
     fs: InMemoryFilesystem(),
-                               storage: fakeHomeStorage(),
+    storage: fakeHomeStorage(),
   );
 }
 
@@ -19,7 +21,11 @@ SshProfileRepository testSshProfileRepository({String root = '/tp-test-home-targ
 HomeTargetController testHomeTargetController() {
   const root = '/tp-test-home-target';
   final fs = InMemoryFilesystem();
-  final sshProfileRepo = SshProfileRepository(rootDir: root, fs: fs, storage: fakeHomeStorage(filesystem: fs), );
+  final sshProfileRepo = SshProfileRepository(
+    rootDir: root,
+    fs: fs,
+    storage: fakeHomeStorage(filesystem: fs),
+  );
   final registry = RuntimeTargetRegistry(
     repo: TargetsRepository(rootDir: root, fs: fs),
     sshProfileRepo: sshProfileRepo,

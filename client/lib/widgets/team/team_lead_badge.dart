@@ -62,9 +62,7 @@ class MemberTitleRow extends StatelessWidget {
     final styles = TpTextStyles.of(context);
     final textStyle = style != null
         ? (textColor != null ? style!.copyWith(color: textColor) : style)
-        : (textColor != null
-              ? styles.mdColored(textColor!)
-              : styles.md);
+        : (textColor != null ? styles.mdColored(textColor!) : styles.md);
 
     return Row(
       children: [

@@ -66,10 +66,18 @@ final class CursorSessionLifecyclePaths {
       );
 
   String sharedInstalledPluginsFile() =>
-      CursorWorkspaceWarmTier.installedPluginsFile(_layout, _workspaceId, _teamId);
+      CursorWorkspaceWarmTier.installedPluginsFile(
+        _layout,
+        _workspaceId,
+        _teamId,
+      );
 
   String sharedKnownMarketplacesFile() =>
-      CursorWorkspaceWarmTier.knownMarketplacesFile(_layout, _workspaceId, _teamId);
+      CursorWorkspaceWarmTier.knownMarketplacesFile(
+        _layout,
+        _workspaceId,
+        _teamId,
+      );
 
   String sharedSkillsCursorDir() =>
       CursorWorkspaceWarmTier.skillsCursorDir(_layout, _workspaceId, _teamId);
@@ -94,7 +102,8 @@ final class CursorSessionLifecyclePaths {
         canonicalHome: memberHomeRoot(memberId),
       );
 
-  String memberCursorDir(String memberHome) => _homeLayout.cursorDir(memberHome);
+  String memberCursorDir(String memberHome) =>
+      _homeLayout.cursorDir(memberHome);
 
   Future<void> ensureSharedDirs() async {
     await _fs.ensureDir(sharedRoot());
@@ -109,8 +118,7 @@ final class CursorSessionLifecyclePaths {
   /// `.cursor` on macOS).
   String memberAuthDir(String memberHome) => _homeLayout.authDir(memberHome);
 
-  String memberAuthFile(String memberHome) =>
-      _homeLayout.authJson(memberHome);
+  String memberAuthFile(String memberHome) => _homeLayout.authJson(memberHome);
 
   Future<void> ensureMemberHomeLayout({
     required String memberId,
@@ -128,10 +136,10 @@ final class CursorSessionLifecyclePaths {
     await _fs.ensureDir(_ctx.join(cursorDir, CursorHomeLayout.hooksDirName));
     await _linkMemberSharedArtifacts(memberHome: memberHome);
     await ensureMemberAuthDir(memberHome: memberHome);
-    await CursorMemberHomePassthrough(fs: _fs, layout: _homeLayout).mirror(
-      realHomeRoot: realHomeRoot,
-      memberHomeRoot: memberHome,
-    );
+    await CursorMemberHomePassthrough(
+      fs: _fs,
+      layout: _homeLayout,
+    ).mirror(realHomeRoot: realHomeRoot, memberHomeRoot: memberHome);
   }
 
   Future<void> ensureMemberAuthDir({required String memberHome}) async {
@@ -141,7 +149,9 @@ final class CursorSessionLifecyclePaths {
   Future<void> _linkMemberSharedArtifacts({required String memberHome}) async {
     final cursorDir = memberCursorDir(memberHome);
     await _linkMemberProjects(memberHome: memberHome);
-    await _fs.ensureDir(_ctx.join(cursorDir, CursorWorkspaceWarmTier.pluginsDirName));
+    await _fs.ensureDir(
+      _ctx.join(cursorDir, CursorWorkspaceWarmTier.pluginsDirName),
+    );
     await _linkDirectory(
       source: sharedPluginsLocalDir(),
       target: _ctx.join(
@@ -176,10 +186,7 @@ final class CursorSessionLifecyclePaths {
     );
     await _linkDirectory(
       source: sharedSkillsCursorDir(),
-      target: _ctx.join(
-        cursorDir,
-        CursorSkillCapability.skillsSubdirName,
-      ),
+      target: _ctx.join(cursorDir, CursorSkillCapability.skillsSubdirName),
     );
     await _linkFile(
       source: sharedSettingsFile(),

@@ -2,7 +2,6 @@ import 'dart:async';
 
 import '../../cubits/app_provider_cubit.dart';
 import '../../models/app_provider_config.dart';
-import '../../models/team_config.dart';
 import '../../utils/logging/logger.dart';
 
 /// Clears `credentialLink` references to a deleted managed-provider entry.

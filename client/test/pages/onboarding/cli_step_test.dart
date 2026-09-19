@@ -57,7 +57,9 @@ void main() {
     );
 
     expect(
-      registry.capability<CliExecutableCapability>(CliTool.claude)?.supportsInstaller,
+      registry
+          .capability<CliExecutableCapability>(CliTool.claude)
+          ?.supportsInstaller,
       isTrue,
     );
     expect(
@@ -85,7 +87,7 @@ void main() {
       profileRepository = SshProfileRepository(
         rootDir: tempDir.path,
         fs: InMemoryFilesystem(),
-                                                storage: testHomeStorage,
+        storage: testHomeStorage,
       );
       profileCubit = SshProfileCubit(
         profileRepository: profileRepository,
@@ -180,9 +182,7 @@ void main() {
                   BlocProvider<SshProfileCubit>.value(value: profileCubit),
                 ],
                 child: const Scaffold(
-                  body: SingleChildScrollView(
-                    child: OnboardingCliStep(),
-                  ),
+                  body: SingleChildScrollView(child: OnboardingCliStep()),
                 ),
               ),
             ),
@@ -195,16 +195,15 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
     }
 
-    testWidgets(
-      'bound SSH home uses remote locate (not local) on detect',
-      (tester) async {
-        expect(mode.isRemoteWorkPlane, isTrue);
-        await pumpCliStep(tester);
+    testWidgets('bound SSH home uses remote locate (not local) on detect', (
+      tester,
+    ) async {
+      expect(mode.isRemoteWorkPlane, isTrue);
+      await pumpCliStep(tester);
 
-        expect(storageLookups, ['p1']);
-        expect(find.textContaining('spy-remote-locate:p1'), findsOneWidget);
-      },
-    );
+      expect(storageLookups, ['p1']);
+      expect(find.textContaining('spy-remote-locate:p1'), findsOneWidget);
+    });
 
     testWidgets('local home does not open SSH client for detect', (
       tester,

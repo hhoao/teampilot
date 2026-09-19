@@ -4,7 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../services/chat/terminal/pending_user_message.dart';
+import '../../services/chat/runtime/pty/pending_user_message.dart';
 
 /// Banner overlay that confirms lines sent to the team bus while a member is
 /// parked on `wait_for_message`. A banner persists until [isUnread] reports the

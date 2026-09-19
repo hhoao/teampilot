@@ -69,9 +69,7 @@ void main() {
     appDataRoot = await Directory.systemTemp.createTemp(
       'teampilot-embedded-pairing-',
     );
-    homeDir = await Directory.systemTemp.createTemp(
-      'teampilot-embedded-home-',
-    );
+    homeDir = await Directory.systemTemp.createTemp('teampilot-embedded-home-');
     final fs = LocalFilesystem();
     deviceStore = PairedDeviceStore(fs: fs, appDataRoot: appDataRoot.path);
     server = EmbeddedSshServer(
@@ -205,71 +203,75 @@ void main() {
     expect(await session.waitForExit(), 0);
   });
 
-  test('SFTP round trip mkdir/write/read/listdir/rmdir hits the real disk',
-      () async {
-    final sftp = await sshClient.sftp();
-    addTearDown(sftp.close);
+  test(
+    'SFTP round trip mkdir/write/read/listdir/rmdir hits the real disk',
+    () async {
+      final sftp = await sshClient.sftp();
+      addTearDown(sftp.close);
 
-    final dirPath = '${homeDir.path}/tp-embedded-sftp';
-    final filePath = '$dirPath/round-trip.txt';
-    const content = 'embedded sftp round trip';
+      final dirPath = '${homeDir.path}/tp-embedded-sftp';
+      final filePath = '$dirPath/round-trip.txt';
+      const content = 'embedded sftp round trip';
 
-    await sftp.mkdir(dirPath);
-    final writer = await sftp.open(
-      filePath,
-      mode: SftpFileOpenMode.create | SftpFileOpenMode.write,
-    );
-    await writer.writeBytes(Uint8List.fromList(utf8.encode(content)));
-    await writer.close();
+      await sftp.mkdir(dirPath);
+      final writer = await sftp.open(
+        filePath,
+        mode: SftpFileOpenMode.create | SftpFileOpenMode.write,
+      );
+      await writer.writeBytes(Uint8List.fromList(utf8.encode(content)));
+      await writer.close();
 
-    final reader = await sftp.open(filePath, mode: SftpFileOpenMode.read);
-    final readBack = await reader.readBytes();
-    await reader.close();
-    expect(utf8.decode(readBack), content);
+      final reader = await sftp.open(filePath, mode: SftpFileOpenMode.read);
+      final readBack = await reader.readBytes();
+      await reader.close();
+      expect(utf8.decode(readBack), content);
 
-    expect(
-      (await sftp.listdir(dirPath)).map((entry) => entry.filename),
-      contains('round-trip.txt'),
-    );
-    // The listing served the real temp home, not an in-memory fake.
-    expect(File(filePath).readAsStringSync(), content);
+      expect(
+        (await sftp.listdir(dirPath)).map((entry) => entry.filename),
+        contains('round-trip.txt'),
+      );
+      // The listing served the real temp home, not an in-memory fake.
+      expect(File(filePath).readAsStringSync(), content);
 
-    await sftp.remove(filePath);
-    await sftp.rmdir(dirPath);
-    expect(FileSystemEntity.typeSync(dirPath), FileSystemEntityType.notFound);
-  });
+      await sftp.remove(filePath);
+      await sftp.rmdir(dirPath);
+      expect(FileSystemEntity.typeSync(dirPath), FileSystemEntityType.notFound);
+    },
+  );
 
-  test('bare-shell channel runs the OS-native shell through the pty seam',
-      () async {
-    final session = await sshClient.shell();
-    final output = StringBuffer();
-    final sawNeedle = Completer<void>();
-    late final StreamSubscription<Uint8List> subscription;
-    subscription = session.stdout.listen((data) {
-      output.write(utf8.decode(data));
-      if (output.toString().contains('INTEGRATION_SHELL_OK') &&
-          !sawNeedle.isCompleted) {
-        sawNeedle.complete();
-      }
-    });
-    addTearDown(subscription.cancel);
+  test(
+    'bare-shell channel runs the OS-native shell through the pty seam',
+    () async {
+      final session = await sshClient.shell();
+      final output = StringBuffer();
+      final sawNeedle = Completer<void>();
+      late final StreamSubscription<Uint8List> subscription;
+      subscription = session.stdout.listen((data) {
+        output.write(utf8.decode(data));
+        if (output.toString().contains('INTEGRATION_SHELL_OK') &&
+            !sawNeedle.isCompleted) {
+          sawNeedle.complete();
+        }
+      });
+      addTearDown(subscription.cancel);
 
-    // \r\n line endings work for both POSIX shells and PowerShell.
-    session.stdin.add(
-      Uint8List.fromList(utf8.encode('echo INTEGRATION_SHELL_OK\r\n')),
-    );
-    await sawNeedle.future.timeout(
-      const Duration(seconds: 20),
-      onTimeout: () => fail('shell never echoed the marker\n$output'),
-    );
-    await subscription.cancel();
-    expect(output.toString(), contains('INTEGRATION_SHELL_OK'));
+      // \r\n line endings work for both POSIX shells and PowerShell.
+      session.stdin.add(
+        Uint8List.fromList(utf8.encode('echo INTEGRATION_SHELL_OK\r\n')),
+      );
+      await sawNeedle.future.timeout(
+        const Duration(seconds: 20),
+        onTimeout: () => fail('shell never echoed the marker\n$output'),
+      );
+      await subscription.cancel();
+      expect(output.toString(), contains('INTEGRATION_SHELL_OK'));
 
-    // The signal path: RFC 4254 SIGTERM reaches the spawned shell and the
-    // channel finishes.
-    session.kill(SSHSignal.TERM);
-    await session.done.timeout(const Duration(seconds: 10));
-  });
+      // The signal path: RFC 4254 SIGTERM reaches the spawned shell and the
+      // channel finishes.
+      session.kill(SSHSignal.TERM);
+      await session.done.timeout(const Duration(seconds: 10));
+    },
+  );
 
   test('revoking the device tears down the live connection', () async {
     expect(await server.revokeDevice(deviceId), isTrue);

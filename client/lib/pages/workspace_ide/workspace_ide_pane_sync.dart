@@ -56,10 +56,7 @@ class WorkspaceIdePaneSnapshot {
 /// Side panes no longer have a hard global max; these caps are derived from the
 /// current viewport and the opposite pane so the center cannot be crushed to 0.
 class WorkspaceIdePaneBounds {
-  const WorkspaceIdePaneBounds({
-    required this.leftMax,
-    required this.rightMax,
-  });
+  const WorkspaceIdePaneBounds({required this.leftMax, required this.rightMax});
 
   /// Keep aligned with [WorkspaceIdePaneChrome.resizerThickness].
   static const double resizerThickness = 1.0;
@@ -122,8 +119,7 @@ class WorkspaceIdePaneBounds {
     );
   }
 
-  static double _atLeast(double value, double min) =>
-      value < min ? min : value;
+  static double _atLeast(double value, double min) => value < min ? min : value;
 
   @override
   bool operator ==(Object other) {

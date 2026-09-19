@@ -187,87 +187,87 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
         child: Padding(
           padding: _pageHostPadding(context),
           child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l10n.mcpOAuthConnectHint),
-            if (discovering) ...[
-              const SizedBox(height: 16),
-              const LinearProgressIndicator(),
-              const SizedBox(height: 8),
-              Text(
-                l10n.mcpOAuthDiscovering,
-                style: TpTextStyles.of(context).sm,
-              ),
-            ],
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                _error!,
-                style: TpTextStyles.of(context).mdColored(
-                  Theme.of(context).colorScheme.error,
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(l10n.mcpOAuthConnectHint),
+              if (discovering) ...[
+                const SizedBox(height: 16),
+                const LinearProgressIndicator(),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.mcpOAuthDiscovering,
+                  style: TpTextStyles.of(context).sm,
                 ),
-              ),
-            ],
-            if (_authorizationUrl != null) ...[
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                onPressed: finishing ? null : _openBrowser,
-                icon: Icon(
-                  Icons.open_in_browser,
-                  size: context.tpIconSizes.md,
-                ),
-                label: Text(l10n.mcpOAuthOpenBrowser),
-              ),
-              const SizedBox(height: 8),
-              SelectableText(
-                _authorizationUrl!.toString(),
-                style: TpTextStyles.of(context).sm,
-              ),
-            ],
-            if (_showCallbackField) ...[
-              const SizedBox(height: 12),
-              Builder(
-                builder: (context) {
-                  final bodyStyle = TpTextStyles.of(context).md;
-                  return TpTextarea(
-                    controller: _callbackController,
-                    enabled: !finishing,
-                    decoration: InputDecoration(
-                      labelText: l10n.mcpOAuthCallbackUrlLabel,
-                      hintText: l10n.mcpOAuthCallbackUrlHint,
-                    ),
-                    minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
-                    maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 4),
-                  );
-                },
-              ),
-            ],
-            TpDialogActions(
-              children: [
-                TextButton(
-                  onPressed: finishing ? null : _cancel,
-                  child: Text(l10n.cancel),
-                ),
-                if (_showCallbackField)
-                  FilledButton(
-                    onPressed: finishing ? null : _submitManualCallback,
-                    child: Text(l10n.mcpOAuthSubmitCallback),
-                  ),
-                if (finishing)
-                  const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  ),
               ],
-            ),
-          ],
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _error!,
+                  style: TpTextStyles.of(
+                    context,
+                  ).mdColored(Theme.of(context).colorScheme.error),
+                ),
+              ],
+              if (_authorizationUrl != null) ...[
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: finishing ? null : _openBrowser,
+                  icon: Icon(
+                    Icons.open_in_browser,
+                    size: context.tpIconSizes.md,
+                  ),
+                  label: Text(l10n.mcpOAuthOpenBrowser),
+                ),
+                const SizedBox(height: 8),
+                SelectableText(
+                  _authorizationUrl!.toString(),
+                  style: TpTextStyles.of(context).sm,
+                ),
+              ],
+              if (_showCallbackField) ...[
+                const SizedBox(height: 12),
+                Builder(
+                  builder: (context) {
+                    final bodyStyle = TpTextStyles.of(context).md;
+                    return TpTextarea(
+                      controller: _callbackController,
+                      enabled: !finishing,
+                      decoration: InputDecoration(
+                        labelText: l10n.mcpOAuthCallbackUrlLabel,
+                        hintText: l10n.mcpOAuthCallbackUrlHint,
+                      ),
+                      minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
+                      maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 4),
+                    );
+                  },
+                ),
+              ],
+              TpDialogActions(
+                children: [
+                  TextButton(
+                    onPressed: finishing ? null : _cancel,
+                    child: Text(l10n.cancel),
+                  ),
+                  if (_showCallbackField)
+                    FilledButton(
+                      onPressed: finishing ? null : _submitManualCallback,
+                      child: Text(l10n.mcpOAuthSubmitCallback),
+                    ),
+                  if (finishing)
+                    const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

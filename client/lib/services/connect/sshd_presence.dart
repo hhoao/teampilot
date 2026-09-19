@@ -22,9 +22,7 @@ List<String> fingerprintsFromSshKeyScan(String stdout) {
     try {
       final blob = base64.decode(parts[2]);
       final digest = crypto.sha256.convert(blob).bytes;
-      fingerprints.add(
-        'SHA256:${base64.encode(digest).replaceAll('=', '')}',
-      );
+      fingerprints.add('SHA256:${base64.encode(digest).replaceAll('=', '')}');
     } on FormatException {
       continue;
     }

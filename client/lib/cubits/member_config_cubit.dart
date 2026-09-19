@@ -33,9 +33,11 @@ class MemberConfigState {
 }
 
 class MemberConfigCubit extends Cubit<MemberConfigState> {
-  MemberConfigCubit({required HomeStorage storage, MemberConfigInspector? inspector})
-    : _inspector = inspector ?? MemberConfigInspector(storage: storage),
-      super(const MemberConfigState());
+  MemberConfigCubit({
+    required HomeStorage storage,
+    MemberConfigInspector? inspector,
+  }) : _inspector = inspector ?? MemberConfigInspector(storage: storage),
+       super(const MemberConfigState());
 
   final MemberConfigInspector _inspector;
 

@@ -23,8 +23,16 @@ void main() {
       CliBootstrap(const {}, storage: testHomeStorage),
     );
     fs = InMemoryFilesystem();
-    service = ConfigProfileService(basePath: base, fs: fs, storage: testHomeStorage, );
-    repository = AppProviderRepository(basePath: base, fs: fs, storage: testHomeStorage, );
+    service = ConfigProfileService(
+      basePath: base,
+      fs: fs,
+      storage: testHomeStorage,
+    );
+    repository = AppProviderRepository(
+      basePath: base,
+      fs: fs,
+      storage: testHomeStorage,
+    );
   });
 
   tearDown(() => tearDownTestAppStorage());
@@ -156,7 +164,12 @@ void main() {
     'mixed launch links global credentials for official member provider',
     () async {
       const home = '/home/user';
-      service = ConfigProfileService(basePath: base, fs: fs, home: home, storage: testHomeStorage, );
+      service = ConfigProfileService(
+        basePath: base,
+        fs: fs,
+        home: home,
+        storage: testHomeStorage,
+      );
       await repository.saveProviders(CliTool.claude, [
         const AppProviderConfig(
           id: 'leaky',

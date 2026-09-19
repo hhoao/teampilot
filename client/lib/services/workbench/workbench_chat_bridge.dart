@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../chat/host/session_launch_host.dart';
+import '../chat/launch/session_launch_host.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_domain_port.dart';

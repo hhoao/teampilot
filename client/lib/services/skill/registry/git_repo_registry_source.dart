@@ -66,8 +66,7 @@ class GitRepoRegistrySource implements SkillRegistrySource {
     repoName: d.repoName,
     repoBranch: d.repoBranch,
     directory: d.directory,
-    githubUrl: d.readmeUrl ??
-        'https://github.com/${d.repoOwner}/${d.repoName}',
+    githubUrl: d.readmeUrl ?? 'https://github.com/${d.repoOwner}/${d.repoName}',
   );
 
   @override

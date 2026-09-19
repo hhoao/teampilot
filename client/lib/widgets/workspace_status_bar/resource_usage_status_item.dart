@@ -98,9 +98,8 @@ class _ResourceUsageStatusSegmentState
             onClose: () {
               context.read<ResourceManagerCubit>().closePanel();
             },
-            popoverBuilder: (context, _) => ResourceManagerPanel(
-              onNavigateLeaf: widget.onNavigateLeaf,
-            ),
+            popoverBuilder: (context, _) =>
+                ResourceManagerPanel(onNavigateLeaf: widget.onNavigateLeaf),
             child: Tooltip(
               message: tooltip,
               child: _PillButton(

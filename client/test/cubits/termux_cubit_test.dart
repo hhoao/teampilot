@@ -75,23 +75,26 @@ void main() {
       expect(testedProfile?.username, 'u0_a123');
     });
 
-    test('connect failure stays disconnected and does not select home', () async {
-      const config = TermuxConfig(username: 'u0_a456');
-      await store.save(config);
+    test(
+      'connect failure stays disconnected and does not select home',
+      () async {
+        const config = TermuxConfig(username: 'u0_a456');
+        await store.save(config);
 
-      final cubit = createCubit(
-        testConnect: (_) async => (ok: false, message: 'port refused'),
-      );
-      addTearDown(cubit.close);
-      await cubit.hydrate();
+        final cubit = createCubit(
+          testConnect: (_) async => (ok: false, message: 'port refused'),
+        );
+        addTearDown(cubit.close);
+        await cubit.hydrate();
 
-      await cubit.connect();
+        await cubit.connect();
 
-      expect(cubit.state.connected, isFalse);
-      expect(cubit.state.config, config);
-      expect(cubit.state.lastError, 'port refused');
-      expect(homeSelections, isEmpty);
-    });
+        expect(cubit.state.connected, isFalse);
+        expect(cubit.state.config, config);
+        expect(cubit.state.lastError, 'port refused');
+        expect(homeSelections, isEmpty);
+      },
+    );
 
     test('disconnect keeps config and does not change home', () async {
       const config = TermuxConfig(username: 'u0_a789');

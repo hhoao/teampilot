@@ -8,15 +8,13 @@ import 'remote_download_source.dart';
 
 @immutable
 class RemoteDownloadSettings {
-  const RemoteDownloadSettings({
-    this.sources = const [],
-    this.mirrorBaseUrl,
-  });
+  const RemoteDownloadSettings({this.sources = const [], this.mirrorBaseUrl});
 
   factory RemoteDownloadSettings.fromJson(Map<String, Object?> json) {
     final rawSources = json['sources'] as List<Object?>?;
     return RemoteDownloadSettings(
-      sources: rawSources
+      sources:
+          rawSources
               ?.map(
                 (entry) => RemoteDownloadSource.fromJson(
                   entry as Map<String, Object?>,
@@ -53,18 +51,16 @@ class RemoteDownloadSettings {
 
 class RemoteDownloadSettingsStore {
   RemoteDownloadSettingsStore({required this.rootDir, required Filesystem fs})
-      : _fs = fs;
+    : _fs = fs;
 
   static const githubMirrorId = 'github-mirror';
 
   final String rootDir;
   final Filesystem _fs;
 
-  String get _configDir =>
-      _fs.pathContext.join(rootDir, '.remote-download');
+  String get _configDir => _fs.pathContext.join(rootDir, '.remote-download');
 
-  String get _configFile =>
-      _fs.pathContext.join(_configDir, 'catalog.json');
+  String get _configFile => _fs.pathContext.join(_configDir, 'catalog.json');
 
   Future<RemoteDownloadSettings?> load() async {
     if (!(await _fs.stat(_configFile)).isFile) return null;
@@ -111,10 +107,7 @@ class RemoteDownloadSettingsStore {
         .where((s) => !defaultIds.contains(s.id) && !mergedIds.contains(s.id))
         .toList();
     if (extraSources.isNotEmpty) {
-      catalog = RemoteDownloadCatalog([
-        ...catalog.sources,
-        ...extraSources,
-      ]);
+      catalog = RemoteDownloadCatalog([...catalog.sources, ...extraSources]);
     }
 
     final mirrorBaseUrl = settings.mirrorBaseUrl?.trim();

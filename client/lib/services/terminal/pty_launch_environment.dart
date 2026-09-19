@@ -15,6 +15,7 @@ abstract final class PtyLaunchEnvironment {
 
   static Map<String, String> get _hostEnvironment =>
       debugHostEnvironmentOverride ?? Platform.environment;
+
   /// VTE-based terminals (GNOME Terminal, etc.) set this; Claude Code also treats
   /// [vteVersion] ≥ 6800 as hyperlink-capable in some builds.
   static const String termProgram = 'gnome-terminal';

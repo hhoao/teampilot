@@ -2,7 +2,6 @@ import '../../cubits/seat_lease_cubit.dart';
 import '../agent_status/seat_lease.dart';
 import '../cli/registry/capabilities/chat_interaction_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
-import 'runtime_event.dart';
 import 'runtime_event_projection.dart';
 
 /// Projects normalized hook status into [SeatLeaseCubit]:

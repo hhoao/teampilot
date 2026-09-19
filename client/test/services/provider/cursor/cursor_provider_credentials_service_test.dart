@@ -114,7 +114,11 @@ void main() {
     CursorHomeLayout.debugPlatformEnvironmentOverride = const {};
     fs = InMemoryFilesystem();
     layout = CursorHomeLayout(pathContext: fs.pathContext);
-    service = CursorProviderCredentialsService(fs: fs, basePath: base, storage: fakeHomeStorage(filesystem: fs), );
+    service = CursorProviderCredentialsService(
+      fs: fs,
+      basePath: base,
+      storage: fakeHomeStorage(filesystem: fs),
+    );
   });
 
   tearDown(() {
@@ -127,13 +131,7 @@ void main() {
     expect(
       probe.credentialPath,
       layout.authJson(
-        fs.pathContext.join(
-          base,
-          'providers',
-          'cursor',
-          'work',
-          'home',
-        ),
+        fs.pathContext.join(base, 'providers', 'cursor', 'work', 'home'),
       ),
     );
   });
@@ -215,7 +213,10 @@ void main() {
         homeDirectory: home,
       );
       expect(result.ok, isFalse);
-      expect(result.failure?.code, CredentialActionFailureCode.requiredFileMissing);
+      expect(
+        result.failure?.code,
+        CredentialActionFailureCode.requiredFileMissing,
+      );
       expect(
         result.failure?.path,
         anyOf(
@@ -233,7 +234,7 @@ void main() {
     final winService = CursorProviderCredentialsService(
       fs: winFs,
       basePath: base,
-                                                         storage: fakeHomeStorage(filesystem: fs),
+      storage: fakeHomeStorage(filesystem: fs),
     );
     const home = r'C:\Users\haung';
     const appData = r'C:\Users\haung\AppData\Roaming';
@@ -280,39 +281,33 @@ void main() {
     expect(utf8.decode(authBytes!), contains('at1'));
   });
 
-  test(
-    'syncAuthToMemberHome replaces auth when switching providers',
-    () async {
-      await writeLoggedInProvider('acct-a');
-      final bHome = fs.pathContext.join(
-        base,
-        'providers',
-        'cursor',
-        'acct-b',
-        'home',
-      );
-      await fs.writeString(
-        layout.cliConfig(bHome),
-        '{"authInfo":{"userId":"u-b","authId":"a-b"}}',
-      );
-      await fs.writeString(
-        layout.authJson(bHome),
-        '{"accessToken":"at-b","refreshToken":"rt-b"}',
-      );
+  test('syncAuthToMemberHome replaces auth when switching providers', () async {
+    await writeLoggedInProvider('acct-a');
+    final bHome = fs.pathContext.join(
+      base,
+      'providers',
+      'cursor',
+      'acct-b',
+      'home',
+    );
+    await fs.writeString(
+      layout.cliConfig(bHome),
+      '{"authInfo":{"userId":"u-b","authId":"a-b"}}',
+    );
+    await fs.writeString(
+      layout.authJson(bHome),
+      '{"accessToken":"at-b","refreshToken":"rt-b"}',
+    );
 
-      const memberHome = '/data/tp/identities-runtime/t1/members/s1/cursor/home';
-      await service.syncAuthToMemberHome('acct-a', memberHome);
-      final result = await service.syncAuthToMemberHome('acct-b', memberHome);
+    const memberHome = '/data/tp/identities-runtime/t1/members/s1/cursor/home';
+    await service.syncAuthToMemberHome('acct-a', memberHome);
+    final result = await service.syncAuthToMemberHome('acct-b', memberHome);
 
-      expect(result, isNot(CredentialLinkResult.alreadyPresent));
-      final authBytes = await fs.readBytes(layout.authJson(memberHome));
-      expect(utf8.decode(authBytes!), contains('at-b'));
-      expect(
-        fs.symlinks[layout.cliConfig(memberHome)],
-        layout.cliConfig(bHome),
-      );
-    },
-  );
+    expect(result, isNot(CredentialLinkResult.alreadyPresent));
+    final authBytes = await fs.readBytes(layout.authJson(memberHome));
+    expect(utf8.decode(authBytes!), contains('at-b'));
+    expect(fs.symlinks[layout.cliConfig(memberHome)], layout.cliConfig(bHome));
+  });
 
   test(
     'syncAuthToMemberHome merges new authInfo into overlaid cli-config',
@@ -334,7 +329,8 @@ void main() {
         '{"accessToken":"at-b","refreshToken":"rt-b"}',
       );
 
-      const memberHome = '/data/tp/identities-runtime/t1/members/s1/cursor/home';
+      const memberHome =
+          '/data/tp/identities-runtime/t1/members/s1/cursor/home';
       await service.syncAuthToMemberHome('acct-a', memberHome);
       await fs.removeRecursive(layout.cliConfig(memberHome));
       await fs.writeString(
@@ -365,7 +361,8 @@ void main() {
     'syncAuthToMemberHome is alreadyPresent when same provider is already linked',
     () async {
       await writeLoggedInProvider('work');
-      const memberHome = '/data/tp/identities-runtime/t1/members/s1/cursor/home';
+      const memberHome =
+          '/data/tp/identities-runtime/t1/members/s1/cursor/home';
       await service.syncAuthToMemberHome('work', memberHome);
       final second = await service.syncAuthToMemberHome('work', memberHome);
       expect(second, CredentialLinkResult.alreadyPresent);
@@ -398,7 +395,7 @@ void main() {
         layout: layout,
         onStart: (request) => captured = request,
       ),
-                                                           storage: fakeHomeStorage(filesystem: fs),
+      storage: fakeHomeStorage(filesystem: fs),
     );
 
     await loginService.runAuthLogin('work');
@@ -418,7 +415,7 @@ void main() {
             expect(request.arguments, contains('login'));
           },
         ),
-                                                             storage: fakeHomeStorage(filesystem: fs),
+        storage: fakeHomeStorage(filesystem: fs),
       );
 
       final loginResult = await loginService.runAuthLogin('work');
@@ -485,7 +482,7 @@ void main() {
           layout: layout,
           writeAuthJson: false,
         ),
-                                                             storage: fakeHomeStorage(filesystem: fs),
+        storage: fakeHomeStorage(filesystem: fs),
       );
 
       final loginResult = await loginService.runAuthLogin('work');
@@ -563,7 +560,7 @@ void main() {
         }),
         streaming: () => throw StateError('streaming should not be called'),
       ),
-                                                            storage: fakeHomeStorage(filesystem: fs),
+      storage: fakeHomeStorage(filesystem: fs),
     );
 
     final result = await revokeService.revokeCredentials('work');

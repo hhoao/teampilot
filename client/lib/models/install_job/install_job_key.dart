@@ -21,8 +21,7 @@ final class InstallJobKey extends Equatable {
   final String target;
   final InstallJobScope scope;
 
-  String get activityId =>
-      'install-${kind.name}-$target-${scope.id}';
+  String get activityId => 'install-${kind.name}-$target-${scope.id}';
 
   @override
   List<Object?> get props => [kind, target, scope];

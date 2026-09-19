@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/terminal/terminal_activity_tracker.dart';
+import 'package:teampilot/services/chat/runtime/pty/terminal_activity_tracker.dart';
 
 void main() {
   // Stamps are wall-clock based; `isWorking` re-reads DateTime.now(), so a

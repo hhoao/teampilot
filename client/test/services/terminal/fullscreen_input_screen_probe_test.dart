@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/terminal/fullscreen_cr_ack_config.dart';
-import 'package:teampilot/services/chat/terminal/fullscreen_input_screen_probe.dart';
-import 'package:teampilot/services/chat/terminal/pty_automation_needle.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_cr_ack_config.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_input_screen_probe.dart';
+import 'package:teampilot/services/chat/runtime/pty/pty_automation_needle.dart';
 
 void main() {
   test('locateNeedle finds bottommost row match', () {

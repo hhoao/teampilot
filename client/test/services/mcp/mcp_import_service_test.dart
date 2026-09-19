@@ -16,7 +16,7 @@ void main() {
     importService = McpImportService(
       fs: LocalFilesystem(),
       homeDirectory: home.path,
-                                      storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
   });
 

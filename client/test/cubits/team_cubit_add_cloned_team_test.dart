@@ -125,7 +125,10 @@ void main() {
           source: CompositeExpertHubSource(
             builtIns: const [],
             registry: _StaticRegistry(const [_registryExpert]),
-                                            localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
+            localStore: LocalExpertStore(
+              fs: InMemoryFilesystem(),
+              dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
+            ),
           ),
         ),
       );

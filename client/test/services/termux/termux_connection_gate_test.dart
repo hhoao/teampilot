@@ -5,28 +5,16 @@ import 'package:teampilot/services/termux/termux_connection_gate.dart';
 void main() {
   group('allowTermuxWorkOps', () {
     test('allows non-termux home regardless of connection', () {
-      expect(
-        allowTermuxWorkOps(isTermuxHome: false, connected: false),
-        isTrue,
-      );
-      expect(
-        allowTermuxWorkOps(isTermuxHome: false, connected: true),
-        isTrue,
-      );
+      expect(allowTermuxWorkOps(isTermuxHome: false, connected: false), isTrue);
+      expect(allowTermuxWorkOps(isTermuxHome: false, connected: true), isTrue);
     });
 
     test('blocks termux home when disconnected', () {
-      expect(
-        allowTermuxWorkOps(isTermuxHome: true, connected: false),
-        isFalse,
-      );
+      expect(allowTermuxWorkOps(isTermuxHome: true, connected: false), isFalse);
     });
 
     test('allows termux home when connected', () {
-      expect(
-        allowTermuxWorkOps(isTermuxHome: true, connected: true),
-        isTrue,
-      );
+      expect(allowTermuxWorkOps(isTermuxHome: true, connected: true), isTrue);
     });
   });
 
@@ -54,7 +42,7 @@ void main() {
           message: message,
         ),
         isNull,
-        );
+      );
     });
 
     test('returns message when home is termux and disconnected', () {

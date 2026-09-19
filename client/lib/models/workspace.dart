@@ -160,10 +160,7 @@ class Workspace {
           matchSubpaths: true,
         ) ??
         folders.first.targetId;
-    return [
-      WorkspaceFolder(path: primary, targetId: targetId),
-      ...folders,
-    ];
+    return [WorkspaceFolder(path: primary, targetId: targetId), ...folders];
   }
 
   static String _basename(String path) {

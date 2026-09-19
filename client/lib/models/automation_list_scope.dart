@@ -4,10 +4,7 @@ import 'package:flutter/foundation.dart';
 /// Describes which automations a list view or cubit load should cover.
 @immutable
 class AutomationListScope extends Equatable {
-  const AutomationListScope._({
-    this.workspaceId,
-    this.sessionId,
-  });
+  const AutomationListScope._({this.workspaceId, this.sessionId});
 
   /// Global management — every workspace.
   const AutomationListScope.all() : this._();

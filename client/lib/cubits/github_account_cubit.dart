@@ -6,7 +6,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../services/github/github_credentials_store.dart';
 import '../services/github/github_device_flow_auth.dart';
 
-enum GithubAccountStatus { unknown, disconnected, requesting, waiting, connected }
+enum GithubAccountStatus {
+  unknown,
+  disconnected,
+  requesting,
+  waiting,
+  connected,
+}
 
 class GithubAccountState extends Equatable {
   const GithubAccountState({

@@ -20,11 +20,13 @@ class FilesystemSearchReader implements SearchFileReader {
     try {
       final entries = await fs.listDir(path);
       return entries
-          .map((e) => SearchDirEntry(
-                name: e.name,
-                isDirectory: e.isDirectory,
-                size: null,
-              ))
+          .map(
+            (e) => SearchDirEntry(
+              name: e.name,
+              isDirectory: e.isDirectory,
+              size: null,
+            ),
+          )
           .toList();
     } catch (_) {
       return const [];

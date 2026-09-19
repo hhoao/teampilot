@@ -99,10 +99,7 @@ class SkillInstalledSection extends StatelessWidget {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : Icon(
-                                Icons.refresh,
-                                size: context.tpIconSizes.md,
-                              ),
+                            : Icon(Icons.refresh, size: context.tpIconSizes.md),
                         label: Text(
                           state.updatesLoading
                               ? l10n.skillsCheckingUpdates
@@ -244,9 +241,9 @@ class SkillInstalledRow extends StatelessWidget {
                   sourceLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TpTextStyles.of(context).xsColored(
-                    textBase.withValues(alpha: 0.5),
-                  ),
+                  style: TpTextStyles.of(
+                    context,
+                  ).xsColored(textBase.withValues(alpha: 0.5)),
                 ),
                 if (skill.description.isNotEmpty) ...[
                   const SizedBox(height: 4),
@@ -254,9 +251,9 @@ class SkillInstalledRow extends StatelessWidget {
                     skill.description,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TpTextStyles.of(context).smColored(
-                      textBase.withValues(alpha: 0.6),
-                    ),
+                    style: TpTextStyles.of(
+                      context,
+                    ).smColored(textBase.withValues(alpha: 0.6)),
                   ),
                 ],
               ],

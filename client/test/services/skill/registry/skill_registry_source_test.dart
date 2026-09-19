@@ -46,13 +46,23 @@ void main() {
 
   test('marketplace skill flags', () {
     const direct = MarketplaceSkill(
-      key: 'k', name: 'n', description: 'd', repoOwner: 'o', repoName: 'r',
-      directory: 'dir/skill', githubUrl: 'https://github.com/o/r',
+      key: 'k',
+      name: 'n',
+      description: 'd',
+      repoOwner: 'o',
+      repoName: 'r',
+      directory: 'dir/skill',
+      githubUrl: 'https://github.com/o/r',
     );
     expect(direct.isInstalledDirectly, isTrue);
     const undirected = MarketplaceSkill(
-      key: 'k2', name: 'n', description: 'd', repoOwner: 'o', repoName: 'r',
-      directory: null, githubUrl: 'https://github.com/o/r',
+      key: 'k2',
+      name: 'n',
+      description: 'd',
+      repoOwner: 'o',
+      repoName: 'r',
+      directory: null,
+      githubUrl: 'https://github.com/o/r',
     );
     expect(undirected.isInstalledDirectly, isFalse);
   });

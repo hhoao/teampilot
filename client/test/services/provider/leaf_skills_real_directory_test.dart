@@ -37,7 +37,7 @@ void main() {
             updatedAt: 0,
           ),
         ],
-                            storage: testHomeStorage,
+        storage: testHomeStorage,
       );
 
   test(
@@ -57,7 +57,11 @@ void main() {
         workspaceId: 'p',
         sessionId: 's',
         runtimeBundle: const ConfigBundle(skillIds: ['demo']),
-        member: const TeamMemberConfig(id: 'solo', name: 'solo', cli: CliTool.flashskyai),
+        member: const TeamMemberConfig(
+          id: 'solo',
+          name: 'solo',
+          cli: CliTool.flashskyai,
+        ),
       );
 
       final leafSkills = fs.pathContext.join(

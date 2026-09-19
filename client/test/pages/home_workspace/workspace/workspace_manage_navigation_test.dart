@@ -97,7 +97,8 @@ void main() {
     expect(
       layout.state.preferences.sidebarVisible,
       isFalse,
-      reason: 'narrow manage nav slides the drawer shut before manage takes over',
+      reason:
+          'narrow manage nav slides the drawer shut before manage takes over',
     );
   });
 }

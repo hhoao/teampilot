@@ -274,79 +274,79 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-              _TwoColRow(
-                left: _field(
-                  id: 'label',
-                  controller: _labelController,
-                  label: l10n.sshProfileFormLabel,
-                  hint: l10n.sshProfileFormLabelHint,
-                ),
-                right: _field(
-                  id: 'host',
-                  controller: _hostController,
-                  label: l10n.sshProfileFormHost,
-                  hint: l10n.sshProfileFormHostHint,
-                  required: true,
-                  validator: (v) => v == null || v.trim().isEmpty
-                      ? l10n.sshProfileFormFieldRequired
-                      : null,
-                ),
-              ),
-              const SizedBox(height: 12),
-              _TwoColRow(
-                left: _field(
-                  id: 'username',
-                  controller: _usernameController,
-                  label: l10n.sshProfileFormUsername,
-                  hint: l10n.sshProfileFormUsernameHint,
-                ),
-                right: _field(
-                  id: 'port',
-                  controller: _portController,
-                  label: l10n.sshProfileFormPort,
-                  keyboardType: TextInputType.number,
-                  validator: (v) {
-                    final port = int.tryParse(v ?? '');
-                    if (port == null || port < 1 || port > 65535) {
-                      return l10n.sshProfileFormPortInvalid;
-                    }
-                    return null;
-                  },
-                ),
-              ),
-              const SizedBox(height: 16),
-              _field(
-                id: 'identityFile',
-                controller: _identityFileController,
-                label: l10n.sshProfileFormIdentityFile,
-                hint: l10n.sshProfileFormIdentityFileHint,
-                helper: l10n.sshProfileFormIdentityFileHelper,
-                prefixIcon: Icons.key_outlined,
-                suffix: IconButton(
-                  tooltip: l10n.sshProfileFormIdentityFileBrowse,
-                  onPressed: busy ? null : _browseIdentityFile,
-                  icon: const Icon(Icons.folder_open_outlined),
-                ),
-              ),
-              const SizedBox(height: 12),
-              _field(
-                id: 'passphrase',
-                controller: _passphraseController,
-                label: l10n.sshProfileFormPassphrase,
-                hint: l10n.sshProfileFormPassphraseHint,
-                obscure: true,
-              ),
-              const SizedBox(height: 12),
-              _field(
-                id: 'password',
-                controller: _passwordController,
-                label: l10n.sshProfileFormPassword,
-                hint: _isEditing
-                    ? l10n.sshProfileFormPasswordHintEdit
-                    : l10n.sshProfileFormPasswordHint,
-                helper: l10n.sshProfileFormPasswordHelper,
-                obscure: true,
-              ),
+                    _TwoColRow(
+                      left: _field(
+                        id: 'label',
+                        controller: _labelController,
+                        label: l10n.sshProfileFormLabel,
+                        hint: l10n.sshProfileFormLabelHint,
+                      ),
+                      right: _field(
+                        id: 'host',
+                        controller: _hostController,
+                        label: l10n.sshProfileFormHost,
+                        hint: l10n.sshProfileFormHostHint,
+                        required: true,
+                        validator: (v) => v == null || v.trim().isEmpty
+                            ? l10n.sshProfileFormFieldRequired
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _TwoColRow(
+                      left: _field(
+                        id: 'username',
+                        controller: _usernameController,
+                        label: l10n.sshProfileFormUsername,
+                        hint: l10n.sshProfileFormUsernameHint,
+                      ),
+                      right: _field(
+                        id: 'port',
+                        controller: _portController,
+                        label: l10n.sshProfileFormPort,
+                        keyboardType: TextInputType.number,
+                        validator: (v) {
+                          final port = int.tryParse(v ?? '');
+                          if (port == null || port < 1 || port > 65535) {
+                            return l10n.sshProfileFormPortInvalid;
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _field(
+                      id: 'identityFile',
+                      controller: _identityFileController,
+                      label: l10n.sshProfileFormIdentityFile,
+                      hint: l10n.sshProfileFormIdentityFileHint,
+                      helper: l10n.sshProfileFormIdentityFileHelper,
+                      prefixIcon: Icons.key_outlined,
+                      suffix: IconButton(
+                        tooltip: l10n.sshProfileFormIdentityFileBrowse,
+                        onPressed: busy ? null : _browseIdentityFile,
+                        icon: const Icon(Icons.folder_open_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _field(
+                      id: 'passphrase',
+                      controller: _passphraseController,
+                      label: l10n.sshProfileFormPassphrase,
+                      hint: l10n.sshProfileFormPassphraseHint,
+                      obscure: true,
+                    ),
+                    const SizedBox(height: 12),
+                    _field(
+                      id: 'password',
+                      controller: _passwordController,
+                      label: l10n.sshProfileFormPassword,
+                      hint: _isEditing
+                          ? l10n.sshProfileFormPasswordHintEdit
+                          : l10n.sshProfileFormPasswordHint,
+                      helper: l10n.sshProfileFormPasswordHelper,
+                      obscure: true,
+                    ),
                   ],
                 ),
               ),

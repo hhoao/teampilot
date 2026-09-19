@@ -13,7 +13,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/cli/preset_resolver.dart';
-import 'package:teampilot/services/compose/compose_file_drop_ingestor.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_file_drop_ingestor.dart';
 import 'package:teampilot/services/chat/session/session_continue_overrides_apply.dart';
 import 'package:teampilot/widgets/compose/compose_chrome.dart';
 import 'package:teampilot/widgets/compose/compose_file_drop_region.dart';

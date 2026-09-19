@@ -6,12 +6,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dartssh2/dartssh2.dart'
-    show
-        SSHAuthError,
-        SSHChannelOpenError,
-        SSHClient,
-        SSHKeyPair,
-        SSHSocket;
+    show SSHAuthError, SSHChannelOpenError, SSHClient, SSHKeyPair, SSHSocket;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/connect/embedded_ssh_server.dart';
 import 'package:teampilot/services/connect/paired_device_store.dart';
@@ -93,14 +88,14 @@ void main() {
   });
 
   EmbeddedSshServer newServer({int? portOverride = 0}) => EmbeddedSshServer(
-        fs: fs,
-        appDataRoot: '/data',
-        deviceStore: store,
-        username: 'user',
-        homePath: '/home/user',
-        bindAddress: InternetAddress.loopbackIPv4,
-        portOverride: portOverride,
-      );
+    fs: fs,
+    appDataRoot: '/data',
+    deviceStore: store,
+    username: 'user',
+    homePath: '/home/user',
+    bindAddress: InternetAddress.loopbackIPv4,
+    portOverride: portOverride,
+  );
 
   /// Connects a real dartssh2 client to [server], optionally pinning the
   /// host key to the fingerprint the server reports.
@@ -117,45 +112,56 @@ void main() {
     );
   }
 
-  test('starts, answers a real dartssh2 login with an issued device key, and stops', () async {
-    await store.issueDevice(deviceId: 'phone-1', publicKey: testDevicePubLine);
-    final server = newServer();
-    await server.start();
-    addTearDown(server.stop);
+  test(
+    'starts, answers a real dartssh2 login with an issued device key, and stops',
+    () async {
+      await store.issueDevice(
+        deviceId: 'phone-1',
+        publicKey: testDevicePubLine,
+      );
+      final server = newServer();
+      await server.start();
+      addTearDown(server.stop);
 
-    expect(server.isListening, isTrue);
-    // portOverride 0 asked for an ephemeral port; the getter must report
-    // the actually bound one.
-    expect(server.port, greaterThan(0));
-    expect(server.hostKeyFingerprints, hasLength(1));
-    expect(server.hostKeyFingerprints.single, startsWith('SHA256:'));
+      expect(server.isListening, isTrue);
+      // portOverride 0 asked for an ephemeral port; the getter must report
+      // the actually bound one.
+      expect(server.port, greaterThan(0));
+      expect(server.hostKeyFingerprints, hasLength(1));
+      expect(server.hostKeyFingerprints.single, startsWith('SHA256:'));
 
-    final client = await connectTo(
-      server,
-      // The host key the client saw must be the one the store persisted.
-      onVerifyHostKey: (type, fingerprint) =>
-          utf8.decode(fingerprint) == server.hostKeyFingerprints.single,
-    );
-    addTearDown(client.close);
-    await client.authenticated;
-  });
+      final client = await connectTo(
+        server,
+        // The host key the client saw must be the one the store persisted.
+        onVerifyHostKey: (type, fingerprint) =>
+            utf8.decode(fingerprint) == server.hostKeyFingerprints.single,
+      );
+      addTearDown(client.close);
+      await client.authenticated;
+    },
+  );
 
-  test('protocol-level disconnect does not surface an unhandled error',
-      () async {
-    await store.issueDevice(deviceId: 'phone-1', publicKey: testDevicePubLine);
-    final server = newServer();
-    await server.start();
-    addTearDown(server.stop);
+  test(
+    'protocol-level disconnect does not surface an unhandled error',
+    () async {
+      await store.issueDevice(
+        deviceId: 'phone-1',
+        publicKey: testDevicePubLine,
+      );
+      final server = newServer();
+      await server.start();
+      addTearDown(server.stop);
 
-    final client = await connectTo(server);
-    await client.authenticated;
-    // The server-side transport completes `connection.done` with an
-    // SSHDisconnectError when this lands; the record-teardown listener must
-    // swallow it, or the transport has no way back to the connection the
-    // app is driving.
-    await client.disconnect();
-    await client.done.timeout(const Duration(seconds: 5));
-  });
+      final client = await connectTo(server);
+      await client.authenticated;
+      // The server-side transport completes `connection.done` with an
+      // SSHDisconnectError when this lands; the record-teardown listener must
+      // swallow it, or the transport has no way back to the connection the
+      // app is driving.
+      await client.disconnect();
+      await client.done.timeout(const Duration(seconds: 5));
+    },
+  );
 
   test('unregistered key is rejected', () async {
     final server = newServer();
@@ -183,36 +189,39 @@ void main() {
     await client.close();
   });
 
-  test('revoke racing the auth-success record still tears down the connection', () async {
-    final racingStore = _RevokeRacingStore(fs: fs, appDataRoot: '/data');
-    await racingStore.issueDevice(
-      deviceId: 'phone-1',
-      publicKey: testDevicePubLine,
-    );
-    final server = EmbeddedSshServer(
-      fs: fs,
-      appDataRoot: '/data',
-      deviceStore: racingStore,
-      username: 'user',
-      homePath: '/home/user',
-      bindAddress: InternetAddress.loopbackIPv4,
-      portOverride: 0,
-    );
-    await server.start();
-    addTearDown(server.stop);
+  test(
+    'revoke racing the auth-success record still tears down the connection',
+    () async {
+      final racingStore = _RevokeRacingStore(fs: fs, appDataRoot: '/data');
+      await racingStore.issueDevice(
+        deviceId: 'phone-1',
+        publicKey: testDevicePubLine,
+      );
+      final server = EmbeddedSshServer(
+        fs: fs,
+        appDataRoot: '/data',
+        deviceStore: racingStore,
+        username: 'user',
+        homePath: '/home/user',
+        bindAddress: InternetAddress.loopbackIPv4,
+        portOverride: 0,
+      );
+      await server.start();
+      addTearDown(server.stop);
 
-    final client = await connectTo(server);
-    await client.authenticated;
-    // The store revoked the device while the server was still recording the
-    // just-authenticated connection — the race window the fail-closed
-    // guarantee must cover.
-    await racingStore.raced.future.timeout(const Duration(seconds: 5));
-    await expectLater(
-      client.done.timeout(const Duration(seconds: 5)),
-      completes,
-    );
-    await client.close();
-  });
+      final client = await connectTo(server);
+      await client.authenticated;
+      // The store revoked the device while the server was still recording the
+      // just-authenticated connection — the race window the fail-closed
+      // guarantee must cover.
+      await racingStore.raced.future.timeout(const Duration(seconds: 5));
+      await expectLater(
+        client.done.timeout(const Duration(seconds: 5)),
+        completes,
+      );
+      await client.close();
+    },
+  );
 
   test('exec round trip answers the host-info query', () async {
     await store.issueDevice(deviceId: 'phone-1', publicKey: testDevicePubLine);
@@ -231,44 +240,49 @@ void main() {
     expect(info.osUser, Platform.environment['USER'] ?? 'unknown');
   });
 
-  test('host-info reports the probed elevation, failing closed on probe error',
-      () async {
-    await store.issueDevice(deviceId: 'phone-1', publicKey: testDevicePubLine);
-
-    /// Full login against a server built with [probe], returning the
-    /// `elevated` fact its host-info answer carries.
-    Future<bool> elevatedFor(Future<bool> Function() probe) async {
-      final server = EmbeddedSshServer(
-        fs: fs,
-        appDataRoot: '/data',
-        deviceStore: store,
-        username: 'user',
-        homePath: '/home/user',
-        bindAddress: InternetAddress.loopbackIPv4,
-        portOverride: 0,
-        elevationProbe: probe,
+  test(
+    'host-info reports the probed elevation, failing closed on probe error',
+    () async {
+      await store.issueDevice(
+        deviceId: 'phone-1',
+        publicKey: testDevicePubLine,
       );
-      await server.start();
-      addTearDown(server.stop);
 
-      final client = await connectTo(server);
-      addTearDown(client.close);
-      await client.authenticated;
+      /// Full login against a server built with [probe], returning the
+      /// `elevated` fact its host-info answer carries.
+      Future<bool> elevatedFor(Future<bool> Function() probe) async {
+        final server = EmbeddedSshServer(
+          fs: fs,
+          appDataRoot: '/data',
+          deviceStore: store,
+          username: 'user',
+          homePath: '/home/user',
+          bindAddress: InternetAddress.loopbackIPv4,
+          portOverride: 0,
+          elevationProbe: probe,
+        );
+        await server.start();
+        addTearDown(server.stop);
 
-      final session = await client.execute(TpExecCodec.encodeHostInfoQuery());
-      final stdout = await utf8.decoder.bind(session.stdout).join();
-      return SSHHostInfo.fromJson(stdout).elevated;
-    }
+        final client = await connectTo(server);
+        addTearDown(client.close);
+        await client.authenticated;
 
-    expect(await elevatedFor(() async => true), isTrue);
-    expect(await elevatedFor(() async => false), isFalse);
-    // Fail closed: an elevation that cannot be determined is reported as
-    // elevated so the dangerous-launch gate stays strict.
-    expect(
-      await elevatedFor(() async => throw StateError('probe unavailable')),
-      isTrue,
-    );
-  });
+        final session = await client.execute(TpExecCodec.encodeHostInfoQuery());
+        final stdout = await utf8.decoder.bind(session.stdout).join();
+        return SSHHostInfo.fromJson(stdout).elevated;
+      }
+
+      expect(await elevatedFor(() async => true), isTrue);
+      expect(await elevatedFor(() async => false), isFalse);
+      // Fail closed: an elevation that cannot be determined is reported as
+      // elevated so the dangerous-launch gate stays strict.
+      expect(
+        await elevatedFor(() async => throw StateError('probe unavailable')),
+        isTrue,
+      );
+    },
+  );
 
   test('a failure after the bind rolls the listener back', () async {
     const port = 49557;
@@ -287,10 +301,7 @@ void main() {
     expect(server.isListening, isFalse);
     expect(server.port, 0);
     // The listener socket was really closed — the port is bindable again.
-    final rebound = await ServerSocket.bind(
-      InternetAddress.loopbackIPv4,
-      port,
-    );
+    final rebound = await ServerSocket.bind(InternetAddress.loopbackIPv4, port);
     addTearDown(rebound.close);
   });
 
@@ -318,9 +329,11 @@ void main() {
 
   test('bind conflict on the persisted port re-picks and binds', () async {
     const conflictedPort = 49555;
-    await fs.ensureDir(fs.pathContext.dirname(
-      fs.pathContext.join('/data', 'connect', 'settings.json'),
-    ));
+    await fs.ensureDir(
+      fs.pathContext.dirname(
+        fs.pathContext.join('/data', 'connect', 'settings.json'),
+      ),
+    );
     await fs.writeString(
       fs.pathContext.join('/data', 'connect', 'settings.json'),
       jsonEncode({'v': 1, 'embeddedPort': conflictedPort}),
@@ -340,29 +353,32 @@ void main() {
     expect(server.port, isNot(conflictedPort));
   });
 
-  test('explicit port conflict throws EmbeddedSshServerStartException', () async {
-    const conflictedPort = 49556;
-    final squatter = await ServerSocket.bind(
-      InternetAddress.loopbackIPv4,
-      conflictedPort,
-    );
-    addTearDown(squatter.close);
+  test(
+    'explicit port conflict throws EmbeddedSshServerStartException',
+    () async {
+      const conflictedPort = 49556;
+      final squatter = await ServerSocket.bind(
+        InternetAddress.loopbackIPv4,
+        conflictedPort,
+      );
+      addTearDown(squatter.close);
 
-    final server = EmbeddedSshServer(
-      fs: fs,
-      appDataRoot: '/data',
-      deviceStore: store,
-      username: 'user',
-      homePath: '/home/user',
-      bindAddress: InternetAddress.loopbackIPv4,
-      portOverride: conflictedPort,
-    );
-    await expectLater(
-      server.start(),
-      throwsA(isA<EmbeddedSshServerStartException>()),
-    );
-    expect(server.isListening, isFalse);
-  });
+      final server = EmbeddedSshServer(
+        fs: fs,
+        appDataRoot: '/data',
+        deviceStore: store,
+        username: 'user',
+        homePath: '/home/user',
+        bindAddress: InternetAddress.loopbackIPv4,
+        portOverride: conflictedPort,
+      );
+      await expectLater(
+        server.start(),
+        throwsA(isA<EmbeddedSshServerStartException>()),
+      );
+      expect(server.isListening, isFalse);
+    },
+  );
 
   group('transport trace gating', () {
     test('off by default and for unrecognized env values', () {
@@ -391,10 +407,7 @@ void main() {
         'teampilot-embedded-forward-',
       );
       final lfs = LocalFilesystem();
-      deviceStore = PairedDeviceStore(
-        fs: lfs,
-        appDataRoot: appDataRoot.path,
-      );
+      deviceStore = PairedDeviceStore(fs: lfs, appDataRoot: appDataRoot.path);
       server = EmbeddedSshServer(
         fs: lfs,
         appDataRoot: appDataRoot.path,
@@ -438,19 +451,21 @@ void main() {
       return client;
     }
 
-    test('forwardRemote binds loopback (remote forwarding not regressed)',
-        () async {
-      final client = await logIn();
+    test(
+      'forwardRemote binds loopback (remote forwarding not regressed)',
+      () async {
+        final client = await logIn();
 
-      final forward = await client.forwardRemote(host: '127.0.0.1', port: 0);
-      expect(forward, isNotNull);
-      expect(forward!.host, '127.0.0.1');
-      expect(forward.port, greaterThan(0));
-      // cancel, not close(): the fork's SSHRemoteForward.close() waits for
-      // the connections controller's done event, which is only delivered
-      // once something listens to the stream.
-      expect(await client.cancelForwardRemote(forward), isTrue);
-    });
+        final forward = await client.forwardRemote(host: '127.0.0.1', port: 0);
+        expect(forward, isNotNull);
+        expect(forward!.host, '127.0.0.1');
+        expect(forward.port, greaterThan(0));
+        // cancel, not close(): the fork's SSHRemoteForward.close() waits for
+        // the connections controller's done event, which is only delivered
+        // once something listens to the stream.
+        expect(await client.cancelForwardRemote(forward), isTrue);
+      },
+    );
 
     test('forwardLocal to a loopback target round-trips bytes', () async {
       // A real echo service on the desktop under test: bytes dialed by the
@@ -479,14 +494,16 @@ void main() {
       await channel.close();
     });
 
-    test('forwardLocal to a non-loopback target is refused with reason 1',
-        () async {
-      final client = await logIn();
+    test(
+      'forwardLocal to a non-loopback target is refused with reason 1',
+      () async {
+        final client = await logIn();
 
-      await expectLater(
-        client.forwardLocal('store.example', 80),
-        throwsA(isA<SSHChannelOpenError>().having((e) => e.code, 'code', 1)),
-      );
-    });
+        await expectLater(
+          client.forwardLocal('store.example', 80),
+          throwsA(isA<SSHChannelOpenError>().having((e) => e.code, 'code', 1)),
+        );
+      },
+    );
   });
 }

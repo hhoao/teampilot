@@ -24,7 +24,11 @@ void main() {
   }) async {
     final fs = InMemoryFilesystem();
     const root = '/tp';
-    final sshRepo = SshProfileRepository(rootDir: root, fs: fs, storage: fakeHomeStorage(filesystem: fs), );
+    final sshRepo = SshProfileRepository(
+      rootDir: root,
+      fs: fs,
+      storage: fakeHomeStorage(filesystem: fs),
+    );
     for (final id in sshIds) {
       await sshRepo.save(
         SshProfile(id: id, name: 'box-$id', host: 'h', username: 'u'),

@@ -91,7 +91,10 @@ class SpyTermuxCubit extends TermuxCubit {
   }
 }
 
-SpyTermuxCubit _createSpyCubit(Directory nativeDir, {bool fastSaveConfig = false}) {
+SpyTermuxCubit _createSpyCubit(
+  Directory nativeDir, {
+  bool fastSaveConfig = false,
+}) {
   final store = TermuxConfigStore(
     rootDir: nativeDir.path,
     fs: LocalFilesystem(
@@ -187,9 +190,9 @@ TermuxPackageProbe _notInstalledProbe() {
   const channel = MethodChannel('com.hhoa.teampilot/packages');
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(channel, (call) async {
-    if (call.method == 'isPackageInstalled') return false;
-    return null;
-  });
+        if (call.method == 'isPackageInstalled') return false;
+        return null;
+      });
   return TermuxPackageProbe(channel: channel, isAndroid: true);
 }
 
@@ -197,9 +200,9 @@ TermuxPackageProbe _installedProbe() {
   const channel = MethodChannel('com.hhoa.teampilot/packages');
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(channel, (call) async {
-    if (call.method == 'isPackageInstalled') return true;
-    return null;
-  });
+        if (call.method == 'isPackageInstalled') return true;
+        return null;
+      });
   return TermuxPackageProbe(channel: channel, isAndroid: true);
 }
 
@@ -250,48 +253,55 @@ void main() {
     expect(cubit.state.config, isNull);
   });
 
-  testWidgets('missing package shows download button and triggers acquisition',
-      (tester) async {
-    _largeTestSurface(tester);
-    final cubit = _createSpyCubit(nativeDir);
-    addTearDown(() async {
-      if (!cubit.isClosed) await cubit.close();
-    });
+  testWidgets(
+    'missing package shows download button and triggers acquisition',
+    (tester) async {
+      _largeTestSurface(tester);
+      final cubit = _createSpyCubit(nativeDir);
+      addTearDown(() async {
+        if (!cubit.isClosed) await cubit.close();
+      });
 
-    var installTriggered = false;
-    final acquisition = _spyApkAcquisition(
-      onInstall: () => installTriggered = true,
-    );
+      var installTriggered = false;
+      final acquisition = _spyApkAcquisition(
+        onInstall: () => installTriggered = true,
+      );
 
-    await _pumpSetupPage(
-      tester,
-      cubit: cubit,
-      credentials: InMemorySshCredentialStore(),
-      packageProbe: _notInstalledProbe(),
-      apkAcquisition: acquisition,
-    );
+      await _pumpSetupPage(
+        tester,
+        cubit: cubit,
+        credentials: InMemorySshCredentialStore(),
+        packageProbe: _notInstalledProbe(),
+        apkAcquisition: acquisition,
+      );
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(TermuxSetupPage)),
-    );
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(TermuxSetupPage)),
+      );
 
-    expect(find.byKey(const Key('termux_download_install_button')), findsOneWidget);
-    expect(find.text(l10n.termuxSetupDownloadInstall), findsOneWidget);
-    expect(find.text(l10n.termuxSetupTermuxInstalled), findsNothing);
+      expect(
+        find.byKey(const Key('termux_download_install_button')),
+        findsOneWidget,
+      );
+      expect(find.text(l10n.termuxSetupDownloadInstall), findsOneWidget);
+      expect(find.text(l10n.termuxSetupTermuxInstalled), findsNothing);
 
-    await tester.runAsync(() async {
-      await tester.tap(find.byKey(const Key('termux_download_install_button')));
-      await tester.pump();
-      for (var i = 0; i < 120; i++) {
-        if (installTriggered) return;
-        await Future<void>.delayed(const Duration(milliseconds: 50));
+      await tester.runAsync(() async {
+        await tester.tap(
+          find.byKey(const Key('termux_download_install_button')),
+        );
         await tester.pump();
-      }
-    });
-    await tester.pump();
+        for (var i = 0; i < 120; i++) {
+          if (installTriggered) return;
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await tester.pump();
+        }
+      });
+      await tester.pump();
 
-    expect(installTriggered, isTrue);
-  });
+      expect(installTriggered, isTrue);
+    },
+  );
 
   testWidgets('shows guided step texts and username field', (tester) async {
     _largeTestSurface(tester);
@@ -315,7 +325,10 @@ void main() {
     expect(find.byKey(const Key('termux_username_field')), findsOneWidget);
     // Script body appears after async key prep; content covered by unit test.
     expect(
-      find.byKey(const Key('termux_setup_script_block')).evaluate().isNotEmpty ||
+      find
+              .byKey(const Key('termux_setup_script_block'))
+              .evaluate()
+              .isNotEmpty ||
           find.byType(LinearProgressIndicator).evaluate().isNotEmpty,
       isTrue,
     );
@@ -359,7 +372,10 @@ void main() {
       120,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.enterText(find.byKey(const Key('termux_username_field')), 'bad');
+    await tester.enterText(
+      find.byKey(const Key('termux_username_field')),
+      'bad',
+    );
     await tester.pump();
     await _scrollToBottom(tester);
     await tester.tap(find.text(l10n.termuxSetupConnect));

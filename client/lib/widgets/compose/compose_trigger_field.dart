@@ -12,14 +12,14 @@ import '../../services/cli/registry/capabilities/native_command_capability.dart'
 import '../../services/commands/command_bus.dart';
 import '../../services/commands/shortcut_focus.dart';
 import '../home_storage_scope.dart';
-import '../../services/compose/compose_file_search.dart';
+import '../../services/chat/conversation/compose/compose_file_search.dart';
 import '../../services/file_tree/workspace_file_index.dart';
 import '../../services/search/workspace_search_indexes.dart';
-import '../../services/compose/compose_clip.dart';
-import '../../services/compose/compose_slash_catalog.dart';
-import '../../services/compose/compose_trigger_caret.dart';
-import '../../services/compose/compose_trigger_insert.dart';
-import '../../services/compose/compose_trigger_query.dart';
+import '../../services/chat/conversation/compose/compose_clip.dart';
+import '../../services/chat/conversation/compose/compose_slash_catalog.dart';
+import '../../services/chat/conversation/compose/compose_trigger_caret.dart';
+import '../../services/chat/conversation/compose/compose_trigger_insert.dart';
+import '../../services/chat/conversation/compose/compose_trigger_query.dart';
 import '../../services/cli/registry/capabilities/skill_capability.dart';
 import '../../services/keyboard/compose_keyboard_shortcut_handler.dart';
 import '../../services/inline_token/inline_token_palette.dart';
@@ -222,7 +222,8 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   void _maybeCollapseOversizedPaste() {
     final clip = widget.clip;
     final count = ComposeClip.countLines(widget.controller.text);
-    final crossed = _lastLineCount <= ComposeTriggerField.kComposePasteCollapseLines &&
+    final crossed =
+        _lastLineCount <= ComposeTriggerField.kComposePasteCollapseLines &&
         count > ComposeTriggerField.kComposePasteCollapseLines;
     // Update the running line count regardless of whether a clip is attached,
     // so an oversized paste is still detected if the clip appears later.

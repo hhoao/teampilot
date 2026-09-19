@@ -4,8 +4,8 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:meta/meta.dart';
 import 'package:sqlite3/sqlite3.dart';
 
-import '../../../../chat/session/history/ai_history_watch_meta.dart';
-import '../../../../chat/session/history/session_history_context.dart';
+import '../../../../chat/conversation/history/ai_history_watch_meta.dart';
+import '../../../../chat/conversation/history/session_history_context.dart';
 import '../../../registry/capabilities/ai_history_capability.dart';
 import '../native_session_id.dart';
 

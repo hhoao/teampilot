@@ -122,16 +122,19 @@ void main() {
       expect(cubit.state.preferences.rightToolsVisible, initial);
     });
 
-    test('toggleWorkspaceTerminal is a no-op on workspaceTerminalVisible', () async {
-      final cubit = LayoutCubit();
-      addTearDown(cubit.close);
-      final initial = cubit.state.preferences.workspaceTerminalVisible;
+    test(
+      'toggleWorkspaceTerminal is a no-op on workspaceTerminalVisible',
+      () async {
+        final cubit = LayoutCubit();
+        addTearDown(cubit.close);
+        final initial = cubit.state.preferences.workspaceTerminalVisible;
 
-      await cubit.toggleWorkspaceTerminal();
-      expect(cubit.state.preferences.workspaceTerminalVisible, initial);
+        await cubit.toggleWorkspaceTerminal();
+        expect(cubit.state.preferences.workspaceTerminalVisible, initial);
 
-      await cubit.setWorkspaceTerminalVisible(true);
-      expect(cubit.state.preferences.workspaceTerminalVisible, initial);
-    });
+        await cubit.setWorkspaceTerminalVisible(true);
+        expect(cubit.state.preferences.workspaceTerminalVisible, initial);
+      },
+    );
   });
 }

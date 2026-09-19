@@ -3,10 +3,7 @@ import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/services/github/github_credentials_store.dart';
 
 class ThrowingSecureKeyValueStore implements SecureKeyValueStore {
-  ThrowingSecureKeyValueStore(
-    this.inner, {
-    required this.shouldThrowOnWrite,
-  });
+  ThrowingSecureKeyValueStore(this.inner, {required this.shouldThrowOnWrite});
 
   final SecureKeyValueStore inner;
   final bool Function(String key) shouldThrowOnWrite;
@@ -122,7 +119,10 @@ void main() {
     final snapshot = await store.readStored();
     expect(snapshot?.token, 'ghp_legacy');
     expect(snapshot?.source, GithubCredentialSource.pat);
-    expect(kv.values.containsKey('teampilot.hub_publish.v1.github_token'), isFalse);
+    expect(
+      kv.values.containsKey('teampilot.hub_publish.v1.github_token'),
+      isFalse,
+    );
 
     // Second read does not re-migrate or fail.
     expect(await store.resolveToken(), 'ghp_legacy');
@@ -167,6 +167,9 @@ void main() {
     await store.migrateLegacyHubPublishTokenIfNeeded();
 
     expect(await store.readStored(), isNotNull);
-    expect(kv.values.containsKey('teampilot.hub_publish.v1.github_token'), isFalse);
+    expect(
+      kv.values.containsKey('teampilot.hub_publish.v1.github_token'),
+      isFalse,
+    );
   });
 }

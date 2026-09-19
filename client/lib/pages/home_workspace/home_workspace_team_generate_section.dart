@@ -43,7 +43,10 @@ class _HomeTeamGenerateSectionState extends State<HomeTeamGenerateSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(l10n.teamGenTitle, style: TpTextStyles.of(context).mdSemiboldTightSnug),
+        Text(
+          l10n.teamGenTitle,
+          style: TpTextStyles.of(context).mdSemiboldTightSnug,
+        ),
         const SizedBox(height: 8),
         Builder(
           builder: (context) {

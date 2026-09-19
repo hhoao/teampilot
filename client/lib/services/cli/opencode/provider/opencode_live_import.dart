@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/team_config.dart';
 import '../provider_presets.dart';
 import '../../registry/capabilities/provider_capability.dart';
 import '../../../io/filesystem.dart';
@@ -90,11 +89,12 @@ abstract final class OpencodeLiveImport {
     final defaultModel = _defaultModelForProvider(id, opencodeConfig);
     final presetConfig = preset?.template.config ?? const {};
     final config = _buildConfig(providerConfig, presetConfig);
-    final catalogFields = OpencodeCredentialMaterializer.catalogFieldsFromAuthEntry(
-      providerId: id,
-      entry: entry,
-      existingConfig: config,
-    );
+    final catalogFields =
+        OpencodeCredentialMaterializer.catalogFieldsFromAuthEntry(
+          providerId: id,
+          entry: entry,
+          existingConfig: config,
+        );
 
     if (preset != null) {
       return preset.template.copyWith(

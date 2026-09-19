@@ -7,10 +7,16 @@ import 'package:teampilot/services/connect/connect_ssh_backend.dart';
 void main() {
   test('parseConnectSshBackendKind treats only the system token as system', () {
     expect(parseConnectSshBackendKind('system'), ConnectSshBackendKind.system);
-    expect(parseConnectSshBackendKind('embedded'), ConnectSshBackendKind.embedded);
+    expect(
+      parseConnectSshBackendKind('embedded'),
+      ConnectSshBackendKind.embedded,
+    );
     expect(parseConnectSshBackendKind(null), ConnectSshBackendKind.embedded);
     expect(parseConnectSshBackendKind(''), ConnectSshBackendKind.embedded);
-    expect(parseConnectSshBackendKind('SYSTEM'), ConnectSshBackendKind.embedded);
+    expect(
+      parseConnectSshBackendKind('SYSTEM'),
+      ConnectSshBackendKind.embedded,
+    );
     expect(parseConnectSshBackendKind(1), ConnectSshBackendKind.embedded);
   });
 

@@ -16,10 +16,10 @@ class SkillRepository {
     SkillInstallService? install,
   }) {
     final resolvedFetch = fetch ?? SkillFetchService();
-    final resolvedManifest =
-        manifest ?? SkillManifestService(storage: storage);
+    final resolvedManifest = manifest ?? SkillManifestService(storage: storage);
     final resolvedCache =
-        repoCache ?? SkillRepoDiskCacheService(storage: storage, fetch: resolvedFetch);
+        repoCache ??
+        SkillRepoDiskCacheService(storage: storage, fetch: resolvedFetch);
     return SkillRepository._(
       manifest: resolvedManifest,
       fetch: resolvedFetch,

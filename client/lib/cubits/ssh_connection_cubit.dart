@@ -210,14 +210,14 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
           (((error is SshHostKeyMismatch || cause is SSHHostkeyError) &&
                   profile.hostKeyFingerprints.isNotEmpty) ||
               (profile.embeddedTarget && isTcpConnectionRefused(error)));
-      final authFailed =
-          cause is SSHAuthFailError || cause is SSHHostkeyError;
+      final authFailed = cause is SSHAuthFailError || cause is SSHHostkeyError;
       final status = authFailed
           ? SshHostUiStatus.authFailed
           : SshHostUiStatus.error;
       _lastFailureStatus[profileId] = status;
-      _lastErrorDetail[profileId] =
-          stalePairing ? sshPairingStaleDetail : error.toString();
+      _lastErrorDetail[profileId] = stalePairing
+          ? sshPairingStaleDetail
+          : error.toString();
       appLogger.w(
         '[ssh] profile $profileId connect failed (${status.name}): '
         '${sshConnectionFailureLogMessage(error)}',

@@ -6,9 +6,9 @@ import '../../repositories/ssh_known_host_repository.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../host/remote_command_codec.dart';
 import '../ssh/ssh_member_session.dart';
-import '../chat/terminal/local_pty_transport.dart';
+import '../chat/runtime/pty/local_pty_transport.dart';
 import '../ssh/ssh_client_factory.dart';
-import '../chat/terminal/ssh_pty_transport.dart';
+import '../chat/runtime/pty/ssh_pty_transport.dart';
 import 'terminal_transport.dart';
 
 typedef PtyStarter =

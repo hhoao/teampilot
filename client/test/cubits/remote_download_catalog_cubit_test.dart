@@ -53,8 +53,9 @@ void main() {
       expect(cubit.state.loaded, isTrue);
       expect(cubit.state.mirrorBaseUrl, 'https://mirror.example');
       expect(
-        cubit.catalog.sources
-            .any((s) => s.id == RemoteDownloadSettingsStore.githubMirrorId),
+        cubit.catalog.sources.any(
+          (s) => s.id == RemoteDownloadSettingsStore.githubMirrorId,
+        ),
         isTrue,
       );
     });
@@ -89,8 +90,9 @@ void main() {
 
       expect(cubit.state.mirrorBaseUrl, isNull);
       expect(
-        cubit.catalog.sources
-            .any((s) => s.id == RemoteDownloadSettingsStore.githubMirrorId),
+        cubit.catalog.sources.any(
+          (s) => s.id == RemoteDownloadSettingsStore.githubMirrorId,
+        ),
         isFalse,
       );
       expect((await store.load())?.mirrorBaseUrl, isNull);

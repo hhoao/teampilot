@@ -10,7 +10,9 @@ import '../../support/in_memory_filesystem.dart';
 TerminalSession _testSession() => TerminalSession(
   executable: '/bin/bash',
   validateLaunch: false,
-  parseExecutable: false, fs: InMemoryFilesystem(), );
+  parseExecutable: false,
+  fs: InMemoryFilesystem(),
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -47,10 +49,7 @@ void main() {
         isFalse,
       );
       expect(
-        shouldRemoveRunWorkbenchTab(
-          sessionFound: true,
-          dismissSucceeded: true,
-        ),
+        shouldRemoveRunWorkbenchTab(sessionFound: true, dismissSucceeded: true),
         isTrue,
       );
     });

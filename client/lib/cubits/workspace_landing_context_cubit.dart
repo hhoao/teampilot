@@ -32,9 +32,7 @@ class WorkspaceLandingContextCubit extends Cubit<WorkspaceLandingContextState> {
     LandingLaunchContext? initial,
   }) : super(
          WorkspaceLandingContextState(
-           context:
-               initial ??
-               const LandingLaunchContext(isPersonal: true),
+           context: initial ?? const LandingLaunchContext(isPersonal: true),
          ),
        );
 

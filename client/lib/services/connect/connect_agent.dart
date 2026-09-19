@@ -100,15 +100,11 @@ class ConnectAgent {
        _relayRegistration = relayRegistration,
        _generateGrant =
            generateGrant ??
-           (() =>
-               base64Url
-                   .encode(
-                     List<int>.generate(
-                       32,
-                       (_) => Random.secure().nextInt(256),
-                     ),
-                   )
-                   .replaceAll('=', '')),
+           (() => base64Url
+               .encode(
+                 List<int>.generate(32, (_) => Random.secure().nextInt(256)),
+               )
+               .replaceAll('=', '')),
        _relayConnectSocket = relayConnectSocket;
 
   factory ConnectAgent.production({
@@ -269,12 +265,11 @@ class ConnectAgent {
     final hostId = await _stableHostId(appDataRoot);
     _cachedHostId = hostId;
 
-    final client =
-        _relayClient ??= ConnectRelayClient(
-          validateDial: validateRelayDial,
-          resolveTarget: resolveRelayTarget,
-          connectSocket: _relayConnectSocket,
-        );
+    final client = _relayClient ??= ConnectRelayClient(
+      validateDial: validateRelayDial,
+      resolveTarget: resolveRelayTarget,
+      connectSocket: _relayConnectSocket,
+    );
     await client.start(url: Uri.parse(registration.url), hostId: hostId);
 
     final remintNeeded = _relayRegistration != registration;
@@ -287,14 +282,13 @@ class ConnectAgent {
   /// Tears down the outbound register socket and drops the relay endpoint
   /// from any active offer. Grants already issued stay valid on disk; revoke
   /// is the explicit removal path.
-  Future<void> disableRelay() =>
-      _lifecycleLock.synchronized(() async {
-        await _relayClient?.stop();
-        _relayRegistration = null;
-        if (_session != null && _binding != null) {
-          await _regenerateQr();
-        }
-      });
+  Future<void> disableRelay() => _lifecycleLock.synchronized(() async {
+    await _relayClient?.stop();
+    _relayRegistration = null;
+    if (_session != null && _binding != null) {
+      await _regenerateQr();
+    }
+  });
 
   /// Credential gate for relay dials, owned by the agent because only it
   /// knows the live invite token and the grant registry. The relay itself

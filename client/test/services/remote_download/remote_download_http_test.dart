@@ -99,9 +99,7 @@ void main() {
           return http.Response(
             '',
             302,
-            headers: {
-              'location': 'https://github.com/o/r/releases/tag/v1.0.0',
-            },
+            headers: {'location': 'https://github.com/o/r/releases/tag/v1.0.0'},
           );
         }
         return http.Response('not found', 404);
@@ -118,41 +116,47 @@ void main() {
       expect(streamed.headers['location'], contains('/releases/tag/'));
     });
 
-    test('send returns first completed response regardless of status', () async {
-      final fake = _FakeClient((request) async {
-        return http.Response('rate limit', 403);
-      });
-      final httpLayer = RemoteDownloadHttp(
-        client: fake,
-        resolver: _resolverWithMirror(),
-      );
-      final streamed = await httpLayer.send(
-        (uri) => http.Request('GET', uri)..followRedirects = false,
-        Uri.parse('https://api.github.com/repos/o/r/releases/latest'),
-      );
-      expect(streamed.statusCode, 403);
-    });
-
-    test('throws RemoteDownloadException when all get candidates fail', () async {
-      final fake = _FakeClient((request) async {
-        return http.Response('error', 500);
-      });
-      final httpLayer = RemoteDownloadHttp(
-        client: fake,
-        resolver: _resolverWithMirror(),
-      );
-      await expectLater(
-        httpLayer.get(
+    test(
+      'send returns first completed response regardless of status',
+      () async {
+        final fake = _FakeClient((request) async {
+          return http.Response('rate limit', 403);
+        });
+        final httpLayer = RemoteDownloadHttp(
+          client: fake,
+          resolver: _resolverWithMirror(),
+        );
+        final streamed = await httpLayer.send(
+          (uri) => http.Request('GET', uri)..followRedirects = false,
           Uri.parse('https://api.github.com/repos/o/r/releases/latest'),
-        ),
-        throwsA(
-          isA<RemoteDownloadException>().having(
-            (e) => e.attempts.length,
-            'attempt count',
-            2,
+        );
+        expect(streamed.statusCode, 403);
+      },
+    );
+
+    test(
+      'throws RemoteDownloadException when all get candidates fail',
+      () async {
+        final fake = _FakeClient((request) async {
+          return http.Response('error', 500);
+        });
+        final httpLayer = RemoteDownloadHttp(
+          client: fake,
+          resolver: _resolverWithMirror(),
+        );
+        await expectLater(
+          httpLayer.get(
+            Uri.parse('https://api.github.com/repos/o/r/releases/latest'),
           ),
-        ),
-      );
-    });
+          throwsA(
+            isA<RemoteDownloadException>().having(
+              (e) => e.attempts.length,
+              'attempt count',
+              2,
+            ),
+          ),
+        );
+      },
+    );
   });
 }

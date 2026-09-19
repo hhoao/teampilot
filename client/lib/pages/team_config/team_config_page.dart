@@ -163,9 +163,8 @@ class TeamConfigPage extends StatelessWidget {
       TeamConfigSection.extensions => TeamExtensionsSection(team: team),
       TeamConfigSection.hooks => TeamHooksSection(
         assignedIds: team.hookIds,
-        onAssignedChanged: (ids) => teamCubit.updateSelected(
-          team.copyWith(hookIds: ids),
-        ),
+        onAssignedChanged: (ids) =>
+            teamCubit.updateSelected(team.copyWith(hookIds: ids)),
       ),
       TeamConfigSection.members => TeamMemberDetailSection(
         teamId: team.id,

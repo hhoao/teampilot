@@ -1,4 +1,4 @@
-import '../chat/model/chat_tab.dart';
+import '../chat/session/chat_tab.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/git_worktree.dart';
 import '../../models/team_config.dart';

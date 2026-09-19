@@ -186,10 +186,7 @@ void main() {
       name: 'All',
       configurationIds: ['a', 'b'],
     );
-    final configs = [
-      ownedConfig(id: 'a'),
-      ownedConfig(id: 'b'),
-    ];
+    final configs = [ownedConfig(id: 'a'), ownedConfig(id: 'b')];
 
     final compoundFuture = mgr.startCompound(
       compound: compound,
@@ -249,60 +246,62 @@ void main() {
     await mgr.dispose();
   });
 
-  test('restart passes preferTerminalEntryId for bound terminal session',
-      () async {
-    final executor = FakeRunExecutor(hangOnStart: true);
-    final mgr = RunSessionManager(executor: executor, adapters: noopAdapter);
-    final owned = OwnedLaunchConfiguration(
-      owner: _folder,
-      configuration: const LaunchConfiguration(
-        id: 'a',
-        name: 'a',
-        type: 'shellScript',
-        extras: {
-          'execute': 'scriptText',
-          'scriptText': 'echo hi',
-          'executeInTerminal': true,
-          'allowMultipleInstances': true,
-        },
-      ),
-    );
-    final s = await mgr.start(owned);
-    mgr.registerTerminalSession(entryId: 'term-bound', sessionId: s.id);
+  test(
+    'restart passes preferTerminalEntryId for bound terminal session',
+    () async {
+      final executor = FakeRunExecutor(hangOnStart: true);
+      final mgr = RunSessionManager(executor: executor, adapters: noopAdapter);
+      final owned = OwnedLaunchConfiguration(
+        owner: _folder,
+        configuration: const LaunchConfiguration(
+          id: 'a',
+          name: 'a',
+          type: 'shellScript',
+          extras: {
+            'execute': 'scriptText',
+            'scriptText': 'echo hi',
+            'executeInTerminal': true,
+            'allowMultipleInstances': true,
+          },
+        ),
+      );
+      final s = await mgr.start(owned);
+      mgr.registerTerminalSession(entryId: 'term-bound', sessionId: s.id);
 
-    final restarted = await mgr.restart(s.id);
-    expect(restarted.id, isNot(s.id));
-    expect(executor.preferredTerminalEntryIds, [null, 'term-bound']);
-    await mgr.dispose();
-  });
+      final restarted = await mgr.restart(s.id);
+      expect(restarted.id, isNot(s.id));
+      expect(executor.preferredTerminalEntryIds, [null, 'term-bound']);
+      await mgr.dispose();
+    },
+  );
 
-  test('compound starts all same-file members; partial failure keeps successes', () async {
-    final executor = FakeRunExecutor(
-      hangOnStart: true,
-      failStartForConfigIds: {'b'},
-    );
-    final mgr = RunSessionManager(executor: executor, adapters: noopAdapter);
-    final compound = const LaunchCompound(
-      id: 'all',
-      name: 'All',
-      configurationIds: ['a', 'b'],
-    );
-    final configs = [
-      ownedConfig(id: 'a'),
-      ownedConfig(id: 'b'),
-    ];
-    final ids = await mgr.startCompound(
-      compound: compound,
-      documentConfigs: configs,
-    );
-    expect(ids, hasLength(1));
-    expect(
-      mgr.sessions.where((s) => s.status == RunSessionStatus.running),
-      hasLength(1),
-    );
-    expect(mgr.lastCompoundErrors, isNotEmpty);
-    await mgr.dispose();
-  });
+  test(
+    'compound starts all same-file members; partial failure keeps successes',
+    () async {
+      final executor = FakeRunExecutor(
+        hangOnStart: true,
+        failStartForConfigIds: {'b'},
+      );
+      final mgr = RunSessionManager(executor: executor, adapters: noopAdapter);
+      final compound = const LaunchCompound(
+        id: 'all',
+        name: 'All',
+        configurationIds: ['a', 'b'],
+      );
+      final configs = [ownedConfig(id: 'a'), ownedConfig(id: 'b')];
+      final ids = await mgr.startCompound(
+        compound: compound,
+        documentConfigs: configs,
+      );
+      expect(ids, hasLength(1));
+      expect(
+        mgr.sessions.where((s) => s.status == RunSessionStatus.running),
+        hasLength(1),
+      );
+      expect(mgr.lastCompoundErrors, isNotEmpty);
+      await mgr.dispose();
+    },
+  );
 
   test('stopCompound stops all returned session ids', () async {
     final executor = FakeRunExecutor(hangOnStart: true);
@@ -312,10 +311,7 @@ void main() {
       name: 'All',
       configurationIds: ['a', 'b'],
     );
-    final configs = [
-      ownedConfig(id: 'a'),
-      ownedConfig(id: 'b'),
-    ];
+    final configs = [ownedConfig(id: 'a'), ownedConfig(id: 'b')];
     final ids = await mgr.startCompound(
       compound: compound,
       documentConfigs: configs,
@@ -401,34 +397,37 @@ void main() {
     await mgr.dispose();
   });
 
-  test('markExitedForTerminalEntry exits bound session without interrupt', () async {
-    final executor = FakeRunExecutor(hangOnStart: true);
-    final mgr = RunSessionManager(executor: executor, adapters: noopAdapter);
-    final owned = OwnedLaunchConfiguration(
-      owner: _folder,
-      configuration: const LaunchConfiguration(
-        id: 'a',
-        name: 'a',
-        type: 'shellScript',
-        extras: {
-          'execute': 'scriptText',
-          'scriptText': 'echo hi',
-          'executeInTerminal': true,
-        },
-      ),
-    );
-    final s = await mgr.start(owned);
-    expect(mgr.session(s.id)?.status, RunSessionStatus.running);
+  test(
+    'markExitedForTerminalEntry exits bound session without interrupt',
+    () async {
+      final executor = FakeRunExecutor(hangOnStart: true);
+      final mgr = RunSessionManager(executor: executor, adapters: noopAdapter);
+      final owned = OwnedLaunchConfiguration(
+        owner: _folder,
+        configuration: const LaunchConfiguration(
+          id: 'a',
+          name: 'a',
+          type: 'shellScript',
+          extras: {
+            'execute': 'scriptText',
+            'scriptText': 'echo hi',
+            'executeInTerminal': true,
+          },
+        ),
+      );
+      final s = await mgr.start(owned);
+      expect(mgr.session(s.id)?.status, RunSessionStatus.running);
 
-    mgr.registerTerminalSession(entryId: 'term-1', sessionId: s.id);
-    mgr.markExitedForTerminalEntry('term-1');
+      mgr.registerTerminalSession(entryId: 'term-1', sessionId: s.id);
+      mgr.markExitedForTerminalEntry('term-1');
 
-    expect(mgr.session(s.id)?.status, RunSessionStatus.exited);
-    expect(executor.stopCount, 0);
+      expect(mgr.session(s.id)?.status, RunSessionStatus.exited);
+      expect(executor.stopCount, 0);
 
-    // Unknown / already-cleared entry is a no-op.
-    mgr.markExitedForTerminalEntry('term-1');
-    expect(executor.stopCount, 0);
-    await mgr.dispose();
-  });
+      // Unknown / already-cleared entry is a no-op.
+      mgr.markExitedForTerminalEntry('term-1');
+      expect(executor.stopCount, 0);
+      await mgr.dispose();
+    },
+  );
 }

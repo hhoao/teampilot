@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
-import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
@@ -13,7 +13,7 @@ import 'package:teampilot/pages/chat/agent_permission_attention_banner.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/agent_status/agent_status_event.dart';
-import 'package:teampilot/services/chat/terminal/ask_user_question_answer_service.dart';
+import 'package:teampilot/services/chat/conversation/approvals/ask_user_question_answer_service.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 

@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/chat/chat_find_bar.dart';
-import 'package:teampilot/services/chat/session/history/chat_transcript_find_controller.dart';
+import 'package:teampilot/services/chat/conversation/history/chat_transcript_find_controller.dart';
 
 void main() {
   testWidgets('ChatFindBar shows counter and navigates through hits', (

@@ -9,7 +9,11 @@ void main() {
 
   setUp(() {
     fs = InMemoryFilesystem();
-    store = SkillPackInstallStore(fs: fs, rootOverride: '/packs', storage: fakeHomeStorage(filesystem: fs), );
+    store = SkillPackInstallStore(
+      fs: fs,
+      rootOverride: '/packs',
+      storage: fakeHomeStorage(filesystem: fs),
+    );
   });
 
   test('record round-trip preserves syncRoot and envExports', () async {
@@ -34,37 +38,39 @@ void main() {
     expect(loaded.toJson().containsKey('packBin'), isFalse);
   });
 
-  test('pathExportsForSkills dedupes and envExportsForSkills is first-wins',
-      () async {
-    await store.save(
-      const SkillPackInstallRecord(
-        packId: 'a/pack',
-        skillIds: ['skill-a', 'shared'],
-        pathExports: ['/a/bin', '/shared/bin'],
-        envExports: {'X': 'from-a', 'ONLY_A': '1'},
-        installedAt: 1,
-        syncRoot: '/a',
-      ),
-    );
-    await store.save(
-      const SkillPackInstallRecord(
-        packId: 'b/pack',
-        skillIds: ['skill-b', 'shared'],
-        pathExports: ['/b/bin', '/shared/bin'],
-        envExports: {'X': 'from-b', 'ONLY_B': '2'},
-        installedAt: 2,
-        syncRoot: '/b',
-      ),
-    );
+  test(
+    'pathExportsForSkills dedupes and envExportsForSkills is first-wins',
+    () async {
+      await store.save(
+        const SkillPackInstallRecord(
+          packId: 'a/pack',
+          skillIds: ['skill-a', 'shared'],
+          pathExports: ['/a/bin', '/shared/bin'],
+          envExports: {'X': 'from-a', 'ONLY_A': '1'},
+          installedAt: 1,
+          syncRoot: '/a',
+        ),
+      );
+      await store.save(
+        const SkillPackInstallRecord(
+          packId: 'b/pack',
+          skillIds: ['skill-b', 'shared'],
+          pathExports: ['/b/bin', '/shared/bin'],
+          envExports: {'X': 'from-b', 'ONLY_B': '2'},
+          installedAt: 2,
+          syncRoot: '/b',
+        ),
+      );
 
-    final paths = await store.pathExportsForSkills(['shared']);
-    expect(paths, ['/a/bin', '/shared/bin', '/b/bin']);
+      final paths = await store.pathExportsForSkills(['shared']);
+      expect(paths, ['/a/bin', '/shared/bin', '/b/bin']);
 
-    final env = await store.envExportsForSkills(['shared']);
-    expect(env['X'], 'from-a');
-    expect(env['ONLY_A'], '1');
-    expect(env['ONLY_B'], '2');
-  });
+      final env = await store.envExportsForSkills(['shared']);
+      expect(env['X'], 'from-a');
+      expect(env['ONLY_A'], '1');
+      expect(env['ONLY_B'], '2');
+    },
+  );
 
   test('prependPath puts pack paths first', () {
     final env = SkillPackInstallStore.prependPath(

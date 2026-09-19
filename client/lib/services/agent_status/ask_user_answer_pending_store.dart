@@ -35,10 +35,7 @@ final class AskUserAnswerPendingStore {
     return _entries.remove(_key(sessionId, memberId, requestId));
   }
 
-  void clearSeat({
-    required String sessionId,
-    required String memberId,
-  }) {
+  void clearSeat({required String sessionId, required String memberId}) {
     final prefix = '${_seatKey(sessionId, memberId)}/';
     _entries.removeWhere((key, _) => key.startsWith(prefix));
   }

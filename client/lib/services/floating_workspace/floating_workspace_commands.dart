@@ -25,8 +25,7 @@ void registerFloatingWorkspaceCommands(
 }) {
   bus.register(CommandIds.floatingToggle, floating.toggle);
   bus.register(CommandIds.floatingMaximize, () {
-    final wasOpen =
-        floating.state.visibility == FloatingPanelVisibility.open;
+    final wasOpen = floating.state.visibility == FloatingPanelVisibility.open;
     floating.ensureOpen();
     if (!wasOpen) {
       floating.setMaximized(true);

@@ -10,8 +10,8 @@ import 'package:teampilot/services/commands/command_catalog.dart';
 import 'package:teampilot/services/commands/shortcut_context.dart';
 import 'package:teampilot/services/commands/shortcut_dispatcher.dart';
 import 'package:teampilot/services/cli/registry/capabilities/native_command_capability.dart';
-import 'package:teampilot/services/compose/compose_clip.dart';
-import 'package:teampilot/services/compose/compose_text_edit.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_clip.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_text_edit.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
 
@@ -131,10 +131,7 @@ void main() {
       focusNode: focusNode,
       onSubmit: () {},
       nativeCommands: const [
-        NativeCommand(
-          name: 'help',
-          description: NativeCommandDescription.help,
-        ),
+        NativeCommand(name: 'help', description: NativeCommandDescription.help),
       ],
     );
 
@@ -155,8 +152,7 @@ void main() {
       effectiveChords: (commandId) => CommandCatalog.v1
           .firstWhere((def) => def.id == commandId)
           .defaultChords,
-      context: () =>
-          const ShortcutContext(inCompose: true, inTextInput: true),
+      context: () => const ShortcutContext(inCompose: true, inTextInput: true),
       isMacOS: () => false,
     );
     dispatcher.attach();
@@ -410,36 +406,39 @@ void main() {
         await pressCtrlV(tester);
 
         expect(controller.text, '@/tmp/attachments/imported.png ');
-        expect(pasteImageCalls, 1, reason: 'exactly one image import per paste');
-      },
-    );
-
-    testWidgets(
-      'text paste falls through when the clipboard has no image',
-      (tester) async {
-        final controller = TextEditingController();
-        final focusNode = FocusNode();
-        addTearDown(controller.dispose);
-        addTearDown(focusNode.dispose);
-        var pasteImageCalls = 0;
-
-        await pumpFieldForPaste(
-          tester,
-          controller: controller,
-          focusNode: focusNode,
-          onPasteImage: () async {
-            pasteImageCalls += 1;
-            return false;
-          },
+        expect(
+          pasteImageCalls,
+          1,
+          reason: 'exactly one image import per paste',
         );
-
-        await pressCtrlV(tester);
-
-        // The image probe ran once and declined; nothing was inserted by it.
-        expect(pasteImageCalls, 1);
-        expect(controller.text, isEmpty);
       },
     );
+
+    testWidgets('text paste falls through when the clipboard has no image', (
+      tester,
+    ) async {
+      final controller = TextEditingController();
+      final focusNode = FocusNode();
+      addTearDown(controller.dispose);
+      addTearDown(focusNode.dispose);
+      var pasteImageCalls = 0;
+
+      await pumpFieldForPaste(
+        tester,
+        controller: controller,
+        focusNode: focusNode,
+        onPasteImage: () async {
+          pasteImageCalls += 1;
+          return false;
+        },
+      );
+
+      await pressCtrlV(tester);
+
+      // The image probe ran once and declined; nothing was inserted by it.
+      expect(pasteImageCalls, 1);
+      expect(controller.text, isEmpty);
+    });
   });
 
   group('paste collapse', () {
@@ -479,8 +478,9 @@ void main() {
       );
     }
 
-    testWidgets('oversized single insert collapses into the clip and clears',
-        (tester) async {
+    testWidgets('oversized single insert collapses into the clip and clears', (
+      tester,
+    ) async {
       final controller = TextEditingController();
       final focusNode = FocusNode();
       final clip = ComposeClip();
@@ -488,7 +488,12 @@ void main() {
       addTearDown(focusNode.dispose);
       addTearDown(clip.dispose);
 
-      await pumpWithClip(tester, controller: controller, focusNode: focusNode, clip: clip);
+      await pumpWithClip(
+        tester,
+        controller: controller,
+        focusNode: focusNode,
+        clip: clip,
+      );
 
       final longText = List.generate(30, (i) => 'line $i').join('\n');
       // Assign text + selection as one value, exactly like a real paste at the
@@ -514,7 +519,12 @@ void main() {
       addTearDown(focusNode.dispose);
       addTearDown(clip.dispose);
 
-      await pumpWithClip(tester, controller: controller, focusNode: focusNode, clip: clip);
+      await pumpWithClip(
+        tester,
+        controller: controller,
+        focusNode: focusNode,
+        clip: clip,
+      );
 
       controller.text = 'small\npaste';
       await tester.pump();

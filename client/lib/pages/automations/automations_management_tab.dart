@@ -185,7 +185,9 @@ class AutomationsFilterPanel extends StatelessWidget {
         children: [
           Text(
             l10n.automationsFilterStatusLabel,
-            style: TpTextStyles.of(context).smSemiboldColored(cs.onSurfaceVariant),
+            style: TpTextStyles.of(
+              context,
+            ).smSemiboldColored(cs.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -203,7 +205,9 @@ class AutomationsFilterPanel extends StatelessWidget {
           const SizedBox(height: 14),
           Text(
             l10n.automationsFilterActionLabel,
-            style: TpTextStyles.of(context).smSemiboldColored(cs.onSurfaceVariant),
+            style: TpTextStyles.of(
+              context,
+            ).smSemiboldColored(cs.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
           Wrap(

@@ -3,8 +3,8 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/terminal/fullscreen_input_screen_probe.dart';
-import 'package:teampilot/services/chat/terminal/pty_inject_ack_retry.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_input_screen_probe.dart';
+import 'package:teampilot/services/chat/runtime/pty/pty_inject_ack_retry.dart';
 import 'package:teampilot/services/terminal/terminal_export.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 

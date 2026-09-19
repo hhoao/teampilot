@@ -6,7 +6,7 @@ import '../../../models/simple_launch_identity.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../repositories/session_repository.dart';
-import '../../chat/prompt_delivery/prompt_delivery.dart';
+import '../../chat/conversation/prompt_delivery/prompt_delivery.dart';
 import '../../chat/team_generation/team_generation_session_port.dart';
 import '../../../utils/logging/logger.dart';
 import '../../../utils/team/team_member_naming.dart';

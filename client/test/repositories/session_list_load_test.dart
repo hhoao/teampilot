@@ -203,27 +203,30 @@ void main() {
     },
   );
 
-  test('createSession and deleteSession keep sessions-index in lockstep', () async {
-    final tmp = await Directory.systemTemp.createTemp('list_index_mutate_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-    final inner = LocalFilesystem();
-    final counting = _CountingFs(inner);
-    final repo = SessionRepository(
-      rootDir: tmp.path,
-      storage: _storage(tmp, counting),
-    );
-    final ws = await repo.createWorkspace([WorkspaceFolder(path: '/tmp/ws')]);
-    final created = (await repo.createSession(ws.workspaceId)).session;
-    counting.sessionJsonReads = 0;
-    final listed = await repo.loadSessionListForWorkspace(ws.workspaceId);
-    expect(listed.single.sessionId, created.sessionId);
-    expect(counting.sessionJsonReads, 0);
-    await repo.deleteSession(created.sessionId);
-    expect(await repo.loadSessionListForWorkspace(ws.workspaceId), isEmpty);
-    counting.sessionJsonReads = 0;
-    expect(await repo.loadSessionListForWorkspace(ws.workspaceId), isEmpty);
-    expect(counting.sessionJsonReads, 0);
-  });
+  test(
+    'createSession and deleteSession keep sessions-index in lockstep',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('list_index_mutate_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final inner = LocalFilesystem();
+      final counting = _CountingFs(inner);
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _storage(tmp, counting),
+      );
+      final ws = await repo.createWorkspace([WorkspaceFolder(path: '/tmp/ws')]);
+      final created = (await repo.createSession(ws.workspaceId)).session;
+      counting.sessionJsonReads = 0;
+      final listed = await repo.loadSessionListForWorkspace(ws.workspaceId);
+      expect(listed.single.sessionId, created.sessionId);
+      expect(counting.sessionJsonReads, 0);
+      await repo.deleteSession(created.sessionId);
+      expect(await repo.loadSessionListForWorkspace(ws.workspaceId), isEmpty);
+      counting.sessionJsonReads = 0;
+      expect(await repo.loadSessionListForWorkspace(ws.workspaceId), isEmpty);
+      expect(counting.sessionJsonReads, 0);
+    },
+  );
 
   test(
     'createSession and deleteSession succeed when derived index write fails',
@@ -249,35 +252,38 @@ void main() {
     },
   );
 
-  test('rebuild logs once when written ids do not match directory ids', () async {
-    final tmp = await Directory.systemTemp.createTemp('list_index_parity_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-    final inner = LocalFilesystem();
-    final counting = _CountingFs(inner);
-    final repo = SessionRepository(
-      rootDir: tmp.path,
-      storage: _storage(tmp, counting),
-    );
-    final ws = await repo.createWorkspace([WorkspaceFolder(path: '/tmp/ws')]);
-    await _plantSessions(tmp, ws.workspaceId, 1);
-    final corrupt = Directory(
-      '${tmp.path}/workspace/workspaces/${ws.workspaceId}/sessions/corrupt-id',
-    )..createSync(recursive: true);
-    File('${corrupt.path}/session.json').writeAsStringSync('not-json');
-    File(
-      WorkspaceLayout(
-        teampilotRoot: tmp.path,
-        fs: inner,
-      ).sessionsIndexFile(ws.workspaceId),
-    ).writeAsStringSync('{"version":1,"sessions":[]}');
+  test(
+    'rebuild logs once when written ids do not match directory ids',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('list_index_parity_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final inner = LocalFilesystem();
+      final counting = _CountingFs(inner);
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _storage(tmp, counting),
+      );
+      final ws = await repo.createWorkspace([WorkspaceFolder(path: '/tmp/ws')]);
+      await _plantSessions(tmp, ws.workspaceId, 1);
+      final corrupt = Directory(
+        '${tmp.path}/workspace/workspaces/${ws.workspaceId}/sessions/corrupt-id',
+      )..createSync(recursive: true);
+      File('${corrupt.path}/session.json').writeAsStringSync('not-json');
+      File(
+        WorkspaceLayout(
+          teampilotRoot: tmp.path,
+          fs: inner,
+        ).sessionsIndexFile(ws.workspaceId),
+      ).writeAsStringSync('{"version":1,"sessions":[]}');
 
-    final before = await appLogger.getPendingLogLines();
-    final listed = await repo.loadSessionListForWorkspace(ws.workspaceId);
-    expect(listed.map((s) => s.sessionId), ['seed-0']);
-    final lines = await appLogger.getPendingLogLines();
-    expect(
-      lines.skip(before.length).where((l) => l.contains('rebuild parity')),
-      hasLength(1),
-    );
-  });
+      final before = await appLogger.getPendingLogLines();
+      final listed = await repo.loadSessionListForWorkspace(ws.workspaceId);
+      expect(listed.map((s) => s.sessionId), ['seed-0']);
+      final lines = await appLogger.getPendingLogLines();
+      expect(
+        lines.skip(before.length).where((l) => l.contains('rebuild parity')),
+        hasLength(1),
+      );
+    },
+  );
 }

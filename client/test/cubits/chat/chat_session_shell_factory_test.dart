@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/chat_session_shell_factory.dart';
+import 'package:teampilot/services/chat/launch/connect/chat_session_shell_factory.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';

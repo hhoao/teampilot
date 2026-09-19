@@ -42,17 +42,20 @@ void main() {
       );
     });
 
-    test('probe accepts termux target and resolves synthetic profile', () async {
-      final service = buildService();
-      final result = await service.probe(
-        target: RuntimeTarget.termux(),
-        cli: CliTool.claude,
-      );
-      expect(profileLookups, ['termux']);
-      expect(result.targetId, RuntimeTarget.termuxDefaultId);
-      expect(result.cli, CliTool.claude);
-      expect(result, isA<RemoteCliFailed>());
-    });
+    test(
+      'probe accepts termux target and resolves synthetic profile',
+      () async {
+        final service = buildService();
+        final result = await service.probe(
+          target: RuntimeTarget.termux(),
+          cli: CliTool.claude,
+        );
+        expect(profileLookups, ['termux']);
+        expect(result.targetId, RuntimeTarget.termuxDefaultId);
+        expect(result.cli, CliTool.claude);
+        expect(result, isA<RemoteCliFailed>());
+      },
+    );
   });
 
   group('profileByIdIncludingTermux', () {

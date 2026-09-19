@@ -1,5 +1,5 @@
-import '../../model/session_open_request.dart';
-import '../../model/session_open_status.dart';
+import '../../session/session_open_request.dart';
+import '../../session/session_open_status.dart';
 import '../../../../models/app_session.dart';
 import '../../../../models/workspace.dart';
 import '../../../../models/workspace_topology.dart';

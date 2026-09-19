@@ -1,5 +1,4 @@
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/team_config.dart';
 import '../provider_presets.dart';
 
 /// How an OpenCode provider acquires and stores credentials in TeamPilot.
@@ -33,7 +32,9 @@ abstract final class OpencodeCredentialKindResolver {
   static OpencodeCredentialKind forProvider(AppProviderConfig provider) {
     if (provider.cli != CliTool.opencode) return OpencodeCredentialKind.none;
 
-    final fromConfig = _parse(provider.config[OpencodeCredentialConfigKeys.kind]);
+    final fromConfig = _parse(
+      provider.config[OpencodeCredentialConfigKeys.kind],
+    );
     if (fromConfig != null) return fromConfig;
 
     final preset = OpencodeProviderPresets.byId(provider.id);

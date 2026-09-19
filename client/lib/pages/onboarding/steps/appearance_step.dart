@@ -95,9 +95,7 @@ class OnboardingAppearanceStep extends StatelessWidget {
                     },
                     onChanged: (v) {
                       if (v != null) {
-                        controller.setLocale(
-                          languagePreferenceStoredLocale(v),
-                        );
+                        controller.setLocale(languagePreferenceStoredLocale(v));
                       }
                     },
                   ),

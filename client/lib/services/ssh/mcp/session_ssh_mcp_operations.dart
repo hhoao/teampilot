@@ -117,10 +117,7 @@ class SessionSshMcpOperations {
       if (bytes.length > _maxOutputBytes) {
         return SessionSshMcpToolResult.error(
           sessionSshMcpErrorOutputLimit,
-          utf8.decode(
-            bytes.sublist(0, _maxOutputBytes),
-            allowMalformed: true,
-          ),
+          utf8.decode(bytes.sublist(0, _maxOutputBytes), allowMalformed: true),
         );
       }
       return SessionSshMcpToolResult.ok(combined);

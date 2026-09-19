@@ -28,8 +28,7 @@ const kCursorMixedTeam = TeamProfile(
   ],
 );
 
-Future<({String sessionId, ChatCubit cubit})>
-openCursorMixedSession({
+Future<({String sessionId, ChatCubit cubit})> openCursorMixedSession({
   required ChatCubit cubit,
   required SessionRepository repo,
   required PostFrameTestHarness postFrame,
@@ -75,7 +74,10 @@ void main() {
 
   test('mixed cursor: /idle ends bus turn and clears working', () async {
     final tmp = await Directory.systemTemp.createTemp('tc_mixed_');
-    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
     final postFrame = PostFrameTestHarness();
     final cubit = ChatCubit(
       executableResolver: () => 'true',
@@ -86,7 +88,7 @@ void main() {
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) =>
               RunningConnectedFakeShell(executable: executable),
-                             storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
 
     final opened = await openCursorMixedSession(
@@ -122,7 +124,10 @@ void main() {
 
   test('mixed cursor: PTY quiet ends bus turn and clears busy', () async {
     final tmp = await Directory.systemTemp.createTemp('tc_mixed_');
-    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
     final postFrame = PostFrameTestHarness();
     final cubit = ChatCubit(
       executableResolver: () => 'true',
@@ -133,7 +138,7 @@ void main() {
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) =>
               RunningConnectedFakeShell(executable: executable),
-                             storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
 
     final opened = await openCursorMixedSession(
@@ -160,52 +165,58 @@ void main() {
     await deleteTempDirBestEffort(tmp);
   });
 
-  test('mixed claude: /idle is a no-op while parked (turn ends on park)', () async {
-    final tmp = await Directory.systemTemp.createTemp('tc_mixed_');
-    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
-    final postFrame = PostFrameTestHarness();
-    final cubit = ChatCubit(
-      executableResolver: () => 'true',
-      automationRepository: testAutomationRepository(),
-      sessionRepository: repo,
-      postFrameScheduler: postFrame.scheduler,
-      agentAttentionCubit: AgentAttentionCubit(pruneInterval: null),
-      terminalSessionFactory:
-          ({required String executable, int scrollbackLines = 10000}) =>
-              RunningConnectedFakeShell(executable: executable),
-                             storage: fakeHomeStorage(),
-    );
+  test(
+    'mixed claude: /idle is a no-op while parked (turn ends on park)',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('tc_mixed_');
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: fakeHomeStorage(),
+      );
+      final postFrame = PostFrameTestHarness();
+      final cubit = ChatCubit(
+        executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
+        sessionRepository: repo,
+        postFrameScheduler: postFrame.scheduler,
+        agentAttentionCubit: AgentAttentionCubit(pruneInterval: null),
+        terminalSessionFactory:
+            ({required String executable, int scrollbackLines = 10000}) =>
+                RunningConnectedFakeShell(executable: executable),
+        storage: fakeHomeStorage(),
+      );
 
-    final opened = await openMixedSessionWithShells(
-      cubit: cubit,
-      repo: repo,
-      postFrame: postFrame,
-    );
-    final bus = cubit.activeTab!.teamBus!;
-    bus.markMemberRunning('team-lead');
-    bus.markTurnStarted('team-lead');
-    await drainPendingAsyncWork();
-    expect(bus.isMemberInTurn('team-lead'), isTrue);
+      final opened = await openMixedSessionWithShells(
+        cubit: cubit,
+        repo: repo,
+        postFrame: postFrame,
+      );
+      final bus = cubit.activeTab!.teamBus!;
+      bus.markMemberRunning('team-lead');
+      bus.markTurnStarted('team-lead');
+      await drainPendingAsyncWork();
+      expect(bus.isMemberInTurn('team-lead'), isTrue);
 
-    // Park the member in wait_for_message.
-    unawaited(bus.receive('team-lead'));
-    await Future<void>.delayed(Duration.zero);
-    expect(bus.isWaitingForMessage('team-lead'), isTrue);
-    // The turn has already ended via park; /idle must not double-end it.
-    expect(bus.isMemberInTurn('team-lead'), isFalse);
+      // Park the member in wait_for_message.
+      unawaited(bus.receive('team-lead'));
+      await Future<void>.delayed(Duration.zero);
+      expect(bus.isWaitingForMessage('team-lead'), isTrue);
+      // The turn has already ended via park; /idle must not double-end it.
+      expect(bus.isMemberInTurn('team-lead'), isFalse);
 
-    final mcp = cubit.teammateBusMcpEndpointForSession(opened.sessionId)!;
-    await postMemberIdle(
-      idleEndpointFromMcp(mcp),
-      'team-lead',
-      sessionId: opened.sessionId,
-    );
-    cubit.debugTickIdleWatch();
-    await drainPendingAsyncWork();
-    // Still not in turn, no crash, no re-activation.
-    expect(bus.isMemberInTurn('team-lead'), isFalse);
+      final mcp = cubit.teammateBusMcpEndpointForSession(opened.sessionId)!;
+      await postMemberIdle(
+        idleEndpointFromMcp(mcp),
+        'team-lead',
+        sessionId: opened.sessionId,
+      );
+      cubit.debugTickIdleWatch();
+      await drainPendingAsyncWork();
+      // Still not in turn, no crash, no re-activation.
+      expect(bus.isMemberInTurn('team-lead'), isFalse);
 
-    await cubit.close();
-    await deleteTempDirBestEffort(tmp);
-  });
+      await cubit.close();
+      await deleteTempDirBestEffort(tmp);
+    },
+  );
 }

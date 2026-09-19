@@ -137,7 +137,9 @@ class BundleProvenanceLookup {
   }
 
   /// Deep-copies [server] and strips secret-bearing keys for Hub publish.
-  static Map<String, Object?> sanitizeMcpServerMap(Map<String, Object?> server) {
+  static Map<String, Object?> sanitizeMcpServerMap(
+    Map<String, Object?> server,
+  ) {
     return _sanitizeMap(server);
   }
 

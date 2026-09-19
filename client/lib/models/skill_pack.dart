@@ -34,12 +34,16 @@ class SkillPack {
     }
     final installRaw = json['install'];
     if (installRaw is! List || installRaw.isEmpty) {
-      throw const FormatException('SkillPack.install must be a non-empty array');
+      throw const FormatException(
+        'SkillPack.install must be a non-empty array',
+      );
     }
     return SkillPack(
       id: id,
       name: name,
-      description: description == null || description.isEmpty ? null : description,
+      description: description == null || description.isEmpty
+          ? null
+          : description,
       labels: Map.unmodifiable(labels),
       install: parseSkillPackInstall(installRaw),
     );
@@ -48,11 +52,10 @@ class SkillPack {
   Map<String, Object?> toJson() => {
     'id': id,
     'name': name,
-    if (description != null && description!.isNotEmpty) 'description': description,
+    if (description != null && description!.isNotEmpty)
+      'description': description,
     if (labels.isNotEmpty) 'labels': labels,
-    'install': [
-      for (final step in install) _instructionToJson(step),
-    ],
+    'install': [for (final step in install) _instructionToJson(step)],
   };
 
   @override

@@ -91,8 +91,7 @@ class _NoopAdapter implements RunAdapterLauncher {
 }
 
 class _FakePlatform implements RunPlatformApi {
-  _FakePlatform({required this.configurations})
-    : launcher = _OutputLauncher() {
+  _FakePlatform({required this.configurations}) : launcher = _OutputLauncher() {
     sessionManager = RunSessionManager(
       executor: launcher,
       adapters: _NoopAdapter(),
@@ -268,8 +267,9 @@ class _DeferredFakePlatform implements RunPlatformApi, RunPlatformDeferred {
   ) => const Stream.empty();
 
   @override
-  List<String> validateConfiguration(OwnedLaunchConfiguration owned) =>
-      const ['Run platform is still initializing'];
+  List<String> validateConfiguration(OwnedLaunchConfiguration owned) => const [
+    'Run platform is still initializing',
+  ];
 
   @override
   Future<RunSession> start(OwnedLaunchConfiguration owned) =>
@@ -285,8 +285,7 @@ class _DeferredFakePlatform implements RunPlatformApi, RunPlatformDeferred {
   Future<void> stop(String sessionId) => throw StateError('not ready');
 
   @override
-  Future<RunSession> restart(String sessionId) =>
-      throw StateError('not ready');
+  Future<RunSession> restart(String sessionId) => throw StateError('not ready');
 
   @override
   Future<void> stopCompound(List<String> sessionIds) =>
@@ -336,8 +335,7 @@ class _DeferredFakePlatform implements RunPlatformApi, RunPlatformDeferred {
   Map<String, Object?>? configurationSchema(String type) => null;
 
   @override
-  List<String> kindsFor(String type) =>
-      _inner?.kindsFor(type) ?? const ['run'];
+  List<String> kindsFor(String type) => _inner?.kindsFor(type) ?? const ['run'];
 
   @override
   List<LaunchTypeContribution> get launchTypes =>
@@ -350,10 +348,7 @@ Widget _host({required RunCubit cubit}) {
     supportedLocales: AppLocalizations.supportedLocales,
     locale: const Locale('en'),
     home: Scaffold(
-      body: BlocProvider<RunCubit>.value(
-        value: cubit,
-        child: const RunPanel(),
-      ),
+      body: BlocProvider<RunCubit>.value(value: cubit, child: const RunPanel()),
     ),
   );
 }
@@ -379,10 +374,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Loading run output…'), findsNothing);
-    expect(
-      find.text('Run a configuration to see output here'),
-      findsOneWidget,
-    );
+    expect(find.text('Run a configuration to see output here'), findsOneWidget);
   });
 
   testWidgets('new session focuses a Run page', (tester) async {
@@ -406,10 +398,7 @@ void main() {
     expect(cubit.state.sessions, hasLength(1));
     final sessionId = cubit.state.sessions.single.id;
     expect(find.text('API'), findsWidgets);
-    expect(
-      find.byKey(Key('run-session-page-$sessionId')),
-      findsOneWidget,
-    );
+    expect(find.byKey(Key('run-session-page-$sessionId')), findsOneWidget);
   });
 
   testWidgets('output appends to the focused session log', (tester) async {

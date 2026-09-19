@@ -53,10 +53,7 @@ class _FakeProcessLauncher implements RunProcessLauncher {
     required void Function(ProcessRunOutput output) onOutput,
     String? preferTerminalEntryId,
   }) async {
-    return RunLaunchHandle(
-      exitCode: Future<int>.value(0),
-      stop: () async {},
-    );
+    return RunLaunchHandle(exitCode: Future<int>.value(0), stop: () async {});
   }
 }
 
@@ -353,9 +350,7 @@ void main() {
   testWidgets('dropdown trigger shows selected config name after load', (
     tester,
   ) async {
-    final platform = _RecordingPlatform(
-      configurations: [_shellScriptConfig()],
-    );
+    final platform = _RecordingPlatform(configurations: [_shellScriptConfig()]);
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     addTearDown(cubit.close);
     addTearDown(platform._actionsController.close);
@@ -364,7 +359,10 @@ void main() {
     await tester.pumpWidget(_host(cubit: cubit));
     await tester.pump();
 
-    expect(cubit.state.selectedKey, platform.configurations.single.selectionKey);
+    expect(
+      cubit.state.selectedKey,
+      platform.configurations.single.selectionKey,
+    );
     expect(find.text('Launch'), findsNothing);
     expect(find.text('API'), findsOneWidget);
   });
@@ -425,9 +423,7 @@ void main() {
   });
 
   testWidgets('config menu includes add footer', (tester) async {
-    final platform = _RecordingPlatform(
-      configurations: [_shellScriptConfig()],
-    );
+    final platform = _RecordingPlatform(configurations: [_shellScriptConfig()]);
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     addTearDown(cubit.close);
     addTearDown(platform._actionsController.close);
@@ -473,9 +469,7 @@ void main() {
     await tester.pump();
 
     await _openConfigDropdown(tester);
-    await tester.tap(
-      find.byKey(Key('run-config-edit-${config.selectionKey}')),
-    );
+    await tester.tap(find.byKey(Key('run-config-edit-${config.selectionKey}')));
     await tester.pumpAndSettle();
 
     expect(find.text('Edit configuration'), findsOneWidget);
@@ -486,10 +480,7 @@ void main() {
   ) async {
     final config = _shellScriptConfig();
     final platform = _RecordingPlatform(configurations: [config]);
-    final cubit = _RecordingCubit(
-      platform: platform,
-      folders: const [_folder],
-    );
+    final cubit = _RecordingCubit(platform: platform, folders: const [_folder]);
     addTearDown(cubit.close);
     addTearDown(platform._actionsController.close);
 
@@ -530,7 +521,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(cubit.state.selectedKey, api.selectionKey);
 
-    await tester.ensureVisible(find.byKey(const Key('run-config-editor-cancel')));
+    await tester.ensureVisible(
+      find.byKey(const Key('run-config-editor-cancel')),
+    );
     await tester.tap(find.byKey(const Key('run-config-editor-cancel')));
     await tester.pumpAndSettle();
 
@@ -559,10 +552,7 @@ void main() {
       configurations: [_shellScriptConfig()],
       recommendations: [recommendation],
     );
-    final cubit = _RecordingCubit(
-      platform: platform,
-      folders: const [_folder],
-    );
+    final cubit = _RecordingCubit(platform: platform, folders: const [_folder]);
     addTearDown(cubit.close);
     addTearDown(platform._actionsController.close);
 
@@ -654,9 +644,7 @@ void main() {
   });
 
   testWidgets('does not show build debug or more by default', (tester) async {
-    final platform = _RecordingPlatform(
-      configurations: [_shellScriptConfig()],
-    );
+    final platform = _RecordingPlatform(configurations: [_shellScriptConfig()]);
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     addTearDown(cubit.close);
     addTearDown(platform._actionsController.close);
@@ -696,10 +684,7 @@ void main() {
         ),
       ],
     );
-    final cubit = _RecordingCubit(
-      platform: platform,
-      folders: const [_folder],
-    );
+    final cubit = _RecordingCubit(platform: platform, folders: const [_folder]);
     addTearDown(cubit.close);
     addTearDown(platform._actionsController.close);
 
@@ -722,9 +707,7 @@ void main() {
   });
 
   testWidgets('Run button calls runSelected', (tester) async {
-    final platform = _RecordingPlatform(
-      configurations: [_shellScriptConfig()],
-    );
+    final platform = _RecordingPlatform(configurations: [_shellScriptConfig()]);
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     addTearDown(cubit.close);
     addTearDown(platform._actionsController.close);
@@ -741,48 +724,47 @@ void main() {
     expect(cubit.state.sessions, isNotEmpty);
   });
 
-  testWidgets(
-    'schema validation failure dialog offers Edit configuration',
-    (tester) async {
-      final invalid = OwnedLaunchConfiguration(
-        owner: _folder,
-        configuration: LaunchConfiguration.fromJson(
-          ShellScriptLaunchSchema.withDefaults({
-            'id': 'bad',
-            'name': 'Bad',
-            'type': ShellScriptLaunchSchema.typeName,
-            'execute': 'scriptText',
-            'scriptText': '',
-            'executeInTerminal': false,
-          }),
-        ),
-      );
-      final platform = _RecordingPlatform(
-        configurations: [invalid],
-        validate: (_) => const ['scriptText is required'],
-      );
-      final cubit = RunCubit(platform: platform, folders: const [_folder]);
-      addTearDown(cubit.close);
-      addTearDown(platform._actionsController.close);
+  testWidgets('schema validation failure dialog offers Edit configuration', (
+    tester,
+  ) async {
+    final invalid = OwnedLaunchConfiguration(
+      owner: _folder,
+      configuration: LaunchConfiguration.fromJson(
+        ShellScriptLaunchSchema.withDefaults({
+          'id': 'bad',
+          'name': 'Bad',
+          'type': ShellScriptLaunchSchema.typeName,
+          'execute': 'scriptText',
+          'scriptText': '',
+          'executeInTerminal': false,
+        }),
+      ),
+    );
+    final platform = _RecordingPlatform(
+      configurations: [invalid],
+      validate: (_) => const ['scriptText is required'],
+    );
+    final cubit = RunCubit(platform: platform, folders: const [_folder]);
+    addTearDown(cubit.close);
+    addTearDown(platform._actionsController.close);
 
-      await cubit.load();
-      await tester.pumpWidget(_host(cubit: cubit));
-      await tester.pump();
+    await cubit.load();
+    await tester.pumpWidget(_host(cubit: cubit));
+    await tester.pump();
 
-      await tester.tap(find.byKey(const Key('run-toolbar-run')));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('run-toolbar-run')));
+    await tester.pumpAndSettle();
 
-      expect(platform.runSelectedCalls, 0);
-      expect(find.text('Script text is required'), findsOneWidget);
-      expect(find.text('Edit configuration'), findsWidgets);
-      expect(find.textContaining('launch.json'), findsNothing);
+    expect(platform.runSelectedCalls, 0);
+    expect(find.text('Script text is required'), findsOneWidget);
+    expect(find.text('Edit configuration'), findsWidgets);
+    expect(find.textContaining('launch.json'), findsNothing);
 
-      await tester.tap(find.widgetWithText(FilledButton, 'Edit configuration'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Edit configuration'));
+    await tester.pumpAndSettle();
 
-      expect(find.byType(RunConfigEditorDialog), findsOneWidget);
-    },
-  );
+    expect(find.byType(RunConfigEditorDialog), findsOneWidget);
+  });
 
   testWidgets('debug kind shows debug glyph via kindsFor', (tester) async {
     final platform = _RecordingPlatform(

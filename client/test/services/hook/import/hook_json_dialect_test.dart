@@ -31,14 +31,18 @@ void main() {
       matcher: 'Bash',
       type: 'command',
       command: 'echo hi',
-      native: <String, Object?>{'args': <Object?>['-f', 'x']},
+      native: <String, Object?>{
+        'args': <Object?>['-f', 'x'],
+      },
     );
     final b = RawHookEntry(
       nativeEvent: 'PreToolUse',
       matcher: 'Bash',
       type: 'command',
       command: 'echo hi',
-      native: <String, Object?>{'args': <Object?>['-f', 'x']},
+      native: <String, Object?>{
+        'args': <Object?>['-f', 'x'],
+      },
     );
     expect(a, b);
     expect(a.hashCode, b.hashCode);

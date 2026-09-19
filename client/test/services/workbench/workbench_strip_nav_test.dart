@@ -24,9 +24,7 @@ void main() {
     });
 
     test('Alt+0 maps to ordinal 10', () {
-      final ten = [
-        for (var i = 1; i <= 10; i++) WorkbenchTabId.session('s$i'),
-      ];
+      final ten = [for (var i = 1; i <= 10; i++) WorkbenchTabId.session('s$i')];
       expect(workbenchTabAt(ten, 10), WorkbenchTabId.session('s10'));
     });
   });

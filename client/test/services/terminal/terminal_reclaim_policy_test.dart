@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/terminal/terminal_reclaim_policy.dart';
+import 'package:teampilot/services/chat/runtime/pty/terminal_reclaim_policy.dart';
 
 TerminalReclaimSnapshot _snap({
   bool shellRunning = true,

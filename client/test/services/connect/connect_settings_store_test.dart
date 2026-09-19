@@ -69,7 +69,11 @@ void main() {
 
     await store.save(
       extraEndpoints: const [
-        SshReachabilityEndpoint(kind: SshEndpointKind.extra, host: 'lan', port: 22),
+        SshReachabilityEndpoint(
+          kind: SshEndpointKind.extra,
+          host: 'lan',
+          port: 22,
+        ),
       ],
       relayUrl: 'https://relay.example',
     );
@@ -99,10 +103,7 @@ void main() {
     final json = await readSettings(store.settingsPath);
     expect(json['hostId'], hostId);
     expect(json['embeddedPort'], port);
-    expect(
-      (json['extraEndpoints'] as List).first['host'],
-      'lan',
-    );
+    expect((json['extraEndpoints'] as List).first['host'], 'lan');
     expect(json['relayUrl'], 'https://relay.example');
   });
 
@@ -111,15 +112,21 @@ void main() {
     expect(settings.sshBackend, ConnectSshBackendKind.embedded);
   });
 
-  test('saveSshBackend round-trips system and preserves embeddedPort', () async {
-    final store = newStore();
-    final port = await store.loadOrCreateEmbeddedPort();
-    await store.saveSshBackend(ConnectSshBackendKind.system);
-    final json = await readSettings(store.settingsPath);
-    expect(json['sshBackend'], 'system');
-    expect(json['embeddedPort'], port);
-    expect((await newStore().load()).sshBackend, ConnectSshBackendKind.system);
-  });
+  test(
+    'saveSshBackend round-trips system and preserves embeddedPort',
+    () async {
+      final store = newStore();
+      final port = await store.loadOrCreateEmbeddedPort();
+      await store.saveSshBackend(ConnectSshBackendKind.system);
+      final json = await readSettings(store.settingsPath);
+      expect(json['sshBackend'], 'system');
+      expect(json['embeddedPort'], port);
+      expect(
+        (await newStore().load()).sshBackend,
+        ConnectSshBackendKind.system,
+      );
+    },
+  );
 
   test('reachability save preserves sshBackend', () async {
     final store = newStore();

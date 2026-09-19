@@ -53,7 +53,7 @@ void main() {
           home: Scaffold(
             body: BlocProvider<SkillCubit>.value(
               value: cubit,
-                child: const SizedBox(
+              child: const SizedBox(
                 width: 320,
                 child: SkillInstalledRow(
                   skill: skill,

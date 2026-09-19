@@ -50,7 +50,9 @@ void main() {
     expect(b.refreshCalls, 2);
 
     // 间隔过后：全部 root 再保缓存一次。
-    now = now.add(GitRepoStore.backgroundRefreshInterval + const Duration(seconds: 1));
+    now = now.add(
+      GitRepoStore.backgroundRefreshInterval + const Duration(seconds: 1),
+    );
     store.refreshAll(
       ['/repo-a', '/repo-b'],
       workContext: context,

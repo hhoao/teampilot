@@ -20,7 +20,7 @@ void main() {
     store = WorkspaceDisplayPrefsStore(
       fs: fs,
       pathOverride: paths.homeWorkspaceWorkspaceDisplayPrefsJson,
-                                        storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
   });
 

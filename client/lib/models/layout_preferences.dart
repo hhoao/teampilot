@@ -40,8 +40,12 @@ class GitGraphColumnPrefs extends Equatable {
   final double commitWidth;
 
   @override
-  List<Object?> get props =>
-      [hiddenColumns, dateWidth, authorWidth, commitWidth];
+  List<Object?> get props => [
+    hiddenColumns,
+    dateWidth,
+    authorWidth,
+    commitWidth,
+  ];
 
   double widthOf(GitGraphColumnId id) => switch (id) {
     GitGraphColumnId.date => dateWidth,
@@ -112,7 +116,6 @@ class GitGraphColumnPrefs extends Equatable {
     'commitWidth': commitWidth,
   };
 }
-
 
 /// Dropdown value for language preference: `system` | `en` | `zh`.
 String languagePreferenceUiValue(String locale) {
@@ -216,8 +219,7 @@ class LayoutPreferences {
       membersVisible: json['membersVisible'] as bool? ?? true,
       fileTreeVisible: json['fileTreeVisible'] as bool? ?? true,
       gitVisible: json['gitVisible'] as bool? ?? true,
-      gitGraphHeaderVisible:
-          json['gitGraphHeaderVisible'] as bool? ?? true,
+      gitGraphHeaderVisible: json['gitGraphHeaderVisible'] as bool? ?? true,
       gitGraphColumns: GitGraphColumnPrefs.fromJson(json['gitGraphColumns']),
       gitGraphDetailWidth: _doubleValue(
         json['gitGraphDetailWidth'],

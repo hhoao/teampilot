@@ -40,7 +40,10 @@ void main() {
       cubit = AiFeatureSettingsCubit(
         repository: InMemoryAppSettingsRepository(),
       );
-      appProviderCubit = AppProviderCubit(basePath: temp.path, storage: testHomeStorage, );
+      appProviderCubit = AppProviderCubit(
+        basePath: temp.path,
+        storage: testHomeStorage,
+      );
       cliPresetsCubit = CliPresetsCubit(
         repository: CliPresetsRepository(
           fs: InMemoryFilesystem(),

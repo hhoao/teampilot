@@ -16,22 +16,19 @@ import 'package:teampilot/pages/home_workspace/global_resource_manager_host.dart
 
 class _SeededResourceManagerCubit extends ResourceManagerCubit {
   _SeededResourceManagerCubit(ResourceManagerState initial)
-      : super(
-          metricsService: ProcessMetricsService(),
-          registry: PtyProcessRegistry(),
-          bindingsSource: () => const [],
-          killBinding: (_) async {},
-        ) {
+    : super(
+        metricsService: ProcessMetricsService(),
+        registry: PtyProcessRegistry(),
+        bindingsSource: () => const [],
+        killBinding: (_) async {},
+      ) {
     emit(initial);
   }
 
   void seed(ResourceManagerState next) => emit(next);
 }
 
-Widget _host({
-  required ResourceManagerCubit cubit,
-  required Widget child,
-}) {
+Widget _host({required ResourceManagerCubit cubit, required Widget child}) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
@@ -60,8 +57,9 @@ ResourceTreeViewModel _treeWithNullLeaf() {
 }
 
 void main() {
-  testWidgets('pill shows terminal count only (no memory while closed)',
-      (tester) async {
+  testWidgets('pill shows terminal count only (no memory while closed)', (
+    tester,
+  ) async {
     const memoryBytes = 960.8 * 1024 * 1024;
     final memoryLabel = formatResourceMemory(memoryBytes);
     final cubit = _SeededResourceManagerCubit(
@@ -78,9 +76,7 @@ void main() {
     await tester.pumpWidget(
       _host(
         cubit: cubit,
-        child: WorkspaceStatusBar(
-          items: [ResourceUsageStatusItem()],
-        ),
+        child: WorkspaceStatusBar(items: [ResourceUsageStatusItem()]),
       ),
     );
 
@@ -100,10 +96,7 @@ void main() {
     addTearDown(cubit.close);
 
     await tester.pumpWidget(
-      _host(
-        cubit: cubit,
-        child: const ResourceManagerPanel(),
-      ),
+      _host(cubit: cubit, child: const ResourceManagerPanel()),
     );
 
     expect(find.text(kResourceMetricEmDash), findsWidgets);
@@ -121,10 +114,7 @@ void main() {
     addTearDown(cubit.close);
 
     await tester.pumpWidget(
-      _host(
-        cubit: cubit,
-        child: const ResourceManagerPanel(),
-      ),
+      _host(cubit: cubit, child: const ResourceManagerPanel()),
     );
 
     final body = tester.widget<SizedBox>(
@@ -141,21 +131,16 @@ void main() {
     );
   });
 
-  testWidgets('panel shows error affordance when state.error != null',
-      (tester) async {
+  testWidgets('panel shows error affordance when state.error != null', (
+    tester,
+  ) async {
     final cubit = _SeededResourceManagerCubit(
-      const ResourceManagerState(
-        isOpen: true,
-        error: 'boom',
-      ),
+      const ResourceManagerState(isOpen: true, error: 'boom'),
     );
     addTearDown(cubit.close);
 
     await tester.pumpWidget(
-      _host(
-        cubit: cubit,
-        child: const ResourceManagerPanel(),
-      ),
+      _host(cubit: cubit, child: const ResourceManagerPanel()),
     );
 
     expect(find.byKey(const Key('resource-manager-error')), findsOneWidget);

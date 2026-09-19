@@ -1,6 +1,6 @@
-import '../../model/chat_tab.dart';
-import '../../model/session_open_request.dart';
-import '../../host/session_launch_host.dart';
+import '../../session/chat_tab.dart';
+import '../../session/session_open_request.dart';
+import '../session_launch_host.dart';
 import '../../../../models/app_session.dart';
 import '../../../../models/member_instance.dart';
 import '../../../../models/runtime_target.dart';

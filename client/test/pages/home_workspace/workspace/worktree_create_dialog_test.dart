@@ -13,9 +13,7 @@ const _localBranches = ['main', 'feat/x'];
 Future<List<WorktreeBranchOption>> _loader(String repoPath) async =>
     mergeWorktreeBranchOptions(local: _localBranches, remote: const []);
 
-Widget _host({
-  required Widget home,
-}) {
+Widget _host({required Widget home}) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
@@ -56,10 +54,7 @@ void main() {
     expect(find.text('New worktree'), findsOneWidget);
 
     // Default name suggestion filled in.
-    expect(
-      find.widgetWithText(TextField, 'main-wt'),
-      findsOneWidget,
-    );
+    expect(find.widgetWithText(TextField, 'main-wt'), findsOneWidget);
 
     await tester.tap(find.text('Create'));
     await tester.pumpAndSettle();
@@ -86,9 +81,7 @@ void main() {
                   layout: ({required repoName, required branch}) =>
                       '/root/worktrees/$repoName/$branch',
                   branchLoader: _loader,
-                  existingWorktreePaths: const [
-                    '/root/worktrees/repo/main-wt',
-                  ],
+                  existingWorktreePaths: const ['/root/worktrees/repo/main-wt'],
                 );
               },
               child: const Text('open'),
@@ -105,7 +98,10 @@ void main() {
     await tester.pumpAndSettle();
 
     final field = tester.widget<TextField>(find.byType(TextField));
-    expect(RegExp(r'^wt-[0-9a-f]{6}$').hasMatch(field.controller!.text), isTrue);
+    expect(
+      RegExp(r'^wt-[0-9a-f]{6}$').hasMatch(field.controller!.text),
+      isTrue,
+    );
 
     await tester.tap(find.text('Create'));
     await tester.pumpAndSettle();
@@ -239,10 +235,7 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Start a conversation here after creating'),
-      findsNothing,
-    );
+    expect(find.text('Start a conversation here after creating'), findsNothing);
   });
 
   testWidgets('create with cleared name shows required error and stays open', (

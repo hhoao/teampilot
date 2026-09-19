@@ -35,9 +35,9 @@ abstract final class SelectionAskAi {
     } on ProviderNotFoundException {
       // Floating file preview is a Stack sibling of WorkspaceSplitPane, so it
       // misses the provider scope; resolve from the app-scoped registry.
-      final peeked = context
-          .read<WorkspaceWorktreeRegistry>()
-          .peek(workspace.workspaceId);
+      final peeked = context.read<WorkspaceWorktreeRegistry>().peek(
+        workspace.workspaceId,
+      );
       if (peeked == null) {
         AppLogger.instance.w(
           'Selection Ask AI requires a workspace WorktreeCubit; dialog not '

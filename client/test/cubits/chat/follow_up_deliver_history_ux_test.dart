@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/failed_message_record.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/chat/history_continue_delivery.dart';
-import 'package:teampilot/services/follow_up/follow_up_queue.dart';
+import 'package:teampilot/services/chat/conversation/follow_up/follow_up_queue.dart';
 
 import '../../support/post_frame_test_harness.dart';
 

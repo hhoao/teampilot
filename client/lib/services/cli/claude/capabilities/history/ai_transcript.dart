@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'package:ai_message_core/ai_message_core.dart';
 
 import '../../../registry/capabilities/resume/pinned_transcript_probe.dart';
-import '../../../../chat/session/history/ai_history_cache_token.dart';
-import '../../../../chat/session/history/ai_history_watch_meta.dart';
-import '../../../../chat/session/history/session_history_context.dart';
+import '../../../../chat/conversation/history/ai_history_cache_token.dart';
+import '../../../../chat/conversation/history/ai_history_watch_meta.dart';
+import '../../../../chat/conversation/history/session_history_context.dart';
 import 'compatible_jsonl.dart';
 
 /// Probes the persisted id first (duplicated sessions), then [ctx.taskId].

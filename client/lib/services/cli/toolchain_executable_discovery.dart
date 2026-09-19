@@ -27,10 +27,9 @@ class ToolchainExecutableDiscovery {
       located[SessionPreferences.toolchainGit] = gitPath;
     }
 
-    final node = await CliToolLocator('node').locate(
-      runner: _processRunner,
-      includeShellFallback: true,
-    );
+    final node = await CliToolLocator(
+      'node',
+    ).locate(runner: _processRunner, includeShellFallback: true);
     final nodePath = node?.trim() ?? '';
     if (nodePath.isNotEmpty) {
       located[SessionPreferences.toolchainNode] = nodePath;
@@ -47,10 +46,9 @@ class ToolchainExecutableDiscovery {
       return null;
     }
     if (toolId == SessionPreferences.toolchainNode) {
-      final node = await CliToolLocator('node').locate(
-        runner: _processRunner,
-        includeShellFallback: true,
-      );
+      final node = await CliToolLocator(
+        'node',
+      ).locate(runner: _processRunner, includeShellFallback: true);
       final nodePath = node?.trim() ?? '';
       return nodePath.isEmpty ? null : nodePath;
     }

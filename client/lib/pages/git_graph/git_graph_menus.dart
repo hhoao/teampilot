@@ -337,10 +337,7 @@ class _TagPromptDialogState extends State<_TagPromptDialog> {
                   MaterialLocalizations.of(context).cancelButtonLabel,
                 ),
               ),
-              TpButton(
-                onPressed: _submit,
-                child: Text(widget.confirmLabel),
-              ),
+              TpButton(onPressed: _submit, child: Text(widget.confirmLabel)),
             ],
           ),
         ],

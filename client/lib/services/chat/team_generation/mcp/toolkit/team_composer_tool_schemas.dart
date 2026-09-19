@@ -70,7 +70,8 @@ abstract final class TeamComposerToolSchemas {
             'role': {
               'type': 'string',
               'minLength': 1,
-              'description': 'Distinct role label; must not overlap other roles.',
+              'description':
+                  'Distinct role label; must not overlap other roles.',
             },
             'responsibilities': {
               'type': 'string',
@@ -99,10 +100,7 @@ abstract final class TeamComposerToolSchemas {
               'description':
                   'Map of probed targetId → replica count. Probe before '
                   'assigning. Example: {"local": 1}.',
-              'additionalProperties': {
-                'type': 'integer',
-                'minimum': 0,
-              },
+              'additionalProperties': {'type': 'integer', 'minimum': 0},
             },
           },
         },
@@ -155,8 +153,14 @@ abstract final class TeamComposerToolSchemas {
       'workflowId': {'type': 'string'},
       'originalPrompt': {'type': 'string'},
       'settingsRevision': {'type': 'string'},
-      'requestedMode': {'type': 'string', 'enum': ['mixed', 'native']},
-      'teamMode': {'type': 'string', 'enum': ['mixed', 'native']},
+      'requestedMode': {
+        'type': 'string',
+        'enum': ['mixed', 'native'],
+      },
+      'teamMode': {
+        'type': 'string',
+        'enum': ['mixed', 'native'],
+      },
       'nativeCli': {'type': 'string'},
       'planSchema': {'type': 'object'},
       'constraints': {'type': 'object'},
@@ -179,10 +183,7 @@ abstract final class TeamComposerToolSchemas {
     'required': ['valid', 'issues', 'revision'],
     'properties': {
       'valid': {'type': 'boolean'},
-      'issues': {
-        'type': 'array',
-        'items': issueItem,
-      },
+      'issues': {'type': 'array', 'items': issueItem},
       'revision': {
         'type': 'string',
         'description':

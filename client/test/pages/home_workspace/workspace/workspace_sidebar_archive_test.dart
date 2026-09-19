@@ -80,8 +80,8 @@ void main() {
         home: Scaffold(
           body: MultiRepositoryProvider(
             providers: [
-              
-            RepositoryProvider<HomeStorage>.value(value: testHomeStorage),RepositoryProvider<SessionRepository>.value(
+              RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
+              RepositoryProvider<SessionRepository>.value(
                 value: sessionRepository,
               ),
             ],

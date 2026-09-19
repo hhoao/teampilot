@@ -2,7 +2,7 @@ import 'dart:async';
 
 import '../../../../models/app_session.dart';
 import '../../../../models/team_config.dart';
-import '../contracts/connect_shell_result.dart';
+import 'connect_shell_result.dart';
 import '../../../terminal/terminal_session.dart';
 import '../../../../utils/logging/logger.dart';
 import 'session_connect_job.dart';
@@ -110,7 +110,7 @@ class SessionConnectExecutor implements SessionConnectExecutorPort {
         workspace: job.workspace,
       );
       if (result == ConnectShellResult.failed) {
-        preparation.markConnectFailed(job, attachedMemberId!);
+        preparation.markConnectFailed(job, attachedMemberId);
         connectFailureMarked = true;
       }
       if (job.propagateErrors && result != ConnectShellResult.attached) {

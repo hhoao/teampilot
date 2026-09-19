@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/editor_cubit.dart';
-import '../../cubits/workbench/workbench_tab.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/diff/diff_model.dart';
 import '../../theme/workspace_surface_layers.dart';
@@ -51,7 +50,9 @@ class _DiffEditorSurfaceState extends State<DiffEditorSurface> {
   Future<void> _syncWritableBind() async {
     if (!mounted) return;
     final editor = context.read<EditorCubit>();
-    final tab = editor.state.bucket(widget.workspaceId).openDiffs[widget.diffKey];
+    final tab = editor.state
+        .bucket(widget.workspaceId)
+        .openDiffs[widget.diffKey];
     if (tab == null || !tab.writable) return;
 
     final diskText = await editor.readWorkingTreeText(tab.absolutePath);
@@ -161,7 +162,9 @@ class _DiffEditorSurfaceState extends State<DiffEditorSurface> {
         title: '${tab.title}$stagedLabel',
         diffText: tab.diffText,
         filePath: tab.absolutePath,
-        initialMode: isWritable ? DiffViewMode.sideBySide : DiffViewMode.unified,
+        initialMode: isWritable
+            ? DiffViewMode.sideBySide
+            : DiffViewMode.unified,
         writable: isWritable,
         canonicalText: canonicalText ?? '',
         isDirty: isWritable && isDirty,

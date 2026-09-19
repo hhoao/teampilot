@@ -6,31 +6,37 @@ import '../../support/in_memory_filesystem.dart';
 void main() {
   const locator = WorkspaceFileLocator();
 
-  test('relative path hits the first search base that contains the file', () async {
-    final fs = InMemoryFilesystem()
-      ..files['/session/src/foo.dart'] = 'session'
-      ..files['/workspace/src/foo.dart'] = 'workspace';
+  test(
+    'relative path hits the first search base that contains the file',
+    () async {
+      final fs = InMemoryFilesystem()
+        ..files['/session/src/foo.dart'] = 'session'
+        ..files['/workspace/src/foo.dart'] = 'workspace';
 
-    final found = await locator.locate(
-      rawPath: 'src/foo.dart',
-      fs: fs,
-      searchBases: const ['/session', '/workspace'],
-    );
+      final found = await locator.locate(
+        rawPath: 'src/foo.dart',
+        fs: fs,
+        searchBases: const ['/session', '/workspace'],
+      );
 
-    expect(found, '/session/src/foo.dart');
-  });
+      expect(found, '/session/src/foo.dart');
+    },
+  );
 
-  test('falls back to a later search base when missing in earlier ones', () async {
-    final fs = InMemoryFilesystem()..files['/workspace/src/foo.dart'] = 'ok';
+  test(
+    'falls back to a later search base when missing in earlier ones',
+    () async {
+      final fs = InMemoryFilesystem()..files['/workspace/src/foo.dart'] = 'ok';
 
-    final found = await locator.locate(
-      rawPath: 'src/foo.dart',
-      fs: fs,
-      searchBases: const ['/session', '/workspace'],
-    );
+      final found = await locator.locate(
+        rawPath: 'src/foo.dart',
+        fs: fs,
+        searchBases: const ['/session', '/workspace'],
+      );
 
-    expect(found, '/workspace/src/foo.dart');
-  });
+      expect(found, '/workspace/src/foo.dart');
+    },
+  );
 
   test('absolute path is used as-is when it exists', () async {
     final fs = InMemoryFilesystem()..files['/abs/path.dart'] = 'ok';

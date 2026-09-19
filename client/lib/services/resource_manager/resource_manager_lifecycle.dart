@@ -6,9 +6,9 @@
 Future<void> killResourceManagerBinding({
   required String bindingKey,
   required Future<void> Function(String sessionId, String memberId)
-      disconnectMemberShell,
+  disconnectMemberShell,
   required Future<void> Function(String workspaceId, String entryId)
-      killWorkspaceShell,
+  killWorkspaceShell,
 }) async {
   if (bindingKey.startsWith('chat:')) {
     final rest = bindingKey.substring('chat:'.length);

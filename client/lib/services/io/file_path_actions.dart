@@ -24,7 +24,9 @@ String? resolveContainingWorkspaceRoot(
   var bestLen = -1;
   for (final raw in folderPaths) {
     final root = ctx.normalize(raw);
-    final prefix = root.endsWith(ctx.separator) ? root : '$root${ctx.separator}';
+    final prefix = root.endsWith(ctx.separator)
+        ? root
+        : '$root${ctx.separator}';
     if (normalized == root || normalized.startsWith(prefix)) {
       if (root.length > bestLen) {
         best = root;

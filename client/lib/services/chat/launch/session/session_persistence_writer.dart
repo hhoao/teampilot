@@ -1,18 +1,18 @@
-import '../../host/chat_state_port.dart';
-import '../../host/launch_environment_port.dart';
-import '../../host/session_repository_port.dart';
-import '../../host/tab_port.dart';
-import '../../model/chat_tab.dart';
+import '../../session/chat_tab.dart';
 import '../../session/session_continue_overrides_controller.dart';
 import '../../session/session_data_store.dart';
-import '../../host/session_launch_host.dart';
+import '../../../../cubits/chat_state_port.dart';
+import '../launch_environment_port.dart';
+import '../../session/session_repository_port.dart';
+import '../../session/tab_port.dart';
+import '../session_launch_host.dart';
 import '../../../../models/app_session.dart';
 import '../../../../models/session_member_binding.dart';
 import '../../../../models/team_config.dart';
 import '../../../../repositories/session_repository.dart';
 import '../../../../utils/logging/logger.dart';
 import '../../session/session_preset_follow_sync.dart';
-import '../../session/shell_launch_spec.dart';
+import 'shell_launch_spec.dart';
 
 /// Session-row persistence performed during a seat connect.
 ///

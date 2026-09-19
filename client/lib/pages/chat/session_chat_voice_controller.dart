@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../services/compose/compose_text_edit.dart';
-import '../../services/compose/compose_voice_input.dart';
+import '../../services/chat/conversation/compose/compose_text_edit.dart';
+import '../../services/chat/conversation/compose/compose_voice_input.dart';
 
 /// Extracted voice-recording controller for [SessionChatView].
 ///

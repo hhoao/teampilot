@@ -24,16 +24,78 @@ const badgeSvg =
 
 // 1x1 transparent PNG.
 final pngBytes = Uint8List.fromList([
-  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
-  0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-  0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
-  0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
-  0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
-  0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
+  0x89,
+  0x50,
+  0x4E,
+  0x47,
+  0x0D,
+  0x0A,
+  0x1A,
+  0x0A,
+  0x00,
+  0x00,
+  0x00,
+  0x0D,
+  0x49,
+  0x48,
+  0x44,
+  0x52,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x08,
+  0x06,
+  0x00,
+  0x00,
+  0x00,
+  0x1F,
+  0x15,
+  0xC4,
+  0x89,
+  0x00,
+  0x00,
+  0x00,
+  0x0A,
+  0x49,
+  0x44,
+  0x41,
+  0x54,
+  0x78,
+  0x9C,
+  0x63,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x05,
+  0x00,
+  0x01,
+  0x0D,
+  0x0A,
+  0x2D,
+  0xB4,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x49,
+  0x45,
+  0x4E,
+  0x44,
+  0xAE,
+  0x42,
+  0x60,
+  0x82,
 ]);
 
-Widget harness(Widget child) =>
-    MaterialApp(home: Scaffold(body: Center(child: child)));
+Widget harness(Widget child) => MaterialApp(
+  home: Scaffold(body: Center(child: child)),
+);
 
 void main() {
   group('preferRasterBadgeUrl', () {
@@ -75,10 +137,7 @@ void main() {
       );
       expect(out.path, endsWith('.png'));
       expect(out.queryParameters['logo'], 'safari');
-      expect(
-        out.pathSegments.last.toLowerCase().endsWith('.png'),
-        isTrue,
-      );
+      expect(out.pathSegments.last.toLowerCase().endsWith('.png'), isTrue);
     });
 
     test('leaves non-shields URLs alone', () {
@@ -260,33 +319,37 @@ void main() {
   });
 
   group('MarkdownNetworkImage sniffing', () {
-    testWidgets('renders SVG served without content-type hint', (
-      tester,
-    ) async {
-      await tester.pumpWidget(harness(MarkdownNetworkImage(
-        url: 'https://img.shields.io/github/stars/x',
-        fetch: (uri) async => http.Response.bytes(
-          Uint8List.fromList(badgeSvg.codeUnits),
-          200,
+    testWidgets('renders SVG served without content-type hint', (tester) async {
+      await tester.pumpWidget(
+        harness(
+          MarkdownNetworkImage(
+            url: 'https://img.shields.io/github/stars/x',
+            fetch: (uri) async => http.Response.bytes(
+              Uint8List.fromList(badgeSvg.codeUnits),
+              200,
+            ),
+          ),
         ),
-      )));
+      );
       await tester.pumpAndSettle();
 
       expect(find.byType(SvgPicture), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('renders SVG reported by content-type only', (
-      tester,
-    ) async {
-      await tester.pumpWidget(harness(MarkdownNetworkImage(
-        url: 'https://img.shields.io/badge/a',
-        fetch: (uri) async => http.Response.bytes(
-          Uint8List.fromList(badgeSvg.codeUnits),
-          200,
-          headers: {'content-type': 'image/svg+xml; charset=utf-8'},
+    testWidgets('renders SVG reported by content-type only', (tester) async {
+      await tester.pumpWidget(
+        harness(
+          MarkdownNetworkImage(
+            url: 'https://img.shields.io/badge/a',
+            fetch: (uri) async => http.Response.bytes(
+              Uint8List.fromList(badgeSvg.codeUnits),
+              200,
+              headers: {'content-type': 'image/svg+xml; charset=utf-8'},
+            ),
+          ),
         ),
-      )));
+      );
       await tester.pumpAndSettle();
 
       expect(find.byType(SvgPicture), findsOneWidget);
@@ -294,14 +357,18 @@ void main() {
     });
 
     testWidgets('renders raster PNG payloads as Image', (tester) async {
-      await tester.pumpWidget(harness(MarkdownNetworkImage(
-        url: 'https://example.com/photo',
-        fetch: (uri) async => http.Response.bytes(
-          pngBytes,
-          200,
-          headers: {'content-type': 'image/png'},
+      await tester.pumpWidget(
+        harness(
+          MarkdownNetworkImage(
+            url: 'https://example.com/photo',
+            fetch: (uri) async => http.Response.bytes(
+              pngBytes,
+              200,
+              headers: {'content-type': 'image/png'},
+            ),
+          ),
         ),
-      )));
+      );
       await tester.pumpAndSettle();
 
       expect(find.byType(Image), findsOneWidget);
@@ -309,13 +376,15 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('non-200 collapses to shrink without throwing', (
-      tester,
-    ) async {
-      await tester.pumpWidget(harness(MarkdownNetworkImage(
-        url: 'https://example.com/404',
-        fetch: (uri) async => http.Response('missing', 404),
-      )));
+    testWidgets('non-200 collapses to shrink without throwing', (tester) async {
+      await tester.pumpWidget(
+        harness(
+          MarkdownNetworkImage(
+            url: 'https://example.com/404',
+            fetch: (uri) async => http.Response('missing', 404),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.byType(SvgPicture), findsNothing);
@@ -326,10 +395,14 @@ void main() {
     testWidgets('fetch failure collapses to shrink without throwing', (
       tester,
     ) async {
-      await tester.pumpWidget(harness(MarkdownNetworkImage(
-        url: 'https://example.com/error',
-        fetch: (uri) async => throw Exception('network down'),
-      )));
+      await tester.pumpWidget(
+        harness(
+          MarkdownNetworkImage(
+            url: 'https://example.com/error',
+            fetch: (uri) async => throw Exception('network down'),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.byType(SvgPicture), findsNothing);
@@ -425,10 +498,7 @@ void main() {
           home: Scaffold(
             body: SizedBox(
               width: 800,
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: widget,
-              ),
+              child: Align(alignment: Alignment.topLeft, child: widget),
             ),
           ),
         ),
@@ -461,10 +531,7 @@ void main() {
           home: Scaffold(
             body: SizedBox(
               width: 800,
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: widget,
-              ),
+              child: Align(alignment: Alignment.topLeft, child: widget),
             ),
           ),
         ),

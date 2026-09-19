@@ -79,7 +79,7 @@ class _WorkspaceLandingWorktreeRefresherState
     } on ProviderNotFoundException {
       return;
     }
-    if (cubit == null || cubit.state.repoPath.trim().isEmpty) return;
+    if (cubit.state.repoPath.trim().isEmpty) return;
     unawaited(cubit.reloadActiveRepo());
   }
 

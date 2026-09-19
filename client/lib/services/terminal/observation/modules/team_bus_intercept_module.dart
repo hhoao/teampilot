@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import '../../../cli/registry/capabilities/terminal_observation_contributor.dart';
 import '../../../chat/team_bus/bus_user_line_capture.dart';
-import '../../../chat/terminal/pending_user_message.dart';
+import '../../../chat/runtime/pty/pending_user_message.dart';
 import '../terminal_observation_bus.dart';
 import '../terminal_observation_events.dart';
 import '../terminal_observation_seat.dart';

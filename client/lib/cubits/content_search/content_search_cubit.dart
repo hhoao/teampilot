@@ -130,9 +130,8 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
   ContentSearchCubit({
     required List<ContentSearchSlice> slices,
     required ContentSearchRunner Function(ContentSearchSlice slice)
-        runnerFactory,
-    required ContentReplacer Function(ContentSearchSlice slice)
-        replacerFactory,
+    runnerFactory,
+    required ContentReplacer Function(ContentSearchSlice slice) replacerFactory,
   }) : _slices = List.unmodifiable(slices),
        _runnerFactory = runnerFactory,
        _replacerFactory = replacerFactory,
@@ -153,21 +152,23 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
       runnerFactory: _runnerFactory,
     );
     _engine = engine;
-    emit(state.copyWith(
-      query: options.pattern,
-      isRegex: options.isRegex,
-      caseSensitive: options.caseSensitive,
-      useGitignore: options.useGitignore,
-      filesToInclude: options.filesToInclude,
-      filesToExclude: options.filesToExclude,
-      searching: true,
-      error: null,
-      clearError: true,
-      replacedCount: null,
-      clearReplacedCount: true,
-      sliceErrors: const {},
-      clearSliceErrors: true,
-    ));
+    emit(
+      state.copyWith(
+        query: options.pattern,
+        isRegex: options.isRegex,
+        caseSensitive: options.caseSensitive,
+        useGitignore: options.useGitignore,
+        filesToInclude: options.filesToInclude,
+        filesToExclude: options.filesToExclude,
+        searching: true,
+        error: null,
+        clearError: true,
+        replacedCount: null,
+        clearReplacedCount: true,
+        sliceErrors: const {},
+        clearSliceErrors: true,
+      ),
+    );
     // Per-root aggregation: root order follows slice order; within a root,
     // files appear in first-match order.
     final groupsByRoot = <String, Map<String, ContentSearchFileGroup>>{};
@@ -240,16 +241,19 @@ class ContentSearchCubit extends Cubit<ContentSearchState> {
         sliceErrors.length == seenRoots.length &&
         seenRoots.isNotEmpty &&
         !anyMatch;
-    final truncated = options.maxResults != null &&
+    final truncated =
+        options.maxResults != null &&
         countsByRoot.values.any((c) => c >= options.maxResults!);
-    emit(state.copyWith(
-      files: files,
-      searching: false,
-      truncated: truncated,
-      error: allFailed ? sliceErrors.values.first : null,
-      clearError: !allFailed,
-      sliceErrors: sliceErrors,
-    ));
+    emit(
+      state.copyWith(
+        files: files,
+        searching: false,
+        truncated: truncated,
+        error: allFailed ? sliceErrors.values.first : null,
+        clearError: !allFailed,
+        sliceErrors: sliceErrors,
+      ),
+    );
   }
 
   /// Stops the active search stream; partial results stay visible.

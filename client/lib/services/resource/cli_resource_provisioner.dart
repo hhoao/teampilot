@@ -695,8 +695,7 @@ final class CliResourceProvisioner {
     if (existing != null) return existing;
     return HookRenderContext(
       hooksDir:
-          context.hooksDir ??
-          _fs.pathContext.join(context.configDir, 'hooks'),
+          context.hooksDir ?? _fs.pathContext.join(context.configDir, 'hooks'),
       runner:
           context.paths?.hostEnvironmentForProvision().scriptRunner ??
           HostExecutionEnvironment.resolve().scriptRunner,

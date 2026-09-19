@@ -2,9 +2,9 @@ import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../agent_runtime/runtime_event.dart';
 import '../../../utils/team/team_member_naming.dart';
-import '../prompt_delivery/prompt_delivery.dart';
-import '../prompt_delivery/prompt_delivery_coordinator.dart';
-import '../prompt_delivery/prompt_delivery_store.dart';
+import '../conversation/prompt_delivery/prompt_delivery.dart';
+import '../conversation/prompt_delivery/prompt_delivery_coordinator.dart';
+import '../conversation/prompt_delivery/prompt_delivery_store.dart';
 import 'models/team_generation_job.dart';
 import 'team_generation_job_store.dart';
 import 'team_generation_session_port.dart';
@@ -194,19 +194,19 @@ final class TeamGenerationHandoffService {
 
     // Reuse the exact existing record when present (idempotent replay);
     // otherwise create with the reserved id.
-    final delivery = existingDelivery != null
-        ? existingDelivery
-        : await _promptCoordinator.submit(
-            PromptDeliveryRequest(
-              seat: RuntimeSeatKey(
-                sessionId: destinationSessionId,
-                memberId: TeamMemberNaming.teamLeadName,
-              ),
-              cli: _leadCli(team),
-              text: job.originalPrompt,
-              deliveryId: effectiveDeliveryId,
+    final delivery =
+        existingDelivery ??
+        await _promptCoordinator.submit(
+          PromptDeliveryRequest(
+            seat: RuntimeSeatKey(
+              sessionId: destinationSessionId,
+              memberId: TeamMemberNaming.teamLeadName,
             ),
-          );
+            cli: _leadCli(team),
+            text: job.originalPrompt,
+            deliveryId: effectiveDeliveryId,
+          ),
+        );
 
     if (delivery.state == PromptDeliveryState.failed) {
       // Explicit non-submit: reserve a new attempt next run.

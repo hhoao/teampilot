@@ -3,17 +3,14 @@ import 'package:teampilot/pages/home_workspace/workspace/workspace_config_sectio
 
 void main() {
   test('manage shows all project-scoped sections', () {
-    expect(
-      WorkspaceConfigSection.sections,
-      [
-        WorkspaceConfigSection.settings,
-        WorkspaceConfigSection.skills,
-        WorkspaceConfigSection.plugins,
-        WorkspaceConfigSection.mcp,
-        WorkspaceConfigSection.extensions,
-        WorkspaceConfigSection.hooks,
-      ],
-    );
+    expect(WorkspaceConfigSection.sections, [
+      WorkspaceConfigSection.settings,
+      WorkspaceConfigSection.skills,
+      WorkspaceConfigSection.plugins,
+      WorkspaceConfigSection.mcp,
+      WorkspaceConfigSection.extensions,
+      WorkspaceConfigSection.hooks,
+    ]);
   });
 
   test('fromSegment resolves known segments only', () {

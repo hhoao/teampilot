@@ -9,7 +9,6 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 
-
 HomeStorage _repoStorage(Directory tmp) => HomeStorage.forTesting(
   filesystem: LocalFilesystem(),
   paths: AppPaths(tmp.path),

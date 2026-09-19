@@ -44,48 +44,53 @@ class _Harness {
   Future<({InternetAddress address, int port})> Function(
     SshProfile,
     SshReachabilityEndpoint,
-  )? openRelayTunnel;
+  )?
+  openRelayTunnel;
 }
 
 void main() {
-  test('falls through a network failure and persists the winning endpoint',
-      () async {
-    final harness = _Harness();
+  test(
+    'falls through a network failure and persists the winning endpoint',
+    () async {
+      final harness = _Harness();
 
-    final winner = await harness.attempt.connectFirst(
-      profile: pairedProfile(const [lanA, extraA]),
-      dial: (endpoint) async {
-        harness.dialed.add(endpoint);
-        if (endpoint == lanA) {
-          throw const SocketException('LAN unreachable');
-        }
-      },
-    );
-
-    expect(winner, extraA);
-    expect(harness.dialed, const [lanA, extraA]);
-    expect(harness.saved.single.host, 'desktop.example.test');
-    expect(harness.saved.single.port, 2222);
-    expect(harness.saved.single.lastGoodKind, SshEndpointKind.extra);
-  });
-
-  test('a host-key mismatch aborts the whole attempt without fallthrough',
-      () async {
-    final harness = _Harness();
-
-    await expectLater(
-      harness.attempt.connectFirst(
+      final winner = await harness.attempt.connectFirst(
         profile: pairedProfile(const [lanA, extraA]),
         dial: (endpoint) async {
           harness.dialed.add(endpoint);
-          throw SshHostKeyMismatch(endpoint);
+          if (endpoint == lanA) {
+            throw const SocketException('LAN unreachable');
+          }
         },
-      ),
-      throwsA(isA<SshHostKeyMismatch>()),
-    );
-    expect(harness.dialed, const [lanA]);
-    expect(harness.saved, isEmpty);
-  });
+      );
+
+      expect(winner, extraA);
+      expect(harness.dialed, const [lanA, extraA]);
+      expect(harness.saved.single.host, 'desktop.example.test');
+      expect(harness.saved.single.port, 2222);
+      expect(harness.saved.single.lastGoodKind, SshEndpointKind.extra);
+    },
+  );
+
+  test(
+    'a host-key mismatch aborts the whole attempt without fallthrough',
+    () async {
+      final harness = _Harness();
+
+      await expectLater(
+        harness.attempt.connectFirst(
+          profile: pairedProfile(const [lanA, extraA]),
+          dial: (endpoint) async {
+            harness.dialed.add(endpoint);
+            throw SshHostKeyMismatch(endpoint);
+          },
+        ),
+        throwsA(isA<SshHostKeyMismatch>()),
+      );
+      expect(harness.dialed, const [lanA]);
+      expect(harness.saved, isEmpty);
+    },
+  );
 
   test('maps dartssh2 host-key rejection to an attempt abort', () async {
     final harness = _Harness();
@@ -104,23 +109,25 @@ void main() {
     expect(harness.saved, isEmpty);
   });
 
-  test('a relay win persists only lastGoodKind and never rewrites the host',
-      () async {
-    final harness = _Harness()
-      ..openRelayTunnel = (profile, endpoint) async {
-        return (address: InternetAddress.loopbackIPv4, port: 45678);
-      };
+  test(
+    'a relay win persists only lastGoodKind and never rewrites the host',
+    () async {
+      final harness = _Harness()
+        ..openRelayTunnel = (profile, endpoint) async {
+          return (address: InternetAddress.loopbackIPv4, port: 45678);
+        };
 
-    final winner = await harness.attempt.connectFirst(
-      profile: pairedProfile(const [relayA]),
-      dial: (endpoint) async => harness.dialed.add(endpoint),
-    );
+      final winner = await harness.attempt.connectFirst(
+        profile: pairedProfile(const [relayA]),
+        dial: (endpoint) async => harness.dialed.add(endpoint),
+      );
 
-    expect(winner.kind, SshEndpointKind.relay);
-    expect(harness.dialed, const [relayA]);
-    expect(harness.saved.single.host, '192.168.1.20');
-    expect(harness.saved.single.lastGoodKind, SshEndpointKind.relay);
-  });
+      expect(winner.kind, SshEndpointKind.relay);
+      expect(harness.dialed, const [relayA]);
+      expect(harness.saved.single.host, '192.168.1.20');
+      expect(harness.saved.single.lastGoodKind, SshEndpointKind.relay);
+    },
+  );
 
   test('skips relay candidates when no tunnel opener is available', () async {
     final harness = _Harness();

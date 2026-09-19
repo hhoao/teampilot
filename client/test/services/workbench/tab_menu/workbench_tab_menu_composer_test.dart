@@ -14,23 +14,19 @@ void main() {
   });
 
   test('single non-empty group has no divider', () {
-    final specs = WorkbenchTabMenuComposer.compose(
-      [_FixedSource([_item('a.one')])],
-      _fakeCtx(l10n),
-    );
+    final specs = WorkbenchTabMenuComposer.compose([
+      _FixedSource([_item('a.one')]),
+    ], _fakeCtx(l10n));
     expect(specs.where((s) => s.isDivider), isEmpty);
     expect(specs.single.value, 'a.one');
   });
 
   test('skips empty groups and inserts one divider between kept groups', () {
-    final specs = WorkbenchTabMenuComposer.compose(
-      [
-        _FixedSource([_item('a.one'), _item('a.two')]),
-        _FixedSource(const []),
-        _FixedSource([_item('b.one')]),
-      ],
-      _fakeCtx(l10n),
-    );
+    final specs = WorkbenchTabMenuComposer.compose([
+      _FixedSource([_item('a.one'), _item('a.two')]),
+      _FixedSource(const []),
+      _FixedSource([_item('b.one')]),
+    ], _fakeCtx(l10n));
     expect(specs.map((s) => s.isDivider ? '|' : s.value).toList(), [
       'a.one',
       'a.two',
@@ -41,7 +37,9 @@ void main() {
 
   test('all empty yields empty specs', () {
     expect(
-      WorkbenchTabMenuComposer.compose([_FixedSource(const [])], _fakeCtx(l10n)),
+      WorkbenchTabMenuComposer.compose([
+        _FixedSource(const []),
+      ], _fakeCtx(l10n)),
       isEmpty,
     );
   });

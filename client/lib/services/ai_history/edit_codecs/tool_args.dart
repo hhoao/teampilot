@@ -11,9 +11,7 @@ Map<String, Object?>? toolCallArgsMap(AiToolCallPart part) {
   try {
     final decoded = jsonDecode(text);
     if (decoded is! Map) return null;
-    return {
-      for (final e in decoded.entries) e.key.toString(): e.value,
-    };
+    return {for (final e in decoded.entries) e.key.toString(): e.value};
   } catch (_) {
     return null;
   }

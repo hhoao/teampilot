@@ -185,7 +185,9 @@ void main() {
       final chatCubit = _ThrowingChatCubit();
       addTearDown(chatCubit.close);
       final sessionRepository = SessionRepository(storage: fakeHomeStorage());
-      final identityRepository = LaunchProfileRepository(storage: fakeHomeStorage());
+      final identityRepository = LaunchProfileRepository(
+        storage: fakeHomeStorage(),
+      );
 
       late BuildContext dialogContext;
       final theme = ThemeData(useMaterial3: true);
@@ -222,10 +224,7 @@ void main() {
         ),
       );
 
-      final dialog = showCloneCompletedDialog(
-        dialogContext,
-        task: _task(),
-      );
+      final dialog = showCloneCompletedDialog(dialogContext, task: _task());
       await tester.pumpAndSettle();
 
       // The new-workspace wiring throws — the dialog future must still
@@ -236,10 +235,7 @@ void main() {
       await dialog;
 
       expect(repoCloneCubit.dismissCount, 1);
-      expect(
-        repoCloneCubit.dismissedTaskIds,
-        ['task-1'],
-      );
+      expect(repoCloneCubit.dismissedTaskIds, ['task-1']);
     },
   );
 }
@@ -276,7 +272,7 @@ class _ThrowingChatCubit extends ChatCubit {
     : super(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
-             storage: fakeHomeStorage(),
+        storage: fakeHomeStorage(),
       );
 
   @override

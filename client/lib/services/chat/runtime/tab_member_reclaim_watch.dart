@@ -1,13 +1,13 @@
 import 'dart:async';
 
 import '../../../models/team_config.dart';
-import '../terminal/terminal_reclaim_policy.dart';
+import 'pty/terminal_reclaim_policy.dart';
 import '../../terminal/terminal_session.dart';
 import '../../../utils/logging/logger.dart';
 import '../../../utils/team/team_member_naming.dart';
-import '../chat_tab_store.dart';
-import '../model/chat_tab.dart';
-import '../model/session_workbench_view.dart';
+import '../session/chat_tab_store.dart';
+import '../session/chat_tab.dart';
+import '../session/session_workbench_view.dart';
 
 /// Chrome-style idle discard: reclaims a member terminal that has been idle
 /// (not working, no unread, not the lead, not displayed, not session-pinned)

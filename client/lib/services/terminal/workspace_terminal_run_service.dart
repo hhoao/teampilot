@@ -281,10 +281,11 @@ class WorkspaceTerminalRunService {
   String? entryIdForBind({
     required String workspaceId,
     required String selectionKey,
-  }) => _entryByBind[TerminalRunBindKey(
-    workspaceId: workspaceId,
-    selectionKey: selectionKey,
-  )];
+  }) =>
+      _entryByBind[TerminalRunBindKey(
+        workspaceId: workspaceId,
+        selectionKey: selectionKey,
+      )];
 
   void _bindEntry(TerminalRunBindKey bindKey, String entryId) {
     final previous = _entryByBind[bindKey];

@@ -1,13 +1,13 @@
 import 'package:ai_message_core/ai_message_core.dart';
 
 import '../../../io/filesystem.dart';
-import '../../../chat/session/history/ai_history_page.dart';
-import '../../../chat/session/history/session_history_context.dart';
+import '../../../chat/conversation/history/ai_history_page.dart';
+import '../../../chat/conversation/history/session_history_context.dart';
 import '../cli_capability.dart';
 import 'history/subagent_side_resolver.dart';
 import 'history/tool_result_enricher.dart';
 
-export '../../../chat/session/history/ai_history_page.dart';
+export '../../../chat/conversation/history/ai_history_page.dart';
 
 /// Optional paged source for transcript histories.
 abstract interface class AiTranscriptPageReader {

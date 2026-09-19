@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/claude/capabilities/history/compatible_side_resolver.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/chat/session/history/session_history_context.dart';
+import 'package:teampilot/services/chat/conversation/history/session_history_context.dart';
 
 /// Memo 行为测试:ClaudeCompatibleSideResolver 必须在子会话(side 文件)
 /// 未变化时返回同一消息列表实例,让 loader/seat 的 identical 快速路径生效;

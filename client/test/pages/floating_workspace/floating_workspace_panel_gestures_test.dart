@@ -76,9 +76,7 @@ void main() {
     expect(restored.top, closeTo(30 - 20, 0.1)); // titleBarHeight/2 = 20
   });
 
-  testWidgets('panel and title both use surface with divider', (
-    tester,
-  ) async {
+  testWidgets('panel and title both use surface with divider', (tester) async {
     final cubit = FloatingWorkspaceCubit();
     final workbench = WorkbenchCubit();
     addTearDown(cubit.close);
@@ -108,9 +106,7 @@ void main() {
         .widgetList<DecoratedBox>(find.byType(DecoratedBox))
         .map((w) => w.decoration)
         .whereType<BoxDecoration>()
-        .any(
-          (d) => d.color == surface && d.border?.bottom != null,
-        );
+        .any((d) => d.color == surface && d.border?.bottom != null);
     expect(titleFill, isTrue);
   });
 
@@ -223,7 +219,10 @@ void main() {
     cubit.setPanelPlacement(placement);
     await tester.pump();
 
-    expect(find.byKey(const Key('floating_workspace_title_drag')), findsOneWidget);
+    expect(
+      find.byKey(const Key('floating_workspace_title_drag')),
+      findsOneWidget,
+    );
     final titleDecoration = tester
         .widgetList<DecoratedBox>(find.byType(DecoratedBox))
         .map((w) => w.decoration)
@@ -268,7 +267,10 @@ void main() {
     );
     cubit.setActiveWorkspace('ws');
     for (var i = 0; i < 6; i++) {
-      workbench.openFloating('ws', WorkbenchTabId.shell('Session tab number $i'));
+      workbench.openFloating(
+        'ws',
+        WorkbenchTabId.shell('Session tab number $i'),
+      );
     }
     await tester.pumpAndSettle();
 
@@ -357,7 +359,10 @@ void main() {
     );
     cubit.setActiveWorkspace('ws');
     for (var i = 0; i < 5; i++) {
-      workbench.openFloating('ws', WorkbenchTabId.shell('Session tab number $i'));
+      workbench.openFloating(
+        'ws',
+        WorkbenchTabId.shell('Session tab number $i'),
+      );
     }
     await tester.pumpAndSettle();
 

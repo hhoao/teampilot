@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shared_ui/shared_ui.dart';
 
 import 'floating_panel_visibility.dart';
 import 'floating_workspace_state.dart';
@@ -24,9 +23,7 @@ class FloatingWorkspaceCubit extends Cubit<FloatingWorkspaceState> {
           ),
         );
       case FloatingPanelVisibility.open:
-        emit(
-          state.copyWith(visibility: FloatingPanelVisibility.minimized),
-        );
+        emit(state.copyWith(visibility: FloatingPanelVisibility.minimized));
       case FloatingPanelVisibility.minimized:
         emit(
           state.copyWith(
@@ -114,10 +111,7 @@ class FloatingWorkspaceCubit extends Cubit<FloatingWorkspaceState> {
   /// Hydrate absolute left/top from older prefs; converted on first layout.
   void setLegacyAbsoluteBounds(Rect bounds) {
     emit(
-      state.copyWith(
-        legacyAbsoluteBounds: bounds,
-        clearPanelPlacement: true,
-      ),
+      state.copyWith(legacyAbsoluteBounds: bounds, clearPanelPlacement: true),
     );
   }
 

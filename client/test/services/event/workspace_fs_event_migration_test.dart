@@ -20,10 +20,8 @@ class _WatchableFs extends InMemoryFilesystem implements FsWatcher {
       _controller.add(FsChangeEvent(path: path, type: type));
 
   @override
-  FsTreeWatch watchTree(String path) => FsTreeWatch(
-    events: _controller.stream,
-    close: () async {},
-  );
+  FsTreeWatch watchTree(String path) =>
+      FsTreeWatch(events: _controller.stream, close: () async {});
 }
 
 void main() {
@@ -48,34 +46,37 @@ void main() {
     expect(received.single.batch.structural, isTrue);
   });
 
-  test('watcher wired to a dispatcher still delivers batches on onChanged', () async {
-    // Behavior-equivalence relay: with a dispatcher attached, _emit()
-    // publishes a WorkspaceFsChangedEvent and the construction-registered
-    // relay handler copies it back into the local controller, so onChanged
-    // subscribers see identical batches with zero consumer changes.
-    final d = AsyncDispatcher()..start();
-    final fs = _WatchableFs();
-    final watcher = WorkspaceFsWatcher(
-      fs: fs,
-      root: '/w/a',
-      debounce: const Duration(milliseconds: 20),
-      autoStart: true,
-      dispatcher: d,
-    );
+  test(
+    'watcher wired to a dispatcher still delivers batches on onChanged',
+    () async {
+      // Behavior-equivalence relay: with a dispatcher attached, _emit()
+      // publishes a WorkspaceFsChangedEvent and the construction-registered
+      // relay handler copies it back into the local controller, so onChanged
+      // subscribers see identical batches with zero consumer changes.
+      final d = AsyncDispatcher()..start();
+      final fs = _WatchableFs();
+      final watcher = WorkspaceFsWatcher(
+        fs: fs,
+        root: '/w/a',
+        debounce: const Duration(milliseconds: 20),
+        autoStart: true,
+        dispatcher: d,
+      );
 
-    final batches = <FsChangeBatch>[];
-    watcher.onChanged.listen(batches.add);
+      final batches = <FsChangeBatch>[];
+      watcher.onChanged.listen(batches.add);
 
-    fs.emit(FsChangeType.created, '/w/a/lib/new_file.dart');
+      fs.emit(FsChangeType.created, '/w/a/lib/new_file.dart');
 
-    await Future<void>.delayed(const Duration(milliseconds: 60));
+      await Future<void>.delayed(const Duration(milliseconds: 60));
 
-    expect(batches.single.changedDirs, {'/w/a/lib'});
-    expect(batches.single.structural, isTrue);
+      expect(batches.single.changedDirs, {'/w/a/lib'});
+      expect(batches.single.structural, isTrue);
 
-    await watcher.stopAndDispose();
-    await d.stop();
-  });
+      await watcher.stopAndDispose();
+      await d.stop();
+    },
+  );
 
   test('relay only delivers batches for its own root', () async {
     // Invariant fix: kept-alive workspace tabs leave multiple watchers' relays

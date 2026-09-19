@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import '../../utils/logging/logger.dart';
-import '../chat/prompt_delivery/prompt_delivery_coordinator.dart';
+import '../chat/conversation/prompt_delivery/prompt_delivery_coordinator.dart';
 import 'agent_event_gateway.dart';
 import 'runtime_event.dart';
 import 'runtime_event_projection.dart';

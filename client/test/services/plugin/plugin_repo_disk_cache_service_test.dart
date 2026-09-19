@@ -172,10 +172,7 @@ void main() {
         teampilotRoot: home.appDataRoot,
       );
 
-      await Future.wait([
-        a.syncMarketplace(market),
-        b.syncMarketplace(market),
-      ]);
+      await Future.wait([a.syncMarketplace(market), b.syncMarketplace(market)]);
 
       expect(git.syncCheckouts, 1);
     });

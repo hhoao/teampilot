@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-
 /// Shared onboarding step chrome: pinned title/subtitle, scrollable body.
 ///
 /// Hosted in the wizard's fixed max-height viewport. Title stays put; [body]

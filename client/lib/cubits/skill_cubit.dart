@@ -6,7 +6,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/catalog/catalog_types.dart';
 import '../models/discoverable_team.dart';
-import '../models/progress_activity.dart';
 import '../models/skill.dart';
 import '../models/skill_registry_source.dart';
 import '../models/unified_skill_entry.dart';
@@ -15,7 +14,6 @@ import '../services/discovery/discovery_refresh_policy.dart';
 import '../services/catalog/catalog_error_sanitizer.dart';
 import '../services/catalog/catalog_sort_comparator.dart';
 import '../models/install_job/install_cancel_policy.dart';
-import '../models/install_job/install_job_context.dart';
 import '../models/install_job/install_job_key.dart';
 import '../models/install_job/install_job_spec.dart';
 import '../services/install/install_job_keys.dart';

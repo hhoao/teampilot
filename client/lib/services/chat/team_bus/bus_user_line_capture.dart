@@ -68,8 +68,7 @@ class BusUserLineCapture {
       return data; // 无 overlay 也无 turn-start 钩子:快路径。
     }
     final lineEnds = _countLogicalLineEnds(data);
-    _coalesceRemaining =
-        (!_inBracketedPaste && lineEnds > 1) ? lineEnds : 0;
+    _coalesceRemaining = (!_inBracketedPaste && lineEnds > 1) ? lineEnds : 0;
     final out = BytesBuilder();
     for (final byte in data) {
       final emit = _feedCodeUnit(byte, intercept);

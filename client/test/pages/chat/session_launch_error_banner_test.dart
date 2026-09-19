@@ -33,10 +33,7 @@ void main() {
       final view = presentSessionLaunchFailure('spawn failed')!;
       await tester.pumpWidget(
         _wrap(
-          SessionLaunchErrorBanner(
-            view: view,
-            onRetry: () => retried = true,
-          ),
+          SessionLaunchErrorBanner(view: view, onRetry: () => retried = true),
         ),
       );
 
@@ -76,11 +73,7 @@ void main() {
     final view = presentSessionLaunchFailure('spawn failed')!;
     await tester.pumpWidget(
       _wrap(
-        SessionLaunchErrorBanner(
-          view: view,
-          onRetry: () {},
-          isRetrying: true,
-        ),
+        SessionLaunchErrorBanner(view: view, onRetry: () {}, isRetrying: true),
       ),
     );
     final button = tester.widget<TextButton>(
@@ -96,11 +89,7 @@ void main() {
     )!;
     await tester.pumpWidget(
       _wrap(
-        SessionLaunchErrorBanner(
-          view: view,
-          compact: true,
-          onRetry: () {},
-        ),
+        SessionLaunchErrorBanner(view: view, compact: true, onRetry: () {}),
       ),
     );
     expect(find.text("Couldn't start session"), findsOneWidget);
@@ -108,26 +97,20 @@ void main() {
     expect(find.byKey(AppKeys.sessionLaunchErrorRetryButton), findsOneWidget);
   });
 
-  testWidgets(
-    'compose card shows full multi-line detail when reviewed',
-    (tester) async {
-      final long = List<String>.generate(8, (i) => 'error line $i').join('\n');
-      final view = presentSessionLaunchFailure(long)!;
-      await tester.pumpWidget(
-        _wrap(
-          SessionLaunchErrorBanner(
-            view: view,
-            onRetry: () {},
-          ),
-        ),
-      );
+  testWidgets('compose card shows full multi-line detail when reviewed', (
+    tester,
+  ) async {
+    final long = List<String>.generate(8, (i) => 'error line $i').join('\n');
+    final view = presentSessionLaunchFailure(long)!;
+    await tester.pumpWidget(
+      _wrap(SessionLaunchErrorBanner(view: view, onRetry: () {})),
+    );
 
-      await tester.tap(find.byKey(AppKeys.sessionLaunchErrorReviewButton));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byKey(AppKeys.sessionLaunchErrorReviewButton));
+    await tester.pumpAndSettle();
 
-      expect(find.textContaining('error line 0'), findsOneWidget);
-      expect(find.textContaining('error line 7'), findsOneWidget);
-      expect(find.byType(SelectableText), findsOneWidget);
-    },
-  );
+    expect(find.textContaining('error line 0'), findsOneWidget);
+    expect(find.textContaining('error line 7'), findsOneWidget);
+    expect(find.byType(SelectableText), findsOneWidget);
+  });
 }

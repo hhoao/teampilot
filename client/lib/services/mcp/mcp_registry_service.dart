@@ -9,7 +9,6 @@ import '../cli/registry/capabilities/cli_session_capability.dart';
 import '../cli/claude/capabilities/mcp_project_cleanup.dart';
 import '../storage/runtime_layout.dart';
 import '../io/filesystem.dart';
-import '../io/local_filesystem.dart';
 import '../storage/app_paths.dart';
 import '../storage/home_storage.dart';
 import '../plugin/installed_plugin_catalog.dart';

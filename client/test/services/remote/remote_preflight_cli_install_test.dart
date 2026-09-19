@@ -131,20 +131,23 @@ void main() {
     },
   );
 
-  test('preflightSshInstallRunner forwards stderr into command result', () async {
-    final runner = preflightSshInstallRunner(profile, (command) async {
-      return const SshCommandResult(
-        exitCode: 7,
-        stdout: 'out-line',
-        stderr: 'err-line',
+  test(
+    'preflightSshInstallRunner forwards stderr into command result',
+    () async {
+      final runner = preflightSshInstallRunner(profile, (command) async {
+        return const SshCommandResult(
+          exitCode: 7,
+          stdout: 'out-line',
+          stderr: 'err-line',
+        );
+      });
+      final result = await runner(
+        profile,
+        CliInstallerCommand.unixShellScript('true'),
       );
-    });
-    final result = await runner(
-      profile,
-      CliInstallerCommand.unixShellScript('true'),
-    );
-    expect(result.exitCode, 7);
-    expect(result.stdout, 'out-line');
-    expect(result.stderr, 'err-line');
-  });
+      expect(result.exitCode, 7);
+      expect(result.stdout, 'out-line');
+      expect(result.stderr, 'err-line');
+    },
+  );
 }

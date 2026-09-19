@@ -66,8 +66,11 @@ class _FakeFilesystem implements Filesystem {
   Future<void> writeBytes(String path, List<int> bytes) async {}
 
   @override
-  Future<List<int>?> readBytesRange(String path, int offset, int length) async =>
-      [];
+  Future<List<int>?> readBytesRange(
+    String path,
+    int offset,
+    int length,
+  ) async => [];
 
   @override
   Future<void> appendBytes(String path, List<int> bytes) async {}
@@ -101,8 +104,7 @@ class _FakeFilesystem implements Filesystem {
   Future<void> copyFile(String source, String destination) async {}
 
   @override
-  Future<List<FsDirEntry>> listDirRecursive(String path) async =>
-      listDir(path);
+  Future<List<FsDirEntry>> listDirRecursive(String path) async => listDir(path);
 
   @override
   Future<String> createTempDir({String? prefix, String? parent}) async =>
@@ -168,7 +170,9 @@ Future<void> _runOnDesktop(
 Future<FileTreeCubit> _cubitWithRoot(WidgetTester tester) async {
   final cubit = FileTreeCubit(
     fs: _FakeFilesystem({
-      p.normalize('/proj'): [const FsDirEntry(name: 'a.txt', isDirectory: false)],
+      p.normalize('/proj'): [
+        const FsDirEntry(name: 'a.txt', isDirectory: false),
+      ],
     }),
   );
   await cubit.setRoot(p.normalize('/proj'));

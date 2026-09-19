@@ -25,11 +25,8 @@ const _fileB = GitFileChange(
 );
 
 class _FakeHistory implements GitHistoryService {
-  _FakeHistory({
-    this.files = const [_fileA],
-    this.error,
-    this.gate,
-  }) : diffText = 'diff text';
+  _FakeHistory({this.files = const [_fileA], this.error, this.gate})
+    : diffText = 'diff text';
 
   List<GitFileChange> files;
   String diffText;

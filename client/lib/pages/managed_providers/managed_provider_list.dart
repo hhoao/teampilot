@@ -123,10 +123,7 @@ class _ManagedProviderCard extends StatelessWidget {
       snapshot,
       provider.displayConfig,
     );
-    final usageFallback = ManagedProviderMeasureView.statusLabel(
-      l10n,
-      status,
-    );
+    final usageFallback = ManagedProviderMeasureView.statusLabel(l10n, status);
     final warning =
         status == ProviderUsageStatus.error ||
         status == ProviderUsageStatus.unsupported;
@@ -348,11 +345,7 @@ class _Actions extends StatelessWidget {
         IconButton(
           tooltip: l10n.managedProvidersEdit,
           onPressed: () => onEdit(provider),
-          icon: Icon(
-            Icons.edit_outlined,
-            size: 20,
-            color: cs.onSurfaceVariant,
-          ),
+          icon: Icon(Icons.edit_outlined, size: 20, color: cs.onSurfaceVariant),
           visualDensity: VisualDensity.compact,
         ),
         IconButton(

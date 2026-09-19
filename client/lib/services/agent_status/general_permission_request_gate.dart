@@ -13,8 +13,9 @@ final class GeneralPermissionRequestReply {
   }) : deny = false,
        message = null;
 
-  const GeneralPermissionRequestReply.deny(this.message) : deny = true,
-       updatedPermissions = const [];
+  const GeneralPermissionRequestReply.deny(this.message)
+    : deny = true,
+      updatedPermissions = const [];
 
   final bool deny;
 
@@ -46,10 +47,9 @@ final class GeneralPermissionRequestReply {
 final class GeneralPermissionRequestGate {
   GeneralPermissionRequestGate()
     : _hold = SeatHoldGate<GeneralPermissionRequestReply>(
-        staleReply:
-            () => const GeneralPermissionRequestReply.deny(
-              'Replaced by a newer permission request',
-            ),
+        staleReply: () => const GeneralPermissionRequestReply.deny(
+          'Replaced by a newer permission request',
+        ),
       );
 
   final SeatHoldGate<GeneralPermissionRequestReply> _hold;
@@ -64,11 +64,7 @@ final class GeneralPermissionRequestGate {
     required String sessionId,
     required String memberId,
     required GeneralPermissionRequestReply reply,
-  }) => _hold.complete(
-    sessionId: sessionId,
-    memberId: memberId,
-    reply: reply,
-  );
+  }) => _hold.complete(sessionId: sessionId, memberId: memberId, reply: reply);
 
   bool releaseHold({required String sessionId, required String memberId}) =>
       _hold.releaseHold(sessionId: sessionId, memberId: memberId);

@@ -153,6 +153,7 @@ class DefaultRepoCloneHostRunner implements RepoCloneHostRunner {
 /// Stable failure markers surfaced through [RepoCloneResult.errorDetail].
 const String _kDestExistsMarker = 'dest-exists';
 const String _kGitMissingMarker = 'git-missing';
+
 /// Cancelled before the destination pre-check ran: the pre-check never
 /// proved the destination absent, so a pre-existing directory may sit at
 /// `destPath` — cleanup passes must treat it as untouchable.

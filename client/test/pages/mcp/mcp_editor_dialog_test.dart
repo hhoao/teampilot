@@ -28,17 +28,14 @@ void main() {
         catalogPath: '/root/mcp/mcp_servers.json',
         fs: fs,
       ),
-                                storage: testHomeStorage,
+      storage: testHomeStorage,
     );
-    cubit = McpCubit(repository, storage: testHomeStorage, );
+    cubit = McpCubit(repository, storage: testHomeStorage);
   });
 
   tearDown(() => cubit.close());
 
-  Future<void> pumpHost(
-    WidgetTester tester, {
-    McpServer? existing,
-  }) async {
+  Future<void> pumpHost(WidgetTester tester, {McpServer? existing}) async {
     final scheme = ColorScheme.fromSeed(seedColor: Colors.indigo);
     await tester.pumpWidget(
       MaterialApp(

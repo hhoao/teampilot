@@ -220,8 +220,18 @@ void main() {
         width: 600,
         child: Column(
           children: [
-            GitGraphRowTile(controller: testColumnController, row: makeRow('a'), selected: false, onTap: () {}),
-            GitGraphRowTile(controller: testColumnController, row: makeRow('b'), selected: false, onTap: () {}),
+            GitGraphRowTile(
+              controller: testColumnController,
+              row: makeRow('a'),
+              selected: false,
+              onTap: () {},
+            ),
+            GitGraphRowTile(
+              controller: testColumnController,
+              row: makeRow('b'),
+              selected: false,
+              onTap: () {},
+            ),
           ],
         ),
       ),
@@ -249,7 +259,12 @@ void main() {
         width: 600,
         child: Column(
           children: [
-            GitGraphRowTile(controller: testColumnController, row: makeRow('a'), selected: false, onTap: () {}),
+            GitGraphRowTile(
+              controller: testColumnController,
+              row: makeRow('a'),
+              selected: false,
+              onTap: () {},
+            ),
             GitGraphSpacerTile(
               row: const GitGraphSpacerRow(edges: [GitGraphEdge(0, 0, 0)]),
             ),

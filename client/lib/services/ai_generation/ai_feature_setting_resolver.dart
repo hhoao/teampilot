@@ -67,9 +67,7 @@ AiFeatureSetting resolveAiFeatureSetting({
 }
 
 CliTool? _catalogCli(CliToolRegistry registry, CliTool cli) {
-  return registry.capability<ProviderCapability>(cli) != null
-      ? cli
-      : null;
+  return registry.capability<ProviderCapability>(cli) != null ? cli : null;
 }
 
 String _defaultProviderId(
@@ -125,9 +123,7 @@ bool aiFeatureIsConfigured({
   final provider = providers.where((p) => p.id == providerId).firstOrNull;
   if (provider == null) return false;
 
-  final modelCapability = registry.capability<ProviderCapability>(
-    stored.cli,
-  );
+  final modelCapability = registry.capability<ProviderCapability>(stored.cli);
   if (modelCapability != null &&
       modelCapability.pickerMode(provider) == ProviderModelPickerMode.hidden) {
     return true;

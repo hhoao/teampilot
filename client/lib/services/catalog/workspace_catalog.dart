@@ -16,7 +16,7 @@ import '../../models/workspace_icon_ref.dart';
 import '../../models/workspace_topology.dart';
 import '../../repositories/session_repository.dart';
 import '../../repositories/workspace_index_store.dart';
-import '../chat/session/session_member_cli_locks.dart';
+import '../chat/launch/session/session_member_cli_locks.dart';
 import '../../services/workspace/target_liveness.dart';
 import '../../utils/lock_pool.dart';
 import '../../utils/logging/logger.dart';

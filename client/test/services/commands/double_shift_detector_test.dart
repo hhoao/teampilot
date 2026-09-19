@@ -25,10 +25,7 @@ void main() {
         window: const Duration(milliseconds: 400),
       );
 
-      expect(
-        detector.feed(keyDown(LogicalKeyboardKey.shiftLeft)),
-        isFalse,
-      );
+      expect(detector.feed(keyDown(LogicalKeyboardKey.shiftLeft)), isFalse);
       expect(
         detector.feed(
           keyDown(
@@ -45,10 +42,7 @@ void main() {
         window: const Duration(milliseconds: 400),
       );
 
-      expect(
-        detector.feed(keyDown(LogicalKeyboardKey.shiftLeft)),
-        isFalse,
-      );
+      expect(detector.feed(keyDown(LogicalKeyboardKey.shiftLeft)), isFalse);
       expect(
         detector.feed(
           keyDown(
@@ -65,10 +59,7 @@ void main() {
         window: const Duration(milliseconds: 400),
       );
 
-      expect(
-        detector.feed(keyDown(LogicalKeyboardKey.shiftLeft)),
-        isFalse,
-      );
+      expect(detector.feed(keyDown(LogicalKeyboardKey.shiftLeft)), isFalse);
       expect(
         detector.feed(
           keyDown(

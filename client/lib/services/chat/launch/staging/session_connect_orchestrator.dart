@@ -16,7 +16,7 @@ import '../../../cli/preset_resolver.dart';
 import '../../../provider/config_profile_service.dart';
 import '../../../resource/resource_provider_set.dart';
 import '../../session/session_continue_overrides_apply.dart';
-import '../../session/session_launch_config_snapshot.dart';
+import '../session/session_launch_config_snapshot.dart';
 import '../../session/session_lifecycle_service.dart';
 import '../../../cli/registry/capabilities/workspace_base_info_capability.dart';
 import '../../../storage/runtime_context.dart';

@@ -431,10 +431,7 @@ void main() {
             value: cubit,
             child: Scaffold(
               body: Center(
-                child: GitGraphRefsMenu(
-                  state: cubit.state,
-                  workspaceId: 'ws',
-                ),
+                child: GitGraphRefsMenu(state: cubit.state, workspaceId: 'ws'),
               ),
             ),
           ),

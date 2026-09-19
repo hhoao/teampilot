@@ -11,7 +11,10 @@ void main() {
     expect(withDefaults['execute'], 'scriptFile');
     expect(withDefaults['scriptOptions'], '');
     expect(withDefaults['interpreterOptions'], '');
-    expect(withDefaults['env'], isA<Map>().having((m) => m.isEmpty, 'empty', true));
+    expect(
+      withDefaults['env'],
+      isA<Map>().having((m) => m.isEmpty, 'empty', true),
+    );
     expect(withDefaults['executeInTerminal'], true);
     expect(withDefaults['allowMultipleInstances'], false);
     expect(withDefaults['activateToolWindow'], true);
@@ -52,10 +55,9 @@ void main() {
   });
 
   test('validate uses shared LaunchConfigValidationCodes for map/env/cwd', () {
-    expect(
-      ShellScriptLaunchSchema.validate('not-a-map'),
-      [LaunchConfigValidationCodes.configurationMustBeMap],
-    );
+    expect(ShellScriptLaunchSchema.validate('not-a-map'), [
+      LaunchConfigValidationCodes.configurationMustBeMap,
+    ]);
     expect(
       ShellScriptLaunchSchema.validate({
         'execute': 'scriptFile',
@@ -138,7 +140,10 @@ void main() {
           },
         ),
       );
-      expect(config.interpreterPath, ShellScriptLaunchSchema.defaultInterpreterPath());
+      expect(
+        config.interpreterPath,
+        ShellScriptLaunchSchema.defaultInterpreterPath(),
+      );
       expect(config.executeInTerminal, true);
       expect(config.allowMultipleInstances, false);
       expect(config.activateToolWindow, true);

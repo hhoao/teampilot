@@ -111,11 +111,7 @@ final class EventTransportClient {
           if (oversize) break;
         }
       } catch (e, st) {
-        appLogger.w(
-          '[event-transport] client loop',
-          error: e,
-          stackTrace: st,
-        );
+        appLogger.w('[event-transport] client loop', error: e, stackTrace: st);
         _onError?.call(e, st);
       } finally {
         await _channel?.close();

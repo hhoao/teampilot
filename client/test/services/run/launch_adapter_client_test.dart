@@ -20,10 +20,10 @@ Future<LaunchAdapterProcess> startFakeAdapter({
 }) async {
   // Use the Dart SDK binary — Platform.resolvedExecutable under flutter test
   // is flutter_tester and prints VM-service noise on stdout.
-  final process = await Process.start(
-    'dart',
-    ['--disable-dart-dev', _fakeAdapterScript],
-  );
+  final process = await Process.start('dart', [
+    '--disable-dart-dev',
+    _fakeAdapterScript,
+  ]);
   return LaunchAdapterProcess.fromIo(
     stdin: process.stdin,
     stdout: process.stdout,
@@ -88,9 +88,9 @@ void main() {
     final output = await outputFuture;
     expect(output.data, contains('ok'));
 
-    final exited = await client.waitExited(sessionId).timeout(
-      const Duration(seconds: 5),
-    );
+    final exited = await client
+        .waitExited(sessionId)
+        .timeout(const Duration(seconds: 5));
     expect(exited.exitCode, 0);
   });
 
@@ -116,36 +116,39 @@ void main() {
     expect(draft.configuration?['id'], isNotEmpty);
   });
 
-  test('provideOptions and optionsChanged are scoped to type+targetId', () async {
-    final client = createClient();
-    addTearDown(client.dispose);
+  test(
+    'provideOptions and optionsChanged are scoped to type+targetId',
+    () async {
+      final client = createClient();
+      addTearDown(client.dispose);
 
-    final optionsChangedFuture = client.optionsChanged
-        .timeout(const Duration(seconds: 5))
-        .first;
+      final optionsChangedFuture = client.optionsChanged
+          .timeout(const Duration(seconds: 5))
+          .first;
 
-    await client.initialize(
-      type: 'flutter',
-      targetId: 'local',
-      adapterCommand: r'${extensionPath}/bin/fake',
-      extensionId: 'ext.fake',
-    );
+      await client.initialize(
+        type: 'flutter',
+        targetId: 'local',
+        adapterCommand: r'${extensionPath}/bin/fake',
+        extensionId: 'ext.fake',
+      );
 
-    final pushed = await optionsChangedFuture;
-    expect(pushed.type, 'flutter');
-    expect(pushed.targetId, 'local');
-    expect(pushed.options, isNotEmpty);
-    expect(pushed.options.single.id, 'device');
+      final pushed = await optionsChangedFuture;
+      expect(pushed.type, 'flutter');
+      expect(pushed.targetId, 'local');
+      expect(pushed.options, isNotEmpty);
+      expect(pushed.options.single.id, 'device');
 
-    final options = await client.provideOptions(
-      configurationId: 'main',
-      configuration: {'type': 'flutter'},
-      type: 'flutter',
-      targetId: 'local',
-    );
-    expect(options.single.id, 'device');
-    expect(options.single.type, LaunchOptionType.choice);
-  });
+      final options = await client.provideOptions(
+        configurationId: 'main',
+        configuration: {'type': 'flutter'},
+        type: 'flutter',
+        targetId: 'local',
+      );
+      expect(options.single.id, 'device');
+      expect(options.single.type, LaunchOptionType.choice);
+    },
+  );
 
   test('configurationsChanged includes isAction and scope', () async {
     final client = createClient();
@@ -241,9 +244,9 @@ void main() {
         extensionId: 'ext.fake',
         lifecycle: LaunchAdapterLifecycle.oneshot,
       );
-      final exited = await client.waitExited(sessionId).timeout(
-        const Duration(seconds: 8),
-      );
+      final exited = await client
+          .waitExited(sessionId)
+          .timeout(const Duration(seconds: 8));
       return exited.exitCode;
     }
 
@@ -265,29 +268,24 @@ void main() {
       final id = msg['id'];
       void reply(Map<String, Object?> result) {
         stdoutController.add(
-          utf8.encode('${jsonEncode({
-            'jsonrpc': '2.0',
-            'id': id,
-            'result': result,
-          })}\n'),
+          utf8.encode(
+            '${jsonEncode({'jsonrpc': '2.0', 'id': id, 'result': result})}\n',
+          ),
         );
       }
 
       void notify(String methodName, Map<String, Object?> params) {
         stdoutController.add(
-          utf8.encode('${jsonEncode({
-            'jsonrpc': '2.0',
-            'method': methodName,
-            'params': params,
-          })}\n'),
+          utf8.encode(
+            '${jsonEncode({'jsonrpc': '2.0', 'method': methodName, 'params': params})}\n',
+          ),
         );
       }
 
       if (method == 'initialize') {
         reply({'protocolVersion': 1});
       } else if (method == 'launch') {
-        final sessionId =
-            (msg['params'] as Map)['sessionId']?.toString() ?? '';
+        final sessionId = (msg['params'] as Map)['sessionId']?.toString() ?? '';
         reply({'accepted': true});
         notify('error', {'sessionId': sessionId, 'message': 'boom'});
       }
@@ -366,9 +364,9 @@ void main() {
       sessionId: 'stop-s2',
       configuration: {'type': 'flutter', 'id': 'main', 'name': 'Main'},
     );
-    final exited = await client.waitExited('stop-s2').timeout(
-      const Duration(seconds: 5),
-    );
+    final exited = await client
+        .waitExited('stop-s2')
+        .timeout(const Duration(seconds: 5));
     expect(exited.exitCode, 0);
   });
 }

@@ -1,5 +1,5 @@
 import '../../cubits/ai_history_seat.dart';
-import '../../services/chat/model/session_workbench_view.dart';
+import '../../services/chat/session/session_workbench_view.dart';
 import '../../cubits/session/session_phase.dart';
 import '../../cubits/session/workbench_overlay_resolver.dart';
 

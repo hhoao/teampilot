@@ -18,9 +18,7 @@ void main() {
 
   test('uses rust engine for local paths', () async {
     final service = WorkspaceContentSearchService();
-    final matches = await service
-        .search(fixture.path, 'hello')
-        .toList();
+    final matches = await service.search(fixture.path, 'hello').toList();
     expect(matches.map((m) => m.relativePath).toSet(), {'a.dart', 'b.txt'});
   });
 

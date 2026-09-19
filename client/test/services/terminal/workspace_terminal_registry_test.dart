@@ -7,7 +7,9 @@ import '../../support/in_memory_filesystem.dart';
 TerminalSession _testSession() => TerminalSession(
   executable: '/bin/bash',
   validateLaunch: false,
-  parseExecutable: false, fs: InMemoryFilesystem(), );
+  parseExecutable: false,
+  fs: InMemoryFilesystem(),
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

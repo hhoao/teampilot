@@ -142,9 +142,9 @@ class SshPairingOffer {
   /// form above inflates ~1.33x inside the QR's byte mode.
   List<int> get qrBytes => [
     _binaryMarker,
-    ...ZLibEncoder(raw: true).convert(
-      utf8.encode(jsonEncode(_toCompactQrJson())),
-    ),
+    ...ZLibEncoder(
+      raw: true,
+    ).convert(utf8.encode(jsonEncode(_toCompactQrJson()))),
   ];
 
   static const int _binaryMarker = 0x7A;
@@ -212,8 +212,8 @@ class SshPairingOffer {
   };
 
   /// `SHA256:<body>` → `<body>`; the prefix is re-added when decoding.
-  static String _stripFingerprintPrefix(String fingerprint) => fingerprint
-      .startsWith('SHA256:')
+  static String _stripFingerprintPrefix(String fingerprint) =>
+      fingerprint.startsWith('SHA256:')
       ? fingerprint.substring('SHA256:'.length)
       : fingerprint;
 
@@ -239,20 +239,18 @@ class SshPairingOffer {
   /// [fromJson]. Detected by `h` presence; full-key offers pass through.
   static Map<String, Object?> _expandCompactQrJson(Map<String, Object?> json) {
     if (json['h'] == null || json['hostId'] != null) return json;
-    final endpoints =
-        (json['e'] as List?)
-            ?.whereType<Map>()
-            .map((entry) {
-              final endpoint = entry.cast<String, Object?>();
-              return {
-                'kind': _endpointKindFromCode(endpoint['k'] as String? ?? '')
-                    ?.name,
-                'host': endpoint['h'],
-                'port': endpoint['p'],
-              };
-            })
-            .where((endpoint) => endpoint['kind'] != null)
-            .toList();
+    final endpoints = (json['e'] as List?)
+        ?.whereType<Map>()
+        .map((entry) {
+          final endpoint = entry.cast<String, Object?>();
+          return {
+            'kind': _endpointKindFromCode(endpoint['k'] as String? ?? '')?.name,
+            'host': endpoint['h'],
+            'port': endpoint['p'],
+          };
+        })
+        .where((endpoint) => endpoint['kind'] != null)
+        .toList();
     Map<String, Object?> pairing = const {};
     final pairingRaw = json['g'];
     if (pairingRaw is Map) {
@@ -272,11 +270,10 @@ class SshPairingOffer {
       'username': json['u'],
       'appDataRoot': json['a'],
       'endpoints': endpoints,
-      'hostKeyFingerprints':
-          (json['f'] as List?)
-              ?.whereType<String>()
-              .map((body) => 'SHA256:$body')
-              .toList(),
+      'hostKeyFingerprints': (json['f'] as List?)
+          ?.whereType<String>()
+          .map((body) => 'SHA256:$body')
+          .toList(),
       'pairing': pairing,
       if (relayRaw is Map) 'relay': {'url': relayRaw['u']},
       if (json['b'] is bool) 'emb': json['b'],
@@ -331,7 +328,9 @@ class SshPairingOffer {
           throw const SshPairingOfferFormatException('offer must be an object');
         }
         return SshPairingOffer.fromJson(
-          _normalizeDecodedJson(_expandCompactQrJson(decoded.cast<String, Object?>())),
+          _normalizeDecodedJson(
+            _expandCompactQrJson(decoded.cast<String, Object?>()),
+          ),
         );
       } on SshPairingOfferFormatException {
         rethrow;
@@ -519,6 +518,5 @@ List<int> _hexDecode(String hex) => [
     int.parse(hex.substring(i, i + 2), radix: 16),
 ];
 
-String _hexEncode(List<int> bytes) => bytes
-    .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
-    .join();
+String _hexEncode(List<int> bytes) =>
+    bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();

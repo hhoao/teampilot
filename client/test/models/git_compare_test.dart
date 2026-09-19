@@ -19,10 +19,7 @@ void main() {
   });
 
   test('title shortens full hash via titleOverride', () {
-    final side = GitCompareRef(
-      'abcdef0123456789',
-      titleOverride: 'abcdef01',
-    );
+    final side = GitCompareRef('abcdef0123456789', titleOverride: 'abcdef01');
     expect(side.titleLabel(), 'abcdef01');
     expect(side.idKey, 'ref:abcdef0123456789');
   });
@@ -55,9 +52,6 @@ void main() {
   test('tryParseTabId rejects malformed ids', () {
     expect(GitCompareSpec.tryParseTabId('not-a-tab-id'), isNull);
     expect(GitCompareSpec.tryParseTabId('gitCompare:/repo|wt'), isNull);
-    expect(
-      GitCompareSpec.tryParseTabId('gitCompare:/repo|bogus|wt'),
-      isNull,
-    );
+    expect(GitCompareSpec.tryParseTabId('gitCompare:/repo|bogus|wt'), isNull);
   });
 }

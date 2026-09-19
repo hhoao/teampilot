@@ -2,12 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../chat_tab_store.dart';
+import '../../session/chat_tab_store.dart';
 import '../../../../cubits/chat_state.dart';
-import '../../model/chat_tab.dart';
-import '../../model/session_connect_request.dart';
-import '../../model/session_open_request.dart';
-import '../../host/session_launch_host.dart';
+import '../../session/chat_tab.dart';
+import '../../session/session_connect_request.dart';
+import '../../session/session_open_request.dart';
+import '../session_launch_host.dart';
 import '../../../../models/app_session.dart';
 import '../../../../models/member_instance.dart';
 import '../../../../models/team_config.dart';
@@ -15,7 +15,7 @@ import '../../../../models/workspace.dart';
 import '../../../../repositories/session_repository.dart';
 import '../../../terminal/terminal_session.dart';
 import '../../../../utils/logging/logger.dart';
-import '../contracts/member_connect_types.dart';
+import 'member_connect_types.dart';
 import '../session/session_default_materializer.dart';
 import '../session/session_launch_coordinator.dart';
 import 'session_connect_job.dart';

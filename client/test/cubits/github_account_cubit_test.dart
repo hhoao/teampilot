@@ -51,9 +51,7 @@ GithubDeviceFlowAuth controllableDeviceFlowAuth({
       final interval = _parseInterval(body as String?);
       return http.Response(
         jsonEncode(
-          _pollResultToJson(
-            await onPoll(pollCount, 'device-abc', interval),
-          ),
+          _pollResultToJson(await onPoll(pollCount, 'device-abc', interval)),
         ),
         200,
       );
@@ -136,10 +134,7 @@ void main() {
       final store = GithubCredentialsStore(kv: InMemorySecureKeyValueStore());
       await store.savePat('ghp_test');
 
-      final cubit = createCubit(
-        store: store,
-        fetchLogin: (_) async => 'bob',
-      );
+      final cubit = createCubit(store: store, fetchLogin: (_) async => 'bob');
       addTearDown(cubit.close);
 
       await cubit.hydrate();
@@ -180,43 +175,48 @@ void main() {
   });
 
   group('GithubAccountCubit.connect', () {
-    test('enters waiting with user code then connects on poll success', () async {
-      final store = GithubCredentialsStore(kv: InMemorySecureKeyValueStore());
-      final openedUrls = <Uri>[];
-      final statuses = <GithubAccountStatus>[];
-      final auth = controllableDeviceFlowAuth(
-        onPoll: (count, deviceCode, interval) async {
-          if (count == 1) return const GithubDeviceFlowPollPending();
-          return const GithubDeviceFlowPollSuccess('gho_new');
-        },
-      );
+    test(
+      'enters waiting with user code then connects on poll success',
+      () async {
+        final store = GithubCredentialsStore(kv: InMemorySecureKeyValueStore());
+        final openedUrls = <Uri>[];
+        final statuses = <GithubAccountStatus>[];
+        final auth = controllableDeviceFlowAuth(
+          onPoll: (count, deviceCode, interval) async {
+            if (count == 1) return const GithubDeviceFlowPollPending();
+            return const GithubDeviceFlowPollSuccess('gho_new');
+          },
+        );
 
-      final cubit = createCubit(
-        store: store,
-        deviceFlow: auth,
-        openUrl: (uri) async => openedUrls.add(uri),
-        fetchLogin: (_) async => 'carol',
-      );
-      addTearDown(cubit.close);
-      final subscription = cubit.stream.listen(
-        (state) => statuses.add(state.status),
-      );
-      addTearDown(subscription.cancel);
-      await cubit.hydrate();
+        final cubit = createCubit(
+          store: store,
+          deviceFlow: auth,
+          openUrl: (uri) async => openedUrls.add(uri),
+          fetchLogin: (_) async => 'carol',
+        );
+        addTearDown(cubit.close);
+        final subscription = cubit.stream.listen(
+          (state) => statuses.add(state.status),
+        );
+        addTearDown(subscription.cancel);
+        await cubit.hydrate();
 
-      await cubit.connect();
+        await cubit.connect();
 
-      expect(statuses, contains(GithubAccountStatus.waiting));
-      expect(cubit.state.userCode, isNull);
-      expect(cubit.state.status, GithubAccountStatus.connected);
-      expect(cubit.state.login, 'carol');
-      expect(cubit.state.source, GithubCredentialSource.oauth);
-      expect(openedUrls.single.toString(),
-          'https://github.com/login/device?user_code=ABCD-1234');
-      final snapshot = await store.readStored();
-      expect(snapshot?.token, 'gho_new');
-      expect(snapshot?.login, 'carol');
-    });
+        expect(statuses, contains(GithubAccountStatus.waiting));
+        expect(cubit.state.userCode, isNull);
+        expect(cubit.state.status, GithubAccountStatus.connected);
+        expect(cubit.state.login, 'carol');
+        expect(cubit.state.source, GithubCredentialSource.oauth);
+        expect(
+          openedUrls.single.toString(),
+          'https://github.com/login/device?user_code=ABCD-1234',
+        );
+        final snapshot = await store.readStored();
+        expect(snapshot?.token, 'gho_new');
+        expect(snapshot?.login, 'carol');
+      },
+    );
 
     test('enters waiting when openUrl throws', () async {
       final store = GithubCredentialsStore(kv: InMemorySecureKeyValueStore());
@@ -233,9 +233,7 @@ void main() {
       await cubit.hydrate();
 
       unawaited(cubit.connect());
-      await pumpUntil(
-        () => cubit.state.status == GithubAccountStatus.waiting,
-      );
+      await pumpUntil(() => cubit.state.status == GithubAccountStatus.waiting);
 
       expect(cubit.state.userCode, 'ABCD-1234');
 
@@ -294,9 +292,7 @@ void main() {
       await cubit.hydrate();
 
       unawaited(cubit.connect());
-      await pumpUntil(
-        () => cubit.state.status == GithubAccountStatus.waiting,
-      );
+      await pumpUntil(() => cubit.state.status == GithubAccountStatus.waiting);
 
       await cubit.cancelConnect();
       pollCompleter.complete();
@@ -357,10 +353,7 @@ void main() {
     test('savePat stores token and emits connected with pat source', () async {
       final store = GithubCredentialsStore(kv: InMemorySecureKeyValueStore());
 
-      final cubit = createCubit(
-        store: store,
-        fetchLogin: (_) async => 'dana',
-      );
+      final cubit = createCubit(store: store, fetchLogin: (_) async => 'dana');
       addTearDown(cubit.close);
       await cubit.hydrate();
 

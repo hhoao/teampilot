@@ -38,9 +38,7 @@ class HookRepository {
     final text = await _fs.readString(_definitionPath(id));
     if (text == null || text.trim().isEmpty) return null;
     try {
-      return HookDefinition.fromJson(
-        jsonDecode(text) as Map<String, Object?>,
-      );
+      return HookDefinition.fromJson(jsonDecode(text) as Map<String, Object?>);
     } on Object {
       return null;
     }

@@ -49,8 +49,7 @@ bool fileTreeCopyModifierPressed({
 double fileTreeDropContentY({
   required double listLocalY,
   required double scrollOffset,
-}) =>
-    listLocalY + scrollOffset;
+}) => listLocalY + scrollOffset;
 
 FileTreeDropRowKind fileTreeDropRowKind(FileTreeVisibleRow row) {
   if (row.isEmptyPlaceholder) return FileTreeDropRowKind.empty;
@@ -214,7 +213,9 @@ class FileTreeDropScope extends InheritedWidget {
   final FileTreeDropHost host;
 
   static FileTreeDropHost? maybeOf(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<FileTreeDropScope>()?.host;
+    return context
+        .dependOnInheritedWidgetOfExactType<FileTreeDropScope>()
+        ?.host;
   }
 
   @override
@@ -309,23 +310,24 @@ class _FileTreeDropRegionState extends State<FileTreeDropRegion> {
       cubit: widget.cubit,
       importService: _importService,
       hostLocalFs: _hostLocalFs,
-      onConflict: ({
-        required String destPath,
-        required bool sourceIsDirectory,
-        required bool destIsDirectory,
-        required bool typeMismatch,
-        required int remainingConflicts,
-      }) {
-        final resolver = _conflictResolver;
-        if (resolver == null) return Future.value(ConflictChoice.cancelAll);
-        return resolver(
-          destPath: destPath,
-          sourceIsDirectory: sourceIsDirectory,
-          destIsDirectory: destIsDirectory,
-          typeMismatch: typeMismatch,
-          remainingConflicts: remainingConflicts,
-        );
-      },
+      onConflict:
+          ({
+            required String destPath,
+            required bool sourceIsDirectory,
+            required bool destIsDirectory,
+            required bool typeMismatch,
+            required int remainingConflicts,
+          }) {
+            final resolver = _conflictResolver;
+            if (resolver == null) return Future.value(ConflictChoice.cancelAll);
+            return resolver(
+              destPath: destPath,
+              sourceIsDirectory: sourceIsDirectory,
+              destIsDirectory: destIsDirectory,
+              typeMismatch: typeMismatch,
+              remainingConflicts: remainingConflicts,
+            );
+          },
       isCopyModifierPressed: fileTreeCopyModifierPressed,
     );
   }
@@ -469,11 +471,7 @@ class _FileTreeDropRegionState extends State<FileTreeDropRegion> {
       details.localPosition,
       sourcePaths: _sourcePaths(payload),
     );
-    await _handleResolvedDrop(
-      hit: hit,
-      payload: payload,
-      fromExternalOs: true,
-    );
+    await _handleResolvedDrop(hit: hit, payload: payload, fromExternalOs: true);
   }
 
   Future<void> _onInTreePanelDrop(
@@ -522,10 +520,7 @@ class _FileTreeDropRegionState extends State<FileTreeDropRegion> {
 
       progressCubit.setDetailOpen(key.activityId, true);
       unawaited(
-        showProgressActivityDetailDialog(
-          context,
-          activityId: key.activityId,
-        ),
+        showProgressActivityDetailDialog(context, activityId: key.activityId),
       );
 
       final summary = await registry.enqueue(
@@ -590,14 +585,12 @@ class _FileTreeDropRegionState extends State<FileTreeDropRegion> {
           builder: (context, candidates, rejected) {
             final inTreeEmptyHover =
                 candidates.isNotEmpty && candidates.first != null;
-            final showPanel =
-                inTreeEmptyHover || _host.osHoverPanelHighlight;
+            final showPanel = inTreeEmptyHover || _host.osHoverPanelHighlight;
             ImportMode? affordance;
             if (inTreeEmptyHover) {
               final payload = candidates.first!;
               final sourcePath = payload.refs.first.nativePath;
-              final destDir =
-                  widget.cubit.state.rootPath.isNotEmpty
+              final destDir = widget.cubit.state.rootPath.isNotEmpty
                   ? widget.cubit.state.rootPath
                   : sourcePath;
               final sameFs = fileTreePathsShareFilesystem(

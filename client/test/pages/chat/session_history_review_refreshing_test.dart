@@ -26,81 +26,91 @@ void main() {
     );
   }
 
-  testWidgets('refreshing renders the thread + slim strip, never full-pane loading', (
-    tester,
-  ) async {
-    final runtime = ExternalStoreAiThreadRuntime()
-      ..setMessages(const [
-        AiMessage(id: 'm-0', role: AiRole.user, parts: [AiTextPart(text: 'hi')]),
-      ]);
-    final state = AiHistoryState(
-      status: AiHistoryViewStatus.refreshing,
-      totalMessageCount: 1,
-      sessionId: 'sess-a',
-      memberId: '',
-    );
+  testWidgets(
+    'refreshing renders the thread + slim strip, never full-pane loading',
+    (tester) async {
+      final runtime = ExternalStoreAiThreadRuntime()
+        ..setMessages(const [
+          AiMessage(
+            id: 'm-0',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'hi')],
+          ),
+        ]);
+      final state = AiHistoryState(
+        status: AiHistoryViewStatus.refreshing,
+        totalMessageCount: 1,
+        sessionId: 'sess-a',
+        memberId: '',
+      );
 
-    await tester.pumpWidget(
-      wrap(
-        Column(
-          children: [
-            Expanded(
-              child: SessionHistoryReviewMessages(
-                state: state,
-                runtime: runtime,
-                onRetry: () {},
-                onLoadOlder: () async {},
+      await tester.pumpWidget(
+        wrap(
+          Column(
+            children: [
+              Expanded(
+                child: SessionHistoryReviewMessages(
+                  state: state,
+                  runtime: runtime,
+                  onRetry: () {},
+                  onLoadOlder: () async {},
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
-    await tester.pump();
+      );
+      await tester.pump();
 
-    expect(
-      find.text('Loading conversation history…'),
-      findsNothing,
-      reason: 'refreshing must not show the full-pane history loading',
-    );
-    expect(find.byType(SessionHistoryThread), findsOneWidget);
-    expect(find.text('Refreshing conversation…'), findsOneWidget);
-  });
+      expect(
+        find.text('Loading conversation history…'),
+        findsNothing,
+        reason: 'refreshing must not show the full-pane history loading',
+      );
+      expect(find.byType(SessionHistoryThread), findsOneWidget);
+      expect(find.text('Refreshing conversation…'), findsOneWidget);
+    },
+  );
 
-  testWidgets('error-with-content keeps the thread mounted, not the error pane', (
-    tester,
-  ) async {
-    final runtime = ExternalStoreAiThreadRuntime()
-      ..setMessages(const [
-        AiMessage(id: 'm-0', role: AiRole.user, parts: [AiTextPart(text: 'hi')]),
-      ]);
-    final state = AiHistoryState(
-      status: AiHistoryViewStatus.error,
-      errorMessage: 'boom',
-      totalMessageCount: 1,
-      sessionId: 'sess-a',
-      memberId: '',
-    );
+  testWidgets(
+    'error-with-content keeps the thread mounted, not the error pane',
+    (tester) async {
+      final runtime = ExternalStoreAiThreadRuntime()
+        ..setMessages(const [
+          AiMessage(
+            id: 'm-0',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'hi')],
+          ),
+        ]);
+      final state = AiHistoryState(
+        status: AiHistoryViewStatus.error,
+        errorMessage: 'boom',
+        totalMessageCount: 1,
+        sessionId: 'sess-a',
+        memberId: '',
+      );
 
-    await tester.pumpWidget(
-      wrap(
-        Column(
-          children: [
-            Expanded(
-              child: SessionHistoryReviewMessages(
-                state: state,
-                runtime: runtime,
-                onRetry: () {},
-                onLoadOlder: () async {},
+      await tester.pumpWidget(
+        wrap(
+          Column(
+            children: [
+              Expanded(
+                child: SessionHistoryReviewMessages(
+                  state: state,
+                  runtime: runtime,
+                  onRetry: () {},
+                  onLoadOlder: () async {},
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
-    await tester.pump();
+      );
+      await tester.pump();
 
-    expect(find.byType(SessionHistoryThread), findsOneWidget);
-    expect(find.text("Couldn't load conversation history."), findsNothing);
-  });
+      expect(find.byType(SessionHistoryThread), findsOneWidget);
+      expect(find.text("Couldn't load conversation history."), findsNothing);
+    },
+  );
 }

@@ -32,9 +32,9 @@ void main() {
         catalogPath: '/root/mcp/mcp_servers.json',
         fs: fs,
       ),
-                                storage: testHomeStorage,
+      storage: testHomeStorage,
     );
-    cubit = McpCubit(repository, storage: testHomeStorage, );
+    cubit = McpCubit(repository, storage: testHomeStorage);
     discoverySettingsCubit = DiscoverySettingsCubit(
       repository: InMemoryAppSettingsRepository(),
     );
@@ -47,25 +47,27 @@ void main() {
 
   Future<void> pumpListPage(WidgetTester tester) async {
     final scheme = ColorScheme.fromSeed(seedColor: Colors.indigo);
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: TpTheme(
-          data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
-          child: BlocProvider<McpCubit>.value(
-            value: cubit,
-            child: BlocProvider<DiscoverySettingsCubit>.value(
-              value: discoverySettingsCubit,
-              child: const Scaffold(
-                body: McpManagementPage(section: McpSection.installed),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: TpTheme(
+            data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
+            child: BlocProvider<McpCubit>.value(
+              value: cubit,
+              child: BlocProvider<DiscoverySettingsCubit>.value(
+                value: discoverySettingsCubit,
+                child: const Scaffold(
+                  body: McpManagementPage(section: McpSection.installed),
+                ),
               ),
             ),
           ),
         ),
       ),
-      ));
+    );
     await tester.pumpAndSettle();
   }
 

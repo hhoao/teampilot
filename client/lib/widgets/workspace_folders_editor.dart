@@ -69,8 +69,7 @@ class _TargetFolderGroup {
 }
 
 class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
-  bool get _usesPosixPaths =>
-      context.read<HomeStorage>().usesPosixPaths;
+  bool get _usesPosixPaths => context.read<HomeStorage>().usesPosixPaths;
 
   late List<WorkspaceFolder> _folders;
   Future<List<RuntimeTarget>>? _targets;
@@ -249,11 +248,7 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
     if (_folders.any(
       (f) =>
           f.targetId == targetId &&
-          workspacePathsEqual(
-            f.path,
-            trimmed,
-            usesPosixPaths: _usesPosixPaths,
-          ),
+          workspacePathsEqual(f.path, trimmed, usesPosixPaths: _usesPosixPaths),
     )) {
       return;
     }
@@ -372,7 +367,8 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
                 enabled: widget.enabled,
                 allowRowTargetChange: !lockTargets,
                 isDead: widget.deadTargetIds.contains(groups.first.targetId),
-                onRemapDeadTarget: widget.enabled &&
+                onRemapDeadTarget:
+                    widget.enabled &&
                         widget.deadTargetIds.contains(groups.first.targetId)
                     ? widget.onRemapDeadTarget
                     : null,
@@ -402,7 +398,8 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
                     enabled: widget.enabled,
                     allowRowTargetChange: !lockTargets,
                     isDead: widget.deadTargetIds.contains(group.targetId),
-                    onRemapDeadTarget: widget.enabled &&
+                    onRemapDeadTarget:
+                        widget.enabled &&
                             widget.deadTargetIds.contains(group.targetId)
                         ? widget.onRemapDeadTarget
                         : null,
@@ -558,7 +555,8 @@ class _MachineFolderCard extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   emptyHint!,
-                  style: styles.smColored(cs.onSurfaceVariant.withValues(alpha: 0.85),
+                  style: styles.smColored(
+                    cs.onSurfaceVariant.withValues(alpha: 0.85),
                   ),
                 ),
               )

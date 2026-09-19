@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/runtime/inflight/operator_delivery_in_flight.dart';
+import 'package:teampilot/services/chat/runtime/operator_delivery_in_flight.dart';
 
 void main() {
   test('run lights isInFlight until action completes', () async {

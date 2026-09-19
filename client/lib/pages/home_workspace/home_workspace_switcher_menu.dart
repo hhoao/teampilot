@@ -12,8 +12,9 @@ import 'home_workspace_title_bar.dart';
 
 /// Whether the open-tabs section should appear in [HomeWorkspaceSwitcherMenu].
 @visibleForTesting
-bool homeWorkspaceSwitcherShouldShowOpenSection(List<HomeWorkspaceTab> openTabs) =>
-    openTabs.isNotEmpty;
+bool homeWorkspaceSwitcherShouldShowOpenSection(
+  List<HomeWorkspaceTab> openTabs,
+) => openTabs.isNotEmpty;
 
 /// Title-bar ⋯ menu: create workspace, jump to open tabs, reopen recently closed.
 class HomeWorkspaceSwitcherMenu extends StatefulWidget {
@@ -138,10 +139,7 @@ class _HomeWorkspaceSwitcherMenuState extends State<HomeWorkspaceSwitcherMenu> {
   Widget _sectionHeader(String label, ColorScheme cs, TpTextStyles styles) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-      child: Text(
-        label,
-        style: styles.smSemiboldColored(cs.onSurfaceVariant),
-      ),
+      child: Text(label, style: styles.smSemiboldColored(cs.onSurfaceVariant)),
     );
   }
 
@@ -151,7 +149,9 @@ class _HomeWorkspaceSwitcherMenuState extends State<HomeWorkspaceSwitcherMenu> {
     final styles = TpTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
-    final showOpen = homeWorkspaceSwitcherShouldShowOpenSection(widget.openTabs);
+    final showOpen = homeWorkspaceSwitcherShouldShowOpenSection(
+      widget.openTabs,
+    );
     final closedEntries = [
       for (final entry in widget.recentlyClosed)
         if (entry.workspaceId.trim().isNotEmpty) entry,

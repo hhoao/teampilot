@@ -47,8 +47,11 @@ void main() {
     final registry = CliToolRegistry.builtIn();
     for (final cli in [CliTool.claude, CliTool.flashskyai, CliTool.codex]) {
       final capability = registry.capability<ChatInteractionCapability>(cli);
-      expect(capability?.supportsInChatPermissionReply, isTrue,
-          reason: '$cli should support the held PermissionRequest card');
+      expect(
+        capability?.supportsInChatPermissionReply,
+        isTrue,
+        reason: '$cli should support the held PermissionRequest card',
+      );
     }
     // Cursor and OpenCode semantics unchanged (OpenCode already true via SDK).
     expect(

@@ -24,13 +24,12 @@ final class ValidateTeamPlanTool extends NamedTeamComposerTool {
     'type': 'object',
     'required': ['plan'],
     'additionalProperties': false,
-    'properties': {
-      'plan': TeamComposerToolSchemas.planProperty,
-    },
+    'properties': {'plan': TeamComposerToolSchemas.planProperty},
   };
 
   @override
-  Map<String, Object?> get outputSchema => TeamComposerToolSchemas.validateOutput;
+  Map<String, Object?> get outputSchema =>
+      TeamComposerToolSchemas.validateOutput;
 
   @override
   Map<String, Object?> get annotations =>

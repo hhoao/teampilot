@@ -66,80 +66,75 @@ class _MyExpertsCardState extends State<MyExpertsCard> {
           ),
         ),
         child: TeamHubWorkspaceCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TeamHubCardHeader(
-                  title: member.name,
-                  trailing: TpActionMenuButton(
-                    key: Key('my-experts-overflow-${member.key}'),
-                    icon: Icon(
-                      Icons.more_vert,
-                      size: context.tpIconSizes.md,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TeamHubCardHeader(
+                title: member.name,
+                trailing: TpActionMenuButton(
+                  key: Key('my-experts-overflow-${member.key}'),
+                  icon: Icon(Icons.more_vert, size: context.tpIconSizes.md),
+                  size: TpIconButton.kCompactSize,
+                  specs: [
+                    TpActionMenuSpec.item(
+                      value: MyExpertsCardAction.edit,
+                      icon: Icons.edit_outlined,
+                      label: l10n.myExpertsEdit,
                     ),
-                    size: TpIconButton.kCompactSize,
-                    specs: [
-                      TpActionMenuSpec.item(
-                        value: MyExpertsCardAction.edit,
-                        icon: Icons.edit_outlined,
-                        label: l10n.myExpertsEdit,
-                      ),
-                      TpActionMenuSpec.item(
-                        value: MyExpertsCardAction.upload,
-                        icon: Icons.upload_outlined,
-                        label: l10n.myExpertsUpload,
-                      ),
-                      TpActionMenuSpec.item(
-                        value: MyExpertsCardAction.addToTeam,
-                        icon: Icons.group_add_outlined,
-                        label: l10n.expertHubAddToTeam,
-                      ),
-                      TpActionMenuSpec.item(
-                        value: MyExpertsCardAction.delete,
-                        icon: Icons.delete_outline,
-                        label: l10n.myExpertsDelete,
-                        destructive: true,
-                      ),
-                    ],
-                    onSelected: (value) {
-                      if (value is MyExpertsCardAction) {
-                        widget.onAction(value);
-                      }
-                    },
-                  ),
+                    TpActionMenuSpec.item(
+                      value: MyExpertsCardAction.upload,
+                      icon: Icons.upload_outlined,
+                      label: l10n.myExpertsUpload,
+                    ),
+                    TpActionMenuSpec.item(
+                      value: MyExpertsCardAction.addToTeam,
+                      icon: Icons.group_add_outlined,
+                      label: l10n.expertHubAddToTeam,
+                    ),
+                    TpActionMenuSpec.item(
+                      value: MyExpertsCardAction.delete,
+                      icon: Icons.delete_outline,
+                      label: l10n.myExpertsDelete,
+                      destructive: true,
+                    ),
+                  ],
+                  onSelected: (value) {
+                    if (value is MyExpertsCardAction) {
+                      widget.onAction(value);
+                    }
+                  },
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  member.description.trim().isEmpty
-                      ? '—'
-                      : member.description,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: styles.smColored(cs.onSurfaceVariant),
-                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                member.description.trim().isEmpty ? '—' : member.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: styles.smColored(cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                member.category.trim().isEmpty
+                    ? l10n.expertHubSourceLocal
+                    : member.category,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: styles.xsColored(cs.onSurfaceVariant),
+              ),
+              if (widget.publishRecord != null) ...[
                 const SizedBox(height: 8),
-                Text(
-                  member.category.trim().isEmpty
-                      ? l10n.expertHubSourceLocal
-                      : member.category,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: styles.xsColored(cs.onSurfaceVariant),
-                ),
-                if (widget.publishRecord != null) ...[
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: HubPublishBadge(
-                      key: Key('hub-publish-badge-expert-${member.key}'),
-                      record: widget.publishRecord!,
-                    ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: HubPublishBadge(
+                    key: Key('hub-publish-badge-expert-${member.key}'),
+                    record: widget.publishRecord!,
                   ),
-                ],
+                ),
               ],
-            ),
+            ],
           ),
         ),
+      ),
     );
   }
 }

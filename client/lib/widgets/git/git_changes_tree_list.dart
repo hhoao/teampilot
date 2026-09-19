@@ -121,9 +121,7 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final fileLabelStyle = TpTextStyles.of(context).sm;
-        final folderLabelStyle = TpTextStyles.of(
-          context,
-        ).smMedium;
+        final folderLabelStyle = TpTextStyles.of(context).smMedium;
         final contentWidth = math.max(
           constraints.maxWidth,
           math.max(
@@ -229,8 +227,9 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
   }
 
   Widget _buildTreeRow(GitChangesVisibleRow row, GitChangesSection section) {
-    final keyPrefix =
-        section == GitChangesSection.changes ? 'changes' : 'unversioned';
+    final keyPrefix = section == GitChangesSection.changes
+        ? 'changes'
+        : 'unversioned';
     if (row.isFolder) {
       return GitChangeFolderTile(
         key: ValueKey('$keyPrefix:folder:${row.folderPath}'),
@@ -240,13 +239,13 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
         subtreeSelectedCount: row.subtreeSelectedCount,
         subtreeTotalCount: row.subtreeTotalCount,
         cubit: widget.cubit,
-        hoverEnabled: _hoverEnabled,        onStage: () => unawaited(
-          widget.cubit.selectFolder(row.folderPath!, section),
-        ),
-        onUnstage: () => unawaited(
-          widget.cubit.deselectFolder(row.folderPath!, section),
-        ),
-        onDiscardFolder: () => unawaited(_confirmDiscardFolder(row.folderPath!)),
+        hoverEnabled: _hoverEnabled,
+        onStage: () =>
+            unawaited(widget.cubit.selectFolder(row.folderPath!, section)),
+        onUnstage: () =>
+            unawaited(widget.cubit.deselectFolder(row.folderPath!, section)),
+        onDiscardFolder: () =>
+            unawaited(_confirmDiscardFolder(row.folderPath!)),
       );
     }
 
@@ -258,7 +257,8 @@ class _GitChangesTreeListState extends State<GitChangesTreeList> {
       change: change,
       depth: row.depth,
       selected: widget.selectedPath == change.path,
-      hoverEnabled: _hoverEnabled,      onSelect: () => widget.onSelect(change.path),
+      hoverEnabled: _hoverEnabled,
+      onSelect: () => widget.onSelect(change.path),
       onOpenDiff: () => widget.onOpenDiff(change),
       onOpenFile: canOpenFile ? () => widget.onOpenFile!(change) : null,
       onStage: () => unawaited(widget.cubit.selectPath(change.path)),
@@ -350,9 +350,7 @@ class GitChangesCountBadge extends StatelessWidget {
       ),
       child: Text(
         '$count',
-        style: TpTextStyles.of(
-          context,
-        ).xsColored(cs.onSurfaceVariant),
+        style: TpTextStyles.of(context).xsColored(cs.onSurfaceVariant),
       ),
     );
   }

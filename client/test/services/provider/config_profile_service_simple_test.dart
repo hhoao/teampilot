@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/workspace_base_info_capability.dart';
-import 'package:teampilot/services/chat/session/member_role_provision.dart';
+import 'package:teampilot/services/chat/launch/session/member_role_provision.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/flashskyai/capabilities/provider.dart';

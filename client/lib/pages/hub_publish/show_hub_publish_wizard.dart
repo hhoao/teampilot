@@ -49,11 +49,9 @@ Future<void> showHubPublishWizard(
       }()) ??
       GithubCredentialsStore(kv: const FlutterSecureKeyValueStore());
   final resolvedLookup = lookup ?? _lookupFromContext(context);
-  final resolvedRemap =
-      remapCandidates ?? _remapCandidatesFromContext(context);
+  final resolvedRemap = remapCandidates ?? _remapCandidatesFromContext(context);
   final resolvedRecords =
-      records ??
-      HubPublishRecordStore(storage: homeStorageOf(context));
+      records ?? HubPublishRecordStore(storage: homeStorageOf(context));
   final resolvedApi =
       publishApi ??
       HubPublishService(

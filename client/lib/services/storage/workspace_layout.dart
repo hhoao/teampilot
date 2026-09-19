@@ -2,7 +2,6 @@ import 'package:path/path.dart' as p;
 
 import '../../models/app_session.dart';
 import '../io/filesystem.dart';
-import '../io/local_filesystem.dart';
 
 /// Canonical paths for TeamPilot workbench entities under `{teampilotRoot}/workspace/`.
 ///

@@ -20,7 +20,7 @@ void main() {
       fs: fs,
       basePath: '/data/tp',
       httpClient: MockClient((request) async => http.Response(_apiJson, 200)),
-                                           storage: fakeHomeStorage(filesystem: fs),
+      storage: fakeHomeStorage(filesystem: fs),
     );
     await service.ensureLoaded();
 

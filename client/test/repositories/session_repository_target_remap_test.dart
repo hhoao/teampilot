@@ -20,7 +20,10 @@ void main() {
   test('remapWorkspaceTarget rewrites folders, pins, and sessions', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_remap_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
 
     final ws = await repo.createWorkspace([
       const WorkspaceFolder(path: '/local'),
@@ -75,7 +78,10 @@ void main() {
   test('remapWorkspaceTarget throws when from target is unused', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_remap_unused_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
 
     final ws = await repo.createWorkspace([
       const WorkspaceFolder(path: '/local'),
@@ -103,7 +109,10 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_repo_remap_dead_');
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: fakeHomeStorage(),
+      );
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/local'),
@@ -144,7 +153,10 @@ void main() {
         'fs_repo_remap_partial_',
       );
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: fakeHomeStorage(),
+      );
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/local'),
@@ -164,9 +176,7 @@ void main() {
       final hit = (await repo.createSession(
         ws.workspaceId,
         sessionTeam: 'team-a',
-        rosterMembers: const [
-          TeamMemberConfig(id: 'dev', name: 'Dev'),
-        ],
+        rosterMembers: const [TeamMemberConfig(id: 'dev', name: 'Dev')],
         memberClis: const {'dev': CliTool.claude},
       )).session;
       expect(hit.memberTargets['dev'], 'ssh:old');

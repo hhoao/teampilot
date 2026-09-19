@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
-import 'package:flutter_alacritty/links/terminal_link_provider.dart';
 
 import '../cli/cli_executable_validator.dart';
 import '../cli/preset_resolver.dart';
@@ -16,8 +14,8 @@ import '../cli/registry/cli_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
 import '../event/agent_presence_event.dart';
-import '../chat/session/launch_command_builder.dart';
-import '../chat/session/shell_launch_spec.dart';
+import '../chat/launch/session/launch_command_builder.dart';
+import '../chat/launch/session/shell_launch_spec.dart';
 import '../ssh/ssh_member_session.dart';
 import 'observation/modules/activity_observation_module.dart';
 import 'observation/modules/launch_start_module.dart';
@@ -27,14 +25,14 @@ import 'observation/terminal_observation_attach.dart';
 import 'observation/terminal_observation_bus.dart';
 import 'observation/terminal_observation_installer.dart';
 import 'observation/terminal_observation_seat.dart';
-import '../chat/terminal/pending_user_message.dart';
+import '../chat/runtime/pty/pending_user_message.dart';
 import 'pty_launch_environment.dart';
-import '../chat/terminal/terminal_input_controller.dart';
-import '../chat/terminal/terminal_launch_controller.dart';
-import '../chat/terminal/terminal_screen_probe_controller.dart';
+import '../chat/runtime/pty/terminal_input_controller.dart';
+import '../chat/runtime/pty/terminal_launch_controller.dart';
+import '../chat/runtime/pty/terminal_screen_probe_controller.dart';
 import 'terminal_session_link_providers.dart';
 import 'terminal_transport_starter.dart';
-import '../chat/terminal/terminal_activity_tracker.dart';
+import '../chat/runtime/pty/terminal_activity_tracker.dart';
 import '../chat/team_bus/bus_user_line_capture.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace_shell_launch_plan.dart';
@@ -45,8 +43,8 @@ import 'terminal_theme_mapper.dart';
 
 export 'observation/terminal_observation_attach.dart';
 export 'terminal_color_scheme_report.dart' show stripColorSchemeReport;
-export '../chat/terminal/terminal_input_controller.dart';
-export '../chat/terminal/terminal_screen_probe_controller.dart';
+export '../chat/runtime/pty/terminal_input_controller.dart';
+export '../chat/runtime/pty/terminal_screen_probe_controller.dart';
 export 'terminal_transport_starter.dart' show TransportStarter;
 
 /// Session state: engine, connection lifecycle, links, and turn tracking.

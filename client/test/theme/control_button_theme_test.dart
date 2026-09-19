@@ -40,8 +40,14 @@ void main() {
     Size? minOf(ButtonStyle? style) => style?.minimumSize?.resolve({});
     Size? maxOf(ButtonStyle? style) => style?.maximumSize?.resolve({});
     expect(minOf(theme.filledButtonTheme.style)?.height, control.medium.height);
-    expect(maxOf(theme.outlinedButtonTheme.style)?.height, control.medium.height);
-    expect(theme.outlinedButtonTheme.style?.tapTargetSize, MaterialTapTargetSize.shrinkWrap);
+    expect(
+      maxOf(theme.outlinedButtonTheme.style)?.height,
+      control.medium.height,
+    );
+    expect(
+      theme.outlinedButtonTheme.style?.tapTargetSize,
+      MaterialTapTargetSize.shrinkWrap,
+    );
 
     final buttonPad = theme.outlinedButtonTheme.style?.padding?.resolve({});
     expect(buttonPad, isA<EdgeInsets>());
@@ -176,10 +182,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(
-      tester.getSize(find.byType(TextField)).height,
-      control.input.height,
-    );
+    expect(tester.getSize(find.byType(TextField)).height, control.input.height);
     expect(
       tester.getSize(find.byType(OutlinedButton)).height,
       control.medium.height,

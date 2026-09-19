@@ -19,15 +19,13 @@ Future<String?> saveNewAppProvider(
   final sameId = existing.where((p) => p.id == baseId).firstOrNull;
   // Keep a form-assigned id (also the row a form-side login already created
   // with its credentials); bump only when baseId belongs to another identity.
-  final id = sameId == null ||
+  final id =
+      sameId == null ||
           (sameId.cli == draft.cli &&
               sameId.category == draft.category &&
               sameId.name == draft.name)
       ? baseId
-      : AppProviderCubit.uniqueId(
-          baseId,
-          existing.map((p) => p.id),
-        );
+      : AppProviderCubit.uniqueId(baseId, existing.map((p) => p.id));
   final provider = draft.copyWith(id: id, name: draft.name.trim());
 
   await appCubit.upsertProvider(provider);

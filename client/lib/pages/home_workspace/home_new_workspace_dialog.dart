@@ -132,8 +132,8 @@ class _HomeNewWorkspaceDialogState extends State<HomeNewWorkspaceDialog> {
               builder: (_) => const SizedBox.shrink(),
               validator: (_) =>
                   _folders.where((f) => f.path.trim().isNotEmpty).isEmpty
-                      ? l10n.workspacePrimaryPathRequired
-                      : null,
+                  ? l10n.workspacePrimaryPathRequired
+                  : null,
             ),
             WorkspaceCreateNameField(
               controller: _nameController,

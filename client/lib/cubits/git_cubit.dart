@@ -152,7 +152,7 @@ class GitCubit extends Cubit<GitState> {
     required GitService service,
     HeadlessAiService? headless,
     HomeStorage? storage,
-    void Function(String repoRoot)? onHeadChanged,
+    this.onHeadChanged,
   }) : _service = service,
        _headless =
            headless ??
@@ -170,7 +170,6 @@ class GitCubit extends Cubit<GitState> {
                    ),
                  ),
            ),
-       onHeadChanged = onHeadChanged,
        super(const GitState());
 
   final GitService _service;

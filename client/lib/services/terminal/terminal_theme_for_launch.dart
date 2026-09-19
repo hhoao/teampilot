@@ -34,6 +34,9 @@ TerminalTheme resolveTerminalThemeFromLayout({
 
 /// Applies [theme] to [shell] before [TerminalSession.connect] so PTY spawn
 /// advertises the correct COLORFGBG.
-void applyShellTerminalThemeForLaunch(TerminalSession shell, TerminalTheme theme) {
+void applyShellTerminalThemeForLaunch(
+  TerminalSession shell,
+  TerminalTheme theme,
+) {
   shell.applyTerminalTheme(theme);
 }

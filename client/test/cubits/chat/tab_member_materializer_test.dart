@@ -1,12 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/chat_session_shell_factory.dart';
-import 'package:teampilot/services/chat/chat_tab_store.dart';
-import 'package:teampilot/services/chat/launch/member_connector.dart';
-import 'package:teampilot/services/chat/model/chat_tab.dart';
-import 'package:teampilot/services/chat/model/chat_tab_info.dart';
-import 'package:teampilot/services/chat/team_bus/tab_member_materializer.dart';
+import 'package:teampilot/services/chat/launch/connect/chat_session_shell_factory.dart';
+import 'package:teampilot/services/chat/session/chat_tab_store.dart';
+import 'package:teampilot/services/chat/launch/connect/member_connector.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
+import 'package:teampilot/services/chat/session/chat_tab_info.dart';
+import 'package:teampilot/services/chat/launch/tab/tab_member_materializer.dart';
 import 'package:teampilot/services/chat/runtime/tab_session_runtime_coordinator.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_member_binding.dart';

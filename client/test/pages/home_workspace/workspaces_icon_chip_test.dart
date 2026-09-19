@@ -20,9 +20,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(
-      wrap(
-        WorkspacesIconChip(icon: Icons.sort_rounded, onTap: () {}),
-      ),
+      wrap(WorkspacesIconChip(icon: Icons.sort_rounded, onTap: () {})),
     );
 
     final icon = find.byIcon(Icons.sort_rounded);

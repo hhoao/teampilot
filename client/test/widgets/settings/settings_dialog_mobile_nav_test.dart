@@ -11,10 +11,7 @@ Widget _wrap({required Widget child}) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    theme: ThemeData(
-      colorScheme: scheme,
-      useMaterial3: true,
-    ),
+    theme: ThemeData(colorScheme: scheme, useMaterial3: true),
     home: TpTheme(
       data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
       child: child,
@@ -94,10 +91,7 @@ Future<void> _openSettingsDialog(
 
 void main() {
   testWidgets('narrow: nav labels, tap detail, back to nav', (tester) async {
-    await _openSettingsDialog(
-      tester,
-      viewport: const Size(400, 800),
-    );
+    await _openSettingsDialog(tester, viewport: const Size(400, 800));
 
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('Section A'), findsOneWidget);
@@ -122,10 +116,7 @@ void main() {
   });
 
   testWidgets('wide: nav and body panes visible together', (tester) async {
-    await _openSettingsDialog(
-      tester,
-      viewport: const Size(1200, 800),
-    );
+    await _openSettingsDialog(tester, viewport: const Size(1200, 800));
 
     expect(find.text('Settings'), findsOneWidget);
     expect(find.text('Section A'), findsOneWidget);
@@ -145,10 +136,7 @@ void main() {
 
   testWidgets('uses WorkspacePanePolicy narrow breakpoint', (tester) async {
     final breakpoint = WorkspacePanePolicy.narrowBreakpointWidth;
-    await _openSettingsDialog(
-      tester,
-      viewport: Size(breakpoint - 1, 800),
-    );
+    await _openSettingsDialog(tester, viewport: Size(breakpoint - 1, 800));
 
     expect(find.text('Section A Title'), findsNothing);
     expect(find.text('Section A'), findsOneWidget);
@@ -183,10 +171,7 @@ void main() {
   });
 
   testWidgets('wide: Escape dismisses settings dialog', (tester) async {
-    await _openSettingsDialog(
-      tester,
-      viewport: const Size(1200, 800),
-    );
+    await _openSettingsDialog(tester, viewport: const Size(1200, 800));
 
     expect(find.text('Section A Title'), findsOneWidget);
 

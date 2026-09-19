@@ -2,21 +2,24 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/resource_manager/resource_manager_lifecycle.dart';
 
 void main() {
-  test('chat kill uses disconnectMemberShell with sessionId+memberId', () async {
-    final calls = <String>[];
+  test(
+    'chat kill uses disconnectMemberShell with sessionId+memberId',
+    () async {
+      final calls = <String>[];
 
-    await killResourceManagerBinding(
-      bindingKey: 'chat:sess-a:member-b',
-      disconnectMemberShell: (sessionId, memberId) async {
-        calls.add('member:$sessionId:$memberId');
-      },
-      killWorkspaceShell: (workspaceId, entryId) async {
-        calls.add('shell:$workspaceId:$entryId');
-      },
-    );
+      await killResourceManagerBinding(
+        bindingKey: 'chat:sess-a:member-b',
+        disconnectMemberShell: (sessionId, memberId) async {
+          calls.add('member:$sessionId:$memberId');
+        },
+        killWorkspaceShell: (workspaceId, entryId) async {
+          calls.add('shell:$workspaceId:$entryId');
+        },
+      );
 
-    expect(calls, ['member:sess-a:member-b']);
-  });
+      expect(calls, ['member:sess-a:member-b']);
+    },
+  );
 
   test('shell kill routes to workspace shell dispose', () async {
     final calls = <String>[];

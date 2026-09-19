@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/terminal/fullscreen_pty_submission_machine.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_pty_submission_machine.dart';
 
 void main() {
   var current = DateTime(2026, 9, 12, 10, 0, 0);

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/session/session_connect_settle.dart';
+import 'package:teampilot/services/chat/launch/connect/session_connect_settle.dart';
 
 void main() {
   test(

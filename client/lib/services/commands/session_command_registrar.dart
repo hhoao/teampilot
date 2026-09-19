@@ -26,14 +26,11 @@ void registerSessionCommands(
     CommandIds.sessionNewChat,
     () => workbench.enterLanding(chat.tabStore.activeWorkspaceId),
   );
-  bus.register(
-    CommandIds.sessionCloseTab,
-    () {
-      final ws = chat.tabStore.activeWorkspaceId;
-      final active = workbench.centerActiveId(ws);
-      if (active != null) unawaited(workbench.close(ws, active));
-    },
-  );
+  bus.register(CommandIds.sessionCloseTab, () {
+    final ws = chat.tabStore.activeWorkspaceId;
+    final active = workbench.centerActiveId(ws);
+    if (active != null) unawaited(workbench.close(ws, active));
+  });
   for (var n = 1; n <= 10; n++) {
     final ordinal = n;
     bus.register(

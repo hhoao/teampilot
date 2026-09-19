@@ -40,9 +40,8 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
   Set<String> _deadTargetIds = const {};
   List<String>? _deadCheckKey;
 
-  TargetLiveness _liveness(BuildContext context) => DefaultTargetLiveness(
-    sshProfiles: context.read<SshProfileRepository>(),
-  );
+  TargetLiveness _liveness(BuildContext context) =>
+      DefaultTargetLiveness(sshProfiles: context.read<SshProfileRepository>());
 
   void _ensureDeadTargetsChecked(List<WorkspaceFolder> folders) {
     final key = workspaceTargetIds(folders);

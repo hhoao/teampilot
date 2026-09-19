@@ -13,7 +13,7 @@ import '../services/team_config/runtime_roster_cache.dart';
 import '../models/app_session.dart';
 import '../models/member_presence.dart';
 import '../models/team_config.dart';
-import '../services/chat/session/member_presence_service.dart';
+import '../services/chat/runtime/member_presence_service.dart';
 import '../services/storage/home_storage.dart';
 import '../services/terminal/terminal_session.dart';
 

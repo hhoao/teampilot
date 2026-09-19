@@ -11,7 +11,7 @@ import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_gateway.da
 import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_handler.dart';
 import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 
-import '../team_bus/support/fake_member_launcher.dart';
+import '../chat/team_bus/support/fake_member_launcher.dart';
 
 void main() {
   setUpAll(() {

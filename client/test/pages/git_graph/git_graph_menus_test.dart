@@ -110,9 +110,12 @@ void main() {
     tester,
   ) async {
     final actions = RecordingGraphActions();
-    final row = graphCommitRow('c1', refs: const [
-      GitRefDecoration(GitRefDecorationKind.localBranch, 'feature'),
-    ]);
+    final row = graphCommitRow(
+      'c1',
+      refs: const [
+        GitRefDecoration(GitRefDecorationKind.localBranch, 'feature'),
+      ],
+    );
     await _pumpMenuHost(tester, actions, row);
     await tester.tap(find.text('Delete branch feature'));
     await tester.pumpAndSettle();
@@ -126,9 +129,12 @@ void main() {
     tester,
   ) async {
     final actions = RecordingGraphActions();
-    final row = graphCommitRow('c1', refs: const [
-      GitRefDecoration(GitRefDecorationKind.localBranch, 'feature'),
-    ]);
+    final row = graphCommitRow(
+      'c1',
+      refs: const [
+        GitRefDecoration(GitRefDecorationKind.localBranch, 'feature'),
+      ],
+    );
     await _pumpMenuHost(tester, actions, row);
     await tester.tap(find.text('Rename branch…'));
     await tester.pumpAndSettle();
@@ -146,9 +152,10 @@ void main() {
     tester,
   ) async {
     final actions = RecordingGraphActions();
-    final row = graphCommitRow('c1', refs: const [
-      GitRefDecoration(GitRefDecorationKind.tag, 'v1.0'),
-    ]);
+    final row = graphCommitRow(
+      'c1',
+      refs: const [GitRefDecoration(GitRefDecorationKind.tag, 'v1.0')],
+    );
     await _pumpMenuHost(tester, actions, row);
     await tester.tap(find.text('Push tag v1.0'));
     await tester.pumpAndSettle();
@@ -188,42 +195,45 @@ void main() {
     expect(find.text('Show Diff with Working Tree'), findsNothing);
   });
 
-  testWidgets('compare with working tree uses commit hash even when row has a branch', (
-    tester,
-  ) async {
-    final workbench = WorkbenchCubit();
-    final floating = FloatingWorkspaceCubit();
-    addTearDown(workbench.close);
-    addTearDown(floating.close);
+  testWidgets(
+    'compare with working tree uses commit hash even when row has a branch',
+    (tester) async {
+      final workbench = WorkbenchCubit();
+      final floating = FloatingWorkspaceCubit();
+      addTearDown(workbench.close);
+      addTearDown(floating.close);
 
-    final actions = RecordingGraphActions();
-    final row = graphCommitRow(
-      'abcdef1234567890',
-      refs: const [
-        GitRefDecoration(GitRefDecorationKind.localBranch, 'main'),
-      ],
-    );
-    await _pumpCompareMenuHost(
-      tester,
-      actions,
-      row,
-      workbench,
-      floating,
-      historyRows: [row],
-    );
-    await tester.tap(find.text('Compare with…'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Working Tree (main)'));
-    await tester.pumpAndSettle();
+      final actions = RecordingGraphActions();
+      final row = graphCommitRow(
+        'abcdef1234567890',
+        refs: const [
+          GitRefDecoration(GitRefDecorationKind.localBranch, 'main'),
+        ],
+      );
+      await _pumpCompareMenuHost(
+        tester,
+        actions,
+        row,
+        workbench,
+        floating,
+        historyRows: [row],
+      );
+      await tester.tap(find.text('Compare with…'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Working Tree (main)'));
+      await tester.pumpAndSettle();
 
-    final tabId = workbench.mergedFloatingStrip('ws').order
-        .firstWhere((t) => t.kind == WorkbenchTabKind.gitCompare)
-        .id;
-    final spec = GitCompareSpec.tryParseTabId(tabId);
-    expect(spec?.repoRoot, '/repo');
-    expect(spec?.left, const GitCompareRef('abcdef1234567890'));
-    expect(spec?.right, const GitCompareWorkingTree());
-  });
+      final tabId = workbench
+          .mergedFloatingStrip('ws')
+          .order
+          .firstWhere((t) => t.kind == WorkbenchTabKind.gitCompare)
+          .id;
+      final spec = GitCompareSpec.tryParseTabId(tabId);
+      expect(spec?.repoRoot, '/repo');
+      expect(spec?.left, const GitCompareRef('abcdef1234567890'));
+      expect(spec?.right, const GitCompareWorkingTree());
+    },
+  );
 
   testWidgets('compare with another loaded commit uses both hashes', (
     tester,
@@ -249,7 +259,9 @@ void main() {
     await tester.tap(find.text('bbbbbbbb ${right.subject}'));
     await tester.pumpAndSettle();
 
-    final tabId = workbench.mergedFloatingStrip('ws').order
+    final tabId = workbench
+        .mergedFloatingStrip('ws')
+        .order
         .firstWhere((t) => t.kind == WorkbenchTabKind.gitCompare)
         .id;
     final spec = GitCompareSpec.tryParseTabId(tabId);
@@ -278,10 +290,7 @@ void main() {
     await tester.tap(find.text('Compare with…'));
     await tester.pumpAndSettle();
     final item = tester.widget<TpActionMenuItem>(
-      find.widgetWithText(
-        TpActionMenuItem,
-        'aaaaaaaa ${row.subject}',
-      ),
+      find.widgetWithText(TpActionMenuItem, 'aaaaaaaa ${row.subject}'),
     );
     expect(item.enabled, isFalse);
   });

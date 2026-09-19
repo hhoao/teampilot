@@ -3,7 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/history/ai_history_capability.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/tool_call_resolvers.dart';
 
-AiToolCallPart part(String name, {String? argsText, Map<String, Object?>? args}) {
+AiToolCallPart part(
+  String name, {
+  String? argsText,
+  Map<String, Object?>? args,
+}) {
   return AiToolCallPart(
     toolCallId: 'call_1',
     toolName: name,
@@ -20,22 +24,18 @@ void main() {
     // chat-shell-missing-result.jsonl Shell{command,description}——description
     // 是 CursorTerminalToolResultEnricher tier1 匹配（description==title）的前提。
     test('Shell{command, description} 解析出命令与描述', () {
-      final target = cursor.shellResolver.resolve(part(
-        'Shell',
-        args: {
-          'command': 'pwd',
-          'description': 'pwd',
-        },
-      ));
+      final target = cursor.shellResolver.resolve(
+        part('Shell', args: {'command': 'pwd', 'description': 'pwd'}),
+      );
       expect(target, isNotNull);
       expect(target!.command, 'pwd');
       expect(target.description, 'pwd');
     });
 
-    test('execute 别名解析出命令（cursor 专属覆写，spl@93c9991 快照未见，前瞻条目）',
-        () {
-      final target =
-          cursor.shellResolver.resolve(part('execute', args: {'command': 'ls'}));
+    test('execute 别名解析出命令（cursor 专属覆写，spl@93c9991 快照未见，前瞻条目）', () {
+      final target = cursor.shellResolver.resolve(
+        part('execute', args: {'command': 'ls'}),
+      );
       expect(target, isNotNull);
       expect(target!.command, 'ls');
     });
@@ -49,16 +49,19 @@ void main() {
         'exec_command',
         'run_shell_command',
       ]) {
-        final target =
-            cursor.shellResolver.resolve(part(name, args: {'command': 'pwd'}));
+        final target = cursor.shellResolver.resolve(
+          part(name, args: {'command': 'pwd'}),
+        );
         expect(target, isNotNull, reason: '$name 应可解析');
         expect(target!.command, 'pwd');
       }
     });
 
     test('非 shell 工具不误命中 shell 解析器', () {
-      expect(cursor.shellResolver.resolve(part('Read', args: {'path': 'a.txt'})),
-          isNull);
+      expect(
+        cursor.shellResolver.resolve(part('Read', args: {'path': 'a.txt'})),
+        isNull,
+      );
     });
   });
 
@@ -70,87 +73,117 @@ void main() {
     // contents}，`file_path` / `content` 零命中。resolver 已追加真实键
     // （保留共享键追加语义）。
     test('真实键形 StrReplace{path, old_string, new_string} 解析出 hunk', () {
-      final target = cursor.editResolver.resolve(part(
-        'StrReplace',
-        args: {
-          'path': '/home/x/a.txt',
-          'old_string': 'foo',
-          'new_string': 'bar',
-        },
-      ));
-      expect(target, isNotNull, reason: 'StrReplace 真实键形应经 str-replace codec 解析');
+      final target = cursor.editResolver.resolve(
+        part(
+          'StrReplace',
+          args: {
+            'path': '/home/x/a.txt',
+            'old_string': 'foo',
+            'new_string': 'bar',
+          },
+        ),
+      );
+      expect(
+        target,
+        isNotNull,
+        reason: 'StrReplace 真实键形应经 str-replace codec 解析',
+      );
       expect(target!.hunk.path, '/home/x/a.txt');
-      expect(target.hunk.lines.firstWhere((l) => l.kind == AiEditLineKind.remove).text, 'foo');
-      expect(target.hunk.lines.firstWhere((l) => l.kind == AiEditLineKind.add).text, 'bar');
+      expect(
+        target.hunk.lines
+            .firstWhere((l) => l.kind == AiEditLineKind.remove)
+            .text,
+        'foo',
+      );
+      expect(
+        target.hunk.lines.firstWhere((l) => l.kind == AiEditLineKind.add).text,
+        'bar',
+      );
     });
 
     test('真实键形 Write{path, contents} 解析出 hunk', () {
-      final target = cursor.editResolver.resolve(part(
-        'Write',
-        args: {
-          'path': '/home/x/new.txt',
-          'contents': 'line1\nline2',
-        },
-      ));
+      final target = cursor.editResolver.resolve(
+        part(
+          'Write',
+          args: {'path': '/home/x/new.txt', 'contents': 'line1\nline2'},
+        ),
+      );
       expect(target, isNotNull, reason: 'Write 真实键形应经 write codec 解析');
       expect(target!.hunk.path, '/home/x/new.txt');
       expect(target.hunk.addedCount, 2);
     });
 
     test('ApplyPatch FREEFORM 字符串 input 解析出 hunk（本机实测 76 次）', () {
-      final target = cursor.editResolver.resolve(part(
-        'ApplyPatch',
-        argsText: '''*** Begin Patch
+      final target = cursor.editResolver.resolve(
+        part(
+          'ApplyPatch',
+          argsText: '''*** Begin Patch
 *** Update File: lib/foo.dart
 @@ -1,2 +1,3 @@
 -removed
 +added
 *** End Patch''',
-      ));
-      expect(target, isNotNull, reason: 'ApplyPatch 字符串应经 shared diff codec freeform 解析');
+        ),
+      );
+      expect(
+        target,
+        isNotNull,
+        reason: 'ApplyPatch 字符串应经 shared diff codec freeform 解析',
+      );
       expect(target!.hunk.path, 'lib/foo.dart');
       expect(target.hunk.addedCount, 1);
       expect(target.hunk.removedCount, 1);
     });
 
     test('StrReplace{file_path, old_string, new_string} 解析出 hunk', () {
-      final target = cursor.editResolver.resolve(part(
-        'StrReplace',
-        args: {
-          'file_path': 'a.txt',
-          'old_string': 'foo',
-          'new_string': 'bar',
-        },
-      ));
+      final target = cursor.editResolver.resolve(
+        part(
+          'StrReplace',
+          args: {
+            'file_path': 'a.txt',
+            'old_string': 'foo',
+            'new_string': 'bar',
+          },
+        ),
+      );
       expect(target, isNotNull, reason: 'StrReplace 应经共享 str-replace codec 解析');
       expect(target!.hunk.path, 'a.txt');
-      expect(target.hunk.lines.firstWhere((l) => l.kind == AiEditLineKind.remove).text, 'foo');
-      expect(target.hunk.lines.firstWhere((l) => l.kind == AiEditLineKind.add).text, 'bar');
+      expect(
+        target.hunk.lines
+            .firstWhere((l) => l.kind == AiEditLineKind.remove)
+            .text,
+        'foo',
+      );
+      expect(
+        target.hunk.lines.firstWhere((l) => l.kind == AiEditLineKind.add).text,
+        'bar',
+      );
     });
 
     test('StrReplace 带 replace_all 参数仍可解析（spl:cursor.md:244-245 散文 key）', () {
-      final target = cursor.editResolver.resolve(part(
-        'StrReplace',
-        args: {
-          'file_path': 'a.txt',
-          'old_string': 'foo',
-          'new_string': 'bar',
-          'replace_all': true,
-        },
-      ));
+      final target = cursor.editResolver.resolve(
+        part(
+          'StrReplace',
+          args: {
+            'file_path': 'a.txt',
+            'old_string': 'foo',
+            'new_string': 'bar',
+            'replace_all': true,
+          },
+        ),
+      );
       expect(target, isNotNull);
       expect(target!.hunk.addedCount, 1);
       expect(target.hunk.removedCount, 1);
     });
 
     test('EditNotebook{notebook_path, new_source} 解析出 hunk（Task 2 共享键集）', () {
-      final target = cursor.editResolver.resolve(part(
-        'EditNotebook',
-        args: {
-          'notebook_path': '/tmp/demo.ipynb',
-          'new_source': 'print(1)',
-        },
-      ));
+      final target = cursor.editResolver.resolve(
+        part(
+          'EditNotebook',
+          args: {'notebook_path': '/tmp/demo.ipynb', 'new_source': 'print(1)'},
+        ),
+      );
       expect(target, isNotNull);
       expect(target!.hunk.path, '/tmp/demo.ipynb');
       expect(target.hunk.addedCount, 1);
@@ -158,24 +191,21 @@ void main() {
     });
 
     test('Write{file_path, content} 解析出 hunk', () {
-      final target = cursor.editResolver.resolve(part(
-        'Write',
-        args: {
-          'file_path': 'new.txt',
-          'content': 'line1\nline2',
-        },
-      ));
+      final target = cursor.editResolver.resolve(
+        part(
+          'Write',
+          args: {'file_path': 'new.txt', 'content': 'line1\nline2'},
+        ),
+      );
       expect(target, isNotNull);
       expect(target!.hunk.path, 'new.txt');
       expect(target.hunk.addedCount, 2);
     });
 
-    test('Read{path} 解析出文件目标（夹具实测 key，agent_transcript_no_tool_id.jsonl）',
-        () {
-      final target = cursor.fileResolver.resolve(part(
-        'Read',
-        args: {'path': '/tmp/demo/SKILL.md'},
-      ));
+    test('Read{path} 解析出文件目标（夹具实测 key，agent_transcript_no_tool_id.jsonl）', () {
+      final target = cursor.fileResolver.resolve(
+        part('Read', args: {'path': '/tmp/demo/SKILL.md'}),
+      );
       expect(target, isNotNull);
       expect(target!.path, '/tmp/demo/SKILL.md');
     });
@@ -189,29 +219,31 @@ void main() {
       );
     });
 
-    test('已覆盖工具不回归：TodoWrite→task、WebSearch/WebFetch→search、Glob/Grep→read',
-        () {
-      expect(
-        cursor.categoryResolver.resolve(part('TodoWrite', args: {})),
-        AiToolCallCategory.task,
-      );
-      expect(
-        cursor.categoryResolver.resolve(part('WebSearch', args: {})),
-        AiToolCallCategory.search,
-      );
-      expect(
-        cursor.categoryResolver.resolve(part('WebFetch', args: {})),
-        AiToolCallCategory.search,
-      );
-      expect(
-        cursor.categoryResolver.resolve(part('Glob', args: {})),
-        AiToolCallCategory.read,
-      );
-      expect(
-        cursor.categoryResolver.resolve(part('Grep', args: {})),
-        AiToolCallCategory.read,
-      );
-    });
+    test(
+      '已覆盖工具不回归：TodoWrite→task、WebSearch/WebFetch→search、Glob/Grep→read',
+      () {
+        expect(
+          cursor.categoryResolver.resolve(part('TodoWrite', args: {})),
+          AiToolCallCategory.task,
+        );
+        expect(
+          cursor.categoryResolver.resolve(part('WebSearch', args: {})),
+          AiToolCallCategory.search,
+        );
+        expect(
+          cursor.categoryResolver.resolve(part('WebFetch', args: {})),
+          AiToolCallCategory.search,
+        );
+        expect(
+          cursor.categoryResolver.resolve(part('Glob', args: {})),
+          AiToolCallCategory.read,
+        );
+        expect(
+          cursor.categoryResolver.resolve(part('Grep', args: {})),
+          AiToolCallCategory.read,
+        );
+      },
+    );
 
     test('mcp__ 前缀规则生效', () {
       expect(
@@ -220,18 +252,25 @@ void main() {
       );
     });
 
-    test('SwitchMode/SemanticSearch/Delete/GenerateImage 落 other（矩阵接受差异固化）',
-        () {
-      // 矩阵 cursor Category 格：这些工具无自然类别，落 other 可显示但不细分
-      // （同 codex update_plan 先例「→other（可接受）」）；如需归类属有意变更。
-      for (final name in ['SwitchMode', 'SemanticSearch', 'Delete', 'GenerateImage']) {
-        expect(
-          cursor.categoryResolver.resolve(part(name, args: {})),
-          AiToolCallCategory.other,
-          reason: '$name 应落 other（接受差异）',
-        );
-      }
-    });
+    test(
+      'SwitchMode/SemanticSearch/Delete/GenerateImage 落 other（矩阵接受差异固化）',
+      () {
+        // 矩阵 cursor Category 格：这些工具无自然类别，落 other 可显示但不细分
+        // （同 codex update_plan 先例「→other（可接受）」）；如需归类属有意变更。
+        for (final name in [
+          'SwitchMode',
+          'SemanticSearch',
+          'Delete',
+          'GenerateImage',
+        ]) {
+          expect(
+            cursor.categoryResolver.resolve(part(name, args: {})),
+            AiToolCallCategory.other,
+            reason: '$name 应落 other（接受差异）',
+          );
+        }
+      },
+    );
   });
 
   group('生效映射集精确钉死（Task 2 审计补齐）', () {
@@ -240,18 +279,19 @@ void main() {
     // newString）不得泄漏进 cursor。
     test('opencode camelCase 键在 cursor 不解析（StrReplace/Write/Read）', () {
       expect(
-        cursor.editResolver.resolve(part(
-          'StrReplace',
-          args: {'filePath': 'a.txt', 'oldString': 'x', 'newString': 'y'},
-        )),
+        cursor.editResolver.resolve(
+          part(
+            'StrReplace',
+            args: {'filePath': 'a.txt', 'oldString': 'x', 'newString': 'y'},
+          ),
+        ),
         isNull,
         reason: 'filePath/oldString/newString 为 opencode 特有 camelCase',
       );
       expect(
-        cursor.editResolver.resolve(part(
-          'Write',
-          args: {'filePath': 'a.txt', 'content': 'c'},
-        )),
+        cursor.editResolver.resolve(
+          part('Write', args: {'filePath': 'a.txt', 'content': 'c'}),
+        ),
         isNull,
         reason: 'Write 的 filePath 不在 cursor 生效键集（file_path/path）',
       );
@@ -272,8 +312,9 @@ void main() {
         'exec_command',
         'run_shell_command',
       ]) {
-        final target =
-            cursor.shellResolver.resolve(part(name, args: {'command': 'pwd'}));
+        final target = cursor.shellResolver.resolve(
+          part(name, args: {'command': 'pwd'}),
+        );
         expect(target, isNotNull, reason: '$name 应在 cursor 生效集');
         expect(target!.command, 'pwd');
       }

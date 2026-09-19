@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:ai_message_core/ai_message_core.dart';
 
 import '../../../../../utils/logging/logger.dart';
-import '../../../../chat/session/history/session_history_context.dart';
+import '../../../../chat/conversation/history/session_history_context.dart';
 import '../../../registry/capabilities/history/tool_result_enricher.dart';
 
 const _truncationSentinel = 'tool output truncated';

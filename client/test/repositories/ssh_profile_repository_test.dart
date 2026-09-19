@@ -54,7 +54,10 @@ void main() {
       AppPathsBootstrapper.resetForTesting();
     });
 
-    final repo = SshProfileRepository(rootDir: pinnedRoot.path, storage: fakeHomeStorage(), );
+    final repo = SshProfileRepository(
+      rootDir: pinnedRoot.path,
+      storage: fakeHomeStorage(),
+    );
     await repo.save(
       const SshProfile(
         id: 'p1',
@@ -69,19 +72,22 @@ void main() {
     expect(await repo.loadAll(), hasLength(1));
     expect((await repo.loadAll()).single.name, 'Pinned');
   });
-  test('a dropped transport fails loud instead of reporting no profiles', () async {
-    final fs = _TransportFailingFilesystem();
-    final repo = SshProfileRepository(
-      rootDir: '/tp',
-      storage: HomeStorage.forTesting(
-        filesystem: fs,
-        paths: const AppPaths('/tp'),
-      ),
-    );
+  test(
+    'a dropped transport fails loud instead of reporting no profiles',
+    () async {
+      final fs = _TransportFailingFilesystem();
+      final repo = SshProfileRepository(
+        rootDir: '/tp',
+        storage: HomeStorage.forTesting(
+          filesystem: fs,
+          paths: const AppPaths('/tp'),
+        ),
+      );
 
-    // The file exists; reading it hits a closed SFTP channel.
-    await expectLater(repo.loadAll(), throwsA(isA<StateError>()));
-  });
+      // The file exists; reading it hits a closed SFTP channel.
+      await expectLater(repo.loadAll(), throwsA(isA<StateError>()));
+    },
+  );
 
   test('corrupt profile JSON still degrades to an empty list', () async {
     final fs = InMemoryFilesystem();
@@ -108,4 +114,3 @@ class _TransportFailingFilesystem extends InMemoryFilesystem {
   Future<String?> readString(String path) async =>
       throw StateError('SSH client closed');
 }
-

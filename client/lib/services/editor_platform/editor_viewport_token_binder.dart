@@ -18,8 +18,8 @@ class EditorViewportTokenBinder {
   EditorViewportTokenBinder({
     required DocumentSession session,
     required CodeIndicatorValueNotifier notifier,
-  })  : _session = session,
-        _notifier = notifier {
+  }) : _session = session,
+       _notifier = notifier {
     _notifier.addListener(_onIndicatorChanged);
     _onIndicatorChanged();
   }

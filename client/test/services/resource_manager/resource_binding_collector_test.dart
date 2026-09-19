@@ -3,11 +3,7 @@ import 'package:teampilot/models/git_worktree.dart';
 import 'package:teampilot/services/resource_manager/resource_binding.dart';
 import 'package:teampilot/services/resource_manager/resource_binding_collector.dart';
 
-GitWorktree _wt(
-  String path, {
-  bool main = false,
-  String? branch,
-}) =>
+GitWorktree _wt(String path, {bool main = false, String? branch}) =>
     GitWorktree(
       path: path,
       branch: branch ?? 'refs/heads/${path.split('/').last}',

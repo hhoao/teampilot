@@ -84,11 +84,11 @@ void main() {
 
     test('authDir is the parent of authJson on every platform', () {
       for (final platform in CursorHomePlatform.values) {
-        final layout = CursorHomeLayout(
-          pathContext: posix,
-          platform: platform,
+        final layout = CursorHomeLayout(pathContext: posix, platform: platform);
+        expect(
+          posix.dirname(layout.authJson(homeRoot)),
+          layout.authDir(homeRoot),
         );
-        expect(posix.dirname(layout.authJson(homeRoot)), layout.authDir(homeRoot));
       }
     });
 
@@ -286,10 +286,7 @@ void main() {
     });
 
     test('CursorHomePlatform.resolve maps windows path style to windows', () {
-      expect(
-        CursorHomePlatform.resolve(windows),
-        CursorHomePlatform.windows,
-      );
+      expect(CursorHomePlatform.resolve(windows), CursorHomePlatform.windows);
     });
   });
 }

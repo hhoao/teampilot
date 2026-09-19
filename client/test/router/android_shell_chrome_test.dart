@@ -6,7 +6,10 @@ void main() {
     test('treats library section paths as hub detail', () {
       expect(AndroidShellChrome.isHubDetailPath('/skills/installed'), isTrue);
       expect(AndroidShellChrome.isHubDetailPath('/plugins/installed'), isTrue);
-      expect(AndroidShellChrome.isHubDetailPath('/extensions/installed'), isTrue);
+      expect(
+        AndroidShellChrome.isHubDetailPath('/extensions/installed'),
+        isTrue,
+      );
       expect(AndroidShellChrome.isHubDetailPath('/mcp/discovery'), isTrue);
     });
 
@@ -24,16 +27,37 @@ void main() {
   group('isLibrarySectionPath', () {
     test('includes library roots and section paths', () {
       expect(AndroidShellChrome.isLibrarySectionPath('/skills'), isTrue);
-      expect(AndroidShellChrome.isLibrarySectionPath('/skills/discovery'), isTrue);
-      expect(AndroidShellChrome.isLibrarySectionPath('/plugins/marketplaces'), isTrue);
-      expect(AndroidShellChrome.isLibrarySectionPath('/extensions/installed'), isTrue);
-      expect(AndroidShellChrome.isLibrarySectionPath('/mcp/registries'), isTrue);
+      expect(
+        AndroidShellChrome.isLibrarySectionPath('/skills/discovery'),
+        isTrue,
+      );
+      expect(
+        AndroidShellChrome.isLibrarySectionPath('/plugins/marketplaces'),
+        isTrue,
+      );
+      expect(
+        AndroidShellChrome.isLibrarySectionPath('/extensions/installed'),
+        isTrue,
+      );
+      expect(
+        AndroidShellChrome.isLibrarySectionPath('/mcp/registries'),
+        isTrue,
+      );
     });
 
     test('excludes config and providers paths', () {
-      expect(AndroidShellChrome.isLibrarySectionPath('/config/layout'), isFalse);
-      expect(AndroidShellChrome.isLibrarySectionPath('/providers/claude'), isFalse);
-      expect(AndroidShellChrome.isLibrarySectionPath('/team-config/mcp'), isFalse);
+      expect(
+        AndroidShellChrome.isLibrarySectionPath('/config/layout'),
+        isFalse,
+      );
+      expect(
+        AndroidShellChrome.isLibrarySectionPath('/providers/claude'),
+        isFalse,
+      );
+      expect(
+        AndroidShellChrome.isLibrarySectionPath('/team-config/mcp'),
+        isFalse,
+      );
     });
   });
 }

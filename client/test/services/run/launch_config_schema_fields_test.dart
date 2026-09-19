@@ -23,7 +23,10 @@ void main() {
     expect(byKey['execute']!.enumValues, ['scriptFile', 'scriptText']);
     expect(byKey['scriptPath']!.type, LaunchConfigSchemaFieldType.string);
     expect(byKey['interpreterPath']!.type, LaunchConfigSchemaFieldType.string);
-    expect(byKey['executeInTerminal']!.type, LaunchConfigSchemaFieldType.boolean);
+    expect(
+      byKey['executeInTerminal']!.type,
+      LaunchConfigSchemaFieldType.boolean,
+    );
   });
 
   test('parseArgsText splits on whitespace', () {

@@ -90,8 +90,9 @@ RemoteDownloadSettingsStore deviceLocalRemoteDownloadSettingsStore(
 /// (SFTP), so a cache under it costs a network round trip per read —
 /// defeating itself.
 String deviceLocalCatalogCacheRoot(String nativeAppDataPath) =>
-    AppPaths.pathContextForDataRoot(nativeAppDataPath)
-        .join(nativeAppDataPath, 'catalog-cache');
+    AppPaths.pathContextForDataRoot(
+      nativeAppDataPath,
+    ).join(nativeAppDataPath, 'catalog-cache');
 
 /// Device-local `LocalFilesystem` pinned to the native app-data path context.
 LocalFilesystem deviceLocalCatalogCacheFilesystem(String nativeAppDataPath) =>
@@ -106,8 +107,7 @@ LocalFilesystem deviceLocalCatalogCacheFilesystem(String nativeAppDataPath) =>
 RemoteCliPathCache deviceLocalRemoteCliPathCache(String nativeAppDataPath) =>
     RemoteCliPathCache(
       fs: deviceLocalCatalogCacheFilesystem(nativeAppDataPath),
-      filePath: AppPaths.pathContextForDataRoot(nativeAppDataPath).join(
+      filePath: AppPaths.pathContextForDataRoot(
         nativeAppDataPath,
-        'remote-cli-paths.json',
-      ),
+      ).join(nativeAppDataPath, 'remote-cli-paths.json'),
     );

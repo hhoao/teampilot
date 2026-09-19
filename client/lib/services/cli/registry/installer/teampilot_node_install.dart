@@ -176,7 +176,8 @@ final class TeampilotNodeInstall {
     required String package,
   }) {
     final npm = CliToolLocator.resolveSpawnExecutable(npmPath);
-    if (!CliInstallerCommand.needsUnixShellInvocation(npm) && npm.contains('/')) {
+    if (!CliInstallerCommand.needsUnixShellInvocation(npm) &&
+        npm.contains('/')) {
       return CliInstallerCommand(npm, ['install', '-g', package]);
     }
     if (CliInstallerCommand.needsUnixShellInvocation(npm)) {

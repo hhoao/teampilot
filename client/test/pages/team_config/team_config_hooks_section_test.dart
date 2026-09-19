@@ -16,12 +16,14 @@ void main() {
   ) async {
     final fs = InMemoryFilesystem();
     final repository = HookRepository(fs: fs, teampilotRoot: '/root');
-    await repository.save(const HookDefinition(
-      id: 'h1',
-      name: 'On start',
-      event: HookEvent.sessionStart,
-      action: CommandHookAction.raw('echo a'),
-    ));
+    await repository.save(
+      const HookDefinition(
+        id: 'h1',
+        name: 'On start',
+        event: HookEvent.sessionStart,
+        action: CommandHookAction.raw('echo a'),
+      ),
+    );
     final hookCubit = HookCubit(repository: repository)..load();
     addTearDown(hookCubit.close);
 

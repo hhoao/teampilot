@@ -7,7 +7,8 @@ import '../../support/test_runtime_context.dart';
 
 /// 记录 refresh() 调用的图 cubit 替身（不触达真实 git 服务）。
 class _SpyGraphCubit extends GitGraphCubit {
-  _SpyGraphCubit() : super(history: FakeHistoryForGraph(), git: FakeGitForGraph(repoStatus()));
+  _SpyGraphCubit()
+    : super(history: FakeHistoryForGraph(), git: FakeGitForGraph(repoStatus()));
 
   int refreshCalls = 0;
 
@@ -28,8 +29,7 @@ void main() {
     // 轮询不得为无人查看的 root 创建 graph cubit（一次图刷新约 5 个子进程）。
     store.refreshGraphs(['', '/repo-a', '/repo-b'], workContext: context);
     final cubitA =
-        store.graphCubitFor('/repo-a', workContext: context)
-            as _SpyGraphCubit;
+        store.graphCubitFor('/repo-a', workContext: context) as _SpyGraphCubit;
     // 仅 graphCubitFor 挂载预热（setRepoRoot→refresh）。
     expect(cubitA.refreshCalls, 1);
 
@@ -77,7 +77,12 @@ void main() {
     );
     addTearDown(store.dispose);
     final context = testRuntimeContext('/home');
-    created = [_SpyGraphCubit(), _SpyGraphCubit(), _SpyGraphCubit(), _SpyGraphCubit()];
+    created = [
+      _SpyGraphCubit(),
+      _SpyGraphCubit(),
+      _SpyGraphCubit(),
+      _SpyGraphCubit(),
+    ];
 
     final a = store.graphCubitFor('/a', workContext: context);
     final b = store.graphCubitFor('/b', workContext: context);
@@ -94,31 +99,34 @@ void main() {
     expect(a.isClosed, isTrue); // 移除监听后变为可淘汰
   });
 
-  test('graphCubitFor recreates after an external close of the retained cubit', () async {
-    late final List<_SpyGraphCubit> created;
-    var counter = 0;
-    final store = GitRepoStore(
-      maxRetained: 2,
-      graphCubitFactory: (root, workContext) {
-        counter++;
-        return created[counter - 1];
-      },
-    );
-    addTearDown(store.dispose);
-    final context = testRuntimeContext('/home');
-    created = [_SpyGraphCubit(), _SpyGraphCubit()];
+  test(
+    'graphCubitFor recreates after an external close of the retained cubit',
+    () async {
+      late final List<_SpyGraphCubit> created;
+      var counter = 0;
+      final store = GitRepoStore(
+        maxRetained: 2,
+        graphCubitFactory: (root, workContext) {
+          counter++;
+          return created[counter - 1];
+        },
+      );
+      addTearDown(store.dispose);
+      final context = testRuntimeContext('/home');
+      created = [_SpyGraphCubit(), _SpyGraphCubit()];
 
-    final first = store.graphCubitFor('/repo', workContext: context);
-    expect(first.isClosed, isFalse);
+      final first = store.graphCubitFor('/repo', workContext: context);
+      expect(first.isClosed, isFalse);
 
-    // 模拟外部路径（如 BlocProvider）误关了 store 保留的 cubit。
-    await first.close();
+      // 模拟外部路径（如 BlocProvider）误关了 store 保留的 cubit。
+      await first.close();
 
-    final second = store.graphCubitFor('/repo', workContext: context);
-    // 必须换新实例，而不是把 closed cubit 发给面板。
-    expect(second, isNot(same(first)));
-    expect(second.isClosed, isFalse);
-  });
+      final second = store.graphCubitFor('/repo', workContext: context);
+      // 必须换新实例，而不是把 closed cubit 发给面板。
+      expect(second, isNot(same(first)));
+      expect(second.isClosed, isFalse);
+    },
+  );
 
   test('eviction pauses entirely when every graph cubit is mounted', () {
     late final List<_SpyGraphCubit> created;
@@ -135,9 +143,13 @@ void main() {
     created = [_SpyGraphCubit(), _SpyGraphCubit()];
     void listener() {}
 
-    final a = store.graphCubitFor('/a', workContext: context)..addListener(listener);
+    final a = store.graphCubitFor('/a', workContext: context)
+      ..addListener(listener);
     // 超限时无可淘汰项：不得抛错，也不得关闭在用 cubit。
-    expect(() => store.graphCubitFor('/b', workContext: context), returnsNormally);
+    expect(
+      () => store.graphCubitFor('/b', workContext: context),
+      returnsNormally,
+    );
     expect(a.isClosed, isFalse);
   });
 }

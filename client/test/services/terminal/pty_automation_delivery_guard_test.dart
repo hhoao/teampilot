@@ -3,9 +3,9 @@ import 'package:teampilot/services/chat/team_bus/agent_node.dart';
 import 'package:teampilot/services/chat/team_bus/mailbox_delivery.dart';
 import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 import 'package:teampilot/services/chat/team_bus/team_message.dart';
-import 'package:teampilot/services/chat/terminal/pty_automation_delivery_guard.dart';
+import 'package:teampilot/services/chat/runtime/pty/pty_automation_delivery_guard.dart';
 
-import '../team_bus/support/fake_member_launcher.dart';
+import '../chat/team_bus/support/fake_member_launcher.dart';
 
 void main() {
   group('PtyAutomationDeliveryGuard', () {

@@ -51,7 +51,7 @@ void main() {
       fs: fs,
       basePath: base,
       resolveHomeDirectory: () => home,
-                                                storage: fakeHomeStorage(filesystem: fs),
+      storage: fakeHomeStorage(filesystem: fs),
     );
   });
 
@@ -372,12 +372,13 @@ void main() {
       resolveClaudeExecutable: () => preferencePath,
       resolveHomeDirectory: () => home,
       hostRunner: ProviderCredentialHostRunner(
-        oneShot: () => throw StateError('one-shot should not be called for login'),
+        oneShot: () =>
+            throw StateError('one-shot should not be called for login'),
         streaming: () => _CapturingStreamingStarter((request) {
           capturedRequest = request;
         }),
       ),
-                                                         storage: fakeHomeStorage(filesystem: fs),
+      storage: fakeHomeStorage(filesystem: fs),
     );
 
     final loginResult = await wslService.runAuthLogin(
@@ -391,7 +392,10 @@ void main() {
     // Native Windows keeps wsl.exe; WSL/SSH home unwraps to the Linux binary.
     expect(
       capturedRequest!.executable,
-      CredentialHostRequest.hostExecutable(preferencePath, storage: fakeHomeStorage(), ),
+      CredentialHostRequest.hostExecutable(
+        preferencePath,
+        storage: fakeHomeStorage(),
+      ),
     );
     expect(
       capturedRequest!.arguments,
@@ -408,12 +412,13 @@ void main() {
       fs: fs,
       basePath: base,
       hostRunner: ProviderCredentialHostRunner(
-        oneShot: () => throw StateError('one-shot should not be called for login'),
+        oneShot: () =>
+            throw StateError('one-shot should not be called for login'),
         streaming: () => _CapturingStreamingStarter((request) {
           capturedRequest = request;
         }),
       ),
-                                                            storage: fakeHomeStorage(filesystem: fs),
+      storage: fakeHomeStorage(filesystem: fs),
     );
 
     await nativeService.runAuthLogin(

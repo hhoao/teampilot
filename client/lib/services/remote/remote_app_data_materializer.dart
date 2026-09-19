@@ -3,8 +3,6 @@ import '../cli/registry/cli_tool_registry.dart';
 import '../../models/team_config.dart';
 import '../../utils/logging/logger.dart';
 import '../io/filesystem.dart';
-import '../cli/opencode/provider/opencode_shared_plugin_deps.dart';
-import '../storage/runtime_layout.dart';
 import 'materialization_manifest.dart';
 import 'remote_credential_materializer.dart';
 import 'work_machine_materializer.dart';
@@ -125,11 +123,7 @@ class RemoteAppDataMaterializer {
     }
     if (provisionRelay != null) {
       step('provision-relay begin');
-      await provisionRelay!(
-        workFs: workFs,
-        machineRoot: machineRoot,
-        cli: cli,
-      );
+      await provisionRelay!(workFs: workFs, machineRoot: machineRoot, cli: cli);
       step('provision-relay done');
     }
 

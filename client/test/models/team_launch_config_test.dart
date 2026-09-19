@@ -17,7 +17,9 @@ void main() {
     test('custom when activePresetId is null, empty, or whitespace', () {
       expect(teamLaunchShape(baseTeam), TeamLaunchShape.custom);
       expect(
-        teamLaunchShape(const TeamProfile(id: 't', name: 'T', activePresetId: '')),
+        teamLaunchShape(
+          const TeamProfile(id: 't', name: 'T', activePresetId: ''),
+        ),
         TeamLaunchShape.custom,
       );
       expect(
@@ -116,7 +118,10 @@ void main() {
     });
 
     test('optional syncCli updates team cli', () {
-      final preset = baseTeam.asPresetLaunch('deepseek', syncCli: CliTool.codex);
+      final preset = baseTeam.asPresetLaunch(
+        'deepseek',
+        syncCli: CliTool.codex,
+      );
       expect(preset.cli, CliTool.codex);
     });
   });
@@ -167,10 +172,7 @@ void main() {
         'codex': 'gpt-5',
         'claude': 'deepseek-chat',
       });
-      expect(custom.cliEffortLevels, {
-        'codex': 'high',
-        'claude': 'low',
-      });
+      expect(custom.cliEffortLevels, {'codex': 'high', 'claude': 'low'});
     });
   });
 }

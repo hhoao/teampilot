@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/model/chat_tab.dart';
-import 'package:teampilot/services/chat/model/chat_tab_info.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
+import 'package:teampilot/services/chat/session/chat_tab_info.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -8,7 +8,7 @@ import 'package:teampilot/services/chat/session/session_working_resolver.dart';
 import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
-import '../team_bus/support/fake_member_launcher.dart';
+import '../chat/team_bus/support/fake_member_launcher.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {

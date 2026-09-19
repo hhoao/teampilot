@@ -278,10 +278,10 @@ final class TeamGenerationSettings {
       normalizedPool,
     );
     if (schemaVersion == 1 &&
-        teamMode == this.teamMode &&
-        nativeCli == this.nativeCli &&
-        retainBuilderSession == this.retainBuilderSession &&
-        minimumMemberCount == this.minimumMemberCount &&
+        teamMode == teamMode &&
+        nativeCli == nativeCli &&
+        retainBuilderSession == retainBuilderSession &&
+        minimumMemberCount == minimumMemberCount &&
         _sameList(modelPool, immutablePool)) {
       return this;
     }

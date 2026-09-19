@@ -71,22 +71,24 @@ class MultiRootContentSearch {
       final runner = _runnerFactory(slice);
       _runners.add(runner);
       _subscriptions.add(
-        runner.run(options).listen(
-          (match) {
-            if (!_cancelled) {
-              master.add(MultiRootSearchEvent.match(slice, match));
-            }
-          },
-          onError: (Object e) {
-            if (!_cancelled) {
-              master.add(MultiRootSearchEvent.error(slice, e));
-            }
-          },
-          onDone: () {
-            if (_cancelled) return;
-            if (--pending == 0) master.close();
-          },
-        ),
+        runner
+            .run(options)
+            .listen(
+              (match) {
+                if (!_cancelled) {
+                  master.add(MultiRootSearchEvent.match(slice, match));
+                }
+              },
+              onError: (Object e) {
+                if (!_cancelled) {
+                  master.add(MultiRootSearchEvent.error(slice, e));
+                }
+              },
+              onDone: () {
+                if (_cancelled) return;
+                if (--pending == 0) master.close();
+              },
+            ),
       );
     }
     return master.stream;

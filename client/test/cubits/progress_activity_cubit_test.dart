@@ -51,12 +51,8 @@ void main() {
       final cubit = _cubit(recorder);
       addTearDown(cubit.close);
 
-      cubit.start(
-        _activity(id: 'b', createdAt: DateTime(2026, 7, 30, 12, 1)),
-      );
-      cubit.start(
-        _activity(id: 'a', createdAt: DateTime(2026, 7, 30, 12, 0)),
-      );
+      cubit.start(_activity(id: 'b', createdAt: DateTime(2026, 7, 30, 12, 1)));
+      cubit.start(_activity(id: 'a', createdAt: DateTime(2026, 7, 30, 12, 0)));
 
       expect(cubit.state.activities.map((a) => a.id), ['a', 'b']);
     });
@@ -110,7 +106,10 @@ void main() {
       cubit.requestCancel('a');
       cubit.requestCancel('a');
 
-      expect(cubit.state.activities.single.phase, ProgressActivityPhase.cancelling);
+      expect(
+        cubit.state.activities.single.phase,
+        ProgressActivityPhase.cancelling,
+      );
       expect(cancelCount, 1);
     });
 
@@ -184,7 +183,10 @@ void main() {
       cubit.setDetailOpen('a', false);
 
       expect(cubit.state.activities.single.detailOpen, isFalse);
-      expect(cubit.state.activities.single.phase, ProgressActivityPhase.running);
+      expect(
+        cubit.state.activities.single.phase,
+        ProgressActivityPhase.running,
+      );
       expect(cancelCount, 0);
     });
 
@@ -233,7 +235,10 @@ void main() {
 
       cubit.requestCancel('update');
 
-      expect(cubit.state.activities.single.phase, ProgressActivityPhase.running);
+      expect(
+        cubit.state.activities.single.phase,
+        ProgressActivityPhase.running,
+      );
       expect(cancelCount, 0);
     });
   });

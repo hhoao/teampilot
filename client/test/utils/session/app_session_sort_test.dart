@@ -84,7 +84,10 @@ void main() {
         _session('c', createdAt: 3),
         _session('b', createdAt: 2),
       ];
-      final sorted = sortAppSessions(sessions, sort: AppSessionSort.createdDesc);
+      final sorted = sortAppSessions(
+        sessions,
+        sort: AppSessionSort.createdDesc,
+      );
       expect(_ids(sorted), ['c', 'b', 'a']);
     });
   });

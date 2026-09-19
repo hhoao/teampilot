@@ -4,7 +4,6 @@ import 'package:path/path.dart' as p;
 
 import '../../../models/skill_registry_source.dart';
 import '../../io/filesystem.dart';
-import '../../io/local_filesystem.dart';
 import '../../storage/app_paths.dart';
 import '../../storage/home_storage.dart';
 
@@ -121,11 +120,17 @@ class SkillRegistryConfigService {
     final sources = <SkillRegistrySourceConfig>[];
     for (final s in defaults.sources) {
       if (s.kind == SkillRegistryKind.gitRepo) continue;
-      sources.add(s.id == 'skillsMp' && legacyKey != null && legacyKey.trim().isNotEmpty
-          ? s.copyWith(apiToken: legacyKey.trim())
-          : s);
+      sources.add(
+        s.id == 'skillsMp' && legacyKey != null && legacyKey.trim().isNotEmpty
+            ? s.copyWith(apiToken: legacyKey.trim())
+            : s,
+      );
     }
-    sources.addAll(gitSources.isEmpty ? defaults.sources.where((s) => s.kind == SkillRegistryKind.gitRepo) : gitSources);
+    sources.addAll(
+      gitSources.isEmpty
+          ? defaults.sources.where((s) => s.kind == SkillRegistryKind.gitRepo)
+          : gitSources,
+    );
     final migrated = SkillRegistriesConfig(sources: sources);
     await save(migrated);
     return migrated;

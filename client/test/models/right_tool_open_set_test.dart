@@ -58,7 +58,10 @@ void main() {
         openIds: ['members', 'fileTree', 'mailbox'],
         selectedId: 'fileTree',
       );
-      final next = set.closed('fileTree', catalog: const ['members', 'fileTree', 'mailbox']);
+      final next = set.closed(
+        'fileTree',
+        catalog: const ['members', 'fileTree', 'mailbox'],
+      );
       expect(next.openIds, ['members', 'mailbox']);
       expect(next.dismissedIds, ['fileTree']);
       expect(next.selectedId, 'members');
@@ -69,10 +72,7 @@ void main() {
         openIds: ['members', 'fileTree'],
         selectedId: 'fileTree',
       );
-      final next = set.closed(
-        'fileTree',
-        catalog: const ['fileTree'],
-      );
+      final next = set.closed('fileTree', catalog: const ['fileTree']);
       expect(next.openIds, ['members']);
       expect(next.dismissedIds, ['fileTree']);
       expect(next.selectedId, isNull);
@@ -80,22 +80,33 @@ void main() {
     });
 
     test('selected opens if needed', () {
-      const set = RightToolOpenSet(openIds: ['fileTree'], selectedId: 'fileTree');
+      const set = RightToolOpenSet(
+        openIds: ['fileTree'],
+        selectedId: 'fileTree',
+      );
       final next = set.selected('git');
       expect(next.openIds, ['fileTree', 'git']);
       expect(next.selectedId, 'git');
     });
 
-    test('team seed appends members and mailbox when available and not dismissed', () {
-      const set = RightToolOpenSet(
-        openIds: ['fileTree'],
-        selectedId: 'fileTree',
-      );
-      final next = set.seededForTeam(const ['fileTree', 'members', 'mailbox', 'board']);
-      expect(next.openIds, ['fileTree', 'members', 'mailbox']);
-      expect(next.selectedId, 'fileTree');
-      expect(next.dismissedIds, isEmpty);
-    });
+    test(
+      'team seed appends members and mailbox when available and not dismissed',
+      () {
+        const set = RightToolOpenSet(
+          openIds: ['fileTree'],
+          selectedId: 'fileTree',
+        );
+        final next = set.seededForTeam(const [
+          'fileTree',
+          'members',
+          'mailbox',
+          'board',
+        ]);
+        expect(next.openIds, ['fileTree', 'members', 'mailbox']);
+        expect(next.selectedId, 'fileTree');
+        expect(next.dismissedIds, isEmpty);
+      },
+    );
 
     test('team seed skips mailbox when it is not in the catalog', () {
       const set = RightToolOpenSet();
@@ -130,9 +141,11 @@ void main() {
     });
 
     test('team seed does not add board', () {
-      final next = const RightToolOpenSet().seededForTeam(
-        const ['members', 'mailbox', 'board'],
-      );
+      final next = const RightToolOpenSet().seededForTeam(const [
+        'members',
+        'mailbox',
+        'board',
+      ]);
       expect(next.openIds, isNot(contains('board')));
     });
 

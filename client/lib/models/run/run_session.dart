@@ -3,12 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'launch_configuration.dart';
 
 /// Lifecycle state for a workspace run session.
-enum RunSessionStatus {
-  starting,
-  running,
-  exited,
-  failed,
-}
+enum RunSessionStatus { starting, running, exited, failed }
 
 /// Runtime state for one launched configuration.
 @immutable

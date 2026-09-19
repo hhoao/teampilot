@@ -22,8 +22,10 @@ abstract final class CodexProjectTrustToml {
     final seen = <String>{};
 
     for (final directory in directories) {
-      for (final path
-          in workspaceMetadataKeys(directory, usesPosixPaths: usesPosixPaths)) {
+      for (final path in workspaceMetadataKeys(
+        directory,
+        usesPosixPaths: usesPosixPaths,
+      )) {
         if (!seen.add(path)) continue;
         if (_isDirectoryTrusted(trimmed, path)) continue;
         blocks.add(_trustBlock(path));

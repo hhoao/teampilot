@@ -11,12 +11,12 @@ const _testNewStringKeys = ['new_string', 'new_str'];
 const _testStartLineKeys = ['start_line', 'start_line_num'];
 
 StrReplaceEditHunkCodec _testCodec() => const StrReplaceEditHunkCodec(
-      toolNames: _testToolNames,
-      pathKeys: _testPathKeys,
-      oldStringKeys: _testOldStringKeys,
-      newStringKeys: _testNewStringKeys,
-      startLineKeys: _testStartLineKeys,
-    );
+  toolNames: _testToolNames,
+  pathKeys: _testPathKeys,
+  oldStringKeys: _testOldStringKeys,
+  newStringKeys: _testNewStringKeys,
+  startLineKeys: _testStartLineKeys,
+);
 
 AiToolCallPart _makeToolCall({
   required String toolName,
@@ -168,11 +168,7 @@ void main() {
       final codec = _testCodec();
       final part = _makeToolCall(
         toolName: 'edit',
-        args: {
-          'path': '/alt/path.dart',
-          'old_string': 'a',
-          'new_string': 'b',
-        },
+        args: {'path': '/alt/path.dart', 'old_string': 'a', 'new_string': 'b'},
       );
 
       final hunk = codec.encode(part);
@@ -218,11 +214,7 @@ void main() {
       final codec = _testCodec();
       final part = _makeToolCall(
         toolName: 'edit',
-        args: {
-          'file_path': '/f.txt',
-          'old_string': 'a',
-          'new_str': 'replaced',
-        },
+        args: {'file_path': '/f.txt', 'old_string': 'a', 'new_str': 'replaced'},
       );
 
       final hunk = codec.encode(part);
@@ -250,10 +242,7 @@ void main() {
       final codec = _testCodec();
       final part = _makeToolCall(
         toolName: 'edit',
-        args: {
-          'old_string': 'a',
-          'new_string': 'b',
-        },
+        args: {'old_string': 'a', 'new_string': 'b'},
       );
 
       expect(codec.encode(part), isNull);
@@ -268,10 +257,7 @@ void main() {
       );
       final part = _makeToolCall(
         toolName: 'NotebookEdit',
-        args: {
-          'notebook_path': '/nb.ipynb',
-          'new_source': 'print(1)',
-        },
+        args: {'notebook_path': '/nb.ipynb', 'new_source': 'print(1)'},
       );
 
       final hunk = codec.encode(part);
@@ -309,10 +295,7 @@ void main() {
       final codec = _testCodec();
       final part = _makeToolCall(
         toolName: 'edit',
-        args: {
-          'file_path': '/f.txt',
-          'old_string': 'a',
-        },
+        args: {'file_path': '/f.txt', 'old_string': 'a'},
       );
 
       final hunk = codec.encode(part);
@@ -336,11 +319,7 @@ void main() {
       final codec = _testCodec();
       final part = _makeToolCall(
         toolName: 'write',
-        args: {
-          'file_path': '/f.txt',
-          'old_string': 'a',
-          'new_string': 'b',
-        },
+        args: {'file_path': '/f.txt', 'old_string': 'a', 'new_string': 'b'},
       );
 
       expect(codec.encode(part), isNull);
@@ -350,11 +329,7 @@ void main() {
       final codec = _testCodec();
       final part = _makeToolCall(
         toolName: 'edit',
-        args: {
-          'file_path': '/f.txt',
-          'old_string': '',
-          'new_string': '',
-        },
+        args: {'file_path': '/f.txt', 'old_string': '', 'new_string': ''},
       );
 
       expect(codec.encode(part), isNull);

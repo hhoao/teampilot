@@ -19,7 +19,10 @@ class SshHomeDisconnectedBanner extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final profileId = context.watch<HomeTargetController>().current.sshProfileId;
+    final profileId = context
+        .watch<HomeTargetController>()
+        .current
+        .sshProfileId;
     if (profileId == null || profileId.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -71,9 +74,9 @@ class SshHomeDisconnectedBanner extends StatelessWidget {
                 Expanded(
                   child: Text(
                     l10n.sshHomeDisconnectedBannerMessage,
-                    style: TpTextStyles.of(context).sm.copyWith(
-                      color: scheme.onErrorContainer,
-                    ),
+                    style: TpTextStyles.of(
+                      context,
+                    ).sm.copyWith(color: scheme.onErrorContainer),
                   ),
                 ),
                 SizedBox(width: tp.spacing.sm),
@@ -81,8 +84,9 @@ class SshHomeDisconnectedBanner extends StatelessWidget {
                   size: TpControlSize.small,
                   onPressed: connecting
                       ? null
-                      : () =>
-                            context.read<SshConnectionCubit>().connect(profileId),
+                      : () => context.read<SshConnectionCubit>().connect(
+                          profileId,
+                        ),
                   child: Text(
                     connecting
                         ? l10n.termuxSetupConnecting

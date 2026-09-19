@@ -4,7 +4,7 @@ import '../../../models/app_session.dart';
 import '../../../models/member_instance.dart';
 import '../../../models/team_config.dart';
 import '../../../utils/team/team_member_naming.dart';
-import '../model/session_connect_request.dart';
+import '../session/session_connect_request.dart';
 
 /// Whether Chat→Terminal should auto-connect a stopped session.
 ///

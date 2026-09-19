@@ -117,9 +117,7 @@ class HomeInvalidationService {
     _lastProfiles = List<SshProfile>.of(state.profiles);
     // M2: impact classification lives on [HomeStorageInvalidator] — the
     // single policy helper for catalog diffs.
-    switch (
-      _invalidator.impactOf(previous: previous, next: state.profiles)
-    ) {
+    switch (_invalidator.impactOf(previous: previous, next: state.profiles)) {
       case HomeSshProfileImpact.none:
         return;
       case HomeSshProfileImpact.homeConnectionChanged:
@@ -166,9 +164,7 @@ class HomeInvalidationService {
     // two rapid profile diffs delivered in back-to-back microtasks) collapses
     // into one reload call.
     _drainScheduled = true;
-    unawaited(
-      Future<void>.delayed(Duration.zero).then((_) => _drain()),
-    );
+    unawaited(Future<void>.delayed(Duration.zero).then((_) => _drain()));
   }
 
   Future<void> _drain() async {
@@ -200,9 +196,7 @@ class HomeInvalidationService {
       _draining = false;
       if (_pending != null && !_drainScheduled) {
         _drainScheduled = true;
-        unawaited(
-          Future<void>.delayed(Duration.zero).then((_) => _drain()),
-        );
+        unawaited(Future<void>.delayed(Duration.zero).then((_) => _drain()));
       }
     }
   }

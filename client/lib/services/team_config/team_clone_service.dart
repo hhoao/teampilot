@@ -17,10 +17,11 @@ typedef McpDepInstaller = Future<String?> Function(McpDependencyRef ref);
 /// Clones one roster expert for a team clone. Returns `null` on failure;
 /// otherwise the outcome records whether a new local clone was created. The
 /// roster slot key is unchanged under the shadow model.
-typedef ExpertSlotCloner = Future<ExpertCloneOutcome?> Function({
-  required String expertKey,
-  String? originTeamKey,
-});
+typedef ExpertSlotCloner =
+    Future<ExpertCloneOutcome?> Function({
+      required String expertKey,
+      String? originTeamKey,
+    });
 
 /// Creates the cloned team; returns the new team id, or null on failure.
 typedef ClonedTeamCreator =
@@ -182,9 +183,7 @@ class TeamCloneService {
 
     final now = DateTime.now().millisecondsSinceEpoch;
     final roster = team.roster
-        .map(
-          (slot) => slot.joinedAt == 0 ? slot.copyWith(joinedAt: now) : slot,
-        )
+        .map((slot) => slot.joinedAt == 0 ? slot.copyWith(joinedAt: now) : slot)
         .toList(growable: false);
 
     // Shadow model: roster keys stay the catalog keys; cloning only ensures a
@@ -193,7 +192,10 @@ class TeamCloneService {
     for (final slot in team.roster) {
       final key = slot.expertKey.trim();
       if (key.isEmpty) continue;
-      final outcome = await expertCloner(expertKey: key, originTeamKey: team.key);
+      final outcome = await expertCloner(
+        expertKey: key,
+        originTeamKey: team.key,
+      );
       if (outcome == null) {
         failed.add(DependencyFailure(DependencyKind.expert, key));
       } else if (outcome.cloned) {

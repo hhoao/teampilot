@@ -14,8 +14,4 @@ enum MailboxDeliveryPhase {
 }
 
 /// Last PTY automation error before [MailboxDeliveryPhase.failed].
-enum MailboxDeliveryError {
-  crStuck,
-  pasteNotFound,
-  aborted,
-}
+enum MailboxDeliveryError { crStuck, pasteNotFound, aborted }

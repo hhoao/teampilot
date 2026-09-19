@@ -31,13 +31,9 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 10));
     }
 
-    final second = withTestSuiteLock(
-      lockPath,
-      () async {
-        events.add('second:start');
-      },
-      onWaitStart: () {},
-    );
+    final second = withTestSuiteLock(lockPath, () async {
+      events.add('second:start');
+    }, onWaitStart: () {});
 
     // The second body must not start while the first holds the lock.
     await Future<void>.delayed(const Duration(milliseconds: 150));

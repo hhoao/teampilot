@@ -34,7 +34,9 @@ void main() {
   });
 
   test('detects sshd PerSourcePenalties refusals', () {
-    final penalty = SSHHandshakeError('Invalid version: Not allowed at this time');
+    final penalty = SSHHandshakeError(
+      'Invalid version: Not allowed at this time',
+    );
     expect(isSshdPenaltyRefusal(penalty), isTrue);
     expect(
       sshConnectionFailureUserMessage(penalty, l10n),

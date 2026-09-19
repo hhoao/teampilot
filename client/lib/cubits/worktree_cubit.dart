@@ -420,8 +420,11 @@ class WorktreeCubit extends Cubit<WorktreeState> {
       try {
         await load(repo, force: true);
       } on Object catch (e, st) {
-        appLogger.d('[worktree] reload active repo failed: $repo ($e)',
-            error: e, stackTrace: st);
+        appLogger.d(
+          '[worktree] reload active repo failed: $repo ($e)',
+          error: e,
+          stackTrace: st,
+        );
         if (!isClosed && state.loading) emit(state.copyWith(loading: false));
       }
     } finally {

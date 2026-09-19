@@ -42,7 +42,7 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-                                          storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     final memberHome = Directory('${base.path}/fake-home')..createSync();
     const member = TeamMemberConfig(

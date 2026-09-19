@@ -14,8 +14,10 @@ void main() {
 
   test('publishes on first report and on every change, deduping repeats', () {
     final sink = _SpySink();
-    final bridge =
-        PresenceEventBridge(sink: sink, clock: () => DateTime(2026, 9, 11));
+    final bridge = PresenceEventBridge(
+      sink: sink,
+      clock: () => DateTime(2026, 9, 11),
+    );
 
     bridge.reportAvailability(seat, AgentPresenceKind.booting);
     bridge.reportAvailability(seat, AgentPresenceKind.booting); // repeat
@@ -73,11 +75,13 @@ void main() {
     final sink = _SpySink();
     final bridge = PresenceEventBridge(sink: sink);
     bridge.reportAvailability(
-        const PresenceSeatKey(sessionId: 's', memberId: 'a'),
-        AgentPresenceKind.working);
+      const PresenceSeatKey(sessionId: 's', memberId: 'a'),
+      AgentPresenceKind.working,
+    );
     bridge.reportAvailability(
-        const PresenceSeatKey(sessionId: 's', memberId: 'b'),
-        AgentPresenceKind.working);
+      const PresenceSeatKey(sessionId: 's', memberId: 'b'),
+      AgentPresenceKind.working,
+    );
     expect(sink.events.length, 2);
   });
 }

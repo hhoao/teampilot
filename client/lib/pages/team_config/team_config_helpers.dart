@@ -15,9 +15,7 @@ import '../../widgets/cli_launch_config/team_launch_config_kind.dart';
 CliTool? catalogCliForTeam(BuildContext context, CliTool cli) {
   final registry = CliToolRegistryScope.maybeOf(context);
   if (registry == null) return null;
-  return registry.capability<ProviderCapability>(cli) != null
-      ? cli
-      : null;
+  return registry.capability<ProviderCapability>(cli) != null ? cli : null;
 }
 
 bool memberSupportsAgentPreset(BuildContext context, CliTool cli) {

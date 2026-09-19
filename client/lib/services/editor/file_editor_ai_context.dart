@@ -24,10 +24,7 @@ String buildEditorAiContextClipboardText({
 
 /// Path relative to the home working directory ([HomeStorage.cwd]), forward
 /// slashes, or basename fallback.
-String editorRelativePath(
-  String absolutePath, {
-  required HomeStorage storage,
-}) {
+String editorRelativePath(String absolutePath, {required HomeStorage storage}) {
   final ctx = storage.fs.pathContext;
   final cwd = storage.cwd;
   try {

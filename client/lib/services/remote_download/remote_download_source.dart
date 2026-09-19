@@ -16,7 +16,8 @@ class RemoteDownloadSource {
       id: json['id'] as String? ?? '',
       priority: (json['priority'] as num?)?.toInt() ?? 0,
       enabled: json['enabled'] as bool? ?? true,
-      matchHosts: (json['matchHosts'] as List<Object?>?)
+      matchHosts:
+          (json['matchHosts'] as List<Object?>?)
               ?.map((e) => e as String)
               .toList() ??
           const [],
@@ -75,11 +76,11 @@ class RemoteDownloadSource {
 
   @override
   int get hashCode => Object.hash(
-        id,
-        priority,
-        enabled,
-        Object.hashAll(matchHosts),
-        matchPathPrefix,
-        rewriteOrigin,
-      );
+    id,
+    priority,
+    enabled,
+    Object.hashAll(matchHosts),
+    matchPathPrefix,
+    rewriteOrigin,
+  );
 }

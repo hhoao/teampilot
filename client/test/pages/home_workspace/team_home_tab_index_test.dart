@@ -4,10 +4,7 @@ import 'package:teampilot/pages/team_config/team_config_section.dart';
 
 void main() {
   test('team home tab list covers every team-config section exactly once', () {
-    expect(
-      teamHomeTabSections.toSet(),
-      TeamConfigSection.values.toSet(),
-    );
+    expect(teamHomeTabSections.toSet(), TeamConfigSection.values.toSet());
     expect(teamHomeTabSections.length, TeamConfigSection.values.length);
   });
 

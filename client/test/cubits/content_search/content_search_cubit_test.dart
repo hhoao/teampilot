@@ -269,9 +269,8 @@ void main() {
   test(
     'truncated is set when a slice reaches maxResults, else false',
     () async {
-      fake.handler = (_) => Stream.fromIterable([
-        for (var i = 0; i < 3; i++) m('a.dart', i + 1),
-      ]);
+      fake.handler = (_) =>
+          Stream.fromIterable([for (var i = 0; i < 3; i++) m('a.dart', i + 1)]);
       await cubit.search(
         const TpSearchOptions(pattern: 'hello', maxResults: 3),
       );

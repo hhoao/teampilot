@@ -25,8 +25,9 @@ class RemoteDownloadCatalogState extends Equatable {
   }) {
     return RemoteDownloadCatalogState(
       catalog: catalog ?? this.catalog,
-      mirrorBaseUrl:
-          clearMirrorBaseUrl ? null : (mirrorBaseUrl ?? this.mirrorBaseUrl),
+      mirrorBaseUrl: clearMirrorBaseUrl
+          ? null
+          : (mirrorBaseUrl ?? this.mirrorBaseUrl),
       loaded: loaded ?? this.loaded,
     );
   }
@@ -37,12 +38,10 @@ class RemoteDownloadCatalogState extends Equatable {
 
 class RemoteDownloadCatalogCubit extends Cubit<RemoteDownloadCatalogState> {
   RemoteDownloadCatalogCubit({required RemoteDownloadSettingsStore store})
-      : _store = store,
-        super(
-          RemoteDownloadCatalogState(
-            catalog: RemoteDownloadCatalog.defaults(),
-          ),
-        );
+    : _store = store,
+      super(
+        RemoteDownloadCatalogState(catalog: RemoteDownloadCatalog.defaults()),
+      );
 
   final RemoteDownloadSettingsStore _store;
 

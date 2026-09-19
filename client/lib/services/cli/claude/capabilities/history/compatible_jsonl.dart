@@ -101,7 +101,8 @@ bool appendClaudeJsonlEvent(
 
   var appliedAny = false;
   for (final result in toolResults) {
-    appliedAny = _applyToolResult(
+    appliedAny =
+        _applyToolResult(
           messages,
           toolUseId: result.toolUseId,
           result: result.result,
@@ -184,10 +185,7 @@ void _addOrMerge(List<AiMessage> messages, AiMessage next) {
 /// plus leading text parts of [b]) into a single [AiTextPart], so streamed
 /// partial chunks render as one text block. Parts are trimmed individually
 /// by the caller, so the boundary run joins with a space.
-List<AiMessagePart> _mergeParts(
-  List<AiMessagePart> a,
-  List<AiMessagePart> b,
-) {
+List<AiMessagePart> _mergeParts(List<AiMessagePart> a, List<AiMessagePart> b) {
   var lastRunStart = a.length;
   while (lastRunStart > 0 && a[lastRunStart - 1] is AiTextPart) {
     lastRunStart--;
@@ -199,11 +197,10 @@ List<AiMessagePart> _mergeParts(
   if (lastRunStart == a.length || firstRunEnd == 0) {
     return [...a, ...b];
   }
-  final joined =
-      [
-        for (final p in a.sublist(lastRunStart)) (p as AiTextPart).text,
-        for (final p in b.sublist(0, firstRunEnd)) (p as AiTextPart).text,
-      ].join(' ');
+  final joined = [
+    for (final p in a.sublist(lastRunStart)) (p as AiTextPart).text,
+    for (final p in b.sublist(0, firstRunEnd)) (p as AiTextPart).text,
+  ].join(' ');
   return [
     ...a.sublist(0, lastRunStart),
     AiTextPart(text: joined),
@@ -213,22 +210,21 @@ List<AiMessagePart> _mergeParts(
 
 Map<String, Object?>? _asArgs(Object? input) {
   if (input is! Map) return null;
-  return {
-    for (final entry in input.entries) '${entry.key}': entry.value,
-  };
+  return {for (final entry in input.entries) '${entry.key}': entry.value};
 }
 
 Object? _toolResultValue(Object? content) {
   return switch (content) {
     String s => s,
-    List list => list
-        .map((item) {
-          if (item is Map && item['type'] == 'text') {
-            return '${item['text'] ?? ''}';
-          }
-          return '$item';
-        })
-        .join('\n'),
+    List list =>
+      list
+          .map((item) {
+            if (item is Map && item['type'] == 'text') {
+              return '${item['text'] ?? ''}';
+            }
+            return '$item';
+          })
+          .join('\n'),
     null => '',
     _ => content,
   };

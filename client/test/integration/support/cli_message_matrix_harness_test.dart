@@ -8,7 +8,7 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
-import 'package:teampilot/services/chat/terminal/pending_user_message.dart';
+import 'package:teampilot/services/chat/runtime/pty/pending_user_message.dart';
 
 import '../../support/post_frame_test_harness.dart';
 import 'chat_thread_assertions.dart';

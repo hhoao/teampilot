@@ -86,7 +86,8 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
       text: definition?.timeoutSec?.toString() ?? '',
     );
     _env = TextEditingController(
-      text: definition?.env.entries
+      text:
+          definition?.env.entries
               .map((e) => '${e.key}=${e.value}')
               .join('\n') ??
           '',
@@ -209,10 +210,10 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
   }
 
   String _slugify(String value) {
-    final slug = value
-        .trim()
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+    final slug = value.trim().toLowerCase().replaceAll(
+      RegExp(r'[^a-z0-9]+'),
+      '-',
+    );
     return slug.replaceAll(RegExp(r'^-+|-+$'), '');
   }
 
@@ -268,10 +269,7 @@ class _HookEditorDialogState extends State<HookEditorDialog> {
                 child: TextButton.icon(
                   key: const Key('hook-support-matrix'),
                   onPressed: () => showHookSupportMatrixDialog(context),
-                  icon: Icon(
-                    Icons.info_outline,
-                    size: context.tpIconSizes.sm,
-                  ),
+                  icon: Icon(Icons.info_outline, size: context.tpIconSizes.sm),
                   label: Text(l10n.hookSupportMatrix),
                 ),
               ),
@@ -382,9 +380,9 @@ class HookSupportMatrixDialog extends StatelessWidget {
           defaultColumnWidth: const IntrinsicColumnWidth(),
           border: TableBorder(
             horizontalInside: BorderSide(
-              color: Theme.of(context).colorScheme.outlineVariant.withValues(
-                alpha: 0.5,
-              ),
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withValues(alpha: 0.5),
             ),
           ),
           children: [
@@ -441,9 +439,7 @@ class _SupportMark extends StatelessWidget {
         ? ('≈', colorScheme.tertiary)
         : ('✓', colorScheme.primary);
     return Tooltip(
-      message: support.nativeEvent == null
-          ? ''
-          : support.nativeEvent!,
+      message: support.nativeEvent == null ? '' : support.nativeEvent!,
       child: Text(
         mark,
         textAlign: TextAlign.center,

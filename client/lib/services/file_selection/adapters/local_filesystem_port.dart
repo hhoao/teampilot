@@ -28,9 +28,7 @@ class LocalFilesystemPort implements TpFilesystemPort {
     }
 
     final home = Platform.environment['HOME'] ?? '/';
-    return [
-      TpFilesystemRoot(id: 'home', label: 'Home', path: home),
-    ];
+    return [TpFilesystemRoot(id: 'home', label: 'Home', path: home)];
   }
 
   @override
@@ -70,7 +68,7 @@ class LocalFilesystemPort implements TpFilesystemPort {
 
   @override
   Future<List<TpFsEntry>>? Function(String rootPath, String query)?
-      get searchFiles => null;
+  get searchFiles => null;
 
   @override
   Future<bool> exists(String path) async {

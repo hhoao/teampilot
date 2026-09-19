@@ -178,7 +178,8 @@ class _WorkspaceCreateDirectoryPickerState
                   padding: const EdgeInsets.only(left: 58),
                   child: Text(
                     l10n.homeWorkspaceNewWorkspaceDirectoryHint,
-                    style: styles.mdColored(cs.onSurfaceVariant.withValues(alpha: 0.7),
+                    style: styles.mdColored(
+                      cs.onSurfaceVariant.withValues(alpha: 0.7),
                     ),
                   ),
                 ),

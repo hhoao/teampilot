@@ -1,18 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/chat_tab_store.dart';
-import 'package:teampilot/services/chat/model/chat_tab.dart';
-import 'package:teampilot/services/chat/model/chat_tab_info.dart';
-import 'package:teampilot/services/chat/model/session_workbench_view.dart';
+import 'package:teampilot/services/chat/session/chat_tab_store.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
+import 'package:teampilot/services/chat/session/chat_tab_info.dart';
+import 'package:teampilot/services/chat/session/session_workbench_view.dart';
 import 'package:teampilot/services/chat/runtime/tab_member_reclaim_watch.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/chat/team_bus/agent_node.dart';
 import 'package:teampilot/services/chat/team_bus/team_bus.dart';
-import 'package:teampilot/services/chat/terminal/terminal_reclaim_policy.dart';
+import 'package:teampilot/services/chat/runtime/pty/terminal_reclaim_policy.dart';
 
 import '../../support/fake_terminal_session.dart';
 import '../../support/in_memory_filesystem.dart';
-import '../../services/team_bus/support/fake_member_launcher.dart';
+import '../../services/chat/team_bus/support/fake_member_launcher.dart';
 
 const _lead = TeamMemberConfig(id: 'team-lead', name: 'lead');
 const _worker = TeamMemberConfig(id: 'worker-1', name: 'worker');

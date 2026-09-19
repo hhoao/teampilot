@@ -195,12 +195,11 @@ class GitGraphCubit extends Cubit<GitGraphState> {
     required GitService git,
     GitHistoryActions? actions,
     DateTime Function()? clock,
-    void Function(String repoRoot)? onHeadChanged,
+    this.onHeadChanged,
   }) : _history = history,
        _git = git,
        _actions = actions ?? GitHistoryActions(),
        _now = clock ?? DateTime.now,
-       onHeadChanged = onHeadChanged,
        super(const GitGraphState());
 
   final GitHistoryService _history;
@@ -347,7 +346,8 @@ class GitGraphCubit extends Cubit<GitGraphState> {
         nextHasMore =
             _commitCountOf(rows) == GitHistoryService.initialLoadCommits;
         final accumulated = state.rows;
-        final headSame = rows.isNotEmpty &&
+        final headSame =
+            rows.isNotEmpty &&
             accumulated.isNotEmpty &&
             _headHashOf(rows) == _headHashOf(accumulated);
         if (signature == _lastFetchSignature &&
@@ -421,8 +421,7 @@ class GitGraphCubit extends Cubit<GitGraphState> {
       emit(
         state.copyWith(
           rows: [...state.rows, ...more],
-          hasMore:
-              _commitCountOf(more) == GitHistoryService.loadMoreCommits,
+          hasMore: _commitCountOf(more) == GitHistoryService.loadMoreCommits,
           isLoadingMore: false,
         ),
       );

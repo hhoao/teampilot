@@ -21,7 +21,7 @@ void main() {
     store = HomeClosedWorkspacesStore(
       fs: fs,
       pathOverride: paths.homeWorkspaceClosedWorkspacesJson,
-                                       storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
   });
 

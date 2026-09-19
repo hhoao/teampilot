@@ -46,10 +46,7 @@ void main() {
   });
 
   test('sizes always come from preferences regardless of dock state', () {
-    const prefs = LayoutPreferences(
-      sidebarWidth: 300,
-      rightToolsWidth: 400,
-    );
+    const prefs = LayoutPreferences(sidebarWidth: 300, rightToolsWidth: 400);
     final effective = WorkspacePanePolicy.effective(
       preferences: prefs,
       viewportWidth: 700,

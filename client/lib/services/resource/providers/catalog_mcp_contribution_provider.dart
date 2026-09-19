@@ -118,8 +118,7 @@ final class CatalogMcpContributionProvider
 
     late final Iterable<McpServer> catalog;
     try {
-      catalog =
-          await (catalogLoader?.call() ?? _mcpRepository().loadAll());
+      catalog = await (catalogLoader?.call() ?? _mcpRepository().loadAll());
     } on ResourceAssemblyException {
       rethrow;
     } on Object catch (error, stackTrace) {

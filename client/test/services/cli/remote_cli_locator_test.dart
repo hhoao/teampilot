@@ -118,12 +118,14 @@ void main() {
     expect(await locator.resolve(cli: CliTool.codex, run: run.call), isNull);
   });
 
-  test('returns null without rethrowing when probes raise exec errors',
-      () async {
-    final run = _ThrowingRun();
-    expect(await locator.resolve(cli: CliTool.claude, run: run.call), isNull);
-    expect(run.calls, isNotEmpty); // all probes were attempted
-  });
+  test(
+    'returns null without rethrowing when probes raise exec errors',
+    () async {
+      final run = _ThrowingRun();
+      expect(await locator.resolve(cli: CliTool.claude, run: run.call), isNull);
+      expect(run.calls, isNotEmpty); // all probes were attempted
+    },
+  );
 
   test('ignores an earlier probe error when a later probe succeeds', () async {
     final run = _FlakyRun(

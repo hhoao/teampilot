@@ -69,10 +69,9 @@ void main() {
     });
 
     test('always stamps selectedModel.parameters even when empty', () {
-      final stamped = CursorLaunchModel.applyToConfig(
-        <String, Object?>{'version': 1},
-        'composer-2.5',
-      );
+      final stamped = CursorLaunchModel.applyToConfig(<String, Object?>{
+        'version': 1,
+      }, 'composer-2.5');
 
       expect((stamped['model'] as Map)['modelId'], 'composer-2.5');
       expect(stamped['selectedModel'], {

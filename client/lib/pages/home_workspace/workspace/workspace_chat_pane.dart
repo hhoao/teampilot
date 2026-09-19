@@ -14,7 +14,7 @@ import '../../../models/workspace.dart';
 import '../../../services/storage/home_storage.dart';
 import '../../../utils/ui/app_keys.dart';
 import '../../../utils/workspace/landing_draft_resolver.dart';
-import '../../../services/compose/compose_draft_cache.dart';
+import '../../../services/chat/conversation/compose/compose_draft_cache.dart';
 import 'workspace_chat_landing.dart';
 import 'workspace_landing_skeleton.dart';
 import 'workspace_landing_generation_submit.dart';
@@ -45,10 +45,7 @@ Future<void> clearWorkspaceLandingDraft(
   String workspaceId, {
   required HomeStorage storage,
 }) async {
-  await composeDraftCache.clearLandingPersistent(
-    workspaceId,
-    storage: storage,
-  );
+  await composeDraftCache.clearLandingPersistent(workspaceId, storage: storage);
   composeDraftCache.clearLandingDraft(workspaceId);
 }
 
@@ -176,7 +173,10 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
         },
       );
       if (delivered) {
-        await widget.landingDraftCleaner(workspace.workspaceId, storage: storage);
+        await widget.landingDraftCleaner(
+          workspace.workspaceId,
+          storage: storage,
+        );
       }
     } finally {
       _submitInFlight = false;
@@ -203,14 +203,14 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
     // exists when the landing was entered over a restorable workbench tab.
     // Hosts that scope the landing to one split group pass their own
     // canExitLanding / onBack; otherwise both resolve from the focused group.
-    final canExitLanding = widget.canExitLanding ??
+    final canExitLanding =
+        widget.canExitLanding ??
         context.select<WorkbenchCubit, bool>(
           (w) => w.canExitLanding(workspace.workspaceId),
         );
-    final onBack = widget.onBack ??
-        () => context.read<WorkbenchCubit>().exitLanding(
-          workspace.workspaceId,
-        );
+    final onBack =
+        widget.onBack ??
+        () => context.read<WorkbenchCubit>().exitLanding(workspace.workspaceId);
     return SizedBox.expand(
       child: ColoredBox(
         color: cs.surface,

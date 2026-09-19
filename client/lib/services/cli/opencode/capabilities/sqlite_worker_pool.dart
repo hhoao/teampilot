@@ -140,9 +140,7 @@ class _SqliteWorker {
     final deadline = DateTime.now().add(const Duration(seconds: 10));
     while (_requestPort == null && !isDead) {
       if (DateTime.now().isAfter(deadline)) {
-        _kill(
-          TimeoutException('opencode sqlite worker not ready: $dbPath'),
-        );
+        _kill(TimeoutException('opencode sqlite worker not ready: $dbPath'));
         return null;
       }
       await Future<void>.delayed(const Duration(milliseconds: 5));

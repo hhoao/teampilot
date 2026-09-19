@@ -56,7 +56,8 @@ class _WorkspaceDeadTargetRemapDialogState
   @override
   void initState() {
     super.initState();
-    _selectedFrom = widget.fromTargetId ??
+    _selectedFrom =
+        widget.fromTargetId ??
         (widget.deadTargetIds.length == 1 ? widget.deadTargetIds.first : null);
     _reloadToCandidates();
   }
@@ -168,9 +169,9 @@ class _WorkspaceDeadTargetRemapDialogState
                 if (candidates.isEmpty) {
                   return Text(
                     l10n.workspaceDeadTargetRemapNothing,
-                    style: TpTextStyles.of(context).mdColored(
-                      Theme.of(context).colorScheme.error,
-                    ),
+                    style: TpTextStyles.of(
+                      context,
+                    ).mdColored(Theme.of(context).colorScheme.error),
                   );
                 }
 

@@ -13,10 +13,10 @@ import 'package:teampilot/services/cli/cursor/capabilities/history/ai_history_ca
 import 'package:teampilot/services/cli/registry/capabilities/cli_session_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/chat/session/history/ai_history_loader.dart';
-import 'package:teampilot/services/chat/session/history/ai_history_locator.dart';
-import 'package:teampilot/services/chat/session/history/session_history_context.dart';
-import 'package:teampilot/services/chat/session/history/session_history_context_builder.dart';
+import 'package:teampilot/services/chat/conversation/history/ai_history_loader.dart';
+import 'package:teampilot/services/chat/conversation/history/ai_history_locator.dart';
+import 'package:teampilot/services/chat/conversation/history/session_history_context.dart';
+import 'package:teampilot/services/chat/conversation/history/session_history_context_builder.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';

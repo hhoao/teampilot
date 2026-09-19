@@ -41,9 +41,7 @@ Future<void> _writeNeutralBundle(
   Directory(p.join(root, name, '.plugin')).createSync(recursive: true);
   File(
     p.join(root, name, '.plugin', 'plugin.json'),
-  ).writeAsStringSync(
-    '{"name":"$name","version":"$version","description":""}',
-  );
+  ).writeAsStringSync('{"name":"$name","version":"$version","description":""}');
 }
 
 class _NoSymlinkFilesystem extends InMemoryFilesystem {
@@ -74,61 +72,60 @@ void main() {
     }
   });
 
-  PluginBundlePoolService service() => PluginBundlePoolService(
-    fs: fs,
-    sourceRoot: sourceRoot,
+  PluginBundlePoolService service() =>
+      PluginBundlePoolService(fs: fs, sourceRoot: sourceRoot);
+
+  test(
+    'links the enabled bundle into the pool and projects the CLI flavor',
+    () async {
+      await _writeNeutralBundle(sourceRoot, 'demo-bundle');
+      final poolDir = p.join(base.path, 'session', 'plugins');
+      final installed = p.join(sourceRoot, 'demo-bundle');
+
+      final result = await service().reconcile(
+        poolDir: poolDir,
+        enabledPluginIds: ['acme/demo'],
+        installedCatalog: [
+          _plugin('acme/demo', 'demo', directory: 'demo-bundle'),
+        ],
+        paths: claudePluginManifestPaths,
+      );
+
+      expect(result.linked, ['demo-bundle']);
+      expect(result.errors, isEmpty);
+      expect(result.skippedMissingIds, isEmpty);
+      final dest = p.join(poolDir, 'demo-bundle');
+      expect(Directory(dest).existsSync(), isTrue);
+      // Session pool keeps a symlink; missing Claude flavor is seeded into the
+      // shared installed root once (not a per-session full copyTree).
+      if (Platform.isLinux || Platform.isMacOS) {
+        expect(Link(dest).existsSync(), isTrue);
+        expect(Link(dest).targetSync(), installed);
+      }
+      expect(File(p.join(dest, '.plugin', 'plugin.json')).existsSync(), isTrue);
+      expect(
+        File(p.join(dest, '.claude-plugin', 'plugin.json')).existsSync(),
+        isTrue,
+      );
+      expect(
+        File(p.join(installed, '.claude-plugin', 'plugin.json')).existsSync(),
+        isTrue,
+        reason: 'flavor projection seeds the shared installed bundle',
+      );
+      expect(result.memberProvisionStampJson, isNotNull);
+    },
   );
-
-  test('links the enabled bundle into the pool and projects the CLI flavor',
-      () async {
-    await _writeNeutralBundle(sourceRoot, 'demo-bundle');
-    final poolDir = p.join(base.path, 'session', 'plugins');
-    final installed = p.join(sourceRoot, 'demo-bundle');
-
-    final result = await service().reconcile(
-      poolDir: poolDir,
-      enabledPluginIds: ['acme/demo'],
-      installedCatalog: [
-        _plugin('acme/demo', 'demo', directory: 'demo-bundle'),
-      ],
-      paths: claudePluginManifestPaths,
-    );
-
-    expect(result.linked, ['demo-bundle']);
-    expect(result.errors, isEmpty);
-    expect(result.skippedMissingIds, isEmpty);
-    final dest = p.join(poolDir, 'demo-bundle');
-    expect(Directory(dest).existsSync(), isTrue);
-    // Session pool keeps a symlink; missing Claude flavor is seeded into the
-    // shared installed root once (not a per-session full copyTree).
-    if (Platform.isLinux || Platform.isMacOS) {
-      expect(Link(dest).existsSync(), isTrue);
-      expect(Link(dest).targetSync(), installed);
-    }
-    expect(File(p.join(dest, '.plugin', 'plugin.json')).existsSync(), isTrue);
-    expect(
-      File(p.join(dest, '.claude-plugin', 'plugin.json')).existsSync(),
-      isTrue,
-    );
-    expect(
-      File(p.join(installed, '.claude-plugin', 'plugin.json')).existsSync(),
-      isTrue,
-      reason: 'flavor projection seeds the shared installed bundle',
-    );
-    expect(result.memberProvisionStampJson, isNotNull);
-  });
 
   test(
     'keeps a symlink for Claude when installed already has the flavor',
     () async {
       await _writeNeutralBundle(sourceRoot, 'demo-bundle');
-      Directory(p.join(sourceRoot, 'demo-bundle', '.claude-plugin'))
-          .createSync(recursive: true);
+      Directory(
+        p.join(sourceRoot, 'demo-bundle', '.claude-plugin'),
+      ).createSync(recursive: true);
       File(
         p.join(sourceRoot, 'demo-bundle', '.claude-plugin', 'plugin.json'),
-      ).writeAsStringSync(
-        '{"name":"demo","version":"1.0.0","description":""}',
-      );
+      ).writeAsStringSync('{"name":"demo","version":"1.0.0","description":""}');
       final poolDir = p.join(base.path, 'session', 'plugins');
       final installed = p.join(sourceRoot, 'demo-bundle');
 
@@ -173,18 +170,13 @@ void main() {
         expect(Link(dest).existsSync(), isTrue);
         expect(Link(dest).targetSync(), installed);
       }
-      expect(
-        File(p.join(dest, '.plugin', 'plugin.json')).existsSync(),
-        isTrue,
-      );
+      expect(File(p.join(dest, '.plugin', 'plugin.json')).existsSync(), isTrue);
     },
   );
   test('heals a self-referencing symlink loop on the next reconcile', () async {
     await _writeNeutralBundle(sourceRoot, 'demo-bundle');
     final poolDir = p.join(base.path, 'session', 'plugins');
-    final catalog = [
-      _plugin('acme/demo', 'demo', directory: 'demo-bundle'),
-    ];
+    final catalog = [_plugin('acme/demo', 'demo', directory: 'demo-bundle')];
 
     final first = await service().reconcile(
       poolDir: poolDir,
@@ -202,8 +194,11 @@ void main() {
     if (Platform.isLinux || Platform.isMacOS) {
       await link.delete();
       await Link(dest).create(dest);
-      expect(await fs.resolveSymlink(dest), isNull,
-          reason: 'self-loop must not resolve');
+      expect(
+        await fs.resolveSymlink(dest),
+        isNull,
+        reason: 'self-loop must not resolve',
+      );
     } else {
       return; // Windows junctions cannot self-link; loop heal is POSIX-only.
     }
@@ -215,8 +210,9 @@ void main() {
       paths: neutralPluginManifestPaths,
     );
 
-    expect(second.linked, ['demo-bundle'],
-        reason: 'broken pool entry must be re-linked, not fast-pathed');
+    expect(second.linked, [
+      'demo-bundle',
+    ], reason: 'broken pool entry must be re-linked, not fast-pathed');
     expect(
       await fs.resolveSymlink(dest),
       // Normalize both sides: macOS /var is a symlink to /private/var and
@@ -258,9 +254,7 @@ void main() {
   test('is idempotent once the pool matches the enabled bundles', () async {
     await _writeNeutralBundle(sourceRoot, 'demo-bundle');
     final poolDir = p.join(base.path, 'session', 'plugins');
-    final catalog = [
-      _plugin('acme/demo', 'demo', directory: 'demo-bundle'),
-    ];
+    final catalog = [_plugin('acme/demo', 'demo', directory: 'demo-bundle')];
 
     final first = await service().reconcile(
       poolDir: poolDir,
@@ -301,7 +295,12 @@ void main() {
       poolDir: poolDir,
       enabledPluginIds: ['acme/demo'],
       installedCatalog: [
-        _plugin('acme/demo', 'demo', directory: 'demo-bundle', version: '2.0.0'),
+        _plugin(
+          'acme/demo',
+          'demo',
+          directory: 'demo-bundle',
+          version: '2.0.0',
+        ),
       ],
       paths: claudePluginManifestPaths,
     );
@@ -365,17 +364,18 @@ void main() {
     );
 
     final memPool = '/session/plugins';
-    final result = await PluginBundlePoolService(
-      fs: memory,
-      sourceRoot: memSourceRoot,
-    ).reconcile(
-      poolDir: memPool,
-      enabledPluginIds: ['acme/demo'],
-      installedCatalog: [
-        _plugin('acme/demo', 'demo', directory: 'demo-bundle'),
-      ],
-      paths: claudePluginManifestPaths,
-    );
+    final result =
+        await PluginBundlePoolService(
+          fs: memory,
+          sourceRoot: memSourceRoot,
+        ).reconcile(
+          poolDir: memPool,
+          enabledPluginIds: ['acme/demo'],
+          installedCatalog: [
+            _plugin('acme/demo', 'demo', directory: 'demo-bundle'),
+          ],
+          paths: claudePluginManifestPaths,
+        );
 
     expect(result.errors, isEmpty);
     expect(result.linked, ['demo-bundle']);

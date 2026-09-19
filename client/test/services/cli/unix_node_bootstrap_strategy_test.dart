@@ -65,7 +65,10 @@ void main() {
         ),
       );
       expect(result.success, isFalse);
-      expect(result.message, CursorExecutableCapability.termuxUnsupportedMessage);
+      expect(
+        result.message,
+        CursorExecutableCapability.termuxUnsupportedMessage,
+      );
       expect(host.ranCurlInstall, isFalse);
     });
 
@@ -98,11 +101,7 @@ void main() {
 
   group('CursorExecutableCapability glibc', () {
     test('skips curl install when remote glibc is below 2.28', () async {
-      final host = _FakeHost(
-        termux: false,
-        locatePath: null,
-        glibc: '2.17',
-      );
+      final host = _FakeHost(termux: false, locatePath: null, glibc: '2.17');
       final result = await const CursorExecutableCapability().install(
         CliInstallContext(
           mode: CliInstallMode.ssh,
@@ -184,7 +183,10 @@ void main() {
         ),
       );
       expect(result.success, isTrue);
-      expect(result.executablePath, '/data/data/com.termux/files/usr/bin/claude');
+      expect(
+        result.executablePath,
+        '/data/data/com.termux/files/usr/bin/claude',
+      );
       expect(result.message, contains('2.1.112'));
       expect(host.ranPinnedInstall, isTrue);
       expect(host.ranLatestNpmInstall, isFalse);
@@ -209,10 +211,11 @@ final class _FakeHost implements CliInstallerHost {
   var ranGlibcProbe = false;
 
   @override
-  HostExecutionEnvironment get hostEnvironment => HostExecutionEnvironment.resolve(
-    isWindowsHost: false,
-    storageMode: StorageBackendMode.native,
-  );
+  HostExecutionEnvironment get hostEnvironment =>
+      HostExecutionEnvironment.resolve(
+        isWindowsHost: false,
+        storageMode: StorageBackendMode.native,
+      );
 
   @override
   bool get isWindows => false;
@@ -245,10 +248,7 @@ final class _FakeHost implements CliInstallerHost {
     if (line.contains('ldd --version') && line.contains('GLIBC=')) {
       ranGlibcProbe = true;
       final version = glibc ?? '2.31';
-      return CliInstallerCommandResult(
-        exitCode: 0,
-        stdout: 'GLIBC=$version\n',
-      );
+      return CliInstallerCommandResult(exitCode: 0, stdout: 'GLIBC=$version\n');
     }
     if (line.contains('curl') && line.contains('cursor.com/install')) {
       ranCurlInstall = true;
@@ -282,10 +282,11 @@ final class _ClaudeFakeHost implements CliInstallerHost {
   var ranLatestNpmInstall = false;
 
   @override
-  HostExecutionEnvironment get hostEnvironment => HostExecutionEnvironment.resolve(
-    isWindowsHost: false,
-    storageMode: StorageBackendMode.native,
-  );
+  HostExecutionEnvironment get hostEnvironment =>
+      HostExecutionEnvironment.resolve(
+        isWindowsHost: false,
+        storageMode: StorageBackendMode.native,
+      );
 
   @override
   bool get isWindows => false;

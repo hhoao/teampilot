@@ -59,8 +59,9 @@ class McpInstalledServerRow extends StatelessWidget {
                           server.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TpTextStyles.of(context)
-                              .mdSemiboldColored(textBase),
+                          style: TpTextStyles.of(
+                            context,
+                          ).mdSemiboldColored(textBase),
                         ),
                       ),
                       if (oauthAuthenticated == false) ...[
@@ -76,8 +77,9 @@ class McpInstalledServerRow extends StatelessWidget {
                           ),
                           child: Text(
                             l10n.mcpOAuthStatusNeedsAuth,
-                            style: TpTextStyles.of(context)
-                                .xsBoldColored(const Color(0xFFB45309)),
+                            style: TpTextStyles.of(
+                              context,
+                            ).xsBoldColored(const Color(0xFFB45309)),
                           ),
                         ),
                       ],
@@ -94,8 +96,9 @@ class McpInstalledServerRow extends StatelessWidget {
                           ),
                           child: Text(
                             l10n.mcpOAuthStatusConnected,
-                            style: TpTextStyles.of(context)
-                                .xsBoldColored(cs.primary),
+                            style: TpTextStyles.of(
+                              context,
+                            ).xsBoldColored(cs.primary),
                           ),
                         ),
                       ],
@@ -106,8 +109,9 @@ class McpInstalledServerRow extends StatelessWidget {
                     typeLabel,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TpTextStyles.of(context)
-                        .xsColored(textBase.withValues(alpha: 0.5)),
+                    style: TpTextStyles.of(
+                      context,
+                    ).xsColored(textBase.withValues(alpha: 0.5)),
                   ),
                   if (description.isNotEmpty) ...[
                     const SizedBox(height: 4),
@@ -115,8 +119,9 @@ class McpInstalledServerRow extends StatelessWidget {
                       description,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TpTextStyles.of(context)
-                          .smColored(textBase.withValues(alpha: 0.6)),
+                      style: TpTextStyles.of(
+                        context,
+                      ).smColored(textBase.withValues(alpha: 0.6)),
                     ),
                   ],
                 ],
@@ -276,9 +281,9 @@ class _McpCatalogIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget placeholder() => ColoredBox(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(
-        alpha: 0.45,
-      ),
+      color: Theme.of(
+        context,
+      ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
       child: Center(
         child: Icon(
           Icons.hub_outlined,

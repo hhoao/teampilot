@@ -34,14 +34,17 @@ void main() {
       workingDirectoryPath: '/repo/feature',
     );
     expect(
-      automationLaunchWorkingDirectory(automation, usesPosixPaths: false, ),
+      automationLaunchWorkingDirectory(automation, usesPosixPaths: false),
       '/repo/feature',
     );
   });
 
   test('falls back to projectFolderPath', () {
     final automation = _launchAutomation(projectFolderPath: '/repo');
-    expect(automationLaunchWorkingDirectory(automation, usesPosixPaths: false, ), '/repo');
+    expect(
+      automationLaunchWorkingDirectory(automation, usesPosixPaths: false),
+      '/repo',
+    );
   });
 
   test('falls back to workspace first folder', () {
@@ -52,7 +55,11 @@ void main() {
       createdAt: 1,
     );
     expect(
-      automationLaunchWorkingDirectory(automation, workspace: workspace, usesPosixPaths: false, ),
+      automationLaunchWorkingDirectory(
+        automation,
+        workspace: workspace,
+        usesPosixPaths: false,
+      ),
       '/default',
     );
   });

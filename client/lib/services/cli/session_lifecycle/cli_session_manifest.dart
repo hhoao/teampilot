@@ -160,9 +160,13 @@ class CliSessionManifest {
   final int? phaseUpdatedAtMs;
   final CliSessionManifestShared shared;
   final Map<String, CliSessionManifestMember> members;
-  final Map<String, Map<String, CliSessionManifestSessionOverlay>> sessionOverlays;
+  final Map<String, Map<String, CliSessionManifestSessionOverlay>>
+  sessionOverlays;
 
-  CliSessionManifestSessionOverlay? overlayFor(String sessionId, String memberId) {
+  CliSessionManifestSessionOverlay? overlayFor(
+    String sessionId,
+    String memberId,
+  ) {
     return sessionOverlays[sessionId]?[memberId];
   }
 
@@ -232,9 +236,7 @@ class CliSessionManifest {
       workspaceSlug: _requireString(json, 'workspaceSlug'),
       phase: _parsePhase(_requireString(json, 'phase')),
       phaseUpdatedAtMs: _optionalInt(json, 'phaseUpdatedAtMs'),
-      shared: CliSessionManifestShared.fromJson(
-        _requireMap(json, 'shared'),
-      ),
+      shared: CliSessionManifestShared.fromJson(_requireMap(json, 'shared')),
       members: members,
       sessionOverlays: sessionOverlays,
     );

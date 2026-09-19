@@ -41,9 +41,7 @@ String? _jwtSub(String? accessToken) {
     return null;
   }
   try {
-    final payloadJson = utf8.decode(
-      base64Url.decode(_padBase64Url(parts[1])),
-    );
+    final payloadJson = utf8.decode(base64Url.decode(_padBase64Url(parts[1])));
     final payload = jsonDecode(payloadJson) as Map<String, dynamic>;
     final sub = payload['sub'];
     if (sub is! String || sub.isEmpty) {

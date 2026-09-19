@@ -8,7 +8,8 @@ import 'dispatcher.dart';
 /// Registered on the central dispatcher by app_shell. Consumers (the presence
 /// cubit today, mobile sync in phase 3) read [availabilityFor] / [snapshot] and
 /// listen to [changes] for re-render notifications.
-final class AgentPresenceProjection implements EventHandler<AgentPresenceEvent> {
+final class AgentPresenceProjection
+    implements EventHandler<AgentPresenceEvent> {
   final Map<PresenceSeatKey, AgentPresenceKind> _bySeat = {};
   final StreamController<PresenceSeatKey> _changes =
       StreamController<PresenceSeatKey>.broadcast();
@@ -24,8 +25,9 @@ final class AgentPresenceProjection implements EventHandler<AgentPresenceEvent> 
   /// The latest availability for [seat], or null if the seat is unknown.
   AgentPresenceKind? availabilityFor(PresenceSeatKey seat) => _bySeat[seat];
 
-  Set<String> get occupiedSessionIds =>
-      {for (final seat in _bySeat.keys) seat.sessionId};
+  Set<String> get occupiedSessionIds => {
+    for (final seat in _bySeat.keys) seat.sessionId,
+  };
 
   @override
   void handle(AgentPresenceEvent event) {

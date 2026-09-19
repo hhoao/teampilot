@@ -47,9 +47,7 @@ class _WorkspaceAutomationsSectionState
     final workspaceId = widget.workspace.workspaceId;
     if (_loadedWorkspaceId == workspaceId) return;
     _loadedWorkspaceId = workspaceId;
-    unawaited(
-      context.read<AutomationCubit>().loadForWorkspace(workspaceId),
-    );
+    unawaited(context.read<AutomationCubit>().loadForWorkspace(workspaceId));
   }
 
   Future<void> _openPanel({bool create = false}) async {
@@ -125,9 +123,7 @@ class _SectionHeaderState extends State<_SectionHeader> {
         padding: const EdgeInsets.fromLTRB(8, 8, 4, 8),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: cs.outlineVariant.withValues(alpha: 0.5),
-          ),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
         ),
         child: Row(
           children: [
@@ -150,7 +146,7 @@ class _SectionHeaderState extends State<_SectionHeader> {
                     if (subtitle != null)
                       TextSpan(
                         text: ' · $subtitle',
-                        style: styles.lgColored(cs.onSurfaceVariant,),
+                        style: styles.lgColored(cs.onSurfaceVariant),
                       ),
                   ],
                 ),

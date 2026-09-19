@@ -51,10 +51,6 @@ class RemoteCommandCodec {
   /// `cwd` and `env` are omitted when null/empty, matching the server-side
   /// encoder's field-omission rules exactly.
   String encodeEmbedded(RemoteCommandSpec spec) {
-    return '$_embeddedPrefix${jsonEncode({
-      'argv': spec.argv,
-      if (spec.cwd != null) 'cwd': spec.cwd,
-      if (spec.env != null && spec.env!.isNotEmpty) 'env': spec.env,
-    })}';
+    return '$_embeddedPrefix${jsonEncode({'argv': spec.argv, if (spec.cwd != null) 'cwd': spec.cwd, if (spec.env != null && spec.env!.isNotEmpty) 'env': spec.env})}';
   }
 }

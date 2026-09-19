@@ -29,8 +29,7 @@ final class RawCommand extends ScriptExtraction {
 
 /// 从 command 字符串识别脚本引用并读取内容（通用、CLI 无关）。
 class HookScriptExtractor {
-  HookScriptExtractor({required Filesystem fs, this.homeDir})
-    : _fs = fs;
+  HookScriptExtractor({required Filesystem fs, this.homeDir}) : _fs = fs;
 
   final Filesystem _fs;
 
@@ -38,8 +37,16 @@ class HookScriptExtractor {
   final String? homeDir;
 
   static const Set<String> interpreters = {
-    'bash', 'sh', 'zsh', 'python3', 'python', 'node', 'powershell', 'pwsh',
-    'ruby', 'perl',
+    'bash',
+    'sh',
+    'zsh',
+    'python3',
+    'python',
+    'node',
+    'powershell',
+    'pwsh',
+    'ruby',
+    'perl',
   };
 
   Future<ScriptExtraction> extract(String command) async {
@@ -70,7 +77,9 @@ class HookScriptExtractor {
     }
 
     if (scriptPath == null) return const RawCommand();
-    if (_hasPlaceholder(scriptPath)) return const RawCommand(reason: 'placeholder');
+    if (_hasPlaceholder(scriptPath)) {
+      return const RawCommand(reason: 'placeholder');
+    }
 
     var resolved = scriptPath;
     if (resolved.startsWith('~')) {
@@ -92,7 +101,9 @@ class HookScriptExtractor {
   }
 
   static bool _hasPlaceholder(String path) =>
-      path.contains(r'${') || path.contains(r'$(') || RegExp(r'\$[A-Za-z_]').hasMatch(path);
+      path.contains(r'${') ||
+      path.contains(r'$(') ||
+      RegExp(r'\$[A-Za-z_]').hasMatch(path);
 
   /// 按空白切分，但保留引号内空白（如 `python3 "/a b/x.py"`）。
   static List<String> _tokenize(String command) {

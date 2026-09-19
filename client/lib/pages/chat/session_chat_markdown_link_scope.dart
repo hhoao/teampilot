@@ -59,15 +59,16 @@ class _SessionChatMarkdownLinkScopeState
         toolsScope: WorkspaceToolsScope.maybeOf(context),
       );
       if (!mounted) return;
-      final outcome = await WorkspaceHrefHandler(
-        opener: context.read<WorkbenchEditorOpener>(),
-      ).open(
-        href: href,
-        workspaceId: widget.session.workspaceId,
-        workspaceRoots: widget.hrefRoots,
-        searchBases: widget.hrefRoots,
-        fs: fs,
-      );
+      final outcome =
+          await WorkspaceHrefHandler(
+            opener: context.read<WorkbenchEditorOpener>(),
+          ).open(
+            href: href,
+            workspaceId: widget.session.workspaceId,
+            workspaceRoots: widget.hrefRoots,
+            searchBases: widget.hrefRoots,
+            fs: fs,
+          );
       if (!mounted) return;
       switch (outcome) {
         case WorkspaceHrefOpenOutcome.missing:
@@ -95,9 +96,6 @@ class _SessionChatMarkdownLinkScopeState
 
   @override
   Widget build(BuildContext context) {
-    return AiMarkdownLinkActionsScope(
-      actions: _actions,
-      child: widget.child,
-    );
+    return AiMarkdownLinkActionsScope(actions: _actions, child: widget.child);
   }
 }

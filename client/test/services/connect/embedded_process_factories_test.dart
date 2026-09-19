@@ -155,16 +155,18 @@ void main() {
     expect(pty, isNull);
   });
 
-  test('shell exec factory runs plain commands in the OS-native shell',
-      () async {
-    final factory = embeddedShellExecFactory();
-    final process = await factory('echo shell-exec-ok', {});
-    expect(process, isNotNull);
-    if (process == null) return;
-    final output = await utf8.decoder.bind(process.stdout).join();
-    expect(output.trim(), contains('shell-exec-ok'));
-    expect(await process.exitCode, 0);
-  });
+  test(
+    'shell exec factory runs plain commands in the OS-native shell',
+    () async {
+      final factory = embeddedShellExecFactory();
+      final process = await factory('echo shell-exec-ok', {});
+      expect(process, isNotNull);
+      if (process == null) return;
+      final output = await utf8.decoder.bind(process.stdout).join();
+      expect(output.trim(), contains('shell-exec-ok'));
+      expect(await process.exitCode, 0);
+    },
+  );
 }
 
 /// Records every spawner argument (executable, arguments, environment,

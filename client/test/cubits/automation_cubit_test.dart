@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/automation_state.dart';
-import 'package:teampilot/services/chat/model/session_open_status.dart';
+import 'package:teampilot/services/chat/session/session_open_status.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/automation.dart';
 import 'package:teampilot/models/workspace.dart';

@@ -65,7 +65,10 @@ class _PaneEntryAnimationState extends State<PaneEntryAnimation>
         final t = _controller.value;
         final opacity = Curves.easeOut.transform(t);
         final slide = Curves.easeOutCubic.transform(t);
-        final dx = MediaQuery.sizeOf(context).width * widget.slideFraction * (1 - slide);
+        final dx =
+            MediaQuery.sizeOf(context).width *
+            widget.slideFraction *
+            (1 - slide);
         return Opacity(
           opacity: opacity,
           child: Transform.translate(offset: Offset(dx, 0), child: child),

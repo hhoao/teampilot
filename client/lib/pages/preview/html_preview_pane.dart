@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -164,10 +163,7 @@ class _HtmlPreviewPaneState extends State<HtmlPreviewPane> {
 }
 
 class _HtmlPreviewToolbar extends StatelessWidget {
-  const _HtmlPreviewToolbar({
-    required this.path,
-    required this.onOpenExternal,
-  });
+  const _HtmlPreviewToolbar({required this.path, required this.onOpenExternal});
 
   final String path;
   final VoidCallback onOpenExternal;
@@ -221,9 +217,9 @@ class _HtmlPreviewPlaceholder extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               l10n.htmlPreviewOpenedInBrowser,
-              style: TpTextStyles.of(context)
-                  .sm
-                  .copyWith(color: cs.onSurfaceVariant),
+              style: TpTextStyles.of(
+                context,
+              ).sm.copyWith(color: cs.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -246,10 +242,7 @@ class _HtmlPreviewPlaceholder extends StatelessWidget {
 }
 
 class _HtmlPreviewError extends StatelessWidget {
-  const _HtmlPreviewError({
-    required this.onOpenBrowser,
-    required this.onRetry,
-  });
+  const _HtmlPreviewError({required this.onOpenBrowser, required this.onRetry});
 
   final VoidCallback onOpenBrowser;
   final VoidCallback onRetry;
@@ -273,9 +266,9 @@ class _HtmlPreviewError extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               l10n.htmlPreviewErrorBody,
-              style: TpTextStyles.of(context)
-                  .sm
-                  .copyWith(color: cs.onSurfaceVariant),
+              style: TpTextStyles.of(
+                context,
+              ).sm.copyWith(color: cs.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),

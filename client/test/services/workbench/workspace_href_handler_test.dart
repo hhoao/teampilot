@@ -28,7 +28,10 @@ WorkbenchEditorOpener _opener({
   InMemoryFilesystem fs, {
   Future<void> Function(Uri uri)? openExternal,
 }) {
-  final editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs), );
+  final editor = EditorCubit(
+    fs: fs,
+    storage: fakeHomeStorage(filesystem: fs),
+  );
   final workbench = WorkbenchCubit();
   final floating = FloatingWorkspaceCubit();
   final modes = MarkdownViewModeStore();

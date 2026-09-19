@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
-import 'package:provider/provider.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/git_compare_cubit.dart';
@@ -160,7 +159,9 @@ class _PaneBody extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _Header(spec: state.spec),
-            Expanded(child: _Content(state: state, workspaceId: workspaceId)),
+            Expanded(
+              child: _Content(state: state, workspaceId: workspaceId),
+            ),
           ],
         );
       },
@@ -278,12 +279,7 @@ class _Content extends StatelessWidget {
       left: spec.left,
       right: spec.right,
     );
-    final text =
-        await cubit.diffFor(
-          change.path,
-          fullContext: true,
-        ) ??
-        '';
+    final text = await cubit.diffFor(change.path, fullContext: true) ?? '';
     if (!context.mounted) return;
     context.read<WorkbenchEditorOpener>().openDiff(
       workspaceId: workspaceId,

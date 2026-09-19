@@ -79,9 +79,8 @@ class LaunchOption {
           ? rawChoices
                 .whereType<Map>()
                 .map(
-                  (e) => LaunchOptionChoice.fromJson(
-                    Map<String, Object?>.from(e),
-                  ),
+                  (e) =>
+                      LaunchOptionChoice.fromJson(Map<String, Object?>.from(e)),
                 )
                 .toList()
           : const [],
@@ -246,9 +245,7 @@ class ConfigureActionResult {
     }
     final raw = json['configuration'];
     return ConfigureActionResult(
-      configuration: raw is Map
-          ? Map<String, Object?>.from(raw)
-          : null,
+      configuration: raw is Map ? Map<String, Object?>.from(raw) : null,
       persist: json['persist'] == true,
     );
   }

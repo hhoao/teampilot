@@ -30,11 +30,7 @@ typedef ExpertLaunchInWorkspaceHandler =
 /// Single-page expert hub: search + inline filters over a grid, with an
 /// embedded detail overlay. No sub-section navigation.
 class ExpertHubPage extends StatefulWidget {
-  const ExpertHubPage({
-    super.key,
-    this.onAddToTeam,
-    this.onLaunchInWorkspace,
-  });
+  const ExpertHubPage({super.key, this.onAddToTeam, this.onLaunchInWorkspace});
 
   /// When null, [Add to team] is a no-op until Task 9 wires the team picker.
   final ExpertAddToTeamHandler? onAddToTeam;

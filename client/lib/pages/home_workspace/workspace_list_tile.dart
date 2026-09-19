@@ -88,11 +88,7 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
             ),
         child: Row(
           children: [
-            WorkspaceIcon.fromWorkspace(
-              workspace,
-              size: 40,
-              borderRadius: 10,
-            ),
+            WorkspaceIcon.fromWorkspace(workspace, size: 40, borderRadius: 10),
             const SizedBox(width: 14),
             Expanded(
               child: Column(

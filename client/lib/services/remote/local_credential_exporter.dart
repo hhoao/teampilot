@@ -52,8 +52,7 @@ class LocalCredentialExporter {
     CliTool cli,
     AppProviderConfig provider,
   ) async {
-    final cap = CliToolRegistry.builtIn()
-        .capability<ProviderCapability>(cli);
+    final cap = CliToolRegistry.builtIn().capability<ProviderCapability>(cli);
     if (cap == null) return null;
     return cap.exportCredential(
       fs: _storage.fs,

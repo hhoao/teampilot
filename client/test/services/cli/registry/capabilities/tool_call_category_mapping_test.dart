@@ -22,20 +22,39 @@ void main() {
 
   test('core tools map identically across CLIs', () {
     for (final cli in clis) {
-      final resolver =
-          registry.capability<AiHistoryCapability>(cli)!.categoryResolver;
-      expect(resolver.resolve(tool('bash')), AiToolCallCategory.command,
-          reason: '$cli');
-      expect(resolver.resolve(tool('read')), AiToolCallCategory.read,
-          reason: '$cli');
-      expect(resolver.resolve(tool('write')), AiToolCallCategory.write,
-          reason: '$cli');
-      expect(resolver.resolve(tool('strreplace')), AiToolCallCategory.edit,
-          reason: '$cli');
-      expect(resolver.resolve(tool('mcp__foo')), AiToolCallCategory.mcp,
-          reason: '$cli');
-      expect(resolver.resolve(tool('unknown_x')), AiToolCallCategory.other,
-          reason: '$cli');
+      final resolver = registry
+          .capability<AiHistoryCapability>(cli)!
+          .categoryResolver;
+      expect(
+        resolver.resolve(tool('bash')),
+        AiToolCallCategory.command,
+        reason: '$cli',
+      );
+      expect(
+        resolver.resolve(tool('read')),
+        AiToolCallCategory.read,
+        reason: '$cli',
+      );
+      expect(
+        resolver.resolve(tool('write')),
+        AiToolCallCategory.write,
+        reason: '$cli',
+      );
+      expect(
+        resolver.resolve(tool('strreplace')),
+        AiToolCallCategory.edit,
+        reason: '$cli',
+      );
+      expect(
+        resolver.resolve(tool('mcp__foo')),
+        AiToolCallCategory.mcp,
+        reason: '$cli',
+      );
+      expect(
+        resolver.resolve(tool('unknown_x')),
+        AiToolCallCategory.other,
+        reason: '$cli',
+      );
     }
   });
 
@@ -49,23 +68,34 @@ void main() {
   test('opencode-origin tools question resolves to askUser (Task 6 决策统一)，'
       'skill 显式 other（矩阵 G-3）', () {
     for (final cli in clis) {
-      final resolver =
-          registry.capability<AiHistoryCapability>(cli)!.categoryResolver;
-      expect(resolver.resolve(tool('question')), AiToolCallCategory.askUser,
-          reason: '$cli');
-      expect(resolver.resolve(tool('skill')), AiToolCallCategory.other,
-          reason: '$cli');
+      final resolver = registry
+          .capability<AiHistoryCapability>(cli)!
+          .categoryResolver;
+      expect(
+        resolver.resolve(tool('question')),
+        AiToolCallCategory.askUser,
+        reason: '$cli',
+      );
+      expect(
+        resolver.resolve(tool('skill')),
+        AiToolCallCategory.other,
+        reason: '$cli',
+      );
     }
   });
 
   test('subagentToolNames consistency: every name resolves to subagent', () {
     for (final cli in clis) {
       final history = registry.capability<AiHistoryCapability>(cli)!;
-      final resolver =
-          registry.capability<AiHistoryCapability>(cli)!.categoryResolver;
+      final resolver = registry
+          .capability<AiHistoryCapability>(cli)!
+          .categoryResolver;
       for (final name in history.subagentToolNames) {
-        expect(resolver.resolve(tool(name)), AiToolCallCategory.subagent,
-            reason: '$cli/$name');
+        expect(
+          resolver.resolve(tool(name)),
+          AiToolCallCategory.subagent,
+          reason: '$cli/$name',
+        );
       }
     }
   });
@@ -161,7 +191,9 @@ void main() {
     };
     expect(defaultToolCallNameRules, expected);
     expect(defaultToolCallPrefixRules, hasLength(1));
-    expect(defaultToolCallPrefixRules.single,
-        ('mcp__', AiToolCallCategory.mcp));
+    expect(defaultToolCallPrefixRules.single, (
+      'mcp__',
+      AiToolCallCategory.mcp,
+    ));
   });
 }

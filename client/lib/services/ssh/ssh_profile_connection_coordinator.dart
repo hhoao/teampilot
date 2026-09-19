@@ -14,9 +14,8 @@ import 'ssh_transport_close_policy.dart';
 
 typedef SshProfileResolver = SshProfile? Function(String profileId);
 
-typedef SshSessionPlaneReconnectHandler = Future<void> Function(
-  String profileId,
-);
+typedef SshSessionPlaneReconnectHandler =
+    Future<void> Function(String profileId);
 
 typedef SshProfileDisconnectHandler =
     void Function(String profileId, Object error, StackTrace stackTrace);
@@ -68,8 +67,7 @@ class SshProfileConnectionCoordinator {
 
   /// Fires with a profile id when session-plane reconnect should run (chat
   /// shells, workspace terminals, …).
-  Stream<String> get sessionReconnectSignals =>
-      _sessionReconnectSignals.stream;
+  Stream<String> get sessionReconnectSignals => _sessionReconnectSignals.stream;
 
   RemoteConnectionMonitor monitorFor(String profileId) =>
       _monitors.putIfAbsent(profileId, RemoteConnectionMonitor.new);

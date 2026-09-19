@@ -36,10 +36,7 @@ void main() {
       await index.ensureFresh();
       expect(index.size, greaterThan(0));
 
-      final names = index
-          .query('router')
-          .map((m) => m.relativePath)
-          .toList();
+      final names = index.query('router').map((m) => m.relativePath).toList();
       expect(
         names,
         containsAll(['lib/app_router.dart', 'lib/widgets/router_guard.dart']),
@@ -48,12 +45,15 @@ void main() {
       expect(names.any((p) => p.startsWith('.git')), isFalse);
     });
 
-    test('ranks basename prefix matches above directory-only matches', () async {
-      final index = WorkspaceFileIndex(fs: fs, root: root);
-      await index.ensureFresh();
-      final results = index.query('router_guard');
-      expect(results.first.relativePath, 'lib/widgets/router_guard.dart');
-    });
+    test(
+      'ranks basename prefix matches above directory-only matches',
+      () async {
+        final index = WorkspaceFileIndex(fs: fs, root: root);
+        await index.ensureFresh();
+        final results = index.query('router_guard');
+        expect(results.first.relativePath, 'lib/widgets/router_guard.dart');
+      },
+    );
 
     test('fuzzy subsequence matches across path separators', () async {
       final index = WorkspaceFileIndex(fs: fs, root: root);
@@ -113,21 +113,24 @@ void main() {
       );
     });
 
-    test('queryDirectories matches directory basenames for compose drilling', () async {
-      final index = WorkspaceFileIndex(fs: fs, root: root);
-      await index.ensureFresh();
+    test(
+      'queryDirectories matches directory basenames for compose drilling',
+      () async {
+        final index = WorkspaceFileIndex(fs: fs, root: root);
+        await index.ensureFresh();
 
-      expect(index.queryDirectories('widgets'), contains('lib/widgets'));
-      expect(index.queryDirectories('widgets'), isNot(contains('lib')));
+        expect(index.queryDirectories('widgets'), contains('lib/widgets'));
+        expect(index.queryDirectories('widgets'), isNot(contains('lib')));
 
-      // Blank query yields nothing.
-      expect(index.queryDirectories('   '), isEmpty);
-      // Unbuilt index yields nothing.
-      expect(
-        WorkspaceFileIndex(fs: fs, root: root).queryDirectories('widgets'),
-        isEmpty,
-      );
-    });
+        // Blank query yields nothing.
+        expect(index.queryDirectories('   '), isEmpty);
+        // Unbuilt index yields nothing.
+        expect(
+          WorkspaceFileIndex(fs: fs, root: root).queryDirectories('widgets'),
+          isEmpty,
+        );
+      },
+    );
 
     test('respects maxIndexEntries during the build walk', () async {
       await fs.writeString('$root/a/one.txt', '');

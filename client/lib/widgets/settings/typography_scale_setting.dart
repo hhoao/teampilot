@@ -136,10 +136,7 @@ class _TypographyScaleSettingState extends State<TypographyScaleSetting> {
               onChanged: _onScaleChanged,
             ),
           ),
-          if (isCustom) ...[
-            const SizedBox(width: 8),
-            _percentField(l10n),
-          ],
+          if (isCustom) ...[const SizedBox(width: 8), _percentField(l10n)],
         ],
       );
     }
@@ -160,10 +157,7 @@ class _TypographyScaleSettingState extends State<TypographyScaleSetting> {
               selected: widget.scaleId,
               onChanged: _onScaleChanged,
             ),
-            if (isCustom) ...[
-              const SizedBox(width: 8),
-              _percentField(l10n),
-            ],
+            if (isCustom) ...[const SizedBox(width: 8), _percentField(l10n)],
           ],
         ),
       ),

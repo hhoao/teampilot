@@ -5,7 +5,7 @@ import 'package:teampilot/services/cli/flashskyai/capabilities/history/ai_histor
 import 'package:teampilot/services/cli/flashskyai/capabilities/history/ai_transcript.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/chat/session/history/session_history_context.dart';
+import 'package:teampilot/services/chat/conversation/history/session_history_context.dart';
 
 void main() {
   late Directory tmp;

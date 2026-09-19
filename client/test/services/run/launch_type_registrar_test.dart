@@ -48,29 +48,35 @@ void main() {
     ).rebuild(reg);
 
     expect(reg.get('flutter')?.extensionId, 'ext.flutter');
-    expect(reg.isAvailable('flutter', targetId: WorkspaceFolder.localTargetId), isTrue);
-  });
-
-  test('rebuild clears previous extension types before re-registering', () async {
-    final reg = LaunchTypeRegistry.withBuiltIns();
-    final registrar = LaunchTypeRegistrar(
-      extensions: [_flutterExtension(id: 'ext.flutter.a')],
-      detector: (_) async => true,
-      extensionPathFor: (_) => '/ext/a',
+    expect(
+      reg.isAvailable('flutter', targetId: WorkspaceFolder.localTargetId),
+      isTrue,
     );
-    await registrar.rebuild(reg);
-    expect(reg.get('flutter')?.extensionId, 'ext.flutter.a');
-
-    await LaunchTypeRegistrar(
-      extensions: [_flutterExtension(id: 'ext.flutter.b')],
-      detector: (_) async => true,
-      extensionPathFor: (_) => '/ext/b',
-    ).rebuild(reg);
-
-    expect(reg.get('flutter')?.extensionId, 'ext.flutter.b');
-    expect(reg.get('shellScript'), isNotNull);
-    expect(reg.get('process'), isNull);
   });
+
+  test(
+    'rebuild clears previous extension types before re-registering',
+    () async {
+      final reg = LaunchTypeRegistry.withBuiltIns();
+      final registrar = LaunchTypeRegistrar(
+        extensions: [_flutterExtension(id: 'ext.flutter.a')],
+        detector: (_) async => true,
+        extensionPathFor: (_) => '/ext/a',
+      );
+      await registrar.rebuild(reg);
+      expect(reg.get('flutter')?.extensionId, 'ext.flutter.a');
+
+      await LaunchTypeRegistrar(
+        extensions: [_flutterExtension(id: 'ext.flutter.b')],
+        detector: (_) async => true,
+        extensionPathFor: (_) => '/ext/b',
+      ).rebuild(reg);
+
+      expect(reg.get('flutter')?.extensionId, 'ext.flutter.b');
+      expect(reg.get('shellScript'), isNotNull);
+      expect(reg.get('process'), isNull);
+    },
+  );
 
   test('failed detect leaves type unavailable on local', () async {
     final reg = LaunchTypeRegistry.withBuiltIns();
@@ -81,7 +87,10 @@ void main() {
     ).rebuild(reg);
 
     expect(reg.get('flutter')?.extensionId, 'ext.flutter');
-    expect(reg.isAvailable('flutter', targetId: WorkspaceFolder.localTargetId), isFalse);
+    expect(
+      reg.isAvailable('flutter', targetId: WorkspaceFolder.localTargetId),
+      isFalse,
+    );
   });
 
   test('remote target is unavailable even when detect passed', () async {
@@ -105,18 +114,24 @@ void main() {
     expect(registrar.pathResolver('ext.flutter'), '/installed/ext.flutter');
   });
 
-  test('conflicting extension does not override first winner availability', () async {
-    final reg = LaunchTypeRegistry.withBuiltIns();
-    await LaunchTypeRegistrar(
-      extensions: [
-        _flutterExtension(id: 'ext.flutter.a'),
-        _flutterExtension(id: 'ext.flutter.b'),
-      ],
-      detector: (manifest) async => manifest.id == 'ext.flutter.a',
-      extensionPathFor: (_) => '/ext',
-    ).rebuild(reg);
+  test(
+    'conflicting extension does not override first winner availability',
+    () async {
+      final reg = LaunchTypeRegistry.withBuiltIns();
+      await LaunchTypeRegistrar(
+        extensions: [
+          _flutterExtension(id: 'ext.flutter.a'),
+          _flutterExtension(id: 'ext.flutter.b'),
+        ],
+        detector: (manifest) async => manifest.id == 'ext.flutter.a',
+        extensionPathFor: (_) => '/ext',
+      ).rebuild(reg);
 
-    expect(reg.get('flutter')?.extensionId, 'ext.flutter.a');
-    expect(reg.isAvailable('flutter', targetId: WorkspaceFolder.localTargetId), isTrue);
-  });
+      expect(reg.get('flutter')?.extensionId, 'ext.flutter.a');
+      expect(
+        reg.isAvailable('flutter', targetId: WorkspaceFolder.localTargetId),
+        isTrue,
+      );
+    },
+  );
 }

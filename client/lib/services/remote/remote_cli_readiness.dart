@@ -73,9 +73,9 @@ class RemoteCliReadinessService {
       SshCommandRunner run,
     )?
     installActionBuilder,
-  }) : _installer = installer ?? RemoteCliInstaller(
-         locator: RemoteCliLocator(registry: registry),
-       ),
+  }) : _installer =
+           installer ??
+           RemoteCliInstaller(locator: RemoteCliLocator(registry: registry)),
        _installActionBuilder = installActionBuilder;
 
   final CliToolRegistry registry;
@@ -118,11 +118,7 @@ class RemoteCliReadinessService {
         error: e,
         stackTrace: st,
       );
-      return RemoteCliFailed(
-        targetId: target.id,
-        cli: cli,
-        message: message,
-      );
+      return RemoteCliFailed(targetId: target.id, cli: cli, message: message);
     }
   }
 
@@ -160,10 +156,7 @@ class RemoteCliReadinessService {
 
     try {
       final client = await sshClientFactory.clientForStorage(profile);
-      final run = RemoteCliLocator.runnerForClient(
-        client,
-        includeStderr: true,
-      );
+      final run = RemoteCliLocator.runnerForClient(client, includeStderr: true);
       final storedPath = (await cliPathOverride(target.id, cli.value) ?? '')
           .trim();
       final path = await _installer.ensure(
@@ -197,11 +190,7 @@ class RemoteCliReadinessService {
         error: e,
         stackTrace: st,
       );
-      return RemoteCliFailed(
-        targetId: target.id,
-        cli: cli,
-        message: message,
-      );
+      return RemoteCliFailed(targetId: target.id, cli: cli, message: message);
     }
   }
 

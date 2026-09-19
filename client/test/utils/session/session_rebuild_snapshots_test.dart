@@ -27,26 +27,24 @@ AppSession _s({
 
 void main() {
   test('SessionListStructure ignores display/updatedAt under createdDesc', () {
-    final a = SessionListStructure.fromSessions(
-      [_s(id: 'a', display: 'old', updatedAt: 10)],
-      sort: AppSessionSort.createdDesc,
-    );
-    final b = SessionListStructure.fromSessions(
-      [_s(id: 'a', display: 'new', updatedAt: 99)],
-      sort: AppSessionSort.createdDesc,
-    );
+    final a = SessionListStructure.fromSessions([
+      _s(id: 'a', display: 'old', updatedAt: 10),
+    ], sort: AppSessionSort.createdDesc);
+    final b = SessionListStructure.fromSessions([
+      _s(id: 'a', display: 'new', updatedAt: 99),
+    ], sort: AppSessionSort.createdDesc);
     expect(a, b);
   });
 
   test('SessionListStructure changes when recentlyUpdated reorder changes', () {
-    final a = SessionListStructure.fromSessions(
-      [_s(id: 'a', updatedAt: 1), _s(id: 'b', updatedAt: 2)],
-      sort: AppSessionSort.recentlyUpdated,
-    );
-    final b = SessionListStructure.fromSessions(
-      [_s(id: 'a', updatedAt: 3), _s(id: 'b', updatedAt: 2)],
-      sort: AppSessionSort.recentlyUpdated,
-    );
+    final a = SessionListStructure.fromSessions([
+      _s(id: 'a', updatedAt: 1),
+      _s(id: 'b', updatedAt: 2),
+    ], sort: AppSessionSort.recentlyUpdated);
+    final b = SessionListStructure.fromSessions([
+      _s(id: 'a', updatedAt: 3),
+      _s(id: 'b', updatedAt: 2),
+    ], sort: AppSessionSort.recentlyUpdated);
     expect(a, isNot(b));
     expect(b.sessionIds, ['a', 'b']);
   });
@@ -79,17 +77,26 @@ void main() {
 
   test('RunningSessionIds order-sensitive equality', () {
     final a = RunningSessionIds.fromWorkspace(
-      sessions: [_s(id: 'a'), _s(id: 'b')],
+      sessions: [
+        _s(id: 'a'),
+        _s(id: 'b'),
+      ],
       busySessionIds: {'b'},
       openTabSessionIds: {'a'},
     );
     final same = RunningSessionIds.fromWorkspace(
-      sessions: [_s(id: 'a'), _s(id: 'b')],
+      sessions: [
+        _s(id: 'a'),
+        _s(id: 'b'),
+      ],
       busySessionIds: {'b'},
       openTabSessionIds: {'a'},
     );
     final different = RunningSessionIds.fromWorkspace(
-      sessions: [_s(id: 'a'), _s(id: 'b')],
+      sessions: [
+        _s(id: 'a'),
+        _s(id: 'b'),
+      ],
       busySessionIds: {'a'},
       openTabSessionIds: {'b'},
     );

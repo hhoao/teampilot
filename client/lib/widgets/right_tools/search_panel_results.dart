@@ -9,8 +9,7 @@ import '../find/find_bar_widgets.dart';
 /// roots (e.g. /ws and /ws/sub) can match the same absolute path in two
 /// slices, so [ContentSearchFileGroup.path] alone is not unique — widget keys
 /// and the collapse-toggle set must key on both.
-String searchGroupCollapseKey(String rootKey, String path) =>
-    '$rootKey:$path';
+String searchGroupCollapseKey(String rootKey, String path) => '$rootKey:$path';
 
 /// Renders aggregated search results: per-root group headers (only when the
 /// results span multiple roots), collapsible file groups with matching lines,
@@ -40,6 +39,7 @@ class SearchPanelResults extends StatelessWidget {
   /// Per-slice failures: root path → (error, directory label). A root with an
   /// error but zero file groups still renders its label.
   final Map<String, (Object, String)> sliceErrors;
+
   /// Collapsed group keys ([searchGroupCollapseKey] values).
   final Set<String> collapsedPaths;
 
@@ -88,10 +88,7 @@ class SearchPanelResults extends StatelessWidget {
         if (index == items.length) {
           return Padding(
             padding: const EdgeInsets.all(8),
-            child: Text(
-              l10n.workspaceSearchTruncated,
-              style: styles.mutedSm,
-            ),
+            child: Text(l10n.workspaceSearchTruncated, style: styles.mutedSm),
           );
         }
         final item = items[index];

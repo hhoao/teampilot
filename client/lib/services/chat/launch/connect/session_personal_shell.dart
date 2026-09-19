@@ -1,4 +1,4 @@
-import '../../model/chat_tab.dart';
+import '../../session/chat_tab.dart';
 import '../../../../models/app_session.dart';
 import '../../../terminal/terminal_session.dart';
 

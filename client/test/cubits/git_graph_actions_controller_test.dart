@@ -48,10 +48,11 @@ void main() {
   test('checkoutRemoteBranch splits remote prefix from full name', () async {
     final (cubit, controller) = await build();
     expect(await controller.checkoutRemoteBranch('origin/feature-x'), isTrue);
-    expect(
-      actions.calls.single,
-      ['checkout-remote-branch', 'origin', 'feature-x'],
-    );
+    expect(actions.calls.single, [
+      'checkout-remote-branch',
+      'origin',
+      'feature-x',
+    ]);
     await cubit.close();
   });
 
@@ -61,10 +62,11 @@ void main() {
       await controller.checkoutRemoteBranch('origin/feature/nested'),
       isTrue,
     );
-    expect(
-      actions.calls.single,
-      ['checkout-remote-branch', 'origin', 'feature/nested'],
-    );
+    expect(actions.calls.single, [
+      'checkout-remote-branch',
+      'origin',
+      'feature/nested',
+    ]);
     await cubit.close();
   });
 
@@ -78,10 +80,11 @@ void main() {
   test('deleteRemoteBranch splits remote prefix from full name', () async {
     final (cubit, controller) = await build();
     expect(await controller.deleteRemoteBranch('origin/feature-x'), isTrue);
-    expect(
-      actions.calls.single,
-      ['delete-remote-branch', 'origin', 'feature-x'],
-    );
+    expect(actions.calls.single, [
+      'delete-remote-branch',
+      'origin',
+      'feature-x',
+    ]);
     await cubit.close();
   });
 

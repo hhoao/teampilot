@@ -39,8 +39,7 @@ Future<void> main(List<String> args) async {
   }
 
   final clientDir = _clientDirectory();
-  final output =
-      _readArg(args, '--output') ?? 'build/perf_live_dump.json';
+  final output = _readArg(args, '--output') ?? 'build/perf_live_dump.json';
   final seconds = int.tryParse(_readArg(args, '--seconds') ?? '') ?? 0;
   final port = int.tryParse(_readArg(args, '--port') ?? '') ?? _defaultPort;
   final base = 'http://127.0.0.1:$port';
@@ -120,8 +119,7 @@ Future<void> _recordAndDump({
 
   final perfetto = await vm.getPerfettoVMTimeline();
   final traceText = perfetto.trace ?? '';
-  final traceBinary =
-      traceText.isEmpty ? <int>[] : base64.decode(traceText);
+  final traceBinary = traceText.isEmpty ? <int>[] : base64.decode(traceText);
 
   final snapshot = buildCapturedSnapshot(
     frames: frames,
@@ -165,9 +163,7 @@ void _startStdinSubscriptionIfNeeded() {
         },
         onDone: () {
           for (final c in _stdinLineQueue) {
-            c.completeError(
-              StateError('stdin closed before a line was read'),
-            );
+            c.completeError(StateError('stdin closed before a line was read'));
           }
           _stdinLineQueue.clear();
         },

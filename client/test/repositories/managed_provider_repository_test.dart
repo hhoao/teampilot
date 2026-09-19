@@ -363,34 +363,31 @@ void main() {
       },
     );
 
-    test(
-      'clears windows when an update submits an empty list',
-      () async {
-        await repo.upsert(
-          _provider('p1').copyWith(
-            endpointConfig: ManagedProviderEndpointConfig(
-              url: 'https://example.test/usage',
-              windows: const [
-                ManagedProviderUsageWindow(
-                  label: 'Usage',
-                  remaining: r'$.remaining',
-                ),
-              ],
-            ),
+    test('clears windows when an update submits an empty list', () async {
+      await repo.upsert(
+        _provider('p1').copyWith(
+          endpointConfig: ManagedProviderEndpointConfig(
+            url: 'https://example.test/usage',
+            windows: const [
+              ManagedProviderUsageWindow(
+                label: 'Usage',
+                remaining: r'$.remaining',
+              ),
+            ],
           ),
-        );
+        ),
+      );
 
-        await repo.upsert(
-          _provider('p1').copyWith(
-            endpointConfig: ManagedProviderEndpointConfig(
-              url: 'https://example.test/usage',
-            ),
+      await repo.upsert(
+        _provider('p1').copyWith(
+          endpointConfig: ManagedProviderEndpointConfig(
+            url: 'https://example.test/usage',
           ),
-        );
+        ),
+      );
 
-        expect((await repo.load()).single.endpointConfig.windows, isEmpty);
-      },
-    );
+      expect((await repo.load()).single.endpointConfig.windows, isEmpty);
+    });
 
     test('normalizes provider IDs and never writes empty IDs', () async {
       await repo.save([_provider(' p1 '), _provider('p1')]);

@@ -98,8 +98,7 @@ class _MobileSlidePanelHostState extends State<MobileSlidePanelHost>
     }
   }
 
-  bool get _panelMounted =>
-      _controller.status != AnimationStatus.dismissed;
+  bool get _panelMounted => _controller.status != AnimationStatus.dismissed;
 
   @override
   Widget build(BuildContext context) {
@@ -131,10 +130,7 @@ class _MobileSlidePanelHostState extends State<MobileSlidePanelHost>
             top: 0,
             bottom: 0,
             width: widget.width,
-            child: _SlidePanel(
-              controller: _controller,
-              child: widget.panel,
-            ),
+            child: _SlidePanel(controller: _controller, child: widget.panel),
           ),
       ],
     );
@@ -142,10 +138,7 @@ class _MobileSlidePanelHostState extends State<MobileSlidePanelHost>
 }
 
 class _SlidePanel extends StatelessWidget {
-  const _SlidePanel({
-    required this.controller,
-    required this.child,
-  });
+  const _SlidePanel({required this.controller, required this.child});
 
   final AnimationController controller;
   final Widget child;
@@ -159,11 +152,7 @@ class _SlidePanel extends StatelessWidget {
     ).animate(CurvedAnimation(parent: controller, curve: Curves.easeOutCubic));
     return SlideTransition(
       position: slide,
-      child: Material(
-        color: cs.surface,
-        elevation: 12,
-        child: child,
-      ),
+      child: Material(color: cs.surface, elevation: 12, child: child),
     );
   }
 }

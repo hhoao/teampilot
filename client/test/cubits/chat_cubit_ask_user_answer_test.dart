@@ -1,7 +1,7 @@
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
-import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
@@ -15,9 +15,9 @@ import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/chat/terminal/terminal_activity_tracker.dart';
-import 'package:teampilot/services/chat/terminal/ask_user_question_answer_service.dart';
-import 'package:teampilot/services/chat/terminal/terminal_launch_controller.dart';
+import 'package:teampilot/services/chat/runtime/pty/terminal_activity_tracker.dart';
+import 'package:teampilot/services/chat/conversation/approvals/ask_user_question_answer_service.dart';
+import 'package:teampilot/services/chat/runtime/pty/terminal_launch_controller.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../support/post_frame_test_harness.dart';

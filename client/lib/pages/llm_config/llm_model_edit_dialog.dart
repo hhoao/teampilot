@@ -79,20 +79,16 @@ class LlmModelEditDialogState extends State<LlmModelEditDialog> {
               controller: _nameController,
               autofocus: true,
               decoration: InputDecoration(labelText: l10n.modelName),
-              validator: (value) =>
-                  (value == null || value.trim().isEmpty)
-                      ? l10n.formFieldRequired
-                      : null,
+              validator: (value) => (value == null || value.trim().isEmpty)
+                  ? l10n.formFieldRequired
+                  : null,
             ),
             const SizedBox(height: 14),
             Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  l10n.provider,
-                  style: TpTextStyles.of(context).mdSemibold,
-                ),
+                Text(l10n.provider, style: TpTextStyles.of(context).mdSemibold),
                 const SizedBox(height: 8),
                 TpSelectFormField<String>(
                   key: AppKeys.modelProviderField,
@@ -101,10 +97,9 @@ class LlmModelEditDialogState extends State<LlmModelEditDialog> {
                   initialValue: initialProvider,
                   hintText: l10n.provider,
                   decoration: deco,
-                  validator: (value) =>
-                      (value == null || value.isEmpty)
-                          ? l10n.formFieldRequired
-                          : null,
+                  validator: (value) => (value == null || value.isEmpty)
+                      ? l10n.formFieldRequired
+                      : null,
                   onChanged: (value) => setState(() => _provider = value ?? ''),
                   itemLabel: (value) => value,
                 ),

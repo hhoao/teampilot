@@ -1,5 +1,4 @@
-import 'package:ai_message_core/ai_message_core.dart'
-    hide WriteEditHunkCodec;
+import 'package:ai_message_core/ai_message_core.dart' hide WriteEditHunkCodec;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/ai_history/edit_codecs/write_edit_hunk_codec.dart';
 
@@ -15,10 +14,10 @@ const _testPathKeys = ['file_path', 'path'];
 const _testContentKeys = ['content', 'contents'];
 
 WriteEditHunkCodec _testCodec() => const WriteEditHunkCodec(
-      toolNames: _testToolNames,
-      pathKeys: _testPathKeys,
-      contentKeys: _testContentKeys,
-    );
+  toolNames: _testToolNames,
+  pathKeys: _testPathKeys,
+  contentKeys: _testContentKeys,
+);
 
 AiToolCallPart _makeToolCall({
   required String toolName,
@@ -76,10 +75,7 @@ void main() {
       final codec = _testCodec();
       final part = _makeToolCall(
         toolName: 'write',
-        args: {
-          'file_path': '/src/main.dart',
-          'content': 'hello\nworld\nfoo',
-        },
+        args: {'file_path': '/src/main.dart', 'content': 'hello\nworld\nfoo'},
       );
 
       final hunk = codec.encode(part);
@@ -105,10 +101,7 @@ void main() {
       final codec = _testCodec();
       final part = _makeToolCall(
         toolName: 'write',
-        args: {
-          'path': '/alt/path.dart',
-          'content': 'data',
-        },
+        args: {'path': '/alt/path.dart', 'content': 'data'},
       );
 
       final hunk = codec.encode(part);
@@ -136,10 +129,7 @@ void main() {
       final codec = _testCodec();
       final part = _makeToolCall(
         toolName: 'write',
-        args: {
-          'file_path': '/f.txt',
-          'contents': 'some content',
-        },
+        args: {'file_path': '/f.txt', 'contents': 'some content'},
       );
 
       final hunk = codec.encode(part);
@@ -181,12 +171,7 @@ void main() {
 
     test('returns null for missing path', () {
       final codec = _testCodec();
-      final part = _makeToolCall(
-        toolName: 'write',
-        args: {
-          'content': 'data',
-        },
-      );
+      final part = _makeToolCall(toolName: 'write', args: {'content': 'data'});
 
       expect(codec.encode(part), isNull);
     });
@@ -195,9 +180,7 @@ void main() {
       final codec = _testCodec();
       final part = _makeToolCall(
         toolName: 'write',
-        args: {
-          'file_path': '/f.txt',
-        },
+        args: {'file_path': '/f.txt'},
       );
 
       expect(codec.encode(part), isNull);
@@ -207,10 +190,7 @@ void main() {
       final codec = _testCodec();
       final part = _makeToolCall(
         toolName: 'edit',
-        args: {
-          'file_path': '/f.txt',
-          'content': 'data',
-        },
+        args: {'file_path': '/f.txt', 'content': 'data'},
       );
 
       expect(codec.encode(part), isNull);
@@ -220,10 +200,7 @@ void main() {
       final codec = _testCodec();
       final part = _makeToolCall(
         toolName: 'write',
-        args: {
-          'file_path': '/f.txt',
-          'content': '',
-        },
+        args: {'file_path': '/f.txt', 'content': ''},
       );
 
       expect(codec.encode(part), isNull);
@@ -240,10 +217,7 @@ void main() {
       final codec = _testCodec();
       final part = _makeToolCall(
         toolName: 'WriteFile',
-        args: {
-          'file_path': '/f.txt',
-          'content': 'data',
-        },
+        args: {'file_path': '/f.txt', 'content': 'data'},
       );
 
       final hunk = codec.encode(part);
@@ -255,10 +229,7 @@ void main() {
       final codec = _testCodec();
       final part = _makeToolCall(
         toolName: 'write',
-        args: {
-          'file_path': '/f.txt',
-          'content': 'single line',
-        },
+        args: {'file_path': '/f.txt', 'content': 'single line'},
       );
 
       final hunk = codec.encode(part);
@@ -274,10 +245,7 @@ void main() {
       final lines = List.generate(600, (i) => 'line $i').join('\n');
       final part = _makeToolCall(
         toolName: 'write',
-        args: {
-          'file_path': '/f.txt',
-          'content': lines,
-        },
+        args: {'file_path': '/f.txt', 'content': lines},
       );
 
       final hunk = codec.encode(part);
@@ -293,10 +261,7 @@ void main() {
       final codec = _testCodec();
       final part = _makeToolCall(
         toolName: 'create',
-        args: {
-          'file_path': '/new_file.dart',
-          'content': 'class NewFile {}',
-        },
+        args: {'file_path': '/new_file.dart', 'content': 'class NewFile {}'},
       );
 
       final hunk = codec.encode(part);
@@ -308,10 +273,7 @@ void main() {
       final codec = _testCodec();
       final part = _makeToolCall(
         toolName: 'create_file',
-        args: {
-          'file_path': '/another.dart',
-          'content': 'void main() {}',
-        },
+        args: {'file_path': '/another.dart', 'content': 'void main() {}'},
       );
 
       final hunk = codec.encode(part);
@@ -360,10 +322,7 @@ void main() {
 
       final part = _makeToolCall(
         toolName: 'write',
-        args: {
-          'file_path': '/f.txt',
-          'body': 'custom body content',
-        },
+        args: {'file_path': '/f.txt', 'body': 'custom body content'},
       );
 
       final hunk = codec.encode(part);
@@ -401,10 +360,7 @@ void main() {
 
       final part = _makeToolCall(
         toolName: 'write',
-        args: {
-          'file_path': '/f.txt',
-          'text': 'second choice',
-        },
+        args: {'file_path': '/f.txt', 'text': 'second choice'},
       );
 
       final hunk = codec.encode(part);
@@ -420,10 +376,7 @@ void main() {
 
       final part = _makeToolCall(
         toolName: 'write',
-        args: {
-          'file_path': '/f.txt',
-          'contents': 'contents key works',
-        },
+        args: {'file_path': '/f.txt', 'contents': 'contents key works'},
       );
 
       final hunk = codec.encode(part);

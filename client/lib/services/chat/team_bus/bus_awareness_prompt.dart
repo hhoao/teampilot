@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import '../../../models/team_config.dart';
 import '../../../utils/team/team_member_naming.dart';
-import '../session/member_role_provision.dart';
+import '../launch/session/member_role_provision.dart';
 
 abstract final class BusAwarenessPrompt {
   BusAwarenessPrompt._();

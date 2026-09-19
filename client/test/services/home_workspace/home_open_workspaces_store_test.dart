@@ -20,7 +20,7 @@ void main() {
     store = HomeOpenWorkspacesStore(
       fs: fs,
       pathOverride: paths.homeWorkspaceOpenWorkspacesJson,
-                                     storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
   });
 

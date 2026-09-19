@@ -16,10 +16,7 @@ void main() {
 
     final mount = await session.start();
     expect(mount, isNotNull);
-    expect(
-      mount!.entryUri.path,
-      endsWith('/m/${mount.mountId}/index.html'),
-    );
+    expect(mount!.entryUri.path, endsWith('/m/${mount.mountId}/index.html'));
     await server.dispose();
   });
 

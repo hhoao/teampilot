@@ -42,10 +42,7 @@ class ClaudeProviderFormSection extends StatelessWidget {
             },
           ),
           const SizedBox(height: 6),
-          Text(
-            l10n.appProviderClaudeAuthFieldHint,
-            style: styles.mutedSm,
-          ),
+          Text(l10n.appProviderClaudeAuthFieldHint, style: styles.mutedSm),
         ],
       ),
     );

@@ -47,7 +47,7 @@ void main() {
 
   HomeTargetController homeController() => testHomeTargetController();
 
-  Widget dialog({ pickerFn }) => RepositoryProvider<HomeTargetController>.value(
+  Widget dialog({pickerFn}) => RepositoryProvider<HomeTargetController>.value(
     value: homeController(),
     child: HomeCloneRepositoryDialog(picker: pickerFn),
   );
@@ -62,17 +62,17 @@ void main() {
     });
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.byType(TextField).first,
-      'not a url',
-    );
+    await tester.enterText(find.byType(TextField).first, 'not a url');
     await tester.pump();
     await tester.tap(find.text(l10n.cloneRepositorySubmit));
     await tester.pumpAndSettle();
 
     expect(find.text(l10n.cloneRepositoryUrlInvalid), findsOneWidget);
-    expect(popped, isFalse,
-        reason: 'invalid form must not pop the dialog route');
+    expect(
+      popped,
+      isFalse,
+      reason: 'invalid form must not pop the dialog route',
+    );
     navigatorKey.currentState!.pop();
     await tester.pumpAndSettle();
   });

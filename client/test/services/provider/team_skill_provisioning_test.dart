@@ -42,7 +42,7 @@ void main() {
             updatedAt: 0,
           ),
         ],
-                                            storage: testHomeStorage,
+        storage: testHomeStorage,
       );
 
       const team = TeamProfile(

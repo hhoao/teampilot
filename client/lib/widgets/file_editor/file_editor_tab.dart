@@ -108,7 +108,9 @@ class _FileEditorTabState extends State<FileEditorTab> {
     final cs = Theme.of(context).colorScheme;
     final label = widget.dirty ? '${widget.fileName} •' : widget.fileName;
     final labelColor = widget.selected ? cs.onSecondaryContainer : cs.onSurface;
-    final closeColor = widget.selected ? cs.onSecondaryContainer : cs.tpIconMuted;
+    final closeColor = widget.selected
+        ? cs.onSecondaryContainer
+        : cs.tpIconMuted;
 
     return Tooltip(
       message: widget.filePath,

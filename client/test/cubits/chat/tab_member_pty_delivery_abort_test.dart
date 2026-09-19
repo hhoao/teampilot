@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/chat_session_shell_factory.dart';
-import 'package:teampilot/services/chat/chat_tab_store.dart';
-import 'package:teampilot/services/chat/tab_member_coordination_factory.dart';
-import 'package:teampilot/services/chat/runtime/tab_member_pty_delivery.dart';
-import 'package:teampilot/services/chat/terminal/member_pty_inject_service.dart';
+import 'package:teampilot/services/chat/launch/connect/chat_session_shell_factory.dart';
+import 'package:teampilot/services/chat/session/chat_tab_store.dart';
+import 'package:teampilot/services/chat/runtime/tab_member_coordination_factory.dart';
+import 'package:teampilot/services/chat/runtime/pty/tab_member_pty_delivery.dart';
+import 'package:teampilot/services/chat/runtime/pty/member_pty_inject_service.dart';
 import '../../support/in_memory_filesystem.dart';
 
 ({TabMemberPtyDelivery delivery, MemberPtyInjectService ptyInject}) _delivery({

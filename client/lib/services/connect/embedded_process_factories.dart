@@ -230,16 +230,13 @@ SSHShellExecFactory embeddedShellExecFactory({String? toolchainBin}) {
       platform: platform,
       shellEnv: Platform.environment['SHELL'],
     );
-    final arguments = windows
-        ? const ['-NoLogo', '-Command']
-        : const ['-c'];
+    final arguments = windows ? const ['-NoLogo', '-Command'] : const ['-c'];
     try {
       return _ProcessServerProcessAdapter(
-        await Process.start(
-          executable,
-          [...arguments, command],
-          environment: merged,
-        ),
+        await Process.start(executable, [
+          ...arguments,
+          command,
+        ], environment: merged),
       );
     } on Object catch (error, stackTrace) {
       AppLogger.instance.w(

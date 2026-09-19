@@ -11,10 +11,7 @@ import '../../support/in_memory_filesystem.dart';
 
 class _FailingSession extends HtmlPreviewSession {
   _FailingSession({required super.server})
-    : super(
-        htmlDirectory: '/repo',
-        entryFileName: 'index.html',
-      );
+    : super(htmlDirectory: '/repo', entryFileName: 'index.html');
 
   @override
   Future<HtmlPreviewMount?> start() async => null;

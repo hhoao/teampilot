@@ -46,8 +46,10 @@ class GitCompareFloatingSurface extends FloatingSurface {
   Widget build(BuildContext context, FloatingTab tab) {
     final spec = tab.payload;
     if (spec is! GitCompareSpec) return const SizedBox.shrink();
-    final workspaceId =
-        context.read<FloatingWorkspaceCubit>().state.activeWorkspaceId;
+    final workspaceId = context
+        .read<FloatingWorkspaceCubit>()
+        .state
+        .activeWorkspaceId;
     if (workspaceId.isEmpty) return const SizedBox.shrink();
     return GitComparePane(workspaceId: workspaceId, spec: spec);
   }

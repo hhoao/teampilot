@@ -39,7 +39,10 @@ void main() {
   }
 
   test('mount serves entry file with html mime', () async {
-    final mount = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
+    final mount = await server.mount(
+      htmlDirectory: '/repo',
+      entryFileName: 'index.html',
+    );
     expect(mount, isNotNull);
     final client = directClient();
     try {
@@ -54,13 +57,19 @@ void main() {
   });
 
   test('serves relative subresources', () async {
-    final mount = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
+    final mount = await server.mount(
+      htmlDirectory: '/repo',
+      entryFileName: 'index.html',
+    );
     final client = directClient();
     try {
       final css = await client.getUrl(mount!.entryUri.resolve('style.css'));
       final cssRes = await css.close();
       expect(cssRes.statusCode, 200);
-      expect(await cssRes.transform(utf8.decoder).join(), 'body { color: red; }');
+      expect(
+        await cssRes.transform(utf8.decoder).join(),
+        'body { color: red; }',
+      );
 
       final js = await client.getUrl(mount.entryUri.resolve('sub/app.js'));
       final jsRes = await js.close();
@@ -72,14 +81,19 @@ void main() {
 
   test('rejects path traversal outside mount root', () async {
     await fs.writeString('/secret.txt', 'top secret');
-    final mount = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
+    final mount = await server.mount(
+      htmlDirectory: '/repo',
+      entryFileName: 'index.html',
+    );
     final client = directClient();
     try {
       final base = mount!.entryUri;
       for (final attempt in [
         base.resolve('../secret.txt'),
         base.resolve('../../etc/passwd'),
-        Uri.parse(base.toString().replaceFirst('index.html', '%2e%2e/secret.txt')),
+        Uri.parse(
+          base.toString().replaceFirst('index.html', '%2e%2e/secret.txt'),
+        ),
         base.resolve('..%2fsecret.txt'),
       ]) {
         final (status, _) = await getBody(client, attempt);
@@ -91,7 +105,10 @@ void main() {
   });
 
   test('rejects unknown extensions (deny by default)', () async {
-    final mount = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
+    final mount = await server.mount(
+      htmlDirectory: '/repo',
+      entryFileName: 'index.html',
+    );
     final client = directClient();
     try {
       final res = await client.getUrl(mount!.entryUri.resolve('secret.key'));
@@ -103,7 +120,10 @@ void main() {
   });
 
   test('missing file is 404', () async {
-    final mount = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
+    final mount = await server.mount(
+      htmlDirectory: '/repo',
+      entryFileName: 'index.html',
+    );
     final client = directClient();
     try {
       final res = await client.getUrl(mount!.entryUri.resolve('nope.html'));
@@ -115,8 +135,14 @@ void main() {
   });
 
   test('mount dedupes same directory and refcounts', () async {
-    final a = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
-    final b = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
+    final a = await server.mount(
+      htmlDirectory: '/repo',
+      entryFileName: 'index.html',
+    );
+    final b = await server.mount(
+      htmlDirectory: '/repo',
+      entryFileName: 'index.html',
+    );
     expect(a!.mountId, b!.mountId);
     await server.unmount(a.mountId);
     expect(server.isServing(a.mountId), isTrue);
@@ -124,50 +150,68 @@ void main() {
     expect(server.isServing(a.mountId), isFalse);
   });
 
-  test('last unmount closes the loopback server and next mount rebinds', () async {
-    final first = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
-    expect(server.port, isNotNull);
-    await server.unmount(first!.mountId);
-    expect(server.port, isNull);
-
-    final second = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
-    expect(server.port, isNotNull);
-    expect(second!.mountId, isNot(first.mountId));
-    final client = directClient();
-    try {
-      final res = await client.getUrl(second.entryUri);
-      expect((await res.close()).statusCode, 200);
-    } finally {
-      client.close();
-    }
-  });
-
-  test('unmounting the last mount closes the server (no longer serving)', () async {
-    final mount = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
-    expect(mount, isNotNull);
-    final live = mount!;
-    final client = directClient();
-    try {
-      final ok = await client.getUrl(live.entryUri);
-      expect((await ok.close()).statusCode, 200);
-    } finally {
-      client.close(force: true);
-    }
-    await server.unmount(live.mountId);
-    expect(server.port, isNull);
-    final probe = directClient();
-    try {
-      await expectLater(
-        probe.getUrl(live.entryUri),
-        throwsA(isA<SocketException>()),
+  test(
+    'last unmount closes the loopback server and next mount rebinds',
+    () async {
+      final first = await server.mount(
+        htmlDirectory: '/repo',
+        entryFileName: 'index.html',
       );
-    } finally {
-      probe.close(force: true);
-    }
-  });
+      expect(server.port, isNotNull);
+      await server.unmount(first!.mountId);
+      expect(server.port, isNull);
+
+      final second = await server.mount(
+        htmlDirectory: '/repo',
+        entryFileName: 'index.html',
+      );
+      expect(server.port, isNotNull);
+      expect(second!.mountId, isNot(first.mountId));
+      final client = directClient();
+      try {
+        final res = await client.getUrl(second.entryUri);
+        expect((await res.close()).statusCode, 200);
+      } finally {
+        client.close();
+      }
+    },
+  );
+
+  test(
+    'unmounting the last mount closes the server (no longer serving)',
+    () async {
+      final mount = await server.mount(
+        htmlDirectory: '/repo',
+        entryFileName: 'index.html',
+      );
+      expect(mount, isNotNull);
+      final live = mount!;
+      final client = directClient();
+      try {
+        final ok = await client.getUrl(live.entryUri);
+        expect((await ok.close()).statusCode, 200);
+      } finally {
+        client.close(force: true);
+      }
+      await server.unmount(live.mountId);
+      expect(server.port, isNull);
+      final probe = directClient();
+      try {
+        await expectLater(
+          probe.getUrl(live.entryUri),
+          throwsA(isA<SocketException>()),
+        );
+      } finally {
+        probe.close(force: true);
+      }
+    },
+  );
 
   test('reads through injected filesystem (ssh-equivalent)', () async {
-    final mount = await server.mount(htmlDirectory: '/repo', entryFileName: 'index.html');
+    final mount = await server.mount(
+      htmlDirectory: '/repo',
+      entryFileName: 'index.html',
+    );
     await fs.writeString('/repo/index.html', 'updated');
     final client = directClient();
     try {

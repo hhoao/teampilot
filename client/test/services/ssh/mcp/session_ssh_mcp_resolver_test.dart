@@ -39,30 +39,33 @@ void main() {
     localFs = InMemoryFilesystem();
   });
 
-  test('mixed workspace resolves enabled context with targets and local roots', () {
-    final session = AppSession(
-      sessionId: 'sess-1',
-      workspaceId: 'ws',
-      createdAt: 1,
-    );
-    final workspace = _mixedLocalSsh();
-    final home = _profile('home', name: 'Home');
+  test(
+    'mixed workspace resolves enabled context with targets and local roots',
+    () {
+      final session = AppSession(
+        sessionId: 'sess-1',
+        workspaceId: 'ws',
+        createdAt: 1,
+      );
+      final workspace = _mixedLocalSsh();
+      final home = _profile('home', name: 'Home');
 
-    final context = resolveSessionSshMcpContext(
-      session: session,
-      workspace: workspace,
-      profileOf: (id) => id == 'home' ? home : null,
-      localFs: localFs,
-      localUsesPosixPaths: true,
-    );
+      final context = resolveSessionSshMcpContext(
+        session: session,
+        workspace: workspace,
+        profileOf: (id) => id == 'home' ? home : null,
+        localFs: localFs,
+        localUsesPosixPaths: true,
+      );
 
-    expect(context.enabled, isTrue);
-    expect(context.targets.map((t) => t.profile.id), ['home']);
-    expect(context.targets.single.folderPaths, ['/home']);
-    expect(context.localAllowedRoots, ['/local']);
-    expect(context.localUsesPosixPaths, isTrue);
-    expect(context.localFs, same(localFs));
-  });
+      expect(context.enabled, isTrue);
+      expect(context.targets.map((t) => t.profile.id), ['home']);
+      expect(context.targets.single.folderPaths, ['/home']);
+      expect(context.localAllowedRoots, ['/local']);
+      expect(context.localUsesPosixPaths, isTrue);
+      expect(context.localFs, same(localFs));
+    },
+  );
 
   test('toggle off still returns context with enabled false', () {
     final session = AppSession(
@@ -94,7 +97,10 @@ void main() {
     );
     final workspace = _workspace(
       folders: const [
-        WorkspaceFolder(path: '/local', targetId: WorkspaceFolder.localTargetId),
+        WorkspaceFolder(
+          path: '/local',
+          targetId: WorkspaceFolder.localTargetId,
+        ),
         WorkspaceFolder(path: '/gone', targetId: 'ssh:gone'),
         WorkspaceFolder(path: '/ok', targetId: 'ssh:home'),
       ],
@@ -147,11 +153,15 @@ void main() {
       localUsesPosixPaths: true,
       memberId: 'm1',
     );
+    expect(withMember.localAllowedRoots, [
+      '/local',
+      '/remote/home',
+      '/remote/proj',
+    ]);
     expect(
       withMember.localAllowedRoots,
-      ['/local', '/remote/home', '/remote/proj'],
+      isNot(withoutMember.localAllowedRoots),
     );
-    expect(withMember.localAllowedRoots, isNot(withoutMember.localAllowedRoots));
   });
 
   test('local-only workspace resolves enabled false', () {
@@ -162,7 +172,10 @@ void main() {
     );
     final localOnly = _workspace(
       folders: const [
-        WorkspaceFolder(path: '/local', targetId: WorkspaceFolder.localTargetId),
+        WorkspaceFolder(
+          path: '/local',
+          targetId: WorkspaceFolder.localTargetId,
+        ),
       ],
     );
 

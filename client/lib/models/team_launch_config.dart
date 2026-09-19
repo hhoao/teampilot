@@ -20,10 +20,7 @@ extension TeamLaunchConfig on TeamProfile {
         cliEffortLevels: const {},
       );
     }
-    return copyWith(
-      activePresetId: null,
-      updateActivePresetId: true,
-    );
+    return copyWith(activePresetId: null, updateActivePresetId: true);
   }
 
   TeamProfile asPresetLaunch(String presetId, {CliTool? syncCli}) {

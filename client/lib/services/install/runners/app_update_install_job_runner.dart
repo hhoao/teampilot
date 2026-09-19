@@ -111,10 +111,7 @@ final class AppUpdateInstallJobRunner implements InstallJobRunner {
     if (ctx.isCancelled) {
       throw InstallJobCancelledException(key);
     }
-    ctx.reportPhase(
-      downloadingSubtitle,
-      fraction: progress.clamp(0.0, 1.0),
-    );
+    ctx.reportPhase(downloadingSubtitle, fraction: progress.clamp(0.0, 1.0));
   }
 
   Future<void> _install(File package) {

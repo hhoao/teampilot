@@ -186,14 +186,8 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                       (c) => c.state.preferences.markdownOpenMode,
                     ),
                     entries: [
-                      (
-                        MarkdownOpenMode.preview,
-                        l10n.markdownOpenModePreview,
-                      ),
-                      (
-                        MarkdownOpenMode.source,
-                        l10n.markdownOpenModeSource,
-                      ),
+                      (MarkdownOpenMode.preview, l10n.markdownOpenModePreview),
+                      (MarkdownOpenMode.source, l10n.markdownOpenModeSource),
                       (
                         MarkdownOpenMode.remember,
                         l10n.markdownOpenModeRemember,
@@ -285,14 +279,10 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                     title: _foldCategoryTitle(l10n, category),
                     trailing: Switch(
                       value: context.select<LayoutCubit, bool>(
-                        (c) => c
-                            .state
-                            .preferences
-                            .foldToolCallCategories
+                        (c) => c.state.preferences.foldToolCallCategories
                             .contains(category),
                       ),
-                      onChanged: (value) =>
-                          controller.setFoldToolCallCategory(
+                      onChanged: (value) => controller.setFoldToolCallCategory(
                         category,
                         fold: value,
                       ),

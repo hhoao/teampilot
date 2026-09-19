@@ -39,16 +39,17 @@ void main() {
     final teamCubit = await createTeamCubitInTest(tester);
     addTearDown(teamCubit.close);
 
-    final sessionCubit =
-        (await tester.runAsync(testSessionPreferencesCubit))!;
-    final providerCubit =
-        (await tester.runAsync(() async {
-          final dir = await Directory.systemTemp.createTemp('providers_widget_');
-          return AppProviderCubit(
-            repository: AppProviderRepository(basePath: dir.path, storage: testHomeStorage, ),
-                                   storage: testHomeStorage,
-          );
-        }))!;
+    final sessionCubit = (await tester.runAsync(testSessionPreferencesCubit))!;
+    final providerCubit = (await tester.runAsync(() async {
+      final dir = await Directory.systemTemp.createTemp('providers_widget_');
+      return AppProviderCubit(
+        repository: AppProviderRepository(
+          basePath: dir.path,
+          storage: testHomeStorage,
+        ),
+        storage: testHomeStorage,
+      );
+    }))!;
 
     appRouter.go(route);
     await tester.pumpWidget(

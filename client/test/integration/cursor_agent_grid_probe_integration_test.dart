@@ -19,8 +19,8 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/terminal/fullscreen_input_screen_probe.dart';
-import 'package:teampilot/services/chat/terminal/pty_automation_needle.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_input_screen_probe.dart';
+import 'package:teampilot/services/chat/runtime/pty/pty_automation_needle.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import 'support/integration_prerequisites.dart';

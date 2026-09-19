@@ -45,9 +45,7 @@ bool sessionSshMcpRemotePathAllowed(String path, List<String> folderPaths) {
   if (folderPaths.isEmpty) return false;
 
   final trimmed = path.trim();
-  if (trimmed.isEmpty ||
-      !trimmed.startsWith('/') ||
-      trimmed.startsWith('//')) {
+  if (trimmed.isEmpty || !trimmed.startsWith('/') || trimmed.startsWith('//')) {
     return false;
   }
 
@@ -115,7 +113,9 @@ Future<bool> sessionSshMcpLocalSymlinkAllowed({
   if (target == null) return true;
 
   final resolved = ctx.normalize(
-    ctx.isAbsolute(target) ? target : ctx.join(ctx.dirname(normalizedPath), target),
+    ctx.isAbsolute(target)
+        ? target
+        : ctx.join(ctx.dirname(normalizedPath), target),
   );
   for (final root in normalizedRoots) {
     if (workspacePathUnderFolder(

@@ -6,7 +6,7 @@ import 'package:teampilot/services/chat/team_bus/tasks/task_queue.dart';
 import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 import 'package:teampilot/services/chat/team_bus/teammate_roster_profile.dart';
 
-import '../../services/team_bus/support/fake_member_launcher.dart';
+import '../../services/chat/team_bus/support/fake_member_launcher.dart';
 import 'integration_prerequisites.dart';
 import 'teammate_bus_http_client.dart';
 

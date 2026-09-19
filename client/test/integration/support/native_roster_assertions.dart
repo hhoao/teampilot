@@ -44,7 +44,11 @@ Map<String, Object?> readClaudeRosterConfig({
     reason: 'Claude roster config missing: $configPath',
   );
   final decoded = jsonDecode(file.readAsStringSync());
-  expect(decoded, isA<Map>(), reason: 'Claude roster config is not a JSON object');
+  expect(
+    decoded,
+    isA<Map>(),
+    reason: 'Claude roster config is not a JSON object',
+  );
   return Map<String, Object?>.from(decoded as Map);
 }
 

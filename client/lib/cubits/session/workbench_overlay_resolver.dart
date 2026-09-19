@@ -1,6 +1,6 @@
 import '../../cubits/ai_history_seat.dart';
 import '../../pages/chat/chat_workbench_overlay.dart';
-import '../../services/chat/model/session_workbench_view.dart';
+import '../../services/chat/session/session_workbench_view.dart';
 import 'session_phase.dart';
 
 /// Overlay for ONE session, as a pure function of that session's own state.

@@ -176,7 +176,10 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
   ) async {
     final l10n = context.l10n;
     final (title, body) = switch (entry.section) {
-      _RefSection.tag => (l10n.gitGraphDeleteTagTitle, l10n.gitGraphDeleteTagConfirmBody(entry.name)),
+      _RefSection.tag => (
+        l10n.gitGraphDeleteTagTitle,
+        l10n.gitGraphDeleteTagConfirmBody(entry.name),
+      ),
       _RefSection.remote => (
         l10n.gitGraphDeleteRemoteBranchTitle,
         l10n.gitGraphDeleteRemoteBranchConfirmBody(entry.name),
@@ -186,7 +189,11 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
         l10n.gitGraphDeleteBranchConfirmBody(entry.name),
       ),
     };
-    final confirmed = await confirmDangerAction(context, title: title, body: body);
+    final confirmed = await confirmDangerAction(
+      context,
+      title: title,
+      body: body,
+    );
     if (!confirmed || !mounted) return;
     switch (entry.section) {
       case _RefSection.tag:
@@ -221,41 +228,47 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
       else ...[
         if (locals.isNotEmpty) ...[
           _sectionHeader(Icons.call_split, l10n.gitGraphLocalBranches),
-          TpActionMenuSpec.scroll(children: [
-            for (final branch in locals)
-              TpActionMenuSpec.item(
-                value: _RefEntry(
-                  _RefSection.local,
-                  branch.name,
-                  isCurrent: branch.isCurrent,
+          TpActionMenuSpec.scroll(
+            children: [
+              for (final branch in locals)
+                TpActionMenuSpec.item(
+                  value: _RefEntry(
+                    _RefSection.local,
+                    branch.name,
+                    isCurrent: branch.isCurrent,
+                  ),
+                  icon: Icons.call_split_outlined,
+                  label: branch.name,
+                  selected: branch.isCurrent,
                 ),
-                icon: Icons.call_split_outlined,
-                label: branch.name,
-                selected: branch.isCurrent,
-              ),
-          ]),
+            ],
+          ),
         ],
         if (remotes.isNotEmpty) ...[
           _sectionHeader(Icons.cloud_outlined, l10n.gitGraphRemoteBranches),
-          TpActionMenuSpec.scroll(children: [
-            for (final branch in remotes)
-              TpActionMenuSpec.item(
-                value: _RefEntry(_RefSection.remote, branch.name),
-                icon: Icons.cloud_outlined,
-                label: branch.name,
-              ),
-          ]),
+          TpActionMenuSpec.scroll(
+            children: [
+              for (final branch in remotes)
+                TpActionMenuSpec.item(
+                  value: _RefEntry(_RefSection.remote, branch.name),
+                  icon: Icons.cloud_outlined,
+                  label: branch.name,
+                ),
+            ],
+          ),
         ],
         if (widget.state.tags.isNotEmpty) ...[
           _sectionHeader(Icons.sell_outlined, l10n.gitGraphTags),
-          TpActionMenuSpec.scroll(children: [
-            for (final tag in widget.state.tags)
-              TpActionMenuSpec.item(
-                value: _RefEntry(_RefSection.tag, tag.name),
-                icon: Icons.sell_outlined,
-                label: tag.name,
-              ),
-          ]),
+          TpActionMenuSpec.scroll(
+            children: [
+              for (final tag in widget.state.tags)
+                TpActionMenuSpec.item(
+                  value: _RefEntry(_RefSection.tag, tag.name),
+                  icon: Icons.sell_outlined,
+                  label: tag.name,
+                ),
+            ],
+          ),
         ],
       ],
     ];
@@ -286,15 +299,14 @@ class _GitGraphRefsMenuState extends State<GitGraphRefsMenu> {
             ),
           );
         },
-        buildMenuChildren: (context, controller) =>
-            buildTpActionMenuChildren(
-              context: context,
-              specs: _buildSpecs(l10n),
-              menuController: controller,
-              onSelect: (value) {
-                if (value is _RefEntry) unawaited(_openSubmenu(value));
-              },
-            ),
+        buildMenuChildren: (context, controller) => buildTpActionMenuChildren(
+          context: context,
+          specs: _buildSpecs(l10n),
+          menuController: controller,
+          onSelect: (value) {
+            if (value is _RefEntry) unawaited(_openSubmenu(value));
+          },
+        ),
       ),
     );
   }

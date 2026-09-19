@@ -216,11 +216,9 @@ void main() {
         basePath: base.path,
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-                                            storage: fakeHomeStorage(),
-      );
-      final capability = OpencodeProviderCapability(
         storage: fakeHomeStorage(),
       );
+      final capability = OpencodeProviderCapability(storage: fakeHomeStorage());
       const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
       // Native (non-mixed) team — status must still install.
       const team = TeamProfile(
@@ -322,7 +320,7 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-                                          storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     const workspaceId = 'workspace-1';
     const sessionId = 'session-1';

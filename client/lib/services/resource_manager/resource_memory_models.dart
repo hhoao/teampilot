@@ -1,10 +1,6 @@
 /// Per-binding CPU / RSS sample from a host process sweep.
 class ResourceLeafMetrics {
-  const ResourceLeafMetrics({
-    this.cpu,
-    this.memoryBytes,
-    this.pid,
-  });
+  const ResourceLeafMetrics({this.cpu, this.memoryBytes, this.pid});
 
   /// Percent of a single core (may exceed 100 on multi-core).
   final double? cpu;

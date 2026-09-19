@@ -15,7 +15,8 @@ enum HomeIdentityConfigSection {
     HomeIdentityConfigSection.skills => l10n.homeWorkspaceWorkspaceSkills,
     HomeIdentityConfigSection.plugins => l10n.homeWorkspaceWorkspacePlugins,
     HomeIdentityConfigSection.mcp => l10n.homeWorkspaceWorkspaceMcp,
-    HomeIdentityConfigSection.extensions => l10n.homeWorkspaceWorkspaceExtensions,
+    HomeIdentityConfigSection.extensions =>
+      l10n.homeWorkspaceWorkspaceExtensions,
   };
 
   IconData get icon => switch (this) {

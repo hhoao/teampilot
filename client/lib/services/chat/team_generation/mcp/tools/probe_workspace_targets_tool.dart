@@ -59,9 +59,6 @@ final class ProbeWorkspaceTargetsTool extends NamedTeamComposerTool {
         validatedDestinationJson: null,
       ),
     );
-    return call.ok({
-      'status': 'probed',
-      'phase': advanced.phase.value,
-    });
+    return call.ok({'status': 'probed', 'phase': advanced.phase.value});
   }
 }

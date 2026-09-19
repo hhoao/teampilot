@@ -238,7 +238,7 @@ void main() {
     profileRepository = SshProfileRepository(
       rootDir: tempDir.path,
       fs: InMemoryFilesystem(),
-                                              storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
 
     harness = _Harness();

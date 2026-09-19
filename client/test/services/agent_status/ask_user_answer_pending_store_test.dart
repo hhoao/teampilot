@@ -16,26 +16,14 @@ void main() {
       ],
     );
 
-    store.put(
-      sessionId: 'sess-a',
-      memberId: 'member-1',
-      entry: entry,
-    );
+    store.put(sessionId: 'sess-a', memberId: 'member-1', entry: entry);
 
     expect(
-      store.take(
-        sessionId: 'sess-a',
-        memberId: 'member-1',
-        requestId: 'req-1',
-      ),
+      store.take(sessionId: 'sess-a', memberId: 'member-1', requestId: 'req-1'),
       entry,
     );
     expect(
-      store.take(
-        sessionId: 'sess-a',
-        memberId: 'member-1',
-        requestId: 'req-1',
-      ),
+      store.take(sessionId: 'sess-a', memberId: 'member-1', requestId: 'req-1'),
       isNull,
     );
   });
@@ -57,11 +45,7 @@ void main() {
       reject: true,
     );
 
-    store.put(
-      sessionId: 'sess-a',
-      memberId: 'member-1',
-      entry: entry,
-    );
+    store.put(sessionId: 'sess-a', memberId: 'member-1', entry: entry);
 
     expect(
       store.take(
@@ -93,27 +77,15 @@ void main() {
     store.clearSeat(sessionId: 'sess-a', memberId: 'member-1');
 
     expect(
-      store.take(
-        sessionId: 'sess-a',
-        memberId: 'member-1',
-        requestId: 'req-1',
-      ),
+      store.take(sessionId: 'sess-a', memberId: 'member-1', requestId: 'req-1'),
       isNull,
     );
     expect(
-      store.take(
-        sessionId: 'sess-a',
-        memberId: 'member-1',
-        requestId: 'req-2',
-      ),
+      store.take(sessionId: 'sess-a', memberId: 'member-1', requestId: 'req-2'),
       isNull,
     );
     expect(
-      store.take(
-        sessionId: 'sess-a',
-        memberId: 'member-2',
-        requestId: 'req-3',
-      ),
+      store.take(sessionId: 'sess-a', memberId: 'member-2', requestId: 'req-3'),
       isNotNull,
     );
   });
@@ -138,27 +110,15 @@ void main() {
     store.clearSession('sess-a');
 
     expect(
-      store.take(
-        sessionId: 'sess-a',
-        memberId: 'member-1',
-        requestId: 'req-1',
-      ),
+      store.take(sessionId: 'sess-a', memberId: 'member-1', requestId: 'req-1'),
       isNull,
     );
     expect(
-      store.take(
-        sessionId: 'sess-a',
-        memberId: 'member-2',
-        requestId: 'req-2',
-      ),
+      store.take(sessionId: 'sess-a', memberId: 'member-2', requestId: 'req-2'),
       isNull,
     );
     expect(
-      store.take(
-        sessionId: 'sess-b',
-        memberId: 'member-1',
-        requestId: 'req-3',
-      ),
+      store.take(sessionId: 'sess-b', memberId: 'member-1', requestId: 'req-3'),
       isNotNull,
     );
   });
@@ -169,11 +129,7 @@ void main() {
       permissionReply: 'always',
     );
 
-    store.put(
-      sessionId: 'sess-a',
-      memberId: 'member-1',
-      entry: entry,
-    );
+    store.put(sessionId: 'sess-a', memberId: 'member-1', entry: entry);
 
     final taken = store.take(
       sessionId: 'sess-a',
@@ -209,11 +165,7 @@ void main() {
     );
 
     expect(
-      store.take(
-        sessionId: 'sess-a',
-        memberId: 'member-1',
-        requestId: 'req-1',
-      ),
+      store.take(sessionId: 'sess-a', memberId: 'member-1', requestId: 'req-1'),
       const AskUserAnswerPendingEntry(
         requestId: 'req-1',
         answers: [

@@ -23,6 +23,7 @@ class WorkEnvironmentChooserPage extends StatelessWidget {
   });
 
   final bool embedded;
+
   /// When set (onboarding), call instead of Navigator.push.
   final VoidCallback? onChooseTermux;
   final VoidCallback? onChooseSsh;
@@ -58,10 +59,7 @@ class WorkEnvironmentChooserPage extends StatelessWidget {
 }
 
 class _ChooserBody extends StatelessWidget {
-  const _ChooserBody({
-    required this.onChooseTermux,
-    required this.onChooseSsh,
-  });
+  const _ChooserBody({required this.onChooseTermux, required this.onChooseSsh});
 
   final VoidCallback onChooseTermux;
   final VoidCallback onChooseSsh;
@@ -129,9 +127,7 @@ void _pushWithGateProviders(BuildContext context, Widget page) {
             BlocProvider<SessionPreferencesCubit>.value(
               value: context.read<SessionPreferencesCubit>(),
             ),
-            BlocProvider<TermuxCubit>.value(
-              value: context.read<TermuxCubit>(),
-            ),
+            BlocProvider<TermuxCubit>.value(value: context.read<TermuxCubit>()),
           ],
           child: page,
         ),

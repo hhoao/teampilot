@@ -8,10 +8,7 @@ Future<Widget> _embeddedChooserHost(Widget child) async {
   return MaterialApp(
     theme: theme,
     home: TpTheme(
-      data: TpThemeData.fromColorScheme(
-        theme.colorScheme,
-        scale: 1.0,
-      ),
+      data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
       child: Material(child: child),
     ),
   );
@@ -31,8 +28,9 @@ void main() {
     expect(find.textContaining('Termux'), findsWidgets);
   });
 
-  testWidgets('embedded chooser uses callbacks instead of Navigator.push',
-      (tester) async {
+  testWidgets('embedded chooser uses callbacks instead of Navigator.push', (
+    tester,
+  ) async {
     var termuxCalls = 0;
     var sshCalls = 0;
     await tester.pumpWidget(

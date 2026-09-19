@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/services/chat/chat_tab_store.dart';
+import 'package:teampilot/services/chat/session/chat_tab_store.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/cli_presets_cubit.dart';

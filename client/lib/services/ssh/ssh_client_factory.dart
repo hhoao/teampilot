@@ -525,7 +525,7 @@ class SshClientFactory {
     await _handshakeGate.acquire(key);
     try {
       final client = _connector != null
-          ? await _connector!(profile, timeout: timeout)
+          ? await _connector(profile, timeout: timeout)
           : await _openClient(profile, timeout: timeout);
       _releaseGateWhenSettled(key, client);
       return client;
@@ -564,7 +564,7 @@ class SshClientFactory {
     final SSHClient client;
     try {
       client = _connector != null
-          ? await _connector!(profile, timeout: timeout)
+          ? await _connector(profile, timeout: timeout)
           : await _openClient(profile, timeout: timeout);
     } on Object {
       _handshakeGate.release(key);

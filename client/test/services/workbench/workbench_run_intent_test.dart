@@ -45,20 +45,23 @@ void main() {
       );
     });
 
-    test('terminal surface + activate → null (floating surface owns shell)', () {
-      expect(
-        resolveWorkbenchTabForRunIntent(
-          const RunUiIntent(
-            surface: RunToolSurface.terminal,
-            activateToolWindow: true,
-            focusToolWindow: true,
-            terminalEntryId: 'e1',
+    test(
+      'terminal surface + activate → null (floating surface owns shell)',
+      () {
+        expect(
+          resolveWorkbenchTabForRunIntent(
+            const RunUiIntent(
+              surface: RunToolSurface.terminal,
+              activateToolWindow: true,
+              focusToolWindow: true,
+              terminalEntryId: 'e1',
+            ),
+            latestRunSessionId: null,
           ),
-          latestRunSessionId: null,
-        ),
-        isNull,
-      );
-    });
+          isNull,
+        );
+      },
+    );
 
     test('empty or whitespace terminalEntryId → null', () {
       expect(

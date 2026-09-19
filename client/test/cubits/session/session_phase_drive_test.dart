@@ -25,14 +25,17 @@ void main() {
     expect(cubit.podFor('s1')!.phase, SessionPhase.running);
   });
 
-  test('failSessionConnect drives pod to error with launchError, not running', () {
-    cubit.ensurePodRuntime('s1');
-    cubit.beginSessionConnect('s1');
-    cubit.failSessionConnect('s1', 'boom');
-    final pod = cubit.podFor('s1')!;
-    expect(pod.phase, SessionPhase.error);
-    expect(pod.launchError, 'boom');
-  });
+  test(
+    'failSessionConnect drives pod to error with launchError, not running',
+    () {
+      cubit.ensurePodRuntime('s1');
+      cubit.beginSessionConnect('s1');
+      cubit.failSessionConnect('s1', 'boom');
+      final pod = cubit.podFor('s1')!;
+      expect(pod.phase, SessionPhase.error);
+      expect(pod.launchError, 'boom');
+    },
+  );
 
   test('phases are isolated per session', () {
     cubit.ensurePodRuntime('s1');
@@ -45,13 +48,20 @@ void main() {
     expect(cubit.podFor('s2')!.phase, SessionPhase.idle);
   });
 
-  test('pending materialization sets hasConnectingSession without a real pod', () {
-    cubit.beginSessionConnect('pending');
-    expect(cubit.hasConnectingSession, isTrue);
-    expect(cubit.podFor('pending'), isNull, reason: 'no real pod for pending');
-    cubit.finishSessionConnect('pending');
-    expect(cubit.hasConnectingSession, isFalse);
-  });
+  test(
+    'pending materialization sets hasConnectingSession without a real pod',
+    () {
+      cubit.beginSessionConnect('pending');
+      expect(cubit.hasConnectingSession, isTrue);
+      expect(
+        cubit.podFor('pending'),
+        isNull,
+        reason: 'no real pod for pending',
+      );
+      cubit.finishSessionConnect('pending');
+      expect(cubit.hasConnectingSession, isFalse);
+    },
+  );
 
   test('isSessionConnecting follows a real session pod phase', () {
     cubit.ensurePodRuntime('s1');

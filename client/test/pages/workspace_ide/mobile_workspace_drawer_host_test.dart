@@ -72,14 +72,9 @@ void main() {
 
     await tester.pumpWidget(
       TpTheme(
-        data: TpThemeData.fromColorScheme(
-          theme.colorScheme,
-          scale: 1.0,
-        ),
+        data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
         child: MultiBlocProvider(
-          providers: [
-            BlocProvider(create: (_) => LayoutCubit()),
-          ],
+          providers: [BlocProvider(create: (_) => LayoutCubit())],
           child: MaterialApp(
             locale: const Locale('en'),
             localizationsDelegates: AppLocalizations.localizationsDelegates,

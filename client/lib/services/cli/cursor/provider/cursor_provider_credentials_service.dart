@@ -312,8 +312,7 @@ class CursorProviderCredentialsService {
     if (destLstat.isSymlink) {
       final target = await _fs.readSymlinkTarget(dest);
       if (target != null &&
-          _fs.pathContext.normalize(target) ==
-              _fs.pathContext.normalize(src)) {
+          _fs.pathContext.normalize(target) == _fs.pathContext.normalize(src)) {
         return _MemberAuthSyncOutcome.alreadyPresent;
       }
       await _fs.removeRecursive(dest);
@@ -559,18 +558,12 @@ class CursorProviderCredentialsService {
     );
     if ((await _fs.stat(path)).isFile) return;
     await _fs.ensureDir(cursorDir);
-    await _fs.writeString(
-      path,
-      jsonEncode(_defaultCliConfig()),
-    );
+    await _fs.writeString(path, jsonEncode(_defaultCliConfig()));
   }
 
   Map<String, Object?> _defaultCliConfig() => {
     'version': CursorCliConfigPolicy.defaultVersion,
-    'permissions': <String, Object?>{
-      'allow': <String>[],
-      'deny': <String>[],
-    },
+    'permissions': <String, Object?>{'allow': <String>[], 'deny': <String>[]},
   };
 
   Future<void> _removeAuthArtifacts(String providerId) async {

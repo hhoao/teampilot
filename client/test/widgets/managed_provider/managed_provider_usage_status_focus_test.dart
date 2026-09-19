@@ -4,34 +4,33 @@ import 'package:teampilot/models/provider_usage_snapshot.dart';
 import 'package:teampilot/widgets/managed_provider/managed_provider_usage_status_focus.dart';
 
 ManagedProvider _p(String id) => ManagedProvider(
-      id: id,
-      name: id,
-      kind: ManagedProviderKind.apiBalance,
-      adapterId: 'fake',
-      endpointConfig: ManagedProviderEndpointConfig(
-        url: 'https://example.test/usage',
-      ),
-    );
+  id: id,
+  name: id,
+  kind: ManagedProviderKind.apiBalance,
+  adapterId: 'fake',
+  endpointConfig: ManagedProviderEndpointConfig(
+    url: 'https://example.test/usage',
+  ),
+);
 
 ProviderUsageSnapshot _snap(
   String id, {
   String remaining = '10',
   int fetchedAt = 100,
   ProviderUsageStatus status = ProviderUsageStatus.ready,
-}) =>
-    ProviderUsageSnapshot(
-      providerId: id,
-      status: status,
-      fetchedAt: fetchedAt,
-      measures: [
-        ProviderUsageMeasure(
-          label: 'Balance',
-          kind: ProviderUsageMeasureKind.balance,
-          remaining: remaining,
-          unit: 'USD',
-        ),
-      ],
-    );
+}) => ProviderUsageSnapshot(
+  providerId: id,
+  status: status,
+  fetchedAt: fetchedAt,
+  measures: [
+    ProviderUsageMeasure(
+      label: 'Balance',
+      kind: ProviderUsageMeasureKind.balance,
+      remaining: remaining,
+      unit: 'USD',
+    ),
+  ],
+);
 
 void main() {
   test('empty enabled list returns null', () {
@@ -149,9 +148,7 @@ void main() {
     expect(
       resolveManagedProviderUsageFocus(
         enabledProviders: [_p('b')],
-        currentSnapshots: {
-          'b': _snap('b', fetchedAt: 100),
-        },
+        currentSnapshots: {'b': _snap('b', fetchedAt: 100)},
         previousSnapshots: {
           'a': _snap('a', fetchedAt: 50),
           'b': _snap('b', fetchedAt: 100),
@@ -170,9 +167,7 @@ void main() {
           'a': _snap('a', fetchedAt: 100),
           'b': _snap('b', fetchedAt: 120),
         },
-        previousSnapshots: {
-          'a': _snap('a', fetchedAt: 100),
-        },
+        previousSnapshots: {'a': _snap('a', fetchedAt: 100)},
         currentFocusId: 'a',
       ),
       'b',

@@ -9,7 +9,9 @@ void main() {
   int fetchedCalls = 0;
   Completer<void>? gate;
 
-  GitAutoFetchScheduler build({Duration interval = const Duration(minutes: 5)}) {
+  GitAutoFetchScheduler build({
+    Duration interval = const Duration(minutes: 5),
+  }) {
     fetchedRoots = [];
     fetchedCalls = 0;
     return GitAutoFetchScheduler(
@@ -149,8 +151,11 @@ void main() {
       async.flushMicrotasks();
       gate = null;
 
-      expect(onFetchedCalls, 0,
-          reason: 'onFetched touches the disposed host widget context');
+      expect(
+        onFetchedCalls,
+        0,
+        reason: 'onFetched touches the disposed host widget context',
+      );
     });
   });
 }

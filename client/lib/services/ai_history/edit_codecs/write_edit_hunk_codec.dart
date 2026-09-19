@@ -24,8 +24,7 @@ class WriteEditHunkCodec implements AiEditHunkCodec {
   final List<String> contentKeys;
 
   @override
-  bool matches(String toolName) =>
-      toolNames.contains(toolName.toLowerCase());
+  bool matches(String toolName) => toolNames.contains(toolName.toLowerCase());
 
   @override
   AiEditHunk? encode(AiToolCallPart part) {
@@ -44,10 +43,7 @@ class WriteEditHunkCodec implements AiEditHunkCodec {
 
     final encodedLines = <AiEditLine>[];
     for (final text in takeSplitLines(contents, kAiEditHunkMaxEncodedLines)) {
-      encodedLines.add(AiEditLine(
-        kind: AiEditLineKind.add,
-        text: text,
-      ));
+      encodedLines.add(AiEditLine(kind: AiEditLineKind.add, text: text));
     }
 
     return AiEditHunk(

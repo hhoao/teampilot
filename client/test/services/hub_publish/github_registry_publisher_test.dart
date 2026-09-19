@@ -132,40 +132,47 @@ class FakeGithubApi implements GithubApiClient {
 
 void main() {
   group('GithubRegistryPublisher', () {
-    test('publish expert forks, commits member.json + index, opens PR', () async {
-      final api = FakeGithubApi(
-        upstreamIndexJson: '{"members":["other"]}',
-      );
-      final publisher = GithubRegistryPublisher(api: api);
+    test(
+      'publish expert forks, commits member.json + index, opens PR',
+      () async {
+        final api = FakeGithubApi(upstreamIndexJson: '{"members":["other"]}');
+        final publisher = GithubRegistryPublisher(api: api);
 
-      final result = await publisher.publishExpert(
-        upstream: kDefaultExpertHubRegistry,
-        slug: 'arch',
-        memberJson: {
-          'key': 'hhoao/teampilot-resources/member-hub/arch',
-          'name': 'Arch',
-          'description': 'Architect',
-          'category': 'Engineering',
-          'member': {'name': 'Arch', 'responsibilities': 'design'},
-        },
-        token: 't',
-      );
+        final result = await publisher.publishExpert(
+          upstream: kDefaultExpertHubRegistry,
+          slug: 'arch',
+          memberJson: {
+            'key': 'hhoao/teampilot-resources/member-hub/arch',
+            'name': 'Arch',
+            'description': 'Architect',
+            'category': 'Engineering',
+            'member': {'name': 'Arch', 'responsibilities': 'design'},
+          },
+          token: 't',
+        );
 
-      expect(result.prUrl, isNotEmpty);
-      expect(result.prUrl, api.prHtmlUrl);
-      expect(result.registryFullName, kDefaultExpertHubRegistry.catalogPrefix);
-      expect(api.ensuredFork, isTrue);
-      expect(api.writtenPaths, contains('member-hub/members/arch/member.json'));
-      expect(api.writtenPaths, contains('member-hub/index.json'));
-      expect(api.updatedIndex, isTrue);
-      expect(api.openedPr, isTrue);
-      expect(api.lastPrHead, 'alice:publish-expert-arch');
-      expect(api.lastPrBase, 'main');
-      expect(
-        api.createdBranches.single,
-        contains('alice/teampilot-resources:'),
-      );
-    });
+        expect(result.prUrl, isNotEmpty);
+        expect(result.prUrl, api.prHtmlUrl);
+        expect(
+          result.registryFullName,
+          kDefaultExpertHubRegistry.catalogPrefix,
+        );
+        expect(api.ensuredFork, isTrue);
+        expect(
+          api.writtenPaths,
+          contains('member-hub/members/arch/member.json'),
+        );
+        expect(api.writtenPaths, contains('member-hub/index.json'));
+        expect(api.updatedIndex, isTrue);
+        expect(api.openedPr, isTrue);
+        expect(api.lastPrHead, 'alice:publish-expert-arch');
+        expect(api.lastPrBase, 'main');
+        expect(
+          api.createdBranches.single,
+          contains('alice/teampilot-resources:'),
+        );
+      },
+    );
 
     test('slug collision on upstream index fails before write', () async {
       final api = FakeGithubApi(
@@ -200,37 +207,40 @@ void main() {
       expect(api.openedPr, isFalse);
     });
 
-    test('publish team writes teams/<slug>/team.json and updates index', () async {
-      final api = FakeGithubApi(
-        upstreamIndexJson: '{"teams":[{"slug":"existing"}]}',
-        prHtmlUrl: 'https://github.com/hhoao/teampilot/pull/2',
-      );
-      final publisher = GithubRegistryPublisher(api: api);
+    test(
+      'publish team writes teams/<slug>/team.json and updates index',
+      () async {
+        final api = FakeGithubApi(
+          upstreamIndexJson: '{"teams":[{"slug":"existing"}]}',
+          prHtmlUrl: 'https://github.com/hhoao/teampilot/pull/2',
+        );
+        final publisher = GithubRegistryPublisher(api: api);
 
-      final result = await publisher.publishTeam(
-        upstream: kDefaultTeamHubRegistry,
-        slug: 'platform',
-        teamJson: {
-          'key': 'hhoao/teampilot-resources/team-hub/platform',
-          'name': 'Platform',
-          'description': 'Platform team',
-          'category': 'Engineering',
-          'updatedAt': 1,
-          'roster': <Object?>[],
-        },
-        token: 't',
-      );
+        final result = await publisher.publishTeam(
+          upstream: kDefaultTeamHubRegistry,
+          slug: 'platform',
+          teamJson: {
+            'key': 'hhoao/teampilot-resources/team-hub/platform',
+            'name': 'Platform',
+            'description': 'Platform team',
+            'category': 'Engineering',
+            'updatedAt': 1,
+            'roster': <Object?>[],
+          },
+          token: 't',
+        );
 
-      expect(result.prUrl, api.prHtmlUrl);
-      expect(result.registryFullName, kDefaultTeamHubRegistry.catalogPrefix);
-      expect(api.ensuredFork, isTrue);
-      expect(api.writtenPaths, contains('team-hub/teams/platform/team.json'));
-      expect(api.writtenPaths, contains('team-hub/index.json'));
-      expect(api.updatedIndex, isTrue);
-      expect(api.openedPr, isTrue);
-      expect(api.lastPrHead, 'alice:publish-team-platform');
-      expect(api.lastPrBase, 'main');
-    });
+        expect(result.prUrl, api.prHtmlUrl);
+        expect(result.registryFullName, kDefaultTeamHubRegistry.catalogPrefix);
+        expect(api.ensuredFork, isTrue);
+        expect(api.writtenPaths, contains('team-hub/teams/platform/team.json'));
+        expect(api.writtenPaths, contains('team-hub/index.json'));
+        expect(api.updatedIndex, isTrue);
+        expect(api.openedPr, isTrue);
+        expect(api.lastPrHead, 'alice:publish-team-platform');
+        expect(api.lastPrBase, 'main');
+      },
+    );
 
     test('team slug collision fails before write', () async {
       final api = FakeGithubApi(

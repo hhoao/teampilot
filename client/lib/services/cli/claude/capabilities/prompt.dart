@@ -2,7 +2,7 @@ import 'dart:async';
 
 import '../../../../utils/team/team_member_naming.dart';
 import '../../registry/capabilities/prompt_capability.dart';
-import '../../../chat/session/member_role_provision.dart';
+import '../../../chat/launch/session/member_role_provision.dart';
 import '../team_roster_service.dart';
 import '../../../resource/contribution/resource_origin.dart';
 

@@ -80,9 +80,7 @@ class WorkbenchSplitLayoutView extends StatefulWidget {
   /// pinned during the drag (see [_SplitDragSession.secondPixelsByPath]) —
   /// converted to a fraction — so the committed layout reproduces the
   /// drag-end pixel geometry.
-  final void Function(
-    List<(List<bool> path, double fraction)> commits,
-  )?
+  final void Function(List<(List<bool> path, double fraction)> commits)?
   onResizeCommit;
 
   /// Fired when a group pane is tapped (translucent — inner content still
@@ -256,8 +254,9 @@ class _WorkbenchSplitLayoutViewState extends State<WorkbenchSplitLayoutView> {
       if (node is! SplitBranch) return null;
       // The branch at path[0..i] divides ITS content (parent-allocated).
       final branchKey = _pathKeyOf(path.sublist(0, i + 1));
-      final fraction =
-          overrideKey == branchKey ? override!.$2 : node.firstFraction;
+      final fraction = overrideKey == branchKey
+          ? override!.$2
+          : node.firstFraction;
       final share = isSecond ? 1 - fraction : fraction;
       final measured = _branchExtents[branchKey];
       final allocated = measured != null && measured > _kDividerVisualThickness

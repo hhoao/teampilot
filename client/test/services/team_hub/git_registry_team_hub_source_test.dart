@@ -50,7 +50,10 @@ void main() {
 
   test('fetches teams from the registry and stamps keys', () async {
     final net = network();
-    final source = GitRegistryTeamHubSource(fetch: (uri) async => net[uri], storage: testHomeStorage, );
+    final source = GitRegistryTeamHubSource(
+      fetch: (uri) async => net[uri],
+      storage: testHomeStorage,
+    );
 
     final teams = await source.fetchTeams();
     expect(teams, hasLength(2));
@@ -73,7 +76,7 @@ void main() {
         calls++;
         return net[uri];
       },
-                                             storage: testHomeStorage,
+      storage: testHomeStorage,
     );
 
     await source.fetchTeams();
@@ -93,7 +96,7 @@ void main() {
         calls++;
         return net[uri];
       },
-                                             storage: testHomeStorage,
+      storage: testHomeStorage,
     );
     await source.fetchTeams();
     final before = calls;
@@ -101,46 +104,53 @@ void main() {
     expect(calls, greaterThan(before));
   });
 
-  test('cacheDirOverride writes via injected fs at the override path', () async {
-    final net = network();
-    final fs = InMemoryFilesystem();
-    const cacheDir = '/device-local/catalog-cache/team-hub';
-    final source = GitRegistryTeamHubSource(
-      fetch: (uri) async => net[uri],
-      fs: fs,
-      cacheDirOverride: cacheDir,
-                                             storage: testHomeStorage,
-    );
+  test(
+    'cacheDirOverride writes via injected fs at the override path',
+    () async {
+      final net = network();
+      final fs = InMemoryFilesystem();
+      const cacheDir = '/device-local/catalog-cache/team-hub';
+      final source = GitRegistryTeamHubSource(
+        fetch: (uri) async => net[uri],
+        fs: fs,
+        cacheDirOverride: cacheDir,
+        storage: testHomeStorage,
+      );
 
-    final teams = await source.fetchTeams();
-    expect(teams, hasLength(2));
+      final teams = await source.fetchTeams();
+      expect(teams, hasLength(2));
 
-    final cacheFile = fs.pathContext.join(
-      cacheDir,
-      '${kDefaultTeamHubRegistry.owner}-${kDefaultTeamHubRegistry.name}',
-      'teams.json',
-    );
-    final written = fs.files[cacheFile];
-    expect(written, isNotNull, reason: 'cache must land at the override path');
-    final decoded = (jsonDecode(written!) as List)
-        .whereType<Map>()
-        .map((m) => DiscoverableTeam.fromJson(m.cast<String, Object?>()))
-        .toList();
-    expect(decoded, hasLength(2));
+      final cacheFile = fs.pathContext.join(
+        cacheDir,
+        '${kDefaultTeamHubRegistry.owner}-${kDefaultTeamHubRegistry.name}',
+        'teams.json',
+      );
+      final written = fs.files[cacheFile];
+      expect(
+        written,
+        isNotNull,
+        reason: 'cache must land at the override path',
+      );
+      final decoded = (jsonDecode(written!) as List)
+          .whereType<Map>()
+          .map((m) => DiscoverableTeam.fromJson(m.cast<String, Object?>()))
+          .toList();
+      expect(decoded, hasLength(2));
 
-    // Cache hit on a fresh source sharing the injected fs — no re-fetch.
-    var calls = 0;
-    final replay = GitRegistryTeamHubSource(
-      fetch: (uri) async {
-        calls++;
-        return net[uri];
-      },
-      fs: fs,
-      cacheDirOverride: cacheDir,
-                                             storage: testHomeStorage,
-    );
-    final cached = await replay.fetchTeams();
-    expect(cached, hasLength(2));
-    expect(calls, 0, reason: 'cache read must go through the injected fs');
-  });
+      // Cache hit on a fresh source sharing the injected fs — no re-fetch.
+      var calls = 0;
+      final replay = GitRegistryTeamHubSource(
+        fetch: (uri) async {
+          calls++;
+          return net[uri];
+        },
+        fs: fs,
+        cacheDirOverride: cacheDir,
+        storage: testHomeStorage,
+      );
+      final cached = await replay.fetchTeams();
+      expect(cached, hasLength(2));
+      expect(calls, 0, reason: 'cache read must go through the injected fs');
+    },
+  );
 }

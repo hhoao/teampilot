@@ -41,7 +41,10 @@ void main() {
       'lib/pages/home_workspace/workspace/workspace_sidebar.dart',
     ).readAsStringSync();
     expect(source.contains('TpDeferredMountShell('), isTrue);
-    expect(source.contains('placeholder: const _SessionListSkeleton()'), isTrue);
+    expect(
+      source.contains('placeholder: const _SessionListSkeleton()'),
+      isTrue,
+    );
   });
 
   test('chat pane body defers one frame after sidebar list', () {
@@ -73,26 +76,27 @@ void main() {
     expect(find.byType(TextField), findsNothing);
   });
 
-  testWidgets('chat pane defer uses TpDeferredMountShell + skeleton placeholder', (
-    tester,
-  ) async {
-    final scheme = ColorScheme.fromSeed(seedColor: Colors.blue);
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: ThemeData(colorScheme: scheme),
-        home: TpTheme(
-          data: TpThemeData.fromColorScheme(scheme, scale: 1),
-          child: TpDeferredMountShell(
-            delayFrames: 2,
-            placeholder: const WorkspaceLandingSkeleton(),
-            child: const Text('landing-body'),
+  testWidgets(
+    'chat pane defer uses TpDeferredMountShell + skeleton placeholder',
+    (tester) async {
+      final scheme = ColorScheme.fromSeed(seedColor: Colors.blue);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(colorScheme: scheme),
+          home: TpTheme(
+            data: TpThemeData.fromColorScheme(scheme, scale: 1),
+            child: TpDeferredMountShell(
+              delayFrames: 2,
+              placeholder: const WorkspaceLandingSkeleton(),
+              child: const Text('landing-body'),
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.byType(TpDeferredMountShell), findsOneWidget);
-    // FLUTTER_TEST mounts child immediately.
-    expect(find.text('landing-body'), findsOneWidget);
-  });
+      expect(find.byType(TpDeferredMountShell), findsOneWidget);
+      // FLUTTER_TEST mounts child immediately.
+      expect(find.text('landing-body'), findsOneWidget);
+    },
+  );
 }

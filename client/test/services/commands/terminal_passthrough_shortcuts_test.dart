@@ -58,10 +58,7 @@ void main() {
   /// [ShortcutActivator] has no value `==`, so overlay membership can only
   /// be asserted the same way `TerminalView._onKeyFallback` itself checks
   /// it: does any entry's activator `accept` this synthesized event.
-  bool anyEntryAccepts(
-    Map<ShortcutActivator, Intent> overlay,
-    KeyEvent event,
-  ) {
+  bool anyEntryAccepts(Map<ShortcutActivator, Intent> overlay, KeyEvent event) {
     return overlay.keys.any(
       (activator) => activator.accepts(event, HardwareKeyboard.instance),
     );
@@ -110,7 +107,9 @@ void main() {
         CommandDefinition(
           id: CommandIds.sessionCloseTab,
           category: CommandCategory.tabs,
-          defaultChords: [KeyChord(key: 'w', mods: [KeyChordMod.mod])],
+          defaultChords: [
+            KeyChord(key: 'w', mods: [KeyChordMod.mod]),
+          ],
           when: ShortcutWhen.hasSessionTab,
           terminalPassthrough: true,
           titleL10nKey: 'x',
@@ -153,7 +152,9 @@ void main() {
         CommandDefinition(
           id: 'test.unbound',
           category: CommandCategory.meta,
-          defaultChords: [KeyChord(key: 'w', mods: [KeyChordMod.mod])],
+          defaultChords: [
+            KeyChord(key: 'w', mods: [KeyChordMod.mod]),
+          ],
           when: ShortcutWhen.always,
           terminalPassthrough: true,
           titleL10nKey: 'x',

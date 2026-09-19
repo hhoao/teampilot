@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/model/session_workbench_view.dart';
+import 'package:teampilot/services/chat/session/session_workbench_view.dart';
 import 'package:teampilot/cubits/session/session_phase.dart';
 import 'package:teampilot/cubits/session/session_pod.dart';
 

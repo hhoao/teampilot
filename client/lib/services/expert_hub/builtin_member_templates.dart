@@ -55,9 +55,7 @@ List<DiscoverableMember> builtinExpertMembers() => [
     prompt:
         'You are a helpful coding agent in TeamPilot. Follow the user\'s '
         'instructions carefully. Prefer reading the repo before editing.',
-    skillDeps: _skills([
-      ('using-superpowers', 'Using Superpowers'),
-    ]),
+    skillDeps: _skills([('using-superpowers', 'Using Superpowers')]),
   ),
   _builtinMember(
     slug: 'team-builder',
@@ -128,8 +126,7 @@ List<DiscoverableMember> builtinExpertMembers() => [
         'Reviews code for correctness, test coverage, and maintainability '
         'without implementing fixes.',
     category: 'Development',
-    prompt:
-        'Review code only. Do not modify files unless explicitly asked.',
+    prompt: 'Review code only. Do not modify files unless explicitly asked.',
     playbook:
         'Review in order: (1) confirm tests cover the change; (2) correctness '
         'and edge cases; (3) maintainability and consistency with surrounding '

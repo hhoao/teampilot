@@ -44,8 +44,7 @@ class _FakeRefreshableCapability implements RefreshableProviderModelCapability {
     required AppProviderConfig? provider,
     required String providerId,
     required String currentModel,
-  }) =>
-      candidates;
+  }) => candidates;
 
   @override
   Listenable get catalogUpdates => updates;
@@ -57,8 +56,7 @@ class _FakeRefreshableCapability implements RefreshableProviderModelCapability {
   List<String> effortCandidates({
     required String model,
     AppProviderConfig? provider,
-  }) =>
-      const ['low'];
+  }) => const ['low'];
 
   @override
   Future<void> refreshModelCatalog({
@@ -185,22 +183,25 @@ void main() {
     _stubCubit(chatCubit, ChatState(workspaces: [workspace]));
     _stubCubit(
       appProviderCubit,
-      AppProviderState(providersByCli: {
-        CliTool.claude: [
-          const AppProviderConfig(
-            id: 'deepseek-id',
-            cli: CliTool.claude,
-            name: 'DeepSeek',
-          ),
-        ],
-      }),
+      AppProviderState(
+        providersByCli: {
+          CliTool.claude: [
+            const AppProviderConfig(
+              id: 'deepseek-id',
+              cli: CliTool.claude,
+              name: 'DeepSeek',
+            ),
+          ],
+        },
+      ),
     );
     _stubCubit(cliPresetsCubit, const CliPresetsState());
     _stubCubit(launchProfileCubit, const LaunchProfileState());
     _stubCubit(pluginCubit, const PluginState());
     _stubCubit(sessionPreferencesCubit, SessionPreferencesState());
-    when(() => sessionPreferencesCubit.resolveExecutable(any()))
-        .thenReturn('claude');
+    when(
+      () => sessionPreferencesCubit.resolveExecutable(any()),
+    ).thenReturn('claude');
     _stubCubit(skillCubit, const SkillState());
     _stubCubit(worktreeCubit, const WorktreeState());
     when(() => worktreeCubit.worktreesForProject(any())).thenReturn(const []);
@@ -213,7 +214,7 @@ void main() {
         ],
         child: MultiBlocProvider(
           providers: [
-        RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
+            RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
             BlocProvider<ChatCubit>.value(value: chatCubit),
             BlocProvider<AppProviderCubit>.value(value: appProviderCubit),
             BlocProvider<CliPresetsCubit>.value(value: cliPresetsCubit),
@@ -226,8 +227,7 @@ void main() {
             BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
           ],
           child: CliToolRegistryScope(
-            registry:
-                CliToolRegistry()..register(_FakeDefinition(capability)),
+            registry: CliToolRegistry()..register(_FakeDefinition(capability)),
             child: MaterialApp(
               theme: theme,
               localizationsDelegates: AppLocalizations.localizationsDelegates,

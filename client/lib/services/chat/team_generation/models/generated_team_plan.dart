@@ -71,7 +71,9 @@ final class GeneratedTeamPlan {
       if (raw is! Map) {
         throw const FormatException('plan.members[] must be objects');
       }
-      members.add(GeneratedTeamMemberPlan.fromJson(raw.cast<String, Object?>()));
+      members.add(
+        GeneratedTeamMemberPlan.fromJson(raw.cast<String, Object?>()),
+      );
     }
     final resources = json['resources'];
     Map<String, Object?> resourcesMap = const {};
@@ -81,11 +83,11 @@ final class GeneratedTeamPlan {
       }
       resourcesMap = resources.cast<String, Object?>();
     }
-    _checkExactKeys(
-      resourcesMap,
-      const ['skillIds', 'pluginIds', 'mcpServerIds'],
-      optional: true,
-    );
+    _checkExactKeys(resourcesMap, const [
+      'skillIds',
+      'pluginIds',
+      'mcpServerIds',
+    ], optional: true);
     List<String> idList(String key) => [
       for (final value in (resourcesMap[key] as List? ?? const []))
         if (value is String && value.trim().isNotEmpty) value.trim(),
@@ -121,14 +123,8 @@ final class GeneratedTeamPlan {
 
   Map<String, Object?> toCanonicalJson() => _sortJson({
     'schemaVersion': schemaVersion,
-    'team': {
-      'name': teamName,
-      'description': teamDescription,
-      'mode': mode,
-    },
-    'members': [
-      for (final member in members) member.toCanonicalJson(),
-    ],
+    'team': {'name': teamName, 'description': teamDescription, 'mode': mode},
+    'members': [for (final member in members) member.toCanonicalJson()],
     'resources': {
       'skillIds': skillIds,
       'pluginIds': pluginIds,
@@ -148,11 +144,12 @@ final class GeneratedTeamPlan {
         (json['schemaVersion'] as num?)?.toInt() != schemaVersion) {
       throw const FormatException('unsupported plan schemaVersion');
     }
-    _checkExactKeys(
-      json,
-      const ['schemaVersion', 'team', 'members', 'resources'],
-      optional: true,
-    );
+    _checkExactKeys(json, const [
+      'schemaVersion',
+      'team',
+      'members',
+      'resources',
+    ], optional: true);
   }
 
   static void _checkExactKeys(
@@ -188,19 +185,15 @@ final class GeneratedTeamMemberPlan {
   });
 
   factory GeneratedTeamMemberPlan.fromJson(Map<String, Object?> json) {
-    GeneratedTeamPlan._checkExactKeys(
-      json,
-      const [
-        'name',
-        'role',
-        'responsibilities',
-        'workingMethod',
-        'presetId',
-        'replicas',
-        'placement',
-      ],
-      optional: true,
-    );
+    GeneratedTeamPlan._checkExactKeys(json, const [
+      'name',
+      'role',
+      'responsibilities',
+      'workingMethod',
+      'presetId',
+      'replicas',
+      'placement',
+    ], optional: true);
     final replicasRaw = json['replicas'];
     final replicas = replicasRaw is int ? replicasRaw : null;
     if (replicas == null || replicas < 1 || replicas > 8) {
@@ -214,7 +207,9 @@ final class GeneratedTeamMemberPlan {
       }
       placementRaw.forEach((key, value) {
         if (value is! int || value < 0) {
-          throw const FormatException('placement counts must be non-negative ints');
+          throw const FormatException(
+            'placement counts must be non-negative ints',
+          );
         }
         placement['$key'.trim()] = value;
       });
@@ -224,7 +219,9 @@ final class GeneratedTeamMemberPlan {
     final role = (json['role'] as String? ?? '').trim();
     final responsibilities = (json['responsibilities'] as String? ?? '').trim();
     final workingMethod = (json['workingMethod'] as String? ?? '').trim();
-    if (name.isEmpty || role.isEmpty || responsibilities.isEmpty ||
+    if (name.isEmpty ||
+        role.isEmpty ||
+        responsibilities.isEmpty ||
         workingMethod.isEmpty) {
       throw const FormatException(
         'member name/role/responsibilities/workingMethod must be non-blank',

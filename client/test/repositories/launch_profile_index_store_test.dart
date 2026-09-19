@@ -39,9 +39,7 @@ void main() {
       );
       await store.upsert(profile);
 
-      final loaded = await store
-          .tryRead()
-          .timeout(const Duration(seconds: 2));
+      final loaded = await store.tryRead().timeout(const Duration(seconds: 2));
       expect(loaded, isNotNull);
       expect(loaded!.single.id, 'default-native-team');
     },

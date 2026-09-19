@@ -67,7 +67,8 @@ extension AppLocalizationsX on AppLocalizations {
     'claude-code' => managedProvidersQuickPresetClaudeCodeHint,
     'cursor' => managedProvidersQuickPresetCursorHint,
     'deepseek' => managedProvidersQuickPresetDeepSeekHint,
-    kManagedProviderQuickPresetCustomId => managedProvidersQuickPresetCustomHint,
+    kManagedProviderQuickPresetCustomId =>
+      managedProvidersQuickPresetCustomHint,
     _ => '',
   };
 

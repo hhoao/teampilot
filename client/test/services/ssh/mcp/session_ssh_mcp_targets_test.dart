@@ -14,7 +14,10 @@ void main() {
   test('collects unique ssh folders and skips local/wsl', () {
     final targets = sessionSshMcpTargetsFromFolders(
       folders: const [
-        WorkspaceFolder(path: '/local', targetId: WorkspaceFolder.localTargetId),
+        WorkspaceFolder(
+          path: '/local',
+          targetId: WorkspaceFolder.localTargetId,
+        ),
         WorkspaceFolder(path: '/a', targetId: 'ssh:home'),
         WorkspaceFolder(path: '/b', targetId: 'ssh:home'),
         WorkspaceFolder(path: '/wsl', targetId: 'wsl:ubuntu'),
@@ -53,23 +56,32 @@ void main() {
   });
 
   test('folderPaths are not mutable by callers', () {
-    final target = SessionSshMcpTarget(profile: profile('home'), folderPaths: ['/a']);
+    final target = SessionSshMcpTarget(
+      profile: profile('home'),
+      folderPaths: ['/a'],
+    );
     expect(() => target.folderPaths.add('/b'), throwsUnsupportedError);
   });
 
   test('resolveConnectionName prefers profileId then unique name', () {
     final targets = [
-      SessionSshMcpTarget(profile: profile('home', name: 'Home'), folderPaths: ['/a']),
-      SessionSshMcpTarget(profile: profile('build', name: 'Build'), folderPaths: ['/c']),
+      SessionSshMcpTarget(
+        profile: profile('home', name: 'Home'),
+        folderPaths: ['/a'],
+      ),
+      SessionSshMcpTarget(
+        profile: profile('build', name: 'Build'),
+        folderPaths: ['/c'],
+      ),
     ];
     expect(resolveSessionSshMcpConnection(targets, 'home')?.profile.id, 'home');
-    expect(resolveSessionSshMcpConnection(targets, 'Build')?.profile.id, 'build');
+    expect(
+      resolveSessionSshMcpConnection(targets, 'Build')?.profile.id,
+      'build',
+    );
     expect(resolveSessionSshMcpConnection(targets, null)?.profile.id, isNull);
     expect(
-      resolveSessionSshMcpConnection(
-        [targets.first],
-        null,
-      )?.profile.id,
+      resolveSessionSshMcpConnection([targets.first], null)?.profile.id,
       'home',
     );
     expect(resolveSessionSshMcpConnection(targets, 'missing'), isNull);
@@ -77,17 +89,29 @@ void main() {
 
   test('profileId wins over another target display name', () {
     final targets = [
-      SessionSshMcpTarget(profile: profile('box', name: 'A'), folderPaths: ['/a']),
-      SessionSshMcpTarget(profile: profile('b', name: 'box'), folderPaths: ['/b']),
+      SessionSshMcpTarget(
+        profile: profile('box', name: 'A'),
+        folderPaths: ['/a'],
+      ),
+      SessionSshMcpTarget(
+        profile: profile('b', name: 'box'),
+        folderPaths: ['/b'],
+      ),
     ];
     expect(resolveSessionSshMcpConnection(targets, 'box')?.profile.id, 'box');
   });
 
   test('trims connection name before matching', () {
     final targets = [
-      SessionSshMcpTarget(profile: profile('home', name: 'Home'), folderPaths: ['/a']),
+      SessionSshMcpTarget(
+        profile: profile('home', name: 'Home'),
+        folderPaths: ['/a'],
+      ),
     ];
-    expect(resolveSessionSshMcpConnection(targets, '  home  ')?.profile.id, 'home');
+    expect(
+      resolveSessionSshMcpConnection(targets, '  home  ')?.profile.id,
+      'home',
+    );
   });
 
   test('blank connection name omits unless exactly one target', () {
@@ -103,8 +127,14 @@ void main() {
 
   test('duplicate display names require profileId', () {
     final targets = [
-      SessionSshMcpTarget(profile: profile('a', name: 'Box'), folderPaths: ['/a']),
-      SessionSshMcpTarget(profile: profile('b', name: 'Box'), folderPaths: ['/b']),
+      SessionSshMcpTarget(
+        profile: profile('a', name: 'Box'),
+        folderPaths: ['/a'],
+      ),
+      SessionSshMcpTarget(
+        profile: profile('b', name: 'Box'),
+        folderPaths: ['/b'],
+      ),
     ];
     expect(resolveSessionSshMcpConnection(targets, 'Box'), isNull);
     expect(resolveSessionSshMcpConnection(targets, 'a')?.profile.id, 'a');

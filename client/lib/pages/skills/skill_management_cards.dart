@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/app_toast/app_toast.dart';
 
@@ -14,8 +14,9 @@ class SkillFieldLabel extends StatelessWidget {
     final textBase = cs.onSurface;
     return Text(
       text,
-      style: TpTextStyles.of(context).smSemiboldColored(textBase.withValues(alpha: 0.7),
-      ),
+      style: TpTextStyles.of(
+        context,
+      ).smSemiboldColored(textBase.withValues(alpha: 0.7)),
     );
   }
 }

@@ -3,10 +3,7 @@ import '../../services/workspace/dead_ssh_target_error.dart';
 enum SessionLaunchFailureActionKind { retry, remapDeadSsh }
 
 final class SessionLaunchFailureAction {
-  const SessionLaunchFailureAction({
-    required this.kind,
-    this.deadSshTargetId,
-  });
+  const SessionLaunchFailureAction({required this.kind, this.deadSshTargetId});
 
   final SessionLaunchFailureActionKind kind;
   final String? deadSshTargetId;
@@ -37,7 +34,9 @@ SessionLaunchFailureView? presentSessionLaunchFailure(String? launchError) {
         kind: SessionLaunchFailureActionKind.remapDeadSsh,
         deadSshTargetId: dead,
       ),
-    const SessionLaunchFailureAction(kind: SessionLaunchFailureActionKind.retry),
+    const SessionLaunchFailureAction(
+      kind: SessionLaunchFailureActionKind.retry,
+    ),
   ];
   return SessionLaunchFailureView(message: message, actions: actions);
 }

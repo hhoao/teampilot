@@ -47,10 +47,8 @@ class SettingsChromeHomeSidebar extends StatelessWidget {
       onSelectAllWorkspaces: () => _navigate(context, '/home-v2'),
       onSelectGlobalView: (view) =>
           _navigate(context, routeForGlobalView(view)),
-      onSelectLibraryView: (HomeLibraryView view) => _navigate(
-        context,
-        '/home-v2',
-      ),
+      onSelectLibraryView: (HomeLibraryView view) =>
+          _navigate(context, '/home-v2'),
     );
   }
 }

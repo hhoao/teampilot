@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import '../../../../cubits/chat_state.dart';
-import '../../model/chat_tab.dart';
+import '../../session/chat_tab.dart';
 import '../../../../utils/logging/logger.dart';
 import 'session_connect_job.dart';
 
@@ -33,7 +33,7 @@ class SessionConnectScheduler implements SessionConnectSchedulerPort {
   final Map<String, _SessionConnectToken> _pending =
       <String, _SessionConnectToken>{};
 
-  String key(SessionConnectJob job) => job.sessionId + '|' + job.memberId;
+  String key(SessionConnectJob job) => '${job.sessionId}|${job.memberId}';
 
   @override
   Future<void> enqueue(
@@ -106,7 +106,7 @@ class SessionConnectScheduler implements SessionConnectSchedulerPort {
   }
 
   bool isPending({required String sessionId, required String memberId}) =>
-      _pending.containsKey(sessionId + '|' + memberId);
+      _pending.containsKey('$sessionId|$memberId');
 
   @override
   void cancelForTab(ChatTab tab) {

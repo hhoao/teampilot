@@ -8,9 +8,9 @@ const _testToolNames = {'applypatch', 'apply_patch'};
 const _testPathKeys = ['file_path', 'path', 'file', 'target_file'];
 
 UnifiedDiffEditHunkCodec _testCodec() => const UnifiedDiffEditHunkCodec(
-      toolNames: _testToolNames,
-      pathKeys: _testPathKeys,
-    );
+  toolNames: _testToolNames,
+  pathKeys: _testPathKeys,
+);
 
 AiToolCallPart _makeToolCall({
   required String toolName,
@@ -84,10 +84,7 @@ void main() {
       final hunk = codec.encode(
         _makeToolCall(
           toolName: 'ApplyPatch',
-          args: {
-            'file_path': 'big.dart',
-            'patch': buf.toString(),
-          },
+          args: {'file_path': 'big.dart', 'patch': buf.toString()},
         ),
       );
       expect(hunk, isNotNull);
@@ -104,10 +101,7 @@ void main() {
       final hunk = codec.encode(
         _makeToolCall(
           toolName: 'ApplyPatch',
-          args: {
-            'file_path': 'lib/foo.dart',
-            'patch': samplePatch,
-          },
+          args: {'file_path': 'lib/foo.dart', 'patch': samplePatch},
         ),
       );
       expect(hunk, isNotNull);
@@ -220,10 +214,7 @@ void main() {
       final hunk = codec.encode(
         _makeToolCall(
           toolName: 'ApplyPatch',
-          args: {
-            'path': 'a.dart',
-            'diff': '-x\n+y',
-          },
+          args: {'path': 'a.dart', 'diff': '-x\n+y'},
         ),
       );
       expect(hunk, isNotNull);
@@ -235,10 +226,7 @@ void main() {
       final hunk = codec.encode(
         _makeToolCall(
           toolName: 'ApplyPatch',
-          args: {
-            'path': 'a.dart',
-            'input': '-x\n+y',
-          },
+          args: {'path': 'a.dart', 'input': '-x\n+y'},
         ),
       );
       expect(hunk, isNotNull);
@@ -250,10 +238,7 @@ void main() {
       final hunk = codec.encode(
         _makeToolCall(
           toolName: 'ApplyPatch',
-          args: {
-            'path': 'a.dart',
-            'patch': '-x\n+y',
-          },
+          args: {'path': 'a.dart', 'patch': '-x\n+y'},
         ),
       );
       expect(hunk, isNotNull);
@@ -265,10 +250,7 @@ void main() {
       final hunk = codec.encode(
         _makeToolCall(
           toolName: 'ApplyPatch',
-          args: {
-            'target_file': 'target.dart',
-            'patch': '-x\n+y',
-          },
+          args: {'target_file': 'target.dart', 'patch': '-x\n+y'},
         ),
       );
       expect(hunk, isNotNull);
@@ -298,10 +280,7 @@ void main() {
     test('missing path and no headers returns null', () {
       final codec = _testCodec();
       final hunk = codec.encode(
-        _makeToolCall(
-          toolName: 'ApplyPatch',
-          args: {'patch': '-x\n+y'},
-        ),
+        _makeToolCall(toolName: 'ApplyPatch', args: {'patch': '-x\n+y'}),
       );
       expect(hunk, isNull);
     });
@@ -309,10 +288,7 @@ void main() {
     test('missing patch returns null', () {
       final codec = _testCodec();
       final hunk = codec.encode(
-        _makeToolCall(
-          toolName: 'ApplyPatch',
-          args: {'file_path': 'a.dart'},
-        ),
+        _makeToolCall(toolName: 'ApplyPatch', args: {'file_path': 'a.dart'}),
       );
       expect(hunk, isNull);
     });
@@ -322,10 +298,7 @@ void main() {
       final hunk = codec.encode(
         _makeToolCall(
           toolName: 'ApplyPatch',
-          args: {
-            'file_path': 'a.dart',
-            'patch': '',
-          },
+          args: {'file_path': 'a.dart', 'patch': ''},
         ),
       );
       expect(hunk, isNull);
@@ -336,10 +309,7 @@ void main() {
       final hunk = codec.encode(
         _makeToolCall(
           toolName: 'write',
-          args: {
-            'file_path': 'a.dart',
-            'patch': '-x\n+y',
-          },
+          args: {'file_path': 'a.dart', 'patch': '-x\n+y'},
         ),
       );
       expect(hunk, isNull);
@@ -350,10 +320,7 @@ void main() {
       final hunk = codec.encode(
         _makeToolCall(
           toolName: 'ApplyPatch',
-          args: {
-            'file_path': 'a.dart',
-            'patch': '\n\n',
-          },
+          args: {'file_path': 'a.dart', 'patch': '\n\n'},
         ),
       );
       expect(hunk, isNull);
@@ -361,9 +328,7 @@ void main() {
 
     test('null args returns null', () {
       final codec = _testCodec();
-      final hunk = codec.encode(
-        _makeToolCall(toolName: 'ApplyPatch'),
-      );
+      final hunk = codec.encode(_makeToolCall(toolName: 'ApplyPatch'));
       expect(hunk, isNull);
     });
 
@@ -443,8 +408,7 @@ void main() {
       final hunk = codec.encode(
         _makeToolCall(
           toolName: 'apply_patch',
-          argsText:
-              '{"file_path": "json.dart", "patch": "-x\\n+y"}',
+          argsText: '{"file_path": "json.dart", "patch": "-x\\n+y"}',
         ),
       );
       expect(hunk, isNotNull);
@@ -456,29 +420,31 @@ void main() {
     // -----------------------------------------------------------------------
     // FREEFORM argsText (codex apply_patch)
     // -----------------------------------------------------------------------
-    test('freeform argsText: non-JSON text used as patch (codex apply_patch)',
-        () {
-      final codec = _testCodec();
-      final hunk = codec.encode(
-        _makeToolCall(
-          toolName: 'apply_patch',
-          argsText: '''*** Begin Patch
+    test(
+      'freeform argsText: non-JSON text used as patch (codex apply_patch)',
+      () {
+        final codec = _testCodec();
+        final hunk = codec.encode(
+          _makeToolCall(
+            toolName: 'apply_patch',
+            argsText: '''*** Begin Patch
 *** Update File: lib/foo.dart
 @@ -1,2 +1,3 @@
 -removed
 +added
 *** End Patch''',
-        ),
-      );
-      expect(hunk, isNotNull);
-      expect(hunk!.path, 'lib/foo.dart');
-      expect(hunk.removedCount, 1);
-      expect(hunk.addedCount, 1);
-      expect(hunk.lines[0].kind, AiEditLineKind.remove);
-      expect(hunk.lines[0].text, 'removed');
-      expect(hunk.lines[1].kind, AiEditLineKind.add);
-      expect(hunk.lines[1].text, 'added');
-    });
+          ),
+        );
+        expect(hunk, isNotNull);
+        expect(hunk!.path, 'lib/foo.dart');
+        expect(hunk.removedCount, 1);
+        expect(hunk.addedCount, 1);
+        expect(hunk.lines[0].kind, AiEditLineKind.remove);
+        expect(hunk.lines[0].text, 'removed');
+        expect(hunk.lines[1].kind, AiEditLineKind.add);
+        expect(hunk.lines[1].text, 'added');
+      },
+    );
 
     test('freeform argsText: Add File header path extraction', () {
       final codec = _testCodec();
@@ -497,35 +463,38 @@ void main() {
       expect(hunk.removedCount, 0);
     });
 
-    test('freeform argsText: non-file *** lines (Begin/End Patch) are skipped',
-        () {
-      final codec = _testCodec();
-      final hunk = codec.encode(
-        _makeToolCall(
-          toolName: 'apply_patch',
-          argsText: '''*** Begin Patch
+    test(
+      'freeform argsText: non-file *** lines (Begin/End Patch) are skipped',
+      () {
+        final codec = _testCodec();
+        final hunk = codec.encode(
+          _makeToolCall(
+            toolName: 'apply_patch',
+            argsText: '''*** Begin Patch
 *** Update File: a.dart
 - x
 *** End Patch
 *** End of File''',
-        ),
-      );
-      expect(hunk, isNotNull);
-      expect(hunk!.path, 'a.dart');
-      expect(hunk.removedCount, 1);
-      expect(hunk.lines.every((l) => l.kind == AiEditLineKind.remove), isTrue);
-    });
+          ),
+        );
+        expect(hunk, isNotNull);
+        expect(hunk!.path, 'a.dart');
+        expect(hunk.removedCount, 1);
+        expect(
+          hunk.lines.every((l) => l.kind == AiEditLineKind.remove),
+          isTrue,
+        );
+      },
+    );
 
     test('freeform argsText: structured args still win over argsText', () {
       final codec = _testCodec();
       final hunk = codec.encode(
         _makeToolCall(
           toolName: 'ApplyPatch',
-          args: {
-            'file_path': 'explicit.dart',
-            'patch': '-x\n+y',
-          },
-          argsText: '*** Begin Patch\n*** Update File: ignored.dart\n-z\n+w\n*** End Patch',
+          args: {'file_path': 'explicit.dart', 'patch': '-x\n+y'},
+          argsText:
+              '*** Begin Patch\n*** Update File: ignored.dart\n-z\n+w\n*** End Patch',
         ),
       );
       expect(hunk, isNotNull);
@@ -550,7 +519,8 @@ void main() {
       final hunk = codec.encode(
         _makeToolCall(
           toolName: 'apply_patch',
-          argsText: '*** Begin Patch\n*** Delete File: gone.dart\n*** End Patch',
+          argsText:
+              '*** Begin Patch\n*** Delete File: gone.dart\n*** End Patch',
         ),
       );
       expect(hunk, isNull);
@@ -612,10 +582,7 @@ void main() {
       final hunk = codec.encode(
         _makeToolCall(
           toolName: 'ApplyPatch',
-          args: {
-            'file_path': 'custom.dart',
-            'unified_diff': '-x\n+y',
-          },
+          args: {'file_path': 'custom.dart', 'unified_diff': '-x\n+y'},
         ),
       );
       expect(hunk, isNotNull);
@@ -632,10 +599,7 @@ void main() {
       final hunk = codec.encode(
         _makeToolCall(
           toolName: 'ApplyPatch',
-          args: {
-            'file_path': 'fallback.dart',
-            'fallback': '-x\n+y',
-          },
+          args: {'file_path': 'fallback.dart', 'fallback': '-x\n+y'},
         ),
       );
       expect(hunk, isNotNull);
@@ -675,10 +639,7 @@ void main() {
       final hunk = codec.encode(
         _makeToolCall(
           toolName: 'ApplyPatch',
-          args: {
-            'file_path': 'nope.dart',
-            'diff': '-x\n+y',
-          },
+          args: {'file_path': 'nope.dart', 'diff': '-x\n+y'},
         ),
       );
       expect(hunk, isNull);
@@ -698,10 +659,7 @@ void main() {
       final hunk = codec.encode(
         _makeToolCall(
           toolName: 'ApplyPatch',
-          args: {
-            'target': 'custom_path.dart',
-            'patch': '-x\n+y',
-          },
+          args: {'target': 'custom_path.dart', 'patch': '-x\n+y'},
         ),
       );
       expect(hunk, isNotNull);
@@ -717,10 +675,7 @@ void main() {
       final hunk = codec.encode(
         _makeToolCall(
           toolName: 'ApplyPatch',
-          args: {
-            'fallback_path': 'from_fallback.dart',
-            'patch': '-x\n+y',
-          },
+          args: {'fallback_path': 'from_fallback.dart', 'patch': '-x\n+y'},
         ),
       );
       expect(hunk, isNotNull);

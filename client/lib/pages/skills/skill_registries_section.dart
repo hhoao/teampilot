@@ -38,7 +38,8 @@ class _SkillRegistriesSectionState extends State<SkillRegistriesSection> {
                 for (final source in state.sources)
                   _RegistryRow(
                     source: source,
-                    syncing: source is GitRepoRegistrySource &&
+                    syncing:
+                        source is GitRepoRegistrySource &&
                         state.repoSyncingKeys.contains(
                           '${source.gitRepo.owner}__${source.gitRepo.name}',
                         ),
@@ -52,8 +53,10 @@ class _SkillRegistriesSectionState extends State<SkillRegistriesSection> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: FilledButton.icon(
-                    onPressed: throttledAsync('skill_add_registry', () =>
-                        _addSourceDialog(context)),
+                    onPressed: throttledAsync(
+                      'skill_add_registry',
+                      () => _addSourceDialog(context),
+                    ),
                     icon: Icon(Icons.add, size: context.tpIconSizes.md),
                     label: Text(l10n.skillsRegistryAddSource),
                   ),
@@ -108,7 +111,9 @@ class _SkillRegistriesSectionState extends State<SkillRegistriesSection> {
     final l10n = context.l10n;
     final isBuiltIn = source.id == 'skillsSh' || source.id == 'skillsMp';
     final cfg = _configOf(source);
-    final title = isBuiltIn ? l10n.skillsRegistryRemoveTitle : l10n.skillsRemove;
+    final title = isBuiltIn
+        ? l10n.skillsRegistryRemoveTitle
+        : l10n.skillsRemove;
     final message = isBuiltIn
         ? l10n.skillsRegistryResetConfirm(cfg.label)
         : l10n.skillsRepoRemoveConfirm(cfg.label);
@@ -122,14 +127,14 @@ class _SkillRegistriesSectionState extends State<SkillRegistriesSection> {
     if (ok != true || !mounted) return;
     if (isBuiltIn) {
       final defaults = SkillRegistriesConfig.defaults().byId(cfg.id)!;
-      await context
-          .read<SkillCubit>()
-          .updateRegistrySource(cfg.copyWith(
-            label: defaults.label,
-            baseUrl: defaults.baseUrl,
-            browseQuery: defaults.browseQuery,
-            clearApiToken: true,
-          ));
+      await context.read<SkillCubit>().updateRegistrySource(
+        cfg.copyWith(
+          label: defaults.label,
+          baseUrl: defaults.baseUrl,
+          browseQuery: defaults.browseQuery,
+          clearApiToken: true,
+        ),
+      );
     } else {
       await context.read<SkillCubit>().removeRegistrySource(cfg.id);
     }
@@ -306,12 +311,16 @@ class _AddGitSourceDialogState extends State<_AddGitSourceDialog> {
           const SizedBox(height: 16),
           TextField(
             controller: _ownerCtl,
-            decoration: InputDecoration(labelText: l10n.skillsRegistryOwnerLabel),
+            decoration: InputDecoration(
+              labelText: l10n.skillsRegistryOwnerLabel,
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _nameCtl,
-            decoration: InputDecoration(labelText: l10n.skillsRegistryNameOfRepoLabel),
+            decoration: InputDecoration(
+              labelText: l10n.skillsRegistryNameOfRepoLabel,
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -320,7 +329,10 @@ class _AddGitSourceDialogState extends State<_AddGitSourceDialog> {
           ),
           TpDialogActions(
             children: [
-              TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(l10n.cancel),
+              ),
               FilledButton(
                 onPressed: () {
                   final owner = _ownerCtl.text.trim();
@@ -348,7 +360,8 @@ class _AddApiSourceFormDialog extends StatefulWidget {
   final AppLocalizations l10n;
 
   @override
-  State<_AddApiSourceFormDialog> createState() => _AddApiSourceFormDialogState();
+  State<_AddApiSourceFormDialog> createState() =>
+      _AddApiSourceFormDialogState();
 }
 
 class _AddApiSourceFormDialogState extends State<_AddApiSourceFormDialog> {
@@ -390,7 +403,9 @@ class _AddApiSourceFormDialogState extends State<_AddApiSourceFormDialog> {
           const SizedBox(height: 16),
           TextField(
             controller: _labelCtl,
-            decoration: InputDecoration(labelText: l10n.skillsRegistryNameLabel),
+            decoration: InputDecoration(
+              labelText: l10n.skillsRegistryNameLabel,
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -404,12 +419,17 @@ class _AddApiSourceFormDialogState extends State<_AddApiSourceFormDialog> {
             const SizedBox(height: 12),
             TextField(
               controller: _browseCtl,
-              decoration: InputDecoration(labelText: l10n.skillsRegistryBrowseQueryLabel),
+              decoration: InputDecoration(
+                labelText: l10n.skillsRegistryBrowseQueryLabel,
+              ),
             ),
           ],
           TpDialogActions(
             children: [
-              TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(l10n.cancel),
+              ),
               FilledButton(
                 onPressed: () {
                   final label = _labelCtl.text.trim();
@@ -425,7 +445,9 @@ class _AddApiSourceFormDialogState extends State<_AddApiSourceFormDialog> {
                       protocol: protocol,
                       baseUrl: url.isEmpty ? null : url,
                       browseQuery: protocol == SkillRegistryProtocol.skillsSh
-                          ? (_browseCtl.text.trim().isEmpty ? 'ai' : _browseCtl.text.trim())
+                          ? (_browseCtl.text.trim().isEmpty
+                                ? 'ai'
+                                : _browseCtl.text.trim())
                           : null,
                     ),
                   );
@@ -463,7 +485,8 @@ class _RegistryRow extends StatelessWidget {
     final cfg = source is ApiRegistrySource
         ? (source as ApiRegistrySource).config
         : (source as GitRepoRegistrySource).config;
-    final needsAuth = source is ApiRegistrySource &&
+    final needsAuth =
+        source is ApiRegistrySource &&
         cfg.protocol == SkillRegistryProtocol.skillsMp;
     final subtitle = source is GitRepoRegistrySource
         ? '@${(source as GitRepoRegistrySource).gitRepo.branch}'
@@ -487,7 +510,9 @@ class _RegistryRow extends StatelessWidget {
                       source is GitRepoRegistrySource
                           ? (source as GitRepoRegistrySource).gitRepo.githubUrl
                           : cfg.baseUrlOrDefault,
-                      style: TpTextStyles.of(context).mdSemiboldColored(textBase),
+                      style: TpTextStyles.of(
+                        context,
+                      ).mdSemiboldColored(textBase),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -563,7 +588,9 @@ class _RegistryEditDialogState extends State<_RegistryEditDialog> {
     super.initState();
     _labelCtl = TextEditingController(text: widget.config.label);
     _urlCtl = TextEditingController(
-      text: widget.config.baseUrlOrDefault == '' ? '' : widget.config.baseUrlOrDefault,
+      text: widget.config.baseUrlOrDefault == ''
+          ? ''
+          : widget.config.baseUrlOrDefault,
     );
     _tokenCtl = TextEditingController(text: widget.config.apiToken ?? '');
     _browseCtl = TextEditingController(text: widget.config.browseQuery ?? '');
@@ -574,8 +601,13 @@ class _RegistryEditDialogState extends State<_RegistryEditDialog> {
 
   @override
   void dispose() {
-    _labelCtl.dispose(); _urlCtl.dispose(); _tokenCtl.dispose();
-    _browseCtl.dispose(); _ownerCtl.dispose(); _nameCtl.dispose(); _branchCtl.dispose();
+    _labelCtl.dispose();
+    _urlCtl.dispose();
+    _tokenCtl.dispose();
+    _browseCtl.dispose();
+    _ownerCtl.dispose();
+    _nameCtl.dispose();
+    _branchCtl.dispose();
     super.dispose();
   }
 
@@ -612,7 +644,9 @@ class _RegistryEditDialogState extends State<_RegistryEditDialog> {
           : _labelCtl.text.trim(),
       gitOwner: _ownerCtl.text.trim(),
       gitName: _nameCtl.text.trim(),
-      gitBranch: _branchCtl.text.trim().isEmpty ? 'main' : _branchCtl.text.trim(),
+      gitBranch: _branchCtl.text.trim().isEmpty
+          ? 'main'
+          : _branchCtl.text.trim(),
     );
   }
 
@@ -631,14 +665,21 @@ class _RegistryEditDialogState extends State<_RegistryEditDialog> {
         children: [
           TpDialogHeader(title: l10n.skillsRegistryEditTitle),
           const SizedBox(height: 16),
-          TextField(controller: _labelCtl, decoration: InputDecoration(labelText: l10n.skillsRegistryNameLabel)),
+          TextField(
+            controller: _labelCtl,
+            decoration: InputDecoration(
+              labelText: l10n.skillsRegistryNameLabel,
+            ),
+          ),
           if (_isApi) ...[
             const SizedBox(height: 12),
             TextField(
               controller: _urlCtl,
               decoration: InputDecoration(
                 labelText: l10n.skillsRegistryBaseUrlLabel,
-                hintText: SkillRegistrySourceConfig.defaultBaseUrl(widget.config.protocol ?? SkillRegistryProtocol.skillsSh),
+                hintText: SkillRegistrySourceConfig.defaultBaseUrl(
+                  widget.config.protocol ?? SkillRegistryProtocol.skillsSh,
+                ),
               ),
             ),
             if (widget.config.protocol == SkillRegistryProtocol.skillsMp) ...[
@@ -647,35 +688,62 @@ class _RegistryEditDialogState extends State<_RegistryEditDialog> {
                 controller: _tokenCtl,
                 obscureText: true,
                 autocorrect: false,
-                decoration: InputDecoration(labelText: l10n.skillsRegistryTokenLabel),
+                decoration: InputDecoration(
+                  labelText: l10n.skillsRegistryTokenLabel,
+                ),
               ),
             ],
             if (widget.config.protocol == SkillRegistryProtocol.skillsSh) ...[
               const SizedBox(height: 12),
               TextField(
                 controller: _browseCtl,
-                decoration: InputDecoration(labelText: l10n.skillsRegistryBrowseQueryLabel),
+                decoration: InputDecoration(
+                  labelText: l10n.skillsRegistryBrowseQueryLabel,
+                ),
               ),
             ],
           ] else ...[
             const SizedBox(height: 12),
-            TextField(controller: _ownerCtl, decoration: InputDecoration(labelText: l10n.skillsRegistryOwnerLabel)),
+            TextField(
+              controller: _ownerCtl,
+              decoration: InputDecoration(
+                labelText: l10n.skillsRegistryOwnerLabel,
+              ),
+            ),
             const SizedBox(height: 12),
-            TextField(controller: _nameCtl, decoration: InputDecoration(labelText: l10n.skillsRegistryNameOfRepoLabel)),
+            TextField(
+              controller: _nameCtl,
+              decoration: InputDecoration(
+                labelText: l10n.skillsRegistryNameOfRepoLabel,
+              ),
+            ),
             const SizedBox(height: 12),
-            TextField(controller: _branchCtl, decoration: InputDecoration(labelText: l10n.skillsRepoBranch)),
+            TextField(
+              controller: _branchCtl,
+              decoration: InputDecoration(labelText: l10n.skillsRepoBranch),
+            ),
           ],
           TpDialogActions(
             children: [
-              TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(l10n.cancel),
+              ),
               if (_isApi)
                 TextButton(
                   onPressed: _testing ? null : _test,
                   child: _testing
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : Text(l10n.mcpRepoTestConnection),
                 ),
-              FilledButton(onPressed: _testing ? null : _save, child: Text(l10n.save)),
+              FilledButton(
+                onPressed: _testing ? null : _save,
+                child: Text(l10n.save),
+              ),
             ],
           ),
         ],

@@ -15,19 +15,18 @@ class _FakeExpertHubSource implements ExpertHubSource {
   _FakeExpertHubSource(this.members);
   final List<DiscoverableMember> members;
   @override
-  Future<List<DiscoverableMember>> fetchMembers({bool forceRefresh = false}) async =>
-      members;
+  Future<List<DiscoverableMember>> fetchMembers({
+    bool forceRefresh = false,
+  }) async => members;
   @override
-  Future<List<String>> categories({bool forceRefresh = false}) async => const [];
+  Future<List<String>> categories({bool forceRefresh = false}) async =>
+      const [];
 }
 
 void main() {
   test('resolve returns builtin member by key', () {
     final builtin = builtinExpertMembers().first;
-    expect(
-      ExpertMemberResolver.resolve(key: builtin.key),
-      builtin,
-    );
+    expect(ExpertMemberResolver.resolve(key: builtin.key), builtin);
   });
 
   test('resolve checks hub state before builtin fallback', () {
@@ -49,10 +48,7 @@ void main() {
 
   test('labelForKey falls back when key is missing', () {
     expect(
-      ExpertMemberResolver.labelForKey(
-        key: null,
-        fallbackLabel: 'No expert',
-      ),
+      ExpertMemberResolver.labelForKey(key: null, fallbackLabel: 'No expert'),
       'No expert',
     );
   });
@@ -64,7 +60,10 @@ void main() {
 
     final resolved = await ExpertMemberResolver.resolveMember(
       key: kBuiltinDefaultExpertKey,
-                                                               localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
+      localStore: LocalExpertStore(
+        fs: InMemoryFilesystem(),
+        dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
+      ),
     );
 
     expect(resolved, isNotNull);
@@ -93,7 +92,10 @@ void main() {
     final resolved = await ExpertMemberResolver.resolveMember(
       key: member.key,
       hubState: const ExpertHubState(allMembers: [member]),
-                                                               localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir),
+      localStore: LocalExpertStore(
+        fs: InMemoryFilesystem(),
+        dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
+      ),
     );
     expect(resolved?.key, member.key);
     expect(resolved?.name, 'Developer');
@@ -129,7 +131,10 @@ void main() {
       localStore: store,
     );
     expect(resolved, isNotNull);
-    expect(resolved!.source, ExpertMemberSource.clone,
-        reason: 'local clone shadows the catalog entry');
+    expect(
+      resolved!.source,
+      ExpertMemberSource.clone,
+      reason: 'local clone shadows the catalog entry',
+    );
   });
 }

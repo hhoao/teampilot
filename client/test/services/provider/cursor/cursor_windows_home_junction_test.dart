@@ -38,7 +38,8 @@ void main() {
     });
 
     test('needsJunction is true for TeamPilot-like deep homes on Windows', () {
-      final home = r'C:\Users\haung\AppData\Roaming\com.hhoa\TeamPilot'
+      final home =
+          r'C:\Users\haung\AppData\Roaming\com.hhoa\TeamPilot'
           r'\workspace\workspaces\4f8f51a9-77cd-40f5-98ef-b678741b7b2e'
           r'\sessions\05224e22-0080-4e5c-a528-93c681f77998\runtime\cursor\home';
       expect(

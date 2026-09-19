@@ -161,11 +161,8 @@ final class ShellInstruction extends SkillPackInstruction {
 
 @immutable
 final class RunInstruction extends SkillPackInstruction {
-  const RunInstruction({
-    this.shell,
-    this.exec,
-    this.optional = false,
-  }) : assert(shell != null || exec != null);
+  const RunInstruction({this.shell, this.exec, this.optional = false})
+    : assert(shell != null || exec != null);
 
   final String? shell;
   final List<String>? exec;
@@ -241,14 +238,20 @@ List<SkillPackInstruction> parseSkillPackInstall(List<Object?> raw) {
   return result;
 }
 
-SkillPackInstruction _parseInstructionElement(Object? raw, {required int index}) {
+SkillPackInstruction _parseInstructionElement(
+  Object? raw, {
+  required int index,
+}) {
   if (raw is! Map) {
     throw FormatException('install[$index]: expected object');
   }
   final map = raw.map((key, value) => MapEntry(key.toString(), value));
 
   final unknownKeys = map.keys
-      .where((key) => !_instructionKeys.contains(key) && !_modifierKeys.contains(key))
+      .where(
+        (key) =>
+            !_instructionKeys.contains(key) && !_modifierKeys.contains(key),
+      )
       .toList(growable: false);
   if (unknownKeys.isNotEmpty) {
     throw FormatException('install[$index]: unknown key ${unknownKeys.first}');
@@ -318,7 +321,9 @@ ScriptInstruction _parseScript(
         )
         .toList();
     if (unknownKeys.isNotEmpty) {
-      throw FormatException('install[$index] SCRIPT: unknown key ${unknownKeys.first}');
+      throw FormatException(
+        'install[$index] SCRIPT: unknown key ${unknownKeys.first}',
+      );
     }
     final url = (map['url'] as String?)?.trim() ?? '';
     if (url.isEmpty) {
@@ -348,7 +353,9 @@ CopyInstruction _parseCopy(Object? raw, {required int index}) {
   final from = raw[0]?.toString().trim() ?? '';
   final to = raw[1]?.toString().trim() ?? '';
   if (from.isEmpty || to.isEmpty) {
-    throw FormatException('install[$index] COPY: from and to must be non-empty');
+    throw FormatException(
+      'install[$index] COPY: from and to must be non-empty',
+    );
   }
   return CopyInstruction(from: from, to: to);
 }
@@ -372,9 +379,13 @@ SkillsInstruction _parseSkills(Object? raw, {required int index}) {
   }
   if (raw is Map) {
     final map = raw.map((key, value) => MapEntry(key.toString(), value));
-    final unknownKeys = map.keys.where((key) => key != 'include' && key != 'exclude').toList();
+    final unknownKeys = map.keys
+        .where((key) => key != 'include' && key != 'exclude')
+        .toList();
     if (unknownKeys.isNotEmpty) {
-      throw FormatException('install[$index] SKILLS: unknown key ${unknownKeys.first}');
+      throw FormatException(
+        'install[$index] SKILLS: unknown key ${unknownKeys.first}',
+      );
     }
 
     final excludeRaw = map['exclude'];
@@ -398,28 +409,40 @@ SkillsInstruction _parseSkills(Object? raw, {required int index}) {
           .where((entry) => entry.isNotEmpty)
           .toList(growable: false);
       if (include.isEmpty) {
-        throw FormatException('install[$index] SKILLS: expected non-empty include list');
+        throw FormatException(
+          'install[$index] SKILLS: expected non-empty include list',
+        );
       }
       if (include.length == 1 && include.single == '*') {
         return SkillsInstruction(includeAll: true, exclude: exclude);
       }
-      return SkillsInstruction(includeAll: false, include: include, exclude: exclude);
+      return SkillsInstruction(
+        includeAll: false,
+        include: include,
+        exclude: exclude,
+      );
     }
     throw FormatException('install[$index] SKILLS: invalid include value');
   }
-  throw FormatException('install[$index] SKILLS: expected "*", list, or object');
+  throw FormatException(
+    'install[$index] SKILLS: expected "*", list, or object',
+  );
 }
 
 ShellInstruction _parseShell(Object? raw, {required int index}) {
   if (raw is! List || raw.isEmpty) {
-    throw FormatException('install[$index] SHELL: expected non-empty string list');
+    throw FormatException(
+      'install[$index] SHELL: expected non-empty string list',
+    );
   }
   final wrapper = raw
       .map((entry) => entry.toString().trim())
       .where((entry) => entry.isNotEmpty)
       .toList(growable: false);
   if (wrapper.isEmpty) {
-    throw FormatException('install[$index] SHELL: expected non-empty string list');
+    throw FormatException(
+      'install[$index] SHELL: expected non-empty string list',
+    );
   }
   return ShellInstruction(wrapper);
 }

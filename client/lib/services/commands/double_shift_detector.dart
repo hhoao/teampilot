@@ -3,9 +3,7 @@ import 'package:flutter/services.dart';
 /// Detects a JetBrains-style double Shift (two Shift key-downs within [window]
 /// with no other keys in between).
 class DoubleShiftDetector {
-  DoubleShiftDetector({
-    this.window = const Duration(milliseconds: 400),
-  });
+  DoubleShiftDetector({this.window = const Duration(milliseconds: 400)});
 
   final Duration window;
 

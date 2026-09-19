@@ -65,13 +65,11 @@ class EmbeddedSshServer implements ConnectSshBackend {
        _bindAddress = bindAddress ?? InternetAddress.anyIPv4,
        _portOverride = portOverride,
        _ptySpawner = ptySpawner,
-       _pathContext = pathContext ?? AppPaths.pathContextForDataRoot(
-         appDataRoot,
-       ),
-       _forwardTransportTrace = forwardTransportTrace ??
-           transportTraceEnabledByEnv(
-             Platform.environment['TP_SSH_TRACE'],
-           );
+       _pathContext =
+           pathContext ?? AppPaths.pathContextForDataRoot(appDataRoot),
+       _forwardTransportTrace =
+           forwardTransportTrace ??
+           transportTraceEnabledByEnv(Platform.environment['TP_SSH_TRACE']);
 
   final Filesystem _fs;
   final String _appDataRoot;
@@ -183,14 +181,13 @@ class EmbeddedSshServer implements ConnectSshBackend {
           forwarding: SSHForwardingConfig(
             allowTcpForwarding: SshTcpForwardingMode.both,
             permitOpen: _loopbackOnlyPermit,
-            dialSocket: (host, port) async =>
-                _IoForwardConnection(
-                  await Socket.connect(
-                    host,
-                    port,
-                    timeout: const Duration(seconds: 10),
-                  ),
-                ),
+            dialSocket: (host, port) async => _IoForwardConnection(
+              await Socket.connect(
+                host,
+                port,
+                timeout: const Duration(seconds: 10),
+              ),
+            ),
             bindServerSocket: (address, port) async =>
                 _IoServerSocketHandle(await ServerSocket.bind(address, port)),
           ),
@@ -308,11 +305,10 @@ class EmbeddedSshServer implements ConnectSshBackend {
     final entry = _DeviceConnection(publicKeyLine: publicKeyLine);
     _connectionDevices[connection] = entry;
     unawaited(
-      connection.done
-          .then<void>(
-            (_) => _connectionDevices.remove(connection),
-            onError: (Object _) => _connectionDevices.remove(connection),
-          ),
+      connection.done.then<void>(
+        (_) => _connectionDevices.remove(connection),
+        onError: (Object _) => _connectionDevices.remove(connection),
+      ),
     );
     // Last-match-wins if two devices ever share one key blob — accepted per
     // the Task 3 review; the store owns registry semantics either way.
@@ -364,19 +360,18 @@ class EmbeddedSshServer implements ConnectSshBackend {
     SSHServerConnection connection,
     String host,
     int port,
-  ) async =>
-      host == '127.0.0.1' || host == '::1' || host == 'localhost';
+  ) async => host == '127.0.0.1' || host == '::1' || host == 'localhost';
 
   /// Snapshot of host facts for the `tp1:` host-info query, answered by the
   /// server itself — no process is spawned per query. [SSHHostInfo.elevated]
   /// is the cached, fail-closed result of the start-time elevation probe.
   SSHHostInfo _hostInfo() => SSHHostInfo(
-        platform: Platform.operatingSystem,
-        osUser: Platform.environment['USER'] ?? 'unknown',
-        elevated: _elevated,
-        inDocker: File('/.dockerenv').existsSync(),
-        shell: Platform.environment['SHELL'] ?? '/bin/sh',
-      );
+    platform: Platform.operatingSystem,
+    osUser: Platform.environment['USER'] ?? 'unknown',
+    elevated: _elevated,
+    inDocker: File('/.dockerenv').existsSync(),
+    shell: Platform.environment['SHELL'] ?? '/bin/sh',
+  );
 
   /// The production elevation probe. POSIX: `id -u` reporting uid 0 means
   /// root. Windows: the high-integrity label SID (`S-1-16-12288`) in

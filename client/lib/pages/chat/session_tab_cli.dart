@@ -1,9 +1,9 @@
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
-import '../../services/chat/model/chat_tab.dart';
+import '../../services/chat/session/chat_tab.dart';
 import '../../models/app_session.dart';
 import '../../services/cli/preset_resolver.dart';
-import '../../services/chat/terminal/session_member_cli_resolver.dart';
+import '../../services/chat/session/session_member_cli_resolver.dart';
 import '../../utils/team/team_member_naming.dart';
 
 /// CLI brand shown on a workspace session tab.

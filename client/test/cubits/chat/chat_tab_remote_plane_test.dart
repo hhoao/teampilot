@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/model/chat_tab.dart';
-import 'package:teampilot/services/chat/model/chat_tab_info.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
+import 'package:teampilot/services/chat/session/chat_tab_info.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/chat/team_bus/remote/remote_bus_mount.dart';
 
-import '../../services/team_bus/support/fake_reverse_tunnel.dart';
+import '../../services/chat/team_bus/support/fake_reverse_tunnel.dart';
 
 ChatTab _tab() => ChatTab(
   info: ChatTabInfo(id: 's1', title: 's1', subtitle: ''),

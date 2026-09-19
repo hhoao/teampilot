@@ -360,60 +360,64 @@ void main() {
     await cubit.close();
   });
 
-  test(
-    'deleteConfiguration cancels options sub for selected config',
-    () async {
-      final optionsController = StreamController<List<LaunchOption>>.broadcast();
-      final platform = _StoreBackedPlatform(
-        optionsChanged: optionsController.stream,
-      );
-      await platform.seed(_flutterConfig());
-      final cubit = RunCubit(platform: platform, folders: const [_folder]);
-      await cubit.load();
-      final owned = cubit.state.configurations.single;
-      await cubit.select(owned.selectionKey);
-
-      await cubit.deleteConfiguration(owned);
-
-      expect(cubit.state.selectedKey, isNull);
-      expect(cubit.state.options, isEmpty);
-      optionsController.add([
-        const LaunchOption(
-          id: 'device',
-          label: 'Device',
-          type: LaunchOptionType.choice,
-          value: 'chrome',
-          choices: [
-            LaunchOptionChoice(value: 'chrome', label: 'Chrome'),
-            LaunchOptionChoice(value: 'linux', label: 'Linux'),
-          ],
-        ),
-      ]);
-      await Future<void>.delayed(Duration.zero);
-      expect(cubit.state.options, isEmpty);
-      await cubit.close();
-      await optionsController.close();
-    },
-  );
-
-  test('deleteConfiguration when not running leaves sessions untouched', () async {
-    final platform = _StoreBackedPlatform();
-    await platform.seed(_shellScriptConfig(id: 'a'));
-    await platform.seed(_shellScriptConfig(id: 'b'));
+  test('deleteConfiguration cancels options sub for selected config', () async {
+    final optionsController = StreamController<List<LaunchOption>>.broadcast();
+    final platform = _StoreBackedPlatform(
+      optionsChanged: optionsController.stream,
+    );
+    await platform.seed(_flutterConfig());
     final cubit = RunCubit(platform: platform, folders: const [_folder]);
     await cubit.load();
-    final first = cubit.state.configurations.firstWhere((c) => c.configId == 'a');
-    final second = cubit.state.configurations.firstWhere((c) => c.configId == 'b');
-    await cubit.select(second.selectionKey);
+    final owned = cubit.state.configurations.single;
+    await cubit.select(owned.selectionKey);
 
-    await cubit.deleteConfiguration(first);
+    await cubit.deleteConfiguration(owned);
 
-    expect(platform.deleteCalls, 1);
-    expect(cubit.state.configurations.map((c) => c.configId), ['b']);
-    expect(cubit.state.selectedKey, second.selectionKey);
-    expect(cubit.state.sessions, isEmpty);
+    expect(cubit.state.selectedKey, isNull);
+    expect(cubit.state.options, isEmpty);
+    optionsController.add([
+      const LaunchOption(
+        id: 'device',
+        label: 'Device',
+        type: LaunchOptionType.choice,
+        value: 'chrome',
+        choices: [
+          LaunchOptionChoice(value: 'chrome', label: 'Chrome'),
+          LaunchOptionChoice(value: 'linux', label: 'Linux'),
+        ],
+      ),
+    ]);
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state.options, isEmpty);
     await cubit.close();
+    await optionsController.close();
   });
+
+  test(
+    'deleteConfiguration when not running leaves sessions untouched',
+    () async {
+      final platform = _StoreBackedPlatform();
+      await platform.seed(_shellScriptConfig(id: 'a'));
+      await platform.seed(_shellScriptConfig(id: 'b'));
+      final cubit = RunCubit(platform: platform, folders: const [_folder]);
+      await cubit.load();
+      final first = cubit.state.configurations.firstWhere(
+        (c) => c.configId == 'a',
+      );
+      final second = cubit.state.configurations.firstWhere(
+        (c) => c.configId == 'b',
+      );
+      await cubit.select(second.selectionKey);
+
+      await cubit.deleteConfiguration(first);
+
+      expect(platform.deleteCalls, 1);
+      expect(cubit.state.configurations.map((c) => c.configId), ['b']);
+      expect(cubit.state.selectedKey, second.selectionKey);
+      expect(cubit.state.sessions, isEmpty);
+      await cubit.close();
+    },
+  );
 
   test('deleteConfiguration stops running session first', () async {
     final launcher = _FakeProcessLauncher(hangOnStart: true);

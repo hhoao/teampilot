@@ -83,7 +83,6 @@ ${windowsLine}timeout = $timeoutSec
     return (command: bashCommand, commandWindows: windowsCommand);
   }
 
-  static String _escapeTomlBasicString(String value) => value
-      .replaceAll('\\', r'\\')
-      .replaceAll('"', r'\"');
+  static String _escapeTomlBasicString(String value) =>
+      value.replaceAll('\\', r'\\').replaceAll('"', r'\"');
 }

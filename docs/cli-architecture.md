@@ -438,7 +438,7 @@ return cap?.defaultForceWaitBeforeStop ?? false;
 ```dart
 // ❌ 禁止 — CLI 特定服务散落在通用目录
 services/team/claude_team_roster_service.dart
-services/session/remote_flashskyai_command_builder.dart
+services/chat/session/remote_flashskyai_command_builder.dart
 widgets/app_provider/claude_credential_binding_field.dart
 
 // ✅ 正确 — 所有 CLI 代码在 services/cli/{cli_name}/ 下

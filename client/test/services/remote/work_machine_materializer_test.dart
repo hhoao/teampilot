@@ -98,31 +98,31 @@ void main() {
     },
   );
 
-  test('windows home relative keys normalize to POSIX on remote work fs', () async {
-    final homeFs = InMemoryFilesystem(
-      pathContext: p.Context(style: p.Style.windows),
-    );
-    const homeRoot = r'C:\tp';
-    await homeFs.writeString(
-      r'C:\tp\cli-defaults\cursor\agents\x.md',
-      'A',
-    );
-    final workFs = _CountingFs();
-    final m = WorkMachineMaterializer(
-      homeFs: homeFs,
-      homeRoot: homeRoot,
-      workFs: workFs,
-      machineRoot: '/remote',
-      manifest: MaterializationManifest(fs: workFs, machineRoot: '/remote'),
-    );
+  test(
+    'windows home relative keys normalize to POSIX on remote work fs',
+    () async {
+      final homeFs = InMemoryFilesystem(
+        pathContext: p.Context(style: p.Style.windows),
+      );
+      const homeRoot = r'C:\tp';
+      await homeFs.writeString(r'C:\tp\cli-defaults\cursor\agents\x.md', 'A');
+      final workFs = _CountingFs();
+      final m = WorkMachineMaterializer(
+        homeFs: homeFs,
+        homeRoot: homeRoot,
+        workFs: workFs,
+        machineRoot: '/remote',
+        manifest: MaterializationManifest(fs: workFs, machineRoot: '/remote'),
+      );
 
-    await m.reconcile(tools: {'cursor'}, workspaceId: 'w1');
+      await m.reconcile(tools: {'cursor'}, workspaceId: 'w1');
 
-    expect(
-      (await workFs.stat('/remote/cli-defaults/cursor/agents/x.md')).isFile,
-      isTrue,
-    );
-  });
+      expect(
+        (await workFs.stat('/remote/cli-defaults/cursor/agents/x.md')).isFile,
+        isTrue,
+      );
+    },
+  );
 
   test('changing one file re-copies only that file', () async {
     final homeFs = InMemoryFilesystem();
@@ -157,8 +157,11 @@ void main() {
 
       await m.reconcile(tools: {'claude'}, workspaceId: 'w1');
 
-      expect(workFs.maxConcurrent, greaterThan(1),
-          reason: 'serial per-file writes were the 50s SFTP bottleneck');
+      expect(
+        workFs.maxConcurrent,
+        greaterThan(1),
+        reason: 'serial per-file writes were the 50s SFTP bottleneck',
+      );
       expect(
         workFs.maxConcurrent,
         lessThanOrEqualTo(WorkMachineMaterializer.copyWriteConcurrency),
@@ -168,64 +171,67 @@ void main() {
     },
   );
 
-  test('projects Codex config without shared caches or repository metadata', () async {
-    final home = InMemoryFilesystem();
-    final work = InMemoryFilesystem();
-    const homeRoot = '/home/app/.local/share/com.hhoa.teampilot';
-    const workRoot = '/remote/app/.local/share/com.hhoa.teampilot';
+  test(
+    'projects Codex config without shared caches or repository metadata',
+    () async {
+      final home = InMemoryFilesystem();
+      final work = InMemoryFilesystem();
+      const homeRoot = '/home/app/.local/share/com.hhoa.teampilot';
+      const workRoot = '/remote/app/.local/share/com.hhoa.teampilot';
 
-    await home.writeString(
-      '$homeRoot/cli-defaults/codex/config.toml',
-      'model = "gpt-5"',
-    );
-    await home.writeString(
-      '$homeRoot/cli-defaults/codex/.tmp/plugins/enabled/plugin.json',
-      '{}',
-    );
-    await home.writeString(
-      '$homeRoot/cli-defaults/codex/.tmp/plugins/.git/objects/pack/large',
-      'git object',
-    );
-    await home.writeString(
-      '$homeRoot/cli-defaults/codex/.git/config',
-      '[core]',
-    );
-    await home.writeString(
-      '$homeRoot/workspace/workspaces/ws/config/codex/config.toml',
-      'approval_policy = "never"',
-    );
+      await home.writeString(
+        '$homeRoot/cli-defaults/codex/config.toml',
+        'model = "gpt-5"',
+      );
+      await home.writeString(
+        '$homeRoot/cli-defaults/codex/.tmp/plugins/enabled/plugin.json',
+        '{}',
+      );
+      await home.writeString(
+        '$homeRoot/cli-defaults/codex/.tmp/plugins/.git/objects/pack/large',
+        'git object',
+      );
+      await home.writeString(
+        '$homeRoot/cli-defaults/codex/.git/config',
+        '[core]',
+      );
+      await home.writeString(
+        '$homeRoot/workspace/workspaces/ws/config/codex/config.toml',
+        'approval_policy = "never"',
+      );
 
-    await WorkMachineMaterializer(
-      homeFs: home,
-      homeRoot: homeRoot,
-      workFs: work,
-      machineRoot: workRoot,
-      manifest: MaterializationManifest(fs: work, machineRoot: workRoot),
-    ).reconcile(tools: {'codex'}, workspaceId: 'ws');
+      await WorkMachineMaterializer(
+        homeFs: home,
+        homeRoot: homeRoot,
+        workFs: work,
+        machineRoot: workRoot,
+        manifest: MaterializationManifest(fs: work, machineRoot: workRoot),
+      ).reconcile(tools: {'codex'}, workspaceId: 'ws');
 
-    expect(
-      String.fromCharCodes(
-        (await work.readBytes('$workRoot/cli-defaults/codex/config.toml'))!,
-      ),
-      'model = "gpt-5"',
-    );
-    expect(
-      String.fromCharCodes(
-        (await work.readBytes(
-          '$workRoot/workspace/workspaces/ws/config/codex/config.toml',
-        ))!,
-      ),
-      'approval_policy = "never"',
-    );
-    expect(
-      await work.readString(
-        '$workRoot/cli-defaults/codex/.tmp/plugins/enabled/plugin.json',
-      ),
-      isNull,
-    );
-    expect(
-      await work.readString('$workRoot/cli-defaults/codex/.git/config'),
-      isNull,
-    );
-  });
+      expect(
+        String.fromCharCodes(
+          (await work.readBytes('$workRoot/cli-defaults/codex/config.toml'))!,
+        ),
+        'model = "gpt-5"',
+      );
+      expect(
+        String.fromCharCodes(
+          (await work.readBytes(
+            '$workRoot/workspace/workspaces/ws/config/codex/config.toml',
+          ))!,
+        ),
+        'approval_policy = "never"',
+      );
+      expect(
+        await work.readString(
+          '$workRoot/cli-defaults/codex/.tmp/plugins/enabled/plugin.json',
+        ),
+        isNull,
+      );
+      expect(
+        await work.readString('$workRoot/cli-defaults/codex/.git/config'),
+        isNull,
+      );
+    },
+  );
 }

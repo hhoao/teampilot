@@ -21,20 +21,23 @@ import '../../support/git_graph_test_fakes.dart';
 import '../../support/fixed_resume_lifecycle_service.dart';
 import '../../support/test_runtime_context.dart';
 
-Widget host(GitGraphCubit cubit, {WorkbenchEditorOpener? opener, LayoutCubit? layout}) =>
-    MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      home: MultiProvider(
-        providers: [
-          BlocProvider.value(value: cubit),
-          BlocProvider.value(value: layout ?? LayoutCubit()),
-          if (opener != null) Provider<WorkbenchEditorOpener>.value(value: opener),
-        ],
-        child: const Scaffold(
-          body: GitGraphPane(workspaceId: 'ws', repoRoot: '/repo'),
-        ),
-      ),
-    );
+Widget host(
+  GitGraphCubit cubit, {
+  WorkbenchEditorOpener? opener,
+  LayoutCubit? layout,
+}) => MaterialApp(
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  home: MultiProvider(
+    providers: [
+      BlocProvider.value(value: cubit),
+      BlocProvider.value(value: layout ?? LayoutCubit()),
+      if (opener != null) Provider<WorkbenchEditorOpener>.value(value: opener),
+    ],
+    child: const Scaffold(
+      body: GitGraphPane(workspaceId: 'ws', repoRoot: '/repo'),
+    ),
+  ),
+);
 
 /// 记录 [LayoutCubit.setGitGraphDetailWidth] 调用的替身，规避真实 cubit 在
 /// flutter_test 下的 teardown 卡死（复现见 git_graph_pane_test 挂起排查）。
@@ -118,10 +121,14 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
-  testWidgets('scrolling to bottom twice triggers two loadMore fetches',
-      (tester) async {
+  testWidgets('scrolling to bottom twice triggers two loadMore fetches', (
+    tester,
+  ) async {
     final history = FullPagesChainHistory();
-    final cubit = GitGraphCubit(history: history, git: FakeGitForGraph(repoStatus()));
+    final cubit = GitGraphCubit(
+      history: history,
+      git: FakeGitForGraph(repoStatus()),
+    );
     addTearDown(cubit.close);
     await cubit.setRepoRoot('/repo');
     await tester.pumpWidget(host(cubit));
@@ -139,8 +146,11 @@ void main() {
     }
 
     await scrollToEnd();
-    expect(history.loadMoreCalls, greaterThanOrEqualTo(1),
-        reason: '第一次触底应触发 loadMore');
+    expect(
+      history.loadMoreCalls,
+      greaterThanOrEqualTo(1),
+      reason: '第一次触底应触发 loadMore',
+    );
     expect(cubit.state.isLoadingMore, isFalse);
     expect(cubit.state.rows.length, greaterThan(300));
 
@@ -149,8 +159,11 @@ void main() {
     final rowsAfterFirst = cubit.state.rows.length;
 
     await scrollToEnd();
-    expect(history.loadMoreCalls, greaterThan(callsAfterFirst),
-        reason: '第二次触底应继续触发 loadMore');
+    expect(
+      history.loadMoreCalls,
+      greaterThan(callsAfterFirst),
+      reason: '第二次触底应继续触发 loadMore',
+    );
     expect(cubit.state.rows.length, greaterThan(rowsAfterFirst));
   });
 
@@ -306,7 +319,10 @@ void main() {
       layout.state.preferences.gitGraphDetailWidth,
       LayoutPreferences.minGitGraphDetailWidth,
     );
-    expect(layout.detailWidthCalls, [640, LayoutPreferences.minGitGraphDetailWidth]);
+    expect(layout.detailWidthCalls, [
+      640,
+      LayoutPreferences.minGitGraphDetailWidth,
+    ]);
   });
 
   testWidgets('remounting via store does not close or reuse a closed cubit', (
@@ -338,7 +354,10 @@ void main() {
       cwd: '/repo',
       additionalPaths: const [],
     );
-    final registered = registry.cubitFor(tabScopeId: 'ws', lifecycle: lifecycle);
+    final registered = registry.cubitFor(
+      tabScopeId: 'ws',
+      lifecycle: lifecycle,
+    );
     await registered.sync(
       workspaceFolders: const [
         WorkspaceFolder(path: '/repo', targetId: 'local'),
@@ -369,10 +388,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('git-graph-row-c1')), findsOneWidget);
     expect(created, 1);
-    final retained = store.graphCubitFor(
-      '/repo',
-      workContext: workContext,
-    );
+    final retained = store.graphCubitFor('/repo', workContext: workContext);
     expect(retained.isClosed, isFalse);
 
     // 关闭浮动面板：卸载 pane（修复前此处 BlocProvider 会误关保留 cubit）。
@@ -380,7 +396,10 @@ void main() {
     await tester.pumpAndSettle();
 
     // 卸载不得关闭 store 保留的 cubit；重开复用同一存活实例，不抛 StateError。
-    expect(store.graphCubitFor('/repo', workContext: workContext), same(retained));
+    expect(
+      store.graphCubitFor('/repo', workContext: workContext),
+      same(retained),
+    );
     expect(retained.isClosed, isFalse);
     await tester.pumpWidget(storeHost());
     await tester.pumpAndSettle();

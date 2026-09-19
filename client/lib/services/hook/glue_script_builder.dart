@@ -85,7 +85,9 @@ class GlueScriptBuilder {
   }) {
     final buffer = StringBuffer("\$ErrorActionPreference = 'Continue'\n");
     for (final entry in env.entries) {
-      buffer.writeln("\$env:${entry.key} = '${entry.value.replaceAll("'", "''")}'");
+      buffer.writeln(
+        "\$env:${entry.key} = '${entry.value.replaceAll("'", "''")}'",
+      );
     }
     if (decisionJson != null) {
       buffer.writeln("\$Decision = '${decisionJson.replaceAll("'", "''")}'");

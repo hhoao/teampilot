@@ -66,17 +66,20 @@ void main() {
   });
 
   test('from == to is no-op', () {
-    final folders = const [
-      WorkspaceFolder(path: '/a', targetId: 'ssh:x'),
-    ];
+    final folders = const [WorkspaceFolder(path: '/a', targetId: 'ssh:x')];
     final result = WorkspaceTargetRemap.apply(
       folders: folders,
-      memberTargetsByTeam: const {'t': {'m': 'ssh:x'}},
+      memberTargetsByTeam: const {
+        't': {'m': 'ssh:x'},
+      },
       sessions: const [],
       fromTargetId: 'ssh:x',
       toTargetId: 'ssh:x',
     );
-    expect(identical(result.folders, folders) || result.folders == folders, isTrue);
+    expect(
+      identical(result.folders, folders) || result.folders == folders,
+      isTrue,
+    );
     expect(result.sessions, isEmpty);
   });
 
@@ -93,7 +96,9 @@ void main() {
     expect(
       WorkspaceTargetRemap.usesTarget(
         folders: const [],
-        memberTargetsByTeam: const {'t': {'m': 'ssh:old'}},
+        memberTargetsByTeam: const {
+          't': {'m': 'ssh:old'},
+        },
         sessions: const [],
         targetId: 'ssh:old',
       ),

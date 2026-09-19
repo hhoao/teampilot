@@ -363,8 +363,7 @@ final appRouter = GoRouter(
             ),
             GoRoute(
               path: '/skills',
-              redirect: (context, state) =>
-                  libraryRootRedirect(state.uri.path),
+              redirect: (context, state) => libraryRootRedirect(state.uri.path),
             ),
             GoRoute(
               path: '/skills/installed',
@@ -386,8 +385,7 @@ final appRouter = GoRouter(
             ),
             GoRoute(
               path: '/extensions',
-              redirect: (context, state) =>
-                  libraryRootRedirect(state.uri.path),
+              redirect: (context, state) => libraryRootRedirect(state.uri.path),
             ),
             GoRoute(
               path: '/extensions/installed',
@@ -399,8 +397,7 @@ final appRouter = GoRouter(
             ),
             GoRoute(
               path: '/plugins',
-              redirect: (context, state) =>
-                  libraryRootRedirect(state.uri.path),
+              redirect: (context, state) => libraryRootRedirect(state.uri.path),
             ),
             GoRoute(
               path: '/plugins/installed',
@@ -424,8 +421,7 @@ final appRouter = GoRouter(
             ),
             GoRoute(
               path: '/mcp',
-              redirect: (context, state) =>
-                  libraryRootRedirect(state.uri.path),
+              redirect: (context, state) => libraryRootRedirect(state.uri.path),
             ),
             GoRoute(
               path: '/mcp/installed',
@@ -469,8 +465,7 @@ Widget _settingsChromeShell(
   final path = state.uri.path;
   final width = MediaQuery.sizeOf(context).width;
   final useMobileDrawer =
-      Platform.isAndroid ||
-      width < WorkspacePanePolicy.narrowBreakpointWidth;
+      Platform.isAndroid || width < WorkspacePanePolicy.narrowBreakpointWidth;
 
   if (useMobileDrawer) {
     final hideDrawer = AndroidShellChrome.shouldHideDrawer(path);
@@ -491,8 +486,9 @@ Widget _settingsChromeShell(
                     child: TpIconButton(
                       icon: Icons.arrow_back,
                       size: TpIconButton.chromeAlignedSize(context),
-                      tooltip:
-                          MaterialLocalizations.of(context).backButtonTooltip,
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).backButtonTooltip,
                       onTap: () => AndroidShellChrome.pop(context, path),
                     ),
                   ),

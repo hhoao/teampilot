@@ -10,10 +10,7 @@ import 'teampilot_catalog_skill_md.dart';
 /// Not part of the user `skills/installed` manifest. Tests may pass an explicit
 /// [sourceDirectory]; production writes `SKILL.md` onto the session filesystem.
 final class ManagedCatalogSkillProvider implements SkillContributionProvider {
-  ManagedCatalogSkillProvider({
-    required this.storage,
-    this.sourceDirectory,
-  });
+  ManagedCatalogSkillProvider({required this.storage, this.sourceDirectory});
 
   static const skillId = 'teampilot-catalog';
 

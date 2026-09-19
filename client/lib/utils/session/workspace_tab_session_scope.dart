@@ -1,5 +1,5 @@
 import '../../cubits/chat_cubit.dart';
-import '../../services/chat/model/chat_tab.dart';
+import '../../services/chat/session/chat_tab.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../services/chat/team_bus/team_bus.dart';
 

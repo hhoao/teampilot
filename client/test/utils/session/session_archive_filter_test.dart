@@ -3,11 +3,11 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/utils/session/session_archive_filter.dart';
 
 AppSession _s(String id, {bool archived = false}) => AppSession(
-      sessionId: id,
-      workspaceId: 'w',
-      createdAt: 1,
-      archived: archived,
-    );
+  sessionId: id,
+  workspaceId: 'w',
+  createdAt: 1,
+  archived: archived,
+);
 
 void main() {
   test('activeSessions excludes archived', () {

@@ -1,14 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/failed_message_record.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/chat/history_continue_delivery.dart';
 import 'package:teampilot/services/chat/launch/connect/session_connect_job.dart';
-import 'package:teampilot/services/chat/session/history/failed_message_store.dart';
+import 'package:teampilot/services/chat/conversation/history/failed_message_store.dart';
 
 import '../../support/post_frame_test_harness.dart';
 

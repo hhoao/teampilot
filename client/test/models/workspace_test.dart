@@ -70,7 +70,11 @@ void main() {
       WorkspaceFolder(path: '/main'),
       WorkspaceFolder(path: '/extra'),
     ];
-    final reordered = Workspace.foldersForPrimaryPath(folders, '/extra', usesPosixPaths: false, );
+    final reordered = Workspace.foldersForPrimaryPath(
+      folders,
+      '/extra',
+      usesPosixPaths: false,
+    );
     expect(reordered.map((f) => f.path), ['/extra', '/main']);
   });
 
@@ -79,7 +83,7 @@ void main() {
     final withWorktree = Workspace.foldersForPrimaryPath(
       folders,
       '/repo/.worktrees/feature',
-                                                          usesPosixPaths: false,
+      usesPosixPaths: false,
     );
     expect(withWorktree.map((f) => f.path), [
       '/repo/.worktrees/feature',
@@ -92,7 +96,10 @@ void main() {
       WorkspaceFolder(path: '/main'),
       WorkspaceFolder(path: '/extra'),
     ];
-    expect(Workspace.foldersForPrimaryPath(folders, '', usesPosixPaths: false, ), folders);
+    expect(
+      Workspace.foldersForPrimaryPath(folders, '', usesPosixPaths: false),
+      folders,
+    );
   });
 
   test('foldersForPrimaryPath leaves list unchanged when primary is first', () {
@@ -100,7 +107,10 @@ void main() {
       WorkspaceFolder(path: '/main'),
       WorkspaceFolder(path: '/extra'),
     ];
-    expect(Workspace.foldersForPrimaryPath(folders, '/main', usesPosixPaths: false, ), folders);
+    expect(
+      Workspace.foldersForPrimaryPath(folders, '/main', usesPosixPaths: false),
+      folders,
+    );
   });
 
   test('foldersForPrimaryPath stamps defaultTargetId when folders empty', () {
@@ -108,7 +118,7 @@ void main() {
       const [],
       '/repo',
       defaultTargetId: 'ssh:p1',
-                                                     usesPosixPaths: false,
+      usesPosixPaths: false,
     );
     expect(folders.single.path, '/repo');
     expect(folders.single.targetId, 'ssh:p1');

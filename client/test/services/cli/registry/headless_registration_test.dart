@@ -14,11 +14,7 @@ void main() {
       CliTool.flashskyai,
     ]) {
       final cap = registry.capability<HeadlessCapability>(cli);
-      expect(
-        cap,
-        isNotNull,
-        reason: '${cli.value} missing HeadlessCapability',
-      );
+      expect(cap, isNotNull, reason: '${cli.value} missing HeadlessCapability');
       expect(cap!.isSupported, isTrue);
     }
   });

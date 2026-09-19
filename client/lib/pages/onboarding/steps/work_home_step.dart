@@ -44,8 +44,7 @@ class _OnboardingWorkHomeStepState extends State<OnboardingWorkHomeStep> {
     // ConnectionModeService (it is not a Listenable).
     context.watch<SessionPreferencesCubit>();
     context.watch<SshProfileCubit>();
-    final bound =
-        context.read<ConnectionModeService>().hasBoundAndroidWorkHome;
+    final bound = context.read<ConnectionModeService>().hasBoundAndroidWorkHome;
     if (!_didNotify && bound) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _notifyBound();

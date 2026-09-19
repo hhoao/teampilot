@@ -71,7 +71,11 @@ void main() {
   }
 
   /// Persists [seeder]'s current layouts for [_ws] through the repository.
-  void seedSnapshot(FakeAsync async, InMemoryFilesystem fs, WorkbenchCubit seeder) {
+  void seedSnapshot(
+    FakeAsync async,
+    InMemoryFilesystem fs,
+    WorkbenchCubit seeder,
+  ) {
     unawaited(
       WorkbenchLayoutSnapshotRepository(
         workspaceId: _ws,

@@ -55,13 +55,19 @@ class HomeContent extends StatefulWidget {
 }
 
 class _HomeContentState extends State<HomeContent> {
-  late int _tabIndex = widget.initialTabIndex.clamp(0, teamHomeTabSections.length - 1);
+  late int _tabIndex = widget.initialTabIndex.clamp(
+    0,
+    teamHomeTabSections.length - 1,
+  );
 
   @override
   void didUpdateWidget(covariant HomeContent oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.team.id != oldWidget.team.id) {
-      _tabIndex = widget.initialTabIndex.clamp(0, teamHomeTabSections.length - 1);
+      _tabIndex = widget.initialTabIndex.clamp(
+        0,
+        teamHomeTabSections.length - 1,
+      );
     }
   }
 
@@ -74,7 +80,9 @@ class _HomeContentState extends State<HomeContent> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final team = widget.team;
-    final tabs = [for (final section in teamHomeTabSections) section.title(l10n)];
+    final tabs = [
+      for (final section in teamHomeTabSections) section.title(l10n),
+    ];
     final activeSection = teamHomeTabSections[_tabIndex];
 
     return HomeIdentityContentShell(

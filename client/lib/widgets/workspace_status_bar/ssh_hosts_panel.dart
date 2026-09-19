@@ -85,10 +85,8 @@ class _HostRow extends StatelessWidget {
     SshHostUiStatus.connected => const Color(0xFF10B981),
     SshHostUiStatus.connecting ||
     SshHostUiStatus.reconnecting => Colors.amber.shade500,
-    SshHostUiStatus.error ||
-    SshHostUiStatus.authFailed => cs.error,
-    SshHostUiStatus.disconnected =>
-      cs.onSurfaceVariant.withValues(alpha: 0.45),
+    SshHostUiStatus.error || SshHostUiStatus.authFailed => cs.error,
+    SshHostUiStatus.disconnected => cs.onSurfaceVariant.withValues(alpha: 0.45),
   };
 
   String _statusLabel(BuildContext context) {

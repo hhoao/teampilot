@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import '../../cubits/chat_cubit.dart';
-import '../chat/model/chat_tab.dart';
+import '../chat/session/chat_tab.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../cubits/workbench/workbench_tab_bar.dart';

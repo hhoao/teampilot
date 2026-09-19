@@ -38,5 +38,6 @@ class TokenSpan {
   int get hashCode => Object.hash(start, length, scope);
 
   @override
-  String toString() => 'TokenSpan(start: $start, length: $length, scope: $scope)';
+  String toString() =>
+      'TokenSpan(start: $start, length: $length, scope: $scope)';
 }

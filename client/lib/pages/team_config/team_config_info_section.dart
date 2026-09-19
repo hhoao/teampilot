@@ -132,10 +132,11 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
     final catalogCli = showTeamCliRow
         ? catalogCliForTeam(context, widget.team.cli)
         : null;
-    final showDelegateRow = catalogCli != null &&
-        (CliToolRegistryScope.of(context)
-                .capability<ProviderCapability>(catalogCli)
-                ?.supportsDelegate ??
+    final showDelegateRow =
+        catalogCli != null &&
+        (CliToolRegistryScope.of(
+              context,
+            ).capability<ProviderCapability>(catalogCli)?.supportsDelegate ??
             false);
     // Stop-hook/bus 仅 mixed 模式接线,故此开关只在 mixed 团队出现。
     final showForceWaitRow = widget.team.teamMode == TeamMode.mixed;

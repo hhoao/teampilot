@@ -46,7 +46,7 @@ void main() {
 
     setUp(() async {
       tmp = await Directory.systemTemp.createTemp('chat_simple_working_');
-      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
+      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       postFrame = PostFrameTestHarness();
       created.clear();
       attention = AgentAttentionCubit(pruneInterval: null);
@@ -62,7 +62,7 @@ void main() {
               created.add(s);
               return s;
             },
-                         storage: testHomeStorage,
+        storage: testHomeStorage,
       );
     });
 
@@ -125,69 +125,66 @@ void main() {
       expect(cubit.state.busySessionIds, isEmpty);
     });
 
-    test(
-      'personal Claude: PTY quiet keeps busy until Stop/done',
-      () async {
-        final workspace = await repo.createWorkspace([
-          WorkspaceFolder(path: '/tmp'),
-        ]);
-        final session = (await repo.createSession(
-          workspace.workspaceId,
-        )).session;
-        await cubit.loadWorkspaceData(repo);
+    test('personal Claude: PTY quiet keeps busy until Stop/done', () async {
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/tmp'),
+      ]);
+      final session = (await repo.createSession(workspace.workspaceId)).session;
+      await cubit.loadWorkspaceData(repo);
 
-        await cubit.requestOpenSession(
-          SessionOpenRequest(
-            session: session,
-            workspace: workspace,
-            repo: repo,
-            connectImmediately: false,
-          ),
-        );
-        await drainPendingAsyncWork();
-        final shell = created.single;
-        final memberId = cubit.activeTab!.memberShells.keys.single;
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          workspace: workspace,
+          repo: repo,
+          connectImmediately: false,
+        ),
+      );
+      await drainPendingAsyncWork();
+      final shell = created.single;
+      final memberId = cubit.activeTab!.memberShells.keys.single;
 
-        shell.markUserTurnStarted();
-        shell.activityTracker.isWorking;
-        shell.activityTracker.markActive();
-        cubit.debugTickIdleWatch();
-        await drainPendingAsyncWork();
-        expect(cubit.state.busySessionIds, contains(session.sessionId));
+      shell.markUserTurnStarted();
+      shell.activityTracker.isWorking;
+      shell.activityTracker.markActive();
+      cubit.debugTickIdleWatch();
+      await drainPendingAsyncWork();
+      expect(cubit.state.busySessionIds, contains(session.sessionId));
 
-        shell.activityTracker.notePtyBytes(
-          const [0x64, 0x6f, 0x6e, 0x65],
-          DateTime.now().subtract(const Duration(seconds: 5)),
-        );
-        cubit.debugTickIdleWatch();
-        await drainPendingAsyncWork();
-        expect(
-          cubit.state.busySessionIds,
-          contains(session.sessionId),
-          reason: 'Claude PTY quiet must not endTurn',
-        );
-        expect(
-          cubit.state.sessionActivities[session.sessionId]!.isReadyToChat,
-          isFalse,
-        );
+      shell.activityTracker.notePtyBytes(const [
+        0x64,
+        0x6f,
+        0x6e,
+        0x65,
+      ], DateTime.now().subtract(const Duration(seconds: 5)));
+      cubit.debugTickIdleWatch();
+      await drainPendingAsyncWork();
+      expect(
+        cubit.state.busySessionIds,
+        contains(session.sessionId),
+        reason: 'Claude PTY quiet must not endTurn',
+      );
+      expect(
+        cubit.state.sessionActivities[session.sessionId]!.isReadyToChat,
+        isFalse,
+      );
 
-        attention.applyEvent(
-          sessionId: session.sessionId,
-          memberId: memberId,
-          event: const AgentStatusEvent(
-            state: AgentSeatAttention.done,
-            hookEventName: 'Stop',
-          ),
-          skipPermissions: false,
-        );
-        await drainPendingAsyncWork();
-        expect(cubit.state.busySessionIds, isEmpty);
-        expect(
-          cubit.state.sessionActivities[session.sessionId]!.isReadyToChat,
-          isTrue,
-        );
-      },
-    );
+      attention.applyEvent(
+        sessionId: session.sessionId,
+        memberId: memberId,
+        event: const AgentStatusEvent(
+          state: AgentSeatAttention.done,
+          hookEventName: 'Stop',
+        ),
+        skipPermissions: false,
+      );
+      await drainPendingAsyncWork();
+      expect(cubit.state.busySessionIds, isEmpty);
+      expect(
+        cubit.state.sessionActivities[session.sessionId]!.isReadyToChat,
+        isTrue,
+      );
+    });
 
     test(
       'operator latch must not pin busy after PTY quiet (Cursor simple)',
@@ -539,8 +536,7 @@ void main() {
           contains(session.sessionId),
           reason: 'sidebar must stay busy during connect/composer wait',
         );
-        final inflight =
-            cubit.state.sessionActivities[session.sessionId]!;
+        final inflight = cubit.state.sessionActivities[session.sessionId]!;
         expect(inflight.isDelivering, isTrue);
         expect(inflight.isInTurn, isFalse);
         expect(inflight.isReadyToChat, isFalse);
@@ -654,7 +650,8 @@ void main() {
         bool? cancelledWhileInFlight;
         final done = cubit.withCancellableOperatorDelivery(
           session.sessionId,
-          (cancelled) => gate.future.then((_) => cancelledWhileInFlight = cancelled()),
+          (cancelled) =>
+              gate.future.then((_) => cancelledWhileInFlight = cancelled()),
         );
         await drainPendingAsyncWork();
         cubit.endOperatorDeliveryInFlight(session.sessionId);
