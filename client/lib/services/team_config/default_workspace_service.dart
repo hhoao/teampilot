@@ -37,10 +37,9 @@ abstract final class DefaultWorkspaceService {
     final pathCtx = AppPaths.pathContextForDataRoot(storage.home);
     final path = pathCtx.join(storage.home, 'TeamPilot');
     await storage.fs.ensureDir(path);
-    return normalizeWorkspacePath(
-      path,
-      usesPosixPaths: storage.usesPosixPaths,
-    );
+    // SSH / WSL / Termux folder paths are POSIX even when the host is Windows
+    // (tests and WSL-stub homes may still be `C:\...` directories).
+    return normalizeWorkspacePath(path, usesPosixPaths: true);
   }
 
   /// Ensures the default workspace exists with Simple + team launch sessions.

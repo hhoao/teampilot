@@ -429,6 +429,11 @@ final class _WorkPathProjector {
         context.relative(normalized, from: homeRoot),
       );
     }
+    // Cursor/Codex Windows junctions relocate HOME to LOCALAPPDATA so the
+    // CLI stays under MAX_PATH. Staging writes that physical home; keep it.
+    if (isCliRuntimeHomePath(normalized, context)) {
+      return normalized;
+    }
     return null;
   }
 

@@ -3,7 +3,6 @@ import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart' as p;
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
@@ -226,9 +225,10 @@ void main() {
 
       await doubleClick(tester, rowA);
 
-      // GitRepoStore normalizes roots via the platform path context
-      // (Windows: /repo → \repo), so match the normalized expectation.
-      expect(opener!.openedPaths, [p.normalize('/repo/a.txt')]);
+      expect(
+        opener!.openedPaths,
+        [workContext.filesystem.pathContext.join('/repo', 'a.txt')],
+      );
       expect(opener!.openedWorkspaceIds, ['ws-test']);
       // The opener must receive the backend filesystem (identical, not a copy)
       // so WSL/SSH workspace paths resolve against the backend.
@@ -305,7 +305,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(opener!.openedDiffs, [p.normalize('/repo/a.txt')]);
+      expect(
+        opener!.openedDiffs,
+        [workContext.filesystem.pathContext.join('/repo', 'a.txt')],
+      );
       expect(opener!.openedPaths, isEmpty);
 
       // Selection enables "Discard Selected Change".

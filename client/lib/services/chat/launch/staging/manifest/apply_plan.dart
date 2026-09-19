@@ -1,6 +1,8 @@
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 
+import 'package:teampilot/services/storage/windows_cli_runtime_junction.dart';
+
 const applyPlanProtocolVersion = 1;
 const applyPlanInlineLimitBytes = 4096;
 
@@ -18,9 +20,22 @@ void assertApplyPath({
     throw StateError('path contains ..');
   }
   final normalized = pathContext.normalize(path);
-  if (normalized != workRoot && !pathContext.isWithin(workRoot, normalized)) {
-    throw StateError('path escapes workRoot');
+  if (normalized == workRoot || pathContext.isWithin(workRoot, normalized)) {
+    return;
   }
+  // Windows CLI runtime homes live under LOCALAPPDATA (MAX_PATH junctions),
+  // outside the session tree. Apply-plan still has to populate them.
+  if (isCliRuntimeHomePath(normalized, pathContext)) {
+    return;
+  }
+  throw StateError('path escapes workRoot');
+}
+
+/// `%LOCALAPPDATA%/com.hhoa.teampilot/cli-runtime-homes/{tool}/{hash}/home`.
+bool isCliRuntimeHomePath(String path, p.Context pathContext) {
+  return pathContext
+      .split(pathContext.normalize(path))
+      .contains(WindowsCliRuntimeJunction.runtimeHomesDirName);
 }
 
 sealed class ApplyOp {

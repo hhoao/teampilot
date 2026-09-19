@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:path/path.dart' as p;
 import 'package:shared_ui/shared_ui.dart';
 import '../app_toast/app_toast.dart';
 
@@ -19,6 +18,7 @@ import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_status.dart';
 import '../../services/git/git_repo_store.dart';
+import '../../services/storage/app_paths.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../widgets/right_tools/right_tools_lifecycle.dart';
@@ -209,7 +209,8 @@ class _RepoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final name = p.basename(root).isEmpty ? root : p.basename(root);
+    final pathCtx = AppPaths.pathContextForDataRoot(root);
+    final name = pathCtx.basename(root).isEmpty ? root : pathCtx.basename(root);
     return BlocProvider.value(
       value: cubit,
       child: BlocSelector<GitCubit, GitState, int>(
@@ -336,7 +337,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
     // (selection model has no index split anymore).
     final diff = await _cubit.diffAgainstHead(change.path, fullContext: true);
     if (!mounted || diff == null) return;
-    final absolutePath = p.join(_cubit.state.repoRoot, change.path);
+    final absolutePath = _absoluteChangePath(change);
     context.read<WorkbenchEditorOpener>().openDiff(
       workspaceId: widget.workspaceId,
       identity: ScmDiffIdentity(absolutePath, ScmDiffMode.changes),
@@ -351,8 +352,15 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
     );
   }
 
+  String _absoluteChangePath(GitFileChange change) {
+    return widget.workContext.filesystem.pathContext.join(
+      _cubit.state.repoRoot,
+      change.path,
+    );
+  }
+
   void _openFile(GitFileChange change) {
-    final absolutePath = p.join(_cubit.state.repoRoot, change.path);
+    final absolutePath = _absoluteChangePath(change);
     unawaited(
       context.read<WorkbenchEditorOpener>().openFile(
         widget.workspaceId,

@@ -68,6 +68,16 @@ void main() {
     assertApplyPath(path: '/work/a/b', workRoot: '/work', pathContext: ctx);
   });
 
+  test('sandbox allows Windows CLI runtime homes outside workRoot', () {
+    final windows = p.Context(style: p.Style.windows);
+    assertApplyPath(
+      path:
+          r'C:\Users\runneradmin\AppData\Local\com.hhoa.teampilot\cli-runtime-homes\cursor\abc\home',
+      workRoot: r'C:\tp\app-data',
+      pathContext: windows,
+    );
+  });
+
   test('fromJson rejects missing or unsupported protocolVersion', () {
     final base = ApplyPlan(workRoot: '/work', ops: const []).toJson();
     base.remove('protocolVersion');

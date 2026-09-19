@@ -1,8 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/services/chat/launch/staging/manifest/apply_plan.dart';
 import 'package:teampilot/services/chat/launch/staging/manifest/work_path_projector.dart';
+import 'package:teampilot/services/storage/windows_cli_runtime_junction.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 
@@ -351,4 +353,34 @@ void main() {
     expect(op.path, '/w/home/.claude.json');
     expect(await built.blobs.open(op.sha256), [0, 1, 255]);
   });
+
+  test(
+    'copyTree into Windows CLI runtime home identity-projects outside workRoot',
+    () async {
+      final ctx = p.Context(style: p.Style.windows);
+      final sourceFs = InMemoryFilesystem(pathContext: ctx);
+      final workFs = InMemoryFilesystem(pathContext: ctx);
+      const workRoot = r'C:\tp\app-data';
+      final physical = ctx.join(
+        r'C:\Users\runneradmin\AppData\Local\com.hhoa.teampilot',
+        WindowsCliRuntimeJunction.runtimeHomesDirName,
+        'cursor',
+        '5adc1e2fd5ca4d61',
+        'home',
+      );
+      await sourceFs.writeString(ctx.join(physical, '.cursor', 'a.txt'), 'x');
+      final manifest = LaunchManifest()
+        ..copyTree(source: physical, destination: physical);
+      final built = await buildApplyPlan(
+        manifest: manifest,
+        sourceFs: sourceFs,
+        workFs: workFs,
+        homeRoot: workRoot,
+        workRoot: workRoot,
+      );
+      final tree = built.plan.ops.whereType<ApplyTree>().single;
+      expect(tree.dest, ctx.normalize(physical));
+      expect(tree.entries.single.rel, ctx.join('.cursor', 'a.txt'));
+    },
+  );
 }
