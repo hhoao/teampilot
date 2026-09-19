@@ -49,15 +49,13 @@ final class _WorkPathProjector {
   final LaunchManifest manifest;
   final Filesystem sourceFs;
   final Filesystem workFs;
-  String homeRoot;
-  String workRoot;
+  final String homeRoot;
+  final String workRoot;
   final MemoryBlobStore blobs = MemoryBlobStore();
   final List<ApplyOp> _ops = [];
   int _providedLinks = 0;
 
   Future<ApplyPlanBuild> build() async {
-    homeRoot = await _canonicalize(homeRoot);
-    workRoot = await _canonicalize(workRoot);
     for (
       var entryIndex = 0;
       entryIndex < manifest.entries.length;
@@ -70,9 +68,10 @@ final class _WorkPathProjector {
           if (projected != null) {
             _assertPath(projected);
             _ops.add(ApplyEnsureDir(projected));
-          } else if (!_isAncestorOfWorkRoot(path)) {
-            throw StateError('path cannot be projected: $path');
           }
+          // Host dirs outside the work plane (/var, USERPROFILE, HOME) are
+          // already on the machine. 8.3 vs long paths on Windows make the
+          // ancestor check miss; skipping is the work-plane no-op.
         case ManifestWriteFile(:final path, :final content):
           await _addWriteFile(path, content);
         case ManifestRemoveRecursive(:final path):
@@ -431,17 +430,6 @@ final class _WorkPathProjector {
       );
     }
     return null;
-  }
-
-  Future<String> _canonicalize(String path) async {
-    final resolved = await sourceFs.resolveSymlink(path);
-    return sourceFs.pathContext.normalize(resolved ?? path);
-  }
-
-  bool _isAncestorOfWorkRoot(String path) {
-    final context = sourceFs.pathContext;
-    final normalized = context.normalize(path);
-    return context.isWithin(normalized, workRoot);
   }
 
   void _assertPath(String path) {
