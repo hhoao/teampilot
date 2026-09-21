@@ -41,6 +41,7 @@ import '../services/event/session_lifecycle_event.dart';
 import '../services/agent_status/agent_attention_state.dart';
 import '../services/agent_status/agent_permission_request.dart';
 import '../services/agent_status/agent_status_event.dart';
+import '../services/agent_runtime/chat_agent_runtime_join.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
 import '../services/agent_status/ask_user_answer_pending_store.dart';
 import '../services/agent_status/general_permission_request_gate.dart';
@@ -157,7 +158,8 @@ class ChatCubit extends Cubit<ChatState>
        _teamById = teamById,
        _teammateBusMcpGateway =
            teammateBusMcpGateway ?? TeammateBusMcpGateway(),
-       _agentStatusSeatLookup = agentStatusSeatLookup,
+       _agentStatusSeatLookup =
+           agentStatusSeatLookup ?? AgentStatusSeatLookup(),
        _agentAttentionCubit = agentAttentionCubit,
        _seatLeaseCubit = seatLeaseCubit,
        _askUserAnswerPendingStore = askUserAnswerPendingStore,
@@ -275,7 +277,7 @@ class ChatCubit extends Cubit<ChatState>
   final PromptDeliveryCoordinator? Function()? _promptDeliveries;
   String? Function(AppSession session)? _teamGenerationTokenIssuer;
   final TeammateBusMcpGateway _teammateBusMcpGateway;
-  final AgentStatusSeatLookup? _agentStatusSeatLookup;
+  final AgentStatusSeatLookup _agentStatusSeatLookup;
   final AgentAttentionCubit? _agentAttentionCubit;
   final SeatLeaseCubit? _seatLeaseCubit;
   final AskUserAnswerPendingStore? _askUserAnswerPendingStore;
@@ -426,7 +428,13 @@ class ChatCubit extends Cubit<ChatState>
           }
           return false;
         },
-        promptDeliveries: _promptDeliveries?.call(),
+        promptDeliveries: ChatAgentRuntimeJoin.ensure(
+          mcpGateway: _teammateBusMcpGateway,
+          seats: _agentStatusSeatLookup,
+          lifecycle: _lifecycle,
+          tabStore: _tabStore,
+          promptDeliveries: _promptDeliveries?.call(),
+        ),
       );
   late final MemberTurnInterruptService _turnInterrupt =
       MemberTurnInterruptService(
@@ -2191,7 +2199,7 @@ class ChatCubit extends Cubit<ChatState>
     _agentAttentionCubit?.clearSession(sessionId);
     _followUpQueue.clearSession(sessionId);
     _askUserAnswerPendingStore?.clearSession(sessionId);
-    _agentStatusSeatLookup?.clearSession(sessionId);
+    _agentStatusSeatLookup.clearSession(sessionId);
     _teammateBusMcpGateway.unregisterAgentStatusSession(sessionId);
     await _teamBus.disposeSessionBus(sessionId);
     await tab.disposeBus();

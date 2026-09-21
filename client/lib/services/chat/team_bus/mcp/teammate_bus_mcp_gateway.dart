@@ -104,6 +104,8 @@ class TeammateBusMcpGateway {
   int activeWaitStreamCountFor(String sessionId) =>
       _delegates[sessionId]?.activeWaitStreamCount ?? 0;
 
+  AgentEventGateway? get agentEventGateway => _agentEventGateway;
+
   void attachAgentEventGateway(AgentEventGateway gateway) {
     _agentEventGateway = gateway;
   }

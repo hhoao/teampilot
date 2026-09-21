@@ -167,6 +167,10 @@ class SessionLifecycleService {
     _agentRuntime = runtime;
   }
 
+  /// App-scoped join between journaled hooks and prompt deliveries.
+  /// Null until [attachAgentRuntime] or [ChatCubit]'s default bind.
+  AgentRuntime? get agentRuntime => _agentRuntime;
+
   Future<void> _restoreAgentRuntimeFor(String sessionId) async {
     final runtime = _agentRuntime;
     final trimmed = sessionId.trim();

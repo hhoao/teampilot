@@ -3,13 +3,19 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mock_model_gateway/scenarios/mixed_collab_3plus.dart';
+import 'package:mock_model_gateway/scenarios/native_collab_replica_2plus.dart';
 import 'package:mock_model_gateway/scenarios/simple_3turn.dart';
+import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../support/post_frame_test_harness.dart';
+import 'support/bus_mail_assertions.dart';
 import 'support/cli_message_matrix_harness.dart';
 import 'support/integration_prerequisites.dart';
 import 'support/integration_test_setup.dart';
+import 'support/native_roster_assertions.dart';
 
 void main() {
   setUp(setUpIntegrationAppStorage);
@@ -91,17 +97,359 @@ void main() {
   test(
     'claude mixed: History compose → collab ≥3 assistant bubbles + bus',
     () async {
-      // Pre-existing CI failure: the lead's scripted turns (MARK_LEAD_*) land
-      // in history but the composed user prompt never becomes a transcript
-      // user message in mixed mode (TeamBus stop-hook blocks + worker park
-      // reordering), so waitForBubbles times out on the user bubble. The
-      // native collab cell (same compose + markers) passes, and the mixed
-      // ping/pong/tasks/idle cells pass — only this mock-scripted mixed cell
-      // is red. Requires a real Claude CLI + TeamBus environment to debug;
-      // skip rather than block CI on a pre-existing flake.
-      markTestSkipped(
-        'mixed collab user bubble missing from transcript (needs real-env debug)',
+      IntegrationPrerequisites.skipUnlessNativePty();
+      final claudePath = IntegrationPrerequisites.requireClaudePath();
+      if (claudePath == null) return;
+
+      final harness = CliMessageMatrixHarness.forCli(
+        CliTool.claude,
+        mode: CliMatrixMode.mixed,
+        recipe: CliMatrixRecipe.mixedCollab3Plus,
+        cliPath: claudePath,
       );
+      final postFrame = PostFrameTestHarness();
+      addTearDown(() async {
+        await harness.dispose();
+        await postFrame.flush();
+        await drainPendingAsyncWork();
+        await Future<void>.delayed(const Duration(seconds: 3));
+      });
+
+      try {
+        await harness.startGateway();
+        await harness.writeMockProviders();
+        harness.createCubit(postFrame: postFrame);
+        await harness.openSession();
+        await harness.bootAllMembersToPrompt();
+        await harness.loadHistory();
+
+        // Park worker first (recipe order); idle-announce may doorbell the
+        // lead — compose runs after bootComposeSeatToPrompt.
+        const prompt = 'matrix mixed collab please coordinate';
+        final leadScenarioTurns =
+            mixedCollab3PlusScenarios()[leadScriptApiKey]!.turns.length;
+        final result = await harness.parkWorkerAndComposeOnLead(prompt);
+        expect(
+          result.ok,
+          isTrue,
+          reason:
+              'submitCompose failed on lead\n'
+              '${harness.diagnosticsBundle()}',
+        );
+
+        await harness.waitForGatewayTurns(
+          apiKey: leadScriptApiKey,
+          minTurns: leadScenarioTurns,
+          byScenarioIndex: true,
+        );
+        await harness.waitForGatewayTurns(
+          apiKey: workerScriptApiKey,
+          minTurns:
+              mixedCollab3PlusScenarios()[workerScriptApiKey]!.turns.length,
+          byScenarioIndex: true,
+        );
+        await harness.waitForBusPingPong();
+        expect(
+          harness.gateway!.requestCountFor(workerScriptApiKey),
+          greaterThanOrEqualTo(2),
+          reason: harness.diagnosticsBundle(),
+        );
+        final gatewayDump = harness.gateway!.dumpDiagnostics();
+        for (final marker in harness.profile.collabLeadMarkers) {
+          expect(
+            gatewayDump,
+            contains(marker),
+            reason: harness.diagnosticsBundle(),
+          );
+        }
+
+        // Collab turns scroll the alt-screen; require the final lead marker
+        // (earlier MARK_LEAD_* may have left the probe window).
+        await harness.waitForPtyMarkers([markLeadDone]);
+
+        // Lead parks on wait_for_message after MARK_LEAD_DONE (forceWait). Do
+        // not require an idle composer — History syncs from session JSONL.
+        await harness.waitForBubbles(userText: prompt);
+
+        // Extra bus-mail sanity (same predicates as waitForBusPingPong).
+        final s = harness.session!;
+        final root = testHomeStorage.paths.basePath;
+        final workerMail = await readBusMailLines(
+          teampilotRoot: root,
+          workspaceId: s.workspaceId,
+          sessionId: s.sessionId,
+          memberId: kMatrixWorkerTypeId,
+        );
+        expect(
+          workerMail.any(
+            (row) =>
+                row['from'] == kMatrixLeadMemberId && row['content'] == 'ping',
+          ),
+          isTrue,
+          reason: harness.diagnosticsBundle(),
+        );
+        final leadMail = await readBusMailLines(
+          teampilotRoot: root,
+          workspaceId: s.workspaceId,
+          sessionId: s.sessionId,
+          memberId: kMatrixLeadMemberId,
+        );
+        expect(
+          leadMail.any(
+            (row) =>
+                row['from'] == kMatrixWorkerTypeId && row['content'] == 'pong',
+          ),
+          isTrue,
+          reason: harness.diagnosticsBundle(),
+        );
+        expect(
+          harness.cubit!.hasTeamBusResources(s.sessionId),
+          isTrue,
+          reason: harness.diagnosticsBundle(),
+        );
+      } catch (e, st) {
+        // ignore: avoid_print
+        print(harness.diagnosticsBundle());
+        Error.throwWithStackTrace(e, st);
+      }
+    },
+  );
+
+  test(
+    'claude native: History compose → collab ≥3 assistant bubbles',
+    () async {
+      IntegrationPrerequisites.skipUnlessNativePty();
+      final claudePath = IntegrationPrerequisites.requireClaudePath();
+      if (claudePath == null) return;
+
+      final harness = CliMessageMatrixHarness.forCli(
+        CliTool.claude,
+        mode: CliMatrixMode.native,
+        shape: RosterShape.singleton,
+        recipe: CliMatrixRecipe.nativeCollab3Plus,
+        cliPath: claudePath,
+      );
+      final postFrame = PostFrameTestHarness();
+      addTearDown(() async {
+        await harness.dispose();
+        await postFrame.flush();
+        await drainPendingAsyncWork();
+        await Future<void>.delayed(const Duration(seconds: 3));
+      });
+
+      try {
+        await harness.startGateway();
+        await harness.writeMockProviders();
+        harness.createCubit(postFrame: postFrame);
+        await harness.openSession();
+        await harness.bootAllMembersToPrompt();
+        await harness.loadHistory();
+
+        // native_collab_3plus interleaves tools with TextTurns. A TextTurn is
+        // end_turn (no mixed Stop-hook chain), so each History compose advances
+        // one tool→text segment: TeamCreate/TaskCreate→MARK_LEAD_1, then
+        // TaskList→MARK_LEAD_2, then TaskGet→MARK_LEAD_DONE.
+        const prompts = [
+          'matrix native turn one please coordinate',
+          'matrix native turn two please continue',
+          'matrix native turn three please wrap up',
+        ];
+        final markers = const [markLead1, markLead2, markLeadDone];
+        for (var i = 0; i < prompts.length; i++) {
+          final result = await harness.submitCompose(prompts[i]);
+          expect(
+            result.ok,
+            isTrue,
+            reason:
+                'submitCompose failed at turn ${i + 1}\n'
+                '${harness.diagnosticsBundle()}',
+          );
+          await harness.waitForPtyMarkers([markers[i]]);
+          if (i < prompts.length - 1) {
+            await harness.bootComposeSeatToPrompt();
+          }
+        }
+
+        expect(
+          harness.gateway!.requestCountFor(leadScriptApiKey),
+          greaterThanOrEqualTo(3),
+          reason: harness.diagnosticsBundle(),
+        );
+        final gatewayDump = harness.gateway!.dumpDiagnostics();
+        for (final marker in harness.profile.collabLeadMarkers) {
+          expect(
+            gatewayDump,
+            contains(marker),
+            reason: harness.diagnosticsBundle(),
+          );
+        }
+
+        await harness.bootComposeSeatToPrompt();
+        await harness.waitForBubbles(userText: prompts.first);
+      } catch (e, st) {
+        // ignore: avoid_print
+        print(harness.diagnosticsBundle());
+        Error.throwWithStackTrace(e, st);
+      }
+    },
+  );
+
+  test(
+    'claude native replicated: pods inbox + worker-0 + 2 lead composes',
+    () async {
+      IntegrationPrerequisites.skipUnlessNativePty();
+      final claudePath = IntegrationPrerequisites.requireClaudePath();
+      if (claudePath == null) return;
+
+      final harness = CliMessageMatrixHarness.forCli(
+        CliTool.claude,
+        mode: CliMatrixMode.native,
+        shape: RosterShape.replicated,
+        recipe: CliMatrixRecipe.nativeCollabReplica2Plus,
+        cliPath: claudePath,
+      );
+      final postFrame = PostFrameTestHarness();
+      addTearDown(() async {
+        await harness.dispose();
+        await postFrame.flush();
+        await drainPendingAsyncWork();
+        await Future<void>.delayed(const Duration(seconds: 3));
+      });
+
+      try {
+        await harness.startGateway();
+        await harness.writeMockProviders();
+        harness.createCubit(
+          postFrame: postFrame,
+          autoLaunchAllMembersOnConnect: false,
+        );
+        await harness.openSession();
+        await harness.bootMemberToPrompt(kMatrixLeadMemberId);
+
+        final worker0 = matrixPrimaryWorkerPodId(harness.shape);
+        // Boot idle workers before lead compose. Claude teammates poll their
+        // own pod inbox; TeamPilot does not inject a native-inbox doorbell.
+        await harness.connectMember('developer-1');
+        await harness.bootMemberToPrompt('developer-1');
+        await harness.connectMember(worker0);
+        await harness.bootMemberToPrompt(worker0);
+
+        await harness.loadHistory();
+
+        final cliTeam = harness.session!.cliTeamName.trim().isNotEmpty
+            ? harness.session!.cliTeamName
+            : harness.session!.sessionId;
+        final claudeDir =
+            RuntimeLayout(
+              teampilotRoot: testHomeStorage.appDataRoot,
+              fs: testHomeStorage.fs,
+            ).sessionRuntimeToolDir(
+              harness.session!.workspaceId,
+              harness.session!.sessionId,
+              'claude',
+            );
+
+        final leadBefore1 = harness.gateway!.requestCountFor(leadScriptApiKey);
+        final workerGatewayBaseline = harness.gateway!.requestCountFor(
+          workerScriptApiKey,
+        );
+        // Start the inbox watch *before* the compose: the booted worker
+        // consumes pod inbox messages within ~100ms of the lead SendMessage
+        // write (file returns to `[]`), so a post-compose poll can miss the
+        // delivery entirely.
+        final inboxWatch = ClaudeInboxUnreadWatch(
+          claudeDir: claudeDir,
+          cliTeamName: cliTeam,
+          memberId: 'developer-0',
+        );
+        addTearDown(inboxWatch.stop);
+        final r1 = await harness.submitCompose(
+          'matrix replica turn one coordinate',
+        );
+        expect(r1.ok, isTrue, reason: harness.diagnosticsBundle());
+        await harness.waitForGatewayTurns(
+          apiKey: leadScriptApiKey,
+          minTurns: leadBefore1 + 2,
+        );
+        await inboxWatch.waitForUnread();
+        await harness.waitForPtyMarkers([
+          markReplicaLead1,
+        ], memberId: kMatrixLeadMemberId);
+
+        expectClaudeRosterPods(
+          claudeDir: claudeDir,
+          cliTeamName: cliTeam,
+          expectedNames: const ['team-lead', 'developer-0', 'developer-1'],
+          expectedAgentTypes: const {
+            'team-lead': 'team-lead',
+            'developer-0': 'developer',
+            'developer-1': 'developer',
+          },
+        );
+        expectClaudeInboxExists(
+          claudeDir: claudeDir,
+          cliTeamName: cliTeam,
+          memberId: 'developer-0',
+        );
+        expectClaudeInboxAbsent(
+          claudeDir: claudeDir,
+          cliTeamName: cliTeam,
+          memberId: 'developer',
+        );
+
+        final sessionPods = sessionRosterMembers(
+          harness.session!,
+          harness.team!,
+        ).map((m) => m.id).toList();
+        expect(
+          sessionPods,
+          containsAll(['team-lead', 'developer-0', 'developer-1']),
+          reason: harness.diagnosticsBundle(),
+        );
+
+        expect(
+          harness.cubit!.activeTab!.memberShells.keys,
+          containsAll([worker0, 'developer-1']),
+          reason: harness.diagnosticsBundle(),
+        );
+        expect(
+          readClaudeInboxUnreadCount(
+            claudeDir: claudeDir,
+            cliTeamName: cliTeam,
+            memberId: 'developer-1',
+          ),
+          0,
+          reason:
+              'developer-1 should stay idle with no unread after round-1 dispatch '
+              'to developer-0 only',
+        );
+
+        // Claude worker process polls inboxes/<pod>.json itself.
+        await harness.waitForGatewayTurns(
+          apiKey: workerScriptApiKey,
+          minTurns: workerGatewayBaseline + 1,
+        );
+        await harness.waitForPtyMarkers([markReplicaW01], memberId: worker0);
+
+        harness.gateway!.seekScenario(leadScriptApiKey, 3);
+        await harness.bootComposeSeatToPrompt();
+        final r2 = await harness.submitCompose(
+          'matrix replica turn two continue',
+        );
+        expect(r2.ok, isTrue, reason: harness.diagnosticsBundle());
+        await harness.waitForGatewayTurns(
+          apiKey: leadScriptApiKey,
+          minTurns: 5,
+          byScenarioIndex: true,
+        );
+        await harness.waitForPtyMarkers([
+          markReplicaLead2,
+        ], memberId: kMatrixLeadMemberId);
+      } catch (e, st) {
+        // ignore: avoid_print
+        print(harness.diagnosticsBundle());
+        Error.throwWithStackTrace(e, st);
+      }
     },
   );
 }
