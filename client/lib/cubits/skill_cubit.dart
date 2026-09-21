@@ -1029,6 +1029,10 @@ class SkillCubit extends Cubit<SkillState> {
     }
   }
 
+  /// Installed `SKILL.md` text, or null if missing. Does not emit.
+  Future<String?> readSkillMarkdown(Skill skill) =>
+      _repo.readSkillMarkdown(skill);
+
   Future<void> checkUpdates() async {
     emit(state.copyWith(updatesLoading: true));
     try {

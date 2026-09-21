@@ -49,6 +49,9 @@ class SkillRepository {
 
   Future<List<Skill>> loadInstalled() => manifest.loadSkills();
 
+  Future<String?> readSkillMarkdown(Skill skill) =>
+      manifest.readSkillMarkdown(skill.directory);
+
   Future<List<DiscoverableSkill>> readCachedDiscoverable(SkillRepo repo) =>
       repoCache.readSkillsFromDisk(repo);
 

@@ -53,7 +53,7 @@ void main() {
           home: Scaffold(
             body: BlocProvider<SkillCubit>.value(
               value: cubit,
-              child: const SizedBox(
+              child: SizedBox(
                 width: 320,
                 child: SkillInstalledRow(
                   skill: skill,
@@ -62,6 +62,7 @@ void main() {
                     name: 'very-long-skill-display-name',
                     remoteHash: 'abc',
                   ),
+                  onView: () {},
                 ),
               ),
             ),
@@ -73,5 +74,6 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('very-long-skill-display-name'), findsOneWidget);
+    expect(find.byIcon(Icons.visibility_outlined), findsOneWidget);
   });
 }

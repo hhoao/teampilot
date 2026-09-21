@@ -7305,6 +7305,24 @@ abstract class AppLocalizations {
   /// **'Details'**
   String get skillsCardDetails;
 
+  /// No description provided for @skillsCardView.
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get skillsCardView;
+
+  /// No description provided for @skillsDetailMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No SKILL.md found for this skill.'**
+  String get skillsDetailMissing;
+
+  /// No description provided for @skillsDetailReadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read SKILL.md.'**
+  String get skillsDetailReadError;
+
   /// No description provided for @skillsCardInstalled.
   ///
   /// In en, this message translates to:

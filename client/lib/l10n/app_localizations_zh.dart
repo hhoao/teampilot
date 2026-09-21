@@ -3926,6 +3926,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get skillsCardDetails => '详情';
 
   @override
+  String get skillsCardView => '查看';
+
+  @override
+  String get skillsDetailMissing => '未找到该 skill 的 SKILL.md。';
+
+  @override
+  String get skillsDetailReadError => '无法读取 SKILL.md。';
+
+  @override
   String get skillsCardInstalled => '已安装';
 
   @override

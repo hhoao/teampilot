@@ -12,10 +12,11 @@ import '../../utils/debounce/debounce.dart';
 import '../../utils/github/github_source_url.dart';
 import '../../widgets/github_details_button.dart';
 import '../../widgets/workspace_library_card.dart';
+import 'skill_detail_view.dart';
 import 'skill_management_cards.dart';
 import '../../theme/workspace_surface_layers.dart';
 
-class SkillInstalledSection extends StatelessWidget {
+class SkillInstalledSection extends StatefulWidget {
   const SkillInstalledSection({
     super.key,
     required this.state,
@@ -25,9 +26,36 @@ class SkillInstalledSection extends StatelessWidget {
   final VoidCallback onGoDiscovery;
 
   @override
+  State<SkillInstalledSection> createState() => _SkillInstalledSectionState();
+}
+
+class _SkillInstalledSectionState extends State<SkillInstalledSection> {
+  Skill? _viewing;
+
+  @override
+  void didUpdateWidget(covariant SkillInstalledSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final viewing = _viewing;
+    if (viewing != null &&
+        !widget.state.installed.any((s) => s.id == viewing.id)) {
+      _viewing = null;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_viewing != null) {
+      final viewing = _viewing!;
+      return SkillDetailView(
+        skill: viewing,
+        onBack: () => setState(() => _viewing = null),
+        loadMarkdown: context.read<SkillCubit>().readSkillMarkdown,
+      );
+    }
+
     final l10n = context.l10n;
     final cubit = context.read<SkillCubit>();
+    final state = widget.state;
     final updates = {for (final u in state.updates) u.id: u};
 
     return SingleChildScrollView(
@@ -116,7 +144,7 @@ class SkillInstalledSection extends StatelessWidget {
                     title: l10n.skillsNoInstalled,
                     hint: l10n.skillsNoInstalledHint,
                     actionLabel: l10n.skillsGoDiscovery,
-                    onAction: onGoDiscovery,
+                    onAction: widget.onGoDiscovery,
                   )
                 else
                   Column(
@@ -127,6 +155,7 @@ class SkillInstalledSection extends StatelessWidget {
                           skill: s,
                           updateInfo: updates[s.id],
                           busy: state.busyIds.contains(s.id),
+                          onView: () => setState(() => _viewing = s),
                         ),
                     ],
                   ),
@@ -173,12 +202,14 @@ class SkillInstalledRow extends StatelessWidget {
   const SkillInstalledRow({
     super.key,
     required this.skill,
+    required this.onView,
     this.updateInfo,
     this.busy = false,
   });
   final Skill skill;
   final SkillUpdateInfo? updateInfo;
   final bool busy;
+  final VoidCallback onView;
 
   @override
   Widget build(BuildContext context) {
@@ -261,6 +292,15 @@ class SkillInstalledRow extends StatelessWidget {
             final actions = Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                IconButton(
+                  tooltip: l10n.skillsCardView,
+                  onPressed: onView,
+                  icon: Icon(
+                    Icons.visibility_outlined,
+                    size: context.tpIconSizes.md,
+                  ),
+                ),
+                const SizedBox(width: 8),
                 GithubDetailsButton(
                   url: skill.githubBrowseUrl,
                   label: l10n.skillsCardDetails,
