@@ -109,15 +109,20 @@ void main() {
       matching: find.byType(TpPreferenceRow),
     );
     expect(intervalRow, findsOneWidget);
-    final intervalDropdown = find.descendant(
+    final intervalSelect = find.descendant(
       of: intervalRow,
-      matching: find.byType(DropdownButton<int>),
+      matching: find.byType(TpCompactSelect<int>),
     );
-    expect(intervalDropdown, findsOneWidget);
+    expect(intervalSelect, findsOneWidget);
 
-    await tester.ensureVisible(intervalDropdown);
+    await tester.ensureVisible(intervalSelect);
     await tester.pumpAndSettle();
-    await tester.tap(intervalDropdown);
+    await tester.tap(
+      find.descendant(
+        of: intervalRow,
+        matching: find.byType(TpSelect<int>),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Every 15 min').last);
     await tester.pumpAndSettle();

@@ -337,20 +337,20 @@ class _SessionControlsState extends State<_SessionControls> {
                 TpPreferenceRow(
                   title: l10n.gitAutoFetchIntervalTitle,
                   subtitle: l10n.gitAutoFetchIntervalDescription,
-                  trailing: DropdownButton<int>(
+                  trailing: TpCompactSelect<int>(
                     value: snapshot.gitAutoFetchIntervalMinutes,
-                    items: [
-                      for (final minutes in {
-                        1,
-                        5,
-                        15,
-                        snapshot.gitAutoFetchIntervalMinutes,
-                      })
-                        DropdownMenuItem(
-                          value: minutes,
-                          child: Text(
-                            l10n.gitAutoFetchIntervalMinutesOption(minutes),
-                          ),
+                    entries: [
+                      for (final minutes
+                          in {
+                            1,
+                            5,
+                            15,
+                            snapshot.gitAutoFetchIntervalMinutes,
+                          }.toList()
+                            ..sort())
+                        (
+                          minutes,
+                          l10n.gitAutoFetchIntervalMinutesOption(minutes),
                         ),
                     ],
                     onChanged: (value) {
