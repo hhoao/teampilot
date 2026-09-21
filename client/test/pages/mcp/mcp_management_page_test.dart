@@ -11,10 +11,12 @@ import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/mcp_repository.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/mcp/mcp_catalog_service.dart';
+import 'package:teampilot/services/mcp/mcp_server_probe_service.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
+import '../../services/mcp/support/fake_mcp_probe_handshake.dart';
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
-import 'package:teampilot/services/storage/home_storage.dart';
 
 void main() {
   late Filesystem fs;
@@ -34,7 +36,14 @@ void main() {
       ),
       storage: testHomeStorage,
     );
-    cubit = McpCubit(repository, storage: testHomeStorage);
+    cubit = McpCubit(
+      repository,
+      storage: testHomeStorage,
+      probeService: McpServerProbeService(
+        handshake: FakeMcpProbeHandshake(),
+        timeout: const Duration(seconds: 2),
+      ),
+    );
     discoverySettingsCubit = DiscoverySettingsCubit(
       repository: InMemoryAppSettingsRepository(),
     );

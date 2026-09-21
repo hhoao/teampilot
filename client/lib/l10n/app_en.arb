@@ -2662,6 +2662,25 @@
       }
     }
   },
+  "mcpProbeChecking": "Checking…",
+  "mcpProbeOffline": "Offline",
+  "mcpProbeNeedsAuth": "Needs authorization",
+  "mcpProbeToolCount": "{count} tools",
+  "@mcpProbeToolCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "mcpToolsEmpty": "This server has no tools.",
+  "mcpToolsReload": "Reload",
+  "mcpProbeRefreshAll": "Refresh status",
+  "mcpProbeOfflineHint": "Could not reach this MCP server.",
+  "mcpToolsDialogTitle": "{name} tools",
+  "@mcpToolsDialogTitle": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
   "mcpNoInstalled": "No MCP servers installed yet",
   "mcpNoInstalledHint": "Open Discovery to add servers from built-in templates or registries.",
   "mcpDiscoverySectionTitle": "Discover MCP servers",

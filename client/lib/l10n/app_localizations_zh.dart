@@ -4996,6 +4996,37 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get mcpProbeChecking => '检测中…';
+
+  @override
+  String get mcpProbeOffline => '离线';
+
+  @override
+  String get mcpProbeNeedsAuth => '需要授权';
+
+  @override
+  String mcpProbeToolCount(int count) {
+    return '$count 个工具';
+  }
+
+  @override
+  String get mcpToolsEmpty => '该服务器没有工具。';
+
+  @override
+  String get mcpToolsReload => '重新加载';
+
+  @override
+  String get mcpProbeRefreshAll => '刷新状态';
+
+  @override
+  String get mcpProbeOfflineHint => '无法连接此 MCP 服务器。';
+
+  @override
+  String mcpToolsDialogTitle(String name) {
+    return '$name 的工具';
+  }
+
+  @override
   String get mcpNoInstalled => '还没有安装 MCP 服务器';
 
   @override

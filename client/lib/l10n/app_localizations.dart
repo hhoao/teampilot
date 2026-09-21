@@ -9260,6 +9260,60 @@ abstract class AppLocalizations {
   /// **'{count} installed'**
   String mcpInstalledCount(int count);
 
+  /// No description provided for @mcpProbeChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get mcpProbeChecking;
+
+  /// No description provided for @mcpProbeOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get mcpProbeOffline;
+
+  /// No description provided for @mcpProbeNeedsAuth.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs authorization'**
+  String get mcpProbeNeedsAuth;
+
+  /// No description provided for @mcpProbeToolCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} tools'**
+  String mcpProbeToolCount(int count);
+
+  /// No description provided for @mcpToolsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'This server has no tools.'**
+  String get mcpToolsEmpty;
+
+  /// No description provided for @mcpToolsReload.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload'**
+  String get mcpToolsReload;
+
+  /// No description provided for @mcpProbeRefreshAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh status'**
+  String get mcpProbeRefreshAll;
+
+  /// No description provided for @mcpProbeOfflineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach this MCP server.'**
+  String get mcpProbeOfflineHint;
+
+  /// No description provided for @mcpToolsDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} tools'**
+  String mcpToolsDialogTitle(String name);
+
   /// No description provided for @mcpNoInstalled.
   ///
   /// In en, this message translates to:

@@ -5203,6 +5203,37 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get mcpProbeChecking => 'Checking…';
+
+  @override
+  String get mcpProbeOffline => 'Offline';
+
+  @override
+  String get mcpProbeNeedsAuth => 'Needs authorization';
+
+  @override
+  String mcpProbeToolCount(int count) {
+    return '$count tools';
+  }
+
+  @override
+  String get mcpToolsEmpty => 'This server has no tools.';
+
+  @override
+  String get mcpToolsReload => 'Reload';
+
+  @override
+  String get mcpProbeRefreshAll => 'Refresh status';
+
+  @override
+  String get mcpProbeOfflineHint => 'Could not reach this MCP server.';
+
+  @override
+  String mcpToolsDialogTitle(String name) {
+    return '$name tools';
+  }
+
+  @override
   String get mcpNoInstalled => 'No MCP servers installed yet';
 
   @override
