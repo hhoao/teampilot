@@ -1748,6 +1748,18 @@ abstract class AppLocalizations {
   /// **'Session count'**
   String get homeWorkspaceWorkspaceSortSessionCountDesc;
 
+  /// No description provided for @homeWorkspaceWorkspaceFilterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter workspaces'**
+  String get homeWorkspaceWorkspaceFilterHint;
+
+  /// No description provided for @homeWorkspaceWorkspaceFilterEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No workspaces match your filter'**
+  String get homeWorkspaceWorkspaceFilterEmpty;
+
   /// No description provided for @homeWorkspaceComingSoon.
   ///
   /// In en, this message translates to:

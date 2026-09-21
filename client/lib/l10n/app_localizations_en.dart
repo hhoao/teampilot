@@ -899,6 +899,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceWorkspaceSortSessionCountDesc => 'Session count';
 
   @override
+  String get homeWorkspaceWorkspaceFilterHint => 'Filter workspaces';
+
+  @override
+  String get homeWorkspaceWorkspaceFilterEmpty =>
+      'No workspaces match your filter';
+
+  @override
   String get homeWorkspaceComingSoon => 'Coming soon';
 
   @override

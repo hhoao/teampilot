@@ -359,6 +359,8 @@
   "homeWorkspaceWorkspaceSortNameDesc": "名称（Z–A）",
   "homeWorkspaceWorkspaceSortCreatedDesc": "创建时间",
   "homeWorkspaceWorkspaceSortSessionCountDesc": "会话数量",
+  "homeWorkspaceWorkspaceFilterHint": "过滤工作区",
+  "homeWorkspaceWorkspaceFilterEmpty": "没有匹配的工作区",
   "homeWorkspaceComingSoon": "功能开发中",
   "homeWorkspaceNewTeamSubtitle": "选择团队协作模式，并填写团队名称。",
   "homeWorkspaceNewTeamMethodCustom": "自定义模式",

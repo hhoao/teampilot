@@ -864,6 +864,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceWorkspaceSortSessionCountDesc => '会话数量';
 
   @override
+  String get homeWorkspaceWorkspaceFilterHint => '过滤工作区';
+
+  @override
+  String get homeWorkspaceWorkspaceFilterEmpty => '没有匹配的工作区';
+
+  @override
   String get homeWorkspaceComingSoon => '功能开发中';
 
   @override

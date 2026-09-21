@@ -20,6 +20,47 @@ void main() {
     createdAt: 1,
   );
 
+  test('filterWorkspacesByQuery matches name, id, and folder path', () {
+    final workspaces = [
+      Workspace(
+        workspaceId: 'alpha-id',
+        display: 'Alpha Display',
+        folders: [WorkspaceFolder(path: '/projects/alpha')],
+        createdAt: 1,
+      ),
+      Workspace(
+        workspaceId: 'beta-id',
+        folders: [WorkspaceFolder(path: '/tmp/beta-repo')],
+        createdAt: 1,
+      ),
+    ];
+
+    expect(
+      filterWorkspacesByQuery(
+        workspaces: workspaces,
+        query: 'alpha',
+        displayName: (w) => w.display.isNotEmpty ? w.display : w.workspaceId,
+      ).map((w) => w.workspaceId).toList(),
+      ['alpha-id'],
+    );
+    expect(
+      filterWorkspacesByQuery(
+        workspaces: workspaces,
+        query: 'beta-repo',
+        displayName: (w) => w.workspaceId,
+      ).map((w) => w.workspaceId).toList(),
+      ['beta-id'],
+    );
+    expect(
+      filterWorkspacesByQuery(
+        workspaces: workspaces,
+        query: '  ',
+        displayName: (w) => w.workspaceId,
+      ),
+      workspaces,
+    );
+  });
+
   test('computeWorkspaceDisplay is stable when inputs unchanged', () {
     final workspaces = [
       workspace('a', updatedAt: 2),

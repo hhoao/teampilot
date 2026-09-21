@@ -2,6 +2,49 @@ import '../../models/workspace.dart';
 import '../../models/app_session.dart';
 import '../../pages/home_workspace/workspace_sort.dart';
 
+/// Case-insensitive substring match on display name, id, and folder paths.
+List<Workspace> filterWorkspacesByQuery({
+  required List<Workspace> workspaces,
+  required String query,
+  required String Function(Workspace workspace) displayName,
+}) {
+  final needle = query.trim().toLowerCase();
+  if (needle.isEmpty) {
+    return workspaces;
+  }
+  return [
+    for (final workspace in workspaces)
+      if (_workspaceMatchesFilter(
+        workspace,
+        needle: needle,
+        displayName: displayName(workspace),
+      ))
+        workspace,
+  ];
+}
+
+bool _workspaceMatchesFilter(
+  Workspace workspace, {
+  required String needle,
+  required String displayName,
+}) {
+  if (displayName.toLowerCase().contains(needle)) {
+    return true;
+  }
+  if (workspace.display.toLowerCase().contains(needle)) {
+    return true;
+  }
+  if (workspace.workspaceId.toLowerCase().contains(needle)) {
+    return true;
+  }
+  for (final folder in workspace.folders) {
+    if (folder.path.toLowerCase().contains(needle)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 class WorkspaceDisplay {
   const WorkspaceDisplay({
     required this.sortedWorkspaces,

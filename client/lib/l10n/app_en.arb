@@ -396,6 +396,8 @@
   "homeWorkspaceWorkspaceSortNameDesc": "Name (Z–A)",
   "homeWorkspaceWorkspaceSortCreatedDesc": "Date created",
   "homeWorkspaceWorkspaceSortSessionCountDesc": "Session count",
+  "homeWorkspaceWorkspaceFilterHint": "Filter workspaces",
+  "homeWorkspaceWorkspaceFilterEmpty": "No workspaces match your filter",
   "homeWorkspaceComingSoon": "Coming soon",
   "homeWorkspaceNewTeamSubtitle": "Pick how the team collaborates, then name it.",
   "homeWorkspaceNewTeamMethodCustom": "Custom",
