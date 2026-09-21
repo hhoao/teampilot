@@ -971,10 +971,35 @@ class SessionRepository {
 
   Future<AppSession?> _findSession(
     SessionRepositoryFs fs,
-    String sessionId,
-  ) async {
-    for (final workspaceId in await fs.listWorkspaceIds()) {
-      final session = await _readSession(fs, workspaceId, sessionId);
+    String sessionId, {
+    String? workspaceId,
+  }) async {
+    final hinted = workspaceId?.trim() ?? '';
+    if (hinted.isNotEmpty) {
+      final session = await _readSession(fs, hinted, sessionId);
+      if (session != null) return session;
+    }
+
+    // Manifest listing is not the only source of workspace ids: apply-plan
+    // overlays can drop `manifest.json` while session.json remains, and the
+    // durable workspaces-index plus in-memory cache still know the id.
+    final ids = <String>{
+      if (hinted.isNotEmpty) hinted,
+      ...await fs.listWorkspaceDirectoryIds(),
+      for (final workspace
+          in _workspacesIndexByRoot[_workspacesIndexCacheKey()] ??
+              const <Workspace>[])
+        workspace.workspaceId,
+    };
+    final indexed = await WorkspaceIndexStore(fs).tryRead();
+    if (indexed != null) {
+      for (final workspace in indexed) {
+        ids.add(workspace.workspaceId);
+      }
+    }
+    for (final id in ids) {
+      if (id == hinted) continue;
+      final session = await _readSession(fs, id, sessionId);
       if (session != null) return session;
     }
     return null;
@@ -1021,10 +1046,15 @@ class SessionRepository {
     String rosterMemberId, {
     required CliTool cli,
     String? typeId,
+    String? workspaceId,
   }) {
     return _withSessionFile(sessionId, () async {
       final fs = await _fs();
-      final existing = await _findSession(fs, sessionId);
+      final existing = await _findSession(
+        fs,
+        sessionId,
+        workspaceId: workspaceId,
+      );
       if (existing == null) {
         throw StateError('Unknown sessionId: $sessionId');
       }

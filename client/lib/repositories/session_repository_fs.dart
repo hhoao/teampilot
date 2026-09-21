@@ -94,14 +94,22 @@ class SessionRepositoryFs {
     }
   }
 
-  Future<List<String>> listWorkspaceIds() async {
+  /// Workspace directories on disk, including those whose `manifest.json` was
+  /// dropped. Session lookup must not require the listing filter used by
+  /// workspace-index rebuilds.
+  Future<List<String>> listWorkspaceDirectoryIds() async {
     final stat = await fs.stat(workspacesDir);
     if (!stat.isDirectory) return const [];
-    final entries = await fs.listDir(workspacesDir);
+    return [
+      for (final entry in await fs.listDir(workspacesDir))
+        if (entry.isDirectory) entry.name,
+    ];
+  }
+
+  Future<List<String>> listWorkspaceIds() async {
     final ids = await Future.wait(
-      entries.where((e) => e.isDirectory).map((entry) async {
-        final manifest = manifestFile(entry.name);
-        if ((await fs.stat(manifest)).exists) return entry.name;
+      (await listWorkspaceDirectoryIds()).map((id) async {
+        if ((await fs.stat(manifestFile(id))).exists) return id;
         return null;
       }),
     );

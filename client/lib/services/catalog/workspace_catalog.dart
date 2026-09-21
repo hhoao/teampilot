@@ -726,6 +726,7 @@ class WorkspaceCatalog {
         rosterMemberId,
         cli: cli,
         typeId: typeId,
+        workspaceId: current.workspaceId,
       );
       if (current.bindingFor(rosterMemberId.trim()) == null) {
         _replaceSessionInMemory(

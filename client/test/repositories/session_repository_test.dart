@@ -540,6 +540,40 @@ void main() {
   });
 
   test(
+    'ensureMemberBinding finds session when workspace listing has no manifest',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/w'),
+      ]);
+      final session = (await repo.createSession(
+        workspace.workspaceId,
+        sessionTeam: 'team-a',
+        rosterMembers: const [
+          TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+        ],
+        memberClis: const {'team-lead': CliTool.claude},
+      )).session;
+
+      final fs = await repo.fs();
+      await File(fs.manifestFile(workspace.workspaceId)).delete();
+
+      final binding = await repo.ensureMemberBinding(
+        session.sessionId,
+        'developer',
+        cli: CliTool.claude,
+      );
+      expect(binding.rosterMemberId, 'developer');
+    },
+  );
+
+  test(
     'parallel updateSessionTeam and markSessionStarted do not drop fields',
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');

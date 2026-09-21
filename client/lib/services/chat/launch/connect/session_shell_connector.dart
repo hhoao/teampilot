@@ -803,6 +803,7 @@ class SessionShellConnector {
         member.id,
         typeId: type.id,
         cli: locked,
+        workspaceId: session.workspaceId,
       );
     }
     final existing = session.bindingFor(member.id);
