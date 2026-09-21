@@ -5025,6 +5025,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mcpToolsReload => '重新加载';
 
   @override
+  String get mcpToolsSection => '工具';
+
+  @override
+  String get mcpToolsDone => '完成';
+
+  @override
   String get mcpProbeRefreshAll => '刷新状态';
 
   @override

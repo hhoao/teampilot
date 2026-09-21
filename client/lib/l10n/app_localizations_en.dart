@@ -5232,6 +5232,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpToolsReload => 'Reload';
 
   @override
+  String get mcpToolsSection => 'Tools';
+
+  @override
+  String get mcpToolsDone => 'Done';
+
+  @override
   String get mcpProbeRefreshAll => 'Refresh status';
 
   @override

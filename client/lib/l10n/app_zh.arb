@@ -2325,6 +2325,8 @@
   },
   "mcpToolsEmpty": "该服务器没有工具。",
   "mcpToolsReload": "重新加载",
+  "mcpToolsSection": "工具",
+  "mcpToolsDone": "完成",
   "mcpProbeRefreshAll": "刷新状态",
   "mcpProbeOfflineHint": "无法连接此 MCP 服务器。",
   "mcpToolsDialogTitle": "{name} 的工具",

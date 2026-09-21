@@ -149,6 +149,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('health_check'), findsOneWidget);
+    expect(find.text('Tools'), findsOneWidget);
+    expect(find.byKey(const Key('mcp-tools-reload')), findsOneWidget);
+    expect(find.text('Done'), findsOneWidget);
     expect(find.byKey(const Key('mcp-id')), findsNothing);
   });
 

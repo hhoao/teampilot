@@ -9314,6 +9314,18 @@ abstract class AppLocalizations {
   /// **'Reload'**
   String get mcpToolsReload;
 
+  /// No description provided for @mcpToolsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Tools'**
+  String get mcpToolsSection;
+
+  /// No description provided for @mcpToolsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get mcpToolsDone;
+
   /// No description provided for @mcpProbeRefreshAll.
   ///
   /// In en, this message translates to:

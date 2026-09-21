@@ -2676,6 +2676,8 @@
   },
   "mcpToolsEmpty": "This server has no tools.",
   "mcpToolsReload": "Reload",
+  "mcpToolsSection": "Tools",
+  "mcpToolsDone": "Done",
   "mcpProbeRefreshAll": "Refresh status",
   "mcpProbeOfflineHint": "Could not reach this MCP server.",
   "mcpToolsDialogTitle": "{name} tools",
