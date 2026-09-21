@@ -7,8 +7,13 @@ import 'filesystem.dart';
 import 'windows_junction.dart';
 
 class LocalFilesystem implements Filesystem, FsWatcher {
-  LocalFilesystem({p.Context? pathContext})
-    : pathContext = pathContext ?? p.context;
+  LocalFilesystem({
+    p.Context? pathContext,
+    Future<File> Function(String from, String to)? renameFile,
+  }) : pathContext = pathContext ?? p.context,
+       _renameFile = renameFile ?? ((from, to) => File(from).rename(to));
+
+  final Future<File> Function(String from, String to) _renameFile;
 
   static int _tmpWriteCounter = 0;
   static final _atomicWriteLocks = LockPool();
@@ -257,22 +262,27 @@ class LocalFilesystem implements Filesystem, FsWatcher {
 
   /// Renames [from] onto [to], overwriting any existing destination.
   ///
-  /// POSIX rename is an atomic replace, but on Windows `MoveFile` over an
-  /// existing target transiently fails with ACCESS_DENIED (errno 5) while
-  /// another rename to the same path is in flight (or AV/indexing briefly
-  /// holds it). Retry a handful of times so concurrent atomic writes settle.
+  /// POSIX rename is an atomic replace. On Windows `MoveFileEx` with
+  /// REPLACE_EXISTING still fails with ACCESS_DENIED (errno 5) while another
+  /// handle holds the dest (a concurrent reader, Defender, Search Indexer).
+  /// Copy-overwrite then drop the temp file is the replace that succeeds
+  /// with a shared reader; retrying the same rename does not.
   Future<void> _renameReplacing(String from, String to) async {
-    const maxAttempts = 20;
-    for (var attempt = 1; ; attempt++) {
+    try {
+      await _renameFile(from, to);
+    } on FileSystemException catch (error) {
+      if (!_isSharingViolation(error)) rethrow;
       try {
-        await File(from).rename(to);
-        return;
-      } on PathAccessException {
-        if (!Platform.isWindows || attempt >= maxAttempts) rethrow;
-        await Future<void>.delayed(Duration(milliseconds: 5 * attempt));
+        await File(from).copy(to);
+        await _deleteIfStillPresent(File(from));
+      } on Object {
+        throw error;
       }
     }
   }
+
+  bool _isSharingViolation(FileSystemException error) =>
+      error is PathAccessException || error.osError?.errorCode == 5;
 
   @override
   Future<List<FsDirEntry>> listDir(String path) async {

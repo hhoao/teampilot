@@ -147,6 +147,35 @@ void main() {
   });
 
   test(
+    'atomicWrite replaces dest when rename hits a sharing violation',
+    () async {
+      final dest = p.join(root.path, 'registries.json');
+      await File(dest).writeAsString('stale', flush: true);
+      final denied = LocalFilesystem(
+        pathContext: p.context,
+        renameFile: (from, to) {
+          throw PathAccessException(
+            from,
+            const OSError('Access denied', 5),
+            'Cannot rename file to \'$to\'',
+          );
+        },
+      );
+
+      await denied.atomicWrite(dest, '{"name":"My Skills"}');
+
+      expect(await File(dest).readAsString(), '{"name":"My Skills"}');
+      expect(
+        Directory(root.path)
+            .listSync()
+            .where((entity) => entity.path.contains('.tmp.'))
+            .toList(),
+        isEmpty,
+      );
+    },
+  );
+
+  test(
     'atomicWrite survives concurrent removeRecursive of its parent dir',
     () async {
       // Mirrors session launch: multiple members flush manifests that
