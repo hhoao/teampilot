@@ -4,7 +4,7 @@ import '../../../../models/app_session.dart';
 import '../../../../models/member_instance.dart';
 import '../../../../models/team_config.dart';
 import '../../runtime/member_coordination.dart';
-import 'chat_cubit_member_launcher.dart';
+import '../../team_bus/chat_cubit_member_launcher.dart';
 import '../../../../utils/logging/logger.dart';
 import '../../session/chat_tab.dart';
 import '../../session/chat_tab_store.dart';

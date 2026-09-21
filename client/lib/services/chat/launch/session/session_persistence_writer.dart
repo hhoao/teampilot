@@ -11,7 +11,7 @@ import '../../../../models/session_member_binding.dart';
 import '../../../../models/team_config.dart';
 import '../../../../repositories/session_repository.dart';
 import '../../../../utils/logging/logger.dart';
-import '../../session/session_preset_follow_sync.dart';
+import 'session_preset_follow_sync.dart';
 import 'shell_launch_spec.dart';
 
 /// Session-row persistence performed during a seat connect.

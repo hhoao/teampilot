@@ -26,7 +26,7 @@ import '../../../cli/installer_types.dart';
 import '../../../cli/preset_resolver.dart';
 import 'connect_shell_result.dart';
 import '../session/session_persistence_writer.dart';
-import 'member_bus_mcp_transport_resolver.dart';
+import '../../team_bus/mcp/member_bus_mcp_transport_resolver.dart';
 import '../session/shell_launch_spec.dart';
 import '../session/remote_ssh_launch_constraints.dart';
 import '../../../ssh/ssh_member_session.dart';

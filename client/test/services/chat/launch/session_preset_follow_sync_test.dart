@@ -7,7 +7,7 @@ import 'package:teampilot/models/session_continue_overrides.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/chat/session/session_preset_follow_sync.dart';
+import 'package:teampilot/services/chat/launch/session/session_preset_follow_sync.dart';
 import '../../../support/in_memory_filesystem.dart';
 
 void main() {

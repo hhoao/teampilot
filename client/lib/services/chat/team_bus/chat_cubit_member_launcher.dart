@@ -1,5 +1,5 @@
-import '../../team_bus/member_launcher.dart';
-import '../../team_bus/team_message.dart';
+import 'member_launcher.dart';
+import 'team_message.dart';
 
 /// ChatCubit 暴露给 launcher 的最小 seam（便于测试注入，避免泄漏 _InternalTab）。
 abstract interface class MemberMaterializer {

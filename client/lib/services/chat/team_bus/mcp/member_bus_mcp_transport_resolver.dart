@@ -1,8 +1,8 @@
 import '../../../../models/team_config.dart';
 import '../../../cli/registry/capabilities/team_behavior_capability.dart';
 import '../../../cli/registry/cli_tool_registry.dart';
-import '../../team_bus/mcp/bus_bridge_locator.dart';
-import '../../team_bus/remote/member_bus_mcp_config.dart';
+import 'bus_bridge_locator.dart';
+import '../remote/member_bus_mcp_config.dart';
 
 /// 选择 teammate-bus MCP 的传输方式（P3b：按成员 target + 能力位分流）。
 ///

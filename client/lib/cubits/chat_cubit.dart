@@ -83,7 +83,7 @@ import '../services/chat/launch/session_launch_service.dart';
 import '../services/chat/launch/tab/tab_member_materializer.dart';
 import '../services/chat/runtime/operator_delivery_in_flight.dart';
 import '../services/chat/runtime/tab_session_runtime_coordinator.dart';
-import '../services/chat/launch/tab/tab_team_bus_coordinator.dart';
+import '../services/chat/team_bus/tab_team_bus_coordinator.dart';
 import 'layout_cubit.dart';
 import 'member_presence_cubit.dart';
 import 'workbench/workbench_tab.dart';

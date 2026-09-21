@@ -12,7 +12,7 @@ import '../session/session_workbench_view.dart';
 import '../session/session_data_store.dart';
 import 'tab/tab_member_materializer.dart';
 import '../runtime/tab_session_runtime_coordinator.dart';
-import 'tab/tab_team_bus_coordinator.dart';
+import '../team_bus/tab_team_bus_coordinator.dart';
 import '../../../cubits/chat_state_port.dart';
 import 'launch_environment_port.dart';
 import '../session/session_repository_port.dart';

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/launch/tab/chat_cubit_member_launcher.dart';
+import 'package:teampilot/services/chat/team_bus/chat_cubit_member_launcher.dart';
 import 'package:teampilot/services/chat/team_bus/team_message.dart';
 
 class _Spy implements MemberMaterializer {
