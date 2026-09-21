@@ -25,6 +25,15 @@ double _workspacesToolbarControlHeight(BuildContext context) {
   return 2 + context.tpIconSizes.md + 14;
 }
 
+double _workspacesFilterFieldVerticalPadding(
+  double controlHeight,
+  double fontSize,
+) {
+  const lineHeight = 1.2;
+  final textBlock = fontSize * lineHeight;
+  return ((controlHeight - textBlock) / 2).clamp(0, 8);
+}
+
 class WorkspacesTab extends StatelessWidget {
   const WorkspacesTab({
     super.key,
@@ -280,24 +289,40 @@ class _WorkspacesFilterFieldState extends State<WorkspacesFilterField> {
               ),
               const SizedBox(width: 6),
               Expanded(
-                child: TextField(
-                  controller: widget.controller,
-                  focusNode: _focusNode,
-                  style: styles.sm,
-                  textAlignVertical: TextAlignVertical.center,
-                  decoration: InputDecoration(
-                    isDense: true,
-                    isCollapsed: true,
-                    hintText: widget.hintText,
-                    hintStyle: styles.smColored(
-                      cs.onSurfaceVariant.withValues(alpha: 0.75),
-                    ),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
+                child: Theme(
+                  data: Theme.of(context).copyWith(
+                    splashFactory: NoSplash.splashFactory,
+                    highlightColor: Colors.transparent,
+                    hoverColor: Colors.transparent,
                   ),
-                  onChanged: widget.onChanged,
+                  child: TextField(
+                    controller: widget.controller,
+                    focusNode: _focusNode,
+                    maxLines: 1,
+                    style: styles.md.copyWith(color: cs.onSurface),
+                    textAlignVertical: TextAlignVertical.center,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: widget.hintText,
+                      hintStyle: styles.mdColored(
+                        cs.onSurfaceVariant.withValues(alpha: 0.75),
+                      ),
+                      filled: true,
+                      fillColor: Colors.transparent,
+                      hoverColor: Colors.transparent,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                        vertical: _workspacesFilterFieldVerticalPadding(
+                          controlHeight,
+                          styles.md.fontSize ?? 14,
+                        ),
+                      ),
+                    ),
+                    onChanged: widget.onChanged,
+                  ),
                 ),
               ),
               if (value.text.isNotEmpty)
