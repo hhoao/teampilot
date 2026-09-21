@@ -7,7 +7,10 @@ import 'package:teampilot/cubits/mcp_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/mcp_probe_snapshot.dart';
 import 'package:teampilot/models/mcp_server.dart';
+import 'package:teampilot/pages/mcp/mcp_installed_section.dart';
 import 'package:teampilot/pages/mcp/mcp_management_page.dart';
+import 'package:teampilot/theme/team_pilot_toast_config.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/mcp_repository.dart';
 import 'package:teampilot/services/io/filesystem.dart';
@@ -63,6 +66,7 @@ void main() {
   });
 
   tearDown(() {
+    debugShowMcpOAuthConnectDialog = null;
     cubit.close();
     discoverySettingsCubit.close();
   });
@@ -72,17 +76,20 @@ void main() {
     await tester.pumpWidget(
       RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
-        child: MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: TpTheme(
-            data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
-            child: BlocProvider<McpCubit>.value(
-              value: cubit,
-              child: BlocProvider<DiscoverySettingsCubit>.value(
-                value: discoverySettingsCubit,
-                child: const Scaffold(
-                  body: McpManagementPage(section: McpSection.installed),
+        child: TpToastWrapper(
+          config: buildTeamPilotToastConfig(),
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: TpTheme(
+              data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
+              child: BlocProvider<McpCubit>.value(
+                value: cubit,
+                child: BlocProvider<DiscoverySettingsCubit>.value(
+                  value: discoverySettingsCubit,
+                  child: const Scaffold(
+                    body: McpManagementPage(section: McpSection.installed),
+                  ),
                 ),
               ),
             ),
@@ -139,5 +146,99 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('mcp-id')), findsOneWidget);
+  });
+
+  testWidgets('OAuth success toast runs before slow probe completes', (
+    tester,
+  ) async {
+    final handshake = FakeMcpProbeHandshake(
+      resultBuilder: (server) => McpHandshakeResult.ok(const [
+        McpProbeTool(name: 'health_check'),
+      ]),
+    );
+    await cubit.close();
+    cubit = McpCubit(
+      repository,
+      storage: testHomeStorage,
+      probeService: McpServerProbeService(
+        handshake: handshake,
+        timeout: const Duration(seconds: 2),
+      ),
+    );
+
+    const oauthServer = McpServer(
+      id: 'remote-oauth',
+      name: 'RemoteOAuth',
+      server: {'type': 'http', 'url': 'https://example.com/mcp'},
+    );
+    await cubit.upsert(oauthServer);
+    var oauthDialogShown = false;
+    debugShowMcpOAuthConnectDialog =
+        ({required context, required server, required configDir}) {
+          oauthDialogShown = true;
+          return Future<bool>.value(true);
+        };
+
+    var oauthConnected = false;
+    final scheme = ColorScheme.fromSeed(seedColor: Colors.indigo);
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: TpToastWrapper(
+          config: buildTeamPilotToastConfig(),
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: TpTheme(
+              data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
+              child: BlocProvider<McpCubit>.value(
+                value: cubit,
+                child: Scaffold(
+                  body: SizedBox(
+                    height: 720,
+                    child: McpInstalledSection(
+                      state: cubit.state,
+                      onImport: () {},
+                      onAdd: () {},
+                      onEdit: (_) {},
+                      onDelete: (_) {},
+                      onGoDiscovery: () {},
+                      onOAuthConnected: () => oauthConnected = true,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    handshake.calledIds.clear();
+
+    handshake.delay = const Duration(milliseconds: 500);
+
+    expect(find.text('RemoteOAuth'), findsOneWidget);
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Connect'));
+    for (var i = 0; i < 30 && !oauthConnected; i++) {
+      await tester.pump(const Duration(milliseconds: 20));
+    }
+
+    expect(oauthDialogShown, isTrue);
+    expect(oauthConnected, isTrue);
+    expect(handshake.calledIds, contains('remote-oauth'));
+    expect(handshake.inFlight, 1);
+
+    AppToast.dismiss();
+    await cubit.close();
+    await tester.pump(const Duration(milliseconds: 600));
+    cubit = McpCubit(
+      repository,
+      storage: testHomeStorage,
+      probeService: McpServerProbeService(
+        handshake: FakeMcpProbeHandshake(),
+        timeout: const Duration(seconds: 2),
+      ),
+    );
   });
 }

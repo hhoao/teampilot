@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,6 +16,13 @@ import '../../widgets/workspace_library_card.dart';
 import 'mcp_oauth_connect_dialog.dart';
 import 'mcp_shared_widgets.dart';
 import 'mcp_tools_dialog.dart';
+
+@visibleForTesting
+Future<bool> Function({
+  required BuildContext context,
+  required McpServer server,
+  required String configDir,
+})? debugShowMcpOAuthConnectDialog;
 
 class McpInstalledSection extends StatefulWidget {
   const McpInstalledSection({
@@ -110,22 +120,22 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
   }
 
   Future<void> _connectOAuth(McpServer server) async {
-    final ok = await showMcpOAuthConnectDialog(
+    final showOAuthDialog =
+        debugShowMcpOAuthConnectDialog ?? showMcpOAuthConnectDialog;
+    final ok = await showOAuthDialog(
       context: context,
       server: server,
       configDir: McpOAuthFlow.claudeAppConfigDir(homeStorageOf(context)),
     );
     if (!mounted || ok != true) return;
-    await _reloadOAuthStatus();
-    if (!mounted) return;
-    await context.read<McpCubit>().probeOne(server.id);
-    if (!mounted) return;
     widget.onOAuthConnected();
     AppToast.show(
       context,
       message: context.l10n.mcpOAuthConnectSuccess,
       variant: TpToastVariant.success,
     );
+    unawaited(context.read<McpCubit>().probeOne(server.id));
+    unawaited(_reloadOAuthStatus());
   }
 
   @override
