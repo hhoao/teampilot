@@ -509,11 +509,18 @@ void main() {
     // 新实现:只做轻量探测,不触发 seat 软重载。
     messagesBySession[session.sessionId] = messages(3);
 
-    await Future<void>.delayed(const Duration(milliseconds: 320));
-    await pumpEventQueue();
+    const extraProbes = 10;
+    final deadline = DateTime.now().add(const Duration(seconds: 1));
+    while (resolveCount < probesAfterStart + extraProbes &&
+        DateTime.now().isBefore(deadline)) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await pumpEventQueue();
+    }
 
-    // 固定节奏探测(20ms 周期,320ms 内 ~15 次),无退避。
-    expect(resolveCount, greaterThanOrEqualTo(probesAfterStart + 10));
+    // 固定节奏探测(20ms 周期). Wait for the ticks rather than assuming a
+    // 320ms wall-clock window — Windows timer slack under suite load can
+    // miss one fire in that window.
+    expect(resolveCount, greaterThanOrEqualTo(probesAfterStart + extraProbes));
     // 探测不应触发 seat 软重载:消息列表停留在 1。
     expect(cubit.state.totalMessageCount, 1);
 

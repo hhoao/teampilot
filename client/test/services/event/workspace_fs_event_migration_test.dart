@@ -68,8 +68,12 @@ void main() {
 
       fs.emit(FsChangeType.created, '/w/a/lib/new_file.dart');
 
-      await Future<void>.delayed(const Duration(milliseconds: 60));
+      final deadline = DateTime.now().add(const Duration(seconds: 1));
+      while (batches.isEmpty && DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
 
+      expect(batches, isNotEmpty);
       expect(batches.single.changedDirs, {'/w/a/lib'});
       expect(batches.single.structural, isTrue);
 

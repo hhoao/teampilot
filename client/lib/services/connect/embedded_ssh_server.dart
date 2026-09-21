@@ -160,7 +160,26 @@ class EmbeddedSshServer implements ConnectSshBackend {
     try {
       final connections = StreamController<SSHSocket>();
       _connections = connections;
-      listener.listen((socket) => connections.add(_AcceptedSocket(socket)));
+      listener.listen(
+        (socket) {
+          if (connections.isClosed) {
+            socket.destroy();
+            return;
+          }
+          connections.add(_AcceptedSocket(socket));
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          // Windows loopback often surfaces WSAECONNABORTED (10053) on the
+          // accept stream when a client drops mid-handshake. That is not a
+          // bind failure; swallowing it keeps the listener serving.
+          AppLogger.instance.w(
+            'embedded ssh: listener accept error',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        },
+        cancelOnError: false,
+      );
 
       _server = await SSHServer.bind(
         StreamIterator(connections.stream),
