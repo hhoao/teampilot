@@ -510,21 +510,32 @@ class _SessionChatViewState extends State<SessionChatView> {
   bool get _isSubmitting =>
       _submitBusy.value || _submitLock.isBusy || widget.isSubmitting;
 
-  String get _workspaceRoot {
-    final work = widget.session.workDirsForMember(
+  String get _workspaceRoot => _workspaceRootFor(_locateSession);
+
+  WorkspaceLaunchContext get _launchContext =>
+      _launchContextFor(_locateSession);
+
+  /// Transcript locate / work-root session: the cubit document once hydrated,
+  /// otherwise the widget snapshot (list-row stub until [hydrateSessionDocument]).
+  AppSession get _locateSession =>
+      _sessionFromCubit(context.read<ChatCubit>()) ?? widget.session;
+
+  String _workspaceRootFor(AppSession session) {
+    final work = session.workDirsForMember(
       widget.selectedMemberId,
-      folders: _launchContext.folderCatalog,
+      folders: _launchContextFor(session).folderCatalog,
       usesPosixPaths: homeStorageOf(context).usesPosixPaths,
     );
     if (work.workingDirectory.isNotEmpty) return work.workingDirectory;
-    return widget.session.firstFolderPath;
+    return session.firstFolderPath;
   }
 
-  WorkspaceLaunchContext get _launchContext => WorkspaceLaunchContext(
-    session: widget.session,
-    workspace: widget.workspace,
-    usesPosixPaths: homeStorageOf(context).usesPosixPaths,
-  );
+  WorkspaceLaunchContext _launchContextFor(AppSession session) =>
+      WorkspaceLaunchContext(
+        session: session,
+        workspace: widget.workspace,
+        usesPosixPaths: homeStorageOf(context).usesPosixPaths,
+      );
 
   Future<void> _loadHistory({bool force = false}) {
     if (force) return _loadHistoryImpl(force: true);
@@ -574,7 +585,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     // hydrate). Hydration is single-flight and a cache hit once the doc exists,
     // so this is a state/disk read only when the load genuinely precedes it.
     var session = widget.session;
-    if (!ready) {
+    if (!ready || force) {
       final hydrated = await chat.hydrateSessionDocument(
         session.workspaceId,
         session.sessionId,
@@ -582,13 +593,15 @@ class _SessionChatViewState extends State<SessionChatView> {
       if (!mounted) return;
       if (hydrated != null) session = hydrated;
     }
+    final launchContext = _launchContextFor(session);
+    final workingDirectory = _workspaceRootFor(session);
     if (force) {
       await seat.load(
         session: session,
         memberId: widget.selectedMemberId,
-        launchContext: _launchContext,
+        launchContext: launchContext,
         team: widget.team,
-        workingDirectory: _workspaceRoot,
+        workingDirectory: workingDirectory,
         force: true,
       );
       if (!mounted) return;
@@ -602,9 +615,9 @@ class _SessionChatViewState extends State<SessionChatView> {
     await seat.softReloadOrLoad(
       session: session,
       memberId: widget.selectedMemberId,
-      launchContext: _launchContext,
+      launchContext: launchContext,
       team: widget.team,
-      workingDirectory: _workspaceRoot,
+      workingDirectory: workingDirectory,
     );
     if (!mounted) return;
     _maybeStartLiveRefreshForRunningPty();

@@ -527,6 +527,45 @@ void main() {
     },
   );
 
+  testWidgets(
+    'cold load locates transcripts from the hydrated document, not the list-row stub',
+    (tester) async {
+      final document = AppSession(
+        sessionId: 's1',
+        workspaceId: 'ws-1',
+        folders: const [WorkspaceFolder(path: '/work')],
+        cli: CliTool.cursor,
+        nativeSessionIds: const {'cursor': 'native-1'},
+        createdAt: 1,
+      );
+      final h = _Harness(tester)
+        ..hasDocument = false
+        ..hydratedDocument = document;
+      await h.pump(
+        session: AppSession(
+          sessionId: 's1',
+          workspaceId: 'ws-1',
+          folders: const [WorkspaceFolder(path: '/work')],
+          createdAt: 1,
+        ),
+        active: true,
+      );
+      final ctx =
+          verify(
+                () => h.seat.softReloadOrLoad(
+                  session: any(named: 'session'),
+                  memberId: any(named: 'memberId'),
+                  launchContext: captureAny(named: 'launchContext'),
+                  team: any(named: 'team'),
+                  workingDirectory: any(named: 'workingDirectory'),
+                ),
+              ).captured.single
+              as WorkspaceLaunchContext;
+      expect(ctx.session.cli, CliTool.cursor);
+      expect(ctx.session.nativeSessionIds['cursor'], 'native-1');
+    },
+  );
+
   testWidgets('ready hot mount does not re-hydrate the document', (
     tester,
   ) async {
