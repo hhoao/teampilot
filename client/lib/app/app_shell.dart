@@ -126,6 +126,8 @@ import '../cubits/skill_cubit.dart';
 import '../repositories/mcp_repository.dart';
 import '../services/hook/hook_repository.dart';
 import '../services/hook/import/hook_import_service.dart';
+import '../services/mcp/mcp_dart_probe_handshake.dart';
+import '../services/mcp/mcp_server_probe_service.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
 import '../cubits/ssh_connection_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
@@ -1578,6 +1580,9 @@ Future<AppShell> buildAppShell({
       mcpRepository,
       storage: homeStorage,
       onMcpUnbound: unbindMcpEverywhere,
+      probeService: McpServerProbeService(
+        handshake: McpDartProbeHandshake(storage: homeStorage),
+      ),
     );
     hookCubit = HookCubit(repository: hookRepository)..load();
 
