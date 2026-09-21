@@ -4,6 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_catalog_listing.dart';
+import '../../models/mcp_probe_snapshot.dart';
 import '../../models/mcp_server.dart';
 import '../../widgets/github_details_button.dart';
 import '../../theme/workspace_surface_layers.dart';
@@ -15,6 +16,8 @@ class McpInstalledServerRow extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onToggleEnabled,
+    this.probe,
+    this.onOpenTools,
     this.oauthAuthenticated,
     this.onOAuthConnect,
     super.key,
@@ -25,6 +28,8 @@ class McpInstalledServerRow extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final ValueChanged<bool> onToggleEnabled;
+  final McpProbeSnapshot? probe;
+  final VoidCallback? onOpenTools;
   final bool? oauthAuthenticated;
   final VoidCallback? onOAuthConnect;
 
@@ -48,83 +53,91 @@ class McpInstalledServerRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          server.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TpTextStyles.of(
-                            context,
-                          ).mdSemiboldColored(textBase),
-                        ),
-                      ),
-                      if (oauthAuthenticated == false) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.withValues(alpha: 0.18),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onOpenTools,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
                           child: Text(
-                            l10n.mcpOAuthStatusNeedsAuth,
+                            server.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TpTextStyles.of(
                               context,
-                            ).xsBoldColored(const Color(0xFFB45309)),
+                            ).mdSemiboldColored(textBase),
                           ),
                         ),
+                        if (oauthAuthenticated == false) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              l10n.mcpOAuthStatusNeedsAuth,
+                              style: TpTextStyles.of(
+                                context,
+                              ).xsBoldColored(const Color(0xFFB45309)),
+                            ),
+                          ),
+                        ],
+                        if (oauthAuthenticated == true) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: cs.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              l10n.mcpOAuthStatusConnected,
+                              style: TpTextStyles.of(
+                                context,
+                              ).xsBoldColored(cs.primary),
+                            ),
+                          ),
+                        ],
                       ],
-                      if (oauthAuthenticated == true) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: cs.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            l10n.mcpOAuthStatusConnected,
-                            style: TpTextStyles.of(
-                              context,
-                            ).xsBoldColored(cs.primary),
-                          ),
-                        ),
-                      ],
+                    ),
+                    if (server.enabled) ...[
+                      const SizedBox(height: 4),
+                      McpProbeStatusLine(serverId: server.id, probe: probe),
                     ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    typeLabel,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TpTextStyles.of(
-                      context,
-                    ).xsColored(textBase.withValues(alpha: 0.5)),
-                  ),
-                  if (description.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
-                      description,
+                      typeLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TpTextStyles.of(
                         context,
-                      ).smColored(textBase.withValues(alpha: 0.6)),
+                      ).xsColored(textBase.withValues(alpha: 0.5)),
                     ),
+                    if (description.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        description,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TpTextStyles.of(
+                          context,
+                        ).smColored(textBase.withValues(alpha: 0.6)),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
             if (busy)
@@ -177,6 +190,58 @@ class McpInstalledServerRow extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class McpProbeStatusLine extends StatelessWidget {
+  const McpProbeStatusLine({required this.serverId, this.probe, super.key});
+
+  final String serverId;
+  final McpProbeSnapshot? probe;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
+    final status = probe?.status ?? McpProbeStatus.checking;
+    final Color dot;
+    final String label;
+    switch (status) {
+      case McpProbeStatus.checking:
+        dot = Colors.grey;
+        label = l10n.mcpProbeChecking;
+      case McpProbeStatus.online:
+        dot = const Color(0xFF22C55E);
+        label = l10n.mcpProbeToolCount(probe?.tools.length ?? 0);
+      case McpProbeStatus.offline:
+        dot = cs.error;
+        label = l10n.mcpProbeOffline;
+      case McpProbeStatus.needsAuth:
+        dot = Colors.grey;
+        label = l10n.mcpProbeNeedsAuth;
+    }
+
+    return Row(
+      key: Key('mcp-probe-status-$serverId'),
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TpTextStyles.of(
+              context,
+            ).xsColored(cs.onSurface.withValues(alpha: 0.65)),
+          ),
+        ),
+      ],
     );
   }
 }

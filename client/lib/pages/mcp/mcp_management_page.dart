@@ -102,15 +102,31 @@ class _McpManagementPageState extends State<McpManagementPage> {
   }
 
   Future<void> _openAdd() async {
-    await showMcpEditorDialog(context, cubit: context.read<McpCubit>());
+    final cubit = context.read<McpCubit>();
+    final beforeIds = {for (final server in cubit.state.servers) server.id};
+    final ok = await showMcpEditorDialog(context, cubit: cubit);
+    if (!mounted || ok != true) return;
+    for (final server in cubit.state.servers) {
+      if (!beforeIds.contains(server.id) && server.enabled) {
+        await cubit.probeOne(server.id);
+      }
+    }
   }
 
   Future<void> _openEdit(McpServer server) async {
-    await showMcpEditorDialog(
+    final cubit = context.read<McpCubit>();
+    final ok = await showMcpEditorDialog(
       context,
-      cubit: context.read<McpCubit>(),
+      cubit: cubit,
       existing: server,
     );
+    if (!mounted || ok != true) return;
+    final updated = cubit.state.servers
+        .where((item) => item.id == server.id)
+        .firstOrNull;
+    if (updated != null && updated.enabled) {
+      await cubit.probeOne(updated.id);
+    }
   }
 
   Future<void> _addFromListing(McpCatalogListing listing) async {

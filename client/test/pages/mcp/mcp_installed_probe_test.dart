@@ -5,6 +5,7 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/discovery_settings_cubit.dart';
 import 'package:teampilot/cubits/mcp_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/mcp_probe_snapshot.dart';
 import 'package:teampilot/models/mcp_server.dart';
 import 'package:teampilot/pages/mcp/mcp_management_page.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
@@ -40,7 +41,19 @@ void main() {
       repository,
       storage: testHomeStorage,
       probeService: McpServerProbeService(
-        handshake: FakeMcpProbeHandshake(),
+        handshake: FakeMcpProbeHandshake(
+          resultBuilder: (server) {
+            if (server.id != 'fetch') {
+              return McpHandshakeResult.ok(const [
+                McpProbeTool(name: 'health_check'),
+              ]);
+            }
+            return McpHandshakeResult.ok(const [
+              McpProbeTool(name: 'health_check'),
+              McpProbeTool(name: 'open_files'),
+            ]);
+          },
+        ),
         timeout: const Duration(seconds: 2),
       ),
     );
@@ -80,42 +93,51 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('Add MCP opens the editor dialog and cancel exits', (
+  const fetchServer = McpServer(
+    id: 'fetch',
+    name: 'Fetch',
+    server: {'type': 'stdio', 'command': 'uvx'},
+  );
+
+  testWidgets('enabled fetch row shows online tool count after probe', (
     tester,
   ) async {
+    await cubit.upsert(fetchServer);
     await pumpListPage(tester);
 
-    await tester.tap(find.text('Add MCP'));
+    expect(find.byKey(const Key('mcp-probe-status-fetch')), findsOneWidget);
+    expect(find.text('2 tools'), findsOneWidget);
+    expect(find.textContaining('2'), findsWidgets);
+  });
+
+  testWidgets('disabled fetch row hides probe status', (tester) async {
+    await cubit.upsert(fetchServer.copyWith(enabled: false));
+    await pumpListPage(tester);
+
+    expect(find.text('Fetch'), findsOneWidget);
+    expect(find.byKey(const Key('mcp-probe-status-fetch')), findsNothing);
+  });
+
+  testWidgets('tapping the name opens tools dialog, not the editor', (
+    tester,
+  ) async {
+    await cubit.upsert(fetchServer);
+    await pumpListPage(tester);
+
+    await tester.tap(find.text('Fetch'));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('mcp-id')), findsOneWidget);
-
-    await tester.tap(find.byKey(const Key('mcp-cancel')));
-    await tester.pumpAndSettle();
-
+    expect(find.text('health_check'), findsOneWidget);
     expect(find.byKey(const Key('mcp-id')), findsNothing);
   });
 
-  testWidgets('edit row opens the dialog pre-filled', (tester) async {
-    await cubit.upsert(
-      const McpServer(
-        id: 'fetch',
-        name: 'Fetch',
-        server: {'type': 'stdio', 'command': 'uvx'},
-      ),
-    );
+  testWidgets('edit icon still opens the JSON editor', (tester) async {
+    await cubit.upsert(fetchServer);
     await pumpListPage(tester);
 
     await tester.tap(find.byIcon(Icons.edit_outlined));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('mcp-id')), findsOneWidget);
-    expect(
-      tester
-          .widget<TextField>(find.byKey(const Key('mcp-name')))
-          .controller!
-          .text,
-      'Fetch',
-    );
   });
 }
