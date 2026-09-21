@@ -11,14 +11,14 @@ import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/workspace_index_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
-import '../../support/test_runtime_context.dart';
+import '../../support/post_frame_test_harness.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() {
     final tmpRoot = Directory.systemTemp.createTempSync('catalog_home_');
-    addTearDown(() => tmpRoot.deleteSync(recursive: true));
+    addTearDown(() => deleteTempDirBestEffort(tmpRoot));
     final paths = AppPaths(tmpRoot.path);
     installTestHomeStorage(
       filesystem: LocalFilesystem(
@@ -113,7 +113,7 @@ void main() {
 
   test('createWorkspaceWithFirstSession does not full-scan', () async {
     final tmp = await Directory.systemTemp.createTemp('catalog_create_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
+    addTearDown(() => deleteTempDirBestEffort(tmp));
     final repo = SessionRepository(
       rootDir: tmp.path,
       storage: HomeStorage(testHomeStorage.context),
@@ -138,7 +138,7 @@ void main() {
     'createWorkspaceWithFirstSession dedups in memory when allowDuplicate false',
     () async {
       final tmp = await Directory.systemTemp.createTemp('catalog_dedup_');
-      addTearDown(() => tmp.deleteSync(recursive: true));
+      addTearDown(() => deleteTempDirBestEffort(tmp));
       final repo = SessionRepository(
         rootDir: tmp.path,
         storage: HomeStorage(testHomeStorage.context),
@@ -159,7 +159,7 @@ void main() {
 
   test('renameSession patches memory and disk', () async {
     final tmp = await Directory.systemTemp.createTemp('catalog_rename_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
+    addTearDown(() => deleteTempDirBestEffort(tmp));
     final repo = SessionRepository(
       rootDir: tmp.path,
       storage: HomeStorage(testHomeStorage.context),
@@ -196,7 +196,7 @@ void main() {
     'createWorkspaceWithFirstSession persists team pins into catalog memory',
     () async {
       final tmp = await Directory.systemTemp.createTemp('catalog_team_pins_');
-      addTearDown(() => tmp.deleteSync(recursive: true));
+      addTearDown(() => deleteTempDirBestEffort(tmp));
       final repo = SessionRepository(
         rootDir: tmp.path,
         storage: HomeStorage(testHomeStorage.context),
@@ -227,7 +227,7 @@ void main() {
     'createWorkspaceWithFirstSession dedup merge resets placement init in memory',
     () async {
       final tmp = await Directory.systemTemp.createTemp('catalog_mix_');
-      addTearDown(() => tmp.deleteSync(recursive: true));
+      addTearDown(() => deleteTempDirBestEffort(tmp));
       final repo = SessionRepository(
         rootDir: tmp.path,
         storage: HomeStorage(testHomeStorage.context),
@@ -270,7 +270,7 @@ void main() {
 
   test('renameSession bumps updatedAt in memory', () async {
     final tmp = await Directory.systemTemp.createTemp('catalog_rename_ts_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
+    addTearDown(() => deleteTempDirBestEffort(tmp));
     final repo = SessionRepository(
       rootDir: tmp.path,
       storage: HomeStorage(testHomeStorage.context),
