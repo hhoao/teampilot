@@ -30,6 +30,7 @@ enum _SkillMdStatus { loading, ready, missing, error }
 class _SkillDetailViewState extends State<SkillDetailView> {
   _SkillMdStatus _status = _SkillMdStatus.loading;
   String _body = '';
+  int _loadGeneration = 0;
 
   @override
   void initState() {
@@ -46,10 +47,11 @@ class _SkillDetailViewState extends State<SkillDetailView> {
   }
 
   Future<void> _load() async {
+    final generation = ++_loadGeneration;
     setState(() => _status = _SkillMdStatus.loading);
     try {
       final text = await widget.loadMarkdown(widget.skill);
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       if (text == null) {
         setState(() => _status = _SkillMdStatus.missing);
         return;
@@ -60,7 +62,7 @@ class _SkillDetailViewState extends State<SkillDetailView> {
       });
     } catch (e, st) {
       appLogger.w('[skills] read SKILL.md failed: $e', error: e, stackTrace: st);
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() => _status = _SkillMdStatus.error);
     }
   }
