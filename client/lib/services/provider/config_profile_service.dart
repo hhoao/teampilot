@@ -1258,6 +1258,25 @@ class ConfigProfileService implements ConfigProfileDelegate {
           )
         : null;
     final resourceEnvironment = <String, String>{};
+    // Cursor Windows junctions must exist before skill/plugin writers touch
+    // the isolated home; otherwise flush applies writes then removeRecursive
+    // of the canonical home for the junction, deleting the skill files.
+    final contributeSw = Stopwatch()..start();
+    final outcome = await staging.contributeSimpleSessionLaunch(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      member: member,
+      workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
+      busIdle: busIdle,
+      agentStatus: agentStatus,
+      resourceProviders: ResourceProviderSet.empty,
+    );
+    appLogger.d(
+      '[session-launch] stage-simple contribute '
+      'session=$sessionId ms=${contributeSw.elapsedMilliseconds} '
+      'ops=${manifest.entries.length}',
+    );
     final fsSw = Stopwatch()..start();
     final fsWarnings = await staging.applySimpleSessionFilesystem(
       workspaceId: workspaceId,
@@ -1285,22 +1304,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
     appLogger.d(
       '[session-launch] stage-simple apply-fs '
       'session=$sessionId ms=${fsSw.elapsedMilliseconds} '
-      'ops=${manifest.entries.length}',
-    );
-    final contributeSw = Stopwatch()..start();
-    final outcome = await staging.contributeSimpleSessionLaunch(
-      workspaceId: workspaceId,
-      sessionId: sessionId,
-      member: member,
-      workingDirectory: workingDirectory,
-      additionalDirectories: additionalDirectories,
-      busIdle: busIdle,
-      agentStatus: agentStatus,
-      resourceProviders: ResourceProviderSet.empty,
-    );
-    appLogger.d(
-      '[session-launch] stage-simple contribute '
-      'session=$sessionId ms=${contributeSw.elapsedMilliseconds} '
       'ops=${manifest.entries.length}',
     );
     return (

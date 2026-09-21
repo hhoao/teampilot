@@ -38,9 +38,10 @@ abstract final class WindowsCliRuntimeJunction {
 
   static bool needsJunction(
     WindowsCliRuntimeJunctionSpec spec,
-    String canonicalHome,
-  ) {
-    if (!Platform.isWindows) return false;
+    String canonicalHome, {
+    bool force = false,
+  }) {
+    if (!force && !Platform.isWindows) return false;
     final home = canonicalHome.trim();
     if (home.isEmpty) return false;
     return home.length + 1 + spec.maxPathSuffixFromHome > _windowsMaxPath;
@@ -84,11 +85,12 @@ abstract final class WindowsCliRuntimeJunction {
     required WindowsCliRuntimeJunctionSpec spec,
     required String canonicalHome,
     String? localAppDataRoot,
+    bool forceJunction = false,
   }) async {
     final canonical = fs.pathContext.normalize(
       fs.pathContext.absolute(canonicalHome.trim()),
     );
-    if (!needsJunction(spec, canonical)) {
+    if (!needsJunction(spec, canonical, force: forceJunction)) {
       await fs.ensureDir(canonical);
       await _removeMarkerIfPresent(fs, canonical);
       return canonical;
@@ -235,21 +237,49 @@ abstract final class WindowsCliRuntimeJunction {
     required String canonicalHome,
     required String physicalHome,
   }) async {
-    final canonicalStat = await filesystemDisk(fs).stat(canonicalHome);
-    if (!canonicalStat.exists || !canonicalStat.isDirectory) return;
+    final overlayStat = await fs.stat(canonicalHome);
+    if (!overlayStat.exists || !overlayStat.isDirectory) return;
     if (await _isJunctionTo(fs, canonicalHome, physicalHome)) return;
 
-    final probe = spec.occupancyProbeRelativePath?.trim() ?? '';
-    if (probe.isNotEmpty) {
-      final physicalProbe = fs.pathContext.join(physicalHome, probe);
-      if ((await fs.stat(physicalProbe)).exists) {
-        await fs.removeRecursive(canonicalHome);
-        return;
+    final diskStat = await filesystemDisk(fs).stat(canonicalHome);
+    if (diskStat.exists && diskStat.isDirectory) {
+      final probe = spec.occupancyProbeRelativePath?.trim() ?? '';
+      if (probe.isNotEmpty) {
+        final physicalProbe = fs.pathContext.join(physicalHome, probe);
+        if ((await fs.stat(physicalProbe)).exists) {
+          await fs.removeRecursive(canonicalHome);
+          return;
+        }
       }
+      await fs.copyTree(source: canonicalHome, destination: physicalHome);
+      await fs.removeRecursive(canonicalHome);
+      return;
     }
 
-    await fs.copyTree(source: canonicalHome, destination: physicalHome);
+    // Overlay-only files (staging) are not on disk — copyTree would throw
+    // at flush. Replay them as writes onto the physical home instead.
+    await _replayTree(fs, from: canonicalHome, to: physicalHome);
     await fs.removeRecursive(canonicalHome);
+  }
+
+  static Future<void> _replayTree(
+    Filesystem fs, {
+    required String from,
+    required String to,
+  }) async {
+    await fs.ensureDir(to);
+    for (final entry in await fs.listDir(from)) {
+      final source = fs.pathContext.join(from, entry.name);
+      final dest = fs.pathContext.join(to, entry.name);
+      if (entry.isDirectory) {
+        await _replayTree(fs, from: source, to: dest);
+        continue;
+      }
+      final bytes = await fs.readBytes(source);
+      if (bytes != null) {
+        await fs.writeBytes(dest, bytes);
+      }
+    }
   }
 
   static Future<void> _ensureJunction({

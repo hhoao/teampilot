@@ -43,10 +43,14 @@ class _DelayedLister implements WorktreeLister {
   _DelayedLister(this._list, this.delay);
   final List<GitWorktree> _list;
   final Duration delay;
+  DateTime? startedAt;
+  DateTime? finishedAt;
 
   @override
   Future<List<GitWorktree>> list(String repoPath) async {
+    startedAt = DateTime.now();
     await Future<void>.delayed(delay);
+    finishedAt = DateTime.now();
     return _list;
   }
 }
@@ -74,10 +78,14 @@ class _DelayedPrefsStore extends WorktreeUiPrefsStore {
   _DelayedPrefsStore({required this.delay, super.fs, super.pathOverride})
     : super(storage: fakeHomeStorage());
   final Duration delay;
+  DateTime? startedAt;
+  DateTime? finishedAt;
 
   @override
   Future<WorktreeUiPref?> prefsFor(String workspaceId) async {
+    startedAt = DateTime.now();
     await Future<void>.delayed(delay);
+    finishedAt = DateTime.now();
     return super.prefsFor(workspaceId);
   }
 }
@@ -157,11 +165,14 @@ void main() {
       prefsStore: store,
       storage: fakeHomeStorage(),
     );
-    final started = DateTime.now();
     await cubit.load('/repo');
-    final elapsed = DateTime.now().difference(started);
     expect(cubit.state.worktrees, hasLength(2));
-    expect(elapsed.inMilliseconds, lessThan(55));
+    expect(svc.startedAt, isNotNull);
+    expect(store.startedAt, isNotNull);
+    expect(svc.finishedAt, isNotNull);
+    expect(store.finishedAt, isNotNull);
+    expect(svc.startedAt!.isBefore(store.finishedAt!), isTrue);
+    expect(store.startedAt!.isBefore(svc.finishedAt!), isTrue);
   });
 
   test(

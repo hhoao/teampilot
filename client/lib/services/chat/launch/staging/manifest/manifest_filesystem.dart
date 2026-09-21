@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 
 import '../../../../io/filesystem.dart';
+import 'apply_plan.dart';
 import 'launch_manifest.dart';
 import 'launch_manifest_paths.dart';
 
@@ -18,6 +19,7 @@ class ManifestFilesystem implements Filesystem, OverlayFilesystem {
   }) : pathContext = pathContext ?? readDelegate.pathContext;
 
   final LaunchManifest manifest;
+  @override
   final Filesystem readDelegate;
 
   /// When set, only symlink targets under this root may be represented as
@@ -45,8 +47,11 @@ class ManifestFilesystem implements Filesystem, OverlayFilesystem {
     final normalizedTarget = pathContext.normalize(
       pathContext.absolute(effectiveTarget),
     );
-    return normalizedTarget == normalizedRoot ||
-        pathContext.isWithin(normalizedRoot, normalizedTarget);
+    if (normalizedTarget == normalizedRoot ||
+        pathContext.isWithin(normalizedRoot, normalizedTarget)) {
+      return true;
+    }
+    return isCliRuntimeHomePath(normalizedTarget, pathContext);
   }
 
   String _resolvedSymlinkTarget(String target, String linkPath) {
@@ -238,9 +243,10 @@ class ManifestFilesystem implements Filesystem, OverlayFilesystem {
   @override
   Future<void> writeString(String path, String content) async {
     path = _normalize(path);
-    await ensureDir(pathContext.dirname(path));
-    _overlayFiles[path] = content;
-    manifest.writeFile(path, content);
+    final dest = _resolveViaOverlaySymlink(path) ?? path;
+    await ensureDir(pathContext.dirname(dest));
+    _overlayFiles[dest] = content;
+    manifest.writeFile(dest, content);
   }
 
   @override
