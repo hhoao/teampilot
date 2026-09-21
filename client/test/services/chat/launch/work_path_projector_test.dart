@@ -383,4 +383,36 @@ void main() {
       expect(tree.entries.single.rel, ctx.join('.cursor', 'a.txt'));
     },
   );
+
+  test('copyTree source missing on disk becomes ensureDir of dest', () async {
+    final ctx = p.Context(style: p.Style.windows);
+    final sourceFs = InMemoryFilesystem(pathContext: ctx);
+    final workFs = InMemoryFilesystem(pathContext: ctx);
+    const workRoot = r'C:\tp\app-data';
+    final canonical = ctx.join(
+      workRoot,
+      r'workspace\workspaces\ws\sessions\s\runtime\cursor\home',
+    );
+    final physical = ctx.join(
+      r'C:\Users\RUNNER~1\AppData\Local\com.hhoa.teampilot',
+      WindowsCliRuntimeJunction.runtimeHomesDirName,
+      'cursor',
+      '8f573239deadbeef',
+      'home',
+    );
+    final manifest = LaunchManifest()
+      ..copyTree(source: canonical, destination: physical);
+    final built = await buildApplyPlan(
+      manifest: manifest,
+      sourceFs: sourceFs,
+      workFs: workFs,
+      homeRoot: workRoot,
+      workRoot: workRoot,
+    );
+    expect(built.plan.ops.single, isA<ApplyEnsureDir>());
+    expect(
+      (built.plan.ops.single as ApplyEnsureDir).path,
+      ctx.normalize(physical),
+    );
+  });
 }

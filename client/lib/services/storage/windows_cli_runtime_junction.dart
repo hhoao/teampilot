@@ -235,7 +235,7 @@ abstract final class WindowsCliRuntimeJunction {
     required String canonicalHome,
     required String physicalHome,
   }) async {
-    final canonicalStat = await fs.stat(canonicalHome);
+    final canonicalStat = await filesystemDisk(fs).stat(canonicalHome);
     if (!canonicalStat.exists || !canonicalStat.isDirectory) return;
     if (await _isJunctionTo(fs, canonicalHome, physicalHome)) return;
 

@@ -9,7 +9,7 @@ import 'launch_manifest_paths.dart';
 /// [Filesystem] that records mutations into [manifest] and reads through
 /// [readDelegate]. Destructive ops are staged only — [readDelegate] is never
 /// mutated (safe when it is the control-plane home catalog during off-home prep).
-class ManifestFilesystem implements Filesystem {
+class ManifestFilesystem implements Filesystem, OverlayFilesystem {
   ManifestFilesystem({
     required this.manifest,
     required this.readDelegate,

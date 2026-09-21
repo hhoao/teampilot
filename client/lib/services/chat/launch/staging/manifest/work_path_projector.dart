@@ -64,14 +64,14 @@ final class _WorkPathProjector {
       final entry = manifest.entries[entryIndex];
       switch (entry) {
         case ManifestEnsureDir(:final path):
+          // Host dirs outside the work plane (/var, USERPROFILE, HOME) are
+          // already on the machine. 8.3 vs long paths on Windows make the
+          // ancestor check miss; skipping is the work-plane no-op.
           final projected = _project(path);
           if (projected != null) {
             _assertPath(projected);
             _ops.add(ApplyEnsureDir(projected));
           }
-          // Host dirs outside the work plane (/var, USERPROFILE, HOME) are
-          // already on the machine. 8.3 vs long paths on Windows make the
-          // ancestor check miss; skipping is the work-plane no-op.
         case ManifestWriteFile(:final path, :final content):
           await _addWriteFile(path, content);
         case ManifestRemoveRecursive(:final path):
@@ -258,6 +258,13 @@ final class _WorkPathProjector {
 
     final sourceStat = await sourceFs.stat(source);
     if (!sourceStat.isDirectory) {
+      // Staging overlays (Windows CLI junctions) record copyTree of a home
+      // that exists only in the overlay. Treat a missing disk source as an
+      // empty tree — later writeFile ops in the same plan still apply.
+      if (!sourceStat.exists) {
+        _ops.add(ApplyEnsureDir(projectedDest));
+        return;
+      }
       throw StateError('copy tree source missing: $source');
     }
     final treeEntries = <ApplyTreeEntry>[];

@@ -3,6 +3,7 @@ import 'package:teampilot/services/chat/launch/staging/manifest/launch_manifest.
 import 'package:teampilot/services/chat/launch/staging/manifest/manifest_executor.dart';
 import 'package:teampilot/services/chat/launch/staging/manifest/manifest_filesystem.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_member_home_passthrough.dart';
+import 'package:teampilot/services/io/filesystem.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 
@@ -88,6 +89,8 @@ void main() {
       await staging.ensureDir(fresh);
 
       expect(await staging.listDir(fresh), isEmpty);
+      expect((await staging.stat(fresh)).isDirectory, isTrue);
+      expect((await filesystemDisk(staging).stat(fresh)).exists, isFalse);
     });
 
     test('copyTree is readable back within the same staging pass', () async {
