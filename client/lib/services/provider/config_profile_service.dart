@@ -52,6 +52,7 @@ import '../provider/workspace_trust_provisioner.dart';
 import '../cli/claude/team_roster_service.dart';
 import '../cli/cursor/provider/cursor_workspace_warm_tier.dart';
 import '../cli/cursor/provider/cursor_home_layout.dart';
+import '../cli/cursor/provider/cursor_windows_home_junction.dart';
 import '../cli/registry/capabilities/cli_session_capability.dart';
 import '../storage/app_paths.dart';
 import '../storage/home_storage.dart';
@@ -1258,25 +1259,15 @@ class ConfigProfileService implements ConfigProfileDelegate {
           )
         : null;
     final resourceEnvironment = <String, String>{};
-    // Cursor Windows junctions must exist before skill/plugin writers touch
-    // the isolated home; otherwise flush applies writes then removeRecursive
-    // of the canonical home for the junction, deleting the skill files.
-    final contributeSw = Stopwatch()..start();
-    final outcome = await staging.contributeSimpleSessionLaunch(
-      workspaceId: workspaceId,
-      sessionId: sessionId,
-      member: member,
-      workingDirectory: workingDirectory,
-      additionalDirectories: additionalDirectories,
-      busIdle: busIdle,
-      agentStatus: agentStatus,
-      resourceProviders: ResourceProviderSet.empty,
-    );
-    appLogger.d(
-      '[session-launch] stage-simple contribute '
-      'session=$sessionId ms=${contributeSw.elapsedMilliseconds} '
-      'ops=${manifest.entries.length}',
-    );
+    // Cursor Windows: junction the isolated home before skill/plugin writers
+    // so overlay writes follow the symlink. Do not run full contribute first —
+    // writeMemberProfiles must inherit enabledPlugins after plugin provision.
+    if (simpleMemberHome != null) {
+      await CursorWindowsHomeJunction.ensureAgentHome(
+        fs: stagingFs,
+        canonicalHome: simpleMemberHome,
+      );
+    }
     final fsSw = Stopwatch()..start();
     final fsWarnings = await staging.applySimpleSessionFilesystem(
       workspaceId: workspaceId,
@@ -1304,6 +1295,22 @@ class ConfigProfileService implements ConfigProfileDelegate {
     appLogger.d(
       '[session-launch] stage-simple apply-fs '
       'session=$sessionId ms=${fsSw.elapsedMilliseconds} '
+      'ops=${manifest.entries.length}',
+    );
+    final contributeSw = Stopwatch()..start();
+    final outcome = await staging.contributeSimpleSessionLaunch(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      member: member,
+      workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
+      busIdle: busIdle,
+      agentStatus: agentStatus,
+      resourceProviders: ResourceProviderSet.empty,
+    );
+    appLogger.d(
+      '[session-launch] stage-simple contribute '
+      'session=$sessionId ms=${contributeSw.elapsedMilliseconds} '
       'ops=${manifest.entries.length}',
     );
     return (
