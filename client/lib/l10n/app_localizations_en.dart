@@ -4097,6 +4097,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get skillsCardDetails => 'Details';
 
   @override
+  String get skillsCardView => 'View';
+
+  @override
+  String get skillsDetailMissing => 'No SKILL.md found for this skill.';
+
+  @override
+  String get skillsDetailReadError => 'Could not read SKILL.md.';
+
+  @override
   String get skillsCardInstalled => 'Installed';
 
   @override
