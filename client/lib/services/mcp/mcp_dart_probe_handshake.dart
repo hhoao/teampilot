@@ -18,6 +18,30 @@ import 'smithery_mcp_auth.dart';
 
 const _clientInfo = Implementation(name: 'teampilot', version: '1.0.0');
 
+/// True when a handshake error means the remote requires auth.
+///
+/// mcp_dart 2.4.2 [StreamableHttpClientTransport.send] with no authProvider
+/// throws [McpError] code 0 (`Error POSTing to endpoint (HTTP 401|403): …`),
+/// not [UnauthorizedError] / [StreamableHttpError]. Match that prefix only;
+/// do not log [McpError.message] (it may include the response body).
+bool mcpProbeErrorNeedsAuth(Object error) {
+  if (error is UnauthorizedError) return true;
+  if (error is StreamableHttpError) {
+    return error.code == 401 || error.code == 403;
+  }
+  // Catalog still has `type: sse`.
+  // ignore: deprecated_member_use
+  if (error is SseClientError) {
+    return error.code == 401 || error.code == 403;
+  }
+  if (error is McpError && error.code == 0) {
+    final message = error.message;
+    return message.startsWith('Error POSTing to endpoint (HTTP 401)') ||
+        message.startsWith('Error POSTing to endpoint (HTTP 403)');
+  }
+  return false;
+}
+
 /// Production [McpProbeHandshake] using mcp_dart [McpClient].
 class McpDartProbeHandshake implements McpProbeHandshake {
   McpDartProbeHandshake({
@@ -178,26 +202,13 @@ class McpDartProbeHandshake implements McpProbeHandshake {
   }
 
   McpHandshakeResult _resultForError(String serverId, Object error) {
-    if (_isNeedsAuth(error)) {
+    if (mcpProbeErrorNeedsAuth(error)) {
       return const McpHandshakeResult.fail(status: McpProbeStatus.needsAuth);
     }
     appLogger.w(
       '[mcp-probe-handshake] $serverId failed (${error.runtimeType})',
     );
     return const McpHandshakeResult.fail(status: McpProbeStatus.offline);
-  }
-
-  bool _isNeedsAuth(Object error) {
-    if (error is UnauthorizedError) return true;
-    if (error is StreamableHttpError) {
-      return error.code == 401 || error.code == 403;
-    }
-    // Catalog still has `type: sse`.
-    // ignore: deprecated_member_use
-    if (error is SseClientError) {
-      return error.code == 401 || error.code == 403;
-    }
-    return false;
   }
 
   Future<void> _release(String probeKey, McpClient client) async {
