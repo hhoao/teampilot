@@ -329,6 +329,30 @@ void main() {
     expect(afterTurn, isEmpty);
   });
 
+  test('operator stdin inject uses the prompt-delivery coordinator', () async {
+    final shell = await ConnectedRecordingShell.connect();
+    addTearDown(shell.dispose);
+    final afterTurn = <String>[];
+    final commands = _RecordingPromptCommands();
+    final harness = _DeliveryHarness.connected(
+      shell: shell,
+      commands: commands,
+      onAfterTurnLatched: (sessionId, memberId) {
+        afterTurn.add('$sessionId:$memberId');
+      },
+    );
+
+    await harness.delivery.deliverMemberStdin(
+      's',
+      'm',
+      'Start idle loop.',
+      automation: true,
+    );
+
+    expect(commands.submittedPrompts, ['Start idle loop.']);
+    expect(afterTurn, ['s:m']);
+  });
+
   test(
     'hook-confirmed submit latches the turn but drops the obsolete CR',
     () async {

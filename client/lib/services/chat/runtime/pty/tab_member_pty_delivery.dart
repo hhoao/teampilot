@@ -178,6 +178,18 @@ final class TabMemberPtyDelivery {
           return;
         }
         if (!_beginMailDelivery(sessionId, memberId)) return;
+      } else if (isOperatorTurn) {
+        // Operator PTY inject (worker kickoff, landing stdin) must use the
+        // same hook-ack coordinator as History compose. MemberPtyInjectService
+        // never receives isAcked, so hookSubmitAck CLIs time out as crStuck
+        // even after UserPromptSubmit already committed the prompt.
+        await deliverUserCommandToMember(
+          sessionId,
+          memberId,
+          trimmed,
+          directToPty: true,
+        );
+        return;
       }
       await _deliverFullScreen(
         sessionId: sessionId,
