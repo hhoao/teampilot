@@ -475,6 +475,59 @@ void main() {
         expect(port.crCount, greaterThanOrEqualTo(1));
       },
     );
+
+    test(
+      'paste baseline polls after clear until leftover composer text leaves the probe',
+      () async {
+        // Production: drainForTest only applies PTY bytes already in the
+        // buffer. Ctrl-U's redraw can arrive after the first post-clear
+        // snapshot, so leftover "A" is still on the composer row and a
+        // same-row paste is rejected as stale-baseline (real Cursor
+        // AskQuestion log: needle="A" pre=34 anchor=34).
+        final polling = FullscreenPtyAutomation(
+          timing: const PtyAutomationTiming(
+            afterClear: Duration.zero,
+            afterPaste: Duration.zero,
+            afterCr: Duration.zero,
+            afterReinject: Duration.zero,
+            crMaxAttempts: 2,
+            reinjectMaxAttempts: 1,
+            nudgeMaxAttempts: 2,
+            scanRows: 24,
+            pollTimeout: Duration(milliseconds: 50),
+            pollInterval: Duration(milliseconds: 1),
+            stagingMaxAttempts: 1,
+            stagingRetryInterval: Duration.zero,
+            sendAckTimeout: Duration.zero,
+          ),
+        );
+        final machine = FullscreenPtySubmission(
+          budget: const FullscreenPtySubmissionBudget(stagingMaxAttempts: 1),
+          now: DateTime.now,
+        )..begin();
+        final port = RowAwareFakeFullscreenPtyDeliveryPort(
+          laggingProbe: true,
+          probeLagAfterClear: 1,
+        )..staged = 'A';
+
+        final outcome = await polling.continueSubmission(
+          machine,
+          port: port,
+          text: 'A',
+          pasteSettle: Duration.zero,
+        );
+
+        expect(
+          outcome,
+          FullscreenPtyDeliveryOutcome.submitted,
+          reason:
+              'baseline must wait until leftover composer text leaves the '
+              'probe, not record the first post-clear snapshot',
+        );
+        expect(port.pasteCount, 1);
+        expect(port.crCount, greaterThanOrEqualTo(1));
+      },
+    );
   });
 
   test('isTextVisible uses PtyAutomationNeedle', () {
@@ -741,6 +794,9 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
   int get cursorRow => _inner.cursorRow;
 
   @override
+  int get pasteZoneComposerRow => _inner.pasteZoneComposerRow;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => _inner.crAckConfig;
 
   @override
@@ -817,6 +873,9 @@ final class _CursorTranscriptAfterSubmitPort
 
   @override
   int get cursorRow => -1;
+
+  @override
+  int get pasteZoneComposerRow => -1;
 
   @override
   FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
@@ -928,6 +987,9 @@ final class _ComposerMovesDownStuckButCommittedPort
   int get cursorRow => -1;
 
   @override
+  int get pasteZoneComposerRow => -1;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.composerMovesDown,
   );
@@ -1027,6 +1089,9 @@ final class _ComposerMovesDownStuckStagedThenAckPort
   int get cursorRow => -1;
 
   @override
+  int get pasteZoneComposerRow => -1;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.composerMovesDown,
   );
@@ -1122,6 +1187,9 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
 
   @override
   int get cursorRow => -1;
+
+  @override
+  int get pasteZoneComposerRow => -1;
 
   @override
   FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
@@ -1225,6 +1293,9 @@ final class _AnchorCellStuckButHookAckedPort
   int get cursorRow => -1;
 
   @override
+  int get pasteZoneComposerRow => -1;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.anchorCellClears,
   );
@@ -1318,6 +1389,9 @@ final class _MentionPopupSwallowsCrPort implements FullscreenPtyDeliveryPort {
 
   @override
   int get cursorRow => -1;
+
+  @override
+  int get pasteZoneComposerRow => -1;
 
   @override
   FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
@@ -1419,6 +1493,9 @@ final class _AbortedAfterHookAckPort implements FullscreenPtyDeliveryPort {
   int get cursorRow => -1;
 
   @override
+  int get pasteZoneComposerRow => -1;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.anchorCellClears,
   );
@@ -1504,6 +1581,9 @@ final class _PaintWakePort implements FullscreenPtyDeliveryPort {
 
   @override
   int get cursorRow => -1;
+
+  @override
+  int get pasteZoneComposerRow => -1;
 
   @override
   FullscreenCrAckConfig get crAckConfig =>
@@ -1596,6 +1676,9 @@ final class _LateCrAckPaintPort implements FullscreenPtyDeliveryPort {
 
   @override
   int get cursorRow => -1;
+
+  @override
+  int get pasteZoneComposerRow => -1;
 
   @override
   FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(

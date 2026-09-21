@@ -12,6 +12,11 @@ abstract interface class FullscreenPtyDeliveryPort {
   /// Diagnostic aid for paste ACK misses (`[team-bus] pty-stage-miss`).
   int get cursorRow;
 
+  /// Bottom row of the paste-ACK scan (composer, above [FullscreenCrAckConfig.pasteZoneBottomPad]).
+  /// `-1` when unknown. Cursor leftover composer text sits here; transcript
+  /// echoes are above it.
+  int get pasteZoneComposerRow;
+
   FullscreenCrAckConfig get crAckConfig;
 
   Future<void> syncDisplayGrid();

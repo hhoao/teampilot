@@ -302,22 +302,7 @@ class FullscreenPtyAutomation {
     await port.clearStagedInput(canExecute: canExecute);
     await Future<void>.delayed(_timing.afterClear);
     final needle = PtyAutomationNeedle.forText(text);
-    // Paste-denominator baseline (cursor): text still present after the clear
-    // is an earlier identical transcript echo. Newly pasted text must appear
-    // STRICTLY below that row — a fresh paste lands in the bottom-pinned input
-    // box, and any match at or above the baseline is the old copy, not this
-    // message. Other CLIs use the cursor input zone and need no baseline.
-    //
-    // Drain AFTER clear: Ctrl-U updates the live TUI immediately, but the
-    // probe grid lags until [FullscreenPtyDeliveryPort.syncDisplayGrid]
-    // (`drainForTest`). A pre-clear snapshot still holds leftover composer
-    // text, so a same-row re-paste (e.g. needle "A") is rejected forever as
-    // stale-baseline.
-    FullscreenPromptAnchor? preBaseline;
-    if (port.crAckConfig.pasteBaseline) {
-      await port.syncDisplayGrid();
-      preBaseline = _locatePasteAck(port, needle);
-    }
+    final preBaseline = await _capturePasteBaseline(port, needle);
     await port.pasteText(text, canExecute: canExecute);
     final anchor = await _pollForNeedle(
       port,
@@ -681,6 +666,62 @@ class FullscreenPtyAutomation {
         : pasteSettle;
     if (extra <= Duration.zero) return;
     await Future<void>.delayed(extra);
+  }
+
+  /// Paste-denominator baseline (cursor): text still present after the clear
+  /// is an earlier identical transcript echo. Newly pasted text must appear
+  /// STRICTLY below that row — a fresh paste lands in the bottom-pinned input
+  /// box, and any match at or above the baseline is the old copy, not this
+  /// message. Other CLIs use the cursor input zone and need no baseline.
+  ///
+  /// Drain AFTER clear, then poll until leftover composer text leaves that
+  /// row. `syncDisplayGrid` (`drainForTest`) only applies PTY bytes already
+  /// in the buffer — Ctrl-U's redraw can arrive after the first snapshot.
+  /// Recording baseline on that snapshot (e.g. needle "A" still at the
+  /// composer) makes a same-row re-paste look like the old copy forever.
+  Future<FullscreenPromptAnchor?> _capturePasteBaseline(
+    FullscreenPtyDeliveryPort port,
+    String needle,
+  ) async {
+    if (!port.crAckConfig.pasteBaseline) return null;
+    await port.syncDisplayGrid();
+    var hit = _locatePasteAck(port, needle);
+    final composerRow = port.pasteZoneComposerRow;
+    final timeout = _pasteBaselineClearBudget();
+    if (hit == null ||
+        composerRow < 0 ||
+        hit.row != composerRow ||
+        timeout <= Duration.zero) {
+      return hit;
+    }
+    final deadline = DateTime.now().add(timeout);
+    while (true) {
+      if (hit == null || hit.row < composerRow) return hit;
+      if (port.isAborted || !DateTime.now().isBefore(deadline)) return hit;
+      final remaining = deadline.difference(DateTime.now());
+      if (remaining <= Duration.zero) return hit;
+      final slice =
+          _timing.pollInterval <= Duration.zero ||
+              remaining < _timing.pollInterval
+          ? remaining
+          : _timing.pollInterval;
+      await Future.any<void>([
+        port.waitForPaint(timeout: slice),
+        if (_timing.pollInterval > Duration.zero) Future<void>.delayed(slice),
+      ]);
+      await port.syncDisplayGrid();
+      hit = _locatePasteAck(port, needle);
+    }
+  }
+
+  /// Cap on waiting for Ctrl-U to leave the composer before recording
+  /// baseline. Paste ACK uses the full [PtyAutomationTiming.pollTimeout]
+  /// (MCP/plugin repaint); clear-visible is a short PTY round-trip.
+  Duration _pasteBaselineClearBudget() {
+    final timeout = _timing.pollTimeout;
+    if (timeout <= Duration.zero) return Duration.zero;
+    const cap = Duration(seconds: 1);
+    return timeout < cap ? timeout : cap;
   }
 
   /// Polls the mirror grid after paste — PTY echo and [syncDisplayGrid] can lag

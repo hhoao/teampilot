@@ -18,6 +18,9 @@ final class TerminalScreenProbeController {
   /// (stale/misplaced cursor) never ACKs.
   int get cursorRow => probe.terminalScreenGrid(engine.grid).cursorRow;
 
+  int pasteZoneComposerRow({int bottomPad = 0}) =>
+      probe.pasteZoneComposerRow(_screenGrid, bottomPad: bottomPad);
+
   Future<void> syncDisplayGrid() => engine.drainForTest();
 
   probe.FullscreenPromptAnchor? locateFullscreenPromptNeedle(

@@ -47,6 +47,9 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   int get cursorRow => -1;
 
   @override
+  int get pasteZoneComposerRow => -1;
+
+  @override
   Future<void> syncDisplayGrid() async {}
 
   @override
@@ -149,6 +152,7 @@ final class RowAwareFakeFullscreenPtyDeliveryPort
     this.staleEcho,
     this.staleRow = 3,
     this.laggingProbe = false,
+    this.probeLagAfterClear = 0,
   });
 
   @override
@@ -161,6 +165,11 @@ final class RowAwareFakeFullscreenPtyDeliveryPort
   /// [syncDisplayGrid] — the live TUI (clear/paste) can move ahead of the
   /// probe grid, matching production `drainForTest` lag.
   final bool laggingProbe;
+
+  /// Extra post-clear [syncDisplayGrid] calls that still show leftover
+  /// composer text. Models Cursor's Ctrl-U redraw arriving after the first
+  /// drain (PTY round-trip), not just Dart mirror lag.
+  final int probeLagAfterClear;
   String? staged; // freshly pasted text
   int stagedRow = 5;
   int pasteCount = 0;
@@ -170,6 +179,8 @@ final class RowAwareFakeFullscreenPtyDeliveryPort
   int _probeStagedRow = 5;
   String? _probeEcho;
   int _probeEchoRow = 3;
+  var _cleared = false;
+  var _syncsAfterClear = 0;
 
   @override
   bool get isAborted => false;
@@ -181,8 +192,17 @@ final class RowAwareFakeFullscreenPtyDeliveryPort
   int get cursorRow => -1;
 
   @override
+  int get pasteZoneComposerRow => stagedRow;
+
+  @override
   Future<void> syncDisplayGrid() async {
     if (!laggingProbe) return;
+    if (staged == null && _probeStaged != null && _cleared) {
+      _syncsAfterClear++;
+      if (_syncsAfterClear <= probeLagAfterClear) {
+        return;
+      }
+    }
     _probeStaged = staged;
     _probeStagedRow = stagedRow;
     _probeEcho = staleEcho;
@@ -271,6 +291,7 @@ final class RowAwareFakeFullscreenPtyDeliveryPort
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
     clearCount++;
     staged = null;
+    _cleared = true;
   }
 
   @override

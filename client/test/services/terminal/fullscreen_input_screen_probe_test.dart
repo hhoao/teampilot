@@ -101,6 +101,11 @@ void main() {
       );
       expect(anchor3, isNotNull);
       expect(anchor3!.row, 8);
+      expect(
+        pasteZoneComposerRow(grid, bottomPad: 3),
+        8,
+        reason: 'composer is lastContent (cwd r11) minus pad 3',
+      );
     },
   );
 

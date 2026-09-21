@@ -167,7 +167,7 @@ abort（shell 断开 / fence 关闭）从任意非终态 → aborted
 
 ### 4.4 粘贴前的清理
 
-`_stagingOnce` 粘贴前先 `clearStagedInput`（清空输入框残留），使 resume/重试时输入框里的旧 staged 不会与本次粘贴混淆。粘贴后只需在光标输入区找到 needle 即锁定；**不再维护"基线行号"**——光标输入区本身已把状态行/历史 echo 排除在外。
+`_stagingOnce` 粘贴前先 `clearStagedInput`（清空输入框残留），使 resume/重试时输入框里的旧 staged 不会与本次粘贴混淆。Cursor 的 paste-denominator 基线在 clear 之后 **轮询** `syncDisplayGrid`，直到 composer 行上的 leftover needle 消失（Ctrl-U 的重绘可能晚于第一次 drain），再记录 transcript echo 行号；粘贴后命中必须严格低于该基线。
 
 ## 5. 相关文件
 

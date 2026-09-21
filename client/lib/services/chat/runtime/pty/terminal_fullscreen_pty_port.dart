@@ -37,6 +37,10 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
   int get cursorRow => _probe.cursorRow;
 
   @override
+  int get pasteZoneComposerRow =>
+      _probe.pasteZoneComposerRow(bottomPad: _crAckConfig.pasteZoneBottomPad);
+
+  @override
   FullscreenCrAckConfig get crAckConfig => _crAckConfig;
 
   @override

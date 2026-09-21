@@ -5,6 +5,7 @@
 /// applied on post-frame drains, so a stale mirror misses pasted CJK text even
 /// when the on-screen painter already shows it.
 library;
+
 import 'fullscreen_cr_ack_config.dart';
 import 'pty_automation_needle.dart';
 
@@ -90,6 +91,15 @@ int _lastContentRow(TerminalScreenGrid grid) {
     if (!_rowIsBlank(grid, r)) return r;
   }
   return -1;
+}
+
+/// First (bottom) row of the paste-ACK scan — the composer line above the
+/// padded footer. `-1` when the grid is empty.
+int pasteZoneComposerRow(TerminalScreenGrid grid, {int bottomPad = 0}) {
+  final lastContent = _lastContentRow(grid);
+  if (lastContent < 0) return -1;
+  final row = lastContent - bottomPad;
+  return row < 0 ? -1 : row;
 }
 
 /// Locate [needle] in the **cursor input zone**: the cursor row plus a small
