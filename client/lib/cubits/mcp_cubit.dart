@@ -193,8 +193,8 @@ class McpCubit extends Cubit<McpState> {
 
   @override
   Future<void> close() async {
+    await super.close();
     await _probe.close();
-    return super.close();
   }
 
   /// TeamHub clone path: upsert one template MCP dep and refresh cubit state.

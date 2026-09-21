@@ -18,10 +18,10 @@ void main() {
     final fake = FakeMcpProbeHandshake();
     final service = McpServerProbeService(handshake: fake);
     final snaps = <String, McpProbeSnapshot>{};
-    await service.probeEnabled(
-      [server('a'), server('b', enabled: false)],
-      onSnapshot: (id, snap) => snaps[id] = snap,
-    );
+    await service.probeEnabled([
+      server('a'),
+      server('b', enabled: false),
+    ], onSnapshot: (id, snap) => snaps[id] = snap);
     expect(fake.calledIds, ['a']);
     expect(snaps['a']!.status, McpProbeStatus.online);
     expect(snaps.containsKey('b'), isFalse);
@@ -81,19 +81,56 @@ void main() {
     expect(snaps.length, 4);
   });
 
-  test('collectListedTools follows nextCursor then stops at maxPages', () async {
-    var page = 0;
-    final tools = await collectListedTools(
-      maxPages: 2,
-      listPage: (cursor) async {
-        page++;
-        return (
-          tools: [McpProbeTool(name: 't$page')],
-          nextCursor: page == 1 ? 'next' : 'still-more',
-        );
-      },
+  test('cancel aborts the live probe key, not a bumped generation', () async {
+    final fake = FakeMcpProbeHandshake(delay: const Duration(milliseconds: 80));
+    final service = McpServerProbeService(
+      handshake: fake,
+      timeout: const Duration(seconds: 2),
     );
-    expect(tools.map((t) => t.name).toList(), ['t1', 't2']);
-    expect(page, 2);
+    final pending = service.probeOne(server('x'), onSnapshot: (_, __) {});
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    service.cancel('x');
+    await pending;
+    expect(fake.abortedKeys, ['x#1']);
   });
+
+  test('timeout awaits abort before releasing the concurrency slot', () async {
+    final fake = FakeMcpProbeHandshake(
+      delay: const Duration(milliseconds: 400),
+      abortDelay: const Duration(milliseconds: 80),
+    );
+    final service = McpServerProbeService(
+      handshake: fake,
+      maxConcurrent: 1,
+      timeout: const Duration(milliseconds: 20),
+    );
+    final first = service.probeOne(server('a'), onSnapshot: (_, __) {});
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    final second = service.probeOne(server('b'), onSnapshot: (_, __) {});
+    await Future.wait([first, second]);
+    expect(fake.abortFinishedAt['a#1'], isNotNull);
+    expect(
+      fake.listToolsStartedAt['b']!.isBefore(fake.abortFinishedAt['a#1']!),
+      isFalse,
+    );
+  });
+
+  test(
+    'collectListedTools follows nextCursor then stops at maxPages',
+    () async {
+      var page = 0;
+      final tools = await collectListedTools(
+        maxPages: 2,
+        listPage: (cursor) async {
+          page++;
+          return (
+            tools: [McpProbeTool(name: 't$page')],
+            nextCursor: page == 1 ? 'next' : 'still-more',
+          );
+        },
+      );
+      expect(tools.map((t) => t.name).toList(), ['t1', 't2']);
+      expect(page, 2);
+    },
+  );
 }

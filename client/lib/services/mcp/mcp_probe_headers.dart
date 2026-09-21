@@ -23,10 +23,12 @@ McpProbeAuthDecision mcpProbeAuthDecision(McpProbeHeaderInput input) {
   if ((input.oauthAccessToken ?? '').trim().isNotEmpty) {
     return McpProbeAuthDecision.proceed;
   }
-  if (SmitheryMcpAuth.shouldApplyCatalogBearer(input.spec) &&
-      (input.smitheryApiToken ?? '').trim().isNotEmpty) {
-    return McpProbeAuthDecision.proceed;
-  }
+  final authorization =
+      buildMcpProbeHeaders(
+        input,
+      )[SmitheryMcpAuth.authorizationHeader]?.trim() ??
+      '';
+  if (authorization.isNotEmpty) return McpProbeAuthDecision.proceed;
   return McpProbeAuthDecision.needsAuth;
 }
 

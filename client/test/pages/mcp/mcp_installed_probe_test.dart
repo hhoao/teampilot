@@ -9,6 +9,7 @@ import 'package:teampilot/models/mcp_probe_snapshot.dart';
 import 'package:teampilot/models/mcp_server.dart';
 import 'package:teampilot/pages/mcp/mcp_installed_section.dart';
 import 'package:teampilot/pages/mcp/mcp_management_page.dart';
+import 'package:teampilot/pages/mcp/mcp_tools_dialog.dart';
 import 'package:teampilot/theme/team_pilot_toast_config.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
@@ -125,6 +126,19 @@ void main() {
     expect(find.byKey(const Key('mcp-probe-status-fetch')), findsNothing);
   });
 
+  testWidgets('disabled fetch row does not open the tools dialog', (
+    tester,
+  ) async {
+    await cubit.upsert(fetchServer.copyWith(enabled: false));
+    await pumpListPage(tester);
+
+    await tester.tap(find.text('Fetch'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(McpToolsDialog), findsNothing);
+    expect(find.text('Fetch tools'), findsNothing);
+  });
+
   testWidgets('tapping the name opens tools dialog, not the editor', (
     tester,
   ) async {
@@ -152,9 +166,8 @@ void main() {
     tester,
   ) async {
     final handshake = FakeMcpProbeHandshake(
-      resultBuilder: (server) => McpHandshakeResult.ok(const [
-        McpProbeTool(name: 'health_check'),
-      ]),
+      resultBuilder: (server) =>
+          McpHandshakeResult.ok(const [McpProbeTool(name: 'health_check')]),
     );
     await cubit.close();
     cubit = McpCubit(

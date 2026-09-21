@@ -42,6 +42,9 @@ bool mcpProbeErrorNeedsAuth(Object error) {
   return false;
 }
 
+/// Servers that connect without a `tools` capability are Online with [].
+bool mcpProbeShouldListTools(ServerCapabilities? caps) => caps?.tools != null;
+
 /// Production [McpProbeHandshake] using mcp_dart [McpClient].
 class McpDartProbeHandshake implements McpProbeHandshake {
   McpDartProbeHandshake({
@@ -76,15 +79,21 @@ class McpDartProbeHandshake implements McpProbeHandshake {
       return const McpHandshakeResult.fail(status: McpProbeStatus.offline);
     }
 
-    final headerInput = await _headerInput(server.configKey, spec);
-    if (mcpProbeAuthDecision(headerInput) == McpProbeAuthDecision.needsAuth) {
-      return const McpHandshakeResult.fail(status: McpProbeStatus.needsAuth);
-    }
-
     final client = McpClient(_clientInfo);
     _live[probeKey] = client;
     try {
+      final headerInput = await _headerInput(server.configKey, spec);
+      if (!identical(_live[probeKey], client)) {
+        return const McpHandshakeResult.fail(status: McpProbeStatus.offline);
+      }
+      if (mcpProbeAuthDecision(headerInput) == McpProbeAuthDecision.needsAuth) {
+        return const McpHandshakeResult.fail(status: McpProbeStatus.needsAuth);
+      }
+
       await client.connect(_transportFor(parsed, spec, headerInput));
+      if (!mcpProbeShouldListTools(client.getServerCapabilities())) {
+        return const McpHandshakeResult.ok([]);
+      }
       final tools = await collectListedTools(
         listPage: (cursor) => _listPage(client, cursor),
       );

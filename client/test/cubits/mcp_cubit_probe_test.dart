@@ -66,7 +66,11 @@ void main() {
     await cubit.upsert(server());
     final pending = cubit.probeOne('a');
     await cubit.close();
+    final probesAfterClose = Map<String, McpProbeSnapshot>.from(
+      cubit.state.probes,
+    );
     await pending;
     expect(cubit.isClosed, isTrue);
+    expect(cubit.state.probes, probesAfterClose);
   });
 }

@@ -58,4 +58,50 @@ void main() {
     );
     expect(decision, McpProbeAuthDecision.needsAuth);
   });
+
+  test(
+    'catalog Authorization proceeds when oauth applicable without token',
+    () {
+      final decision = mcpProbeAuthDecision(
+        const McpProbeHeaderInput(
+          spec: {
+            'type': 'http',
+            'url': 'https://example.com/mcp',
+            'headers': {'Authorization': 'Bearer catalog_tok'},
+          },
+          oauthApplicable: true,
+        ),
+      );
+      expect(decision, McpProbeAuthDecision.proceed);
+    },
+  );
+
+  test('env bearer proceeds when oauth applicable without token', () {
+    final decision = mcpProbeAuthDecision(
+      McpProbeHeaderInput(
+        spec: {
+          'type': 'http',
+          'url': 'https://example.com/mcp',
+          'bearer_token_env_var': 'TEAMPILOT_MCP_BEARER_X',
+        },
+        oauthApplicable: true,
+        readEnv: (name) => name == 'TEAMPILOT_MCP_BEARER_X' ? 'envtok' : null,
+      ),
+    );
+    expect(decision, McpProbeAuthDecision.proceed);
+  });
+
+  test(
+    'smithery catalog bearer proceeds when oauth applicable without token',
+    () {
+      final decision = mcpProbeAuthDecision(
+        const McpProbeHeaderInput(
+          spec: {'type': 'http', 'url': 'https://server.smithery.ai/@org/srv'},
+          oauthApplicable: true,
+          smitheryApiToken: 'sm_1',
+        ),
+      );
+      expect(decision, McpProbeAuthDecision.proceed);
+    },
+  );
 }

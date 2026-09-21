@@ -22,7 +22,8 @@ Future<bool> Function({
   required BuildContext context,
   required McpServer server,
   required String configDir,
-})? debugShowMcpOAuthConnectDialog;
+})?
+debugShowMcpOAuthConnectDialog;
 
 class McpInstalledSection extends StatefulWidget {
   const McpInstalledSection({
@@ -214,11 +215,13 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
                     server: server,
                     busy: state.busyIds.contains(server.id),
                     probe: state.probes[server.id],
-                    onOpenTools: () => showMcpToolsDialog(
-                      context,
-                      cubit: cubit,
-                      server: server,
-                    ),
+                    onOpenTools: server.enabled
+                        ? () => showMcpToolsDialog(
+                            context,
+                            cubit: cubit,
+                            server: server,
+                          )
+                        : null,
                     onEdit: () => widget.onEdit(server),
                     onDelete: () => widget.onDelete(server),
                     onToggleEnabled: (enabled) =>

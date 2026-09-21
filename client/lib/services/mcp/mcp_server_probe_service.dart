@@ -68,7 +68,7 @@ class McpServerProbeService {
         ),
       );
     } on TimeoutException {
-      unawaited(_handshake.abort(probeKey));
+      await _handshake.abort(probeKey);
       if (_closed || _generations[server.id] != generation) return;
       onSnapshot(
         server.id,
@@ -78,8 +78,8 @@ class McpServerProbeService {
         ),
       );
     } catch (e) {
-      appLogger.w('[mcp-probe] ${server.id} failed: $e');
-      unawaited(_handshake.abort(probeKey));
+      appLogger.w('[mcp-probe] ${server.id} failed (${e.runtimeType})');
+      await _handshake.abort(probeKey);
       if (_closed || _generations[server.id] != generation) return;
       onSnapshot(
         server.id,
@@ -94,9 +94,9 @@ class McpServerProbeService {
   }
 
   void cancel(String id) {
-    final generation = (_generations[id] ?? 0) + 1;
-    _generations[id] = generation;
-    unawaited(_handshake.abort('$id#$generation'));
+    final current = _generations[id] ?? 0;
+    unawaited(_handshake.abort('$id#$current'));
+    _generations[id] = current + 1;
   }
 
   Future<void> close() async {
