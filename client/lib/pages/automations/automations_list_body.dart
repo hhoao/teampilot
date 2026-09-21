@@ -8,35 +8,17 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/automation_cubit.dart';
 import '../../cubits/automation_state.dart';
 import '../../cubits/chat_cubit.dart';
-import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/automation.dart';
 import '../../models/automation_list_scope.dart';
 import '../../models/workspace.dart';
-import '../../services/automation/automation_launch_session_binding.dart';
 import '../../services/automation/automation_scope_label.dart';
 import '../../utils/ui/coarse_relative_time.dart';
 import '../../utils/workspace/workspace_display_name.dart';
 import 'automation_editor_dialog.dart';
 import 'automation_schedule_picker.dart';
 import 'automation_sort.dart';
-
-String formatAutomationRunCountLabel(
-  AppLocalizations l10n,
-  Automation automation,
-) {
-  if (automation.hasRunLimit) {
-    return l10n.automationsRunCountLimited(
-      automation.runCount,
-      automation.effectiveMaxRunCount!,
-    );
-  }
-  if (automation.runCount > 0) {
-    return l10n.automationsRunCountUnlimited(automation.runCount);
-  }
-  return '';
-}
 
 /// Automation list without page/dialog chrome — used by the management tab and
 /// dialog content wrapper.
@@ -257,7 +239,6 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
             onEdit: _edit,
             onDelete: _delete,
             onRunNow: _runNow,
-            formatNextRun: (ms) => _formatNextRun(l10n, ms),
             shrinkWrap: widget.shrinkWrap,
           );
         }
@@ -269,26 +250,10 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
           onEdit: _edit,
           onDelete: _delete,
           onRunNow: _runNow,
-          formatNextRun: (ms) => _formatNextRun(l10n, ms),
           shrinkWrap: widget.shrinkWrap,
         );
       },
     );
-  }
-
-  String _formatNextRun(AppLocalizations l10n, int? nextRunAtMs) {
-    if (nextRunAtMs == null) return l10n.automationsNextRunNone;
-    final dt = DateTime.fromMillisecondsSinceEpoch(nextRunAtMs);
-    final now = DateTime.now();
-    if (dt.isAfter(now)) {
-      final time =
-          '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-      if (dt.year == now.year && dt.month == now.month && dt.day == now.day) {
-        return l10n.automationsNextRun(time);
-      }
-      return l10n.automationsNextRun('${dt.month}/${dt.day} $time');
-    }
-    return l10n.automationsNextRun(formatCoarseRelativeTime(l10n, dt));
   }
 }
 
@@ -301,7 +266,6 @@ class _FlatList extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onRunNow,
-    required this.formatNextRun,
     this.shrinkWrap = false,
   });
 
@@ -312,52 +276,32 @@ class _FlatList extends StatelessWidget {
   final Future<void> Function(Automation) onEdit;
   final Future<void> Function(Automation) onDelete;
   final Future<void> Function(Automation) onRunNow;
-  final String Function(int?) formatNextRun;
   final bool shrinkWrap;
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<LaunchProfileCubit, LaunchProfileState>(
-      builder: (context, profileState) {
-        return BlocBuilder<CliPresetsCubit, CliPresetsState>(
-          builder: (context, presetState) {
-            final l10n = context.l10n;
-            return ListView.builder(
-              shrinkWrap: shrinkWrap,
-              physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
-              padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
-              itemCount: automations.length,
-              itemBuilder: (context, index) {
-                final automation = automations[index];
-                final runs = List<AutomationRun>.of(
-                  runsByAutomationId[automation.id] ?? const [],
-                )..sort((x, y) => y.scheduledForMs.compareTo(x.scheduledForMs));
-                return AutomationRow(
-                  automation: automation,
-                  scopeSubtitle: automationScopeSubtitle(
-                    l10n,
-                    automation: automation,
-                    profiles: profileState,
-                    presets: presetState,
-                  ),
-                  scheduleSummary: localizedScheduleSummary(
-                    l10n,
-                    scheduleDraftFromAutomation(automation),
-                  ),
-                  runCountLabel: formatAutomationRunCountLabel(
-                    l10n,
-                    automation,
-                  ),
-                  nextRunLabel: formatNextRun(automation.nextRunAtMs),
-                  onToggleEnabled: () => unawaited(onToggleEnabled(automation)),
-                  onShowRunHistory: () => onShowRunHistory(automation, runs),
-                  onEdit: () => unawaited(onEdit(automation)),
-                  onDelete: () => unawaited(onDelete(automation)),
-                  onRunNow: () => unawaited(onRunNow(automation)),
-                );
-              },
-            );
-          },
+    final l10n = context.l10n;
+    return ListView.builder(
+      shrinkWrap: shrinkWrap,
+      physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
+      padding: const EdgeInsets.only(top: 2, bottom: 8),
+      itemCount: automations.length,
+      itemBuilder: (context, index) {
+        final automation = automations[index];
+        final runs = List<AutomationRun>.of(
+          runsByAutomationId[automation.id] ?? const [],
+        )..sort((x, y) => y.scheduledForMs.compareTo(x.scheduledForMs));
+        return AutomationRow(
+          automation: automation,
+          scheduleSummary: localizedScheduleSummary(
+            l10n,
+            scheduleDraftFromAutomation(automation),
+          ),
+          onToggleEnabled: () => unawaited(onToggleEnabled(automation)),
+          onShowRunHistory: () => onShowRunHistory(automation, runs),
+          onEdit: () => unawaited(onEdit(automation)),
+          onDelete: () => unawaited(onDelete(automation)),
+          onRunNow: () => unawaited(onRunNow(automation)),
         );
       },
     );
@@ -374,7 +318,6 @@ class _GroupedList extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onRunNow,
-    required this.formatNextRun,
     this.shrinkWrap = false,
   });
 
@@ -386,7 +329,6 @@ class _GroupedList extends StatelessWidget {
   final Future<void> Function(Automation) onEdit;
   final Future<void> Function(Automation) onDelete;
   final Future<void> Function(Automation) onRunNow;
-  final String Function(int?) formatNextRun;
   final bool shrinkWrap;
 
   @override
@@ -399,68 +341,52 @@ class _GroupedList extends StatelessWidget {
       builder: (context, chatState) {
         return BlocBuilder<LaunchProfileCubit, LaunchProfileState>(
           builder: (context, profileState) {
-            return BlocBuilder<CliPresetsCubit, CliPresetsState>(
-              builder: (context, presetState) {
-                final groups = _groupAutomations(
-                  automations,
-                  listScope: listScope,
-                  workspaces: chatState.workspaces,
-                  profiles: profileState,
-                  l10n: l10n,
-                );
-                return ListView(
-                  shrinkWrap: shrinkWrap,
-                  physics: shrinkWrap
-                      ? const NeverScrollableScrollPhysics()
-                      : null,
-                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
-                  children: [
-                    for (final group in groups) ...[
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(0, 12, 0, 6),
-                        child: Text(
-                          group.label,
-                          style: styles.smSemiboldColored(cs.onSurfaceVariant),
-                        ),
-                      ),
-                      ...group.automations.map((automation) {
-                        final runs =
-                            List<AutomationRun>.of(
-                              runsByAutomationId[automation.id] ?? const [],
-                            )..sort(
-                              (x, y) =>
-                                  y.scheduledForMs.compareTo(x.scheduledForMs),
-                            );
-                        return AutomationRow(
-                          automation: automation,
-                          scopeSubtitle: automationScopeSubtitle(
-                            l10n,
-                            automation: automation,
-                            profiles: profileState,
-                            presets: presetState,
-                          ),
-                          scheduleSummary: localizedScheduleSummary(
-                            l10n,
-                            scheduleDraftFromAutomation(automation),
-                          ),
-                          runCountLabel: formatAutomationRunCountLabel(
-                            l10n,
-                            automation,
-                          ),
-                          nextRunLabel: formatNextRun(automation.nextRunAtMs),
-                          onToggleEnabled: () =>
-                              unawaited(onToggleEnabled(automation)),
-                          onShowRunHistory: () =>
-                              onShowRunHistory(automation, runs),
-                          onEdit: () => unawaited(onEdit(automation)),
-                          onDelete: () => unawaited(onDelete(automation)),
-                          onRunNow: () => unawaited(onRunNow(automation)),
+            final groups = _groupAutomations(
+              automations,
+              listScope: listScope,
+              workspaces: chatState.workspaces,
+              profiles: profileState,
+              l10n: l10n,
+            );
+            return ListView(
+              shrinkWrap: shrinkWrap,
+              physics: shrinkWrap
+                  ? const NeverScrollableScrollPhysics()
+                  : null,
+              padding: const EdgeInsets.only(top: 2, bottom: 8),
+              children: [
+                for (final group in groups) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 12, 0, 6),
+                    child: Text(
+                      group.label,
+                      style: styles.smSemiboldColored(cs.onSurfaceVariant),
+                    ),
+                  ),
+                  ...group.automations.map((automation) {
+                    final runs =
+                        List<AutomationRun>.of(
+                          runsByAutomationId[automation.id] ?? const [],
+                        )..sort(
+                          (x, y) => y.scheduledForMs.compareTo(x.scheduledForMs),
                         );
-                      }),
-                    ],
-                  ],
-                );
-              },
+                    return AutomationRow(
+                      automation: automation,
+                      scheduleSummary: localizedScheduleSummary(
+                        l10n,
+                        scheduleDraftFromAutomation(automation),
+                      ),
+                      onToggleEnabled: () =>
+                          unawaited(onToggleEnabled(automation)),
+                      onShowRunHistory: () =>
+                          onShowRunHistory(automation, runs),
+                      onEdit: () => unawaited(onEdit(automation)),
+                      onDelete: () => unawaited(onDelete(automation)),
+                      onRunNow: () => unawaited(onRunNow(automation)),
+                    );
+                  }),
+                ],
+              ],
             );
           },
         );
@@ -515,26 +441,29 @@ List<_AutomationGroup> _groupAutomations(
   return groups;
 }
 
-class AutomationRow extends StatelessWidget {
+String _automationActionTypeLabel(
+  AppLocalizations l10n,
+  Automation automation,
+) {
+  return automation.isScheduledMessage
+      ? l10n.automationsCompactTitle
+      : l10n.automationsFilterLaunchPrompt;
+}
+
+class AutomationRow extends StatefulWidget {
   const AutomationRow({
     required this.automation,
     required this.scheduleSummary,
-    required this.runCountLabel,
-    required this.nextRunLabel,
     required this.onToggleEnabled,
     required this.onShowRunHistory,
     required this.onEdit,
     required this.onDelete,
     required this.onRunNow,
-    this.scopeSubtitle,
     super.key,
   });
 
   final Automation automation;
-  final String? scopeSubtitle;
   final String scheduleSummary;
-  final String runCountLabel;
-  final String nextRunLabel;
   final VoidCallback onToggleEnabled;
   final VoidCallback onShowRunHistory;
   final VoidCallback onEdit;
@@ -542,125 +471,133 @@ class AutomationRow extends StatelessWidget {
   final VoidCallback onRunNow;
 
   @override
+  State<AutomationRow> createState() => _AutomationRowState();
+}
+
+class _AutomationRowState extends State<AutomationRow> {
+  static const _radius = 14.0;
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
+    final spacing = context.tpSpacing;
     final styles = TpTextStyles.of(context);
+    final automation = widget.automation;
     final actionIcon = automation.isScheduledMessage
         ? Icons.send_rounded
         : Icons.play_arrow_rounded;
+    const leadingSize = 36.0;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      elevation: 0,
-      color: cs.surfaceContainerLow,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
-        child: Row(
-          children: [
-            Icon(actionIcon, size: context.tpIconSizes.md, color: cs.primary),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    automation.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: styles.lg,
-                  ),
-                  if (scopeSubtitle != null && scopeSubtitle!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      scopeSubtitle!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: styles.xsMediumColored(cs.onSurfaceVariant),
-                    ),
-                  ],
-                  const SizedBox(height: 2),
-                  Text(
-                    scheduleSummary,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: styles.xsColored(cs.onSurfaceVariant),
-                  ),
-                  if (AutomationLaunchSessionBinding.hasBinding(
-                    automation,
-                  )) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      l10n.automationsReuseSessionListHint(
-                        automation.sessionId!,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: styles.xsColored(cs.onSurfaceVariant),
-                    ),
-                  ],
-                  if (runCountLabel.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      runCountLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: styles.xsColored(cs.onSurfaceVariant),
-                    ),
-                  ],
-                  if (automation.enabled) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      nextRunLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: styles.xsColored(
-                        cs.primary.withValues(alpha: 0.85),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        cursor: SystemMouseCursors.basic,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: cs.surfaceContainer,
+            borderRadius: BorderRadius.circular(_radius),
+            border: Border.all(
+              color: _hovered
+                  ? cs.primary.withValues(alpha: 0.55)
+                  : cs.outlineVariant,
+            ),
+          ),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(spacing.md, spacing.sm, 4, spacing.sm),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: ColoredBox(
+                    color: cs.surfaceContainerHighest.withValues(alpha: 0.45),
+                    child: SizedBox(
+                      width: leadingSize,
+                      height: leadingSize,
+                      child: Center(
+                        child: Icon(
+                          actionIcon,
+                          size: 20,
+                          color: cs.primary.withValues(alpha: 0.85),
+                        ),
                       ),
                     ),
+                  ),
+                ),
+                SizedBox(width: spacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        automation.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: styles.mdSemiboldColored(cs.onSurface),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _automationActionTypeLabel(l10n, automation),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: styles.smMediumColored(cs.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        widget.scheduleSummary,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: styles.smColored(cs.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+                TpIconButton(
+                  icon: Icons.history_rounded,
+                  compact: true,
+                  size: TpIconButton.kCompactSize,
+                  tooltip: l10n.automationsRunHistory,
+                  onTap: widget.onShowRunHistory,
+                ),
+                Switch(
+                  value: automation.enabled,
+                  onChanged: automation.isRunLimitReached
+                      ? null
+                      : (_) => widget.onToggleEnabled(),
+                ),
+                TpActionMenuIconAnchor(
+                  icon: Icon(Icons.more_vert, size: context.tpIconSizes.md),
+                  buildMenuChildren: (ctx, controller) => [
+                    TpActionMenuItem(
+                      icon: Icons.edit_outlined,
+                      label: l10n.automationsEdit,
+                      menuController: controller,
+                      onTap: widget.onEdit,
+                    ),
+                    TpActionMenuItem(
+                      icon: Icons.play_circle_outline,
+                      label: l10n.automationsRunNow,
+                      menuController: controller,
+                      enabled: !automation.isRunLimitReached,
+                      onTap: widget.onRunNow,
+                    ),
+                    TpActionMenuItem(
+                      icon: Icons.delete_outline,
+                      label: l10n.automationsDelete,
+                      destructive: true,
+                      menuController: controller,
+                      onTap: widget.onDelete,
+                    ),
                   ],
-                ],
-              ),
-            ),
-            TpIconButton(
-              icon: Icons.history_rounded,
-              compact: true,
-              size: TpIconButton.kCompactSize,
-              tooltip: l10n.automationsRunHistory,
-              onTap: onShowRunHistory,
-            ),
-            Switch(
-              value: automation.enabled,
-              onChanged: automation.isRunLimitReached
-                  ? null
-                  : (_) => onToggleEnabled(),
-            ),
-            TpActionMenuIconAnchor(
-              icon: Icon(Icons.more_vert, size: context.tpIconSizes.md),
-              buildMenuChildren: (ctx, controller) => [
-                TpActionMenuItem(
-                  icon: Icons.edit_outlined,
-                  label: l10n.automationsEdit,
-                  menuController: controller,
-                  onTap: onEdit,
-                ),
-                TpActionMenuItem(
-                  icon: Icons.play_circle_outline,
-                  label: l10n.automationsRunNow,
-                  menuController: controller,
-                  enabled: !automation.isRunLimitReached,
-                  onTap: onRunNow,
-                ),
-                TpActionMenuItem(
-                  icon: Icons.delete_outline,
-                  label: l10n.automationsDelete,
-                  destructive: true,
-                  menuController: controller,
-                  onTap: onDelete,
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
