@@ -4444,6 +4444,9 @@
     }
   },
   "gitGraphBranchesTags": "Branches & tags",
+  "gitGraphRefsFilterHint": "Filter branches and tags",
+  "gitGraphRefsFilterEmpty": "No matches",
+  "gitGraphCompareFilterHint": "Filter branches, tags, and commits",
   "gitGraphLocalBranches": "Local branches",
   "gitGraphRemoteBranches": "Remote branches",
   "gitGraphTags": "Tags",

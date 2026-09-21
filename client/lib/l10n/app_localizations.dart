@@ -15494,6 +15494,24 @@ abstract class AppLocalizations {
   /// **'Branches & tags'**
   String get gitGraphBranchesTags;
 
+  /// No description provided for @gitGraphRefsFilterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter branches and tags'**
+  String get gitGraphRefsFilterHint;
+
+  /// No description provided for @gitGraphRefsFilterEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get gitGraphRefsFilterEmpty;
+
+  /// No description provided for @gitGraphCompareFilterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter branches, tags, and commits'**
+  String get gitGraphCompareFilterHint;
+
   /// No description provided for @gitGraphLocalBranches.
   ///
   /// In en, this message translates to:

@@ -3756,6 +3756,9 @@
     }
   },
   "gitGraphBranchesTags": "分支与标签",
+  "gitGraphRefsFilterHint": "过滤分支与标签",
+  "gitGraphRefsFilterEmpty": "无匹配项",
+  "gitGraphCompareFilterHint": "过滤分支、标签与提交",
   "gitGraphLocalBranches": "本地分支",
   "gitGraphRemoteBranches": "远程分支",
   "gitGraphTags": "标签",

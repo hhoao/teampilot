@@ -1,6 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/git_graph_cubit.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/l10n/app_localizations_en.dart';
 import 'package:teampilot/models/git_compare.dart';
 import 'package:teampilot/models/git_graph.dart';
@@ -122,5 +124,84 @@ void main() {
       source: const GitCompareRef('feature'),
     );
     expect(flattenItems(specs).any((s) => s.label == 'Commits'), isFalse);
+  });
+
+  test('filterQuery keeps working tree and matching refs only', () {
+    final specs = gitCompareTargetSpecs(
+      l10n: l10n,
+      state: sampleState(rows: [commitA, commitB]),
+      source: const GitCompareRef('feature'),
+      filterQuery: 'v1.0',
+    );
+    final labels = flattenItems(specs).map((s) => s.label).toList();
+    expect(labels.first, 'Working Tree (main)');
+    expect(labels, contains('v1.0'));
+    expect(labels, isNot(contains('feature')));
+    expect(labels, isNot(contains('origin/main')));
+  });
+
+  test('filterQuery matches commit hash prefix and subject', () {
+    final specs = gitCompareTargetSpecs(
+      l10n: l10n,
+      state: sampleState(rows: [commitA, commitB]),
+      source: const GitCompareRef('feature'),
+      filterQuery: commitB.hash.substring(0, 8),
+    );
+    final labels = flattenItems(specs).map((s) => s.label).toList();
+    expect(
+      labels.where((l) => l?.startsWith('bbbbbbbb') ?? false),
+      hasLength(1),
+    );
+    expect(labels.any((l) => l?.startsWith('aaaaaaaa') ?? false), isFalse);
+  });
+
+  test('filterQuery with no matches shows empty row after working tree', () {
+    final specs = gitCompareTargetSpecs(
+      l10n: l10n,
+      state: sampleState(rows: [commitA]),
+      source: const GitCompareRef('feature'),
+      filterQuery: 'no-such-ref',
+    );
+    final labels = flattenItems(specs).map((s) => s.label).toList();
+    expect(labels, ['Working Tree (main)', 'No matches']);
+  });
+
+  testWidgets('compare overlay search field has Material ancestor', (tester) async {
+    final branches = [
+      for (var i = 0; i < 11; i++)
+        GitBranchInfo('branch-$i', 'h$i', isRemote: false, isCurrent: i == 0),
+    ];
+    final state = GitGraphState(
+      repoRoot: '/repo',
+      currentBranch: 'branch-0',
+      branches: branches,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () => showGitCompareTargetMenu(
+                  context: context,
+                  globalPosition: const Offset(120, 120),
+                  workspaceId: 'ws',
+                  state: state,
+                  source: const GitCompareRef('branch-0'),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(TextField), findsOneWidget);
   });
 }

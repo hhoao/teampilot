@@ -8713,6 +8713,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitGraphBranchesTags => 'Branches & tags';
 
   @override
+  String get gitGraphRefsFilterHint => 'Filter branches and tags';
+
+  @override
+  String get gitGraphRefsFilterEmpty => 'No matches';
+
+  @override
+  String get gitGraphCompareFilterHint => 'Filter branches, tags, and commits';
+
+  @override
   String get gitGraphLocalBranches => 'Local branches';
 
   @override

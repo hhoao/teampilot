@@ -8350,6 +8350,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitGraphBranchesTags => '分支与标签';
 
   @override
+  String get gitGraphRefsFilterHint => '过滤分支与标签';
+
+  @override
+  String get gitGraphRefsFilterEmpty => '无匹配项';
+
+  @override
+  String get gitGraphCompareFilterHint => '过滤分支、标签与提交';
+
+  @override
   String get gitGraphLocalBranches => '本地分支';
 
   @override

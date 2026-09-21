@@ -452,4 +452,64 @@ void main() {
     expect(spec?.left, const GitCompareRef('feature'));
     expect(spec?.right, GitCompareRef(commit.hash));
   });
+
+  testWidgets('refs menu search filters branches and tags', (tester) async {
+    final actions = RecordingGraphActions();
+    final branchInfos = [
+      for (var i = 0; i < 11; i++)
+        GitBranchInfo('branch-$i', 'h$i', isRemote: false, isCurrent: i == 0),
+    ];
+    final history = FakeHistoryForGraph(
+      branchInfos: branchInfos,
+      tagInfos: [GitTagInfo('release-v2', 'h0')],
+    );
+    final cubit = GitGraphCubit(
+      history: history,
+      git: FakeGitForGraph(repoStatus()),
+      actions: actions,
+    );
+    addTearDown(cubit.close);
+    await cubit.setRepoRoot('/repo');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        home: BlocProvider.value(
+          value: cubit,
+          child: Scaffold(
+            body: Center(
+              child: GitGraphRefsMenu(state: cubit.state, workspaceId: 'ws'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.account_tree_outlined));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('branch-0'), findsOneWidget);
+    expect(find.text('release-v2'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'release');
+    await tester.pumpAndSettle();
+    expect(find.text('release-v2'), findsOneWidget);
+    expect(find.text('branch-0'), findsNothing);
+    expect(find.text('Local branches'), findsNothing);
+
+    await tester.enterText(find.byType(TextField), 'branch-10');
+    await tester.pumpAndSettle();
+    expect(find.text('branch-3'), findsNothing);
+    expect(find.text('release-v2'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(TpActionMenuItem),
+        matching: find.text('branch-10'),
+      ),
+      findsOneWidget,
+    );
+  });
 }
