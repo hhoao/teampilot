@@ -44,14 +44,17 @@ class McpCubit extends Cubit<McpState> {
   McpCubit(
     this._repository, {
     required HomeStorage storage,
-    Future<void> Function(String mcpId)? onMcpDeleted,
+
+    /// Called after a catalog MCP is deleted or disabled so workspace/team
+    /// bindings can be dropped. Re-enabling does not restore those bindings.
+    Future<void> Function(String mcpId)? onMcpUnbound,
     McpImportService? importService,
-  }) : _onMcpDeleted = onMcpDeleted,
+  }) : _onMcpUnbound = onMcpUnbound,
        _importService = importService ?? McpImportService(storage: storage),
        super(const McpState());
 
   final McpRepository _repository;
-  final Future<void> Function(String mcpId)? _onMcpDeleted;
+  final Future<void> Function(String mcpId)? _onMcpUnbound;
   final McpImportService _importService;
 
   Future<void> loadAll() async {
@@ -83,6 +86,9 @@ class McpCubit extends Cubit<McpState> {
       final saved = await _repository.upsert(server);
       final list = [...state.servers.where((s) => s.id != saved.id), saved];
       emit(state.copyWith(servers: list, clearError: true));
+      if (!saved.enabled) {
+        await _onMcpUnbound?.call(saved.id);
+      }
       return true;
     } on McpValidationException catch (e) {
       emit(state.copyWith(errorMessage: e.errors.join('\n')));
@@ -107,7 +113,7 @@ class McpCubit extends Cubit<McpState> {
           clearError: true,
         ),
       );
-      await _onMcpDeleted?.call(id);
+      await _onMcpUnbound?.call(id);
     } catch (e) {
       emit(state.copyWith(errorMessage: e.toString()));
     } finally {

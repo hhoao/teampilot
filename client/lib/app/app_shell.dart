@@ -51,6 +51,7 @@ import '../services/chat/team_generation/mcp/team_composer_mcp_handler.dart';
 import '../models/app_session.dart';
 import '../services/catalog/catalog_runtime.dart';
 import '../services/catalog/catalog_production.dart';
+import '../services/catalog/catalog_workspace_binder.dart';
 import '../services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/chat/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/remote/local_credential_exporter.dart';
@@ -1560,10 +1561,23 @@ Future<AppShell> buildAppShell({
       installJobRegistry: installJobRegistry,
     );
     cliPresetsCubit = CliPresetsCubit(repository: cliPresetsRepo);
+    final catalogWorkspaceBinder = CatalogWorkspaceBinder(
+      repo: workspaceProjectConfigRepository,
+    );
+    Future<void> unbindMcpEverywhere(String mcpId) async {
+      await teamCubit.removeMcpFromAllTeams(mcpId);
+      final changed = await catalogWorkspaceBinder.unbindMcpFromAllWorkspaces(
+        mcpId,
+      );
+      for (final workspaceId in changed) {
+        await WorkspaceProjectConfigCubit.reloadLive(workspaceId);
+      }
+    }
+
     mcpCubit = McpCubit(
       mcpRepository,
       storage: homeStorage,
-      onMcpDeleted: teamCubit.removeMcpFromAllTeams,
+      onMcpUnbound: unbindMcpEverywhere,
     );
     hookCubit = HookCubit(repository: hookRepository)..load();
 

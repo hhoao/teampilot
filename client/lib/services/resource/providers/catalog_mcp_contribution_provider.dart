@@ -161,16 +161,7 @@ final class CatalogMcpContributionProvider
         );
         continue;
       }
-      if (!server.enabled) {
-        diagnostics.add(
-          _warning(
-            context.cli,
-            id,
-            'Disabled MCP catalog id $id was discarded.',
-          ),
-        );
-        continue;
-      }
+      if (!server.enabled) continue;
       final spec = McpServerSpec.fromCatalogJson(
         server.configKey,
         server.server,

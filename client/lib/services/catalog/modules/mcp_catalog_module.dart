@@ -231,7 +231,7 @@ class McpCatalogModule implements CatalogKindModule {
     final server = await _requireInstalled(_requireId(req));
     await repository.deleteById(server.id);
     await onDeleted?.call(server.id);
-    await _unbindIds(req, [server.id]);
+    await binder.unbindMcpFromAllWorkspaces(server.id);
     _emit(CatalogOp.delete, req, [server.id]);
     return CatalogResult.ok(
       kind: kind,

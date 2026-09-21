@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/mcp_server.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -48,6 +49,63 @@ void main() {
     );
 
     expect(contributions.single.origin.sourceId, 'team-bus');
+  });
+
+  test(
+    'globally disabled catalog MCP is skipped without a launch diagnostic',
+    () async {
+      final provider = CatalogMcpContributionProvider(
+        catalogLoader: () => [
+          McpServer(
+            id: 'vscode-mcp',
+            name: 'vscode-mcp',
+            enabled: false,
+            server: const {'type': 'stdio', 'command': 'npx'},
+            createdAt: 1,
+            updatedAt: 1,
+          ),
+          McpServer(
+            id: 'fetch',
+            name: 'fetch',
+            server: const {'type': 'stdio', 'command': 'npx'},
+            createdAt: 1,
+            updatedAt: 1,
+          ),
+        ],
+      );
+
+      final result = await const McpAssembler().assemble(
+        context: McpProviderContext(
+          cli: CliTool.claude,
+          mcpServerIds: const ['vscode-mcp', 'fetch'],
+        ),
+        providers: [provider],
+      );
+
+      expect(result.servers.map((server) => server.name), ['fetch']);
+      expect(result.diagnostics, isEmpty);
+    },
+  );
+
+  test('unknown catalog MCP ids are reported as warnings', () async {
+    final provider = CatalogMcpContributionProvider(
+      catalogLoader: () => const <McpServer>[],
+    );
+
+    final result = await const McpAssembler().assemble(
+      context: McpProviderContext(
+        cli: CliTool.claude,
+        mcpServerIds: const ['vscode-mcp'],
+      ),
+      providers: [provider],
+    );
+
+    expect(result.servers, isEmpty);
+    expect(result.diagnostics, hasLength(1));
+    expect(
+      result.diagnostics.single.message,
+      'Unknown MCP catalog id vscode-mcp was discarded.',
+    );
   });
 
   test('catalog provider does not load repository for empty ids', () async {
