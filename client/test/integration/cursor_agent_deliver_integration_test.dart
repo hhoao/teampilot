@@ -111,7 +111,6 @@ void main() {
           );
           addTearDown(session.dispose);
 
-          const scanRows = 24;
           await _bootCursorPrompt(session, scanRows: viewport.rows);
 
           await session.probe.syncDisplayGrid();

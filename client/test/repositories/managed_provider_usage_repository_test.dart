@@ -124,7 +124,6 @@ void main() {
           storage: fakeHomeStorage(filesystem: fs),
           fs: fs,
           cachePath: path,
-          now: () => 300,
         );
         await repo.save(_snapshot('p1', fetchedAt: 100, staleAt: 200));
 

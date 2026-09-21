@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'process_table_parser.dart';
 import 'resource_memory_models.dart';
 import '../../utils/logging/logger.dart';
@@ -26,7 +25,6 @@ class ProcessMetricsService {
   /// Test seam: when set, [GlobalResourceManagerHost] uses this instead of a
   /// real process-table sweep so widget tests never spawn `ps`/`powershell`
   /// (and their `.timeout` timers). Mirrors [GitService.debugOverrideFactory].
-  @visibleForTesting
   static ProcessMetricsService Function()? debugOverrideFactory;
 
   static const _appHistoryKey = 'app';

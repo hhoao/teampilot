@@ -69,7 +69,7 @@ class CompositeExpertHubSource
     final seen = <String>{};
     return [
       for (final m in members)
-        if ((m.category.trim() ?? '').isNotEmpty && seen.add(m.category))
+        if (m.category.trim().isNotEmpty && seen.add(m.category))
           m.category,
     ];
   }

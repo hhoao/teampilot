@@ -122,9 +122,10 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
   Future<String?> _readIdentityFile() async {
     final path = _identityFileController.text.trim();
     if (path.isEmpty) return null;
+    final missingMessage = context.l10n.sshProfileFormIdentityFileMissing;
     final file = File(path);
     if (!await file.exists()) {
-      throw StateError(context.l10n.sshProfileFormIdentityFileMissing);
+      throw StateError(missingMessage);
     }
     return file.readAsString();
   }
@@ -186,6 +187,9 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
   Future<void> _testConnection() async {
     if (_formKey.currentState?.validate() != true) return;
     setState(() => _testing = true);
+    final credentialStore = context.read<SshCredentialStore>();
+    final sshClientFactory =
+        context.read<TerminalTransportFactory>().sshClientFactory;
     try {
       final profile = _buildProfile();
       String? password;
@@ -196,20 +200,14 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       } else {
         privateKey = await _readIdentityFile();
         if ((privateKey == null || privateKey.isEmpty) && _isEditing) {
-          privateKey = await context.read<SshCredentialStore>().loadPrivateKey(
-            profile.id,
-          );
+          privateKey = await credentialStore.loadPrivateKey(profile.id);
         }
         passphrase = _passphraseController.text.isEmpty
-            ? await context.read<SshCredentialStore>().loadPrivateKeyPassphrase(
-                profile.id,
-              )
+            ? await credentialStore.loadPrivateKeyPassphrase(profile.id)
             : _passphraseController.text;
       }
       await SshProfileConnectionTester(
-        clientFactory: context
-            .read<TerminalTransportFactory>()
-            .sshClientFactory,
+        clientFactory: sshClientFactory,
       ).test(
         profile,
         password: password,

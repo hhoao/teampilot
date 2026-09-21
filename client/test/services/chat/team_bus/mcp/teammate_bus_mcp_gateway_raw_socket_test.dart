@@ -20,7 +20,6 @@ void main() {
   late TeamBus busA;
   late TeamBus busB;
   late TeammateBusSessionRegistration regA;
-  late TeammateBusSessionRegistration regB;
 
   setUp(() async {
     gateway = TeammateBusMcpGateway();
@@ -31,7 +30,7 @@ void main() {
       sessionId: 'sess-a',
       handler: TeammateBusMcpHandler(bus: busA),
     );
-    regB = gateway.register(
+    gateway.register(
       sessionId: 'sess-b',
       handler: TeammateBusMcpHandler(bus: busB),
     );

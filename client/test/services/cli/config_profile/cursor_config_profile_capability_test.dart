@@ -1,12 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_workspace_trust.dart';
-import 'package:teampilot/services/storage/app_paths.dart';
-import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/provider.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
@@ -15,16 +12,6 @@ import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/cli/claude/team_roster_service.dart';
 
 import '../../../support/in_memory_filesystem.dart';
-
-RuntimeContext _memoryContext(String dir, InMemoryFilesystem fs) =>
-    RuntimeContext(
-      target: RuntimeTarget.local(),
-      filesystem: fs,
-      home: dir,
-      cwd: dir,
-      appDataRoot: dir,
-      paths: AppPaths(dir),
-    );
 
 void main() {
   Future<SessionHomeContribution> contribute(

@@ -100,7 +100,6 @@ void main() {
       storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       cachePath: '/tp/usage-cache.json',
-      now: () => 1_700_000_000_000,
     );
     providers = ManagedProviderRepository(
       storage: fakeHomeStorage(filesystem: fs),
@@ -120,7 +119,6 @@ void main() {
       registry: ManagedProviderUsageRegistry([adapter]),
       credentials: _NoCredentials(),
       http: _UnusedHttpClient(),
-      now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
     );
 
     final first = coordinator.refreshOne('p1');
@@ -142,7 +140,6 @@ void main() {
       registry: ManagedProviderUsageRegistry([adapter]),
       credentials: _NoCredentials(),
       http: _UnusedHttpClient(),
-      now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
     );
 
     final result = await coordinator.queryOne('p1');
@@ -182,7 +179,6 @@ void main() {
         registry: ManagedProviderUsageRegistry([adapter]),
         credentials: _NoCredentials(),
         http: _UnusedHttpClient(),
-        now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
       );
 
       final oldRequest = coordinator.refreshOne('p1');
@@ -224,7 +220,6 @@ void main() {
         registry: ManagedProviderUsageRegistry([adapter]),
         credentials: _NoCredentials(),
         http: _UnusedHttpClient(),
-        now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
       );
 
       final result = await coordinator.refreshOne('p1');
@@ -250,7 +245,6 @@ void main() {
         registry: ManagedProviderUsageRegistry([adapter]),
         credentials: _NoCredentials(),
         http: _UnusedHttpClient(),
-        now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
       );
 
       final result = await coordinator.queryOne('p1');
@@ -275,7 +269,6 @@ void main() {
         registry: ManagedProviderUsageRegistry([adapter]),
         credentials: _NoCredentials(),
         http: _UnusedHttpClient(),
-        now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
       );
 
       final result = await coordinator.refreshAll();
@@ -294,7 +287,6 @@ void main() {
       registry: ManagedProviderUsageRegistry([adapter]),
       credentials: _NoCredentials(),
       http: _UnusedHttpClient(),
-      now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
     );
 
     final targeted = coordinator.refreshOne('p1');
@@ -320,7 +312,6 @@ void main() {
         registry: ManagedProviderUsageRegistry([adapter]),
         credentials: _NoCredentials(),
         http: _UnusedHttpClient(),
-        now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
       );
 
       final pending = coordinator.refreshOne('p1');
@@ -362,7 +353,6 @@ void main() {
         registry: ManagedProviderUsageRegistry([adapter]),
         credentials: _NoCredentials(),
         http: _UnusedHttpClient(),
-        now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
       );
 
       final oldRequest = coordinator.refreshOne('p1');
@@ -408,7 +398,6 @@ void main() {
       registry: ManagedProviderUsageRegistry([adapter]),
       credentials: _NoCredentials(),
       http: _UnusedHttpClient(),
-      now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
     );
 
     final pending = coordinator.refreshOne('p1');
@@ -441,7 +430,6 @@ void main() {
       registry: ManagedProviderUsageRegistry([adapter]),
       credentials: _NoCredentials(),
       http: _UnusedHttpClient(),
-      now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
     );
 
     final cancelled = coordinator.refreshOne('p1');
@@ -483,7 +471,6 @@ void main() {
       registry: ManagedProviderUsageRegistry([adapter]),
       credentials: _NoCredentials(),
       http: _UnusedHttpClient(),
-      now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
     );
 
     final oldResult = coordinator.refreshOne('p1');
@@ -531,7 +518,6 @@ void main() {
         ]),
         credentials: _NoCredentials(),
         http: _UnusedHttpClient(),
-        now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
       );
 
       final oldResult = coordinator.refreshOne('p1');
@@ -566,7 +552,6 @@ void main() {
       ]),
       credentials: _NoCredentials(),
       http: _UnusedHttpClient(),
-      now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
     );
 
     await expectLater(
@@ -600,7 +585,6 @@ void main() {
         registry: ManagedProviderUsageRegistry(),
         credentials: _NoCredentials(),
         http: _UnusedHttpClient(),
-        now: () => DateTime.fromMillisecondsSinceEpoch(1_700_000_000_000),
       );
 
       final refresh = coordinator.refreshAll();

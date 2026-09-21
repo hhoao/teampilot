@@ -97,7 +97,6 @@ void main() {
       storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       cachePath: '/tp/usage-cache.json',
-      now: () => 100,
     );
     providers = ManagedProviderRepository(
       storage: fakeHomeStorage(filesystem: fs),
@@ -112,7 +111,6 @@ void main() {
       registry: ManagedProviderUsageRegistry([adapter]),
       credentials: _NoCredentials(),
       http: _NoHttp(),
-      now: () => DateTime.fromMillisecondsSinceEpoch(100),
     );
     await providers.upsert(_provider());
     providerCubit = ManagedProviderCubit(repository: providers);

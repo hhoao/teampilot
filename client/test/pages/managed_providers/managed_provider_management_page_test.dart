@@ -172,7 +172,6 @@ void main() {
       storage: testHomeStorage,
       fs: fs,
       cachePath: '/tp/usage-cache.json',
-      now: () => 100,
     );
     providerRepository = ManagedProviderRepository(
       storage: testHomeStorage,
@@ -193,7 +192,6 @@ void main() {
       registry: ManagedProviderUsageRegistry([adapter, httpJsonAdapter]),
       credentials: _NoCredentials(),
       http: _NoHttp(),
-      now: () => DateTime.fromMillisecondsSinceEpoch(100),
     );
     providerCubit = ManagedProviderCubit(repository: providerRepository);
     usageCubit = ManagedProviderUsageCubit(coordinator: coordinator);

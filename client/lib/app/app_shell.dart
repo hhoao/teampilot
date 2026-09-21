@@ -757,7 +757,7 @@ Future<AppShell> buildAppShell({
   Future<Map<CliTool, String>> locateRemoteClis(SshProfile profile) async {
     try {
       final client = await sshClientFactory.clientForStorage(profile);
-      return cliExecutableDiscovery.locateRemote(
+      return await cliExecutableDiscovery.locateRemote(
         run: RemoteCliLocator.runnerForClient(client),
       );
     } on Object catch (error, stackTrace) {

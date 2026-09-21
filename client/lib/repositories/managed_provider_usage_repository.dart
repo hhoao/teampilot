@@ -12,16 +12,13 @@ class ManagedProviderUsageRepository {
     required HomeStorage storage,
     Filesystem? fs,
     String? cachePath,
-    int Function()? now,
   }) : _fsOverride = fs,
        _cachePathOverride = cachePath,
-       _storage = storage,
-       _now = now ?? _epochMilliseconds;
+       _storage = storage;
 
   final Filesystem? _fsOverride;
   final String? _cachePathOverride;
   final HomeStorage _storage;
-  final int Function() _now;
 
   Filesystem get _fs => _fsOverride ?? _storage.fs;
 
@@ -217,8 +214,6 @@ class ManagedProviderUsageRepository {
     );
     return true;
   }
-
-  static int _epochMilliseconds() => DateTime.now().millisecondsSinceEpoch;
 
   static ProviderUsageSnapshot? _normalizeSnapshot(
     ProviderUsageSnapshot snapshot,

@@ -120,26 +120,27 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
       }
 
       final launchProfiles = context.read<LaunchProfileCubit>();
+      final storage = context.read<HomeStorage>();
       if (!draft.isPersonal && !draft.generateLaunch) {
         final teamId = draft.teamId?.trim() ?? '';
         if (teamId.isNotEmpty) {
           await launchProfiles.selectTeam(teamId, silent: true);
         }
       }
-
-      final storage = context.read<HomeStorage>();
+      if (!context.mounted) return;
       await widget.landingDraftPersister(
         workspace.workspaceId,
         draft,
         storage: storage,
       );
-      if (!mounted) return;
+      if (!context.mounted) return;
 
       // Generation mode: branch before concrete-team submit. The exact
       // composed text becomes the workflow's original prompt.
       if (draft.generateLaunch && !draft.isPersonal) {
+        if (!context.mounted) return;
         final delivered = await submitWorkspaceLandingGeneration(
-          context,
+          context, // ignore: use_build_context_synchronously
           workspace,
           launch: draft,
           message: message,
@@ -154,8 +155,9 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
         return;
       }
 
+      if (!context.mounted) return;
       final delivered = await widget.submitter(
-        context,
+        context, // ignore: use_build_context_synchronously
         workspace,
         launch: draft,
         message: message,

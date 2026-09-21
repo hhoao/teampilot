@@ -110,7 +110,7 @@ Set<String> _collectReferencedIconNames(Map<String, dynamic> json) {
   return names;
 }
 
-/// Copies referenced SVGs from <pkg>/icons into the target dir.
+/// Copies referenced SVGs from `pkg/icons` into the target dir.
 /// Returns (copiedCount, missingNames) where missingNames are referenced but
 /// absent in the source (treated as non-fatal warnings).
 ({int copied, List<String> missing}) _copySvgs({

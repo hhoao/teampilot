@@ -269,7 +269,6 @@ class TerminalSession {
   void onTerminalPtyResize(int columns, int rows) =>
       _launch.onTerminalPtyResize(columns, rows);
 
-  @visibleForTesting
   void onViewportResize(int columns, int rows) =>
       _launch.onViewportResize(columns, rows);
 

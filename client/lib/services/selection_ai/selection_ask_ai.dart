@@ -112,17 +112,18 @@ class _SelectionAskAiDialogState extends State<_SelectionAskAiDialog> {
       }
 
       final launchProfiles = context.read<LaunchProfileCubit>();
+      final storage = context.read<HomeStorage>();
       if (!draft.isPersonal) {
         final teamId = draft.teamId?.trim() ?? '';
         if (teamId.isNotEmpty) {
           await launchProfiles.selectTeam(teamId, silent: true);
         }
       }
-
+      if (!context.mounted) return;
       await persistLandingDraft(
         workspace.workspaceId,
         draft,
-        storage: context.read<HomeStorage>(),
+        storage: storage,
       );
 
       if (!mounted) return;

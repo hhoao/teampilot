@@ -174,7 +174,6 @@ class ProviderModelsEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
     final styles = TpTextStyles.of(context);
     final entries = parse(models);
     final supportsTiers = _supportsTiers(context);

@@ -4057,7 +4057,7 @@ CREATE TABLE part (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, message_id TEX
       ]);
     }
   } finally {
-    db.dispose();
+    db.close();
   }
 }
 

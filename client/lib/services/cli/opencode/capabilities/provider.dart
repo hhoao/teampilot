@@ -910,7 +910,6 @@ Map<String, Object?> mergeOpencodeReasoningEffort(
 /// `"<dir>/**": "allow"` pattern — the semantic equivalent of claude/codex
 /// `--add-dir`. Existing `permission` / `external_directory` entries are
 /// preserved and entries are idempotent.
-@visibleForTesting
 Map<String, Object?> mergeOpencodeExternalDirectories(
   Map<String, Object?> config,
   Iterable<String> directories,
@@ -943,7 +942,6 @@ Map<String, Object?> mergeOpencodeExternalDirectories(
 /// express the full-access tuple through edit, bash, and external-directory
 /// permissions. Policies that cannot be represented are rejected by the
 /// launch capability instead of inheriting OpenCode's permissive defaults.
-@visibleForTesting
 Map<String, Object?> mergeOpencodeSecurityPolicy(
   Map<String, Object?> config,
   LaunchSecurityPolicy policy,

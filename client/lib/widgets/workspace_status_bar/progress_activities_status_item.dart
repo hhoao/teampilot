@@ -81,7 +81,6 @@ class _ProgressActivitiesStatusSegmentState
         if (activities.isEmpty) return const SizedBox.shrink();
 
         final l10n = context.l10n;
-        final cubit = context.read<ProgressActivityCubit>();
 
         if (activities.length == 1) {
           final activity = activities.single;

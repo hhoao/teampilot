@@ -89,7 +89,6 @@ void main() {
       chatCubit: chatCubit,
     );
 
-    final personalAs = '';
     final capture = VmPerformanceCapture();
     await capture.start();
 

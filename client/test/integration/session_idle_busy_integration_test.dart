@@ -305,7 +305,7 @@ void main() {
     });
 
     test('bus turn ends when member enters wait_for_message', () async {
-      final opened = await openMixedSessionWithShells(
+      await openMixedSessionWithShells(
         cubit: cubit,
         repo: repo,
         postFrame: postFrame,
@@ -327,7 +327,7 @@ void main() {
     test(
       'member parked in wait_for_message is idle on bus and session',
       () async {
-        final opened = await openMixedSessionWithShells(
+        await openMixedSessionWithShells(
           cubit: cubit,
           repo: repo,
           postFrame: postFrame,

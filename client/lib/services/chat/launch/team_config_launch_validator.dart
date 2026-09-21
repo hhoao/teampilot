@@ -76,13 +76,11 @@ class TeamConfigLaunchValidator {
   TeamConfigLaunchValidator({
     required HomeStorage storage,
     OfficialProviderResolver? isOfficialProvider,
-  }) : _storage = storage,
-       _isOfficialProvider =
+  }) : _isOfficialProvider =
            isOfficialProvider ??
            ((cli, providerId) =>
                _defaultIsOfficialProvider(cli, providerId, storage));
 
-  final HomeStorage _storage;
   final OfficialProviderResolver _isOfficialProvider;
 
   static Future<bool> _defaultIsOfficialProvider(

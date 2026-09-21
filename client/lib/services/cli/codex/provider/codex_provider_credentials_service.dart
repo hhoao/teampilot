@@ -198,7 +198,7 @@ class CodexProviderCredentialsService {
         platformEnv: platformEnv,
         login: true,
       );
-      return loginCommandResult(
+      return await loginCommandResult(
         hostResult: result,
         ready: (await probe(providerId)).isReady,
         executable: executable,

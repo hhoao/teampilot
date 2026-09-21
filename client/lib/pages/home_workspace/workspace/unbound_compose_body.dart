@@ -142,7 +142,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   late final _launchGate = WorkspaceLandingLaunchGate(
     storage: homeStorageOf(context),
   );
-  var _teamConfigLaunchReady = true;
   WorkspaceLandingLaunchBlock? _launchWarningBlock;
   int _teamLaunchReadinessGeneration = 0;
   ConfigBundle _workspaceProjectBundle = const ConfigBundle();
@@ -649,7 +648,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       }
       if (!mounted || generation != _teamLaunchReadinessGeneration) return;
       setState(() {
-        _teamConfigLaunchReady = remoteBlock == null;
         _launchWarningBlock = remoteBlock;
       });
       return;
@@ -660,7 +658,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     if (team == null) {
       if (!mounted || generation != _teamLaunchReadinessGeneration) return;
       setState(() {
-        _teamConfigLaunchReady = false;
         _launchWarningBlock = const TeamNotSelectedLaunchBlock();
       });
       return;
@@ -673,7 +670,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     if (sync != null) {
       if (!mounted || generation != _teamLaunchReadinessGeneration) return;
       setState(() {
-        _teamConfigLaunchReady = false;
         _launchWarningBlock = sync;
       });
       return;
@@ -685,7 +681,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     if (!mounted || generation != _teamLaunchReadinessGeneration) return;
     if (configBlock != null) {
       setState(() {
-        _teamConfigLaunchReady = false;
         _launchWarningBlock = configBlock;
       });
       return;
@@ -702,7 +697,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           );
     if (!mounted || generation != _teamLaunchReadinessGeneration) return;
     setState(() {
-      _teamConfigLaunchReady = remoteBlock == null;
       _launchWarningBlock = remoteBlock;
     });
   }
@@ -1026,7 +1020,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         if (!mounted) return;
         if (configBlock != null) {
           setState(() {
-            _teamConfigLaunchReady = false;
             _launchWarningBlock = configBlock;
           });
           showWorkspaceLandingLaunchBlock(context, configBlock);
@@ -1045,7 +1038,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           if (!mounted) return;
           if (remoteBlock != null) {
             setState(() {
-              _teamConfigLaunchReady = false;
               _launchWarningBlock = remoteBlock;
             });
             showWorkspaceLandingLaunchBlock(context, remoteBlock);
@@ -1054,7 +1046,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         }
 
         setState(() {
-          _teamConfigLaunchReady = true;
           _launchWarningBlock = null;
         });
       }
@@ -1075,7 +1066,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         if (!mounted) return;
         if (remoteBlock != null) {
           setState(() {
-            _teamConfigLaunchReady = false;
             _launchWarningBlock = remoteBlock;
           });
           showWorkspaceLandingLaunchBlock(context, remoteBlock);
@@ -1083,7 +1073,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         }
       }
       setState(() {
-        _teamConfigLaunchReady = true;
         _launchWarningBlock = null;
       });
     }

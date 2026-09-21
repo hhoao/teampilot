@@ -1,5 +1,4 @@
-import 'package:ai_message_core/ai_message_core.dart'
-    hide UnifiedDiffEditHunkCodec;
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/ai_history/edit_codecs/unified_diff_edit_hunk_codec.dart';
 

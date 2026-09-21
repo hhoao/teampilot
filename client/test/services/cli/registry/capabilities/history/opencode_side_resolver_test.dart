@@ -52,7 +52,7 @@ void main() {
   /// Current OpenCode SQLite layout: parent_id is a real column.
   Database openDb() {
     final db = sqlite3.open(p.join(base.path, 'opencode.db'));
-    addTearDown(db.dispose);
+    addTearDown(db.close);
     db.execute('''
 CREATE TABLE session (
   id TEXT PRIMARY KEY,
@@ -623,7 +623,7 @@ CREATE TABLE part (
 
     test('discovery falls back to legacy data-blob parent linkage', () async {
       final db = sqlite3.open(p.join(base.path, 'opencode.db'));
-      addTearDown(db.dispose);
+      addTearDown(db.close);
       db.execute('''
 CREATE TABLE session (
   id TEXT PRIMARY KEY,

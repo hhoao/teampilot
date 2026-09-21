@@ -1,4 +1,3 @@
-import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:teampilot/models/runtime_target.dart';
@@ -14,8 +13,6 @@ import 'package:teampilot/services/storage/runtime_context_resolver.dart';
 import '../../support/in_memory_filesystem.dart';
 
 class _MockSshClientFactory extends Mock implements SshClientFactory {}
-
-class _MockSftpClient extends Mock implements SftpClient {}
 
 class _FailingPathResolver extends RemoteSshStoragePathResolver {
   _FailingPathResolver({required super.clientFactory});

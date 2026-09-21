@@ -363,13 +363,6 @@ class _RecordingScheduler implements SessionConnectSchedulerPort {
   }
 }
 
-Workspace? Function(String) _workspaceById(_CapturingHost host) => (id) {
-  for (final w in host.state.workspaces) {
-    if (w.workspaceId == id) return w;
-  }
-  return null;
-};
-
 class _CreateSessionCall {
   const _CreateSessionCall({
     required this.fixedSessionId,

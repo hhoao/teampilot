@@ -112,11 +112,8 @@ void main() {
   });
 
   group('_syncMcpForSelected wiring (selectTeam)', () {
-    late Directory appDataRoot;
-
     setUp(() async {
       setUpTestAppStorage();
-      appDataRoot = Directory(testHomeStorage.paths.basePath);
     });
 
     tearDown(() async {

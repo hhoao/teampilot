@@ -447,7 +447,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
       emit(state.copyWith(statusMessage: 'Team "$trimmed" already exists.'));
       return false;
     }
-    final oldName = selected.name;
     final updated = selected.copyWith(name: trimmed);
     final teams = [
       for (final team in state.teams)

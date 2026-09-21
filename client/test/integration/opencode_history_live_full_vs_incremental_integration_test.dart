@@ -418,7 +418,7 @@ void main() {
             ],
           );
         } finally {
-          child.dispose();
+          child.close();
         }
 
         // 子会话活跃期间继续轮询到 CLI 退出。

@@ -806,7 +806,6 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
   Future<void> waitForPaint({required Duration timeout}) =>
       _inner.waitForPaint(timeout: timeout);
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     final anchor = _inner.locateNeedle(needle, scanRows: scanRows);
     if (anchor != null) needleSeenAt ??= DateTime.now();
@@ -823,7 +822,6 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
 
-  @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       _inner.locateCollapsedPasteNeedle(scanRows: scanRows);
 
@@ -888,7 +886,6 @@ final class _CursorTranscriptAfterSubmitPort
   @override
   Future<void> waitForPaint({required Duration timeout}) async {}
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (_staged == null || !_staged!.contains(needle)) return null;
     return FullscreenPromptAnchor(
@@ -908,7 +905,6 @@ final class _CursorTranscriptAfterSubmitPort
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
 
-  @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 
@@ -1000,7 +996,6 @@ final class _ComposerMovesDownStuckButCommittedPort
   @override
   Future<void> waitForPaint({required Duration timeout}) async {}
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     final hay = _composerBody ?? _transcript;
     if (hay == null || !hay.contains(needle)) return null;
@@ -1021,7 +1016,6 @@ final class _ComposerMovesDownStuckButCommittedPort
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
 
-  @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 
@@ -1102,7 +1096,6 @@ final class _ComposerMovesDownStuckStagedThenAckPort
   @override
   Future<void> waitForPaint({required Duration timeout}) async {}
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (staged == null || !staged!.contains(needle)) return null;
     return FullscreenPromptAnchor(
@@ -1122,7 +1115,6 @@ final class _ComposerMovesDownStuckStagedThenAckPort
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
 
-  @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 
@@ -1202,7 +1194,6 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
   @override
   Future<void> waitForPaint({required Duration timeout}) async {}
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (staged == null || !staged!.contains(needle)) return null;
     return FullscreenPromptAnchor(
@@ -1222,7 +1213,6 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
 
-  @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 
@@ -1306,7 +1296,6 @@ final class _AnchorCellStuckButHookAckedPort
   @override
   Future<void> waitForPaint({required Duration timeout}) async {}
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (staged == null) return null;
     return FullscreenPromptAnchor(
@@ -1326,7 +1315,6 @@ final class _AnchorCellStuckButHookAckedPort
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
 
-  @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 
@@ -1404,7 +1392,6 @@ final class _MentionPopupSwallowsCrPort implements FullscreenPtyDeliveryPort {
   @override
   Future<void> waitForPaint({required Duration timeout}) async {}
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     // The popup renders the path candidates, so the needle is "visible".
     if (staged == null || !staged!.contains(needle)) return null;
@@ -1425,7 +1412,6 @@ final class _MentionPopupSwallowsCrPort implements FullscreenPtyDeliveryPort {
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
 
-  @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 
@@ -1506,7 +1492,6 @@ final class _AbortedAfterHookAckPort implements FullscreenPtyDeliveryPort {
   @override
   Future<void> waitForPaint({required Duration timeout}) async {}
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (staged == null || !staged!.contains(needle)) return null;
     return FullscreenPromptAnchor(
@@ -1526,7 +1511,6 @@ final class _AbortedAfterHookAckPort implements FullscreenPtyDeliveryPort {
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
 
-  @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 
@@ -1597,7 +1581,6 @@ final class _PaintWakePort implements FullscreenPtyDeliveryPort {
     _visible = true;
   }
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (!_visible || staged == null || !staged!.contains(needle)) return null;
     return FullscreenPromptAnchor(
@@ -1617,7 +1600,6 @@ final class _PaintWakePort implements FullscreenPtyDeliveryPort {
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
 
-  @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 
@@ -1697,7 +1679,6 @@ final class _LateCrAckPaintPort implements FullscreenPtyDeliveryPort {
     }
   }
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (staged == null || !staged!.contains(needle)) return null;
     return FullscreenPromptAnchor(
@@ -1717,7 +1698,6 @@ final class _LateCrAckPaintPort implements FullscreenPtyDeliveryPort {
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
 
-  @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 

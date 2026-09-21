@@ -22,14 +22,6 @@ class _CountingLister implements WorktreeLister {
   }
 }
 
-GitWorktree _wt(String p) => GitWorktree(
-  path: p,
-  branch: 'refs/heads/x',
-  head: 'h',
-  isBare: false,
-  isMainWorktree: false,
-);
-
 class _Harness {
   _Harness({required this.routeActive, required this.target})
     : isSubmitting = false,

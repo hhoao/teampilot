@@ -92,7 +92,7 @@ class SkillRepoDiskCacheService {
           )
           .toList();
       if (skills.isNotEmpty) return skills;
-      return _recoverSkillsFromCachedFiles(repo, path);
+      return await _recoverSkillsFromCachedFiles(repo, path);
     } catch (e) {
       appLogger.w(
         '[SkillRepoCache] corrupt skills.json for ${repo.fullName}: $e',

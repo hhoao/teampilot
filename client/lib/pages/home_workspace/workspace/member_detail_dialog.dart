@@ -34,6 +34,7 @@ Future<void> showMemberDetailDialog(
     builder: (_) => BlocProvider(
       create: (_) {
         final storage = context.read<HomeStorage>();
+        final globalPresets = context.read<CliPresetsCubit>().state.presets;
         final cubit = MemberConfigCubit(storage: storage);
         unawaited(() async {
           RuntimeContext? workContext;
@@ -57,7 +58,7 @@ Future<void> showMemberDetailDialog(
             team: team,
             member: member,
             workContext: workContext,
-            globalPresets: context.read<CliPresetsCubit>().state.presets,
+            globalPresets: globalPresets,
           );
         }());
         return cubit;

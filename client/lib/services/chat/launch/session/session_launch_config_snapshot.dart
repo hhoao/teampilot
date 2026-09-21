@@ -186,7 +186,7 @@ TeamMemberConfig _withInstanceIdentity({
     name: instance.name.trim().isNotEmpty
         ? instance.name.trim()
         : launched.name,
-    agentType: instance.agentType ?? launched.agentType,
+    agentType: instance.agentType,
     capabilities: instance.capabilities.isNotEmpty
         ? instance.capabilities
         : launched.capabilities,

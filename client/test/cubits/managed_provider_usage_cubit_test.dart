@@ -92,7 +92,6 @@ void main() {
       storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       cachePath: '/tp/usage-cache.json',
-      now: () => 100,
     );
     providers = ManagedProviderRepository(
       storage: fakeHomeStorage(filesystem: fs),
@@ -107,7 +106,6 @@ void main() {
       registry: ManagedProviderUsageRegistry([adapter]),
       credentials: _NoCredentials(),
       http: _NoHttp(),
-      now: () => DateTime.fromMillisecondsSinceEpoch(100),
     );
   });
 
@@ -233,7 +231,6 @@ void main() {
       adapter.result = gate.future;
       final cubit = ManagedProviderUsageCubit(
         coordinator: coordinator,
-        now: () => DateTime.fromMillisecondsSinceEpoch(100),
       );
       addTearDown(cubit.close);
       await cubit.load();
@@ -357,7 +354,6 @@ void main() {
       await usage.save(_ready());
       final cubit = ManagedProviderUsageCubit(
         coordinator: coordinator,
-        now: () => DateTime.fromMillisecondsSinceEpoch(100),
       );
       addTearDown(cubit.close);
       await cubit.load();
@@ -375,7 +371,6 @@ void main() {
       await usage.save(_ready(staleAt: 50));
       final cubit = ManagedProviderUsageCubit(
         coordinator: coordinator,
-        now: () => DateTime.fromMillisecondsSinceEpoch(100),
       );
       addTearDown(cubit.close);
       await cubit.load();

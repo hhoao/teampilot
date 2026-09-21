@@ -47,7 +47,6 @@ class LocalFilesystem implements Filesystem, FsWatcher {
     }
   }
 
-  @override
   Future<FsStat> lstat(String path) async {
     // Non-following stat: a symlink-to-directory reports symlink, not the
     // target's directory kind. size/mtime of the link itself are unavailable

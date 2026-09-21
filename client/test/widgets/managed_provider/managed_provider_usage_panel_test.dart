@@ -89,7 +89,6 @@ void main() {
       storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       cachePath: '/tp/usage-cache.json',
-      now: () => 100,
     );
     final providers = ManagedProviderRepository(
       storage: fakeHomeStorage(filesystem: fs),
@@ -154,7 +153,6 @@ void main() {
       storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       cachePath: '/tp/usage-cache.json',
-      now: () => 100,
     );
     final providers = ManagedProviderRepository(
       storage: fakeHomeStorage(filesystem: fs),
@@ -239,7 +237,6 @@ void main() {
       storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       cachePath: '/tp/usage-cache.json',
-      now: () => 100,
     );
     final providers = ManagedProviderRepository(
       storage: fakeHomeStorage(filesystem: fs),
@@ -334,7 +331,6 @@ void main() {
       storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       cachePath: '/tp/usage-cache.json',
-      now: () => 100,
     );
     final providers = ManagedProviderRepository(
       storage: fakeHomeStorage(filesystem: fs),
@@ -407,7 +403,6 @@ void main() {
       storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       cachePath: '/tp/usage-cache.json',
-      now: () => 100,
     );
     final providers = ManagedProviderRepository(
       storage: fakeHomeStorage(filesystem: fs),
@@ -474,7 +469,6 @@ void main() {
         storage: fakeHomeStorage(filesystem: fs),
         fs: fs,
         cachePath: '/tp/usage-cache.json',
-        now: () => 100,
       );
       final providers = ManagedProviderRepository(
         storage: fakeHomeStorage(filesystem: fs),
@@ -562,7 +556,6 @@ void main() {
         storage: fakeHomeStorage(filesystem: fs),
         fs: fs,
         cachePath: '/tp/usage-cache.json',
-        now: () => 100,
       );
       final providers = ManagedProviderRepository(
         storage: fakeHomeStorage(filesystem: fs),

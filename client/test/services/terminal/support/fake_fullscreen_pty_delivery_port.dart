@@ -55,7 +55,6 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   @override
   Future<void> waitForPaint({required Duration timeout}) async {}
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (staged == null) return null;
     if (!staged!.contains(needle)) return null;
@@ -73,7 +72,6 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       locateCollapsedPasteNeedle(scanRows: scanRows);
 
-  @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) {
     if (staged == null) return null;
     final marker = PtyAutomationNeedle.collapsedPasteNeedle(staged!);
@@ -212,7 +210,6 @@ final class RowAwareFakeFullscreenPtyDeliveryPort
   @override
   Future<void> waitForPaint({required Duration timeout}) async {}
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (laggingProbe) {
       return _anchorOn(
@@ -267,7 +264,6 @@ final class RowAwareFakeFullscreenPtyDeliveryPort
   FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
       null;
 
-  @override
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 

@@ -38,7 +38,7 @@ class _CreateSessionCall {
   final String workflowId;
 }
 
-class _CapturingSessionRepository extends Fake implements SessionRepository {
+class CapturingSessionRepository extends Fake implements SessionRepository {
   final createCalls = <_CreateSessionCall>[];
 
   @override
@@ -96,10 +96,10 @@ class _CapturingSessionRepository extends Fake implements SessionRepository {
 class SessionGenerationHarness {
   SessionGenerationHarness(Workspace workspace)
     : workspace = workspace,
-      repository = _CapturingSessionRepository(),
+      repository = CapturingSessionRepository(),
       tabStore = ChatTabStore(storage: fakeHomeStorage())
         ..setActiveWorkspaceId(workspace.workspaceId) {
-    host = _CapturingHost(
+    host = CapturingHost(
       ChatState(workspaces: [workspace]),
       tabStore: tabStore,
       lifecycle: SessionLifecycleService(
@@ -112,9 +112,9 @@ class SessionGenerationHarness {
   }
 
   final Workspace workspace;
-  final _CapturingSessionRepository repository;
+  final CapturingSessionRepository repository;
   final ChatTabStore tabStore;
-  late final _CapturingHost host;
+  late final CapturingHost host;
   late final SessionLaunchService service;
 
   Future<SessionOpenStatus> create(SessionCreateRequest request) =>
@@ -131,8 +131,8 @@ class SessionGenerationHarness {
   }
 }
 
-class _CapturingHost implements SessionLaunchHost {
-  _CapturingHost(
+class CapturingHost implements SessionLaunchHost {
+  CapturingHost(
     this.state, {
     required ChatTabStore tabStore,
     SessionLifecycleService? lifecycle,

@@ -1,6 +1,6 @@
 import '../../../../models/runtime_target.dart' as rt;
 import '../../../../models/runtime_target.dart'
-    show RuntimeKind, sshProfileIdOfId, usesSshTransport;
+    show sshProfileIdOfId, usesSshTransport;
 import '../../../../models/ssh_profile.dart';
 import '../../../../models/cli_preset.dart';
 import '../../../../models/team_config.dart';

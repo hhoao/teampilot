@@ -100,7 +100,7 @@ class _SkillRegistriesSectionState extends State<SkillRegistriesSection> {
         },
       ),
     );
-    if (result == null || !mounted) return;
+    if (result == null || !context.mounted) return;
     await context.read<SkillCubit>().updateRegistrySource(result);
   }
 
@@ -124,7 +124,7 @@ class _SkillRegistriesSectionState extends State<SkillRegistriesSection> {
       confirmLabel: isBuiltIn ? l10n.confirm : l10n.skillsRemove,
       destructive: !isBuiltIn,
     );
-    if (ok != true || !mounted) return;
+    if (ok != true || !context.mounted) return;
     if (isBuiltIn) {
       final defaults = SkillRegistriesConfig.defaults().byId(cfg.id)!;
       await context.read<SkillCubit>().updateRegistrySource(
@@ -165,7 +165,7 @@ class _SkillRegistriesSectionState extends State<SkillRegistriesSection> {
         ),
       ),
     );
-    if (kind == null || !mounted) return;
+    if (kind == null || !context.mounted) return;
     if (kind == SkillRegistryKind.gitRepo) {
       await _addGitSourceDialog(context);
     } else {
@@ -179,7 +179,7 @@ class _SkillRegistriesSectionState extends State<SkillRegistriesSection> {
       context: context,
       builder: (ctx) => _AddGitSourceDialog(l10n: l10n),
     );
-    if (saved == null || !mounted) return;
+    if (saved == null || !context.mounted) return;
     final parts = saved.split('/');
     final id = 'git-${parts[0]}-${parts[1]}';
     if (context.read<SkillCubit>().state.registriesConfig.byId(id) != null) {
@@ -227,12 +227,12 @@ class _SkillRegistriesSectionState extends State<SkillRegistriesSection> {
         ),
       ),
     );
-    if (protocol == null || !mounted) return;
+    if (protocol == null || !context.mounted) return;
     final result = await showDialog<SkillRegistrySourceConfig>(
       context: context,
       builder: (ctx) => _AddApiSourceFormDialog(protocol: protocol, l10n: l10n),
     );
-    if (result == null || !mounted) return;
+    if (result == null || !context.mounted) return;
     await context.read<SkillCubit>().addRegistrySource(result);
   }
 }

@@ -115,7 +115,6 @@ class TerminalActivityTracker {
   DateTime? _fingerprintStableSince;
 
   /// When [latchTurnQuietBaseline] ran for the current bus/simple turn.
-  DateTime? _turnLatchedAt;
 
   /// At least one [notePtyBytes] since [reset] (boot/session frame tracking).
   bool _bootPtyObserved = false;
@@ -192,7 +191,6 @@ class TerminalActivityTracker {
   void latchTurnQuietBaseline([DateTime? at]) {
     _turnPtyObserved = false;
     _fingerprintStableSince = null;
-    _turnLatchedAt = at ?? _now();
   }
 
   /// True when the fingerprint has been unchanged for [idleAfter] since the
@@ -412,7 +410,6 @@ class TerminalActivityTracker {
     _lastRawChunk = null;
     _turnPtyObserved = false;
     _fingerprintStableSince = null;
-    _turnLatchedAt = null;
     _bootPtyObserved = false;
     _bootVisibleContentSeen = false;
     _bootFirstVisibleAt = null;

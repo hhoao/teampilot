@@ -117,6 +117,7 @@ Future<void> openWorkspaceSessionTab(
     'personal=$isPersonal launchState=${session.launchState.name}',
   );
   final team = await _syncSessionTeam(context, session);
+  if (!context.mounted) return;
 
   _syncWorktreeForSession(context, session);
 
@@ -509,7 +510,7 @@ Future<bool> submitWorkspaceLandingMessage(
     );
   }
 
-  if (trimmedExpert.isNotEmpty) {
+  if (trimmedExpert.isNotEmpty && context.mounted) {
     unawaited(
       ExpertHubRecentStore(
         storage: context.read<HomeStorage>(),

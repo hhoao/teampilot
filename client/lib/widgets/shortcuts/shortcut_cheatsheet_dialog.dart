@@ -110,7 +110,6 @@ class _CheatsheetRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final isMacOS = defaultIsMacOS();
-    final cs = Theme.of(context).colorScheme;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),

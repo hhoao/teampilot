@@ -103,7 +103,7 @@ CREATE TABLE session (
       db.execute(
         "INSERT INTO session(id, parent_id, time_updated) VALUES ('ses_new', NULL, 2)",
       );
-      db.dispose();
+      db.close();
 
       final got = await const OpencodeAiHistoryCapability().detectNativeId(
         ctx(env: {'OPENCODE_DB': dbPath}),
@@ -121,7 +121,7 @@ CREATE TABLE session (
 );
 ''');
       db.execute("INSERT INTO session(id, time_updated) VALUES ('ses_db', 1)");
-      db.dispose();
+      db.close();
 
       final got = await const OpencodeAiHistoryCapability().detectNativeId(
         ctx(env: {'OPENCODE_DB': dbPath}, persistedNativeId: 'ses_kept'),

@@ -818,6 +818,7 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
       ),
       usesPosixPaths: chatCubit.lifecycle.storage.usesPosixPaths,
     );
+    final globalPresets = context.read<CliPresetsCubit>().state.presets;
     final workContext = await chatCubit.lifecycle.launchWorkContext(
       launchCtx,
       memberId: member.id,
@@ -832,7 +833,7 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
                 team: widget.team,
                 member: member,
                 workContext: workContext,
-                globalPresets: context.read<CliPresetsCubit>().state.presets,
+                globalPresets: globalPresets,
                 preferExpectedRuntimeDir: true,
               ))
               .resolvedDir;

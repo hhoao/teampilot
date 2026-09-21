@@ -47,9 +47,9 @@ final class ManagedTeamBuilderSkillProvider
   }
 
   /// Read-side lookup used by resource-isolation tests and diagnostics.
-  Future<_ManagedBuilderSkillResource?> resolve(String skillIdOrName) async {
+  Future<ManagedBuilderSkillResource?> resolve(String skillIdOrName) async {
     if (skillIdOrName != skillId) return null;
-    return _ManagedBuilderSkillResource(content: teamBuilderSkillMd);
+    return ManagedBuilderSkillResource(content: teamBuilderSkillMd);
   }
 
   Future<String> _writeManagedSkill(SkillProviderContext context) async {
@@ -68,8 +68,8 @@ final class ManagedTeamBuilderSkillProvider
   }
 }
 
-final class _ManagedBuilderSkillResource {
-  const _ManagedBuilderSkillResource({required this.content});
+final class ManagedBuilderSkillResource {
+  const ManagedBuilderSkillResource({required this.content});
 
   final String content;
 }

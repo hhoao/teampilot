@@ -25,7 +25,6 @@ void main() {
   const workspaceId = 'ws';
   const sessionId = 'sess';
   const workingDirectory = '/home/hhoa/git/hhoa/teampilot';
-  const slug = 'home-hhoa-git-hhoa-teampilot';
   const providerId = 'official';
 
   late InMemoryFilesystem fs;

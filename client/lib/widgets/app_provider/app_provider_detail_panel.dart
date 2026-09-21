@@ -345,13 +345,6 @@ class AppProviderModelsBridge extends StatelessWidget {
   }
 }
 
-bool _supportsOAuth(AppProviderConfig provider) {
-  return CliToolRegistry.builtIn()
-          .capability<ProviderCapability>(provider.cli)
-          ?.supportsOAuthCredentials ==
-      true;
-}
-
 ProviderCapability? _credentialCapability(AppProviderConfig provider) {
   return CliToolRegistry.builtIn().capability<ProviderCapability>(provider.cli);
 }

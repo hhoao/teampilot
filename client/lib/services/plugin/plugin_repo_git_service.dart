@@ -137,14 +137,14 @@ class PluginRepoGitService {
         sha,
         ref: ref,
       );
-      return _headSha(git, workDirPath);
+      return await _headSha(git, workDirPath);
     }
 
     final branch = (ref != null && ref.isNotEmpty) ? ref : 'main';
     for (final candidate in skillRepoBranchCandidates(branch)) {
       try {
         await _cloneOrUpdate(git, normalized, fs, workDirPath, candidate);
-        return _headSha(git, workDirPath);
+        return await _headSha(git, workDirPath);
       } catch (e) {
         appLogger.d('[PluginRepoGit] checkout $normalized@$candidate: $e');
       }

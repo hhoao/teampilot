@@ -4,16 +4,6 @@ import 'package:teampilot/services/cli/registry/capabilities/plugin_manifest_pat
 
 import '../../support/in_memory_filesystem.dart';
 
-class _NoSymlinkFilesystem extends InMemoryFilesystem {
-  @override
-  Future<bool> createSymlink({
-    required String target,
-    required String linkPath,
-  }) async {
-    return false;
-  }
-}
-
 void main() {
   group('projectBundleToFlavor flashskyai', () {
     test('writes .flashskyai-plugin from neutral .plugin manifest', () async {

@@ -431,7 +431,7 @@ class ClaudeProviderCredentialsService {
           );
         }
       }
-      return loginCommandResult(
+      return await loginCommandResult(
         hostResult: result,
         ready: (await probe(
           providerId,

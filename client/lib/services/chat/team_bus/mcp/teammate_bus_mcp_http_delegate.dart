@@ -148,7 +148,6 @@ class TeammateBusMcpHttpDelegate {
     final progressToken = _progressToken(rpc);
     final sw = Stopwatch()..start();
     var pings = 0;
-    var disconnectAtSec = -1;
     appLogger.d(
       '[teammate-bus-mcp] stream open member=$member '
       'tool=${rpc.toolName?.value} id=${rpc.id} '
@@ -176,7 +175,6 @@ class TeammateBusMcpHttpDelegate {
         }
         await response.flush();
       } catch (e) {
-        disconnectAtSec = sw.elapsed.inSeconds;
         timer.cancel();
         cancel.cancel();
       }

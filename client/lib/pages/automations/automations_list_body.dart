@@ -187,6 +187,7 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
   }
 
   Future<void> _edit(Automation automation) async {
+    final cubit = context.read<AutomationCubit>();
     final saved = await AutomationEditorDialog.show(
       context,
       initial: automation,
@@ -196,7 +197,7 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
       workspaceId: automation.workspaceId,
       sessionId: automation.sessionId,
     );
-    if (saved != null) await _reload(context.read<AutomationCubit>());
+    if (saved != null) await _reload(cubit);
   }
 
   Future<void> _runNow(Automation automation) async {

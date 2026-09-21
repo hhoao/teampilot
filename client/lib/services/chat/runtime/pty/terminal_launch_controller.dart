@@ -157,7 +157,6 @@ final class TerminalLaunchController {
     _transport!.resize(rows, columns);
   }
 
-  @visibleForTesting
   void onViewportResize(int columns, int rows) {
     if (columns < kMinTerminalColumns || rows < kMinTerminalRows) return;
     pendingViewportCols = columns;

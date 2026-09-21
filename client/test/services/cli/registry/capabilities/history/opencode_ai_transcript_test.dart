@@ -339,7 +339,7 @@ void main() {
           ],
         );
       }
-      db.dispose();
+      db.close();
 
       final adapter = const OpencodeAiTranscriptAdapter();
       final full = await locateOpencodeTranscript(
@@ -593,7 +593,7 @@ VALUES (
   '{"type":"tool","tool":"bash","callID":"call_db","state":{"status":"completed","input":{"command":"pwd"},"output":"/tmp"}}'
 )
 ''');
-      db.dispose();
+      db.close();
 
       final bundle = await locateOpencodeTranscript(
         ctx(dataDir: base.path, persistedNativeId: 'ses_db1'),
@@ -621,7 +621,7 @@ VALUES (
       // OpenCode keeps an open WAL writer; the main file alone has no tables.
       final dbPath = p.join(base.path, 'opencode.db');
       final db = sqlite3.open(dbPath);
-      addTearDown(db.dispose);
+      addTearDown(db.close);
       db.execute('PRAGMA journal_mode=WAL;');
       db.execute('''
 CREATE TABLE session (
@@ -746,7 +746,7 @@ VALUES (
           2000,
         ],
       );
-      db.dispose();
+      db.close();
 
       final first = await locateOpencodeTranscriptIncremental(
         ctx(dataDir: base.path, persistedNativeId: 'sess-1'),
