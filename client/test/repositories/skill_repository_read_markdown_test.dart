@@ -29,10 +29,7 @@ void main() {
     final path = fs.pathContext.join(dir, 'demo', 'SKILL.md');
     await fs.writeString(path, '# Hello\n\nDo the thing.');
 
-    expect(
-      await repo.readSkillMarkdown(skill),
-      '# Hello\n\nDo the thing.',
-    );
+    expect(await repo.readSkillMarkdown(skill), '# Hello\n\nDo the thing.');
   });
 
   test('readSkillMarkdown returns null when SKILL.md is missing', () async {

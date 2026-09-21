@@ -30,7 +30,9 @@ void main() {
     final paths = testHomeStorage.paths;
     final home = testHomeStorage.home;
     installTestHomeStorage(
-      filesystem: InMemoryFilesystem(pathContext: testHomeStorage.fs.pathContext),
+      filesystem: InMemoryFilesystem(
+        pathContext: testHomeStorage.fs.pathContext,
+      ),
       paths: paths,
       home: home,
       cwd: home,
@@ -57,10 +59,7 @@ void main() {
             child: SizedBox(
               width: 720,
               height: 640,
-              child: SkillInstalledSection(
-                state: state,
-                onGoDiscovery: () {},
-              ),
+              child: SkillInstalledSection(state: state, onGoDiscovery: () {}),
             ),
           ),
         ),
@@ -100,10 +99,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.visibility_outlined));
     await tester.pumpAndSettle();
-    expect(
-      find.text('No SKILL.md found for this skill.'),
-      findsOneWidget,
-    );
+    expect(find.text('No SKILL.md found for this skill.'), findsOneWidget);
   });
 
   testWidgets('detail closes when the skill leaves installed', (tester) async {

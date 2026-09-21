@@ -61,7 +61,11 @@ class _SkillDetailViewState extends State<SkillDetailView> {
         _status = _SkillMdStatus.ready;
       });
     } catch (e, st) {
-      appLogger.w('[skills] read SKILL.md failed: $e', error: e, stackTrace: st);
+      appLogger.w(
+        '[skills] read SKILL.md failed: $e',
+        error: e,
+        stackTrace: st,
+      );
       if (!mounted || generation != _loadGeneration) return;
       setState(() => _status = _SkillMdStatus.error);
     }
@@ -97,7 +101,9 @@ class _SkillDetailViewState extends State<SkillDetailView> {
                   widget.skill.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TpTextStyles.of(context).mdSemiboldColored(cs.onSurface),
+                  style: TpTextStyles.of(
+                    context,
+                  ).mdSemiboldColored(cs.onSurface),
                 ),
               ),
             ],
@@ -127,12 +133,13 @@ class _SkillDetailViewState extends State<SkillDetailView> {
         );
       case _SkillMdStatus.ready:
         return SelectionArea(
+          contextMenuBuilder: buildTpSelectionAreaContextMenu,
           child: MarkdownDisplayModeScope(
             codeBlockMode: ContentDisplayMode.flatten,
             child: LayoutBuilder(
               builder: (context, constraints) {
                 return SingleChildScrollView(
-                  child: MarkdownView(
+                  child: VirtualMarkdownView(
                     document: compileMarkdown(_body),
                     tokens: buildAppMarkdownTokens(
                       Theme.of(context),
@@ -140,6 +147,7 @@ class _SkillDetailViewState extends State<SkillDetailView> {
                       width: constraints.maxWidth,
                     ),
                     resolvers: MarkdownResolvers(onLinkTap: _onLinkTap),
+                    flatten: true,
                   ),
                 );
               },

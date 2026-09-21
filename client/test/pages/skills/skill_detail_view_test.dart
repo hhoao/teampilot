@@ -25,9 +25,7 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         theme: theme,
-        home: Scaffold(
-          body: SizedBox(width: 480, height: 640, child: child),
-        ),
+        home: Scaffold(body: SizedBox(width: 480, height: 640, child: child)),
       ),
     );
   }
@@ -66,10 +64,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('No SKILL.md found for this skill.'),
-      findsOneWidget,
-    );
+    expect(find.text('No SKILL.md found for this skill.'), findsOneWidget);
   });
 
   testWidgets('ignores stale markdown when skill changes mid-load', (
