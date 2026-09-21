@@ -2311,6 +2311,25 @@
       }
     }
   },
+  "mcpProbeChecking": "检测中…",
+  "mcpProbeOffline": "离线",
+  "mcpProbeNeedsAuth": "需要授权",
+  "mcpProbeToolCount": "{count} 个工具",
+  "@mcpProbeToolCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "mcpToolsEmpty": "该服务器没有工具。",
+  "mcpToolsReload": "重新加载",
+  "mcpProbeRefreshAll": "刷新状态",
+  "mcpProbeOfflineHint": "无法连接此 MCP 服务器。",
+  "mcpToolsDialogTitle": "{name} 的工具",
+  "@mcpToolsDialogTitle": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
   "mcpNoInstalled": "还没有安装 MCP 服务器",
   "mcpNoInstalledHint": "打开发现页，从内置模板或注册中心添加。",
   "mcpDiscoverySectionTitle": "发现 MCP 服务器",
