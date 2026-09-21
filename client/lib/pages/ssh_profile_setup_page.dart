@@ -223,15 +223,22 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
         validator: _required,
       ),
       const SizedBox(height: 16),
-      SegmentedButton<SshAuthType>(
+      TpSegmentedPicker<SshAuthType>(
+        selected: _authType,
+        scrollable: false,
         segments: const [
-          ButtonSegment(value: SshAuthType.privateKey, label: Text('私钥')),
-          ButtonSegment(value: SshAuthType.password, label: Text('密码')),
+          TpSegmentedOption(
+            value: SshAuthType.privateKey,
+            label: '私钥',
+            icon: Icons.vpn_key_outlined,
+          ),
+          TpSegmentedOption(
+            value: SshAuthType.password,
+            label: '密码',
+            icon: Icons.password_outlined,
+          ),
         ],
-        selected: {_authType},
-        onSelectionChanged: (selected) {
-          setState(() => _authType = selected.first);
-        },
+        onChanged: (value) => setState(() => _authType = value),
       ),
       const SizedBox(height: 12),
       if (_authType == SshAuthType.password)

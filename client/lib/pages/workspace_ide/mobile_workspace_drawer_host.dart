@@ -82,22 +82,23 @@ class _DrawerShell extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-          child: SegmentedButton<MobileDrawerMode>(
+          child: TpSegmentedPicker<MobileDrawerMode>(
             key: AppKeys.mobileWorkspaceDrawerModeSwitch,
+            selected: mode,
             segments: [
-              ButtonSegment(
+              TpSegmentedOption(
                 value: MobileDrawerMode.chat,
-                label: Text(l10n.appRailChat),
+                label: l10n.appRailChat,
+                icon: Icons.chat_bubble_outline_rounded,
               ),
-              ButtonSegment(
+              TpSegmentedOption(
                 value: MobileDrawerMode.tools,
-                label: Text(l10n.openRightTools),
+                label: l10n.openRightTools,
+                icon: Icons.handyman_outlined,
               ),
             ],
-            selected: {mode},
-            onSelectionChanged: (selection) {
-              final next = selection.firstOrNull;
-              if (next == null || next == mode) return;
+            onChanged: (next) {
+              if (next == mode) return;
               onModeChanged(next);
             },
           ),

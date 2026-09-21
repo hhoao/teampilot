@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
@@ -126,7 +127,7 @@ void main() {
     await tester.tap(find.text(l10n.workspaceFoldersChangeTarget));
     await tester.pumpAndSettle();
     expect(find.text(l10n.workspaceFoldersPickTarget), findsOneWidget);
-    final dialog = find.byType(SimpleDialog);
+    final dialog = find.byType(TpDialog);
     expect(
       find.descendant(of: dialog, matching: find.text('This device')),
       findsOneWidget,
@@ -154,7 +155,7 @@ void main() {
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     await tester.tap(find.text(l10n.workspaceFoldersAddOnAnotherMachine));
     await tester.pumpAndSettle();
-    final dialog = find.byType(SimpleDialog);
+    final dialog = find.byType(TpDialog);
     expect(
       find.descendant(of: dialog, matching: find.text('Server A')),
       findsOneWidget,
