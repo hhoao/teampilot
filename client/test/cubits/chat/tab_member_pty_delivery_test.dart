@@ -15,6 +15,7 @@ import 'package:teampilot/services/chat/conversation/prompt_delivery/prompt_deli
 import 'package:teampilot/services/chat/conversation/prompt_delivery/prompt_delivery_store.dart';
 import 'package:teampilot/services/chat/runtime/pty/fullscreen_pty_automation.dart';
 import 'package:teampilot/services/chat/runtime/pty/terminal_input_command_queue.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 
 import '../../integration/support/connected_recording_shell.dart';
 import '../../support/rust_lib_test_init.dart';
@@ -354,6 +355,39 @@ void main() {
   });
 
   test(
+    'mail doorbell uses the prompt-delivery coordinator without latching',
+    () async {
+      final shell = await ConnectedRecordingShell.connect();
+      addTearDown(shell.dispose);
+      shell.session.activityTracker.latchBootFrameReadyForTest(
+        DateTime.now().subtract(const Duration(seconds: 5)),
+      );
+      final commands = _RecordingPromptCommands();
+      final harness = _DeliveryHarness.connected(
+        shell: shell,
+        commands: commands,
+        onAfterTurnLatched: (_, _) {},
+        cli: CliTool.claude,
+      );
+
+      await harness.delivery.deliverMemberStdin(
+        's',
+        'm',
+        TeamBus.doorbellNotice,
+        automation: true,
+        latchUserTurn: false,
+      );
+
+      expect(commands.submittedPrompts, [TeamBus.doorbellNotice]);
+      expect(
+        shell.session.userTurnActive,
+        isFalse,
+        reason: 'mail doorbell must not latch an operator turn',
+      );
+    },
+  );
+
+  test(
     'hook-confirmed submit latches the turn but drops the obsolete CR',
     () async {
       final shell = await ConnectedRecordingShell.connect();
@@ -447,8 +481,9 @@ final class _DeliveryHarness {
     required PromptDeliveryCommands commands,
     required void Function(String sessionId, String memberId)
     onAfterTurnLatched,
+    CliTool cli = CliTool.codex,
   }) {
-    final tabStore = _connectedTabStore(shell);
+    final tabStore = _connectedTabStore(shell, cli: cli);
     final coordinator = PromptDeliveryCoordinator(
       store: MemoryPromptDeliveryStore(),
       commands: commands,
@@ -518,7 +553,10 @@ final class _DeliveryHarness {
     return _DeliveryHarness._(null, null, delivery);
   }
 
-  static ChatTabStore _connectedTabStore(ConnectedRecordingShell shell) {
+  static ChatTabStore _connectedTabStore(
+    ConnectedRecordingShell shell, {
+    CliTool cli = CliTool.codex,
+  }) {
     final tabStore = ChatTabStore(storage: fakeHomeStorage());
     final tab =
         ChatTab(
@@ -529,7 +567,7 @@ final class _DeliveryHarness {
             sessionId: 's',
             workspaceId: 'workspace',
             sessionTeam: '',
-            cli: CliTool.codex,
+            cli: cli,
             createdAt: 0,
           );
     tab.memberShells['m'] = shell.session;

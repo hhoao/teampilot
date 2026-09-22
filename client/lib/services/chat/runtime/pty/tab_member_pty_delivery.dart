@@ -178,6 +178,11 @@ final class TabMemberPtyDelivery {
           return;
         }
         if (!_beginMailDelivery(sessionId, memberId)) return;
+        // Same hook-ack coordinator as operator inject: MemberPtyInjectService
+        // never receives isAcked, so hookSubmitAck CLIs time out as crStuck
+        // even after UserPromptSubmit already committed the mail notice.
+        await _deliverMailDoorbell(sessionId, memberId, trimmed);
+        return;
       } else if (isOperatorTurn) {
         // Operator PTY inject (worker kickoff, landing stdin) must use the
         // same hook-ack coordinator as History compose. MemberPtyInjectService
@@ -232,13 +237,19 @@ final class TabMemberPtyDelivery {
         return;
       }
       if (!_beginMailDelivery(sessionId, memberId)) return;
+      appLogger.d(
+        '[session-runtime] retry-delivery member=$memberId session=$sessionId '
+        'preview=${_doorbellLogPreview(trimmed)}',
+      );
+      await _deliverMailDoorbell(sessionId, memberId, trimmed);
+      return;
     }
     appLogger.d(
       '[session-runtime] retry-delivery member=$memberId session=$sessionId '
       'preview=${_doorbellLogPreview(trimmed)}',
     );
     final settle = _pasteSettleForMember(sessionId, memberId, automation: true);
-    final outcome = await _ptyInject.retry(
+    await _ptyInject.retry(
       input: shell.input,
       probe: shell.probe,
       sessionId: sessionId,
@@ -250,9 +261,6 @@ final class TabMemberPtyDelivery {
       crAckConfig: _crAckForMember(sessionId, memberId),
       painted: shell.observationPainted,
     );
-    if (isMailDoorbell) {
-      _reportMailDeliveryOutcome(sessionId, memberId, outcome);
-    }
   }
 
   /// Default: TeamBus mailbox when a bus is installed. [directToPty] injects at
@@ -279,29 +287,14 @@ final class TabMemberPtyDelivery {
       final id = bus.deliverUserCommand(memberId, message);
       return id.isEmpty ? null : id;
     }
-    final key = _seatKey(sessionId, memberId);
-    final epoch = (_directEpochBySeat[key] ?? 0) + 1;
-    _directEpochBySeat[key] = epoch;
-    final delivery = await _promptDeliveries.submit(
-      PromptDeliveryRequest(
-        seat: RuntimeSeatKey(sessionId: sessionId, memberId: memberId),
-        cli: _memberCli(sessionId, memberId),
-        text: message,
-        deliveryId: deliveryId,
-      ),
+    final result = await _issueDirectPtySubmit(
+      sessionId: sessionId,
+      memberId: memberId,
+      message: message,
+      latchTurn: true,
+      deliveryId: deliveryId,
     );
-    if (_directEpochBySeat[key] != epoch) {
-      await _promptDeliveries.failBeforeSubmit(delivery.id);
-      return null;
-    }
-    _directDeliveryBySeat[key] = delivery.id;
-    final result = await _promptDeliveries.issueSubmit(delivery.id);
-    if (_directDeliveryBySeat[key] == delivery.id &&
-        result == PromptSubmissionResult.submitted &&
-        _directTurnLatched.add(delivery.id)) {
-      _markMemberTurnStartedOnSubmitSuccess(sessionId, memberId);
-    }
-    return result == PromptSubmissionResult.submitted ? delivery.id : null;
+    return result.submittedId;
   }
 
   /// Delivers a direct prompt with a caller-owned idempotency id.
@@ -375,6 +368,65 @@ final class TabMemberPtyDelivery {
         PromptSubmissionResult.failed => PromptDeliveryState.failed.name,
       },
     );
+  }
+
+  Future<({String? submittedId, PromptSubmissionResult result})>
+  _issueDirectPtySubmit({
+    required String sessionId,
+    required String memberId,
+    required String message,
+    required bool latchTurn,
+    String? deliveryId,
+  }) async {
+    final key = _seatKey(sessionId, memberId);
+    final epoch = (_directEpochBySeat[key] ?? 0) + 1;
+    _directEpochBySeat[key] = epoch;
+    final delivery = await _promptDeliveries.submit(
+      PromptDeliveryRequest(
+        seat: RuntimeSeatKey(sessionId: sessionId, memberId: memberId),
+        cli: _memberCli(sessionId, memberId),
+        text: message,
+        deliveryId: deliveryId,
+      ),
+    );
+    if (_directEpochBySeat[key] != epoch) {
+      await _promptDeliveries.failBeforeSubmit(delivery.id);
+      return (submittedId: null, result: PromptSubmissionResult.dropped);
+    }
+    _directDeliveryBySeat[key] = delivery.id;
+    final result = await _promptDeliveries.issueSubmit(delivery.id);
+    if (latchTurn &&
+        _directDeliveryBySeat[key] == delivery.id &&
+        result == PromptSubmissionResult.submitted &&
+        _directTurnLatched.add(delivery.id)) {
+      _markMemberTurnStartedOnSubmitSuccess(sessionId, memberId);
+    }
+    return (
+      submittedId: result == PromptSubmissionResult.submitted
+          ? delivery.id
+          : null,
+      result: result,
+    );
+  }
+
+  Future<void> _deliverMailDoorbell(
+    String sessionId,
+    String memberId,
+    String text,
+  ) async {
+    final issued = await _issueDirectPtySubmit(
+      sessionId: sessionId,
+      memberId: memberId,
+      message: text,
+      latchTurn: false,
+    );
+    _reportMailDeliveryOutcome(sessionId, memberId, switch (issued.result) {
+      PromptSubmissionResult.submitted => FullscreenPtyDeliveryOutcome.submitted,
+      PromptSubmissionResult.unconfirmed =>
+        FullscreenPtyDeliveryOutcome.crStuck,
+      PromptSubmissionResult.dropped || PromptSubmissionResult.failed =>
+        FullscreenPtyDeliveryOutcome.aborted,
+    });
   }
 
   Future<void> _deliverFullScreen({

@@ -14,6 +14,8 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 import 'package:teampilot/services/chat/runtime/pty/fullscreen_pty_automation.dart';
 import 'package:teampilot/services/chat/runtime/pty/member_pty_inject_service.dart';
+import 'package:teampilot/services/chat/conversation/prompt_delivery/prompt_delivery_coordinator.dart';
+import 'package:teampilot/services/chat/conversation/prompt_delivery/prompt_delivery_store.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../../integration/support/connected_recording_shell.dart';
@@ -209,10 +211,8 @@ void main() {
     () async {
       final harness = await _ComposerHarness.connect(
         cli: CliTool.codex,
-        ptyInject: MemberPtyInjectService(
-          automation: FullscreenPtyAutomation(
-            timing: PtyAutomationTiming.instant(),
-          ),
+        automation: FullscreenPtyAutomation(
+          timing: PtyAutomationTiming.instant(),
         ),
       );
       addTearDown(harness.dispose);
@@ -421,6 +421,7 @@ final class _ComposerHarness {
   static Future<_ComposerHarness> connect({
     required CliTool cli,
     MemberPtyInjectService? ptyInject,
+    FullscreenPtyAutomation? automation,
   }) async {
     final store = ChatTabStore(storage: testHomeStorage);
     store.setActiveWorkspaceId('ws-1');
@@ -445,7 +446,8 @@ final class _ComposerHarness {
       DateTime.now().subtract(const Duration(seconds: 5)),
     );
 
-    final inject = ptyInject ?? MemberPtyInjectService();
+    final auto = automation ?? FullscreenPtyAutomation();
+    final inject = ptyInject ?? MemberPtyInjectService(automation: auto);
     final delivery = TabMemberPtyDelivery(
       tabStore: store,
       shellFactory: ChatSessionShellFactory(executableResolver: () => 'true'),
@@ -458,6 +460,10 @@ final class _ComposerHarness {
         activeTeam: () => null,
       ),
       ptyInject: inject,
+      promptDeliveries: PromptDeliveryCoordinator(
+        store: MemoryPromptDeliveryStore(),
+        commands: TabPromptDeliveryCommands(store, automation: auto),
+      ),
     );
     final runtime = TabSessionRuntimeCoordinator(
       tabStore: store,
