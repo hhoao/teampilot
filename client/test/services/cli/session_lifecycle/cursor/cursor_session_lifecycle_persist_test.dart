@@ -77,7 +77,7 @@ void main() {
 
   group('CursorSessionLifecycleCapability.ensurePersisted', () {
     test(
-      'creates manifest, shared projects, and member project links',
+      'creates manifest and per-member project dirs',
       () async {
         await capability.ensurePersisted(persistContext());
 
@@ -92,24 +92,15 @@ void main() {
         expect(manifest.members.keys, containsAll(['team-lead', 'architect']));
 
         expect(
-          (await fs.stat(lifecyclePaths.sharedProjectsDir())).isDirectory,
+          (await fs.stat(lifecyclePaths.sharedRoot())).isDirectory,
           isTrue,
-        );
-
-        final sharedProjectsRoot = fs.pathContext.join(
-          lifecyclePaths.sharedRoot(),
-          CursorWorkspaceTrust.projectsDirName,
         );
 
         for (final memberId in ['team-lead', 'architect']) {
           final memberHome = lifecyclePaths.memberHomeRoot(memberId);
-          final memberProjects = fs.pathContext.join(
-            homeLayout.cursorDir(memberHome),
-            CursorWorkspaceTrust.projectsDirName,
-          );
           expect(
-            await fs.readSymlinkTarget(memberProjects),
-            sharedProjectsRoot,
+            (await fs.stat(lifecyclePaths.memberProjectsDir(memberHome))).isDirectory,
+            isTrue,
           );
 
           final trustPath = CursorWorkspaceTrust.trustMarkerPath(

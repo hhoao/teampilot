@@ -121,7 +121,7 @@ void main() {
   });
 
   group('CursorSessionLifecycleCapability.initialize', () {
-    test('writes warm-tier base config from user cli-config.json', () async {
+    test('writes member cli-config base from user cli-config.json', () async {
       await fs.writeString(
         homeLayout.cliConfig('/home/user'),
         jsonEncode({
@@ -138,10 +138,8 @@ void main() {
       final result = await cap.initialize(initContext());
 
       expect(result.blocked, isFalse);
-      final basePath = fs.pathContext.join(
-        lifecyclePaths.sharedRoot(),
-        'cli-config.base.json',
-      );
+      final memberHome = lifecyclePaths.memberHomeRoot('team-lead');
+      final basePath = lifecyclePaths.memberCliConfigBasePath(memberHome);
       final base =
           jsonDecode((await fs.readString(basePath))!) as Map<String, Object?>;
       expect(base['serverConfigCache'], {'feature': true});

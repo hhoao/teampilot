@@ -307,7 +307,7 @@ void main() {
   });
 
   test(
-    'cursor warm assembly is reused and empty snapshot skips credential merge',
+    'cursor member session write skips credential merge for empty catalog snapshot',
     () async {
       const teamId = 'team-empty-snapshot';
       await Directory(layout.identityMcpDir(teamId)).create(recursive: true);
@@ -324,23 +324,18 @@ void main() {
         cliRegistry: CliToolRegistry()..register(_CursorTestTool(writer)),
       );
 
-      final assembly = await service.writeCursorWorkspaceMcpBase(
+      await service.writeForSession(
         workspaceId: 'workspace-empty-snapshot',
+        sessionId: 'session-empty-snapshot',
         teamId: teamId,
+        cli: CliTool.cursor,
+        memberId: 'member-empty-snapshot',
         extraServers: const {
           'extra': {'type': 'stdio', 'command': 'extra-command'},
         },
         pluginIds: const ['missing-plugin'],
       );
-      await service.mergeCursorMemberMcpCredentials(
-        workspaceId: 'workspace-empty-snapshot',
-        sessionId: 'session-empty-snapshot',
-        teamId: teamId,
-        memberId: 'member-empty-snapshot',
-        assembly: assembly,
-      );
 
-      expect(assembly.hasValidCatalogContribution, isFalse);
       expect(writer.writeCalls, 1);
       expect(writer.mergeCalls, 0);
       expect(config.loadCalls, 1);
@@ -426,7 +421,6 @@ final class _RecordingMcpCapability implements McpCapability {
     required Filesystem fs,
     required String configDir,
     required List<McpServerSpec> servers,
-    String? outputBasename,
   }) async {
     writeCalls++;
   }

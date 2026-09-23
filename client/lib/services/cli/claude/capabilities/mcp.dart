@@ -34,7 +34,6 @@ final class ClaudeMcpCapability implements McpCapability {
     required Filesystem fs,
     required String configDir,
     required List<McpServerSpec> servers,
-    String? outputBasename,
   }) async {
     await mergeMetadataMcpServers(
       fs: fs,
@@ -85,7 +84,6 @@ final class FlashskyaiMcpCapability implements McpCapability {
     required Filesystem fs,
     required String configDir,
     required List<McpServerSpec> servers,
-    String? outputBasename,
   }) async {
     await mergeMetadataMcpServers(
       fs: fs,

@@ -428,7 +428,6 @@ final class _WorkPathProjector {
 
   String? _project(String path) {
     final homeCtx = sourceFs.pathContext;
-    final workCtx = workFs.pathContext;
     final asWork = _asWorkPath(path);
     if (asWork != null) {
       return asWork;

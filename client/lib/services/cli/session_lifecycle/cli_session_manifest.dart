@@ -37,14 +37,23 @@ class CliSessionManifestShared {
     return CliSessionManifestShared(
       root: root,
       projectsDir: _requireString(json, 'projectsDir'),
-      cliConfigBase: _requireString(json, 'cliConfigBase'),
-      pluginsLocalDir:
-          _optionalString(json, 'pluginsLocalDir') ?? warmPaths.pluginsLocalDir,
-      skillsCursorDir:
-          _optionalString(json, 'skillsCursorDir') ?? warmPaths.skillsCursorDir,
-      mcpBase: _optionalString(json, 'mcpBase') ?? warmPaths.mcpBase,
-      settingsJson:
-          _optionalString(json, 'settingsJson') ?? warmPaths.settingsJson,
+      cliConfigBase: _legacySharedPath(json, 'cliConfigBase'),
+      pluginsLocalDir: _legacySharedPath(
+        json,
+        'pluginsLocalDir',
+        fallback: warmPaths.pluginsLocalDir,
+      ),
+      skillsCursorDir: _legacySharedPath(
+        json,
+        'skillsCursorDir',
+        fallback: warmPaths.skillsCursorDir,
+      ),
+      mcpBase: _legacySharedPath(json, 'mcpBase', fallback: warmPaths.mcpBase),
+      settingsJson: _legacySharedPath(
+        json,
+        'settingsJson',
+        fallback: warmPaths.settingsJson,
+      ),
     );
   }
 
@@ -327,6 +336,20 @@ String _requireString(Map<String, Object?> json, String key) {
   final value = json[key];
   if (value is! String || value.isEmpty) {
     throw FormatException('missing or invalid string for $key');
+  }
+  return value;
+}
+
+/// Legacy warm-tier shared paths; empty means per-member session runtime.
+String _legacySharedPath(
+  Map<String, Object?> json,
+  String key, {
+  String fallback = '',
+}) {
+  final value = json[key];
+  if (value == null) return fallback;
+  if (value is! String) {
+    throw FormatException('invalid string for $key');
   }
   return value;
 }

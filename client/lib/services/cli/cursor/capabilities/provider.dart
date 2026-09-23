@@ -13,9 +13,9 @@ import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../io/filesystem.dart';
 import '../../../remote/remote_credential_materializer.dart';
 import '../../../storage/home_storage.dart';
+import '../../registry/capabilities/cli_session_capability.dart';
 import '../../registry/capabilities/provider_capability.dart';
 import '../../registry/cli_tool_registry.dart';
-import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../../resource/providers/runtime_event_hook_contribution_provider.dart';
 import '../../../resource/providers/endpoint_hook_contribution_provider.dart';
@@ -27,8 +27,6 @@ import '../provider/cursor_launch_environment.dart';
 import '../provider/cursor_live_import.dart';
 import '../provider/cursor_provider_credentials_service.dart';
 import '../provider/cursor_provider_settings_resolver.dart';
-import '../provider/cursor_session_config_dir.dart';
-import '../provider/cursor_windows_home_junction.dart';
 import '../provider/cursor_workspace_trust_provisioner.dart';
 import '../provider_presets.dart';
 
@@ -327,20 +325,17 @@ final class CursorProviderCapability extends CatalogModelCapability
     // Isolate under a fake `$HOME` (like mixed mode) so cursor reads the
     // session's `~/.cursor` — plugins/MCP/skills are materialized there.
     // CURSOR_CONFIG_DIR alone does NOT relocate the `.cursor` data dir.
-    final toolDir = paths.sessionToolDir(
-      ctx.scope.workspaceId,
-      ctx.scope.sessionId,
-      toolId,
+    final home = await sessionMemberHomePreparedForResourceWrites(
+      fs: paths.fs,
+      tool: CliTool.cursor,
+      layout: paths.layout,
+      workspaceId: ctx.scope.workspaceId,
+      sessionId: ctx.scope.sessionId,
       memberId: ctx.scope.memberId,
     );
-    final canonicalHome = paths.joinWork(
-      toolDir,
-      CursorSessionConfigDir.homeSegment,
-    );
-    final home = await CursorWindowsHomeJunction.ensureAgentHome(
-      fs: paths.fs,
-      canonicalHome: canonicalHome,
-    );
+    if (home == null) {
+      throw StateError('cursor simple launch requires isolated member home');
+    }
     final layout = CursorHomeLayout(pathContext: paths.workPathContext);
     final cursorDir = layout.cursorDir(home);
     await paths.fs.ensureDir(cursorDir);
@@ -489,16 +484,18 @@ final class CursorProviderCapability extends CatalogModelCapability
 
     if (mixed) {
       final memberId = ctx.scope.memberId?.trim() ?? '';
-      final memberHome = _resolveMixedMemberHome(
-        paths: paths,
+      final agentHome = await sessionMemberHomePreparedForResourceWrites(
+        fs: paths.fs,
+        tool: CliTool.cursor,
+        layout: paths.layout,
         workspaceId: ctx.scope.workspaceId,
         sessionId: ctx.scope.sessionId,
-        memberId: memberId,
+        memberId: memberId.isEmpty ? null : memberId,
       );
-      final agentHome = await CursorWindowsHomeJunction.ensureAgentHome(
-        fs: paths.fs,
-        canonicalHome: memberHome,
-      );
+      if (agentHome == null) {
+        warnings.add('cursor_home_missing');
+        return SessionHomeContribution(environment: const {}, warnings: warnings);
+      }
 
       final credentials = CursorProviderCredentialsService(
         storage: storage ?? _missingHomeStorage(),
@@ -594,14 +591,17 @@ final class CursorProviderCapability extends CatalogModelCapability
 
     // Non-mixed team fallback (cursor is not native-team-launchable, so this is
     // effectively unreachable) — still HOME-isolate for consistency.
-    final canonicalHome = paths.joinWork(
-      cursorDir,
-      CursorSessionConfigDir.homeSegment,
-    );
-    final home = await CursorWindowsHomeJunction.ensureAgentHome(
+    final home = await sessionMemberHomePreparedForResourceWrites(
       fs: paths.fs,
-      canonicalHome: canonicalHome,
+      tool: CliTool.cursor,
+      layout: paths.layout,
+      workspaceId: ctx.scope.workspaceId,
+      sessionId: ctx.scope.sessionId,
+      memberId: ctx.scope.memberId,
     );
+    if (home == null) {
+      throw StateError('cursor team launch requires isolated member home');
+    }
     final cursorConfigDir = CursorHomeLayout(
       pathContext: paths.workPathContext,
     ).cursorDir(home);
@@ -613,20 +613,6 @@ final class CursorProviderCapability extends CatalogModelCapability
         cursorConfigDir: cursorConfigDir,
       ),
       warnings: warnings,
-    );
-  }
-
-  String _resolveMixedMemberHome({
-    required ConfigProfilePaths paths,
-    required String workspaceId,
-    required String sessionId,
-    required String memberId,
-  }) {
-    return CursorSessionConfigDir.mixedHomeRoot(
-      paths.layout,
-      workspaceId: workspaceId,
-      sessionId: sessionId,
-      memberId: memberId,
     );
   }
 

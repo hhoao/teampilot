@@ -54,7 +54,6 @@ class CliResourceProvisionContext {
     this.memberHome,
     this.appConfigDir,
     this.fallbackAppConfigDir,
-    this.mcpOutputBasename,
     this.hooksDir,
     this.hookConfigPath,
     this.hookRenderContext,
@@ -84,7 +83,6 @@ class CliResourceProvisionContext {
 
   final String? appConfigDir;
   final String? fallbackAppConfigDir;
-  final String? mcpOutputBasename;
   final String? hooksDir;
 
   /// Optional target file for the single native hook config fragment.
@@ -380,7 +378,6 @@ final class CliResourceProvisioner {
             fs: _fs,
             configDir: context.configDir,
             servers: mcpServers,
-            outputBasename: context.mcpOutputBasename,
           );
           materializations[ResourceContributionKind.mcp] =
               ResourceMaterializationResult(

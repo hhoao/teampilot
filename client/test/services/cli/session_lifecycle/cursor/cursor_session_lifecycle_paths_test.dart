@@ -1,11 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/cursor/capabilities/session_lifecycle_paths.dart';
-import 'package:teampilot/services/cli/cursor/capabilities/skill.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_workspace_trust.dart';
-import 'package:teampilot/services/cli/cursor/provider/cursor_workspace_warm_tier.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../../../../support/cursor_warm_tier_manifest_paths.dart';
@@ -110,131 +108,45 @@ void main() {
       );
     });
 
-    test(
-      'ensureSharedDirs creates shared root and workspace slug dir',
-      () async {
-        await paths.ensureSharedDirs();
+    test('ensureManifestDir creates lifecycle manifest root only', () async {
+      await paths.ensureManifestDir();
 
-        expect((await fs.stat(paths.sharedRoot())).isDirectory, isTrue);
-        expect((await fs.stat(paths.sharedProjectsDir())).isDirectory, isTrue);
-      },
-    );
+      expect((await fs.stat(paths.sharedRoot())).isDirectory, isTrue);
+    });
 
     test(
-      'ensureMemberHomeLayout symlinks projects dir to shared projects root',
+      'ensureMemberHomeLayout creates member cursor resource dirs without passthrough',
       () async {
-        await paths.ensureSharedDirs();
-
         const memberId = 'team-lead';
         const realHome = '/home/user';
         await fs.ensureDir(realHome);
         await fs.ensureDir(fs.pathContext.join(realHome, '.rustup'));
-        await paths.ensureMemberHomeLayout(
-          memberId: memberId,
-          realHomeRoot: realHome,
-        );
+        await paths.ensureMemberHomeLayout(memberId: memberId);
 
         final memberHome = paths.memberHomeRoot(memberId);
-        final memberProjects = fs.pathContext.join(
-          homeLayout.cursorDir(memberHome),
-          CursorWorkspaceTrust.projectsDirName,
-        );
-        final sharedProjectsRoot = fs.pathContext.join(
-          paths.sharedRoot(),
-          CursorWorkspaceTrust.projectsDirName,
-        );
 
         expect((await fs.stat(memberHome)).isDirectory, isTrue);
         expect(
           (await fs.stat(homeLayout.cursorDir(memberHome))).isDirectory,
           isTrue,
         );
-        expect(await fs.readSymlinkTarget(memberProjects), sharedProjectsRoot);
+        expect(
+          (await fs.stat(paths.memberProjectsDir(memberHome))).isDirectory,
+          isTrue,
+        );
+        expect(
+          (await fs.stat(paths.memberPluginsLocalDir(memberHome))).isDirectory,
+          isTrue,
+        );
+        expect(
+          (await fs.stat(paths.memberSkillsCursorDir(memberHome))).isDirectory,
+          isTrue,
+        );
         expect(
           await fs.readSymlinkTarget(
             fs.pathContext.join(memberHome, '.rustup'),
           ),
-          fs.pathContext.join(realHome, '.rustup'),
-        );
-      },
-    );
-
-    test('ensureSharedDirs creates warm-tier plugin and skills dirs', () async {
-      await paths.ensureSharedDirs();
-
-      expect(
-        (await fs.stat(paths.sharedPluginsLocalDir())).isDirectory,
-        isTrue,
-      );
-      expect(
-        (await fs.stat(paths.sharedPluginsMarketplacesDir())).isDirectory,
-        isTrue,
-      );
-      expect(
-        (await fs.stat(paths.sharedSkillsCursorDir())).isDirectory,
-        isTrue,
-      );
-    });
-
-    test(
-      'ensureMemberHomeLayout symlinks warm-tier artifacts to shared root',
-      () async {
-        await paths.ensureSharedDirs();
-        await fs.atomicWrite(
-          paths.sharedSettingsFile(),
-          '{"enabledPlugins":[]}',
-        );
-
-        const memberId = 'architect';
-        const realHome = '/home/user';
-        await fs.ensureDir(realHome);
-        await paths.ensureMemberHomeLayout(
-          memberId: memberId,
-          realHomeRoot: realHome,
-        );
-
-        final memberHome = paths.memberHomeRoot(memberId);
-        final cursorDir = homeLayout.cursorDir(memberHome);
-        final memberPluginsDir = fs.pathContext.join(
-          cursorDir,
-          CursorWorkspaceWarmTier.pluginsDirName,
-        );
-
-        expect(
-          await fs.readSymlinkTarget(
-            fs.pathContext.join(
-              memberPluginsDir,
-              CursorWorkspaceWarmTier.localPluginsSegment,
-            ),
-          ),
-          paths.sharedPluginsLocalDir(),
-        );
-        expect(
-          await fs.readSymlinkTarget(
-            fs.pathContext.join(
-              memberPluginsDir,
-              CursorWorkspaceWarmTier.marketplacesSegment,
-            ),
-          ),
-          paths.sharedPluginsMarketplacesDir(),
-        );
-        expect(
-          await fs.readSymlinkTarget(
-            fs.pathContext.join(
-              cursorDir,
-              CursorWorkspaceWarmTier.settingsFileName,
-            ),
-          ),
-          paths.sharedSettingsFile(),
-        );
-        expect(
-          await fs.readSymlinkTarget(
-            fs.pathContext.join(
-              cursorDir,
-              CursorSkillCapability.skillsSubdirName,
-            ),
-          ),
-          paths.sharedSkillsCursorDir(),
+          isNull,
         );
       },
     );

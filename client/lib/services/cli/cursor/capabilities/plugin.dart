@@ -50,7 +50,6 @@ final class CursorPluginCapability implements PluginCapability {
         fs: ctx.fs,
         configDir: ctx.configDir,
         servers: ctx.assembledMcpServers,
-        outputBasename: ctx.mcpConfigFileName,
       );
     }
     await ClaudeFlavorRegistryWriter(

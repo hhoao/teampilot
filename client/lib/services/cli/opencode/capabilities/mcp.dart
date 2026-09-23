@@ -18,7 +18,6 @@ final class OpencodeMcpCapability implements McpCapability {
     required Filesystem fs,
     required String configDir,
     required List<McpServerSpec> servers,
-    String? outputBasename,
   }) async {
     final configPath = fs.pathContext.join(configDir, configFileName);
     final stat = await fs.stat(configPath);

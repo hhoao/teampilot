@@ -4,7 +4,6 @@ import '../../models/mcp_server_spec.dart';
 import '../../models/team_config.dart';
 import '../cli/registry/capabilities/mcp_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
-import '../cli/cursor/provider/cursor_workspace_warm_tier.dart';
 import '../cli/registry/capabilities/cli_session_capability.dart';
 import '../cli/claude/capabilities/mcp_project_cleanup.dart';
 import '../storage/runtime_layout.dart';
@@ -103,97 +102,6 @@ class McpRegistryService {
         memberId: memberId,
       );
     }
-  }
-
-  /// Writes team MCP catalog into the cursor workspace warm tier (`mcp.base.json`).
-  Future<McpRegistryAssembly> writeCursorWorkspaceMcpBase({
-    required String workspaceId,
-    required String teamId,
-    Map<String, Map<String, Object?>>? extraServers,
-    Iterable<String> pluginIds = const [],
-    Iterable<String> projectMcpRoots = const [],
-    McpRegistryAssembly? assembly,
-    bool mcpAlreadyMaterialized = false,
-  }) async {
-    final trimmedWorkspaceId = workspaceId.trim();
-    final trimmedTeamId = teamId.trim();
-    if (trimmedWorkspaceId.isEmpty || trimmedTeamId.isEmpty) {
-      return McpRegistryAssembly.empty();
-    }
-
-    final assembled =
-        assembly ??
-        await _assemble(
-          cli: CliTool.cursor,
-          snapshotPath: layout.identityMcpServersFile(trimmedTeamId),
-          extraServers: extraServers,
-          pluginIds: pluginIds,
-        );
-    final specs = assembled.result.servers;
-
-    await maybeRemoveStaleProjectTeammateBus(
-      fs: _fs,
-      extraServers: extraServers,
-      projectRoots: projectMcpRoots,
-    );
-    if (specs.isEmpty) return assembled;
-
-    final writer = _cliRegistry.capability<McpCapability>(CliTool.cursor);
-    if (writer == null) return assembled;
-
-    if (!mcpAlreadyMaterialized) {
-      await writer.write(
-        fs: _fs,
-        configDir: CursorWorkspaceWarmTier.sharedRoot(
-          layout,
-          trimmedWorkspaceId,
-          trimmedTeamId,
-        ),
-        servers: specs,
-        outputBasename: CursorWorkspaceWarmTier.mcpBaseFileName,
-      );
-    }
-    return assembled;
-  }
-
-  /// Merges app MCP OAuth credentials into a mixed-mode member cursor config dir.
-  Future<void> mergeCursorMemberMcpCredentials({
-    required String workspaceId,
-    required String sessionId,
-    required String teamId,
-    required String memberId,
-    required McpRegistryAssembly assembly,
-  }) async {
-    final trimmedWorkspaceId = workspaceId.trim();
-    final trimmedSessionId = sessionId.trim();
-    final trimmedTeamId = teamId.trim();
-    final trimmedMemberId = memberId.trim();
-    if (trimmedWorkspaceId.isEmpty ||
-        trimmedSessionId.isEmpty ||
-        trimmedTeamId.isEmpty ||
-        trimmedMemberId.isEmpty) {
-      return;
-    }
-
-    if (!assembly.hasValidCatalogContribution) {
-      return;
-    }
-
-    final writer = _cliRegistry.capability<McpCapability>(CliTool.cursor);
-    if (writer == null) return;
-
-    await writer.mergeAppCredentials(
-      fs: _fs,
-      appConfigDir: layout.appToolRoot(CliTool.cursor.value),
-      sessionConfigDir: _sessionConfigDir(
-        tool: CliTool.cursor,
-        workspaceId: trimmedWorkspaceId,
-        sessionId: trimmedSessionId,
-        memberId: trimmedMemberId,
-        teamId: trimmedTeamId,
-      ),
-      fallbackAppConfigDir: layout.appToolRoot(CliTool.claude.value),
-    );
   }
 
   /// Simple mode: resolve MCP specs from catalog ids (no identities-runtime).

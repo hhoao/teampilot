@@ -50,9 +50,6 @@ import 'staging/manifest/manifest_executor.dart';
 import 'staging/manifest/manifest_filesystem.dart';
 import '../../provider/workspace_trust_provisioner.dart';
 import '../../cli/claude/team_roster_service.dart';
-import '../../cli/cursor/provider/cursor_workspace_warm_tier.dart';
-import '../../cli/cursor/provider/cursor_home_layout.dart';
-import '../../cli/cursor/provider/cursor_windows_home_junction.dart';
 import '../../cli/registry/capabilities/cli_session_capability.dart';
 import '../../storage/app_paths.dart';
 import '../../storage/home_storage.dart';
@@ -306,9 +303,14 @@ class ConfigProfileService implements ConfigProfileDelegate {
         cli: memberCli,
         memberToolDir: memberToolDir,
         member: member,
-        memberHome: memberCli == CliTool.cursor
-            ? stagingFs.pathContext.join(memberToolDir, 'home')
-            : null,
+        memberHome: await staging._preparedSessionMemberHome(
+          fs: stagingFs,
+          cli: memberCli,
+          workspaceId: workspaceId,
+          sessionId: sessionId,
+          memberId: memberId,
+          team: team,
+        ),
       );
       final report = await staging._provisionStagedHooks(
         context: CliResourceProvisionContext(
@@ -635,9 +637,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String? memberId,
     TeamProfile? team,
   }) {
-    if (CursorWorkspaceWarmTier.applies(team: team, cli: cli)) {
-      return CursorWorkspaceWarmTier.sharedRoot(layout, workspaceId, team!.id);
-    }
     return sessionConfigDirForTool(
       cli,
       layout,
@@ -645,35 +644,43 @@ class ConfigProfileService implements ConfigProfileDelegate {
       sessionId: sessionId,
       memberId: memberId,
       teamId: team?.id,
+      registry: _cliRegistry,
     );
   }
 
-  ({String hooksDir, String? configPath}) _hookMaterializationPaths({
+  Future<String?> _preparedSessionMemberHome({
+    required Filesystem fs,
+    required CliTool cli,
+    required String workspaceId,
+    required String sessionId,
+    String? memberId,
+    TeamProfile? team,
+  }) {
+    return sessionMemberHomePreparedForResourceWrites(
+      fs: fs,
+      tool: cli,
+      layout: layout,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      memberId: memberId,
+      teamId: team?.id,
+      registry: _cliRegistry,
+    );
+  }
+
+  SessionHookMaterializationPaths _hookMaterializationPaths({
     required CliTool cli,
     required String memberToolDir,
     required TeamMemberConfig? member,
     required String? memberHome,
   }) {
-    if (cli == CliTool.cursor && memberHome != null) {
-      final cursor = CursorHomeLayout(pathContext: pathContext);
-      return (
-        hooksDir: cursor.hooksDir(memberHome),
-        configPath: cursor.hooksConfig(memberHome),
-      );
-    }
-    if (cli == CliTool.claude && member != null && member.isValid) {
-      return (
-        hooksDir: pathContext.join(memberToolDir, 'hooks'),
-        configPath: pathContext.join(
-          memberToolDir,
-          'settings',
-          '${ClaudeTeamRosterService.safeClaudePathSegment(member.id)}.json',
-        ),
-      );
-    }
-    return (
-      hooksDir: pathContext.join(memberToolDir, 'hooks'),
-      configPath: null,
+    return hookMaterializationPathsForTool(
+      cli,
+      pathContext: pathContext,
+      memberToolDir: memberToolDir,
+      memberHome: memberHome,
+      member: member,
+      registry: _cliRegistry,
     );
   }
 
@@ -738,7 +745,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
       teampilotRoot: basePath,
     ).ensureSessionMarketplacesLinked(configDir: configDir, tool: cli);
     final pluginProvisioner = _cliRegistry.capability<PluginCapability>(cli);
-    final warmTier = CursorWorkspaceWarmTier.applies(team: team, cli: cli);
     final mcpRegistry = McpRegistryService(
       layout: layout,
       storage: _infra.storage,
@@ -797,9 +803,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
             tool: cli,
             memberProvisionJson: poolResult.memberProvisionStampJson,
             assembledMcpServers: mcpAssembly.result.servers,
-            mcpConfigFileName: warmTier
-                ? CursorWorkspaceWarmTier.mcpBaseFileName
-                : null,
           ),
         );
       }
@@ -828,40 +831,18 @@ class ConfigProfileService implements ConfigProfileDelegate {
       installedPluginCatalog: installedCatalog,
     );
     final assembledMcp = mcpAssembly;
-    if (warmTier) {
-      await mcpRegistry.writeCursorWorkspaceMcpBase(
-        workspaceId: trimmedWorkspaceId,
-        teamId: trimmedTeamId,
-        extraServers: extraMcpServers,
-        pluginIds: runtimeBundle?.pluginIds ?? const [],
-        projectMcpRoots: projectMcpRoots,
-        assembly: assembledMcp,
-        mcpAlreadyMaterialized: pluginProvisioner?.writesAssembledMcp == true,
-      );
-      final trimmedMemberId = memberId?.trim() ?? '';
-      if (trimmedMemberId.isNotEmpty) {
-        await mcpRegistry.mergeCursorMemberMcpCredentials(
-          workspaceId: trimmedWorkspaceId,
-          sessionId: trimmedSessionId,
-          teamId: trimmedTeamId,
-          memberId: trimmedMemberId,
-          assembly: assembledMcp,
-        );
-      }
-    } else {
-      await mcpRegistry.writeForSession(
-        workspaceId: trimmedWorkspaceId,
-        teamId: trimmedTeamId,
-        sessionId: trimmedSessionId,
-        cli: cli,
-        memberId: memberId,
-        extraServers: extraMcpServers,
-        pluginIds: runtimeBundle?.pluginIds ?? const [],
-        projectMcpRoots: projectMcpRoots,
-        assembly: assembledMcp,
-        mcpAlreadyMaterialized: pluginProvisioner?.writesAssembledMcp == true,
-      );
-    }
+    await mcpRegistry.writeForSession(
+      workspaceId: trimmedWorkspaceId,
+      teamId: trimmedTeamId,
+      sessionId: trimmedSessionId,
+      cli: cli,
+      memberId: memberId,
+      extraServers: extraMcpServers,
+      pluginIds: runtimeBundle?.pluginIds ?? const [],
+      projectMcpRoots: projectMcpRoots,
+      assembly: assembledMcp,
+      mcpAlreadyMaterialized: pluginProvisioner?.writesAssembledMcp == true,
+    );
     return warnings;
   }
 
@@ -1239,6 +1220,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       manifest: manifest,
       readDelegate: readDelegate,
       pathContext: manifestCtx,
+      symlinkProjectionRoot: workTeampilotRoot,
     );
     final staging = _stagingService(
       stagingFs: stagingFs,
@@ -1252,22 +1234,16 @@ class ConfigProfileService implements ConfigProfileDelegate {
       sessionId: sessionId.trim(),
       cliTeamName: sessionId.trim(),
     );
-    final simpleMemberHome = member.cli == CliTool.cursor
-        ? stagingFs.pathContext.join(
-            staging.sessionToolDir(workspaceId, sessionId, cli.value),
-            'home',
-          )
-        : null;
+    final simpleMemberHome = await _preparedSessionMemberHome(
+      fs: stagingFs,
+      cli: cli,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+    );
     final resourceEnvironment = <String, String>{};
-    // Cursor Windows: junction the isolated home before skill/plugin writers
-    // so overlay writes follow the symlink. Do not run full contribute first —
-    // writeMemberProfiles must inherit enabledPlugins after plugin provision.
-    if (simpleMemberHome != null) {
-      await CursorWindowsHomeJunction.ensureAgentHome(
-        fs: stagingFs,
-        canonicalHome: simpleMemberHome,
-      );
-    }
+    // Resource provision runs before contributeSimpleSessionLaunch so plugin
+    // enablement is visible to session-home writers — isolated home (incl.
+    // Windows junction) must be prepared on the staging fs first.
     final fsSw = Stopwatch()..start();
     final fsWarnings = await staging.applySimpleSessionFilesystem(
       workspaceId: workspaceId,
@@ -1446,6 +1422,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       manifest: manifest,
       readDelegate: readDelegate,
       pathContext: manifestCtx,
+      symlinkProjectionRoot: workTeampilotRoot,
     );
     final staging = _stagingService(
       stagingFs: stagingFs,
@@ -1501,10 +1478,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
       memberId: memberId,
       team: team,
     );
-    final warmTier = CursorWorkspaceWarmTier.applies(
-      team: team,
-      cli: launchCli,
-    );
     final hookMemberToolDir = staging.sessionToolDir(
       trimmedWorkspaceId,
       trimmedSessionId,
@@ -1523,13 +1496,21 @@ class ConfigProfileService implements ConfigProfileDelegate {
       hookIds: runtimeBundle.hookIds,
       simple: team == null,
     );
+    final stagedMemberHome = launchMember != null
+        ? await staging._preparedSessionMemberHome(
+            fs: stagingFs,
+            cli: launchCli,
+            workspaceId: trimmedWorkspaceId,
+            sessionId: trimmedSessionId,
+            memberId: memberId,
+            team: team,
+          )
+        : null;
     final hookPaths = staging._hookMaterializationPaths(
       cli: launchCli,
       memberToolDir: hookMemberToolDir,
       member: launchMember,
-      memberHome: launchCli == CliTool.cursor && launchMember != null
-          ? stagingFs.pathContext.join(hookMemberToolDir, 'home')
-          : null,
+      memberHome: stagedMemberHome,
     );
     final resourceReport = await _provisionStagedResources(
       context: CliResourceProvisionContext(
@@ -1557,16 +1538,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,
         workspaceBaseInfo: workspaceBaseInfo,
-        memberHome: launchCli == CliTool.cursor && launchMember != null
-            ? stagingFs.pathContext.join(hookMemberToolDir, 'home')
-            : null,
+        memberHome: stagedMemberHome,
         hooksDir: hookPaths.hooksDir,
         hookConfigPath: hookPaths.configPath,
         appConfigDir: mcpProviders.catalogProvider != null
             ? staging.layout.appToolRoot(launchCli.value)
-            : null,
-        mcpOutputBasename: warmTier
-            ? CursorWorkspaceWarmTier.mcpBaseFileName
             : null,
       ),
     );
@@ -1604,9 +1580,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
           layout: staging.layout,
           tool: launchCli,
           assembledMcpServers: const [],
-          mcpConfigFileName: warmTier
-              ? CursorWorkspaceWarmTier.mcpBaseFileName
-              : null,
         ),
       );
     }

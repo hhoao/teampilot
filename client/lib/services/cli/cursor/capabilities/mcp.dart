@@ -17,12 +17,8 @@ final class CursorMcpCapability implements McpCapability {
     required Filesystem fs,
     required String configDir,
     required List<McpServerSpec> servers,
-    String? outputBasename,
   }) async {
-    final mcpPath = fs.pathContext.join(
-      configDir,
-      outputBasename ?? mcpFileName,
-    );
+    final mcpPath = fs.pathContext.join(configDir, mcpFileName);
     final stat = await fs.stat(mcpPath);
     Map<String, Object?> existing;
     if (stat.isFile) {

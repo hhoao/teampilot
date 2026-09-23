@@ -1,4 +1,7 @@
+import 'package:path/path.dart' as p;
+
 import '../../../../models/team_config.dart';
+import '../../../io/filesystem.dart';
 import '../../../storage/runtime_layout.dart';
 import 'cli_session_capability.dart';
 
@@ -48,5 +51,36 @@ base class NoopCliSessionCapability implements CliSessionCapability {
     sessionId: sessionId,
     memberId: memberId,
     teamId: teamId,
+  );
+
+  @override
+  String? sessionIsolatedHomeRoot(
+    RuntimeLayout layout,
+    CliTool tool, {
+    required String workspaceId,
+    required String sessionId,
+    String? memberId,
+    String? teamId,
+  }) =>
+      null;
+
+  @override
+  Future<String> prepareSessionIsolatedHome({
+    required Filesystem fs,
+    required String canonicalHome,
+  }) async =>
+      canonicalHome;
+
+  @override
+  SessionHookMaterializationPaths hookMaterializationPaths({
+    required p.Context pathContext,
+    required String memberToolDir,
+    String? memberHome,
+    TeamMemberConfig? member,
+  }) => const DefaultCliConfigLayout().hookMaterializationPaths(
+    pathContext: pathContext,
+    memberToolDir: memberToolDir,
+    memberHome: memberHome,
+    member: member,
   );
 }

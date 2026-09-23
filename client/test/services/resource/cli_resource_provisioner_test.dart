@@ -913,7 +913,6 @@ final class _RecordingMcpCapability implements McpCapability {
     required Filesystem fs,
     required String configDir,
     required List<McpServerSpec> servers,
-    String? outputBasename,
   }) async {
     events.add('materialize:mcp');
   }

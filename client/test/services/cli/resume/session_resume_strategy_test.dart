@@ -216,12 +216,9 @@ CREATE TABLE session (
         '"workspacePathHash":"slug","workspaceSlug":"slug","phase":"ready",'
         '"shared":{"root":"runtime/teams/$cursorTestTeamId/cursor",'
         '"projectsDir":"runtime/teams/$cursorTestTeamId/cursor/projects/slug",'
-        '"cliConfigBase":"runtime/teams/$cursorTestTeamId/cursor/cli-config.base.json",'
-        '"pluginsLocalDir":"runtime/teams/$cursorTestTeamId/cursor/plugins/local",'
-        '"skillsCursorDir":"runtime/teams/$cursorTestTeamId/cursor/skills-cursor",'
-        '"mcpBase":"runtime/teams/$cursorTestTeamId/cursor/mcp.base.json",'
-        '"settingsJson":"runtime/teams/$cursorTestTeamId/cursor/settings.json"},'
-        '"members":{"team-lead":{"homeRoot":"runtime/teams/$cursorTestTeamId/team-lead/cursor/home",'
+        '"cliConfigBase":"","pluginsLocalDir":"","skillsCursorDir":"",'
+        '"mcpBase":"","settingsJson":""},'
+        '"members":{"team-lead":{"homeRoot":"sessions/new-sess/runtime/team-lead/cursor/home",'
         '"chatId":"manifest-chat"}},"sessionOverlays":{}}',
       );
 
