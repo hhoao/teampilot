@@ -394,6 +394,87 @@ void main() {
     },
   );
 
+  test(
+    'reengageIdleWorkers re-rings a stranded unread-mail team-lead',
+    () {
+      fakeAsync((async) {
+        var now = 0;
+        final launcher = FakeMemberLauncher();
+        final bus = TeamBus(launcher: launcher, clock: () => now);
+        // Lead already turned once, then sat at prompt with unread mail whose
+        // first doorbell delivery was deferred (boot/surface) — the watchdog
+        // must keep re-ringing like any other member.
+        final lead = AgentNode.test(
+          memberId: 'lead',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.turnDoneReady,
+          isTeamLead: true,
+        )..hasCompletedTurn = true;
+        bus.declareMember(lead);
+        lead.inbox.deliver(
+          TeamMessage(id: 'm1', from: 'worker', to: 'lead', content: 'hi'),
+        );
+
+        bus.reengageIdleWorkers();
+        expect(launcher.woken.single.notice, TeamBus.doorbellNotice);
+
+        now += TeamBus.doorbellRetryMs;
+        bus.reengageIdleWorkers();
+        expect(launcher.woken.length, 1);
+        expect(launcher.retried, [
+          (memberId: 'lead', notice: TeamBus.doorbellNotice),
+        ]);
+      });
+    },
+  );
+
+  test('reengageIdleWorkers does not wake a virgin un-turned team-lead', () {
+    final launcher = FakeMemberLauncher();
+    final bus = TeamBus(launcher: launcher);
+    final lead = AgentNode.test(
+      memberId: 'lead',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.turnDoneReady,
+      isTeamLead: true,
+    );
+    bus.declareMember(lead);
+    lead.inbox.deliver(
+      TeamMessage(id: 'm1', from: 'worker', to: 'lead', content: 'hi'),
+    );
+
+    // History compose owns the lead's first prompt — the watchdog must not
+    // steal that first CR just because unread mail is queued.
+    bus.reengageIdleWorkers();
+    expect(launcher.woken, isEmpty);
+    expect(launcher.retried, isEmpty);
+  });
+
+  test('reengageIdleWorkers never task-doorbells the team-lead', () {
+    fakeAsync((async) {
+      final launcher = FakeMemberLauncher();
+      final bus = TeamBus(
+        launcher: launcher,
+        taskQueue: TaskQueue(),
+        clock: () => 0,
+      );
+      final lead = AgentNode.test(
+        memberId: 'lead',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.turnDoneReady,
+        isTeamLead: true,
+      )..hasCompletedTurn = true;
+      bus.declareMember(lead);
+      bus.addTasks('lead', const [TeamTaskDraft(title: 'a', brief: 'do a')]);
+      async.flushMicrotasks();
+      expect(launcher.woken, isEmpty);
+
+      for (var i = 0; i < 3; i++) {
+        bus.reengageIdleWorkers();
+        expect(launcher.woken, isEmpty, reason: 'lead is dispatch-only');
+      }
+    });
+  });
+
   test('releaseTask returns a claimed task to pending', () {
     final bus = _busWithQueue(FakeMemberLauncher());
     final id = bus

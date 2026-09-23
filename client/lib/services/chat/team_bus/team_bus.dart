@@ -1040,8 +1040,18 @@ class TeamBus implements CoordinationView {
   void reengageIdleWorkers() {
     final queue = _taskQueue;
     for (final node in _members.values) {
-      if (node.profile.isTeamLead) continue;
       if (node.lifecycle != MemberLifecycle.running) continue;
+      // The leader is dispatch-only on the work queue, but still a normal bus
+      // member for MAIL: a boot-deferred (surface not ready) first doorbell
+      // must be re-rung here — doorbelled + unread suppresses every other
+      // re-arm path, so skipping the lead strands its unread forever. Preserve
+      // the virgin-lead rule: never ring a lead that hasn't completed a turn
+      // (its first prompt belongs to History compose), and never hand the lead
+      // task-queue doorbells (empty inbox means a task notice is all it owes).
+      if (node.profile.isTeamLead &&
+          (node.inbox.isEmpty || !node.hasCompletedTurn)) {
+        continue;
+      }
       if (node.waitingForMessage) continue; // parked 直收,不重敲门铃
       // 只在 at-prompt 或任务门铃卡死时重敲门铃;active(真正工作中)不打断,
       // 其未读邮件会在 turn 结束(onMemberIdle → MailArrived)时再响。
