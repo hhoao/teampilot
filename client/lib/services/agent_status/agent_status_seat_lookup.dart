@@ -1,5 +1,6 @@
 import '../../models/team_config.dart';
 import 'agent_attention_state.dart';
+import 'agent_status_seat_lookup_port.dart';
 
 class _SeatRecord {
   const _SeatRecord({required this.cli, required this.skipPermissions});
@@ -12,7 +13,7 @@ class _SeatRecord {
 ///
 /// Populated at PTY connect (Task 7); empty until then — unknown seats resolve
 /// to null CLI / false skip so `/agent-status` stays a no-op (HTTP 200 `{}`).
-class AgentStatusSeatLookup {
+class AgentStatusSeatLookup implements AgentStatusSeatLookupPort {
   final Map<String, _SeatRecord> _seats = {};
 
   void registerSeat({

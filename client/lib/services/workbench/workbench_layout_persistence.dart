@@ -156,7 +156,7 @@ class WorkbenchLayoutPersistence {
           if (tab.kind != WorkbenchTabKind.session) continue;
           final sessionId = tab.id;
           if (sessionId.isEmpty || sessionId.startsWith('local-')) continue;
-          if (_chat.tabStore.openTabBySessionId(sessionId) != null) continue;
+          if (_chat.tabStore.getOpenTabBySessionId(sessionId) != null) continue;
           final session = _chat.state.sessions
               .where(
                 (s) => s.sessionId == sessionId && s.workspaceId == workspaceId,
@@ -207,7 +207,7 @@ class WorkbenchLayoutPersistence {
       if (_disposed) return;
       final full = await _chat.hydrateSessionDocument(workspaceId, sessionId);
       if (full == null) continue;
-      final tab = _chat.tabStore.openTabBySessionId(sessionId);
+      final tab = _chat.tabStore.getOpenTabBySessionId(sessionId);
       if (tab != null) tab.persistedSession = full;
     }
   }

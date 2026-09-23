@@ -1,7 +1,7 @@
 import '../../../models/team_config.dart';
 import '../../../utils/team/team_member_naming.dart';
 import '../../io/filesystem.dart';
-import '../../chat/launch/session/member_role_provision.dart';
+import '../registry/member_role_provision.dart';
 
 /// Merges TeamPilot member rows into Claude `teams/<name>/config.json`.
 class ClaudeTeamRosterService {
@@ -10,10 +10,8 @@ class ClaudeTeamRosterService {
   final Filesystem fs;
 
   /// Matches Claude Code `sanitizeName` (`teamHelpers.ts`).
-  static String safeClaudePathSegment(String value) {
-    final safe = value.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '-').toLowerCase();
-    return safe.isEmpty ? 'default' : safe;
-  }
+  static String safeClaudePathSegment(String value) =>
+      TeamMemberNaming.safePathSegment(value);
 
   static String resolveWorkingDirectory({
     required String workingDirectory,

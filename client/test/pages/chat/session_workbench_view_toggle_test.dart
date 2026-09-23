@@ -143,7 +143,7 @@ void main() {
       expect(request.preserveWorkbenchView, isFalse);
       // The capsule switched the tab's view to Terminal before connecting.
       expect(
-        chat.tabStore.openTabBySessionId('s1')!.workbenchView,
+        chat.tabStore.getOpenTabBySessionId('s1')!.workbenchView,
         SessionWorkbenchView.terminal,
       );
     },
@@ -176,7 +176,7 @@ void main() {
 
       expect(chat.connects, isEmpty);
       expect(
-        chat.tabStore.openTabBySessionId('s-team')!.workbenchView,
+        chat.tabStore.getOpenTabBySessionId('s-team')!.workbenchView,
         SessionWorkbenchView.terminal,
       );
     },
@@ -198,7 +198,7 @@ void main() {
 
     await pumpToggle(tester, chat: chat, workbench: workbench, sessionId: 's1');
     expect(
-      chat.tabStore.openTabBySessionId('s1')!.workbenchView,
+      chat.tabStore.getOpenTabBySessionId('s1')!.workbenchView,
       SessionWorkbenchView.terminal,
     );
 
@@ -207,7 +207,7 @@ void main() {
 
     expect(chat.connects, isEmpty);
     expect(
-      chat.tabStore.openTabBySessionId('s1')!.workbenchView,
+      chat.tabStore.getOpenTabBySessionId('s1')!.workbenchView,
       SessionWorkbenchView.chat,
     );
   });
@@ -224,7 +224,7 @@ void main() {
     // Directly set the pod (canonical) to Terminal and leave the transition
     // copy stale — the capsule must mirror the pod, like the workbench body.
     chat.ensurePodRuntime('s1').setView(SessionWorkbenchView.terminal);
-    chat.tabStore.openTabBySessionId('s1')!.workbenchView =
+    chat.tabStore.getOpenTabBySessionId('s1')!.workbenchView =
         SessionWorkbenchView.chat;
 
     await pumpToggle(tester, chat: chat, workbench: workbench, sessionId: 's1');

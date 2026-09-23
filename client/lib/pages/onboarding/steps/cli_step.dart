@@ -391,5 +391,7 @@ Future<Map<CliTool, String>> _locateRemoteAll(
   CliExecutableDiscovery discovery,
 ) async {
   final client = await clientFactory.clientForStorage(profile);
-  return discovery.locateRemote(run: RemoteCliLocator.runnerForClient(client));
+  return discovery.locateRemote(
+    run: RemoteCliLocator.getRunnerForClient(client),
+  );
 }

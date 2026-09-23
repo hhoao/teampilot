@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'member_lifecycle_connect_gate.dart';
-import '../../session/chat_tab.dart';
 import '../session_launch_host.dart';
 import '../../../../models/app_session.dart';
 import '../../../../models/runtime_target.dart';
@@ -23,12 +22,14 @@ class SessionLifecycleConnectCoordinator {
     launchWorkTarget,
     required ScheduleMemberConnectFn scheduleMemberConnect,
     required bool Function(String sessionId) tabOpen,
+    void Function(String sessionId, String memberId)? closeMemberRemotePlane,
     Duration retryDelay = const Duration(seconds: 2),
   }) : _host = host,
        _launchContextFor = launchContextFor,
        _launchWorkTarget = launchWorkTarget,
        _scheduleMemberConnect = scheduleMemberConnect,
        _tabOpen = tabOpen,
+       _closeMemberRemotePlane = closeMemberRemotePlane,
        _retryDelay = retryDelay;
 
   final SessionLaunchHost _host;
@@ -37,6 +38,8 @@ class SessionLifecycleConnectCoordinator {
   _launchWorkTarget;
   final ScheduleMemberConnectFn _scheduleMemberConnect;
   final bool Function(String sessionId) _tabOpen;
+  final void Function(String sessionId, String memberId)?
+  _closeMemberRemotePlane;
   final Duration _retryDelay;
   final _retryTimers = <(String, String), Timer>{};
 
@@ -78,15 +81,19 @@ class SessionLifecycleConnectCoordinator {
   void _scheduleRetry({
     required TeamProfile team,
     required TeamMemberConfig member,
-    required ChatTab tab,
+    required String sessionId,
   }) {
-    final sessionId = tab.info.id;
     final key = (sessionId, member.id);
     _retryTimers.remove(key)?.cancel();
     _retryTimers[key] = Timer(_retryDelay, () {
       _retryTimers.remove(key);
       if (_host.isClosed || !_tabOpen(sessionId)) return;
-      _scheduleMemberConnect(team, member, tab, reason: LaunchReason.retry);
+      _scheduleMemberConnect(
+        team,
+        member,
+        sessionId,
+        reason: LaunchReason.retry,
+      );
     });
   }
 
@@ -95,13 +102,17 @@ class SessionLifecycleConnectCoordinator {
     required TeamProfile team,
     required TeamMemberConfig member,
     required AppSession session,
-    required ChatTab tab,
+    required String sessionId,
+    required bool teamBusInstalled,
     String? remoteMemberKeyForRollback,
     Map<String, Map<String, Object?>>? extraMcpServers,
   }) async {
-    final outcome = await _gate(
-      extraMcpServers: extraMcpServers,
-    ).evaluate(team: team, member: member, session: session, tab: tab);
+    final outcome = await _gate(extraMcpServers: extraMcpServers).evaluate(
+      team: team,
+      member: member,
+      session: session,
+      teamBusInstalled: teamBusInstalled,
+    );
     switch (outcome) {
       case LifecycleConnectGateAllowed():
         return null;
@@ -111,10 +122,10 @@ class SessionLifecycleConnectCoordinator {
           'reason=$reason',
         );
         if (remoteMemberKeyForRollback != null) {
-          unawaited(tab.closeMemberRemotePlane(remoteMemberKeyForRollback));
+          _closeMemberRemotePlane?.call(sessionId, remoteMemberKeyForRollback);
         }
         if (lifecycleGateReasonNeedsMemberRetry(reason)) {
-          _scheduleRetry(team: team, member: member, tab: tab);
+          _scheduleRetry(team: team, member: member, sessionId: sessionId);
         }
         return ConnectShellResult.deferred;
       case LifecycleConnectGateBlocked(:final reason, :final userMessage):
@@ -123,22 +134,23 @@ class SessionLifecycleConnectCoordinator {
           'reason=$reason',
         );
         if (remoteMemberKeyForRollback != null) {
-          unawaited(tab.closeMemberRemotePlane(remoteMemberKeyForRollback));
+          _closeMemberRemotePlane?.call(sessionId, remoteMemberKeyForRollback);
         }
-        _host.failSessionConnect(tab.info.id, userMessage);
+        _host.failSessionConnect(sessionId, userMessage);
         return ConnectShellResult.failed;
     }
   }
 
   Future<bool> isDirectPtyInputReady({
-    required ChatTab tab,
+    required String sessionId,
     required AppSession session,
     required TeamProfile team,
     required TeamMemberConfig member,
+    required bool teamBusInstalled,
   }) => _gate().evaluateDirectPtyInputReady(
     team: team,
     member: member,
     session: session,
-    tab: tab,
+    teamBusInstalled: teamBusInstalled,
   );
 }

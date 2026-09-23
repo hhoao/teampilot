@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 import '../../models/team_config.dart';
 import '../../utils/lock_pool.dart';
 import '../io/filesystem.dart';
-import '../chat/launch/session/launch_command_builder.dart';
+import '../chat/launch/connect/launch_command_builder.dart';
 import 'workspace_cli_cache.dart';
 import 'workspace_layout.dart';
 

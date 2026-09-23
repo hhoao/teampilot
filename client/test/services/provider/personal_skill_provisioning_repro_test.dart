@@ -9,7 +9,7 @@ import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';

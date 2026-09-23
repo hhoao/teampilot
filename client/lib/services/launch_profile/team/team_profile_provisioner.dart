@@ -1,7 +1,7 @@
 import '../../../models/team_config.dart';
 import '../../storage/home_storage.dart';
 import '../../storage/runtime_layout.dart';
-import '../../provider/config_profile_service.dart';
+import '../../chat/launch/config_profile_service.dart';
 import '../../chat/session/session_lifecycle_service.dart';
 
 /// Builds [ConfigProfileService] instances and ensures config-profile trees

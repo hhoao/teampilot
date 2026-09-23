@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../../models/runtime_target.dart';
 import '../../../models/ssh_profile.dart';
 import '../../../models/team_config.dart';
@@ -9,7 +11,7 @@ import '../../../repositories/workspace_project_config_repository.dart';
 import '../../cli/registry/cli_tool_registry.dart';
 import '../../expert_hub/expert_capability_resolver.dart';
 import '../../expert_hub/local_expert_store.dart';
-import '../../remote/remote_app_data_materializer.dart';
+import 'workspace/remote_app_data_materializer.dart';
 import '../session/session_lifecycle_service.dart';
 import '../../ssh/ssh_client_factory.dart';
 import '../../storage/home_storage.dart';
@@ -21,17 +23,20 @@ import 'workspace/workspace_provision_coordinator.dart';
 import 'workspace/workspace_provisioner.dart';
 import 'connect/member_connect_stage.dart';
 import 'connect/session_connect_executor.dart';
+import 'connect/launch_flow_host_adapter.dart';
 import 'connect/session_connect_scheduler.dart';
+import 'connect/launch_generation_store.dart';
 import 'connect/session_lifecycle_connect_coordinator.dart';
 import 'connect/session_shell_connector.dart';
 import 'connect/session_ssh_profile_reconnect.dart';
+import 'connect/ssh_reconnect_seats.dart';
 import 'session/session_default_materializer.dart';
 import 'session/session_launch_coordinator.dart';
 import 'session/session_launch_workspace_index.dart';
 import 'session/session_prompt_metadata_sync.dart';
 import 'session/session_persistence_writer.dart';
-import 'tab/session_tab_surface_coordinator.dart';
-import 'team_config_launch_validator.dart';
+import 'session/session_tab_surface_coordinator.dart';
+import 'session/team_config_launch_validator.dart';
 
 SessionConnectOrchestrator buildSessionConnectOrchestrator({
   required SessionLifecycleService lifecycle,
@@ -171,10 +176,12 @@ SessionLaunchService buildSessionLaunchService({
   final dataStore = host.dataStore;
   final postFrame = host.postFrameScheduler;
   final tabStore = host.tabStore;
+  final generations = LaunchGenerationStore();
   final service = SessionLaunchService(
     host,
     storage: storage,
     onSessionTabOpened: onSessionTabOpened,
+    generations: generations,
   );
   final persistence = SessionPersistenceWriter(
     repository: host,
@@ -200,21 +207,23 @@ SessionLaunchService buildSessionLaunchService({
     executor: executor,
     postFrame: postFrame,
     isJobValid: service.isValid,
-    onBegin: host.beginSessionConnect,
-    onFinish: (sessionId) {
-      if (host.isSessionConnecting(sessionId)) {
-        host.finishSessionConnect(sessionId);
-      }
-    },
+    listener: LaunchFlowHostAdapter(
+      beginSessionConnect: host.beginSessionConnect,
+      isSessionConnecting: host.isSessionConnecting,
+      finishSessionConnect: host.finishSessionConnect,
+      pendingMembersForSession: (sessionId) =>
+          tabStore.getOpenTabBySessionId(sessionId)?.membersPendingConnect,
+    ),
   );
   final tabSurface = SessionTabSurfaceCoordinator(
     host: host,
     tabStore: tabStore,
+    generations: generations,
     onSessionTabOpened: onSessionTabOpened,
   );
   SessionLaunchWorkspaceIndex workspaceIndex() => SessionLaunchWorkspaceIndex(
-    workspaces: host.state.workspaces,
-    sessions: host.state.sessions,
+    workspaces: host.stateSnapshot().workspaces,
+    sessions: host.stateSnapshot().sessions,
     usesPosixPaths: storage.usesPosixPaths,
   );
   late final MemberConnectStage memberConnect;
@@ -224,6 +233,7 @@ SessionLaunchService buildSessionLaunchService({
     tabSurface: tabSurface,
     scheduler: scheduler,
     workspaceIndex: workspaceIndex,
+    generations: generations,
     openMemberIntent:
         (team, member, {SessionRepository? repo, String? workspaceCwd}) =>
             memberConnect.openMemberTab(
@@ -243,7 +253,7 @@ SessionLaunchService buildSessionLaunchService({
   memberConnect = MemberConnectStage(
     host: host,
     tabStore: tabStore,
-    state: () => host.state,
+    state: () => host.stateSnapshot(),
     materializer: materializer,
     coordinator: coordinator,
     scheduler: scheduler,
@@ -258,20 +268,28 @@ SessionLaunchService buildSessionLaunchService({
     autoLaunchAllMembersOnConnect: () =>
         host.autoLaunchAllMembersOnConnect?.call() == true,
     workspaceById: service.workspaceById,
+    generations: generations,
   );
   final sshReconnect = SessionSshProfileReconnect(
     host: host,
     coordinator: coordinator,
     launchContextFor: service.launchContextFor,
     workspaceIndex: workspaceIndex,
-    openTabs: () => tabStore.openTabs,
+    seats: ChatTabStoreSshReconnectSeats(tabStore),
   );
   final lifecycleCoordinator = SessionLifecycleConnectCoordinator(
     host: host,
     launchContextFor: service.launchContextFor,
     launchWorkTarget: service.launchWorkTarget,
     scheduleMemberConnect: memberConnect.scheduleMemberConnect,
-    tabOpen: (sessionId) => tabStore.openTabBySessionId(sessionId) != null,
+    tabOpen: (sessionId) => tabStore.getOpenTabBySessionId(sessionId) != null,
+    closeMemberRemotePlane: (sessionId, memberId) {
+      unawaited(
+        tabStore
+            .getOpenTabBySessionId(sessionId)
+            ?.closeMemberRemotePlane(memberId),
+      );
+    },
   );
   service.configureLaunchComponents(
     connectScheduler: scheduler,
@@ -281,7 +299,7 @@ SessionLaunchService buildSessionLaunchService({
     lifecycleCoordinator: lifecycleCoordinator,
     promptMetadata: SessionPromptMetadataSync(
       host: host,
-      state: () => host.state,
+      state: () => host.stateSnapshot(),
     ),
     teamConfigValidator: TeamConfigLaunchValidator(storage: storage),
   );

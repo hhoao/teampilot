@@ -26,7 +26,7 @@ void main() {
       reclaimIdleTerminalAfterSeconds: () => 2,
       afterReady: (ctx) async {
         final bus = ctx.harness.tabBus(ctx.session.sessionId);
-        final tab = ctx.cubit.tabStore.openTabBySessionId(
+        final tab = ctx.cubit.tabStore.getOpenTabBySessionId(
           ctx.session.sessionId,
         )!;
 

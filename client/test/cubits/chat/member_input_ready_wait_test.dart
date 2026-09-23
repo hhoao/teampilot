@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/launch/tab/member_input_ready_wait.dart';
+import 'package:teampilot/services/chat/launch/session/member_input_ready_wait.dart';
 
 void main() {
   const running = MemberShellReadySnapshot(

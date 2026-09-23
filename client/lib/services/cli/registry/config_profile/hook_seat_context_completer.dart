@@ -2,7 +2,7 @@ import '../../../../models/hook_entry.dart';
 import '../../../../models/hook_event.dart';
 import '../../../../models/plugin.dart';
 import '../../../../models/team_config.dart';
-import '../../../chat/launch/team_lead_delegate_settings_merge.dart';
+import 'team_lead_delegate_settings_merge.dart';
 import '../../../team_config/team_lead_settings_merge.dart';
 import '../../../chat/team_bus/bus_awareness_prompt.dart';
 import '../../../chat/team_bus/member_bus_idle_endpoint.dart';

@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/claude/team_roster_service.dart';
 

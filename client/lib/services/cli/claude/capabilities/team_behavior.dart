@@ -1,6 +1,6 @@
 import '../../../../utils/team/team_member_naming.dart';
 import '../../../../models/team_config.dart';
-import '../../../chat/launch/session/member_role_provision.dart';
+import '../../registry/member_role_provision.dart';
 import '../../registry/launch/cli_launch_arg_contribution.dart';
 import '../../registry/launch/cli_launch_arg_provider.dart';
 import '../../registry/launch/cli_launch_context.dart';

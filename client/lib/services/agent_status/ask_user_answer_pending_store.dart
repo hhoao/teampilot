@@ -1,3 +1,5 @@
+import 'ask_user_answer_pending_port.dart';
+
 class AskUserAnswerPendingEntry {
   const AskUserAnswerPendingEntry({
     required this.requestId,
@@ -16,7 +18,7 @@ class AskUserAnswerPendingEntry {
   final String? permissionReply;
 }
 
-final class AskUserAnswerPendingStore {
+final class AskUserAnswerPendingStore implements AskUserAnswerPendingPort {
   final _entries = <String, AskUserAnswerPendingEntry>{};
 
   void put({

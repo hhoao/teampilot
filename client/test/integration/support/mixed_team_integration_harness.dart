@@ -30,6 +30,7 @@ import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/chat/team_bus/mcp/bus_bridge_locator.dart';
 import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import 'package:teampilot/services/chat/team_bus/remote/remote_bus_binding_resolver.dart';
+import 'package:teampilot/services/chat/team_bus/remote/remote_member_bus_setup.dart';
 import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
@@ -190,8 +191,8 @@ class MixedTeamIntegrationHarness {
       ),
       sshProfileById: profileById,
       defaultTargetResolver: RuntimeTarget.local,
-      remoteBusResolver: RemoteBusBindingResolver(
-        registry: CliToolRegistry.builtIn(),
+      remoteBusSetup: RemoteMemberBusSetup(
+        resolver: RemoteBusBindingResolver(registry: CliToolRegistry.builtIn()),
       ),
       sessionConnect: buildSessionConnectOrchestrator(
         lifecycle: lifecycle,
@@ -432,7 +433,7 @@ class MixedTeamIntegrationHarness {
   }
 
   TeamBus? _busForSession(ChatCubit? cubit, String sessionId) =>
-      cubit?.tabStore.openTabBySessionId(sessionId)?.teamBus;
+      cubit?.tabStore.getOpenTabBySessionId(sessionId)?.teamBus;
 
   TeammateBusMcpGateway? _gatewayForSession(ChatCubit? cubit) =>
       cubit?.teammateBusMcpGateway;
@@ -724,7 +725,7 @@ class MixedTeamIntegrationHarness {
   }
 
   TeamBus? tabBus(String sessionId) =>
-      cubit?.tabStore.openTabBySessionId(sessionId)?.teamBus;
+      cubit?.tabStore.getOpenTabBySessionId(sessionId)?.teamBus;
 
   TeammateBusMcpGateway? tabGateway(ChatCubit? cubit) =>
       _gatewayForSession(cubit ?? this.cubit);

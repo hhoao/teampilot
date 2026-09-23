@@ -10,7 +10,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';

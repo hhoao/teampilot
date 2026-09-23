@@ -3,7 +3,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_topology.dart';
-import 'package:teampilot/services/chat/launch/member_placement_save.dart';
+import 'package:teampilot/services/team_config/member_placement_save.dart';
 
 void main() {
   group('prepareMemberPlacementSave', () {

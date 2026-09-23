@@ -35,7 +35,7 @@ import '../../cli/registry/launch/cli_launch_context.dart';
 import '../../cli/registry/cli_tool_registry.dart';
 import '../../cli/flashskyai/capabilities/provider.dart';
 import '../../provider/control_plane_profile_paths.dart';
-import '../../provider/config_profile_service.dart';
+import '../launch/config_profile_service.dart';
 import '../../../models/runtime_target.dart';
 import '../../io/local_filesystem.dart';
 import '../../storage/runtime_context.dart';

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import '../../../../services/io/filesystem.dart';
-import '../../../chat/launch/session/member_role_provision.dart';
+import '../../registry/member_role_provision.dart';
 import '../../registry/capabilities/prompt_capability.dart';
 import '../provider/cursor_home_layout.dart';
 import '../provider/cursor_role_rule_writer.dart';

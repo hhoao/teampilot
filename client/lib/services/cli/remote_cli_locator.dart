@@ -39,7 +39,7 @@ class RemoteCliLocator {
   /// Locate probes keep [includeStderr] false so PATH chatter does not pollute
   /// path parsing. Install / bootstrap must pass true so failure messages and
   /// logs include remote stderr.
-  static SshCommandRunner runnerForClient(
+  static SshCommandRunner getRunnerForClient(
     SSHClient client, {
     bool includeStderr = false,
     Duration? timeout,

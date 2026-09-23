@@ -7,8 +7,8 @@ import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_topology.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/services/chat/launch/member_placement_save.dart';
-import 'package:teampilot/services/chat/launch/team_settings_commit_service.dart';
+import 'package:teampilot/services/team_config/member_placement_save.dart';
+import 'package:teampilot/services/team_config/team_settings_commit_service.dart';
 
 import '../../../support/post_frame_test_harness.dart';
 
@@ -87,9 +87,9 @@ void main() {
       expect(prepared.leadValid, isTrue);
 
       final service = TeamSettingsCommitService(
-        launchProfileCubit: launch,
+        profiles: launch,
         sessionRepository: repo,
-        chatCubit: chat,
+        workspaces: chat,
       );
       final ok = await service.commit(
         workspaceId: workspace.workspaceId,
@@ -162,9 +162,9 @@ void main() {
       expect(prepared.leadValid, isFalse);
 
       final service = TeamSettingsCommitService(
-        launchProfileCubit: launch,
+        profiles: launch,
         sessionRepository: repo,
-        chatCubit: chat,
+        workspaces: chat,
       );
       final ok = await service.commit(
         workspaceId: workspace.workspaceId,

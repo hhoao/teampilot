@@ -23,9 +23,10 @@ import '../../../utils/logging/logger.dart';
 import '../../../utils/team/team_member_naming.dart';
 import '../session/chat_tab_store.dart';
 import '../session/chat_tab.dart';
+import 'team_bus_user_input_port.dart';
 
 /// Mixed-mode TeamBus + MCP gateway lifecycle for a session tab.
-class TabTeamBusCoordinator {
+class TabTeamBusCoordinator implements TeamBusUserInputPort {
   TabTeamBusCoordinator({
     required HomeStorage storage,
     required TeammateBusMcpGateway gateway,
@@ -79,6 +80,7 @@ class TabTeamBusCoordinator {
   final ArtifactTransferService Function(AppSession session)?
   _artifactServiceFactory;
 
+  @override
   Future<void> installBusForTab(
     ChatTab tab,
     TeamProfile team,
@@ -202,6 +204,7 @@ class TabTeamBusCoordinator {
     );
   }
 
+  @override
   BusUserInputRouting? busUserInputRouting(
     ChatTab tab,
     TeamProfile team,
@@ -224,10 +227,10 @@ class TabTeamBusCoordinator {
   }
 
   TeamBus? busForSession(String sessionId) =>
-      _tabStore.openTabBySessionId(sessionId)?.teamBus;
+      _tabStore.getOpenTabBySessionId(sessionId)?.teamBus;
 
   bool hasTeamBusResources(String sessionId) {
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     return tab?.teamBus != null && _gateway.isSessionRegistered(sessionId);
   }
 

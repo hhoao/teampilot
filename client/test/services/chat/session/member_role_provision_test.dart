@@ -8,7 +8,7 @@ import 'package:teampilot/services/catalog/catalog_kind_registry.dart';
 import 'package:teampilot/services/catalog/catalog_mcp_policy.dart';
 import 'package:teampilot/services/catalog/modules/skill_catalog_tools.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/chat/launch/session/member_role_provision.dart';
+import 'package:teampilot/services/cli/registry/member_role_provision.dart';
 import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_policy.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 

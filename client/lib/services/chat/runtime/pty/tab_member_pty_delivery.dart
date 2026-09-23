@@ -62,7 +62,7 @@ final class TabMemberPtyDelivery {
   final Set<String> _directTurnLatched = {};
 
   TeamBus? busForSession(String sessionId) =>
-      _tabStore.openTabBySessionId(sessionId)?.teamBus;
+      _tabStore.getOpenTabBySessionId(sessionId)?.teamBus;
 
   static const _composerProbeRows = 52;
   static const _bootGateNudgeGap = Duration(milliseconds: 600);
@@ -75,7 +75,7 @@ final class TabMemberPtyDelivery {
 
   Future<void> syncMemberInputSurface(String sessionId, String memberId) async {
     final shell = _tabStore
-        .openTabBySessionId(sessionId)
+        .getOpenTabBySessionId(sessionId)
         ?.memberShells[memberId];
     if (shell == null) return;
     await shell.probe.syncDisplayGrid();
@@ -83,7 +83,7 @@ final class TabMemberPtyDelivery {
 
   bool isMemberComposerSurfaceReady(String sessionId, String memberId) {
     final shell = _tabStore
-        .openTabBySessionId(sessionId)
+        .getOpenTabBySessionId(sessionId)
         ?.memberShells[memberId];
     if (shell == null || !shell.activityTracker.isBootFrameReady) {
       return false;
@@ -104,7 +104,7 @@ final class TabMemberPtyDelivery {
 
   void maybeNudgeMemberBootGate(String sessionId, String memberId) {
     final shell = _tabStore
-        .openTabBySessionId(sessionId)
+        .getOpenTabBySessionId(sessionId)
         ?.memberShells[memberId];
     if (shell == null) return;
     final readiness = _behaviorFor(sessionId, memberId)?.inputReadiness;
@@ -147,7 +147,7 @@ final class TabMemberPtyDelivery {
     bool latchUserTurn = true,
   }) async {
     final shell = _tabStore
-        .openTabBySessionId(sessionId)
+        .getOpenTabBySessionId(sessionId)
         ?.memberShells[memberId];
     if (shell == null) {
       appLogger.w(
@@ -218,7 +218,7 @@ final class TabMemberPtyDelivery {
     String notice,
   ) async {
     final shell = _tabStore
-        .openTabBySessionId(sessionId)
+        .getOpenTabBySessionId(sessionId)
         ?.memberShells[memberId];
     if (shell == null) {
       appLogger.w(
@@ -421,11 +421,12 @@ final class TabMemberPtyDelivery {
       latchTurn: false,
     );
     _reportMailDeliveryOutcome(sessionId, memberId, switch (issued.result) {
-      PromptSubmissionResult.submitted => FullscreenPtyDeliveryOutcome.submitted,
+      PromptSubmissionResult.submitted =>
+        FullscreenPtyDeliveryOutcome.submitted,
       PromptSubmissionResult.unconfirmed =>
         FullscreenPtyDeliveryOutcome.crStuck,
-      PromptSubmissionResult.dropped || PromptSubmissionResult.failed =>
-        FullscreenPtyDeliveryOutcome.aborted,
+      PromptSubmissionResult.dropped ||
+      PromptSubmissionResult.failed => FullscreenPtyDeliveryOutcome.aborted,
     });
   }
 
@@ -485,7 +486,7 @@ final class TabMemberPtyDelivery {
   }
 
   CliTool _memberCli(String sessionId, String memberId) {
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     return SessionMemberCliResolver.resolve(
       persistedSession: tab?.persistedSession,
       team: _activeTeam(),
@@ -639,7 +640,7 @@ final class TabPromptDeliveryCommands implements PromptDeliveryCommands {
     bool Function()? isAcked,
   }) async {
     final shell = _tabStore
-        .openTabBySessionId(delivery.seat.sessionId)
+        .getOpenTabBySessionId(delivery.seat.sessionId)
         ?.memberShells[delivery.seat.memberId];
     if (shell == null) return PromptSubmissionResult.failed;
     final behavior = CliToolRegistry.builtIn()

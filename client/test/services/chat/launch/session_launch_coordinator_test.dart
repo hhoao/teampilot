@@ -17,12 +17,13 @@ import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
+import 'package:teampilot/services/chat/launch/connect/launch_flow.dart';
 import 'package:teampilot/services/chat/launch/connect/session_connect_job.dart';
 import 'package:teampilot/services/chat/launch/connect/session_connect_scheduler.dart';
 import 'package:teampilot/services/chat/launch/session_launch_service.dart';
 import 'package:teampilot/services/chat/launch/session/session_launch_coordinator.dart';
 import 'package:teampilot/services/chat/launch/session/session_launch_workspace_index.dart';
-import 'package:teampilot/services/chat/launch/tab/session_tab_surface_coordinator.dart';
+import 'package:teampilot/services/chat/launch/session/session_tab_surface_coordinator.dart';
 import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 
 import '../../../support/in_memory_filesystem.dart';
@@ -84,13 +85,12 @@ void main() {
 
       expect(status, SessionOpenStatus.opened);
       expect(openedSessionIds, contains('session-create'));
-      expect(tabStore.openTabBySessionId('session-create'), isNotNull);
+      expect(tabStore.getOpenTabBySessionId('session-create'), isNotNull);
       expect(host.snapshotSessionIds, contains('session-create'));
       expect(scheduler.jobs, hasLength(1));
       final job = scheduler.jobs.single;
       expect(job.reason, LaunchReason.create);
       expect(job.sessionId, 'session-create');
-      expect(job.tab, same(tabStore.openTabBySessionId('session-create')));
       expect(job.workspace, same(workspace));
       expect(host.podViews['session-create'], SessionWorkbenchView.terminal);
     });
@@ -137,7 +137,7 @@ void main() {
 
       expect(status, SessionOpenStatus.opened);
       expect(openedSessionIds, contains(session.sessionId));
-      expect(tabStore.openTabBySessionId(session.sessionId), isNotNull);
+      expect(tabStore.getOpenTabBySessionId(session.sessionId), isNotNull);
       expect(scheduler.jobs, isEmpty);
     });
 
@@ -212,11 +212,11 @@ void main() {
       );
 
       expect(status, SessionOpenStatus.opened);
-      expect(tabStore.openTabBySessionId(session.sessionId), same(reused));
+      expect(tabStore.getOpenTabBySessionId(session.sessionId), same(reused));
       expect(openedSessionIds, [session.sessionId]);
       expect(scheduler.jobs, hasLength(1));
-      expect(scheduler.jobs.single.tab, same(reused));
-      expect(scheduler.jobs.single.generation, reused.launchGeneration);
+      expect(scheduler.jobs.single.sessionId, reused.info.id);
+      expect(scheduler.jobs.single.generation, 1);
     });
 
     test('retry open records the retry launch reason', () async {
@@ -245,14 +245,14 @@ void main() {
         )..persistedSession = session;
         tabStore.registerSession(tab);
 
-        await coordinator.reconnectTab(tab, [
+        await coordinator.reconnectTab(tab.info.id, [
           SessionOpenRequest(session: session, workspace: workspace),
         ]);
 
-        expect(scheduler.cancelledTabs, [tab]);
+        expect(scheduler.cancelledSessionIds, [tab.info.id]);
         expect(scheduler.jobs, hasLength(1));
         expect(scheduler.jobs.single.reason, LaunchReason.sshReconnect);
-        expect(scheduler.jobs.single.generation, tab.launchGeneration);
+        expect(scheduler.jobs.single.generation, 1);
         expect(scheduler.jobs.single.propagateErrors, isTrue);
         expect(scheduler.waitForCompletionValues.single, isTrue);
       },
@@ -279,7 +279,7 @@ void main() {
           ..release = release
           ..error = StateError('connect failed');
 
-        final reconnect = coordinator.reconnectTab(tab, [
+        final reconnect = coordinator.reconnectTab(tab.info.id, [
           SessionOpenRequest(session: session, workspace: workspace),
         ]);
         var completed = false;
@@ -345,8 +345,7 @@ void main() {
         executor: executor,
         postFrame: (callback) => callback(),
         isJobValid: (_) => true,
-        onBegin: (_) {},
-        onFinish: (_) {},
+        listener: const NoopLaunchFlowListener(),
       );
       final surface = SessionTabSurfaceCoordinator(
         host: host,
@@ -364,7 +363,7 @@ void main() {
         ),
       );
 
-      await batchCoordinator.reconnectTab(tab, [
+      await batchCoordinator.reconnectTab(tab.info.id, [
         for (final member in members)
           SessionOpenRequest(
             session: session,
@@ -389,7 +388,7 @@ AppSession _session(String id, Workspace workspace) => AppSession(
 
 class _RecordingScheduler implements SessionConnectSchedulerPort {
   final jobs = <SessionConnectJob>[];
-  final cancelledTabs = <ChatTab>[];
+  final cancelledSessionIds = <String>[];
   final waitForCompletionValues = <bool>[];
   Completer<void>? entered;
   Completer<void>? release;
@@ -411,8 +410,8 @@ class _RecordingScheduler implements SessionConnectSchedulerPort {
   }
 
   @override
-  void cancelForTab(ChatTab tab) {
-    cancelledTabs.add(tab);
+  void cancelForSession(String sessionId) {
+    cancelledSessionIds.add(sessionId);
   }
 }
 
@@ -435,7 +434,6 @@ class _ReconnectBatchExecutor implements SessionConnectExecutorPort {
       if (member.id == job.memberId) continue;
       await scheduler().enqueue(
         SessionConnectJob(
-          tab: job.tab,
           session: job.session,
           request: SessionOpenRequest(
             session: job.session,
@@ -467,7 +465,6 @@ class _CoordinatorHost implements SessionLaunchHost {
         isClosed: () => false,
       );
 
-  @override
   ChatState state;
 
   @override

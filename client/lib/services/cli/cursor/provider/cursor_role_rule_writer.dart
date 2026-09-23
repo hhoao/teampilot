@@ -1,6 +1,6 @@
 import '../../../../models/team_config.dart';
 import '../../../io/filesystem.dart';
-import '../../../chat/launch/session/member_role_provision.dart';
+import '../../registry/member_role_provision.dart';
 import 'cursor_home_layout.dart';
 
 /// Writes Cursor member identity to `~/.cursor/rules/role.mdc`.

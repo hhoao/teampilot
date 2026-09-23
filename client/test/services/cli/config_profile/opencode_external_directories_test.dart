@@ -6,13 +6,13 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
-import 'package:teampilot/services/chat/launch/session/launch_command_builder.dart';
+import 'package:teampilot/services/chat/launch/connect/launch_command_builder.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/prompt.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/workspace_base_info.dart';
 import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';
 import 'package:teampilot/services/resource/assemblers/prompt_assembler.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import '../../../support/in_memory_filesystem.dart';
 

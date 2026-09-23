@@ -105,6 +105,14 @@ final class OpencodeMcpCapability implements McpCapability {
       const JsonEncoder.withIndent('  ').convert(existing),
     );
   }
+
+  @override
+  Future<void> maybeRemoveStaleProjectTeammateBus({
+    required Filesystem fs,
+    Map<String, Map<String, Object?>>? extraServers,
+    required String workingDirectory,
+    Iterable<String> additionalDirectories = const [],
+  }) async {}
 }
 
 Future<Map<String, Object?>> _readOAuthEntries(

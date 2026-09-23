@@ -34,7 +34,7 @@ class SessionWorkbenchViewIcons extends StatelessWidget {
       // body); fall back to the tab during the thin-ChatCubit transition.
       final podView = c.podFor(sessionId)?.view;
       if (podView != null) return podView;
-      final tab = c.tabStore.openTabBySessionId(sessionId);
+      final tab = c.tabStore.getOpenTabBySessionId(sessionId);
       return tab?.workbenchView ?? SessionWorkbenchView.chat;
     });
     final showingChat = view == SessionWorkbenchView.chat;
@@ -116,7 +116,7 @@ Future<void> _toggleSessionWorkbenchView(
     workbench.pin(workspaceId, tabId);
     workbench.openSession(workspaceId, tabId.id, preview: false);
 
-    final tab = chat.tabStore.openTabBySessionId(sessionId);
+    final tab = chat.tabStore.getOpenTabBySessionId(sessionId);
     if (tab == null) return;
     // Stopped + launchError: keep scrollback / banner; Retry is explicit.
     if (!shouldConnectStoppedSessionOnTerminalReveal(
@@ -153,5 +153,5 @@ AppSession? _resolveToggleSession(ChatCubit chat, String sessionId) {
   for (final s in chat.state.sessions) {
     if (s.sessionId == sessionId) return s;
   }
-  return chat.tabStore.openTabBySessionId(sessionId)?.persistedSession;
+  return chat.tabStore.getOpenTabBySessionId(sessionId)?.persistedSession;
 }

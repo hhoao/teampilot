@@ -1,4 +1,3 @@
-import '../../session/chat_tab.dart';
 import '../../session/session_open_request.dart';
 import '../../../../models/app_session.dart';
 import '../../../../models/team_config.dart';
@@ -15,7 +14,6 @@ enum LaunchReason {
 
 final class SessionConnectJob {
   const SessionConnectJob({
-    required this.tab,
     required this.session,
     required this.request,
     required this.generation,
@@ -29,7 +27,6 @@ final class SessionConnectJob {
     this.propagateErrors = false,
   });
 
-  final ChatTab tab;
   final AppSession session;
   final SessionOpenRequest request;
   final int generation;

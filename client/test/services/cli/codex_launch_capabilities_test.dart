@@ -14,7 +14,7 @@ import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_provider.d
 import 'package:teampilot/services/cli/registry/launch/cli_launch_capability_error.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 import 'package:teampilot/services/cli/registry/launch/user_extra_args_provider.dart';
-import 'package:teampilot/services/chat/launch/session/launch_command_builder.dart';
+import 'package:teampilot/services/chat/launch/connect/launch_command_builder.dart';
 
 void main() {
   test('fresh Codex launches preserve model and full-access arguments', () {

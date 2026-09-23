@@ -3,6 +3,7 @@ import '../../session/chat_tab.dart';
 import '../../session/chat_tab_info.dart';
 import '../../session/session_open_request.dart';
 import '../../session/session_workbench_view.dart';
+import '../connect/launch_generation_store.dart';
 import '../session_launch_host.dart';
 import '../../../../models/app_session.dart';
 import '../../../../models/workspace.dart';
@@ -35,9 +36,11 @@ class SessionTabSurfaceCoordinator {
   SessionTabSurfaceCoordinator({
     required SessionLaunchHost host,
     required ChatTabStore tabStore,
+    LaunchGenerationStore? generations,
     this.onSessionTabOpened,
   }) : _host = host,
-       _tabStore = tabStore;
+       _tabStore = tabStore,
+       _generations = generations ?? LaunchGenerationStore();
 
   /// Single domain → bar handshake for a surfaced session tab.
   final void Function(
@@ -50,6 +53,7 @@ class SessionTabSurfaceCoordinator {
 
   final SessionLaunchHost _host;
   final ChatTabStore _tabStore;
+  final LaunchGenerationStore _generations;
 
   SessionTabSurfaceResult surfaceExistingTab({
     required SessionOpenRequest request,
@@ -85,10 +89,9 @@ class SessionTabSurfaceCoordinator {
         memberId.isNotEmpty &&
         (existing.membersPendingConnect.contains(memberId) ||
             existing.memberShells[memberId]?.isConnecting == true);
-    if (!sessionConnectAlreadyScheduled) {
-      existing.bumpLaunchGeneration();
-    }
-    final generation = existing.launchGeneration;
+    final generation = sessionConnectAlreadyScheduled
+        ? _generations.current(session.sessionId)
+        : _generations.bump(session.sessionId);
     onSessionTabOpened?.call(
       existing.workspaceId,
       session.sessionId,
@@ -140,7 +143,7 @@ class SessionTabSurfaceCoordinator {
           )
           ..persistedSession = session
           ..selectedMemberId = placeholderMemberId;
-    tab.bumpLaunchGeneration();
+    final generation = _generations.bump(session.sessionId);
 
     _tabStore.registerSession(tab);
     _host.sessionRuntime.ensureIdleWatch();
@@ -158,7 +161,7 @@ class SessionTabSurfaceCoordinator {
     return SessionTabSurfaceResult(
       tab: tab,
       session: session,
-      generation: tab.launchGeneration,
+      generation: generation,
       workspace: workspace,
       connect: connect,
       reused: false,

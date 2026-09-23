@@ -142,7 +142,7 @@ void main() {
 
       const sessionId = 'sess-ok';
       seedWaitingTab(cubit, sessionId: sessionId);
-      cubit.tabStore.openTabBySessionId(sessionId)!.memberShells[sessionId] =
+      cubit.tabStore.getOpenTabBySessionId(sessionId)!.memberShells[sessionId] =
           _FakeShell(connected: true);
 
       final result = await cubit.answerAskUserQuestion(
@@ -206,7 +206,7 @@ void main() {
 
       const sessionId = 'sess-cancel';
       seedWaitingTab(cubit, sessionId: sessionId);
-      cubit.tabStore.openTabBySessionId(sessionId)!.memberShells[sessionId] =
+      cubit.tabStore.getOpenTabBySessionId(sessionId)!.memberShells[sessionId] =
           _FakeShell(connected: true);
 
       final result = await cubit.cancelAskUserQuestion(

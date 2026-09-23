@@ -1,6 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/session/chat_tab.dart';
-import 'package:teampilot/services/chat/session/chat_tab_info.dart';
 import 'package:teampilot/services/chat/session/session_open_request.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -27,10 +25,6 @@ void main() {
     sessionTeam: team.id,
     createdAt: 1,
   );
-  final tab = ChatTab(
-    info: const ChatTabInfo(id: 'session-1', title: 'Session', subtitle: ''),
-    cliTeamName: team.id,
-  );
   final request = SessionOpenRequest(
     session: session,
     workspace: workspace,
@@ -39,7 +33,6 @@ void main() {
   );
 
   SessionConnectJob personalJob() => SessionConnectJob(
-    tab: tab,
     session: AppSession(
       sessionId: 'personal-session',
       workspaceId: workspace.workspaceId,
@@ -54,7 +47,6 @@ void main() {
 
   test('job identity uses session and selected member', () {
     final job = SessionConnectJob(
-      tab: tab,
       session: session,
       request: request,
       generation: 3,

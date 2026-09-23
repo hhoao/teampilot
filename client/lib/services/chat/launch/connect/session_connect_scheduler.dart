@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import '../../../../cubits/chat_state.dart';
-import '../../session/chat_tab.dart';
+import '../shell_launch_typedefs.dart';
 import '../../../../utils/logging/logger.dart';
+import 'launch_flow.dart';
 import 'session_connect_job.dart';
 
 abstract interface class SessionConnectExecutorPort {
@@ -12,7 +12,7 @@ abstract interface class SessionConnectExecutorPort {
 abstract interface class SessionConnectSchedulerPort {
   Future<void> enqueue(SessionConnectJob job, {bool waitForCompletion = false});
 
-  void cancelForTab(ChatTab tab);
+  void cancelForSession(String sessionId);
 }
 
 class SessionConnectScheduler implements SessionConnectSchedulerPort {
@@ -20,15 +20,13 @@ class SessionConnectScheduler implements SessionConnectSchedulerPort {
     required this.executor,
     required this.postFrame,
     required this.isJobValid,
-    required this.onBegin,
-    required this.onFinish,
+    required this.listener,
   });
 
   final SessionConnectExecutorPort executor;
   final PostFrameScheduler postFrame;
   final bool Function(SessionConnectJob job) isJobValid;
-  final void Function(String sessionId) onBegin;
-  final void Function(String sessionId) onFinish;
+  final LaunchFlowListener listener;
 
   final Map<String, _SessionConnectToken> _pending =
       <String, _SessionConnectToken>{};
@@ -52,8 +50,13 @@ class SessionConnectScheduler implements SessionConnectSchedulerPort {
       reportErrors: waitForCompletion,
     );
     _pending[id] = token;
-    job.tab.membersPendingConnect.add(job.memberId);
-    onBegin(job.sessionId);
+    listener.onLaunchFlow(
+      LaunchFlowEvent(
+        sessionId: job.sessionId,
+        memberId: job.memberId,
+        phase: LaunchFlowPhase.queued,
+      ),
+    );
     if (waitForCompletion) {
       // Completion-aware callers are already awaiting the launch boundary.
       // Start their work now so the returned future cannot depend on a frame
@@ -96,8 +99,13 @@ class SessionConnectScheduler implements SessionConnectSchedulerPort {
     } finally {
       if (_pending[id] == token) {
         _pending.remove(id);
-        job.tab.membersPendingConnect.remove(job.memberId);
-        onFinish(job.sessionId);
+        listener.onLaunchFlow(
+          LaunchFlowEvent(
+            sessionId: job.sessionId,
+            memberId: job.memberId,
+            phase: LaunchFlowPhase.settled,
+          ),
+        );
       }
       if (!token.done.isCompleted) {
         token.done.complete();
@@ -109,14 +117,19 @@ class SessionConnectScheduler implements SessionConnectSchedulerPort {
       _pending.containsKey('$sessionId|$memberId');
 
   @override
-  void cancelForTab(ChatTab tab) {
-    final prefix = '${tab.info.id}|';
+  void cancelForSession(String sessionId) {
+    final prefix = '$sessionId|';
     for (final entry in _pending.entries.toList()) {
       if (entry.key.startsWith(prefix)) {
         entry.value.cancelled = true;
         _pending.remove(entry.key);
-        tab.membersPendingConnect.remove(entry.value.memberId);
-        onFinish(entry.value.sessionId);
+        listener.onLaunchFlow(
+          LaunchFlowEvent(
+            sessionId: entry.value.sessionId,
+            memberId: entry.value.memberId,
+            phase: LaunchFlowPhase.settled,
+          ),
+        );
         if (!entry.value.done.isCompleted) {
           entry.value.done.complete();
         }

@@ -24,7 +24,7 @@ import '../../../catalog/catalog_mcp_policy.dart';
 import '../../../ssh/mcp/session_ssh_mcp_policy.dart';
 import '../../../io/filesystem.dart';
 import '../../../remote/remote_credential_materializer.dart';
-import '../../../chat/launch/session/member_role_provision.dart';
+import '../../registry/member_role_provision.dart';
 import '../../../storage/home_storage.dart';
 import '../../../chat/team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/capabilities/claude_family_hook_registry.dart';
@@ -403,6 +403,9 @@ final class ClaudeProviderCapability extends CatalogModelCapability
   static const toolId = 'claude';
   static const metadataFileName = '.claude.json';
   static const settingsFileEnvKey = 'TEAMPILOT_CLAUDE_SETTINGS_FILE';
+
+  @override
+  String? get launchSettingsFileEnvKey => settingsFileEnvKey;
 
   /// MCP 工具调用超时(毫秒)。team-bus 的 `wait_for_message` 是长阻塞工具,
   /// claude 默认的工具超时会在几分钟后掐断它(progress notification 不续命,

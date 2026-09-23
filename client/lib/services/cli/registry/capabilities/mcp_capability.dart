@@ -22,4 +22,14 @@ abstract interface class McpCapability implements CliCapability {
     required String sessionConfigDir,
     String? fallbackAppConfigDir,
   }) async {}
+
+  /// Drops stale project-scope teammate-bus MCP entries before session-scoped
+  /// MCP is written. Default: no-op. CLIs that read a project `.mcp.json`
+  /// override this.
+  Future<void> maybeRemoveStaleProjectTeammateBus({
+    required Filesystem fs,
+    Map<String, Map<String, Object?>>? extraServers,
+    required String workingDirectory,
+    Iterable<String> additionalDirectories = const [],
+  }) async {}
 }

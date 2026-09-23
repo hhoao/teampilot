@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import '../../registry/capabilities/prompt_capability.dart';
-import '../../../chat/launch/session/member_role_provision.dart';
+import '../../registry/member_role_provision.dart';
 import '../../../chat/launch/staging/manifest/work_plane_paths.dart';
 import '../../../resource/contribution/resource_origin.dart';
 

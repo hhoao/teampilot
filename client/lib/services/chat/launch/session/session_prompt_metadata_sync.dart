@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../../../../cubits/chat_state.dart';
+import '../chat_state_port.dart';
 import '../session_launch_host.dart';
 import '../../../../models/app_session.dart';
 import '../../../../repositories/session_repository.dart';
@@ -13,14 +13,14 @@ const sessionActivityTouchDebounceMs = 5000;
 class SessionPromptMetadataSync {
   SessionPromptMetadataSync({
     required SessionLaunchHost host,
-    required ChatState Function() state,
+    required ChatDataSnapshot Function() state,
     int Function()? nowMs,
   }) : _host = host,
        _state = state,
        _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
 
   final SessionLaunchHost _host;
-  final ChatState Function() _state;
+  final ChatDataSnapshot Function() _state;
   final int Function() _nowMs;
   final _lastTouchTimes = <String, int>{};
 

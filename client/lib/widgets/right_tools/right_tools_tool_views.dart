@@ -745,7 +745,7 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
     // thin-ChatCubit transition.
     final podView = chat.podFor(sessionId)?.view;
     if (podView != null) return podView;
-    final tab = chat.tabStore.openTabBySessionId(sessionId);
+    final tab = chat.tabStore.getOpenTabBySessionId(sessionId);
     return tab?.workbenchView ?? SessionWorkbenchView.chat;
   }
 

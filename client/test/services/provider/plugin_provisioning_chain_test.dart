@@ -14,7 +14,7 @@ import 'package:teampilot/services/expert_hub/expert_capability_pack.dart';
 import 'package:teampilot/services/expert_hub/expert_capability_resolver.dart';
 import 'package:teampilot/services/chat/launch/staging/session_runtime_plan.dart';
 import 'package:teampilot/services/chat/launch/staging/session_runtime_plan_builder.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';

@@ -17,6 +17,7 @@ import 'connect/member_connect_stage.dart';
 import 'connect/session_connect_executor.dart';
 import 'connect/session_connect_job.dart';
 import 'connect/session_connect_scheduler.dart';
+import 'connect/launch_generation_store.dart';
 import 'connect/session_personal_shell.dart';
 import 'connect/session_ssh_profile_reconnect.dart';
 import 'connect/session_lifecycle_connect_coordinator.dart';
@@ -29,7 +30,7 @@ import 'session/session_launch_config_snapshot.dart';
 import 'session/session_member_cli_locks.dart';
 import '../../storage/home_storage.dart';
 import '../../storage/work_target_canonicalizer.dart';
-import 'team_config_launch_validator.dart';
+import 'session/team_config_launch_validator.dart';
 import '../session/session_member_cli_resolver.dart';
 import 'session_launch_host.dart';
 
@@ -37,7 +38,7 @@ export 'session_launch_host.dart';
 import '../../terminal/terminal_session.dart';
 import '../../../utils/logging/logger.dart';
 import '../session/chat_tab_store.dart';
-import '../../../cubits/chat_state.dart';
+import 'chat_state_port.dart';
 import '../session/chat_tab.dart';
 import '../session/session_create_request.dart';
 import '../session/session_open_request.dart';
@@ -56,10 +57,13 @@ class SessionLaunchService
     this._h, {
     required HomeStorage storage,
     this.onSessionTabOpened,
-  }) : _storage = storage;
+    LaunchGenerationStore? generations,
+  }) : _storage = storage,
+       _generations = generations ?? LaunchGenerationStore();
 
   final SessionLaunchHost _h;
   final HomeStorage _storage;
+  final LaunchGenerationStore _generations;
 
   /// Domain → bar handshake for newly staged session tabs (wired by the app
   /// shell to [WorkbenchChatBridge.onSessionTabOpened]).
@@ -100,9 +104,20 @@ class SessionLaunchService
     _teamConfigValidator = teamConfigValidator;
   }
 
-  ChatState get _state => _h.state;
+  ChatDataSnapshot get _state => _h.stateSnapshot();
   ChatTabStore get _tabStore => _h.tabStore;
   ChatTab? get _activeTab => _h.activeTab;
+
+  ChatTab? _openTab(String sessionId) =>
+      _tabStore.getOpenTabBySessionId(sessionId);
+
+  ChatTab _requireTab(String sessionId) {
+    final tab = _openTab(sessionId);
+    if (tab == null) {
+      throw StateError('launch tab missing session=$sessionId');
+    }
+    return tab;
+  }
 
   SessionLaunchWorkspaceIndex get _workspaceIndex =>
       SessionLaunchWorkspaceIndex(
@@ -211,7 +226,6 @@ class SessionLaunchService
   }
 
   void _rollbackStagedLaunch({
-    required ChatTab tab,
     required String sessionId,
     required SessionOpenRequest request,
     required String message,
@@ -222,10 +236,10 @@ class SessionLaunchService
     _h.removeSessionSnapshot(sessionId);
   }
 
-  bool _launchStillValid(ChatTab tab, int generation) {
+  bool _launchStillValid(String sessionId, int generation) {
     if (_h.isClosed) return false;
-    if (_tabStore.openTabBySessionId(tab.info.id) == null) return false;
-    return tab.launchGeneration == generation;
+    if (_openTab(sessionId) == null) return false;
+    return _generations.matches(sessionId, generation);
   }
 
   Future<AppSession?> _ensureTeamSessionReady({
@@ -295,7 +309,7 @@ class SessionLaunchService
       'session=${session.sessionId} team=${team.id}',
     );
     await _h.teamBus.installBusForTab(tab, team, session);
-    if (!_launchStillValid(tab, generation)) return;
+    if (!_launchStillValid(session.sessionId, generation)) return;
   }
 
   Future<void> onConnectResult(
@@ -305,8 +319,9 @@ class SessionLaunchService
     ConnectShellResult result,
   ) async {
     if (result != ConnectShellResult.attached) return;
+    final tab = _requireTab(job.sessionId);
     final member = resolved.member;
-    job.tab.reclaimedMemberIds.remove(member.id);
+    tab.reclaimedMemberIds.remove(member.id);
     final team = resolved.team;
     if (team != null &&
         shouldFanOutRemainingMembers(
@@ -318,18 +333,18 @@ class SessionLaunchService
       await _launchRemainingMembersForTab(
         team,
         member.id,
-        job.tab,
+        tab,
         repo: job.request.repo,
       );
     }
-    _h.updateTabRunning(job.tab.info.id);
+    _h.updateTabRunning(tab.info.id);
   }
 
   @override
   Future<AppSession> persist(SessionConnectJob job) => _persistSessionIfNeeded(
     request: job.request,
     session: job.session,
-    tab: job.tab,
+    tab: _requireTab(job.sessionId),
   );
 
   @override
@@ -345,7 +360,7 @@ class SessionLaunchService
     if (ready == null) {
       throw StateError('mixed_workspace_member_placement_uninitialized');
     }
-    job.tab.persistedSession = ready;
+    _requireTab(job.sessionId).persistedSession = ready;
     return ready;
   }
 
@@ -365,9 +380,10 @@ class SessionLaunchService
     AppSession session,
     TeamProfile? team,
   ) async {
-    if (team != null && job.tab.teamBus == null) {
+    final tab = _requireTab(job.sessionId);
+    if (team != null && tab.teamBus == null) {
       await _installTeamRuntimeIfNeeded(
-        tab: job.tab,
+        tab: tab,
         session: session,
         team: team,
         generation: job.generation,
@@ -381,16 +397,17 @@ class SessionLaunchService
     AppSession session,
     ResolvedLaunchMembers resolved,
   ) async {
+    final tab = _requireTab(job.sessionId);
     if (resolved.team != null) {
-      _assignSelectedMemberOnTab(tab: job.tab, memberId: resolved.member.id);
+      _assignSelectedMemberOnTab(tab: tab, memberId: resolved.member.id);
     }
-    _h.updateTabRunning(job.tab.info.id);
+    _h.updateTabRunning(tab.info.id);
   }
 
   @override
   void markConnectFailed(SessionConnectJob job, String memberId) {
     _h.memberMaterializer.markMemberReady(job.sessionId, memberId);
-    _h.updateTabRunning(job.tab.info.id);
+    _h.updateTabRunning(job.sessionId);
   }
 
   @override
@@ -399,9 +416,14 @@ class SessionLaunchService
     AppSession session,
     ResolvedLaunchMembers resolved,
   ) {
+    final tab = _requireTab(job.sessionId);
     if (job.request.shellAcquisition ==
         SessionShellAcquisition.personalResumeSession) {
-      final resumeSession = displayedPersonalResumeShell(job.tab, session);
+      final resumeSession = displayedPersonalResumeShell(
+        sessionId: session.sessionId,
+        resumeSession: tab.resumeSession,
+        memberShells: tab.memberShells,
+      );
       if (resumeSession == null || resumeSession.isDisposed) {
         throw StateError(
           'personal reconnect resume session is no longer available',
@@ -411,10 +433,10 @@ class SessionLaunchService
     }
     if (job.reason != LaunchReason.restore &&
         job.reason != LaunchReason.sshReconnect) {
-      _assignSelectedMemberOnTab(tab: job.tab, memberId: resolved.member.id);
+      _assignSelectedMemberOnTab(tab: tab, memberId: resolved.member.id);
     }
     return _shellForLaunch(
-      tab: job.tab,
+      tab: tab,
       shellKey: resolved.member.id,
       cli: resolved.cli,
       session: session,
@@ -424,12 +446,11 @@ class SessionLaunchService
 
   @override
   bool isValid(SessionConnectJob job) =>
-      _launchStillValid(job.tab, job.generation);
+      _launchStillValid(job.sessionId, job.generation);
 
   @override
   void rollback(SessionConnectJob job, AppSession session) {
     _rollbackStagedLaunch(
-      tab: job.tab,
       sessionId: session.sessionId,
       request: job.request,
       message: 'Failed to connect session.',
@@ -479,7 +500,7 @@ class SessionLaunchService
         _memberConnect.scheduleMemberConnectAndWait(
           team,
           candidate,
-          tab,
+          tab.info.id,
           repo: repo,
           selectMember: false,
           reason: LaunchReason.restore,
@@ -527,14 +548,16 @@ class SessionLaunchService
     required TeamProfile team,
     required TeamMemberConfig member,
     required AppSession session,
-    required ChatTab tab,
+    required String sessionId,
+    required bool teamBusInstalled,
     String? remoteMemberKeyForRollback,
     Map<String, Map<String, Object?>>? extraMcpServers,
   }) => _lifecycleCoordinator.gateBeforeAttach(
     team: team,
     member: member,
     session: session,
-    tab: tab,
+    sessionId: sessionId,
+    teamBusInstalled: teamBusInstalled,
     remoteMemberKeyForRollback: remoteMemberKeyForRollback,
     extraMcpServers: extraMcpServers,
   );
@@ -544,7 +567,7 @@ class SessionLaunchService
     String sessionId,
     String memberId,
   ) async {
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     if (tab == null) return false;
     final session = tab.persistedSession;
     if (session == null || session.sessionTeam.trim().isEmpty) return true;
@@ -559,10 +582,11 @@ class SessionLaunchService
     if (member == null || !member.isValid) return false;
 
     return _lifecycleCoordinator.isDirectPtyInputReady(
-      tab: tab,
+      sessionId: sessionId,
       session: session,
       team: team,
       member: member,
+      teamBusInstalled: tab.teamBus != null,
     );
   }
 
@@ -629,13 +653,15 @@ class SessionLaunchService
     scheduleTeamConfigValidation: scheduleTeamConfigValidation,
   );
 
-  AppSession? _sessionForMemberConnect(ChatTab tab, TeamProfile team) {
+  AppSession? _sessionForMemberConnect(String sessionId, TeamProfile team) {
+    final tab = _openTab(sessionId);
+    if (tab == null) return null;
     final freshest = _freshestSessionForTab(tab);
     if (freshest != null) {
       tab.persistedSession = freshest;
       return freshest;
     }
-    if (!tab.info.id.startsWith('local-')) return null;
+    if (!sessionId.startsWith('local-')) return null;
     final launch = _tabStore.workingDirectoryAndAddDirsForTab(
       tab,
       _state.sessions,
@@ -647,7 +673,7 @@ class SessionLaunchService
     final session =
         tab.persistedSession ??
         AppSession(
-          sessionId: tab.info.id,
+          sessionId: sessionId,
           workspaceId: '',
           folders: [
             if (launch.$1.isNotEmpty)
@@ -664,8 +690,8 @@ class SessionLaunchService
     return session;
   }
 
-  AppSession? sessionForMemberConnect(ChatTab tab, TeamProfile team) =>
-      _sessionForMemberConnect(tab, team);
+  AppSession? sessionForMemberConnect(String sessionId, TeamProfile team) =>
+      _sessionForMemberConnect(sessionId, team);
 
   /// Latest [AppSession] for [tab]: in-memory snapshot first, then tab cache.
   AppSession? _freshestSessionForTab(ChatTab tab) =>
@@ -675,19 +701,19 @@ class SessionLaunchService
   void scheduleMemberConnect(
     TeamProfile team,
     TeamMemberConfig member,
-    ChatTab tab, {
+    String sessionId, {
     bool selectMember = true,
   }) => _memberConnect.scheduleMemberConnect(
     team,
     member,
-    tab,
+    sessionId,
     selectMember: selectMember,
     reason: LaunchReason.restore,
   );
 
   /// True when another launch path already owns PTY connect for [memberId].
   bool isMemberConnectOwnedElsewhere(String sessionId, String memberId) {
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     if (tab == null) return false;
     if (tab.membersPendingConnect.contains(memberId) ||
         _connectScheduler?.isPending(
@@ -787,7 +813,7 @@ class SessionLaunchService
     final id = sessionId.trim();
     final mid = memberId.trim();
     if (id.isEmpty || mid.isEmpty) return;
-    final tab = _tabStore.openTabBySessionId(id);
+    final tab = _tabStore.getOpenTabBySessionId(id);
     if (tab == null) return;
     tab.membersPendingConnect.remove(mid);
     tab.memberShells[mid]?.disconnect();
@@ -806,7 +832,7 @@ class SessionLaunchService
     final id = sessionId.trim();
     final mid = memberId.trim();
     if (id.isEmpty || mid.isEmpty) return;
-    final tab = _tabStore.openTabBySessionId(id);
+    final tab = _tabStore.getOpenTabBySessionId(id);
     if (tab == null) return;
     final shell = tab.memberShells[mid];
     if (shell == null || !shell.isRunning) return;
@@ -834,7 +860,7 @@ class SessionLaunchService
     final id = sessionId.trim();
     final mid = memberId.trim();
     if (id.isEmpty || mid.isEmpty) return;
-    final tab = _tabStore.openTabBySessionId(id);
+    final tab = _tabStore.getOpenTabBySessionId(id);
     if (tab == null) return;
     final shell = tab.memberShells[mid];
     if (shell != null && (shell.isRunning || shell.isConnecting)) return;
@@ -854,7 +880,7 @@ class SessionLaunchService
     _memberConnect.scheduleMemberConnect(
       team,
       member,
-      tab,
+      id,
       selectMember: false,
       reason: LaunchReason.restore,
     );

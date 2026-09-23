@@ -8,14 +8,14 @@ import '../../../cli/installer_types.dart';
 import '../../../cli/registry/cli_tool_registry.dart';
 import '../../../cli/remote_cli_installer.dart';
 import '../../../cli/remote_cli_locator.dart';
-import '../../../provider/config_profile_service.dart';
-import '../../../remote/remote_app_data_materializer.dart';
+import '../config_profile_service.dart';
+import 'remote_app_data_materializer.dart';
 import '../../../remote/remember_remote_cli_path.dart';
 import '../../../ssh/ssh_client_factory.dart';
 import '../../../ssh/ssh_storage_io.dart';
 import '../../../ssh/ssh_transport_close.dart';
 import '../../../storage/runtime_context.dart';
-import 'launch_artifacts.dart';
+import 'workspace_provision_types.dart';
 
 typedef WorkspaceContextResolver =
     Future<RuntimeContext> Function(RuntimeTarget target);
@@ -69,7 +69,7 @@ class WorkspaceProvisioner {
   final RemoteCliInstaller _installer;
   final RemoteAppDataMaterializer _appData;
 
-  Future<WorkspaceProvisionResult> provision({
+  Future<WorkspaceProvisionResult> getProvision({
     required RuntimeTarget target,
     required String workspaceId,
     required CliTool cli,
@@ -108,8 +108,8 @@ class WorkspaceProvisioner {
 
     report(CliInstallPhase.locatingExecutable, detail: 'ensure-cli');
     step('ensure-cli begin');
-    final remoteCliPath = await _ensureCli(target: target, cli: cli);
-    step('ensure-cli done path=$remoteCliPath');
+    final cliPath = await getCliLocation(target: target, cli: cli);
+    step('ensure-cli done path=$cliPath');
 
     final home = homeContext();
     if (usesSshTransport(target.kind)) {
@@ -153,12 +153,12 @@ class WorkspaceProvisioner {
     step('done');
     return WorkspaceProvisionResult(
       workContext: workContext,
-      remoteCliPath: remoteCliPath,
+      remoteCliPath: cliPath,
     );
   }
 
   /// Locate-only. Never installs — install from Machines UI.
-  Future<String> _ensureCli({
+  Future<String> getCliLocation({
     required RuntimeTarget target,
     required CliTool cli,
   }) async {
@@ -175,7 +175,7 @@ class WorkspaceProvisioner {
       'target=${target.id} cli=${cli.value} host=${profile.host}',
     );
     final client = await sshClientFactory.clientForStorage(profile);
-    final run = RemoteCliLocator.runnerForClient(
+    final run = RemoteCliLocator.getRunnerForClient(
       client,
       timeout: SshStorageIo.locateTimeout,
     );

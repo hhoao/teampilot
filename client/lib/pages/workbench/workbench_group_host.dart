@@ -131,7 +131,7 @@ class WorkbenchGroupHost extends StatelessWidget {
     final order = strip.order;
     final activeId = strip.activeId;
     final activeTab = activeId?.kind == WorkbenchTabKind.session
-        ? chat.tabStore.openTabBySessionId(activeId!.id)
+        ? chat.tabStore.getOpenTabBySessionId(activeId!.id)
         : null;
     // The group's chrome resolves from its OWN active session, not the
     // (focused) strip's — each group may host a different team context.

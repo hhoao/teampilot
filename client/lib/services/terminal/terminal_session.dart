@@ -14,7 +14,7 @@ import '../cli/registry/cli_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
 import '../event/agent_presence_event.dart';
-import '../chat/launch/session/launch_command_builder.dart';
+import '../chat/launch/connect/launch_command_builder.dart';
 import '../chat/launch/session/shell_launch_spec.dart';
 import '../ssh/ssh_member_session.dart';
 import 'observation/modules/activity_observation_module.dart';
@@ -200,6 +200,9 @@ class TerminalSession {
       Platform.isWindows
       ? RuntimeTarget.localWindows(workingDirectory: workingDirectory)
       : RuntimeTarget.localPosix(workingDirectory: workingDirectory);
+
+  /// Path-namespace target for an SSH member PTY (drag-drop projection).
+  static const sshPathRuntimeTarget = RuntimeTarget.ssh();
 
   Duration _defaultFullscreenSettleDelay() =>
       (_runtimeTarget?.namespace.isSsh ?? false)

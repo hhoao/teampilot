@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/chat/launch/session/member_role_provision.dart';
+import 'package:teampilot/services/cli/registry/member_role_provision.dart';
 
 void main() {
   test('composeRolePrompt does not append workspace directories section', () {

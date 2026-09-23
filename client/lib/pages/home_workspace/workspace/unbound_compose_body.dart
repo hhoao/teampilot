@@ -56,7 +56,7 @@ import '../../../widgets/compose/compose_chrome.dart';
 import '../../../widgets/compose/compose_model_preset_chip.dart';
 import '../../../widgets/compose/simple_custom_launch_dialog.dart';
 import '../../../widgets/compose/workspace_compose_card.dart';
-import '../../../services/chat/launch/workspace/workspace_landing_launch_gate.dart';
+import '../../../services/chat/launch/pre_send/workspace_landing_launch_gate.dart';
 import '../../../services/workbench/workbench_editor_opener.dart';
 import '../../../repositories/workspace_project_config_repository.dart';
 import '../../expert_hub/expert_landing_chip_menu.dart';

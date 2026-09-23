@@ -1,13 +1,13 @@
 import '../../../io/filesystem.dart';
 import '../../../ssh/ssh_member_session.dart';
-import '../mcp/teammate_bus_mcp_gateway.dart';
+import '../mcp/teammate_bus_mcp_gateway_port.dart';
 import '../mcp/teammate_bus_session_registry.dart';
 import 'remote_bus_mount.dart';
 
 /// Builds a [RemoteBusMount] for one remote member's dedicated SSH session plane.
 RemoteBusMount buildRemoteBusMount({
   required SshMemberSession memberSession,
-  required TeammateBusMcpGateway gateway,
+  required TeammateBusMcpGatewayPort gateway,
   required TeammateBusSessionRegistration registration,
   required Filesystem storageFs,
   required String arch,
@@ -28,7 +28,7 @@ RemoteBusMount buildRemoteBusMount({
 /// remote agent can authenticate without a TeamBus MCP registration.
 RemoteBusMount buildStatusOnlyRemoteBusMount({
   required SshMemberSession memberSession,
-  required TeammateBusMcpGateway gateway,
+  required TeammateBusMcpGatewayPort gateway,
   required Filesystem storageFs,
   required String arch,
   required String token,

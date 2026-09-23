@@ -203,7 +203,7 @@ class CliExecutablePathSettingsRowState
       );
       return CliExecutableDiscovery().locateRemoteCli(
         cli: widget.cli,
-        run: RemoteCliLocator.runnerForClient(client),
+        run: RemoteCliLocator.getRunnerForClient(client),
       );
     }
     return CliExecutableDiscovery().locateLocalCli(widget.cli);

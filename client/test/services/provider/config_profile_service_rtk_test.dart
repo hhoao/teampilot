@@ -9,7 +9,7 @@ import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/extension/extension_detector.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';

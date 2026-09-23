@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 
 import '../../models/runtime_target.dart';
 import '../../models/workspace_folder.dart';
-import '../chat/launch/session/launch_command_builder.dart';
+import '../chat/launch/connect/launch_command_builder.dart';
 import '../storage/work_target_canonicalizer.dart';
 import 'launch_variable_expander.dart';
 

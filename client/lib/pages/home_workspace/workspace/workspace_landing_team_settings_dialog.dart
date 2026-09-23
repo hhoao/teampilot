@@ -20,8 +20,8 @@ import '../../../services/cli/preset_resolver.dart';
 import '../../../services/cli/registry/cli_display_name.dart';
 import '../../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../../services/chat/launch/member_placement_save.dart';
-import '../../../services/chat/launch/team_settings_commit_service.dart';
+import '../../../services/team_config/member_placement_save.dart';
+import '../../../services/team_config/team_settings_commit_service.dart';
 import '../../../services/workspace/workspace_pane_policy.dart';
 import '../../../utils/team/team_member_naming.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
@@ -249,9 +249,9 @@ class _LandingTeamSettingsDialogState
     try {
       final ok =
           await TeamSettingsCommitService(
-            launchProfileCubit: context.read<LaunchProfileCubit>(),
+            profiles: context.read<LaunchProfileCubit>(),
             sessionRepository: context.read<SessionRepository>(),
-            chatCubit: context.read<ChatCubit>(),
+            workspaces: context.read<ChatCubit>(),
           ).commit(
             workspaceId: _workspace.workspaceId,
             teamId: widget.team.id,

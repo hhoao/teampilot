@@ -61,4 +61,12 @@ final class CursorMcpCapability implements McpCapability {
       fallbackFromConfigDir: fallbackAppConfigDir,
     );
   }
+
+  @override
+  Future<void> maybeRemoveStaleProjectTeammateBus({
+    required Filesystem fs,
+    Map<String, Map<String, Object?>>? extraServers,
+    required String workingDirectory,
+    Iterable<String> additionalDirectories = const [],
+  }) async {}
 }

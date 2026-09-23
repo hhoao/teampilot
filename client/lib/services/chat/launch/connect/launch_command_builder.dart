@@ -11,12 +11,12 @@ import '../../../cli/registry/launch/cli_launch_context.dart' as launch_context;
 import '../../../cli/registry/launch/cli_launch_capability_error.dart';
 import '../../../cli/registry/launch/user_extra_args_provider.dart'
     as launch_args;
-import 'shell_launch_spec.dart';
+import '../session/shell_launch_spec.dart';
 import '../../../cli/registry/cli_tool_registry.dart';
 import '../../../cli/registry/capabilities/team_behavior_capability.dart';
+import '../../../cli/registry/capabilities/provider_capability.dart';
 import '../../../cli/cli_invocation.dart';
-import '../../../cli/claude/capabilities/provider.dart';
-import 'member_role_provision.dart';
+import '../../../cli/registry/member_role_provision.dart';
 
 typedef ProcessStarter =
     Future<Process> Function(
@@ -363,10 +363,26 @@ class LaunchCommandBuilder {
     };
   }
 
+  static Iterable<String> _launchSettingsFileEnvKeys([
+    CliToolRegistry? cliRegistry,
+  ]) {
+    final registry = cliRegistry ?? _defaultCliRegistry;
+    return registry.launchable
+        .map(
+          (def) => registry
+              .capability<ProviderCapability>(def.id)
+              ?.launchSettingsFileEnvKey,
+        )
+        .whereType<String>();
+  }
+
   static String? settingsPathFromEnvironment(Map<String, String>? environment) {
-    final value = environment?[ClaudeProviderCapability.settingsFileEnvKey]
-        ?.trim();
-    return value == null || value.isEmpty ? null : value;
+    if (environment == null) return null;
+    for (final key in _launchSettingsFileEnvKeys()) {
+      final value = environment[key]?.trim();
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return null;
   }
 
   static String? appendSystemPromptFileFromEnvironment(
@@ -377,8 +393,8 @@ class LaunchCommandBuilder {
     return value == null || value.isEmpty ? null : value;
   }
 
-  static const _launchOnlyEnvKeys = {
-    ClaudeProviderCapability.settingsFileEnvKey,
+  static Set<String> _launchOnlyEnvKeys([CliToolRegistry? cliRegistry]) => {
+    ..._launchSettingsFileEnvKeys(cliRegistry),
     MemberRoleProvision.appendSystemPromptFileEnvKey,
   };
 
@@ -386,12 +402,13 @@ class LaunchCommandBuilder {
     Map<String, String>? environment,
   ) {
     if (environment == null) return null;
-    if (!_launchOnlyEnvKeys.any(environment.containsKey)) {
+    final keys = _launchOnlyEnvKeys();
+    if (!keys.any(environment.containsKey)) {
       return environment;
     }
     return {
       for (final entry in environment.entries)
-        if (!_launchOnlyEnvKeys.contains(entry.key)) entry.key: entry.value,
+        if (!keys.contains(entry.key)) entry.key: entry.value,
     };
   }
 }

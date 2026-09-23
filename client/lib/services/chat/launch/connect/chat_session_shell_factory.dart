@@ -14,8 +14,7 @@ import '../../../terminal/terminal_session.dart';
 import '../../../terminal/terminal_transport_factory.dart';
 import '../../../io/local_filesystem.dart';
 import '../../../storage/home_storage.dart';
-import '../../../workspace_dnd/runtime_target.dart';
-import '../../../../cubits/chat_state.dart';
+import '../shell_launch_typedefs.dart';
 
 /// Builds [TerminalSession]s with the right executable / transport for the
 /// active connection mode. Pure factory — owns no ChatState.
@@ -129,7 +128,7 @@ class ChatSessionShellFactory {
         usesRemoteTransport: true,
         parseExecutable: false,
         startupDeadline: startupDeadline,
-        runtimeTarget: const RuntimeTarget.ssh(),
+        runtimeTarget: TerminalSession.sshPathRuntimeTarget,
         transportStarter:
             (
               String executable, {

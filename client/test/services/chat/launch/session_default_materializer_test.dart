@@ -174,7 +174,6 @@ class _MaterializeHost implements SessionLaunchHost {
         storage: fakeHomeStorage(),
       );
 
-  @override
   ChatState state;
 
   @override

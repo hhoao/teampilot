@@ -4,7 +4,7 @@ import '../../../../models/app_session.dart';
 import '../../../../models/member_instance.dart';
 import '../../../../models/team_config.dart';
 import '../../runtime/member_coordination.dart';
-import '../../team_bus/chat_cubit_member_launcher.dart';
+import '../../team_bus/member_materializer.dart';
 import '../../../../utils/logging/logger.dart';
 import '../../session/chat_tab.dart';
 import '../../session/chat_tab_store.dart';
@@ -99,7 +99,7 @@ class TabMemberMaterializer implements MemberMaterializer {
       'session=$sessionId '
       '${_inputReadyGateSummary(sessionId, memberId)}',
     );
-    if (_tabStore.openTabBySessionId(sessionId) == null) {
+    if (_tabStore.getOpenTabBySessionId(sessionId) == null) {
       appLogger.d(
         '[member-materializer] input-ready cancelled no-tab '
         'member=$memberId session=$sessionId',
@@ -117,7 +117,7 @@ class TabMemberMaterializer implements MemberMaterializer {
         );
         return;
       }
-      if (_tabStore.openTabBySessionId(sessionId) == null) {
+      if (_tabStore.getOpenTabBySessionId(sessionId) == null) {
         appLogger.d(
           '[member-materializer] input-ready cancelled no-tab '
           'member=$memberId session=$sessionId ticks=$waitTicks',
@@ -132,7 +132,7 @@ class TabMemberMaterializer implements MemberMaterializer {
         sawRunning: sawRunning,
       );
       final shell = _tabStore
-          .openTabBySessionId(sessionId)
+          .getOpenTabBySessionId(sessionId)
           ?.memberShells[memberId];
       if (shell != null &&
           memberInputWaitSawRunning(
@@ -219,7 +219,7 @@ class TabMemberMaterializer implements MemberMaterializer {
       throw const MemberInputReadyException(MemberInputReadyFailure.timedOut);
     }
     final shell = _tabStore
-        .openTabBySessionId(sessionId)
+        .getOpenTabBySessionId(sessionId)
         ?.memberShells[memberId];
     if (shell == null) return;
     final snap = MemberShellReadySnapshot(
@@ -238,7 +238,7 @@ class TabMemberMaterializer implements MemberMaterializer {
   }
 
   String _inputReadyGateSummary(String sessionId, String memberId) {
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     if (tab == null) return 'gate=no-tab';
     final shell = tab.memberShells[memberId];
     if (shell == null) {
@@ -265,7 +265,7 @@ class TabMemberMaterializer implements MemberMaterializer {
     String memberId,
     String bootstrap,
   ) async {
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     if (tab == null) return;
 
     if (MemberCoordinationScope.isPersonalSession(tab: tab)) {
@@ -325,7 +325,7 @@ class TabMemberMaterializer implements MemberMaterializer {
 
     if (team.teamMode == TeamMode.mixed) {
       await _awaitMixedBusReady(sessionId, tab);
-      if (_tabStore.openTabBySessionId(sessionId) == null) {
+      if (_tabStore.getOpenTabBySessionId(sessionId) == null) {
         if (identical(_memberReady[(sessionId, memberId)], ready)) {
           _memberReady.remove((sessionId, memberId));
         }
@@ -353,13 +353,18 @@ class TabMemberMaterializer implements MemberMaterializer {
       '[member-materializer] materialize schedule-connect '
       'member=$memberId session=$sessionId',
     );
-    _connector.scheduleMemberConnect(team, member, tab, selectMember: false);
+    _connector.scheduleMemberConnect(
+      team,
+      member,
+      sessionId,
+      selectMember: false,
+    );
     await _awaitMemberReady(sessionId, memberId, ready);
   }
 
   Future<void> _awaitMixedBusReady(String sessionId, ChatTab tab) async {
     while (!_isClosed()) {
-      if (_tabStore.openTabBySessionId(sessionId) == null) return;
+      if (_tabStore.getOpenTabBySessionId(sessionId) == null) return;
       if (tab.teamBus != null && _isMixedBusRegistered(sessionId)) return;
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
@@ -393,7 +398,7 @@ class TabMemberMaterializer implements MemberMaterializer {
   ) async {
     final key = (sessionId, memberId);
     while (!_isClosed()) {
-      if (_tabStore.openTabBySessionId(sessionId) == null) {
+      if (_tabStore.getOpenTabBySessionId(sessionId) == null) {
         if (identical(_memberReady[key], ready)) _memberReady.remove(key);
         appLogger.d(
           '[member-materializer] materialize cancelled no-tab '

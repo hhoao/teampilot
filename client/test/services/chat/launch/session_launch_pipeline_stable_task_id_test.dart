@@ -26,7 +26,7 @@ import 'package:teampilot/services/chat/launch/connect/session_connect_scheduler
 import 'package:teampilot/services/chat/launch/launch_factory.dart';
 import 'package:teampilot/services/chat/launch/session/session_launch_coordinator.dart';
 import 'package:teampilot/services/chat/launch/session/session_launch_workspace_index.dart';
-import 'package:teampilot/services/chat/launch/tab/session_tab_surface_coordinator.dart';
+import 'package:teampilot/services/chat/launch/session/session_tab_surface_coordinator.dart';
 import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
@@ -347,7 +347,7 @@ SessionLaunchCoordinator _coordinatorForStaging({
 
 class _RecordingScheduler implements SessionConnectSchedulerPort {
   final jobs = <SessionConnectJob>[];
-  final cancelledTabs = <ChatTab>[];
+  final cancelledSessionIds = <String>[];
 
   @override
   Future<void> enqueue(
@@ -358,8 +358,8 @@ class _RecordingScheduler implements SessionConnectSchedulerPort {
   }
 
   @override
-  void cancelForTab(ChatTab tab) {
-    cancelledTabs.add(tab);
+  void cancelForSession(String sessionId) {
+    cancelledSessionIds.add(sessionId);
   }
 }
 
@@ -464,7 +464,6 @@ class _CapturingHost implements SessionLaunchHost {
          isClosed: () => false,
        );
 
-  @override
   ChatState state;
 
   @override
@@ -517,7 +516,6 @@ class _CapturingHost implements SessionLaunchHost {
   @override
   set activeTeam(TeamProfile? team) {}
 
-  @override
   void applyState(ChatState next) => state = next;
 
   @override

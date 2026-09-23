@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../services/chat/launch/team_config_launch_validator.dart';
+import '../services/chat/launch/session/team_config_launch_validator.dart';
 import '../utils/logging/logger.dart';
 import '../utils/session/session_launch_error.dart';
 import '../models/member_remote_provision_progress.dart';
@@ -40,7 +40,7 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
   void setLaunchError(String sessionId, String rawMessage) {
     final message = formatSessionLaunchError(rawMessage);
     if (message.isEmpty) return;
-    final tab = tabStore.openTabBySessionId(sessionId);
+    final tab = tabStore.getOpenTabBySessionId(sessionId);
     if (tab != null) {
       tab.info = tab.info.copyWith(launchError: message);
       emit(state.copyWith(clearSessionLaunchError: true));
@@ -51,7 +51,7 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
 
   void clearLaunchError(String sessionId) {
     var tabChanged = false;
-    final tab = tabStore.openTabBySessionId(sessionId);
+    final tab = tabStore.getOpenTabBySessionId(sessionId);
     if (tab != null && tab.info.launchError != null) {
       tab.info = tab.info.copyWith(clearLaunchError: true);
       tabChanged = true;
@@ -103,7 +103,7 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
   }
 
   void updateTabRunning(String tabId) {
-    final tab = tabStore.openTabBySessionId(tabId);
+    final tab = tabStore.getOpenTabBySessionId(tabId);
     if (tab == null) return;
     tab.info = tab.info.copyWith(isRunning: tab.isRunning);
     // Terminal liveness (member shells) lives outside pod state; notify the
@@ -139,7 +139,7 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
     MemberRemoteProvisionProgress? progress,
   ) {
     if (isClosed) return;
-    final tab = tabStore.openTabBySessionId(sessionId);
+    final tab = tabStore.getOpenTabBySessionId(sessionId);
     if (tab == null) return;
     final key = memberId.trim();
     if (key.isEmpty) return;

@@ -6,7 +6,7 @@ import 'package:teampilot/services/chat/launch/staging/manifest/work_plane_paths
 import 'package:teampilot/services/cli/claude/provider/claude_provider_credentials_service.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_auth_artifacts.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_provider_credentials_service.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/provider/control_plane_profile_paths.dart';
 import 'package:teampilot/services/provider/credential_binding.dart';
 import 'package:teampilot/services/provider/cross_machine_credential_bridge.dart';

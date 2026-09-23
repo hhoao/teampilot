@@ -9,7 +9,7 @@ import '../../models/workspace_folder.dart';
 import '../../models/workspace_terminal_session_spec.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../storage/work_target_canonicalizer.dart';
-import '../chat/launch/session/launch_command_builder.dart';
+import '../chat/launch/connect/launch_command_builder.dart';
 import '../host/remote_command_codec.dart';
 import '../ssh/ssh_member_session.dart';
 import '../workspace_dnd/runtime_target.dart' as dnd;

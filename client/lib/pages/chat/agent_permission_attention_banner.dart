@@ -117,7 +117,7 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
     final workbenchView = seatSelect<ChatCubit, SessionWorkbenchView>(context, (
       c,
     ) {
-      final tab = c.tabStore.openTabBySessionId(sessionId);
+      final tab = c.tabStore.getOpenTabBySessionId(sessionId);
       return tab?.workbenchView ?? SessionWorkbenchView.chat;
     });
     if (workbenchView != SessionWorkbenchView.chat) {

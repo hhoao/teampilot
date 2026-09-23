@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:synchronized/synchronized.dart';
 
@@ -22,27 +21,8 @@ import '../../utils/lock_pool.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 
-class ChatDataSnapshot extends Equatable {
-  const ChatDataSnapshot({
-    required this.workspaces,
-    required this.sessions,
-    required this.visibleWorkspaces,
-    required this.visibleSessions,
-  });
-
-  final List<Workspace> workspaces;
-  final List<AppSession> sessions;
-  final List<Workspace> visibleWorkspaces;
-  final List<AppSession> visibleSessions;
-
-  @override
-  List<Object?> get props => [
-    workspaces,
-    sessions,
-    visibleWorkspaces,
-    visibleSessions,
-  ];
-}
+import 'chat_data_snapshot.dart';
+export 'chat_data_snapshot.dart';
 
 /// In-memory workspace/session store with team-scope filtering, snapshot
 /// derivation, and per-workspace session hydration on top of [SessionRepository].

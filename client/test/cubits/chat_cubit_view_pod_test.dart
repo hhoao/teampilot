@@ -46,14 +46,14 @@ void main() {
     surfaceTab('s1');
     cubit.ensurePodRuntime('s1');
     expect(
-      cubit.tabStore.openTabBySessionId('s1')!.workbenchView,
+      cubit.tabStore.getOpenTabBySessionId('s1')!.workbenchView,
       SessionWorkbenchView.chat,
     );
 
     cubit.setPodView('s1', SessionWorkbenchView.terminal);
 
     expect(
-      cubit.tabStore.openTabBySessionId('s1')!.workbenchView,
+      cubit.tabStore.getOpenTabBySessionId('s1')!.workbenchView,
       SessionWorkbenchView.terminal,
     );
     expect(cubit.podFor('s1')!.view, SessionWorkbenchView.terminal);
@@ -66,13 +66,13 @@ void main() {
     pod.setView(SessionWorkbenchView.terminal);
     // Simulate a stale transition copy left by a connect that forced Terminal
     // through the surface coordinator before the sync port existed.
-    cubit.tabStore.openTabBySessionId('s1')!.workbenchView =
+    cubit.tabStore.getOpenTabBySessionId('s1')!.workbenchView =
         SessionWorkbenchView.chat;
 
     cubit.setSessionWorkbenchView('s1', SessionWorkbenchView.terminal);
 
     expect(
-      cubit.tabStore.openTabBySessionId('s1')!.workbenchView,
+      cubit.tabStore.getOpenTabBySessionId('s1')!.workbenchView,
       SessionWorkbenchView.terminal,
     );
   });

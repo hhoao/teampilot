@@ -6,6 +6,7 @@ import 'package:teampilot/services/chat/session/chat_tab_info.dart';
 import 'package:teampilot/services/chat/session/session_create_request.dart';
 import 'package:teampilot/services/chat/session/session_open_request.dart';
 import 'package:teampilot/services/chat/session/session_open_status.dart';
+import 'package:teampilot/services/chat/launch/chat_state_port.dart';
 import 'package:teampilot/services/chat/launch/session_launch_host.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_member_binding.dart';
@@ -13,6 +14,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/chat/launch/connect/launch_flow.dart';
 import 'package:teampilot/services/chat/launch/connect/member_connect_stage.dart';
 import 'package:teampilot/services/chat/launch/connect/session_connect_job.dart';
 import 'package:teampilot/services/chat/launch/connect/session_connect_scheduler.dart';
@@ -73,14 +75,13 @@ void main() {
         executor: executor,
         postFrame: host.postFrameScheduler,
         isJobValid: (_) => true,
-        onBegin: (_) {},
-        onFinish: (_) {},
+        listener: const NoopLaunchFlowListener(),
       );
       final repository = SessionRepository(storage: fakeHomeStorage());
       final stage = MemberConnectStage(
         host: host,
         tabStore: tabStore,
-        state: () => host.state,
+        state: () => host.stateSnapshot(),
         materializer: materializer,
         coordinator: launchIntent,
         scheduler: scheduler,
@@ -176,13 +177,12 @@ void main() {
         executor: executor,
         postFrame: host.postFrameScheduler,
         isJobValid: (_) => true,
-        onBegin: (_) {},
-        onFinish: (_) {},
+        listener: const NoopLaunchFlowListener(),
       );
       final stage = MemberConnectStage(
         host: host,
         tabStore: tabStore,
-        state: () => host.state,
+        state: () => host.stateSnapshot(),
         materializer: materializer,
         coordinator: launchIntent,
         scheduler: scheduler,
@@ -217,6 +217,92 @@ void main() {
         executor.jobs.map((job) => job.member!.capabilities.join('|')),
         orderedEquals(['builder', 'lead', 'builder']),
       );
+    },
+  );
+
+  test(
+    'sessionForMemberConnect is invoked with sessionId when the tab cache is empty',
+    () async {
+      final workspace = Workspace(
+        workspaceId: 'ws-1',
+        folders: const [WorkspaceFolder(path: '/local')],
+        createdAt: 1,
+      );
+      final session = AppSession(
+        sessionId: 'sess-1',
+        workspaceId: workspace.workspaceId,
+        sessionTeam: 'team-1',
+        members: const [
+          SessionMemberBinding(rosterMemberId: 'm1', taskId: 'task-m1'),
+        ],
+        createdAt: 1,
+      );
+      final tab = ChatTab(
+        info: const ChatTabInfo(id: 'sess-1', title: 'Team', subtitle: ''),
+        cliTeamName: 'team-1',
+        workspaceId: workspace.workspaceId,
+      );
+      final team = TeamProfile(
+        id: 'team-1',
+        name: 'Team',
+        cli: CliTool.claude,
+        members: const [TeamMemberConfig(id: 'm1', name: 'Member')],
+      );
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())
+        ..setActiveWorkspaceId(workspace.workspaceId)
+        ..registerSession(tab);
+      final host = _ImmediateFrameHost(tabStore);
+      final launchIntent = _NoopLaunchIntent();
+      final materializer = SessionDefaultMaterializer(
+        host: host,
+        coordinator: launchIntent,
+        workspaceIndex: () => SessionLaunchWorkspaceIndex(
+          workspaces: [workspace],
+          sessions: [session],
+          usesPosixPaths: true,
+        ),
+        isTabsEmpty: () => false,
+        activeBucketKey: () => workspace.workspaceId,
+      );
+      final executor = _RecordingExecutor();
+      final scheduler = SessionConnectScheduler(
+        executor: executor,
+        postFrame: host.postFrameScheduler,
+        isJobValid: (_) => true,
+        listener: const NoopLaunchFlowListener(),
+      );
+      Object? captured;
+      final stage = MemberConnectStage(
+        host: host,
+        tabStore: tabStore,
+        state: () => host.stateSnapshot(),
+        materializer: materializer,
+        coordinator: launchIntent,
+        scheduler: scheduler,
+        sessionForMemberConnect: (id, _) {
+          captured = id;
+          return session;
+        },
+        disconnectSession: () {},
+        ensureSession: (_) => null,
+        appendLocalTab: (_, {required emitChange}) => tab,
+        ensureActiveSessionTab: (_, {required emitChange}) => tab,
+        resetTeamConfigValidationSurface: () {},
+        scheduleTeamConfigValidation: (_) async {},
+        activeTab: () => tab,
+        autoLaunchAllMembersOnConnect: () => false,
+        workspaceById: (id) => id == workspace.workspaceId ? workspace : null,
+      );
+
+      await stage.scheduleMemberConnectAndWait(
+        team,
+        team.members.single,
+        'sess-1',
+        selectMember: false,
+      );
+
+      expect(captured, 'sess-1');
+      expect(executor.jobs.single.sessionId, 'sess-1');
     },
   );
 }
@@ -265,8 +351,15 @@ class _ImmediateFrameHost implements SessionLaunchHost {
   @override
   final SessionLifecycleService lifecycle;
 
-  @override
   ChatState state;
+
+  @override
+  ChatDataSnapshot stateSnapshot() => ChatDataSnapshot(
+    workspaces: state.workspaces,
+    sessions: state.sessions,
+    visibleWorkspaces: state.visibleWorkspaces,
+    visibleSessions: state.visibleSessions,
+  );
 
   @override
   PostFrameScheduler get postFrameScheduler =>

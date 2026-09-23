@@ -17,11 +17,14 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/chat/launch/connect/session_ssh_profile_reconnect.dart';
+import 'package:teampilot/services/chat/launch/connect/ssh_reconnect_seats.dart';
 import 'package:teampilot/services/chat/launch/connect/session_connect_job.dart';
 import 'package:teampilot/services/chat/launch/launch_factory.dart';
 import 'package:teampilot/services/chat/launch/session/session_launch_coordinator.dart';
 import 'package:teampilot/services/chat/launch/session/session_launch_workspace_index.dart';
 import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
+
+import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../../../support/fake_terminal_session.dart';
 import '../../../support/in_memory_filesystem.dart';
@@ -40,13 +43,8 @@ void main() {
       folders: workspace.folders,
       createdAt: 1,
     );
-    final tab = ChatTab(
-      info: const ChatTabInfo(id: 'session-1', title: 'Session', subtitle: ''),
-      cliTeamName: '',
-    )..persistedSession = session;
     final shell = FakeTerminalSession(fs: InMemoryFilesystem());
     shell.connect(workingDirectory: '/work');
-    tab.resumeSession = shell;
     addTearDown(shell.dispose);
     final host = _ReconnectHost(
       lifecycle: _SshProfileLifecycle(
@@ -67,13 +65,21 @@ void main() {
         sessions: [session],
         usesPosixPaths: true,
       ),
-      openTabs: () => [tab],
+      seats: _FakeReconnectSeats(
+        openSessions: [
+          SshReconnectOpenSession(
+            sessionId: session.sessionId,
+            session: session,
+          ),
+        ],
+        resumeShells: {session.sessionId: shell},
+      ),
     );
 
     await reconnect.reconnect(profileId);
 
     expect(coordinator.calls, hasLength(1));
-    expect(coordinator.calls.single.tab, same(tab));
+    expect(coordinator.calls.single.sessionId, session.sessionId);
     expect(coordinator.calls.single.requests, hasLength(1));
     expect(coordinator.calls.single.requests.single.session, same(session));
     expect(coordinator.calls.single.requests.single.workspace, same(workspace));
@@ -114,12 +120,12 @@ void main() {
           RuntimeTarget.ssh('profile-1', label: 'SSH'),
         ),
       );
+      host.tabStore.registerSession(tab);
       final service = buildSessionLaunchService(
         host: host,
         storage: fakeHomeStorage(),
       );
       final job = SessionConnectJob(
-        tab: tab,
         session: session,
         request: SessionOpenRequest(
           session: session,
@@ -171,12 +177,12 @@ void main() {
           RuntimeTarget.ssh('profile-1', label: 'SSH'),
         ),
       );
+      host.tabStore.registerSession(tab);
       final service = buildSessionLaunchService(
         host: host,
         storage: fakeHomeStorage(),
       );
       final job = SessionConnectJob(
-        tab: tab,
         session: session,
         request: SessionOpenRequest(
           session: session,
@@ -221,14 +227,11 @@ void main() {
       ],
       createdAt: 1,
     );
-    final tab = ChatTab(
-      info: const ChatTabInfo(id: 'session-1', title: 'Session', subtitle: ''),
-      cliTeamName: team.id,
-    )..persistedSession = session;
+    final memberShells = <String, TerminalSession>{};
     for (final member in members) {
       final shell = FakeTerminalSession(fs: InMemoryFilesystem());
       shell.connect(workingDirectory: '/work');
-      tab.memberShells[member.id] = shell;
+      memberShells[member.id] = shell;
       addTearDown(shell.dispose);
     }
     final host = _ReconnectHost(
@@ -251,7 +254,15 @@ void main() {
         sessions: [session],
         usesPosixPaths: true,
       ),
-      openTabs: () => [tab],
+      seats: _FakeReconnectSeats(
+        openSessions: [
+          SshReconnectOpenSession(
+            sessionId: session.sessionId,
+            session: session,
+          ),
+        ],
+        memberShells: {session.sessionId: memberShells},
+      ),
     );
 
     await reconnect.reconnect(profileId);
@@ -293,18 +304,11 @@ void main() {
       members: const [],
       createdAt: 1,
     );
-    final tab = ChatTab(
-      info: const ChatTabInfo(
-        id: 'session-legacy',
-        title: 'Legacy',
-        subtitle: '',
-      ),
-      cliTeamName: team.id,
-    )..persistedSession = session;
+    final memberShells = <String, TerminalSession>{};
     for (final id in ['team-lead', 'builder-0', 'builder-1']) {
       final shell = FakeTerminalSession(fs: InMemoryFilesystem());
       shell.connect(workingDirectory: '/work');
-      tab.memberShells[id] = shell;
+      memberShells[id] = shell;
       addTearDown(shell.dispose);
     }
     final host = _ReconnectHost(
@@ -327,7 +331,15 @@ void main() {
         sessions: [session],
         usesPosixPaths: true,
       ),
-      openTabs: () => [tab],
+      seats: _FakeReconnectSeats(
+        openSessions: [
+          SshReconnectOpenSession(
+            sessionId: session.sessionId,
+            session: session,
+          ),
+        ],
+        memberShells: {session.sessionId: memberShells},
+      ),
     );
 
     await reconnect.reconnect(profileId);
@@ -352,13 +364,8 @@ void main() {
       folders: workspace.folders,
       createdAt: 1,
     );
-    final tab = ChatTab(
-      info: const ChatTabInfo(id: 'session-1', title: 'Session', subtitle: ''),
-      cliTeamName: '',
-    )..persistedSession = session;
     final shell = FakeTerminalSession(fs: InMemoryFilesystem());
     shell.connect(workingDirectory: '/work');
-    tab.resumeSession = shell;
     addTearDown(shell.dispose);
 
     final host = _ReconnectHost(
@@ -384,7 +391,15 @@ void main() {
         sessions: [session],
         usesPosixPaths: true,
       ),
-      openTabs: () => [tab],
+      seats: _FakeReconnectSeats(
+        openSessions: [
+          SshReconnectOpenSession(
+            sessionId: session.sessionId,
+            session: session,
+          ),
+        ],
+        resumeShells: {session.sessionId: shell},
+      ),
     );
 
     final operation = reconnect.reconnect(profileId);
@@ -403,20 +418,50 @@ void main() {
   });
 }
 
+class _FakeReconnectSeats implements SshReconnectSeatPort {
+  _FakeReconnectSeats({
+    required this.openSessions,
+    Map<String, TerminalSession>? resumeShells,
+    Map<String, Map<String, TerminalSession>>? memberShells,
+  }) : _resumeShells = resumeShells ?? const {},
+       _memberShells = memberShells ?? const {};
+
+  @override
+  final Iterable<SshReconnectOpenSession> openSessions;
+  final Map<String, TerminalSession> _resumeShells;
+  final Map<String, Map<String, TerminalSession>> _memberShells;
+
+  @override
+  TerminalSession? memberShell(String sessionId, String memberId) =>
+      _memberShells[sessionId]?[memberId];
+
+  @override
+  TerminalSession? personalResumeShell(String sessionId, AppSession session) {
+    final resume = _resumeShells[sessionId];
+    if (resume != null && !resume.isDisposed) return resume;
+    final byId = _memberShells[sessionId]?[session.sessionId];
+    if (byId != null && !byId.isDisposed) return byId;
+    return null;
+  }
+
+  @override
+  Future<void> closeMemberRemotePlane(String sessionId, String memberId) async {}
+}
+
 class _RecordingReconnectCoordinator implements SessionReconnectIntentPort {
   _RecordingReconnectCoordinator({this.entered, this.release, this.error});
 
-  final calls = <({ChatTab tab, List<SessionOpenRequest> requests})>[];
+  final calls = <({String sessionId, List<SessionOpenRequest> requests})>[];
   final Completer<void>? entered;
   final Completer<void>? release;
   final Object? error;
 
   @override
   Future<void> reconnectTab(
-    ChatTab tab,
+    String sessionId,
     Iterable<SessionOpenRequest> requests,
   ) async {
-    calls.add((tab: tab, requests: requests.toList()));
+    calls.add((sessionId: sessionId, requests: requests.toList()));
     entered?.complete();
     if (release != null) await release!.future;
     if (error != null) throw error!;

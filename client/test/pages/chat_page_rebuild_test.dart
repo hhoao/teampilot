@@ -42,7 +42,7 @@ import 'package:teampilot/services/chat/conversation/history/ai_history_loader.d
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/plugin/plugin_repo_service.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/services/workspace/workspace_tools_scope.dart';
 

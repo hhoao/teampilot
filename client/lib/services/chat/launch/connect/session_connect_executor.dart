@@ -7,7 +7,7 @@ import '../../../terminal/terminal_session.dart';
 import '../../../../utils/logging/logger.dart';
 import 'session_connect_job.dart';
 import 'session_connect_scheduler.dart';
-import 'session_shell_connector.dart';
+import 'session_shell_connect_port.dart';
 
 typedef ResolvedLaunchMembers = ({
   TeamProfile? team,
@@ -61,7 +61,7 @@ class SessionConnectExecutor implements SessionConnectExecutorPort {
   });
 
   final SessionConnectPreparationPort preparation;
-  final SessionShellConnector shellConnector;
+  final SessionShellConnectPort shellConnector;
   final FutureOr<void> Function(
     SessionConnectJob job,
     AppSession session,
@@ -100,7 +100,7 @@ class SessionConnectExecutor implements SessionConnectExecutorPort {
       attachedMemberId = resolved.member.id;
       attachmentStarted = true;
       final result = await shellConnector.connect(
-        tab: job.tab,
+        sessionId: job.sessionId,
         session: activeSession,
         shell: shell,
         repo: job.request.repo,
@@ -124,7 +124,6 @@ class SessionConnectExecutor implements SessionConnectExecutorPort {
       if (attachmentStarted) {
         try {
           await shellConnector.cleanupAfterFailure(
-            tab: job.tab,
             sessionId: job.sessionId,
             memberId: attachedMemberId!,
             error: error,

@@ -5,6 +5,23 @@ import '../../registry/capabilities/mcp_capability.dart';
 import 'provider.dart';
 import '../../flashskyai/capabilities/provider.dart';
 import '../../registry/mcp_writers/metadata_mcp_merge.dart';
+import 'mcp_project_cleanup.dart' as project_mcp;
+
+Future<void> _removeStaleProjectTeammateBus({
+  required Filesystem fs,
+  Map<String, Map<String, Object?>>? extraServers,
+  required String workingDirectory,
+  Iterable<String> additionalDirectories = const [],
+}) {
+  return project_mcp.maybeRemoveStaleProjectTeammateBus(
+    fs: fs,
+    extraServers: extraServers,
+    projectRoots: project_mcp.projectMcpRootsFromLaunch(
+      workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
+    ),
+  );
+}
 
 /// Merges MCP servers into `<configDir>/.claude.json` `mcpServers`.
 final class ClaudeMcpCapability implements McpCapability {
@@ -38,6 +55,21 @@ final class ClaudeMcpCapability implements McpCapability {
       fromConfigDir: appConfigDir,
       toConfigDir: sessionConfigDir,
       fallbackFromConfigDir: fallbackAppConfigDir,
+    );
+  }
+
+  @override
+  Future<void> maybeRemoveStaleProjectTeammateBus({
+    required Filesystem fs,
+    Map<String, Map<String, Object?>>? extraServers,
+    required String workingDirectory,
+    Iterable<String> additionalDirectories = const [],
+  }) {
+    return _removeStaleProjectTeammateBus(
+      fs: fs,
+      extraServers: extraServers,
+      workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
     );
   }
 }
@@ -74,6 +106,21 @@ final class FlashskyaiMcpCapability implements McpCapability {
       fromConfigDir: appConfigDir,
       toConfigDir: sessionConfigDir,
       fallbackFromConfigDir: fallbackAppConfigDir,
+    );
+  }
+
+  @override
+  Future<void> maybeRemoveStaleProjectTeammateBus({
+    required Filesystem fs,
+    Map<String, Map<String, Object?>>? extraServers,
+    required String workingDirectory,
+    Iterable<String> additionalDirectories = const [],
+  }) {
+    return _removeStaleProjectTeammateBus(
+      fs: fs,
+      extraServers: extraServers,
+      workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
     );
   }
 }

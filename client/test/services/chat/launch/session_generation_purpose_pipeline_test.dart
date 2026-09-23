@@ -21,7 +21,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
-import 'package:teampilot/services/chat/launch/team_config_launch_validator.dart';
+import 'package:teampilot/services/chat/launch/session/team_config_launch_validator.dart';
 import 'package:teampilot/services/chat/launch/launch_factory.dart';
 
 import '../../../support/in_memory_filesystem.dart';
@@ -164,7 +164,6 @@ class CapturingHost implements SessionLaunchHost {
          isClosed: () => false,
        );
 
-  @override
   ChatState state;
 
   @override
@@ -194,7 +193,6 @@ class CapturingHost implements SessionLaunchHost {
   @override
   set activeTeam(TeamProfile? team) {}
 
-  @override
   void applyState(ChatState next) => state = next;
 
   @override

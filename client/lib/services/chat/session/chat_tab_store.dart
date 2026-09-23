@@ -21,7 +21,7 @@ class ChatTabStore {
   /// buckets are gone; runtime presence is global, keyed by session id).
   void setActiveWorkspaceId(String id) => _activeWorkspaceId = id;
 
-  ChatTab? openTabBySessionId(String sessionId) =>
+  ChatTab? getOpenTabBySessionId(String sessionId) =>
       _bySessionId[sessionId.trim()];
 
   Iterable<ChatTab> get openTabs => _bySessionId.values;

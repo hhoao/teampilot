@@ -40,7 +40,7 @@ void main() {
     store.registerSession(_tab('b'));
 
     expect(store.openTabs.length, 2);
-    expect(store.openTabBySessionId('b')!.cliTeamName, 'b');
+    expect(store.getOpenTabBySessionId('b')!.cliTeamName, 'b');
     expect(store.tabsForWorkspace('w1').map((t) => t.info.id).toList(), [
       'a',
       'b',
@@ -60,7 +60,7 @@ void main() {
     store.registerSession(_tab('a'));
     store.registerSession(_tab('b'));
     expect(store.removeSession('a')!.info.id, 'a');
-    expect(store.openTabBySessionId('a'), isNull);
+    expect(store.getOpenTabBySessionId('a'), isNull);
     expect(store.removeSession('b')!.info.id, 'b');
     expect(store.hasOpenTabs, isFalse);
   });

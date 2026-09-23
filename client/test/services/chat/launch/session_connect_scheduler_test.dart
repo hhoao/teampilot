@@ -1,11 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/session/chat_tab.dart';
-import 'package:teampilot/services/chat/session/chat_tab_info.dart';
 import 'package:teampilot/services/chat/session/session_open_request.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/chat/launch/connect/launch_flow.dart';
 import 'package:teampilot/services/chat/launch/connect/session_connect_job.dart';
 import 'package:teampilot/services/chat/launch/connect/session_connect_scheduler.dart';
 
@@ -14,32 +13,58 @@ import '../../../support/post_frame_test_harness.dart';
 void main() {
   late PostFrameTestHarness postFrame;
   late RecordingExecutor executor;
-  late List<String> begun;
-  late List<String> finished;
-  late List<String> events;
+  late RecordingLaunchFlowListener listener;
   late bool valid;
   late SessionConnectScheduler scheduler;
 
   setUp(() {
     postFrame = PostFrameTestHarness();
     executor = RecordingExecutor();
-    begun = <String>[];
-    finished = <String>[];
-    events = <String>[];
+    listener = RecordingLaunchFlowListener();
     valid = true;
     scheduler = SessionConnectScheduler(
       executor: executor,
       postFrame: postFrame.scheduler,
       isJobValid: (_) => valid,
-      onBegin: (sessionId) {
-        begun.add(sessionId);
-        events.add('begin:$sessionId');
-      },
-      onFinish: (sessionId) {
-        finished.add(sessionId);
-        events.add('finish:$sessionId');
-      },
+      listener: listener,
     );
+  });
+
+  test('enqueue notifies queued then settled', () async {
+    final job = jobFor(sessionId: 'session-1', memberId: 'member-1');
+
+    await scheduler.enqueue(job);
+
+    expect(
+      scheduler.isPending(sessionId: 'session-1', memberId: 'member-1'),
+      isTrue,
+    );
+    expect(listener.events, <LaunchFlowEvent>[
+      const LaunchFlowEvent(
+        sessionId: 'session-1',
+        memberId: 'member-1',
+        phase: LaunchFlowPhase.queued,
+      ),
+    ]);
+
+    await postFrame.flush();
+
+    expect(
+      scheduler.isPending(sessionId: 'session-1', memberId: 'member-1'),
+      isFalse,
+    );
+    expect(listener.events, <LaunchFlowEvent>[
+      const LaunchFlowEvent(
+        sessionId: 'session-1',
+        memberId: 'member-1',
+        phase: LaunchFlowPhase.queued,
+      ),
+      const LaunchFlowEvent(
+        sessionId: 'session-1',
+        memberId: 'member-1',
+        phase: LaunchFlowPhase.settled,
+      ),
+    ]);
   });
 
   test('same session/member is executed once while pending', () async {
@@ -47,7 +72,11 @@ void main() {
     await scheduler.enqueue(job);
     await scheduler.enqueue(job);
 
-    expect(job.tab.membersPendingConnect, <String>{'member-1'});
+    expect(
+      scheduler.isPending(sessionId: 'session-1', memberId: 'member-1'),
+      isTrue,
+    );
+    expect(listener.phases, <LaunchFlowPhase>[LaunchFlowPhase.queued]);
 
     await postFrame.flush();
 
@@ -55,9 +84,10 @@ void main() {
       executor.jobs.map((item) => '${item.sessionId}|${item.memberId}'),
       <String>['session-1|member-1'],
     );
-    expect(begun, <String>['session-1']);
-    expect(finished, <String>['session-1']);
-    expect(job.tab.membersPendingConnect, isEmpty);
+    expect(listener.phases, <LaunchFlowPhase>[
+      LaunchFlowPhase.queued,
+      LaunchFlowPhase.settled,
+    ]);
   });
 
   test('different sessions can execute concurrently', () async {
@@ -98,7 +128,10 @@ void main() {
       await postFrame.flush();
 
       expect(executor.jobs, isEmpty);
-      expect(finished, <String>['session-1']);
+      expect(listener.phases, <LaunchFlowPhase>[
+        LaunchFlowPhase.queued,
+        LaunchFlowPhase.settled,
+      ]);
     },
   );
 
@@ -113,6 +146,7 @@ void main() {
       scheduler.isPending(sessionId: 'session-1', memberId: 'member-1'),
       isFalse,
     );
+    expect(listener.phases.last, LaunchFlowPhase.settled);
   });
 
   test('waitForCompletion waits until the async executor finishes', () async {
@@ -167,14 +201,26 @@ void main() {
       );
 
       await scheduler.enqueue(cancelled);
-      scheduler.cancelForTab(cancelled.tab);
+      scheduler.cancelForSession(cancelled.sessionId);
       await scheduler.enqueue(replacement);
       await scheduler.enqueue(replacement);
 
-      expect(events, <String>[
-        'begin:session-1',
-        'finish:session-1',
-        'begin:session-1',
+      expect(listener.events, <LaunchFlowEvent>[
+        const LaunchFlowEvent(
+          sessionId: 'session-1',
+          memberId: 'member-1',
+          phase: LaunchFlowPhase.queued,
+        ),
+        const LaunchFlowEvent(
+          sessionId: 'session-1',
+          memberId: 'member-1',
+          phase: LaunchFlowPhase.settled,
+        ),
+        const LaunchFlowEvent(
+          sessionId: 'session-1',
+          memberId: 'member-1',
+          phase: LaunchFlowPhase.queued,
+        ),
       ]);
       expect(
         scheduler.isPending(sessionId: 'session-1', memberId: 'member-1'),
@@ -188,12 +234,27 @@ void main() {
         scheduler.isPending(sessionId: 'session-1', memberId: 'member-1'),
         isFalse,
       );
-      expect(finished, <String>['session-1', 'session-1']);
-      expect(events, <String>[
-        'begin:session-1',
-        'finish:session-1',
-        'begin:session-1',
-        'finish:session-1',
+      expect(listener.events, <LaunchFlowEvent>[
+        const LaunchFlowEvent(
+          sessionId: 'session-1',
+          memberId: 'member-1',
+          phase: LaunchFlowPhase.queued,
+        ),
+        const LaunchFlowEvent(
+          sessionId: 'session-1',
+          memberId: 'member-1',
+          phase: LaunchFlowPhase.settled,
+        ),
+        const LaunchFlowEvent(
+          sessionId: 'session-1',
+          memberId: 'member-1',
+          phase: LaunchFlowPhase.queued,
+        ),
+        const LaunchFlowEvent(
+          sessionId: 'session-1',
+          memberId: 'member-1',
+          phase: LaunchFlowPhase.settled,
+        ),
       ]);
     },
   );
@@ -202,34 +263,69 @@ void main() {
     final job = jobFor(sessionId: 'session-1', memberId: 'member-1');
 
     await scheduler.enqueue(job);
-    scheduler.cancelForTab(job.tab);
+    scheduler.cancelForSession(job.sessionId);
 
     expect(
       scheduler.isPending(sessionId: 'session-1', memberId: 'member-1'),
       isFalse,
     );
-    expect(begun, <String>['session-1']);
-    expect(finished, <String>['session-1']);
-    expect(events, <String>['begin:session-1', 'finish:session-1']);
-    expect(job.tab.membersPendingConnect, isEmpty);
+    expect(listener.events, <LaunchFlowEvent>[
+      const LaunchFlowEvent(
+        sessionId: 'session-1',
+        memberId: 'member-1',
+        phase: LaunchFlowPhase.queued,
+      ),
+      const LaunchFlowEvent(
+        sessionId: 'session-1',
+        memberId: 'member-1',
+        phase: LaunchFlowPhase.settled,
+      ),
+    ]);
 
     await postFrame.flush();
 
     expect(executor.jobs, isEmpty);
-    expect(finished, <String>['session-1']);
-    expect(events, <String>['begin:session-1', 'finish:session-1']);
+    expect(listener.events, hasLength(2));
   });
 
   test('cancelling a waiting job settles its completion future', () async {
     final job = jobFor(sessionId: 'session-1', memberId: 'member-1');
 
     final completion = scheduler.enqueue(job, waitForCompletion: true);
-    scheduler.cancelForTab(job.tab);
+    scheduler.cancelForSession(job.sessionId);
 
     await completion.timeout(const Duration(milliseconds: 200));
     expect(
       scheduler.isPending(sessionId: 'session-1', memberId: 'member-1'),
       isFalse,
+    );
+  });
+
+  test('cancelForSession leaves other sessions pending', () async {
+    await scheduler.enqueue(
+      jobFor(sessionId: 'session-1', memberId: 'member-1'),
+    );
+    await scheduler.enqueue(
+      jobFor(sessionId: 'session-2', memberId: 'member-1'),
+    );
+
+    scheduler.cancelForSession('session-1');
+
+    expect(
+      scheduler.isPending(sessionId: 'session-1', memberId: 'member-1'),
+      isFalse,
+    );
+    expect(
+      scheduler.isPending(sessionId: 'session-2', memberId: 'member-1'),
+      isTrue,
+    );
+    expect(
+      listener.events.where(
+        (event) =>
+            event.sessionId == 'session-1' &&
+            event.phase == LaunchFlowPhase.settled,
+      ),
+      hasLength(1),
     );
   });
 }
@@ -246,10 +342,6 @@ SessionConnectJob jobFor({
   );
   final member = TeamMemberConfig(id: memberId, name: memberId);
   return SessionConnectJob(
-    tab: ChatTab(
-      info: ChatTabInfo(id: sessionId, title: 'Session', subtitle: ''),
-      cliTeamName: '',
-    ),
     session: session,
     request: SessionOpenRequest(session: session),
     generation: generation,
@@ -258,6 +350,16 @@ SessionConnectJob jobFor({
     member: member,
     reason: LaunchReason.restore,
   );
+}
+
+class RecordingLaunchFlowListener implements LaunchFlowListener {
+  final events = <LaunchFlowEvent>[];
+
+  List<LaunchFlowPhase> get phases =>
+      events.map((event) => event.phase).toList(growable: false);
+
+  @override
+  void onLaunchFlow(LaunchFlowEvent event) => events.add(event);
 }
 
 class RecordingExecutor implements SessionConnectExecutorPort {

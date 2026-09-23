@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/session/chat_tab.dart';
-import 'package:teampilot/services/chat/session/chat_tab_info.dart';
 import 'package:teampilot/services/chat/session/session_open_request.dart';
 import 'package:teampilot/services/chat/launch/session_launch_host.dart';
 import 'package:teampilot/models/app_session.dart';
@@ -11,13 +9,12 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/chat/launch/connect/session_connect_executor.dart';
 import 'package:teampilot/services/chat/launch/connect/session_connect_job.dart';
-import 'package:teampilot/services/chat/launch/connect/session_shell_connector.dart';
+import 'package:teampilot/services/chat/launch/connect/session_shell_connect_port.dart';
 import 'package:teampilot/services/chat/launch/connect/connect_shell_result.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../../../support/fake_terminal_session.dart';
 import '../../../support/in_memory_filesystem.dart';
-import '../../../support/test_session_persistence_writer.dart';
 
 void main() {
   late List<String> events;
@@ -155,7 +152,7 @@ void main() {
 
       await executor.execute(job);
 
-      expect((job.tab as _RecordingTab).remotePlaneClosed, isTrue);
+      expect(shellConnector.cleanedMemberIds, <String>['member-1']);
       expect(host.finishedSessionIds, contains(job.sessionId));
     },
   );
@@ -204,7 +201,7 @@ void main() {
       releaseConnect.complete();
       await execution;
 
-      expect((job.tab as _RecordingTab).closedMemberIds, <String>[
+      expect(shellConnector.cleanedMemberIds, <String>[
         resolvedMember.id,
       ]);
       expect(host.launchErrors, isEmpty);
@@ -218,8 +215,8 @@ void main() {
       final connectorStackTrace = StackTrace.fromString('connector stack');
       shellConnector
         ..connectorError = connectorError
-        ..connectorStackTrace = connectorStackTrace;
-      (job.tab as _RecordingTab).closeError = StateError('cleanup failed');
+        ..connectorStackTrace = connectorStackTrace
+        ..cleanupError = StateError('cleanup failed');
 
       await executor.execute(job);
 
@@ -247,10 +244,6 @@ SessionConnectJob _job({
     sessionTeam: team.id,
     createdAt: 1,
   );
-  final tab = _RecordingTab(
-    info: const ChatTabInfo(id: 'session-1', title: 'Session', subtitle: ''),
-    cliTeamName: team.id,
-  );
   final request = SessionOpenRequest(
     session: session,
     workspace: workspace,
@@ -258,7 +251,6 @@ SessionConnectJob _job({
     member: member,
   );
   return SessionConnectJob(
-    tab: tab,
     session: session,
     request: request,
     generation: 1,
@@ -269,22 +261,6 @@ SessionConnectJob _job({
     connectShell: connectShell,
     propagateErrors: propagateErrors,
   );
-}
-
-class _RecordingTab extends ChatTab {
-  _RecordingTab({required super.info, required super.cliTeamName});
-
-  final List<String> closedMemberIds = <String>[];
-  Object? closeError;
-
-  bool get remotePlaneClosed => closedMemberIds.isNotEmpty;
-
-  @override
-  Future<void> closeMemberRemotePlane(String memberId) async {
-    closedMemberIds.add(memberId);
-    final error = closeError;
-    if (error != null) throw error;
-  }
 }
 
 class _FakePreparation implements SessionConnectPreparationPort {
@@ -378,26 +354,23 @@ class _FakePreparation implements SessionConnectPreparationPort {
   }
 }
 
-class _RecordingConnector extends SessionShellConnector {
-  _RecordingConnector(SessionLaunchHost host, this.events)
-    : super(
-        host,
-        _UnusedDelegate(),
-        persister: inertSessionPersistenceWriter(),
-        isLocalNative: () => true,
-      );
+class _RecordingConnector implements SessionShellConnectPort {
+  _RecordingConnector(this.host, this.events);
 
+  final _FakeHost host;
   final List<String> events;
   int connectCalls = 0;
   ConnectShellResult result = ConnectShellResult.attached;
   Object? connectorError;
   StackTrace? connectorStackTrace;
+  Object? cleanupError;
+  final cleanedMemberIds = <String>[];
   Completer<void>? connectEntered;
   Completer<void>? releaseConnect;
 
   @override
   Future<ConnectShellResult> connect({
-    required ChatTab tab,
+    required String sessionId,
     required AppSession session,
     required TerminalSession shell,
     SessionRepository? repo,
@@ -417,6 +390,27 @@ class _RecordingConnector extends SessionShellConnector {
       throw error;
     }
     return result;
+  }
+
+  @override
+  Future<void> cleanupAfterFailure({
+    required String sessionId,
+    required String memberId,
+    required Object error,
+    required StackTrace stackTrace,
+    required bool reportFailure,
+  }) async {
+    cleanedMemberIds.add(memberId);
+    if (cleanupError != null) {
+      // Production swallows remote-plane cleanup errors.
+    }
+    if (!reportFailure) return;
+    host.failSessionConnect(
+      sessionId,
+      'Failed to connect session: $error',
+      error: error,
+      stackTrace: stackTrace,
+    );
   }
 }
 
@@ -439,11 +433,6 @@ class _FakeHost implements SessionLaunchHost {
     stackTraces.add(stackTrace);
   }
 
-  @override
-  dynamic noSuchMethod(Invocation invocation) => null;
-}
-
-class _UnusedDelegate implements SessionShellConnectorDelegate {
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
 }

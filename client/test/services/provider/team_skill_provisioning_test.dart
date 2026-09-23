@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 
 import '../../support/post_frame_test_harness.dart';

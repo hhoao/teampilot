@@ -373,7 +373,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
       }
       final podView = pod?.state.view;
       if (podView != null) return podView;
-      final tab = chatCubit.tabStore.openTabBySessionId(activeId);
+      final tab = chatCubit.tabStore.getOpenTabBySessionId(activeId);
       return tab?.workbenchView ?? SessionWorkbenchView.chat;
     }
 
@@ -411,7 +411,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
           var placeholder = false;
           final sid = slice.activeSessionId;
           if (sid != null && sid.isNotEmpty) {
-            final tab = chatCubit.tabStore.openTabBySessionId(sid);
+            final tab = chatCubit.tabStore.getOpenTabBySessionId(sid);
             final appSession = tab?.persistedSession;
             placeholder =
                 appSession != null && appSession.sessionTeam.trim().isEmpty;
@@ -432,10 +432,11 @@ class _ChatWorkbenchBody extends StatelessWidget {
               if (sid == null || sid.isEmpty) return null;
               final mid = memberId.isNotEmpty
                   ? memberId
-                  : c.tabStore.openTabBySessionId(sid)?.selectedMemberId ?? '';
+                  : c.tabStore.getOpenTabBySessionId(sid)?.selectedMemberId ??
+                        '';
               if (mid.isEmpty) return null;
               return c.tabStore
-                  .openTabBySessionId(sid)
+                  .getOpenTabBySessionId(sid)
                   ?.memberRemoteProvision[mid];
             });
 

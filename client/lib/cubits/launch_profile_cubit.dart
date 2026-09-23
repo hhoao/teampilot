@@ -16,8 +16,9 @@ import '../repositories/launch_profile_repository.dart';
 import '../repositories/session_repository.dart';
 import '../repositories/workspace_project_config_repository.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
-import '../services/provider/config_profile_service.dart';
+import '../services/chat/launch/config_profile_service.dart';
 import '../services/chat/session/session_lifecycle_service.dart';
+import '../services/team_config/team_settings_commit_service.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
 import '../services/storage/home_storage.dart';
 import '../services/storage/launch_profile_provisioner.dart';
@@ -38,7 +39,7 @@ export '../services/launch_profile/team/team_resource_sync_service.dart'
 /// config-profile provisioning ([TeamProfileProvisioner]). Roster transforms
 /// live in [TeamRosterEditor]; this cubit persists and emits.
 class LaunchProfileCubit extends Cubit<LaunchProfileState>
-    implements LaunchProfileCubitHost {
+    implements LaunchProfileCubitHost, TeamSettingsPersistPort {
   LaunchProfileCubit({
     required LaunchProfileRepository repository,
     required SessionRepository sessionRepository,

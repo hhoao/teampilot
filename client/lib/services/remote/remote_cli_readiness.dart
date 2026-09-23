@@ -156,7 +156,10 @@ class RemoteCliReadinessService {
 
     try {
       final client = await sshClientFactory.clientForStorage(profile);
-      final run = RemoteCliLocator.runnerForClient(client, includeStderr: true);
+      final run = RemoteCliLocator.getRunnerForClient(
+        client,
+        includeStderr: true,
+      );
       final storedPath = (await cliPathOverride(target.id, cli.value) ?? '')
           .trim();
       final path = await _installer.ensure(
@@ -203,7 +206,7 @@ class RemoteCliReadinessService {
       throw StateError('No SSH profile for target "${target.id}".');
     }
     final client = await sshClientFactory.clientForStorage(profile);
-    final run = RemoteCliLocator.runnerForClient(client);
+    final run = RemoteCliLocator.getRunnerForClient(client);
     final storedPath = (await cliPathOverride(target.id, cli.value) ?? '')
         .trim();
     return _installer.locate(

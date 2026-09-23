@@ -8,8 +8,7 @@ import '../../../cli/registry/capabilities/workspace_base_info_capability.dart';
 import '../../../cli/registry/cli_tool_registry.dart';
 import '../../../cli/registry/config_profile/config_profile_context.dart';
 import '../../team_bus/member_bus_idle_endpoint.dart';
-import '../../team_bus/mcp/teammate_bus_mcp_gateway.dart';
-import '../../session/chat_tab.dart';
+import '../../team_bus/mcp/teammate_bus_mcp_gateway_port.dart';
 
 /// Result of running the CLI session lifecycle machine before PTY attach.
 sealed class LifecycleConnectGateOutcome {
@@ -82,7 +81,7 @@ final class MemberLifecycleConnectGate {
   });
 
   final CliToolRegistry cliRegistry;
-  final TeammateBusMcpGateway teammateBusMcpGateway;
+  final TeammateBusMcpGatewayPort teammateBusMcpGateway;
   final Future<ConfigProfileDelegate> Function(
     AppSession session,
     String memberId,
@@ -103,14 +102,14 @@ final class MemberLifecycleConnectGate {
     required TeamProfile team,
     required TeamMemberConfig member,
     required AppSession session,
-    required ChatTab tab,
+    required bool teamBusInstalled,
   }) async {
     if (session.sessionTeam.trim().isEmpty) {
       return const LifecycleConnectGateOutcome.allowed();
     }
 
     if (team.teamMode == TeamMode.mixed) {
-      if (tab.teamBus == null ||
+      if (!teamBusInstalled ||
           !teammateBusMcpGateway.isSessionRegistered(session.sessionId)) {
         return const LifecycleConnectGateOutcome.deferred('bus');
       }
@@ -207,12 +206,12 @@ final class MemberLifecycleConnectGate {
     required TeamProfile team,
     required TeamMemberConfig member,
     required AppSession session,
-    required ChatTab tab,
+    required bool teamBusInstalled,
   }) async {
     if (session.sessionTeam.trim().isEmpty) return true;
 
     if (team.teamMode == TeamMode.mixed) {
-      if (tab.teamBus == null ||
+      if (!teamBusInstalled ||
           !teammateBusMcpGateway.isSessionRegistered(session.sessionId)) {
         return false;
       }

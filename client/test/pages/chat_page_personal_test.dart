@@ -30,7 +30,7 @@ import 'package:teampilot/services/file_tree/workspace_file_tree_store.dart';
 import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_repo_service.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/services/workspace/workspace_tools_scope.dart';
 

@@ -146,7 +146,9 @@ abstract final class MixedTeamTaskScenario {
     autoLaunchAllMembersOnConnect: false,
     afterReady: (ctx) async {
       final bus = ctx.harness.tabBus(ctx.session.sessionId);
-      final tab = ctx.cubit.tabStore.openTabBySessionId(ctx.session.sessionId)!;
+      final tab = ctx.cubit.tabStore.getOpenTabBySessionId(
+        ctx.session.sessionId,
+      )!;
       expect(
         bus?.memberById(kWorkerMember.id)?.lifecycle,
         MemberLifecycle.declared,

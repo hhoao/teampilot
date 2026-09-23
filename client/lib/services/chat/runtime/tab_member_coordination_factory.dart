@@ -26,7 +26,7 @@ final class TabMemberCoordinationFactory {
 
   /// Ends the seat turn the same way idle-watch does (`coordination.endTurn()`).
   void endTurnForMember(String sessionId, String memberId) {
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     if (tab == null) return;
     final shell = tab.memberShells[memberId];
     if (shell == null) return;
@@ -44,7 +44,7 @@ final class TabMemberCoordinationFactory {
     String memberId, {
     bool directToPty = false,
   }) {
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     if (tab == null) return null;
     final shell = tab.memberShells[memberId];
     if (shell == null || !shell.isConnected) return null;

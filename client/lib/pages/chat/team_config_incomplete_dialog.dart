@@ -2,7 +2,7 @@
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../services/chat/launch/team_config_launch_validator.dart';
+import '../../services/chat/launch/session/team_config_launch_validator.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../team_config/team_config_section.dart';
 

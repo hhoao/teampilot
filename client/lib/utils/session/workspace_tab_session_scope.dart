@@ -21,7 +21,7 @@ ChatTab? scopedActiveChatTab(
 ) {
   final sessionId = workbench.centerActiveId(tabScopeId)?.sessionId;
   if (sessionId == null) return null;
-  return chat.tabStore.openTabBySessionId(sessionId);
+  return chat.tabStore.getOpenTabBySessionId(sessionId);
 }
 
 TeamBus? scopedTeamBus(

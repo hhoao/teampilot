@@ -8,7 +8,7 @@ import '../../../../utils/workspace/landing_draft_resolver.dart';
 import '../../../remote/remote_cli_readiness.dart';
 import '../../../remote/remote_cli_requirements.dart';
 import '../../../storage/home_storage.dart';
-import '../team_config_launch_validator.dart';
+import '../session/team_config_launch_validator.dart';
 
 /// Why compose landing cannot start a team session yet.
 sealed class WorkspaceLandingLaunchBlock {

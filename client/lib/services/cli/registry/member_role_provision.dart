@@ -1,10 +1,8 @@
 import 'package:path/path.dart' as p;
 
-import '../../../../models/team_config.dart';
-import '../../../../utils/team/team_member_naming.dart';
-import '../../../cli/claude/team_roster_service.dart';
-import '../../team_bus/mcp/teammate_bus_mcp_config.dart';
-import '../../../io/filesystem.dart';
+import '../../../models/team_config.dart';
+import '../../../utils/team/team_member_naming.dart';
+import '../../io/filesystem.dart';
 
 /// Provisions per-member role prompts and coordinator-style settings for Claude.
 abstract final class MemberRoleProvision {
@@ -26,9 +24,8 @@ abstract final class MemberRoleProvision {
   /// Auto-allowed in mixed mode so the teammate-bus MCP tools (list_teammates,
   /// send_message, wait_for_message, add_tasks, update_task, …) never prompt.
   /// `mcp__<server>` whitelists every tool exposed by that MCP server.
-  static const mixedTeamSessionAllowTools = <String>[
-    'mcp__$teammateBusMcpServerName',
-  ];
+  /// Server name must match `teammateBusMcpServerName` in TeamBus MCP config.
+  static const mixedTeamSessionAllowTools = <String>['mcp__teammate-bus'];
 
   /// Native Claude swarm / task tools denied via CLI `--disallowedTools` in
   /// mixed mode (settings `permissions.deny` is omitted there — see
@@ -152,7 +149,7 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
 ''';
 
   static String memberSlug(TeamMemberConfig member) {
-    return ClaudeTeamRosterService.safeClaudePathSegment(member.id);
+    return TeamMemberNaming.safePathSegment(member.id);
   }
 
   static String rolePromptPath(String memberToolDir, TeamMemberConfig member) {

@@ -1,11 +1,11 @@
 import 'package:equatable/equatable.dart';
 
-import '../../../models/app_provider_config.dart';
-import '../../../models/cli_preset.dart';
-import '../../../models/team_config.dart';
-import '../../../repositories/app_provider_repository.dart';
-import '../../cli/preset_resolver.dart';
-import '../../storage/home_storage.dart';
+import '../../../../models/app_provider_config.dart';
+import '../../../../models/cli_preset.dart';
+import '../../../../models/team_config.dart';
+import '../../../../repositories/app_provider_repository.dart';
+import '../../../cli/preset_resolver.dart';
+import '../../../storage/home_storage.dart';
 
 /// What aspect of team config is missing for launch.
 enum TeamConfigIssueKind {

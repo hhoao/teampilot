@@ -35,7 +35,7 @@ import '../services/remote/remote_cli_readiness.dart';
 import '../services/chat/team_bus/artifacts/artifact_registry.dart';
 import '../services/chat/team_bus/artifacts/artifact_transfer_service.dart';
 import '../services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
-import '../services/chat/team_bus/remote/remote_bus_binding_resolver.dart';
+import '../services/chat/team_bus/remote/remote_member_bus_setup.dart';
 import '../services/event/event_publisher.dart';
 import '../services/event/session_lifecycle_event.dart';
 import '../services/agent_status/agent_attention_state.dart';
@@ -81,13 +81,13 @@ import '../services/chat/session/session_data_store.dart';
 import '../services/chat/launch/connect/chat_session_shell_factory.dart';
 import '../services/chat/session/chat_tab_store.dart';
 import '../services/chat/launch/session_launch_service.dart';
-import '../services/chat/launch/tab/tab_member_materializer.dart';
+import '../services/team_config/team_settings_commit_service.dart';
+import '../services/chat/launch/session/tab_member_materializer.dart';
 import '../services/chat/runtime/operator_delivery_in_flight.dart';
 import '../services/chat/runtime/tab_session_runtime_coordinator.dart';
 import '../services/chat/team_bus/tab_team_bus_coordinator.dart';
 import 'layout_cubit.dart';
 import 'member_presence_cubit.dart';
-import 'workbench/workbench_tab.dart';
 import 'chat_state.dart';
 import '../services/chat/session/chat_tab.dart';
 import '../services/chat/session/session_connect_request.dart';
@@ -109,7 +109,7 @@ export '../services/chat/session/session_workbench_view.dart';
 
 class ChatCubit extends Cubit<ChatState>
     with ChatConnectStateMixin
-    implements SessionLaunchHost {
+    implements SessionLaunchHost, WorkspaceSnapshotPatchPort {
   ChatCubit({
     required String Function() executableResolver,
     required HomeStorage storage,
@@ -129,7 +129,7 @@ class ChatCubit extends Cubit<ChatState>
     bool Function()? sshUseLoginShellResolver,
     RuntimeTarget Function()? defaultTargetResolver,
     int Function()? terminalScrollbackLinesResolver,
-    RemoteBusBindingResolver? remoteBusResolver,
+    RemoteMemberBusSetupPort? remoteBusSetup,
     SessionConnectOrchestrator? sessionConnect,
     TeammateBusMcpGateway? teammateBusMcpGateway,
     AgentStatusSeatLookup? agentStatusSeatLookup,
@@ -150,7 +150,7 @@ class ChatCubit extends Cubit<ChatState>
     String Function()? termuxDisconnectedWorkOpsMessageResolver,
     RuntimeTarget Function()? termuxGateHomeResolver,
     PromptDeliveryCoordinator? Function()? promptDeliveries,
-  }) : _remoteBusResolver = remoteBusResolver,
+  }) : _remoteBusSetup = remoteBusSetup,
        _promptDeliveries = promptDeliveries,
        _remoteCliReadiness = remoteCliReadiness,
        _sessionConnect = sessionConnect,
@@ -263,7 +263,7 @@ class ChatCubit extends Cubit<ChatState>
   ChatWorkbenchPort? _workbenchPort;
   set workbenchPort(ChatWorkbenchPort? value) => _workbenchPort = value;
 
-  final RemoteBusBindingResolver? _remoteBusResolver;
+  final RemoteMemberBusSetupPort? _remoteBusSetup;
   final RemoteCliReadinessService? _remoteCliReadiness;
   final InstallJobRegistry? _installJobRegistry;
   final SessionConnectOrchestrator? _sessionConnect;
@@ -377,7 +377,7 @@ class ChatCubit extends Cubit<ChatState>
         sessionBusyFromAttention: (sessionId) {
           final attention = _agentAttentionCubit;
           if (attention == null) return false;
-          final bus = _tabStore.openTabBySessionId(sessionId)?.teamBus;
+          final bus = _tabStore.getOpenTabBySessionId(sessionId)?.teamBus;
           // Why: WaitEntered clears hook working, but a late PreToolUse can
           // re-stamp attention while the member is still bus-parked.
           if (bus != null) {
@@ -554,7 +554,7 @@ class ChatCubit extends Cubit<ChatState>
   @override
   SessionPod ensurePodRuntime(String sessionId) =>
       _pods.putIfAbsent(sessionId.trim(), () {
-        final tab = _tabStore.openTabBySessionId(sessionId.trim());
+        final tab = _tabStore.getOpenTabBySessionId(sessionId.trim());
         final sid = sessionId.trim();
         final loader = historyLoader;
         return SessionPod(
@@ -565,7 +565,7 @@ class ChatCubit extends Cubit<ChatState>
               : HistoryStore(
                   loader: loader,
                   loadMailboxRecords: (s, m) async {
-                    final bus = _tabStore.openTabBySessionId(s)?.teamBus;
+                    final bus = _tabStore.getOpenTabBySessionId(s)?.teamBus;
                     if (bus == null) return const [];
                     return bus.memberMailRecords(m);
                   },
@@ -699,7 +699,6 @@ class ChatCubit extends Cubit<ChatState>
 
   // ===== SessionLaunchHost =====
 
-  @override
   void applyState(ChatState next) => emit(next);
 
   @override
@@ -730,7 +729,7 @@ class ChatCubit extends Cubit<ChatState>
 
   @override
   void closeSessionTab(String sessionId) {
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     if (tab == null) return;
     // Domain-driven close: remove from the bar; the port calls teardownSession.
     final port = _workbenchPort;
@@ -749,16 +748,17 @@ class ChatCubit extends Cubit<ChatState>
     final wsId = _tabStore.activeWorkspaceId;
     final port = _workbenchPort;
     if (wsId.isNotEmpty && port != null) {
-      final tabId = port.centerActiveForScope(wsId);
-      if (tabId != null && tabId.kind == WorkbenchTabKind.session) {
-        final tab = _tabStore.openTabBySessionId(tabId.id);
+      final scope = port.centerActiveForScope(wsId);
+      final sessionId = scope.sessionId;
+      if (sessionId != null) {
+        final tab = _tabStore.getOpenTabBySessionId(sessionId);
         if (tab != null) return tab;
       }
       // A non-session tab (file/diff) is center-active: no session is active
       // in this workspace — never fall through to another workspace's tabs.
-      if (tabId != null) return null;
-      // Landing (center-active null): legacy local-tab runtimes that have not
-      // been bar-fed stay reachable within this workspace.
+      if (scope.isNonSessionTab) return null;
+      // Landing: legacy local-tab runtimes that have not been bar-fed stay
+      // reachable within this workspace.
       return _tabStore.tabsForWorkspace(wsId).firstOrNull;
     }
     // Port unwired (tests / legacy): first open tab wins.
@@ -834,7 +834,7 @@ class ChatCubit extends Cubit<ChatState>
       _autoLaunchAllMembersOnConnect;
 
   @override
-  RemoteBusBindingResolver? get remoteBusResolver => _remoteBusResolver;
+  RemoteMemberBusSetupPort? get remoteBusSetup => _remoteBusSetup;
 
   @override
   SessionConnectOrchestrator get sessionConnect =>
@@ -1002,7 +1002,7 @@ class ChatCubit extends Cubit<ChatState>
     required String message,
     bool preserveWorkbenchView = true,
   }) async {
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     final session = tab?.persistedSession;
     if (session == null) {
       return const HistoryContinueSubmitResult.failed();
@@ -1089,7 +1089,9 @@ class ChatCubit extends Cubit<ChatState>
 
     final sessionId = parsed.$1;
     final memberId = parsed.$2;
-    final session = _tabStore.openTabBySessionId(sessionId)?.persistedSession;
+    final session = _tabStore
+        .getOpenTabBySessionId(sessionId)
+        ?.persistedSession;
     if (session == null) {
       return const HistoryContinueSubmitResult.failed();
     }
@@ -1191,7 +1193,7 @@ class ChatCubit extends Cubit<ChatState>
   void _onTurnEnded(String sessionId, String memberId) {
     final attention = _agentAttentionCubit;
     if (attention == null || memberId.trim().isEmpty) return;
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     final session = tab?.persistedSession;
     if (tab == null || session == null) return;
 
@@ -1305,7 +1307,7 @@ class ChatCubit extends Cubit<ChatState>
 
   /// Seat-level working for compose stop button (mirrors members panel rules).
   bool isMemberWorking(String sessionId, String memberId) {
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     if (tab == null) return false;
 
     final presence = _presenceCubit?.state.presence ?? const {};
@@ -1333,7 +1335,7 @@ class ChatCubit extends Cubit<ChatState>
   }) async {
     final sid = sessionId ?? activeTab?.info.id;
     if (sid == null) return;
-    final tab = _tabStore.openTabBySessionId(sid);
+    final tab = _tabStore.getOpenTabBySessionId(sid);
     if (tab == null) return;
     final mid = (memberId ?? tab.selectedMemberId).trim();
     if (mid.isEmpty) return;
@@ -1379,7 +1381,7 @@ class ChatCubit extends Cubit<ChatState>
     String? freeText,
     List<String?>? freeTexts,
   }) async {
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     if (tab == null) {
       return const AskUserAnswerFailed('session_not_found');
     }
@@ -1432,7 +1434,7 @@ class ChatCubit extends Cubit<ChatState>
     required String memberId,
     String? askRequestId,
   }) async {
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     if (tab == null) {
       return const AskUserAnswerFailed('session_not_found');
     }
@@ -1483,7 +1485,7 @@ class ChatCubit extends Cubit<ChatState>
     required AgentPermissionReplyKind kind,
     Object? alwaysPayload,
   }) async {
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     if (tab == null) {
       return const AskUserAnswerFailed('session_not_found');
     }
@@ -1526,7 +1528,7 @@ class ChatCubit extends Cubit<ChatState>
     required String sessionId,
     required String memberId,
   }) async {
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     if (tab == null) {
       return const AskUserAnswerFailed('session_not_found');
     }
@@ -1878,7 +1880,7 @@ class ChatCubit extends Cubit<ChatState>
     _emitSnapshot(
       _dataStore.mergeLoadedSession(current: stateSnapshot(), session: full),
     );
-    final tab = _tabStore.openTabBySessionId(id);
+    final tab = _tabStore.getOpenTabBySessionId(id);
     if (tab != null) tab.persistedSession = full;
     return full;
   }
@@ -2265,7 +2267,7 @@ class ChatCubit extends Cubit<ChatState>
       onSessionHistoryStale?.call(sessionId);
     }
     if (view == SessionWorkbenchView.terminal) {
-      final tab = _tabStore.openTabBySessionId(sessionId);
+      final tab = _tabStore.getOpenTabBySessionId(sessionId);
       final memberId = tab?.selectedMemberId ?? '';
       if (memberId.trim().isNotEmpty) {
         unawaited(ensureMemberTerminalForView(sessionId, memberId));
@@ -2289,7 +2291,7 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   void _syncTabWorkbenchView(String sessionId, SessionWorkbenchView view) {
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     if (tab != null && tab.workbenchView != view) {
       tab.workbenchView = view;
     }
@@ -2387,14 +2389,14 @@ class ChatCubit extends Cubit<ChatState>
   /// [memberId] is the shell key (`memberShells` / History `shellMemberId`),
   /// not only the active workspace tab.
   bool isMemberRunning({required String sessionId, required String memberId}) {
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     final shell = tab?.memberShells[memberId];
     return shell?.isRunning ?? false;
   }
 
   /// Whether any terminal of the session's open tab is up (spawning/running).
   bool isSessionRunning(String sessionId) =>
-      _tabStore.openTabBySessionId(sessionId)?.isRunning ?? false;
+      _tabStore.getOpenTabBySessionId(sessionId)?.isRunning ?? false;
 
   Future<void> launchAllMembers(
     TeamProfile team, {
@@ -2431,7 +2433,7 @@ class ChatCubit extends Cubit<ChatState>
   Future<void> retrySessionLaunch(String sessionId) async {
     final id = sessionId.trim();
     if (id.isEmpty) return;
-    final tab = _tabStore.openTabBySessionId(id);
+    final tab = _tabStore.getOpenTabBySessionId(id);
     AppSession? session;
     for (final s in state.sessions) {
       if (s.sessionId == id) {
@@ -2508,7 +2510,7 @@ class ChatCubit extends Cubit<ChatState>
 
   bool isMemberTerminalReclaimed(String sessionId, String memberId) =>
       _tabStore
-          .openTabBySessionId(sessionId)
+          .getOpenTabBySessionId(sessionId)
           ?.reclaimedMemberIds
           .contains(memberId) ??
       false;
@@ -2554,7 +2556,7 @@ class ChatCubit extends Cubit<ChatState>
     String sourceSessionId, {
     required String newDisplayTitle,
   }) async {
-    final tab = _tabStore.openTabBySessionId(sourceSessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sourceSessionId);
     if (tab != null &&
         (tab.isRunning || tab.membersPendingConnect.isNotEmpty)) {
       throw StateError('Cannot duplicate a running session');
@@ -2661,7 +2663,7 @@ class ChatCubit extends Cubit<ChatState>
   /// in sync with continue-chrome edits without dropping launch-time fields
   /// (native resume ids, launchState) that only exist on the tab cache.
   void _syncTabPersistedSession(AppSession patched) {
-    final tab = _tabStore.openTabBySessionId(patched.sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(patched.sessionId);
     final cached = tab?.persistedSession;
     if (tab == null || cached == null) return;
     tab.persistedSession = SessionContinueOverridesController.mergeOntoTabCache(
@@ -2745,7 +2747,7 @@ class ChatCubit extends Cubit<ChatState>
     final sessions = state.sessions
         .where((s) => s.sessionId != sessionId)
         .toList();
-    final tab = _tabStore.openTabBySessionId(sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     final port = _workbenchPort;
     if (tab != null) {
       _sessionRuntime.maybeStopIdleWatch();

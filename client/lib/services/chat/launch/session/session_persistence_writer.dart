@@ -1,7 +1,7 @@
 import '../../session/chat_tab.dart';
 import '../../session/session_continue_overrides_controller.dart';
 import '../../session/session_data_store.dart';
-import '../../../../cubits/chat_state_port.dart';
+import '../chat_state_port.dart';
 import '../launch_environment_port.dart';
 import '../../session/session_repository_port.dart';
 import '../../session/tab_port.dart';
@@ -48,7 +48,6 @@ class SessionPersistenceWriter {
   /// Returns [session] unchanged when nothing is stale.
   Future<AppSession> syncFollowedPresetOnConnect({
     required AppSession session,
-    required ChatTab tab,
     required bool isPersonal,
     required String memberId,
     CliTool? lockedCli,
@@ -73,8 +72,9 @@ class SessionPersistenceWriter {
     }
     if (_chatState.isClosed) return patched;
     _snapshots.replaceSessionSnapshot(patched);
-    final cached = tab.persistedSession;
-    if (cached != null && cached.sessionId == patched.sessionId) {
+    final tab = _tabFor(patched.sessionId);
+    final cached = tab?.persistedSession;
+    if (tab != null && cached != null && cached.sessionId == patched.sessionId) {
       tab.persistedSession =
           SessionContinueOverridesController.mergeOntoTabCache(
             cached: cached,
@@ -89,7 +89,6 @@ class SessionPersistenceWriter {
   /// No-op when there is nothing to persist (no repo, no native id, no tool, or
   /// a still-unsaved `local-` session).
   Future<void> persistNativeSessionId({
-    required ChatTab tab,
     required AppSession session,
     required SessionMemberBinding? binding,
     required LaunchPlan plan,
@@ -120,7 +119,8 @@ class SessionPersistenceWriter {
       return s.withNativeSessionId(tool, id);
     }
 
-    final current = tab.persistedSession ?? session;
+    final tab = _tabFor(session.sessionId);
+    final current = tab?.persistedSession ?? session;
     if (identical(applyNative(current), current)) return;
 
     try {
@@ -140,8 +140,8 @@ class SessionPersistenceWriter {
     }
     if (_chatState.isClosed) return;
 
-    tab.persistedSession = applyNative(current);
-    final state = _chatState.state;
+    if (tab != null) tab.persistedSession = applyNative(current);
+    final state = _chatState.stateSnapshot();
     final sessions = state.sessions
         .map((s) => s.sessionId == session.sessionId ? applyNative(s) : s)
         .toList();
@@ -163,7 +163,7 @@ class SessionPersistenceWriter {
     await r.markSessionLaunched(sessionId);
     if (_chatState.isClosed) return;
     final now = DateTime.now().millisecondsSinceEpoch;
-    final state = _chatState.state;
+    final state = _chatState.stateSnapshot();
     final sessions = state.sessions.map((s) {
       if (s.sessionId != sessionId) return s;
       return s.copyWith(
@@ -173,7 +173,7 @@ class SessionPersistenceWriter {
     }).toList();
     // Keep the open tab's cached session in sync — history-review reconnect
     // reads tab.persistedSession for previouslyLaunched / resume decisions.
-    final tab = _tabs.tabStore.openTabBySessionId(sessionId);
+    final tab = _tabFor(sessionId);
     final cached = tab?.persistedSession;
     if (tab != null && cached != null && cached.sessionId == sessionId) {
       tab.persistedSession = cached.copyWith(
@@ -188,4 +188,7 @@ class SessionPersistenceWriter {
       ),
     );
   }
+
+  ChatTab? _tabFor(String sessionId) =>
+      _tabs.tabStore.getOpenTabBySessionId(sessionId);
 }

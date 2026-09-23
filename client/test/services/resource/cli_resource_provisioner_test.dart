@@ -927,6 +927,14 @@ final class _RecordingMcpCapability implements McpCapability {
   }) async {
     events.add('materialize:mcp-credentials');
   }
+
+  @override
+  Future<void> maybeRemoveStaleProjectTeammateBus({
+    required Filesystem fs,
+    Map<String, Map<String, Object?>>? extraServers,
+    required String workingDirectory,
+    Iterable<String> additionalDirectories = const [],
+  }) async {}
 }
 
 final class _RecordingHookCapability implements HookCapability {

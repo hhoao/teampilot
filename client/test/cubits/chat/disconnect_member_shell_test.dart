@@ -101,8 +101,8 @@ void main() {
       await drainPendingAsyncWork();
       await postFrame.flush();
 
-      final tabA = cubit.tabStore.openTabBySessionId(sessionA.sessionId)!;
-      final tabB = cubit.tabStore.openTabBySessionId(sessionB.sessionId)!;
+      final tabA = cubit.tabStore.getOpenTabBySessionId(sessionA.sessionId)!;
+      final tabB = cubit.tabStore.getOpenTabBySessionId(sessionB.sessionId)!;
       final memberId = team.members.first.id;
 
       final shellA = FakeTerminalSession(

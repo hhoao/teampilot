@@ -282,6 +282,9 @@ abstract interface class ModelCatalogSource {
 abstract base class CatalogModelCapability implements ProviderCapability {
   const CatalogModelCapability();
 
+  @override
+  String? get launchSettingsFileEnvKey => null;
+
   /// Built-in catalogs merged before the provider record. Order is irrelevant
   /// (results are deduped and sorted).
   List<ModelCatalogSource> get catalogSources;
@@ -576,6 +579,10 @@ abstract interface class ProviderCapability implements CliCapability {
   /// Preferred official catalog id used when a Simple launch provider is unset.
   /// Null when the CLI has no official catalog row (flashskyai).
   String? get defaultOfficialProviderId;
+
+  /// Env key for a per-session settings file injected at launch.
+  /// Null when the CLI does not use a settings-file env var.
+  String? get launchSettingsFileEnvKey => null;
 
   /// Scans the user's global CLI install for importable provider rows.
   Future<ProviderCatalogSnapshot> loadFromLiveSources(

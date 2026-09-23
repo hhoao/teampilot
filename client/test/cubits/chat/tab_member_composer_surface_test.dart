@@ -5,8 +5,8 @@ import 'package:teampilot/services/chat/launch/connect/member_connector.dart';
 import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/services/chat/session/chat_tab_info.dart';
 import 'package:teampilot/services/chat/runtime/tab_member_coordination_factory.dart';
-import 'package:teampilot/services/chat/launch/tab/member_input_ready_wait.dart';
-import 'package:teampilot/services/chat/launch/tab/tab_member_materializer.dart';
+import 'package:teampilot/services/chat/launch/session/member_input_ready_wait.dart';
+import 'package:teampilot/services/chat/launch/session/tab_member_materializer.dart';
 import 'package:teampilot/services/chat/runtime/pty/tab_member_pty_delivery.dart';
 import 'package:teampilot/services/chat/runtime/tab_session_runtime_coordinator.dart';
 import 'package:teampilot/models/app_session.dart';
@@ -27,7 +27,7 @@ class _NoopConnector implements MemberConnector {
   void scheduleMemberConnect(
     TeamProfile team,
     TeamMemberConfig member,
-    ChatTab tab, {
+    String sessionId, {
     bool selectMember = true,
   }) {}
 }

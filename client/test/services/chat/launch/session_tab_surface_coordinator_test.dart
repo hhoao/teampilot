@@ -13,7 +13,8 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
-import 'package:teampilot/services/chat/launch/tab/session_tab_surface_coordinator.dart';
+import 'package:teampilot/services/chat/launch/connect/launch_generation_store.dart';
+import 'package:teampilot/services/chat/launch/session/session_tab_surface_coordinator.dart';
 
 import '../../../support/fake_terminal_session.dart';
 import '../../../support/in_memory_filesystem.dart';
@@ -23,6 +24,7 @@ void main() {
     late ChatTabStore tabStore;
     late ChatTab existing;
     late _FakeHost host;
+    late LaunchGenerationStore generations;
     late SessionTabSurfaceCoordinator coordinator;
     late AppSession session;
     late List<
@@ -49,9 +51,11 @@ void main() {
       tabStore.registerSession(existing);
       host = _FakeHost(const ChatState(), tabStore: tabStore);
       openedCalls = [];
+      generations = LaunchGenerationStore();
       coordinator = SessionTabSurfaceCoordinator(
         host: host,
         tabStore: tabStore,
+        generations: generations,
         onSessionTabOpened:
             (workspaceId, sessionId, {preview = false, activate = true}) {
               openedCalls.add((
@@ -66,6 +70,33 @@ void main() {
 
     tearDown(() {
       host.sessionRuntime.disposeIdleWatch();
+    });
+
+    test('owns launch generation on the store, not ChatTab', () {
+      final result = coordinator.surfaceExistingTab(
+        request: SessionOpenRequest(session: session, connectImmediately: true),
+        existing: existing,
+        workspace: null,
+        connect: true,
+      );
+
+      expect(result.generation, 1);
+      expect(generations.current('sess-1'), 1);
+    });
+
+    test('does not bump generation when the session is already connecting', () {
+      host.connectingSessionIds.add('sess-1');
+      generations.bump('sess-1');
+
+      final result = coordinator.surfaceExistingTab(
+        request: SessionOpenRequest(session: session, connectImmediately: true),
+        existing: existing,
+        workspace: null,
+        connect: true,
+      );
+
+      expect(result.generation, 1);
+      expect(generations.current('sess-1'), 1);
     });
 
     test('connectImmediately defaults to Terminal workbench view', () {
@@ -107,7 +138,7 @@ void main() {
         connect: true,
       );
 
-      expect(result.generation, existing.launchGeneration);
+      expect(result.generation, generations.current('sess-1'));
       expect(openedCalls, [
         (
           workspaceId: 'ws-1',
@@ -202,6 +233,7 @@ void main() {
   group('SessionTabSurfaceCoordinator.surfaceNewTab', () {
     late ChatTabStore tabStore;
     late _FakeHost host;
+    late LaunchGenerationStore generations;
     late SessionTabSurfaceCoordinator coordinator;
     late AppSession session;
     late Workspace workspace;
@@ -227,9 +259,11 @@ void main() {
       );
       host = _FakeHost(const ChatState(), tabStore: tabStore);
       openedCalls = [];
+      generations = LaunchGenerationStore();
       coordinator = SessionTabSurfaceCoordinator(
         host: host,
         tabStore: tabStore,
+        generations: generations,
         onSessionTabOpened:
             (workspaceId, sessionId, {preview = false, activate = true}) {
               openedCalls.add((
@@ -246,6 +280,22 @@ void main() {
       host.sessionRuntime.disposeIdleWatch();
     });
 
+    test('owns launch generation on the store, not ChatTab', () {
+      final result = coordinator.surfaceNewTab(
+        request: SessionOpenRequest(
+          session: session,
+          workspace: workspace,
+          connectImmediately: true,
+        ),
+        session: session,
+        workspace: workspace,
+        connect: true,
+      );
+
+      expect(result.generation, 1);
+      expect(generations.current('sess-new'), 1);
+    });
+
     test('connectImmediately defaults to Terminal workbench view', () {
       final result = coordinator.surfaceNewTab(
         request: SessionOpenRequest(
@@ -260,7 +310,7 @@ void main() {
 
       expect(result.session, same(session));
       expect(result.connect, isTrue);
-      final tab = tabStore.openTabBySessionId('sess-new');
+      final tab = tabStore.getOpenTabBySessionId('sess-new');
       expect(tab, isNotNull);
       expect(host.podViews['sess-new'], SessionWorkbenchView.terminal);
     });
@@ -279,7 +329,7 @@ void main() {
       );
 
       expect(result.tab.info.id, session.sessionId);
-      final tab = tabStore.openTabBySessionId('sess-new');
+      final tab = tabStore.getOpenTabBySessionId('sess-new');
       expect(tab, isNotNull);
       expect(result.connect, isTrue);
       expect(host.podViews['sess-new'], isNull);
@@ -298,7 +348,7 @@ void main() {
         connect: true,
       );
 
-      expect(result.generation, result.tab.launchGeneration);
+      expect(result.generation, generations.current('sess-new'));
       expect(openedCalls, [
         (
           workspaceId: 'ws-1',
@@ -344,7 +394,6 @@ class _FakeHost implements SessionLaunchHost {
         isClosed: () => false,
       );
 
-  @override
   ChatState state;
 
   @override
@@ -364,7 +413,6 @@ class _FakeHost implements SessionLaunchHost {
   @override
   bool get isClosed => false;
 
-  @override
   void applyState(ChatState next) => state = next;
 
   @override

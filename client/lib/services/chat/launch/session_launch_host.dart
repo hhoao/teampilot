@@ -1,19 +1,18 @@
 import '../../../models/app_session.dart';
 import '../../../models/member_remote_provision_progress.dart';
 import '../launch/staging/session_connect_orchestrator.dart';
-import '../../agent_status/agent_status_seat_lookup.dart';
-import '../../agent_status/ask_user_answer_pending_store.dart';
-import '../../../cubits/agent_attention_cubit.dart';
-import '../../../cubits/seat_lease_cubit.dart';
-import '../../../cubits/workbench/workbench_tab.dart';
-import '../team_bus/mcp/teammate_bus_mcp_gateway.dart';
-import '../team_bus/remote/remote_bus_binding_resolver.dart';
+import '../../agent_status/agent_status_seat_lookup_port.dart';
+import '../../agent_status/ask_user_answer_pending_port.dart';
+import '../../agent_status/agent_attention_port.dart';
+import '../../agent_status/seat_lease_port.dart';
+import '../team_bus/mcp/teammate_bus_mcp_gateway_port.dart';
+import '../team_bus/remote/remote_member_bus_setup.dart';
 import '../session/session_workbench_view.dart';
 import '../session/session_data_store.dart';
-import 'tab/tab_member_materializer.dart';
+import 'session/tab_member_materializer.dart';
 import '../runtime/tab_session_runtime_coordinator.dart';
-import '../team_bus/tab_team_bus_coordinator.dart';
-import '../../../cubits/chat_state_port.dart';
+import '../team_bus/team_bus_user_input_port.dart';
+import 'chat_state_port.dart';
 import 'launch_environment_port.dart';
 import '../session/session_repository_port.dart';
 import '../session/tab_port.dart';
@@ -85,35 +84,35 @@ abstract interface class SessionLaunchHost
   // a candidate for extraction; until then they stay on the host.
 
   TabSessionRuntimeCoordinator get sessionRuntime;
-  TabTeamBusCoordinator get teamBus;
+  TeamBusUserInputPort get teamBus;
   TabMemberMaterializer get memberMaterializer;
   SessionDataStore get dataStore;
 
-  /// P3b (#1): resolves a remote member's reverse-tunnel bus binding. Null when
+  /// P3b (#1): reverse-tunnel bus bind for remote members. Null when
   /// remote-member-over-tunnel is not wired (then all members use local
   /// transport — pre-P3b behavior).
-  RemoteBusBindingResolver? get remoteBusResolver;
+  RemoteMemberBusSetupPort? get remoteBusSetup;
 
   SessionConnectOrchestrator get sessionConnect;
 
-  TeammateBusMcpGateway get teammateBusMcpGateway;
+  TeammateBusMcpGatewayPort get teammateBusMcpGateway;
 
   /// Issues/rotates the team-generation workflow token for a builder session
   /// (null in tests / when generation is not wired).
   String? Function(AppSession session)? get teamGenerationTokenIssuer => null;
 
   /// Seat CLI + skip-permissions map for `/agent-status` (null in tests).
-  AgentStatusSeatLookup? get agentStatusSeatLookup;
+  AgentStatusSeatLookupPort? get agentStatusSeatLookup;
 
   /// Permission-attention state; cleared on seat/tab dispose (null in tests).
-  AgentAttentionCubit? get agentAttentionCubit;
+  AgentAttentionPort? get agentAttentionCubit;
 
   /// Seat keep-alive leases (background shell tasks); cleared with
   /// attention on seat/tab dispose (null in tests).
-  SeatLeaseCubit? get seatLeaseCubit;
+  SeatLeasePort? get seatLeaseCubit;
 
   /// Shared OpenCode ask-answer pending map; cleared with attention on dispose.
-  AskUserAnswerPendingStore? get askUserAnswerPendingStore;
+  AskUserAnswerPendingPort? get askUserAnswerPendingStore;
 }
 
 /// Drop attention + seat lookup (+ pending ask answers) for every seat in
@@ -122,10 +121,10 @@ abstract interface class SessionLaunchHost
 /// Used on team-session restart (shells disconnect without [onProcessExited]).
 /// Does not unregister the gateway status session — reconnect re-registers seats.
 void clearAgentStatusSessionSeats({
-  AgentAttentionCubit? attention,
-  AgentStatusSeatLookup? seatLookup,
-  AskUserAnswerPendingStore? askUserAnswerPendingStore,
-  SeatLeaseCubit? seatLeaseCubit,
+  AgentAttentionPort? attention,
+  AgentStatusSeatLookupPort? seatLookup,
+  AskUserAnswerPendingPort? askUserAnswerPendingStore,
+  SeatLeasePort? seatLeaseCubit,
   required String sessionId,
 }) {
   attention?.clearSession(sessionId);
@@ -163,6 +162,26 @@ extension SessionLaunchHostAgentStatus on SessionLaunchHost {
   }
 }
 
+/// Bar-derived center-active tab, without workbench cubit types.
+///
+/// Distinguishes landing (no center tab) from a non-session tab so the domain
+/// never treats another workspace's session as active.
+class CenterActiveScope {
+  const CenterActiveScope.landing() : sessionId = null, isNonSessionTab = false;
+
+  const CenterActiveScope.session(this.sessionId) : isNonSessionTab = false;
+
+  const CenterActiveScope.nonSessionTab()
+    : sessionId = null,
+      isNonSessionTab = true;
+
+  /// Session id when a session tab is center-active; otherwise null.
+  final String? sessionId;
+
+  /// True when a file/diff/etc tab is center-active (not landing).
+  final bool isNonSessionTab;
+}
+
 /// Narrow surface the session domain uses to drive the workbench bar.
 ///
 /// Implemented by [WorkbenchChatBridge] in production; null in tests until the
@@ -186,8 +205,7 @@ abstract class ChatWorkbenchPort {
   /// Close every center tab for [workspaceId] (each removal tears down).
   void closeAll(String workspaceId);
 
-  /// Bar center-active session tab id for [workspaceId] (null when landing or
-  /// a file/diff tab is active). Lets the domain derive "the active session"
-  /// from the bar — the single source of truth.
-  WorkbenchTabId? centerActiveForScope(String workspaceId);
+  /// Bar center-active tab for [workspaceId]. Lets the domain derive "the
+  /// active session" from the bar — the single source of truth.
+  CenterActiveScope centerActiveForScope(String workspaceId);
 }

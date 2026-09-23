@@ -9,7 +9,7 @@ import '../../../repositories/launch_profile_repository.dart';
 import '../../../repositories/session_repository.dart';
 import '../../expert_hub/expert_hub_catalog.dart';
 import '../../expert_hub/local_expert_store.dart';
-import '../launch/member_placement_save.dart';
+import '../../team_config/member_placement_save.dart';
 import 'models/team_generation_job.dart';
 import 'team_generation_context_payload.dart';
 import 'team_generation_job_store.dart';

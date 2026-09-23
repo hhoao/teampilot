@@ -69,7 +69,7 @@ ChatPageStructuralSignal chatPageStructuralSignal({
   final activeTab =
       activeId == null || activeId.kind != WorkbenchTabKind.session
       ? null
-      : tabStore.openTabBySessionId(activeId.id);
+      : tabStore.getOpenTabBySessionId(activeId.id);
   return ChatPageStructuralSignal(
     tabIds: tabIds,
     activeTabIndex: activeId == null ? -1 : order.indexOf(activeId),

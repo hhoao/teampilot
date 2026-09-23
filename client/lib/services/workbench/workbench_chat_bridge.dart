@@ -44,7 +44,7 @@ class WorkbenchChatBridge implements WorkbenchDomainPort, ChatWorkbenchPort {
     if (activate) _chat.pushPresenceTarget();
     if (replaced == null) return;
     if (replaced.kind == WorkbenchTabKind.session) {
-      final replacedTab = _chat.tabStore.openTabBySessionId(replaced.id);
+      final replacedTab = _chat.tabStore.getOpenTabBySessionId(replaced.id);
       if (replacedTab?.isRunning == true) {
         // The displaced preview is a live agent: re-pin it in the bar without
         // stealing activation instead of tearing it down.
@@ -95,8 +95,14 @@ class WorkbenchChatBridge implements WorkbenchDomainPort, ChatWorkbenchPort {
   }
 
   @override
-  WorkbenchTabId? centerActiveForScope(String workspaceId) =>
-      _workbench.centerActiveId(workspaceId);
+  CenterActiveScope centerActiveForScope(String workspaceId) {
+    final id = _workbench.centerActiveId(workspaceId);
+    if (id == null) return const CenterActiveScope.landing();
+    if (id.kind == WorkbenchTabKind.session) {
+      return CenterActiveScope.session(id.id);
+    }
+    return const CenterActiveScope.nonSessionTab();
+  }
 
   // ===== WorkbenchDomainPort (bar → domain teardown) =====
 

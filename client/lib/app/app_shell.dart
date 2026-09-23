@@ -54,6 +54,7 @@ import '../services/catalog/catalog_production.dart';
 import '../services/catalog/catalog_workspace_binder.dart';
 import '../services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/chat/team_bus/remote/remote_bus_binding_resolver.dart';
+import '../services/chat/team_bus/remote/remote_member_bus_setup.dart';
 import '../services/remote/local_credential_exporter.dart';
 import '../services/remote/remote_cli_readiness.dart';
 import '../services/editor_platform/editor_platform.dart';
@@ -758,7 +759,7 @@ Future<AppShell> buildAppShell({
     try {
       final client = await sshClientFactory.clientForStorage(profile);
       return await cliExecutableDiscovery.locateRemote(
-        run: RemoteCliLocator.runnerForClient(client),
+        run: RemoteCliLocator.getRunnerForClient(client),
       );
     } on Object catch (error, stackTrace) {
       appLogger.w(
@@ -2146,7 +2147,9 @@ Future<AppShell> buildAppShell({
           sessionPreferencesCubit.state.preferences.terminalScrollbackLines,
       // P3b (#1): connect remote (ssh) mixed-team members back to the in-process
       // bus over a reverse tunnel. Local members resolve to null (unchanged).
-      remoteBusResolver: RemoteBusBindingResolver(registry: cliToolRegistry),
+      remoteBusSetup: RemoteMemberBusSetup(
+        resolver: RemoteBusBindingResolver(registry: cliToolRegistry),
+      ),
       sessionConnect: buildSessionConnectOrchestrator(
         lifecycle: sessionLifecycleService,
         registry: cliToolRegistry,
@@ -2450,7 +2453,9 @@ Future<AppShell> buildAppShell({
     final aiHistoryCubit = AiHistoryCubit(
       loader: aiHistoryLoader,
       loadMailboxRecords: (sessionId, memberId) async {
-        final bus = chatCubit.tabStore.openTabBySessionId(sessionId)?.teamBus;
+        final bus = chatCubit.tabStore
+            .getOpenTabBySessionId(sessionId)
+            ?.teamBus;
         if (bus == null) return const [];
         return bus.memberMailRecords(memberId);
       },

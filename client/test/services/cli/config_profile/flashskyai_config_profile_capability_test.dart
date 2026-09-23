@@ -9,7 +9,7 @@ import 'package:teampilot/services/chat/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/cli/flashskyai/capabilities/provider.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import '../../../support/in_memory_filesystem.dart';
 
 void main() {

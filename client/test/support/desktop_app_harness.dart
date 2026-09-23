@@ -77,7 +77,7 @@ import 'package:teampilot/services/home_workspace/home_workspace_ui_cache.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_repo_service.dart';
 import 'package:teampilot/services/install/install_job_registry.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_secret_store.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_coordinator.dart';

@@ -9,7 +9,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';

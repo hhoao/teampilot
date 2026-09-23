@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../services/agent_status/agent_attention_port.dart';
 import '../services/agent_status/agent_attention_state.dart';
 import '../services/agent_status/agent_status_event.dart';
 import '../services/agent_status/ask_user_question.dart';
@@ -165,7 +166,8 @@ class AgentAttentionState extends Equatable {
 }
 
 /// Holds seat-keyed attention; skip-permissions gate + 30m stale TTL.
-class AgentAttentionCubit extends Cubit<AgentAttentionState> {
+class AgentAttentionCubit extends Cubit<AgentAttentionState>
+    implements AgentAttentionPort {
   AgentAttentionCubit({
     DateTime Function()? clock,
     Duration? pruneInterval = agentAttentionPruneInterval,

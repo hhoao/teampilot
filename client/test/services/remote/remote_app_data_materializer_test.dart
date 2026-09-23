@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/remote/remote_app_data_materializer.dart';
+import 'package:teampilot/services/chat/launch/workspace/remote_app_data_materializer.dart';
 import 'package:teampilot/services/remote/remote_credential_materializer.dart';
 
 import '../../support/in_memory_filesystem.dart';

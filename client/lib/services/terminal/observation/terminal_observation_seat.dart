@@ -1,4 +1,4 @@
-import '../../../cubits/agent_attention_cubit.dart';
+import '../../agent_status/agent_attention_port.dart';
 import '../../../models/team_config.dart';
 import '../../cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../chat/runtime/pty/terminal_activity_tracker.dart';
@@ -26,7 +26,7 @@ final class TerminalObservationSeat {
   final CliTool? cli;
   TerminalLaunchPhase phase;
   final TerminalActivityTracker? activityTracker;
-  final AgentAttentionCubit? attention;
+  final AgentAttentionPort? attention;
   final bool Function()? skipPermissions;
   final TerminalBehaviorCapability? policy;
   final void Function(String message)? failLaunch;

@@ -76,6 +76,13 @@ abstract final class TeamMemberNaming {
     return s.toLowerCase();
   }
 
+  /// Filesystem-safe member id (Claude Code `sanitizeName`). Used for mixed-mode
+  /// config dirs and Claude roster filenames.
+  static String safePathSegment(String value) {
+    final safe = value.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '-').toLowerCase();
+    return safe.isEmpty ? 'default' : safe;
+  }
+
   static String? validateMemberName(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return 'empty';

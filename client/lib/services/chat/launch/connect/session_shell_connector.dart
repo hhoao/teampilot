@@ -14,10 +14,7 @@ import '../../../../models/team_config.dart';
 import '../../../../models/workspace.dart';
 import '../../../../models/workspace_launch_context.dart';
 import '../../../../repositories/session_repository.dart';
-import '../../../catalog/catalog_mcp_transport.dart';
-import '../../../cli/registry/cli_tool_registry.dart';
-import '../../../ssh/mcp/session_ssh_mcp_transport.dart';
-import '../../team_generation/mcp/team_composer_mcp_transport.dart';
+import '../../runtime/runtime_extra_mcp_servers.dart';
 import '../../../../models/install_job/install_cancel_policy.dart';
 import '../../../../models/install_job/install_job_key.dart';
 import '../../../../models/install_job/install_job_scope.dart';
@@ -26,6 +23,7 @@ import '../../../cli/installer_types.dart';
 import '../../../cli/preset_resolver.dart';
 import 'connect_shell_result.dart';
 import '../session/session_persistence_writer.dart';
+import 'session_shell_connect_port.dart';
 import '../../team_bus/mcp/member_bus_mcp_transport_resolver.dart';
 import '../session/shell_launch_spec.dart';
 import '../session/remote_ssh_launch_constraints.dart';
@@ -35,137 +33,14 @@ import '../../../agent_status/member_agent_status_endpoint_resolver.dart';
 import '../../team_bus/member_bus_idle_endpoint.dart';
 import '../../team_bus/remote/member_bus_mcp_config.dart';
 import '../../team_bus/mcp/teammate_bus_mcp_config.dart';
-import '../../team_bus/remote/remote_bus_binding_resolver.dart';
-import '../../team_bus/remote/remote_bus_mount.dart';
-import '../../team_bus/remote/ssh_remote_bus_mount_factory.dart';
+import '../../team_bus/remote/remote_member_bus_setup.dart';
 import '../../../terminal/terminal_session.dart';
 import '../../../terminal/terminal_theme_for_launch.dart';
 import '../../../../utils/logging/logger.dart';
 
+export '../../runtime/runtime_extra_mcp_servers.dart';
+
 typedef TermuxWorkOpsBlockResolver = String? Function(RuntimeTarget target);
-
-/// One workflow token shared by the Catalog and Team Composer transports for
-/// a single builder connect.
-final class TeamGenerationMcpAccess {
-  const TeamGenerationMcpAccess({
-    required this.catalogToken,
-    required this.composerToken,
-  });
-
-  final String catalogToken;
-  final String composerToken;
-}
-
-TeamGenerationMcpAccess? issueTeamGenerationMcpAccess({
-  required AppSession session,
-  required String? Function(AppSession session)? tokenIssuer,
-}) {
-  if (session.purpose != SessionPurpose.teamGeneration) return null;
-  final token = tokenIssuer?.call(session);
-  if (token == null || token.isEmpty) {
-    throw StateError('team_generation_token_issue_failed');
-  }
-  return TeamGenerationMcpAccess(catalogToken: token, composerToken: token);
-}
-
-/// Composes the app-owned MCP servers inserted during one runtime launch.
-///
-/// Catalog is available to every reachable seat. Team Composer is deliberately
-/// restricted to the purpose-tagged generation Builder and receives the same
-/// ephemeral workflow token that the launch host issued for that Builder.
-///
-/// [isLocalNative] reports whether the home plane is currently a native local
-/// backend (host loopback bridge exe reachability); evaluated per launch so a
-/// home-plane swap is honored.
-Map<String, Map<String, Object?>> composeRuntimeExtraMcpServers({
-  required Map<String, Map<String, Object?>> extra,
-  required AppSession session,
-  required String memberId,
-  required CliTool cli,
-  required RuntimeKind launchKind,
-  required CliToolRegistry cliRegistry,
-  required Uri catalogEndpoint,
-  required Uri composerEndpoint,
-  required bool isLocalNative,
-  required String? Function(AppSession session)? teamGenerationTokenIssuer,
-  RemoteBusBinding? mixedRemoteBinding,
-  MemberAgentStatusEndpoint? agentStatus,
-  Workspace? workspace,
-  Uri? sessionSshMcpEndpoint,
-}) {
-  final remoteBinding = _catalogRemoteBindingForRuntime(
-    mixedRemoteBinding: mixedRemoteBinding,
-    agentStatus: agentStatus,
-  );
-  final teamGenerationAccess = issueTeamGenerationMcpAccess(
-    session: session,
-    tokenIssuer: teamGenerationTokenIssuer,
-  );
-  final servers = extraMcpServersWithCatalog(
-    extra: extra,
-    isRemoteSeat: usesSshTransport(launchKind),
-    remoteBinding: remoteBinding,
-    catalogConfig: () => resolveCatalogMcpTransportConfig(
-      cliRegistry: cliRegistry,
-      catalogEndpoint: catalogEndpoint,
-      sessionId: session.sessionId,
-      memberId: memberId,
-      cli: cli,
-      isLocalNative: isLocalNative,
-      remoteBinding: remoteBinding,
-      teamGenerationToken: teamGenerationAccess?.catalogToken,
-    ),
-  );
-  if (session.purpose == SessionPurpose.teamGeneration) {
-    final token = teamGenerationAccess?.composerToken;
-    if (token == null || token.isEmpty) {
-      throw StateError('team_generation_token_issue_failed');
-    }
-    servers['team-composer'] = resolveTeamComposerMcpTransportConfig(
-      cliRegistry: cliRegistry,
-      composerEndpoint: composerEndpoint,
-      sessionId: session.sessionId,
-      memberId: memberId,
-      cli: cli,
-      workflowToken: token,
-      isLocalNative: isLocalNative,
-      remoteBinding: remoteBinding,
-    );
-  }
-  if (workspace != null &&
-      sessionSshMcpEndpoint != null &&
-      shouldInjectSessionSshMcp(
-        workspace: workspace,
-        launchKind: launchKind,
-        remoteBinding: remoteBinding,
-      )) {
-    return extraMcpServersWithSessionSsh(
-      extra: servers,
-      config: resolveSessionSshMcpTransportConfig(
-        cliRegistry: cliRegistry,
-        sessionSshMcpEndpoint: sessionSshMcpEndpoint,
-        sessionId: session.sessionId,
-        memberId: memberId,
-        cli: cli,
-        isLocalNative: isLocalNative,
-        remoteBinding: usesSshTransport(launchKind) ? remoteBinding : null,
-      ),
-    );
-  }
-  return servers;
-}
-
-RemoteBusBinding? _catalogRemoteBindingForRuntime({
-  required RemoteBusBinding? mixedRemoteBinding,
-  required MemberAgentStatusEndpoint? agentStatus,
-}) {
-  if (mixedRemoteBinding != null) return mixedRemoteBinding;
-  if (agentStatus == null || !agentStatus.isRemote) return null;
-  final port = agentStatus.port;
-  final token = agentStatus.token?.trim() ?? '';
-  if (port == null || token.isEmpty) return null;
-  return RemoteBusBinding(token: token, idleHttpTunnelPort: port);
-}
 
 /// Hooks [SessionShellConnector] delegates back to [SessionLaunchService].
 abstract interface class SessionShellConnectorDelegate {
@@ -175,7 +50,8 @@ abstract interface class SessionShellConnectorDelegate {
     required TeamProfile team,
     required TeamMemberConfig member,
     required AppSession session,
-    required ChatTab tab,
+    required String sessionId,
+    required bool teamBusInstalled,
     String? remoteMemberKeyForRollback,
     Map<String, Map<String, Object?>>? extraMcpServers,
   });
@@ -188,7 +64,7 @@ abstract interface class SessionShellConnectorDelegate {
 }
 
 /// Attaches a member shell after launch prep, lifecycle gating, and SSH/bus setup.
-class SessionShellConnector {
+class SessionShellConnector implements SessionShellConnectPort {
   SessionShellConnector(
     this._host,
     this._delegate, {
@@ -215,47 +91,52 @@ class SessionShellConnector {
   ChatTabStore get _tabStore => _host.tabStore;
 
   bool connectShellStillValid({
-    required ChatTab tab,
+    required String sessionId,
     required TerminalSession shell,
   }) {
     if (_host.isClosed) return false;
-    if (_tabStore.openTabBySessionId(tab.info.id) == null) return false;
+    if (_tabStore.getOpenTabBySessionId(sessionId) == null) return false;
     if (shell.isDisposed) return false;
     return true;
   }
 
   void abortConnectShellIfStale({
-    required ChatTab tab,
+    required String sessionId,
     required TerminalSession shell,
     required String reason,
     String? remoteMemberKey,
   }) {
     if (_host.isClosed) return;
-    if (connectShellStillValid(tab: tab, shell: shell)) return;
+    if (connectShellStillValid(sessionId: sessionId, shell: shell)) return;
     appLogger.d(
-      '[session-launch] connectShell aborted session=${tab.info.id} '
+      '[session-launch] connectShell aborted session=$sessionId '
       'reason=$reason',
     );
     if (remoteMemberKey != null) {
-      unawaited(tab.closeMemberRemotePlane(remoteMemberKey));
+      unawaited(
+        _tabStore
+            .getOpenTabBySessionId(sessionId)
+            ?.closeMemberRemotePlane(remoteMemberKey),
+      );
     }
-    if (_host.isSessionConnecting(tab.info.id)) {
-      _host.finishSessionConnect(tab.info.id);
+    if (_host.isSessionConnecting(sessionId)) {
+      _host.finishSessionConnect(sessionId);
     }
   }
 
   /// Releases the temporary remote plane and, when requested, surfaces the
   /// original attach failure caught by the owning connection executor.
+  @override
   Future<void> cleanupAfterFailure({
-    required ChatTab tab,
     required String sessionId,
     required String memberId,
     required Object error,
     required StackTrace stackTrace,
     required bool reportFailure,
   }) async {
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
     try {
-      await tab.closeMemberRemotePlane(memberId);
+      await tab?.closeMemberRemotePlane(memberId);
     } on Object catch (cleanupError, cleanupStackTrace) {
       appLogger.e(
         '[session-launch] remote plane cleanup failed '
@@ -273,8 +154,9 @@ class SessionShellConnector {
     );
   }
 
+  @override
   Future<ConnectShellResult> connect({
-    required ChatTab tab,
+    required String sessionId,
     required AppSession session,
     required TerminalSession shell,
     SessionRepository? repo,
@@ -283,6 +165,14 @@ class SessionShellConnector {
     TeamMemberConfig? member,
     Workspace? workspace,
   }) async {
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
+    if (tab == null) {
+      appLogger.d(
+        '[session-launch] connectShell aborted session=$sessionId '
+        'reason=missing_tab',
+      );
+      return ConnectShellResult.failed;
+    }
     var connectSession = tab.persistedSession ?? session;
     final isPersonal = connectSession.sessionTeam.trim().isEmpty;
     final memberLabel = isPersonal
@@ -348,9 +238,9 @@ class SessionShellConnector {
           )
         : null;
 
-    if (!connectShellStillValid(tab: tab, shell: shell)) {
+    if (!connectShellStillValid(sessionId: sessionId, shell: shell)) {
       abortConnectShellIfStale(
-        tab: tab,
+        sessionId: sessionId,
         shell: shell,
         reason: 'tab_or_shell_gone_after_member_binding',
       );
@@ -464,7 +354,6 @@ class SessionShellConnector {
         );
         activeSession = await _persister.syncFollowedPresetOnConnect(
           session: activeSession,
-          tab: tab,
           isPersonal: true,
           memberId: activeSession.sessionId,
         );
@@ -477,15 +366,15 @@ class SessionShellConnector {
             '[session-launch] mixed bus remote setup start '
             'session=${tab.info.id} member=$preflightMemberId',
           );
-          final resolver = _host.remoteBusResolver;
-          if (resolver != null) {
+          final setup = _host.remoteBusSetup;
+          if (setup != null) {
             remoteBinding = await _bindMixedRemoteBus(
               tab: tab,
               memberId: preflightMemberId,
               launchCli: launchCli,
               launchTarget: launchTarget,
               memberSshSession: memberSshSession,
-              resolver: resolver,
+              setup: setup,
             );
           } else {
             launchWarnings.add('remote_bus_binding_unavailable');
@@ -565,7 +454,6 @@ class SessionShellConnector {
         );
         activeSession = await _persister.syncFollowedPresetOnConnect(
           session: activeSession,
-          tab: tab,
           isPersonal: false,
           memberId: preflightMemberId,
           lockedCli: launchCli,
@@ -579,9 +467,9 @@ class SessionShellConnector {
           ? activeSession.sessionId
           : preflightMemberId;
 
-      if (!connectShellStillValid(tab: tab, shell: shell)) {
+      if (!connectShellStillValid(sessionId: sessionId, shell: shell)) {
         abortConnectShellIfStale(
-          tab: tab,
+          sessionId: sessionId,
           shell: shell,
           reason: 'tab_or_shell_gone_after_prepare_connect',
           remoteMemberKey: remoteMemberKeyForRollback,
@@ -594,7 +482,8 @@ class SessionShellConnector {
           team: team,
           member: member,
           session: activeSession,
-          tab: tab,
+          sessionId: sessionId,
+          teamBusInstalled: tab.teamBus != null,
           remoteMemberKeyForRollback: remoteMemberKeyForRollback,
           extraMcpServers: extraMcpServers,
         );
@@ -617,9 +506,9 @@ class SessionShellConnector {
         );
       }
 
-      if (!connectShellStillValid(tab: tab, shell: shell)) {
+      if (!connectShellStillValid(sessionId: sessionId, shell: shell)) {
         abortConnectShellIfStale(
-          tab: tab,
+          sessionId: sessionId,
           shell: shell,
           reason: 'tab_or_shell_gone_after_ssh_constraints',
           remoteMemberKey: remoteMemberKeyForRollback,
@@ -654,16 +543,15 @@ class SessionShellConnector {
       }
       _host.emitLaunchWarnings([...launchWarnings, ...plan.warnings]);
       await _persister.persistNativeSessionId(
-        tab: tab,
         session: activeSession,
         binding: binding,
         plan: plan,
         repo: repo,
       );
 
-      if (!connectShellStillValid(tab: tab, shell: shell)) {
+      if (!connectShellStillValid(sessionId: sessionId, shell: shell)) {
         abortConnectShellIfStale(
-          tab: tab,
+          sessionId: sessionId,
           shell: shell,
           reason: 'tab_or_shell_gone_after_persist_native_id',
           remoteMemberKey: remoteMemberKeyForRollback,
@@ -991,7 +879,7 @@ class SessionShellConnector {
     required CliTool launchCli,
     required RuntimeTarget launchTarget,
     required SshMemberSession memberSshSession,
-    required RemoteBusBindingResolver resolver,
+    required RemoteMemberBusSetupPort setup,
     Duration timeout = const Duration(seconds: 45),
   }) async {
     Future<RemoteBusBinding> run() async {
@@ -1007,22 +895,18 @@ class SessionShellConnector {
         'session=${tab.info.id} member=$memberId',
       );
       final arch = archFromUname(await memberSshSession.run('uname -m'));
-      final mount = buildRemoteBusMount(
-        memberSession: memberSshSession,
-        gateway: _host.teammateBusMcpGateway,
-        registration: tab.busSessionRegistration!,
-        storageFs: workCtx.fs,
-        arch: arch,
-      );
-      tab.memberRemoteBusMounts[memberId] = mount;
       appLogger.d(
         '[session-launch] mixed bus remote bind '
         'session=${tab.info.id} member=$memberId arch=$arch cli=${launchCli.value}',
       );
-      final binding = await resolver.bindMember(
-        mount: mount,
+      final binding = await setup.mountAndBindMixed(
+        tab: tab,
         memberId: memberId,
         cli: launchCli,
+        memberSession: memberSshSession,
+        gateway: _host.teammateBusMcpGateway,
+        storageFs: workCtx.fs,
+        arch: arch,
       );
       appLogger.d(
         '[session-launch] mixed bus remote setup ready '
@@ -1111,15 +995,16 @@ class SessionShellConnector {
         launchTarget.id,
       );
       final arch = archFromUname(await memberSshSession.run('uname -m'));
-      final mount = buildStatusOnlyRemoteBusMount(
+      final setup = _host.remoteBusSetup ?? RemoteMemberBusSetup();
+      final binding = await setup.mountAndBindStatusOnly(
+        tab: tab,
+        memberId: memberId,
         memberSession: memberSshSession,
         gateway: gateway,
         storageFs: workCtx.fs,
         arch: arch,
         token: token,
       );
-      tab.memberRemoteBusMounts[memberId] = mount;
-      final binding = await mount.bindHttpMember(memberId);
       appLogger.d(
         '[agent-status] status-only SSH tunnel ready '
         'session=$sessionId member=$memberId cli=${launchCli.value}',

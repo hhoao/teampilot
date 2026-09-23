@@ -21,10 +21,11 @@ import 'teammate_bus_mcp_config.dart';
 import 'teammate_bus_mcp_handler.dart';
 import 'teammate_bus_mcp_http_delegate.dart';
 import 'teammate_bus_session_registry.dart';
+import 'teammate_bus_mcp_gateway_port.dart';
 import '../remote/bus_raw_socket_server.dart';
 
 /// App-wide loopback HTTP gateway routing MCP requests to per-session handlers.
-class TeammateBusMcpGateway {
+class TeammateBusMcpGateway implements TeammateBusMcpGatewayPort {
   TeammateBusMcpGateway({this.progressInterval = const Duration(seconds: 20)});
 
   final Duration progressInterval;

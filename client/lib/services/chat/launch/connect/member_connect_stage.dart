@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../session/chat_tab_store.dart';
-import '../../../../cubits/chat_state.dart';
+import '../chat_state_port.dart';
 import '../../session/chat_tab.dart';
 import '../../session/session_connect_request.dart';
 import '../../session/session_open_request.dart';
@@ -16,6 +16,7 @@ import '../../../../repositories/session_repository.dart';
 import '../../../terminal/terminal_session.dart';
 import '../../../../utils/logging/logger.dart';
 import 'member_connect_types.dart';
+import 'launch_generation_store.dart';
 import '../session/session_default_materializer.dart';
 import '../session/session_launch_coordinator.dart';
 import 'session_connect_job.dart';
@@ -30,7 +31,7 @@ class MemberConnectStage {
   MemberConnectStage({
     required SessionLaunchHost host,
     required ChatTabStore tabStore,
-    required ChatState Function() state,
+    required ChatDataSnapshot Function() state,
     required SessionDefaultMaterializer materializer,
     required SessionLaunchIntentPort coordinator,
     required SessionConnectSchedulerPort scheduler,
@@ -47,6 +48,7 @@ class MemberConnectStage {
     required ChatTab? Function() activeTab,
     required bool Function() autoLaunchAllMembersOnConnect,
     required Workspace? Function(String workspaceId) workspaceById,
+    LaunchGenerationStore? generations,
   }) : _host = host,
        _tabStore = tabStore,
        _state = state,
@@ -62,11 +64,12 @@ class MemberConnectStage {
        _scheduleTeamConfigValidation = scheduleTeamConfigValidation,
        _activeTab = activeTab,
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
-       _workspaceById = workspaceById;
+       _workspaceById = workspaceById,
+       _generations = generations ?? LaunchGenerationStore();
 
   final SessionLaunchHost _host;
   final ChatTabStore _tabStore;
-  final ChatState Function() _state;
+  final ChatDataSnapshot Function() _state;
   final SessionDefaultMaterializer _materializer;
   final SessionLaunchIntentPort _coordinator;
   final SessionConnectSchedulerPort _scheduler;
@@ -82,6 +85,7 @@ class MemberConnectStage {
   final ChatTab? Function() _activeTab;
   final bool Function() _autoLaunchAllMembersOnConnect;
   final Workspace? Function(String workspaceId) _workspaceById;
+  final LaunchGenerationStore _generations;
 
   /// Connects [request]'s target. Returns [LaunchSkipped] when an in-flight
   /// connect already owns it.
@@ -175,7 +179,7 @@ class MemberConnectStage {
             await scheduleMemberConnectAndWait(
               team,
               member,
-              tab,
+              tab.info.id,
               repo: r,
               reason: LaunchReason.memberSelected,
             );
@@ -199,7 +203,7 @@ class MemberConnectStage {
     await scheduleMemberConnectAndWait(
       team,
       member,
-      tab,
+      tab.info.id,
       repo: r,
       reason: LaunchReason.memberSelected,
     );
@@ -256,7 +260,7 @@ class MemberConnectStage {
   void scheduleMemberConnect(
     TeamProfile team,
     TeamMemberConfig member,
-    ChatTab tab, {
+    String sessionId, {
     bool selectMember = true,
     LaunchReason? reason,
   }) {
@@ -264,7 +268,7 @@ class MemberConnectStage {
       _scheduleMemberConnect(
         team,
         member,
-        tab,
+        sessionId,
         selectMember: selectMember,
         reason: reason,
       ),
@@ -279,14 +283,14 @@ class MemberConnectStage {
   Future<void> scheduleMemberConnectAndWait(
     TeamProfile team,
     TeamMemberConfig member,
-    ChatTab tab, {
+    String sessionId, {
     SessionRepository? repo,
     bool selectMember = true,
     LaunchReason? reason,
   }) => _scheduleMemberConnect(
     team,
     member,
-    tab,
+    sessionId,
     repo: repo,
     selectMember: selectMember,
     reason: reason,
@@ -296,19 +300,21 @@ class MemberConnectStage {
   Future<void> _scheduleMemberConnect(
     TeamProfile team,
     TeamMemberConfig member,
-    ChatTab tab, {
+    String sessionId, {
     SessionRepository? repo,
     bool selectMember = true,
     LaunchReason? reason,
     bool waitForCompletion = false,
   }) async {
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
+    if (tab == null) return;
     final memberId = member.id.trim();
     if (memberId.isEmpty || !member.isValid) return;
     if (selectMember) {
       _host.assignSelectedMember(tab, memberId);
     }
     final activeSession =
-        tab.persistedSession ?? _sessionForMemberConnect(tab, team);
+        tab.persistedSession ?? _sessionForMemberConnect(sessionId, team);
     if (activeSession == null) {
       _host.failSessionConnect(
         tab.info.id,
@@ -342,10 +348,9 @@ class MemberConnectStage {
       repo: repo ?? _host.sessionRepository,
     );
     final job = SessionConnectJob(
-      tab: tab,
       session: activeSession,
       request: request,
-      generation: tab.launchGeneration,
+      generation: _generations.current(sessionId),
       workspace: request.workspace,
       team: team,
       member: member,
@@ -379,7 +384,7 @@ class MemberConnectStage {
     await scheduleMemberConnectAndWait(
       team,
       members.first,
-      tab,
+      tab.info.id,
       repo: repo,
       selectMember: false,
       reason: LaunchReason.restore,
@@ -391,7 +396,7 @@ class MemberConnectStage {
         scheduleMemberConnectAndWait(
           team,
           member,
-          tab,
+          tab.info.id,
           repo: repo,
           selectMember: false,
           reason: LaunchReason.restore,
@@ -471,7 +476,7 @@ class MemberConnectStage {
       return;
     }
 
-    final tab = _tabStore.openTabBySessionId(session.sessionId);
+    final tab = _tabStore.getOpenTabBySessionId(session.sessionId);
     if (tab == null) {
       _host.failSessionConnect(session.sessionId, 'Session tab is not open.');
       return;
@@ -498,7 +503,7 @@ class MemberConnectStage {
     }
     tab.persistedSession = launchSession;
 
-    if (_tabStore.openTabBySessionId(session.sessionId) == null) {
+    if (_tabStore.getOpenTabBySessionId(session.sessionId) == null) {
       appLogger.w(
         '[session-launch] existing session connect tab not open '
         'session=${session.sessionId} active=${_tabStore.activeWorkspaceId} '
@@ -646,7 +651,7 @@ bool shouldSerializeConnect({
 }) {
   if (request case ExistingSessionConnect(:final session, :final member)) {
     final memberId = member?.id;
-    final tab = tabStore.openTabBySessionId(session.sessionId);
+    final tab = tabStore.getOpenTabBySessionId(session.sessionId);
     final memberOwnedElsewhere =
         memberId != null &&
         memberId.isNotEmpty &&

@@ -1,6 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/chat/session/chat_tab.dart';
-import 'package:teampilot/services/chat/session/chat_tab_info.dart';
 import 'package:teampilot/services/chat/launch/session_launch_host.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/runtime_target.dart';
@@ -20,7 +18,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/chat/launch/connect/session_lifecycle_connect_coordinator.dart';
 import 'package:teampilot/services/chat/launch/connect/session_connect_job.dart';
 import 'package:teampilot/services/chat/launch/connect/session_shell_connector.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_constants.dart';
 import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_transport.dart';
@@ -121,10 +119,6 @@ void main() {
             (_, _, _, {bool selectMember = false, LaunchReason? reason}) {},
         tabOpen: (_) => true,
       );
-      final tab = ChatTab(
-        info: const ChatTabInfo(id: 'sess', title: 'S', subtitle: ''),
-        cliTeamName: 'team',
-      )..persistedSession = session;
 
       const memberHome = '/data/tp/members/m1/cursor/home';
       final layout = CursorHomeLayout(pathContext: fs.pathContext);
@@ -156,7 +150,8 @@ void main() {
         team: team,
         member: member,
         session: session,
-        tab: tab,
+        sessionId: session.sessionId,
+        teamBusInstalled: false,
         extraMcpServers: extra,
       );
 

@@ -5,7 +5,7 @@ import '../../../../models/team_config.dart';
 import '../../../../utils/logging/logger.dart';
 import '../../../cli/installer_types.dart';
 import '../../../storage/work_target_canonicalizer.dart';
-import 'launch_artifacts.dart';
+import 'workspace_provision_types.dart';
 import 'workspace_provisioner.dart';
 
 /// Tracks workspace-level provision jobs per (target, workspace, cli).
@@ -134,7 +134,7 @@ class WorkspaceProvisionCoordinator {
       );
     });
     try {
-      final result = await provisioner.provision(
+      final result = await provisioner.getProvision(
         target: target,
         workspaceId: key.workspaceId,
         cli: key.cli,

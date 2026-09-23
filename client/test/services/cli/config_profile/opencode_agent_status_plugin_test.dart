@@ -12,7 +12,7 @@ import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dar
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/hook/glue_script_builder.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/resource/providers/hook_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/runtime_event_hook_contribution_provider.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';

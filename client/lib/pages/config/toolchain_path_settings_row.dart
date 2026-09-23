@@ -220,7 +220,7 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
       );
       return ToolchainExecutableDiscovery().locateRemoteTool(
         toolId: widget.toolId,
-        run: RemoteCliLocator.runnerForClient(client),
+        run: RemoteCliLocator.getRunnerForClient(client),
       );
     }
     return ToolchainExecutableDiscovery().locateLocalTool(widget.toolId);

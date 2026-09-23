@@ -20,7 +20,7 @@ import 'package:teampilot/services/cli/registry/launch/cli_launch_capability_err
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_headless_launch_constraint.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_headless_launch_context.dart';
-import 'package:teampilot/services/chat/launch/session/launch_command_builder.dart';
+import 'package:teampilot/services/chat/launch/connect/launch_command_builder.dart';
 
 void main() {
   test('assembles OpenCode session, provider/model, agent, and raw extras', () {

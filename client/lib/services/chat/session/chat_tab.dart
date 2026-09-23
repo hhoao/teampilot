@@ -107,12 +107,6 @@ class ChatTab {
   /// Per-member remote workspace/CLI provision UI (SSH off-home connect).
   final Map<String, MemberRemoteProvisionProgress> memberRemoteProvision = {};
 
-  /// Incremented when a new open/connect is requested; async prep aborts when
-  /// this no longer matches.
-  int launchGeneration = 0;
-
-  void bumpLaunchGeneration() => launchGeneration++;
-
   Iterable<TerminalSession> get sessions sync* {
     if (resumeSession != null) yield resumeSession!;
     yield* memberShells.values;

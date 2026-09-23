@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../../models/workspace_folder.dart';
-import '../../services/chat/launch/session/launch_command_builder.dart';
+import '../../services/chat/launch/connect/launch_command_builder.dart';
 
 /// Normalizes a filesystem path for stable comparison and storage.
 ///

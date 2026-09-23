@@ -86,7 +86,7 @@ void main() {
       await drainPendingAsyncWork();
       await postFrame.flush();
 
-      final tab = cubit.tabStore.openTabBySessionId(session.sessionId)!;
+      final tab = cubit.tabStore.getOpenTabBySessionId(session.sessionId)!;
       final memberId = team.members.first.id;
 
       final shell = FakeTerminalSession(
@@ -185,7 +185,7 @@ void main() {
       await drainPendingAsyncWork();
       await postFrame.flush();
 
-      final tab = cubit.tabStore.openTabBySessionId(session.sessionId)!;
+      final tab = cubit.tabStore.getOpenTabBySessionId(session.sessionId)!;
       final memberId = team.members.first.id;
 
       // A shell that is present but NOT running (disconnected) is not reclaimable.

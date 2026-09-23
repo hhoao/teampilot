@@ -128,7 +128,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   /// the session down), independent of whether the terminal is currently
   /// running, reclaimed for idle, or exited.
   bool _sessionHasOpenTab(ChatCubit chat, String sessionId) =>
-      chat.tabStore.openTabBySessionId(sessionId) != null;
+      chat.tabStore.getOpenTabBySessionId(sessionId) != null;
 
   Future<void> _confirmAndDelete(BuildContext context) async {
     final l10n = context.l10n;
@@ -377,7 +377,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     if (_duplicateInFlight) return false;
     final chat = _chatCubit;
     if (chat == null) return false;
-    final tab = chat.tabStore.openTabBySessionId(session.sessionId);
+    final tab = chat.tabStore.getOpenTabBySessionId(session.sessionId);
     return tab == null ||
         !(tab.isRunning || tab.membersPendingConnect.isNotEmpty);
   }

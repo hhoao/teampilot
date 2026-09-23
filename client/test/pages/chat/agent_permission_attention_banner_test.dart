@@ -171,7 +171,7 @@ void main() {
       (session.sessionId, SessionWorkbenchView.terminal),
     ]);
     expect(
-      chat.tabStore.openTabBySessionId(session.sessionId)?.workbenchView,
+      chat.tabStore.getOpenTabBySessionId(session.sessionId)?.workbenchView,
       SessionWorkbenchView.terminal,
     );
     expect(find.byKey(AppKeys.agentPermissionAttentionBanner), findsNothing);

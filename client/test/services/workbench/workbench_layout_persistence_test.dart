@@ -318,8 +318,8 @@ void main() {
         expect(workbench.centerLayout(_ws).groups.length, 2);
         // …and each restored session tab resolves to a ChatTab runtime, so
         // WorkbenchBody can find its session instead of painting blank.
-        expect(chat.tabStore.openTabBySessionId('s1'), isNotNull);
-        expect(chat.tabStore.openTabBySessionId('s2'), isNotNull);
+        expect(chat.tabStore.getOpenTabBySessionId('s1'), isNotNull);
+        expect(chat.tabStore.getOpenTabBySessionId('s2'), isNotNull);
       });
     },
   );
@@ -387,7 +387,7 @@ void main() {
       await persistence.restoreForWorkspace(ws.workspaceId);
 
       expect(chat.sessionHasDocument(created.sessionId), isTrue);
-      final tab = chat.tabStore.openTabBySessionId(created.sessionId);
+      final tab = chat.tabStore.getOpenTabBySessionId(created.sessionId);
       expect(tab, isNotNull);
       expect(tab!.persistedSession?.folders, isNotEmpty);
     },

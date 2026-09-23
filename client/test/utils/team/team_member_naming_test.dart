@@ -10,7 +10,11 @@ void main() {
     expect(TeamMemberNaming.slugTeamId(''), 'team');
   });
 
-  test('safeClaudePathSegment matches Claude Code sanitizeName', () {
+  test('safePathSegment matches Claude Code sanitizeName', () {
+    expect(
+      TeamMemberNaming.safePathSegment('Default Team-9'),
+      'default-team-9',
+    );
     expect(
       ClaudeTeamRosterService.safeClaudePathSegment('Default Team-9'),
       'default-team-9',

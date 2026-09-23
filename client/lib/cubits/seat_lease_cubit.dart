@@ -4,6 +4,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../services/agent_status/agent_attention_state.dart' show agentSeatKey;
+import '../services/agent_status/seat_lease_port.dart';
 import '../services/agent_status/seat_lease.dart';
 import '../utils/logging/logger.dart';
 
@@ -60,7 +61,7 @@ class SeatLeaseState extends Equatable {
 /// Holds per-seat keep-alive leases ("the CLI process must survive").
 /// Driven by `seatLeaseProjection` from the runtime-event gateway; consumed
 /// by the idle terminal reclaim. Independent of attention semantics.
-class SeatLeaseCubit extends Cubit<SeatLeaseState> {
+class SeatLeaseCubit extends Cubit<SeatLeaseState> implements SeatLeasePort {
   SeatLeaseCubit({DateTime Function()? clock, Duration? pruneInterval})
     : _clock = clock ?? DateTime.now,
       super(const SeatLeaseState()) {

@@ -33,7 +33,7 @@ void main() {
     host.state = ChatState(sessions: [session()]);
     sync = SessionPromptMetadataSync(
       host: host,
-      state: () => host.state,
+      state: () => host.stateSnapshot(),
       nowMs: () => nowMs,
     );
   });
@@ -168,7 +168,6 @@ class _FakeRepo extends Fake implements SessionRepository {
 class _FakeHost implements SessionLaunchHost {
   _FakeHost(this._repo);
 
-  @override
   ChatState state = const ChatState();
 
   @override
@@ -188,7 +187,6 @@ class _FakeHost implements SessionLaunchHost {
   @override
   SessionRepository? get sessionRepository => _repo;
 
-  @override
   void applyState(ChatState next) => state = next;
 
   @override

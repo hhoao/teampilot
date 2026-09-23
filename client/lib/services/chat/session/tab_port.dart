@@ -1,5 +1,5 @@
 import '../../../models/team_config.dart';
-import '../launch/team_config_launch_validator.dart';
+import '../launch/session/team_config_launch_validator.dart';
 import 'chat_tab_store.dart';
 import 'chat_tab.dart';
 

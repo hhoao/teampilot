@@ -1,11 +1,11 @@
-import '../cli/registry/capabilities/plugin_capability.dart';
-import '../cli/registry/cli_tool_registry.dart';
-import '../../models/team_config.dart';
-import '../../utils/logging/logger.dart';
-import '../io/filesystem.dart';
-import 'materialization_manifest.dart';
-import 'remote_credential_materializer.dart';
-import 'work_machine_materializer.dart';
+import '../../../cli/registry/capabilities/plugin_capability.dart';
+import '../../../cli/registry/cli_tool_registry.dart';
+import '../../../../models/team_config.dart';
+import '../../../../utils/logging/logger.dart';
+import '../../../io/filesystem.dart';
+import '../../../remote/materialization_manifest.dart';
+import '../../../remote/remote_credential_materializer.dart';
+import '../../../remote/work_machine_materializer.dart';
 
 /// Loads the locally-generated credential files for [cli] (per-CLI credential
 /// services produce them locally). Injected so the work-machine materialize is

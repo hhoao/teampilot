@@ -203,7 +203,7 @@ MemberConnectStage _stageForAllMembers({
   return MemberConnectStage(
     host: host,
     tabStore: tabStore,
-    state: () => host.state,
+    state: () => host.stateSnapshot(),
     materializer: materializer,
     coordinator: coordinator,
     scheduler: scheduler,
@@ -240,7 +240,7 @@ class _RecordingScheduler implements SessionConnectSchedulerPort {
   }
 
   @override
-  void cancelForTab(ChatTab tab) {}
+  void cancelForSession(String sessionId) {}
 }
 
 class _NoopLaunchCoordinator implements SessionLaunchIntentPort {
@@ -300,7 +300,6 @@ class _CapturingHost implements SessionLaunchHost {
          isClosed: () => false,
        );
 
-  @override
   ChatState state;
 
   @override
@@ -345,7 +344,6 @@ class _CapturingHost implements SessionLaunchHost {
   @override
   set activeTeam(TeamProfile? team) {}
 
-  @override
   void applyState(ChatState next) => state = next;
 
   @override

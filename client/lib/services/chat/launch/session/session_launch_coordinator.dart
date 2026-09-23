@@ -1,7 +1,6 @@
 import 'package:uuid/uuid.dart';
 
 import '../../session/chat_tab_store.dart';
-import '../../session/chat_tab.dart';
 import '../../session/session_create_request.dart';
 import '../../session/session_open_request.dart';
 import '../../session/session_open_status.dart';
@@ -21,7 +20,8 @@ import '../../../../utils/logging/logger.dart';
 import '../../../../utils/team/team_member_naming.dart';
 import '../connect/session_connect_job.dart';
 import '../connect/session_connect_scheduler.dart';
-import '../tab/session_tab_surface_coordinator.dart';
+import '../connect/launch_generation_store.dart';
+import 'session_tab_surface_coordinator.dart';
 import 'session_launch_open_validator.dart';
 import 'session_launch_workspace_index.dart';
 import 'session_provisional_builder.dart';
@@ -54,7 +54,10 @@ abstract interface class SessionLaunchIntentPort {
 
 /// Existing-tab reconnect intent used by SSH profile changes.
 abstract interface class SessionReconnectIntentPort {
-  Future<void> reconnectTab(ChatTab tab, Iterable<SessionOpenRequest> requests);
+  Future<void> reconnectTab(
+    String sessionId,
+    Iterable<SessionOpenRequest> requests,
+  );
 }
 
 /// Coordinates create/open intent and emits immutable connect jobs.
@@ -68,13 +71,15 @@ class SessionLaunchCoordinator
     required SessionLaunchWorkspaceIndex Function() workspaceIndex,
     Uuid uuid = const Uuid(),
     OpenMemberIntent? openMemberIntent,
+    LaunchGenerationStore? generations,
   }) : _host = host,
        _tabStore = tabStore,
        _tabSurface = tabSurface,
        _scheduler = scheduler,
        _workspaceIndex = workspaceIndex,
        _uuid = uuid,
-       _openMemberIntent = openMemberIntent;
+       _openMemberIntent = openMemberIntent,
+       _generations = generations ?? LaunchGenerationStore();
 
   final SessionLaunchHost _host;
   final ChatTabStore _tabStore;
@@ -83,6 +88,7 @@ class SessionLaunchCoordinator
   final SessionLaunchWorkspaceIndex Function() _workspaceIndex;
   final Uuid _uuid;
   final OpenMemberIntent? _openMemberIntent;
+  final LaunchGenerationStore _generations;
 
   Workspace? _workspaceById(String workspaceId) =>
       _workspaceIndex().byId(workspaceId);
@@ -254,7 +260,7 @@ class SessionLaunchCoordinator
 
     final workspace = request.workspace ?? _workspaceById(session.workspaceId);
     final connect = _shouldAutoConnect(request);
-    final existing = _tabStore.openTabBySessionId(session.sessionId);
+    final existing = _tabStore.getOpenTabBySessionId(session.sessionId);
     final surfaced = existing == null
         ? _tabSurface.surfaceNewTab(
             request: request,
@@ -294,13 +300,13 @@ class SessionLaunchCoordinator
 
   @override
   Future<void> reconnectTab(
-    ChatTab tab,
+    String sessionId,
     Iterable<SessionOpenRequest> requests,
   ) async {
     final pending = requests.toList(growable: false);
     if (pending.isEmpty) return;
-    _scheduler.cancelForTab(tab);
-    tab.bumpLaunchGeneration();
+    _scheduler.cancelForSession(sessionId);
+    final generation = _generations.bump(sessionId);
     for (final request in pending) {
       final blocked = validateSessionOpenRequest(
         request: request,
@@ -310,19 +316,16 @@ class SessionLaunchCoordinator
       if (blocked != null) continue;
       final workspace =
           request.workspace ?? _workspaceById(request.session.workspaceId);
-      final surfaced = SessionTabSurfaceResult(
-        tab: tab,
-        session: request.session,
-        generation: tab.launchGeneration,
-        workspace: workspace,
-        connect: true,
-        reused: true,
-      );
       await _scheduler.enqueue(
-        _jobFor(
-          surfaced: surfaced,
+        SessionConnectJob(
+          session: request.session,
           request: request,
+          generation: generation,
+          workspace: workspace,
+          team: request.isPersonal ? null : request.team,
+          member: request.isPersonal ? null : request.member,
           reason: LaunchReason.sshReconnect,
+          reused: true,
           propagateErrors: true,
         ),
         waitForCompletion: true,
@@ -354,7 +357,6 @@ class SessionLaunchCoordinator
   }) {
     final effectiveRequest = request.withSession(surfaced.session);
     return SessionConnectJob(
-      tab: surfaced.tab,
       session: surfaced.session,
       request: effectiveRequest,
       generation: surfaced.generation,

@@ -1,33 +1,11 @@
 import 'package:equatable/equatable.dart';
-import 'package:flutter/widgets.dart';
 
 import '../models/workspace.dart';
 import '../models/app_session.dart';
 import '../models/session_activity.dart';
-import '../models/ssh_profile.dart';
-import '../models/team_config.dart';
-import '../services/io/local_filesystem.dart';
-import '../services/chat/launch/team_config_launch_validator.dart';
-import '../services/terminal/terminal_session.dart';
+import '../services/chat/launch/session/team_config_launch_validator.dart';
 
-typedef TerminalSessionFactory =
-    TerminalSession Function({required String executable, int scrollbackLines});
-
-TerminalSession defaultTerminalSessionFactory({
-  required String executable,
-  int scrollbackLines = 10000,
-}) {
-  return TerminalSession(
-    executable: executable,
-    fs: LocalFilesystem(),
-    scrollbackLines: scrollbackLines,
-  );
-}
-
-typedef PostFrameScheduler = void Function(VoidCallback callback);
-typedef SshActiveProfileResolver = SshProfile? Function();
-typedef SshProfileByIdResolver = SshProfile? Function(String profileId);
-typedef CliExecutableResolver = String Function(CliTool cli);
+export '../services/chat/launch/shell_launch_typedefs.dart';
 
 class ChatState extends Equatable {
   const ChatState({

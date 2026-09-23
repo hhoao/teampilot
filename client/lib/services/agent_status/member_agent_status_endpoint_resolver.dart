@@ -1,5 +1,5 @@
 import '../../models/runtime_target.dart';
-import '../chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
+import '../chat/team_bus/mcp/teammate_bus_mcp_gateway_port.dart';
 import '../chat/team_bus/remote/member_bus_mcp_config.dart';
 import 'member_agent_status_endpoint.dart';
 
@@ -17,7 +17,7 @@ bool needsAgentStatusOnlyHttpTunnel({
 /// [remoteBinding] covers mixed idle tunnels and status-only [bindHttpMember]
 /// results. Never pass an app-host local URL for a remote agent process.
 MemberAgentStatusEndpoint resolveMemberAgentStatusEndpoint({
-  required TeammateBusMcpGateway gateway,
+  required TeammateBusMcpGatewayPort gateway,
   required String sessionId,
   RemoteBusBinding? remoteBinding,
 }) {

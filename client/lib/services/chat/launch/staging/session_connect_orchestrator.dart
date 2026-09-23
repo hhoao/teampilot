@@ -10,10 +10,9 @@ import '../../../../utils/workspace/landing_draft_resolver.dart';
 import '../../../cli/installer_types.dart';
 import '../../../cli/registry/capabilities/cli_session_capability.dart';
 import '../../../cli/registry/cli_tool_registry.dart';
-import '../../../cli/claude/team_roster_service.dart';
-import '../../../cli/claude/capabilities/mcp_project_cleanup.dart';
+import '../../../cli/registry/capabilities/mcp_capability.dart';
 import '../../../cli/preset_resolver.dart';
-import '../../../provider/config_profile_service.dart';
+import '../config_profile_service.dart';
 import '../../../resource/resource_provider_set.dart';
 import '../../session/session_continue_overrides_apply.dart';
 import '../session/session_launch_config_snapshot.dart';
@@ -29,13 +28,20 @@ import 'manifest/manifest_executor.dart';
 import 'session_runtime_plan.dart';
 import 'session_runtime_plan_builder.dart';
 import 'manifest/work_plane_script_runner.dart';
-import '../workspace/session_bootstrap_coordinator.dart';
 import '../workspace/workspace_provision_coordinator.dart';
 
-export '../../../provider/config_profile_service.dart' show TeamLaunchOutcome;
+export '../config_profile_service.dart' show TeamLaunchOutcome;
 
 typedef ConfigProfileServiceFactory =
     Future<ConfigProfileService> Function(RuntimeContext context);
+
+class SessionBootstrapResult {
+  const SessionBootstrapResult({this.warnings = const []});
+
+  final List<String> warnings;
+
+  bool get hasWarnings => warnings.isNotEmpty;
+}
 
 /// Phase A + B orchestration for simple and team session connect.
 ///
@@ -48,10 +54,8 @@ class SessionConnectOrchestrator {
     required this.homeContext,
     required this.manifestExecutor,
     required this.runtimePlanBuilder,
-    SessionBootstrapCoordinator? sessionBootstrap,
     CliToolRegistry? registry,
-  }) : sessionBootstrap = sessionBootstrap ?? SessionBootstrapCoordinator(),
-       registry = registry ?? CliToolRegistry.builtIn();
+  }) : registry = registry ?? CliToolRegistry.builtIn();
 
   final SessionLifecycleService lifecycle;
   final WorkspaceProvisionCoordinator workspaceProvision;
@@ -59,8 +63,54 @@ class SessionConnectOrchestrator {
   final RuntimeContext Function() homeContext;
   final ManifestExecutor manifestExecutor;
   final SessionRuntimePlanBuilder runtimePlanBuilder;
-  final SessionBootstrapCoordinator sessionBootstrap;
   final CliToolRegistry registry;
+
+  final _inFlight = <String, Future<SessionBootstrapResult>>{};
+  final _done = <String, SessionBootstrapResult>{};
+
+  /// Returns a cached result when the session has already been bootstrapped,
+  /// awaits an in-flight bootstrap future, or starts a new bootstrap using
+  /// [run].
+  ///
+  /// Safe to call concurrently — only one [run] future is ever in flight per
+  /// [sessionId].
+  Future<SessionBootstrapResult> ensureBootstrapped(
+    String sessionId,
+    Future<SessionBootstrapResult> Function() run,
+  ) async {
+    final cached = _done[sessionId];
+    if (cached != null) return cached;
+
+    final inFlight = _inFlight[sessionId];
+    if (inFlight != null) return inFlight;
+
+    final future = _start(sessionId, run);
+    _inFlight[sessionId] = future;
+    return future;
+  }
+
+  Future<SessionBootstrapResult> _start(
+    String sessionId,
+    Future<SessionBootstrapResult> Function() run,
+  ) async {
+    try {
+      final result = await run();
+      _done[sessionId] = result;
+      return result;
+    } on Object catch (e, st) {
+      appLogger.w(
+        '[session-bootstrap] bootstrap failed session=$sessionId: $e',
+        error: e,
+        stackTrace: st,
+      );
+      // Cache failures too so concurrent waiters don't retry forever.
+      final failure = SessionBootstrapResult(warnings: ['$e']);
+      _done[sessionId] = failure;
+      return failure;
+    } finally {
+      _inFlight.remove(sessionId);
+    }
+  }
 
   Future<
     ({ShellLaunchSpec shellLaunch, List<String> warnings, String remoteCliPath})
@@ -254,7 +304,7 @@ class SessionConnectOrchestrator {
     // detection the underlying operations are idempotent; the bootstrap
     // coordinator provides a shared-future barrier so concurrent member
     // connects don't duplicate the work.
-    sessionBootstrap.ensureBootstrapped(
+    ensureBootstrapped(
       session.sessionId,
       () async => const SessionBootstrapResult(),
     );
@@ -333,14 +383,14 @@ class SessionConnectOrchestrator {
         agentStatus: agentStatus,
       );
 
-      await maybeRemoveStaleProjectTeammateBus(
-        fs: workContext.fs,
-        extraServers: extraMcpServers,
-        projectRoots: projectMcpRootsFromLaunch(
-          workingDirectory: workingDirectory,
-          additionalDirectories: additionalDirectories,
-        ),
-      );
+      await registry
+          .capability<McpCapability>(cli)
+          ?.maybeRemoveStaleProjectTeammateBus(
+            fs: workContext.fs,
+            extraServers: extraMcpServers,
+            workingDirectory: workingDirectory,
+            additionalDirectories: additionalDirectories,
+          );
     }
 
     appLogger.d(
@@ -376,7 +426,7 @@ class SessionConnectOrchestrator {
     // marketplace source on the target machine.
     final postFlushProfile = await configProfileFor(workContext);
     final nativeMemberId = !isSimple && team?.teamMode == TeamMode.mixed
-        ? ClaudeTeamRosterService.safeClaudePathSegment(member.id)
+        ? TeamMemberNaming.safePathSegment(member.id)
         : null;
     final nativePluginStarted = Stopwatch()..start();
     await postFlushProfile.provisionNativePlugins(

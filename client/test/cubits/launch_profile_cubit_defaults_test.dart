@@ -7,7 +7,7 @@ import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/expert_hub/builtin_member_templates.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_catalog.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 
 import '../support/post_frame_test_harness.dart';

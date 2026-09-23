@@ -1,4 +1,3 @@
-import '../../session/chat_tab.dart';
 import '../../session/session_open_request.dart';
 import '../session_launch_host.dart';
 import '../../../../models/app_session.dart';
@@ -8,9 +7,9 @@ import '../../../../models/workspace_launch_context.dart';
 import '../../../../utils/logging/logger.dart';
 import '../session/session_launch_coordinator.dart';
 import '../session/session_launch_workspace_index.dart';
-import 'session_personal_shell.dart';
+import 'ssh_reconnect_seats.dart';
 
-/// Re-enqueues affected open tabs after an SSH profile change.
+/// Re-enqueues affected open sessions after an SSH profile change.
 class SessionSshProfileReconnect {
   SessionSshProfileReconnect({
     required SessionLaunchHost host,
@@ -18,18 +17,18 @@ class SessionSshProfileReconnect {
     required WorkspaceLaunchContext Function(AppSession session)
     launchContextFor,
     required SessionLaunchWorkspaceIndex Function() workspaceIndex,
-    required Iterable<ChatTab> Function() openTabs,
+    required SshReconnectSeatPort seats,
   }) : _host = host,
        _coordinator = coordinator,
        _launchContextFor = launchContextFor,
        _workspaceIndex = workspaceIndex,
-       _openTabs = openTabs;
+       _seats = seats;
 
   final SessionLaunchHost _host;
   final SessionReconnectIntentPort _coordinator;
   final WorkspaceLaunchContext Function(AppSession session) _launchContextFor;
   final SessionLaunchWorkspaceIndex Function() _workspaceIndex;
-  final Iterable<ChatTab> Function() _openTabs;
+  final SshReconnectSeatPort _seats;
 
   Future<void> reconnect(String profileId) async {
     if (_host.isClosed) return;
@@ -37,15 +36,14 @@ class SessionSshProfileReconnect {
 
     Object? firstError;
     StackTrace? firstStack;
-    for (final tab in _openTabs()) {
+    for (final open in _seats.openSessions) {
       try {
-        final session = tab.persistedSession;
-        if (session == null) continue;
+        final session = open.session;
         final requests = session.sessionTeam.trim().isEmpty
-            ? await _personalRequests(tab, session, profileId)
-            : await _teamRequests(tab, session, profileId);
+            ? await _personalRequests(open.sessionId, session, profileId)
+            : await _teamRequests(open.sessionId, session, profileId);
         if (requests.isNotEmpty) {
-          await _coordinator.reconnectTab(tab, requests);
+          await _coordinator.reconnectTab(open.sessionId, requests);
         }
       } on Object catch (error, stackTrace) {
         firstError ??= error;
@@ -58,7 +56,7 @@ class SessionSshProfileReconnect {
   }
 
   Future<List<SessionOpenRequest>> _teamRequests(
-    ChatTab tab,
+    String sessionId,
     AppSession session,
     String profileId,
   ) async {
@@ -75,12 +73,12 @@ class SessionSshProfileReconnect {
         memberId: member.id,
       );
       if (!_targetUsesProfile(target, profileId)) continue;
-      final shell = tab.memberShells[member.id];
+      final shell = _seats.memberShell(sessionId, member.id);
       if (shell == null || shell.isDisposed || shell.isConnecting) continue;
 
       shell.disconnect();
-      await tab.closeMemberRemotePlane(member.id);
-      _host.clearAgentStatusSeat(sessionId: tab.info.id, memberId: member.id);
+      await _seats.closeMemberRemotePlane(sessionId, member.id);
+      _host.clearAgentStatusSeat(sessionId: sessionId, memberId: member.id);
       requests.add(
         SessionOpenRequest(
           session: session,
@@ -95,19 +93,19 @@ class SessionSshProfileReconnect {
   }
 
   Future<List<SessionOpenRequest>> _personalRequests(
-    ChatTab tab,
+    String sessionId,
     AppSession session,
     String profileId,
   ) async {
     final target = _host.lifecycle.launchWorkTarget(_launchContextFor(session));
     if (!_targetUsesProfile(target, profileId)) return const [];
-    final shell = displayedPersonalResumeShell(tab, session);
+    final shell = _seats.personalResumeShell(sessionId, session);
     if (shell == null || shell.isConnecting) return const [];
 
     shell.disconnect();
-    await tab.closeMemberRemotePlane(session.sessionId);
+    await _seats.closeMemberRemotePlane(sessionId, session.sessionId);
     _host.clearAgentStatusSeat(
-      sessionId: tab.info.id,
+      sessionId: sessionId,
       memberId: session.sessionId,
     );
     final workspace = _workspaceIndex().byId(session.workspaceId);

@@ -5,7 +5,7 @@ import '../../../../models/credential_probe.dart';
 import '../../../../models/credential_action_result.dart';
 import '../../../host/host_one_shot_runner.dart';
 import '../../../io/filesystem.dart';
-import '../../../chat/launch/session/launch_command_builder.dart';
+import '../../../chat/launch/connect/launch_command_builder.dart';
 import '../../../provider/credential_host_request.dart';
 import '../../../provider/credential_process_result.dart';
 import '../../../provider/provider_credential_host_runner.dart';

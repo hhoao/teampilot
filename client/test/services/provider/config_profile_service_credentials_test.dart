@@ -3,7 +3,7 @@ import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/provider/credential_binding.dart';
 import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';

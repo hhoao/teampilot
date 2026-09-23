@@ -1,7 +1,7 @@
 import 'package:teampilot/services/chat/session/chat_tab_store.dart';
 import 'package:teampilot/cubits/chat_state.dart';
 import 'package:teampilot/services/chat/session/session_data_store.dart';
-import 'package:teampilot/cubits/chat_state_port.dart';
+import 'package:teampilot/services/chat/launch/chat_state_port.dart';
 import 'package:teampilot/services/chat/launch/launch_environment_port.dart';
 import 'package:teampilot/services/chat/session/session_repository_port.dart';
 import 'package:teampilot/services/chat/session/tab_port.dart';
@@ -41,11 +41,18 @@ class _InertSnapshots implements SessionSnapshotPort {
 }
 
 class _InertChatState implements ChatStatePort {
-  @override
   ChatState state = ChatState();
 
   @override
   bool get isClosed => false;
+
+  @override
+  ChatDataSnapshot stateSnapshot() => ChatDataSnapshot(
+    workspaces: state.workspaces,
+    sessions: state.sessions,
+    visibleWorkspaces: state.visibleWorkspaces,
+    visibleSessions: state.visibleSessions,
+  );
 
   @override
   dynamic noSuchMethod(Invocation invocation) => null;

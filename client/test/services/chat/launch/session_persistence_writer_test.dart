@@ -4,7 +4,7 @@ import 'package:teampilot/cubits/chat_state.dart';
 import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/services/chat/session/chat_tab_info.dart';
 import 'package:teampilot/services/chat/session/session_data_store.dart';
-import 'package:teampilot/cubits/chat_state_port.dart';
+import 'package:teampilot/services/chat/launch/chat_state_port.dart';
 import 'package:teampilot/services/chat/launch/launch_environment_port.dart';
 import 'package:teampilot/services/chat/session/session_repository_port.dart';
 import 'package:teampilot/services/chat/session/tab_port.dart';
@@ -111,10 +111,8 @@ void main() {
   group('persistNativeSessionId', () {
     test('skips local- sessions without touching the repository', () async {
       final session = makeSession(id: 'local-1');
-      final tab = makeTab(id: 'local-1')..persistedSession = session;
 
       await build().persistNativeSessionId(
-        tab: tab,
         session: session,
         binding: null,
         plan: makePlan(nativeId: 'native-1', tool: 'claude'),
@@ -125,16 +123,13 @@ void main() {
 
     test('skips when native id or tool is missing', () async {
       final session = makeSession();
-      final tab = makeTab()..persistedSession = session;
 
       await build().persistNativeSessionId(
-        tab: tab,
         session: session,
         binding: null,
         plan: makePlan(nativeId: '', tool: 'claude'),
       );
       await build().persistNativeSessionId(
-        tab: tab,
         session: session,
         binding: null,
         plan: makePlan(nativeId: 'native-1', tool: null),
@@ -148,10 +143,12 @@ void main() {
       const member = TeamMemberConfig(id: 'm1', name: 'M1');
       final session = makeSession(members: const [member]);
       final tab = makeTab()..persistedSession = session;
+      tabs.tabStore
+        ..setActiveWorkspaceId('ws-1')
+        ..registerSession(tab);
       chatState.state = ChatState(sessions: [session]);
 
       await build().persistNativeSessionId(
-        tab: tab,
         session: session,
         binding: const SessionMemberBinding(
           rosterMemberId: 'm1',
@@ -175,12 +172,10 @@ void main() {
   group('syncFollowedPresetOnConnect', () {
     test('returns the session unchanged when nothing is stale', () async {
       final session = makeSession();
-      final tab = makeTab()..persistedSession = session;
       chatState.state = ChatState(sessions: [session]);
 
       final result = await build().syncFollowedPresetOnConnect(
         session: session,
-        tab: tab,
         isPersonal: true,
         memberId: 'm1',
       );
@@ -242,11 +237,18 @@ class _RecordingSnapshots implements SessionSnapshotPort {
 }
 
 class _FakeChatState implements ChatStatePort {
-  @override
   ChatState state = ChatState();
 
   @override
   bool isClosed = false;
+
+  @override
+  ChatDataSnapshot stateSnapshot() => ChatDataSnapshot(
+    workspaces: state.workspaces,
+    sessions: state.sessions,
+    visibleWorkspaces: state.visibleWorkspaces,
+    visibleSessions: state.visibleSessions,
+  );
 
   @override
   dynamic noSuchMethod(Invocation invocation) => null;

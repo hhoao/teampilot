@@ -1,6 +1,6 @@
 import 'remote/member_bus_mcp_config.dart';
 import 'mcp/teammate_bus_mcp_config.dart';
-import 'mcp/teammate_bus_mcp_gateway.dart';
+import 'mcp/teammate_bus_mcp_gateway_port.dart';
 
 /// Where a mixed-mode member reports turn-end idle (Stop hook / idle plugin).
 ///
@@ -27,7 +27,7 @@ class MemberBusIdleEndpoint {
   }
 
   factory MemberBusIdleEndpoint.local(
-    TeammateBusMcpGateway gateway, {
+    TeammateBusMcpGatewayPort gateway, {
     required String sessionId,
   }) => MemberBusIdleEndpoint(
     url: gateway.idleEndpoint.toString(),
