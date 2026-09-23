@@ -584,6 +584,9 @@ final class CursorProviderCapability extends CatalogModelCapability
         environment: CursorLaunchEnvironment.forMixed(
           homeRoot: agentHome,
           useWslPaths: false,
+          cursorConfigDir: CursorHomeLayout(
+            pathContext: paths.fs.pathContext,
+          ).cursorDir(agentHome),
         ),
         warnings: warnings,
       );

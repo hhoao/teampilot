@@ -137,7 +137,7 @@ void main() {
     );
 
     test(
-      'mixed contributes HOME and not CURSOR_CONFIG_DIR or plugin dir key',
+      'mixed contributes HOME and CURSOR_CONFIG_DIR pinned to isolated .cursor',
       () async {
         const team = TeamProfile(
           id: 'team-a',
@@ -166,7 +166,10 @@ void main() {
         final home = memberHome(scope);
         expect(contribution.environment['HOME'], home);
         expect(contribution.environment['USERPROFILE'], home);
-        expect(contribution.environment, isNot(contains('CURSOR_CONFIG_DIR')));
+        expect(
+          contribution.environment['CURSOR_CONFIG_DIR'],
+          fs.pathContext.join(home, '.cursor'),
+        );
         expect(
           contribution.environment.keys,
           isNot(contains(startsWith('TEAMPILOT_'))),
