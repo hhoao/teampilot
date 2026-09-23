@@ -54,6 +54,12 @@ final class PromptDeliveryCoordinator {
   final Map<RuntimeSeatKey, Future<void>> _seatTails = {};
   final Map<String, PromptDeliveryState> _liveStates = {};
 
+  /// Adapter `commands.submit` in flight per seat. Distinct from [_seatTails]
+  /// so a UserPromptSubmit hook can still confirm under the seat lock while
+  /// the adapter is polling [isAcked]. A later [submit] waits here instead of
+  /// recovering a live `submitIssued`.
+  final Map<RuntimeSeatKey, Future<void>> _adapterSubmitTails = {};
+
   /// Claimed synchronously by [issueSubmit] before its first await so an
   /// abort landing inside the real-IO `submitIssued` persist is observable:
   /// [invalidateSubmittedDelivery] records the invalidation here while the
@@ -65,55 +71,58 @@ final class PromptDeliveryCoordinator {
   final Set<String> _submitInvalidatedIds = {};
 
   /// Creates the only non-terminal delivery allowed for [request.seat].
-  /// Recovers any leftover active record first so a later operator send
-  /// cannot stay wedged until the next launch restore.
+  /// Waits for an in-flight adapter submit on this seat, then recovers any
+  /// leftover active record so a later operator send cannot stay wedged until
+  /// the next launch restore.
   ///
   /// With an explicit [PromptDeliveryRequest.deliveryId], an existing record
   /// with the same id is returned verbatim only when seat, CLI, and exact
   /// text match; a mismatch throws so callers cannot silently retarget a
   /// tracked delivery.
-  Future<PromptDelivery> submit(PromptDeliveryRequest request) =>
-      _serialized(request.seat, () async {
-        final explicitId = request.deliveryId?.trim() ?? '';
-        if (explicitId.isNotEmpty) {
-          final existing = await store.read(explicitId);
-          if (existing != null) {
-            if (existing.seat != request.seat ||
-                existing.cli != request.cli ||
-                existing.text != request.text) {
-              throw StateError(
-                'delivery id $explicitId already exists for a different '
-                'seat/cli/text',
-              );
-            }
-            _liveStates[existing.id] = existing.state;
-            return existing;
+  Future<PromptDelivery> submit(PromptDeliveryRequest request) async {
+    await _waitForAdapterSubmit(request.seat);
+    return _serialized(request.seat, () async {
+      final explicitId = request.deliveryId?.trim() ?? '';
+      if (explicitId.isNotEmpty) {
+        final existing = await store.read(explicitId);
+        if (existing != null) {
+          if (existing.seat != request.seat ||
+              existing.cli != request.cli ||
+              existing.text != request.text) {
+            throw StateError(
+              'delivery id $explicitId already exists for a different '
+              'seat/cli/text',
+            );
           }
+          _liveStates[existing.id] = existing.state;
+          return existing;
         }
-        await _recoverActiveDeliveries(request.seat);
-        final history = await store.forSeat(request.seat);
-        final now = _clock();
-        final normalizedText = normalizePromptText(request.text);
-        final delivery = PromptDelivery(
-          id: explicitId.isNotEmpty ? explicitId : _idGenerator(),
-          seat: request.seat,
-          cli: request.cli,
-          text: request.text,
-          normalizedText: normalizedText,
-          promptEpoch: _nextEpoch(history),
-          state: PromptDeliveryState.created,
-          createdAt: now,
-          updatedAt: now,
-          acceptsWeakConfirmation: !history.any(
-            (delivery) =>
-                _couldHaveIssuedSubmit(delivery) &&
-                delivery.normalizedText == normalizedText,
-          ),
-        );
-        await store.save(delivery);
-        _liveStates[delivery.id] = delivery.state;
-        return delivery;
-      });
+      }
+      await _recoverActiveDeliveries(request.seat);
+      final history = await store.forSeat(request.seat);
+      final now = _clock();
+      final normalizedText = normalizePromptText(request.text);
+      final delivery = PromptDelivery(
+        id: explicitId.isNotEmpty ? explicitId : _idGenerator(),
+        seat: request.seat,
+        cli: request.cli,
+        text: request.text,
+        normalizedText: normalizedText,
+        promptEpoch: _nextEpoch(history),
+        state: PromptDeliveryState.created,
+        createdAt: now,
+        updatedAt: now,
+        acceptsWeakConfirmation: !history.any(
+          (delivery) =>
+              _couldHaveIssuedSubmit(delivery) &&
+              delivery.normalizedText == normalizedText,
+        ),
+      );
+      await store.save(delivery);
+      _liveStates[delivery.id] = delivery.state;
+      return delivery;
+    });
+  }
 
   /// Records input readiness. Staging and submit effects remain opt-in so a
   /// terminal adapter may install a queue fence before it requests them.
@@ -170,45 +179,47 @@ final class PromptDeliveryCoordinator {
       return PromptSubmissionResult.dropped;
     }
     _submitPendingIds.remove(id);
-    final result = await commands.submit(
-      delivery,
-      canExecute: () =>
-          canExecute(id, PromptDeliveryState.submitIssued) &&
-          !_submitInvalidatedIds.contains(id),
-      // The hook-channel prompt-submit confirmation: authoritative "message
-      // committed" signal for adapters that probe a grid mirror lagging the
-      // real commit. Read from live state so a confirmation racing the
-      // adapter's poll is observed in the same submit call.
-      isAcked: () => _liveStates[id] == PromptDeliveryState.confirmed,
-    );
-    switch (result) {
-      case PromptSubmissionResult.submitted:
-        break;
-      case PromptSubmissionResult.unconfirmed:
-        // The hook may have confirmed the delivery while the adapter was
-        // still probing a stale grid mirror: the prompt really was committed,
-        // so the operator must hear success, not an unconfirmed failure.
-        if (_liveStates[id] == PromptDeliveryState.confirmed) {
-          return PromptSubmissionResult.submitted;
-        }
-        await _transitionIfUnconfirmed(
-          id,
-          PromptDeliveryState.submittedUnknown,
-        );
-      case PromptSubmissionResult.dropped:
-        await _transitionIfUnconfirmed(
-          id,
-          PromptDeliveryState.submittedUnknown,
-        );
-      case PromptSubmissionResult.failed:
-        await _transitionIfUnconfirmed(
-          id,
-          PromptDeliveryState.failed,
-          failureReason: 'terminal_surface_unavailable',
-        );
-    }
-    _submitInvalidatedIds.remove(id);
-    return result;
+    return _withAdapterSubmit(delivery.seat, () async {
+      final result = await commands.submit(
+        delivery,
+        canExecute: () =>
+            canExecute(id, PromptDeliveryState.submitIssued) &&
+            !_submitInvalidatedIds.contains(id),
+        // The hook-channel prompt-submit confirmation: authoritative "message
+        // committed" signal for adapters that probe a grid mirror lagging the
+        // real commit. Read from live state so a confirmation racing the
+        // adapter's poll is observed in the same submit call.
+        isAcked: () => _liveStates[id] == PromptDeliveryState.confirmed,
+      );
+      switch (result) {
+        case PromptSubmissionResult.submitted:
+          break;
+        case PromptSubmissionResult.unconfirmed:
+          // The hook may have confirmed the delivery while the adapter was
+          // still probing a stale grid mirror: the prompt really was committed,
+          // so the operator must hear success, not an unconfirmed failure.
+          if (_liveStates[id] == PromptDeliveryState.confirmed) {
+            return PromptSubmissionResult.submitted;
+          }
+          await _transitionIfUnconfirmed(
+            id,
+            PromptDeliveryState.submittedUnknown,
+          );
+        case PromptSubmissionResult.dropped:
+          await _transitionIfUnconfirmed(
+            id,
+            PromptDeliveryState.submittedUnknown,
+          );
+        case PromptSubmissionResult.failed:
+          await _transitionIfUnconfirmed(
+            id,
+            PromptDeliveryState.failed,
+            failureReason: 'terminal_surface_unavailable',
+          );
+      }
+      _submitInvalidatedIds.remove(id);
+      return result;
+    });
   }
 
   /// The synchronous fence terminal queues consult immediately before a PTY
@@ -392,6 +403,27 @@ final class PromptDeliveryCoordinator {
     unawaited(
       tail.then((_) {
         if (identical(_seatTails[seat], tail)) _seatTails.remove(seat);
+      }),
+    );
+    return result;
+  }
+
+  Future<void> _waitForAdapterSubmit(RuntimeSeatKey seat) =>
+      _adapterSubmitTails[seat] ?? Future<void>.value();
+
+  Future<T> _withAdapterSubmit<T>(
+    RuntimeSeatKey seat,
+    Future<T> Function() action,
+  ) {
+    final previous = _adapterSubmitTails[seat] ?? Future<void>.value();
+    final result = previous.then((_) => action());
+    final tail = result.then<void>((_) {}, onError: (_) {});
+    _adapterSubmitTails[seat] = tail;
+    unawaited(
+      tail.then((_) {
+        if (identical(_adapterSubmitTails[seat], tail)) {
+          _adapterSubmitTails.remove(seat);
+        }
       }),
     );
     return result;

@@ -910,6 +910,7 @@ final class CliMessageMatrixHarness {
                 directToPty: directToPty,
               ),
       applyFirstPromptTitle: chat.applyFirstPromptTitle,
+      abortMemberInject: chat.sessionRuntime.abortMemberInject,
     );
     lastSubmitResult = result;
 

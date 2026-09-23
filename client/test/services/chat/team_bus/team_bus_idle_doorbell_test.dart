@@ -146,7 +146,7 @@ void main() {
     );
   });
 
-  test('worker idle announce doorbells virgin lead at prompt', () {
+  test('worker idle announce does not doorbell virgin lead at prompt', () {
     fakeAsync((async) {
       final launcher = FakeMemberLauncher();
       final bus = TeamBus(
@@ -180,14 +180,11 @@ void main() {
       async.flushMicrotasks();
 
       expect(bus.memberById('lead')!.inbox.unreadCount, 1);
-      expect(
-        launcher.woken.where((w) => w.memberId == 'lead').single.notice,
-        TeamBus.doorbellNotice,
-      );
+      expect(launcher.woken.where((w) => w.memberId == 'lead'), isEmpty);
     });
   });
 
-  test('non-idle mail still doorbells virgin lead at prompt', () async {
+  test('non-idle mail does not doorbell virgin lead at prompt', () async {
     final launcher = FakeMemberLauncher();
     final bus = TeamBus(launcher: launcher);
     bus.declareMember(
@@ -207,6 +204,47 @@ void main() {
     );
 
     expect(bus.memberById('lead')!.inbox.unreadCount, 1);
-    expect(launcher.woken.single.memberId, 'lead');
+    expect(launcher.woken, isEmpty);
+  });
+
+  test('idle announce doorbells a lead that has already turned', () {
+    fakeAsync((async) {
+      final launcher = FakeMemberLauncher();
+      final bus = TeamBus(
+        launcher: launcher,
+        reportsIdleViaReceiveWork: (_) => true,
+      );
+      bus
+        ..declareMember(
+          AgentNode(
+            profile: TeammateRosterProfile.minimal(
+              'lead',
+              displayName: 'Lead',
+              isTeamLead: true,
+            ),
+            lifecycle: MemberLifecycle.running,
+            activity: MemberActivity.turnDoneReady,
+          )..hasCompletedTurn = true,
+        )
+        ..declareMember(
+          AgentNode(
+            profile: TeammateRosterProfile.minimal(
+              'worker',
+              displayName: 'Worker',
+            ),
+            lifecycle: MemberLifecycle.running,
+            activity: MemberActivity.active,
+          ),
+        );
+
+      unawaited(bus.receiveWork('worker'));
+      async.flushMicrotasks();
+
+      expect(bus.memberById('lead')!.inbox.unreadCount, 1);
+      expect(
+        launcher.woken.where((w) => w.memberId == 'lead').single.notice,
+        TeamBus.doorbellNotice,
+      );
+    });
   });
 }

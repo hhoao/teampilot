@@ -11,10 +11,18 @@ PresenceTransition _run(
   BusEvent e, {
   bool hasUnread = false,
   bool doorbelled = false,
+  bool isTeamLead = false,
+  bool hasCompletedTurn = false,
 }) => PresenceReducer.reduce(
   s,
   e,
-  PresenceContext(memberId: 'm', hasUnread: hasUnread, doorbelled: doorbelled),
+  PresenceContext(
+    memberId: 'm',
+    hasUnread: hasUnread,
+    doorbelled: doorbelled,
+    isTeamLead: isTeamLead,
+    hasCompletedTurn: hasCompletedTurn,
+  ),
 );
 
 const _declared = Presence.declared();
@@ -90,6 +98,29 @@ void main() {
 
     test('at-prompt + unread → doorbell, presence stays at-prompt', () {
       final t = _run(_atPrompt, const MailArrived(), hasUnread: true);
+      expect(t.presence, _atPrompt);
+      expect(t.effects.single, isA<DoorbellEffect>());
+    });
+
+    test('virgin team-lead at prompt queues mail without doorbell', () {
+      final t = _run(
+        _atPrompt,
+        const MailArrived(),
+        hasUnread: true,
+        isTeamLead: true,
+      );
+      expect(t.presence, _atPrompt);
+      expect(t.effects, isEmpty);
+    });
+
+    test('team-lead at prompt doorbells after completing a turn', () {
+      final t = _run(
+        _atPrompt,
+        const MailArrived(),
+        hasUnread: true,
+        isTeamLead: true,
+        hasCompletedTurn: true,
+      );
       expect(t.presence, _atPrompt);
       expect(t.effects.single, isA<DoorbellEffect>());
     });

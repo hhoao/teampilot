@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
@@ -24,8 +25,52 @@ String? manifestOverlayRelativePath({
 }
 
 /// Gzip-compressed tar of [archive] for SSH overlay stdin.
-Uint8List encodeLaunchOverlayGzip(Archive archive) =>
-    GZipEncoder().encodeBytes(TarEncoder().encodeBytes(archive));
+///
+/// [TarEncoder] emits GNU `@LongLink` members with typeflag `0` (regular
+/// file). GNU tar then extracts the truncated 100-byte name, so session
+/// settings paths like `workspace/workspaces/<uuid>/sessions/<uuid>/...`
+/// never land. Write typeflag `L` so extract restores the full path.
+Uint8List encodeLaunchOverlayGzip(Archive archive) {
+  final output = OutputMemoryStream();
+  for (final entry in archive) {
+    _writeGnuTarEntry(output, entry);
+  }
+  output.writeBytes(Uint8List(1024));
+  return GZipEncoder().encodeBytes(output.getBytes());
+}
+
+void _writeGnuTarEntry(OutputMemoryStream output, ArchiveFile entry) {
+  if (entry.name.length > 100) {
+    final nameBytes = Uint8List.fromList([...utf8.encode(entry.name), 0]);
+    final longLink = TarFile()
+      ..filename = '././@LongLink'
+      ..typeFlag = 'L'
+      ..mode = 0
+      ..ownerId = 0
+      ..groupId = 0
+      ..lastModTime = 0
+      ..fileSize = nameBytes.length
+      ..contentBytes = nameBytes;
+    longLink.write(output);
+  }
+
+  final ts = TarFile()
+    ..filename = entry.name
+    ..mode = entry.mode
+    ..ownerId = entry.ownerId
+    ..groupId = entry.groupId
+    ..lastModTime = entry.lastModTime;
+  if (!entry.isFile) {
+    ts.typeFlag = TarFile.directory;
+  } else if (entry.symbolicLink != null) {
+    ts.typeFlag = TarFile.symbolicLink;
+    ts.nameOfLinkedFile = entry.symbolicLink;
+  } else {
+    ts.fileSize = entry.size;
+    ts.contentBytes = entry.getContent()?.toUint8List();
+  }
+  ts.write(output);
+}
 
 /// Short extract pipeline: `mkdir -p <workRoot> && gzip -dc | tar -x -C <workRoot>`.
 String launchOverlayExtractCommand(String workRoot) {

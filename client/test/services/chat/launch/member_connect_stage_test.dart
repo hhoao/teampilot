@@ -21,8 +21,10 @@ import 'package:teampilot/services/chat/launch/connect/session_connect_scheduler
 import 'package:teampilot/services/chat/launch/session/session_default_materializer.dart';
 import 'package:teampilot/services/chat/launch/session/session_launch_coordinator.dart';
 import 'package:teampilot/services/chat/launch/session/session_launch_workspace_index.dart';
+import 'package:teampilot/services/chat/session/session_connect_request.dart';
 import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 
+import '../../../support/fake_terminal_session.dart';
 import '../../../support/in_memory_filesystem.dart';
 
 void main() {
@@ -305,6 +307,115 @@ void main() {
       expect(executor.jobs.single.sessionId, 'sess-1');
     },
   );
+
+  test(
+    'ExistingSessionConnect does not reopen a member whose shell is already live',
+    () async {
+      final workspace = Workspace(
+        workspaceId: 'ws-1',
+        folders: const [WorkspaceFolder(path: '/local')],
+        createdAt: 1,
+      );
+      final session = AppSession(
+        sessionId: 'sess-1',
+        workspaceId: workspace.workspaceId,
+        sessionTeam: 'team-1',
+        members: const [
+          SessionMemberBinding(rosterMemberId: 'm1', taskId: 'task-m1'),
+        ],
+        createdAt: 1,
+        launchState: AppSessionLaunchState.started,
+      );
+      final tab = ChatTab(
+        info: const ChatTabInfo(id: 'sess-1', title: 'Team', subtitle: ''),
+        cliTeamName: 'team-1',
+        workspaceId: workspace.workspaceId,
+      )..persistedSession = session;
+      final running = FakeTerminalSession(fs: InMemoryFilesystem());
+      running.connect(workingDirectory: '/tmp');
+      tab.memberShells['m1'] = running;
+      final team = TeamProfile(
+        id: 'team-1',
+        name: 'Team',
+        cli: CliTool.claude,
+        members: const [TeamMemberConfig(id: 'm1', name: 'Member')],
+      );
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())
+        ..setActiveWorkspaceId(workspace.workspaceId)
+        ..registerSession(tab);
+      final host = _ImmediateFrameHost(tabStore);
+      final launchIntent = _RecordingLaunchIntent();
+      final materializer = SessionDefaultMaterializer(
+        host: host,
+        coordinator: launchIntent,
+        workspaceIndex: () => SessionLaunchWorkspaceIndex(
+          workspaces: [workspace],
+          sessions: [session],
+          usesPosixPaths: true,
+        ),
+        isTabsEmpty: () => false,
+        activeBucketKey: () => workspace.workspaceId,
+      );
+      final scheduler = SessionConnectScheduler(
+        executor: _RecordingExecutor(),
+        postFrame: host.postFrameScheduler,
+        isJobValid: (_) => true,
+        listener: const NoopLaunchFlowListener(),
+      );
+      final stage = MemberConnectStage(
+        host: host,
+        tabStore: tabStore,
+        state: () => host.stateSnapshot(),
+        materializer: materializer,
+        coordinator: launchIntent,
+        scheduler: scheduler,
+        sessionForMemberConnect: (_, __) => session,
+        disconnectSession: () {},
+        ensureSession: (_) => null,
+        appendLocalTab: (_, {required emitChange}) => tab,
+        ensureActiveSessionTab: (_, {required emitChange}) => tab,
+        resetTeamConfigValidationSurface: () {},
+        scheduleTeamConfigValidation: (_) async {},
+        activeTab: () => tab,
+        autoLaunchAllMembersOnConnect: () => false,
+        workspaceById: (id) => id == workspace.workspaceId ? workspace : null,
+      );
+
+      await stage.run(
+        ExistingSessionConnect(
+          session: session,
+          team: team,
+          member: team.members.single,
+          workspace: workspace,
+          preserveWorkbenchView: true,
+        ),
+        repo: SessionRepository(storage: fakeHomeStorage()),
+      );
+
+      expect(
+        launchIntent.openCalls,
+        isEmpty,
+        reason:
+            'History compose must not restore/relaunch a live member PTY; '
+            'that recovers in-flight doorbells to submittedUnknown',
+      );
+      expect(running.isRunning, isTrue);
+    },
+  );
+}
+
+class _RecordingLaunchIntent extends _NoopLaunchIntent {
+  final openCalls = <SessionOpenRequest>[];
+
+  @override
+  Future<SessionOpenStatus> open(
+    SessionOpenRequest request, {
+    LaunchReason reason = LaunchReason.openExisting,
+    bool waitForCompletion = false,
+  }) async {
+    openCalls.add(request);
+    return SessionOpenStatus.opened;
+  }
 }
 
 class _NoopLaunchIntent implements SessionLaunchIntentPort {
@@ -367,6 +478,12 @@ class _ImmediateFrameHost implements SessionLaunchHost {
 
   @override
   bool get hasConnectingSession => false;
+
+  @override
+  bool isSessionConnecting(String sessionId) => false;
+
+  @override
+  bool get isMaterializingInFlight => false;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => null;

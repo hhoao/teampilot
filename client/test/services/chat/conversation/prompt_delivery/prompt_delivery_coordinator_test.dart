@@ -65,6 +65,46 @@ void main() {
   });
 
   test(
+    'a later submit waits for an in-flight issueSubmit instead of recovering it',
+    () async {
+      commands.submitBegan = Completer<void>();
+      commands.submitHold = Completer<void>();
+
+      final first = await coordinator.submit(request(text: 'doorbell'));
+      final inFlight = coordinator.issueSubmit(first.id);
+      await commands.submitBegan!.future;
+
+      var secondCreated = false;
+      final secondFuture = coordinator.submit(request(text: 'compose')).then((
+        delivery,
+      ) {
+        secondCreated = true;
+        return delivery;
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        secondCreated,
+        isFalse,
+        reason: 'live submitIssued must not be recovered mid-adapter-submit',
+      );
+      expect(
+        (await store.read(first.id))!.state,
+        PromptDeliveryState.submitIssued,
+      );
+
+      commands.submitHold!.complete();
+      expect(await inFlight, PromptSubmissionResult.submitted);
+      final second = await secondFuture;
+      expect(secondCreated, isTrue);
+      expect(
+        (await store.read(first.id))!.state,
+        PromptDeliveryState.submittedUnknown,
+      );
+      expect(second.state, PromptDeliveryState.created);
+    },
+  );
+
+  test(
     'a later submit fails an unissued leftover and claims the seat',
     () async {
       final first = await coordinator.submit(request(text: 'stuck'));
@@ -447,6 +487,8 @@ final class _FakePromptDeliveryCommands implements PromptDeliveryCommands {
   final List<String> writes = [];
   final List<bool Function()> _stageFences = [];
   final List<bool Function()> _submitFences = [];
+  Completer<void>? submitBegan;
+  Completer<void>? submitHold;
 
   List<bool> get stageFence => _stageFences.map((fence) => fence()).toList();
   List<bool> get submitFence => _submitFences.map((fence) => fence()).toList();
@@ -468,6 +510,9 @@ final class _FakePromptDeliveryCommands implements PromptDeliveryCommands {
   }) async {
     _submitFences.add(canExecute);
     writes.add('submit:${delivery.id}');
+    submitBegan?.complete();
+    final hold = submitHold;
+    if (hold != null) await hold.future;
     return PromptSubmissionResult.submitted;
   }
 }

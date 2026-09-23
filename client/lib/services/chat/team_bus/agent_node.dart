@@ -48,6 +48,10 @@ class AgentNode {
   /// 进入 `wait_for_message`（[MemberInbox] 消费路径）时清零 —— 读完后新邮件照常再响。
   bool doorbelled = false;
 
+  /// False until the member has started, parked, or ended a real turn.
+  /// Virgin team-leads at the boot prompt must not be mail-doorbelled.
+  bool hasCompletedTurn = false;
+
   /// 上一次响门铃的时钟（ms，`BusEnvironment.clock`）。看门狗
   /// [TeamBus.reengageIdleWorkers] 用它节流重敲：worker 停在 prompt 却迟迟没消费
   /// （首个回车被全屏 TUI 输入框吞掉的竞态）时，按间隔补敲，治「永久卡在 prompt」。

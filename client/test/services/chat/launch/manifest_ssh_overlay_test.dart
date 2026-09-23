@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -53,6 +54,41 @@ void main() {
     expect(dir.isDirectory, isTrue);
     expect(dir.unixPermissions & 0x49, isNot(0));
   });
+
+  test(
+    'gnu tar extract restores overlay files whose relative path exceeds 100 chars',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('overlay-longname');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      const rel =
+          'workspace/workspaces/00000000-0000-4000-8000-000000000001/'
+          'sessions/00000000-0000-4000-8000-000000000002/'
+          'runtime/developer/claude/settings/developer.json';
+      expect(rel.length, greaterThan(100));
+      final archive = Archive();
+      addOverlayFile(
+        archive,
+        relativePath: rel,
+        bytes: utf8.encode('{"hooks":[]}'),
+      );
+      final proc = await Process.start('bash', [
+        '-c',
+        launchOverlayExtractCommand(tmp.path),
+      ]);
+      proc.stdin.add(encodeLaunchOverlayGzip(archive));
+      await proc.stdin.close();
+      final stderr = await utf8.decodeStream(proc.stderr);
+      expect(await proc.exitCode, 0, reason: stderr);
+      expect(
+        File(p.join(tmp.path, rel)).readAsStringSync(),
+        '{"hooks":[]}',
+        reason: 'SSH overlay extract must land Claude --settings at the full path',
+      );
+    },
+    skip: Platform.isWindows
+        ? 'executes the remote gzip|tar payload; Windows CI bash is a WSL stub'
+        : false,
+  );
 
   test('extract command mkdirs workRoot then gzip|tar under 1KB', () {
     final cmd = launchOverlayExtractCommand(root);

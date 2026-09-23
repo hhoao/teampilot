@@ -11,6 +11,7 @@ import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
+import '../../../support/in_memory_filesystem.dart';
 import '../../../support/post_frame_test_harness.dart';
 
 void main() {
@@ -135,4 +136,68 @@ void main() {
       homeRoot: roots.appDataRoot,
     );
   });
+
+  test(
+    'off-home stageTeamLaunch flushes mixed member settings onto the work plane',
+    () async {
+      final lifecycle = SessionLifecycleService(
+        appDataBasePath: testHomeStorage.paths.basePath,
+        storage: testHomeStorage,
+      );
+      final home = await lifecycle.resolveWorkContextForTargetId('local');
+      final svc = await lifecycle.configProfileServiceFor(home);
+      const sessionId = '00000000-0000-4000-8000-000000000021';
+      const developer = TeamMemberConfig(
+        id: 'developer',
+        name: 'developer',
+        cli: CliTool.claude,
+      );
+      const workRoot = '/home/testuser/.local/share/com.hhoa.teampilot';
+      final workFs = InMemoryFilesystem();
+      final staged = await svc.stageTeamLaunch(
+        readDelegate: home.fs,
+        workTeampilotRoot: workRoot,
+        workspaceId: 'ws-remote',
+        sessionId: sessionId,
+        teamId: 'team-a',
+        cliTeamName: sessionId,
+        cli: CliTool.claude,
+        members: const [developer],
+        member: developer,
+        team: const TeamProfile(
+          id: 'team-a',
+          name: 'team-a',
+          cli: CliTool.claude,
+          teamMode: TeamMode.mixed,
+          members: [developer],
+        ),
+        runtimeBundle: const ConfigBundle(),
+      );
+      expect(
+        staged.manifest.files.keys.any(
+          (path) => path.replaceAll(r'\', '/').endsWith(
+            '/settings/developer.json',
+          ),
+        ),
+        isTrue,
+        reason: 'staging must record the --settings file before SSH flush',
+      );
+
+      await const ManifestExecutor().flush(
+        manifest: staged.manifest,
+        targetFs: workFs,
+        sourceFs: home.fs,
+        symlinkProjectionRoot: workRoot,
+        homeRoot: home.appDataRoot,
+      );
+      final settingsPath =
+          '$workRoot/workspace/workspaces/ws-remote/sessions/'
+          '$sessionId/runtime/developer/claude/settings/developer.json';
+      expect(
+        await workFs.readString(settingsPath),
+        isNotNull,
+        reason: 'work plane must have the file Claude --settings points at',
+      );
+    },
+  );
 }

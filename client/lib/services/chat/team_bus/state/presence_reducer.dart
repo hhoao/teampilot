@@ -9,6 +9,8 @@ class PresenceContext {
     required this.memberId,
     required this.hasUnread,
     this.doorbelled = false,
+    this.isTeamLead = false,
+    this.hasCompletedTurn = false,
   });
   final String memberId;
   final bool hasUnread;
@@ -16,6 +18,13 @@ class PresenceContext {
   /// 本轮未读是否已经响过门铃（见 [AgentNode.doorbelled]）。为真时 [MailArrived]
   /// 不再重复注入。
   final bool doorbelled;
+
+  /// Team-lead at the initial prompt is waiting for the operator. Doorbelling
+  /// that seat steals History compose's first CR.
+  final bool isTeamLead;
+
+  /// True after the member has started or parked a turn (not merely spawned).
+  final bool hasCompletedTurn;
 }
 
 /// 一次跃迁的结果:新在线态 + 待落地的效果列表。
@@ -139,6 +148,10 @@ abstract final class PresenceReducer {
     // 已 park:waiter 直接收,绝不注入门铃。
     if (s.isParked) return _stay(s);
     if (!s.ptyRunning || !ctx.hasUnread) return _stay(s);
+
+    // Operator compose owns the lead's first prompt. Queue mail until the
+    // lead has actually turned; doorbell after that like any other idle seat.
+    if (ctx.isTeamLead && !ctx.hasCompletedTurn) return _stay(s);
 
     // 仅 idle-at-prompt 响,不打断进行中的回合。
     if (!s.atPrompt) return _stay(s);

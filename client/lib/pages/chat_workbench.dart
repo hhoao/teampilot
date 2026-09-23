@@ -937,6 +937,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
                       directToPty: directToPty,
                     ),
             applyFirstPromptTitle: chatCubit.applyFirstPromptTitle,
+            abortMemberInject: chatCubit.sessionRuntime.abortMemberInject,
           ),
         );
       },

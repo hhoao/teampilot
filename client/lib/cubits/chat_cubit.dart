@@ -1063,6 +1063,7 @@ class ChatCubit extends Cubit<ChatState>
                   directToPty: directToPty,
                 ),
         applyFirstPromptTitle: applyFirstPromptTitle,
+        abortMemberInject: _sessionRuntime.abortMemberInject,
       ),
     );
   }

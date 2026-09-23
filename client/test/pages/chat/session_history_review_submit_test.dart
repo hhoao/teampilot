@@ -13,6 +13,7 @@ void main() {
     late List<(String, String, bool)> readyCalls;
     late List<(String, String, String, bool)> deliverCalls;
     late List<(String, String)> titleCalls;
+    late List<(String, String)> abortCalls;
     late int openSessionCalls;
 
     setUp(() {
@@ -29,6 +30,7 @@ void main() {
       readyCalls = [];
       deliverCalls = [];
       titleCalls = [];
+      abortCalls = [];
       openSessionCalls = 0;
     });
 
@@ -66,6 +68,9 @@ void main() {
         applyFirstPromptTitle: (sessionId, firstPrompt) async {
           titleCalls.add((sessionId, firstPrompt));
         },
+        abortMemberInject: (sessionId, memberId) {
+          abortCalls.add((sessionId, memberId));
+        },
       );
     }
 
@@ -88,6 +93,7 @@ void main() {
       expect(readyCalls, [('sess-1', 'member-1', true)]);
       expect(deliverCalls, [('sess-1', 'member-1', 'continue here', true)]);
       expect(titleCalls, [('sess-1', 'continue here')]);
+      expect(abortCalls, [('sess-1', 'member-1')]);
       expect(openSessionCalls, 0);
     });
 
@@ -114,6 +120,7 @@ void main() {
         expect(readyCalls, isEmpty);
         expect(deliverCalls, [('sess-1', 'member-1', 'follow up', false)]);
         expect(titleCalls, isEmpty);
+        expect(abortCalls, isEmpty);
       },
     );
 

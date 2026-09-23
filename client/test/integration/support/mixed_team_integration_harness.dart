@@ -162,6 +162,19 @@ class MixedTeamIntegrationHarness {
     return created;
   }
 
+  /// Session create/open must use this instance.
+  ///
+  /// Later member materialize and connect retries go through
+  /// `_host.sessionRepository`. A throwaway `fakeHomeStorage()` repo is
+  /// invisible to those paths and surfaces as `Unknown sessionId`.
+  SessionRepository get sessionRepository {
+    final repo = cubit?.sessionRepository;
+    if (repo == null) {
+      throw StateError('createCubit before sessionRepository');
+    }
+    return repo;
+  }
+
   /// Full ChatCubit wiring for local-lead + Docker-SSH-worker mixed teams.
   ChatCubit createDockerCubit({
     required PostFrameTestHarness postFrame,

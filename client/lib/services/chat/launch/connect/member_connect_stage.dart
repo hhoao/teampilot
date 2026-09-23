@@ -516,6 +516,18 @@ class MemberConnectStage {
       return;
     }
 
+    final liveShell = memberId.isEmpty ? null : tab.memberShells[memberId];
+    if (liveShell != null && (liveShell.isRunning || liveShell.isConnecting)) {
+      // History compose uses ExistingSessionConnect. Re-opening a live seat
+      // recovers in-flight doorbell to submittedUnknown and relaunches the PTY.
+      appLogger.d(
+        '[session-launch] existing session already live '
+        'session=${session.sessionId} member=$memberId',
+      );
+      _host.updateTabRunning(tab.info.id);
+      return;
+    }
+
     await _coordinator.open(
       SessionOpenRequest(
         session: launchSession,

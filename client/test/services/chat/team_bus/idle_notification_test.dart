@@ -74,8 +74,9 @@ void main() {
     final idle = IdleNotification.tryParse(raw);
     expect(idle.from, 'developer');
     expect(
-      launcher.woken.where((w) => w.memberId == 'team-lead').single.notice,
-      TeamBus.doorbellNotice,
+      launcher.woken.where((w) => w.memberId == 'team-lead'),
+      isEmpty,
+      reason: 'virgin lead keeps the first prompt for the operator',
     );
   });
 

@@ -46,6 +46,21 @@ class DockerSshServer {
     }
   }
 
+  static Future<bool> imageExists(String imageTag) async {
+    try {
+      final result = await Process.run('docker', [
+        'image',
+        'inspect',
+        imageTag,
+        '--format',
+        '{{.Id}}',
+      ]);
+      return result.exitCode == 0 && '${result.stdout}'.trim().isNotEmpty;
+    } on ProcessException {
+      return false;
+    }
+  }
+
   static String dockerContextDir(String clientRoot) =>
       p.join(clientRoot, 'test', 'integration', 'docker');
 
@@ -64,19 +79,24 @@ class DockerSshServer {
       throw StateError('Missing Dockerfile at ${dockerfile.path}');
     }
 
-    final build = await Process.run('docker', [
-      'build',
-      '-t',
-      imageTag,
-      '-f',
-      dockerfile.path,
-      contextDir,
-    ]);
-    if (build.exitCode != 0) {
-      throw StateError(
-        'docker build failed (exit ${build.exitCode}):\n'
-        '${build.stdout}\n${build.stderr}',
-      );
+    // CI pre-tags this image via docker/build-push-action. Rebuilding here
+    // would pull `FROM` bases (and fail on a flaky docker.io TLS). Reuse the
+    // tagged image when it already exists.
+    if (!await imageExists(imageTag)) {
+      final build = await Process.run('docker', [
+        'build',
+        '-t',
+        imageTag,
+        '-f',
+        dockerfile.path,
+        contextDir,
+      ]);
+      if (build.exitCode != 0) {
+        throw StateError(
+          'docker build failed (exit ${build.exitCode}):\n'
+          '${build.stdout}\n${build.stderr}',
+        );
+      }
     }
 
     final name = 'teampilot-it-ssh-${DateTime.now().microsecondsSinceEpoch}';

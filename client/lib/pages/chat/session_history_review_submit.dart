@@ -67,6 +67,10 @@ Future<HistoryContinueSubmitResult> submitSessionHistoryReviewMessage({
   applyFirstPromptTitle,
   HistoryContinueChannel channel = HistoryContinueChannel.pty,
 
+  /// Drops an in-flight mail doorbell / PTY inject so operator compose can
+  /// claim the first prompt instead of racing a CR already on the wire.
+  void Function(String sessionId, String memberId)? abortMemberInject,
+
   /// When set, called after connect so a newly installed TeamBus is visible.
   HistoryContinueChannel Function()? resolveChannel,
 
@@ -147,6 +151,7 @@ Future<HistoryContinueSubmitResult> submitSessionHistoryReviewMessage({
   }
 
   try {
+    abortMemberInject?.call(sessionId, memberId);
     await ensureMemberInputReady(
       sessionId,
       memberId,

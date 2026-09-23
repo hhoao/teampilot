@@ -178,6 +178,8 @@ class TeamBus implements CoordinationView {
         memberId: node.memberId,
         hasUnread: !node.inbox.isEmpty,
         doorbelled: node.doorbelled,
+        isTeamLead: node.profile.isTeamLead,
+        hasCompletedTurn: node.hasCompletedTurn,
       ),
     );
     final after = t.presence;
@@ -193,6 +195,9 @@ class TeamBus implements CoordinationView {
     }
     node.lifecycle = after.lifecycle;
     node.activity = after.activity;
+    if (event is WaitEntered || event is TurnStarted || event is TurnEnded) {
+      node.hasCompletedTurn = true;
+    }
     return t.effects;
   }
 
