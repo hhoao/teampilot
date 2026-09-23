@@ -44,7 +44,7 @@ final class _WorkPathProjector {
     required String homeRoot,
     required String workRoot,
   }) : homeRoot = sourceFs.pathContext.normalize(homeRoot),
-       workRoot = sourceFs.pathContext.normalize(workRoot);
+       workRoot = workFs.pathContext.normalize(workRoot);
 
   final LaunchManifest manifest;
   final Filesystem sourceFs;
@@ -374,7 +374,7 @@ final class _WorkPathProjector {
   }
 
   bool _hasLaterMutationInside(String destination, int entryIndex) {
-    final context = sourceFs.pathContext;
+    final context = workFs.pathContext;
     final normalizedDestination = context.normalize(destination);
     for (var i = entryIndex + 1; i < manifest.entries.length; i++) {
       for (final path in _mutationPaths(manifest.entries[i])) {
@@ -425,30 +425,41 @@ final class _WorkPathProjector {
   }
 
   String? _project(String path) {
-    final context = sourceFs.pathContext;
-    final normalized = context.normalize(path);
-    if (normalized == workRoot || context.isWithin(workRoot, normalized)) {
-      return normalized;
+    final homeCtx = sourceFs.pathContext;
+    final workCtx = workFs.pathContext;
+    final asWork = workCtx.normalize(path);
+    if (asWork == workRoot || workCtx.isWithin(workRoot, asWork)) {
+      return asWork;
     }
-    if (normalized == homeRoot || context.isWithin(homeRoot, normalized)) {
-      return context.join(
-        workRoot,
-        context.relative(normalized, from: homeRoot),
-      );
+    final asHome = homeCtx.normalize(path);
+    if (asHome == homeRoot || homeCtx.isWithin(homeRoot, asHome)) {
+      return _joinOntoWork(homeCtx.relative(asHome, from: homeRoot));
     }
     // Cursor/Codex Windows junctions relocate HOME to LOCALAPPDATA so the
     // CLI stays under MAX_PATH. Staging writes that physical home; keep it.
-    if (isCliRuntimeHomePath(normalized, context)) {
-      return normalized;
+    if (isCliRuntimeHomePath(asHome, homeCtx)) {
+      return asHome;
     }
     return null;
   }
 
+  String _joinOntoWork(String relative) {
+    var out = workRoot;
+    for (final part in relative.replaceAll(r'\', '/').split('/')) {
+      if (part.isEmpty || part == '.') continue;
+      out = workFs.pathContext.join(out, part);
+    }
+    return workFs.pathContext.normalize(out);
+  }
+
   void _assertPath(String path) {
+    if (isCliRuntimeHomePath(path, sourceFs.pathContext)) {
+      return;
+    }
     assertApplyPath(
       path: path,
       workRoot: workRoot,
-      pathContext: sourceFs.pathContext,
+      pathContext: workFs.pathContext,
     );
   }
 }

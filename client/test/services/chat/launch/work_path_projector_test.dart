@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/chat/launch/staging/manifest/apply_plan.dart';
 import 'package:teampilot/services/chat/launch/staging/manifest/work_path_projector.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/work_plane_applier.dart';
 import 'package:teampilot/services/storage/windows_cli_runtime_junction.dart';
 
 import '../../../support/in_memory_filesystem.dart';
@@ -415,4 +416,34 @@ void main() {
       ctx.normalize(physical),
     );
   });
+
+  test(
+    'Windows home to posix work plane keeps posix workRoot for apply',
+    () async {
+      final windows = p.Context(style: p.Style.windows);
+      final posix = p.Context(style: p.Style.posix);
+      final sourceFs = InMemoryFilesystem(pathContext: windows);
+      final workFs = InMemoryFilesystem(pathContext: posix);
+      const homeRoot = r'C:\Users\runner\AppData\Local\teampilot';
+      const workRoot = '/home/testuser/.local/share/com.hhoa.teampilot';
+      const settings =
+          '$workRoot/workspace/workspaces/ws/sessions/s/runtime/'
+          'developer/claude/settings/developer.json';
+      final manifest = LaunchManifest()..writeFile(settings, '{"hooks":[]}');
+      final built = await buildApplyPlan(
+        manifest: manifest,
+        sourceFs: sourceFs,
+        workFs: workFs,
+        homeRoot: homeRoot,
+        workRoot: workRoot,
+      );
+      expect(built.plan.workRoot, workRoot);
+      await WorkPlaneApplier(
+        fs: workFs,
+        blobs: built.blobs,
+        workRoot: workRoot,
+      ).apply(built.plan);
+      expect(await workFs.readString(settings), '{"hooks":[]}');
+    },
+  );
 }
