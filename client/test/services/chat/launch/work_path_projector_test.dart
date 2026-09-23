@@ -446,4 +446,34 @@ void main() {
       expect(await workFs.readString(settings), '{"hooks":[]}');
     },
   );
+
+  test(
+    'posix work plane projects Windows-mangled work symlink targets',
+    () async {
+      final windows = p.Context(style: p.Style.windows);
+      final posix = p.Context(style: p.Style.posix);
+      final sourceFs = InMemoryFilesystem(pathContext: windows);
+      final workFs = InMemoryFilesystem(pathContext: posix);
+      const homeRoot = r'C:\Users\runner\AppData\Local\teampilot';
+      const workRoot = '/home/testuser/.local/share/com.hhoa.teampilot';
+      const agents = '$workRoot/cli-defaults/claude/agents';
+      const mangledAgents =
+          r'\home\testuser\.local\share\com.hhoa.teampilot\cli-defaults\claude\agents';
+      const sessionAgents =
+          '$workRoot/workspace/workspaces/ws/sessions/s/runtime/claude/agents';
+      final manifest = LaunchManifest()
+        ..ensureDir(agents)
+        ..symlink(linkPath: sessionAgents, target: mangledAgents);
+      final built = await buildApplyPlan(
+        manifest: manifest,
+        sourceFs: sourceFs,
+        workFs: workFs,
+        homeRoot: homeRoot,
+        workRoot: workRoot,
+      );
+      final link = built.plan.ops.whereType<ApplySymlink>().single;
+      expect(link.linkPath, sessionAgents);
+      expect(link.target, agents);
+    },
+  );
 }

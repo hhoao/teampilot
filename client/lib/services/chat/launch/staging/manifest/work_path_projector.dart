@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:path/path.dart' as p;
+
 import '../../../../../utils/logging/logger.dart';
 import '../../../../io/filesystem.dart';
 import 'apply_plan.dart';
@@ -427,8 +429,8 @@ final class _WorkPathProjector {
   String? _project(String path) {
     final homeCtx = sourceFs.pathContext;
     final workCtx = workFs.pathContext;
-    final asWork = workCtx.normalize(path);
-    if (asWork == workRoot || workCtx.isWithin(workRoot, asWork)) {
+    final asWork = _asWorkPath(path);
+    if (asWork != null) {
       return asWork;
     }
     final asHome = homeCtx.normalize(path);
@@ -439,6 +441,22 @@ final class _WorkPathProjector {
     // CLI stays under MAX_PATH. Staging writes that physical home; keep it.
     if (isCliRuntimeHomePath(asHome, homeCtx)) {
       return asHome;
+    }
+    return null;
+  }
+
+  String? _asWorkPath(String path) {
+    final workCtx = workFs.pathContext;
+    bool underWork(String normalized) =>
+        normalized == workRoot || workCtx.isWithin(workRoot, normalized);
+
+    final asWork = workCtx.normalize(path);
+    if (underWork(asWork)) return asWork;
+    // Windows staging can join POSIX work roots with `\`. The work plane is
+    // still POSIX, so rewrite separators before membership.
+    if (workCtx.style == p.Style.posix && path.contains(r'\')) {
+      final asPosix = workCtx.normalize(path.replaceAll(r'\', '/'));
+      if (underWork(asPosix)) return asPosix;
     }
     return null;
   }
