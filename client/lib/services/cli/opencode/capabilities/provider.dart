@@ -17,7 +17,6 @@ import '../../../remote/remote_credential_materializer.dart';
 import '../../../storage/home_storage.dart';
 import '../../../storage/runtime_context.dart';
 import '../../../chat/team_bus/mcp/bus_bridge_locator.dart';
-import '../../../chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../registry/capabilities/hook_capability.dart';
 import '../../registry/capabilities/provider_capability.dart';
 import '../../registry/capabilities/prompt_capability.dart';
@@ -26,7 +25,6 @@ import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/config_profile/hook_seat_context_completer.dart';
 import '../../registry/hook/managed_hook_provisioner.dart';
 import '../../registry/prompt/prompt_hub_service.dart';
-import '../../registry/launch/cli_launch_capability_error.dart';
 import '../provider/opencode_credential_kind.dart';
 import '../provider/opencode_credential_materializer.dart';
 import '../provider/opencode_data_layout.dart';
@@ -35,6 +33,7 @@ import '../provider/opencode_live_import.dart';
 import '../provider/opencode_model_catalog.dart';
 import '../provider/opencode_models_service.dart';
 import '../provider/opencode_provider_settings_resolver.dart';
+import '../opencode_config.dart';
 import '../provider/opencode_shared_plugin_deps.dart';
 import '../provider_presets.dart';
 import '../../../resource/providers/hook_library_contribution_provider.dart';
@@ -43,6 +42,8 @@ import '../../../resource/providers/runtime_event_hook_contribution_provider.dar
 import 'awareness_plugin.dart';
 import 'idle_plugin.dart';
 import 'opencode_hook_writer.dart';
+
+export '../opencode_config.dart';
 
 abstract final class OpencodeFormExtraKeys {
   static const effort = 'effort';
@@ -522,7 +523,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
         if (fragment != null) {
           config = mergeOpencodePluginEntries(
             config,
-            ((fragment['plugin'] as List?) ?? const []),
+            ((fragment[opencodePluginsKey] as List?) ?? const []),
           );
           changed = true;
         }
@@ -650,327 +651,6 @@ int? parseBusPortFromIdleUrl(String? idleUrl) {
   final uri = Uri.tryParse(idleUrl);
   if (uri == null || !uri.hasPort) return null;
   return uri.port;
-}
-
-/// Merges opencode.json `plugin` entry for TeamBus idle reporting (mixed mode).
-///
-/// The gateway port is re-stamped on every connect, so any prior entry for the
-/// same member (stale port) is replaced — never appended alongside.
-@visibleForTesting
-Map<String, Object?> mergeOpencodeIdlePlugin(
-  Map<String, Object?> config,
-  String memberId,
-  int port, {
-  String? token,
-  String? sessionId,
-}) {
-  final pluginPath = './$opencodeIdlePluginFileName';
-  final options = <String, Object?>{'member': memberId, 'port': port};
-  if (sessionId != null && sessionId.isNotEmpty) {
-    options['session'] = sessionId;
-  }
-  if (token != null && token.isNotEmpty) {
-    options['token'] = token;
-  }
-  final entry = <Object?>[pluginPath, options];
-  final plugins = List<Object?>.from((config['plugin'] as List?) ?? const [])
-    ..removeWhere(
-      (e) =>
-          e is List &&
-          e.isNotEmpty &&
-          e[0] == pluginPath &&
-          e.length > 1 &&
-          e[1] is Map &&
-          (e[1] as Map)['member'] == memberId,
-    );
-  plugins.add(entry);
-  return {...config, 'plugin': plugins};
-}
-
-/// Merges materialized OpenCode plugin entries into the `plugin` array.
-///
-/// String paths are appended once. Tuple entries (`[path, options]`) replace
-/// the existing tuple for the same path and member, so a reconnect updates its
-/// endpoint without accumulating stale seat-scoped runtime plugins.
-Map<String, Object?> mergeOpencodePluginEntries(
-  Map<String, Object?> config,
-  Iterable<Object?> entries,
-) {
-  if (entries.isEmpty) return config;
-  final plugins = List<Object?>.from((config['plugin'] as List?) ?? const []);
-  var changed = false;
-  for (final entry in entries) {
-    final String? path;
-    if (entry is String) {
-      path = entry;
-    } else if (entry is List && entry.isNotEmpty) {
-      path = entry.first?.toString();
-    } else {
-      path = null;
-    }
-    if (path == null || path.isEmpty) continue;
-    final memberId = entry is List && entry.length > 1 && entry[1] is Map
-        ? (entry[1] as Map)['member']
-        : null;
-    final matchingIndexes = <int>[
-      for (var index = 0; index < plugins.length; index++)
-        if (switch (plugins[index]) {
-          String existing => existing == path,
-          List existing when existing.isNotEmpty =>
-            existing.first == path &&
-                (memberId == null ||
-                    (existing.length > 1 &&
-                        existing[1] is Map &&
-                        (existing[1] as Map)['member'] == memberId)),
-          _ => false,
-        })
-          index,
-    ];
-    if (matchingIndexes.isEmpty) {
-      plugins.add(entry);
-      changed = true;
-      continue;
-    }
-    if (entry is List && memberId != null) {
-      final existingIndex = matchingIndexes.first;
-      if (plugins[existingIndex] != entry) {
-        plugins[existingIndex] = entry;
-        changed = true;
-      }
-      for (final index in matchingIndexes.skip(1).toList().reversed) {
-        plugins.removeAt(index);
-        changed = true;
-      }
-    }
-  }
-  if (!changed) return config;
-  return {...config, 'plugin': plugins};
-}
-
-/// opencode 工具调用超时(ms）。opencode 默认只有 30s（`DEFAULT_TIMEOUT`），长阻塞的
-/// `wait_for_message` 因此很快超时。opencode 用同一个 MCP SDK，超时由 config 的
-/// `timeout` 控；设大到 24h 让它不主动超时（stdio 下这是唯一上限；remote 下也把
-/// 30s 提到 24h，严格改进）。对齐 claude 的 `busToolTimeoutMs`。
-const opencodeBusToolTimeoutMs = 86400000; // 24h
-
-/// Merges the teammate-bus MCP server into opencode.json `mcp` so the member can
-/// send/receive teammate messages (mixed mode).
-///
-/// opencode uses the top-level `mcp` field (not `mcpServers`). 传 [bridgePath]
-/// （本地 PTY + 桥接可用）→ `type: "local"`（stdio，经 `teammate_bus_bridge` 绕开
-/// HTTP 传输超时，`wait_for_message` 真阻塞）；否则 `type: "remote"`（HTTP 回落）。
-/// 两者都带 `timeout` = [opencodeBusToolTimeoutMs]，并需 `enabled` 才会启动加载。
-@visibleForTesting
-Map<String, Object?> mergeOpencodeTeammateBusMcp(
-  Map<String, Object?> config,
-  String memberId,
-  int port, {
-  required String sessionId,
-  String? bridgePath,
-}) {
-  final servers = <String, Object?>{
-    ...((config['mcp'] as Map?)?.cast<String, Object?>() ??
-        const <String, Object?>{}),
-  };
-  final endpoint = 'http://127.0.0.1:$port/mcp';
-  servers[teammateBusMcpServerName] = bridgePath != null
-      ? <String, Object?>{
-          'type': 'local',
-          'command': <String>[
-            bridgePath,
-            '--member',
-            memberId,
-            '--session',
-            sessionId,
-            '--bus-url',
-            endpoint,
-          ],
-          'enabled': true,
-          'timeout': opencodeBusToolTimeoutMs,
-        }
-      : <String, Object?>{
-          'type': 'remote',
-          'url': endpoint,
-          'enabled': true,
-          'headers': <String, Object?>{
-            teammateBusMcpMemberHeader: memberId,
-            teammateBusMcpSessionHeader: sessionId,
-          },
-          'timeout': opencodeBusToolTimeoutMs,
-        };
-  return {...config, 'mcp': servers};
-}
-
-/// Merges a provider's credentials into opencode.json `provider.<id>.options`.
-///
-/// opencode reads `apiKey` / `baseURL` (note the capital `URL`) from the
-/// provider's `options`; an optional `npm` (from the app provider's `config`)
-/// tells opencode which SDK to use for fully custom, non-catalog providers.
-@visibleForTesting
-Map<String, Object?> mergeOpencodeProvider(
-  Map<String, Object?> config,
-  AppProviderConfig provider,
-) {
-  final id = provider.id.trim();
-  if (id.isEmpty) return config;
-
-  final providers = <String, Object?>{
-    ...((config['provider'] as Map?)?.cast<String, Object?>() ??
-        const <String, Object?>{}),
-  };
-  final existing =
-      (providers[id] as Map?)?.cast<String, Object?>() ?? <String, Object?>{};
-  final entry = <String, Object?>{...existing};
-  final options = <String, Object?>{
-    ...((existing['options'] as Map?)?.cast<String, Object?>() ??
-        const <String, Object?>{}),
-  };
-
-  final apiKey = provider.apiKey.trim();
-  if (apiKey.isNotEmpty) options['apiKey'] = apiKey;
-  final baseUrl = provider.baseUrl.trim();
-  if (baseUrl.isNotEmpty) options['baseURL'] = baseUrl;
-
-  final npm = provider.config['npm'];
-  if (npm is String && npm.trim().isNotEmpty && entry['npm'] == null) {
-    entry['npm'] = npm.trim();
-  }
-
-  // Custom openai-compatible providers need an explicit models map or
-  // `--model provider/id` fails with "model not found".
-  final defaultModel = provider.defaultModel.trim();
-  if (defaultModel.isNotEmpty) {
-    final models = <String, Object?>{
-      ...((entry['models'] as Map?)?.cast<String, Object?>() ??
-          const <String, Object?>{}),
-    };
-    if (!models.containsKey(defaultModel)) {
-      models[defaultModel] = <String, Object?>{'name': defaultModel};
-      entry['models'] = models;
-    }
-  }
-
-  if (options.isNotEmpty) entry['options'] = options;
-  if (entry.isEmpty) return config;
-
-  providers[id] = entry;
-  return {...config, 'provider': providers};
-}
-
-/// Writes `provider.<id>.models.<model>.options.reasoningEffort` for launch.
-@visibleForTesting
-Map<String, Object?> mergeOpencodeReasoningEffort(
-  Map<String, Object?> config,
-  AppProviderConfig provider,
-  String reasoningEffort, {
-  String? memberModel,
-}) {
-  final effort = reasoningEffort.trim();
-  if (effort.isEmpty) return config;
-
-  final providerId = provider.id.trim();
-  final modelId = (memberModel?.trim().isNotEmpty ?? false)
-      ? memberModel!.trim()
-      : provider.defaultModel.trim();
-  if (providerId.isEmpty || modelId.isEmpty) return config;
-
-  final providers = <String, Object?>{
-    ...((config['provider'] as Map?)?.cast<String, Object?>() ??
-        const <String, Object?>{}),
-  };
-  final existing =
-      (providers[providerId] as Map?)?.cast<String, Object?>() ??
-      <String, Object?>{};
-  final entry = <String, Object?>{...existing};
-  final models = <String, Object?>{
-    ...((existing['models'] as Map?)?.cast<String, Object?>() ??
-        const <String, Object?>{}),
-  };
-  final modelEntry = <String, Object?>{
-    ...((models[modelId] as Map?)?.cast<String, Object?>() ??
-        const <String, Object?>{}),
-  };
-  final options = <String, Object?>{
-    ...((modelEntry['options'] as Map?)?.cast<String, Object?>() ??
-        const <String, Object?>{}),
-  };
-  options['reasoningEffort'] = effort;
-  modelEntry['options'] = options;
-  models[modelId] = modelEntry;
-  entry['models'] = models;
-  providers[providerId] = entry;
-  return {...config, 'provider': providers};
-}
-
-/// Merges workspace additional directories into opencode.json `permission` so
-/// tool calls touching paths outside the project root run without prompting.
-///
-/// opencode has no `--add-dir`; cross-root access is governed by the
-/// `external_directory` permission (default `ask`). Each directory becomes a
-/// `"<dir>/**": "allow"` pattern — the semantic equivalent of claude/codex
-/// `--add-dir`. Existing `permission` / `external_directory` entries are
-/// preserved and entries are idempotent.
-Map<String, Object?> mergeOpencodeExternalDirectories(
-  Map<String, Object?> config,
-  Iterable<String> directories,
-) {
-  final permission = <String, Object?>{
-    ...((config['permission'] as Map?)?.cast<String, Object?>() ??
-        const <String, Object?>{}),
-  };
-  final external = <String, Object?>{
-    ...((permission['external_directory'] as Map?)?.cast<String, Object?>() ??
-        const <String, Object?>{}),
-  };
-  var changed = false;
-  for (final dir in directories) {
-    final t = dir.trim();
-    if (t.isEmpty) continue;
-    final pattern = t.endsWith('/') ? '$t**' : '$t/**';
-    if (external[pattern] != 'allow') {
-      external[pattern] = 'allow';
-      changed = true;
-    }
-  }
-  if (!changed) return config;
-  permission['external_directory'] = external;
-  return {...config, 'permission': permission};
-}
-
-/// Materializes the normalized launch security policy into OpenCode's V1
-/// `permission` object. OpenCode has no hook-trust dimension, but it can
-/// express the full-access tuple through edit, bash, and external-directory
-/// permissions. Policies that cannot be represented are rejected by the
-/// launch capability instead of inheriting OpenCode's permissive defaults.
-Map<String, Object?> mergeOpencodeSecurityPolicy(
-  Map<String, Object?> config,
-  LaunchSecurityPolicy policy,
-) {
-  if (policy == LaunchSecurityPolicy.cliDefault) return config;
-  if (policy != LaunchSecurityPolicy.fullAccess) {
-    throw const CliLaunchCapabilityException(
-      cli: CliTool.opencode,
-      contributionKey: 'opencode-permission',
-      reason:
-          'OpenCode cannot represent this launch security policy through its '
-          'current permission config schema.',
-      exclusiveGroup: 'opencode-permission-mode',
-    );
-  }
-
-  final permission = <String, Object?>{
-    ...((config['permission'] as Map?)?.cast<String, Object?>() ??
-        const <String, Object?>{}),
-  };
-  final external = <String, Object?>{
-    ...((permission['external_directory'] as Map?)?.cast<String, Object?>() ??
-        const <String, Object?>{}),
-    '*': 'allow',
-  };
-  permission['edit'] = 'allow';
-  permission['bash'] = 'allow';
-  permission['external_directory'] = external;
-  return {...config, 'permission': permission};
 }
 
 final _emptyCatalogUpdates = _EmptyListenable();

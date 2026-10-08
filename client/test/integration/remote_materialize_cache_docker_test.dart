@@ -133,7 +133,7 @@ const _manifestPath =
 final _homeFileCount = 600 + 3;
 
 /// Mimics the production `cli-defaults/opencode` tree: a few config files plus
-/// a large npm `node_modules` subtree (the @opencode-ai/plugin install).
+/// a large npm `node_modules` subtree (the @opencode/plugin install).
 Future<void> _seedHomeTree(LocalFilesystem fs, String homeRoot) async {
   final posix = p.Context(style: p.Style.posix);
   final payload = Uint8List.fromList(
@@ -144,7 +144,7 @@ Future<void> _seedHomeTree(LocalFilesystem fs, String homeRoot) async {
     'cli-defaults',
     'opencode',
     'node_modules',
-    '@opencode-ai',
+    '@opencode',
     'plugin',
     'dist',
   );
@@ -157,7 +157,7 @@ Future<void> _seedHomeTree(LocalFilesystem fs, String homeRoot) async {
   }
   await fs.writeString(
     posix.join(homeRoot, 'cli-defaults', 'opencode', 'package.json'),
-    '{"dependencies":{"@opencode-ai/plugin":"0.1.0"}}',
+    '{"dependencies":{"@opencode/plugin":"0.1.0"}}',
   );
   await fs.writeString(
     posix.join(homeRoot, 'cli-defaults', 'opencode', 'package-lock.json'),

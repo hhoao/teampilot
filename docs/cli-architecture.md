@@ -570,7 +570,7 @@ Provider 可以在语义未启用时返回空结果。是否存在某个 Provide
 | FlashskyAI | 原生团队身份、会话、工作区（`WorkspaceBaseInfoCapability`）、模型、权限、提示、用户额外参数 |
 | Codex | 会话、工作区（`WorkspaceBaseInfoCapability`）、模型、权限、用户额外参数；不注册原生团队身份 Provider |
 | Cursor | 团队行为、会话、工作区（`WorkspaceBaseInfoCapability`）、模型、权限、用户额外参数 |
-| OpenCode | 会话、模型、agent、用户额外参数；`WorkspaceBaseInfoCapability` argv 为空，外部目录走 `permission.external_directory` 配置 |
+| OpenCode | 会话、模型、agent、用户额外参数；始终带 `--standalone`；`WorkspaceBaseInfoCapability` argv 为空，外部目录走 `permissions` 的 `external_directory` 规则 |
 
 新增 CLI 时，先在该 CLI 的 `capabilities/` 中实现它实际支持的 Provider，再把实例按
 稳定语义顺序放入 `{cli_name}_tool.dart` 的 `capabilities` 列表。不要在测试或调用方为
@@ -639,7 +639,7 @@ product policy 的事实。
 | FlashskyAI | `--dangerously-skip-permissions` |
 | Codex | `--dangerously-bypass-approvals-and-sandbox` 与 `--dangerously-bypass-hook-trust` |
 | Cursor | `--force` |
-| OpenCode | 不由启动 argv 表达；由 `OpencodePermissionLaunch` 校验，并由 Provider 物化 `permission.edit` / `permission.bash` / `permission.external_directory` |
+| OpenCode | 不由启动 argv 表达；由 `OpencodePermissionLaunch` 校验，并由 Provider 物化 v2 `permissions` 数组（`edit` / `shell` / `external_directory`） |
 
 ### 工作区目录的 CLI 差异
 
@@ -653,7 +653,7 @@ product policy 的事实。
   `--add-dir <path>`。多个目录不能合并成一个参数，也不能只保留第一个；
 - Cursor：主目录使用 `--workspace`，额外目录逐个使用 `--add-dir <path>`；
 - OpenCode：进程工作目录和外部目录是配置/运行时问题。额外目录写入 OpenCode 配置的
-  `permission.external_directory`（由配置能力物化），保持配置-only，不生成
+  `permissions` 中的 `external_directory` 规则（由配置能力物化），保持配置-only，不生成
   `--add-dir` argv。`WorkspaceBaseInfoCapability` 仍必选，但 argv 贡献为空；
   同机 extras / SSH MCP 章节仍由该能力作为 `PromptContributionProvider` 写入 prompt。
 

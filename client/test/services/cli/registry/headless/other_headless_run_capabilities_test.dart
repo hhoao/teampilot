@@ -101,7 +101,7 @@ void main() {
       CliToolRegistry.builtIn().tryGet(CliTool.opencode)!,
       run,
     );
-    expect(args.first, 'run');
+    expect(args, containsAllInOrder(['--standalone', 'run']));
     expect(args, containsAllInOrder(['--model', 'm', 'P']));
     expect(cap.buildEnvironment(run)['OPENCODE_CONFIG_DIR'], '/tmp/c');
   });

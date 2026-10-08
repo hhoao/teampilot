@@ -82,13 +82,13 @@ At launch, `RuntimeLayout` links each layer into the session runtime tree (PTY `
 
 For CLI **runtime cache** (Cursor `plugins/cache` / statsig, OpenCode `node_modules`, Codex `.tmp/plugins` and `plugins/cache`):
 
-1. **Global** — `workspace/cache/cli/{tool}/{providerKey}/` (empty dirs are created; the CLI fills them on first launch; OpenCode `npm install` writes here)
+1. **Global** — `workspace/cache/cli/{tool}/{providerKey}/` (empty dirs are created; the CLI fills them on first launch; OpenCode shared `@opencode/plugin` is npm-installed here)
 2. **Workspace** — `workspace/workspaces/{workspaceId}/config/{tool}/…` inherits the global entry (a real directory at this layer is kept as an override)
 3. **Session** — `runtime/…` only `ln`s the workspace entry
 
 This tree is **not** `~/.cursor` and **not** `cli-defaults`. `cli-defaults/{tool}/` remains app-level templates (`agents`). Cache children are not inherited from `cli-defaults`.
 
-For `opencode`, `workspace/cache/cli/opencode/_shared/{package.json,package-lock.json,node_modules}` holds `@opencode-ai/plugin`. A one-shot migrate moves those names out of `cli-defaults/opencode/` when the cache is empty.
+For `opencode`, `workspace/cache/cli/opencode/_shared/{package.json,package-lock.json,node_modules}` holds `@opencode/plugin`. A one-shot migrate moves those names out of `cli-defaults/opencode/` when the cache is empty.
 
 For `codex`, session `.tmp/plugins` and `plugins/cache` inherit `workspace/cache/cli/codex/_shared/`. Native plugin writes go through the session `CODEX_HOME` symlink into that cache. `cli-defaults/codex/.tmp` stays excluded from remote `cli-defaults` copy.
 

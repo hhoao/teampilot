@@ -73,11 +73,11 @@ void main() {
     final result = writer.render(entries: [entry], ctx: ctx);
     expect(result.warnings, isEmpty);
     final opencodeJson = result.configFragments['opencode.json']! as Map;
-    expect(opencodeJson['plugin'], ['./teampilot-user-hooks.js']);
+    expect(opencodeJson['plugins'], ['./teampilot-user-hooks.js']);
     final js = result.scripts.singleWhere(
       (s) => s.fileName == 'teampilot-user-hooks.js',
     );
-    expect(js.content, contains('tool.execute.before'));
+    expect(js.content, contains('ctx.tool.hook("execute.before"'));
     expect(js.content, contains('/s/hooks/teampilot-hook-h1.sh'));
   });
 
@@ -126,12 +126,12 @@ void main() {
     final js = result.scripts
         .singleWhere((s) => s.fileName == 'teampilot-user-hooks.js')
         .content;
-    expect(js, contains('"tool.execute.before": async (ev, output)'));
+    expect(js, contains('ctx.tool.hook("execute.before"'));
     expect(js, contains('new RegExp("bash")'));
     expect(js, contains('run(["bash","/s/hooks/teampilot-hook-h1.sh"])'));
     expect(js, contains('d.decision === "deny"'));
     expect(js, contains('evt === "tool.execute.before"'));
-    expect(js, contains('event: async ({ event })'));
+    expect(js, contains('ctx.event.subscribe'));
     expect(
       result.scripts.any((s) => s.fileName == 'teampilot-hook-h1.sh'),
       isTrue,
@@ -201,7 +201,7 @@ void main() {
     final js = result.scripts
         .singleWhere((s) => s.fileName == 'teampilot-user-hooks.js')
         .content;
-    expect(js, contains('event: async ({ event })'));
+    expect(js, contains('ctx.event.subscribe'));
     expect(js, contains('const evt = event?.type || event?.data?.type;'));
     expect(js, contains('evt === "session.idle"'));
     expect(js, contains('evt === "chat.message"'));
@@ -233,7 +233,7 @@ void main() {
     // 累积链：无提前 return，两条分支都写 `last`，链尾统一返回。
     expect(js, isNot(contains('return out ? JSON.parse(out)')));
     expect(js, contains('last = JSON.parse(out)'));
-    expect(js, contains('return last || {}'));
+    expect(js, contains('return () => controller.abort()'));
     expect(
       js.split('if (evt === "session.idle")').length - 1,
       2,
@@ -280,16 +280,16 @@ void main() {
 
   test('user hooks plugin coexists with agent-status/idle plugin entries', () {
     var config = const <String, Object?>{
-      'plugin': ['./teampilot-agent-status.js'],
+      'plugins': ['./teampilot-agent-status.js'],
     };
     config = mergeOpencodePluginEntries(config, ['./teampilot-user-hooks.js']);
-    expect(config['plugin'], [
+    expect(config['plugins'], [
       './teampilot-agent-status.js',
       './teampilot-user-hooks.js',
     ]);
     final mergedAgain = mergeOpencodePluginEntries(config, [
       './teampilot-user-hooks.js',
     ]);
-    expect(mergedAgain['plugin'], config['plugin']);
+    expect(mergedAgain['plugins'], config['plugins']);
   });
 }

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/agent_launch.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/standalone_launch.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/model_launch.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/permission_launch.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/session_selection_launch.dart';
@@ -45,6 +46,7 @@ void main() {
         resumeSessionId: 'session-1',
       ),
       [
+        '--standalone',
         '--session',
         'session-1',
         '--model',
@@ -73,7 +75,7 @@ void main() {
           model: 'gpt-5',
         ),
       ),
-      ['--model', 'gpt-5'],
+      ['--standalone', '--model', 'gpt-5'],
     );
   });
 
@@ -195,14 +197,15 @@ void main() {
         ),
         member: const TeamMemberConfig(id: 'member', name: 'Member'),
       ),
-      isEmpty,
+      ['--standalone'],
     );
   });
 
-  test('OpenCode registers session/workspace/model/agent/user providers', () {
+  test('OpenCode registers standalone/session/workspace/model/agent/user providers', () {
     final tool = OpencodeCliTool();
     final providers = tool.capabilities.whereType<CliLaunchArgProvider>();
 
+    expect(providers, contains(isA<OpencodeStandaloneLaunch>()));
     expect(providers, contains(isA<OpencodeSessionSelectionLaunch>()));
     expect(providers, contains(isA<OpencodeWorkspaceBaseInfo>()));
     expect(providers, contains(isA<OpencodeModelLaunch>()));
@@ -216,7 +219,7 @@ void main() {
       tool.capabilities.whereType<CliHeadlessLaunchConstraint>(),
       contains(isA<OpencodePermissionLaunch>()),
     );
-    expect(providers, hasLength(5));
+    expect(providers, hasLength(6));
     expect(tool.capabilities.whereType<OpencodeTeamBehavior>(), hasLength(1));
     expect(tool.capabilities.whereType<TeamBehaviorCapability>(), hasLength(1));
   });

@@ -7,6 +7,7 @@ import '../registry/cli_tool_definition.dart';
 import 'capabilities/team_behavior.dart';
 import 'capabilities/native_commands.dart';
 import 'capabilities/session_selection_launch.dart';
+import 'capabilities/standalone_launch.dart';
 import 'capabilities/workspace_base_info.dart';
 import 'capabilities/model_launch.dart';
 import 'capabilities/permission_launch.dart';
@@ -39,6 +40,7 @@ import '../registry/capabilities/prompt_capability.dart';
 final class OpencodeCliTool implements CliToolDefinition {
   OpencodeCliTool({
     this.teamBehavior = const OpencodeTeamBehavior(),
+    this.standalone = const OpencodeStandaloneLaunch(),
     this.sessionSelection = const OpencodeSessionSelectionLaunch(),
     this.workspaceBaseInfo = const OpencodeWorkspaceBaseInfo(),
     this.modelLaunch = const OpencodeModelLaunch(),
@@ -74,6 +76,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final OpencodeMcpCapability mcp;
 
   final TeamBehaviorCapability teamBehavior;
+  final OpencodeStandaloneLaunch standalone;
   final OpencodeSessionSelectionLaunch sessionSelection;
   final OpencodeWorkspaceBaseInfo workspaceBaseInfo;
   final OpencodeModelLaunch modelLaunch;
@@ -98,6 +101,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   @override
   Iterable<CliCapability> get capabilities => [
     teamBehavior,
+    standalone,
     sessionSelection,
     workspaceBaseInfo,
     modelLaunch,

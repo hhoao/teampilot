@@ -3,7 +3,7 @@ import '../provider_presets.dart';
 
 /// How an OpenCode provider acquires and stores credentials in TeamPilot.
 ///
-/// OpenCode CLIs read `auth.json` and/or `opencode.json` `options.apiKey` at
+/// OpenCode CLIs read `auth.json` and/or `opencode.json` `settings.apiKey` at
 /// runtime. TeamPilot keeps a single catalog source of truth (`AppProviderConfig`)
 /// and materializes CLI artifacts at launch — no separate OAuth login flow.
 enum OpencodeCredentialKind {

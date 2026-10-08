@@ -18,20 +18,14 @@ void main() {
   });
 
   test(
-    'opencode uses "skill" subdir; cursor uses "skills-cursor"; others use "skills"',
+    'cursor uses "skills-cursor"; others use "skills"',
     () {
       final registry = buildRegistry();
-      expect(
-        registry.capability<SkillCapability>(CliTool.opencode)!.skillsSubdir,
-        'skill',
-      );
       expect(
         registry.capability<SkillCapability>(CliTool.cursor)!.skillsSubdir,
         'skills-cursor',
       );
-      for (final cli in CliTool.values.where(
-        (c) => c != CliTool.opencode && c != CliTool.cursor,
-      )) {
+      for (final cli in CliTool.values.where((c) => c != CliTool.cursor)) {
         expect(
           registry.capability<SkillCapability>(cli)!.skillsSubdir,
           'skills',

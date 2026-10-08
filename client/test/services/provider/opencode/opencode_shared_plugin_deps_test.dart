@@ -46,7 +46,7 @@ void main() {
           installCalls++;
           expect(cwd, cacheRoot);
           await Directory(
-            p.join(cwd, 'node_modules', '@opencode-ai', 'plugin'),
+            p.join(cwd, 'node_modules', '@opencode', 'plugin'),
           ).create(recursive: true);
           return 0;
         },
@@ -58,10 +58,10 @@ void main() {
       final pkg = await File(
         p.join(seeder.sharedRoot, 'package.json'),
       ).readAsString();
-      expect(pkg, contains('"@opencode-ai/plugin": "1.18.4"'));
+      expect(pkg, contains('"@opencode/plugin": "1.18.4"'));
       expect(
         await Directory(
-          p.join(seeder.sharedRoot, 'node_modules', '@opencode-ai', 'plugin'),
+          p.join(seeder.sharedRoot, 'node_modules', '@opencode', 'plugin'),
         ).exists(),
         isTrue,
       );
@@ -76,7 +76,7 @@ void main() {
       npmInstall: (_) async => 0,
     );
     await Directory(
-      p.join(seeder.sharedRoot, 'node_modules', '@opencode-ai', 'plugin'),
+      p.join(seeder.sharedRoot, 'node_modules', '@opencode', 'plugin'),
     ).create(recursive: true);
     var installCalls = 0;
     final skipper = OpencodeSharedPluginDeps(
@@ -126,7 +126,7 @@ void main() {
   test('migrates complete cli-defaults node_modules into cache', () async {
     final legacy = layout.appToolRoot('opencode');
     await Directory(
-      p.join(legacy, 'node_modules', '@opencode-ai', 'plugin'),
+      p.join(legacy, 'node_modules', '@opencode', 'plugin'),
     ).create(recursive: true);
     await File(p.join(legacy, 'package.json')).writeAsString('{"ok":true}');
 
@@ -140,7 +140,7 @@ void main() {
 
     expect(
       await Directory(
-        p.join(seeder.sharedRoot, 'node_modules', '@opencode-ai', 'plugin'),
+        p.join(seeder.sharedRoot, 'node_modules', '@opencode', 'plugin'),
       ).exists(),
       isTrue,
     );

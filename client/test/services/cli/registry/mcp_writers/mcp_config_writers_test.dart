@@ -359,7 +359,7 @@ url = "https://example.com/mcp"
       () async {
         final fs = InMemoryFilesystem();
         const configDir = '/oc';
-        await fs.writeString('$configDir/opencode.json', '{"plugin":[]}');
+        await fs.writeString('$configDir/opencode.json', '{"plugins":[]}');
 
         await const OpencodeMcpCapability().write(
           fs: fs,
@@ -372,11 +372,11 @@ url = "https://example.com/mcp"
 
         final raw = await fs.readString('$configDir/opencode.json');
         final decoded = jsonDecode(raw!) as Map;
-        expect(decoded['plugin'], isNotNull);
-        final mcp = decoded['mcp'] as Map;
-        expect((mcp['local'] as Map)['type'], 'local');
-        expect((mcp['local'] as Map)['command'], ['node', 'srv.js']);
-        expect((mcp['remote'] as Map)['type'], 'remote');
+        expect(decoded['plugins'], isNotNull);
+        final servers = (decoded['mcp'] as Map)['servers'] as Map;
+        expect((servers['local'] as Map)['type'], 'local');
+        expect((servers['local'] as Map)['command'], ['node', 'srv.js']);
+        expect((servers['remote'] as Map)['type'], 'remote');
       },
     );
 
@@ -402,10 +402,12 @@ url = "https://example.com/mcp"
           '$sessionDir/opencode.json',
           jsonEncode({
             'mcp': {
-              'remote': {
-                'type': 'remote',
-                'url': 'https://example.com/mcp',
-                'enabled': true,
+              'servers': {
+                'remote': {
+                  'type': 'remote',
+                  'url': 'https://example.com/mcp',
+                  'disabled': false,
+                },
               },
             },
           }),
@@ -420,7 +422,8 @@ url = "https://example.com/mcp"
         final raw = await fs.readString('$sessionDir/opencode.json');
         final decoded = jsonDecode(raw!) as Map;
         final headers =
-            ((decoded['mcp'] as Map)['remote'] as Map)['headers'] as Map;
+            (((decoded['mcp'] as Map)['servers'] as Map)['remote'] as Map)['headers']
+                as Map;
         expect(headers['Authorization'], 'Bearer oauth-tok');
       },
     );

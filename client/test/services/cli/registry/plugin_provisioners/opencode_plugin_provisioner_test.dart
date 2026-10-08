@@ -48,9 +48,9 @@ void main() {
           }),
         );
 
-        await fs.ensureDir('$configDir/skill/shared-skill');
+        await fs.ensureDir('$configDir/skills/shared-skill');
         await fs.writeString(
-          '$configDir/skill/shared-skill/SKILL.md',
+          '$configDir/skills/shared-skill/SKILL.md',
           '---\nname: shared-skill\ndescription: from catalog\n---\n',
         );
 
@@ -64,23 +64,23 @@ void main() {
         );
 
         expect(
-          await fs.readString('$configDir/skill/shared-skill/SKILL.md'),
+          await fs.readString('$configDir/skills/shared-skill/SKILL.md'),
           contains('from catalog'),
           reason: 'catalog skill must not be overwritten by plugin dedupe',
         );
         expect(
-          await fs.readString('$configDir/skill/fresh-skill/SKILL.md'),
+          await fs.readString('$configDir/skills/fresh-skill/SKILL.md'),
           contains('fresh-skill'),
         );
         expect(
-          await fs.readString('$configDir/agent/reviewer.md'),
+          await fs.readString('$configDir/agents/reviewer.md'),
           '# Reviewer agent',
         );
 
         final opencodeJson =
             jsonDecode((await fs.readString('$configDir/opencode.json'))!)
                 as Map;
-        final mcp = opencodeJson['mcp'] as Map;
+        final mcp = (opencodeJson['mcp'] as Map)['servers'] as Map;
         expect((mcp['assembled'] as Map)['command'], ['assembled-command']);
         expect(mcp.containsKey('plugin-mcp'), isFalse);
       },
@@ -108,9 +108,9 @@ void main() {
 
         await _provision(fs, configDir, poolDir);
 
-        // Skills still decomposed into opencode's `skill/` dir.
+        // Skills still decomposed into opencode's `skills/` dir.
         expect(
-          await fs.readString('$configDir/skill/brainstorming/SKILL.md'),
+          await fs.readString('$configDir/skills/brainstorming/SKILL.md'),
           isNotNull,
         );
         // Full bundle tree materialized so plugin-relative paths resolve.
@@ -130,7 +130,7 @@ void main() {
         final opencodeJson =
             jsonDecode((await fs.readString('$configDir/opencode.json'))!)
                 as Map;
-        expect(opencodeJson['plugin'], [
+        expect(opencodeJson['plugins'], [
           './plugins/superpowers/.opencode/plugins/superpowers.js',
         ]);
       },
@@ -197,7 +197,7 @@ void main() {
 
       final opencodeJson =
           jsonDecode((await fs.readString('$configDir/opencode.json'))!) as Map;
-      expect(opencodeJson['plugin'], [
+      expect(opencodeJson['plugins'], [
         './plugins/superpowers/.opencode/plugins/superpowers.js',
       ]);
       expect(
@@ -257,26 +257,26 @@ void main() {
       );
       final opencodeJson =
           jsonDecode((await fs.readString('$configDir/opencode.json'))!) as Map;
-      expect(opencodeJson['plugin'], ['./plugins/superpowers/plugin/entry.js']);
+      expect(opencodeJson['plugins'], ['./plugins/superpowers/plugin/entry.js']);
     });
 
-    test('mergeOpencodePluginEntries appends and preserves tuples', () {
+    test('mergeOpencodePluginEntries appends and preserves option objects', () {
       final merged = mergeOpencodePluginEntries(
         <String, Object?>{
-          'plugin': <Object?>[
-            <Object?>[
-              './teampilot-idle-bus.js',
-              <String, Object?>{'member': 'm1'},
-            ],
+          'plugins': <Object?>[
+            <String, Object?>{
+              'package': './teampilot-idle-bus.js',
+              'options': <String, Object?>{'member': 'm1'},
+            },
             './existing.js',
           ],
         },
         const ['./plugins/a/x.js', './existing.js', './plugins/a/x.js'],
       );
-      final plugin = (merged['plugin'] as List).cast<Object?>();
+      final plugin = (merged['plugins'] as List).cast<Object?>();
       expect(plugin, hasLength(3));
-      expect(plugin.first, isA<List>());
-      expect((plugin.first as List).first, './teampilot-idle-bus.js');
+      expect(plugin.first, isA<Map>());
+      expect((plugin.first as Map)['package'], './teampilot-idle-bus.js');
       expect(
         plugin,
         containsAll(<Object?>['./existing.js', './plugins/a/x.js']),

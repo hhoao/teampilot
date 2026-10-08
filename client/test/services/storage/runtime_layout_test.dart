@@ -523,9 +523,9 @@ void main() {
         await Directory(app).create(recursive: true);
         await File(
           p.join(app, 'package.json'),
-        ).writeAsString('{"dependencies":{"@opencode-ai/plugin":"1.0.0"}}');
+        ).writeAsString('{"dependencies":{"@opencode/plugin":"1.0.0"}}');
         await Directory(
-          p.join(app, 'node_modules', '@opencode-ai', 'plugin'),
+          p.join(app, 'node_modules', '@opencode', 'plugin'),
         ).create(recursive: true);
 
         final sessionDir = layout.sessionRuntimeToolDir(
@@ -547,12 +547,12 @@ void main() {
         final linkedPkg = _posixPath.join(sessionDir, 'package.json');
         expect(_inheritedPathExists(linkedNm), isTrue);
         expect(
-          await Directory(p.join(linkedNm, '@opencode-ai', 'plugin')).exists(),
+          await Directory(p.join(linkedNm, '@opencode', 'plugin')).exists(),
           isTrue,
         );
         expect(
           await File(linkedPkg).readAsString(),
-          contains('@opencode-ai/plugin'),
+          contains('@opencode/plugin'),
         );
         expect(Directory(p.join(linkedNm, 'old')).existsSync(), isFalse);
       },
@@ -571,12 +571,12 @@ void main() {
         await Directory(app).create(recursive: true);
         await File(
           p.join(app, 'package.json'),
-        ).writeAsString('{"dependencies":{"@opencode-ai/plugin":"1.18.5"}}');
+        ).writeAsString('{"dependencies":{"@opencode/plugin":"1.18.5"}}');
         await File(p.join(app, 'package-lock.json')).writeAsString(
-          '{"packages":{"":{"dependencies":{"@opencode-ai/plugin":"1.18.5"}}}}',
+          '{"packages":{"":{"dependencies":{"@opencode/plugin":"1.18.5"}}}}',
         );
         await Directory(
-          p.join(app, 'node_modules', '@opencode-ai', 'plugin'),
+          p.join(app, 'node_modules', '@opencode', 'plugin'),
         ).create(recursive: true);
 
         final sessionDir = layout.sessionRuntimeToolDir(
@@ -595,7 +595,7 @@ void main() {
         expect(await File(linkedLock).exists(), isTrue);
         expect(
           await File(linkedLock).readAsString(),
-          contains('@opencode-ai/plugin'),
+          contains('@opencode/plugin'),
         );
       },
     );
@@ -614,12 +614,12 @@ void main() {
         final pkgSource = p.join(app, 'package.json');
         await File(
           pkgSource,
-        ).writeAsString('{"dependencies":{"@opencode-ai/plugin":"1.18.5"}}');
+        ).writeAsString('{"dependencies":{"@opencode/plugin":"1.18.5"}}');
         await File(p.join(app, 'package-lock.json')).writeAsString(
-          '{"packages":{"":{"dependencies":{"@opencode-ai/plugin":"1.18.5"}}}}',
+          '{"packages":{"":{"dependencies":{"@opencode/plugin":"1.18.5"}}}}',
         );
         await Directory(
-          p.join(app, 'node_modules', '@opencode-ai', 'plugin'),
+          p.join(app, 'node_modules', '@opencode', 'plugin'),
         ).create(recursive: true);
 
         final sessionDir = layout.sessionRuntimeToolDir(
@@ -641,7 +641,7 @@ void main() {
         );
         expect(
           await File(p.join(sessionDir, 'package-lock.json')).readAsString(),
-          contains('@opencode-ai/plugin'),
+          contains('@opencode/plugin'),
         );
       },
     );
@@ -659,9 +659,9 @@ void main() {
         await Directory(app).create(recursive: true);
         await File(
           p.join(app, 'package.json'),
-        ).writeAsString('{"dependencies":{"@opencode-ai/plugin":"1.0.0"}}');
+        ).writeAsString('{"dependencies":{"@opencode/plugin":"1.0.0"}}');
         await Directory(
-          p.join(app, 'node_modules', '@opencode-ai', 'plugin'),
+          p.join(app, 'node_modules', '@opencode', 'plugin'),
         ).create(recursive: true);
 
         final sessionDir = layout.sessionRuntimeToolDir(
@@ -682,12 +682,12 @@ void main() {
         final linkedPkg = _posixPath.join(sessionDir, 'package.json');
         expect(_inheritedPathExists(linkedNm), isTrue);
         expect(
-          await Directory(p.join(linkedNm, '@opencode-ai', 'plugin')).exists(),
+          await Directory(p.join(linkedNm, '@opencode', 'plugin')).exists(),
           isTrue,
         );
         expect(
           await File(linkedPkg).readAsString(),
-          contains('@opencode-ai/plugin'),
+          contains('@opencode/plugin'),
         );
       },
     );
@@ -705,9 +705,9 @@ void main() {
         await Directory(app).create(recursive: true);
         await File(
           p.join(app, 'package.json'),
-        ).writeAsString('{"dependencies":{"@opencode-ai/plugin":"1.0.0"}}');
+        ).writeAsString('{"dependencies":{"@opencode/plugin":"1.0.0"}}');
         await Directory(
-          p.join(app, 'node_modules', '@opencode-ai', 'plugin'),
+          p.join(app, 'node_modules', '@opencode', 'plugin'),
         ).create(recursive: true);
 
         await Future.wait([
@@ -726,7 +726,7 @@ void main() {
           expect(_inheritedPathExists(linkedNm), isTrue);
           expect(
             await File(p.join(sessionDir, 'package.json')).readAsString(),
-            contains('@opencode-ai/plugin'),
+            contains('@opencode/plugin'),
           );
         }
       },

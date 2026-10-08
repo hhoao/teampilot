@@ -163,7 +163,7 @@ void main() {
     expect(executable!.supportsInstaller, isTrue);
   });
 
-  test('opencode built-in has npm executable with install support', () {
+  test('opencode built-in has curl executable with install support', () {
     final registry = CliToolRegistry.builtIn();
     final executable = registry.capability<CliExecutableCapability>(
       CliTool.opencode,

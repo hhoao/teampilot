@@ -1,4 +1,4 @@
-/// opencode `options.reasoningEffort` values and model applicability heuristics.
+/// opencode model `settings.reasoningEffort` values and applicability heuristics.
 abstract final class OpencodeEffortCatalog {
   OpencodeEffortCatalog._();
 

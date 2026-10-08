@@ -31,13 +31,18 @@ void main() {
         <String, Object?>{},
         <String>['/repo/a', '/repo/b'],
       );
-      final permission = merged['permission'] as Map;
-      final external = (permission['external_directory'] as Map)
-          .cast<String, Object?>();
-      expect(external, <String, Object?>{
-        '/repo/a/**': 'allow',
-        '/repo/b/**': 'allow',
-      });
+      expect(merged['permissions'], [
+        {
+          'action': 'external_directory',
+          'resource': '/repo/a/*',
+          'effect': 'allow',
+        },
+        {
+          'action': 'external_directory',
+          'resource': '/repo/b/*',
+          'effect': 'allow',
+        },
+      ]);
     },
   );
 
@@ -46,10 +51,11 @@ void main() {
       <String, Object?>{},
       LaunchSecurityPolicy.fullAccess,
     );
-    final permission = (merged['permission'] as Map).cast<String, Object?>();
-    expect(permission['edit'], 'allow');
-    expect(permission['bash'], 'allow');
-    expect(permission['external_directory'], <String, Object?>{'*': 'allow'});
+    expect(merged['permissions'], [
+      {'action': 'edit', 'resource': '*', 'effect': 'allow'},
+      {'action': 'shell', 'resource': '*', 'effect': 'allow'},
+      {'action': 'external_directory', 'resource': '*', 'effect': 'allow'},
+    ]);
   });
 
   test('external directories remain config-only and are not argv flags', () {
@@ -72,7 +78,7 @@ void main() {
           additionalDirectories: ['/repo/a', '/repo/b'],
         ),
       ),
-      ['--model', 'anthropic/claude-sonnet-4'],
+      ['--standalone', '--model', 'anthropic/claude-sonnet-4'],
     );
   });
 
@@ -81,23 +87,34 @@ void main() {
     () {
       final merged = mergeOpencodeExternalDirectories(
         <String, Object?>{
-          'permission': <String, Object?>{
-            'edit': 'deny',
-            'external_directory': <String, Object?>{'/existing/**': 'allow'},
-          },
+          'permissions': <Object?>[
+            <String, Object?>{
+              'action': 'edit',
+              'resource': '*',
+              'effect': 'deny',
+            },
+            <String, Object?>{
+              'action': 'external_directory',
+              'resource': '/existing/*',
+              'effect': 'allow',
+            },
+          ],
         },
         <String>['/repo/a'],
       );
-      final permission = merged['permission'] as Map;
-      expect(permission['edit'], 'deny');
-      final external = (permission['external_directory'] as Map)
-          .cast<String, Object?>();
-      expect(
-        external.keys,
-        containsAll(<String>['/existing/**', '/repo/a/**']),
-      );
-      expect(external['/existing/**'], 'allow');
-      expect(external['/repo/a/**'], 'allow');
+      expect(merged['permissions'], [
+        {'action': 'edit', 'resource': '*', 'effect': 'deny'},
+        {
+          'action': 'external_directory',
+          'resource': '/existing/*',
+          'effect': 'allow',
+        },
+        {
+          'action': 'external_directory',
+          'resource': '/repo/a/*',
+          'effect': 'allow',
+        },
+      ]);
     },
   );
 
@@ -337,15 +354,16 @@ void main() {
       '$opencodeDir/${OpencodeProviderCapability.opencodeConfigFileName}',
     );
     final config = jsonDecode(raw!) as Map<String, dynamic>;
-    final permission = config['permission'] as Map;
-    expect(permission['edit'], 'allow');
-    expect(permission['bash'], 'allow');
-    final external = (permission['external_directory'] as Map)
-        .cast<String, Object?>();
-    expect(external, <String, Object?>{
-      '*': 'allow',
-      '/abs/missing/repo/**': 'allow',
-    });
+    expect(config['permissions'], [
+      {'action': 'edit', 'resource': '*', 'effect': 'allow'},
+      {'action': 'shell', 'resource': '*', 'effect': 'allow'},
+      {'action': 'external_directory', 'resource': '*', 'effect': 'allow'},
+      {
+        'action': 'external_directory',
+        'resource': '/abs/missing/repo/*',
+        'effect': 'allow',
+      },
+    ]);
     expect(sibling.existsSync(), isTrue);
   });
 }

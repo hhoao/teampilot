@@ -142,10 +142,10 @@ void main() {
 
       expect(rendered.scripts.single.fileName, 'teampilot-agent-status.js');
       final config = rendered.configFragments['opencode.json']! as Map;
-      expect((config['plugin'] as List).single, [
-        './teampilot-agent-status.js',
-        action.pluginOptions,
-      ]);
+      expect((config['plugins'] as List).single, {
+        'package': './teampilot-agent-status.js',
+        'options': action.pluginOptions,
+      });
     },
   );
 }

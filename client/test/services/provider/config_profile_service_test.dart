@@ -240,7 +240,7 @@ void main() {
       // (it runs before the plugin decompose now, so nothing to prune).
       expect(
         await fs.readString(
-          p.join(opencodeDir, 'skill', 'plugin-only-skill', 'SKILL.md'),
+          p.join(opencodeDir, 'skills', 'plugin-only-skill', 'SKILL.md'),
         ),
         contains('from plugin'),
       );
@@ -251,7 +251,7 @@ void main() {
               )
               as Map<String, Object?>;
       expect(
-        opencodeJson['plugin'],
+        opencodeJson['plugins'],
         contains('./plugins/demo-plugin/.opencode/plugins/demo.js'),
       );
       expect(
