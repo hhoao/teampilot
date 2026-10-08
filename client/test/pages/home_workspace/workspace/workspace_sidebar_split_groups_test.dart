@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
+import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/session_groups_cubit.dart';
 import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
@@ -98,6 +99,9 @@ void main() {
             child: MultiBlocProvider(
               providers: [
                 BlocProvider<ChatCubit>.value(value: chatCubit),
+                BlocProvider(
+                  create: (_) => MemberPresenceCubit(storage: testHomeStorage),
+                ),
                 BlocProvider<WorkbenchCubit>.value(value: workbenchCubit),
                 BlocProvider<AutomationCubit>.value(value: automationCubit),
                 BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
@@ -174,34 +178,101 @@ void main() {
 
     await pumpSidebar(tester, ids: ids, height: 400);
 
+    expect(
+      find.byKey(const ValueKey('workspace-sidebar-view-switcher')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('running session strip does not reserve empty space without footer', (
+  testWidgets('view switcher and sidebar actions share one row', (
     tester,
   ) async {
-    workbenchCubit
-      ..openSession('ws-1', 'a')
-      ..openSession('ws-1', 'b')
-      ..splitTab(
-        'ws-1',
-        WorkbenchTabId.session('b'),
-        axis: Axis.horizontal,
-        before: false,
-      );
-    await pumpSidebar(tester, embedFooter: false);
+    await pumpSidebar(tester);
 
-    final viewport = tester.getRect(
-      find.ancestor(
-        of: find.byKey(const ValueKey('workspace-running-split-g0')),
-        matching: find.byType(ListView),
-      ),
+    final switcher = tester.getRect(
+      find.byKey(const ValueKey('workspace-sidebar-view-switcher')),
     );
-    final lastTile = tester.getRect(
-      find.byKey(const ValueKey('workspace-running-session-b')),
-    );
-    expect(viewport.bottom, closeTo(lastTile.bottom, 0.1));
+    final archiveButton = tester.getRect(find.byIcon(Icons.archive_outlined));
+
+    expect(archiveButton.center.dy, closeTo(switcher.center.dy, 0.5));
   });
+
+  testWidgets('view switcher labels use the sm text size', (tester) async {
+    await pumpSidebar(tester);
+
+    final switcher = find.byKey(
+      const ValueKey('workspace-sidebar-view-switcher'),
+    );
+    final expectedSize = TpTextStyles.of(tester.element(switcher)).sm.fontSize;
+    for (final label in ['Groups', 'Project tree']) {
+      final text = tester.widget<Text>(
+        find.descendant(of: switcher, matching: find.text(label)),
+      );
+      expect(text.style?.fontSize, expectedSize);
+    }
+  });
+
+  testWidgets('view switcher leaves horizontal room around labels', (
+    tester,
+  ) async {
+    await pumpSidebar(tester);
+
+    final switcher = tester.getRect(
+      find.byKey(const ValueKey('workspace-sidebar-view-switcher')),
+    );
+
+    expect(switcher.width, greaterThan(144));
+  });
+
+  testWidgets('view switcher icons align vertically with their labels', (
+    tester,
+  ) async {
+    await pumpSidebar(tester);
+
+    final switcher = find.byKey(
+      const ValueKey('workspace-sidebar-view-switcher'),
+    );
+    for (final (icon, label) in [
+      (Icons.tag_outlined, 'Groups'),
+      (Icons.folder_outlined, 'Project tree'),
+    ]) {
+      final iconRect = tester.getRect(
+        find.descendant(of: switcher, matching: find.byIcon(icon)),
+      );
+      final labelRect = tester.getRect(
+        find.descendant(of: switcher, matching: find.text(label)),
+      );
+      expect(iconRect.center.dy, closeTo(labelRect.center.dy, 0.1));
+    }
+  });
+
+  testWidgets(
+    'running session strip does not reserve empty space without footer',
+    (tester) async {
+      workbenchCubit
+        ..openSession('ws-1', 'a')
+        ..openSession('ws-1', 'b')
+        ..splitTab(
+          'ws-1',
+          WorkbenchTabId.session('b'),
+          axis: Axis.horizontal,
+          before: false,
+        );
+      await pumpSidebar(tester, embedFooter: false);
+
+      final viewport = tester.getRect(
+        find.ancestor(
+          of: find.byKey(const ValueKey('workspace-running-split-g0')),
+          matching: find.byType(ListView),
+        ),
+      );
+      final lastTile = tester.getRect(
+        find.byKey(const ValueKey('workspace-running-session-b')),
+      );
+      expect(viewport.bottom, closeTo(lastTile.bottom, 0.1));
+    },
+  );
 
   testWidgets('running session strip hugs content with footer', (tester) async {
     workbenchCubit
@@ -396,40 +467,39 @@ void main() {
     },
   );
 
-  testWidgets(
-    'same-group indicators abut across the inter-row gap',
-    (tester) async {
-      workbenchCubit
-        ..openSession('ws-1', 'a')
-        ..openSession('ws-1', 'b')
-        ..openSession('ws-1', 'c')
-        ..activate('ws-1', WorkbenchTabId.session('a'))
-        ..splitTab(
-          'ws-1',
-          WorkbenchTabId.session('b'),
-          axis: Axis.horizontal,
-          before: false,
-        ); // g0 [a, c] | g1 [b]
-      await pumpSidebar(tester, ids: const ['a', 'b', 'c']);
+  testWidgets('same-group indicators abut across the inter-row gap', (
+    tester,
+  ) async {
+    workbenchCubit
+      ..openSession('ws-1', 'a')
+      ..openSession('ws-1', 'b')
+      ..openSession('ws-1', 'c')
+      ..activate('ws-1', WorkbenchTabId.session('a'))
+      ..splitTab(
+        'ws-1',
+        WorkbenchTabId.session('b'),
+        axis: Axis.horizontal,
+        before: false,
+      ); // g0 [a, c] | g1 [b]
+    await pumpSidebar(tester, ids: const ['a', 'b', 'c']);
 
-      final indicators = find
-          .byKey(const ValueKey('workspace-running-group-indicator-g0'))
-          .evaluate()
-          .toList();
-      expect(indicators.length, 2);
-      final first = indicators.first.renderObject! as RenderBox;
-      final second = indicators.last.renderObject! as RenderBox;
-      // Non-last bar extends through the tile gap so the rail reads continuous.
-      expect(
-        first.size.height,
-        kWorkspaceSidebarRowPaintHeight + kWorkspaceSidebarRowGap,
-      );
-      expect(second.size.height, kWorkspaceSidebarRowPaintHeight);
-      final firstBottom = first.localToGlobal(Offset(0, first.size.height)).dy;
-      final secondTop = second.localToGlobal(Offset.zero).dy;
-      expect(firstBottom, secondTop);
-    },
-  );
+    final indicators = find
+        .byKey(const ValueKey('workspace-running-group-indicator-g0'))
+        .evaluate()
+        .toList();
+    expect(indicators.length, 2);
+    final first = indicators.first.renderObject! as RenderBox;
+    final second = indicators.last.renderObject! as RenderBox;
+    // Non-last bar extends through the tile gap so the rail reads continuous.
+    expect(
+      first.size.height,
+      kWorkspaceSidebarRowPaintHeight + kWorkspaceSidebarRowGap,
+    );
+    expect(second.size.height, kWorkspaceSidebarRowPaintHeight);
+    final firstBottom = first.localToGlobal(Offset(0, first.size.height)).dy;
+    final secondTop = second.localToGlobal(Offset.zero).dy;
+    expect(firstBottom, secondTop);
+  });
   testWidgets('session menus lock their owning split groups', (tester) async {
     workbenchCubit
       ..openSession('ws-1', 'a')

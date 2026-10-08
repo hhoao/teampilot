@@ -305,7 +305,8 @@ String? memberTargetForInstanceId(
 
 /// Personal launch: [primaryPath] is cwd; add-dirs are other catalog folders on
 /// the same target (cross-machine paths are not reachable from one PTY).
-({String workingDirectory, List<String> addDirs}) personalWorkDirsForPrimaryPath(
+({String workingDirectory, List<String> addDirs})
+personalWorkDirsForPrimaryPath(
   List<WorkspaceFolder> catalog,
   String primaryPath, {
   required bool usesPosixPaths,
@@ -315,10 +316,7 @@ String? memberTargetForInstanceId(
     usesPosixPaths: usesPosixPaths,
   );
   if (catalog.isEmpty) {
-    return (
-      workingDirectory: normalizedPrimary,
-      addDirs: const [],
-    );
+    return (workingDirectory: normalizedPrimary, addDirs: const []);
   }
 
   final targetId =

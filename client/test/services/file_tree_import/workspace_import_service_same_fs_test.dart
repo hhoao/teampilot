@@ -13,8 +13,7 @@ Future<ConflictChoice> _skipConflict({
   required bool destIsDirectory,
   required bool typeMismatch,
   required int remainingConflicts,
-}) async =>
-    ConflictChoice.skip;
+}) async => ConflictChoice.skip;
 
 Future<ConflictChoice> _overwriteConflict({
   required String destPath,
@@ -22,8 +21,7 @@ Future<ConflictChoice> _overwriteConflict({
   required bool destIsDirectory,
   required bool typeMismatch,
   required int remainingConflicts,
-}) async =>
-    ConflictChoice.overwrite;
+}) async => ConflictChoice.overwrite;
 
 Future<ConflictChoice> _failOnConflict({
   required String destPath,
@@ -117,8 +115,7 @@ class RenameFailingFilesystem implements Filesystem {
   Future<bool> createSymlink({
     required String target,
     required String linkPath,
-  }) =>
-      delegate.createSymlink(target: target, linkPath: linkPath);
+  }) => delegate.createSymlink(target: target, linkPath: linkPath);
 
   @override
   Future<String?> readSymlinkTarget(String linkPath) =>
@@ -131,8 +128,7 @@ class RenameFailingFilesystem implements Filesystem {
   Future<void> copyTree({
     required String source,
     required String destination,
-  }) =>
-      delegate.copyTree(source: source, destination: destination);
+  }) => delegate.copyTree(source: source, destination: destination);
 
   @override
   Future<void> copyFile(String source, String destination) =>
@@ -210,8 +206,7 @@ class CopyFailingFilesystem implements Filesystem {
   Future<bool> createSymlink({
     required String target,
     required String linkPath,
-  }) =>
-      delegate.createSymlink(target: target, linkPath: linkPath);
+  }) => delegate.createSymlink(target: target, linkPath: linkPath);
 
   @override
   Future<String?> readSymlinkTarget(String linkPath) =>
@@ -224,8 +219,7 @@ class CopyFailingFilesystem implements Filesystem {
   Future<void> copyTree({
     required String source,
     required String destination,
-  }) =>
-      delegate.copyTree(source: source, destination: destination);
+  }) => delegate.copyTree(source: source, destination: destination);
 
   @override
   Future<List<FsDirEntry>> listDirRecursive(String path) =>
@@ -263,7 +257,10 @@ void main() {
         const ImportSource(path: '/src/tree', isDirectory: true),
       ]);
 
-      expect(result.files, containsAll(['/src/tree/a.txt', '/src/tree/sub/b.txt']));
+      expect(
+        result.files,
+        containsAll(['/src/tree/a.txt', '/src/tree/sub/b.txt']),
+      );
       expect(result.maxBytes, 4);
       expect(result.topLevel.length, 1);
     });
@@ -277,7 +274,9 @@ void main() {
       final plan = await _buildPlan(
         service,
         fs,
-        sources: [const ImportSource(path: '/src/note.txt', isDirectory: false)],
+        sources: [
+          const ImportSource(path: '/src/note.txt', isDirectory: false),
+        ],
         destDir: '/dest',
         mode: ImportMode.copy,
       );
@@ -398,7 +397,9 @@ void main() {
       final plan = await _buildPlan(
         service,
         fs,
-        sources: [const ImportSource(path: '/src/move.txt', isDirectory: false)],
+        sources: [
+          const ImportSource(path: '/src/move.txt', isDirectory: false),
+        ],
         destDir: '/dest',
         mode: ImportMode.move,
       );
@@ -421,7 +422,9 @@ void main() {
       final plan = await _buildPlan(
         service,
         fs,
-        sources: [const ImportSource(path: '/src/note.txt', isDirectory: false)],
+        sources: [
+          const ImportSource(path: '/src/note.txt', isDirectory: false),
+        ],
         destDir: '/dest',
         mode: ImportMode.copy,
       );
@@ -512,18 +515,19 @@ void main() {
 
       final summary = await service.run(
         plan,
-        onConflict: ({
-          required typeMismatch,
-          required destIsDirectory,
-          required sourceIsDirectory,
-          required destPath,
-          required remainingConflicts,
-        }) async {
-          expect(typeMismatch, isTrue);
-          expect(sourceIsDirectory, isTrue);
-          expect(destIsDirectory, isFalse);
-          return ConflictChoice.skip;
-        },
+        onConflict:
+            ({
+              required typeMismatch,
+              required destIsDirectory,
+              required sourceIsDirectory,
+              required destPath,
+              required remainingConflicts,
+            }) async {
+              expect(typeMismatch, isTrue);
+              expect(sourceIsDirectory, isTrue);
+              expect(destIsDirectory, isFalse);
+              return ConflictChoice.skip;
+            },
         isCancelled: () => false,
       );
 
@@ -553,86 +557,96 @@ void main() {
       expect((await fs.stat('/dest/item')).isDirectory, isTrue);
     });
 
-    test('same-directory move is a silent no-op without conflict prompt',
-        () async {
-      await fs.ensureDir('/src');
-      await fs.writeString('/src/note.txt', 'hello');
+    test(
+      'same-directory move is a silent no-op without conflict prompt',
+      () async {
+        await fs.ensureDir('/src');
+        await fs.writeString('/src/note.txt', 'hello');
 
-      final plan = await _buildPlan(
-        service,
-        fs,
-        sources: [const ImportSource(path: '/src/note.txt', isDirectory: false)],
-        destDir: '/src',
-        mode: ImportMode.move,
-      );
+        final plan = await _buildPlan(
+          service,
+          fs,
+          sources: [
+            const ImportSource(path: '/src/note.txt', isDirectory: false),
+          ],
+          destDir: '/src',
+          mode: ImportMode.move,
+        );
 
-      final summary = await service.run(
-        plan,
-        onConflict: _failOnConflict,
-        isCancelled: () => false,
-      );
+        final summary = await service.run(
+          plan,
+          onConflict: _failOnConflict,
+          isCancelled: () => false,
+        );
 
-      expect(summary.succeeded, 0);
-      expect(summary.skipped, 1);
-      expect(summary.failed, 0);
-      expect(await fs.readString('/src/note.txt'), 'hello');
-    });
+        expect(summary.succeeded, 0);
+        expect(summary.skipped, 1);
+        expect(summary.failed, 0);
+        expect(await fs.readString('/src/note.txt'), 'hello');
+      },
+    );
 
-    test('same-directory copy is a silent no-op without conflict prompt',
-        () async {
-      await fs.ensureDir('/src');
-      await fs.writeString('/src/note.txt', 'hello');
+    test(
+      'same-directory copy is a silent no-op without conflict prompt',
+      () async {
+        await fs.ensureDir('/src');
+        await fs.writeString('/src/note.txt', 'hello');
 
-      final plan = await _buildPlan(
-        service,
-        fs,
-        sources: [const ImportSource(path: '/src/note.txt', isDirectory: false)],
-        destDir: '/src',
-        mode: ImportMode.copy,
-      );
+        final plan = await _buildPlan(
+          service,
+          fs,
+          sources: [
+            const ImportSource(path: '/src/note.txt', isDirectory: false),
+          ],
+          destDir: '/src',
+          mode: ImportMode.copy,
+        );
 
-      final summary = await service.run(
-        plan,
-        onConflict: _failOnConflict,
-        isCancelled: () => false,
-      );
+        final summary = await service.run(
+          plan,
+          onConflict: _failOnConflict,
+          isCancelled: () => false,
+        );
 
-      expect(summary.succeeded, 0);
-      expect(summary.skipped, 1);
-      expect(summary.failed, 0);
-      expect(await fs.readString('/src/note.txt'), 'hello');
-    });
+        expect(summary.succeeded, 0);
+        expect(summary.skipped, 1);
+        expect(summary.failed, 0);
+        expect(await fs.readString('/src/note.txt'), 'hello');
+      },
+    );
 
-    test('mixed batch skips same-directory source and moves the rest',
-        () async {
-      await fs.ensureDir('/src');
-      await fs.ensureDir('/other');
-      await fs.writeString('/src/a.txt', 'a');
-      await fs.writeString('/other/b.txt', 'b');
+    test(
+      'mixed batch skips same-directory source and moves the rest',
+      () async {
+        await fs.ensureDir('/src');
+        await fs.ensureDir('/other');
+        await fs.writeString('/src/a.txt', 'a');
+        await fs.writeString('/other/b.txt', 'b');
 
-      final plan = await _buildPlan(
-        service,
-        fs,
-        sources: [
-          const ImportSource(path: '/src/a.txt', isDirectory: false),
-          const ImportSource(path: '/other/b.txt', isDirectory: false),
-        ],
-        destDir: '/src',
-        mode: ImportMode.move,
-      );
+        final plan = await _buildPlan(
+          service,
+          fs,
+          sources: [
+            const ImportSource(path: '/src/a.txt', isDirectory: false),
+            const ImportSource(path: '/other/b.txt', isDirectory: false),
+          ],
+          destDir: '/src',
+          mode: ImportMode.move,
+        );
 
-      final summary = await service.run(
-        plan,
-        onConflict: _failOnConflict,
-        isCancelled: () => false,
-      );
+        final summary = await service.run(
+          plan,
+          onConflict: _failOnConflict,
+          isCancelled: () => false,
+        );
 
-      expect(summary.skipped, 1);
-      expect(summary.succeeded, 1);
-      expect(await fs.readString('/src/a.txt'), 'a');
-      expect(await fs.readString('/src/b.txt'), 'b');
-      expect((await fs.stat('/other/b.txt')).exists, isFalse);
-    });
+        expect(summary.skipped, 1);
+        expect(summary.succeeded, 1);
+        expect(await fs.readString('/src/a.txt'), 'a');
+        expect(await fs.readString('/src/b.txt'), 'b');
+        expect((await fs.stat('/other/b.txt')).exists, isFalse);
+      },
+    );
 
     test('records failedPaths when copy throws', () async {
       await fs.writeString('/src/broken.txt', 'data');
@@ -658,6 +672,5 @@ void main() {
       expect(summary.failed, 1);
       expect(summary.failedPaths, ['/dest/broken.txt']);
     });
-
   });
 }

@@ -14,7 +14,10 @@ void main() {
     );
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
     final workspace = await repo.createWorkspace([
       const WorkspaceFolder(path: '/proj'),
     ]);
@@ -70,7 +73,10 @@ void main() {
     );
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
     final ws = await repo.createWorkspace([
       const WorkspaceFolder(path: '/local'),
       const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),

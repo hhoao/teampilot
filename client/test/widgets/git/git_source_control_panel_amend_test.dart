@@ -42,7 +42,11 @@ class _AmendRepoGitStub extends GitService {
   Future<List<String>> branches(String dir) async => const ['main'];
 
   @override
-  Future<void> commitAmend(String dir, String message, List<String> paths) async {
+  Future<void> commitAmend(
+    String dir,
+    String message,
+    List<String> paths,
+  ) async {
     commitAmendCalls.add([message, ...paths]);
   }
 
@@ -185,7 +189,9 @@ void main() {
     await aiSettingsCubit.close();
   });
 
-  testWidgets('amend requires confirmation; canceling does not amend', (tester) async {
+  testWidgets('amend requires confirmation; canceling does not amend', (
+    tester,
+  ) async {
     final aiSettingsCubit = AiFeatureSettingsCubit(
       repository: InMemoryAppSettingsRepository(),
     );
@@ -225,7 +231,9 @@ void main() {
     await aiSettingsCubit.close();
   });
 
-  testWidgets('confirming the amend dialog commits via commitAmend', (tester) async {
+  testWidgets('confirming the amend dialog commits via commitAmend', (
+    tester,
+  ) async {
     final aiSettingsCubit = AiFeatureSettingsCubit(
       repository: InMemoryAppSettingsRepository(),
     );

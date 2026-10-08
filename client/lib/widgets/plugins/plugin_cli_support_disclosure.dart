@@ -56,7 +56,9 @@ class PluginCliSupportDisclosure extends StatelessWidget {
     PluginCliSupportStatus status,
   ) {
     final cliLabel =
-        registry.capability<CliExecutableCapability>(status.tool)?.label(l10n) ??
+        registry
+            .capability<CliExecutableCapability>(status.tool)
+            ?.label(l10n) ??
         status.tool.name;
     return switch (status.level) {
       PluginCliSupportLevel.fullySupported => l10n.pluginCliSupportFully(
@@ -127,10 +129,7 @@ class _SupportChip extends StatelessWidget {
         color: background,
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(
-        label,
-        style: TpTextStyles.of(context).xsColored(foreground),
-      ),
+      child: Text(label, style: TpTextStyles.of(context).xsColored(foreground)),
     );
   }
 }

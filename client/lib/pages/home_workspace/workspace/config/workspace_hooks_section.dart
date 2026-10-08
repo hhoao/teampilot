@@ -26,7 +26,9 @@ class WorkspaceHooksSection extends StatelessWidget {
     final hookState = context.watch<HookCubit>().state;
     final definitions = hookState.definitions;
     final hookIds = projectState.config.bundle.hookIds;
-    final assignedCount = definitions.where((d) => hookIds.contains(d.id)).length;
+    final assignedCount = definitions
+        .where((d) => hookIds.contains(d.id))
+        .length;
     final projectCubit = context.read<WorkspaceProjectConfigCubit>();
 
     return SingleChildScrollView(
@@ -65,7 +67,9 @@ class WorkspaceHooksSection extends StatelessWidget {
                       onAssignedChanged: (assigned) {
                         final ids = List<String>.from(hookIds);
                         if (assigned) {
-                          if (!ids.contains(definition.id)) ids.add(definition.id);
+                          if (!ids.contains(definition.id)) {
+                            ids.add(definition.id);
+                          }
                         } else {
                           ids.remove(definition.id);
                         }

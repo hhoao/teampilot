@@ -129,24 +129,22 @@ void main() {
   group('canonicalSideText', () {
     test('collects non-filler left lines in order', () {
       final result = computeLineDiff('a\nb\nc', 'a\nc');
-      expect(
-        canonicalSideText(result.rows, right: false),
-        'a\nb\nc',
-      );
+      expect(canonicalSideText(result.rows, right: false), 'a\nb\nc');
     });
 
     test('collects non-filler right lines in order', () {
       final result = computeLineDiff('a\nb\nc', 'a\nc');
-      expect(
-        canonicalSideText(result.rows, right: true),
-        'a\nc',
-      );
+      expect(canonicalSideText(result.rows, right: true), 'a\nc');
     });
 
     test('preferTrailingNewline appends final newline', () {
       final result = computeLineDiff('a\nb', 'a');
       expect(
-        canonicalSideText(result.rows, right: true, preferTrailingNewline: true),
+        canonicalSideText(
+          result.rows,
+          right: true,
+          preferTrailingNewline: true,
+        ),
         'a\n',
       );
     });

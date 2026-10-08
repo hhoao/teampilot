@@ -31,7 +31,11 @@ Future<void> closeFloatingTab({
 
 /// Whether [id] is pinned on the floating layout — pinned tabs survive user
 /// bulk close actions (closeOthers / closeRight / closeAll) until unpinned.
-bool _isPinned(WorkbenchCubit workbench, String workspaceId, WorkbenchTabId id) {
+bool _isPinned(
+  WorkbenchCubit workbench,
+  String workspaceId,
+  WorkbenchTabId id,
+) {
   return workbench.mergedFloatingStrip(workspaceId).pinnedIds.contains(id);
 }
 
@@ -44,9 +48,7 @@ Future<void> closeOtherFloatingTabs({
   required WorkbenchTabId keepId,
   BuildContext? context,
 }) async {
-  final order = List.of(
-    workbench.mergedFloatingStrip(workspaceId).order,
-  );
+  final order = List.of(workbench.mergedFloatingStrip(workspaceId).order);
   for (final id in order) {
     if (id == keepId || _isPinned(workbench, workspaceId, id)) continue;
     await closeFloatingTabByBarId(
@@ -90,9 +92,7 @@ Future<void> closeAllFloatingTabs({
   required FloatingSurfaceRegistry registry,
   BuildContext? context,
 }) async {
-  final order = List.of(
-    workbench.mergedFloatingStrip(workspaceId).order,
-  );
+  final order = List.of(workbench.mergedFloatingStrip(workspaceId).order);
   for (final id in order) {
     if (_isPinned(workbench, workspaceId, id)) continue;
     await closeFloatingTabByBarId(

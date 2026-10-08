@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../../models/team_config.dart';
+import '../../cli/registry/capabilities/workspace_base_info_capability.dart';
 import '../../cli/registry/config_profile/config_profile_scope.dart';
 import '../contribution/prompt_document.dart';
 
@@ -16,6 +17,7 @@ class PromptProviderContext {
     Iterable<String> additionalDirectories = const [],
     this.memberHome,
     this.sourceId,
+    this.workspaceBaseInfo = WorkspaceBaseInfoPromptInputs.empty,
   }) : additionalDirectories = List.unmodifiable(additionalDirectories);
 
   final CliTool cli;
@@ -27,6 +29,7 @@ class PromptProviderContext {
   final List<String> additionalDirectories;
   final String? memberHome;
   final String? sourceId;
+  final WorkspaceBaseInfoPromptInputs workspaceBaseInfo;
 }
 
 /// Supplies prompt contributions without writing target configuration.

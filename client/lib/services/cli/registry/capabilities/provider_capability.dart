@@ -11,7 +11,7 @@ import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../io/filesystem.dart';
 import '../../../provider/credential_binding.dart';
 import '../../../remote/remote_credential_materializer.dart';
-import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../../chat/team_bus/member_bus_idle_endpoint.dart';
 import '../cli_capability.dart';
 import '../config_profile/config_profile_context.dart';
 import '../../../resource/providers/hook_contribution_provider.dart';
@@ -281,6 +281,9 @@ abstract interface class ModelCatalogSource {
 /// [catalogSources] plus the provider record and the current value.
 abstract base class CatalogModelCapability implements ProviderCapability {
   const CatalogModelCapability();
+
+  @override
+  String? get launchSettingsFileEnvKey => null;
 
   /// Built-in catalogs merged before the provider record. Order is irrelevant
   /// (results are deduped and sorted).
@@ -576,6 +579,10 @@ abstract interface class ProviderCapability implements CliCapability {
   /// Preferred official catalog id used when a Simple launch provider is unset.
   /// Null when the CLI has no official catalog row (flashskyai).
   String? get defaultOfficialProviderId;
+
+  /// Env key for a per-session settings file injected at launch.
+  /// Null when the CLI does not use a settings-file env var.
+  String? get launchSettingsFileEnvKey => null;
 
   /// Scans the user's global CLI install for importable provider rows.
   Future<ProviderCatalogSnapshot> loadFromLiveSources(

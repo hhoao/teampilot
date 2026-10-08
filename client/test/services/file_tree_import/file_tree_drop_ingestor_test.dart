@@ -16,8 +16,7 @@ Future<ConflictChoice> _overwriteConflict({
   required bool destIsDirectory,
   required bool typeMismatch,
   required int remainingConflicts,
-}) async =>
-    ConflictChoice.overwrite;
+}) async => ConflictChoice.overwrite;
 
 void main() {
   final pathCtx = p.Context(style: p.Style.posix);
@@ -195,55 +194,55 @@ void main() {
       await cubit.close();
     });
 
-    test('external OS drop copies from hostLocalFs into workspace mount', () async {
-      final hostFs = InMemoryFilesystem(pathContext: pathCtx);
-      final workspaceFs = InMemoryFilesystem(pathContext: pathCtx);
-      final hostFile = pathCtx.normalize('/host/drop.txt');
-      final destDir = pathCtx.normalize('/ws/proj');
-      await hostFs.writeString(hostFile, 'from-host');
-      await workspaceFs.ensureDir(destDir);
+    test(
+      'external OS drop copies from hostLocalFs into workspace mount',
+      () async {
+        final hostFs = InMemoryFilesystem(pathContext: pathCtx);
+        final workspaceFs = InMemoryFilesystem(pathContext: pathCtx);
+        final hostFile = pathCtx.normalize('/host/drop.txt');
+        final destDir = pathCtx.normalize('/ws/proj');
+        await hostFs.writeString(hostFile, 'from-host');
+        await workspaceFs.ensureDir(destDir);
 
-      final cubit = FileTreeCubit();
-      await cubit.mountRoots([
-        FileTreeRootMount(path: destDir, filesystem: workspaceFs),
-      ]);
-      cubit.toggleExpand(destDir);
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+        final cubit = FileTreeCubit();
+        await cubit.mountRoots([
+          FileTreeRootMount(path: destDir, filesystem: workspaceFs),
+        ]);
+        cubit.toggleExpand(destDir);
+        await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      final ingestor = FileTreeDropIngestor(
-        cubit: cubit,
-        importService: WorkspaceImportService(),
-        hostLocalFs: hostFs,
-        onConflict: _overwriteConflict,
-        isCopyModifierPressed: () => false,
-      );
+        final ingestor = FileTreeDropIngestor(
+          cubit: cubit,
+          importService: WorkspaceImportService(),
+          hostLocalFs: hostFs,
+          onConflict: _overwriteConflict,
+          isCopyModifierPressed: () => false,
+        );
 
-      final payload = WorkspaceDragPayload(
-        kind: DragPayloadKind.workspaceFile,
-        refs: [
-          WorkspaceFileRef(
-            nativePath: hostFile,
-            namespace: const PathNamespace.localPosix(),
-            isDirectory: false,
-          ),
-        ],
-      );
+        final payload = WorkspaceDragPayload(
+          kind: DragPayloadKind.workspaceFile,
+          refs: [
+            WorkspaceFileRef(
+              nativePath: hostFile,
+              namespace: const PathNamespace.localPosix(),
+              isDirectory: false,
+            ),
+          ],
+        );
 
-      final summary = await ingestor.consumeAt(
-        destDir: destDir,
-        payload: payload,
-        fromExternalOs: true,
-      );
+        final summary = await ingestor.consumeAt(
+          destDir: destDir,
+          payload: payload,
+          fromExternalOs: true,
+        );
 
-      expect(summary.succeeded, 1);
-      final destPath = pathCtx.join(destDir, 'drop.txt');
-      expect((await workspaceFs.stat(destPath)).exists, isTrue);
-      expect(
-        await workspaceFs.readBytes(destPath),
-        'from-host'.codeUnits,
-      );
+        expect(summary.succeeded, 1);
+        final destPath = pathCtx.join(destDir, 'drop.txt');
+        expect((await workspaceFs.stat(destPath)).exists, isTrue);
+        expect(await workspaceFs.readBytes(destPath), 'from-host'.codeUnits);
 
-      await cubit.close();
-    });
+        await cubit.close();
+      },
+    );
   });
 }

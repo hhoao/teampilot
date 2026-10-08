@@ -90,9 +90,7 @@ Future<TerminalEngine> _pumpTerminal(
     );
   }
 
-  await tester.pumpWidget(
-    MaterialApp(home: Scaffold(body: terminal)),
-  );
+  await tester.pumpWidget(MaterialApp(home: Scaffold(body: terminal)));
   return engine;
 }
 

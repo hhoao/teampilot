@@ -62,6 +62,7 @@ class _WorkspaceSearchPanelState extends State<WorkspaceSearchPanel> {
   bool _useGitignore = true;
   bool _showReplace = false;
   bool _showDetails = false;
+
   /// Collapsed result-group keys ([searchGroupCollapseKey] values).
   final Set<String> _collapsedPaths = {};
   late final Debouncer _searchDebouncer;

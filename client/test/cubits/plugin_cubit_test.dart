@@ -415,10 +415,7 @@ class _PartialPluginCache extends PluginRepoDiskCacheService {
     required this.failed,
     required this.result,
     required this.cachedFromFailedSource,
-  }) : super(
-         filesystem: InMemoryFilesystem(),
-         teampilotRoot: '/plugin-cache',
-       );
+  }) : super(filesystem: InMemoryFilesystem(), teampilotRoot: '/plugin-cache');
 
   final PluginMarketplace successful;
   final PluginMarketplace failed;

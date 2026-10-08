@@ -115,7 +115,8 @@ class _ShortcutRebindDialogState extends State<ShortcutRebindDialog> {
       key = chordKeyForLogicalKey(event.logicalKey);
     } on ArgumentError {
       setState(() {
-        _unsupportedKeyMessage = context.l10n.shortcutsPressShortcutUnsupportedKey;
+        _unsupportedKeyMessage =
+            context.l10n.shortcutsPressShortcutUnsupportedKey;
       });
       return KeyEventResult.handled;
     }
@@ -202,10 +203,7 @@ class _ShortcutRebindDialogState extends State<ShortcutRebindDialog> {
               onClose: _cancel,
             ),
             const SizedBox(height: 4),
-            Text(
-              title,
-              style: styles.mdSemiboldTightSnug,
-            ),
+            Text(title, style: styles.mdSemiboldTightSnug),
             const SizedBox(height: 12),
             if (_pendingChord != null)
               _ConflictConfirm(
@@ -224,10 +222,7 @@ class _ShortcutRebindDialogState extends State<ShortcutRebindDialog> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    l10n.shortcutsPressShortcutHint,
-                    style: styles.mutedSm,
-                  ),
+                  Text(l10n.shortcutsPressShortcutHint, style: styles.mutedSm),
                   if (_unsupportedKeyMessage != null) ...[
                     const SizedBox(height: 8),
                     Text(
@@ -266,14 +261,9 @@ class _ConflictConfirm extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          l10n.shortcutsConflictMessage(conflictTitles.join(', ')),
-        ),
+        Text(l10n.shortcutsConflictMessage(conflictTitles.join(', '))),
         const SizedBox(height: 4),
-        Text(
-          chordLabel,
-          style: styles.lgBoldSnug,
-        ),
+        Text(chordLabel, style: styles.lgBoldSnug),
         TpDialogActions(
           showDividerAbove: false,
           children: [

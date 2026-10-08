@@ -38,8 +38,7 @@ abstract final class CursorSessionConfigDir {
   /// Isolated fake `$HOME` for mixed-mode cursor (parent of `.cursor/`).
   ///
   /// Scoped to the TeamPilot session so chats do not leak across new sessions
-  /// of the same roster member. Warm-tier plugins/projects stay under
-  /// `runtime/teams/{teamId}/cursor/` and are symlinked into this home.
+  /// of the same roster member. Plugins and MCP materialize under this tree.
   static String mixedHomeRoot(
     RuntimeLayout layout, {
     required String workspaceId,

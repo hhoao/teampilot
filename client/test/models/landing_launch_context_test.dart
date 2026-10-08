@@ -18,7 +18,10 @@ void main() {
   test('personal context always clears generate launch', () {
     const draft = LandingLaunchContext(isPersonal: true, generateLaunch: true);
     expect(draft.generateLaunch, isFalse);
-    expect(draft.copyWith(isPersonal: false, generateLaunch: true).generateLaunch, isTrue);
+    expect(
+      draft.copyWith(isPersonal: false, generateLaunch: true).generateLaunch,
+      isTrue,
+    );
     expect(draft.copyWith(isPersonal: true).generateLaunch, isFalse);
   });
 }

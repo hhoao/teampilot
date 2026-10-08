@@ -64,8 +64,12 @@ void main() {
     repo = CliPresetsRepository(fs: fs, presetsPath: '/cli-presets.json');
     cubit = CliPresetsCubit(repository: repo);
     appProviderCubit = AppProviderCubit(
-      repository: AppProviderRepository(basePath: '/tmp', fs: fs, storage: fakeHomeStorage(filesystem: fs), ),
-                                         storage: fakeHomeStorage(filesystem: fs),
+      repository: AppProviderRepository(
+        basePath: '/tmp',
+        fs: fs,
+        storage: fakeHomeStorage(filesystem: fs),
+      ),
+      storage: fakeHomeStorage(filesystem: fs),
     );
   });
 

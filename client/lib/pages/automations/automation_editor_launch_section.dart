@@ -6,7 +6,6 @@ import '../../cubits/expert_hub_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
-import '../../models/launch_security_policy.dart';
 import '../../models/workspace.dart';
 import '../../pages/expert_hub/expert_landing_picker_sheet.dart';
 import '../../pages/home_workspace/workspace/workspace_landing_location_fields.dart';
@@ -24,7 +23,6 @@ class AutomationEditorLaunchSection extends StatelessWidget {
     required this.presetId,
     required this.teamId,
     required this.expertKey,
-    required this.launchSecurityPolicy,
     required this.targetMemberId,
     required this.labelWidth,
     required this.onProjectChanged,
@@ -33,7 +31,6 @@ class AutomationEditorLaunchSection extends StatelessWidget {
     required this.onPresetChanged,
     required this.onTeamChanged,
     required this.onExpertChanged,
-    required this.onPermissionsChanged,
     required this.onTargetMemberChanged,
     super.key,
   });
@@ -45,7 +42,6 @@ class AutomationEditorLaunchSection extends StatelessWidget {
   final String? presetId;
   final String? teamId;
   final String? expertKey;
-  final LaunchSecurityPolicy launchSecurityPolicy;
   final String targetMemberId;
   final double labelWidth;
   final ValueChanged<String?> onProjectChanged;
@@ -54,17 +50,11 @@ class AutomationEditorLaunchSection extends StatelessWidget {
   final ValueChanged<String?> onPresetChanged;
   final ValueChanged<String?> onTeamChanged;
   final ValueChanged<String?> onExpertChanged;
-  final ValueChanged<LaunchSecurityPolicy> onPermissionsChanged;
   final ValueChanged<String> onTargetMemberChanged;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final launchSecurityPolicyKey = [
-      launchSecurityPolicy.approval.name,
-      launchSecurityPolicy.sandbox.name,
-      launchSecurityPolicy.hookTrust.name,
-    ].join('-');
     final teams = context.watch<LaunchProfileCubit>().state.teams;
     final hubState = context.watch<ExpertHubCubit>().state;
     final team = teams.where((t) => t.id == teamId).firstOrNull;
@@ -251,48 +241,6 @@ class AutomationEditorLaunchSection extends StatelessWidget {
             },
           ),
         ],
-        const SizedBox(height: 12),
-        TpFormField<LaunchSecurityPolicy>(
-          key: ValueKey('permissions-$launchSecurityPolicyKey'),
-          id: 'launchSecurityPolicy',
-          initialValue: launchSecurityPolicy,
-          label: Text(l10n.automationsPermissions),
-          layoutStyle: TpFormFieldLayoutStyle.inline,
-          labelWidth: labelWidth,
-          builder: (state) {
-            return TpSelect<LaunchSecurityPolicy>(
-              items: const [
-                LaunchSecurityPolicy.cliDefault,
-                LaunchSecurityPolicy.askReadOnlyTrusted,
-                LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
-                LaunchSecurityPolicy.fullAccess,
-              ],
-              initialItem: state.value ?? LaunchSecurityPolicy.fullAccess,
-              decoration: TpSelectDecorations.themed(context),
-              itemLabel: (value) {
-                if (value == LaunchSecurityPolicy.fullAccess) {
-                  return l10n.workspaceChatLandingFullAccessPermissions;
-                }
-                if (value == LaunchSecurityPolicy.askReadOnlyTrusted) {
-                  return l10n.automationsPermissionsAskReadOnly;
-                }
-                if (value ==
-                    LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted) {
-                  return l10n.automationsPermissionsAutoApproveWorkspaceWrite;
-                }
-                if (value == LaunchSecurityPolicy.cliDefault) {
-                  return l10n.workspaceChatLandingDefaultPermissions;
-                }
-                return l10n.automationsPermissionsCustom;
-              },
-              onChanged: (value) {
-                if (value == null) return;
-                state.didChange(value);
-                onPermissionsChanged(value);
-              },
-            );
-          },
-        ),
       ],
     );
   }

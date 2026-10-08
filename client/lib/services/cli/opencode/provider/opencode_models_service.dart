@@ -103,9 +103,9 @@ class OpencodeModelsService {
     }
     final existing = _inFlight;
     if (existing != null) return existing;
-    final task = _load(forceRefresh: forceRefresh).whenComplete(
-      () => _inFlight = null,
-    );
+    final task = _load(
+      forceRefresh: forceRefresh,
+    ).whenComplete(() => _inFlight = null);
     _inFlight = task;
     return task;
   }

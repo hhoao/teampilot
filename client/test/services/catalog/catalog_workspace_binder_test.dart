@@ -86,4 +86,35 @@ void main() {
     );
     expect((await repo.load(workspaceId)).bundle.skillIds, isEmpty);
   });
+
+  test(
+    'unbindMcpFromAllWorkspaces drops the id from every workspace',
+    () async {
+      await binder.bindIds(
+        workspaceId: 'ws-a',
+        bindTo: CatalogBindTo.workspace,
+        apply: (ConfigBundle current) {
+          current.mcpServerIds.add('vscode-mcp');
+          current.mcpServerIds.add('keep');
+        },
+      );
+      await binder.bindIds(
+        workspaceId: 'ws-b',
+        bindTo: CatalogBindTo.workspace,
+        apply: (ConfigBundle current) => current.mcpServerIds.add('vscode-mcp'),
+      );
+      await binder.bindIds(
+        workspaceId: 'ws-c',
+        bindTo: CatalogBindTo.workspace,
+        apply: (ConfigBundle current) => current.mcpServerIds.add('keep'),
+      );
+
+      final changed = await binder.unbindMcpFromAllWorkspaces('vscode-mcp');
+
+      expect(changed, unorderedEquals(['ws-a', 'ws-b']));
+      expect((await repo.load('ws-a')).bundle.mcpServerIds, ['keep']);
+      expect((await repo.load('ws-b')).bundle.mcpServerIds, isEmpty);
+      expect((await repo.load('ws-c')).bundle.mcpServerIds, ['keep']);
+    },
+  );
 }

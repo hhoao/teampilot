@@ -1,7 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-import 'launch_security_policy.dart';
-
 @immutable
 class SessionMemberContinueOverride {
   const SessionMemberContinueOverride({
@@ -9,7 +7,6 @@ class SessionMemberContinueOverride {
     this.provider,
     this.model,
     this.effort,
-    this.launchSecurityPolicy,
   });
 
   factory SessionMemberContinueOverride.fromJson(Map<String, Object?> json) {
@@ -18,9 +15,6 @@ class SessionMemberContinueOverride {
       provider: _optionalString(json['provider']),
       model: _optionalString(json['model']),
       effort: _optionalString(json['effort']),
-      launchSecurityPolicy: json.containsKey('launchSecurityPolicy')
-          ? LaunchSecurityPolicyOverride.fromJson(json['launchSecurityPolicy'])
-          : null,
     );
   }
 
@@ -29,9 +23,6 @@ class SessionMemberContinueOverride {
   final String? model;
   final String? effort;
 
-  /// Partial policy; `cliDefault` dimensions remain inherited on merge.
-  final LaunchSecurityPolicyOverride? launchSecurityPolicy;
-
   static const Object _unset = Object();
 
   SessionMemberContinueOverride copyWith({
@@ -39,16 +30,12 @@ class SessionMemberContinueOverride {
     Object? provider = _unset,
     Object? model = _unset,
     Object? effort = _unset,
-    Object? launchSecurityPolicy = _unset,
   }) {
     return SessionMemberContinueOverride(
       presetId: presetId == _unset ? this.presetId : presetId as String?,
       provider: provider == _unset ? this.provider : provider as String?,
       model: model == _unset ? this.model : model as String?,
       effort: effort == _unset ? this.effort : effort as String?,
-      launchSecurityPolicy: launchSecurityPolicy == _unset
-          ? this.launchSecurityPolicy
-          : launchSecurityPolicy as LaunchSecurityPolicyOverride?,
     );
   }
 
@@ -57,8 +44,6 @@ class SessionMemberContinueOverride {
     if (provider != null && provider!.isNotEmpty) 'provider': provider,
     if (model != null && model!.isNotEmpty) 'model': model,
     if (effort != null && effort!.isNotEmpty) 'effort': effort,
-    if (launchSecurityPolicy != null)
-      'launchSecurityPolicy': launchSecurityPolicy!.toJson(),
   };
 
   @override
@@ -69,21 +54,16 @@ class SessionMemberContinueOverride {
             presetId == other.presetId &&
             provider == other.provider &&
             model == other.model &&
-            effort == other.effort &&
-            launchSecurityPolicy == other.launchSecurityPolicy;
+            effort == other.effort;
   }
 
   @override
-  int get hashCode =>
-      Object.hash(presetId, provider, model, effort, launchSecurityPolicy);
+  int get hashCode => Object.hash(presetId, provider, model, effort);
 }
 
 @immutable
 class SessionContinueOverrides {
-  const SessionContinueOverrides({
-    this.launchSecurityPolicy,
-    this.memberOverrides = const {},
-  });
+  const SessionContinueOverrides({this.memberOverrides = const {}});
 
   factory SessionContinueOverrides.fromJson(Map<String, Object?>? json) {
     if (json == null || json.isEmpty) {
@@ -99,35 +79,20 @@ class SessionContinueOverrides {
                 ),
           }
         : const <String, SessionMemberContinueOverride>{};
-    return SessionContinueOverrides(
-      launchSecurityPolicy: json.containsKey('launchSecurityPolicy')
-          ? LaunchSecurityPolicyOverride.fromJson(json['launchSecurityPolicy'])
-          : null,
-      memberOverrides: members,
-    );
+    return SessionContinueOverrides(memberOverrides: members);
   }
 
-  /// Partial policy; `cliDefault` dimensions remain inherited on merge.
-  final LaunchSecurityPolicyOverride? launchSecurityPolicy;
   final Map<String, SessionMemberContinueOverride> memberOverrides;
 
-  static const Object _unset = Object();
-
   SessionContinueOverrides copyWith({
-    Object? launchSecurityPolicy = _unset,
     Map<String, SessionMemberContinueOverride>? memberOverrides,
   }) {
     return SessionContinueOverrides(
-      launchSecurityPolicy: launchSecurityPolicy == _unset
-          ? this.launchSecurityPolicy
-          : launchSecurityPolicy as LaunchSecurityPolicyOverride?,
       memberOverrides: memberOverrides ?? this.memberOverrides,
     );
   }
 
   Map<String, Object?> toJson() => {
-    if (launchSecurityPolicy != null)
-      'launchSecurityPolicy': launchSecurityPolicy!.toJson(),
     if (memberOverrides.isNotEmpty)
       'memberOverrides': {
         for (final e in memberOverrides.entries) e.key: e.value.toJson(),
@@ -139,16 +104,12 @@ class SessionContinueOverrides {
     return identical(this, other) ||
         other is SessionContinueOverrides &&
             runtimeType == other.runtimeType &&
-            launchSecurityPolicy == other.launchSecurityPolicy &&
             mapEquals(memberOverrides, other.memberOverrides);
   }
 
   @override
-  int get hashCode => Object.hash(
-    launchSecurityPolicy,
-    Object.hashAll(
-      memberOverrides.entries.map((e) => Object.hash(e.key, e.value)),
-    ),
+  int get hashCode => Object.hashAll(
+    memberOverrides.entries.map((e) => Object.hash(e.key, e.value)),
   );
 }
 

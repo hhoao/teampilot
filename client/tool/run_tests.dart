@@ -18,7 +18,10 @@ final _hostedUrlPattern = RegExp(r'url:\s*"([^"]+)"\s*\n\s*source:\s*hosted');
 /// Explicit tag and concurrency options take precedence over the defaults.
 /// `RUN_TESTS_CONCURRENCY` overrides the default cap for machine-idle runs
 /// (the cap exists to bound widget-settle flakiness, not memory).
-List<String> buildFlutterTestArgs(List<String> args, {String? concurrencyOverride}) {
+List<String> buildFlutterTestArgs(
+  List<String> args, {
+  String? concurrencyOverride,
+}) {
   final effectiveConcurrency = concurrencyOverride ?? '$defaultTestConcurrency';
   return [
     'test',
@@ -148,8 +151,9 @@ Future<void> main(List<String> args) async {
   final env = Platform.environment;
   final lockFile = File('pubspec.lock');
   final mismatch = pubSourceMismatchMessage(
-    lockedUrl:
-        lockFile.existsSync() ? firstHostedUrl(await lockFile.readAsString()) : null,
+    lockedUrl: lockFile.existsSync()
+        ? firstHostedUrl(await lockFile.readAsString())
+        : null,
     effectiveSource: env['PUB_HOSTED_URL'] ?? defaultHostedUrl,
   );
   if (mismatch != null) {
@@ -165,7 +169,10 @@ Future<void> main(List<String> args) async {
     () async {
       final process = await Process.start(
         Platform.isWindows ? 'flutter.bat' : 'flutter',
-        buildFlutterTestArgs(args, concurrencyOverride: env[testConcurrencyEnv]),
+        buildFlutterTestArgs(
+          args,
+          concurrencyOverride: env[testConcurrencyEnv],
+        ),
         mode: ProcessStartMode.inheritStdio,
       );
       return process.exitCode;

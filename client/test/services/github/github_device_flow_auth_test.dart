@@ -39,10 +39,7 @@ void main() {
       );
       expect(requests.single.headers?['Accept'], 'application/json');
       expect(requests.single.headers?['User-Agent'], kGithubHttpUserAgent);
-      expect(
-        requests.single.body,
-        'client_id=$clientId&scope=repo',
-      );
+      expect(requests.single.body, 'client_id=$clientId&scope=repo');
 
       expect(result.userCode, 'ABCD-1234');
       expect(result.deviceCode, 'device-abc');
@@ -85,8 +82,9 @@ void main() {
         userCode: 'ABCD-1234',
         deviceCode: 'device-abc',
         verificationUri: Uri.parse('https://github.com/login/device'),
-        verificationUriComplete:
-            Uri.parse('https://github.com/login/device?user_code=ABCD-1234'),
+        verificationUriComplete: Uri.parse(
+          'https://github.com/login/device?user_code=ABCD-1234',
+        ),
         interval: 5,
         expiresIn: 900,
       );
@@ -118,10 +116,7 @@ void main() {
       final auth = GithubDeviceFlowAuth(
         clientId: clientId,
         post: (url, {headers, body, encoding}) async {
-          expect(
-            url,
-            Uri.parse('https://github.com/login/oauth/access_token'),
-          );
+          expect(url, Uri.parse('https://github.com/login/oauth/access_token'));
           expect(headers?['Accept'], 'application/json');
           expect(headers?['User-Agent'], kGithubHttpUserAgent);
           expect(
@@ -147,13 +142,10 @@ void main() {
     });
 
     test('returns slowDown with interval increased by 5', () async {
-      final result = await pollWithResponse(
-        {
-          'error': 'slow_down',
-          'error_description': 'You are polling too quickly.',
-        },
-        interval: 8,
-      );
+      final result = await pollWithResponse({
+        'error': 'slow_down',
+        'error_description': 'You are polling too quickly.',
+      }, interval: 8);
 
       expect(result, isA<GithubDeviceFlowPollSlowDown>());
       expect((result as GithubDeviceFlowPollSlowDown).newInterval, 13);

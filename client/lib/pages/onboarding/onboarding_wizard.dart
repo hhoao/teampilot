@@ -75,6 +75,7 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
   static const _pageAnimationDuration = Duration(milliseconds: 300);
   static const _maxPageViewportHeight = 520.0;
   static const _minPageViewportHeight = 280.0;
+
   /// Gap + footer buttons. Vertical page padding is subtracted separately.
   static const _footerReserve = 96.0;
   static const _pageVerticalPadding = 16.0;
@@ -91,8 +92,9 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
     _steps =
         widget.steps ??
         onboardingStepsForPlatform(
-          hasBoundAndroidWorkHome:
-              context.read<ConnectionModeService>().hasBoundAndroidWorkHome,
+          hasBoundAndroidWorkHome: context
+              .read<ConnectionModeService>()
+              .hasBoundAndroidWorkHome,
         );
     _pageController = PageController();
   }
@@ -152,14 +154,14 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
     // and/or the selected SSH profile, then read derived bind flags.
     context.watch<SessionPreferencesCubit>();
     context.watch<SshProfileCubit>();
-    final workHomeBound =
-        context.read<ConnectionModeService>().hasBoundAndroidWorkHome;
+    final workHomeBound = context
+        .read<ConnectionModeService>()
+        .hasBoundAndroidWorkHome;
 
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final navigationLocked = _isAnimating;
-    final nextBlocked =
-        navigationLocked || (_isWorkHomeStep && !workHomeBound);
+    final nextBlocked = navigationLocked || (_isWorkHomeStep && !workHomeBound);
 
     return Scaffold(
       backgroundColor: cs.workspacePage,

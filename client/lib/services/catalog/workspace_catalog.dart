@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:synchronized/synchronized.dart';
 
@@ -16,33 +15,14 @@ import '../../models/workspace_icon_ref.dart';
 import '../../models/workspace_topology.dart';
 import '../../repositories/session_repository.dart';
 import '../../repositories/workspace_index_store.dart';
-import '../../services/session/session_member_cli_locks.dart';
+import '../chat/launch/session/session_member_cli_locks.dart';
 import '../../services/workspace/target_liveness.dart';
 import '../../utils/lock_pool.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 
-class ChatDataSnapshot extends Equatable {
-  const ChatDataSnapshot({
-    required this.workspaces,
-    required this.sessions,
-    required this.visibleWorkspaces,
-    required this.visibleSessions,
-  });
-
-  final List<Workspace> workspaces;
-  final List<AppSession> sessions;
-  final List<Workspace> visibleWorkspaces;
-  final List<AppSession> visibleSessions;
-
-  @override
-  List<Object?> get props => [
-    workspaces,
-    sessions,
-    visibleWorkspaces,
-    visibleSessions,
-  ];
-}
+import 'chat_data_snapshot.dart';
+export 'chat_data_snapshot.dart';
 
 /// In-memory workspace/session store with team-scope filtering, snapshot
 /// derivation, and per-workspace session hydration on top of [SessionRepository].
@@ -264,7 +244,11 @@ class WorkspaceCatalog {
       });
       _indexDirty = false;
     } on Object catch (error, stackTrace) {
-      appLogger.e('[catalog] index flush failed', error: error, stackTrace: stackTrace);
+      appLogger.e(
+        '[catalog] index flush failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -290,8 +274,11 @@ class WorkspaceCatalog {
         if (ws == null) return;
         await repo.provisionWorkspaceTrust(ws);
       } on Object catch (error, stackTrace) {
-        appLogger.e('[catalog] trust provision failed workspace=$id',
-            error: error, stackTrace: stackTrace);
+        appLogger.e(
+          '[catalog] trust provision failed workspace=$id',
+          error: error,
+          stackTrace: stackTrace,
+        );
       } finally {
         _trustByWorkspace.remove(id);
       }
@@ -350,7 +337,8 @@ class WorkspaceCatalog {
       }
       final trimmed = display.trim();
       final displayOut = trimmed.isNotEmpty ? trimmed : existing.display;
-      if (listEquals(merged, existing.folders) && displayOut == existing.display) {
+      if (listEquals(merged, existing.folders) &&
+          displayOut == existing.display) {
         return existing;
       }
       final foldersUpdated = await repo.updateWorkspaceFolders(
@@ -430,8 +418,12 @@ class WorkspaceCatalog {
         }
         final trimmed = display.trim();
         final displayOut = trimmed.isNotEmpty ? trimmed : existing.display;
-        if (listEquals(merged, existing.folders) && displayOut == existing.display) {
-          return (workspaceId: existing.workspaceId, snapshot: deriveSnapshot());
+        if (listEquals(merged, existing.folders) &&
+            displayOut == existing.display) {
+          return (
+            workspaceId: existing.workspaceId,
+            snapshot: deriveSnapshot(),
+          );
         }
         final foldersUpdated = await repo.updateWorkspaceFolders(
           existing.workspaceId,
@@ -460,15 +452,30 @@ class WorkspaceCatalog {
         : memberClis.isNotEmpty
         ? memberClis
         : team != null
-        ? resolveSessionMemberCliLocks(team: team, rosterMembers: rosterMembers, globalPresets: globalPresets)
-        : throw ArgumentError('Team session create requires memberClis or team');
-    final created = await repo.createSession(workspace.workspaceId,
-        sessionTeam: sessionTeamId, rosterMembers: rosterMembers, memberClis: resolvedClis,
-        knownWorkspace: workspace);
+        ? resolveSessionMemberCliLocks(
+            team: team,
+            rosterMembers: rosterMembers,
+            globalPresets: globalPresets,
+          )
+        : throw ArgumentError(
+            'Team session create requires memberClis or team',
+          );
+    final created = await repo.createSession(
+      workspace.workspaceId,
+      sessionTeam: sessionTeamId,
+      rosterMembers: rosterMembers,
+      memberClis: resolvedClis,
+      knownWorkspace: workspace,
+    );
     _sessions = [..._sessions, created.session];
-    patchWorkspace(created.workspace.copyWith(
-      sessionIds: [...created.workspace.sessionIds, created.session.sessionId],
-    ));
+    patchWorkspace(
+      created.workspace.copyWith(
+        sessionIds: [
+          ...created.workspace.sessionIds,
+          created.session.sessionId,
+        ],
+      ),
+    );
     _markIndexDirty();
     provisionTrust(workspace.workspaceId);
     await _flushIndex();
@@ -512,20 +519,27 @@ class WorkspaceCatalog {
       knownWorkspace: ws,
     );
     _sessions = [..._sessions, result.session];
-    patchWorkspace(result.workspace.copyWith(
-      sessionIds: [...result.workspace.sessionIds, result.session.sessionId],
-    ));
+    patchWorkspace(
+      result.workspace.copyWith(
+        sessionIds: [...result.workspace.sessionIds, result.session.sessionId],
+      ),
+    );
     _markIndexDirty();
     return (session: result.session, snapshot: deriveSnapshot());
   }
 
-  Future<ChatDataSnapshot> renameSession(String sessionId, String newName) async {
+  Future<ChatDataSnapshot> renameSession(
+    String sessionId,
+    String newName,
+  ) async {
     await _withSession(sessionId, (current) async {
       await repo.renameSession(sessionId, newName);
-      _replaceSessionInMemory(current.copyWith(
-        display: newName,
-        updatedAt: DateTime.now().millisecondsSinceEpoch,
-      ));
+      _replaceSessionInMemory(
+        current.copyWith(
+          display: newName,
+          updatedAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+      );
     });
     _markIndexDirty();
     return deriveSnapshot();
@@ -535,10 +549,12 @@ class WorkspaceCatalog {
     await _withSession(sessionId, (current) async {
       if (current.launchState == AppSessionLaunchState.started) return;
       await repo.markSessionStarted(sessionId);
-      _replaceSessionInMemory(current.copyWith(
-        launchState: AppSessionLaunchState.started,
-        updatedAt: DateTime.now().millisecondsSinceEpoch,
-      ));
+      _replaceSessionInMemory(
+        current.copyWith(
+          launchState: AppSessionLaunchState.started,
+          updatedAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+      );
     });
     _markIndexDirty();
     return deriveSnapshot();
@@ -547,9 +563,9 @@ class WorkspaceCatalog {
   Future<ChatDataSnapshot> touchSession(String sessionId) async {
     await _withSession(sessionId, (current) async {
       await repo.touchSession(sessionId);
-      _replaceSessionInMemory(current.copyWith(
-        updatedAt: DateTime.now().millisecondsSinceEpoch,
-      ));
+      _replaceSessionInMemory(
+        current.copyWith(updatedAt: DateTime.now().millisecondsSinceEpoch),
+      );
     });
     _markIndexDirty();
     return deriveSnapshot();
@@ -558,22 +574,29 @@ class WorkspaceCatalog {
   Future<ChatDataSnapshot> toggleSessionPin(String sessionId) async {
     await _withSession(sessionId, (current) async {
       await repo.toggleSessionPin(sessionId);
-      _replaceSessionInMemory(current.copyWith(
-        pinned: !current.pinned,
-        updatedAt: DateTime.now().millisecondsSinceEpoch,
-      ));
+      _replaceSessionInMemory(
+        current.copyWith(
+          pinned: !current.pinned,
+          updatedAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+      );
     });
     _markIndexDirty();
     return deriveSnapshot();
   }
 
-  Future<ChatDataSnapshot> updateSessionTeam(String sessionId, String sessionTeam) async {
+  Future<ChatDataSnapshot> updateSessionTeam(
+    String sessionId,
+    String sessionTeam,
+  ) async {
     await _withSession(sessionId, (current) async {
       await repo.updateSessionTeam(sessionId, sessionTeam);
-      _replaceSessionInMemory(current.copyWith(
-        sessionTeam: sessionTeam,
-        updatedAt: DateTime.now().millisecondsSinceEpoch,
-      ));
+      _replaceSessionInMemory(
+        current.copyWith(
+          sessionTeam: sessionTeam,
+          updatedAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+      );
     });
     _markIndexDirty();
     return deriveSnapshot();
@@ -585,10 +608,12 @@ class WorkspaceCatalog {
   ) async {
     await _withSession(sessionId, (current) async {
       await repo.updateContinueOverrides(sessionId, overrides);
-      _replaceSessionInMemory(current.copyWith(
-        continueOverrides: overrides,
-        updatedAt: DateTime.now().millisecondsSinceEpoch,
-      ));
+      _replaceSessionInMemory(
+        current.copyWith(
+          continueOverrides: overrides,
+          updatedAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+      );
     });
     _markIndexDirty();
     return deriveSnapshot();
@@ -609,13 +634,15 @@ class WorkspaceCatalog {
         model: model,
         effort: effort,
       );
-      _replaceSessionInMemory(current.copyWith(
-        presetId: presetId != null ? presetId.trim() : current.presetId,
-        provider: provider != null ? provider.trim() : current.provider,
-        model: model != null ? model.trim() : current.model,
-        effort: effort != null ? effort.trim() : current.effort,
-        updatedAt: DateTime.now().millisecondsSinceEpoch,
-      ));
+      _replaceSessionInMemory(
+        current.copyWith(
+          presetId: presetId != null ? presetId.trim() : current.presetId,
+          provider: provider != null ? provider.trim() : current.provider,
+          model: model != null ? model.trim() : current.model,
+          effort: effort != null ? effort.trim() : current.effort,
+          updatedAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+      );
     });
     _markIndexDirty();
     return deriveSnapshot();
@@ -639,9 +666,9 @@ class WorkspaceCatalog {
           ? _patchMemberNativeSessionId(current, memberId, tool, nativeId)
           : current.withNativeSessionId(tool, nativeId);
       if (!identical(patched, current)) {
-        _replaceSessionInMemory(patched.copyWith(
-          updatedAt: DateTime.now().millisecondsSinceEpoch,
-        ));
+        _replaceSessionInMemory(
+          patched.copyWith(updatedAt: DateTime.now().millisecondsSinceEpoch),
+        );
       }
     });
     _markIndexDirty();
@@ -658,10 +685,12 @@ class WorkspaceCatalog {
     if (binding == null) return session;
     final next = binding.withNativeSessionId(tool, nativeId);
     if (identical(next, binding)) return session;
-    return session.copyWith(members: [
-      for (final m in session.members)
-        if (m.rosterMemberId == memberId) next else m,
-    ]);
+    return session.copyWith(
+      members: [
+        for (final m in session.members)
+          if (m.rosterMemberId == memberId) next else m,
+      ],
+    );
   }
 
   Future<({SessionMemberBinding binding, ChatDataSnapshot snapshot})>
@@ -677,12 +706,15 @@ class WorkspaceCatalog {
         rosterMemberId,
         cli: cli,
         typeId: typeId,
+        workspaceId: current.workspaceId,
       );
       if (current.bindingFor(rosterMemberId.trim()) == null) {
-        _replaceSessionInMemory(current.copyWith(
-          members: [...current.members, result],
-          updatedAt: DateTime.now().millisecondsSinceEpoch,
-        ));
+        _replaceSessionInMemory(
+          current.copyWith(
+            members: [...current.members, result],
+            updatedAt: DateTime.now().millisecondsSinceEpoch,
+          ),
+        );
       }
       return result;
     });
@@ -690,7 +722,9 @@ class WorkspaceCatalog {
     return (binding: binding, snapshot: deriveSnapshot());
   }
 
-  Future<ChatDataSnapshot> reorderSessions(List<String> orderedSessionIds) async {
+  Future<ChatDataSnapshot> reorderSessions(
+    List<String> orderedSessionIds,
+  ) async {
     for (var i = 0; i < orderedSessionIds.length; i++) {
       final sessionId = orderedSessionIds[i];
       final order = i + 1;
@@ -748,12 +782,14 @@ class WorkspaceCatalog {
     String? display,
     String? defaultProfileId,
     bool? rootSandboxEnvOptIn,
+    bool? injectSessionSshMcp,
   }) async {
     final updated = await repo.updateWorkspaceMetadata(
       workspaceId,
       display: display,
       defaultProfileId: defaultProfileId,
       rootSandboxEnvOptIn: rootSandboxEnvOptIn,
+      injectSessionSshMcp: injectSessionSshMcp,
     );
     if (updated != null) {
       patchWorkspace(updated);
@@ -850,13 +886,15 @@ class WorkspaceCatalog {
       removeSession(sessionId);
       final ws = workspaceById(workspaceId);
       if (ws != null) {
-        patchWorkspace(ws.copyWith(
-          sessionIds: [
-            for (final id in ws.sessionIds)
-              if (id != sessionId) id,
-          ],
-          updatedAt: DateTime.now().millisecondsSinceEpoch,
-        ));
+        patchWorkspace(
+          ws.copyWith(
+            sessionIds: [
+              for (final id in ws.sessionIds)
+                if (id != sessionId) id,
+            ],
+            updatedAt: DateTime.now().millisecondsSinceEpoch,
+          ),
+        );
       }
     });
     _markIndexDirty();
@@ -878,7 +916,10 @@ class WorkspaceCatalog {
     _sessions = [..._sessions, ...result.sessions];
     _markIndexDirty();
     provisionTrust(result.workspace.workspaceId);
-    return (workspaceId: result.workspace.workspaceId, snapshot: deriveSnapshot());
+    return (
+      workspaceId: result.workspace.workspaceId,
+      snapshot: deriveSnapshot(),
+    );
   }
 
   Future<ChatDataSnapshot> deleteWorkspace(String workspaceId) async {

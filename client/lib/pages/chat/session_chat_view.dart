@@ -11,7 +11,7 @@ import 'package:tp_markdown/tp_markdown.dart';
 import '../../cubits/ai_history_cubit.dart';
 import '../../cubits/agent_attention_cubit.dart';
 import '../../cubits/chat_cubit.dart';
-import '../../cubits/chat/acp/acp_chat_runtime_cubit.dart';
+import '../../cubits/session/acp/acp_chat_runtime_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
@@ -32,24 +32,24 @@ import '../../services/commands/shortcut_focus.dart';
 import '../../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
-import '../../services/terminal/session_member_cli_resolver.dart';
+import '../../services/chat/session/session_member_cli_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/cli/tasks/cli_task_board_controller.dart';
-import '../../services/compose/compose_clip.dart';
-import '../../services/compose/compose_draft_cache.dart';
-import '../../services/compose/compose_file_attach.dart';
+import '../../services/chat/conversation/compose/compose_clip.dart';
+import '../../services/chat/conversation/compose/compose_draft_cache.dart';
+import '../../services/chat/conversation/compose/compose_file_attach.dart';
 import 'session_chat_voice_controller.dart';
-import '../../services/follow_up/follow_up_queue.dart';
-import '../../services/session/ai_history_live_refresh_controller.dart';
-import '../../services/session/failed_message_store.dart';
-import '../../services/session/chat_transcript_find_controller.dart';
-import '../../services/session/history_seat_key.dart';
+import '../../services/chat/conversation/follow_up/follow_up_queue.dart';
+import '../../services/chat/conversation/history/ai_history_live_refresh_controller.dart';
+import '../../services/chat/conversation/history/failed_message_store.dart';
+import '../../services/chat/conversation/history/chat_transcript_find_controller.dart';
+import '../../services/chat/conversation/history/history_seat_key.dart';
 import 'ai_message_strings_from_l10n.dart';
-import '../../services/session/history_hydration_scope.dart';
-import '../../services/session/history_awaiting_working_sync.dart';
+import '../../services/chat/conversation/history/history_hydration_scope.dart';
+import '../../services/chat/conversation/history/history_awaiting_working_sync.dart';
 import 'pinned_session_history_column_width.dart';
 import '../../widgets/home_storage_scope.dart';
-import '../../services/terminal/pending_user_message.dart';
+import '../../services/chat/runtime/pty/pending_user_message.dart';
 import '../../utils/debug/debug_bloc_rebuild.dart';
 import '../../utils/logging/logger.dart';
 import '../../utils/session/session_chat_identity.dart';
@@ -155,6 +155,11 @@ class _SessionChatViewState extends State<SessionChatView> {
 
   /// [_startLiveRefresh] 的在途启动链:并发调用合并为一条,见 [_startLiveRefresh]。
   Future<void>? _liveRefreshStartInFlight;
+
+  /// Single-flight for the non-forced history load: mount, activation, and
+  /// running/busy transitions can fire in one async window; coalesce so a cold
+  /// seat is never parsed twice.
+  Future<void>? _historyLoadInFlight;
   AiHistorySeat? _seat;
   CliTaskBoardController? _taskBoardController;
 
@@ -361,6 +366,10 @@ class _SessionChatViewState extends State<SessionChatView> {
       _editingFailedMessage = null;
       _subagentPreview.clear();
       _bindSeat();
+      // The single-flight is seat-scoped: if the previous seat's non-forced
+      // load is still in flight, the new seat must not tether to it or it
+      // would never get its own load until an unrelated hot transition.
+      _historyLoadInFlight = null;
       // Defer: load → runtime.setLoading sync-notifies seat listeners
       // while ancestors (e.g. TpDeferredForegroundMount) are still building.
       // Do not clearPendings here: re-entering a seat (tab switch, team prop
@@ -372,7 +381,7 @@ class _SessionChatViewState extends State<SessionChatView> {
         unawaited(_loadHistoryThenHydratePersistedPendingUsers());
       });
     } else if (oldWidget.routeActive != widget.routeActive) {
-      _maybeStartLiveRefreshForRunningPty();
+      unawaited(_refreshWhenHot());
     }
   }
 
@@ -551,23 +560,48 @@ class _SessionChatViewState extends State<SessionChatView> {
   bool get _isSubmitting =>
       _submitBusy.value || _submitLock.isBusy || widget.isSubmitting;
 
-  String get _workspaceRoot {
-    final work = widget.session.workDirsForMember(
+  String get _workspaceRoot => _workspaceRootFor(_locateSession);
+
+  WorkspaceLaunchContext get _launchContext =>
+      _launchContextFor(_locateSession);
+
+  /// Transcript locate / work-root session: the cubit document once hydrated,
+  /// otherwise the widget snapshot (list-row stub until [hydrateSessionDocument]).
+  AppSession get _locateSession =>
+      _sessionFromCubit(context.read<ChatCubit>()) ?? widget.session;
+
+  String _workspaceRootFor(AppSession session) {
+    final work = session.workDirsForMember(
       widget.selectedMemberId,
-      folders: _launchContext.folderCatalog,
+      folders: _launchContextFor(session).folderCatalog,
       usesPosixPaths: homeStorageOf(context).usesPosixPaths,
     );
     if (work.workingDirectory.isNotEmpty) return work.workingDirectory;
-    return widget.session.firstFolderPath;
+    return session.firstFolderPath;
   }
 
-  WorkspaceLaunchContext get _launchContext => WorkspaceLaunchContext(
-    session: widget.session,
-    workspace: widget.workspace,
-    usesPosixPaths: homeStorageOf(context).usesPosixPaths,
-  );
+  WorkspaceLaunchContext _launchContextFor(AppSession session) =>
+      WorkspaceLaunchContext(
+        session: session,
+        workspace: widget.workspace,
+        usesPosixPaths: homeStorageOf(context).usesPosixPaths,
+      );
 
-  Future<void> _loadHistory({bool force = false}) async {
+  Future<void> _loadHistory({bool force = false}) {
+    if (force) return _loadHistoryImpl(force: true);
+    final inFlight = _historyLoadInFlight;
+    if (inFlight != null) return inFlight;
+    final future = _loadHistoryImpl(force: false);
+    _historyLoadInFlight = future;
+    future.whenComplete(() {
+      if (identical(_historyLoadInFlight, future)) {
+        _historyLoadInFlight = null;
+      }
+    }).ignore();
+    return future;
+  }
+
+  Future<void> _loadHistoryImpl({required bool force}) async {
     final seat = _seat;
     if (seat == null) return;
     // Terminal-less ACP session: the app-side message table held by
@@ -579,40 +613,105 @@ class _SessionChatViewState extends State<SessionChatView> {
       _syncAcpMessages(acpRuntime);
       return;
     }
+    final chat = context.read<ChatCubit>();
+    final running = chat.isMemberRunning(
+      sessionId: widget.session.sessionId,
+      memberId: _shellMemberId,
+    );
+    // Cold seats only load when hot (visible or running). Offstage, idle
+    // restored tabs defer to first activation instead of parsing on boot.
+    if (!force &&
+        !isHistorySeatHot(
+          routeActive: widget.routeActive,
+          isMemberRunning: running,
+        )) {
+      appLogger.d(
+        '[history-defer] not-hot skip session=${widget.session.sessionId} '
+        'member=$_shellMemberId routeActive=${widget.routeActive} '
+        'running=$running',
+      );
+      await _liveRefresh?.stop();
+      return;
+    }
+    final ready =
+        seat.state.status == AiHistoryViewStatus.ready &&
+        seat.state.sessionId == widget.session.sessionId &&
+        seat.state.memberId == widget.selectedMemberId;
+    // A list-row stub carries no persisted CLI (resolver falls back to claude),
+    // so the cold parse would locate the wrong transcript. Hydrate the session
+    // document on EVERY cold load: the widget's snapshot can be a stale stub
+    // even after the store marked the document (store emits a newer full doc on
+    // hydrate). Hydration is single-flight and a cache hit once the doc exists,
+    // so this is a state/disk read only when the load genuinely precedes it.
+    var session = widget.session;
+    if (!ready || force) {
+      final hydrated = await chat.hydrateSessionDocument(
+        session.workspaceId,
+        session.sessionId,
+      );
+      if (!mounted) return;
+      if (hydrated != null) session = hydrated;
+    }
+    final launchContext = _launchContextFor(session);
+    final workingDirectory = _workspaceRootFor(session);
     if (force) {
       await seat.load(
-        session: widget.session,
+        session: session,
         memberId: widget.selectedMemberId,
-        launchContext: _launchContext,
+        launchContext: launchContext,
         team: widget.team,
-        workingDirectory: _workspaceRoot,
+        workingDirectory: workingDirectory,
         force: true,
       );
       if (!mounted) return;
       _maybeStartLiveRefreshForRunningPty();
-      // Seat owns the working latch across remount — sync (do not force-clear)
-      // so landing Starting survives long connects.
-      _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
+      _syncAwaitingFromWorkingSessions(chat.state);
       if (seat.state.awaitingAssistant) {
         unawaited(_startLiveRefresh(skipInitialRefresh: true));
       }
       return;
     }
-    // Soft when already ready for this seat — no loading flash / hard reload.
     await seat.softReloadOrLoad(
-      session: widget.session,
+      session: session,
       memberId: widget.selectedMemberId,
-      launchContext: _launchContext,
+      launchContext: launchContext,
       team: widget.team,
-      workingDirectory: _workspaceRoot,
+      workingDirectory: workingDirectory,
     );
     if (!mounted) return;
     _maybeStartLiveRefreshForRunningPty();
-    // Landing seed / continue awaiting: refresh while PTY runs offstage.
-    _syncAwaitingFromWorkingSessions(context.read<ChatCubit>().state);
+    _syncAwaitingFromWorkingSessions(chat.state);
     if (seat.state.awaitingAssistant) {
       unawaited(_startLiveRefresh(skipInitialRefresh: true));
     }
+  }
+
+  /// Single entry for "this seat's hot state may have changed": load a cold hot
+  /// seat, otherwise (re)start or stop live refresh.
+  Future<void> _refreshWhenHot() async {
+    if (!mounted) return;
+    final seat = _seat;
+    final running = context.read<ChatCubit>().isMemberRunning(
+      sessionId: widget.session.sessionId,
+      memberId: _shellMemberId,
+    );
+    if (!isHistorySeatHot(
+      routeActive: widget.routeActive,
+      isMemberRunning: running,
+    )) {
+      await _liveRefresh?.stop();
+      return;
+    }
+    final ready =
+        seat != null &&
+        seat.state.status == AiHistoryViewStatus.ready &&
+        seat.state.sessionId == widget.session.sessionId &&
+        seat.state.memberId == widget.selectedMemberId;
+    if (!ready) {
+      await _loadHistoryThenHydratePersistedPendingUsers();
+      return;
+    }
+    _maybeStartLiveRefreshForRunningPty();
   }
 
   /// PTY shells for Simple seats are keyed by [AppSession.sessionId].
@@ -823,6 +922,11 @@ class _SessionChatViewState extends State<SessionChatView> {
     final previous = _liveRefresh;
     _liveRefresh = null;
     _liveRefreshScope = null;
+
+    /// Drop the stale start single-flight too, or its future can return from
+    /// `_startLiveRefresh` and let the new seat miss live refresh until the
+    /// next busy/route event.
+    _liveRefreshStartInFlight = null;
     await previous?.stop();
   }
 
@@ -1403,7 +1507,7 @@ class _SessionChatViewState extends State<SessionChatView> {
                     current.isSessionBusy(widget.session.sessionId),
                 listener: (context, state) {
                   _syncAwaitingFromWorkingSessions(state);
-                  _maybeStartLiveRefreshForRunningPty();
+                  unawaited(_refreshWhenHot());
                   final chat = context.read<ChatCubit>();
                   _notifyFollowUpMemberWorking(chat);
                   _clearStoppedTurnIfSeatIdle(chat);

@@ -38,11 +38,8 @@ class FloatingWorkspaceCloseShortcut extends StatelessWidget {
     final isMac = defaultIsMacOS();
     return Shortcuts(
       shortcuts: <ShortcutActivator, Intent>{
-        SingleActivator(
-          LogicalKeyboardKey.keyW,
-          meta: isMac,
-          control: !isMac,
-        ): const FloatingWorkspaceCloseTabIntent(),
+        SingleActivator(LogicalKeyboardKey.keyW, meta: isMac, control: !isMac):
+            const FloatingWorkspaceCloseTabIntent(),
       },
       child: Actions(
         actions: <Type, Action<Intent>>{

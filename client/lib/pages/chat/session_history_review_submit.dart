@@ -1,5 +1,5 @@
-import '../../cubits/chat/member_input_ready_wait.dart';
-import '../../cubits/chat/model/session_connect_request.dart';
+import '../../services/chat/launch/session/member_input_ready_wait.dart';
+import '../../services/chat/session/session_connect_request.dart';
 import '../../utils/logging/logger.dart';
 import 'history_continue_delivery.dart';
 
@@ -66,6 +66,10 @@ Future<HistoryContinueSubmitResult> submitSessionHistoryReviewMessage({
   required Future<void> Function(String sessionId, String firstPrompt)
   applyFirstPromptTitle,
   HistoryContinueChannel channel = HistoryContinueChannel.pty,
+
+  /// Drops an in-flight mail doorbell / PTY inject so operator compose can
+  /// claim the first prompt instead of racing a CR already on the wire.
+  void Function(String sessionId, String memberId)? abortMemberInject,
 
   /// When set, called after connect so a newly installed TeamBus is visible.
   HistoryContinueChannel Function()? resolveChannel,
@@ -147,6 +151,7 @@ Future<HistoryContinueSubmitResult> submitSessionHistoryReviewMessage({
   }
 
   try {
+    abortMemberInject?.call(sessionId, memberId);
     await ensureMemberInputReady(
       sessionId,
       memberId,

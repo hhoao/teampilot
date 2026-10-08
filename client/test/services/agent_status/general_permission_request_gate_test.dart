@@ -36,21 +36,19 @@ void main() {
   });
 
   test('plain allow omits updatedPermissions', () {
-    expect(
-      const GeneralPermissionRequestReply.allow().toHookResponse(),
-      {
-        'hookSpecificOutput': {
-          'hookEventName': 'PermissionRequest',
-          'decision': {'behavior': 'allow'},
-        },
+    expect(const GeneralPermissionRequestReply.allow().toHookResponse(), {
+      'hookSpecificOutput': {
+        'hookEventName': 'PermissionRequest',
+        'decision': {'behavior': 'allow'},
       },
-    );
+    });
   });
 
   test('deny reply carries the message', () {
     expect(
-      const GeneralPermissionRequestReply.deny('User denied via TeamPilot')
-          .toHookResponse(),
+      const GeneralPermissionRequestReply.deny(
+        'User denied via TeamPilot',
+      ).toHookResponse(),
       {
         'hookSpecificOutput': {
           'hookEventName': 'PermissionRequest',

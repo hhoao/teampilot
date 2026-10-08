@@ -12,9 +12,7 @@ void main() {
   Widget wrap(Widget child) => MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: Scaffold(
-      body: SizedBox(width: 400, height: 36, child: child),
-    ),
+    home: Scaffold(body: SizedBox(width: 400, height: 36, child: child)),
   );
 
   GitChangeTile tile({
@@ -25,18 +23,17 @@ void main() {
     VoidCallback? onStage,
     VoidCallback? onUnstage,
     VoidCallback? onDiscard,
-  }) =>
-      GitChangeTile(
-        change: change,
-        depth: 0,
-        selected: selected,
-        onSelect: onSelect ?? () {},
-        onOpenDiff: () {},
-        onOpenFile: onOpenFile,
-        onStage: onStage ?? () {},
-        onUnstage: onUnstage ?? () {},
-        onDiscard: onDiscard ?? () {},
-      );
+  }) => GitChangeTile(
+    change: change,
+    depth: 0,
+    selected: selected,
+    onSelect: onSelect ?? () {},
+    onOpenDiff: () {},
+    onOpenFile: onOpenFile,
+    onStage: onStage ?? () {},
+    onUnstage: onUnstage ?? () {},
+    onDiscard: onDiscard ?? () {},
+  );
 
   Future<void> runOnDesktop(
     WidgetTester tester,
@@ -56,14 +53,16 @@ void main() {
     var stagedCalls = 0;
     await runOnDesktop(tester, () async {
       await tester.pumpWidget(
-        wrap(tile(
-          change: const GitFileChange(
-            path: 'main.dart',
-            kind: GitChangeKind.modified,
-            staged: false,
+        wrap(
+          tile(
+            change: const GitFileChange(
+              path: 'main.dart',
+              kind: GitChangeKind.modified,
+              staged: false,
+            ),
+            onStage: () => stagedCalls++,
           ),
-          onStage: () => stagedCalls++,
-        )),
+        ),
       );
       await tester.tap(find.byType(Checkbox));
       await tester.pump();
@@ -79,14 +78,16 @@ void main() {
     var unstagedCalls = 0;
     await runOnDesktop(tester, () async {
       await tester.pumpWidget(
-        wrap(tile(
-          change: const GitFileChange(
-            path: 'main.dart',
-            kind: GitChangeKind.modified,
-            staged: true,
+        wrap(
+          tile(
+            change: const GitFileChange(
+              path: 'main.dart',
+              kind: GitChangeKind.modified,
+              staged: true,
+            ),
+            onUnstage: () => unstagedCalls++,
           ),
-          onUnstage: () => unstagedCalls++,
-        )),
+        ),
       );
       await tester.tap(find.byType(Checkbox));
       await tester.pump();
@@ -98,15 +99,17 @@ void main() {
     var selectCalls = 0;
     await runOnDesktop(tester, () async {
       await tester.pumpWidget(
-        wrap(tile(
-          change: const GitFileChange(
-            path: 'main.dart',
-            kind: GitChangeKind.modified,
-            staged: false,
+        wrap(
+          tile(
+            change: const GitFileChange(
+              path: 'main.dart',
+              kind: GitChangeKind.modified,
+              staged: false,
+            ),
+            onSelect: () => selectCalls++,
+            onOpenFile: () {},
           ),
-          onSelect: () => selectCalls++,
-          onOpenFile: () {},
-        )),
+        ),
       );
       await tester.tap(find.byType(GitChangeTile));
       // Both onTap and onDoubleTap registered → tap fires after the
@@ -120,21 +123,29 @@ void main() {
     var openCalls = 0;
     await runOnDesktop(tester, () async {
       await tester.pumpWidget(
-        wrap(tile(
-          change: const GitFileChange(
-            path: 'main.dart',
-            kind: GitChangeKind.modified,
-            staged: false,
+        wrap(
+          tile(
+            change: const GitFileChange(
+              path: 'main.dart',
+              kind: GitChangeKind.modified,
+              staged: false,
+            ),
+            onOpenFile: () => openCalls++,
           ),
-          onOpenFile: () => openCalls++,
-        )),
+        ),
       );
       // Two taps must each come from a fresh pointer (see Task 4
       // hover_double_tap_test.dart); reusing one TestGesture trips a
       // framework gesture-arena assertion unrelated to the tile.
-      await tester.tap(find.byType(GitChangeTile), kind: PointerDeviceKind.mouse);
+      await tester.tap(
+        find.byType(GitChangeTile),
+        kind: PointerDeviceKind.mouse,
+      );
       await tester.pump(const Duration(milliseconds: 50));
-      await tester.tap(find.byType(GitChangeTile), kind: PointerDeviceKind.mouse);
+      await tester.tap(
+        find.byType(GitChangeTile),
+        kind: PointerDeviceKind.mouse,
+      );
       await tester.pump(const Duration(milliseconds: 400));
       expect(openCalls, 1);
     });
@@ -146,14 +157,16 @@ void main() {
     var openCalls = 0;
     await runOnDesktop(tester, () async {
       await tester.pumpWidget(
-        wrap(tile(
-          change: const GitFileChange(
-            path: 'main.dart',
-            kind: GitChangeKind.modified,
-            staged: false,
+        wrap(
+          tile(
+            change: const GitFileChange(
+              path: 'main.dart',
+              kind: GitChangeKind.modified,
+              staged: false,
+            ),
+            onOpenFile: () => openCalls++,
           ),
-          onOpenFile: () => openCalls++,
-        )),
+        ),
       );
       final center = tester.getCenter(find.byType(GitChangeTile));
       final gesture = await tester.startGesture(
@@ -173,56 +186,59 @@ void main() {
   });
 
   testWidgets(
-      'right-click on an unstaged row shows Include; staged row shows Exclude',
-      (tester) async {
-    await runOnDesktop(tester, () async {
-      Future<void> openMenu(GitFileChange change) async {
-        await tester.pumpWidget(wrap(tile(change: change)));
-        final center = tester.getCenter(find.byType(GitChangeTile));
-        final gesture = await tester.startGesture(
-          center,
-          kind: PointerDeviceKind.mouse,
-          buttons: kSecondaryMouseButton,
-        );
-        await gesture.up();
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 300));
-      }
+    'right-click on an unstaged row shows Include; staged row shows Exclude',
+    (tester) async {
+      await runOnDesktop(tester, () async {
+        Future<void> openMenu(GitFileChange change) async {
+          await tester.pumpWidget(wrap(tile(change: change)));
+          final center = tester.getCenter(find.byType(GitChangeTile));
+          final gesture = await tester.startGesture(
+            center,
+            kind: PointerDeviceKind.mouse,
+            buttons: kSecondaryMouseButton,
+          );
+          await gesture.up();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 300));
+        }
 
-      // Unstaged row → "Include in Commit" (not a legacy "Stage changes" label).
-      await openMenu(
-        const GitFileChange(
-          path: 'main.dart',
-          kind: GitChangeKind.modified,
-          staged: false,
-        ),
-      );
-      expect(find.text('Include in Commit'), findsOneWidget);
-      expect(find.text('Exclude from Commit'), findsNothing);
-
-      // Staged row → "Exclude from Commit".
-      await openMenu(
-        const GitFileChange(
-          path: 'main.dart',
-          kind: GitChangeKind.modified,
-          staged: true,
-        ),
-      );
-      expect(find.text('Exclude from Commit'), findsOneWidget);
-      expect(find.text('Include in Commit'), findsNothing);
-    });
-  });
-
-  testWidgets('status badge shown', (tester) async {
-    await runOnDesktop(tester, () async {
-      await tester.pumpWidget(
-        wrap(tile(
-          change: const GitFileChange(
+        // Unstaged row → "Include in Commit" (not a legacy "Stage changes" label).
+        await openMenu(
+          const GitFileChange(
             path: 'main.dart',
             kind: GitChangeKind.modified,
             staged: false,
           ),
-        )),
+        );
+        expect(find.text('Include in Commit'), findsOneWidget);
+        expect(find.text('Exclude from Commit'), findsNothing);
+
+        // Staged row → "Exclude from Commit".
+        await openMenu(
+          const GitFileChange(
+            path: 'main.dart',
+            kind: GitChangeKind.modified,
+            staged: true,
+          ),
+        );
+        expect(find.text('Exclude from Commit'), findsOneWidget);
+        expect(find.text('Include in Commit'), findsNothing);
+      });
+    },
+  );
+
+  testWidgets('status badge shown', (tester) async {
+    await runOnDesktop(tester, () async {
+      await tester.pumpWidget(
+        wrap(
+          tile(
+            change: const GitFileChange(
+              path: 'main.dart',
+              kind: GitChangeKind.modified,
+              staged: false,
+            ),
+          ),
+        ),
       );
       expect(find.text('M'), findsOneWidget);
     });

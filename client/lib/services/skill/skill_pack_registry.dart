@@ -11,10 +11,10 @@ class SkillPackRegistry {
     List<SkillPack>? packs,
     SkillPackSource? remote,
   }) : _byId = {
-        for (final p in packs ?? builtinSkillPacks())
-          if (p.id.isNotEmpty) p.id: p,
-      },
-      _remote = remote ?? GitRegistrySkillPackSource(storage: storage);
+         for (final p in packs ?? builtinSkillPacks())
+           if (p.id.isNotEmpty) p.id: p,
+       },
+       _remote = remote ?? GitRegistrySkillPackSource(storage: storage);
 
   final Map<String, SkillPack> _byId;
   final SkillPackSource _remote;

@@ -69,7 +69,9 @@ class HookImportParser {
   }) async {
     final dialect = _dialects[cli];
     if (dialect == null) {
-      return HookImportResult(warnings: ['hook_import_cli_unsupported_${cli.name}']);
+      return HookImportResult(
+        warnings: ['hook_import_cli_unsupported_${cli.name}'],
+      );
     }
     final warnings = <String>[];
     final List<RawHookEntry> raw;
@@ -98,10 +100,7 @@ class HookImportParser {
           name: event.name,
           event: event,
           matcher: entry.matcher,
-          action: HttpHookAction(
-            url: entry.url!,
-            headers: entry.headers,
-          ),
+          action: HttpHookAction(url: entry.url!, headers: entry.headers),
           timeoutSec: entry.timeoutSec,
           native: entry.native.isEmpty ? null : entry.native,
         );
@@ -136,14 +135,16 @@ class HookImportParser {
             );
         }
       }
-      drafts.add(HookImportDraft(
-        definition: definition,
-        nativeEvent: entry.nativeEvent,
-        scriptFileName: scriptFileName,
-        scriptContent: scriptContent,
-        unsupportedFields: entry.unsupportedFields,
-        warnings: entry.warnings,
-      ));
+      drafts.add(
+        HookImportDraft(
+          definition: definition,
+          nativeEvent: entry.nativeEvent,
+          scriptFileName: scriptFileName,
+          scriptContent: scriptContent,
+          unsupportedFields: entry.unsupportedFields,
+          warnings: entry.warnings,
+        ),
+      );
     }
     return HookImportResult(drafts: drafts, warnings: warnings);
   }

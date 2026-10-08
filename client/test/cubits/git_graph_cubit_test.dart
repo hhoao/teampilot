@@ -54,28 +54,34 @@ GitCommitDetail _detailFor(String hash) => GitCommitDetail(
 );
 
 void main() {
-  test('setRepoRoot marks initial load as refreshing until data lands', () async {
-    // 复现：打开面板时 git 子进程尚未返回，state 已是 rows=[] + 默认
-    // gitAvailable=true，UI 渲染「未找到提交」。refresh 期间必须置位
-    // isRefreshing，加载完成才落回 false。
-    final gate = Completer<void>();
-    final history = GatedHistory(gates: [gate], rows: [graphCommitRow('c1')]);
-    final cubit = GitGraphCubit(
-      history: history,
-      git: FakeGitForGraph(repoStatus()),
-    );
-    addTearDown(cubit.close);
+  test(
+    'setRepoRoot marks initial load as refreshing until data lands',
+    () async {
+      // 复现：打开面板时 git 子进程尚未返回，state 已是 rows=[] + 默认
+      // gitAvailable=true，UI 渲染「未找到提交」。refresh 期间必须置位
+      // isRefreshing，加载完成才落回 false。
+      final gate = Completer<void>();
+      final history = GatedHistory(gates: [gate], rows: [graphCommitRow('c1')]);
+      final cubit = GitGraphCubit(
+        history: history,
+        git: FakeGitForGraph(repoStatus()),
+      );
+      addTearDown(cubit.close);
 
-    final loading = cubit.setRepoRoot('/repo');
-    await Future<void>.delayed(Duration.zero); // 等 status 完成、进入门控等待
-    expect(cubit.state.isRefreshing, isTrue,
-        reason: '刷新进行中必须置位 isRefreshing');
+      final loading = cubit.setRepoRoot('/repo');
+      await Future<void>.delayed(Duration.zero); // 等 status 完成、进入门控等待
+      expect(
+        cubit.state.isRefreshing,
+        isTrue,
+        reason: '刷新进行中必须置位 isRefreshing',
+      );
 
-    gate.complete();
-    await loading;
-    expect(cubit.state.isRefreshing, isFalse);
-    expect((cubit.state.rows.single as GitCommitRow).hash, 'c1');
-  });
+      gate.complete();
+      await loading;
+      expect(cubit.state.isRefreshing, isFalse);
+      expect((cubit.state.rows.single as GitCommitRow).hash, 'c1');
+    },
+  );
 
   test('refresh marks refreshing while heavy fetch is in flight', () async {
     final first = Completer<void>()..complete();
@@ -133,16 +139,16 @@ void main() {
       morePage: [graphCommitRow('h3'), graphCommitRow('h4')],
       gateLoadMore: releaseLoadMore.future,
     );
-    final cubit = GitGraphCubit(history: history, git: FakeGitForGraph(repoStatus()));
+    final cubit = GitGraphCubit(
+      history: history,
+      git: FakeGitForGraph(repoStatus()),
+    );
     addTearDown(cubit.close);
     await cubit.setRepoRoot('/repo');
 
     final loadMoreDone = cubit.loadMore();
     final refreshDone = cubit.refresh();
-    releaseLoadMore.complete([
-      graphCommitRow('h3'),
-      graphCommitRow('h4'),
-    ]);
+    releaseLoadMore.complete([graphCommitRow('h3'), graphCommitRow('h4')]);
     await loadMoreDone;
     await refreshDone;
 
@@ -154,67 +160,72 @@ void main() {
     expect((cubit.state.rows.last as GitCommitRow).hash, 'h4');
   });
 
-  test('poll refresh keeps accumulated pagination when head unchanged',
-      () async {
-    final history = _ScriptedHistory(
-      expandToLimit: true,
-      pages: [
-        [graphCommitRow('h1'), graphCommitRow('h2')], // 首屏（扩充到满页）
-        [graphCommitRow('h3'), graphCommitRow('h4')], // loadMore 追加
-        [graphCommitRow('h1'), graphCommitRow('h2')], // 轮询重取第一页（头未变）
-      ],
-    );
-    final cubit = GitGraphCubit(history: history, git: FakeGitForGraph(repoStatus()));
-    await cubit.setRepoRoot('/repo');
-    await cubit.loadMore();
-    expect(cubit.state.rows.length, GitHistoryService.initialLoadCommits + GitHistoryService.loadMoreCommits);
-    await cubit.refresh(); // 模拟后台轮询
-    expect(
-      cubit.state.rows.length,
-      GitHistoryService.initialLoadCommits + GitHistoryService.loadMoreCommits,
-      reason: '轮询不得重置已累计的分页',
-    );
-    expect((cubit.state.rows.last as GitCommitRow).hash, 'h4');
-    expect(cubit.state.hasMore, isTrue);
-    await cubit.close();
-  });
-
   test(
-    'refresh within TTL skips heavy fetch when HEAD unchanged',
+    'poll refresh keeps accumulated pagination when head unchanged',
     () async {
-      // agent 写文件：dirtyCount 变化但 HEAD 不动 → 不得重跑 log/refs/stash。
-      final history = FakeHistoryForGraph(rows: [graphCommitRow('c1')]);
-      final git = FakeGitForGraph(repoStatus(headHash: 'h1'));
-      var now = DateTime(2026, 1, 1);
+      final history = _ScriptedHistory(
+        expandToLimit: true,
+        pages: [
+          [graphCommitRow('h1'), graphCommitRow('h2')], // 首屏（扩充到满页）
+          [graphCommitRow('h3'), graphCommitRow('h4')], // loadMore 追加
+          [graphCommitRow('h1'), graphCommitRow('h2')], // 轮询重取第一页（头未变）
+        ],
+      );
       final cubit = GitGraphCubit(
         history: history,
-        git: git,
-        clock: () => now,
+        git: FakeGitForGraph(repoStatus()),
       );
-      addTearDown(cubit.close);
       await cubit.setRepoRoot('/repo');
-      expect(history.graphCalls, 1);
-      final rowsBefore = cubit.state.rows;
-
-      git.statusResult = dirtyStatus(headHash: 'h1');
-      now = now.add(const Duration(seconds: 5));
-      await cubit.refresh();
-
-      expect(history.graphCalls, 1, reason: 'HEAD 未变 + TTL 内不得重跑 log');
+      await cubit.loadMore();
       expect(
-        identical(cubit.state.rows, rowsBefore),
-        isTrue,
-        reason: '跳过时沿用旧 rows 引用，emit 相等性走 identical 快路径',
+        cubit.state.rows.length,
+        GitHistoryService.initialLoadCommits +
+            GitHistoryService.loadMoreCommits,
       );
-      expect(cubit.state.dirtyCount, 2, reason: 'status 衍生字段仍要更新');
+      await cubit.refresh(); // 模拟后台轮询
+      expect(
+        cubit.state.rows.length,
+        GitHistoryService.initialLoadCommits +
+            GitHistoryService.loadMoreCommits,
+        reason: '轮询不得重置已累计的分页',
+      );
+      expect((cubit.state.rows.last as GitCommitRow).hash, 'h4');
+      expect(cubit.state.hasMore, isTrue);
+      await cubit.close();
     },
   );
 
+  test('refresh within TTL skips heavy fetch when HEAD unchanged', () async {
+    // agent 写文件：dirtyCount 变化但 HEAD 不动 → 不得重跑 log/refs/stash。
+    final history = FakeHistoryForGraph(rows: [graphCommitRow('c1')]);
+    final git = FakeGitForGraph(repoStatus(headHash: 'h1'));
+    var now = DateTime(2026, 1, 1);
+    final cubit = GitGraphCubit(history: history, git: git, clock: () => now);
+    addTearDown(cubit.close);
+    await cubit.setRepoRoot('/repo');
+    expect(history.graphCalls, 1);
+    final rowsBefore = cubit.state.rows;
+
+    git.statusResult = dirtyStatus(headHash: 'h1');
+    now = now.add(const Duration(seconds: 5));
+    await cubit.refresh();
+
+    expect(history.graphCalls, 1, reason: 'HEAD 未变 + TTL 内不得重跑 log');
+    expect(
+      identical(cubit.state.rows, rowsBefore),
+      isTrue,
+      reason: '跳过时沿用旧 rows 引用，emit 相等性走 identical 快路径',
+    );
+    expect(cubit.state.dirtyCount, 2, reason: 'status 衍生字段仍要更新');
+  });
+
   test('refresh refetches when HEAD hash moves', () async {
-    final history = _ScriptedHistory(pages: [
-      [graphCommitRow('h1')],
-      [graphCommitRow('x9')], // 新提交到达
-    ]);
+    final history = _ScriptedHistory(
+      pages: [
+        [graphCommitRow('h1')],
+        [graphCommitRow('x9')], // 新提交到达
+      ],
+    );
     final git = FakeGitForGraph(repoStatus(headHash: 'aaa'));
     final cubit = GitGraphCubit(
       history: history,
@@ -235,10 +246,12 @@ void main() {
   test('refresh refetches after TTL expiry even with HEAD unchanged', () async {
     // TTL 兜底：fetch 更新非 HEAD 引用（远端分支/其它 worktree）不会移动
     // HEAD hash，过期后仍需强制重取。
-    final history = _ScriptedHistory(pages: [
-      [graphCommitRow('h1')],
-      [graphCommitRow('h1')],
-    ]);
+    final history = _ScriptedHistory(
+      pages: [
+        [graphCommitRow('h1')],
+        [graphCommitRow('h1')],
+      ],
+    );
     var now = DateTime(2026, 1, 1);
     final cubit = GitGraphCubit(
       history: history,
@@ -255,39 +268,49 @@ void main() {
     expect(history.calls, 2, reason: 'TTL 过期需重取以兜住非 HEAD 引用变化');
   });
 
-  test('graph spacer rows do not break pagination flags or skip math',
-      () async {
-    // --graph 输出含 merge 连线行：总行数 > 提交数。hasMore 必须按
-    // 「提交数 == limit」判定，skip 也必须按提交数递增。
-    final history = SpacedFullPagesHistory();
-    final cubit = GitGraphCubit(history: history, git: FakeGitForGraph(repoStatus()));
-    addTearDown(cubit.close);
-    await cubit.setRepoRoot('/repo');
+  test(
+    'graph spacer rows do not break pagination flags or skip math',
+    () async {
+      // --graph 输出含 merge 连线行：总行数 > 提交数。hasMore 必须按
+      // 「提交数 == limit」判定，skip 也必须按提交数递增。
+      final history = SpacedFullPagesHistory();
+      final cubit = GitGraphCubit(
+        history: history,
+        git: FakeGitForGraph(repoStatus()),
+      );
+      addTearDown(cubit.close);
+      await cubit.setRepoRoot('/repo');
 
-    final pageCommits = GitHistoryService.initialLoadCommits;
-    expect(
-      cubit.state.rows.whereType<GitCommitRow>().length,
-      pageCommits,
-    );
-    expect(cubit.state.rows.length, greaterThan(pageCommits)); // 含 spacer
-    expect(cubit.state.hasMore, isTrue, reason: '满页提交 + spacer 行也应视为还有更多');
+      final pageCommits = GitHistoryService.initialLoadCommits;
+      expect(cubit.state.rows.whereType<GitCommitRow>().length, pageCommits);
+      expect(cubit.state.rows.length, greaterThan(pageCommits)); // 含 spacer
+      expect(cubit.state.hasMore, isTrue, reason: '满页提交 + spacer 行也应视为还有更多');
 
-    await cubit.loadMore();
-    expect(history.lastArgs['skip'], pageCommits,
-        reason: 'skip 按「已加载提交数」而非总行数');
-    expect(
-      cubit.state.rows.whereType<GitCommitRow>().length,
-      pageCommits + GitHistoryService.loadMoreCommits,
-    );
-    expect(cubit.state.hasMore, isTrue);
-  });
+      await cubit.loadMore();
+      expect(
+        history.lastArgs['skip'],
+        pageCommits,
+        reason: 'skip 按「已加载提交数」而非总行数',
+      );
+      expect(
+        cubit.state.rows.whereType<GitCommitRow>().length,
+        pageCommits + GitHistoryService.loadMoreCommits,
+      );
+      expect(cubit.state.hasMore, isTrue);
+    },
+  );
 
   test('refresh replaces rows when head commit changed', () async {
-    final history = _ScriptedHistory(pages: [
-      [graphCommitRow('h1'), graphCommitRow('h2')],
-      [graphCommitRow('x9'), graphCommitRow('h1')], // 上游来了新提交 → 整页替换
-    ]);
-    final cubit = GitGraphCubit(history: history, git: FakeGitForGraph(repoStatus()));
+    final history = _ScriptedHistory(
+      pages: [
+        [graphCommitRow('h1'), graphCommitRow('h2')],
+        [graphCommitRow('x9'), graphCommitRow('h1')], // 上游来了新提交 → 整页替换
+      ],
+    );
+    final cubit = GitGraphCubit(
+      history: history,
+      git: FakeGitForGraph(repoStatus()),
+    );
     await cubit.setRepoRoot('/repo');
     await cubit.refresh();
     expect((cubit.state.rows.first as GitCommitRow).hash, 'x9');
@@ -441,7 +464,6 @@ void main() {
   });
 }
 
-
 /// 按调用序返回不同页面的 fake：验证分页与轮询刷新的交互。
 class _ScriptedHistory implements GitHistoryService {
   _ScriptedHistory({required this.pages, this.expandToLimit = false});
@@ -489,7 +511,6 @@ class _ScriptedHistory implements GitHistoryService {
   @override
   Future<List<GitStashEntry>> stashList(String dir) async => const [];
 }
-
 
 /// 可控时序的 fake：loadMore 的结果由 [gateLoadMore] 门控，用于复现
 /// 「refresh 与 loadMore 并发、且 refresh 后完成」的竞态。

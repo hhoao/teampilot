@@ -63,7 +63,8 @@ void main() {
     final ratioAtDpr = iconOnScreen / textOnScreen;
 
     final textAt100 = bodyLargeBase;
-    final iconAt100 = TpIconSizes.mdBase *
+    final iconAt100 =
+        TpIconSizes.mdBase *
         TpIconSizes.resolveIconMultiplier(
           effectiveTextMultiplier: 1.0,
           textBaseline: 1.0,
@@ -77,19 +78,23 @@ void main() {
     expect(ratioAtDpr, lessThan(ratioAt100));
   });
 
-  test('paired icons strip OS baseline so desktop dual-standard matches toolbar', () {
-    const dpr = 1.5;
-    const labelFont = AppTypographyScale.bodyLargeBase * dpr;
-    final paired = TpIconSizes.iconSizeForTextFontSize(
-      labelFont,
-      textBaseAtScale1: AppTypographyScale.bodyLargeBase,
-      textBaseline: dpr,
-    );
-    final toolbar = TpIconSizes.mdBase *
-        TpIconSizes.resolveIconMultiplier(
-          effectiveTextMultiplier: dpr,
-          textBaseline: dpr,
-        );
-    expect(paired, toolbar);
-  });
+  test(
+    'paired icons strip OS baseline so desktop dual-standard matches toolbar',
+    () {
+      const dpr = 1.5;
+      const labelFont = AppTypographyScale.bodyLargeBase * dpr;
+      final paired = TpIconSizes.iconSizeForTextFontSize(
+        labelFont,
+        textBaseAtScale1: AppTypographyScale.bodyLargeBase,
+        textBaseline: dpr,
+      );
+      final toolbar =
+          TpIconSizes.mdBase *
+          TpIconSizes.resolveIconMultiplier(
+            effectiveTextMultiplier: dpr,
+            textBaseline: dpr,
+          );
+      expect(paired, toolbar);
+    },
+  );
 }

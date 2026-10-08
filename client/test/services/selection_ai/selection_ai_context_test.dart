@@ -48,10 +48,7 @@ void main() {
   });
 
   test('selectionAskAiPrefillText appends blank line', () {
-    expect(
-      selectionAskAiPrefillText('ctx'),
-      'ctx\n\n',
-    );
+    expect(selectionAskAiPrefillText('ctx'), 'ctx\n\n');
     expect(selectionAskAiPrefillText('  '), '');
   });
 }

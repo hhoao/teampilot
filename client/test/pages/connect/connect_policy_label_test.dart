@@ -6,32 +6,32 @@ import 'package:teampilot/cubits/connect_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/pages/connect/connect_section.dart';
-import 'package:teampilot/services/connect/authorized_keys_file.dart';
+import 'package:teampilot/services/connect/connect_backend_host.dart';
 import 'package:teampilot/services/connect/connect_settings_store.dart';
 import 'package:teampilot/services/connect/paired_device_store.dart';
 import 'package:teampilot/services/connect/ssh_pairing_offer.dart';
-import 'package:teampilot/services/connect/sshd_presence.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 
+import '../../support/fake_embedded_server.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
-  testWidgets(
-    'without an extra endpoint or relay the page says LAN only',
-    (tester) async {
-      final harness = _Harness();
-      addTearDown(harness.dispose);
+  testWidgets('without an extra endpoint or relay the page says LAN only', (
+    tester,
+  ) async {
+    final harness = _Harness();
+    addTearDown(harness.dispose);
 
-      await tester.pumpWidget(_host(harness));
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(_host(harness));
+    await tester.pumpAndSettle();
 
-      expect(find.text('LAN only'), findsOneWidget);
-      expect(find.text('LAN and remote'), findsNothing);
-    },
-  );
+    expect(find.text('LAN only'), findsOneWidget);
+    expect(find.text('LAN and remote'), findsNothing);
+  });
 
-  testWidgets('an extra endpoint upgrades the label to LAN and remote',
-      (tester) async {
+  testWidgets('an extra endpoint upgrades the label to LAN and remote', (
+    tester,
+  ) async {
     final harness = _Harness();
     addTearDown(harness.dispose);
     const endpoint = SshReachabilityEndpoint(
@@ -40,7 +40,10 @@ void main() {
       port: 2222,
     );
     await harness.cubit.openQrSession();
-    await harness.cubit.saveSettings(extraEndpoints: const [endpoint], relayUrl: '');
+    await harness.cubit.saveSettings(
+      extraEndpoints: const [endpoint],
+      relayUrl: '',
+    );
 
     await tester.pumpWidget(_host(harness));
     await tester.pumpAndSettle();
@@ -49,8 +52,9 @@ void main() {
     expect(find.text('LAN and remote'), findsOneWidget);
   });
 
-  testWidgets('a configured relay upgrades the label to LAN and remote',
-      (tester) async {
+  testWidgets('a configured relay upgrades the label to LAN and remote', (
+    tester,
+  ) async {
     final harness = _Harness();
     addTearDown(harness.dispose);
     await harness.cubit.openQrSession();
@@ -93,14 +97,12 @@ class _Harness {
   _Harness() {
     final fs = InMemoryFilesystem();
     final offer = _offer();
-    var keysText = '';
-    final keys = AuthorizedKeysFile(
-      path: '/home/alice/.ssh/authorized_keys',
-      read: (_) async => keysText,
-      write: (_, value) async => keysText = value,
-      chmod: (_, {required mode}) async {},
-    );
     deviceStore = PairedDeviceStore(fs: fs, appDataRoot: '/app-data');
+    final settingsStore = ConnectSettingsStore(
+      fs: fs,
+      appDataRoot: '/app-data',
+      generateHostId: () => 'abcdefghijklmnop',
+    );
     cubit = ConnectCubit(
       agent: ConnectAgentController(
         currentOffer: () => offer,
@@ -115,19 +117,14 @@ class _Harness {
         regenerateQr: () async {},
         updateExtraEndpoints: (_) async {},
       ),
-      probeSshd: () async => const SshdPresenceSnapshot(
-        listening: true,
-        port: 22,
-        fingerprints: ['SHA256:host-key'],
-        enableHint: '',
+      backends: ConnectBackendHost(
+        embedded: fakeListeningEmbeddedServer,
+        system: null,
+        settings: settingsStore,
+        systemSshdSelectable: false,
       ),
-      authorizedKeys: keys,
       deviceStore: deviceStore,
-      settingsStore: ConnectSettingsStore(
-        fs: fs,
-        appDataRoot: '/app-data',
-        generateHostId: () => 'abcdefghijklmnop',
-      ),
+      settingsStore: settingsStore,
       listNetworkAddresses: () async => const [
         ConnectNetworkAddress(
           name: 'Wi-Fi',

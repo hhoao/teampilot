@@ -12,7 +12,11 @@ import 'package:teampilot/services/provider/provider_import_service.dart';
 import '../support/in_memory_filesystem.dart';
 
 class _SpyProviderImportService extends ProviderImportService {
-  _SpyProviderImportService() : super(repository: AppProviderRepository(storage: fakeHomeStorage()), storage: fakeHomeStorage(), );
+  _SpyProviderImportService()
+    : super(
+        repository: AppProviderRepository(storage: fakeHomeStorage()),
+        storage: fakeHomeStorage(),
+      );
 
   var importAllCalls = 0;
   final importForCliCalls = <CliTool>[];
@@ -45,8 +49,15 @@ void main() {
 
   setUp(() async {
     temp = await Directory.systemTemp.createTemp('app_provider_cubit_');
-    repository = AppProviderRepository(basePath: temp.path, storage: fakeHomeStorage(), );
-    cubit = AppProviderCubit(repository: repository, basePath: temp.path, storage: fakeHomeStorage(), );
+    repository = AppProviderRepository(
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+    );
+    cubit = AppProviderCubit(
+      repository: repository,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+    );
   });
 
   tearDown(() async {
@@ -56,8 +67,7 @@ void main() {
     }
   });
 
-  test('rejects a credentialLink that a managed entry links back to',
-      () async {
+  test('rejects a credentialLink that a managed entry links back to', () async {
     final managedRepo = ManagedProviderRepository(
       storage: fakeHomeStorage(),
       configPath: '${temp.path}${Platform.pathSeparator}managed-providers.json',
@@ -70,8 +80,10 @@ void main() {
         kind: ManagedProviderKind.apiBalance,
         adapterId: 'http-json',
         endpointConfig: ManagedProviderEndpointConfig(
-          credentialSource:
-              managedProviderLinkSourceValue(CliTool.claude, 'deepseek'),
+          credentialSource: managedProviderLinkSourceValue(
+            CliTool.claude,
+            'deepseek',
+          ),
         ),
       ),
     );
@@ -115,7 +127,7 @@ void main() {
       repository: repository,
       importService: spy,
       basePath: temp.path,
-                                          storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     addTearDown(allCliCubit.close);
 
@@ -130,8 +142,14 @@ void main() {
 
     expect(spy.importAllCalls, 1);
     expect(spy.importForCliCalls, isEmpty);
-    expect(results.map((r) => r.cli), containsAll([CliTool.claude, CliTool.codex]));
-    expect(allCliCubit.state.providersFor(CliTool.claude).single.id, 'claude-a');
+    expect(
+      results.map((r) => r.cli),
+      containsAll([CliTool.claude, CliTool.codex]),
+    );
+    expect(
+      allCliCubit.state.providersFor(CliTool.claude).single.id,
+      'claude-a',
+    );
     expect(allCliCubit.state.providersFor(CliTool.codex).single.id, 'codex-a');
     expect(allCliCubit.state.statusMessage, contains('Imported'));
   });
@@ -151,35 +169,37 @@ void main() {
     expect(cubit.state.providers.map((p) => p.id), ['b']);
   });
 
-  test('saving a form draft does not clobber probed credential status',
-      () async {
-    // Row probed ready by a successful login inside the add form.
-    const ready = AppProviderConfig(
-      id: 'openai-official-2',
-      cli: CliTool.codex,
-      name: 'OpenAI Official',
-      category: AppProviderCategory.official,
-      isOfficial: true,
-      credentialStatus: 'ready',
-      credentialUpdatedAt: 123,
-    );
-    await cubit.upsertProvider(ready);
+  test(
+    'saving a form draft does not clobber probed credential status',
+    () async {
+      // Row probed ready by a successful login inside the add form.
+      const ready = AppProviderConfig(
+        id: 'openai-official-2',
+        cli: CliTool.codex,
+        name: 'OpenAI Official',
+        category: AppProviderCategory.official,
+        isOfficial: true,
+        credentialStatus: 'ready',
+        credentialUpdatedAt: 123,
+      );
+      await cubit.upsertProvider(ready);
 
-    // The add-form draft carries no probe info (missing / 0), like
-    // AppProviderFormSheet._buildNormalDraft.
-    const draft = AppProviderConfig(
-      id: 'openai-official-2',
-      cli: CliTool.codex,
-      name: 'OpenAI Official',
-      category: AppProviderCategory.official,
-      isOfficial: true,
-    );
-    await cubit.upsertProvider(draft);
+      // The add-form draft carries no probe info (missing / 0), like
+      // AppProviderFormSheet._buildNormalDraft.
+      const draft = AppProviderConfig(
+        id: 'openai-official-2',
+        cli: CliTool.codex,
+        name: 'OpenAI Official',
+        category: AppProviderCategory.official,
+        isOfficial: true,
+      );
+      await cubit.upsertProvider(draft);
 
-    final saved = cubit.state.providersFor(CliTool.codex).single;
-    expect(saved.credentialStatus, 'ready');
-    expect(saved.credentialUpdatedAt, 123);
-  });
+      final saved = cubit.state.providersFor(CliTool.codex).single;
+      expect(saved.credentialStatus, 'ready');
+      expect(saved.credentialUpdatedAt, 123);
+    },
+  );
 
   test('probe-driven downgrade still clears credential status', () async {
     const ready = AppProviderConfig(
@@ -206,8 +226,10 @@ void main() {
     );
     await cubit.upsertProvider(revoked);
 
-    expect(cubit.state.providersFor(CliTool.codex).single.credentialStatus,
-        'missing');
+    expect(
+      cubit.state.providersFor(CliTool.codex).single.credentialStatus,
+      'missing',
+    );
   });
 
   test('switching cli restores selected provider for that cli', () async {
@@ -261,24 +283,27 @@ void main() {
     expect(model['provider'], 'deepseek');
   });
 
-  test('reportCredentialLoginProgress stores device code for the waiting UI', () {
-    cubit.beginCredentialLogin('openai-official');
-    cubit.reportCredentialLoginProgress(
-      CredentialLoginProgress(
-        deviceCode: 'WO3M-X8OIF',
-        verificationUri: Uri.parse('https://auth.openai.com/codex/device'),
-      ),
-    );
+  test(
+    'reportCredentialLoginProgress stores device code for the waiting UI',
+    () {
+      cubit.beginCredentialLogin('openai-official');
+      cubit.reportCredentialLoginProgress(
+        CredentialLoginProgress(
+          deviceCode: 'WO3M-X8OIF',
+          verificationUri: Uri.parse('https://auth.openai.com/codex/device'),
+        ),
+      );
 
-    expect(cubit.state.credentialLoginProviderId, 'openai-official');
-    expect(cubit.state.credentialLoginDeviceCode, 'WO3M-X8OIF');
-    expect(
-      cubit.state.credentialLoginVerificationUri,
-      'https://auth.openai.com/codex/device',
-    );
+      expect(cubit.state.credentialLoginProviderId, 'openai-official');
+      expect(cubit.state.credentialLoginDeviceCode, 'WO3M-X8OIF');
+      expect(
+        cubit.state.credentialLoginVerificationUri,
+        'https://auth.openai.com/codex/device',
+      );
 
-    cubit.clearCredentialLoginProgress();
-    expect(cubit.state.credentialLoginDeviceCode, isNull);
-    expect(cubit.state.credentialLoginProviderId, isNull);
-  });
+      cubit.clearCredentialLoginProgress();
+      expect(cubit.state.credentialLoginDeviceCode, isNull);
+      expect(cubit.state.credentialLoginProviderId, isNull);
+    },
+  );
 }

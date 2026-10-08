@@ -46,14 +46,16 @@ void main() {
     expect(g.complete(sessionId: 's', memberId: 'm', reply: 'allow'), isFalse);
   });
 
-  test('clearSeat and clearSession resolve held waiters with the stale reply',
-      () async {
-    final g = gate();
-    final a = g.wait(sessionId: 's1', memberId: 'm1');
-    final b = g.wait(sessionId: 's2', memberId: 'm2');
-    g.clearSeat(sessionId: 's1', memberId: 'm1');
-    g.clearSession('s2');
-    expect(await a, 'stale');
-    expect(await b, 'stale');
-  });
+  test(
+    'clearSeat and clearSession resolve held waiters with the stale reply',
+    () async {
+      final g = gate();
+      final a = g.wait(sessionId: 's1', memberId: 'm1');
+      final b = g.wait(sessionId: 's2', memberId: 'm2');
+      g.clearSeat(sessionId: 's1', memberId: 'm1');
+      g.clearSession('s2');
+      expect(await a, 'stale');
+      expect(await b, 'stale');
+    },
+  );
 }

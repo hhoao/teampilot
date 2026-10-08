@@ -16,12 +16,9 @@ void main() {
       fs: InMemoryFilesystem(),
       basePath: '/data/tp',
       httpClient: MockClient(
-        (_) async => http.Response(
-          '{"data":[{"id":"live-codex-model"}]}',
-          200,
-        ),
+        (_) async => http.Response('{"data":[{"id":"live-codex-model"}]}', 200),
       ),
-                                            storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     const provider = AppProviderConfig(
       id: 'openai-api',
@@ -42,45 +39,51 @@ void main() {
     expect(models, isNot(contains('gpt-5.3-codex')));
   });
 
-  test('Codex OAuth provider uses static catalog without a network request', () async {
-    var requests = 0;
-    final service = ApiModelCatalogService(
-      protocol: ApiModelCatalogProtocol.openAi,
-      cacheDirectory: 'codex_models',
-      fs: InMemoryFilesystem(),
-      basePath: '/data/tp',
-      httpClient: MockClient((_) async {
-        requests++;
-        return http.Response('{}', 200);
-      }),
-                                            storage: fakeHomeStorage(),
-    );
-    const provider = AppProviderConfig(
-      id: 'openai-official',
-      cli: CliTool.codex,
-      name: 'OpenAI Official',
-      category: AppProviderCategory.official,
-      isOfficial: true,
-    );
-    final capability = CodexProviderCapability(modelsService: service);
+  test(
+    'Codex OAuth provider uses static catalog without a network request',
+    () async {
+      var requests = 0;
+      final service = ApiModelCatalogService(
+        protocol: ApiModelCatalogProtocol.openAi,
+        cacheDirectory: 'codex_models',
+        fs: InMemoryFilesystem(),
+        basePath: '/data/tp',
+        httpClient: MockClient((_) async {
+          requests++;
+          return http.Response('{}', 200);
+        }),
+        storage: fakeHomeStorage(),
+      );
+      const provider = AppProviderConfig(
+        id: 'openai-official',
+        cli: CliTool.codex,
+        name: 'OpenAI Official',
+        category: AppProviderCategory.official,
+        isOfficial: true,
+      );
+      final capability = CodexProviderCapability(modelsService: service);
 
-    await capability.refreshModelCatalog(
-      providerId: provider.id,
-      provider: provider,
-    );
-
-    expect(
-      capability.modelCandidates(
-        provider: provider,
+      await capability.refreshModelCatalog(
         providerId: provider.id,
-        currentModel: '',
-      ),
-      contains('gpt-5.3-codex'),
-    );
-    expect(requests, 0);
-  });
+        provider: provider,
+      );
+
+      expect(
+        capability.modelCandidates(
+          provider: provider,
+          providerId: provider.id,
+          currentModel: '',
+        ),
+        contains('gpt-5.3-codex'),
+      );
+      expect(requests, 0);
+    },
+  );
 
   test('Codex capability is refreshable', () {
-    expect(CodexProviderCapability(), isA<RefreshableProviderModelCapability>());
+    expect(
+      CodexProviderCapability(),
+      isA<RefreshableProviderModelCapability>(),
+    );
   });
 }

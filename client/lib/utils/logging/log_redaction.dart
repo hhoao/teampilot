@@ -47,8 +47,10 @@ bool _looksSensitive(String key, String value) {
 String stringifyEnvironmentForLog(Map<String, String>? env) {
   if (env == null || env.isEmpty) return '';
   return env.entries
-      .map((e) => _looksSensitive(e.key, e.value)
-          ? '${e.key}=<redacted(len=${e.value.length})>'
-          : '${e.key}=${e.value}')
+      .map(
+        (e) => _looksSensitive(e.key, e.value)
+            ? '${e.key}=<redacted(len=${e.value.length})>'
+            : '${e.key}=${e.value}',
+      )
       .join(', ');
 }

@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:posix/posix.dart' as posix;
 
 import '../cubits/app_bootstrap_cubit.dart';
 import 'app_data_bootstrap.dart';
@@ -32,28 +31,36 @@ import '../services/editor/markdown_network_image_store.dart';
 import '../services/event/agent_presence_event.dart';
 import '../services/event/agent_presence_projection.dart';
 import '../services/event/agent_presence_sink.dart';
+import '../services/event/agent_presence_transport_codec.dart';
 import '../services/event/async_dispatcher.dart';
 import '../services/event/event_publisher.dart';
+import '../services/event/event_transport_client.dart';
+import '../services/event/event_transport_controller.dart';
+import '../services/event/event_transport_server.dart';
 import '../services/event/presence_event_bridge.dart';
-import '../services/prompt_delivery/prompt_delivery_coordinator.dart';
-import '../services/prompt_delivery/prompt_delivery_store.dart';
+import '../services/event/session_lifecycle_transport_codec.dart';
+import 'event_transport_home.dart';
+import '../services/chat/conversation/prompt_delivery/prompt_delivery_coordinator.dart';
+import '../services/chat/conversation/prompt_delivery/prompt_delivery_store.dart';
 import '../services/agent_status/agent_status_seat_lookup.dart';
 import '../services/agent_status/ask_user_answer_pending_store.dart';
 import '../services/agent_status/ask_user_question_hook_gate.dart';
 import '../services/agent_status/exit_plan_mode_hook_gate.dart';
 import '../services/agent_status/general_permission_request_gate.dart';
-import '../services/terminal/ask_user_question_answer_service.dart';
-import '../services/terminal/exit_plan_mode_approval_service.dart';
-import '../services/team_generation/mcp/team_composer_mcp_handler.dart';
+import '../services/chat/conversation/approvals/ask_user_question_answer_service.dart';
+import '../services/chat/conversation/approvals/exit_plan_mode_approval_service.dart';
+import '../services/chat/team_generation/mcp/team_composer_mcp_handler.dart';
 import '../models/app_session.dart';
 import '../services/catalog/catalog_runtime.dart';
 import '../services/catalog/catalog_production.dart';
-import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
-import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
+import '../services/catalog/catalog_workspace_binder.dart';
+import '../services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
+import '../services/chat/team_bus/remote/remote_bus_binding_resolver.dart';
+import '../services/chat/team_bus/remote/remote_member_bus_setup.dart';
 import '../services/remote/local_credential_exporter.dart';
 import '../services/remote/remote_cli_readiness.dart';
 import '../services/editor_platform/editor_platform.dart';
-import '../services/launch/launch_factory.dart';
+import '../services/chat/launch/launch_factory.dart';
 import '../cubits/board_cubit.dart';
 import '../utils/session/workspace_tab_session_scope.dart';
 import '../cubits/mailbox_cubit.dart';
@@ -89,8 +96,8 @@ import '../services/workbench/workbench_layout_persistence.dart';
 import '../services/workbench/workbench_shell_launcher.dart';
 import '../services/workbench/workbench_strip_navigator.dart';
 import '../services/editor/markdown_view_mode_store.dart';
-import '../services/session/ai_history_loader.dart';
-import '../services/session/session_history_context_builder.dart';
+import '../services/chat/conversation/history/ai_history_loader.dart';
+import '../services/chat/conversation/history/session_history_context_builder.dart';
 import '../cubits/ai_feature_settings_cubit.dart';
 import '../cubits/discovery_settings_cubit.dart';
 import '../cubits/config_cubit.dart';
@@ -101,6 +108,7 @@ import '../services/connect/paired_relay_tunnel_registry.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../models/layout_preferences.dart';
+import '../models/right_tool_open_set.dart';
 import '../cubits/workspace_tools_cubit.dart';
 import '../cubits/llm_config_cubit.dart';
 import '../cubits/managed_provider_cubit.dart';
@@ -121,6 +129,8 @@ import '../cubits/skill_cubit.dart';
 import '../repositories/mcp_repository.dart';
 import '../services/hook/hook_repository.dart';
 import '../services/hook/import/hook_import_service.dart';
+import '../services/mcp/mcp_dart_probe_handshake.dart';
+import '../services/mcp/mcp_server_probe_service.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
 import '../cubits/ssh_connection_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
@@ -160,19 +170,23 @@ import '../services/extension/extension_provisioner.dart';
 import '../services/storage/app_paths.dart';
 import '../services/storage/device_local_control_plane.dart';
 import '../services/io/local_filesystem.dart';
-import '../services/connect/authorized_keys_file.dart';
 import '../services/connect/connect_agent.dart';
+import '../services/connect/authorized_keys_file.dart';
+import '../services/connect/connect_backend_host.dart';
 import '../services/connect/connect_settings_store.dart';
+import '../services/connect/connect_ssh_backend.dart';
+import '../services/connect/embedded_ssh_server.dart' show EmbeddedSshServer;
 import '../services/connect/sshd_presence.dart';
+import '../services/connect/system_sshd_backend.dart';
 import '../services/perf/live_perf_driver.dart';
 import '../services/storage/workspace_layout.dart';
 import '../services/automation/automation_bus_gateway.dart';
 import '../services/automation/automation_dispatcher.dart';
 import '../services/automation/automation_schedule_calculator.dart';
 import '../services/automation/automation_scheduler.dart';
-import '../services/launch/session_runtime_plan_builder.dart';
+import '../services/chat/launch/staging/session_runtime_plan_builder.dart';
 import '../services/home_workspace/home_workspace_ui_cache.dart';
-import '../services/team/team_clone_service.dart';
+import '../services/team_config/team_clone_service.dart';
 import '../services/team_hub/composite_team_hub_source.dart';
 import '../services/team_hub/git_registry_team_hub_source.dart';
 import '../services/team_hub/team_hub_favorites_store.dart';
@@ -223,7 +237,7 @@ import '../services/cli/opencode/provider/opencode_models_service.dart';
 import '../services/provider/api_model_catalog_service.dart';
 import '../services/cli/cursor/provider/cursor_agent_models_service.dart';
 import '../services/cli/cursor/provider/cursor_provider_credentials_service.dart';
-import '../cubits/chat/tab_member_pty_delivery.dart';
+import '../services/chat/runtime/pty/tab_member_pty_delivery.dart';
 import '../services/provider/provider_credential_host_runner.dart';
 import '../services/provider_usage/managed_provider_secret_store.dart';
 import '../services/provider_usage/managed_provider_cli_row_janitor.dart';
@@ -253,7 +267,7 @@ import '../services/termux/termux_transport_profile.dart';
 import '../services/termux/termux_work_ops_message.dart';
 import '../services/ssh/ssh_profile_connection_tester.dart';
 import '../services/notification/notification_recorder.dart';
-import '../services/session/session_lifecycle_service.dart';
+import '../services/chat/session/session_lifecycle_service.dart';
 import '../services/skill/skill_acquisition_engine.dart';
 import '../services/skill/skill_fetch_service.dart';
 import '../services/plugin/marketplace_shared_store.dart';
@@ -273,6 +287,10 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/ssh/ssh_connection_events.dart';
 import '../widgets/ssh/ssh_host_key_prompt_dialog.dart';
 import '../services/ssh/ssh_profile_connection_coordinator.dart';
+import '../services/ssh/mcp/session_ssh_mcp_executor.dart';
+import '../services/ssh/mcp/session_ssh_mcp_http.dart';
+import '../services/ssh/mcp/session_ssh_mcp_operations.dart';
+import '../services/ssh/mcp/session_ssh_mcp_resolver.dart';
 import '../services/ssh/ssh_transport_close.dart';
 import '../services/ssh/android_ssh_connect_home.dart';
 import '../services/terminal/terminal_transport_factory.dart';
@@ -444,6 +462,9 @@ class AppShell {
     required this.teamCubit,
     required this.configCubit,
     required this.connectCubit,
+    required this.embeddedSshServer,
+    this.systemSshdBackend,
+    required this.connectDeviceStore,
     required this.appProviderCubit,
     required this.managedProviderControlPlane,
     required this.managedProviderRepository,
@@ -548,6 +569,17 @@ class AppShell {
   final LaunchProfileCubit teamCubit;
   final ConfigCubit configCubit;
   final ConnectCubit? connectCubit;
+
+  /// The desktop's embedded SSH server; `null` on Android (no Connect host).
+  final ConnectSshBackend? embeddedSshServer;
+
+  /// Linux/macOS system OpenSSH backend; `null` on Android and Windows.
+  final ConnectSshBackend? systemSshdBackend;
+
+  /// The device registry shared by the embedded server, pairing agent, and
+  /// Connect UI; `null` on Android.
+  final PairedDeviceStore? connectDeviceStore;
+
   final AppProviderCubit appProviderCubit;
   final ManagedProviderControlPlane managedProviderControlPlane;
   final ManagedProviderRepository managedProviderRepository;
@@ -627,6 +659,8 @@ Future<AppShell> buildAppShell({
   // Null keeps the cubit on the legacy poll-derived path (tests, early boot).
   AgentPresenceProjection? presenceProjection,
   AgentPresenceSink? presenceSink,
+  EventTransportController? eventTransportController,
+  void Function(HomeStorage home)? bindEventTransportHome,
 }) async {
   final bootSw = Stopwatch()..start();
   void boot(String phase) =>
@@ -727,8 +761,8 @@ Future<AppShell> buildAppShell({
   Future<Map<CliTool, String>> locateRemoteClis(SshProfile profile) async {
     try {
       final client = await sshClientFactory.clientForStorage(profile);
-      return cliExecutableDiscovery.locateRemote(
-        run: RemoteCliLocator.runnerForClient(client),
+      return await cliExecutableDiscovery.locateRemote(
+        run: RemoteCliLocator.getRunnerForClient(client),
       );
     } on Object catch (error, stackTrace) {
       appLogger.w(
@@ -1152,11 +1186,13 @@ Future<AppShell> buildAppShell({
     Future<void> setHomeTarget(String id) async {
       await managedProviderControlPlane.invalidateForStorageContextChange();
       await homeTargetStore.save(id);
-      homeTarget = homeTargetFromId(id);
+      final previousHomeId = defaultTargetResolver().id;
+      final nextHomeTarget = homeTargetFromId(id);
       // Drop any cached wrapper for the destination target so rebindHome
       // materializes a fresh context (unchanged from the pre-swap sequence).
-      await runtimeContextRegistry.dispose(id);
-      await runtimeContextRegistry.rebindHome(homeTarget);
+      if (id != previousHomeId) await runtimeContextRegistry.dispose(id);
+      await runtimeContextRegistry.rebindHome(nextHomeTarget);
+      homeTarget = nextHomeTarget;
       // Publish the new home plane synchronously, then retire the outgoing
       // context — its registry entry is evicted and the SSH transport closed
       // only after in-flight ops drain (Task 5 deferred close).
@@ -1173,10 +1209,6 @@ Future<AppShell> buildAppShell({
     // drop the cached wrapper and rebuild it, but keep the live SSH storage pool.
     reinstallStorageContext = () async {
       await managedProviderControlPlane.invalidateForStorageContextChange();
-      await runtimeContextRegistry.dispose(
-        defaultTargetResolver().id,
-        notifyEvict: false,
-      );
       await runtimeContextRegistry.rebindHome(defaultTargetResolver());
       // Fresh wrapper for the same target: swap publishes it and retires the
       // stale wrapper, but the retire is a no-op in the registry (the cached
@@ -1396,6 +1428,7 @@ Future<AppShell> buildAppShell({
       cliPresetsRepository: cliPresetsRepo,
       loadPresets: () => cliPresetsCubit.state.presets,
       projectConfigRepository: workspaceProjectConfigRepository,
+      sshProfileById: sshProfileById,
     );
     sessionRepo = SessionRepository(
       storage: homeStorage,
@@ -1448,7 +1481,6 @@ Future<AppShell> buildAppShell({
       identityProvisioner: identityProvisioner,
       storage: homeStorage,
       executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
-      cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
       llmConfigPathOverride: llmConfigPathOverrideForLaunch,
       storageRootsResolver: () async => homeStorage.context,
       lifecycleService: sessionLifecycleService,
@@ -1568,10 +1600,26 @@ Future<AppShell> buildAppShell({
       installJobRegistry: installJobRegistry,
     );
     cliPresetsCubit = CliPresetsCubit(repository: cliPresetsRepo);
+    final catalogWorkspaceBinder = CatalogWorkspaceBinder(
+      repo: workspaceProjectConfigRepository,
+    );
+    Future<void> unbindMcpEverywhere(String mcpId) async {
+      await teamCubit.removeMcpFromAllTeams(mcpId);
+      final changed = await catalogWorkspaceBinder.unbindMcpFromAllWorkspaces(
+        mcpId,
+      );
+      for (final workspaceId in changed) {
+        await WorkspaceProjectConfigCubit.reloadLive(workspaceId);
+      }
+    }
+
     mcpCubit = McpCubit(
       mcpRepository,
       storage: homeStorage,
-      onMcpDeleted: teamCubit.removeMcpFromAllTeams,
+      onMcpUnbound: unbindMcpEverywhere,
+      probeService: McpServerProbeService(
+        handshake: McpDartProbeHandshake(storage: homeStorage),
+      ),
     );
     hookCubit = HookCubit(repository: hookRepository)..load();
 
@@ -1583,7 +1631,7 @@ Future<AppShell> buildAppShell({
       GitRegistryTeamHubSource(
         storage: homeStorage,
         fs: catalogCacheFs,
-        cacheDirOverride: catalogCacheRoot + '/team-hub',
+        cacheDirOverride: '$catalogCacheRoot/team-hub',
       ),
     );
     final teamHubFavorites = TeamHubFavoritesStore(storage: homeStorage);
@@ -1597,7 +1645,7 @@ Future<AppShell> buildAppShell({
       registry: GitRegistryExpertHubSource(
         storage: homeStorage,
         fs: catalogCacheFs,
-        cacheDirOverride: catalogCacheRoot + '/member-hub',
+        cacheDirOverride: '$catalogCacheRoot/member-hub',
       ),
       teamIndex: teamHubSource.fetchTeams,
       localStore: localExpertStore,
@@ -1707,13 +1755,18 @@ Future<AppShell> buildAppShell({
       layout: layoutCubit,
       floating: floatingWorkspaceCubit,
     );
-    final workspaceToolsCubit = WorkspaceToolsCubit();
+    final workspaceToolsCubit = WorkspaceToolsCubit(
+      persist: (set) {
+        unawaited(layoutCubit.setRightToolOpenSet(set));
+      },
+    );
     final workspaceTerminalRegistry = WorkspaceTerminalRegistry();
     final gitRepoStore = GitRepoStore(storage: homeStorage);
     final workspaceFileTreeStore = WorkspaceFileTreeStore();
     final workspaceSearchIndexes = WorkspaceSearchIndexes(storage: homeStorage);
     final workspaceWorktreeRegistry = WorkspaceWorktreeRegistry(
       storage: homeStorage,
+      gitMutationSignals: gitRepoStore.headChanged,
     );
     final workspaceSessionGroupsRegistry = WorkspaceSessionGroupsRegistry(
       storage: homeStorage,
@@ -1740,6 +1793,9 @@ Future<AppShell> buildAppShell({
     );
     final configCubit = ConfigCubit();
     ConnectCubit? connectCubit;
+    ConnectSshBackend? embeddedSshServer;
+    ConnectSshBackend? systemSshdBackend;
+    PairedDeviceStore? connectDeviceStore;
     if (!Platform.isAndroid) {
       final localFs = LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
@@ -1757,36 +1813,73 @@ Future<AppShell> buildAppShell({
                   Platform.environment['USERNAME'] ??
                   localFs.pathContext.basename(nativeHome))
               .trim();
-      final authorizedKeysPath = localFs.pathContext.join(
-        nativeHome,
-        '.ssh',
-        'authorized_keys',
-      );
-      final authorizedKeys = AuthorizedKeysFile(
-        path: authorizedKeysPath,
-        read: localFs.readString,
-        write: localFs.atomicWrite,
-        chmod: (path, {required mode}) async {
-          if (!Platform.isWindows) {
-            posix.chmod(path, mode.toRadixString(8));
-          }
-        },
-      );
       final settingsStore = ConnectSettingsStore(
         fs: localFs,
         appDataRoot: nativeAppDataPath,
       );
       final settings = await settingsStore.load();
-      final sshdPresence = SshdPresence();
       final pairedDeviceStore = PairedDeviceStore(
         fs: localFs,
         appDataRoot: nativeAppDataPath,
       );
+      connectDeviceStore = pairedDeviceStore;
+      final server = EmbeddedSshServer(
+        fs: localFs,
+        appDataRoot: nativeAppDataPath,
+        deviceStore: pairedDeviceStore,
+        username: username,
+        homePath: nativeHome,
+      );
+      final systemSshdSelectable = Platform.isLinux || Platform.isMacOS;
+      final systemBackend = systemSshdSelectable
+          ? SystemSshdBackend(
+              presence: SshdPresence(
+                probe: loopbackSshdProbe(),
+                scan: sshKeyScanRunner(
+                  run: (exe, args) async {
+                    final result = await Process.run(exe, args);
+                    return (
+                      exitCode: result.exitCode,
+                      stdout: result.stdout.toString(),
+                      stderr: result.stderr.toString(),
+                    );
+                  },
+                ),
+              ),
+              authorizedKeys: AuthorizedKeysFile(
+                fs: localFs,
+                homePath: nativeHome,
+                chmod600: (path) async {
+                  await Process.run('chmod', ['600', path]);
+                },
+              ),
+            )
+          : null;
+      final backendHost = ConnectBackendHost(
+        embedded: server,
+        system: systemBackend,
+        settings: settingsStore,
+        systemSshdSelectable: systemSshdSelectable,
+      );
+      try {
+        await backendHost.startSelected();
+      } on Object catch (error, stackTrace) {
+        // Non-blocking: the app continues; the Connect UI shows the failed
+        // state with a retry affordance. Broad on purpose — anything from a
+        // typed [EmbeddedSshServerStartException] (bind conflicts) to a
+        // host-key persistence failure must not crash app boot.
+        appLogger.e(
+          '[connect] ssh backend failed to start',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+      embeddedSshServer = server;
+      systemSshdBackend = systemBackend;
       final connectAgent = ConnectAgent.production(
-        keys: authorizedKeys,
+        sshBackend: backendHost.current,
         fs: localFs,
         extraEndpoints: settings.extraEndpoints,
-        probe: sshdPresence.probe,
         deviceStore: pairedDeviceStore,
       );
       // App-lifetime relay registration: keeps off-LAN SSH reachable via
@@ -1811,8 +1904,13 @@ Future<AppShell> buildAppShell({
       }
       connectCubit = ConnectCubit(
         agent: ConnectAgentController.fromAgent(connectAgent),
-        probeSshd: sshdPresence.probe,
-        authorizedKeys: authorizedKeys,
+        backends: backendHost,
+        systemSshdHint: Platform.isMacOS
+            ? ConnectSystemSshdHint.macos
+            : (Platform.isLinux
+                  ? ConnectSystemSshdHint.linux
+                  : ConnectSystemSshdHint.none),
+        deviceStore: pairedDeviceStore,
         settingsStore: settingsStore,
         listNetworkAddresses: () async {
           final interfaces = await NetworkInterface.list(includeLoopback: true);
@@ -1996,6 +2094,38 @@ Future<AppShell> buildAppShell({
       catalogRuntime.handler,
       resolveSession: catalogRuntime.resolveSession,
     );
+    teammateBusMcpGateway.attachSessionSshMcp(
+      SessionSshMcpHttpAdapter(
+        operations: SessionSshMcpOperations(
+          executor: SshClientFactorySessionSshMcpExecutor(sshClientFactory),
+        ),
+        resolveContext: (sessionId, memberId) async {
+          final session = await sessionRepo.findById(sessionId);
+          if (session == null) return null;
+          final workspace = (await sessionRepo.loadWorkspacesIndex())
+              .firstWhereOrNull((w) => w.workspaceId == session.workspaceId);
+          if (workspace == null) return null;
+          final profileIds = <String>{};
+          for (final folder in workspace.folders) {
+            final profileId = sshProfileIdOfId(folder.targetId);
+            if (profileId != null) profileIds.add(profileId);
+          }
+          final profiles = <String, SshProfile>{};
+          for (final id in profileIds) {
+            final profile = await sshProfileRepo.findById(id);
+            if (profile != null) profiles[id] = profile;
+          }
+          return resolveSessionSshMcpContext(
+            session: session,
+            workspace: workspace,
+            profileOf: (id) => profiles[id],
+            localFs: homeStorage.fs,
+            localUsesPosixPaths: homeStorage.usesPosixPaths,
+            memberId: memberId,
+          );
+        },
+      ),
+    );
     catalogRuntime.bus.listen().listen((event) {
       unawaited(skillCubit.loadAll());
       unawaited(pluginCubit.load());
@@ -2053,7 +2183,9 @@ Future<AppShell> buildAppShell({
           sessionPreferencesCubit.state.preferences.terminalScrollbackLines,
       // P3b (#1): connect remote (ssh) mixed-team members back to the in-process
       // bus over a reverse tunnel. Local members resolve to null (unchanged).
-      remoteBusResolver: RemoteBusBindingResolver(registry: cliToolRegistry),
+      remoteBusSetup: RemoteMemberBusSetup(
+        resolver: RemoteBusBindingResolver(registry: cliToolRegistry),
+      ),
       sessionConnect: buildSessionConnectOrchestrator(
         lifecycle: sessionLifecycleService,
         registry: cliToolRegistry,
@@ -2224,7 +2356,7 @@ Future<AppShell> buildAppShell({
     memberPresenceCubit = MemberPresenceCubit(
       storage: homeStorage,
       presenceProjection: presenceProjection,
-      presenceBridge: presenceSink == null
+      presenceBridge: presenceSink == null || connectionModeService.isSshMode
           ? null
           : PresenceEventBridge(sink: presenceSink),
     );
@@ -2371,7 +2503,9 @@ Future<AppShell> buildAppShell({
     final aiHistoryCubit = AiHistoryCubit(
       loader: aiHistoryLoader,
       loadMailboxRecords: (sessionId, memberId) async {
-        final bus = chatCubit.tabStore.openTabBySessionId(sessionId)?.teamBus;
+        final bus = chatCubit.tabStore
+            .getOpenTabBySessionId(sessionId)
+            ?.teamBus;
         if (bus == null) return const [];
         return bus.memberMailRecords(memberId);
       },
@@ -2396,6 +2530,13 @@ Future<AppShell> buildAppShell({
     boot('loading layout');
     await layoutCubit.load();
     floatingWorkspacePersistence.hydrateFromLayout();
+    workspaceToolsCubit.hydrate(
+      RightToolOpenSet.sanitize(
+        openIds: layoutCubit.state.preferences.rightToolOpenIds,
+        selectedId: layoutCubit.state.preferences.rightToolSelectedId,
+        dismissedIds: layoutCubit.state.preferences.rightToolDismissedIds,
+      ),
+    );
     floatingWorkspacePersistence.bind();
     await shortcutCubit.load();
     unawaited(notificationBootstrap);
@@ -2488,7 +2629,7 @@ Future<AppShell> buildAppShell({
     /// Background one-time migration: replace stale per-session marketplace
     /// clones with a symlink to the shared flavor dir (see
     /// [MarketplaceSharedStore]). Skips currently-open sessions; non-fatal.
-    Future<void> _sweepStaleMarketplaceClones() async {
+    Future<void> sweepStaleMarketplaceClones() async {
       try {
         await MarketplaceSharedStore(
           fs: homeStorage.fs,
@@ -2572,7 +2713,7 @@ Future<AppShell> buildAppShell({
         'workspaces=${chatCubit.state.workspaces.length} '
         '(sessions load on demand)',
       );
-      unawaited(_sweepStaleMarketplaceClones());
+      unawaited(sweepStaleMarketplaceClones());
       bootstrapCubit?.beginWarmAuxiliary();
       await AppDataBootstrap.warmAuxiliaryData(
         boot: boot,
@@ -2748,10 +2889,39 @@ Future<AppShell> buildAppShell({
     // and republishes it through HomeStorage. No explicit reload here (I1): the
     // HomeInvalidationService subscribes to HomeStorage.changes and drives the
     // single full reload — the swap itself is the trigger.
+    Future<void> applyHomeEventTransport({bool restart = false}) async {
+      final cubit = memberPresenceCubit;
+      if (cubit != null) {
+        if (connectionModeService.isSshMode) {
+          cubit.setPresenceBridge(null);
+        } else if (presenceSink != null) {
+          cubit.setPresenceBridge(PresenceEventBridge(sink: presenceSink));
+        } else {
+          cubit.setPresenceBridge(null);
+        }
+      }
+      final controller = eventTransportController;
+      if (controller == null) return;
+      bindEventTransportHome?.call(homeStorage);
+      await applyEventTransportForHome(
+        controller: controller,
+        connectionMode: connectionModeService,
+        homeStorage: homeStorage,
+        sshClientFactory: sshClientFactory,
+        homeProfile: () {
+          final id = defaultTargetResolver().sshProfileId;
+          if (id == null || id.isEmpty) return null;
+          return sshProfileById(id);
+        },
+        restart: restart,
+      );
+    }
+
     Future<void> switchHomeTarget(String id) async {
       await setHomeTarget(
         id,
       ); // persists + rebinds home + republishes HomeStorage
+      await applyHomeEventTransport(restart: true);
     }
 
     // Bootstrap-owned invalidation: replaces the HomeSshProfileBinder widget
@@ -2878,6 +3048,9 @@ Future<AppShell> buildAppShell({
       teamCubit: teamCubit,
       configCubit: configCubit,
       connectCubit: connectCubit,
+      embeddedSshServer: embeddedSshServer,
+      systemSshdBackend: systemSshdBackend,
+      connectDeviceStore: connectDeviceStore,
       appProviderCubit: appProviderCubit,
       managedProviderControlPlane: managedProviderControlPlane,
       managedProviderRepository: resolvedManagedProviderRepository,
@@ -2932,6 +3105,7 @@ Future<AppShell> buildAppShell({
       uiZoomBaseline: uiZoomBaseline,
     );
     managedProviderControlPlaneLease.transferOwnership();
+    await applyHomeEventTransport();
     return shell;
   } on Object {
     // The failed shell is discarded: stop its catalog mutation bus before a
@@ -2941,6 +3115,7 @@ Future<AppShell> buildAppShell({
     // app-lifetime presence projection, which would otherwise keep waking a
     // cubit from a discarded shell. `memberPresenceCubit` is nullable because
     // construction may throw before it is assigned.
+    await eventTransportController?.apply(EventTransportRole.none);
     await memberPresenceCubit?.close();
     await catalogRuntime?.bus.close();
     await managedProviderControlPlaneLease.closeIfOwned();
@@ -3022,6 +3197,55 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     _eventDispatcher,
   );
 
+  HomeStorage? _eventTransportHome;
+
+  late final EventTransportController _eventTransportController =
+      EventTransportController(
+        createServer: () {
+          final home = _eventTransportHome;
+          if (home == null) {
+            throw StateError('event-transport home storage not bound');
+          }
+          final server = EventTransportServer(
+            dispatcher: _eventDispatcher,
+            presence: _presenceProjection,
+            fs: home.fs,
+            advertisementPath: home.paths.eventTransportJson,
+            codecs: [
+              AgentPresenceTransportCodec(),
+              SessionLifecycleTransportCodec(),
+            ],
+          );
+          return CallbackEventTransportEndpoint(
+            start: server.start,
+            stop: server.stop,
+          );
+        },
+        createClient:
+            ({required Future<EventTransportByteChannel> Function() open}) {
+              final client = EventTransportClient(
+                dispatcher: _eventDispatcher,
+                presence: _presenceProjection,
+                codecs: [
+                  AgentPresenceTransportCodec(),
+                  SessionLifecycleTransportCodec(),
+                ],
+                open: open,
+                onError: (error, stackTrace) {
+                  appLogger.w(
+                    '[event-transport] client',
+                    error: error,
+                    stackTrace: stackTrace,
+                  );
+                },
+              );
+              return CallbackEventTransportEndpoint(
+                start: client.start,
+                stop: client.stop,
+              );
+            },
+      );
+
   @override
   void initState() {
     super.initState();
@@ -3053,19 +3277,25 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         bootstrapCubit: widget.bootstrapCubit,
         presenceProjection: _presenceProjection,
         presenceSink: _presenceSink,
+        eventTransportController: _eventTransportController,
+        bindEventTransportHome: (home) {
+          _eventTransportHome = home;
+        },
       );
       final shell = builtShell;
       if (!mounted) {
+        await _eventTransportController.apply(EventTransportRole.none);
         await shell.memberPresenceCubit.close();
-        await shell.connectCubit?.close();
+        await _teardownConnect(shell);
         await shell.managedProviderControlPlane.close();
         return;
       }
       await yieldUiFrame();
       await shell.bootstrapAppData();
       if (!mounted) {
+        await _eventTransportController.apply(EventTransportRole.none);
         await shell.memberPresenceCubit.close();
-        await shell.connectCubit?.close();
+        await _teardownConnect(shell);
         await shell.managedProviderControlPlane.close();
         return;
       }
@@ -3092,7 +3322,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       if (!mounted) return;
       await completeBootSplashTransition();
     } on Object catch (error, stackTrace) {
-      await builtShell?.connectCubit?.close();
+      await _teardownConnect(builtShell);
       await builtShell?.managedProviderControlPlane.close();
       // The failed shell is discarded: stop its catalog mutation bus before a
       // bootstrap retry constructs a new one, so the app-lifetime dispatcher
@@ -3101,6 +3331,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       // same reason: it subscribes to the app-lifetime presence projection.
       await builtShell?.memberPresenceCubit.close();
       await builtShell?.catalogRuntime?.bus.close();
+      await _eventTransportController.apply(EventTransportRole.none);
       appLogger.e(
         '[boot] buildAppShell failed',
         error: error,
@@ -3144,7 +3375,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     final shell = _shell;
     if (shell != null) {
       shell.homeInvalidationService.stop();
-      unawaited(shell.connectCubit?.close());
+      unawaited(_teardownConnect(shell));
       unawaited(shell.managedProviderControlPlane.close());
     }
     // Drain queued events; dispose() is synchronous, so stop() is
@@ -3157,6 +3388,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     // close — runs strictly after the last delivery. The projection also
     // guards its own broadcast add (`if (!_changes.isClosed)`), so even a late
     // event would be dropped rather than throw; the chain is belt-and-braces.
+    unawaited(_eventTransportController.apply(EventTransportRole.none));
     unawaited(_eventDispatcher.stop().then((_) => _presenceProjection.close()));
     super.dispose();
   }
@@ -3211,4 +3443,14 @@ ConnectRelayRegistration _relayRegistrationFor(Uri uri) {
     endpointHost: uri.host,
     endpointPort: uri.port == 0 ? (uri.scheme == 'wss' ? 443 : 80) : uri.port,
   );
+}
+
+/// Tears down the Connect stack: the QR-session cubit, both SSH backends,
+/// and the shared paired-device registry. Safe to call with a null shell
+/// (Android) and on partially-built shells.
+Future<void> _teardownConnect(AppShell? shell) async {
+  await shell?.connectCubit?.close();
+  await shell?.embeddedSshServer?.stop();
+  await shell?.systemSshdBackend?.stop();
+  shell?.connectDeviceStore?.dispose();
 }

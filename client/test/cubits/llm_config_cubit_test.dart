@@ -53,8 +53,7 @@ void main() {
       appSettings: SharedPrefsAppSettingsRepository(prefs),
       storage: HomeStorage(testHomeStorage.context),
       executableResolver: () => '/opt/flashskyai/dist/flashskyai',
-      storeFactory: (path) =>
-          LocalLlmConfigStore(path, fs: LocalFilesystem()),
+      storeFactory: (path) => LocalLlmConfigStore(path, fs: LocalFilesystem()),
     );
 
     await cubit.load();

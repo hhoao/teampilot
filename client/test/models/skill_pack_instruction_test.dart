@@ -21,22 +21,28 @@ void main() {
   });
 
   test('SKILLS object include/exclude', () {
-    final s = parseSkillPackInstall([
-      {
-        'SKILLS': {
-          'include': ['*'],
-          'exclude': ['qa'],
-        },
-      },
-    ]).single as SkillsInstruction;
+    final s =
+        parseSkillPackInstall([
+              {
+                'SKILLS': {
+                  'include': ['*'],
+                  'exclude': ['qa'],
+                },
+              },
+            ]).single
+            as SkillsInstruction;
     expect(s.includeAll, isTrue);
     expect(s.exclude, ['qa']);
   });
 
   test('SKILLS list wildcard means include all', () {
-    final s = parseSkillPackInstall([
-      {'SKILLS': ['*']},
-    ]).single as SkillsInstruction;
+    final s =
+        parseSkillPackInstall([
+              {
+                'SKILLS': ['*'],
+              },
+            ]).single
+            as SkillsInstruction;
     expect(s.includeAll, isTrue);
     expect(s.include, isEmpty);
   });
@@ -110,10 +116,7 @@ void main() {
     expect(
       () => parseSkillPackInstall([
         {
-          'SCRIPT': {
-            'url': 'https://example.com/install.sh',
-            'foo': 'bar',
-          },
+          'SCRIPT': {'url': 'https://example.com/install.sh', 'foo': 'bar'},
         },
       ]),
       throwsA(isA<FormatException>()),

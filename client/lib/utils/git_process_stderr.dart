@@ -15,7 +15,9 @@ String gitProcessStderrSnippet(
       .where((l) => !_isCloneProgressLine(l))
       .take(maxLines)
       .toList();
-  final text = useful.isEmpty ? err.split('\n').first.trim() : useful.join('\n');
+  final text = useful.isEmpty
+      ? err.split('\n').first.trim()
+      : useful.join('\n');
   return text.length > maxChars ? '${text.substring(0, maxChars)}…' : text;
 }
 

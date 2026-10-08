@@ -66,8 +66,5 @@ Future<LandingExpertSelectResult> selectLandingExpert({
     return LandingExpertSelectResult(cleared: true, preflight: preflight);
   }
 
-  return LandingExpertSelectResult(
-    selectedKey: trimmed,
-    preflight: preflight,
-  );
+  return LandingExpertSelectResult(selectedKey: trimmed, preflight: preflight);
 }

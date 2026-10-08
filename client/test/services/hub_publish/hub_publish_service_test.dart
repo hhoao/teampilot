@@ -44,7 +44,7 @@ void main() {
     records = HubPublishRecordStore(
       fs: InMemoryFilesystem(),
       pathOverride: '/hub-publish/records.json',
-                                     storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     lookup = BundleProvenanceLookup(
       skills: const [],

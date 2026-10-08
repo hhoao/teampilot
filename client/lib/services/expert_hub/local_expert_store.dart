@@ -78,8 +78,9 @@ class LocalExpertStore {
   /// Saves a user-created expert. Assigns `local/{uuid}` when [member.key] is
   /// not already a local key; always stamps [ExpertMemberSource.local].
   Future<DiscoverableMember> save(DiscoverableMember member) async {
-    final id =
-        isLocalKey(member.key) ? idFromLocalKey(member.key) : _uuidFactory();
+    final id = isLocalKey(member.key)
+        ? idFromLocalKey(member.key)
+        : _uuidFactory();
     final saved = member.copyWith(
       key: '$localKeyPrefix$id',
       source: ExpertMemberSource.local,

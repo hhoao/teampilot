@@ -1,19 +1,15 @@
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/home_workspace/landing_prefs_store.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
-  test('LandingPrefs defaults to full access for landing compatibility', () {
-    expect(
-      const LandingPrefs().launchSecurityPolicy.requiresDangerousExecution,
-      isTrue,
-    );
-  });
-
   test('round-trips per-workspace landing prefs', () async {
     final fs = InMemoryFilesystem();
-    final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json', storage: fakeHomeStorage(filesystem: fs), );
+    final store = LandingPrefsStore(
+      fs: fs,
+      pathOverride: '/prefs.json',
+      storage: fakeHomeStorage(filesystem: fs),
+    );
 
     await store.save(
       'ws-a',
@@ -21,7 +17,6 @@ void main() {
         isPersonal: false,
         teamId: 'team-1',
         workingDirectoryPath: '/projects/app',
-        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
       ),
     );
 
@@ -29,12 +24,15 @@ void main() {
     expect(loaded?.isPersonal, isFalse);
     expect(loaded?.teamId, 'team-1');
     expect(loaded?.workingDirectoryPath, '/projects/app');
-    expect(loaded?.launchSecurityPolicy.requiresDangerousExecution, isTrue);
   });
 
   test('generate launch survives prefs round trip in team mode', () async {
     final fs = InMemoryFilesystem();
-    final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json', storage: fakeHomeStorage(filesystem: fs), );
+    final store = LandingPrefsStore(
+      fs: fs,
+      pathOverride: '/prefs.json',
+      storage: fakeHomeStorage(filesystem: fs),
+    );
     await store.save(
       'workspace-1',
       const LandingPrefs(
@@ -54,38 +52,28 @@ void main() {
       '/prefs.json',
       '{"ws-old":{"isPersonal":false,"teamId":"team-1"}}',
     );
-    final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json', storage: fakeHomeStorage(filesystem: fs), );
+    final store = LandingPrefsStore(
+      fs: fs,
+      pathOverride: '/prefs.json',
+      storage: fakeHomeStorage(filesystem: fs),
+    );
 
     final loaded = await store.prefsFor('ws-old');
     expect(loaded?.generateLaunch, isFalse);
   });
 
-  test('persists the normalized launch security policy object', () async {
+  test('saved landing preferences omit launch security policy', () async {
     final fs = InMemoryFilesystem();
-    final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json', storage: fakeHomeStorage(filesystem: fs), );
-
-    await store.save(
-      'ws-a',
-      const LandingPrefs(launchSecurityPolicy: LaunchSecurityPolicy.cliDefault),
+    final store = LandingPrefsStore(
+      fs: fs,
+      pathOverride: '/prefs.json',
+      storage: fakeHomeStorage(filesystem: fs),
     );
 
+    await store.save('ws-a', const LandingPrefs());
+
     final raw = await fs.readString('/prefs.json');
-    expect(raw, contains('"launchSecurityPolicy"'));
+    expect(raw, isNot(contains('"launchSecurityPolicy"')));
     expect(raw, isNot(contains('dangerouslySkipPermissions')));
-
-    final loaded = await store.prefsFor('ws-a');
-    expect(loaded?.launchSecurityPolicy.requiresDangerousExecution, isFalse);
   });
-
-  test(
-    'missing launch security policy loads the full-access application default',
-    () async {
-      final fs = InMemoryFilesystem();
-      await fs.writeString('/prefs.json', '{"ws-a":{"isPersonal":true}}');
-      final store = LandingPrefsStore(fs: fs, pathOverride: '/prefs.json', storage: fakeHomeStorage(filesystem: fs), );
-
-      final loaded = await store.prefsFor('ws-a');
-      expect(loaded?.launchSecurityPolicy.requiresDangerousExecution, isTrue);
-    },
-  );
 }

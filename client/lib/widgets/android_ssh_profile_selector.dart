@@ -10,6 +10,7 @@ import '../l10n/l10n_extensions.dart';
 import '../models/runtime_target.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/storage/home_target_controller.dart';
+
 /// Android app-bar control: shows the active SSH server and switches profiles.
 class AndroidSshProfileSelector extends StatelessWidget {
   const AndroidSshProfileSelector({super.key});

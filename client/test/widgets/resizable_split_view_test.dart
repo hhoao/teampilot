@@ -134,7 +134,9 @@ void main() {
     expect(tester.getSize(find.byKey(const Key('primary-pane'))).width, 320);
   });
 
-  testWidgets('initial fraction seeds once then stays absolute', (tester) async {
+  testWidgets('initial fraction seeds once then stays absolute', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1000, 400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -184,10 +186,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(
-      tester.getSize(find.byKey(const Key('primary-pane'))).width,
-      299,
-    );
+    expect(tester.getSize(find.byKey(const Key('primary-pane'))).width, 299);
 
     await tester.binding.setSurfaceSize(const Size(1000, 400));
     await tester.pumpAndSettle();

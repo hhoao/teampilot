@@ -43,10 +43,7 @@ void main() {
       expect(isValidTeamGenerationWorkflowId('with space'), isFalse);
       expect(isValidTeamGenerationWorkflowId('-leading'), isFalse);
       expect(isValidTeamGenerationWorkflowId(''), isFalse);
-      expect(
-        isValidTeamGenerationWorkflowId('a' * 129),
-        isFalse,
-      );
+      expect(isValidTeamGenerationWorkflowId('a' * 129), isFalse);
       expect(isValidTeamGenerationWorkflowId('a' * 128), isTrue);
     });
 

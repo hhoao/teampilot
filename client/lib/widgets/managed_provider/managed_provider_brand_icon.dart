@@ -87,10 +87,7 @@ const managedProviderBrandLabelTextHeightBehavior = TextHeightBehavior(
   applyHeightToLastDescent: false,
 );
 
-double managedProviderBrandLabelLineHeight(
-  TextStyle style,
-  TextScaler scaler,
-) {
+double managedProviderBrandLabelLineHeight(TextStyle style, TextScaler scaler) {
   final fontSize = scaler.scale(style.fontSize ?? 12);
   return fontSize * (style.height ?? 1.2);
 }
@@ -123,7 +120,10 @@ class ManagedProviderBrandLabelRow extends StatelessWidget {
     final scaler = MediaQuery.textScalerOf(context);
     final resolvedStyle = textStyle;
     final rowHeight = hasLabel
-        ? math.max(iconSize, managedProviderBrandLabelLineHeight(resolvedStyle, scaler))
+        ? math.max(
+            iconSize,
+            managedProviderBrandLabelLineHeight(resolvedStyle, scaler),
+          )
         : iconSize;
 
     final children = <Widget>[
@@ -218,7 +218,9 @@ class _RemoteBrandIcon extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return BoxDecoration(
       color: resolveProviderIconTileBackground(cs, isDark),
-      borderRadius: BorderRadius.circular(ManagedProviderBrandMark._borderRadius),
+      borderRadius: BorderRadius.circular(
+        ManagedProviderBrandMark._borderRadius,
+      ),
       border: showBorder
           ? Border.all(color: resolveProviderIconBorderColor(cs, isDark))
           : null,
@@ -232,10 +234,7 @@ class _RemoteBrandIcon extends StatelessWidget {
       decoration: _tileDecoration(context),
       clipBehavior: Clip.antiAlias,
       alignment: Alignment.center,
-      child: Padding(
-        padding: EdgeInsets.all(size * 0.14),
-        child: image,
-      ),
+      child: Padding(padding: EdgeInsets.all(size * 0.14), child: image),
     );
   }
 

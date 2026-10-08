@@ -1,19 +1,21 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/chat_session_shell_factory.dart';
-import 'package:teampilot/cubits/chat/chat_tab_store.dart';
-import 'package:teampilot/cubits/chat/member_connector.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
-import 'package:teampilot/cubits/chat/tab_member_coordination_factory.dart';
-import 'package:teampilot/cubits/chat/member_input_ready_wait.dart';
-import 'package:teampilot/cubits/chat/tab_member_materializer.dart';
-import 'package:teampilot/cubits/chat/tab_member_pty_delivery.dart';
-import 'package:teampilot/cubits/chat/tab_session_runtime_coordinator.dart';
+import 'package:teampilot/services/chat/launch/connect/chat_session_shell_factory.dart';
+import 'package:teampilot/services/chat/session/chat_tab_store.dart';
+import 'package:teampilot/services/chat/launch/connect/member_connector.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
+import 'package:teampilot/services/chat/session/chat_tab_info.dart';
+import 'package:teampilot/services/chat/runtime/tab_member_coordination_factory.dart';
+import 'package:teampilot/services/chat/launch/session/member_input_ready_wait.dart';
+import 'package:teampilot/services/chat/launch/session/tab_member_materializer.dart';
+import 'package:teampilot/services/chat/runtime/pty/tab_member_pty_delivery.dart';
+import 'package:teampilot/services/chat/runtime/tab_session_runtime_coordinator.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
-import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
-import 'package:teampilot/services/terminal/member_pty_inject_service.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_pty_automation.dart';
+import 'package:teampilot/services/chat/runtime/pty/member_pty_inject_service.dart';
+import 'package:teampilot/services/chat/conversation/prompt_delivery/prompt_delivery_coordinator.dart';
+import 'package:teampilot/services/chat/conversation/prompt_delivery/prompt_delivery_store.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../../integration/support/connected_recording_shell.dart';
@@ -25,7 +27,7 @@ class _NoopConnector implements MemberConnector {
   void scheduleMemberConnect(
     TeamProfile team,
     TeamMemberConfig member,
-    ChatTab tab, {
+    String sessionId, {
     bool selectMember = true,
   }) {}
 }
@@ -135,6 +137,42 @@ void main() {
     );
   });
 
+  test('Opencode composer chrome is not ready until dwell elapses', () async {
+    final harness = await _ComposerHarness.connect(cli: CliTool.opencode);
+    addTearDown(harness.dispose);
+
+    await harness.paintOpencodeComposer();
+    expect(
+      harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+      isFalse,
+    );
+    await Future<void>.delayed(const Duration(seconds: 1));
+    expect(
+      harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+      isTrue,
+    );
+  });
+
+  test('Opencode MCP connect repaint keeps composer unready', () async {
+    final harness = await _ComposerHarness.connect(cli: CliTool.opencode);
+    addTearDown(harness.dispose);
+
+    await harness.paintOpencodeComposer();
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    // MCP server finishes connecting -> status bar repaints (⊙ 2 MCP).
+    await harness.paintFlickerFrame('~/git/hhoa/huji:main  \u2299 2 MCP');
+    expect(
+      harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+      isFalse,
+      reason: 'MCP connect repaint must restart Opencode composer dwell',
+    );
+    await Future<void>.delayed(const Duration(seconds: 1));
+    expect(
+      harness.delivery.isMemberComposerSurfaceReady(_sessionId, _memberId),
+      isTrue,
+    );
+  });
+
   test('Claude boot frame is enough without composer chrome', () async {
     final harness = await _ComposerHarness.connect(cli: CliTool.claude);
     addTearDown(harness.dispose);
@@ -173,10 +211,8 @@ void main() {
     () async {
       final harness = await _ComposerHarness.connect(
         cli: CliTool.codex,
-        ptyInject: MemberPtyInjectService(
-          automation: FullscreenPtyAutomation(
-            timing: PtyAutomationTiming.instant(),
-          ),
+        automation: FullscreenPtyAutomation(
+          timing: PtyAutomationTiming.instant(),
         ),
       );
       addTearDown(harness.dispose);
@@ -210,11 +246,7 @@ void main() {
       );
 
       await harness.delivery
-          .retryMemberDelivery(
-            _sessionId,
-            _memberId,
-            TeamBus.doorbellNotice,
-          )
+          .retryMemberDelivery(_sessionId, _memberId, TeamBus.doorbellNotice)
           .timeout(const Duration(seconds: 5));
 
       expect(
@@ -328,6 +360,28 @@ void main() {
   );
 
   test(
+    'ensureMemberInputReady exits promptly when stop interrupts connect wait',
+    () async {
+      final harness = await _ComposerHarness.connect(cli: CliTool.codex);
+      addTearDown(harness.dispose);
+      harness.shell.session.disconnect();
+
+      var stopped = false;
+      final pending = harness.materializer.ensureMemberInputReady(
+        _sessionId,
+        _memberId,
+        directToPty: true,
+        waitCap: const Duration(seconds: 30),
+        aborted: () => stopped,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      stopped = true;
+
+      await pending.timeout(const Duration(seconds: 2));
+    },
+  );
+
+  test(
     'ensureMemberInputReady returns before materialize when already stopped',
     () async {
       final harness = await _ComposerHarness.connect(cli: CliTool.codex);
@@ -367,6 +421,7 @@ final class _ComposerHarness {
   static Future<_ComposerHarness> connect({
     required CliTool cli,
     MemberPtyInjectService? ptyInject,
+    FullscreenPtyAutomation? automation,
   }) async {
     final store = ChatTabStore(storage: testHomeStorage);
     store.setActiveWorkspaceId('ws-1');
@@ -391,7 +446,8 @@ final class _ComposerHarness {
       DateTime.now().subtract(const Duration(seconds: 5)),
     );
 
-    final inject = ptyInject ?? MemberPtyInjectService();
+    final auto = automation ?? FullscreenPtyAutomation();
+    final inject = ptyInject ?? MemberPtyInjectService(automation: auto);
     final delivery = TabMemberPtyDelivery(
       tabStore: store,
       shellFactory: ChatSessionShellFactory(executableResolver: () => 'true'),
@@ -404,6 +460,10 @@ final class _ComposerHarness {
         activeTeam: () => null,
       ),
       ptyInject: inject,
+      promptDeliveries: PromptDeliveryCoordinator(
+        store: MemoryPromptDeliveryStore(),
+        commands: TabPromptDeliveryCommands(store, automation: auto),
+      ),
     );
     final runtime = TabSessionRuntimeCoordinator(
       tabStore: store,
@@ -456,6 +516,19 @@ final class _ComposerHarness {
       window.contains('→'),
       isTrue,
       reason: 'Cursor composer chrome should land on the probe grid\n$window',
+    );
+  }
+
+  Future<void> paintOpencodeComposer() async {
+    await shell.emitPtyOutput('\u2503  Ask anything...\r\n\u2503\r\n');
+    final window = await _waitForWindow(
+      shell.session,
+      (text) => text.contains('\u2503'),
+    );
+    expect(
+      window.contains('\u2503'),
+      isTrue,
+      reason: 'Opencode composer chrome should land on the probe grid\n$window',
     );
   }
 

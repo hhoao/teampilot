@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations_en.dart';
@@ -32,7 +34,9 @@ void main() {
   });
 
   test('detects sshd PerSourcePenalties refusals', () {
-    final penalty = SSHHandshakeError('Invalid version: Not allowed at this time');
+    final penalty = SSHHandshakeError(
+      'Invalid version: Not allowed at this time',
+    );
     expect(isSshdPenaltyRefusal(penalty), isTrue);
     expect(
       sshConnectionFailureUserMessage(penalty, l10n),
@@ -57,5 +61,42 @@ void main() {
       'SocketException: connection refused',
     );
     expect(sshErrorDetailUserMessage(null, l10n), '');
+  });
+
+  test('maps the stale-pairing sentinel to the re-pair hint', () {
+    expect(
+      sshErrorDetailUserMessage(sshPairingStaleDetail, l10n),
+      l10n.connectRepairHint,
+    );
+    // The sentinel never leaks to the user as a raw string.
+    expect(
+      sshErrorDetailUserMessage(sshPairingStaleDetail, l10n),
+      isNot(sshPairingStaleDetail),
+    );
+  });
+
+  test('detects TCP connection refusals across platforms', () {
+    SocketException refused(int errno) => SocketException(
+      'Connection refused',
+      osError: OSError('Connection refused', errno),
+    );
+
+    // ECONNREFUSED: Linux/Android 111, macOS 61, Windows WSAECONNREFUSED
+    // 10061.
+    expect(isTcpConnectionRefused(refused(111)), isTrue);
+    expect(isTcpConnectionRefused(refused(61)), isTrue);
+    expect(isTcpConnectionRefused(refused(10061)), isTrue);
+    // dartssh2 wraps socket errors in SSHSocketError.
+    expect(isTcpConnectionRefused(SSHSocketError(refused(111))), isTrue);
+
+    // Timeouts, plain exceptions, and handshake errors are not refusals.
+    expect(
+      isTcpConnectionRefused(
+        SocketException('Timeout', osError: OSError('timed out', 60)),
+      ),
+      isFalse,
+    );
+    expect(isTcpConnectionRefused(const SocketException('LAN down')), isFalse);
+    expect(isTcpConnectionRefused(SSHHostkeyError('nope')), isFalse);
   });
 }

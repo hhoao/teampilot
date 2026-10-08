@@ -1,16 +1,16 @@
 import 'package:path/path.dart' as p;
 
-import '../../../../models/team_config.dart';
 import '../capabilities/skill.dart';
-import '../../../storage/runtime_layout.dart';
 
-/// Workspace+team scoped cursor warm tier shared across mixed-mode roster members.
+/// Cursor mixed-mode path constants and lifecycle manifest relative paths.
+///
+/// Team resource files (MCP, plugins, settings) live under each member session
+/// runtime tree; [sharedRootRelative] only anchors `init.json`.
 abstract final class CursorWorkspaceWarmTier {
   CursorWorkspaceWarmTier._();
 
   static const toolId = 'cursor';
   static const teamsSegment = 'teams';
-  static const mcpBaseFileName = 'mcp.base.json';
   static const settingsFileName = 'settings.json';
   static const pluginsDirName = 'plugins';
   static const localPluginsSegment = 'local';
@@ -18,85 +18,8 @@ abstract final class CursorWorkspaceWarmTier {
   static const installedPluginsFileName = 'installed_plugins.json';
   static const knownMarketplacesFileName = 'known_marketplaces.json';
 
-  static bool applies({TeamProfile? team, required CliTool cli}) =>
-      cli == CliTool.cursor && team?.teamMode == TeamMode.mixed;
-
   static String sharedRootRelative(String teamId) =>
       p.posix.join('runtime', teamsSegment, teamId.trim(), toolId);
-
-  static String sharedRoot(
-    RuntimeLayout layout,
-    String workspaceId,
-    String teamId,
-  ) =>
-      layout.workspaceRuntimeToolDir(workspaceId.trim(), teamId.trim(), toolId);
-
-  static String pluginsLocalDir(
-    RuntimeLayout layout,
-    String workspaceId,
-    String teamId,
-  ) => layout.pathContext.join(
-    sharedRoot(layout, workspaceId, teamId),
-    pluginsDirName,
-    localPluginsSegment,
-  );
-
-  static String pluginsMarketplacesDir(
-    RuntimeLayout layout,
-    String workspaceId,
-    String teamId,
-  ) => layout.pathContext.join(
-    sharedRoot(layout, workspaceId, teamId),
-    pluginsDirName,
-    marketplacesSegment,
-  );
-
-  static String installedPluginsFile(
-    RuntimeLayout layout,
-    String workspaceId,
-    String teamId,
-  ) => layout.pathContext.join(
-    sharedRoot(layout, workspaceId, teamId),
-    pluginsDirName,
-    installedPluginsFileName,
-  );
-
-  static String knownMarketplacesFile(
-    RuntimeLayout layout,
-    String workspaceId,
-    String teamId,
-  ) => layout.pathContext.join(
-    sharedRoot(layout, workspaceId, teamId),
-    pluginsDirName,
-    knownMarketplacesFileName,
-  );
-
-  static String skillsCursorDir(
-    RuntimeLayout layout,
-    String workspaceId,
-    String teamId,
-  ) => layout.pathContext.join(
-    sharedRoot(layout, workspaceId, teamId),
-    CursorSkillCapability.skillsSubdirName,
-  );
-
-  static String settingsJson(
-    RuntimeLayout layout,
-    String workspaceId,
-    String teamId,
-  ) => layout.pathContext.join(
-    sharedRoot(layout, workspaceId, teamId),
-    settingsFileName,
-  );
-
-  static String mcpBase(
-    RuntimeLayout layout,
-    String workspaceId,
-    String teamId,
-  ) => layout.pathContext.join(
-    sharedRoot(layout, workspaceId, teamId),
-    mcpBaseFileName,
-  );
 
   /// Relative paths under the workspace dir for [CliSessionManifestShared].
   static CliSessionManifestSharedPaths manifestPaths(
@@ -110,7 +33,7 @@ abstract final class CursorWorkspaceWarmTier {
         root,
         CursorSkillCapability.skillsSubdirName,
       ),
-      mcpBase: p.posix.join(root, mcpBaseFileName),
+      mcpBase: p.posix.join(root, 'mcp.base.json'),
       settingsJson: p.posix.join(root, settingsFileName),
     );
   }
@@ -119,7 +42,7 @@ abstract final class CursorWorkspaceWarmTier {
       manifestPaths(sharedRootRelative(teamId));
 }
 
-/// Warm-tier relative paths recorded in the lifecycle manifest.
+/// Lifecycle manifest relative paths (legacy fields; resource dirs are per member).
 final class CliSessionManifestSharedPaths {
   const CliSessionManifestSharedPaths({
     required this.root,

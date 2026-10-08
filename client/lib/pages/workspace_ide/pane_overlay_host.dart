@@ -191,11 +191,7 @@ class _OverlayPanel extends StatelessWidget {
     ).animate(CurvedAnimation(parent: controller, curve: Curves.easeOutCubic));
     return SlideTransition(
       position: slide,
-      child: Material(
-        color: cs.surface,
-        elevation: 12,
-        child: child,
-      ),
+      child: Material(color: cs.surface, elevation: 12, child: child),
     );
   }
 }

@@ -31,9 +31,7 @@ class CodexHookWriter implements HookCapability {
     required List<HookEntry> entries,
     required HookRenderContext ctx,
   }) {
-    final buffer = StringBuffer(
-      '# TeamPilot user hooks — do not edit.\n',
-    );
+    final buffer = StringBuffer('# TeamPilot user hooks — do not edit.\n');
     final scripts = <GeneratedScript>[];
     final warnings = <String>[];
     final runner = ctx.runner;
@@ -48,8 +46,8 @@ class CodexHookWriter implements HookCapability {
       if (entry.policy != HookPolicy.none && !entry.event.isIntercepting) {
         warnings.add('hook_policy_ignored_${entry.id}_${entry.event.name}');
       }
-      final decisionJson = entry.policy == HookPolicy.none ||
-              !entry.event.isIntercepting
+      final decisionJson =
+          entry.policy == HookPolicy.none || !entry.event.isIntercepting
           ? null
           : entry.policy == HookPolicy.allow
           ? '{"permissionDecision":"allow"}'
@@ -71,9 +69,9 @@ class CodexHookWriter implements HookCapability {
         final scriptFileName =
             'teampilot-http-${entry.id}-${entry.event.name}'
             '${dialect.scriptExtension}';
-        final passResponseToStdout = entry.blockOnDecision ||
-            (entry.event.isIntercepting &&
-                entry.policy != HookPolicy.none);
+        final passResponseToStdout =
+            entry.blockOnDecision ||
+            (entry.event.isIntercepting && entry.policy != HookPolicy.none);
         scripts.add(
           GeneratedScript(
             fileName: scriptFileName,
@@ -87,7 +85,8 @@ class CodexHookWriter implements HookCapability {
             ),
           ),
         );
-        final scriptPath = ctx.runner?.commandStringForScriptFile(
+        final scriptPath =
+            ctx.runner?.commandStringForScriptFile(
               '${ctx.hooksDir}/$scriptFileName',
             ) ??
             '${ctx.hooksDir}/$scriptFileName';
@@ -120,7 +119,8 @@ class CodexHookWriter implements HookCapability {
         blockOnDecision: entry.blockOnDecision,
         dialect: runner?.dialect.name == 'powershell' ? 'powershell' : 'bash',
       );
-      final scriptFileName = 'teampilot-hook-${entry.id}'
+      final scriptFileName =
+          'teampilot-hook-${entry.id}'
           '${runner?.dialect.scriptExtension ?? '.sh'}';
       scripts.add(GeneratedScript(fileName: scriptFileName, content: glue));
       final scriptPath = runner == null

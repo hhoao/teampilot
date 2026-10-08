@@ -16,38 +16,35 @@ import '../repositories/launch_profile_repository.dart';
 import '../repositories/session_repository.dart';
 import '../repositories/workspace_project_config_repository.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
-import '../services/provider/config_profile_service.dart';
-import '../services/session/session_lifecycle_service.dart';
+import '../services/chat/launch/config_profile_service.dart';
+import '../services/chat/session/session_lifecycle_service.dart';
+import '../services/team_config/team_settings_commit_service.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
 import '../services/storage/home_storage.dart';
 import '../services/storage/launch_profile_provisioner.dart';
 import '../utils/logging/logger.dart';
 import '../utils/team/team_member_naming.dart';
-import 'team/launch_profile_cubit_host.dart';
-import 'team/model/launch_profile_state.dart';
-import 'team/team_launch_service.dart';
-import 'team/team_profile_provisioner.dart';
-import 'team/team_resource_sync_service.dart';
-import 'team/team_roster_editor.dart';
+import '../services/launch_profile/team/launch_profile_cubit_host.dart';
+import 'launch_profile_state.dart';
+import '../services/launch_profile/team/team_profile_provisioner.dart';
+import '../services/launch_profile/team/team_resource_sync_service.dart';
+import '../services/launch_profile/team/team_roster_editor.dart';
 
-export 'team/model/launch_profile_state.dart';
-export 'team/team_launch_service.dart' show TeamLauncher, CliExecutableResolver;
-export 'team/team_resource_sync_service.dart'
+export 'launch_profile_state.dart';
+export '../services/launch_profile/team/team_resource_sync_service.dart'
     show mergeExtensionMcp, InstalledPluginsLoader, InstalledMcpLoader;
 
 /// Owns workspace identity state (team) and coordinates resource
-/// linking ([TeamResourceSyncService]), launching ([TeamLaunchService]) and
+/// linking ([TeamResourceSyncService])  and
 /// config-profile provisioning ([TeamProfileProvisioner]). Roster transforms
 /// live in [TeamRosterEditor]; this cubit persists and emits.
 class LaunchProfileCubit extends Cubit<LaunchProfileState>
-    implements LaunchProfileCubitHost {
+    implements LaunchProfileCubitHost, TeamSettingsPersistPort {
   LaunchProfileCubit({
     required LaunchProfileRepository repository,
     required SessionRepository sessionRepository,
     required String Function() executableResolver,
     required HomeStorage storage,
-    CliExecutableResolver? cliExecutableResolver,
-    TeamLauncher? launcher,
     String? Function()? llmConfigPathOverride,
     String appDataBasePath = '',
     ConfigProfileService? configProfileService,
@@ -67,32 +64,17 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
        _identityProvisioner =
            identityProvisioner ??
            LaunchProfileProvisioner(repository: repository),
-       _executableResolver = executableResolver,
-       _cliExecutableResolver = cliExecutableResolver,
        _appDataBasePath = appDataBasePath,
        _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
        _storage = storage,
-       _lifecycle =
-           lifecycleService ??
-           SessionLifecycleService(
-             storage: storage,
-             appDataBasePath: appDataBasePath.isNotEmpty
-                 ? appDataBasePath
-                 : null,
-             configProfileService: configProfileService,
-             storageRootsResolver: storageRootsResolver,
-             projectConfigRepository:
-                 projectConfigRepository ??
-                 WorkspaceProjectConfigRepository(storage: storage),
-           ),
-       _pluginRepository = pluginRepository ?? PluginRepository(storage: storage),
+       _pluginRepository =
+           pluginRepository ?? PluginRepository(storage: storage),
        _installedPluginsLoader = installedPluginsLoader,
        _mcpLinker = mcpLinker ?? ProfileMcpLinkerService(storage: storage),
        _mcpRepository = mcpRepository ?? McpRepository(storage: storage),
        _installedMcpLoader = installedMcpLoader,
        _extensionMcpContributor = extensionMcpContributor ?? _noExtensionMcp,
-       _launcher = launcher,
        _catalog = expertHubCatalog,
        super(const LaunchProfileState());
 
@@ -102,13 +84,10 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   final LaunchProfileRepository _repository;
   final SessionRepository _sessionRepository;
   final LaunchProfileProvisioner _identityProvisioner;
-  final String Function() _executableResolver;
-  final CliExecutableResolver? _cliExecutableResolver;
   final String _appDataBasePath;
   final ConfigProfileService? _configProfileService;
   final StorageRootsResolver? _storageRootsResolver;
   final HomeStorage _storage;
-  final SessionLifecycleService _lifecycle;
   final PluginRepository _pluginRepository;
   final InstalledPluginsLoader? _installedPluginsLoader;
   final ProfileMcpLinkerService _mcpLinker;
@@ -116,7 +95,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   final InstalledMcpLoader? _installedMcpLoader;
   final Future<List<McpServer>> Function(String teamId)
   _extensionMcpContributor;
-  final TeamLauncher? _launcher;
   ExpertHubCatalog? _catalog;
 
   final TeamRosterEditor _rosterEditor = const TeamRosterEditor();
@@ -144,16 +122,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     installedPluginsLoader: _installedPluginsLoader,
     installedMcpLoader: _installedMcpLoader,
     extensionMcpContributor: _extensionMcpContributor,
-  );
-
-  late final TeamLaunchService _launchService = TeamLaunchService(
-    storage: _storage,
-    host: this,
-    lifecycle: _lifecycle,
-    sync: _sync,
-    executableResolver: _executableResolver,
-    cliExecutableResolver: _cliExecutableResolver,
-    launcher: _launcher,
   );
 
   // ===== LaunchProfileCubitHost =====
@@ -217,39 +185,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   }
 
   LaunchProfile? byId(String id) => state.byId(id);
-
-  // ===== Launch / preview (delegated) =====
-
-  String previewFor(
-    TeamMemberConfig member, {
-    String? workingDirectory,
-    List<String> additionalDirectories = const [],
-  }) => _launchService.previewFor(
-    member,
-    workingDirectory: workingDirectory,
-    additionalDirectories: additionalDirectories,
-  );
-
-  String get selectedCommandPreview => _launchService.selectedCommandPreview;
-
-  Future<void> launchMember(
-    String memberId, {
-    String? workingDirectory,
-    List<String> additionalDirectories = const [],
-  }) => _launchService.launchMember(
-    memberId,
-    workingDirectory: workingDirectory,
-    additionalDirectories: additionalDirectories,
-  );
-
-  Future<void> launchSelectedTeam({
-    String? workingDirectory,
-    List<String> additionalDirectories = const [],
-  }) => _launchService.launchSelectedTeam(
-    workingDirectory: workingDirectory,
-    additionalDirectories: additionalDirectories,
-  );
-
   // ===== Resource sync (delegated) =====
 
   Future<void> syncSelectedTeamPlugins({List<Plugin>? installed}) =>
@@ -513,7 +448,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
       emit(state.copyWith(statusMessage: 'Team "$trimmed" already exists.'));
       return false;
     }
-    final oldName = selected.name;
     final updated = selected.copyWith(name: trimmed);
     final teams = [
       for (final team in state.teams)
@@ -781,7 +715,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
         replicas: overrides.replicas,
         capabilities: overrides.capabilities,
         activePresetId: TeamProfile.inheritPresetId,
-        launchSecurityPolicy: overrides.launchSecurityPolicy,
       );
     } else if (effectiveId == null) {
       nextOverrides = TeamRosterSlotOverrides(
@@ -793,7 +726,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
         replicas: overrides.replicas,
         capabilities: overrides.capabilities,
         activePresetId: null,
-        launchSecurityPolicy: overrides.launchSecurityPolicy,
       );
     } else {
       final syncCliFromPreset =
@@ -807,7 +739,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
         replicas: overrides.replicas,
         capabilities: overrides.capabilities,
         activePresetId: effectiveId,
-        launchSecurityPolicy: overrides.launchSecurityPolicy,
       );
     }
     final mutation = _rosterEditor.updateSlot(

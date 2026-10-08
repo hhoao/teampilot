@@ -91,7 +91,10 @@ Future<String?> _scanLayoutBuckets(
       if (fileStat.isFile) {
         final size = fileStat.size ?? 0;
         if (size > bestSize ||
-            (bestFile != null && size == bestSize && isPinned && !bestIsPinned)) {
+            (bestFile != null &&
+                size == bestSize &&
+                isPinned &&
+                !bestIsPinned)) {
           bestSize = size;
           bestFile = transcriptFile;
           bestIsPinned = isPinned;

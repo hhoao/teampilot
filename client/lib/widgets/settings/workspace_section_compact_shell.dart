@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:meta/meta.dart';
 
 import '../../services/app/platform_utils.dart';
 import 'workspace_pane_header.dart';
@@ -11,8 +10,7 @@ import 'workspace_section_tab_bar.dart';
 bool workspaceSectionCompactShowHeader({
   required bool androidHub,
   required bool embedded,
-}) =>
-    !(androidHub && !embedded);
+}) => !(androidHub && !embedded);
 
 class WorkspaceSectionCompactShell extends StatelessWidget {
   const WorkspaceSectionCompactShell({

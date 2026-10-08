@@ -339,11 +339,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
             return Stack(
               fit: StackFit.expand,
               children: [
-                _buildPanes(
-                  currentPrimary,
-                  dividerColor,
-                  available: available,
-                ),
+                _buildPanes(currentPrimary, dividerColor, available: available),
                 _buildDragHandle(
                   available: available,
                   primarySize: currentPrimary,

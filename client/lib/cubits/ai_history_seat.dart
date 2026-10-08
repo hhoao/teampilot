@@ -11,20 +11,20 @@ import '../models/app_session.dart';
 import '../models/failed_message_record.dart';
 import '../models/team_config.dart';
 import '../models/workspace_launch_context.dart';
-import '../services/conversation_timeline/conversation_timeline.dart';
-import '../services/conversation_timeline/mailbox_user_source.dart';
-import '../services/conversation_timeline/timeline_models.dart';
-import '../services/session/ai_history_load_result.dart';
-import '../services/session/ai_history_loader.dart';
-import '../services/session/ai_history_message_dedup.dart';
-import '../services/session/ai_history_page.dart';
-import '../services/session/ai_history_pending_confirm.dart';
-import '../services/session/ai_history_pending_text.dart';
-import '../services/session/failed_message_store.dart';
-import '../services/session/history_awaiting_working_sync.dart';
-import '../services/session/session_history_pagination.dart';
-import '../services/session/subagent_attachment_inflater.dart';
-import '../services/team_bus/persistence/bus_message_log.dart';
+import '../services/chat/conversation/timeline/conversation_timeline.dart';
+import '../services/chat/conversation/timeline/mailbox_user_source.dart';
+import '../services/chat/conversation/timeline/timeline_models.dart';
+import '../services/chat/conversation/history/ai_history_load_result.dart';
+import '../services/chat/conversation/history/ai_history_loader.dart';
+import '../services/chat/conversation/history/ai_history_message_dedup.dart';
+import '../services/chat/conversation/history/ai_history_page.dart';
+import '../services/chat/conversation/history/ai_history_pending_confirm.dart';
+import '../services/chat/conversation/history/ai_history_pending_text.dart';
+import '../services/chat/conversation/history/failed_message_store.dart';
+import '../services/chat/conversation/history/history_awaiting_working_sync.dart';
+import '../services/chat/conversation/history/session_history_pagination.dart';
+import '../services/chat/conversation/history/subagent_attachment_inflater.dart';
+import '../services/chat/team_bus/persistence/bus_message_log.dart';
 import '../utils/logging/logger.dart';
 
 /// Host-local AI history status — not session connect / "starting…".
@@ -1120,6 +1120,11 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
         memberId: memberId,
       );
       if (full == null || gen != _loadGeneration || isClosed) return;
+      // No-blank guard: a transient empty full index (locate missed while the
+      // CLI store was mid-write) must never wipe an already-loaded transcript.
+      // Keep the current page content; the next live refresh re-resolves once
+      // the store is readable again.
+      if (full.messages.isEmpty && _cliMessages.isNotEmpty) return;
       _cliMessages = reuseHistoryMessageIdentity(
         previous: _cliMessages,
         next: full.messages,

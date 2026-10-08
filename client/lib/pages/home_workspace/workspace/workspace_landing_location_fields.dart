@@ -117,7 +117,11 @@ class _WorkspaceLandingLocationFieldsState
       );
       final stored = widget.workingDirectoryPath?.trim() ?? '';
       if (stored.isEmpty ||
-          !workspacePathsEqual(stored, normalized, usesPosixPaths: _usesPosixPaths)) {
+          !workspacePathsEqual(
+            stored,
+            normalized,
+            usesPosixPaths: _usesPosixPaths,
+          )) {
         widget.onWorktreeChanged(normalized);
       }
     } on ProviderNotFoundException {

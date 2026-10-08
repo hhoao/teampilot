@@ -2,12 +2,14 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/ssh_reachability.dart';
-import '../services/connect/authorized_keys_file.dart';
 import '../services/connect/connect_agent.dart';
+import '../services/connect/connect_backend_host.dart';
 import '../services/connect/connect_settings_store.dart';
+import '../services/connect/connect_ssh_backend.dart';
 import '../services/connect/paired_device_store.dart';
 import '../services/connect/ssh_pairing_offer.dart';
-import '../services/connect/sshd_presence.dart';
+
+enum ConnectSystemSshdHint { none, linux, macos }
 
 typedef ConnectAgentStartQrSession =
     Future<void> Function({
@@ -34,13 +36,15 @@ class ConnectAgentController {
     updateExtraEndpoints,
     ConnectAgentEnableRelay? enableRelay,
     Future<void> Function()? disableRelay,
+    Future<void> Function(ConnectSshBackend)? replaceSshBackend,
   }) : _currentOffer = currentOffer,
        _startQrSession = startQrSession,
        _stopQrSession = stopQrSession,
        _regenerateQr = regenerateQr,
        _updateExtraEndpoints = updateExtraEndpoints,
        _enableRelay = enableRelay,
-       _disableRelay = disableRelay;
+       _disableRelay = disableRelay,
+       _replaceSshBackend = replaceSshBackend;
 
   factory ConnectAgentController.fromAgent(ConnectAgent agent) {
     return ConnectAgentController(
@@ -51,6 +55,7 @@ class ConnectAgentController {
       updateExtraEndpoints: agent.updateExtraEndpoints,
       enableRelay: agent.enableRelay,
       disableRelay: agent.disableRelay,
+      replaceSshBackend: agent.replaceSshBackend,
     );
   }
 
@@ -62,6 +67,7 @@ class ConnectAgentController {
   _updateExtraEndpoints;
   final ConnectAgentEnableRelay? _enableRelay;
   final Future<void> Function()? _disableRelay;
+  final Future<void> Function(ConnectSshBackend)? _replaceSshBackend;
 
   bool get supportsRelay => _enableRelay != null && _disableRelay != null;
 
@@ -101,6 +107,12 @@ class ConnectAgentController {
   Future<void> updateExtraEndpoints(
     List<SshReachabilityEndpoint> extraEndpoints,
   ) => _updateExtraEndpoints(extraEndpoints);
+
+  Future<void> replaceSshBackend(ConnectSshBackend backend) async {
+    final replace = _replaceSshBackend;
+    if (replace == null) return;
+    await replace(backend);
+  }
 }
 
 class ConnectNetworkAddress extends Equatable {
@@ -132,11 +144,27 @@ class ConnectPairedDevice extends Equatable {
   List<Object?> get props => [deviceId, name];
 }
 
+/// Snapshot of the embedded connection server's reachability state, mirrored
+/// from [ConnectSshBackend] for the Connect UI.
+///
+/// Formerly `SshdPresenceSnapshot` from the deleted system-sshd probe; only
+/// the value shape survived the embedded-server migration.
+class SshdPresenceSnapshot {
+  const SshdPresenceSnapshot({
+    required this.listening,
+    required this.port,
+    required this.fingerprints,
+  });
+
+  final bool listening;
+  final int port;
+  final List<String> fingerprints;
+}
+
 const _initialSshd = SshdPresenceSnapshot(
   listening: false,
   port: 22,
   fingerprints: [],
-  enableHint: '',
 );
 
 class ConnectState extends Equatable {
@@ -148,6 +176,10 @@ class ConnectState extends Equatable {
     this.pairedDevices = const [],
     this.extraEndpoints = const [],
     this.relayUrl = '',
+    this.sshBackend = ConnectSshBackendKind.embedded,
+    this.systemSshdSelectable = false,
+    this.systemSshdHint = ConnectSystemSshdHint.none,
+    this.rePairNotice = false,
     this.loading = false,
     this.saving = false,
     this.hasError = false,
@@ -160,6 +192,10 @@ class ConnectState extends Equatable {
   final List<ConnectPairedDevice> pairedDevices;
   final List<SshReachabilityEndpoint> extraEndpoints;
   final String relayUrl;
+  final ConnectSshBackendKind sshBackend;
+  final bool systemSshdSelectable;
+  final ConnectSystemSshdHint systemSshdHint;
+  final bool rePairNotice;
   final bool loading;
   final bool saving;
   final bool hasError;
@@ -176,6 +212,10 @@ class ConnectState extends Equatable {
     List<ConnectPairedDevice>? pairedDevices,
     List<SshReachabilityEndpoint>? extraEndpoints,
     String? relayUrl,
+    ConnectSshBackendKind? sshBackend,
+    bool? systemSshdSelectable,
+    ConnectSystemSshdHint? systemSshdHint,
+    bool? rePairNotice,
     bool? loading,
     bool? saving,
     bool? hasError,
@@ -190,6 +230,10 @@ class ConnectState extends Equatable {
       pairedDevices: pairedDevices ?? this.pairedDevices,
       extraEndpoints: extraEndpoints ?? this.extraEndpoints,
       relayUrl: relayUrl ?? this.relayUrl,
+      sshBackend: sshBackend ?? this.sshBackend,
+      systemSshdSelectable: systemSshdSelectable ?? this.systemSshdSelectable,
+      systemSshdHint: systemSshdHint ?? this.systemSshdHint,
+      rePairNotice: rePairNotice ?? this.rePairNotice,
       loading: loading ?? this.loading,
       saving: saving ?? this.saving,
       hasError: hasError ?? this.hasError,
@@ -201,13 +245,16 @@ class ConnectState extends Equatable {
     sshd.listening,
     sshd.port,
     sshd.fingerprints,
-    sshd.enableHint,
     offer?.encode(),
     networkAddresses,
     selectedAddress,
     pairedDevices,
     extraEndpoints,
     relayUrl,
+    sshBackend,
+    systemSshdSelectable,
+    systemSshdHint,
+    rePairNotice,
     loading,
     saving,
     hasError,
@@ -217,34 +264,40 @@ class ConnectState extends Equatable {
 class ConnectCubit extends Cubit<ConnectState> {
   ConnectCubit({
     required ConnectAgentController agent,
-    required SshdPresenceProbe probeSshd,
-    required AuthorizedKeysFile authorizedKeys,
+    required ConnectBackendHost backends,
+    ConnectSystemSshdHint systemSshdHint = ConnectSystemSshdHint.none,
+    required PairedDeviceStore deviceStore,
     required ConnectSettingsStore settingsStore,
     required ConnectNetworkAddressLookup listNetworkAddresses,
     required String username,
     required String displayName,
     required String appDataRoot,
-    PairedDeviceStore? deviceStore,
   }) : _agent = agent,
-       _probeSshd = probeSshd,
-       _authorizedKeys = authorizedKeys,
+       _backends = backends,
+       _systemSshdHint = systemSshdHint,
+       _deviceStore = deviceStore,
        _settingsStore = settingsStore,
        _listNetworkAddresses = listNetworkAddresses,
        _username = username,
        _displayName = displayName,
        _appDataRoot = appDataRoot,
-       _deviceStore = deviceStore,
-       super(const ConnectState());
+       super(
+         ConnectState(
+           sshBackend: backends.kind,
+           systemSshdSelectable: backends.systemSshdSelectable,
+           systemSshdHint: systemSshdHint,
+         ),
+       );
 
   final ConnectAgentController _agent;
-  final SshdPresenceProbe _probeSshd;
-  final AuthorizedKeysFile _authorizedKeys;
+  final ConnectBackendHost _backends;
+  final ConnectSystemSshdHint _systemSshdHint;
+  final PairedDeviceStore _deviceStore;
   final ConnectSettingsStore _settingsStore;
   final ConnectNetworkAddressLookup _listNetworkAddresses;
   final String _username;
   final String _displayName;
   final String _appDataRoot;
-  final PairedDeviceStore? _deviceStore;
 
   bool _qrSessionVisible = false;
   int _operationId = 0;
@@ -260,7 +313,7 @@ class ConnectCubit extends Cubit<ConnectState> {
     final operationId = ++_operationId;
     emit(state.copyWith(loading: true, hasError: false, clearOffer: true));
     try {
-      final sshd = await _probeSshd();
+      final sshd = _presenceSnapshot();
       final addresses = (await _listNetworkAddresses())
           .where((address) => address.isIpv4 && !address.isLoopback)
           .toList(growable: false);
@@ -275,6 +328,9 @@ class ConnectCubit extends Cubit<ConnectState> {
       emit(
         state.copyWith(
           sshd: sshd,
+          sshBackend: _backends.kind,
+          systemSshdSelectable: _backends.systemSshdSelectable,
+          systemSshdHint: _systemSshdHint,
           networkAddresses: addresses,
           selectedAddress: selectedAddress,
           clearSelectedAddress: selectedAddress == null,
@@ -307,6 +363,45 @@ class ConnectCubit extends Cubit<ConnectState> {
         emit(state.copyWith(loading: false, hasError: true, clearOffer: true));
       }
     }
+  }
+
+  /// The retry affordance for a failed embedded-server start: restart the
+  /// server, then re-mirror its state (and mint a new offer when it listens).
+  Future<void> retryEmbeddedServer() async {
+    if (!_qrSessionVisible) return;
+    emit(state.copyWith(loading: true, hasError: false, clearOffer: true));
+    try {
+      await _backends.current.restart();
+    } on Object {
+      // Keep going: refresh() below re-mirrors the handle, so a still-down
+      // server lands the UI back on the retry affordance.
+    }
+    await refresh();
+  }
+
+  Future<void> selectSshBackend(ConnectSshBackendKind kind) async {
+    try {
+      await _backends.select(kind);
+      await _agent.replaceSshBackend(_backends.current);
+      await refresh();
+      if (!isClosed) {
+        emit(state.copyWith(sshBackend: _backends.kind, rePairNotice: true));
+      }
+    } on Object {
+      try {
+        await _agent.replaceSshBackend(_backends.current);
+      } on Object {
+        // Keep the originating switch failure as the UI error.
+      }
+      if (!isClosed) {
+        emit(state.copyWith(sshBackend: _backends.kind, hasError: true));
+      }
+    }
+  }
+
+  void ackRePairNotice() {
+    if (isClosed) return;
+    emit(state.copyWith(rePairNotice: false));
   }
 
   Future<void> selectAddress(String address) async {
@@ -409,12 +504,21 @@ class ConnectCubit extends Cubit<ConnectState> {
     );
   }
 
-  /// Revoking removes the tagged authorized_keys line and the relay grant
-  /// hash together, so the next SSH auth and any relay dial both fail.
+  /// Revoking removes the device's registered key and relay grant hash
+  /// together, so the next SSH auth and any relay dial both fail.
   Future<void> revokeDevice(String deviceId) async {
     try {
-      await _deviceStore?.revokeDevice(deviceId);
-      await _authorizedKeys.revokeDevice(deviceId);
+      final key = await _deviceStore.publicKeyForDevice(deviceId);
+      if (key != null) {
+        final system = _backends.system;
+        if (system != null) {
+          await system.revokePublicKey(key);
+        }
+        if (!identical(_backends.current, system)) {
+          await _backends.current.revokePublicKey(key);
+        }
+      }
+      await _deviceStore.revokeDevice(deviceId);
       if (!isClosed) {
         emit(state.copyWith(pairedDevices: await _loadPairedDevices()));
       }
@@ -440,12 +544,29 @@ class ConnectCubit extends Cubit<ConnectState> {
     appDataRoot: _appDataRoot,
   );
 
+  /// The presence state mirrored from the embedded server handle.
+  SshdPresenceSnapshot _presenceSnapshot() {
+    final backend = _backends.current;
+    final listening = backend.isListening;
+    return SshdPresenceSnapshot(
+      listening: listening,
+      port: listening ? backend.port : 0,
+      fingerprints: listening
+          ? backend.hostKeyFingerprints
+                .where((value) => value.startsWith('SHA256:'))
+                .toList(growable: false)
+          : const <String>[],
+    );
+  }
+
   Future<List<ConnectPairedDevice>> _loadPairedDevices() async {
-    final devices = await _authorizedKeys.listDevices();
+    final devices = await _deviceStore.listDevices();
     return devices
         .map(
-          (device) =>
-              ConnectPairedDevice(deviceId: device.deviceId, name: device.name),
+          (device) => ConnectPairedDevice(
+            deviceId: device.deviceId,
+            name: device.deviceName ?? device.deviceId,
+          ),
         )
         .toList(growable: false);
   }

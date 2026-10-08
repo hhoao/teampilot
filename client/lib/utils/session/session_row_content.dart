@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../../cubits/chat/model/chat_state.dart';
+import '../../cubits/chat_state.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/app_session.dart';
 import 'session_display_title.dart';
@@ -23,11 +23,8 @@ class SessionRowContent {
   final int createdAt;
 
   /// Locale-aware title for [Text] — never paint from a stale widget field.
-  String titleForPaint(AppLocalizations l10n) => resolveSessionListTitle(
-    purpose: purpose,
-    display: display,
-    l10n: l10n,
-  );
+  String titleForPaint(AppLocalizations l10n) =>
+      resolveSessionListTitle(purpose: purpose, display: display, l10n: l10n);
 
   /// Timestamp used for relative-time labels (`updatedAt` with `createdAt` fallback).
   int get timestampMsForPaint => updatedAt != 0 ? updatedAt : createdAt;

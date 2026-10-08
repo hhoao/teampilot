@@ -1,22 +1,24 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show listEquals, setEquals;
+import 'package:flutter/foundation.dart'
+    show listEquals, setEquals, visibleForTesting;
 import 'package:uuid/uuid.dart';
 
 import '../models/workspace.dart';
 import '../models/workspace_topology.dart';
 import '../models/workspace_folder.dart';
 import '../models/app_session.dart';
+import '../models/session_list_entry.dart';
 import '../models/session_continue_overrides.dart';
 import '../models/member_instance.dart';
 import '../models/session_member_binding.dart';
 import '../models/team_config.dart';
 import '../services/storage/runtime_layout.dart';
 import '../services/io/filesystem.dart';
-import '../services/session/session_member_cli_locks.dart';
-import '../services/session/session_team_counter.dart';
-import '../services/session/team_session_member_plan.dart';
+import '../services/chat/launch/session/session_member_cli_locks.dart';
+import '../services/chat/session/session_team_counter.dart';
+import '../services/chat/launch/session/team_session_member_plan.dart';
 import '../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/storage/home_storage.dart';
@@ -26,12 +28,13 @@ import '../services/workspace/target_liveness.dart';
 import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
 import '../services/workspace/workspace_target_remap.dart';
-import '../services/session/session_lifecycle_service.dart';
+import '../services/chat/session/session_lifecycle_service.dart';
 import '../services/provider/workspace_trust_provisioner.dart';
 import '../utils/lock_pool.dart';
 import '../utils/logging/logger.dart';
 import '../utils/workspace/workspace_path_utils.dart';
 import '../utils/session/workspace_sessions.dart';
+import 'session_list_index_store.dart';
 import 'session_repository_fs.dart';
 import 'workspace_index_store.dart';
 import '../services/storage/storage_failure.dart';
@@ -54,6 +57,10 @@ class SessionRepository {
 
   final _sessionFileLocks = LockPool();
   static final Map<String, List<Workspace>> _workspacesIndexByRoot = {};
+
+  @visibleForTesting
+  static void debugResetWorkspacesIndexCache() =>
+      _workspacesIndexByRoot.clear();
 
   String _workspacesIndexCacheKey() {
     if (_rootOverride != null) return _rootOverride;
@@ -103,10 +110,10 @@ class SessionRepository {
     final key = _workspacesIndexCacheKey();
     final current = _workspacesIndexByRoot[key];
     if (current != null) {
-      _workspacesIndexByRoot[key] = List<Workspace>.unmodifiable(
-        [for (final existing in current)
-          if (existing.workspaceId != workspaceId) existing],
-      );
+      _workspacesIndexByRoot[key] = List<Workspace>.unmodifiable([
+        for (final existing in current)
+          if (existing.workspaceId != workspaceId) existing,
+      ]);
     }
     await WorkspaceIndexStore(await _fs()).remove(workspaceId);
   }
@@ -270,7 +277,7 @@ class SessionRepository {
         '[boot] loadWorkspacesIndex rebuilding snapshot read=${readMs}ms',
       );
     }
-    final workspaces = await _loadWorkspaces(indexOnly: false);
+    final workspaces = await _loadWorkspaces(indexOnly: true);
     await store.writeAll(workspaces);
     return _rememberWorkspacesIndex(workspaces);
   }
@@ -292,7 +299,7 @@ class SessionRepository {
       'disk=${diskIds.length} index=${snapshot.length} '
       'validate=${validateMs}ms',
     );
-    final workspaces = await _loadWorkspaces(indexOnly: false);
+    final workspaces = await _loadWorkspaces(indexOnly: true);
     await store.writeAll(workspaces);
     _rememberWorkspacesIndex(workspaces);
   }
@@ -353,6 +360,50 @@ class SessionRepository {
     return sessions;
   }
 
+  /// Sidebar rows from [sessions-index.json] when it matches on-disk
+  /// session directories; otherwise rebuilds from session documents.
+  Future<List<AppSession>> loadSessionListForWorkspace(
+    String workspaceId,
+  ) async {
+    final fs = await _fs();
+    final store = SessionListIndexStore(fs, workspaceId);
+    final dirIds = (await fs.listSessionDirectoryIds(workspaceId)).toSet();
+    final snapshot = await store.tryRead();
+    final snapshotIds = {for (final e in snapshot ?? const []) e.sessionId};
+    if (snapshot != null && setEquals(snapshotIds, dirIds)) {
+      return [for (final e in snapshot) e.toListSession(workspaceId)];
+    }
+    final maps = await fs.listSessionJsonMapsForWorkspace(workspaceId);
+    final sessions = <AppSession>[];
+    for (final json in maps) {
+      try {
+        sessions.add(AppSession.fromJson(json));
+      } on Object {
+        continue;
+      }
+    }
+    await store.writeAll([
+      for (final s in sessions) SessionListEntry.fromSession(s),
+    ]);
+    final writtenIds = {for (final s in sessions) s.sessionId};
+    if (!setEquals(writtenIds, dirIds)) {
+      appLogger.w(
+        '[session-list-index] rebuild parity mismatch '
+        'workspace=$workspaceId written=${writtenIds.length} '
+        'dirs=${dirIds.length}',
+      );
+    }
+    return [
+      for (final s in sessions)
+        SessionListEntry.fromSession(s).toListSession(workspaceId),
+    ];
+  }
+
+  Future<AppSession?> loadSession(String workspaceId, String sessionId) async {
+    final fs = await _fs();
+    return _readSession(fs, workspaceId, sessionId);
+  }
+
   /// Creates a new, independent workspace for [folders].
   ///
   /// Always writes a fresh manifest (no path-based reuse/merge — dedup and
@@ -393,6 +444,7 @@ class SessionRepository {
     String? display,
     String? defaultProfileId,
     bool? rootSandboxEnvOptIn,
+    bool? injectSessionSshMcp,
   }) async {
     final fs = await _fs();
     final existing = await _readManifest(fs, workspaceId);
@@ -405,6 +457,7 @@ class SessionRepository {
           : existing.defaultProfileId,
       folders: existing.folders,
       rootSandboxEnvOptIn: rootSandboxEnvOptIn ?? existing.rootSandboxEnvOptIn,
+      injectSessionSshMcp: injectSessionSshMcp ?? existing.injectSessionSshMcp,
       updatedAt: now,
     );
     await _writeManifest(fs, updated);
@@ -662,17 +715,13 @@ class SessionRepository {
     // Return the full session list — sessions that did not reference the
     // from target are unchanged but must still be present, or callers that
     // patch in-memory snapshots would drop them.
-    final writtenById = {
-      for (final s in writtenSessions) s.sessionId: s,
-    };
-    final allSessions = [
-      for (final s in sessions)
-        writtenById[s.sessionId] ?? s,
-    ]..sort((a, b) {
-      final au = a.updatedAt != 0 ? a.updatedAt : a.createdAt;
-      final bu = b.updatedAt != 0 ? b.updatedAt : b.createdAt;
-      return bu.compareTo(au);
-    });
+    final writtenById = {for (final s in writtenSessions) s.sessionId: s};
+    final allSessions =
+        [for (final s in sessions) writtenById[s.sessionId] ?? s]..sort((a, b) {
+          final au = a.updatedAt != 0 ? a.updatedAt : a.createdAt;
+          final bu = b.updatedAt != 0 ? b.updatedAt : b.createdAt;
+          return bu.compareTo(au);
+        });
     return (workspace: updated, sessions: allSessions);
   }
 
@@ -744,8 +793,8 @@ class SessionRepository {
     // Launch already has the workspace snapshot; skip re-reading every
     // session.json (listSessionIdsForWorkspace) — create only needs folders /
     // placement fields, and directory listing happens lazily on manifest read.
-    Workspace? workspace = knownWorkspace != null &&
-            knownWorkspace.workspaceId == workspaceId
+    Workspace? workspace =
+        knownWorkspace != null && knownWorkspace.workspaceId == workspaceId
         ? knownWorkspace
         : null;
     if (workspace != null) {
@@ -771,12 +820,8 @@ class SessionRepository {
       );
 
       if (members != null) {
-        final stagedIds = {
-          for (final m in members) m.rosterMemberId,
-        };
-        final planIds = {
-          for (final m in plan.members) m.rosterMemberId,
-        };
+        final stagedIds = {for (final m in members) m.rosterMemberId};
+        final planIds = {for (final m in plan.members) m.rosterMemberId};
         if (stagedIds.length != members.length ||
             !setEquals(stagedIds, planIds)) {
           throw StateError(
@@ -828,7 +873,8 @@ class SessionRepository {
     final now = DateTime.now().millisecondsSinceEpoch;
     final resolvedExpertKey = expertKey?.trim() ?? '';
     final resolvedWorkflowId = purpose == SessionPurpose.teamGeneration
-        ? (workflowId.trim().isEmpty || !isValidTeamGenerationWorkflowId(workflowId.trim())
+        ? (workflowId.trim().isEmpty ||
+                  !isValidTeamGenerationWorkflowId(workflowId.trim())
               ? throw ArgumentError.value(
                   workflowId,
                   'workflowId',
@@ -870,10 +916,7 @@ class SessionRepository {
     );
     await fs.ensureSessionDir(workspaceId, sessionId);
     mark('ensure-dir');
-    await fs.writeText(
-      fs.sessionFile(workspaceId, sessionId),
-      jsonEncode(session.toJson()),
-    );
+    await _writeSession(fs, session);
     mark('write-session');
     appLogger.d(
       '[session-launch] createSession done '
@@ -897,9 +940,7 @@ class SessionRepository {
     await _rememberWorkspace(
       baseIds.contains(sessionId)
           ? workspace
-          : workspace.copyWith(
-              sessionIds: [sessionId, ...baseIds],
-            ),
+          : workspace.copyWith(sessionIds: [sessionId, ...baseIds]),
     );
     return (session: session, workspace: workspace);
   }
@@ -930,10 +971,35 @@ class SessionRepository {
 
   Future<AppSession?> _findSession(
     SessionRepositoryFs fs,
-    String sessionId,
-  ) async {
-    for (final workspaceId in await fs.listWorkspaceIds()) {
-      final session = await _readSession(fs, workspaceId, sessionId);
+    String sessionId, {
+    String? workspaceId,
+  }) async {
+    final hinted = workspaceId?.trim() ?? '';
+    if (hinted.isNotEmpty) {
+      final session = await _readSession(fs, hinted, sessionId);
+      if (session != null) return session;
+    }
+
+    // Manifest listing is not the only source of workspace ids: apply-plan
+    // overlays can drop `manifest.json` while session.json remains, and the
+    // durable workspaces-index plus in-memory cache still know the id.
+    final ids = <String>{
+      if (hinted.isNotEmpty) hinted,
+      ...await fs.listWorkspaceDirectoryIds(),
+      for (final workspace
+          in _workspacesIndexByRoot[_workspacesIndexCacheKey()] ??
+              const <Workspace>[])
+        workspace.workspaceId,
+    };
+    final indexed = await WorkspaceIndexStore(fs).tryRead();
+    if (indexed != null) {
+      for (final workspace in indexed) {
+        ids.add(workspace.workspaceId);
+      }
+    }
+    for (final id in ids) {
+      if (id == hinted) continue;
+      final session = await _readSession(fs, id, sessionId);
       if (session != null) return session;
     }
     return null;
@@ -948,6 +1014,27 @@ class SessionRepository {
       fs.sessionFile(workspaceId, session.sessionId),
       jsonEncode(session.toJson()),
     );
+    await _trySyncSessionListIndex(fs, workspaceId, (store) {
+      return store.upsert(SessionListEntry.fromSession(session));
+    });
+  }
+
+  /// Derived `sessions-index.json` must not fail source-of-truth mutations.
+  /// The next list load rebuilds when ids mismatch.
+  Future<void> _trySyncSessionListIndex(
+    SessionRepositoryFs fs,
+    String workspaceId,
+    Future<void> Function(SessionListIndexStore store) mutate,
+  ) async {
+    try {
+      await mutate(SessionListIndexStore(fs, workspaceId));
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[session-list-index] derived write failed workspace=$workspaceId',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   Future<void> markSessionLaunched(String sessionId) {
@@ -959,10 +1046,15 @@ class SessionRepository {
     String rosterMemberId, {
     required CliTool cli,
     String? typeId,
+    String? workspaceId,
   }) {
     return _withSessionFile(sessionId, () async {
       final fs = await _fs();
-      final existing = await _findSession(fs, sessionId);
+      final existing = await _findSession(
+        fs,
+        sessionId,
+        workspaceId: workspaceId,
+      );
       if (existing == null) {
         throw StateError('Unknown sessionId: $sessionId');
       }
@@ -1225,6 +1317,9 @@ class SessionRepository {
         );
       }
       await fs.deleteSessionDir(workspaceId, sessionId);
+      await _trySyncSessionListIndex(fs, workspaceId, (store) {
+        return store.remove(sessionId);
+      });
       final workspace = await _readManifest(fs, workspaceId);
       if (workspace != null) {
         await _writeManifest(

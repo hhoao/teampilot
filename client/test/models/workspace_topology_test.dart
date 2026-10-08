@@ -56,38 +56,45 @@ void main() {
       );
     });
 
-    test('memberTargetsComplete reports every instance has a folder-backed target', () {
-      // Completeness helper for UI progress — not the launch gate.
-      const members = [
-        TeamMemberConfig(id: 'lead', name: 'Lead', cli: CliTool.claude),
-        TeamMemberConfig(
-          id: 'dev',
-          name: 'Dev',
-          cli: CliTool.claude,
-          replicas: 2,
-        ),
-      ];
-      const folders = [
-        WorkspaceFolder(path: '/local'),
-        WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
-      ];
-      expect(
-        memberTargetsComplete(
-          workspaceFolders: folders,
-          members: members,
-          targets: const {'lead': 'local', 'dev-0': 'local'},
-        ),
-        isFalse,
-      );
-      expect(
-        memberTargetsComplete(
-          workspaceFolders: folders,
-          members: members,
-          targets: const {'lead': 'local', 'dev-0': 'local', 'dev-1': 'ssh:p1'},
-        ),
-        isTrue,
-      );
-    });
+    test(
+      'memberTargetsComplete reports every instance has a folder-backed target',
+      () {
+        // Completeness helper for UI progress — not the launch gate.
+        const members = [
+          TeamMemberConfig(id: 'lead', name: 'Lead', cli: CliTool.claude),
+          TeamMemberConfig(
+            id: 'dev',
+            name: 'Dev',
+            cli: CliTool.claude,
+            replicas: 2,
+          ),
+        ];
+        const folders = [
+          WorkspaceFolder(path: '/local'),
+          WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+        ];
+        expect(
+          memberTargetsComplete(
+            workspaceFolders: folders,
+            members: members,
+            targets: const {'lead': 'local', 'dev-0': 'local'},
+          ),
+          isFalse,
+        );
+        expect(
+          memberTargetsComplete(
+            workspaceFolders: folders,
+            members: members,
+            targets: const {
+              'lead': 'local',
+              'dev-0': 'local',
+              'dev-1': 'ssh:p1',
+            },
+          ),
+          isTrue,
+        );
+      },
+    );
 
     test('member placement round-trips through member targets', () {
       const members = [
@@ -145,20 +152,31 @@ void main() {
       );
     });
 
-    test('personalWorkDirsForPrimaryPath keeps add-dirs on same target only', () {
-      const folders = [
-        WorkspaceFolder(path: '/local', targetId: 'local'),
-        WorkspaceFolder(path: '/local-extra', targetId: 'local'),
-        WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
-      ];
-      final local = personalWorkDirsForPrimaryPath(folders, '/local', usesPosixPaths: false, );
-      expect(local.workingDirectory, '/local');
-      expect(local.addDirs, ['/local-extra']);
+    test(
+      'personalWorkDirsForPrimaryPath keeps add-dirs on same target only',
+      () {
+        const folders = [
+          WorkspaceFolder(path: '/local', targetId: 'local'),
+          WorkspaceFolder(path: '/local-extra', targetId: 'local'),
+          WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+        ];
+        final local = personalWorkDirsForPrimaryPath(
+          folders,
+          '/local',
+          usesPosixPaths: false,
+        );
+        expect(local.workingDirectory, '/local');
+        expect(local.addDirs, ['/local-extra']);
 
-      final remote = personalWorkDirsForPrimaryPath(folders, '/remote', usesPosixPaths: false, );
-      expect(remote.workingDirectory, '/remote');
-      expect(remote.addDirs, isEmpty);
-    });
+        final remote = personalWorkDirsForPrimaryPath(
+          folders,
+          '/remote',
+          usesPosixPaths: false,
+        );
+        expect(remote.workingDirectory, '/remote');
+        expect(remote.addDirs, isEmpty);
+      },
+    );
   });
 
   group('memberTypeReplicaCount', () {
@@ -288,29 +306,32 @@ void main() {
       expect(next.firstWhere((m) => m.id == 'dev').replicas, 3);
     });
 
-    test('inferMemberPlacementInitialized requires valid non-empty targets', () {
-      const folders = [
-        WorkspaceFolder(path: '/a'),
-        WorkspaceFolder(path: '/b', targetId: 'ssh:p1'),
-      ];
-      expect(
-        inferMemberPlacementInitialized(
-          folders: folders,
-          members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
-          targets: const {'team-lead': 'local'},
-          alreadyInitialized: false,
-        ),
-        isTrue,
-      );
-      expect(
-        inferMemberPlacementInitialized(
-          folders: folders,
-          members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
-          targets: const {'team-lead': 'ssh:gone'},
-          alreadyInitialized: false,
-        ),
-        isFalse,
-      );
-    });
+    test(
+      'inferMemberPlacementInitialized requires valid non-empty targets',
+      () {
+        const folders = [
+          WorkspaceFolder(path: '/a'),
+          WorkspaceFolder(path: '/b', targetId: 'ssh:p1'),
+        ];
+        expect(
+          inferMemberPlacementInitialized(
+            folders: folders,
+            members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+            targets: const {'team-lead': 'local'},
+            alreadyInitialized: false,
+          ),
+          isTrue,
+        );
+        expect(
+          inferMemberPlacementInitialized(
+            folders: folders,
+            members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+            targets: const {'team-lead': 'ssh:gone'},
+            alreadyInitialized: false,
+          ),
+          isFalse,
+        );
+      },
+    );
   });
 }

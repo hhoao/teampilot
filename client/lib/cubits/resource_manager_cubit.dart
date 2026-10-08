@@ -56,15 +56,15 @@ class ResourceManagerState extends Equatable {
 
   @override
   List<Object?> get props => [
-        workspaceId,
-        isOpen,
-        bindings,
-        snapshot,
-        tree,
-        terminalCount,
-        error,
-        expandedGroupKeys,
-      ];
+    workspaceId,
+    isOpen,
+    bindings,
+    snapshot,
+    tree,
+    terminalCount,
+    error,
+    expandedGroupKeys,
+  ];
 }
 
 /// Owns Resource Manager panel open state, metrics polling while the panel is
@@ -77,12 +77,12 @@ class ResourceManagerCubit extends Cubit<ResourceManagerState> {
     required List<ResourceBinding> Function() bindingsSource,
     required Future<void> Function(String bindingKey) killBinding,
     Duration pollInterval = const Duration(seconds: 2),
-  })  : _metricsService = metricsService,
-        _registry = registry,
-        _bindingsSource = bindingsSource,
-        _killBinding = killBinding,
-        _pollInterval = pollInterval,
-        super(const ResourceManagerState());
+  }) : _metricsService = metricsService,
+       _registry = registry,
+       _bindingsSource = bindingsSource,
+       _killBinding = killBinding,
+       _pollInterval = pollInterval,
+       super(const ResourceManagerState());
 
   final ProcessMetricsService _metricsService;
   final PtyProcessRegistry _registry;
@@ -160,10 +160,8 @@ class ResourceManagerCubit extends Cubit<ResourceManagerState> {
   }
 
   Future<void> killAll() async {
-    final keys = state.tree?.groups
-            .expand((g) => g.leaves)
-            .map((l) => l.key)
-            .toList() ??
+    final keys =
+        state.tree?.groups.expand((g) => g.leaves).map((l) => l.key).toList() ??
         state.bindings.map((b) => b.key).toList();
     for (final key in keys) {
       await killLeaf(key);
@@ -255,10 +253,7 @@ class ResourceManagerCubit extends Cubit<ResourceManagerState> {
           bindingKeyToGroupKey: bindingKeyToGroupKey,
         );
         if (isClosed) return;
-        final tree = mergeResourceTree(
-          bindings: bindings,
-          snapshot: snapshot,
-        );
+        final tree = mergeResourceTree(bindings: bindings, snapshot: snapshot);
         emit(
           state.copyWith(
             bindings: bindings,

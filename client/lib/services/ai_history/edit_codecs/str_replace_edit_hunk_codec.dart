@@ -32,8 +32,7 @@ class StrReplaceEditHunkCodec implements AiEditHunkCodec {
   final List<String> startLineKeys;
 
   @override
-  bool matches(String toolName) =>
-      toolNames.contains(toolName.toLowerCase());
+  bool matches(String toolName) => toolNames.contains(toolName.toLowerCase());
 
   @override
   AiEditHunk? encode(AiToolCallPart part) {
@@ -68,20 +67,24 @@ class StrReplaceEditHunkCodec implements AiEditHunkCodec {
     var lineNumber = startLine;
 
     for (final text in oldLines) {
-      lines.add(AiEditLine(
-        kind: AiEditLineKind.remove,
-        text: text,
-        lineNumber: lineNumber,
-      ));
+      lines.add(
+        AiEditLine(
+          kind: AiEditLineKind.remove,
+          text: text,
+          lineNumber: lineNumber,
+        ),
+      );
       if (lineNumber != null) lineNumber++;
     }
 
     for (final text in newLines) {
-      lines.add(AiEditLine(
-        kind: AiEditLineKind.add,
-        text: text,
-        lineNumber: lineNumber,
-      ));
+      lines.add(
+        AiEditLine(
+          kind: AiEditLineKind.add,
+          text: text,
+          lineNumber: lineNumber,
+        ),
+      );
       if (lineNumber != null) lineNumber++;
     }
 

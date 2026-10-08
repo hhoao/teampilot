@@ -25,10 +25,7 @@ DiscoverableTeam _declared() => const DiscoverableTeam(
   teamMode: TeamMode.mixed,
 );
 
-Future<void> _pumpHost(
-  WidgetTester tester, {
-  required Widget home,
-}) async {
+Future<void> _pumpHost(WidgetTester tester, {required Widget home}) async {
   tester.view.physicalSize = const Size(1200, 900);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(() {

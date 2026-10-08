@@ -11,84 +11,88 @@ void main() {
       const preferencePath = '/usr/bin/claude';
 
       expect(
-        CredentialHostRequest.hostExecutable(preferencePath, storage: fakeHomeStorage(), ),
+        CredentialHostRequest.hostExecutable(
+          preferencePath,
+          storage: fakeHomeStorage(),
+        ),
         '/usr/bin/claude',
       );
       expect(
-        CredentialHostRequest.hostArguments(preferencePath, const ['auth', 'login'], storage: fakeHomeStorage(), ),
+        CredentialHostRequest.hostArguments(preferencePath, const [
+          'auth',
+          'login',
+        ], storage: fakeHomeStorage()),
         ['auth', 'login'],
       );
-      expect(CredentialHostRequest.usePosixCliPaths(preferencePath, storage: fakeHomeStorage(), ), isFalse);
+      expect(
+        CredentialHostRequest.usePosixCliPaths(
+          preferencePath,
+          storage: fakeHomeStorage(),
+        ),
+        isFalse,
+      );
     });
 
-    test(
-      'wsl.exe wrapper on native context keeps wsl.exe',
-      () {
-        const preferencePath = 'wsl.exe -d Ubuntu /usr/bin/claude';
-        const subcommand = ['auth', 'login'];
+    test('wsl.exe wrapper on native context keeps wsl.exe', () {
+      const preferencePath = 'wsl.exe -d Ubuntu /usr/bin/claude';
+      const subcommand = ['auth', 'login'];
 
-        expect(
-          CredentialHostRequest.hostExecutable(
-            preferencePath,
-            modeOverride: StorageBackendMode.native,
-                                                storage: fakeHomeStorage(),
-          ),
-          'wsl.exe',
-        );
-        expect(
-          CredentialHostRequest.hostArguments(
-            preferencePath,
-            subcommand,
-            modeOverride: StorageBackendMode.native,
-                                               storage: fakeHomeStorage(),
-          ),
-          ['-d', 'Ubuntu', '/usr/bin/claude', ...subcommand],
-        );
-        expect(
-          CredentialHostRequest.usePosixCliPaths(
-            preferencePath,
-            modeOverride: StorageBackendMode.native,
-                                                  storage: fakeHomeStorage(),
-          ),
-          isTrue,
-        );
-      },
-      skip: Platform.isWindows ? false : 'wsl.exe paths are Windows-only',
-    );
-
-    test(
-      'wsl.exe wrapper on wsl context unwraps to linux path',
-      () {
-        const preferencePath = 'wsl.exe -d Ubuntu /usr/bin/claude';
-        const subcommand = ['auth', 'login'];
-
-        expect(
-          CredentialHostRequest.hostExecutable(
-            preferencePath,
-            modeOverride: StorageBackendMode.wsl,
-                                                storage: fakeHomeStorage(),
-          ),
-          '/usr/bin/claude',
-        );
-        expect(
-          CredentialHostRequest.hostArguments(
-            preferencePath,
-            subcommand,
-            modeOverride: StorageBackendMode.wsl,
-                                               storage: fakeHomeStorage(),
-          ),
+      expect(
+        CredentialHostRequest.hostExecutable(
+          preferencePath,
+          modeOverride: StorageBackendMode.native,
+          storage: fakeHomeStorage(),
+        ),
+        'wsl.exe',
+      );
+      expect(
+        CredentialHostRequest.hostArguments(
+          preferencePath,
           subcommand,
-        );
-        expect(
-          CredentialHostRequest.usePosixCliPaths(
-            preferencePath,
-            modeOverride: StorageBackendMode.wsl,
-                                                  storage: fakeHomeStorage(),
-          ),
-          isTrue,
-        );
-      },
-      skip: Platform.isWindows ? false : 'wsl.exe paths are Windows-only',
-    );
+          modeOverride: StorageBackendMode.native,
+          storage: fakeHomeStorage(),
+        ),
+        ['-d', 'Ubuntu', '/usr/bin/claude', ...subcommand],
+      );
+      expect(
+        CredentialHostRequest.usePosixCliPaths(
+          preferencePath,
+          modeOverride: StorageBackendMode.native,
+          storage: fakeHomeStorage(),
+        ),
+        isTrue,
+      );
+    }, skip: Platform.isWindows ? false : 'wsl.exe paths are Windows-only');
+
+    test('wsl.exe wrapper on wsl context unwraps to linux path', () {
+      const preferencePath = 'wsl.exe -d Ubuntu /usr/bin/claude';
+      const subcommand = ['auth', 'login'];
+
+      expect(
+        CredentialHostRequest.hostExecutable(
+          preferencePath,
+          modeOverride: StorageBackendMode.wsl,
+          storage: fakeHomeStorage(),
+        ),
+        '/usr/bin/claude',
+      );
+      expect(
+        CredentialHostRequest.hostArguments(
+          preferencePath,
+          subcommand,
+          modeOverride: StorageBackendMode.wsl,
+          storage: fakeHomeStorage(),
+        ),
+        subcommand,
+      );
+      expect(
+        CredentialHostRequest.usePosixCliPaths(
+          preferencePath,
+          modeOverride: StorageBackendMode.wsl,
+          storage: fakeHomeStorage(),
+        ),
+        isTrue,
+      );
+    }, skip: Platform.isWindows ? false : 'wsl.exe paths are Windows-only');
   });
 }

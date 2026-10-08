@@ -27,8 +27,10 @@ class KeepAliveSessionStack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    assert(sessionIds.length == hosts.length,
-        'sessionIds and hosts must be parallel lists');
+    assert(
+      sessionIds.length == hosts.length,
+      'sessionIds and hosts must be parallel lists',
+    );
     final activeIndex = activeSessionId == null
         ? -1
         : sessionIds.indexOf(activeSessionId!);
@@ -38,10 +40,7 @@ class KeepAliveSessionStack extends StatelessWidget {
         for (var i = 0; i < hosts.length; i++)
           TpKeepAliveLayer(
             active: i == activeIndex,
-            child: TickerMode(
-              enabled: i == activeIndex,
-              child: hosts[i],
-            ),
+            child: TickerMode(enabled: i == activeIndex, child: hosts[i]),
           ),
       ],
     );

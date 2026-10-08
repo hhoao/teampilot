@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import '../../registry/capabilities/prompt_capability.dart';
-import '../../../../services/session/member_role_provision.dart';
-import '../../../launch/work_plane_paths.dart';
+import '../../registry/member_role_provision.dart';
+import '../../../chat/launch/staging/manifest/work_plane_paths.dart';
 import '../../../resource/contribution/resource_origin.dart';
 
 /// codex 把成员 prompt 写入 `$CODEX_HOME/AGENTS.md`；codex 自动加载为全局指令。
@@ -29,7 +29,6 @@ final class CodexPromptCapability
           member: member,
           forceTeamLeadDelegateMode: ctx.forceTeamLeadDelegateMode,
           mixed: ctx.mixed,
-          additionalDirectories: const [],
         ).trim(),
         origin: const ContributionOrigin(
           providerId: toolId,

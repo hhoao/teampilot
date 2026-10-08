@@ -11,7 +11,14 @@ import 'package:teampilot/services/storage/app_paths.dart';
 
 class _FakeSource extends CompositeExpertHubSource {
   _FakeSource(this.members)
-    : super(builtIns: members, registry: _EmptyRegistry(), localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir), );
+    : super(
+        builtIns: members,
+        registry: _EmptyRegistry(),
+        localStore: LocalExpertStore(
+          fs: InMemoryFilesystem(),
+          dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
+        ),
+      );
 
   final List<DiscoverableMember> members;
   int fetchCount = 0;
@@ -48,7 +55,10 @@ DiscoverableMember _m(
   category: cat,
   source: source,
   updatedAt: updated,
-  member: DiscoverableTeamMember(name: name.toLowerCase(), responsibilities: 'p'),
+  member: DiscoverableTeamMember(
+    name: name.toLowerCase(),
+    responsibilities: 'p',
+  ),
 );
 
 void main() {
@@ -66,7 +76,8 @@ void main() {
       loadFavorites: () async => {'o/r/alpha'},
       saveFavoriteToggle: (key) async => true,
       memberRosterService: stubMemberRosterService(),
-      launchProfiles: () => throw UnimplementedError('not used in filter tests'),
+      launchProfiles: () =>
+          throw UnimplementedError('not used in filter tests'),
     );
   });
 

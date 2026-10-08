@@ -42,7 +42,9 @@ class RunFloatingSurface extends FloatingSurface {
   @override
   FloatingTab createTab({required String workspaceId, Object? payload}) {
     final sessionId = payload is String ? payload.trim() : '';
-    final resolved = sessionId.isEmpty ? null : _resolveTitle(sessionId)?.trim();
+    final resolved = sessionId.isEmpty
+        ? null
+        : _resolveTitle(sessionId)?.trim();
     final title = resolved != null && resolved.isNotEmpty
         ? resolved
         : (sessionId.isEmpty ? 'Run' : sessionId);

@@ -22,12 +22,14 @@ void main() {
     addTearDown(tearDownTestAppStorage);
     final fs = InMemoryFilesystem();
     final hookRepository = HookRepository(fs: fs, teampilotRoot: '/root');
-    await hookRepository.save(const HookDefinition(
-      id: 'h1',
-      name: 'On start',
-      event: HookEvent.sessionStart,
-      action: CommandHookAction.raw('echo a'),
-    ));
+    await hookRepository.save(
+      const HookDefinition(
+        id: 'h1',
+        name: 'On start',
+        event: HookEvent.sessionStart,
+        action: CommandHookAction.raw('echo a'),
+      ),
+    );
     final hookCubit = HookCubit(repository: hookRepository)..load();
     addTearDown(hookCubit.close);
 
@@ -46,9 +48,7 @@ void main() {
       MultiBlocProvider(
         providers: [
           BlocProvider<HookCubit>.value(value: hookCubit),
-          BlocProvider<WorkspaceProjectConfigCubit>.value(
-            value: projectCubit,
-          ),
+          BlocProvider<WorkspaceProjectConfigCubit>.value(value: projectCubit),
         ],
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,

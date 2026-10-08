@@ -1,6 +1,6 @@
 // test/services/workbench/workbench_chat_bridge_test.dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_tab.dart';
@@ -23,7 +23,7 @@ void main() {
     chat = ChatCubit(
       executableResolver: () => '/bin/true',
       automationRepository: testAutomationRepository(),
-                      storage: testHomeStorage,
+      storage: testHomeStorage,
     );
     bridge = WorkbenchChatBridge(workbench: cubit, chat: chat);
   });
@@ -77,9 +77,9 @@ void main() {
       bridge.onSessionTabOpened('ws-1', 'B', preview: true);
       await pumpEventQueue();
 
-      expect(chat.tabStore.openTabBySessionId('B'), isNotNull);
+      expect(chat.tabStore.getOpenTabBySessionId('B'), isNotNull);
       // A was replaced in place by B and must not linger as an orphan runtime.
-      expect(chat.tabStore.openTabBySessionId('A'), isNull);
+      expect(chat.tabStore.getOpenTabBySessionId('A'), isNull);
     });
 
     test('running session replaced in the preview slot is re-pinned, not torn '
@@ -108,7 +108,7 @@ void main() {
 
       // A is running: it must survive the preview replace and re-pin into
       // the bar without stealing activation from B.
-      expect(chat.tabStore.openTabBySessionId('A'), isNotNull);
+      expect(chat.tabStore.getOpenTabBySessionId('A'), isNotNull);
       final center = cubit.centerFocusedStrip('ws-1');
       final aTab = WorkbenchTabId.session('A');
       expect(center.contains(aTab), isTrue);

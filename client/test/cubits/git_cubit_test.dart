@@ -37,6 +37,13 @@ class _FakeGitService extends GitService {
   }
 
   @override
+  Future<void> checkout(String dir, String name) => _record('checkout:$name');
+
+  @override
+  Future<void> createBranch(String dir, String name) =>
+      _record('createBranch:$name');
+
+  @override
   Future<void> commit(String dir, String message) => _record('commit:$message');
 
   @override
@@ -803,6 +810,39 @@ void main() {
     expect(ok, isFalse);
     expect(service.commitAmendCalls, isEmpty);
     await cubit.close();
+  });
+
+  group('onHeadChanged', () {
+    test('fires with repoRoot after a successful checkout', () async {
+      final service = _FakeGitService(statusToReturn: _repoWith());
+      final roots = <String>[];
+      final cubit = GitCubit(service: service, onHeadChanged: roots.add);
+      await cubit.setRepoRoot('/repo');
+      await cubit.checkoutBranch('dev');
+      expect(roots, ['/repo']);
+      await cubit.close();
+    });
+
+    test('fires after a successful createBranch', () async {
+      final service = _FakeGitService(statusToReturn: _repoWith());
+      final roots = <String>[];
+      final cubit = GitCubit(service: service, onHeadChanged: roots.add);
+      await cubit.setRepoRoot('/repo');
+      await cubit.createBranch('dev');
+      expect(roots, ['/repo']);
+      await cubit.close();
+    });
+
+    test('does not fire when the mutation fails', () async {
+      final service = _FakeGitService(statusToReturn: _repoWith())
+        ..throwOnNext = GitException('boom');
+      final roots = <String>[];
+      final cubit = GitCubit(service: service, onHeadChanged: roots.add);
+      await cubit.setRepoRoot('/repo');
+      await cubit.checkoutBranch('dev');
+      expect(roots, isEmpty);
+      await cubit.close();
+    });
   });
 }
 

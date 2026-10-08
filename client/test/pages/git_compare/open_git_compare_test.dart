@@ -8,8 +8,9 @@ import 'package:teampilot/models/git_compare.dart';
 import 'package:teampilot/pages/git_compare/open_git_compare.dart';
 
 void main() {
-  testWidgets('openGitCompareTab opens floating gitCompare tab for spec',
-      (tester) async {
+  testWidgets('openGitCompareTab opens floating gitCompare tab for spec', (
+    tester,
+  ) async {
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit();
     final spec = GitCompareSpec(
@@ -19,21 +20,27 @@ void main() {
     );
     floating.ensureOpen();
     floating.setActiveWorkspace('ws');
-    await tester.pumpWidget(MultiRepositoryProvider(
-      providers: [
-        RepositoryProvider.value(value: workbench),
-        RepositoryProvider.value(value: floating),
-      ],
-      child: MaterialApp(home: Builder(builder: (context) {
-        return Center(
-          child: TextButton(
-            onPressed: () => openGitCompareTab(context,
-                workspaceId: 'ws', spec: spec),
-            child: const Text('open'),
+    await tester.pumpWidget(
+      MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider.value(value: workbench),
+          RepositoryProvider.value(value: floating),
+        ],
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) {
+              return Center(
+                child: TextButton(
+                  onPressed: () =>
+                      openGitCompareTab(context, workspaceId: 'ws', spec: spec),
+                  child: const Text('open'),
+                ),
+              );
+            },
           ),
-        );
-      })),
-    ));
+        ),
+      ),
+    );
     await tester.tap(find.text('open'));
     await tester.pump();
     expect(

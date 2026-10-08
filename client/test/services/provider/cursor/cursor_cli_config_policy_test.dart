@@ -4,7 +4,8 @@ import 'package:teampilot/services/catalog/catalog_kind_registry.dart';
 import 'package:teampilot/services/catalog/catalog_mcp_policy.dart';
 import 'package:teampilot/services/catalog/modules/skill_catalog_tools.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_cli_config_policy.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/ssh/mcp/session_ssh_mcp_policy.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 
 void main() {
   test('teamBusMcpAllowEntry uses teammate-bus server wildcard', () {
@@ -57,6 +58,20 @@ void main() {
     expect(allow, contains('Mcp(teampilot:search_skills)'));
     expect(allow, isNot(contains('Mcp(teampilot:install_skill)')));
   });
+
+  test(
+    'applySessionSshMcpPolicy merges ssh tools and keeps existing allows',
+    () {
+      final merged = CursorCliConfigPolicy.applySessionSshMcpPolicy(const {
+        'permissions': {
+          'allow': ['Mcp(teampilot:search_skills)'],
+        },
+      }, cursorEntries: SessionSshMcpPolicy.cursorAllowEntries);
+      final allow = (merged['permissions']! as Map)['allow'] as List;
+      expect(allow, contains('Mcp(teampilot:search_skills)'));
+      expect(allow, containsAll(SessionSshMcpPolicy.cursorAllowEntries));
+    },
+  );
 }
 
 CatalogKindRegistry _skillRegistry() {

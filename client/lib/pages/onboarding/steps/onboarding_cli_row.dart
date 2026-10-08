@@ -103,10 +103,7 @@ class OnboardingCliRow extends StatelessWidget {
                     height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Icon(
-                    Icons.download_outlined,
-                    size: context.tpIconSizes.md,
-                  ),
+                : Icon(Icons.download_outlined, size: context.tpIconSizes.md),
           );
         },
       );
@@ -134,10 +131,7 @@ class OnboardingCliRow extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(child: pathField()),
-                    if (install != null) ...[
-                      const SizedBox(width: 4),
-                      install,
-                    ],
+                    if (install != null) ...[const SizedBox(width: 4), install],
                   ],
                 ),
               ],
@@ -154,10 +148,7 @@ class OnboardingCliRow extends StatelessWidget {
               statusIcon(),
               const SizedBox(width: 8),
               Expanded(child: pathField()),
-              if (install != null) ...[
-                const SizedBox(width: 4),
-                install,
-              ],
+              if (install != null) ...[const SizedBox(width: 4), install],
             ],
           );
         },

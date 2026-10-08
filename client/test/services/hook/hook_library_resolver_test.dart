@@ -22,18 +22,22 @@ void main() {
   }
 
   test('resolves raw command hooks in order with dedupe', () async {
-    await writeDefinition(const HookDefinition(
-      id: 'h1',
-      name: 'a',
-      event: HookEvent.stop,
-      action: CommandHookAction.raw('echo a'),
-    ));
-    await writeDefinition(const HookDefinition(
-      id: 'h2',
-      name: 'b',
-      event: HookEvent.sessionStart,
-      action: CommandHookAction.raw('echo b'),
-    ));
+    await writeDefinition(
+      const HookDefinition(
+        id: 'h1',
+        name: 'a',
+        event: HookEvent.stop,
+        action: CommandHookAction.raw('echo a'),
+      ),
+    );
+    await writeDefinition(
+      const HookDefinition(
+        id: 'h2',
+        name: 'b',
+        event: HookEvent.sessionStart,
+        action: CommandHookAction.raw('echo b'),
+      ),
+    );
     final resolved = await resolver.resolve(['h2', 'h1', 'h2']);
     expect(resolved.warnings, isEmpty);
     expect(resolved.entries.map((e) => e.id), ['h2', 'h1']);
@@ -42,25 +46,32 @@ void main() {
   });
 
   test('loads managed script content', () async {
-    await writeDefinition(const HookDefinition(
-      id: 'h1',
-      name: 'a',
-      event: HookEvent.preToolUse,
-      action: CommandHookAction.script(fileName: 'hook.sh'),
-    ));
-    await fs.writeString('/root/hooks/h1/hook.sh', '#!/usr/bin/env bash\necho hi');
+    await writeDefinition(
+      const HookDefinition(
+        id: 'h1',
+        name: 'a',
+        event: HookEvent.preToolUse,
+        action: CommandHookAction.script(fileName: 'hook.sh'),
+      ),
+    );
+    await fs.writeString(
+      '/root/hooks/h1/hook.sh',
+      '#!/usr/bin/env bash\necho hi',
+    );
     final resolved = await resolver.resolve(['h1']);
     final action = resolved.entries.single.action as CommandHookAction;
     expect(action.scriptContent, contains('echo hi'));
   });
 
   test('missing definition and missing script produce warnings', () async {
-    await writeDefinition(const HookDefinition(
-      id: 'h1',
-      name: 'a',
-      event: HookEvent.stop,
-      action: CommandHookAction.script(fileName: 'hook.sh'),
-    ));
+    await writeDefinition(
+      const HookDefinition(
+        id: 'h1',
+        name: 'a',
+        event: HookEvent.stop,
+        action: CommandHookAction.script(fileName: 'hook.sh'),
+      ),
+    );
     final resolved = await resolver.resolve(['missing', 'h1']);
     expect(resolved.entries, isEmpty);
     expect(
@@ -70,16 +81,18 @@ void main() {
   });
 
   test('policy and env are carried over', () async {
-    await writeDefinition(const HookDefinition(
-      id: 'h1',
-      name: 'a',
-      event: HookEvent.preToolUse,
-      matcher: 'Bash',
-      policy: HookPolicy.deny,
-      timeoutSec: 12,
-      env: {'A': 'b'},
-      action: CommandHookAction.raw('exit 2'),
-    ));
+    await writeDefinition(
+      const HookDefinition(
+        id: 'h1',
+        name: 'a',
+        event: HookEvent.preToolUse,
+        matcher: 'Bash',
+        policy: HookPolicy.deny,
+        timeoutSec: 12,
+        env: {'A': 'b'},
+        action: CommandHookAction.raw('exit 2'),
+      ),
+    );
     final resolved = await resolver.resolve(['h1']);
     final entry = resolved.entries.single;
     expect(entry.policy, HookPolicy.deny);

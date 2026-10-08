@@ -13,10 +13,7 @@ class LaunchProfileProvisioner {
   static const defaultNativeTeamId = 'default-native-team';
   static const defaultMixedTeamId = 'default-mixed-team';
 
-  static const builtInTeamIds = {
-    defaultNativeTeamId,
-    defaultMixedTeamId,
-  };
+  static const builtInTeamIds = {defaultNativeTeamId, defaultMixedTeamId};
 
   static bool isBuiltInTeamId(String id) => builtInTeamIds.contains(id);
 
@@ -32,9 +29,7 @@ class LaunchProfileProvisioner {
     final all = loaded ?? await _repository.loadAll();
     final existing = all.whereType<TeamProfile>();
 
-    var native = existing
-        .where((t) => t.id == defaultNativeTeamId)
-        .firstOrNull;
+    var native = existing.where((t) => t.id == defaultNativeTeamId).firstOrNull;
     if (native == null) {
       native = buildNative();
       await _repository.save(native);

@@ -121,7 +121,9 @@ class _RecordingConnector extends WorkspaceShellConnector {
   _RecordingConnector()
     : super(
         transportFactory: TerminalTransportFactory(
-          sshProfileRepository: SshProfileRepository(storage: fakeHomeStorage()),
+          sshProfileRepository: SshProfileRepository(
+            storage: fakeHomeStorage(),
+          ),
           sshCredentialStore: InMemorySshCredentialStore(),
           sshKnownHostRepository: InMemorySshKnownHostRepository(),
         ),
@@ -134,7 +136,7 @@ class _RecordingConnector extends WorkspaceShellConnector {
       executable: 'sh',
       validateLaunch: false,
       parseExecutable: false,
-                            fs: InMemoryFilesystem(),
+      fs: InMemoryFilesystem(),
     );
   }
 
@@ -186,7 +188,7 @@ void main() {
         executable: 'sh',
         validateLaunch: false,
         parseExecutable: false,
-                                fs: InMemoryFilesystem(),
+        fs: InMemoryFilesystem(),
       ),
     );
     runService = _FakeTerminalRunService(entry);

@@ -25,6 +25,8 @@ void main() {
     // New instance reads the same persisted file.
     final fresh = TeamHubFavoritesStore(storage: testHomeStorage);
     await fresh.add('a/b/z');
-    expect(await TeamHubFavoritesStore(storage: testHomeStorage).load(), {'a/b/z'});
+    expect(await TeamHubFavoritesStore(storage: testHomeStorage).load(), {
+      'a/b/z',
+    });
   });
 }

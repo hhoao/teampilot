@@ -19,14 +19,13 @@ void main() {
     );
     await fs.writeString(
       layout.cliConfig('/tp/providers/cursor/cursor-mp-p1/home'),
-      jsonEncode({'authInfo': {'userId': 'user_isolated'}}),
+      jsonEncode({
+        'authInfo': {'userId': 'user_isolated'},
+      }),
     );
     final scope = await CliCredentialSourceResolver(
       readers: {
-        'cursor': CursorOfficialSubscriptionAuthReader(
-          fs: fs,
-          basePath: '/tp',
-        ),
+        'cursor': CursorOfficialSubscriptionAuthReader(fs: fs, basePath: '/tp'),
       },
     ).read('cli:cursor-mp-p1');
     expect(scope.valueFor('accessToken'), 'isolated-cursor');
@@ -36,16 +35,17 @@ void main() {
   test('unknown cli source is missingCredential', () async {
     await expectLater(
       CliCredentialSourceResolver(readers: {}).read('cli:nope'),
-      throwsA(isA<ManagedProviderUsageQueryError>().having(
-        (e) => e.code,
-        'code',
-        ManagedProviderUsageQueryErrorCode.missingCredential,
-      )),
+      throwsA(
+        isA<ManagedProviderUsageQueryError>().having(
+          (e) => e.code,
+          'code',
+          ManagedProviderUsageQueryErrorCode.missingCredential,
+        ),
+      ),
     );
   });
 
-  test('per-entry cursor source resolves through the cursor reader',
-      () async {
+  test('per-entry cursor source resolves through the cursor reader', () async {
     final fs = InMemoryFilesystem();
     final layout = CursorHomeLayout(pathContext: fs.pathContext);
     await fs.writeString(
@@ -54,17 +54,13 @@ void main() {
     );
     final scope = await CliCredentialSourceResolver(
       readers: {
-        'cursor': CursorOfficialSubscriptionAuthReader(
-          fs: fs,
-          basePath: '/tp',
-        ),
+        'cursor': CursorOfficialSubscriptionAuthReader(fs: fs, basePath: '/tp'),
       },
     ).read('cli:cursor-mp-managed-7');
     expect(scope.valueFor('accessToken'), 'entry-token');
   });
 
-  test('per-entry claude source resolves through the claude reader',
-      () async {
+  test('per-entry claude source resolves through the claude reader', () async {
     final fs = InMemoryFilesystem();
     await fs.writeString(
       '/tp/providers/claude/claude-mp-managed-7/.credentials.json',
@@ -74,10 +70,7 @@ void main() {
     );
     final scope = await CliCredentialSourceResolver(
       readers: {
-        'claude': ClaudeOfficialSubscriptionAuthReader(
-          fs: fs,
-          basePath: '/tp',
-        ),
+        'claude': ClaudeOfficialSubscriptionAuthReader(fs: fs, basePath: '/tp'),
       },
     ).read('cli:claude-mp-managed-7');
     expect(scope.valueFor('accessToken'), 'entry-token');
@@ -99,11 +92,13 @@ void main() {
           ),
         },
       ).read('cli:cursor-account'),
-      throwsA(isA<ManagedProviderUsageQueryError>().having(
-        (e) => e.code,
-        'code',
-        ManagedProviderUsageQueryErrorCode.missingCredential,
-      )),
+      throwsA(
+        isA<ManagedProviderUsageQueryError>().having(
+          (e) => e.code,
+          'code',
+          ManagedProviderUsageQueryErrorCode.missingCredential,
+        ),
+      ),
     );
   });
 
@@ -124,11 +119,13 @@ void main() {
           ),
         },
       ).read('cli:claude-mp-x'),
-      throwsA(isA<ManagedProviderUsageQueryError>().having(
-        (e) => e.code,
-        'code',
-        ManagedProviderUsageQueryErrorCode.missingCredential,
-      )),
+      throwsA(
+        isA<ManagedProviderUsageQueryError>().having(
+          (e) => e.code,
+          'code',
+          ManagedProviderUsageQueryErrorCode.missingCredential,
+        ),
+      ),
     );
   });
 }

@@ -137,14 +137,14 @@ class PluginRepoGitService {
         sha,
         ref: ref,
       );
-      return _headSha(git, workDirPath);
+      return await _headSha(git, workDirPath);
     }
 
     final branch = (ref != null && ref.isNotEmpty) ? ref : 'main';
     for (final candidate in skillRepoBranchCandidates(branch)) {
       try {
         await _cloneOrUpdate(git, normalized, fs, workDirPath, candidate);
-        return _headSha(git, workDirPath);
+        return await _headSha(git, workDirPath);
       } catch (e) {
         appLogger.d('[PluginRepoGit] checkout $normalized@$candidate: $e');
       }
@@ -273,7 +273,9 @@ class PluginRepoGitService {
   Future<String?> readHeadSha(Filesystem fs, String workDirPath) async {
     final git = await _git;
     if (git == null) return null;
-    if (!(await fs.stat(fs.pathContext.join(workDirPath, '.git'))).isDirectory) {
+    if (!(await fs.stat(
+      fs.pathContext.join(workDirPath, '.git'),
+    )).isDirectory) {
       return null;
     }
     try {
@@ -326,5 +328,6 @@ class PluginRepoGitService {
     return text.split('\n').first.trim();
   }
 
-  String _stderrSnippet(ProcessResult result) => gitProcessStderrSnippet(result);
+  String _stderrSnippet(ProcessResult result) =>
+      gitProcessStderrSnippet(result);
 }

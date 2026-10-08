@@ -482,6 +482,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     ];
 
     String? selected;
+    final homeFs = context.read<HomeStorage>().fs;
     _menuOpen.value = true;
     try {
       selected = await showTpActionMenuFromSpecs<String>(
@@ -501,7 +502,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
           await TerminalUriOpener.open(
             linkUri,
             workingDirectory: entry.cwd,
-            fs: context.read<HomeStorage>().fs,
+            fs: homeFs,
           );
         }
       case 'paste':

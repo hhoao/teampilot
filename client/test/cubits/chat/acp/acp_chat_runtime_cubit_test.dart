@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
-import 'package:teampilot/cubits/chat/acp/acp_chat_runtime_cubit.dart';
+import 'package:teampilot/cubits/session/acp/acp_chat_runtime_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/acp/acp_chat_strings.dart';
 import 'package:teampilot/services/acp/acp_chat_transcript.dart';

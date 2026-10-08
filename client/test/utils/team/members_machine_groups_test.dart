@@ -3,20 +3,15 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/utils/team/members_machine_groups.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
 
-TeamMemberConfig _m(String id, {String name = ''}) => TeamMemberConfig(
-  id: id,
-  name: name.isEmpty ? id : name,
-);
+TeamMemberConfig _m(String id, {String name = ''}) =>
+    TeamMemberConfig(id: id, name: name.isEmpty ? id : name);
 
 void main() {
   test('single target → one group (caller decides flat UI)', () {
     final members = [_m(TeamMemberNaming.teamLeadName), _m('dev')];
     final groups = groupMembersByMachine(
       members: members,
-      memberTargets: {
-        TeamMemberNaming.teamLeadName: 'local',
-        'dev': 'local',
-      },
+      memberTargets: {TeamMemberNaming.teamLeadName: 'local', 'dev': 'local'},
     );
     expect(groups, hasLength(1));
     expect(groups.single.targetId, 'local');
@@ -36,7 +31,9 @@ void main() {
       },
     );
     expect(groups.map((g) => g.targetId).toList(), ['ssh:p1', 'local']);
-    expect(groups.first.members.map((m) => m.id), [TeamMemberNaming.teamLeadName]);
+    expect(groups.first.members.map((m) => m.id), [
+      TeamMemberNaming.teamLeadName,
+    ]);
     expect(groups.last.members.map((m) => m.id), ['a', 'b']);
   });
 
@@ -55,10 +52,7 @@ void main() {
   test('unknown non-empty targetId kept as bucket key', () {
     final groups = groupMembersByMachine(
       members: [_m('dev'), _m('ops')],
-      memberTargets: {
-        'dev': 'ssh:gone',
-        'ops': 'local',
-      },
+      memberTargets: {'dev': 'ssh:gone', 'ops': 'local'},
     );
     expect(groups.map((g) => g.targetId).toSet(), {'ssh:gone', 'local'});
   });

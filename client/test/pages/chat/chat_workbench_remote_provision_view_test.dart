@@ -21,7 +21,9 @@ void main() {
     );
   }
 
-  testWidgets('hides ssh target id and session uuid from title', (tester) async {
+  testWidgets('hides ssh target id and session uuid from title', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       wrap(
         const ChatWorkbenchRemoteProvisionView(

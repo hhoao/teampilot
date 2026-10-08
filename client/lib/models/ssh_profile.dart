@@ -22,6 +22,7 @@ class SshProfile {
     this.pairedDesktopId,
     this.relayUrl,
     this.lastGoodKind,
+    this.embeddedTarget = false,
   });
 
   factory SshProfile.fromJson(Map<String, Object?> json) {
@@ -62,6 +63,9 @@ class SshProfile {
       lastGoodKind: SshEndpointKind.values
           .where((value) => value.name == json['lastGoodKind'])
           .firstOrNull,
+      embeddedTarget: json['embeddedTarget'] is bool
+          ? json['embeddedTarget'] as bool
+          : false,
     );
   }
 
@@ -81,6 +85,10 @@ class SshProfile {
   final String? relayUrl;
   final SshEndpointKind? lastGoodKind;
 
+  /// True when this profile targets the desktop's embedded SSH server
+  /// (paired from a v2 offer) rather than a system sshd.
+  final bool embeddedTarget;
+
   String get hostIdentifier => '$username@$host:$port';
 
   SshProfile copyWith({
@@ -99,6 +107,7 @@ class SshProfile {
     String? pairedDesktopId,
     String? relayUrl,
     SshEndpointKind? lastGoodKind,
+    bool? embeddedTarget,
   }) {
     return SshProfile(
       id: id ?? this.id,
@@ -116,6 +125,7 @@ class SshProfile {
       pairedDesktopId: pairedDesktopId ?? this.pairedDesktopId,
       relayUrl: relayUrl ?? this.relayUrl,
       lastGoodKind: lastGoodKind ?? this.lastGoodKind,
+      embeddedTarget: embeddedTarget ?? this.embeddedTarget,
     );
   }
 
@@ -139,6 +149,7 @@ class SshProfile {
       if (pairedDesktopId != null) 'pairedDesktopId': pairedDesktopId,
       if (relayUrl != null) 'relayUrl': relayUrl,
       if (lastGoodKind != null) 'lastGoodKind': lastGoodKind!.name,
+      if (embeddedTarget) 'embeddedTarget': embeddedTarget,
     };
   }
 
@@ -161,7 +172,8 @@ class SshProfile {
             listEquals(hostKeyFingerprints, other.hostKeyFingerprints) &&
             pairedDesktopId == other.pairedDesktopId &&
             relayUrl == other.relayUrl &&
-            lastGoodKind == other.lastGoodKind;
+            lastGoodKind == other.lastGoodKind &&
+            embeddedTarget == other.embeddedTarget;
   }
 
   @override
@@ -179,5 +191,6 @@ class SshProfile {
     pairedDesktopId,
     relayUrl,
     lastGoodKind,
+    embeddedTarget,
   );
 }

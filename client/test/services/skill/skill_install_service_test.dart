@@ -9,7 +9,6 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/skill/skill_install_service.dart';
 import 'package:teampilot/services/skill/skill_manifest_service.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
-import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory tmp;
@@ -35,8 +34,8 @@ void main() {
       home: tmp.path,
       cwd: tmp.path,
     );
-    manifest = SkillManifestService(rootDir: tmp.path, storage: storage, );
-    svc = SkillInstallService(manifest: manifest, storage: storage, );
+    manifest = SkillManifestService(rootDir: tmp.path, storage: storage);
+    svc = SkillInstallService(manifest: manifest, storage: storage);
   });
 
   tearDown(() {

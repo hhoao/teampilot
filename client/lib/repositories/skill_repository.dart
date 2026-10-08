@@ -16,10 +16,10 @@ class SkillRepository {
     SkillInstallService? install,
   }) {
     final resolvedFetch = fetch ?? SkillFetchService();
-    final resolvedManifest =
-        manifest ?? SkillManifestService(storage: storage);
+    final resolvedManifest = manifest ?? SkillManifestService(storage: storage);
     final resolvedCache =
-        repoCache ?? SkillRepoDiskCacheService(storage: storage, fetch: resolvedFetch);
+        repoCache ??
+        SkillRepoDiskCacheService(storage: storage, fetch: resolvedFetch);
     return SkillRepository._(
       manifest: resolvedManifest,
       fetch: resolvedFetch,
@@ -48,6 +48,9 @@ class SkillRepository {
   final SkillInstallService install;
 
   Future<List<Skill>> loadInstalled() => manifest.loadSkills();
+
+  Future<String?> readSkillMarkdown(Skill skill) =>
+      manifest.readSkillMarkdown(skill.directory);
 
   Future<List<DiscoverableSkill>> readCachedDiscoverable(SkillRepo repo) =>
       repoCache.readSkillsFromDisk(repo);

@@ -9,16 +9,15 @@ ManagedProviderUsageWindow usageWindow({
   String? unit,
   String? resetsAt,
   String? kind,
-}) =>
-    ManagedProviderUsageWindow(
-      label: label,
-      remaining: remaining,
-      total: total,
-      used: used,
-      unit: unit,
-      resetsAt: resetsAt,
-      kind: kind,
-    );
+}) => ManagedProviderUsageWindow(
+  label: label,
+  remaining: remaining,
+  total: total,
+  used: used,
+  unit: unit,
+  resetsAt: resetsAt,
+  kind: kind,
+);
 
 HttpJsonMappingConfig mappingConfig({
   String method = 'GET',
@@ -29,14 +28,13 @@ HttpJsonMappingConfig mappingConfig({
   String credentialSource = 'secret',
   Map<String, String> headers = const {},
   Map<String, Object?> body = const {},
-}) =>
-    HttpJsonMappingConfig(
-      method: method,
-      url: url,
-      responsePath: responsePath,
-      windows: windows ?? [usageWindow(remaining: r'$.remaining')],
-      credential: credential,
-      credentialSource: credentialSource,
-      headers: headers,
-      body: body,
-    );
+}) => HttpJsonMappingConfig(
+  method: method,
+  url: url,
+  responsePath: responsePath,
+  windows: windows ?? [usageWindow(remaining: r'$.remaining')],
+  credential: credential,
+  credentialSource: credentialSource,
+  headers: headers,
+  body: body,
+);

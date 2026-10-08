@@ -650,8 +650,10 @@ void main() {
       expect(result.success, isTrue, reason: result.message);
       expect(result.executablePath, '/home/alice/.local/bin/cursor-agent');
       expect(commands.length, greaterThanOrEqualTo(2));
-      expect(commands.any((c) => c.contains('curl https://cursor.com/install')),
-          isTrue);
+      expect(
+        commands.any((c) => c.contains('curl https://cursor.com/install')),
+        isTrue,
+      );
       expect(commands.any((c) => c == 'which cursor-agent'), isTrue);
     },
   );
@@ -736,6 +738,87 @@ void main() {
     expect(_isGlibcProbe(commands[1]), isTrue);
     expect(commands[2], contains('curl https://cursor.com/install'));
     expect(commands[3], startsWith('sh -c'));
+  });
+
+  test(
+    'installs OpenCode locally on Unix via official v2 curl script',
+    () async {
+      final commands = <String>[];
+      final installer = CliInstallerService(
+        isWindowsOverride: false,
+        localRunner: (command) async {
+          commands.add(command.commandLine);
+          if (command.commandLine.contains(
+            'curl -fsSL https://opencode.ai/v2/install | bash',
+          )) {
+            return const CliInstallerCommandResult(exitCode: 0);
+          }
+          if (command.commandLine == 'which opencode') {
+            return const CliInstallerCommandResult(
+              exitCode: 0,
+              stdout: '/home/alice/.local/bin/opencode\n',
+            );
+          }
+          return const CliInstallerCommandResult(exitCode: 127);
+        },
+      );
+
+      final result = await installer.install(
+        cli: CliTool.opencode,
+        mode: CliInstallMode.local,
+      );
+
+      expect(result.success, isTrue, reason: result.message);
+      expect(result.executablePath, '/home/alice/.local/bin/opencode');
+      expect(
+        commands.any(
+          (c) => c.contains('curl -fsSL https://opencode.ai/v2/install'),
+        ),
+        isTrue,
+      );
+      expect(commands.any((c) => c == 'which opencode'), isTrue);
+    },
+  );
+
+  test('installs OpenCode on SSH host via official v2 curl script', () async {
+    final commands = <String>[];
+    final installer = CliInstallerService(
+      sshRunner: (profile, command) async {
+        commands.add(command.commandLine);
+        if (_isTermuxProbe(command.commandLine)) {
+          return _termuxProbeNotTermux();
+        }
+        if (command.commandLine.contains(
+          'curl -fsSL https://opencode.ai/v2/install | bash',
+        )) {
+          return const CliInstallerCommandResult(exitCode: 0);
+        }
+        if (command.commandLine.startsWith('sh -c') &&
+            command.commandLine.contains('command -v opencode')) {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/home/alice/.local/bin/opencode\n',
+          );
+        }
+        return const CliInstallerCommandResult(exitCode: 127);
+      },
+    );
+
+    final result = await installer.install(
+      cli: CliTool.opencode,
+      mode: CliInstallMode.ssh,
+      sshProfile: _profile,
+    );
+
+    expect(result.success, isTrue, reason: result.message);
+    expect(result.executablePath, '/home/alice/.local/bin/opencode');
+    expect(_isTermuxProbe(commands[0]), isTrue);
+    expect(
+      commands.any(
+        (c) => c.contains('curl -fsSL https://opencode.ai/v2/install'),
+      ),
+      isTrue,
+    );
   });
 
   test(

@@ -27,7 +27,9 @@ import '../../support/in_memory_filesystem.dart';
 TerminalSession _testSession() => TerminalSession(
   executable: '/bin/bash',
   validateLaunch: false,
-  parseExecutable: false, fs: InMemoryFilesystem(), );
+  parseExecutable: false,
+  fs: InMemoryFilesystem(),
+);
 
 class _FakeSessionOps extends WorkspaceTerminalSessionOps {
   @override
@@ -214,7 +216,8 @@ void main() {
           WorkbenchTabId.shell(entry.id),
         ]);
         expect(
-          workbench.centerOrder('ws')
+          workbench
+              .centerOrder('ws')
               .where((t) => t.kind == WorkbenchTabKind.shell),
           isEmpty,
         );
@@ -266,31 +269,34 @@ void main() {
       expect(entry.followWorkspace, isFalse);
     });
 
-    test('folder-pinned local spec launches at that folder, not primary', () async {
-      final launcher = _launcher(
-        chat: chat,
-        workbench: workbench,
-        floating: floating,
-        registry: registry,
-      );
+    test(
+      'folder-pinned local spec launches at that folder, not primary',
+      () async {
+        final launcher = _launcher(
+          chat: chat,
+          workbench: workbench,
+          floating: floating,
+          registry: registry,
+        );
 
-      // Multi-root workspace: primary /work/alpha, extra /work/beta. A menu
-      // item pinned to /work/beta must land the entry cwd there.
-      final entry = await launcher.openAndSelect(
-        workspaceId: 'ws',
-        tabScopeId: 'ws',
-        cwd: '/work/beta',
-        spec: const WorkspaceTerminalLocalSpec('/bin/bash'),
-        folders: const [
-          WorkspaceFolder(path: '/work/alpha'),
-          WorkspaceFolder(path: '/work/beta'),
-        ],
-      );
+        // Multi-root workspace: primary /work/alpha, extra /work/beta. A menu
+        // item pinned to /work/beta must land the entry cwd there.
+        final entry = await launcher.openAndSelect(
+          workspaceId: 'ws',
+          tabScopeId: 'ws',
+          cwd: '/work/beta',
+          spec: const WorkspaceTerminalLocalSpec('/bin/bash'),
+          folders: const [
+            WorkspaceFolder(path: '/work/alpha'),
+            WorkspaceFolder(path: '/work/beta'),
+          ],
+        );
 
-      expect(entry, isNotNull);
-      expect(entry!.cwd, '/work/beta');
-      expect(entry.followWorkspace, isTrue);
-    });
+        expect(entry, isNotNull);
+        expect(entry!.cwd, '/work/beta');
+        expect(entry.followWorkspace, isTrue);
+      },
+    );
   });
 
   group('WorkbenchShellLauncher.focusOrCreateDefaultShell', () {
@@ -330,12 +336,10 @@ void main() {
       await launcher.focusOrCreateDefaultShell();
 
       expect(floating.state.visibility, FloatingPanelVisibility.open);
+      expect(workbench.floatingActiveId('ws'), WorkbenchTabId.shell('e1'));
       expect(
-        workbench.floatingActiveId('ws'),
-        WorkbenchTabId.shell('e1'),
-      );
-      expect(
-        workbench.centerOrder('ws')
+        workbench
+            .centerOrder('ws')
             .where((t) => t.kind == WorkbenchTabKind.shell),
         isEmpty,
       );

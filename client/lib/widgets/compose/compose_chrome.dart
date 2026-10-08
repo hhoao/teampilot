@@ -7,22 +7,40 @@ sealed class ComposeChrome {
   const ComposeChrome();
 }
 
+final class ComposePermissionControl {
+  const ComposePermissionControl({
+    required this.launchSecurityPolicy,
+    required this.supportedPolicies,
+    required this.defaultLabel,
+    required this.fullAccessLabel,
+    required this.onSelected,
+    this.askReadOnlyLabel,
+    this.autoApproveWorkspaceWriteLabel,
+    this.customLabel,
+  });
+
+  final LaunchSecurityPolicy launchSecurityPolicy;
+
+  /// Immutable policies exposed by the CLI capability for this control.
+  final Set<LaunchSecurityPolicy> supportedPolicies;
+  final String defaultLabel;
+  final String fullAccessLabel;
+  final String? askReadOnlyLabel;
+  final String? autoApproveWorkspaceWriteLabel;
+  final String? customLabel;
+  final ValueChanged<LaunchSecurityPolicy> onSelected;
+}
+
 /// Toolbar chrome for landing / unbound compose (conversation mode, auto, expert chips).
 final class UnboundComposeChrome extends ComposeChrome {
   const UnboundComposeChrome({
     required this.conversationModeLabel,
     required this.autoChipLabel,
-    required this.launchSecurityPolicy,
-    required this.defaultPermissionsLabel,
-    required this.fullAccessPermissionsLabel,
+    this.permissionControl,
     required this.conversationModeSpecs,
     required this.autoChipSpecs,
     required this.onConversationModeSelected,
     required this.onAutoChipSelected,
-    required this.onPermissionSelected,
-    this.askReadOnlyPermissionsLabel,
-    this.autoApproveWorkspaceWritePermissionsLabel,
-    this.customPermissionsLabel,
     this.autoChipLeading,
     this.expertChipLabel,
     this.expertChipSpecs = const [],
@@ -34,17 +52,11 @@ final class UnboundComposeChrome extends ComposeChrome {
 
   final String conversationModeLabel;
   final String autoChipLabel;
-  final LaunchSecurityPolicy launchSecurityPolicy;
-  final String defaultPermissionsLabel;
-  final String fullAccessPermissionsLabel;
-  final String? askReadOnlyPermissionsLabel;
-  final String? autoApproveWorkspaceWritePermissionsLabel;
-  final String? customPermissionsLabel;
+  final ComposePermissionControl? permissionControl;
   final List<TpActionMenuSpec> conversationModeSpecs;
   final List<TpActionMenuSpec> autoChipSpecs;
   final ValueChanged<Object?> onConversationModeSelected;
   final ValueChanged<Object?> onAutoChipSelected;
-  final ValueChanged<LaunchSecurityPolicy> onPermissionSelected;
   final Widget? autoChipLeading;
   final String? expertChipLabel;
   final List<TpActionMenuSpec> expertChipSpecs;
@@ -69,13 +81,7 @@ final class BoundComposeChrome extends ComposeChrome {
     this.modelChipLeading,
     this.modelCascadeSpecs,
     this.onModelCascadeSelected,
-    this.launchSecurityPolicy = LaunchSecurityPolicy.fullAccess,
-    this.defaultPermissionsLabel,
-    this.fullAccessPermissionsLabel,
-    this.onPermissionSelected,
-    this.askReadOnlyPermissionsLabel,
-    this.autoApproveWorkspaceWritePermissionsLabel,
-    this.customPermissionsLabel,
+    this.permissionControl,
     this.teamSettingsTooltip,
     this.onTeamSettings,
     this.showTeamSettingsAttention = false,
@@ -100,13 +106,7 @@ final class BoundComposeChrome extends ComposeChrome {
   final List<TpActionMenuSpec>? modelCascadeSpecs;
   final ValueChanged<Object?>? onModelCascadeSelected;
 
-  final LaunchSecurityPolicy launchSecurityPolicy;
-  final String? defaultPermissionsLabel;
-  final String? fullAccessPermissionsLabel;
-  final String? askReadOnlyPermissionsLabel;
-  final String? autoApproveWorkspaceWritePermissionsLabel;
-  final String? customPermissionsLabel;
-  final ValueChanged<LaunchSecurityPolicy>? onPermissionSelected;
+  final ComposePermissionControl? permissionControl;
 
   final String? teamSettingsTooltip;
   final VoidCallback? onTeamSettings;

@@ -103,7 +103,7 @@ CREATE TABLE session (
       db.execute(
         "INSERT INTO session(id, parent_id, time_updated) VALUES ('ses_new', NULL, 2)",
       );
-      db.dispose();
+      db.close();
 
       final got = await const OpencodeAiHistoryCapability().detectNativeId(
         ctx(env: {'OPENCODE_DB': dbPath}),
@@ -120,16 +120,11 @@ CREATE TABLE session (
   time_updated INTEGER
 );
 ''');
-      db.execute(
-        "INSERT INTO session(id, time_updated) VALUES ('ses_db', 1)",
-      );
-      db.dispose();
+      db.execute("INSERT INTO session(id, time_updated) VALUES ('ses_db', 1)");
+      db.close();
 
       final got = await const OpencodeAiHistoryCapability().detectNativeId(
-        ctx(
-          env: {'OPENCODE_DB': dbPath},
-          persistedNativeId: 'ses_kept',
-        ),
+        ctx(env: {'OPENCODE_DB': dbPath}, persistedNativeId: 'ses_kept'),
       );
       expect(got, 'ses_kept');
     });
@@ -221,12 +216,9 @@ CREATE TABLE session (
         '"workspacePathHash":"slug","workspaceSlug":"slug","phase":"ready",'
         '"shared":{"root":"runtime/teams/$cursorTestTeamId/cursor",'
         '"projectsDir":"runtime/teams/$cursorTestTeamId/cursor/projects/slug",'
-        '"cliConfigBase":"runtime/teams/$cursorTestTeamId/cursor/cli-config.base.json",'
-        '"pluginsLocalDir":"runtime/teams/$cursorTestTeamId/cursor/plugins/local",'
-        '"skillsCursorDir":"runtime/teams/$cursorTestTeamId/cursor/skills-cursor",'
-        '"mcpBase":"runtime/teams/$cursorTestTeamId/cursor/mcp.base.json",'
-        '"settingsJson":"runtime/teams/$cursorTestTeamId/cursor/settings.json"},'
-        '"members":{"team-lead":{"homeRoot":"runtime/teams/$cursorTestTeamId/team-lead/cursor/home",'
+        '"cliConfigBase":"","pluginsLocalDir":"","skillsCursorDir":"",'
+        '"mcpBase":"","settingsJson":""},'
+        '"members":{"team-lead":{"homeRoot":"sessions/new-sess/runtime/team-lead/cursor/home",'
         '"chatId":"manifest-chat"}},"sessionOverlays":{}}',
       );
 
@@ -287,16 +279,19 @@ CREATE TABLE session (
       expect(got, 'task-1');
     });
 
-    test('detects transcript under projects (real flashskyai layout)', () async {
-      final projects = p.join(base.path, 'projects', 'home-me-proj');
-      await Directory(projects).create(recursive: true);
-      await File(p.join(projects, 'task-1.jsonl')).writeAsString('{}');
+    test(
+      'detects transcript under projects (real flashskyai layout)',
+      () async {
+        final projects = p.join(base.path, 'projects', 'home-me-proj');
+        await Directory(projects).create(recursive: true);
+        await File(p.join(projects, 'task-1.jsonl')).writeAsString('{}');
 
-      final got = await const FlashskyaiAiHistoryCapability().detectNativeId(
-        ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),
-      );
-      expect(got, 'task-1');
-    });
+        final got = await const FlashskyaiAiHistoryCapability().detectNativeId(
+          ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),
+        );
+        expect(got, 'task-1');
+      },
+    );
 
     test('returns null when no transcript exists', () async {
       final got = await const FlashskyaiAiHistoryCapability().detectNativeId(

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_dialog_theme.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/settings/workspace_pane_header.dart';
@@ -95,7 +94,7 @@ class _LogViewerDialogHeader extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: styles.lgBoldSnugColored(cs.onSurface,),
+                  style: styles.lgBoldSnugColored(cs.onSurface),
                 ),
                 if (subtitle.isNotEmpty) ...[
                   const SizedBox(height: 4),

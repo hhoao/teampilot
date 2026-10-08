@@ -17,9 +17,7 @@ void main() {
         theme: buildLightTheme(null, typography),
         home: const Scaffold(
           body: TpActionMenuPanel(
-            children: [
-              TpActionMenuItem(icon: Icons.edit, label: 'Rename'),
-            ],
+            children: [TpActionMenuItem(icon: Icons.edit, label: 'Rename')],
           ),
         ),
       ),

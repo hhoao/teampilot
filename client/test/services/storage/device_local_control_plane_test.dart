@@ -53,9 +53,7 @@ void main() {
 
     final repo = deviceLocalTargetsRepository(native.path);
     await repo.save(
-      TargetsRegistryFile(
-        targets: [RuntimeTarget.ssh('p1', label: 'box')],
-      ),
+      TargetsRegistryFile(targets: [RuntimeTarget.ssh('p1', label: 'box')]),
     );
     expect((await repo.load()).targets, hasLength(1));
 

@@ -5,7 +5,6 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/skills/skill_management_page.dart';
-import 'package:teampilot/pages/skills/skill_section.dart';
 import 'package:teampilot/repositories/skill_repository.dart';
 import 'package:teampilot/services/skill/registry/skill_registry_config_service.dart';
 import 'package:teampilot/widgets/settings/workspace_hub_shell.dart';
@@ -20,10 +19,12 @@ void main() {
     setUpTestAppStorage();
     cubit = SkillCubit(
       SkillRepository(storage: testHomeStorage),
-      registryConfigService: SkillRegistryConfigService(storage: testHomeStorage),
+      registryConfigService: SkillRegistryConfigService(
+        storage: testHomeStorage,
+      ),
       initialSources: const [],
       rebuildSources: (c) => const [],
-                        storage: testHomeStorage,
+      storage: testHomeStorage,
     );
   });
 

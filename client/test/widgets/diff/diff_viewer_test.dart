@@ -35,9 +35,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('renders toolbar over a unified body by default', (
-    tester,
-  ) async {
+  testWidgets('renders toolbar over a unified body by default', (tester) async {
     await pump(tester);
     expect(find.byType(DiffToolbar), findsOneWidget);
     expect(find.byType(UnifiedDiffView), findsOneWidget);

@@ -15,9 +15,9 @@ class ResourceMemorySparkline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.onSurfaceVariant.withValues(
-          alpha: 0.7,
-        );
+    final color = Theme.of(
+      context,
+    ).colorScheme.onSurfaceVariant.withValues(alpha: 0.7);
     return SizedBox(
       width: width,
       height: height,

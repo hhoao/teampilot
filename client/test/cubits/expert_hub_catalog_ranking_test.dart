@@ -23,7 +23,15 @@ class _Registry implements ExpertHubSource {
 }
 
 class _Source extends CompositeExpertHubSource {
-  _Source(this.results) : super(builtIns: const [], registry: _Registry(), localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir), );
+  _Source(this.results)
+    : super(
+        builtIns: const [],
+        registry: _Registry(),
+        localStore: LocalExpertStore(
+          fs: InMemoryFilesystem(),
+          dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
+        ),
+      );
 
   List<CatalogSourceResult<DiscoverableMember>> results;
   Completer<List<CatalogSourceResult<DiscoverableMember>>>? pending;

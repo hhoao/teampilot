@@ -47,7 +47,8 @@ void main() {
             ],
           },
         },
-        scriptPathFor: (event) => '/home/.cursor/hooks/teampilot-agent-status-$event.sh',
+        scriptPathFor: (event) =>
+            '/home/.cursor/hooks/teampilot-agent-status-$event.sh',
       );
       final hooks = merged['hooks'] as Map;
       // Bus stop hook + agent-status stop hook both preserved.
@@ -71,10 +72,11 @@ void main() {
     });
 
     test('mergeHooksConfig is idempotent', () {
-      Map<String, Object?> merge() => CursorHomeAgentStatusOverlay.mergeHooksConfig(
-        const <String, Object?>{},
-        scriptPathFor: (_) => '/x.sh',
-      );
+      Map<String, Object?> merge() =>
+          CursorHomeAgentStatusOverlay.mergeHooksConfig(
+            const <String, Object?>{},
+            scriptPathFor: (_) => '/x.sh',
+          );
       final once = merge();
       final twice = CursorHomeAgentStatusOverlay.mergeHooksConfig(
         once,

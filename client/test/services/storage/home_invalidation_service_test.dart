@@ -76,7 +76,9 @@ void main() {
   late _ReloadRecorder reload;
   final switchedHomeIds = <String>[];
 
-  HomeInvalidationService startService({List<SshProfile> initialProfiles = const []}) {
+  HomeInvalidationService startService({
+    List<SshProfile> initialProfiles = const [],
+  }) {
     final service = HomeInvalidationService(
       profileStates: profileStates.stream,
       storageChanges: storageChanges.stream,
@@ -103,14 +105,13 @@ void main() {
 
   test('unrelated profile churn does not reload', () async {
     startService(initialProfiles: const [home]);
-    profileStates.add(
-      const SshProfileState(
-        profiles: [home, other],
-      ),
-    );
+    profileStates.add(const SshProfileState(profiles: [home, other]));
     profileStates.add(
       SshProfileState(
-        profiles: [home, other.copyWith(name: 'Renamed')],
+        profiles: [
+          home,
+          other.copyWith(name: 'Renamed'),
+        ],
       ),
     );
     await _flush();
@@ -260,23 +261,26 @@ void main() {
     expect(reload.levels, [ReloadLevel.full]);
   });
 
-  test('diff queued behind an in-flight reload is drained, not dropped', () async {
-    startService(initialProfiles: const [home]);
-    profileStates.add(
-      SshProfileState(profiles: [home.copyWith(host: 'a.example.com')]),
-    );
-    await _flush();
-    expect(reload.levels, [ReloadLevel.full]);
+  test(
+    'diff queued behind an in-flight reload is drained, not dropped',
+    () async {
+      startService(initialProfiles: const [home]);
+      profileStates.add(
+        SshProfileState(profiles: [home.copyWith(host: 'a.example.com')]),
+      );
+      await _flush();
+      expect(reload.levels, [ReloadLevel.full]);
 
-    // A second diff while no drain is running triggers a new reload — the
-    // service (unlike the old widget binder) has no mounted state to drop it.
-    profileStates.add(
-      SshProfileState(profiles: [home.copyWith(host: 'b.example.com')]),
-    );
-    await _flush();
+      // A second diff while no drain is running triggers a new reload — the
+      // service (unlike the old widget binder) has no mounted state to drop it.
+      profileStates.add(
+        SshProfileState(profiles: [home.copyWith(host: 'b.example.com')]),
+      );
+      await _flush();
 
-    expect(reload.levels, [ReloadLevel.full, ReloadLevel.full]);
-  });
+      expect(reload.levels, [ReloadLevel.full, ReloadLevel.full]);
+    },
+  );
 
   test('stop() unsubscribes — later events do not reload', () async {
     final service = startService(initialProfiles: const [home]);

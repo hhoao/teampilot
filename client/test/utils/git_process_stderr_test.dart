@@ -25,9 +25,6 @@ fatal: destination path '/tmp/foo' already exists and is not an empty directory.
   });
 
   test('empty stderr uses exit code', () {
-    expect(
-      gitProcessStderrSnippet(ProcessResult(1, 1, '', '')),
-      'exit 1',
-    );
+    expect(gitProcessStderrSnippet(ProcessResult(1, 1, '', '')), 'exit 1');
   });
 }

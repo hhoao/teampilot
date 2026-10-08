@@ -54,17 +54,12 @@ void main() {
   test('DeepSeek host or name uses bundled deepseek', () {
     expect(
       resolveManagedProviderBrandIcon(
-        _provider(
-          name: 'Other',
-          url: 'https://api.deepseek.com/user/balance',
-        ),
+        _provider(name: 'Other', url: 'https://api.deepseek.com/user/balance'),
       ),
       const ManagedProviderBrandIconSpec.bundled('deepseek'),
     );
     expect(
-      resolveManagedProviderBrandIcon(
-        _provider(name: 'DeepSeek'),
-      ),
+      resolveManagedProviderBrandIcon(_provider(name: 'DeepSeek')),
       const ManagedProviderBrandIconSpec.bundled('deepseek'),
     );
   });

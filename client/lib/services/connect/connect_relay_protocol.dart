@@ -35,15 +35,13 @@ abstract final class ConnectRelayProtocol {
     String? deviceId,
     String? inviteToken,
     String? relayGrant,
-  }) =>
-      {
-        keyType: typeDial,
-        keyChannel: channel,
-        keySpliceId: spliceId,
-        if (deviceId != null && deviceId.isNotEmpty) keyDeviceId: deviceId,
-        if (inviteToken != null && inviteToken.isNotEmpty)
-          keyInviteToken: inviteToken,
-        if (relayGrant != null && relayGrant.isNotEmpty)
-          keyRelayGrant: relayGrant,
-      };
+  }) => {
+    keyType: typeDial,
+    keyChannel: channel,
+    keySpliceId: spliceId,
+    if (deviceId != null && deviceId.isNotEmpty) keyDeviceId: deviceId,
+    if (inviteToken != null && inviteToken.isNotEmpty)
+      keyInviteToken: inviteToken,
+    if (relayGrant != null && relayGrant.isNotEmpty) keyRelayGrant: relayGrant,
+  };
 }

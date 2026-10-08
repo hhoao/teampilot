@@ -59,11 +59,7 @@ void main() {
   group('AskUserQuestionHookGate', () {
     test('complete unblocks wait with allow reply', () async {
       final gate = AskUserQuestionHookGate();
-      final future = gate.wait(
-        sessionId: 's',
-        memberId: 'm',
-        toolUseId: 't1',
-      );
+      final future = gate.wait(sessionId: 's', memberId: 'm', toolUseId: 't1');
       expect(
         gate.complete(
           sessionId: 's',

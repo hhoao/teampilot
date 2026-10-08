@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'app_session.dart';
 import 'automation_session_match.dart';
 import 'landing_launch_context.dart';
-import 'launch_security_policy.dart';
 
 enum AutomationAction { scheduledMessage, launchPrompt }
 
@@ -62,7 +61,6 @@ class Automation {
     this.expertKey,
     this.projectFolderPath,
     this.workingDirectoryPath,
-    this.launchSecurityPolicy = LaunchSecurityPolicy.fullAccess,
     this.sessionId,
     this.targetMemberId = 'team-lead',
     required this.message,
@@ -101,9 +99,6 @@ class Automation {
       expertKey: json['expertKey'] as String?,
       projectFolderPath: json['projectFolderPath'] as String?,
       workingDirectoryPath: json['workingDirectoryPath'] as String?,
-      launchSecurityPolicy: LaunchSecurityPolicy.fromJson(
-        json['launchSecurityPolicy'],
-      ),
       sessionId: json['sessionId'] as String?,
       targetMemberId: json['targetMemberId'] as String? ?? 'team-lead',
       message: json['message'] as String? ?? '',
@@ -155,9 +150,6 @@ class Automation {
   /// Launch cwd under [projectFolderPath] (worktree path when applicable).
   final String? workingDirectoryPath;
 
-  /// Session-level security policy for new launch-prompt sessions.
-  final LaunchSecurityPolicy launchSecurityPolicy;
-
   final String? sessionId;
   final String targetMemberId;
   final String message;
@@ -203,7 +195,6 @@ class Automation {
     projectFolderPath: projectFolderPath,
     expertKey: expertKey,
     workingDirectoryPath: workingDirectoryPath,
-    launchSecurityPolicy: launchSecurityPolicy,
   );
 
   bool matchesSession(AppSession session) =>
@@ -288,7 +279,6 @@ class Automation {
     bool clearProjectFolderPath = false,
     String? workingDirectoryPath,
     bool clearWorkingDirectoryPath = false,
-    LaunchSecurityPolicy? launchSecurityPolicy,
     String? sessionId,
     bool clearSessionId = false,
     String? targetMemberId,
@@ -332,7 +322,6 @@ class Automation {
       workingDirectoryPath: clearWorkingDirectoryPath
           ? null
           : (workingDirectoryPath ?? this.workingDirectoryPath),
-      launchSecurityPolicy: launchSecurityPolicy ?? this.launchSecurityPolicy,
       sessionId: clearSessionId ? null : (sessionId ?? this.sessionId),
       targetMemberId: targetMemberId ?? this.targetMemberId,
       message: message ?? this.message,
@@ -373,7 +362,6 @@ class Automation {
           if (teamId != null && teamId!.isNotEmpty) 'teamId': teamId,
           'targetMemberId': targetMemberId,
         },
-        'launchSecurityPolicy': launchSecurityPolicy.toJson(),
         if (reuseSession) 'reuseSession': reuseSession,
         if (projectFolderPath != null && projectFolderPath!.isNotEmpty)
           'projectFolderPath': projectFolderPath,
@@ -417,7 +405,6 @@ class Automation {
             expertKey == other.expertKey &&
             projectFolderPath == other.projectFolderPath &&
             workingDirectoryPath == other.workingDirectoryPath &&
-            launchSecurityPolicy == other.launchSecurityPolicy &&
             sessionId == other.sessionId &&
             targetMemberId == other.targetMemberId &&
             message == other.message &&
@@ -452,7 +439,6 @@ class Automation {
     expertKey,
     projectFolderPath,
     workingDirectoryPath,
-    launchSecurityPolicy,
     sessionId,
     targetMemberId,
     message,

@@ -3,10 +3,11 @@ import 'dart:io';
 
 final class InstallJobContext {
   InstallJobContext({
-    void Function(String label, {String? detail, double? fraction})? reportPhase,
+    void Function(String label, {String? detail, double? fraction})?
+    reportPhase,
     void Function({required int completed, required int total})? reportItems,
-  })  : _reportPhase = reportPhase,
-        _reportItems = reportItems;
+  }) : _reportPhase = reportPhase,
+       _reportItems = reportItems;
 
   final void Function(String label, {String? detail, double? fraction})?
   _reportPhase;

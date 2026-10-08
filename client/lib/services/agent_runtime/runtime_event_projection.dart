@@ -219,7 +219,8 @@ final class ExitPlanModeRuntimeEventProjection extends RuntimeEventProjection
 /// permission card. Routing is strictly complementary to
 /// [ExitPlanModeRuntimeEventProjection]: ExitPlanMode / AskUserQuestion
 /// permission requests belong to the plan / ask gates and are skipped here.
-final class GeneralPermissionRuntimeEventProjection extends RuntimeEventProjection
+final class GeneralPermissionRuntimeEventProjection
+    extends RuntimeEventProjection
     implements RuntimeEventHookResponderProjection {
   GeneralPermissionRuntimeEventProjection({
     required this.gate,

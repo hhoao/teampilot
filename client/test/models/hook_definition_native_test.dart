@@ -11,7 +11,11 @@ void main() {
       event: HookEvent.preToolUse,
       matcher: 'Bash',
       action: const CommandHookAction.raw('bash /x/guard.sh'),
-      native: const {'if': 'Bash(rm *)', 'async': true, 'statusMessage': 'checking'},
+      native: const {
+        'if': 'Bash(rm *)',
+        'async': true,
+        'statusMessage': 'checking',
+      },
     );
     final restored = HookDefinition.fromJson(definition.toJson());
     expect(restored, definition);
@@ -53,20 +57,33 @@ void main() {
     expect(base.copyWith().native, {'async': true});
   });
 
-  test('native list values survive fromJson round-trip with equality and hash', () {
-    final definition = HookDefinition(
-      id: 'h4',
-      name: 'args guard',
-      event: HookEvent.preToolUse,
-      matcher: 'Bash',
-      action: const CommandHookAction.raw('bash /x/guard.sh'),
-      native: {'args': ['-f', 'x'], 'nested': {'deep': [1, 2]}},
-    );
-    final restored = HookDefinition.fromJson(definition.toJson());
-    // 列表/嵌套 Map 经 fromJson 生成新实例：identity 哈希会破坏契约，
-    // ==/hashCode 必须走规范化 JSON。
-    expect(restored, definition);
-    expect(restored.hashCode, definition.hashCode);
-    expect(restored.native, {'args': ['-f', 'x'], 'nested': {'deep': [1, 2]}});
-  });
+  test(
+    'native list values survive fromJson round-trip with equality and hash',
+    () {
+      final definition = HookDefinition(
+        id: 'h4',
+        name: 'args guard',
+        event: HookEvent.preToolUse,
+        matcher: 'Bash',
+        action: const CommandHookAction.raw('bash /x/guard.sh'),
+        native: {
+          'args': ['-f', 'x'],
+          'nested': {
+            'deep': [1, 2],
+          },
+        },
+      );
+      final restored = HookDefinition.fromJson(definition.toJson());
+      // 列表/嵌套 Map 经 fromJson 生成新实例：identity 哈希会破坏契约，
+      // ==/hashCode 必须走规范化 JSON。
+      expect(restored, definition);
+      expect(restored.hashCode, definition.hashCode);
+      expect(restored.native, {
+        'args': ['-f', 'x'],
+        'nested': {
+          'deep': [1, 2],
+        },
+      });
+    },
+  );
 }

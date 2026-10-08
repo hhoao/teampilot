@@ -153,9 +153,7 @@ class _NotificationListTileState extends State<NotificationListTile> {
                         borderRadius: BorderRadius.circular(4),
                         padding: const EdgeInsets.only(left: 4, top: 2),
                         child: Icon(
-                          _expanded
-                              ? Icons.expand_less
-                              : Icons.expand_more,
+                          _expanded ? Icons.expand_less : Icons.expand_more,
                           size: 18,
                           color: cs.onSurfaceVariant,
                         ),
@@ -189,9 +187,7 @@ class _NotificationListTileState extends State<NotificationListTile> {
           ),
           IconButton(
             tooltip: l10n.notificationMarkRead,
-            onPressed: widget.notification.isRead
-                ? null
-                : widget.onMarkRead,
+            onPressed: widget.notification.isRead ? null : widget.onMarkRead,
             icon: const Icon(Icons.check_circle_outline, size: 18),
             visualDensity: VisualDensity.compact,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),

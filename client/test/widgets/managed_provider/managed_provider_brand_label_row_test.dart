@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/widgets/managed_provider/managed_provider_brand_icon.dart';
 
 void main() {
-  testWidgets('brand label row vertically centers icon and text', (tester) async {
+  testWidgets('brand label row vertically centers icon and text', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -16,7 +18,10 @@ void main() {
             ),
             label: 'Codex',
             iconSize: 15,
-            textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            textStyle: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),

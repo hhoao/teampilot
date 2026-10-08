@@ -202,7 +202,9 @@ class LogViewerToolbar extends StatelessWidget {
                       ),
                       child: Text(
                         l10n.logViewerLineCount(lineCount),
-                        style: TpTextStyles.of(context).xsSemiboldColored(cs.onPrimaryContainer),
+                        style: TpTextStyles.of(
+                          context,
+                        ).xsSemiboldColored(cs.onPrimaryContainer),
                       ),
                     ),
                   ],
@@ -227,9 +229,7 @@ class LogViewerToolbar extends StatelessWidget {
     );
     return InputDecoration(
       hintText: hintText,
-      hintStyle: TpTextStyles.of(
-        context,
-      ).mdColored(cs.onSurfaceVariant),
+      hintStyle: TpTextStyles.of(context).mdColored(cs.onSurfaceVariant),
       prefixIcon: prefixIcon,
       prefixIconConstraints: const BoxConstraints(minWidth: 34, minHeight: 34),
       isDense: true,

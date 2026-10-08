@@ -7,7 +7,10 @@ void main() {
   test(
     'reports a safe source failure when the registry index is unavailable',
     () async {
-      final source = GitRegistryExpertHubSource(fetch: (_) async => null, storage: fakeHomeStorage(), );
+      final source = GitRegistryExpertHubSource(
+        fetch: (_) async => null,
+        storage: fakeHomeStorage(),
+      );
 
       final results = await (source as ExpertHubSourceContributions)
           .fetchMemberSources();

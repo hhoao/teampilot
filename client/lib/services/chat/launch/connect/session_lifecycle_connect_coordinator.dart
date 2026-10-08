@@ -1,0 +1,156 @@
+import 'dart:async';
+
+import 'member_lifecycle_connect_gate.dart';
+import '../session_launch_host.dart';
+import '../../../../models/app_session.dart';
+import '../../../../models/runtime_target.dart';
+import '../../../../models/team_config.dart';
+import '../../../../models/workspace_launch_context.dart';
+import '../../../cli/registry/capabilities/workspace_base_info_capability.dart';
+import 'connect_shell_result.dart';
+import 'member_connect_types.dart';
+import 'session_connect_job.dart';
+import '../../../../utils/logging/logger.dart';
+
+/// Lifecycle gate evaluation, deferred retries, and direct-PTY readiness checks.
+class SessionLifecycleConnectCoordinator {
+  SessionLifecycleConnectCoordinator({
+    required SessionLaunchHost host,
+    required WorkspaceLaunchContext Function(AppSession session)
+    launchContextFor,
+    required RuntimeTarget Function(AppSession session, {String? memberId})
+    launchWorkTarget,
+    required ScheduleMemberConnectFn scheduleMemberConnect,
+    required bool Function(String sessionId) tabOpen,
+    void Function(String sessionId, String memberId)? closeMemberRemotePlane,
+    Duration retryDelay = const Duration(seconds: 2),
+  }) : _host = host,
+       _launchContextFor = launchContextFor,
+       _launchWorkTarget = launchWorkTarget,
+       _scheduleMemberConnect = scheduleMemberConnect,
+       _tabOpen = tabOpen,
+       _closeMemberRemotePlane = closeMemberRemotePlane,
+       _retryDelay = retryDelay;
+
+  final SessionLaunchHost _host;
+  final WorkspaceLaunchContext Function(AppSession session) _launchContextFor;
+  final RuntimeTarget Function(AppSession session, {String? memberId})
+  _launchWorkTarget;
+  final ScheduleMemberConnectFn _scheduleMemberConnect;
+  final bool Function(String sessionId) _tabOpen;
+  final void Function(String sessionId, String memberId)?
+  _closeMemberRemotePlane;
+  final Duration _retryDelay;
+  final _retryTimers = <(String, String), Timer>{};
+
+  MemberLifecycleConnectGate _gate({
+    Map<String, Map<String, Object?>>? extraMcpServers,
+  }) => MemberLifecycleConnectGate(
+    cliRegistry: _host.cliRegistry,
+    teammateBusMcpGateway: _host.teammateBusMcpGateway,
+    globalPresets: () => _host.lifecycle.globalPresets,
+    resolvePaths: (session, memberId) async {
+      final launchCtx = _launchContextFor(session);
+      final workCtx = await _host.lifecycle.launchWorkContext(
+        launchCtx,
+        memberId: memberId,
+      );
+      return _host.lifecycle.configProfileServiceFor(
+        workCtx,
+        launchWorkspaceId: session.workspaceId,
+      );
+    },
+    memberWorkDirs: (session, memberId) =>
+        _host.lifecycle.memberWorkDirs(_launchContextFor(session), memberId),
+    launchWorkTarget: (session, {String? memberId}) =>
+        _launchWorkTarget(session, memberId: memberId),
+    workspaceBaseInfoFor: (session) {
+      final launchCtx = _launchContextFor(session);
+      return workspaceBaseInfoPromptInputs(
+        extraMcpServers: extraMcpServers,
+        folders: launchCtx.workspace.folders,
+        profileOf: _host.lifecycle.sshProfileById,
+      );
+    },
+  );
+
+  void cancelRetry(String sessionId, String memberId) {
+    _retryTimers.remove((sessionId, memberId))?.cancel();
+  }
+
+  void _scheduleRetry({
+    required TeamProfile team,
+    required TeamMemberConfig member,
+    required String sessionId,
+  }) {
+    final key = (sessionId, member.id);
+    _retryTimers.remove(key)?.cancel();
+    _retryTimers[key] = Timer(_retryDelay, () {
+      _retryTimers.remove(key);
+      if (_host.isClosed || !_tabOpen(sessionId)) return;
+      _scheduleMemberConnect(
+        team,
+        member,
+        sessionId,
+        reason: LaunchReason.retry,
+      );
+    });
+  }
+
+  /// Returns null when PTY attach may proceed; otherwise the connect abort reason.
+  Future<ConnectShellResult?> gateBeforeAttach({
+    required TeamProfile team,
+    required TeamMemberConfig member,
+    required AppSession session,
+    required String sessionId,
+    required bool teamBusInstalled,
+    String? remoteMemberKeyForRollback,
+    Map<String, Map<String, Object?>>? extraMcpServers,
+  }) async {
+    final outcome = await _gate(extraMcpServers: extraMcpServers).evaluate(
+      team: team,
+      member: member,
+      session: session,
+      teamBusInstalled: teamBusInstalled,
+    );
+    switch (outcome) {
+      case LifecycleConnectGateAllowed():
+        return null;
+      case LifecycleConnectGateDeferred(:final reason):
+        appLogger.d(
+          '[session-launch] lifecycle gate defer member=${member.id} '
+          'reason=$reason',
+        );
+        if (remoteMemberKeyForRollback != null) {
+          _closeMemberRemotePlane?.call(sessionId, remoteMemberKeyForRollback);
+        }
+        if (lifecycleGateReasonNeedsMemberRetry(reason)) {
+          _scheduleRetry(team: team, member: member, sessionId: sessionId);
+        }
+        return ConnectShellResult.deferred;
+      case LifecycleConnectGateBlocked(:final reason, :final userMessage):
+        appLogger.d(
+          '[session-launch] lifecycle gate block member=${member.id} '
+          'reason=$reason',
+        );
+        if (remoteMemberKeyForRollback != null) {
+          _closeMemberRemotePlane?.call(sessionId, remoteMemberKeyForRollback);
+        }
+        _host.failSessionConnect(sessionId, userMessage);
+        return ConnectShellResult.failed;
+    }
+  }
+
+  Future<bool> isDirectPtyInputReady({
+    required String sessionId,
+    required AppSession session,
+    required TeamProfile team,
+    required TeamMemberConfig member,
+    required bool teamBusInstalled,
+  }) => _gate().evaluateDirectPtyInputReady(
+    team: team,
+    member: member,
+    session: session,
+    teamBusInstalled: teamBusInstalled,
+  );
+}

@@ -1,7 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/pages/expert_hub/expert_landing_chip_menu.dart';
-import 'package:shared_ui/shared_ui.dart';
+
 void main() {
   group('buildExpertLandingChipMenuSpecs', () {
     test('orders clear, recent, divider, browse all', () {
@@ -45,9 +44,7 @@ void main() {
     });
 
     test('caps recent at kExpertLandingChipRecentLimit', () {
-      final many = [
-        for (var i = 0; i < 8; i++) (key: 'k$i', name: 'E$i'),
-      ];
+      final many = [for (var i = 0; i < 8; i++) (key: 'k$i', name: 'E$i')];
       final specs = buildExpertLandingChipMenuSpecs(
         noneSelectedLabel: 'No expert',
         browseAllLabel: 'Browse all',
@@ -62,12 +59,12 @@ void main() {
       expect(recentLabels, hasLength(kExpertLandingChipRecentLimit));
       expect(recentLabels.first, 'E0');
       expect(recentLabels.last, 'E4');
+      expect(specs.where((s) => s.value == 'k1').single.selected, isTrue);
       expect(
-        specs.where((s) => s.value == 'k1').single.selected,
-        isTrue,
-      );
-      expect(
-        specs.where((s) => s.value == ExpertLandingChipAction.clear).single.selected,
+        specs
+            .where((s) => s.value == ExpertLandingChipAction.clear)
+            .single
+            .selected,
         isFalse,
       );
     });

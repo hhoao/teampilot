@@ -10,7 +10,6 @@ import 'package:teampilot/services/plugin/plugin_install_service.dart';
 import 'package:teampilot/services/plugin/plugin_manifest_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory tmp;
@@ -48,7 +47,10 @@ void main() {
     final zipFile = File(p.join(tmp.path, 'in.zip'))
       ..writeAsBytesSync(zipBytes);
 
-    final svc = PluginInstallService(manifestService: PluginManifestService(), storage: HomeStorage(testHomeStorage.context), );
+    final svc = PluginInstallService(
+      manifestService: PluginManifestService(),
+      storage: HomeStorage(testHomeStorage.context),
+    );
     final installed = await svc.installFromZip(zipFile);
 
     expect(installed.name, 'my-plugin');
@@ -68,7 +70,10 @@ void main() {
   });
 
   test('uninstall removes directory and updates plugins.json', () async {
-    final svc = PluginInstallService(manifestService: PluginManifestService(), storage: HomeStorage(testHomeStorage.context), );
+    final svc = PluginInstallService(
+      manifestService: PluginManifestService(),
+      storage: HomeStorage(testHomeStorage.context),
+    );
     final installed = await _installMinimal(svc, tmp);
     final dir = Directory(
       p.join(tmp.path, 'plugins', 'installed', installed.directory),

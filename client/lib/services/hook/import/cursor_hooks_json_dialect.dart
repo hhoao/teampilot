@@ -63,15 +63,17 @@ class CursorHooksJsonDialect implements HookJsonDialect {
           native[entry.key] = entry.value;
           unsupported.add(entry.key);
         }
-        entries.add(RawHookEntry(
-          nativeEvent: event,
-          matcher: hookJsonString(h, 'matcher'),
-          type: 'command',
-          command: command,
-          timeoutSec: hookJsonInt(h, 'timeout'),
-          native: native,
-          unsupportedFields: unsupported,
-        ));
+        entries.add(
+          RawHookEntry(
+            nativeEvent: event,
+            matcher: hookJsonString(h, 'matcher'),
+            type: 'command',
+            command: command,
+            timeoutSec: hookJsonInt(h, 'timeout'),
+            native: native,
+            unsupportedFields: unsupported,
+          ),
+        );
       }
     }
     return entries;

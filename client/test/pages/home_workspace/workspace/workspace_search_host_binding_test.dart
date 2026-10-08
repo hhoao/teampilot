@@ -73,7 +73,9 @@ void main() {
       await tester.runAsync(() async {
         final dirA = await Directory.systemTemp.createTemp('ws_host_a_');
         final dirB = await Directory.systemTemp.createTemp('ws_host_b_');
-        tempDirs..add(dirA)..add(dirB);
+        tempDirs
+          ..add(dirA)
+          ..add(dirB);
         File('${dirA.path}/alpha_marker_file.dart').writeAsStringSync('// a');
         File('${dirB.path}/beta_marker_file.dart').writeAsStringSync('// b');
         workspaceA = await desktopHarnessSessionRepo.createWorkspace([
@@ -144,13 +146,14 @@ void main() {
         );
 
         // Dismiss so the top-level open-guard does not swallow the next open.
-        Navigator.of(
-          tester.element(find.byType(WorkspaceSearchDialog)),
-        ).pop();
+        Navigator.of(tester.element(find.byType(WorkspaceSearchDialog))).pop();
         await tester.pump();
         await pumpPhaseTransitions(tester);
-        expect(find.byType(WorkspaceSearchDialog), findsNothing,
-            reason: '$step: dialog must be closed');
+        expect(
+          find.byType(WorkspaceSearchDialog),
+          findsNothing,
+          reason: '$step: dialog must be closed',
+        );
       }
 
       // Step 1: open tab A — its deferred pane mounts and binds the host.
@@ -178,7 +181,10 @@ void main() {
       appRouter.go('/home-v2/workspace/${workspaceB.workspaceId}');
       await tester.pump();
       await pumpPhaseTransitions(tester);
-      await expectHostSearches('after home round-trip to B', expectAlpha: false);
+      await expectHostSearches(
+        'after home round-trip to B',
+        expectAlpha: false,
+      );
 
       // Step 5: browser-like background open of A, then activate it.
       final scopeCtx = tester.element(find.byType(HomeTabScope));
@@ -188,8 +194,10 @@ void main() {
       HomeTabScope.openInTab(scopeCtx, workspaceA.workspaceId, activate: true);
       await tester.pump();
       await pumpPhaseTransitions(tester);
-      await expectHostSearches('after background open + activate A',
-          expectAlpha: true);
+      await expectHostSearches(
+        'after background open + activate A',
+        expectAlpha: true,
+      );
     },
   );
 }

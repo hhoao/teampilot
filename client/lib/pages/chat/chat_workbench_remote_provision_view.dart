@@ -37,11 +37,7 @@ class ChatWorkbenchRemoteProvisionView extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: styles.mdMedium,
-              ),
+              Text(title, textAlign: TextAlign.center, style: styles.mdMedium),
               const SizedBox(height: 16),
               if (progress.hasFailed) ...[
                 Icon(Icons.error_outline, color: cs.error, size: 36),

@@ -1,4 +1,4 @@
-import '../../services/follow_up/follow_up_submit_gate.dart';
+import '../../services/chat/conversation/follow_up/follow_up_submit_gate.dart';
 
 /// History compose submit gate — thin wrapper for tests and [SessionChatView].
 FollowUpSubmitAction resolveHistoryComposeSubmitAction({
@@ -6,13 +6,12 @@ FollowUpSubmitAction resolveHistoryComposeSubmitAction({
   required bool memberWorking,
   required String trimmedText,
   required bool supportsTurnInterrupt,
-}) =>
-    resolveFollowUpSubmitAction(
-      permissionWaiting: permissionWaiting,
-      memberWorking: memberWorking,
-      composeTextEmpty: trimmedText.isEmpty,
-      supportsTurnInterrupt: supportsTurnInterrupt,
-    );
+}) => resolveFollowUpSubmitAction(
+  permissionWaiting: permissionWaiting,
+  memberWorking: memberWorking,
+  composeTextEmpty: trimmedText.isEmpty,
+  supportsTurnInterrupt: supportsTurnInterrupt,
+);
 
 /// Routes enqueue vs deliver; stop/block are no-ops on submit (Stop uses onStop).
 void dispatchHistoryComposeSubmit({

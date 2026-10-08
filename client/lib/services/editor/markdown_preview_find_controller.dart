@@ -51,14 +51,13 @@ class MarkdownPreviewFindController extends ChangeNotifier {
 
   /// Highlight ranges for the current hits, null when there is nothing to
   /// paint.
-  MarkdownHighlightContext? get highlights =>
-      _hits.isEmpty || _index == null
-          ? null
-          : MarkdownSearchHighlightContext.of(
-              _index!,
-              _hits,
-              activeOrdinal: _activeIndex,
-            );
+  MarkdownHighlightContext? get highlights => _hits.isEmpty || _index == null
+      ? null
+      : MarkdownSearchHighlightContext.of(
+          _index!,
+          _hits,
+          activeOrdinal: _activeIndex,
+        );
 
   MarkdownDocument? get document => _document;
 

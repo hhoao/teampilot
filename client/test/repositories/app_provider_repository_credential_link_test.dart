@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
@@ -75,16 +74,12 @@ void main() {
     await r.saveProviders(CliTool.claude, [withKey]);
     final loaded = await r.loadProviders(CliTool.claude);
     // Blank key on an unlinked row preserves the stored secret (existing rule).
-    await r.saveProviders(
-      CliTool.claude,
-      [loaded.single.copyWith(apiKey: '')],
-    );
+    await r.saveProviders(CliTool.claude, [loaded.single.copyWith(apiKey: '')]);
     final reloaded = await r.loadProviders(CliTool.claude);
     expect(reloaded.single.apiKey, 'sk-own');
   });
 
-  test('linked rows materialize native config with the resolved key',
-      () async {
+  test('linked rows materialize native config with the resolved key', () async {
     // Flashskyai materializes cli-defaults/flashskyai/llm_config.json on save.
     // The path is derived exactly as the strategy does (RuntimeLayout without
     // an injected fs), so the assertion holds under any platform path style.
@@ -94,10 +89,9 @@ void main() {
       basePath: '/tp',
       linkedCredentialLookup: (id) async => id == 'm1' ? 'sk-live' : null,
     );
-    await r.saveProviders(
-      CliTool.flashskyai,
-      [_linkedRow().copyWith(cli: CliTool.flashskyai, baseUrl: 'https://x')],
-    );
+    await r.saveProviders(CliTool.flashskyai, [
+      _linkedRow().copyWith(cli: CliTool.flashskyai, baseUrl: 'https://x'),
+    ]);
     final configFile = RuntimeLayout(
       teampilotRoot: '/tp',
       fs: fs,

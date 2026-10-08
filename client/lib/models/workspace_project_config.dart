@@ -67,7 +67,8 @@ class WorkspaceProjectConfig {
       ...bundle.toJson(),
       if (extensionOverrides.isNotEmpty)
         'extensionOverrides': {
-          for (final entry in extensionOverrides.entries) entry.key: entry.value,
+          for (final entry in extensionOverrides.entries)
+            entry.key: entry.value,
         },
     };
   }
@@ -80,5 +81,6 @@ class WorkspaceProjectConfig {
           mapEquals(extensionOverrides, other.extensionOverrides);
 
   @override
-  int get hashCode => Object.hash(bundle, Object.hashAll(extensionOverrides.entries));
+  int get hashCode =>
+      Object.hash(bundle, Object.hashAll(extensionOverrides.entries));
 }

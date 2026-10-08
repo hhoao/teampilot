@@ -53,7 +53,7 @@ void main() {
       );
       expect(target, isA<AiTaskUpdateTarget>());
       expect((target! as AiTaskUpdateTarget).taskId, '9');
-      expect((target! as AiTaskUpdateTarget).status, AiTaskStatus.inProgress);
+      expect((target as AiTaskUpdateTarget).status, AiTaskStatus.inProgress);
     });
 
     test('ignores unrelated tools', () {

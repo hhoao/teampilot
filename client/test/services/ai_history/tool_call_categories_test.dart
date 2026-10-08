@@ -38,7 +38,10 @@ void main() {
   });
 
   test('unknown names map to other', () {
-    expect(resolver.resolve(tool('custom_tool_call')), AiToolCallCategory.other);
+    expect(
+      resolver.resolve(tool('custom_tool_call')),
+      AiToolCallCategory.other,
+    );
     expect(resolver.resolve(tool('random_thing')), AiToolCallCategory.other);
   });
 

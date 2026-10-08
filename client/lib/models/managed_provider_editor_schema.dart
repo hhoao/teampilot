@@ -185,7 +185,9 @@ List<ManagedProviderEditorField> _queryFields(
       required: false,
       defaultValue: endpoint.windows.isEmpty
           ? null
-          : jsonEncode(endpoint.windows.map((window) => window.toJson()).toList()),
+          : jsonEncode(
+              endpoint.windows.map((window) => window.toJson()).toList(),
+            ),
     ),
   ];
   return fields;

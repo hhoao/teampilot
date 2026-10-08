@@ -32,9 +32,9 @@ class RunSessionPage extends StatelessWidget {
                 alignment: Alignment.topLeft,
                 child: Text(
                   text.isEmpty ? '' : text,
-                  style: TpTextStyles.of(context).smColored(
-                    cs.workspacePrimaryText,
-                  ),
+                  style: TpTextStyles.of(
+                    context,
+                  ).smColored(cs.workspacePrimaryText),
                 ),
               ),
             ),

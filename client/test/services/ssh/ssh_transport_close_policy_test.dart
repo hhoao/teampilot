@@ -32,19 +32,22 @@ void main() {
       }
     });
 
-    test('unexpected member closes affect durable home and schedule reconnect', () {
-      for (final reason in [
-        SshTransportCloseReason.remotePeerClosed,
-        SshTransportCloseReason.transportError,
-      ]) {
-        final d = SshTransportClosePolicy.evaluate(
-          SshTransportClosed(reason: reason, plane: SshTransportPlane.member),
-        );
-        expect(d.affectsDurableHome, isTrue, reason: reason.name);
-        expect(d.emitDisconnectNotification, isTrue, reason: reason.name);
-        expect(d.scheduleStorageReconnect, isTrue, reason: reason.name);
-      }
-    });
+    test(
+      'unexpected member closes affect durable home and schedule reconnect',
+      () {
+        for (final reason in [
+          SshTransportCloseReason.remotePeerClosed,
+          SshTransportCloseReason.transportError,
+        ]) {
+          final d = SshTransportClosePolicy.evaluate(
+            SshTransportClosed(reason: reason, plane: SshTransportPlane.member),
+          );
+          expect(d.affectsDurableHome, isTrue, reason: reason.name);
+          expect(d.emitDisconnectNotification, isTrue, reason: reason.name);
+          expect(d.scheduleStorageReconnect, isTrue, reason: reason.name);
+        }
+      },
+    );
 
     test('unexpected storage closes affect durable home', () {
       final d = SshTransportClosePolicy.evaluate(
@@ -57,17 +60,20 @@ void main() {
       expect(d.scheduleStorageReconnect, isTrue);
     });
 
-    test('expected local storage closes mark durable home but skip auto-reconnect', () {
-      final d = SshTransportClosePolicy.evaluate(
-        const SshTransportClosed(
-          reason: SshTransportCloseReason.userDisconnect,
-          plane: SshTransportPlane.storage,
-        ),
-      );
-      expect(d.affectsDurableHome, isTrue);
-      expect(d.emitDisconnectNotification, isTrue);
-      expect(d.scheduleStorageReconnect, isFalse);
-    });
+    test(
+      'expected local storage closes mark durable home but skip auto-reconnect',
+      () {
+        final d = SshTransportClosePolicy.evaluate(
+          const SshTransportClosed(
+            reason: SshTransportCloseReason.userDisconnect,
+            plane: SshTransportPlane.storage,
+          ),
+        );
+        expect(d.affectsDurableHome, isTrue);
+        expect(d.emitDisconnectNotification, isTrue);
+        expect(d.scheduleStorageReconnect, isFalse);
+      },
+    );
 
     test('fromError maps SshTransportClosed passthrough', () {
       const closed = SshTransportClosed(

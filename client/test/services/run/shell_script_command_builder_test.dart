@@ -43,10 +43,7 @@ void main() {
           env: {'FOO': 'bar'},
         ),
       );
-      expect(
-        line,
-        "cd '/proj' && export 'FOO'='bar' && '/bin/bash' './a.sh'",
-      );
+      expect(line, "cd '/proj' && export 'FOO'='bar' && '/bin/bash' './a.sh'");
     });
 
     test('multiple env exports are &&-joined and keys quoted', () {
@@ -112,29 +109,32 @@ void main() {
       );
     });
 
-    test('cmd dialect does not duplicate /c when already in interpreterOptions',
-        () {
-      final line = builder.buildInjectLine(
-        const ShellScriptConfiguration(
-          execute: 'scriptText',
-          scriptText: 'echo hi',
-          interpreterPath: r'C:\Windows\system32\cmd.exe',
-          interpreterOptions: '/c',
-          cwd: r'C:\proj',
-        ),
-      );
-      expect(
-        line,
-        r'cd /d "C:\proj" && "C:\Windows\system32\cmd.exe" /c "echo hi"',
-      );
-    });
+    test(
+      'cmd dialect does not duplicate /c when already in interpreterOptions',
+      () {
+        final line = builder.buildInjectLine(
+          const ShellScriptConfiguration(
+            execute: 'scriptText',
+            scriptText: 'echo hi',
+            interpreterPath: r'C:\Windows\system32\cmd.exe',
+            interpreterOptions: '/c',
+            cwd: r'C:\proj',
+          ),
+        );
+        expect(
+          line,
+          r'cd /d "C:\proj" && "C:\Windows\system32\cmd.exe" /c "echo hi"',
+        );
+      },
+    );
 
     test('powershell dialect uses Set-Location and -Command', () {
       final line = builder.buildInjectLine(
         const ShellScriptConfiguration(
           execute: 'scriptText',
           scriptText: 'flutter run',
-          interpreterPath: r'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe',
+          interpreterPath:
+              r'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe',
           cwd: r'C:\proj',
         ),
       );

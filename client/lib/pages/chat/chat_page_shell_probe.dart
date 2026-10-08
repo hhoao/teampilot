@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Key for the structural workbench body rebuild probe (widget tests).
-const chatPageStructuralBodyProbeKey = Key(
-  'chat-page-structural-body-probe',
-);
+const chatPageStructuralBodyProbeKey = Key('chat-page-structural-body-probe');
 
 /// Keys for widget tests that assert chat page shell rebuild isolation.
 @visibleForTesting
@@ -26,7 +24,8 @@ class ChatPageStructuralBodyProbe extends StatefulWidget {
 }
 
 @visibleForTesting
-class ChatPageStructuralBodyProbeState extends State<ChatPageStructuralBodyProbe> {
+class ChatPageStructuralBodyProbeState
+    extends State<ChatPageStructuralBodyProbe> {
   int buildCount = 0;
 
   @override

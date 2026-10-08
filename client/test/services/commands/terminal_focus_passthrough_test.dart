@@ -84,11 +84,17 @@ void main() {
               // under the same `ShortcutFocus` ancestor.
               ShortcutFocus(
                 kind: ShortcutFocusKind.terminal,
-                child: Focus(focusNode: terminalFocusNode, child: const SizedBox()),
+                child: Focus(
+                  focusNode: terminalFocusNode,
+                  child: const SizedBox(),
+                ),
               ),
               ShortcutFocus(
                 kind: ShortcutFocusKind.compose,
-                child: Focus(focusNode: composeFocusNode, child: const SizedBox()),
+                child: Focus(
+                  focusNode: composeFocusNode,
+                  child: const SizedBox(),
+                ),
               ),
             ],
           ),
@@ -110,50 +116,47 @@ void main() {
     return dispatcher;
   }
 
-  testWidgets(
-    'terminalPassthrough command fires while focus is under '
-    'ShortcutFocus.terminal, compose.submit does not',
-    (tester) async {
-      await pumpFocusRegions(tester);
+  testWidgets('terminalPassthrough command fires while focus is under '
+      'ShortcutFocus.terminal, compose.submit does not', (tester) async {
+    await pumpFocusRegions(tester);
 
-      final bus = CommandBus();
-      var stripNextTabCalls = 0;
-      var composeSubmitCalls = 0;
-      bus.register(CommandIds.stripNextTab, () => stripNextTabCalls++);
-      bus.register(CommandIds.composeSubmit, () => composeSubmitCalls++);
-      final dispatcher = installDispatcher(bus);
-      addTearDown(dispatcher.detach);
+    final bus = CommandBus();
+    var stripNextTabCalls = 0;
+    var composeSubmitCalls = 0;
+    bus.register(CommandIds.stripNextTab, () => stripNextTabCalls++);
+    bus.register(CommandIds.composeSubmit, () => composeSubmitCalls++);
+    final dispatcher = installDispatcher(bus);
+    addTearDown(dispatcher.detach);
 
-      terminalFocusNode.requestFocus();
-      await tester.pump();
+    terminalFocusNode.requestFocus();
+    await tester.pump();
 
-      // Ctrl+Tab -> stripNextTab (terminalPassthrough: true) fires even
-      // though primary focus resolves to ShortcutFocusKind.terminal.
-      HardwareKeyboard.instance.handleKeyEvent(
-        keyDown(LogicalKeyboardKey.controlLeft),
-      );
-      dispatcher.handle(keyDown(LogicalKeyboardKey.tab));
-      HardwareKeyboard.instance.handleKeyEvent(
-        keyUp(LogicalKeyboardKey.controlLeft),
-      );
+    // Ctrl+Tab -> stripNextTab (terminalPassthrough: true) fires even
+    // though primary focus resolves to ShortcutFocusKind.terminal.
+    HardwareKeyboard.instance.handleKeyEvent(
+      keyDown(LogicalKeyboardKey.controlLeft),
+    );
+    dispatcher.handle(keyDown(LogicalKeyboardKey.tab));
+    HardwareKeyboard.instance.handleKeyEvent(
+      keyUp(LogicalKeyboardKey.controlLeft),
+    );
 
-      expect(stripNextTabCalls, 1);
+    expect(stripNextTabCalls, 1);
 
-      // Bare Enter (no modifiers held) -> compose.submit requires
-      // `when: inCompose`; focus is in the terminal region, not compose,
-      // so it must not fire.
-      dispatcher.handle(keyDown(LogicalKeyboardKey.enter));
+    // Bare Enter (no modifiers held) -> compose.submit requires
+    // `when: inCompose`; focus is in the terminal region, not compose,
+    // so it must not fire.
+    dispatcher.handle(keyDown(LogicalKeyboardKey.enter));
 
-      expect(composeSubmitCalls, 0);
+    expect(composeSubmitCalls, 0);
 
-      // Move focus to the compose region: inCompose flips true, inTerminal
-      // flips false — the same bare Enter now submits.
-      composeFocusNode.requestFocus();
-      await tester.pump();
+    // Move focus to the compose region: inCompose flips true, inTerminal
+    // flips false — the same bare Enter now submits.
+    composeFocusNode.requestFocus();
+    await tester.pump();
 
-      dispatcher.handle(keyDown(LogicalKeyboardKey.enter));
+    dispatcher.handle(keyDown(LogicalKeyboardKey.enter));
 
-      expect(composeSubmitCalls, 1);
-    },
-  );
+    expect(composeSubmitCalls, 1);
+  });
 }

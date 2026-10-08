@@ -73,7 +73,8 @@ class FloatingTabStripDrag {
     WorkbenchTabId tab,
     String targetGroupId,
     SplitDropZone zone,
-  ) onDrop;
+  )
+  onDrop;
 }
 
 /// Tabs-only strip for the floating title bar.
@@ -202,9 +203,7 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
                     : null
               : null,
           onUnpin: pinned ? () => onUnpin?.call(tab.id) : null,
-          onDoubleTap: onDoubleTap != null
-              ? () => onDoubleTap!(tab.id)
-              : null,
+          onDoubleTap: onDoubleTap != null ? () => onDoubleTap!(tab.id) : null,
           onSplitRight: onSplitRight != null
               ? () => onSplitRight!(tab.id)
               : null,

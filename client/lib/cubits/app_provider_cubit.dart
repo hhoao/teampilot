@@ -109,7 +109,8 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     Future<void> Function(Uri uri)? openCredentialLoginUrl,
     ManagedProviderRepository? managedProviderRepository,
   }) : _repository =
-           repository ?? AppProviderRepository(basePath: basePath, storage: storage),
+           repository ??
+           AppProviderRepository(basePath: basePath, storage: storage),
        _generator = generator ?? const ToolConfigGenerator(),
        _flashskyaiExecutablePath = flashskyaiExecutablePath,
        _importService = importService,
@@ -139,9 +140,9 @@ class AppProviderCubit extends Cubit<AppProviderState> {
 
   void beginCredentialLogin(String providerId) {
     emit(
-      state.copyWith(clearCredentialLogin: true).copyWith(
-        credentialLoginProviderId: providerId,
-      ),
+      state
+          .copyWith(clearCredentialLogin: true)
+          .copyWith(credentialLoginProviderId: providerId),
     );
   }
 
@@ -311,7 +312,9 @@ class AppProviderCubit extends Cubit<AppProviderState> {
         final entry = entries.where((e) => e.id == link).firstOrNull;
         final backLink = entry == null
             ? null
-            : managedProviderLinkSourceOf(entry.endpointConfig.credentialSource);
+            : managedProviderLinkSourceOf(
+                entry.endpointConfig.credentialSource,
+              );
         if (backLink != null &&
             backLink.cli == cli &&
             backLink.providerId == trimmedId) {
@@ -346,10 +349,12 @@ class AppProviderCubit extends Cubit<AppProviderState> {
           existing?.createdAt ??
           (provider.createdAt > 0 ? provider.createdAt : now),
       updatedAt: now,
-      credentialStatus:
-          keepProbedCredentials ? existing.credentialStatus : null,
-      credentialUpdatedAt:
-          keepProbedCredentials ? existing.credentialUpdatedAt : null,
+      credentialStatus: keepProbedCredentials
+          ? existing.credentialStatus
+          : null,
+      credentialUpdatedAt: keepProbedCredentials
+          ? existing.credentialUpdatedAt
+          : null,
     );
     final list = [
       for (final p in current)
@@ -427,8 +432,9 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     bool replace = false,
     String? homeDirectory,
   }) async {
-    final capability = CliToolRegistry.builtIn()
-        .capability<ProviderCapability>(provider.cli);
+    final capability = CliToolRegistry.builtIn().capability<ProviderCapability>(
+      provider.cli,
+    );
     if (capability == null || !capability.appliesTo(provider)) {
       return CredentialActionResult.unsupported();
     }
@@ -453,7 +459,10 @@ class AppProviderCubit extends Cubit<AppProviderState> {
         await _refreshCredentialStatus(provider.cli, provider.id);
         return result;
       }
-      final refreshed = await _refreshCredentialStatus(provider.cli, provider.id);
+      final refreshed = await _refreshCredentialStatus(
+        provider.cli,
+        provider.id,
+      );
       if (!refreshed) {
         return CredentialActionResult.failure(
           const CredentialActionFailure(
@@ -471,8 +480,9 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     AppProviderConfig provider,
     CredentialBindingKind binding,
   ) async {
-    final capability = CliToolRegistry.builtIn()
-        .capability<ProviderCapability>(provider.cli);
+    final capability = CliToolRegistry.builtIn().capability<ProviderCapability>(
+      provider.cli,
+    );
     if (capability == null || !capability.supportsCredentialBinding) {
       return false;
     }
@@ -613,8 +623,9 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   }
 
   Future<bool> _refreshCredentialStatus(CliTool cli, String providerId) async {
-    final capability = CliToolRegistry.builtIn()
-        .capability<ProviderCapability>(cli);
+    final capability = CliToolRegistry.builtIn().capability<ProviderCapability>(
+      cli,
+    );
     if (capability == null) return false;
     final provider = state
         .providersFor(cli)
@@ -731,10 +742,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   }
 
   static String _importAllStatusMessage(List<ProviderImportResult> results) {
-    final changed = results.fold<int>(
-      0,
-      (sum, r) => sum + r.added + r.updated,
-    );
+    final changed = results.fold<int>(0, (sum, r) => sum + r.added + r.updated);
     final mirrored = results.fold<int>(
       0,
       (sum, r) => sum + r.mirroredToFlashskyai,

@@ -28,8 +28,9 @@ class TeamHooksSection extends StatelessWidget {
     final onManage = onManageGlobal ?? () => context.go('/hooks');
     final hookState = context.watch<HookCubit>().state;
     final definitions = hookState.definitions;
-    final assignedCount =
-        definitions.where((d) => assignedIds.contains(d.id)).length;
+    final assignedCount = definitions
+        .where((d) => assignedIds.contains(d.id))
+        .length;
 
     return SingleChildScrollView(
       child: Column(

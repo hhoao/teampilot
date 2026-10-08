@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/editor/markdown_preview_link_handler.dart';
 import 'package:tp_markdown/tp_markdown.dart';
@@ -58,19 +57,22 @@ void main() {
   late Directory dir;
 
   ImageProvider? resolve(String src) => resolveMarkdownPreviewImage(
-        src: src,
-        markdownFilePath: '${dir.path}/README.md',
-        workspaceRoots: [dir.path],
-      );
+    src: src,
+    markdownFilePath: '${dir.path}/README.md',
+    workspaceRoots: [dir.path],
+  );
 
-  Widget? resolveWidget(String src, {required bool inline, required double? inlineHeight}) =>
-      buildMarkdownPreviewImage(
-        src: src,
-        markdownFilePath: '${dir.path}/README.md',
-        workspaceRoots: [dir.path],
-        inline: inline,
-        inlineHeight: inlineHeight,
-      );
+  Widget? resolveWidget(
+    String src, {
+    required bool inline,
+    required double? inlineHeight,
+  }) => buildMarkdownPreviewImage(
+    src: src,
+    markdownFilePath: '${dir.path}/README.md',
+    workspaceRoots: [dir.path],
+    inline: inline,
+    inlineHeight: inlineHeight,
+  );
 
   testWidgets('README image structures render with browser-like sizing', (
     tester,
@@ -94,31 +96,35 @@ void main() {
       '<rect width="512" height="512" fill="#555"/></svg>',
     );
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: MaterialApp(
-      home: Scaffold(
-        body: SizedBox(
-          width: 800,
-          child: SingleChildScrollView(
-            child: VirtualMarkdownView(
-              document: doc,
-              tokens: MarkdownTokens.test(),
-              resolvers: MarkdownResolvers(
-                resolveImage: resolve,
-                buildImageWidget: resolveWidget as Widget? Function(
-                  String, {
-                  required bool inline,
-                  required double inlineHeight,
-                })?,
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              child: SingleChildScrollView(
+                child: VirtualMarkdownView(
+                  document: doc,
+                  tokens: MarkdownTokens.test(),
+                  resolvers: MarkdownResolvers(
+                    resolveImage: resolve,
+                    buildImageWidget:
+                        resolveWidget
+                            as Widget? Function(
+                              String, {
+                              required bool inline,
+                              required double inlineHeight,
+                            })?,
+                  ),
+                  flatten: true,
+                ),
               ),
-              flatten: true,
             ),
           ),
         ),
       ),
-    ),
-      ));
+    );
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
@@ -139,10 +145,16 @@ void main() {
     hintedSizes.sort();
     // 19% and 70% of the ~784px paragraph box, plus the 220px qrcode.
     expect(hintedSizes, contains(closeTo(220, 2)), reason: 'qrcode width hint');
-    expect(hintedSizes.where((w) => w > 130 && w < 200).length, greaterThan(0),
-        reason: '19% column width');
-    expect(hintedSizes.where((w) => w > 500).length, greaterThan(0),
-        reason: '70% column width');
+    expect(
+      hintedSizes.where((w) => w > 130 && w < 200).length,
+      greaterThan(0),
+      reason: '19% column width',
+    );
+    expect(
+      hintedSizes.where((w) => w > 500).length,
+      greaterThan(0),
+      reason: '70% column width',
+    );
     // No image rendered below 100px wide (line-clamped or zero-height path).
     expect(hintedSizes.every((w) => w > 100), isTrue);
   });

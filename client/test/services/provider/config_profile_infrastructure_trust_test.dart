@@ -20,7 +20,7 @@ void main() {
       basePath: base.path,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       fs: fs,
-                                               storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     final metadataPath = p.join(base.path, '.claude.json');
 

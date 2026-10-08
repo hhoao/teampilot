@@ -13,10 +13,10 @@ void main() {
     );
     expect(team.members.map((m) => m.id), ['team-lead', 'developer']);
     expect(team.members.last.replicas, 1);
-    expect(
-      expandTeamRoster(team.members).map((i) => i.instanceId),
-      ['team-lead', 'developer'],
-    );
+    expect(expandTeamRoster(team.members).map((i) => i.instanceId), [
+      'team-lead',
+      'developer',
+    ]);
   });
 
   test('replicated team: developer replicas 2 → pods developer-0/1', () {
@@ -26,10 +26,11 @@ void main() {
       shape: RosterShape.replicated,
     );
     expect(team.members.last.replicas, 2);
-    expect(
-      expandTeamRoster(team.members).map((i) => i.instanceId),
-      ['team-lead', 'developer-0', 'developer-1'],
-    );
+    expect(expandTeamRoster(team.members).map((i) => i.instanceId), [
+      'team-lead',
+      'developer-0',
+      'developer-1',
+    ]);
   });
 
   test('placementFiltered omits developer-1 from bindings helper', () {
@@ -42,30 +43,31 @@ void main() {
       shape: RosterShape.placementFiltered,
       team: team,
     );
-    expect(bindings.map((b) => b.rosterMemberId), [
+    expect(bindings.map((b) => b.rosterMemberId), ['team-lead', 'developer-0']);
+  });
+
+  test('matrixExpectedPodIds matches expand for each shape', () {
+    expect(matrixExpectedPodIds(RosterShape.singleton), [
+      'team-lead',
+      'developer',
+    ]);
+    expect(matrixExpectedPodIds(RosterShape.replicated), [
+      'team-lead',
+      'developer-0',
+      'developer-1',
+    ]);
+    expect(matrixExpectedPodIds(RosterShape.placementFiltered), [
       'team-lead',
       'developer-0',
     ]);
   });
 
-  test('matrixExpectedPodIds matches expand for each shape', () {
-    expect(
-      matrixExpectedPodIds(RosterShape.singleton),
-      ['team-lead', 'developer'],
-    );
-    expect(
-      matrixExpectedPodIds(RosterShape.replicated),
-      ['team-lead', 'developer-0', 'developer-1'],
-    );
-    expect(
-      matrixExpectedPodIds(RosterShape.placementFiltered),
-      ['team-lead', 'developer-0'],
-    );
-  });
-
   test('matrixPrimaryWorkerPodId', () {
     expect(matrixPrimaryWorkerPodId(RosterShape.singleton), 'developer');
     expect(matrixPrimaryWorkerPodId(RosterShape.replicated), 'developer-0');
-    expect(matrixPrimaryWorkerPodId(RosterShape.placementFiltered), 'developer-0');
+    expect(
+      matrixPrimaryWorkerPodId(RosterShape.placementFiltered),
+      'developer-0',
+    );
   });
 }

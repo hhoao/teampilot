@@ -1,10 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/terminal_behavior.dart';
-import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
-import 'package:teampilot/services/terminal/fullscreen_input_screen_probe.dart';
-import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
-import 'package:teampilot/services/terminal/fullscreen_pty_delivery_port.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_cr_ack_config.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_input_screen_probe.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_pty_automation.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_pty_submission_machine.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_pty_delivery_port.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 
 import 'support/fake_fullscreen_pty_delivery_port.dart';
 
@@ -29,8 +30,8 @@ void main() {
       expect(port.staged, isNull);
     });
 
-    test('returns pasteNotFound without internally re-pasting', () async {
-      final port = FakeFullscreenPtyDeliveryPort(pastesBeforeVisible: 2);
+    test('retries staging within budget then returns pasteNotFound', () async {
+      final port = FakeFullscreenPtyDeliveryPort(pastesBeforeVisible: 5);
       const text = '和你的队员打个招呼吧';
 
       final outcome = await automation.deliverPasteAndSubmit(
@@ -40,8 +41,42 @@ void main() {
       );
 
       expect(outcome, FullscreenPtyDeliveryOutcome.pasteNotFound);
-      expect(port.pasteCount, 1);
+      // instant staging budget = 2: first paste + one retry, then give up.
+      expect(port.pasteCount, 2);
     });
+
+    test(
+      'single-attempt staging budget returns pasteNotFound after one paste',
+      () {
+        final single = FullscreenPtyAutomation(
+          timing: const PtyAutomationTiming(
+            afterClear: Duration.zero,
+            afterPaste: Duration.zero,
+            afterCr: Duration.zero,
+            afterReinject: Duration.zero,
+            crMaxAttempts: 2,
+            reinjectMaxAttempts: 1,
+            nudgeMaxAttempts: 2,
+            scanRows: 24,
+            pollTimeout: Duration.zero,
+            pollInterval: Duration.zero,
+            stagingMaxAttempts: 1,
+            stagingRetryInterval: Duration.zero,
+            sendAckTimeout: Duration.zero,
+          ),
+        );
+        return () async {
+          final port = FakeFullscreenPtyDeliveryPort(pastesBeforeVisible: 2);
+          final outcome = await single.deliverPasteAndSubmit(
+            port: port,
+            text: 'never lands',
+            pasteSettle: Duration.zero,
+          );
+          expect(outcome, FullscreenPtyDeliveryOutcome.pasteNotFound);
+          expect(port.pasteCount, 1);
+        }();
+      },
+    );
 
     test('returns pasteNotFound when needle never appears', () async {
       final port = FakeFullscreenPtyDeliveryPort(visibleAfterPaste: false);
@@ -211,59 +246,50 @@ void main() {
     );
   });
 
-  group('nudgeCrUntilClear', () {
-    test('submits CR when text already visible', () async {
+  group('continueSubmission (state-machine driven)', () {
+    FullscreenPtySubmission newMachine({
+      FullscreenPtySubmissionBudget? budget,
+    }) => FullscreenPtySubmission(
+      budget:
+          budget ?? const FullscreenPtySubmissionBudget(stagingMaxAttempts: 2),
+      now: DateTime.now,
+    );
+
+    test(
+      're-pastes from staging when text is not visible on the grid',
+      () async {
+        final machine = newMachine()..begin();
+        final port = FakeFullscreenPtyDeliveryPort();
+        final text = TeamBus.doorbellNotice;
+
+        final outcome = await automation.continueSubmission(
+          machine,
+          port: port,
+          text: text,
+          pasteSettle: Duration.zero,
+        );
+
+        expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+        expect(
+          port.pasteCount,
+          1,
+          reason:
+              'deferred / pasteNotFound retries must re-paste; CR-only leaves '
+              'the composer empty forever',
+        );
+        expect(port.crCount, 1);
+      },
+    );
+
+    test('locked pasted only nudges CR and never re-pastes', () async {
+      final machine = newMachine()..begin();
+      // Simulate the previous attempt already having staged the message.
+      machine.noteNeedleFound();
       final port = FakeFullscreenPtyDeliveryPort()
         ..staged = TeamBus.doorbellNotice;
 
-      final outcome = await automation.nudgeCrUntilClear(
-        port: port,
-        text: TeamBus.doorbellNotice,
-      );
-
-      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
-      expect(port.pasteCount, 0);
-      expect(port.crCount, 1);
-    });
-
-    test('returns pasteNotFound when text absent', () async {
-      final port = FakeFullscreenPtyDeliveryPort();
-
-      final outcome = await automation.nudgeCrUntilClear(
-        port: port,
-        text: TeamBus.doorbellNotice,
-      );
-
-      expect(outcome, FullscreenPtyDeliveryOutcome.pasteNotFound);
-    });
-  });
-
-  group('retry', () {
-    test('re-pastes when text is not visible on the grid', () async {
-      final port = FakeFullscreenPtyDeliveryPort();
-
-      final outcome = await automation.retry(
-        port: port,
-        text: TeamBus.doorbellNotice,
-        pasteSettle: Duration.zero,
-      );
-
-      expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
-      expect(
-        port.pasteCount,
-        1,
-        reason:
-            'deferred / pasteNotFound retries must re-paste; CR-only leaves '
-            'the composer empty forever',
-      );
-      expect(port.crCount, 1);
-    });
-
-    test('only nudges CR when text is already visible', () async {
-      final port = FakeFullscreenPtyDeliveryPort()
-        ..staged = TeamBus.doorbellNotice;
-
-      final outcome = await automation.retry(
+      final outcome = await automation.continueSubmission(
+        machine,
         port: port,
         text: TeamBus.doorbellNotice,
         pasteSettle: Duration.zero,
@@ -276,26 +302,230 @@ void main() {
     });
 
     test(
-      'skips re-paste entirely when hook already acked the submit',
+      'hookSubmitAck: grid submit false-positive does not report submitted',
       () async {
-        final port = FakeFullscreenPtyDeliveryPort();
+        // Resume bug regression: even if the grid probe (composerMovesDown)
+        // reports submitted on a transcript echo, hookSubmitAck must wait for
+        // the real hook confirmation and end crStuck — never "running but not
+        // sent".
+        final machine = newMachine()..begin();
+        final port = FakeFullscreenPtyDeliveryPort(
+          crAckConfig: const FullscreenCrAckConfig(
+            strategy: FullscreenCrAckStrategy.composerMovesDown,
+            hookSubmitAck: true,
+          ),
+          crsToClear: 1,
+        )..staged = TeamBus.doorbellNotice; // grid would ACK this
 
-        final outcome = await automation.retry(
+        final outcome = await automation.continueSubmission(
+          machine,
           port: port,
           text: TeamBus.doorbellNotice,
           pasteSettle: Duration.zero,
-          isAcked: () => true,
+          isAcked: () => false, // hook never confirms
+        );
+
+        expect(
+          outcome,
+          FullscreenPtyDeliveryOutcome.crStuck,
+          reason:
+              'without the hook confirmation the submit must stay unconfirmed, '
+              'even though the grid would report submitted',
+        );
+      },
+    );
+
+    test(
+      'hookSubmitAck: hook confirmation returns submitted immediately',
+      () async {
+        final machine = newMachine()..begin();
+        final port = FakeFullscreenPtyDeliveryPort(
+          crAckConfig: const FullscreenCrAckConfig(
+            strategy: FullscreenCrAckStrategy.composerMovesDown,
+            hookSubmitAck: true,
+          ),
+        );
+
+        // Only confirm once CR rides — asserts the hook-only path really
+        // reaches _hookOnlyCr and honors the hook (not an early staging ack).
+        final outcome = await automation.continueSubmission(
+          machine,
+          port: port,
+          text: TeamBus.doorbellNotice,
+          pasteSettle: Duration.zero,
+          isAcked: () => port.crCount > 0,
+        );
+
+        expect(outcome, FullscreenPtyDeliveryOutcome.submitted);
+        expect(port.crCount, greaterThanOrEqualTo(1));
+      },
+    );
+
+    test('skips everything when hook already acked the submit', () async {
+      final machine = newMachine()..begin();
+      final port = FakeFullscreenPtyDeliveryPort();
+
+      final outcome = await automation.continueSubmission(
+        machine,
+        port: port,
+        text: TeamBus.doorbellNotice,
+        pasteSettle: Duration.zero,
+        isAcked: () => true,
+      );
+
+      expect(
+        outcome,
+        FullscreenPtyDeliveryOutcome.submitted,
+        reason:
+            'hook confirmed the prompt already committed; retry re-paste '
+            'would duplicate the user row',
+      );
+      expect(port.pasteCount, 0);
+      expect(port.crCount, 0);
+    });
+
+    test(
+      'repeated identical short message ACKs the newly pasted copy, not the stale echo',
+      () async {
+        // Regression for "send the same short message twice": the first render
+        // sits on an upper row (transcript echo); the freshly pasted copy lands
+        // on a lower row in the input box. The paste-denominator baseline must
+        // require the new line, otherwise the second send locks onto the first.
+        final machine = newMachine()..begin();
+        final text = TeamBus.doorbellNotice;
+        final port = RowAwareFakeFullscreenPtyDeliveryPort(staleEcho: text);
+
+        final outcome = await automation.continueSubmission(
+          machine,
+          port: port,
+          text: text,
+          pasteSettle: Duration.zero,
         );
 
         expect(
           outcome,
           FullscreenPtyDeliveryOutcome.submitted,
           reason:
-              'hook confirmed the prompt already committed; retry re-paste '
-              'would duplicate the user row',
+              'second identical send must stage on the fresh row below the '
+              'stale echo, not confuse it with the already-present line',
         );
-        expect(port.pasteCount, 0);
-        expect(port.crCount, 0);
+        expect(port.pasteCount, 1);
+        expect(port.crCount, greaterThanOrEqualTo(1));
+      },
+    );
+
+    test(
+      'failed paste with same-text echo above baseline ends pasteNotFound, not a false success',
+      () async {
+        // If the new paste does not land, the only match is the stale echo at
+        // the baseline row. The strict (<=) baseline must reject it — otherwise
+        // a dropped paste would be ACKed as staged and a stray CR sent.
+        final machine = newMachine()..begin();
+        final text = TeamBus.doorbellNotice;
+        final port = RowAwareFakeFullscreenPtyDeliveryPort(
+          pasteFailsToStage: true,
+          staleEcho: text,
+        );
+
+        final outcome = await automation.continueSubmission(
+          machine,
+          port: port,
+          text: text,
+          pasteSettle: Duration.zero,
+        );
+
+        expect(
+          outcome,
+          FullscreenPtyDeliveryOutcome.pasteNotFound,
+          reason:
+              'a paste that never staged must not be ACKed by the stale echo '
+              'at the baseline row (<= check) or reported as submitted',
+        );
+      },
+    );
+
+    test(
+      'paste baseline drains the grid after clear so leftover composer text is not the baseline',
+      () async {
+        // Cursor: leftover "A" is still in the composer when staging starts.
+        // Ctrl-U clears the live TUI, but the probe grid lags until
+        // syncDisplayGrid (drainForTest). Baseline must read the post-clear
+        // drain, otherwise pre and post paste both sit on the composer row
+        // and stale-baseline rejects a successful paste forever.
+        final machine = newMachine()..begin();
+        final port = RowAwareFakeFullscreenPtyDeliveryPort(laggingProbe: true)
+          ..staged = 'A';
+
+        final outcome = await automation.continueSubmission(
+          machine,
+          port: port,
+          text: 'A',
+          pasteSettle: Duration.zero,
+        );
+
+        expect(
+          outcome,
+          FullscreenPtyDeliveryOutcome.submitted,
+          reason:
+              'clearing leftover composer text must refresh the probe grid '
+              'before the paste-denominator baseline is recorded',
+        );
+        expect(port.clearCount, greaterThanOrEqualTo(1));
+        expect(port.pasteCount, 1);
+        expect(port.crCount, greaterThanOrEqualTo(1));
+      },
+    );
+
+    test(
+      'paste baseline polls after clear until leftover composer text leaves the probe',
+      () async {
+        // Production: drainForTest only applies PTY bytes already in the
+        // buffer. Ctrl-U's redraw can arrive after the first post-clear
+        // snapshot, so leftover "A" is still on the composer row and a
+        // same-row paste is rejected as stale-baseline (real Cursor
+        // AskQuestion log: needle="A" pre=34 anchor=34).
+        final polling = FullscreenPtyAutomation(
+          timing: const PtyAutomationTiming(
+            afterClear: Duration.zero,
+            afterPaste: Duration.zero,
+            afterCr: Duration.zero,
+            afterReinject: Duration.zero,
+            crMaxAttempts: 2,
+            reinjectMaxAttempts: 1,
+            nudgeMaxAttempts: 2,
+            scanRows: 24,
+            pollTimeout: Duration(milliseconds: 50),
+            pollInterval: Duration(milliseconds: 1),
+            stagingMaxAttempts: 1,
+            stagingRetryInterval: Duration.zero,
+            sendAckTimeout: Duration.zero,
+          ),
+        );
+        final machine = FullscreenPtySubmission(
+          budget: const FullscreenPtySubmissionBudget(stagingMaxAttempts: 1),
+          now: DateTime.now,
+        )..begin();
+        final port = RowAwareFakeFullscreenPtyDeliveryPort(
+          laggingProbe: true,
+          probeLagAfterClear: 1,
+        )..staged = 'A';
+
+        final outcome = await polling.continueSubmission(
+          machine,
+          port: port,
+          text: 'A',
+          pasteSettle: Duration.zero,
+        );
+
+        expect(
+          outcome,
+          FullscreenPtyDeliveryOutcome.submitted,
+          reason:
+              'baseline must wait until leftover composer text leaves the '
+              'probe, not record the first post-clear snapshot',
+        );
+        expect(port.pasteCount, 1);
+        expect(port.crCount, greaterThanOrEqualTo(1));
       },
     );
   });
@@ -312,7 +542,6 @@ void main() {
     // crStuck / unconfirmed with the text stuck in the composer forever.
     const codexCrAck = FullscreenCrAckConfig(
       strategy: FullscreenCrAckStrategy.composerMovesDown,
-      composerPrefix: '›',
     );
 
     test('re-CRs when startup overlay swallowed the first CRs', () async {
@@ -548,7 +777,6 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
     : _inner = FakeFullscreenPtyDeliveryPort(
         crAckConfig: const FullscreenCrAckConfig(
           strategy: FullscreenCrAckStrategy.composerMovesDown,
-          composerPrefix: '\u203a',
         ),
       );
 
@@ -563,6 +791,12 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
   int get viewportRows => _inner.viewportRows;
 
   @override
+  int get cursorRow => _inner.cursorRow;
+
+  @override
+  int get pasteZoneComposerRow => _inner.pasteZoneComposerRow;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => _inner.crAckConfig;
 
   @override
@@ -572,7 +806,6 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
   Future<void> waitForPaint({required Duration timeout}) =>
       _inner.waitForPaint(timeout: timeout);
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     final anchor = _inner.locateNeedle(needle, scanRows: scanRows);
     if (anchor != null) needleSeenAt ??= DateTime.now();
@@ -580,23 +813,27 @@ final class _TimestampedPastePort implements FullscreenPtyDeliveryPort {
   }
 
   @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       _inner.locateCollapsedPasteNeedle(scanRows: scanRows);
 
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) => _inner.isAtAnchor(anchor);
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       _inner.isSubmittedAfterCr(anchor, scanRows: scanRows);
-
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) =>
-      _inner.isComposerChromeEmpty(scanRows: scanRows);
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      _inner.isNeedleStagedInComposer(needle, scanRows: scanRows);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) =>
@@ -633,9 +870,14 @@ final class _CursorTranscriptAfterSubmitPort
   int get viewportRows => 24;
 
   @override
+  int get cursorRow => -1;
+
+  @override
+  int get pasteZoneComposerRow => -1;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
     strategy: const CursorTerminalBehavior().fullscreenCrAckStrategy,
-    composerPrefix: const CursorTerminalBehavior().fullscreenComposerPrefix,
   );
 
   @override
@@ -644,7 +886,6 @@ final class _CursorTranscriptAfterSubmitPort
   @override
   Future<void> waitForPaint({required Duration timeout}) async {}
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (_staged == null || !_staged!.contains(needle)) return null;
     return FullscreenPromptAnchor(
@@ -655,6 +896,15 @@ final class _CursorTranscriptAfterSubmitPort
   }
 
   @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 
@@ -664,22 +914,14 @@ final class _CursorTranscriptAfterSubmitPort
   }
 
   @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      _staged != null && _staged!.contains(needle);
+
+  @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
     if (!_submitted) return false;
-    return switch (crAckConfig.strategy) {
-      FullscreenCrAckStrategy.timed => true,
-      FullscreenCrAckStrategy.anchorCellClears => !isAtAnchor(anchor),
-      FullscreenCrAckStrategy.composerMovesDown =>
-        crAckConfig.composerPrefix == '→',
-    };
+    return _submitted;
   }
-
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) => _submitted;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      !_submitted && _staged != null && _staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -738,9 +980,14 @@ final class _ComposerMovesDownStuckButCommittedPort
   int get viewportRows => 24;
 
   @override
+  int get cursorRow => -1;
+
+  @override
+  int get pasteZoneComposerRow => -1;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.composerMovesDown,
-    composerPrefix: '→',
   );
 
   @override
@@ -749,7 +996,6 @@ final class _ComposerMovesDownStuckButCommittedPort
   @override
   Future<void> waitForPaint({required Duration timeout}) async {}
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     final hay = _composerBody ?? _transcript;
     if (hay == null || !hay.contains(needle)) return null;
@@ -761,12 +1007,24 @@ final class _ComposerMovesDownStuckButCommittedPort
   }
 
   @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       locateNeedle(anchor.needle) != null;
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      _composerBody != null && _composerBody!.contains(needle);
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
@@ -774,14 +1032,6 @@ final class _ComposerMovesDownStuckButCommittedPort
     return _verdictCalls >= isSubmittedVerdictOnCall &&
         isSubmittedVerdictOnCall > 0;
   }
-
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) =>
-      _composerBody == null || _composerBody!.trim().isEmpty;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      _composerBody != null && _composerBody!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -830,9 +1080,14 @@ final class _ComposerMovesDownStuckStagedThenAckPort
   int get viewportRows => 24;
 
   @override
+  int get cursorRow => -1;
+
+  @override
+  int get pasteZoneComposerRow => -1;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.composerMovesDown,
-    composerPrefix: '→',
   );
 
   @override
@@ -841,7 +1096,6 @@ final class _ComposerMovesDownStuckStagedThenAckPort
   @override
   Future<void> waitForPaint({required Duration timeout}) async {}
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (staged == null || !staged!.contains(needle)) return null;
     return FullscreenPromptAnchor(
@@ -852,26 +1106,30 @@ final class _ComposerMovesDownStuckStagedThenAckPort
   }
 
   @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       staged != null && staged!.contains(anchor.needle);
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
     // Round 0 (first paste): never ACK. After reinject paste, ACK on CR.
     return _round >= 1 && crCount > 0 && staged == null;
   }
-
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) =>
-      staged == null || staged!.trim().isEmpty;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      staged != null && staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -920,9 +1178,14 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
   int get viewportRows => 24;
 
   @override
+  int get cursorRow => -1;
+
+  @override
+  int get pasteZoneComposerRow => -1;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.composerMovesDown,
-    composerPrefix: '→',
   );
 
   @override
@@ -931,7 +1194,6 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
   @override
   Future<void> waitForPaint({required Duration timeout}) async {}
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (staged == null || !staged!.contains(needle)) return null;
     return FullscreenPromptAnchor(
@@ -942,26 +1204,30 @@ final class _ComposerMovesDownEmptyNoNeedleThenAckPort
   }
 
   @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       staged != null && staged!.contains(anchor.needle);
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
     // ACK only after second paste's CR (pasteCount >= 2 and cleared).
     return pasteCount >= 2 && staged == null && crCount > 0;
   }
-
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) =>
-      staged == null || staged!.trim().isEmpty;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      staged != null && staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1014,9 +1280,14 @@ final class _AnchorCellStuckButHookAckedPort
   int get viewportRows => 24;
 
   @override
+  int get cursorRow => -1;
+
+  @override
+  int get pasteZoneComposerRow => -1;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.anchorCellClears,
-    composerPrefix: '\u2503',
   );
 
   @override
@@ -1025,7 +1296,6 @@ final class _AnchorCellStuckButHookAckedPort
   @override
   Future<void> waitForPaint({required Duration timeout}) async {}
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (staged == null) return null;
     return FullscreenPromptAnchor(
@@ -1036,24 +1306,29 @@ final class _AnchorCellStuckButHookAckedPort
   }
 
   @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       staged != null && staged!.contains(anchor.needle);
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       // Stale mirror: never reflects the commit.
       false;
-
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) => !submitted;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      !submitted && staged != null && staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1101,9 +1376,14 @@ final class _MentionPopupSwallowsCrPort implements FullscreenPtyDeliveryPort {
   int get viewportRows => 24;
 
   @override
+  int get cursorRow => -1;
+
+  @override
+  int get pasteZoneComposerRow => -1;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.anchorCellClears,
-    composerPrefix: '❯',
   );
 
   @override
@@ -1112,7 +1392,6 @@ final class _MentionPopupSwallowsCrPort implements FullscreenPtyDeliveryPort {
   @override
   Future<void> waitForPaint({required Duration timeout}) async {}
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     // The popup renders the path candidates, so the needle is "visible".
     if (staged == null || !staged!.contains(needle)) return null;
@@ -1124,23 +1403,28 @@ final class _MentionPopupSwallowsCrPort implements FullscreenPtyDeliveryPort {
   }
 
   @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       staged != null && staged!.contains(anchor.needle);
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       crCount > 0 && !popupOpen && staged == null;
-
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) => staged == null;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      staged != null && staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1192,9 +1476,14 @@ final class _AbortedAfterHookAckPort implements FullscreenPtyDeliveryPort {
   int get viewportRows => 24;
 
   @override
+  int get cursorRow => -1;
+
+  @override
+  int get pasteZoneComposerRow => -1;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.anchorCellClears,
-    composerPrefix: '›',
   );
 
   @override
@@ -1203,7 +1492,6 @@ final class _AbortedAfterHookAckPort implements FullscreenPtyDeliveryPort {
   @override
   Future<void> waitForPaint({required Duration timeout}) async {}
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (staged == null || !staged!.contains(needle)) return null;
     return FullscreenPromptAnchor(
@@ -1214,24 +1502,29 @@ final class _AbortedAfterHookAckPort implements FullscreenPtyDeliveryPort {
   }
 
   @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       staged != null && staged!.contains(anchor.needle);
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       // Stale mirror: never reflects the commit.
       false;
-
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) => crCount > 0;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      crCount == 0 && staged != null && staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1271,6 +1564,12 @@ final class _PaintWakePort implements FullscreenPtyDeliveryPort {
   int get viewportRows => 24;
 
   @override
+  int get cursorRow => -1;
+
+  @override
+  int get pasteZoneComposerRow => -1;
+
+  @override
   FullscreenCrAckConfig get crAckConfig =>
       const FullscreenCrAckConfig.productionDefault();
 
@@ -1282,7 +1581,6 @@ final class _PaintWakePort implements FullscreenPtyDeliveryPort {
     _visible = true;
   }
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (!_visible || staged == null || !staged!.contains(needle)) return null;
     return FullscreenPromptAnchor(
@@ -1293,24 +1591,28 @@ final class _PaintWakePort implements FullscreenPtyDeliveryPort {
   }
 
   @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       _visible && staged != null && staged!.contains(anchor.needle);
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       crCount > 0 && (staged == null || !staged!.contains(anchor.needle));
-
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) =>
-      staged == null || staged!.trim().isEmpty;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      staged != null && staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {
@@ -1355,9 +1657,14 @@ final class _LateCrAckPaintPort implements FullscreenPtyDeliveryPort {
   int get viewportRows => 24;
 
   @override
+  int get cursorRow => -1;
+
+  @override
+  int get pasteZoneComposerRow => -1;
+
+  @override
   FullscreenCrAckConfig get crAckConfig => const FullscreenCrAckConfig(
     strategy: FullscreenCrAckStrategy.composerMovesDown,
-    composerPrefix: '\u203a',
   );
 
   @override
@@ -1372,7 +1679,6 @@ final class _LateCrAckPaintPort implements FullscreenPtyDeliveryPort {
     }
   }
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (staged == null || !staged!.contains(needle)) return null;
     return FullscreenPromptAnchor(
@@ -1383,24 +1689,28 @@ final class _LateCrAckPaintPort implements FullscreenPtyDeliveryPort {
   }
 
   @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
       null;
 
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
       staged != null && staged!.contains(anchor.needle);
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      isAtAnchor(FullscreenPromptAnchor(row: 0, startCol: 0, needle: needle));
 
   @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) =>
       _crAckVisible;
-
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) =>
-      staged == null || staged!.trim().isEmpty;
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) =>
-      staged != null && staged!.contains(needle);
 
   @override
   Future<void> clearStagedInput({bool Function()? canExecute}) async {

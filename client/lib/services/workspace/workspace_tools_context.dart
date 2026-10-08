@@ -1,6 +1,6 @@
 import '../../models/workspace_folder.dart';
 import '../../models/workspace_topology.dart';
-import '../session/session_lifecycle_service.dart';
+import '../chat/session/session_lifecycle_service.dart';
 import '../storage/runtime_context.dart';
 
 /// Resolved storage backend for the workspace file tree / source-control panels.

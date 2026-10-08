@@ -8,8 +8,8 @@ import '../../cubits/chat_cubit.dart';
 import '../../cubits/mailbox_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
-import '../../services/team_bus/bus_feed_entry.dart';
-import '../../services/team_bus/team_bus.dart';
+import '../../services/chat/team_bus/bus_feed_entry.dart';
+import '../../services/chat/team_bus/team_bus.dart';
 
 /// Live full-team team-bus message feed. Polling is owned by [RightToolsPanel];
 /// tapping a row jumps to the relevant member's chat tab.

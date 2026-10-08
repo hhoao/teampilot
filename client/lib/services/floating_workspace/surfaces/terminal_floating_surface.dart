@@ -75,7 +75,10 @@ class TerminalFloatingSurface extends FloatingSurface {
     final entry = group.entryById(entryId);
     final cwd = entry?.cwd.trim().isNotEmpty == true
         ? entry!.cwd
-        : (context.read<ChatCubit>().state.workspaces
+        : (context
+                  .read<ChatCubit>()
+                  .state
+                  .workspaces
                   .where((w) => w.workspaceId == workspaceId)
                   .firstOrNull
                   ?.firstFolderPath

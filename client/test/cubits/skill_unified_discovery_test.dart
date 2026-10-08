@@ -111,7 +111,9 @@ SkillCubit _cubit(
   repo,
   registryConfigService: cfg,
   initialSources: sources,
-  rebuildSources: (c) => sources, storage: fakeHomeStorage(), );
+  rebuildSources: (c) => sources,
+  storage: fakeHomeStorage(),
+);
 
 void main() {
   late Directory tmp;
@@ -129,7 +131,10 @@ void main() {
       home: tmp.path,
       cwd: tmp.path,
     );
-    cfg = SkillRegistryConfigService(teampilotRoot: paths.basePath, storage: fakeHomeStorage(), );
+    cfg = SkillRegistryConfigService(
+      teampilotRoot: paths.basePath,
+      storage: fakeHomeStorage(),
+    );
     repo = SkillRepository(storage: fakeHomeStorage());
   });
 
@@ -229,7 +234,10 @@ void main() {
     'toggleRegistrySource on git triggers the background git sync once',
     () async {
       final cache = _CountingRepoCache();
-      final repo = SkillRepository(repoCache: cache, storage: fakeHomeStorage(), );
+      final repo = SkillRepository(
+        repoCache: cache,
+        storage: fakeHomeStorage(),
+      );
       var syncNowCalls = 0;
       GitRepoRegistrySource buildSource(SkillRegistrySourceConfig c) =>
           GitRepoRegistrySource(
@@ -245,7 +253,7 @@ void main() {
           for (final c in config.sources)
             if (c.kind == SkillRegistryKind.gitRepo) buildSource(c),
         ],
-                                storage: fakeHomeStorage(),
+        storage: fakeHomeStorage(),
       );
 
       await cubit.addRegistrySource(

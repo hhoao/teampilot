@@ -17,13 +17,12 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/cli/claude/capabilities/provider.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
 import 'package:path/path.dart' as p;
 import '../../support/in_memory_filesystem.dart';
-import '../../support/post_frame_test_harness.dart';
 
 HomeStorage _storageFor(Directory root) => HomeStorage.forTesting(
   filesystem: LocalFilesystem(),
@@ -211,9 +210,9 @@ void main() {
     );
 
     await McpRegistryService(
-        layout: layout,
-        storage: _storageFor(root),
-      ).writeForSession(
+      layout: layout,
+      storage: _storageFor(root),
+    ).writeForSession(
       workspaceId: 'workspace-1',
       teamId: teamId,
       sessionId: sessionId,
@@ -308,7 +307,7 @@ void main() {
   });
 
   test(
-    'cursor warm assembly is reused and empty snapshot skips credential merge',
+    'cursor member session write skips credential merge for empty catalog snapshot',
     () async {
       const teamId = 'team-empty-snapshot';
       await Directory(layout.identityMcpDir(teamId)).create(recursive: true);
@@ -325,23 +324,18 @@ void main() {
         cliRegistry: CliToolRegistry()..register(_CursorTestTool(writer)),
       );
 
-      final assembly = await service.writeCursorWorkspaceMcpBase(
+      await service.writeForSession(
         workspaceId: 'workspace-empty-snapshot',
+        sessionId: 'session-empty-snapshot',
         teamId: teamId,
+        cli: CliTool.cursor,
+        memberId: 'member-empty-snapshot',
         extraServers: const {
           'extra': {'type': 'stdio', 'command': 'extra-command'},
         },
         pluginIds: const ['missing-plugin'],
       );
-      await service.mergeCursorMemberMcpCredentials(
-        workspaceId: 'workspace-empty-snapshot',
-        sessionId: 'session-empty-snapshot',
-        teamId: teamId,
-        memberId: 'member-empty-snapshot',
-        assembly: assembly,
-      );
 
-      expect(assembly.hasValidCatalogContribution, isFalse);
       expect(writer.writeCalls, 1);
       expect(writer.mergeCalls, 0);
       expect(config.loadCalls, 1);
@@ -427,7 +421,6 @@ final class _RecordingMcpCapability implements McpCapability {
     required Filesystem fs,
     required String configDir,
     required List<McpServerSpec> servers,
-    String? outputBasename,
   }) async {
     writeCalls++;
   }
@@ -441,4 +434,12 @@ final class _RecordingMcpCapability implements McpCapability {
   }) async {
     mergeCalls++;
   }
+
+  @override
+  Future<void> maybeRemoveStaleProjectTeammateBus({
+    required Filesystem fs,
+    Map<String, Map<String, Object?>>? extraServers,
+    required String workingDirectory,
+    Iterable<String> additionalDirectories = const [],
+  }) async {}
 }

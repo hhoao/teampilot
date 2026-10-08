@@ -16,9 +16,7 @@ class CatalogRegistryAuthBadge extends StatelessWidget {
       label: authenticated
           ? l10n.providerCredentialsAuthenticated
           : l10n.providerCredentialsUnauthenticated,
-      icon: authenticated
-          ? Icons.verified_user_outlined
-          : Icons.lock_outline,
+      icon: authenticated ? Icons.verified_user_outlined : Icons.lock_outline,
       tone: authenticated
           ? TpStatusBadgeTone.success
           : TpStatusBadgeTone.warning,

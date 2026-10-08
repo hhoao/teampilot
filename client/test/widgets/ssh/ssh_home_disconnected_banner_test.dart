@@ -68,7 +68,11 @@ Widget _host({
 HomeTargetController _homeTargetController(RuntimeTarget home) {
   const root = '/tp-test-ssh-banner';
   final fs = InMemoryFilesystem();
-  final sshProfileRepo = SshProfileRepository(rootDir: root, fs: fs, storage: fakeHomeStorage(filesystem: fs), );
+  final sshProfileRepo = SshProfileRepository(
+    rootDir: root,
+    fs: fs,
+    storage: fakeHomeStorage(filesystem: fs),
+  );
   final registry = RuntimeTargetRegistry(
     repo: TargetsRepository(rootDir: root, fs: fs),
     sshProfileRepo: sshProfileRepo,
@@ -83,15 +87,15 @@ HomeTargetController _homeTargetController(RuntimeTarget home) {
 }
 
 class _Harness {
-  _Harness({
-    SshClientConnector? connector,
-  })  : events = SshConnectionEvents(),
-        _profiles = {_profile.id: _profile} {
+  _Harness({SshClientConnector? connector})
+    : events = SshConnectionEvents(),
+      _profiles = {_profile.id: _profile} {
     factory = SshClientFactory(
       credentialStore: InMemorySshCredentialStore(),
       knownHostRepository: InMemorySshKnownHostRepository(),
       events: events,
-      connector: connector ??
+      connector:
+          connector ??
           (profile, {timeout = const Duration(seconds: 10)}) async {
             return _InstantAuthClient();
           },
@@ -110,10 +114,7 @@ class _Harness {
   late final SshProfileConnectionCoordinator coordinator;
 
   SshConnectionCubit createCubit() {
-    return SshConnectionCubit(
-      factory: factory,
-      coordinator: coordinator,
-    );
+    return SshConnectionCubit(factory: factory, coordinator: coordinator);
   }
 
   Future<void> dispose() => coordinator.dispose();

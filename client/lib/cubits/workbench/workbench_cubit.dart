@@ -69,7 +69,10 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
       state.bar(workspaceId).floating;
 
   WorkbenchState _withCenter(String workspaceId, WorkbenchGroupLayout layout) =>
-      state.withBar(workspaceId, state.bar(workspaceId).copyWith(center: layout));
+      state.withBar(
+        workspaceId,
+        state.bar(workspaceId).copyWith(center: layout),
+      );
 
   WorkbenchState _withFloating(
     String workspaceId,
@@ -111,7 +114,9 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     final (layout, isCenter, groupId) = _owningGroup(bar, id);
     final next = mutate(layout.groups[groupId]!);
     if (identical(next, layout.groups[groupId])) return;
-    final nextLayout = layout.copyWith(groups: {...layout.groups, groupId: next});
+    final nextLayout = layout.copyWith(
+      groups: {...layout.groups, groupId: next},
+    );
     emit(
       isCenter
           ? _withCenter(workspaceId, nextLayout)
@@ -184,8 +189,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
         return leaves[later];
       }
       final earlier = origin - distance;
-      if (earlier >= 0 &&
-          !layout.lockedGroupIds.contains(leaves[earlier])) {
+      if (earlier >= 0 && !layout.lockedGroupIds.contains(leaves[earlier])) {
         return leaves[earlier];
       }
     }
@@ -687,7 +691,10 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
 
   // ---- bulk closes ----
 
-  static TabStrip _removeTabs(TabStrip strip, Iterable<WorkbenchTabId> removed) {
+  static TabStrip _removeTabs(
+    TabStrip strip,
+    Iterable<WorkbenchTabId> removed,
+  ) {
     var next = strip;
     for (final tab in removed) {
       next = _r.remove(next, tab) ?? next;
@@ -858,17 +865,21 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   }) => _mutateLayout(
     workspaceId,
     floating: floating,
-    mutate: (layout) => _lr.moveTab(layout, tab: tab, targetGroupId: targetGroupId),
+    mutate: (layout) =>
+        _lr.moveTab(layout, tab: tab, targetGroupId: targetGroupId),
   );
 
   /// Focuses [groupId] on the target layout. No-op when it is not a live
   /// leaf.
-  void focusGroup(String workspaceId, String groupId, {bool floating = false}) =>
-      _mutateLayout(
-        workspaceId,
-        floating: floating,
-        mutate: (layout) => _lr.focusGroup(layout, groupId),
-      );
+  void focusGroup(
+    String workspaceId,
+    String groupId, {
+    bool floating = false,
+  }) => _mutateLayout(
+    workspaceId,
+    floating: floating,
+    mutate: (layout) => _lr.focusGroup(layout, groupId),
+  );
 
   /// VSCode "Open to the Side": reveals [tab] in a group beside the focused
   /// one along [axis] ([before] = left/up side). Reuses the adjacent group
@@ -961,11 +972,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
     mutate: (layout) {
       var next = layout;
       for (final (path, fraction) in commits) {
-        next = _lr.commitResizeByPath(
-          next,
-          path: path,
-          fraction: fraction,
-        );
+        next = _lr.commitResizeByPath(next, path: path, fraction: fraction);
       }
       return next;
     },
@@ -986,11 +993,7 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   /// Resets the target layout to a single group holding every tab in stable
   /// depth-first order.
   void collapseSplitLayout(String workspaceId, {bool floating = false}) =>
-      _mutateLayout(
-        workspaceId,
-        floating: floating,
-        mutate: _lr.collapse,
-      );
+      _mutateLayout(workspaceId, floating: floating, mutate: _lr.collapse);
 
   /// Restores both layouts from persisted snapshots (Task 9 restore entry).
   /// Null arguments keep the current layout of that surface.

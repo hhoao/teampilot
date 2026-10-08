@@ -159,9 +159,7 @@ class AndroidWorkEnvironmentSelector extends StatelessWidget {
     }
     if (value == _manageTermuxSetupValue) {
       await Navigator.of(context).push<void>(
-        MaterialPageRoute<void>(
-          builder: (_) => const TermuxSetupPage(),
-        ),
+        MaterialPageRoute<void>(builder: (_) => const TermuxSetupPage()),
       );
       return;
     }

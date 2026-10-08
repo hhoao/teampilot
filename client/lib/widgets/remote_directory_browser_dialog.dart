@@ -164,10 +164,7 @@ class _RemoteDirectoryBrowserDialogState
           SizedBox(height: 240, child: _buildBody(styles, theme, l10n)),
           if (_error != null) ...[
             const SizedBox(height: 8),
-            Text(
-              _error!,
-              style: styles.smColored(theme.colorScheme.error),
-            ),
+            Text(_error!, style: styles.smColored(theme.colorScheme.error)),
           ],
           if (!widget.browseOnly) ...[
             const SizedBox(height: 16),
@@ -222,25 +219,23 @@ class _RemoteDirectoryBrowserDialogState
     );
   }
 
-  Widget _buildBody(TpTextStyles styles, ThemeData theme, AppLocalizations l10n) {
+  Widget _buildBody(
+    TpTextStyles styles,
+    ThemeData theme,
+    AppLocalizations l10n,
+  ) {
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
     final listing = _listing;
     if (listing == null) {
       return Center(
-        child: Text(
-          l10n.remoteDirectoryBrowserError,
-          style: styles.mutedSm,
-        ),
+        child: Text(l10n.remoteDirectoryBrowserError, style: styles.mutedSm),
       );
     }
     if (listing.directories.isEmpty) {
       return Center(
-        child: Text(
-          l10n.remoteDirectoryBrowserEmpty,
-          style: styles.mutedSm,
-        ),
+        child: Text(l10n.remoteDirectoryBrowserEmpty, style: styles.mutedSm),
       );
     }
     return DecoratedBox(

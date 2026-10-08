@@ -2,9 +2,12 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/discoverable_team.dart';
+import '../models/mcp_probe_snapshot.dart';
 import '../models/mcp_server.dart';
 import '../repositories/mcp_repository.dart';
+import '../services/mcp/mcp_dart_probe_handshake.dart';
 import '../services/mcp/mcp_import_service.dart';
+import '../services/mcp/mcp_server_probe_service.dart';
 import '../services/storage/home_storage.dart';
 import '../utils/logging/logger.dart';
 
@@ -16,12 +19,14 @@ class McpState extends Equatable {
     this.status = McpLoadStatus.idle,
     this.errorMessage,
     this.busyIds = const {},
+    this.probes = const {},
   });
 
   final List<McpServer> servers;
   final McpLoadStatus status;
   final String? errorMessage;
   final Set<String> busyIds;
+  final Map<String, McpProbeSnapshot> probes;
 
   McpState copyWith({
     List<McpServer>? servers,
@@ -29,30 +34,42 @@ class McpState extends Equatable {
     String? errorMessage,
     bool clearError = false,
     Set<String>? busyIds,
+    Map<String, McpProbeSnapshot>? probes,
   }) => McpState(
     servers: servers ?? this.servers,
     status: status ?? this.status,
     errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     busyIds: busyIds ?? this.busyIds,
+    probes: probes ?? this.probes,
   );
 
   @override
-  List<Object?> get props => [servers, status, errorMessage, busyIds];
+  List<Object?> get props => [servers, status, errorMessage, busyIds, probes];
 }
 
 class McpCubit extends Cubit<McpState> {
   McpCubit(
     this._repository, {
     required HomeStorage storage,
-    Future<void> Function(String mcpId)? onMcpDeleted,
+
+    /// Called after a catalog MCP is deleted or disabled so workspace/team
+    /// bindings can be dropped. Re-enabling does not restore those bindings.
+    Future<void> Function(String mcpId)? onMcpUnbound,
     McpImportService? importService,
-  }) : _onMcpDeleted = onMcpDeleted,
+    McpServerProbeService? probeService,
+  }) : _onMcpUnbound = onMcpUnbound,
        _importService = importService ?? McpImportService(storage: storage),
+       _probe =
+           probeService ??
+           McpServerProbeService(
+             handshake: McpDartProbeHandshake(storage: storage),
+           ),
        super(const McpState());
 
   final McpRepository _repository;
-  final Future<void> Function(String mcpId)? _onMcpDeleted;
+  final Future<void> Function(String mcpId)? _onMcpUnbound;
   final McpImportService _importService;
+  final McpServerProbeService _probe;
 
   Future<void> loadAll() async {
     emit(state.copyWith(status: McpLoadStatus.loading, clearError: true));
@@ -83,6 +100,11 @@ class McpCubit extends Cubit<McpState> {
       final saved = await _repository.upsert(server);
       final list = [...state.servers.where((s) => s.id != saved.id), saved];
       emit(state.copyWith(servers: list, clearError: true));
+      if (!saved.enabled) {
+        _probe.cancel(saved.id);
+        _clearProbe(saved.id);
+        await _onMcpUnbound?.call(saved.id);
+      }
       return true;
     } on McpValidationException catch (e) {
       emit(state.copyWith(errorMessage: e.errors.join('\n')));
@@ -107,7 +129,9 @@ class McpCubit extends Cubit<McpState> {
           clearError: true,
         ),
       );
-      await _onMcpDeleted?.call(id);
+      _probe.cancel(id);
+      _clearProbe(id);
+      await _onMcpUnbound?.call(id);
     } catch (e) {
       emit(state.copyWith(errorMessage: e.toString()));
     } finally {
@@ -139,6 +163,39 @@ class McpCubit extends Cubit<McpState> {
   }
 
   void clearError() => emit(state.copyWith(clearError: true));
+
+  Future<void> probeEnabled() =>
+      _probe.probeEnabled(state.servers, onSnapshot: _setProbe);
+
+  Future<void> refreshAll() =>
+      _probe.refreshAll(state.servers, onSnapshot: _setProbe);
+
+  Future<void> probeOne(String id) async {
+    final server = state.servers.where((s) => s.id == id).firstOrNull;
+    if (server == null || !server.enabled) {
+      _clearProbe(id);
+      return;
+    }
+    await _probe.probeOne(server, onSnapshot: _setProbe);
+  }
+
+  void _setProbe(String id, McpProbeSnapshot snap) {
+    if (isClosed) return;
+    final next = Map<String, McpProbeSnapshot>.from(state.probes)..[id] = snap;
+    emit(state.copyWith(probes: next));
+  }
+
+  void _clearProbe(String id) {
+    if (isClosed || !state.probes.containsKey(id)) return;
+    final next = Map<String, McpProbeSnapshot>.from(state.probes)..remove(id);
+    emit(state.copyWith(probes: next));
+  }
+
+  @override
+  Future<void> close() async {
+    await super.close();
+    await _probe.close();
+  }
 
   /// TeamHub clone path: upsert one template MCP dep and refresh cubit state.
   Future<String?> installTeamDependency(McpDependencyRef ref) async {

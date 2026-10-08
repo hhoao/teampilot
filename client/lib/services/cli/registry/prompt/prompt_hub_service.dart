@@ -35,6 +35,7 @@ class PromptHubService {
         pushDelivery: ctx.pushDelivery,
         additionalDirectories: ctx.additionalDirectories,
         memberHome: ctx.memberHome,
+        workspaceBaseInfo: ctx.workspaceBaseInfo,
       ),
       providers: sourceProviders,
     );

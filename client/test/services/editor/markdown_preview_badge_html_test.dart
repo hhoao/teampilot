@@ -30,35 +30,38 @@ void main() {
 </div>
 ''';
     final doc = compileMarkdown(source);
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: MaterialApp(
-      home: Scaffold(
-        body: SingleChildScrollView(
-          child: VirtualMarkdownView(
-            document: doc,
-            tokens: MarkdownTokens.test(),
-            resolvers: MarkdownResolvers(
-              buildImageWidget: (src, {required inline, required inlineHeight}) =>
-                  buildMarkdownPreviewImage(
-                src: src,
-                markdownFilePath: '/repo/README.md',
-                workspaceRoots: const ['/repo'],
-                inline: inline,
-                inlineHeight: inlineHeight,
-              ),
-              resolveImage: (src) => resolveMarkdownPreviewImage(
-                src: src,
-                markdownFilePath: '/repo/README.md',
-                workspaceRoots: const ['/repo'],
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: VirtualMarkdownView(
+                document: doc,
+                tokens: MarkdownTokens.test(),
+                resolvers: MarkdownResolvers(
+                  buildImageWidget:
+                      (src, {required inline, required inlineHeight}) =>
+                          buildMarkdownPreviewImage(
+                            src: src,
+                            markdownFilePath: '/repo/README.md',
+                            workspaceRoots: const ['/repo'],
+                            inline: inline,
+                            inlineHeight: inlineHeight,
+                          ),
+                  resolveImage: (src) => resolveMarkdownPreviewImage(
+                    src: src,
+                    markdownFilePath: '/repo/README.md',
+                    workspaceRoots: const ['/repo'],
+                  ),
+                ),
+                flatten: true,
               ),
             ),
-            flatten: true,
           ),
         ),
       ),
-    ),
-      ));
+    );
     await tester.pump();
 
     // Both imgs are claimed by the widget hook (no NetworkImage → no

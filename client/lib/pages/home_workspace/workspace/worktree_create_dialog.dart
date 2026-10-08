@@ -158,15 +158,13 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
     });
   }
 
-  List<String> get _selectorItems =>
-      [for (final option in _branchOptions) option.displayLabel];
+  List<String> get _selectorItems => [
+    for (final option in _branchOptions) option.displayLabel,
+  ];
 
   String get _previewPath => _branch.text.trim().isEmpty
       ? ''
-      : widget.layout(
-          repoName: widget.repoName,
-          branch: _branch.text.trim(),
-        );
+      : widget.layout(repoName: widget.repoName, branch: _branch.text.trim());
 
   WorktreeCreateResult _buildResult() => buildWorktreeCreateResult(
     branch: _branch.text,
@@ -245,10 +243,9 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
                     ],
                   ),
                 ),
-                validator: (value) =>
-                    (value == null || value.trim().isEmpty)
-                        ? l10n.formFieldRequired
-                        : null,
+                validator: (value) => (value == null || value.trim().isEmpty)
+                    ? l10n.formFieldRequired
+                    : null,
               ),
               const SizedBox(height: 12),
               IgnorePointer(
@@ -278,10 +275,7 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
                 const SizedBox(height: 8),
               ],
               if (_submitError case final error?) ...[
-                Text(
-                  error,
-                  style: styles.smColored(theme.colorScheme.error),
-                ),
+                Text(error, style: styles.smColored(theme.colorScheme.error)),
                 const SizedBox(height: 8),
               ],
             ],

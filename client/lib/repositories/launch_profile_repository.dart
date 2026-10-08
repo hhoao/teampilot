@@ -4,7 +4,7 @@ import 'dart:convert';
 import '../models/team_config.dart';
 import '../models/launch_profile.dart';
 import '../services/io/filesystem.dart';
-import '../services/session/session_lifecycle_service.dart';
+import '../services/chat/session/session_lifecycle_service.dart';
 import '../services/storage/home_storage.dart';
 import '../utils/logging/logger.dart';
 import 'launch_profile_index_store.dart';
@@ -40,8 +40,13 @@ class LaunchProfileRepository {
     List<LaunchProfile> snapshot,
   ) {
     Future<void>? pending;
-    pending = _revalidateLaunchProfilesSnapshot(cacheKey, paths, store, snapshot)
-        .whenComplete(() {
+    pending =
+        _revalidateLaunchProfilesSnapshot(
+          cacheKey,
+          paths,
+          store,
+          snapshot,
+        ).whenComplete(() {
           if (identical(_revalidationFuture, pending)) {
             _revalidationFuture = null;
           }

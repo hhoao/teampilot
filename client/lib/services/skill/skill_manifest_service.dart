@@ -190,6 +190,14 @@ class SkillManifestService {
 
   Future<String> resolveSkillsDir() async => (await _paths()).skillsDir;
 
+  /// Returns the installed skill's `SKILL.md`, or null if the file is missing.
+  Future<String?> readSkillMarkdown(String directory) async {
+    final fs = _storage.fs;
+    final ctx = fs.pathContext;
+    final path = ctx.join(await resolveSkillsDir(), directory, 'SKILL.md');
+    return fs.readString(path);
+  }
+
   Future<String> resolveBackupsDir() async => (await _paths()).backupsDir;
 
   Future<RemoteFileStore?> remoteFileStore() async => (await _paths()).remote;

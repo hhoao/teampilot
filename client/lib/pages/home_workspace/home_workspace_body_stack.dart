@@ -74,11 +74,7 @@ class _HomePageLayer extends StatefulWidget {
 }
 
 class _HomePageLayerState extends State<_HomePageLayer> {
-  ({
-    TeamConfigSection? section,
-    String? memberId,
-    HomeGlobalView? globalView,
-  })?
+  ({TeamConfigSection? section, String? memberId, HomeGlobalView? globalView})?
   _inputs;
   Widget? _page;
 
@@ -104,10 +100,7 @@ class _HomePageLayerState extends State<_HomePageLayer> {
 }
 
 class _HomeBodyLayer extends StatelessWidget {
-  const _HomeBodyLayer({
-    required this.active,
-    required this.child,
-  });
+  const _HomeBodyLayer({required this.active, required this.child});
 
   final bool active;
   final Widget child;

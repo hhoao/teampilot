@@ -77,8 +77,7 @@ class _FontPreferenceSettingState extends State<FontPreferenceSetting> {
         : FontCatalog.monoOptions;
 
     final entries = <(String, String)>[
-      for (final entry in catalog)
-        (entry.id, _labelForFontId(l10n, entry.id)),
+      for (final entry in catalog) (entry.id, _labelForFontId(l10n, entry.id)),
     ];
 
     final selectedKey = installedFontKey(widget.value);

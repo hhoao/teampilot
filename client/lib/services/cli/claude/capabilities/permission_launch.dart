@@ -10,7 +10,6 @@ final class ClaudePermissionLaunch implements CliLaunchArgProvider {
   @override
   Iterable<CliLaunchArgContribution> buildLaunchArgs(CliLaunchContext context) {
     final policy = context.launchSecurityPolicy;
-    if (policy == LaunchSecurityPolicy.cliDefault) return const [];
     if (policy == LaunchSecurityPolicy.fullAccess) {
       return [
         CliLaunchArgContribution(
@@ -18,26 +17,6 @@ final class ClaudePermissionLaunch implements CliLaunchArgProvider {
           phase: LaunchArgPhase.security,
           exclusiveGroup: 'claude-permission-mode',
           args: ['--dangerously-skip-permissions'],
-        ),
-      ];
-    }
-    if (policy == LaunchSecurityPolicy.askReadOnlyTrusted) {
-      return [
-        CliLaunchArgContribution(
-          key: 'claude-permission-plan',
-          phase: LaunchArgPhase.security,
-          exclusiveGroup: 'claude-permission-mode',
-          args: ['--permission-mode', 'plan'],
-        ),
-      ];
-    }
-    if (policy == LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted) {
-      return [
-        CliLaunchArgContribution(
-          key: 'claude-permission-accept-edits',
-          phase: LaunchArgPhase.security,
-          exclusiveGroup: 'claude-permission-mode',
-          args: ['--permission-mode', 'acceptEdits'],
         ),
       ];
     }

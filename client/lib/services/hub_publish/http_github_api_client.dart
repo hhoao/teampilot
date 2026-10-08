@@ -7,7 +7,8 @@ import 'github_registry_publisher.dart';
 
 /// HTTP implementation of [GithubApiClient] against `api.github.com`.
 class HttpGithubApiClient implements GithubApiClient {
-  HttpGithubApiClient({http.Client? client}) : _client = client ?? http.Client();
+  HttpGithubApiClient({http.Client? client})
+    : _client = client ?? http.Client();
 
   final http.Client _client;
   static final _apiBase = Uri.parse('https://api.github.com');
@@ -92,10 +93,7 @@ class HttpGithubApiClient implements GithubApiClient {
 
   @override
   Future<GithubUser> getAuthenticatedUser({required String token}) async {
-    final res = await _client.get(
-      _uri('/user'),
-      headers: _headers(token),
-    );
+    final res = await _client.get(_uri('/user'), headers: _headers(token));
     _ensureOk(res, 'getAuthenticatedUser');
     final json = (jsonDecode(res.body) as Map).cast<String, Object?>();
     final login = json['login'] as String? ?? '';
@@ -131,13 +129,12 @@ class HttpGithubApiClient implements GithubApiClient {
 
     final res = await _client.post(
       _uri('/repos/$upstreamOwner/$upstreamName/forks'),
-      headers: {
-        ..._headers(token),
-        'Content-Type': 'application/json',
-      },
+      headers: {..._headers(token), 'Content-Type': 'application/json'},
       body: '{}',
     );
-    if (res.statusCode != 202 && res.statusCode != 201 && res.statusCode != 200) {
+    if (res.statusCode != 202 &&
+        res.statusCode != 201 &&
+        res.statusCode != 200) {
       throw HubPublishException(
         _errorCodeForStatus(res.statusCode),
         githubApiErrorMessage(res.statusCode, responseHeaders: res.headers),
@@ -163,14 +160,8 @@ class HttpGithubApiClient implements GithubApiClient {
   }) async {
     final res = await _client.post(
       _uri('/repos/$owner/$name/git/refs'),
-      headers: {
-        ..._headers(token),
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'ref': 'refs/heads/$branch',
-        'sha': fromSha,
-      }),
+      headers: {..._headers(token), 'Content-Type': 'application/json'},
+      body: jsonEncode({'ref': 'refs/heads/$branch', 'sha': fromSha}),
     );
     if (res.statusCode == 422) {
       // Branch may already exist from a prior attempt; allow reuse.
@@ -198,10 +189,7 @@ class HttpGithubApiClient implements GithubApiClient {
     };
     final res = await _client.put(
       _uri('/repos/$owner/$name/contents/$path'),
-      headers: {
-        ..._headers(token),
-        'Content-Type': 'application/json',
-      },
+      headers: {..._headers(token), 'Content-Type': 'application/json'},
       body: jsonEncode(body),
     );
     _ensureOk(res, 'putFile');
@@ -219,10 +207,7 @@ class HttpGithubApiClient implements GithubApiClient {
   }) async {
     final res = await _client.post(
       _uri('/repos/$owner/$name/pulls'),
-      headers: {
-        ..._headers(token),
-        'Content-Type': 'application/json',
-      },
+      headers: {..._headers(token), 'Content-Type': 'application/json'},
       body: jsonEncode({
         'title': title,
         'head': head,

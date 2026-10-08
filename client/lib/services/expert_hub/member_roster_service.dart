@@ -1,6 +1,6 @@
 import '../../cubits/launch_profile_cubit.dart';
 import '../../models/discoverable_member.dart';
-import '../team/team_clone_service.dart';
+import '../team_config/team_clone_service.dart';
 import 'expert_capability_resolver.dart';
 
 class MemberAddResult {
@@ -54,10 +54,7 @@ class MemberRosterService {
       onProgress?.call(CloneProgress(msg, done, total));
     }
 
-    final pack = await _resolver.resolve(
-      expert,
-      onDepProgress: progress,
-    );
+    final pack = await _resolver.resolve(expert, onDepProgress: progress);
 
     final added = await launchProfiles.addExpertToTeam(
       teamId,

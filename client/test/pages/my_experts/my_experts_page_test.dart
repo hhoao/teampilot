@@ -25,7 +25,15 @@ import '../../support/post_frame_test_harness.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 
 class _FakeSource extends CompositeExpertHubSource {
-  _FakeSource() : super(builtIns: const [], registry: _EmptyRegistry(), localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir), );
+  _FakeSource()
+    : super(
+        builtIns: const [],
+        registry: _EmptyRegistry(),
+        localStore: LocalExpertStore(
+          fs: InMemoryFilesystem(),
+          dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
+        ),
+      );
 
   @override
   Future<List<DiscoverableMember>> fetchMembers({
@@ -57,12 +65,7 @@ LaunchProfileCubit _launchCubit({List<TeamProfile> teams = const []}) {
     sessionRepository: SessionRepository(storage: testHomeStorage),
     executableResolver: () => 'flashskyai',
   );
-  cubit.emit(
-    cubit.state.copyWith(
-      identities: teams,
-      isLoading: false,
-    ),
-  );
+  cubit.emit(cubit.state.copyWith(identities: teams, isLoading: false));
   return cubit;
 }
 
@@ -95,7 +98,7 @@ Widget _host({
       HubPublishRecordStore(
         fs: InMemoryFilesystem(),
         pathOverride: '/hub-publish/records.json',
-                             storage: testHomeStorage,
+        storage: testHomeStorage,
       );
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -273,10 +276,7 @@ void main() {
     await tester.tap(find.text('Delete'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.textContaining('still referenced'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('still referenced'), findsOneWidget);
     expect(find.text('In Use'), findsOneWidget);
     expect(await writer.getByKey('local/used'), isNotNull);
   });
@@ -293,7 +293,11 @@ void main() {
     await writer.save(_localExpert(id: 'e1', name: 'Published One'));
     await writer.save(_localExpert(id: 'e2', name: 'Unpublished'));
 
-    final records = HubPublishRecordStore(fs: fs, pathOverride: '/p.json', storage: testHomeStorage, );
+    final records = HubPublishRecordStore(
+      fs: fs,
+      pathOverride: '/p.json',
+      storage: testHomeStorage,
+    );
     await records.upsert(
       HubPublishRecord(
         kind: HubPublishKind.expert,

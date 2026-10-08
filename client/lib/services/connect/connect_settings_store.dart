@@ -3,6 +3,7 @@ import 'dart:math';
 
 import '../../models/ssh_reachability.dart';
 import '../io/filesystem.dart';
+import 'connect_ssh_backend.dart';
 
 typedef ConnectHostIdGenerator = String Function();
 
@@ -11,11 +12,13 @@ class ConnectSettings {
     required this.hostId,
     this.extraEndpoints = const [],
     this.relayUrl = '',
+    this.sshBackend = ConnectSshBackendKind.embedded,
   });
 
   final String hostId;
   final List<SshReachabilityEndpoint> extraEndpoints;
   final String relayUrl;
+  final ConnectSshBackendKind sshBackend;
 }
 
 class ConnectSettingsStore {
@@ -32,6 +35,9 @@ class ConnectSettingsStore {
   String get settingsPath =>
       fs.pathContext.join(appDataRoot, 'connect', 'settings.json');
 
+  static const embeddedPortMin = 49152;
+  static const embeddedPortMax = 65535;
+
   Future<String> loadOrCreateHostId() async {
     final json = await _readJson();
     final existing = _hostIdFrom(json);
@@ -43,6 +49,26 @@ class ConnectSettingsStore {
     }
     await _write({...json, 'hostId': hostId});
     return hostId;
+  }
+
+  Future<int> loadOrCreateEmbeddedPort() async {
+    final json = await _readJson();
+    final existing = json['embeddedPort'];
+    if (existing is int &&
+        existing >= embeddedPortMin &&
+        existing <= embeddedPortMax) {
+      return existing;
+    }
+    final port = _randomPort();
+    await _write({...json, 'embeddedPort': port});
+    return port;
+  }
+
+  Future<int> repickEmbeddedPort() async {
+    final json = await _readJson();
+    final port = _randomPort();
+    await _write({...json, 'embeddedPort': port});
+    return port;
   }
 
   Future<ConnectSettings> load() async {
@@ -65,7 +91,12 @@ class ConnectSettingsStore {
       hostId: hostId,
       extraEndpoints: List.unmodifiable(endpoints),
       relayUrl: json['relayUrl'] is String ? json['relayUrl'] as String : '',
+      sshBackend: parseConnectSshBackendKind(json['sshBackend']),
     );
+  }
+
+  Future<void> saveSshBackend(ConnectSshBackendKind kind) async {
+    await _write({...await _readJson(), 'sshBackend': kind.jsonValue});
   }
 
   Future<void> save({
@@ -77,6 +108,7 @@ class ConnectSettingsStore {
         .where((endpoint) => endpoint.kind == SshEndpointKind.extra)
         .toList(growable: false);
     await _write({
+      ...await _readJson(),
       'hostId': hostId,
       'extraEndpoints': endpoints.map((endpoint) => endpoint.toJson()).toList(),
       'relayUrl': relayUrl.trim(),
@@ -113,4 +145,10 @@ class ConnectSettingsStore {
 
   static bool _isHostId(String value) =>
       RegExp(r'^[A-Za-z0-9_-]{16}$').hasMatch(value);
+
+  static int _randomPort() {
+    final random = Random.secure();
+    return embeddedPortMin +
+        random.nextInt(embeddedPortMax - embeddedPortMin + 1);
+  }
 }

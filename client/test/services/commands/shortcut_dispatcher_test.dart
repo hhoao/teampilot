@@ -57,7 +57,9 @@ void main() {
     CommandDefinition(
       id: testCommandId,
       category: CommandCategory.meta,
-      defaultChords: [KeyChord(key: 'k', mods: [KeyChordMod.mod])],
+      defaultChords: [
+        KeyChord(key: 'k', mods: [KeyChordMod.mod]),
+      ],
       when: ShortcutWhen.always,
       terminalPassthrough: true,
       titleL10nKey: 'x',
@@ -67,9 +69,8 @@ void main() {
   ShortcutDispatcher buildDispatcher(CommandBus bus) {
     return ShortcutDispatcher(
       bus: bus,
-      effectiveChords: (commandId) => testCatalog
-          .firstWhere((def) => def.id == commandId)
-          .defaultChords,
+      effectiveChords: (commandId) =>
+          testCatalog.firstWhere((def) => def.id == commandId).defaultChords,
       context: () => const ShortcutContext(),
       isMacOS: () => true,
       catalog: testCatalog,
@@ -142,7 +143,10 @@ void main() {
   });
 
   group('ShortcutDispatcher with real v1 catalog', () {
-    ShortcutDispatcher buildV1Dispatcher(CommandBus bus, ShortcutContext context) {
+    ShortcutDispatcher buildV1Dispatcher(
+      CommandBus bus,
+      ShortcutContext context,
+    ) {
       return ShortcutDispatcher(
         bus: bus,
         effectiveChords: (commandId) => KeybindingResolver.effectiveBindings(
@@ -197,9 +201,7 @@ void main() {
       CommandDefinition(
         id: searchId,
         category: CommandCategory.navigation,
-        defaultChords: [
-          KeyChord.doubleTapShift(),
-        ],
+        defaultChords: [KeyChord.doubleTapShift()],
         when: ShortcutWhen.hasWorkspace,
         terminalPassthrough: true,
         titleL10nKey: 'x',
@@ -212,9 +214,8 @@ void main() {
       bus.register(searchId, () => called = true);
       final dispatcher = ShortcutDispatcher(
         bus: bus,
-        effectiveChords: (id) => searchCatalog
-            .firstWhere((def) => def.id == id)
-            .defaultChords,
+        effectiveChords: (id) =>
+            searchCatalog.firstWhere((def) => def.id == id).defaultChords,
         context: () => const ShortcutContext(hasWorkspace: true),
         isMacOS: () => false,
         catalog: searchCatalog,
@@ -242,9 +243,8 @@ void main() {
       bus.register(searchId, () => called = true);
       final dispatcher = ShortcutDispatcher(
         bus: bus,
-        effectiveChords: (id) => searchCatalog
-            .firstWhere((def) => def.id == id)
-            .defaultChords,
+        effectiveChords: (id) =>
+            searchCatalog.firstWhere((def) => def.id == id).defaultChords,
         context: () => const ShortcutContext(),
         isMacOS: () => false,
         catalog: searchCatalog,
@@ -273,26 +273,28 @@ void main() {
       expect(called, isFalse);
     });
 
-    test('Ctrl+F does not invoke workspace search (Mod+F is surface-owned)', () {
-      final bus = CommandBus();
-      var called = false;
-      bus.register(searchId, () => called = true);
-      final dispatcher = ShortcutDispatcher(
-        bus: bus,
-        effectiveChords: (id) => searchCatalog
-            .firstWhere((def) => def.id == id)
-            .defaultChords,
-        context: () => const ShortcutContext(hasWorkspace: true),
-        isMacOS: () => false,
-        catalog: searchCatalog,
-      );
+    test(
+      'Ctrl+F does not invoke workspace search (Mod+F is surface-owned)',
+      () {
+        final bus = CommandBus();
+        var called = false;
+        bus.register(searchId, () => called = true);
+        final dispatcher = ShortcutDispatcher(
+          bus: bus,
+          effectiveChords: (id) =>
+              searchCatalog.firstWhere((def) => def.id == id).defaultChords,
+          context: () => const ShortcutContext(hasWorkspace: true),
+          isMacOS: () => false,
+          catalog: searchCatalog,
+        );
 
-      pressModifier(LogicalKeyboardKey.controlLeft);
-      addTearDown(() => releaseModifier(LogicalKeyboardKey.controlLeft));
+        pressModifier(LogicalKeyboardKey.controlLeft);
+        addTearDown(() => releaseModifier(LogicalKeyboardKey.controlLeft));
 
-      final handled = dispatcher.handle(keyDown(LogicalKeyboardKey.keyF));
-      expect(handled, isFalse);
-      expect(called, isFalse);
-    });
+        final handled = dispatcher.handle(keyDown(LogicalKeyboardKey.keyF));
+        expect(handled, isFalse);
+        expect(called, isFalse);
+      },
+    );
   });
 }

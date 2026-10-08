@@ -9,8 +9,8 @@ class McpRepository {
     McpServerValidator? validator,
     required HomeStorage storage,
   }) : _catalog = catalog,
-      _validator = validator ?? McpServerValidator(),
-      _storage = storage;
+       _validator = validator ?? McpServerValidator(),
+       _storage = storage;
 
   final McpCatalogService? _catalog;
   final McpServerValidator _validator;

@@ -4,6 +4,7 @@ import '../../../resource/contribution/resource_assembly_result.dart';
 import '../../../resource/contribution/prompt_document.dart';
 import '../cli_capability.dart';
 import '../config_profile/config_profile_context.dart';
+import 'workspace_base_info_capability.dart';
 
 export '../../../resource/contribution/prompt_document.dart';
 export '../../../resource/providers/prompt_contribution_provider.dart';
@@ -21,6 +22,7 @@ class PromptVirtualizeContext {
     this.pushDelivery = false,
     this.additionalDirectories = const [],
     this.memberHome,
+    this.workspaceBaseInfo = WorkspaceBaseInfoPromptInputs.empty,
   });
 
   final ConfigProfileDelegate? paths;
@@ -30,11 +32,13 @@ class PromptVirtualizeContext {
   final bool mixed;
   final bool pushDelivery;
 
-  /// 已 normalize 的工作面路径；只有 opencode 的实现把它拼进 prompt。
+  /// 已 normalize 的工作面路径；由 [WorkspaceBaseInfoCapability] 写入 prompt
+  ///（非 OpenCode 专属）。
   final List<String> additionalDirectories;
 
   /// cursor 专用：fake HOME，由装配点解析后传入。
   final String? memberHome;
+  final WorkspaceBaseInfoPromptInputs workspaceBaseInfo;
 }
 
 /// Each CLI declares a target writer for an assembled prompt document.
@@ -62,6 +66,7 @@ class PromptMaterializeContext {
     this.pushDelivery = false,
     this.additionalDirectories = const [],
     this.memberHome,
+    this.workspaceBaseInfo = WorkspaceBaseInfoPromptInputs.empty,
   });
 
   final ConfigProfileDelegate? paths;
@@ -71,11 +76,13 @@ class PromptMaterializeContext {
   final bool mixed;
   final bool pushDelivery;
 
-  /// 已 normalize 的工作面路径；只有 opencode 的实现把它拼进 prompt。
+  /// 已 normalize 的工作面路径；由 [WorkspaceBaseInfoCapability] 写入 prompt
+  ///（非 OpenCode 专属）。
   final List<String> additionalDirectories;
 
   /// cursor 专用：fake HOME，由装配点解析后传入。
   final String? memberHome;
+  final WorkspaceBaseInfoPromptInputs workspaceBaseInfo;
 }
 
 class PromptMaterializeResult {

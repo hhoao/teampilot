@@ -83,10 +83,17 @@ terminal sessions:
 
 - `CliTool` enum gains a sixth value `gemini` (update the doc comment list).
 - Launch pipeline takes a gemini branch: `AcpSessionRuntime` attaches to
-  `ChatTab` directly. It does NOT go through `session_shell_connector` /
+  `ChatTab` directly. It does NOT go through the shell connector /
   `memberShells`; chat center view is the only view (no live-terminal
   toggle for this session kind). The chat-vs-terminal decoupling already
   present in `ChatTab` is what makes this a branch, not a rewrite.
+- The concrete seam is `SessionConnectPreparationPort.attachAcpRuntime`
+  (returns true when the job is fully handled), called by
+  `SessionConnectExecutor.execute` after readiness and before member
+  resolution, guarded by `isAcpChatSession(session)`. The surface
+  coordinator likewise skips the terminal view switch for ACP sessions.
+  (main moved this pipeline into `services/chat/launch/`; the branch was
+  re-integrated onto it.)
 - Config isolation applies unchanged: gemini config/cache env points at the
   session's `sessionToolDir` (DefaultCliConfigLayout slot via
   NoopCliSessionCapability-style layout); `GEMINI_API_KEY` injected via the

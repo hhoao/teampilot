@@ -47,8 +47,10 @@ class FsChangeEvent {
 /// Callers must [close] the watch when done so the native subscription is
 /// cancelled before a replacement watch is started.
 class FsTreeWatch {
-  const FsTreeWatch({required this.events, required Future<void> Function() close})
-    : _close = close;
+  const FsTreeWatch({
+    required this.events,
+    required Future<void> Function() close,
+  }) : _close = close;
 
   final Stream<FsChangeEvent> events;
   final Future<void> Function() _close;
@@ -115,6 +117,20 @@ abstract interface class Filesystem {
 
   Future<void> appendString(String path, String content);
 }
+
+/// Staging overlay that records mutations instead of writing them.
+///
+/// [readDelegate] is the real disk (or home catalog). Callers that need to
+/// know whether a path already exists for real — e.g. Windows CLI junction
+/// migration — must consult [readDelegate], not overlay [Filesystem.stat].
+abstract interface class OverlayFilesystem implements Filesystem {
+  Filesystem get readDelegate;
+}
+
+/// Disk used for existence checks. Overlay staging must not look like the
+/// path already exists on the machine.
+Filesystem filesystemDisk(Filesystem fs) =>
+    fs is OverlayFilesystem ? fs.readDelegate : fs;
 
 /// Link-aware stat: the returned kind reflects the path itself, not its
 /// symlink target.

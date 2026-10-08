@@ -19,42 +19,48 @@ AiToolCallPart _update(Map<String, Object?> args) => AiToolCallPart(
 );
 
 void main() {
-  test('derives from full loaded messages, not the visible thread slice',
-      () async {
-    final runtime = ExternalStoreAiThreadRuntime();
-    var full = <AiMessage>[];
-    final controller = CliTaskBoardController(
-      runtime: runtime,
-      loadedMessages: () => full,
-    );
-    addTearDown(() {
-      controller.dispose();
-      runtime.close();
-    });
+  test(
+    'derives from full loaded messages, not the visible thread slice',
+    () async {
+      final runtime = ExternalStoreAiThreadRuntime();
+      var full = <AiMessage>[];
+      final controller = CliTaskBoardController(
+        runtime: runtime,
+        loadedMessages: () => full,
+      );
+      addTearDown(() {
+        controller.dispose();
+        runtime.close();
+      });
 
-    expect(controller.board.totalCount, 0);
+      expect(controller.board.totalCount, 0);
 
-    // Full transcript has the create; the visible slice (what a large
-    // session's thread shows) only has the update that references it.
-    full = [
-      AiMessage(
-        id: 'm1',
-        role: AiRole.assistant,
-        parts: [_create('A', result: {'taskId': '1'})],
-      ),
-    ];
-    runtime.setMessages([
-      AiMessage(
-        id: 'm2',
-        role: AiRole.assistant,
-        parts: [_update({'taskId': '1', 'status': 'in_progress'})],
-      ),
-    ]);
-    await Future<void>.delayed(Duration.zero);
-    expect(controller.board.totalCount, 1);
-    expect(controller.board.tasks.single.subject, 'A');
-    expect(controller.board.tasks.single.status, CliTaskStatus.pending);
-  });
+      // Full transcript has the create; the visible slice (what a large
+      // session's thread shows) only has the update that references it.
+      full = [
+        AiMessage(
+          id: 'm1',
+          role: AiRole.assistant,
+          parts: [
+            _create('A', result: {'taskId': '1'}),
+          ],
+        ),
+      ];
+      runtime.setMessages([
+        AiMessage(
+          id: 'm2',
+          role: AiRole.assistant,
+          parts: [
+            _update({'taskId': '1', 'status': 'in_progress'}),
+          ],
+        ),
+      ]);
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.board.totalCount, 1);
+      expect(controller.board.tasks.single.subject, 'A');
+      expect(controller.board.tasks.single.status, CliTaskStatus.pending);
+    },
+  );
 
   test('re-derives when the full messages change', () async {
     final runtime = ExternalStoreAiThreadRuntime();
@@ -72,7 +78,9 @@ void main() {
       AiMessage(
         id: 'm1',
         role: AiRole.assistant,
-        parts: [_create('A', result: {'taskId': '1'})],
+        parts: [
+          _create('A', result: {'taskId': '1'}),
+        ],
       ),
     ];
     runtime.setMessages(full);
@@ -83,12 +91,16 @@ void main() {
       AiMessage(
         id: 'm1',
         role: AiRole.assistant,
-        parts: [_create('A', result: {'taskId': '1'})],
+        parts: [
+          _create('A', result: {'taskId': '1'}),
+        ],
       ),
       AiMessage(
         id: 'm2',
         role: AiRole.assistant,
-        parts: [_update({'taskId': '1', 'status': 'in_progress'})],
+        parts: [
+          _update({'taskId': '1', 'status': 'in_progress'}),
+        ],
       ),
     ];
     runtime.setMessages([full.last]);
@@ -127,47 +139,49 @@ void main() {
     expect(notified, 0);
   });
 
-  test('does not re-derive when last message is replaced but task parts are identical',
-      () async {
-    final runtime = ExternalStoreAiThreadRuntime();
-    final create = _create('A', result: {'taskId': '1'});
-    var full = <AiMessage>[
-      AiMessage(id: 'm1', role: AiRole.assistant, parts: [create]),
-    ];
-    final controller = CliTaskBoardController(
-      runtime: runtime,
-      loadedMessages: () => full,
-    );
-    addTearDown(() {
-      controller.dispose();
-      runtime.close();
-    });
-    runtime.setMessages(full);
-    await Future<void>.delayed(Duration.zero);
-    expect(controller.board.totalCount, 1);
+  test(
+    'does not re-derive when last message is replaced but task parts are identical',
+    () async {
+      final runtime = ExternalStoreAiThreadRuntime();
+      final create = _create('A', result: {'taskId': '1'});
+      var full = <AiMessage>[
+        AiMessage(id: 'm1', role: AiRole.assistant, parts: [create]),
+      ];
+      final controller = CliTaskBoardController(
+        runtime: runtime,
+        loadedMessages: () => full,
+      );
+      addTearDown(() {
+        controller.dispose();
+        runtime.close();
+      });
+      runtime.setMessages(full);
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.board.totalCount, 1);
 
-    var notified = 0;
-    controller.addListener(() => notified++);
-    full = [
-      AiMessage(
-        id: 'm1',
-        role: AiRole.assistant,
-        parts: [
-          create,
-          const AiToolCallPart(
-            toolCallId: 'w',
-            toolName: 'Write',
-            args: {'path': 'a.txt', 'contents': 'x'},
-          ),
-        ],
-      ),
-    ];
-    runtime.setMessages(full);
-    await Future<void>.delayed(Duration.zero);
-    expect(notified, 0);
-    expect(controller.board.totalCount, 1);
-    expect(controller.board.tasks.single.subject, 'A');
-  });
+      var notified = 0;
+      controller.addListener(() => notified++);
+      full = [
+        AiMessage(
+          id: 'm1',
+          role: AiRole.assistant,
+          parts: [
+            create,
+            const AiToolCallPart(
+              toolCallId: 'w',
+              toolName: 'Write',
+              args: {'path': 'a.txt', 'contents': 'x'},
+            ),
+          ],
+        ),
+      ];
+      runtime.setMessages(full);
+      await Future<void>.delayed(Duration.zero);
+      expect(notified, 0);
+      expect(controller.board.totalCount, 1);
+      expect(controller.board.tasks.single.subject, 'A');
+    },
+  );
 
   test('dispose cancels the runtime subscription', () async {
     final runtime = ExternalStoreAiThreadRuntime();

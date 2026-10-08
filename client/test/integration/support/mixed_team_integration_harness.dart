@@ -16,22 +16,22 @@ import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/launch/launch_factory.dart';
-import 'package:teampilot/services/launch/session_runtime_plan_builder.dart';
+import 'package:teampilot/services/chat/launch/launch_factory.dart';
+import 'package:teampilot/services/chat/launch/staging/session_runtime_plan_builder.dart';
 import 'package:teampilot/services/expert_hub/expert_capability_resolver.dart';
 import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import 'package:teampilot/repositories/workspace_project_config_repository.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
-import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_context_registry.dart';
 import 'package:teampilot/services/storage/runtime_context_resolver.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
-import 'package:teampilot/services/team_bus/mcp/bus_bridge_locator.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
-import 'package:teampilot/services/team_bus/remote/remote_bus_binding_resolver.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/bus_bridge_locator.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
+import 'package:teampilot/services/chat/team_bus/remote/remote_bus_binding_resolver.dart';
+import 'package:teampilot/services/chat/team_bus/remote/remote_member_bus_setup.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 
@@ -162,6 +162,19 @@ class MixedTeamIntegrationHarness {
     return created;
   }
 
+  /// Session create/open must use this instance.
+  ///
+  /// Later member materialize and connect retries go through
+  /// `_host.sessionRepository`. A throwaway `fakeHomeStorage()` repo is
+  /// invisible to those paths and surfaces as `Unknown sessionId`.
+  SessionRepository get sessionRepository {
+    final repo = cubit?.sessionRepository;
+    if (repo == null) {
+      throw StateError('createCubit before sessionRepository');
+    }
+    return repo;
+  }
+
   /// Full ChatCubit wiring for local-lead + Docker-SSH-worker mixed teams.
   ChatCubit createDockerCubit({
     required PostFrameTestHarness postFrame,
@@ -191,8 +204,8 @@ class MixedTeamIntegrationHarness {
       ),
       sshProfileById: profileById,
       defaultTargetResolver: RuntimeTarget.local,
-      remoteBusResolver: RemoteBusBindingResolver(
-        registry: CliToolRegistry.builtIn(),
+      remoteBusSetup: RemoteMemberBusSetup(
+        resolver: RemoteBusBindingResolver(registry: CliToolRegistry.builtIn()),
       ),
       sessionConnect: buildSessionConnectOrchestrator(
         lifecycle: lifecycle,
@@ -214,8 +227,9 @@ class MixedTeamIntegrationHarness {
             installMcp: (_) async => null,
             localStore: LocalExpertStore(
               fs: testHomeStorage.fs,
-              dirOverride: AppPaths(testHomeStorage.paths.basePath)
-                  .memberHubLocalTemplatesDir,
+              dirOverride: AppPaths(
+                testHomeStorage.paths.basePath,
+              ).memberHubLocalTemplatesDir,
             ),
           ),
           workspaceProjectConfig: WorkspaceProjectConfigRepository(
@@ -432,7 +446,7 @@ class MixedTeamIntegrationHarness {
   }
 
   TeamBus? _busForSession(ChatCubit? cubit, String sessionId) =>
-      cubit?.tabStore.openTabBySessionId(sessionId)?.teamBus;
+      cubit?.tabStore.getOpenTabBySessionId(sessionId)?.teamBus;
 
   TeammateBusMcpGateway? _gatewayForSession(ChatCubit? cubit) =>
       cubit?.teammateBusMcpGateway;
@@ -530,11 +544,7 @@ class MixedTeamIntegrationHarness {
     String kickoff = 'Coordinate the team.',
   }) async {
     _resetMockScenarios();
-    await _submitLeaderKickoff(
-      cubit,
-      postFrame: postFrame,
-      kickoff: kickoff,
-    );
+    await _submitLeaderKickoff(cubit, postFrame: postFrame, kickoff: kickoff);
   }
 
   Future<void> _submitWorkerKickoff(
@@ -728,7 +738,7 @@ class MixedTeamIntegrationHarness {
   }
 
   TeamBus? tabBus(String sessionId) =>
-      cubit?.tabStore.openTabBySessionId(sessionId)?.teamBus;
+      cubit?.tabStore.getOpenTabBySessionId(sessionId)?.teamBus;
 
   TeammateBusMcpGateway? tabGateway(ChatCubit? cubit) =>
       _gatewayForSession(cubit ?? this.cubit);
@@ -895,9 +905,7 @@ class MixedTeamDockerRemote {
       username: DockerSshServer.defaultUsername,
     );
 
-    final sshProfileRepository = SshProfileRepository(
-      storage: testHomeStorage,
-    );
+    final sshProfileRepository = SshProfileRepository(storage: testHomeStorage);
     await sshProfileRepository.save(profile);
 
     final sshClientFactory = SshClientFactory(

@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/install_job/install_cancel_policy.dart';
 import 'package:teampilot/models/install_job/install_job_cancelled_exception.dart';
 import 'package:teampilot/models/install_job/install_job_context.dart';
-import 'package:teampilot/models/install_job/install_job_key.dart';
 import 'package:teampilot/models/install_job/install_job_spec.dart';
 import 'package:teampilot/services/file_tree_import/import_models.dart';
 import 'package:teampilot/services/file_tree_import/workspace_import_service.dart';
@@ -57,10 +56,7 @@ void main() {
         runner.supports(InstallJobKeys.fileImport('ws-1', 'hash')),
         isTrue,
       );
-      expect(
-        runner.supports(InstallJobKeys.skill('lint')),
-        isFalse,
-      );
+      expect(runner.supports(InstallJobKeys.skill('lint')), isFalse);
     });
 
     test('execute skips progress tracking below gate', () async {
@@ -137,20 +133,24 @@ void main() {
       expect(summary.cancelled, isTrue);
     });
 
-    test('run throws InstallJobCancelledException for cancelled summary', () async {
-      final key = InstallJobKeys.fileImport('ws-1', 'hash');
-      final spec = InstallJobSpec<ImportSummary>(
-        key: key,
-        title: 'Import',
-        cancelPolicy: InstallCancelPolicy.forceKill,
-        run: (ctx) async => const ImportSummary(succeeded: 1, cancelled: true),
-      );
+    test(
+      'run throws InstallJobCancelledException for cancelled summary',
+      () async {
+        final key = InstallJobKeys.fileImport('ws-1', 'hash');
+        final spec = InstallJobSpec<ImportSummary>(
+          key: key,
+          title: 'Import',
+          cancelPolicy: InstallCancelPolicy.forceKill,
+          run: (ctx) async =>
+              const ImportSummary(succeeded: 1, cancelled: true),
+        );
 
-      expect(
-        () => runner.run(spec, InstallJobContext()),
-        throwsA(isA<InstallJobCancelledException>()),
-      );
-    });
+        expect(
+          () => runner.run(spec, InstallJobContext()),
+          throwsA(isA<InstallJobCancelledException>()),
+        );
+      },
+    );
 
     test('run throws StateError for failed summary', () async {
       final key = InstallJobKeys.fileImport('ws-1', 'hash');

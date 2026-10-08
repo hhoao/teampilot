@@ -6,10 +6,9 @@ import 'package:teampilot/services/provider_usage/http_json_template.dart';
 void main() {
   test('empty accountId drops colon separators', () {
     expect(
-      expandHttpJsonTemplate(
-        '{accountId}::{accessToken}',
-        {'accessToken': 'tok'},
-      ),
+      expandHttpJsonTemplate('{accountId}::{accessToken}', {
+        'accessToken': 'tok',
+      }),
       'tok',
     );
   });
@@ -36,31 +35,37 @@ void main() {
 
   test('filled accountId and accessToken keep double colon separator', () {
     expect(
-      expandHttpJsonTemplate(
-        '{accountId}::{accessToken}',
-        {'accountId': 'user', 'accessToken': 'tok'},
-      ),
+      expandHttpJsonTemplate('{accountId}::{accessToken}', {
+        'accountId': 'user',
+        'accessToken': 'tok',
+      }),
       'user::tok',
     );
   });
 
-  test('WorkosCursorSessionToken keeps double colon when both values present', () {
-    expect(
-      expandHttpJsonTemplate(
-        'WorkosCursorSessionToken={accountId}::{accessToken}',
-        {'accountId': 'user', 'accessToken': 'tok'},
-      ),
-      'WorkosCursorSessionToken=user::tok',
-    );
-  });
+  test(
+    'WorkosCursorSessionToken keeps double colon when both values present',
+    () {
+      expect(
+        expandHttpJsonTemplate(
+          'WorkosCursorSessionToken={accountId}::{accessToken}',
+          {'accountId': 'user', 'accessToken': 'tok'},
+        ),
+        'WorkosCursorSessionToken=user::tok',
+      );
+    },
+  );
 
-  test('WorkosCursorSessionToken drops empty accountId colons after equals', () {
-    expect(
-      expandHttpJsonTemplate(
-        'WorkosCursorSessionToken={accountId}::{accessToken}',
-        {'accessToken': 'tok'},
-      ),
-      'WorkosCursorSessionToken=tok',
-    );
-  });
+  test(
+    'WorkosCursorSessionToken drops empty accountId colons after equals',
+    () {
+      expect(
+        expandHttpJsonTemplate(
+          'WorkosCursorSessionToken={accountId}::{accessToken}',
+          {'accessToken': 'tok'},
+        ),
+        'WorkosCursorSessionToken=tok',
+      );
+    },
+  );
 }

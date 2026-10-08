@@ -12,7 +12,7 @@ import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dar
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/hook/glue_script_builder.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/resource/providers/hook_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/runtime_event_hook_contribution_provider.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -64,7 +64,7 @@ void main() {
       ),
     );
     final fragment = rendered.configFragments['opencode.json']! as Map;
-    return mergeOpencodePluginEntries(config, fragment['plugin'] as List);
+    return mergeOpencodePluginEntries(config, fragment['plugins'] as List);
   }
 
   test('opencodeAgentStatusPluginSource polls Bus and replies via SDK', () {
@@ -75,18 +75,12 @@ void main() {
     // Poll gateway for user answer (Task 6).
     expect(source, contains('/ask-user-answer?request_id='));
     // OpenCode SDK reply / reject (flat requestID API; see plugin comment).
-    expect(source, contains('client.question.reply'));
-    expect(source, contains('client.question.reject'));
-    // The plugin `input.client` (v1 SDK) has no `question` member, so answers
-    // must fall back to the OpenCode HTTP API. Default TUI mode has no TCP
-    // listener (in-process RPC bridge), so delivery must go through the
-    // client's own request pipeline (`client._client.post`) — a raw
-    // `fetch(input.serverUrl)` would hit a dead localhost:4096.
+    expect(source, contains('ctx.question.reply'));
+    expect(source, contains('ctx.question.reject'));
     expect(source, contains('deliverQuestionReply'));
-    expect(source, contains('client?._client'));
+    expect(source, contains('ctx._client'));
     expect(source, contains('raw?.post'));
     expect(source, contains(r'/question/${encodeURIComponent(requestId)}/'));
-    expect(source, contains('input?.serverUrl'));
     expect(source, contains('"reject"'));
     // SDK error AND poll timeout both POST reply_failed.
     expect(source, contains('question.reply_failed'));
@@ -98,9 +92,12 @@ void main() {
     expect(source, contains('props.permission'));
     expect(source, contains('props.patterns'));
     expect(source, contains('props.always'));
-    expect(source, contains('pollAndReply(requestId, "permission")'));
+    expect(
+      source,
+      contains('pollAndReply(requestId, "permission", sessionID)'),
+    );
     expect(source, contains('deliverPermissionReply'));
-    expect(source, contains('client.permission.reply'));
+    expect(source, contains('ctx.permission.reply'));
     expect(source, contains('body.permission_reply'));
     expect(
       source,
@@ -129,11 +126,11 @@ void main() {
       'http://127.0.0.1:12345/agent-status',
       sessionId: 'session-1',
     );
-    final plugin = merged['plugin'] as List;
+    final plugin = merged['plugins'] as List;
     expect(plugin, hasLength(1));
-    final entry = plugin.first as List;
-    expect(entry[0], './$opencodeAgentStatusPluginFileName');
-    final opts = entry[1] as Map;
+    final entry = plugin.first as Map;
+    expect(entry['package'], './$opencodeAgentStatusPluginFileName');
+    final opts = entry['options'] as Map;
     expect(opts['member'], 'm1');
     expect(opts['url'], 'http://127.0.0.1:12345/agent-status');
     expect(opts['session'], 'session-1');
@@ -150,7 +147,7 @@ void main() {
       'm1',
       'http://127.0.0.1:12345/agent-status',
     );
-    expect(twice['plugin'], hasLength(1));
+    expect(twice['plugins'], hasLength(1));
   });
 
   test('mergeRuntimePlugin replaces stale same-member entry when '
@@ -169,11 +166,11 @@ void main() {
       'http://127.0.0.1:23456/agent-status',
       sessionId: 'session-1',
     );
-    final plugin = twice['plugin'] as List;
+    final plugin = twice['plugins'] as List;
     expect(plugin, hasLength(1));
-    final entry = plugin.first as List;
-    expect(entry[0], './$opencodeAgentStatusPluginFileName');
-    final opts = entry[1] as Map;
+    final entry = plugin.first as Map;
+    expect(entry['package'], './$opencodeAgentStatusPluginFileName');
+    final opts = entry['options'] as Map;
     expect(opts['url'], 'http://127.0.0.1:23456/agent-status');
   });
 
@@ -181,24 +178,24 @@ void main() {
       'other members', () {
     final merged = mergeRuntimePlugin(
       <String, Object?>{
-        'plugin': <Object?>[
+        'plugins': <Object?>[
           './plugins/other/plugin.js',
-          <Object?>[
-            './$opencodeAgentStatusPluginFileName',
-            <String, Object?>{
+          <String, Object?>{
+            'package': './$opencodeAgentStatusPluginFileName',
+            'options': <String, Object?>{
               'member': 'm2',
               'url': 'http://127.0.0.1:1/agent-status',
             },
-          ],
+          },
         ],
       },
       'm1',
       'http://127.0.0.1:23456/agent-status',
     );
-    final plugin = merged['plugin'] as List;
+    final plugin = merged['plugins'] as List;
     expect(plugin, hasLength(3));
-    final last = plugin.last as List;
-    final opts = last[1] as Map;
+    final last = plugin.last as Map;
+    final opts = last['options'] as Map;
     expect(opts['member'], 'm1');
     expect(opts['url'], 'http://127.0.0.1:23456/agent-status');
   });
@@ -216,11 +213,9 @@ void main() {
         basePath: base.path,
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-                                            storage: fakeHomeStorage(),
-      );
-      final capability = OpencodeProviderCapability(
         storage: fakeHomeStorage(),
       );
+      final capability = OpencodeProviderCapability(storage: fakeHomeStorage());
       const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
       // Native (non-mixed) team — status must still install.
       const team = TeamProfile(
@@ -278,8 +273,8 @@ void main() {
       expect(source, contains('session_id'));
       // Poll Bus for answers, then reply/reject via OpenCode SDK.
       expect(source, contains('/ask-user-answer?request_id='));
-      expect(source, contains('client.question.reply'));
-      expect(source, contains('client.question.reject'));
+      expect(source, contains('ctx.question.reply'));
+      expect(source, contains('ctx.question.reject'));
       expect(source, contains('question.reply_failed'));
       // Poll deadline matches attention TTL (30 minutes).
       expect(source, contains('30 * 60 * 1000'));
@@ -299,11 +294,11 @@ void main() {
       final raw = await fs.readString(configPath);
       expect(raw, isNotNull);
       final config = jsonDecode(raw!) as Map<String, dynamic>;
-      final plugin = config['plugin'] as List;
+      final plugin = config['plugins'] as List;
       expect(plugin, hasLength(1));
-      final entry = plugin.first as List;
-      expect(entry[0], './$opencodeAgentStatusPluginFileName');
-      final opts = entry[1] as Map;
+      final entry = plugin.first as Map;
+      expect(entry['package'], './$opencodeAgentStatusPluginFileName');
+      final opts = entry['options'] as Map;
       expect(opts['member'], 'm1');
       expect(opts['url'], 'http://127.0.0.1:12345/agent-status');
       expect(opts['session'], 'session-1');
@@ -322,7 +317,7 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-                                          storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     const workspaceId = 'workspace-1';
     const sessionId = 'session-1';
@@ -355,11 +350,11 @@ void main() {
     final raw = await fs.readString(configPath);
     expect(raw, isNotNull);
     final config = jsonDecode(raw!) as Map<String, dynamic>;
-    final plugin = config['plugin'] as List;
+    final plugin = config['plugins'] as List;
     expect(plugin, isNotEmpty);
-    final entry = plugin.first as List;
-    expect(entry[0], './$opencodeAgentStatusPluginFileName');
-    final opts = entry[1] as Map;
+    final entry = plugin.first as Map;
+    expect(entry['package'], './$opencodeAgentStatusPluginFileName');
+    final opts = entry['options'] as Map;
     expect(opts['url'], 'http://127.0.0.1:12345/agent-status');
   });
 }

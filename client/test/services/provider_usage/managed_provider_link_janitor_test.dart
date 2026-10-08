@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_link_janitor.dart';
 
@@ -28,8 +27,7 @@ void main() {
     await appCubit.close();
   });
 
-  test('clears credentialLink on rows referencing the deleted entry',
-      () async {
+  test('clears credentialLink on rows referencing the deleted entry', () async {
     await appCubit.upsertProvider(
       const AppProviderConfig(
         id: 'deepseek',

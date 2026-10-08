@@ -1,7 +1,7 @@
-import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
-import 'package:teampilot/services/terminal/fullscreen_input_screen_probe.dart';
-import 'package:teampilot/services/terminal/fullscreen_pty_delivery_port.dart';
-import 'package:teampilot/services/terminal/pty_automation_needle.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_cr_ack_config.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_input_screen_probe.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_pty_delivery_port.dart';
+import 'package:teampilot/services/chat/runtime/pty/pty_automation_needle.dart';
 
 /// In-memory [FullscreenPtyDeliveryPort] for automation unit tests.
 final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
@@ -13,6 +13,7 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
     this.collapseAsClaudePaste = false,
     this.crAckConfig = const FullscreenCrAckConfig.productionDefault(),
     this.composerChromeEmptyOverride,
+    this.composerStagedOverride,
   });
 
   bool aborted;
@@ -26,6 +27,11 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   /// When set, [isComposerChromeEmpty] returns this value instead of inferring.
   final bool? composerChromeEmptyOverride;
 
+  /// When set, [isNeedleStagedInComposer] returns this value instead of
+  /// inferring from [staged]. Simulates a resumed session where the needle
+  /// exists on the grid (old transcript echo) but the live composer is empty.
+  final bool? composerStagedOverride;
+
   String? staged;
   int pasteCount = 0;
   int crCount = 0;
@@ -38,12 +44,17 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   int get viewportRows => 24;
 
   @override
+  int get cursorRow => -1;
+
+  @override
+  int get pasteZoneComposerRow => -1;
+
+  @override
   Future<void> syncDisplayGrid() async {}
 
   @override
   Future<void> waitForPaint({required Duration timeout}) async {}
 
-  @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
     if (staged == null) return null;
     if (!staged!.contains(needle)) return null;
@@ -52,6 +63,15 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   }
 
   @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) => locateNeedle(needle, scanRows: scanRows);
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      locateCollapsedPasteNeedle(scanRows: scanRows);
+
   FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) {
     if (staged == null) return null;
     final marker = PtyAutomationNeedle.collapsedPasteNeedle(staged!);
@@ -66,34 +86,16 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   }
 
   @override
+  bool isNeedleStagedInCursorZone(String needle) {
+    if (staged == null || needle.isEmpty) return false;
+    return staged!.contains(needle);
+  }
+
+  @override
   bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
     if (crCount < crsToClear) return false;
     if (staged == null) return true;
     return !staged!.contains(anchor.needle);
-  }
-
-  @override
-  bool isComposerChromeEmpty({int scanRows = 24}) {
-    if (composerChromeEmptyOverride != null) {
-      return composerChromeEmptyOverride!;
-    }
-    final prefix = crAckConfig.composerPrefix?.trim();
-    if (prefix == null || prefix.isEmpty) {
-      return staged == null || staged!.trim().isEmpty;
-    }
-    if (staged == null) return true;
-    final trimmed = staged!.trimLeft();
-    if (!trimmed.startsWith(prefix)) {
-      // Staged body without prefix chrome — treat as non-empty composer body.
-      return staged!.trim().isEmpty;
-    }
-    return trimmed.substring(prefix.length).trim().isEmpty;
-  }
-
-  @override
-  bool isNeedleStagedInComposer(String needle, {int scanRows = 24}) {
-    if (staged == null || needle.isEmpty) return false;
-    return staged!.contains(needle);
   }
 
   @override
@@ -129,4 +131,186 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   @override
   String describeProbeWindow({int scanRows = 24}) =>
       staged == null ? '<empty staged>' : 'staged="$staged"';
+}
+
+// Row-aware fake for the paste-denominator baseline (cursor): simulates a
+// repeated identical short message where the earlier render sits on an upper
+// row and the freshly pasted copy lands on a lower row (TUI input box pinned
+// at the bottom). `locatePasteZoneNeedle` returns the row that currently
+// represents staged content (stale echo in the transcript, new copy below).
+final class RowAwareFakeFullscreenPtyDeliveryPort
+    implements FullscreenPtyDeliveryPort {
+  RowAwareFakeFullscreenPtyDeliveryPort({
+    this.crAckConfig = const FullscreenCrAckConfig(
+      strategy: FullscreenCrAckStrategy.composerMovesDown,
+      pasteBaseline: true,
+      pasteZoneBottomPad: 3,
+    ),
+    this.pasteFailsToStage = false,
+    this.staleEcho,
+    this.staleRow = 3,
+    this.laggingProbe = false,
+    this.probeLagAfterClear = 0,
+  });
+
+  @override
+  final FullscreenCrAckConfig crAckConfig;
+  final bool pasteFailsToStage;
+  String? staleEcho; // pre-render text sitting on an upper row
+  int staleRow;
+
+  /// When true, [locatePasteZoneNeedle] reads a snapshot updated only by
+  /// [syncDisplayGrid] — the live TUI (clear/paste) can move ahead of the
+  /// probe grid, matching production `drainForTest` lag.
+  final bool laggingProbe;
+
+  /// Extra post-clear [syncDisplayGrid] calls that still show leftover
+  /// composer text. Models Cursor's Ctrl-U redraw arriving after the first
+  /// drain (PTY round-trip), not just Dart mirror lag.
+  final int probeLagAfterClear;
+  String? staged; // freshly pasted text
+  int stagedRow = 5;
+  int pasteCount = 0;
+  int crCount = 0;
+  int clearCount = 0;
+  String? _probeStaged;
+  int _probeStagedRow = 5;
+  String? _probeEcho;
+  int _probeEchoRow = 3;
+  var _cleared = false;
+  var _syncsAfterClear = 0;
+
+  @override
+  bool get isAborted => false;
+
+  @override
+  int get viewportRows => 24;
+
+  @override
+  int get cursorRow => -1;
+
+  @override
+  int get pasteZoneComposerRow => stagedRow;
+
+  @override
+  Future<void> syncDisplayGrid() async {
+    if (!laggingProbe) return;
+    if (staged == null && _probeStaged != null && _cleared) {
+      _syncsAfterClear++;
+      if (_syncsAfterClear <= probeLagAfterClear) {
+        return;
+      }
+    }
+    _probeStaged = staged;
+    _probeStagedRow = stagedRow;
+    _probeEcho = staleEcho;
+    _probeEchoRow = staleRow;
+  }
+
+  @override
+  Future<void> waitForPaint({required Duration timeout}) async {}
+
+  FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) {
+    if (laggingProbe) {
+      return _anchorOn(
+        staged: _probeStaged,
+        stagedRow: _probeStagedRow,
+        echo: _probeEcho,
+        echoRow: _probeEchoRow,
+        needle: needle,
+      );
+    }
+    return _anchorOn(
+      staged: staged,
+      stagedRow: stagedRow,
+      echo: staleEcho,
+      echoRow: staleRow,
+      needle: needle,
+    );
+  }
+
+  FullscreenPromptAnchor? _anchorOn({
+    required String? staged,
+    required int stagedRow,
+    required String? echo,
+    required int echoRow,
+    required String needle,
+  }) {
+    if (staged != null && staged.contains(needle)) {
+      return FullscreenPromptAnchor(
+        row: stagedRow,
+        startCol: 0,
+        needle: needle,
+      );
+    }
+    if (echo != null && echo.contains(needle)) {
+      return FullscreenPromptAnchor(row: echoRow, startCol: 0, needle: needle);
+    }
+    return null;
+  }
+
+  @override
+  FullscreenPromptAnchor? locatePasteZoneNeedle(
+    String needle, {
+    int scanRows = 24,
+  }) {
+    // Bottom input zone: the live staged body first (row 5), else the stale
+    // transcript echo (row 3) — the baseline flow rejects anchors at/above the
+    // post-clear baseline.
+    return locateNeedle(needle, scanRows: scanRows);
+  }
+
+  @override
+  FullscreenPromptAnchor? locateCollapsedPasteZoneNeedle({int scanRows = 24}) =>
+      null;
+
+  FullscreenPromptAnchor? locateCollapsedPasteNeedle({int scanRows = 24}) =>
+      null;
+
+  @override
+  bool isAtAnchor(FullscreenPromptAnchor anchor) {
+    if (staged != null && staged!.contains(anchor.needle)) return true;
+    return staleEcho != null && staleEcho!.contains(anchor.needle);
+  }
+
+  @override
+  bool isNeedleStagedInCursorZone(String needle) =>
+      staged != null && staged!.contains(needle);
+
+  @override
+  bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
+    if (crCount < 1) return false;
+    return staged == null;
+  }
+
+  @override
+  Future<void> clearStagedInput({bool Function()? canExecute}) async {
+    clearCount++;
+    staged = null;
+    _cleared = true;
+  }
+
+  @override
+  Future<void> pasteText(String text, {bool Function()? canExecute}) async {
+    pasteCount++;
+    if (pasteFailsToStage) {
+      staged = null; // paste dropped; grid still shows only the stale echo
+      return;
+    }
+    staged = text;
+    stagedRow = 5;
+  }
+
+  @override
+  Future<void> submitCr({bool Function()? canExecute}) async {
+    crCount++;
+    staged = null;
+  }
+
+  @override
+  Future<void> dismissComposerPopup() async {}
+
+  @override
+  String describeProbeWindow({int scanRows = 24}) =>
+      'stale=$staleEcho@$staleRow staged=$staged@$stagedRow';
 }

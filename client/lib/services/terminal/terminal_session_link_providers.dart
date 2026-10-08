@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
-import 'package:flutter_alacritty/links/terminal_link_provider.dart';
 
-import 'package:flutter_alacritty/links/url_link_provider.dart';
 
 import '../io/filesystem.dart';
 import 'file_path_link_provider.dart';
@@ -10,10 +8,8 @@ import 'terminal_uri_opener.dart';
 
 /// OSC 7 link providers for a [TerminalSession]'s [TerminalView].
 final class TerminalSessionLinkProviders {
-  TerminalSessionLinkProviders({
-    required this.engine,
-    required Filesystem fs,
-  }) : _fs = fs;
+  TerminalSessionLinkProviders({required this.engine, required Filesystem fs})
+    : _fs = fs;
 
   final TerminalEngine engine;
   final Filesystem _fs;

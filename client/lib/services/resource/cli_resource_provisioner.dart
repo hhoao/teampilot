@@ -8,6 +8,7 @@ import '../cli/registry/capabilities/hook_capability.dart';
 import '../cli/registry/capabilities/mcp_capability.dart';
 import '../cli/registry/capabilities/prompt_capability.dart';
 import '../cli/registry/capabilities/skill_capability.dart';
+import '../cli/registry/capabilities/workspace_base_info_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
 import '../hook/glue_script_builder.dart';
@@ -53,10 +54,10 @@ class CliResourceProvisionContext {
     this.memberHome,
     this.appConfigDir,
     this.fallbackAppConfigDir,
-    this.mcpOutputBasename,
     this.hooksDir,
     this.hookConfigPath,
     this.hookRenderContext,
+    this.workspaceBaseInfo = WorkspaceBaseInfoPromptInputs.empty,
   }) : members = List.unmodifiable(members),
        additionalDirectories = List.unmodifiable(additionalDirectories);
 
@@ -82,7 +83,6 @@ class CliResourceProvisionContext {
 
   final String? appConfigDir;
   final String? fallbackAppConfigDir;
-  final String? mcpOutputBasename;
   final String? hooksDir;
 
   /// Optional target file for the single native hook config fragment.
@@ -91,6 +91,7 @@ class CliResourceProvisionContext {
   /// than from [configDir].
   final String? hookConfigPath;
   final HookRenderContext? hookRenderContext;
+  final WorkspaceBaseInfoPromptInputs workspaceBaseInfo;
 }
 
 /// Per-kind result retained by the launch staging caller for diagnostics and
@@ -321,6 +322,7 @@ final class CliResourceProvisioner {
               pushDelivery: context.pushDelivery,
               additionalDirectories: context.additionalDirectories,
               memberHome: context.memberHome,
+              workspaceBaseInfo: context.workspaceBaseInfo,
             ),
             document: prompt,
           );
@@ -376,7 +378,6 @@ final class CliResourceProvisioner {
             fs: _fs,
             configDir: context.configDir,
             servers: mcpServers,
-            outputBasename: context.mcpOutputBasename,
           );
           materializations[ResourceContributionKind.mcp] =
               ResourceMaterializationResult(
@@ -691,8 +692,7 @@ final class CliResourceProvisioner {
     if (existing != null) return existing;
     return HookRenderContext(
       hooksDir:
-          context.hooksDir ??
-          _fs.pathContext.join(context.configDir, 'hooks'),
+          context.hooksDir ?? _fs.pathContext.join(context.configDir, 'hooks'),
       runner:
           context.paths?.hostEnvironmentForProvision().scriptRunner ??
           HostExecutionEnvironment.resolve().scriptRunner,
@@ -717,6 +717,7 @@ final class CliResourceProvisioner {
           pushDelivery: context.pushDelivery,
           additionalDirectories: context.additionalDirectories,
           memberHome: context.memberHome,
+          workspaceBaseInfo: context.workspaceBaseInfo,
         ),
         providers: providers.prompts,
       );

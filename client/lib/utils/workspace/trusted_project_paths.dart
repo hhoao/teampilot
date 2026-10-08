@@ -12,8 +12,10 @@ Future<Set<String>> collectTrustedProjectKeys({
   for (final directory in directories) {
     final trimmed = directory.trim();
     if (trimmed.isEmpty) continue;
-    for (final pathKey
-        in workspaceMetadataKeys(trimmed, usesPosixPaths: usesPosixPaths)) {
+    for (final pathKey in workspaceMetadataKeys(
+      trimmed,
+      usesPosixPaths: usesPosixPaths,
+    )) {
       keys.add(pathKey);
       final gitRoot = await findCanonicalGitRoot(
         fs,

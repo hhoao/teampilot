@@ -130,9 +130,7 @@ class ProviderModelsEditor extends StatelessWidget {
   bool _supportsTiers(BuildContext context) {
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
-    return registry
-            .capability<ProviderCapability>(cli)
-            ?.supportsModelTiers ??
+    return registry.capability<ProviderCapability>(cli)?.supportsModelTiers ??
         false;
   }
 
@@ -176,7 +174,6 @@ class ProviderModelsEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
     final styles = TpTextStyles.of(context);
     final entries = parse(models);
     final supportsTiers = _supportsTiers(context);
@@ -187,9 +184,7 @@ class ProviderModelsEditor extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(
-              child: Text(l10n.models, style: styles.mdSnug),
-            ),
+            Expanded(child: Text(l10n.models, style: styles.mdSnug)),
             TpIconButton(
               icon: Icons.add,
               compact: true,
@@ -202,10 +197,7 @@ class ProviderModelsEditor extends StatelessWidget {
         if (entries.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              l10n.noModelsConfigured,
-              style: styles.mutedSm,
-            ),
+            child: Text(l10n.noModelsConfigured, style: styles.mutedSm),
           )
         else
           for (final entry in entries)

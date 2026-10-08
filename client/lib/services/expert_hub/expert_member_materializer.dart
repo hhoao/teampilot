@@ -58,7 +58,12 @@ abstract final class ExpertMemberMaterializer {
       if (next.provider.trim().isNotEmpty ||
           next.model.trim().isNotEmpty ||
           next.effort.trim().isNotEmpty) {
-        next = next.copyWith(provider: '', model: '', effort: '', updateEffort: true);
+        next = next.copyWith(
+          provider: '',
+          model: '',
+          effort: '',
+          updateEffort: true,
+        );
       }
       if (next.activePresetId == null || next.activePresetId!.isEmpty) {
         next = next.copyWith(
@@ -92,10 +97,8 @@ abstract final class ExpertMemberMaterializer {
     if (team.members.isEmpty) return team;
     return team.copyWith(
       members: [
-        for (final member in team.members)
-          _applyTeamInheritance(member, team),
+        for (final member in team.members) _applyTeamInheritance(member, team),
       ],
     );
   }
-
 }

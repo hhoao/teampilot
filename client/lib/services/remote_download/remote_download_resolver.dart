@@ -4,7 +4,7 @@ import 'remote_download_source.dart';
 
 class RemoteDownloadResolver {
   RemoteDownloadResolver(RemoteDownloadCatalog catalog)
-      : _catalogProvider = _providerFor(catalog);
+    : _catalogProvider = _providerFor(catalog);
 
   RemoteDownloadResolver.withProvider(this._catalogProvider);
 

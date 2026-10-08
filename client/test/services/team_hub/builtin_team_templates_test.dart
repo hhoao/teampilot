@@ -6,9 +6,8 @@ import 'package:teampilot/services/expert_hub/expert_member_materializer.dart';
 import 'package:teampilot/services/team_hub/builtin_team_templates.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
 
-MemberCatalogSnapshot _builtinSnapshot() => MemberCatalogSnapshot({
-  for (final m in builtinExpertMembers()) m.key: m,
-});
+MemberCatalogSnapshot _builtinSnapshot() =>
+    MemberCatalogSnapshot({for (final m in builtinExpertMembers()) m.key: m});
 
 List<TeamMemberConfig> _materialize(TeamProfile team) =>
     ExpertMemberMaterializer.materializeTeam(team, _builtinSnapshot()).members;

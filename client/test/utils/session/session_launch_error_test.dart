@@ -41,10 +41,7 @@ void main() {
     ).join('\n');
     final formatted = formatSessionLaunchError(raw);
     expect(formatted.endsWith('…'), isTrue);
-    expect(
-      formatted.split('\n').length,
-      kSessionLaunchErrorMaxDetailLines + 1,
-    );
+    expect(formatted.split('\n').length, kSessionLaunchErrorMaxDetailLines + 1);
   });
 
   test('formatSessionLaunchError keeps PTY stderr above the exit stub', () {

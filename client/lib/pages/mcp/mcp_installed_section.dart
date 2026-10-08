@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../widgets/app_toast/app_toast.dart';
@@ -9,9 +11,18 @@ import '../../models/mcp_server.dart';
 import '../../services/mcp/mcp_credentials_store.dart';
 import '../../services/mcp/mcp_oauth_flow.dart';
 import '../../widgets/home_storage_scope.dart';
-import 'mcp_oauth_connect_dialog.dart';
 import '../../widgets/workspace_library_card.dart';
+import 'mcp_oauth_connect_dialog.dart';
 import 'mcp_shared_widgets.dart';
+import 'mcp_tools_dialog.dart';
+
+@visibleForTesting
+Future<bool> Function({
+  required BuildContext context,
+  required McpServer server,
+  required String configDir,
+})?
+debugShowMcpOAuthConnectDialog;
 
 class McpInstalledSection extends StatefulWidget {
   const McpInstalledSection({
@@ -38,9 +49,7 @@ class McpInstalledSection extends StatefulWidget {
 }
 
 class _McpInstalledSectionState extends State<McpInstalledSection> {
-  late final _credentials = McpCredentialsStore(
-    fs: homeStorageOf(context).fs,
-  );
+  late final _credentials = McpCredentialsStore(fs: homeStorageOf(context).fs);
   Map<String, bool>? _oauthStatus;
   int _oauthStatusEpoch = 0;
 
@@ -48,22 +57,54 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
   void initState() {
     super.initState();
     _reloadOAuthStatus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<McpCubit>().probeEnabled();
+    });
   }
 
   @override
   void didUpdateWidget(covariant McpInstalledSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.state.servers != widget.state.servers) {
+    final serversChanged = oldWidget.state.servers != widget.state.servers;
+    if (serversChanged) {
       _reloadOAuthStatus();
+    }
+    final becameReady =
+        oldWidget.state.status != McpLoadStatus.ready &&
+        widget.state.status == McpLoadStatus.ready;
+    final idsChanged = !_sameServerIds(
+      oldWidget.state.servers,
+      widget.state.servers,
+    );
+    if (becameReady || idsChanged || serversChanged) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _probeMissingEnabled();
+      });
+    }
+  }
+
+  bool _sameServerIds(List<McpServer> a, List<McpServer> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    final ids = {for (final server in a) server.id};
+    return b.every((server) => ids.contains(server.id));
+  }
+
+  void _probeMissingEnabled() {
+    final cubit = context.read<McpCubit>();
+    for (final server in widget.state.servers) {
+      if (server.enabled && !widget.state.probes.containsKey(server.id)) {
+        cubit.probeOne(server.id);
+      }
     }
   }
 
   Future<void> _reloadOAuthStatus() async {
     final epoch = ++_oauthStatusEpoch;
     final servers = widget.state.servers;
-    final configDir = McpOAuthFlow.claudeAppConfigDir(
-      homeStorageOf(context),
-    );
+    final configDir = McpOAuthFlow.claudeAppConfigDir(homeStorageOf(context));
     final data = await _credentials.read(configDir);
     final next = <String, bool>{};
     for (final server in servers) {
@@ -79,20 +120,22 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
   }
 
   Future<void> _connectOAuth(McpServer server) async {
-    final ok = await showMcpOAuthConnectDialog(
+    final showOAuthDialog =
+        debugShowMcpOAuthConnectDialog ?? showMcpOAuthConnectDialog;
+    final ok = await showOAuthDialog(
       context: context,
       server: server,
       configDir: McpOAuthFlow.claudeAppConfigDir(homeStorageOf(context)),
     );
     if (!mounted || ok != true) return;
-    await _reloadOAuthStatus();
-    if (!mounted) return;
     widget.onOAuthConnected();
     AppToast.show(
       context,
       message: context.l10n.mcpOAuthConnectSuccess,
       variant: TpToastVariant.success,
     );
+    unawaited(context.read<McpCubit>().probeOne(server.id));
+    unawaited(_reloadOAuthStatus());
   }
 
   @override
@@ -111,6 +154,15 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
             title: l10n.mcpInstalledCount(servers.length),
             trailing: TpActionRow(
               children: [
+                IconButton(
+                  key: const Key('mcp-probe-refresh-all'),
+                  tooltip: l10n.mcpProbeRefreshAll,
+                  onPressed: toolbarBusy ? null : cubit.refreshAll,
+                  icon: Icon(
+                    Icons.refresh_outlined,
+                    size: context.tpIconSizes.md,
+                  ),
+                ),
                 OutlinedButton.icon(
                   onPressed: toolbarBusy ? null : widget.onImport,
                   icon: Icon(
@@ -138,9 +190,9 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Text(
                 state.errorMessage ?? 'Error',
-                style: TpTextStyles.of(context).mdColored(
-                  Theme.of(context).colorScheme.error,
-                ),
+                style: TpTextStyles.of(
+                  context,
+                ).mdColored(Theme.of(context).colorScheme.error),
               ),
             )
           else if (servers.isEmpty)
@@ -161,6 +213,14 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
                   return McpInstalledServerRow(
                     server: server,
                     busy: state.busyIds.contains(server.id),
+                    probe: state.probes[server.id],
+                    onOpenTools: server.enabled
+                        ? () => showMcpToolsDialog(
+                            context,
+                            cubit: cubit,
+                            server: server,
+                          )
+                        : null,
                     onEdit: () => widget.onEdit(server),
                     onDelete: () => widget.onDelete(server),
                     onToggleEnabled: (enabled) =>

@@ -9,7 +9,9 @@ void main() {
   // TestGesture for both downs trips a framework gesture-arena assertion
   // ('isOpen': is not true) unrelated to TpHover — it reproduces on a bare
   // GestureDetector too.
-  testWidgets('TpHover onDoubleTap fires on double tap (desktop)', (tester) async {
+  testWidgets('TpHover onDoubleTap fires on double tap (desktop)', (
+    tester,
+  ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.linux;
     var single = 0;
     var dbl = 0;
@@ -40,7 +42,9 @@ void main() {
     }
   });
 
-  testWidgets('TpHover onDoubleTap fires on double tap (touch)', (tester) async {
+  testWidgets('TpHover onDoubleTap fires on double tap (touch)', (
+    tester,
+  ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     var single = 0;
     var dbl = 0;

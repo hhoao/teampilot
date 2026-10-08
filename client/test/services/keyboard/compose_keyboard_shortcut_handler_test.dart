@@ -63,35 +63,31 @@ void main() {
       effectiveChords: (commandId) => CommandCatalog.v1
           .firstWhere((def) => def.id == commandId)
           .defaultChords,
-      context: () =>
-          const ShortcutContext(inCompose: true, inTextInput: true),
+      context: () => const ShortcutContext(inCompose: true, inTextInput: true),
       isMacOS: () => false,
       isImeComposing: isImeComposing,
     );
   }
 
   group('ComposeCommandBindings.register', () {
-    test(
-      'Enter submits when canSubmit is true and context is inCompose',
-      () {
-        final bus = CommandBus();
-        final controller = TextEditingController(text: 'hello');
-        var submitted = false;
-        final unregister = ComposeCommandBindings.register(
-          bus: bus,
-          controller: controller,
-          onSubmit: () => submitted = true,
-          canSubmit: () => true,
-        );
-        final dispatcher = buildComposeDispatcher(bus);
+    test('Enter submits when canSubmit is true and context is inCompose', () {
+      final bus = CommandBus();
+      final controller = TextEditingController(text: 'hello');
+      var submitted = false;
+      final unregister = ComposeCommandBindings.register(
+        bus: bus,
+        controller: controller,
+        onSubmit: () => submitted = true,
+        canSubmit: () => true,
+      );
+      final dispatcher = buildComposeDispatcher(bus);
 
-        final handled = dispatcher.handle(keyDown(LogicalKeyboardKey.enter));
+      final handled = dispatcher.handle(keyDown(LogicalKeyboardKey.enter));
 
-        expect(handled, isTrue);
-        expect(submitted, isTrue);
-        unregister();
-      },
-    );
+      expect(handled, isTrue);
+      expect(submitted, isTrue);
+      unregister();
+    });
 
     test('Enter does not submit when canSubmit is false', () {
       final bus = CommandBus();
@@ -207,45 +203,42 @@ void main() {
   });
 
   group('ComposeCommandBindings.registerSubmit / registerNewline', () {
-    test(
-      'overlay-gated: unregistering submit stops Enter from submitting, '
-      'newline stays registered',
-      () {
-        final bus = CommandBus();
-        final controller = TextEditingController(text: 'hi');
-        var submitted = false;
-        final unregisterNewline = ComposeCommandBindings.registerNewline(
-          bus: bus,
-          controller: controller,
-        );
-        final unregisterSubmit = ComposeCommandBindings.registerSubmit(
-          bus: bus,
-          onSubmit: () => submitted = true,
-          canSubmit: () => true,
-        );
-        final dispatcher = buildComposeDispatcher(bus);
+    test('overlay-gated: unregistering submit stops Enter from submitting, '
+        'newline stays registered', () {
+      final bus = CommandBus();
+      final controller = TextEditingController(text: 'hi');
+      var submitted = false;
+      final unregisterNewline = ComposeCommandBindings.registerNewline(
+        bus: bus,
+        controller: controller,
+      );
+      final unregisterSubmit = ComposeCommandBindings.registerSubmit(
+        bus: bus,
+        onSubmit: () => submitted = true,
+        canSubmit: () => true,
+      );
+      final dispatcher = buildComposeDispatcher(bus);
 
-        // Suggestion overlay opens: field un-registers compose.submit only.
-        unregisterSubmit();
+      // Suggestion overlay opens: field un-registers compose.submit only.
+      unregisterSubmit();
 
-        final handled = dispatcher.handle(keyDown(LogicalKeyboardKey.enter));
+      final handled = dispatcher.handle(keyDown(LogicalKeyboardKey.enter));
 
-        // The chord still matches the catalog (dispatcher marks it handled
-        // regardless of a registered handler), but with no compose.submit
-        // handler on the bus, onSubmit never fires — leaving the key free
-        // for the field's own Focus.onKeyEvent to pick the suggestion.
-        expect(handled, isTrue);
-        expect(submitted, isFalse);
+      // The chord still matches the catalog (dispatcher marks it handled
+      // regardless of a registered handler), but with no compose.submit
+      // handler on the bus, onSubmit never fires — leaving the key free
+      // for the field's own Focus.onKeyEvent to pick the suggestion.
+      expect(handled, isTrue);
+      expect(submitted, isFalse);
 
-        // Mod+Enter still inserts a newline: newline was never unregistered.
-        pressModifier(LogicalKeyboardKey.controlLeft);
-        addTearDown(() => releaseModifier(LogicalKeyboardKey.controlLeft));
-        dispatcher.handle(keyDown(LogicalKeyboardKey.enter));
-        expect(controller.text, 'hi\n');
+      // Mod+Enter still inserts a newline: newline was never unregistered.
+      pressModifier(LogicalKeyboardKey.controlLeft);
+      addTearDown(() => releaseModifier(LogicalKeyboardKey.controlLeft));
+      dispatcher.handle(keyDown(LogicalKeyboardKey.enter));
+      expect(controller.text, 'hi\n');
 
-        unregisterNewline();
-      },
-    );
+      unregisterNewline();
+    });
 
     test('overlay closes: re-registering submit restores Enter submit', () {
       final bus = CommandBus();

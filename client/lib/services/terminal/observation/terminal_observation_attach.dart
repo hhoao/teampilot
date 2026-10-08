@@ -1,4 +1,4 @@
-import '../../../cubits/agent_attention_cubit.dart';
+import '../../agent_status/agent_attention_port.dart';
 import '../../../models/team_config.dart';
 
 /// Seat identity passed into [TerminalSession.connect] so observation modules
@@ -15,6 +15,6 @@ final class TerminalObservationAttach {
   final String sessionId;
   final String memberId;
   final CliTool? cli;
-  final AgentAttentionCubit? attention;
+  final AgentAttentionPort? attention;
   final bool Function()? skipPermissions;
 }

@@ -4,7 +4,6 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/services/file_tree_import/import_models.dart';
 import 'package:teampilot/theme/team_pilot_toast_config.dart';
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:teampilot/widgets/file_tree/file_tree_import_dialogs.dart';
 
 Widget _host({required Widget home}) {

@@ -169,8 +169,7 @@ void main() {
               w is Container &&
               w.decoration is BoxDecoration &&
               (w.decoration! as BoxDecoration).shape == BoxShape.circle &&
-              (w.decoration! as BoxDecoration).color ==
-                  const Color(0xFFF59E0B),
+              (w.decoration! as BoxDecoration).color == const Color(0xFFF59E0B),
         ),
       ),
       findsOneWidget,
@@ -385,10 +384,7 @@ class _FocusableFakeSurface extends FloatingSurface {
 
   @override
   Widget build(BuildContext context, FloatingTab tab) {
-    return Focus(
-      focusNode: focusNode,
-      child: const Text('fake-body'),
-    );
+    return Focus(focusNode: focusNode, child: const Text('fake-body'));
   }
 
   @override

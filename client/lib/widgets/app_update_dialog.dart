@@ -141,9 +141,7 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                     const SizedBox(height: 4),
                     Text(
                       currentApp?.version ?? '—',
-                      style: TpTextStyles.of(
-                        context,
-                      ).mdMedium,
+                      style: TpTextStyles.of(context).mdMedium,
                     ),
                   ],
                 ),
@@ -162,7 +160,9 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                     const SizedBox(height: 4),
                     Text(
                       latestApp?.version ?? l10n.appUpdateUnknownVersion,
-                      style: TpTextStyles.of(context).mdMediumColored(Colors.blue),
+                      style: TpTextStyles.of(
+                        context,
+                      ).mdMediumColored(Colors.blue),
                     ),
                   ],
                 ),

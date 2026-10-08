@@ -77,28 +77,27 @@ void main() {
     required GitCubit cubit,
     String? selectedPath,
     ValueChanged<String>? onSelect,
-  }) =>
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: BlocProvider.value(
-          value: cubit, // folder tiles read expanded state via context
-          child: Scaffold(
-            body: GitChangesTreeList(
-              changesTreeView: cubit.state.changesTreeView,
-              unversionedTreeView: cubit.state.unversionedTreeView,
-              cubit: cubit,
-              listScrollController: ScrollController(),
-              horizontalScrollController: ScrollController(),
-              selectedPath: selectedPath,
-              onSelect: onSelect ?? (_) {},
-              onOpenDiff: (_) {},
-              onConfirmDiscard: (_) {},
-              onOpenFile: (_) {},
-            ),
-          ),
+  }) => MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: BlocProvider.value(
+      value: cubit, // folder tiles read expanded state via context
+      child: Scaffold(
+        body: GitChangesTreeList(
+          changesTreeView: cubit.state.changesTreeView,
+          unversionedTreeView: cubit.state.unversionedTreeView,
+          cubit: cubit,
+          listScrollController: ScrollController(),
+          horizontalScrollController: ScrollController(),
+          selectedPath: selectedPath,
+          onSelect: onSelect ?? (_) {},
+          onOpenDiff: (_) {},
+          onConfirmDiscard: (_) {},
+          onOpenFile: (_) {},
         ),
-      );
+      ),
+    ),
+  );
 
   testWidgets('renders Changes root header with count and rows', (
     tester,
@@ -144,24 +143,23 @@ void main() {
     expect(find.text('new.cpp'), findsOneWidget);
   });
 
-  testWidgets(
-    'only-untracked repo hides the empty Changes section header',
-    (tester) async {
-      final cubit = GitCubit(service: _UntrackedOnlyStub());
-      addTearDown(cubit.close);
-      // Fresh clone / new project: the only status entry is an untracked file.
-      await cubit.setRepoRoot('/repo');
-      expect(cubit.state.changesTreeView.totalCount, 0);
-      expect(cubit.state.unversionedTreeView.totalCount, 1);
+  testWidgets('only-untracked repo hides the empty Changes section header', (
+    tester,
+  ) async {
+    final cubit = GitCubit(service: _UntrackedOnlyStub());
+    addTearDown(cubit.close);
+    // Fresh clone / new project: the only status entry is an untracked file.
+    await cubit.setRepoRoot('/repo');
+    expect(cubit.state.changesTreeView.totalCount, 0);
+    expect(cubit.state.unversionedTreeView.totalCount, 1);
 
-      await tester.pumpWidget(buildTreeList(cubit: cubit));
-      await tester.pump();
+    await tester.pumpWidget(buildTreeList(cubit: cubit));
+    await tester.pump();
 
-      expect(find.text('Changes'), findsNothing);
-      expect(find.text('Unversioned Files'), findsOneWidget);
-      expect(find.text('brand_new.dart'), findsOneWidget);
-    },
-  );
+    expect(find.text('Changes'), findsNothing);
+    expect(find.text('Unversioned Files'), findsOneWidget);
+    expect(find.text('brand_new.dart'), findsOneWidget);
+  });
 
   testWidgets('single click on a row calls onSelect with the change path', (
     tester,
@@ -194,10 +192,7 @@ void main() {
     await tester.pump();
 
     GitChangeTile tileOf(String name) => tester.widget<GitChangeTile>(
-      find.ancestor(
-        of: find.text(name),
-        matching: find.byType(GitChangeTile),
-      ),
+      find.ancestor(of: find.text(name), matching: find.byType(GitChangeTile)),
     );
     expect(tileOf('a.java').selected, isTrue);
     expect(tileOf('b.dart').selected, isFalse);
@@ -208,7 +203,9 @@ void main() {
     (tester) async {
       final cubit = GitCubit(service: _TreeStub());
       addTearDown(cubit.close);
-      await cubit.setRepoRoot('/repo'); // a.java + b.dart auto-selected; new.cpp not
+      await cubit.setRepoRoot(
+        '/repo',
+      ); // a.java + b.dart auto-selected; new.cpp not
       await tester.pumpWidget(buildTreeList(cubit: cubit));
       await tester.pump();
 

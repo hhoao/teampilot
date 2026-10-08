@@ -19,9 +19,7 @@ class LaunchDiscover {
     required LaunchTypeRegistry registry,
     List<OwnedLaunchConfiguration> existing = const [],
   }) async {
-    final existingKeys = {
-      for (final owned in existing) owned.selectionKey,
-    };
+    final existingKeys = {for (final owned in existing) owned.selectionKey};
     final results = <OwnedLaunchConfiguration>[];
 
     for (final folder in folders) {
@@ -71,11 +69,7 @@ class LaunchDiscover {
 
     if (normalized.startsWith('**/')) {
       final suffix = normalized.substring(3);
-      return _findUnderTree(
-        folder: folder,
-        root: folder.path,
-        suffix: suffix,
-      );
+      return _findUnderTree(folder: folder, root: folder.path, suffix: suffix);
     }
 
     final path = ctx.join(folder.path, normalized);

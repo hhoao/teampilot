@@ -316,9 +316,7 @@ class RunCubit extends Cubit<RunState> {
 
     try {
       await _platform.start(withOptions);
-      emit(
-        state.copyWith(sessions: _platform.sessions, clearError: true),
-      );
+      emit(state.copyWith(sessions: _platform.sessions, clearError: true));
     } catch (error) {
       emit(state.copyWith(errorMessage: error.toString()));
     }
@@ -343,11 +341,7 @@ class RunCubit extends Cubit<RunState> {
         ),
       );
       if (sessionIds.isEmpty && errors.isEmpty) {
-        emit(
-          state.copyWith(
-            errorMessage: 'compound produced no sessions',
-          ),
-        );
+        emit(state.copyWith(errorMessage: 'compound produced no sessions'));
       }
     } catch (error) {
       emit(state.copyWith(errorMessage: error.toString()));
@@ -389,7 +383,9 @@ class RunCubit extends Cubit<RunState> {
         existing: existing ?? state.configurations,
       );
       if (!isClosed) {
-        emit(state.copyWith(recommendations: recommendations, clearError: true));
+        emit(
+          state.copyWith(recommendations: recommendations, clearError: true),
+        );
       }
     } catch (error) {
       if (!isClosed) {
@@ -404,7 +400,9 @@ class RunCubit extends Cubit<RunState> {
   /// recommendations instead of calling this directly. Keep this method for
   /// programmatic save of recommendation drafts (same persist path as editor
   /// Save / [saveConfiguration]).
-  Future<void> acceptRecommendation(OwnedLaunchConfiguration recommendation) async {
+  Future<void> acceptRecommendation(
+    OwnedLaunchConfiguration recommendation,
+  ) async {
     final errors = _platform.validateConfiguration(recommendation);
     if (errors.isNotEmpty) {
       emit(state.copyWith(errorMessage: errors.join('; ')));
@@ -504,11 +502,7 @@ class RunCubit extends Cubit<RunState> {
     }
     return OwnedLaunchConfiguration(
       owner: folder,
-      configuration: LaunchConfiguration(
-        id: '',
-        name: '',
-        type: type,
-      ),
+      configuration: LaunchConfiguration(id: '', name: '', type: type),
     );
   }
 
@@ -527,7 +521,9 @@ class RunCubit extends Cubit<RunState> {
   bool get selectedHasSchemaErrors {
     final owned = state.selectedConfiguration;
     if (owned == null) return false;
-    return _platform.validateConfiguration(_applyOptionValues(owned)).isNotEmpty;
+    return _platform
+        .validateConfiguration(_applyOptionValues(owned))
+        .isNotEmpty;
   }
 
   String? _selectionKeyAfterPersist(OwnedLaunchConfiguration owned) {
@@ -535,8 +531,7 @@ class RunCubit extends Cubit<RunState> {
     if (id.isNotEmpty) {
       final byId = state.configurations
           .where(
-            (item) =>
-                item.owner == owned.owner && item.configuration.id == id,
+            (item) => item.owner == owned.owner && item.configuration.id == id,
           )
           .firstOrNull;
       if (byId != null) return byId.selectionKey;

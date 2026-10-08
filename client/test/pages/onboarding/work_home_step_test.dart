@@ -200,7 +200,10 @@ Future<void> _scrollToBottom(WidgetTester tester) async {
   await tester.pump();
 }
 
-SpyTermuxCubit _createSpyCubit(Directory nativeDir, {bool fastSaveConfig = false}) {
+SpyTermuxCubit _createSpyCubit(
+  Directory nativeDir, {
+  bool fastSaveConfig = false,
+}) {
   final store = TermuxConfigStore(
     rootDir: nativeDir.path,
     fs: LocalFilesystem(
@@ -256,7 +259,9 @@ Future<void> _pumpWorkHomeStep(
         child: MultiRepositoryProvider(
           providers: [
             RepositoryProvider<ConnectionModeService>.value(value: mode),
-            RepositoryProvider<SshCredentialStore>.value(value: credentialStore),
+            RepositoryProvider<SshCredentialStore>.value(
+              value: credentialStore,
+            ),
             RepositoryProvider<TerminalTransportFactory>.value(
               value: transportFactory,
             ),
@@ -314,7 +319,7 @@ void main() {
     profileRepository = SshProfileRepository(
       rootDir: tempDir.path,
       fs: InMemoryFilesystem(),
-                                              storage: testHomeStorage,
+      storage: testHomeStorage,
     );
     profileCubit = SshProfileCubit(
       profileRepository: profileRepository,
@@ -449,8 +454,7 @@ void main() {
     // not emit when remote CLI discovery finds nothing). Pick a profile that
     // is not already selected so Cubit notifies watchers.
     setHome(RuntimeTarget.ssh('p1', label: 'box'));
-    final selectId =
-        profileCubit.state.selectedProfileId == 'p1' ? 'p2' : 'p1';
+    final selectId = profileCubit.state.selectedProfileId == 'p1' ? 'p2' : 'p1';
     await profileCubit.selectProfile(selectId);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));

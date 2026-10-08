@@ -99,17 +99,19 @@ void main() {
       if (!cubit.isClosed) await cubit.close();
     });
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: BlocProvider<LaunchProfileCubit>.value(
-          value: cubit,
-          child: const Scaffold(body: MyTeamsPage()),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: BlocProvider<LaunchProfileCubit>.value(
+            value: cubit,
+            child: const Scaffold(body: MyTeamsPage()),
+          ),
         ),
       ),
-      ));
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Alpha Squad'), findsOneWidget);
@@ -134,19 +136,19 @@ void main() {
     });
     final openedIds = <String>[];
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: BlocProvider<LaunchProfileCubit>.value(
-          value: cubit,
-          child: Scaffold(
-            body: MyTeamsPage(onOpenTeam: openedIds.add),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: BlocProvider<LaunchProfileCubit>.value(
+            value: cubit,
+            child: Scaffold(body: MyTeamsPage(onOpenTeam: openedIds.add)),
           ),
         ),
       ),
-      ));
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Beta Crew'));
@@ -166,22 +168,24 @@ void main() {
     });
     final openedIds = <String>[];
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: BlocProvider<LaunchProfileCubit>.value(
-          value: cubit,
-          child: Scaffold(
-            body: MyTeamsPage(
-              initialTeamId: 'team-alpha',
-              onOpenTeam: openedIds.add,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: BlocProvider<LaunchProfileCubit>.value(
+            value: cubit,
+            child: Scaffold(
+              body: MyTeamsPage(
+                initialTeamId: 'team-alpha',
+                onOpenTeam: openedIds.add,
+              ),
             ),
           ),
         ),
       ),
-      ));
+    );
     await tester.pumpAndSettle();
 
     expect(openedIds, ['team-alpha']);
@@ -196,27 +200,30 @@ void main() {
     });
     final openedIds = <String>[];
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: MaterialApp.router(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        routerConfig: GoRouter(
-          initialLocation: '/home-v2?global=myTeams&team=team-beta',
-          routes: [
-            GoRoute(
-              path: '/home-v2',
-              builder: (context, state) => BlocProvider<LaunchProfileCubit>.value(
-                value: cubit,
-                child: Scaffold(
-                  body: MyTeamsPage(onOpenTeam: openedIds.add),
-                ),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: GoRouter(
+            initialLocation: '/home-v2?global=myTeams&team=team-beta',
+            routes: [
+              GoRoute(
+                path: '/home-v2',
+                builder: (context, state) =>
+                    BlocProvider<LaunchProfileCubit>.value(
+                      value: cubit,
+                      child: Scaffold(
+                        body: MyTeamsPage(onOpenTeam: openedIds.add),
+                      ),
+                    ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-      ));
+    );
     await tester.pumpAndSettle();
 
     expect(openedIds, ['team-beta']);
@@ -233,7 +240,11 @@ void main() {
     });
 
     final fs = InMemoryFilesystem();
-    final records = HubPublishRecordStore(fs: fs, pathOverride: '/p.json', storage: testHomeStorage, );
+    final records = HubPublishRecordStore(
+      fs: fs,
+      pathOverride: '/p.json',
+      storage: testHomeStorage,
+    );
     await records.upsert(
       HubPublishRecord(
         kind: HubPublishKind.team,
@@ -245,23 +256,29 @@ void main() {
       ),
     );
 
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: BlocProvider<LaunchProfileCubit>.value(
-          value: cubit,
-          child: Scaffold(
-            body: MyTeamsPage(records: records),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: BlocProvider<LaunchProfileCubit>.value(
+            value: cubit,
+            child: Scaffold(body: MyTeamsPage(records: records)),
           ),
         ),
       ),
-      ));
+    );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('hub-publish-badge-team-team-alpha')), findsOneWidget);
+    expect(
+      find.byKey(const Key('hub-publish-badge-team-team-alpha')),
+      findsOneWidget,
+    );
     expect(find.text('PR open'), findsOneWidget);
-    expect(find.byKey(const Key('hub-publish-badge-team-team-beta')), findsNothing);
+    expect(
+      find.byKey(const Key('hub-publish-badge-team-team-beta')),
+      findsNothing,
+    );
   });
 }

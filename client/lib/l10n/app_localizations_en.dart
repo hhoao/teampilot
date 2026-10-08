@@ -142,6 +142,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Show the source control panel for the current repository.';
 
   @override
+  String get workspaceSidebarGroupsView => 'Groups';
+
+  @override
+  String get workspaceSidebarProjectTreeView => 'Project tree';
+
+  @override
+  String get projectTreeOther => 'Other';
+
+  @override
   String get extensionsSettingsTitle => 'Extensions';
 
   @override
@@ -888,6 +897,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeWorkspaceWorkspaceSortSessionCountDesc => 'Session count';
+
+  @override
+  String get homeWorkspaceWorkspaceFilterHint => 'Filter workspaces';
+
+  @override
+  String get homeWorkspaceWorkspaceFilterEmpty =>
+      'No workspaces match your filter';
 
   @override
   String get homeWorkspaceComingSoon => 'Coming soon';
@@ -1960,28 +1976,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceChatLandingCustomLaunchTitle => 'Custom launch';
 
   @override
-  String get workspaceChatLandingFullAccessPermissions =>
-      'Full access permissions';
-
-  @override
-  String get workspaceChatLandingAskReadOnlyPermissions =>
-      'Ask · read-only · trusted hooks';
-
-  @override
-  String get workspaceChatLandingAutoApproveWorkspaceWritePermissions =>
-      'Auto-approve · workspace write · trusted hooks';
-
-  @override
-  String get workspaceChatLandingCustomPermissions => 'Custom security policy';
-
-  @override
   String get workspaceChatLandingSkills => 'Skills';
 
   @override
   String get workspaceChatLandingConnectApps => 'Connect apps';
-
-  @override
-  String get workspaceChatLandingDefaultPermissions => 'Default permissions';
 
   @override
   String get workspaceChatLandingAttach => 'Attach files';
@@ -3108,14 +3106,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'When off (default), sending from Chat (new conversation or continue) stays on the Chat view while the terminal runs in the background. When on, switch to the Terminal after send.';
 
   @override
-  String get simpleModeDefaultFullAccessTitle =>
-      'Simple mode default: full access';
-
-  @override
-  String get simpleModeDefaultFullAccessDescription =>
-      'When enabled (default), new Simple-mode compose landing starts with full access permissions. Workspace chip choices still override and persist per workspace.';
-
-  @override
   String get continueSwitchRestartTitle => 'Restart to apply switch?';
 
   @override
@@ -3200,6 +3190,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get rootSandboxEnvOptInSubtitle =>
       'Keep skip-permissions when Claude runs as root.';
+
+  @override
+  String get injectSessionSshMcpTitle => 'Inject Session SSH MCP';
+
+  @override
+  String get injectSessionSshMcpSubtitle =>
+      'Local and remote seats can run commands and transfer files on this workspace\'s SSH machines via MCP. Reconnect sessions after changing.';
 
   @override
   String get rootSandboxEnvConfirmTitle => 'Enable root sandbox env?';
@@ -4105,6 +4102,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get skillsCardDetails => 'Details';
+
+  @override
+  String get skillsCardView => 'View';
+
+  @override
+  String get skillsDetailMissing => 'No SKILL.md found for this skill.';
+
+  @override
+  String get skillsDetailReadError => 'Could not read SKILL.md.';
 
   @override
   String get skillsCardInstalled => 'Installed';
@@ -5213,6 +5219,43 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get mcpProbeChecking => 'Checking…';
+
+  @override
+  String get mcpProbeOffline => 'Offline';
+
+  @override
+  String get mcpProbeNeedsAuth => 'Needs authorization';
+
+  @override
+  String mcpProbeToolCount(int count) {
+    return '$count tools';
+  }
+
+  @override
+  String get mcpToolsEmpty => 'This server has no tools.';
+
+  @override
+  String get mcpToolsReload => 'Reload';
+
+  @override
+  String get mcpToolsSection => 'Tools';
+
+  @override
+  String get mcpToolsDone => 'Done';
+
+  @override
+  String get mcpProbeRefreshAll => 'Refresh status';
+
+  @override
+  String get mcpProbeOfflineHint => 'Could not reach this MCP server.';
+
+  @override
+  String mcpToolsDialogTitle(String name) {
+    return '$name tools';
+  }
+
+  @override
   String get mcpNoInstalled => 'No MCP servers installed yet';
 
   @override
@@ -5683,13 +5726,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get workspaceAdvancedSettingsSubtitle =>
       'Agent preset and extra CLI flags for this member.';
-
-  @override
-  String get memberDangerouslySkipPermissions => 'Skip all permission checks';
-
-  @override
-  String get memberDangerouslySkipPermissionsHint =>
-      'Only for isolated / no-network sandboxes. Extremely risky otherwise.';
 
   @override
   String get prompt => 'Prompt';
@@ -7036,20 +7072,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationsLaunchWorktree => 'Worktree';
-
-  @override
-  String get automationsPermissions => 'Permissions';
-
-  @override
-  String get automationsPermissionsAskReadOnly =>
-      'Ask · read-only · trusted hooks';
-
-  @override
-  String get automationsPermissionsAutoApproveWorkspaceWrite =>
-      'Auto-approve · workspace write · trusted hooks';
-
-  @override
-  String get automationsPermissionsCustom => 'Custom security policy';
 
   @override
   String get automationsLaunchProfile => 'Launch identity';
@@ -8701,6 +8723,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitGraphBranchesTags => 'Branches & tags';
 
   @override
+  String get gitGraphRefsFilterHint => 'Filter branches and tags';
+
+  @override
+  String get gitGraphRefsFilterEmpty => 'No matches';
+
+  @override
+  String get gitGraphCompareFilterHint => 'Filter branches, tags, and commits';
+
+  @override
   String get gitGraphLocalBranches => 'Local branches';
 
   @override
@@ -8708,6 +8739,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitGraphTags => 'Tags';
+
+  @override
+  String get gitGraphCommits => 'Commits';
 
   @override
   String get gitGraphHashSearchEmptyHint =>
@@ -8750,9 +8784,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitGraphHideColumnHeader => 'Hide column header';
 
   @override
-  String get gitGraphShowDiffWithWorkingTree => 'Show Diff with Working Tree';
-
-  @override
   String get gitGraphCompareWith => 'Compare with…';
 
   @override
@@ -8788,7 +8819,43 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get connectSshdDown =>
-      'OpenSSH is not listening. Enable Remote Login or start sshd before pairing.';
+      'The embedded connection server failed to start. Retry or restart the app.';
+
+  @override
+  String get connectSshBackendLabel => 'SSH server';
+
+  @override
+  String get connectSshBackendEmbedded => 'Embedded';
+
+  @override
+  String get connectSshBackendSystem => 'System OpenSSH (22)';
+
+  @override
+  String get connectSshBackendHelp =>
+      'Compare the built-in server with this computer\'s OpenSSH. Switching requires re-scanning the pairing code.';
+
+  @override
+  String get connectSshBackendRePair =>
+      'Paired phones must re-scan this computer\'s pairing code.';
+
+  @override
+  String get connectSystemSshdDownLinux =>
+      'No SSH server is listening on port 22. Start the OpenSSH sshd service, then retry.';
+
+  @override
+  String get connectSystemSshdDownMacos =>
+      'No SSH server is listening on port 22. Enable Remote Login in Sharing settings, then retry.';
+
+  @override
+  String get connectRevokeSystemHint =>
+      'New logins are blocked. Already-open OpenSSH sessions may stay connected until they disconnect.';
+
+  @override
+  String get connectSshdRetry => 'Retry';
+
+  @override
+  String get connectRepairHint =>
+      'The desktop has been upgraded — re-scan its pairing code to reconnect.';
 
   @override
   String get connectScanHint => 'Scan this code in TeamPilot on your phone.';
@@ -8853,9 +8920,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get connectQrEnlargeHint =>
       'Tap the QR code to enlarge it for easier scanning.';
-
-  @override
-  String get connectCheckAgain => 'Check again';
 
   @override
   String get connectCopyLink => 'Copy link';
@@ -8940,6 +9004,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get teamGenerateGeneratorModel => 'Generator model';
+
+  @override
+  String get teamGenerateMinimumMemberCount => 'Minimum team members';
+
+  @override
+  String get teamGenerateMinimumMemberCountHint =>
+      'The generated team will include at least this many distinct roles.';
+
+  @override
+  String get teamGenerateMinimumMemberCountInvalid =>
+      'Minimum must be at least 3.';
 
   @override
   String get teamGenerateTeamMode => 'Team mode';

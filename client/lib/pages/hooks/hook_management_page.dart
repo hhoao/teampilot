@@ -73,8 +73,9 @@ class HookManagementPage extends StatelessWidget {
                             OutlinedButton.icon(
                               key: const Key('hook-import'),
                               onPressed: () async {
-                                final imported =
-                                    await showHookImportDialog(context);
+                                final imported = await showHookImportDialog(
+                                  context,
+                                );
                                 if (imported == true && context.mounted) {
                                   AppToast.show(
                                     context,
@@ -87,10 +88,8 @@ class HookManagementPage extends StatelessWidget {
                               label: Text(l10n.hookImport),
                             ),
                             FilledButton(
-                              onPressed: () => _openEditor(
-                                context,
-                                cubit: cubit,
-                              ),
+                              onPressed: () =>
+                                  _openEditor(context, cubit: cubit),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [

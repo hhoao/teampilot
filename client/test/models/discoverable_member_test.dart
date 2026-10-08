@@ -28,7 +28,10 @@ void main() {
       description: '',
       category: 'Business',
       source: ExpertMemberSource.local,
-      member: DiscoverableTeamMember(name: 'Product Manager', responsibilities: 'Plan.'),
+      member: DiscoverableTeamMember(
+        name: 'Product Manager',
+        responsibilities: 'Plan.',
+      ),
     );
     final cfg = m.toMemberConfig(joinedAt: 1);
     expect(cfg.id, isNotEmpty);

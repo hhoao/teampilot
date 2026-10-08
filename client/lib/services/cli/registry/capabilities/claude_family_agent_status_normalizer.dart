@@ -29,19 +29,24 @@ final class ClaudeFamilyAgentStatusNormalizer {
     final prompt = readPayloadString(body, const ['prompt']);
     final askUser = isAskUserQuestionTool(toolName);
     final exitPlan = isExitPlanModeTool(toolName);
-    final rawToolInput = body['tool_input'] ?? body['input'] ?? body['arguments'];
+    final rawToolInput =
+        body['tool_input'] ?? body['input'] ?? body['arguments'];
     final toolInput = deriveToolInputPreview(toolName, rawToolInput);
-    final toolUseId = readPayloadString(body, const ['tool_use_id', 'toolUseId']);
+    final toolUseId = readPayloadString(body, const [
+      'tool_use_id',
+      'toolUseId',
+    ]);
     final toolAgentId = readPayloadString(body, const ['agent_id', 'agentId']);
-    final toolAgentType = readPayloadString(
-      body,
-      const ['agent_type', 'agentType'],
-    );
+    final toolAgentType = readPayloadString(body, const [
+      'agent_type',
+      'agentType',
+    ]);
 
     // AskUserQuestion / ExitPlanMode carry structured payloads the chat needs
     // to render (and optionally answer / confirm).
-    final askUserQuestions =
-        askUser ? parseAskUserQuestions(rawToolInput) : null;
+    final askUserQuestions = askUser
+        ? parseAskUserQuestions(rawToolInput)
+        : null;
     final planText = exitPlan ? parseExitPlanModeText(rawToolInput) : null;
     final planFilePath = exitPlan
         ? parseExitPlanModeFilePath(rawToolInput)
@@ -55,12 +60,12 @@ final class ClaudeFamilyAgentStatusNormalizer {
     // ExitPlanMode, which have their own card paths).
     final permissionRequest =
         eventName == 'PermissionRequest' && !askUser && !exitPlan
-            ? parseClaudePermissionRequest(
-                body,
-                toolName: toolName ?? '',
-                toolInputPreview: toolInput,
-              )
-            : null;
+        ? parseClaudePermissionRequest(
+            body,
+            toolName: toolName ?? '',
+            toolInputPreview: toolInput,
+          )
+        : null;
 
     // Background shell task lease signals (see background_task_latch.dart).
     final backgroundTaskStarted = isBackgroundTaskStart(body);
@@ -93,13 +98,10 @@ final class ClaudeFamilyAgentStatusNormalizer {
       'PreToolUse' when askUser || exitPlan => build(
         AgentSeatAttention.waiting,
       ),
-      'PreToolUse' || 'PostToolUse' || 'PostToolUseFailure' => build(
-        AgentSeatAttention.working,
-      ),
-      'UserPromptSubmit' => build(
-        AgentSeatAttention.working,
-        explicit: true,
-      ),
+      'PreToolUse' ||
+      'PostToolUse' ||
+      'PostToolUseFailure' => build(AgentSeatAttention.working),
+      'UserPromptSubmit' => build(AgentSeatAttention.working, explicit: true),
       // Subagent lifecycle stays `working`; the cubit interprets the event
       // name and child id — a child stop must not read as parent completion.
       'SubagentStart' || 'SubagentStop' => build(AgentSeatAttention.working),

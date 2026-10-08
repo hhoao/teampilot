@@ -87,7 +87,10 @@ void main() {
     );
     final engine = _engine(
       installed: installed,
-      packRegistry: SkillPackRegistry(storage: buildTestHomeStorage(), packs: [pack]),
+      packRegistry: SkillPackRegistry(
+        storage: buildTestHomeStorage(),
+        packs: [pack],
+      ),
     );
     _plantSkillMdUnder(
       _syncRootFor(const SkillRepo(owner: 'owner', name: 'repo')),
@@ -121,7 +124,10 @@ void main() {
     );
     final engine = _engine(
       installed: installed,
-      packRegistry: SkillPackRegistry(storage: buildTestHomeStorage(), packs: [pack]),
+      packRegistry: SkillPackRegistry(
+        storage: buildTestHomeStorage(),
+        packs: [pack],
+      ),
     );
     final root = _syncRootFor(const SkillRepo(owner: 'owner', name: 'repo'));
     _plantSkillMdUnder(root, 'review');
@@ -155,7 +161,10 @@ void main() {
     );
     final engine = _engine(
       installed: installed,
-      packRegistry: SkillPackRegistry(storage: buildTestHomeStorage(), packs: [pack]),
+      packRegistry: SkillPackRegistry(
+        storage: buildTestHomeStorage(),
+        packs: [pack],
+      ),
     );
     final root = _syncRootFor(const SkillRepo(owner: 'owner', name: 'repo'));
     _plantSkillMdUnder(root, 'review');
@@ -235,7 +244,10 @@ void main() {
     );
     final engine = _engine(
       installed: installed,
-      packRegistry: SkillPackRegistry(storage: buildTestHomeStorage(), packs: [pack]),
+      packRegistry: SkillPackRegistry(
+        storage: buildTestHomeStorage(),
+        packs: [pack],
+      ),
     );
     final root = _syncRootFor(const SkillRepo(owner: 'owner', name: 'repo'));
     _plantSkillMdUnder(root, 'ship');

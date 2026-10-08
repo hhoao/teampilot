@@ -38,8 +38,10 @@ class GitGraphFloatingSurface extends FloatingSurface {
   Widget build(BuildContext context, FloatingTab tab) {
     final root = tab.payload;
     if (root is! String || root.isEmpty) return const SizedBox.shrink();
-    final workspaceId =
-        context.read<FloatingWorkspaceCubit>().state.activeWorkspaceId;
+    final workspaceId = context
+        .read<FloatingWorkspaceCubit>()
+        .state
+        .activeWorkspaceId;
     if (workspaceId.isEmpty) return const SizedBox.shrink();
     return GitGraphPane(workspaceId: workspaceId, repoRoot: root);
   }

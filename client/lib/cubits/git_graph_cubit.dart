@@ -195,6 +195,7 @@ class GitGraphCubit extends Cubit<GitGraphState> {
     required GitService git,
     GitHistoryActions? actions,
     DateTime Function()? clock,
+    this.onHeadChanged,
   }) : _history = history,
        _git = git,
        _actions = actions ?? GitHistoryActions(),
@@ -204,6 +205,9 @@ class GitGraphCubit extends Cubit<GitGraphState> {
   final GitHistoryService _history;
   final GitService _git;
   final GitHistoryActions _actions;
+
+  /// Fired after any graph write action succeeds; `repoRoot` is the graph repo.
+  final void Function(String repoRoot)? onHeadChanged;
 
   /// 时钟注入缝（TTL 判定用）；默认墙钟。
   final DateTime Function() _now;
@@ -342,7 +346,8 @@ class GitGraphCubit extends Cubit<GitGraphState> {
         nextHasMore =
             _commitCountOf(rows) == GitHistoryService.initialLoadCommits;
         final accumulated = state.rows;
-        final headSame = rows.isNotEmpty &&
+        final headSame =
+            rows.isNotEmpty &&
             accumulated.isNotEmpty &&
             _headHashOf(rows) == _headHashOf(accumulated);
         if (signature == _lastFetchSignature &&
@@ -416,8 +421,7 @@ class GitGraphCubit extends Cubit<GitGraphState> {
       emit(
         state.copyWith(
           rows: [...state.rows, ...more],
-          hasMore:
-              _commitCountOf(more) == GitHistoryService.loadMoreCommits,
+          hasMore: _commitCountOf(more) == GitHistoryService.loadMoreCommits,
           isLoadingMore: false,
         ),
       );

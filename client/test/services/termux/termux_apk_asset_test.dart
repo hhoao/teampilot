@@ -97,10 +97,7 @@ void main() {
       expect(
         () => selectTermuxApkDownloadUrl(
           assets: const [
-            {
-              'name': 'termux-app_v1.0.0_arm64-v8a.apk',
-              'size': 1,
-            },
+            {'name': 'termux-app_v1.0.0_arm64-v8a.apk', 'size': 1},
           ],
           preferArm64: true,
         ),

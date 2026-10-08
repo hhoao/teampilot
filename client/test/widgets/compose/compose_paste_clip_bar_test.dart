@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
-import 'package:teampilot/services/compose/compose_clip.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_clip.dart';
 import 'package:teampilot/widgets/compose/compose_paste_clip_bar.dart';
 
 void main() {

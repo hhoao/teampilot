@@ -110,8 +110,7 @@ void main() {
       expect(hit.rejectedReason, 'sameDir');
     });
 
-    test('ignores in-tree drop onto a sibling file row in the same folder',
-        () {
+    test('ignores in-tree drop onto a sibling file row in the same folder', () {
       const sibling = '/workspace/lib/other.dart';
       final hit = resolveFileTreeDropDest(
         kind: FileTreeDropRowKind.file,
@@ -138,18 +137,20 @@ void main() {
       expect(hit.rejectedReason, 'sameDir');
     });
 
-    test('still allows drop when only some sources are already in dest dir',
-        () {
-      final hit = resolveFileTreeDropDest(
-        kind: FileTreeDropRowKind.folder,
-        rowPath: folder,
-        pathContext: ctx,
-        sourcePaths: [file, '/workspace/other.dart'],
-      );
+    test(
+      'still allows drop when only some sources are already in dest dir',
+      () {
+        final hit = resolveFileTreeDropDest(
+          kind: FileTreeDropRowKind.folder,
+          rowPath: folder,
+          pathContext: ctx,
+          sourcePaths: [file, '/workspace/other.dart'],
+        );
 
-      expect(hit.isValid, isTrue);
-      expect(hit.destDir, folder);
-    });
+        expect(hit.isValid, isTrue);
+        expect(hit.destDir, folder);
+      },
+    );
 
     test('allows external drop without source paths', () {
       final hit = resolveFileTreeDropDest(
@@ -181,36 +182,18 @@ void main() {
     ];
 
     test('returns root whose band contains localY', () {
-      expect(
-        resolveNearestRootDest(localY: 50, rootBands: bands),
-        '/repo-a',
-      );
-      expect(
-        resolveNearestRootDest(localY: 150, rootBands: bands),
-        '/repo-b',
-      );
+      expect(resolveNearestRootDest(localY: 50, rootBands: bands), '/repo-a');
+      expect(resolveNearestRootDest(localY: 150, rootBands: bands), '/repo-b');
     });
 
     test('returns nearest root centerY when localY is in a gap', () {
-      expect(
-        resolveNearestRootDest(localY: 110, rootBands: bands),
-        '/repo-a',
-      );
-      expect(
-        resolveNearestRootDest(localY: 111, rootBands: bands),
-        '/repo-b',
-      );
+      expect(resolveNearestRootDest(localY: 110, rootBands: bands), '/repo-a');
+      expect(resolveNearestRootDest(localY: 111, rootBands: bands), '/repo-b');
     });
 
     test('returns nearest root when localY is outside all bands', () {
-      expect(
-        resolveNearestRootDest(localY: -20, rootBands: bands),
-        '/repo-a',
-      );
-      expect(
-        resolveNearestRootDest(localY: 300, rootBands: bands),
-        '/repo-b',
-      );
+      expect(resolveNearestRootDest(localY: -20, rootBands: bands), '/repo-a');
+      expect(resolveNearestRootDest(localY: 300, rootBands: bands), '/repo-b');
     });
   });
 }

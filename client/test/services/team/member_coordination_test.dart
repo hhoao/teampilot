@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/team/member_coordination.dart';
-import 'package:teampilot/services/team_bus/agent_node.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/runtime/member_coordination.dart';
+import 'package:teampilot/services/chat/team_bus/agent_node.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
-import '../team_bus/support/fake_member_launcher.dart';
+import '../chat/team_bus/support/fake_member_launcher.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
@@ -48,11 +48,7 @@ void main() {
       final coordination = MemberCoordination.resolve(
         shell: shell,
         member: const TeamMemberConfig(id: 'worker', name: 'worker'),
-        team: const TeamProfile(
-          id: 't',
-          name: 'T',
-          teamMode: TeamMode.mixed,
-        ),
+        team: const TeamProfile(id: 't', name: 'T', teamMode: TeamMode.mixed),
         teamMode: TeamMode.mixed,
         globalPresets: const [],
         bus: bus,
@@ -112,8 +108,7 @@ void main() {
       );
 
       MemberCoordination.resolve(
-        shell: _ConnectedShell()
-          ..activityTracker.latchBootFrameReadyForTest(),
+        shell: _ConnectedShell()..activityTracker.latchBootFrameReadyForTest(),
         member: const TeamMemberConfig(id: 'worker', name: 'worker'),
         team: const TeamProfile(id: 't', name: 'T', teamMode: TeamMode.mixed),
         teamMode: TeamMode.mixed,

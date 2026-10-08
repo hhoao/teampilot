@@ -11,6 +11,8 @@ import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/landing_launch_context.dart';
+import 'package:teampilot/models/session_member_binding.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -19,7 +21,6 @@ import 'package:teampilot/pages/home_workspace/workspace/workspace_landing_gener
 import 'package:teampilot/repositories/session_repository_fs.dart';
 import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 import 'package:teampilot/services/notification/notification_recorder.dart';
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../support/post_frame_test_harness.dart';
 
@@ -28,7 +29,7 @@ class _RecordingChatCubit extends ChatCubit {
     : super(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
-             storage: testHomeStorage,
+        storage: testHomeStorage,
       );
 
   final bool failRename;
@@ -74,6 +75,31 @@ void main() {
     NotificationRecorder.install(null);
     TpToast.dismiss();
     tearDownTestAppStorage();
+  });
+
+  test('existing-session request resolves the bound lead member', () {
+    final team = TeamProfile(
+      id: 'team-1',
+      name: 'Team',
+      members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+    );
+    final session = AppSession(
+      sessionId: 'sess-1',
+      workspaceId: 'ws1',
+      sessionTeam: team.id,
+      createdAt: 1,
+      members: const [
+        SessionMemberBinding(rosterMemberId: 'team-lead', taskId: 'lead-task'),
+      ],
+    );
+    final request = buildOpenExistingSessionRequest(
+      session: session,
+      team: team,
+      emptyDisplayTitleFallback: 'New Chat',
+    );
+
+    expect(request.member?.id, 'team-lead');
+    expect(request.member?.agentType, 'team-lead');
   });
 
   test(
@@ -305,7 +331,10 @@ void main() {
     final chat = _RecordingChatCubit();
     final workbench = WorkbenchCubit();
     final bridge = WorkbenchChatBridge(workbench: workbench, chat: chat);
-    final repo = SessionRepository(rootDir: '/teampilot', storage: testHomeStorage, );
+    final repo = SessionRepository(
+      rootDir: '/teampilot',
+      storage: testHomeStorage,
+    );
     final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
     final session = AppSession(
       sessionId: 'sess-1',
@@ -431,7 +460,7 @@ void main() {
           'reference_session_delete_',
         );
         addTearDown(() => tmp.deleteSync(recursive: true));
-        repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
+        repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
         workspace = await repo.createWorkspace([WorkspaceFolder(path: '/a')]);
         session = (await repo.createSession(
           workspace.workspaceId,
@@ -489,10 +518,7 @@ void main() {
 
       await tester.runAsync(() => chat.deleteSession(repo, session.sessionId));
 
-      expect(
-        workbench.centerLandingInitialText(workspace.workspaceId),
-        isNull,
-      );
+      expect(workbench.centerLandingInitialText(workspace.workspaceId), isNull);
       expect(
         workbench.centerLandingReferenceSessionId(workspace.workspaceId),
         isNull,

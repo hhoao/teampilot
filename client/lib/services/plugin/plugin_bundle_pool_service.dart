@@ -89,10 +89,11 @@ class PluginBundlePoolService {
     // Fast path: the saved member stamp already reflects the desired enabled
     // bundles (by directory/name/version), so nothing changed and the pool
     // needs no reconcile. Idempotent across repeated launches.
-    final savedStampJson = await CliPluginProvisionCache.memberProvisionStampJson(
-      fs: _fs,
-      memberPluginsDir: poolDir,
-    );
+    final savedStampJson =
+        await CliPluginProvisionCache.memberProvisionStampJson(
+          fs: _fs,
+          memberPluginsDir: poolDir,
+        );
     if (savedStampJson.isNotEmpty &&
         _stampMatchesDesired(savedStampJson, resolved.enabled, paths) &&
         await _poolLinksHealthy(poolDir)) {
@@ -135,7 +136,8 @@ class PluginBundlePoolService {
       if (linkName.isEmpty) linkName = plugin.name;
       if (usedNames.contains(linkName)) {
         final owner = plugin.marketplaceOwner?.trim();
-        linkName = '${owner != null && owner.isNotEmpty ? owner : 'local'}__$linkName';
+        linkName =
+            '${owner != null && owner.isNotEmpty ? owner : 'local'}__$linkName';
       }
       usedNames.add(linkName);
 
@@ -164,8 +166,7 @@ class PluginBundlePoolService {
         // installed bundle. Flavor projection seeds the *installed* root once
         // when missing — never a per-session full copyTree of large plugins.
         final needsFlavor =
-            paths.manifestDirName !=
-            neutralPluginManifestPaths.manifestDirName;
+            paths.manifestDirName != neutralPluginManifestPaths.manifestDirName;
         var seededFlavorIntoInstalled = false;
         final projectSw = Stopwatch()..start();
         if (needsFlavor) {

@@ -316,17 +316,23 @@ void main() {
       expect(s3.previewIds, {_s2});
     });
 
-    test('preview slot replacement skips pinned tabs when choosing a victim', () {
-      // normal preview + pinned tab: the preview is replaced, not the pinned.
-      final (s1, _) = r.add(empty, _f, preview: true);
-      final (s2, _) = r.add(s1, _s1, preview: false);
-      final s3 = r.pin(s2, _s1);
-      final (s4, replaced) =
-          r.add(s3, WorkbenchTabId.file('/b.dart'), preview: true);
-      expect(replaced, _f);
-      expect(s4.order, [WorkbenchTabId.file('/b.dart'), _s1]);
-      expect(s4.pinnedIds, {_s1});
-    });
+    test(
+      'preview slot replacement skips pinned tabs when choosing a victim',
+      () {
+        // normal preview + pinned tab: the preview is replaced, not the pinned.
+        final (s1, _) = r.add(empty, _f, preview: true);
+        final (s2, _) = r.add(s1, _s1, preview: false);
+        final s3 = r.pin(s2, _s1);
+        final (s4, replaced) = r.add(
+          s3,
+          WorkbenchTabId.file('/b.dart'),
+          preview: true,
+        );
+        expect(replaced, _f);
+        expect(s4.order, [WorkbenchTabId.file('/b.dart'), _s1]);
+        expect(s4.pinnedIds, {_s1});
+      },
+    );
   });
 
   group('invariants', () {

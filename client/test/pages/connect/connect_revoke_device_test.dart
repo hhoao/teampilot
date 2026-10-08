@@ -6,20 +6,29 @@ import 'package:teampilot/cubits/connect_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/pages/connect/connect_section.dart';
-import 'package:teampilot/services/connect/authorized_keys_file.dart';
+import 'package:teampilot/services/connect/connect_backend_host.dart';
 import 'package:teampilot/services/connect/connect_settings_store.dart';
 import 'package:teampilot/services/connect/paired_device_store.dart';
 import 'package:teampilot/services/connect/ssh_pairing_offer.dart';
-import 'package:teampilot/services/connect/sshd_presence.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 
+import '../../support/fake_embedded_server.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
-  testWidgets('revoking a phone removes its row and its grant',
-      (tester) async {
+  testWidgets('revoking a phone removes its row and its key', (tester) async {
     final harness = _Harness();
     addTearDown(harness.dispose);
+    await harness.deviceStore.issueDevice(
+      deviceId: 'phone-1',
+      publicKey: 'ssh-ed25519 AAAA1',
+      deviceName: 'Pixel',
+    );
+    await harness.deviceStore.issueDevice(
+      deviceId: 'phone-2',
+      publicKey: 'ssh-ed25519 AAAA2',
+      deviceName: 'Tablet',
+    );
     await harness.deviceStore.issueGrant(
       hostId: 'abcdefghijklmnop',
       deviceId: 'phone-1',
@@ -40,10 +49,16 @@ void main() {
 
     expect(find.text('Pixel'), findsNothing);
     expect(find.text('Tablet'), findsOneWidget);
+    // Both the key registration and the relay grant are gone.
     expect(await harness.deviceStore.hasDevice('phone-1'), isFalse);
-    // The authorized_keys line is gone too.
-    expect(harness.keysText, isNot(contains('device=phone-1')));
-    expect(harness.keysText, contains('device=phone-2'));
+    expect(
+      await harness.deviceStore.validateGrant(
+        hostId: 'abcdefghijklmnop',
+        deviceId: 'phone-1',
+        grant: 'grant-1',
+      ),
+      isFalse,
+    );
   });
 }
 
@@ -74,16 +89,12 @@ class _Harness {
   _Harness() {
     fs = InMemoryFilesystem();
     final offer = _offer();
-    _keysText =
-        'ssh-ed25519 AAAA1 teampilot-pair device=phone-1 name=Pixel\n'
-        'ssh-ed25519 AAAA2 teampilot-pair device=phone-2 name=Tablet\n';
-    final keys = AuthorizedKeysFile(
-      path: '/home/alice/.ssh/authorized_keys',
-      read: (_) async => _keysText,
-      write: (_, value) async => _keysText = value,
-      chmod: (_, {required mode}) async {},
-    );
     deviceStore = PairedDeviceStore(fs: fs, appDataRoot: '/app-data');
+    final settingsStore = ConnectSettingsStore(
+      fs: fs,
+      appDataRoot: '/app-data',
+      generateHostId: () => 'abcdefghijklmnop',
+    );
     cubit = ConnectCubit(
       agent: ConnectAgentController(
         currentOffer: () => offer,
@@ -98,19 +109,14 @@ class _Harness {
         regenerateQr: () async {},
         updateExtraEndpoints: (_) async {},
       ),
-      probeSshd: () async => const SshdPresenceSnapshot(
-        listening: true,
-        port: 22,
-        fingerprints: ['SHA256:host-key'],
-        enableHint: '',
+      backends: ConnectBackendHost(
+        embedded: fakeListeningEmbeddedServer,
+        system: null,
+        settings: settingsStore,
+        systemSshdSelectable: false,
       ),
-      authorizedKeys: keys,
       deviceStore: deviceStore,
-      settingsStore: ConnectSettingsStore(
-        fs: fs,
-        appDataRoot: '/app-data',
-        generateHostId: () => 'abcdefghijklmnop',
-      ),
+      settingsStore: settingsStore,
       listNetworkAddresses: () async => const [
         ConnectNetworkAddress(
           name: 'Wi-Fi',
@@ -128,8 +134,6 @@ class _Harness {
   late final InMemoryFilesystem fs;
   late final ConnectCubit cubit;
   late final PairedDeviceStore deviceStore;
-  String get keysText => _keysText;
-  var _keysText = '';
 
   Future<void> dispose() => cubit.close();
 }

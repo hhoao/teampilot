@@ -19,12 +19,12 @@ void main() {
 
     setUp(() async {
       tmp = await Directory.systemTemp.createTemp('chat_continue_custom_');
-      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
+      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       cubit = ChatCubit(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
         sessionRepository: repo,
-                         storage: testHomeStorage,
+        storage: testHomeStorage,
       );
     });
 

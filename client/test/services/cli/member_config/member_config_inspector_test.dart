@@ -37,7 +37,7 @@ void main() {
       layout: layout,
       fs: fs,
       registry: CliToolRegistry.builtIn(),
-                                       storage: fakeHomeStorage(filesystem: fs),
+      storage: fakeHomeStorage(filesystem: fs),
     );
   });
 

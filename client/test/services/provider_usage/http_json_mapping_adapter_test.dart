@@ -216,10 +216,7 @@ void main() {
           config: mappingConfig(
             url: 'https://example.test/usage',
             windows: [
-              usageWindow(
-                remaining: r'$.remaining',
-                resetsAt: r'$.resetsAt',
-              ),
+              usageWindow(remaining: r'$.remaining', resetsAt: r'$.resetsAt'),
             ],
           ),
         ).fetch(
@@ -341,10 +338,7 @@ void main() {
       final error = await _capture(
         () =>
             HttpJsonMappingAdapter(
-              config: mappingConfig(
-                url: url,
-                windows: const [],
-              ),
+              config: mappingConfig(url: url, windows: const []),
             ).fetch(
               _provider(),
               credentials: const _Resolver(null),
@@ -390,10 +384,7 @@ void main() {
       endpointConfig: ManagedProviderEndpointConfig(
         url: 'https://example.test/usage?apiKey=query-secret',
         windows: const [
-          ManagedProviderUsageWindow(
-            label: 'Usage',
-            remaining: r'$.remaining',
-          ),
+          ManagedProviderUsageWindow(label: 'Usage', remaining: r'$.remaining'),
         ],
       ),
     );
@@ -435,9 +426,7 @@ void main() {
           body: '{"remaining":"1.00"}',
         ),
       );
-      await HttpJsonMappingAdapter(
-        config: mappingConfig(url: url),
-      ).fetch(
+      await HttpJsonMappingAdapter(config: mappingConfig(url: url)).fetch(
         _provider(),
         credentials: const _Resolver(null),
         http: fakeHttp,
@@ -490,10 +479,7 @@ void main() {
           windows: [usageWindow(remaining: r'$.missing')],
         ),
       ];
-      final bodies = [
-        '{"remaining":"not-decimal"}',
-        '{"remaining":"1.00"}',
-      ];
+      final bodies = ['{"remaining":"not-decimal"}', '{"remaining":"1.00"}'];
 
       for (var i = 0; i < cases.length; i++) {
         final error = await _capture(
@@ -883,7 +869,7 @@ void main() {
         adapterId: 'http-json',
         endpointConfig: ManagedProviderEndpointConfig(
           url: 'https://cursor.com/api/usage-summary',
-          
+
           windows: const [
             ManagedProviderUsageWindow(
               label: 'Plan',
@@ -954,7 +940,10 @@ void main() {
       now: now,
     );
     expect(http.requests.single.headers['Authorization'], 'Bearer tok');
-    expect(http.requests.single.headers.containsKey('ChatGPT-Account-Id'), isFalse);
+    expect(
+      http.requests.single.headers.containsKey('ChatGPT-Account-Id'),
+      isFalse,
+    );
     expect(http.requests.single.headers['Accept'], 'application/json');
   });
 
@@ -1058,35 +1047,36 @@ void main() {
 
   test('cursor preset template maps Plan Auto API windows', () async {
     final preset = managedProviderPresetById('cursor')!;
-    final snapshot = await HttpJsonMappingAdapter(
-      cliCredentials: CliCredentialSourceResolver(
-        readers: {
-          'cursor': _CliReader(
-            const _Credentials({
-              'accessToken': 'jwt-token',
-              'accountId': 'user',
-            }),
+    final snapshot =
+        await HttpJsonMappingAdapter(
+          cliCredentials: CliCredentialSourceResolver(
+            readers: {
+              'cursor': _CliReader(
+                const _Credentials({
+                  'accessToken': 'jwt-token',
+                  'accountId': 'user',
+                }),
+              ),
+            },
           ),
-        },
-      ),
-    ).fetch(
-      preset.template.copyWith(
-        id: 'cursor',
-        endpointConfig: _withCredentialSource(
-          preset.template.endpointConfig,
-          'cli:cursor-mp-p1',
-        ),
-      ),
-      credentials: const _Resolver(null),
-      http: FakeProviderUsageHttpClient(
-        response: const ProviderUsageHttpResponse(
-          statusCode: 200,
-          body:
-              '{"billingCycleEnd":"2026-04-01T00:00:00Z","individualUsage":{"plan":{"totalPercentUsed":30,"autoPercentUsed":10,"apiPercentUsed":5}}}',
-        ),
-      ),
-      now: now,
-    );
+        ).fetch(
+          preset.template.copyWith(
+            id: 'cursor',
+            endpointConfig: _withCredentialSource(
+              preset.template.endpointConfig,
+              'cli:cursor-mp-p1',
+            ),
+          ),
+          credentials: const _Resolver(null),
+          http: FakeProviderUsageHttpClient(
+            response: const ProviderUsageHttpResponse(
+              statusCode: 200,
+              body:
+                  '{"billingCycleEnd":"2026-04-01T00:00:00Z","individualUsage":{"plan":{"totalPercentUsed":30,"autoPercentUsed":10,"apiPercentUsed":5}}}',
+            ),
+          ),
+          now: now,
+        );
 
     expect(snapshot.measures.map((measure) => measure.label), [
       'Plan',
@@ -1098,80 +1088,85 @@ void main() {
 
   test('claude preset template maps five hour and weekly windows', () async {
     final preset = managedProviderPresetById('claude-code')!;
-    final snapshot = await HttpJsonMappingAdapter(
-      cliCredentials: CliCredentialSourceResolver(
-        readers: {
-          'claude': _CliReader(
-            const _Credentials({'accessToken': 'token'}),
+    final snapshot =
+        await HttpJsonMappingAdapter(
+          cliCredentials: CliCredentialSourceResolver(
+            readers: {
+              'claude': _CliReader(
+                const _Credentials({'accessToken': 'token'}),
+              ),
+            },
           ),
-        },
-      ),
-    ).fetch(
-      preset.template.copyWith(
-        id: 'claude',
-        endpointConfig: _withCredentialSource(
-          preset.template.endpointConfig,
-          'cli:claude-mp-p1',
-        ),
-      ),
-      credentials: const _Resolver(null),
-      http: FakeProviderUsageHttpClient(
-        response: const ProviderUsageHttpResponse(
-          statusCode: 200,
-          body:
-              '{"five_hour":{"utilization":20,"resets_at":"2026-04-01T00:00:00Z"},"seven_day":{"utilization":40,"resets_at":"2026-04-08T00:00:00Z"}}',
-        ),
-      ),
-      now: now,
-    );
+        ).fetch(
+          preset.template.copyWith(
+            id: 'claude',
+            endpointConfig: _withCredentialSource(
+              preset.template.endpointConfig,
+              'cli:claude-mp-p1',
+            ),
+          ),
+          credentials: const _Resolver(null),
+          http: FakeProviderUsageHttpClient(
+            response: const ProviderUsageHttpResponse(
+              statusCode: 200,
+              body:
+                  '{"five_hour":{"utilization":20,"resets_at":"2026-04-01T00:00:00Z"},"seven_day":{"utilization":40,"resets_at":"2026-04-08T00:00:00Z"}}',
+            ),
+          ),
+          now: now,
+        );
 
     expect(snapshot.measures.map((measure) => measure.label), ['5h', 'Weekly']);
     expect(snapshot.measures.map((measure) => measure.used), ['20', '40']);
   });
 
-  test('codex preset template maps primary secondary and monthly windows', () async {
-    final preset = managedProviderPresetById('codex')!;
-    final snapshot = await HttpJsonMappingAdapter(
-      cliCredentials: CliCredentialSourceResolver(
-        readers: {
-          'codex': _CliReader(
-            const _Credentials({
-              'accessToken': 'token',
-              'accountId': 'acct',
-            }),
-          ),
-        },
-      ),
-    ).fetch(
-      preset.template.copyWith(
-        id: 'codex',
-        endpointConfig: _withCredentialSource(
-          preset.template.endpointConfig,
-          'cli:codex-mp-p1',
-        ),
-      ),
-      credentials: const _Resolver(null),
-      http: FakeProviderUsageHttpClient(
-        response: const ProviderUsageHttpResponse(
-          statusCode: 200,
-          body:
-              '{"rate_limit":{"primary_window":{"used_percent":15,"reset_at":1711929600},"secondary_window":{"used_percent":25,"reset_at":1712534400}},"spend_control":{"individual_limit":{"used_percent":35,"reset_at":1714521600}}}',
-        ),
-      ),
-      now: now,
-    );
+  test(
+    'codex preset template maps primary secondary and monthly windows',
+    () async {
+      final preset = managedProviderPresetById('codex')!;
+      final snapshot =
+          await HttpJsonMappingAdapter(
+            cliCredentials: CliCredentialSourceResolver(
+              readers: {
+                'codex': _CliReader(
+                  const _Credentials({
+                    'accessToken': 'token',
+                    'accountId': 'acct',
+                  }),
+                ),
+              },
+            ),
+          ).fetch(
+            preset.template.copyWith(
+              id: 'codex',
+              endpointConfig: _withCredentialSource(
+                preset.template.endpointConfig,
+                'cli:codex-mp-p1',
+              ),
+            ),
+            credentials: const _Resolver(null),
+            http: FakeProviderUsageHttpClient(
+              response: const ProviderUsageHttpResponse(
+                statusCode: 200,
+                body:
+                    '{"rate_limit":{"primary_window":{"used_percent":15,"reset_at":1711929600},"secondary_window":{"used_percent":25,"reset_at":1712534400}},"spend_control":{"individual_limit":{"used_percent":35,"reset_at":1714521600}}}',
+              ),
+            ),
+            now: now,
+          );
 
-    expect(snapshot.measures.map((measure) => measure.label), [
-      '5h',
-      'Weekly',
-      'Monthly',
-    ]);
-    expect(snapshot.measures.map((measure) => measure.used), [
-      '15',
-      '25',
-      '35',
-    ]);
-  });
+      expect(snapshot.measures.map((measure) => measure.label), [
+        '5h',
+        'Weekly',
+        'Monthly',
+      ]);
+      expect(snapshot.measures.map((measure) => measure.used), [
+        '15',
+        '25',
+        '35',
+      ]);
+    },
+  );
 
   test('registry rejects duplicate IDs and exposes registered adapters', () {
     final first = _Adapter('http-json');

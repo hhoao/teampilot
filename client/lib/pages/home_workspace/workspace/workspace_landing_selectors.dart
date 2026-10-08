@@ -227,10 +227,7 @@ class WorkspaceLandingWorktreeResolver {
       return state.currentWorktreePath;
     }
     if (opts.isNotEmpty) return opts.first.path;
-    return normalizeWorkspacePath(
-      projectPath,
-      usesPosixPaths: usesPosixPaths,
-    );
+    return normalizeWorkspacePath(projectPath, usesPosixPaths: usesPosixPaths);
   }
 
   String labelFor(String selectedPath) {
@@ -415,13 +412,12 @@ class WorkspaceLandingSelectorBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         child: menuRow,
       ),
-      buildMenuChildren: (context, controller) =>
-          buildTpActionMenuChildren(
-            context: context,
-            specs: menuSpecs,
-            menuController: controller,
-            onSelect: onSelected!,
-          ),
+      buildMenuChildren: (context, controller) => buildTpActionMenuChildren(
+        context: context,
+        specs: menuSpecs,
+        menuController: controller,
+        onSelect: onSelected!,
+      ),
     );
 
     if (compact) return menu;

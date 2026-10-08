@@ -2,7 +2,7 @@ import '../../../../utils/team/team_member_naming.dart';
 import 'dart:async';
 
 import '../../registry/capabilities/prompt_capability.dart';
-import '../../../../services/session/member_role_provision.dart';
+import '../../registry/member_role_provision.dart';
 import '../../../resource/contribution/resource_origin.dart';
 
 final class FlashskyaiPromptCapability
@@ -29,7 +29,6 @@ final class FlashskyaiPromptCapability
               TeamMemberNaming.isTeamLead(member) &&
               ctx.forceTeamLeadDelegateMode,
           mixed: ctx.mixed,
-          additionalDirectories: const [],
         ),
         origin: const ContributionOrigin(
           providerId: toolId,

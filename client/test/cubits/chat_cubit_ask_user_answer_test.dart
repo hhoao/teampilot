@@ -1,7 +1,7 @@
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
@@ -15,9 +15,9 @@ import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/team/terminal_activity_tracker.dart';
-import 'package:teampilot/services/terminal/ask_user_question_answer_service.dart';
-import 'package:teampilot/services/terminal/terminal_launch_controller.dart';
+import 'package:teampilot/services/chat/runtime/pty/terminal_activity_tracker.dart';
+import 'package:teampilot/services/chat/conversation/approvals/ask_user_question_answer_service.dart';
+import 'package:teampilot/services/chat/runtime/pty/terminal_launch_controller.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -38,7 +38,7 @@ class _FakeShell extends TerminalSession {
           confirmFallback: const Duration(milliseconds: 50),
           validateLaunch: false,
         ),
-             fs: InMemoryFilesystem(),
+        fs: InMemoryFilesystem(),
       );
 
   final bool connected;
@@ -96,7 +96,7 @@ void main() {
       await attention.close();
     });
 
-    ChatCubit _buildCubit({
+    ChatCubit buildCubit({
       required AskUserQuestionAnswerService answerService,
     }) {
       return ChatCubit(
@@ -105,11 +105,11 @@ void main() {
         agentAttentionCubit: attention,
         askUserAnswerPendingStore: store,
         askUserQuestionAnswerService: answerService,
-                        storage: testHomeStorage,
+        storage: testHomeStorage,
       );
     }
 
-    void _seedWaitingTab(ChatCubit cubit, {required String sessionId}) {
+    void seedWaitingTab(ChatCubit cubit, {required String sessionId}) {
       final tab = ChatTab(
         info: ChatTabInfo(id: sessionId, title: sessionId, subtitle: ''),
         cliTeamName: sessionId,
@@ -137,12 +137,12 @@ void main() {
         registry: _ptyRegistry(),
         store: store,
       );
-      final cubit = _buildCubit(answerService: answerService);
+      final cubit = buildCubit(answerService: answerService);
       addTearDown(cubit.close);
 
       const sessionId = 'sess-ok';
-      _seedWaitingTab(cubit, sessionId: sessionId);
-      cubit.tabStore.openTabBySessionId(sessionId)!.memberShells[sessionId] =
+      seedWaitingTab(cubit, sessionId: sessionId);
+      cubit.tabStore.getOpenTabBySessionId(sessionId)!.memberShells[sessionId] =
           _FakeShell(connected: true);
 
       final result = await cubit.answerAskUserQuestion(
@@ -169,11 +169,11 @@ void main() {
         registry: _ptyRegistry(),
         store: store,
       );
-      final cubit = _buildCubit(answerService: answerService);
+      final cubit = buildCubit(answerService: answerService);
       addTearDown(cubit.close);
 
       const sessionId = 'sess-fail';
-      _seedWaitingTab(cubit, sessionId: sessionId);
+      seedWaitingTab(cubit, sessionId: sessionId);
       // No shell → facade returns terminal_disconnected.
 
       final result = await cubit.answerAskUserQuestion(
@@ -201,12 +201,12 @@ void main() {
         registry: _ptyRegistry(),
         store: store,
       );
-      final cubit = _buildCubit(answerService: answerService);
+      final cubit = buildCubit(answerService: answerService);
       addTearDown(cubit.close);
 
       const sessionId = 'sess-cancel';
-      _seedWaitingTab(cubit, sessionId: sessionId);
-      cubit.tabStore.openTabBySessionId(sessionId)!.memberShells[sessionId] =
+      seedWaitingTab(cubit, sessionId: sessionId);
+      cubit.tabStore.getOpenTabBySessionId(sessionId)!.memberShells[sessionId] =
           _FakeShell(connected: true);
 
       final result = await cubit.cancelAskUserQuestion(
@@ -238,7 +238,7 @@ void main() {
       await attention.close();
     });
 
-    ChatCubit _buildCubit({
+    ChatCubit buildCubit({
       required AskUserQuestionAnswerService answerService,
     }) {
       return ChatCubit(
@@ -247,11 +247,11 @@ void main() {
         agentAttentionCubit: attention,
         askUserAnswerPendingStore: store,
         askUserQuestionAnswerService: answerService,
-                        storage: testHomeStorage,
+        storage: testHomeStorage,
       );
     }
 
-    void _seedWaitingPermissionTab(
+    void seedWaitingPermissionTab(
       ChatCubit cubit, {
       required String sessionId,
     }) {
@@ -293,11 +293,11 @@ void main() {
           registry: _opencodeRegistry(),
           store: store,
         );
-        final cubit = _buildCubit(answerService: answerService);
+        final cubit = buildCubit(answerService: answerService);
         addTearDown(cubit.close);
 
         const sessionId = 'sess-perm';
-        _seedWaitingPermissionTab(cubit, sessionId: sessionId);
+        seedWaitingPermissionTab(cubit, sessionId: sessionId);
 
         final result = await cubit.answerPermissionRequest(
           sessionId: sessionId,
@@ -328,11 +328,11 @@ void main() {
         registry: _ptyRegistry(),
         store: store,
       );
-      final cubit = _buildCubit(answerService: answerService);
+      final cubit = buildCubit(answerService: answerService);
       addTearDown(cubit.close);
 
       const sessionId = 'sess-perm-fail';
-      _seedWaitingPermissionTab(cubit, sessionId: sessionId);
+      seedWaitingPermissionTab(cubit, sessionId: sessionId);
 
       final result = await cubit.answerPermissionRequest(
         sessionId: sessionId,

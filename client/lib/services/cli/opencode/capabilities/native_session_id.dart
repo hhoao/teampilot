@@ -28,10 +28,7 @@ Future<String?> resolveOpencodeNativeSessionIdFromSqlite(
 ) async {
   final path = fs.pathContext;
   final dbPath = path.join(dataDir, 'opencode.db');
-  final handle = await resolveOpencodeSqliteReadPath(
-    fs: fs,
-    dbPath: dbPath,
-  );
+  final handle = await resolveOpencodeSqliteReadPath(fs: fs, dbPath: dbPath);
   if (handle == null) return null;
 
   return handle.read<String?>(opencodeNewestSessionId);
@@ -108,27 +105,23 @@ class OpencodeSqliteReadHandle {
 /// falls back to a full scan filtering out rows with a non-empty parent.
 String? opencodeNewestSessionId(Database db, Object? args) {
   try {
-    final rows = db.select(
-      '''
+    final rows = db.select('''
 SELECT id
 FROM session
 WHERE parent_id IS NULL OR parent_id = ''
 ORDER BY time_updated DESC, id DESC
 LIMIT 1
-''',
-    );
+''');
     if (rows.isEmpty) return null;
     final id = '${rows.first['id']}'.trim();
     return id.isEmpty ? null : id;
   } on SqliteException {
     // Legacy layout: no parent_id column; parent linkage lives in `data`.
-    final rows = db.select(
-      '''
+    final rows = db.select('''
 SELECT id, data, time_updated
 FROM session
 ORDER BY time_updated DESC, id DESC
-''',
-    );
+''');
     for (final row in rows) {
       final id = '${row['id']}'.trim();
       if (id.isEmpty) continue;
@@ -229,10 +222,7 @@ Future<OpencodeSqliteReadHandle?> resolveOpencodeSqliteReadPath({
   if (_snapshots.length > _snapshotCap) {
     _snapshots.clear();
   }
-  return OpencodeSqliteReadHandle(
-    path: tempDbPath,
-    sourcePaths: copied,
-  );
+  return OpencodeSqliteReadHandle(path: tempDbPath, sourcePaths: copied);
 }
 
 final Map<String, _SqliteSnapshot> _snapshots = {};
@@ -240,10 +230,7 @@ const int _snapshotCap = 8;
 
 /// Store change signal: mtime+size of `opencode.db` plus WAL sidecars (with
 /// WAL the main file can stay static between checkpoints).
-Future<String?> _sqliteStoreFingerprint(
-  Filesystem fs,
-  String dbPath,
-) async {
+Future<String?> _sqliteStoreFingerprint(Filesystem fs, String dbPath) async {
   final parts = <String>[];
   for (final suffix in const ['', '-wal', '-shm']) {
     final st = await fs.stat('$dbPath$suffix');

@@ -1,8 +1,11 @@
 import 'dispatcher.dart';
 
-/// Availability phase of one agent seat. Mirrors the model enum
-/// `MemberAvailability` one-to-one (booting / working / idle).
-enum AgentPresenceKind { booting, working, idle }
+/// Availability phase of one agent seat, plus [cleared] (a retraction verb).
+///
+/// [booting] / [working] / [idle] mirror `MemberAvailability` one-to-one.
+/// [cleared] is NOT an availability: it means the seat is gone (disconnect /
+/// unbind). The wire codec maps it to `op:clear`.
+enum AgentPresenceKind { booting, working, idle, cleared }
 
 /// Seat identity (session + team member) for presence events.
 ///

@@ -82,9 +82,7 @@ class RemoteCliInstaller {
       manualPathOverride: manualPathOverride,
     );
     if (existing != null) {
-      appLogger.d(
-        '[remote-cli] locate hit cli=${cli.value} path=$existing',
-      );
+      appLogger.d('[remote-cli] locate hit cli=${cli.value} path=$existing');
       return existing;
     }
     appLogger.d(

@@ -16,13 +16,18 @@ void main() {
   group('presence-events app-shell wiring', () {
     test('exactly one app-lifetime projection exists in lib/', () {
       final constructions = <String>[];
-      for (final f in Directory('lib')
-          .listSync(recursive: true)
-          .whereType<File>()
-          .where((f) => f.path.endsWith('.dart'))) {
+      for (final f
+          in Directory('lib')
+              .listSync(recursive: true)
+              .whereType<File>()
+              .where((f) => f.path.endsWith('.dart'))) {
         final text = f.readAsStringSync();
-        final count = RegExp(r'AgentPresenceProjection\(\)').allMatches(text).length;
-        if (count > 0) constructions.add('${f.path}: $count');
+        final count = RegExp(
+          r'AgentPresenceProjection\(\)',
+        ).allMatches(text).length;
+        if (count > 0) {
+          constructions.add('${f.path.replaceAll(r'\', '/')}: $count');
+        }
       }
       expect(
         constructions,
@@ -36,7 +41,8 @@ void main() {
           r'AgentPresenceProjection\s+_presenceProjection\s*=\s*AgentPresenceProjection\(\)',
         ).hasMatch(src),
         isTrue,
-        reason: 'the single projection lives beside the app-lifetime dispatcher',
+        reason:
+            'the single projection lives beside the app-lifetime dispatcher',
       );
     });
 
@@ -77,6 +83,27 @@ void main() {
         reason:
             'stop() resolves after the consume loop drains, so chaining keeps '
             'the close strictly after the last delivery',
+      );
+    });
+
+    test('ssh home does not construct PresenceEventBridge', () {
+      expect(src.contains('connectionModeService.isSshMode'), isTrue);
+      expect(
+        RegExp(
+          r'presenceBridge:\s*presenceSink == null\s*\|\|\s*connectionModeService\.isSshMode',
+        ).hasMatch(src),
+        isTrue,
+        reason: 'consumer-only ssh home must not publish presence back',
+      );
+    });
+
+    test('home swap rebinds the presence producer via setPresenceBridge', () {
+      expect(
+        src.contains('setPresenceBridge'),
+        isTrue,
+        reason:
+            'reloadAllAppData does not recreate the cubit; applyHomeEventTransport '
+            'must replace the producer edge when the home role changes',
       );
     });
   });

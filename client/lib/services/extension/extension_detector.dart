@@ -23,9 +23,9 @@ class ExtensionDetector {
   }) : _processRunner = processRunner ?? Process.run,
        _storage = storage,
        _probeHost =
-          probeHost ??
-          (processRunner != null ||
-              Platform.environment['FLUTTER_TEST'] != 'true');
+           probeHost ??
+           (processRunner != null ||
+               Platform.environment['FLUTTER_TEST'] != 'true');
 
   final ExtensionProcessRunner _processRunner;
   final HomeStorage? _storage;

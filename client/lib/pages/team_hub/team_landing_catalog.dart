@@ -1,6 +1,6 @@
 import '../../models/discoverable_team.dart';
 import '../../models/team_config.dart';
-import '../../services/team/team_landing_selection.dart';
+import '../../services/team_config/team_landing_selection.dart';
 
 enum TeamLandingSourceFilter { all, mine, discovery }
 
@@ -64,7 +64,8 @@ TeamLandingCatalogSections buildTeamLandingCatalog({
       ? const <TeamLandingLocalEntry>[]
       : localTeams
             .where(
-              (team) => _matchesSearch(team.name, team.description, searchQuery),
+              (team) =>
+                  _matchesSearch(team.name, team.description, searchQuery),
             )
             .map(TeamLandingLocalEntry.new)
             .toList(growable: false);

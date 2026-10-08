@@ -16,7 +16,6 @@ import 'package:teampilot/services/skill/registry/skill_registry_config_service.
 import 'package:teampilot/services/skill/registry/skill_registry_source.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import '../../support/test_runtime_context.dart';
-import '../../support/in_memory_filesystem.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 
 List<SkillRegistrySource> _rebuild(SkillRegistriesConfig c) => [
@@ -90,7 +89,10 @@ void main() {
       home: tmp.path,
       cwd: tmp.path,
     );
-    cfgService = SkillRegistryConfigService(teampilotRoot: paths.basePath, storage: testHomeStorage, );
+    cfgService = SkillRegistryConfigService(
+      teampilotRoot: paths.basePath,
+      storage: testHomeStorage,
+    );
   });
 
   tearDown(() {
@@ -112,10 +114,7 @@ void main() {
           value: testHomeStorage,
           child: BlocProvider<SkillCubit>.value(
             value: cubit,
-            child: const SizedBox(
-              height: 900,
-              child: SkillRegistriesSection(),
-            ),
+            child: const SizedBox(height: 900, child: SkillRegistriesSection()),
           ),
         ),
       ),
@@ -136,7 +135,7 @@ void main() {
         registryConfigService: cfgService,
         initialSources: const [],
         rebuildSources: _rebuild,
-                            storage: testHomeStorage,
+        storage: testHomeStorage,
       );
       await c.loadAll();
       return c;
@@ -154,7 +153,9 @@ void main() {
     expect(find.byType(Switch), findsNWidgets(6)); // 2 API + 4 default git
   });
 
-  testWidgets('edit dialog saves display name to registries.json', (tester) async {
+  testWidgets('edit dialog saves display name to registries.json', (
+    tester,
+  ) async {
     final cubit = await buildCubit(tester);
     await tester.pumpWidget(wrap(cubit));
     await tester.pumpAndSettle();
@@ -197,10 +198,12 @@ void main() {
     tester,
   ) async {
     final defaults = SkillRegistriesConfig.defaults();
-    final withToken = SkillRegistriesConfig(sources: [
-      for (final s in defaults.sources)
-        s.id == 'skillsMp' ? s.copyWith(apiToken: 'tok123') : s,
-    ]);
+    final withToken = SkillRegistriesConfig(
+      sources: [
+        for (final s in defaults.sources)
+          s.id == 'skillsMp' ? s.copyWith(apiToken: 'tok123') : s,
+      ],
+    );
     await tester.runAsync(() => cfgService.save(withToken));
     final cubit = await buildCubit(tester);
     await tester.pumpWidget(wrap(cubit));
@@ -217,15 +220,22 @@ void main() {
     final deadline = DateTime.now().add(const Duration(seconds: 5));
     while (find.text('Authenticated').evaluate().isNotEmpty &&
         DateTime.now().isBefore(deadline)) {
-      for (var i = 0; i < 2 && find.text('Authenticated').evaluate().isNotEmpty; i++) {
+      for (
+        var i = 0;
+        i < 2 && find.text('Authenticated').evaluate().isNotEmpty;
+        i++
+      ) {
         await tester.runAsync(
           () => Future<void>.delayed(const Duration(milliseconds: 80)),
         );
         await tester.pumpAndSettle();
       }
     }
-    expect(DateTime.now().isBefore(deadline), isTrue,
-        reason: 'badge should drop Authenticated after clearing the token');
+    expect(
+      DateTime.now().isBefore(deadline),
+      isTrue,
+      reason: 'badge should drop Authenticated after clearing the token',
+    );
     expect(find.text('Authenticated'), findsNothing);
     expect(find.text('Unauthenticated'), findsOneWidget);
     expect(find.text('@SkillsMP'), findsOneWidget);
@@ -241,9 +251,11 @@ void main() {
       gitName: 'ai',
       gitBranch: 'main',
     );
-    await tester.runAsync(() => cfgService.save(
-      SkillRegistriesConfig(sources: [...defaults.sources, custom]),
-    ));
+    await tester.runAsync(
+      () => cfgService.save(
+        SkillRegistriesConfig(sources: [...defaults.sources, custom]),
+      ),
+    );
     final cubit = await buildCubit(tester);
     await tester.pumpWidget(wrap(cubit));
     await tester.pumpAndSettle();

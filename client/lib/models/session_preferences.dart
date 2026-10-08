@@ -15,7 +15,6 @@ class SessionPreferences {
     this.notifyOnSessionIdle = true,
     this.openExistingSessionStartsTerminal = false,
     this.chatSubmitSwitchesToTerminal = false,
-    this.simpleModeDefaultFullAccess = true,
   }) : cliExecutablePaths = Map.unmodifiable(
          _normalizeCliExecutablePaths(cliExecutablePaths),
        ),
@@ -55,8 +54,6 @@ class SessionPreferences {
           json['openExistingSessionStartsTerminal'] as bool? ?? false,
       chatSubmitSwitchesToTerminal:
           json['chatSubmitSwitchesToTerminal'] as bool? ?? false,
-      simpleModeDefaultFullAccess:
-          json['simpleModeDefaultFullAccess'] as bool? ?? true,
     );
   }
 
@@ -122,10 +119,6 @@ class SessionPreferences {
   /// background.
   final bool chatSubmitSwitchesToTerminal;
 
-  /// When true (default), Simple-mode compose landing starts with full access
-  /// unless a workspace has already persisted a different chip choice.
-  final bool simpleModeDefaultFullAccess;
-
   String cliExecutablePathFor(String toolId) =>
       cliExecutablePaths[toolId]?.trim() ?? '';
 
@@ -145,7 +138,6 @@ class SessionPreferences {
     bool? notifyOnSessionIdle,
     bool? openExistingSessionStartsTerminal,
     bool? chatSubmitSwitchesToTerminal,
-    bool? simpleModeDefaultFullAccess,
   }) {
     return SessionPreferences(
       cliExecutablePaths: cliExecutablePaths ?? this.cliExecutablePaths,
@@ -157,7 +149,8 @@ class SessionPreferences {
           autoLaunchAllMembersOnConnect ?? this.autoLaunchAllMembersOnConnect,
       reclaimIdleTerminals: reclaimIdleTerminals ?? this.reclaimIdleTerminals,
       reclaimIdleTerminalAfterSeconds:
-          reclaimIdleTerminalAfterSeconds ?? this.reclaimIdleTerminalAfterSeconds,
+          reclaimIdleTerminalAfterSeconds ??
+          this.reclaimIdleTerminalAfterSeconds,
       gitAutoFetchEnabled: gitAutoFetchEnabled ?? this.gitAutoFetchEnabled,
       gitAutoFetchIntervalMinutes:
           gitAutoFetchIntervalMinutes ?? this.gitAutoFetchIntervalMinutes,
@@ -173,8 +166,6 @@ class SessionPreferences {
           this.openExistingSessionStartsTerminal,
       chatSubmitSwitchesToTerminal:
           chatSubmitSwitchesToTerminal ?? this.chatSubmitSwitchesToTerminal,
-      simpleModeDefaultFullAccess:
-          simpleModeDefaultFullAccess ?? this.simpleModeDefaultFullAccess,
     );
   }
 
@@ -195,7 +186,6 @@ class SessionPreferences {
       'notifyOnSessionIdle': notifyOnSessionIdle,
       'openExistingSessionStartsTerminal': openExistingSessionStartsTerminal,
       'chatSubmitSwitchesToTerminal': chatSubmitSwitchesToTerminal,
-      'simpleModeDefaultFullAccess': simpleModeDefaultFullAccess,
     };
   }
 

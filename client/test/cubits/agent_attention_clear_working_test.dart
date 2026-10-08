@@ -13,10 +13,7 @@ void main() {
       skipPermissions: false,
     );
     cubit.clearWorkingIfWorking(sessionId: 's1', memberId: 'm1');
-    expect(
-      cubit.state.attentionFor(sessionId: 's1', memberId: 'm1'),
-      isNull,
-    );
+    expect(cubit.state.attentionFor(sessionId: 's1', memberId: 'm1'), isNull);
   });
 
   test('clearWorkingIfWorking does NOT remove a waiting seat', () {

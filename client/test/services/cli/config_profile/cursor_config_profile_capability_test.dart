@@ -1,33 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/models/cli_preset.dart';
-import 'package:teampilot/models/runtime_target.dart';
-import 'package:teampilot/models/workspace_agent_config.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
-import 'package:teampilot/services/provider/control_plane_profile_paths.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_workspace_trust.dart';
-import 'package:teampilot/services/storage/app_paths.dart';
-import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/provider.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
-import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/team_bus/member_bus_idle_endpoint.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/cli/claude/team_roster_service.dart';
 
 import '../../../support/in_memory_filesystem.dart';
-
-RuntimeContext _memoryContext(String dir, InMemoryFilesystem fs) =>
-    RuntimeContext(
-      target: RuntimeTarget.local(),
-      filesystem: fs,
-      home: dir,
-      cwd: dir,
-      appDataRoot: dir,
-      paths: AppPaths(dir),
-    );
 
 void main() {
   Future<SessionHomeContribution> contribute(
@@ -60,7 +44,7 @@ void main() {
       home: '/fake/user/home',
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base, fs: fs),
-                                  storage: fakeHomeStorage(filesystem: fs),
+      storage: fakeHomeStorage(filesystem: fs),
     );
   });
 
@@ -153,7 +137,7 @@ void main() {
     );
 
     test(
-      'mixed contributes HOME and not CURSOR_CONFIG_DIR or plugin dir key',
+      'mixed contributes HOME and CURSOR_CONFIG_DIR pinned to isolated .cursor',
       () async {
         const team = TeamProfile(
           id: 'team-a',
@@ -182,7 +166,10 @@ void main() {
         final home = memberHome(scope);
         expect(contribution.environment['HOME'], home);
         expect(contribution.environment['USERPROFILE'], home);
-        expect(contribution.environment, isNot(contains('CURSOR_CONFIG_DIR')));
+        expect(
+          contribution.environment['CURSOR_CONFIG_DIR'],
+          fs.pathContext.join(home, '.cursor'),
+        );
         expect(
           contribution.environment.keys,
           isNot(contains(startsWith('TEAMPILOT_'))),
@@ -224,7 +211,11 @@ void main() {
     test(
       'mixed warns cursor_credentials_missing when provider not ready',
       () async {
-        final repository = AppProviderRepository(basePath: base, fs: fs, storage: fakeHomeStorage(filesystem: fs), );
+        final repository = AppProviderRepository(
+          basePath: base,
+          fs: fs,
+          storage: fakeHomeStorage(filesystem: fs),
+        );
         await repository.saveProviders(CliTool.cursor, [
           const AppProviderConfig(
             id: 'work',

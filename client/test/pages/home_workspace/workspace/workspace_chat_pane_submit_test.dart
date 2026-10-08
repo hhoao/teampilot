@@ -25,8 +25,8 @@ import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_pane.dar
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
-import 'package:teampilot/services/compose/compose_draft_cache.dart';
-import 'package:teampilot/services/compose/compose_draft_store.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_draft_cache.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_draft_store.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
@@ -76,7 +76,7 @@ class _LandingDrafts {
   }
 
   Future<void> clear(String workspaceId) async {
-    await cache.clearLandingPersistent(workspaceId, storage: testHomeStorage, );
+    await cache.clearLandingPersistent(workspaceId, storage: testHomeStorage);
     cache.clearLandingDraft(workspaceId);
   }
 }
@@ -236,42 +236,43 @@ void main() {
     expect(await drafts.store.loadLanding(workspaceId), isNull);
   });
 
-  testWidgets('session open clears landing drafts without waiting for delivery', (
-    tester,
-  ) async {
-    const workspaceId = 'workspace-1';
-    const draft = 'staged message';
-    final drafts = _LandingDrafts();
-    await drafts.seed(workspaceId, draft);
+  testWidgets(
+    'session open clears landing drafts without waiting for delivery',
+    (tester) async {
+      const workspaceId = 'workspace-1';
+      const draft = 'staged message';
+      final drafts = _LandingDrafts();
+      await drafts.seed(workspaceId, draft);
 
-    // Delivery stays unresolved (connect + deliver can take minutes) — the
-    // draft must already be gone once the session owns the message.
-    final delivery = Completer<bool>();
-    await tester.pumpWidget(
-      _pane(
-        submitter:
-            (
-              _,
-              _, {
-              required launch,
-              required message,
-              workingDirectory,
-              expertKey,
-              void Function(String sessionId)? onSessionOpened,
-            }) async {
-              onSessionOpened?.call('session-1');
-              return delivery.future;
-            },
-        drafts: drafts,
-      ),
-    );
-    await _settleLanding(tester);
+      // Delivery stays unresolved (connect + deliver can take minutes) — the
+      // draft must already be gone once the session owns the message.
+      final delivery = Completer<bool>();
+      await tester.pumpWidget(
+        _pane(
+          submitter:
+              (
+                _,
+                _, {
+                required launch,
+                required message,
+                workingDirectory,
+                expertKey,
+                void Function(String sessionId)? onSessionOpened,
+              }) async {
+                onSessionOpened?.call('session-1');
+                return delivery.future;
+              },
+          drafts: drafts,
+        ),
+      );
+      await _settleLanding(tester);
 
-    await _submitLanding(tester, draft);
+      await _submitLanding(tester, draft);
 
-    expect(drafts.cache.landingDraft(workspaceId), isNull);
-    expect(await drafts.store.loadLanding(workspaceId), isNull);
-  });
+      expect(drafts.cache.landingDraft(workspaceId), isNull);
+      expect(await drafts.store.loadLanding(workspaceId), isNull);
+    },
+  );
 
   testWidgets('back control exits the landing to the remembered tab', (
     tester,
@@ -298,10 +299,7 @@ void main() {
     );
     await _settleLanding(tester);
 
-    expect(
-      find.byKey(AppKeys.workspaceChatLandingBackButton),
-      findsOneWidget,
-    );
+    expect(find.byKey(AppKeys.workspaceChatLandingBackButton), findsOneWidget);
 
     await tester.tap(find.byKey(AppKeys.workspaceChatLandingBackButton));
     await tester.pump();
@@ -310,10 +308,7 @@ void main() {
       workbench.centerActiveId('workspace-1'),
       WorkbenchTabId.session('session-1'),
     );
-    expect(
-      find.byKey(AppKeys.workspaceChatLandingBackButton),
-      findsNothing,
-    );
+    expect(find.byKey(AppKeys.workspaceChatLandingBackButton), findsNothing);
   });
 }
 
@@ -378,7 +373,7 @@ Widget _pane({
         BlocProvider<SkillCubit>.value(value: skillCubit),
         BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
         RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
-      BlocProvider<WorkbenchCubit>.value(value: workbench),
+        BlocProvider<WorkbenchCubit>.value(value: workbench),
       ],
       child: CliToolRegistryScope(
         registry: CliToolRegistry.builtIn(),

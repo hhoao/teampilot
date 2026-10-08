@@ -86,7 +86,8 @@ void main() {
 
   group('taskNotificationToolUseId', () {
     // Exact shape captured from claude 2.1.156 (spec experiment section).
-    const notification = '<task-notification>\n'
+    const notification =
+        '<task-notification>\n'
         '<task-id>bi6wlgsf3</task-id>\n'
         '<tool-use-id>call_f766b261fd9f4358a902b8d1</tool-use-id>\n'
         '<output-file>C:\\tasks\\bi6wlgsf3.output</output-file>\n'
@@ -116,8 +117,10 @@ void main() {
       expect(taskNotificationToolUseId(''), isNull);
       expect(taskNotificationToolUseId(null), isNull);
       expect(
-        taskNotificationToolUseId('here is a <tool-use-id>x</tool-use-id> '
-            'inside a normal message'),
+        taskNotificationToolUseId(
+          'here is a <tool-use-id>x</tool-use-id> '
+          'inside a normal message',
+        ),
         isNull,
       );
     });

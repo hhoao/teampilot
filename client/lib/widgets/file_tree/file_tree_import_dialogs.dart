@@ -182,9 +182,7 @@ void showFileTreeImportSummaryIfNeeded(
   AppToast.show(
     context,
     message: message,
-    variant: summary.failed > 0
-        ? TpToastVariant.warning
-        : TpToastVariant.info,
+    variant: summary.failed > 0 ? TpToastVariant.warning : TpToastVariant.info,
   );
 }
 

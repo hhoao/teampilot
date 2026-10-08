@@ -5,7 +5,6 @@ import '../../../models/install_job/install_job_spec.dart';
 import '../../../models/ssh_profile.dart';
 import '../../../models/team_config.dart';
 import '../../cli/cli_installer_service.dart';
-import '../../cli/installer_types.dart';
 import '../install_job_runner.dart';
 
 typedef SshProfileById = SshProfile? Function(String profileId);

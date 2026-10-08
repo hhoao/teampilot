@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../theme/workspace_surface_layers.dart';
 
-
 class TeamConfigCard extends StatelessWidget {
   const TeamConfigCard({super.key, required this.child, this.padding});
 

@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/catalog/catalog_mcp_constants.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 
 import 'cli_test_profile.dart';
 

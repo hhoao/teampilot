@@ -64,10 +64,8 @@ class GithubDeviceFlowStartResult {
 }
 
 class GithubDeviceFlowAuth {
-  GithubDeviceFlowAuth({
-    required this.clientId,
-    GithubDeviceFlowHttpPost? post,
-  }) : _post = post ?? http.post;
+  GithubDeviceFlowAuth({required this.clientId, GithubDeviceFlowHttpPost? post})
+    : _post = post ?? http.post;
 
   final String clientId;
   final GithubDeviceFlowHttpPost _post;

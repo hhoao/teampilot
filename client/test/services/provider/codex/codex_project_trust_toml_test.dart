@@ -8,7 +8,7 @@ void main() {
       final result = CodexProjectTrustToml.applyTrustedDirectories(
         'model = "gpt-5"\n',
         [cwd],
-                                                                    usesPosixPaths: false,
+        usesPosixPaths: false,
       );
       expect(result, contains('[projects."/home/user/Document/testmixed"]'));
       expect(result, contains('trust_level = "trusted"'));
@@ -23,7 +23,7 @@ model = "m"
 ''';
       final result = CodexProjectTrustToml.applyTrustedDirectories(existing, [
         cwd,
-      ], usesPosixPaths: false, );
+      ], usesPosixPaths: false);
       expect(result.split('[projects."/home/user/proj"]').length, 2);
     });
 
@@ -31,7 +31,7 @@ model = "m"
       final result = CodexProjectTrustToml.applyTrustedDirectories('', [
         '/a/one',
         '/a/two',
-      ], usesPosixPaths: false, );
+      ], usesPosixPaths: false);
       expect(result, contains('[projects."/a/one"]'));
       expect(result, contains('[projects."/a/two"]'));
     });

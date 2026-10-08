@@ -1,7 +1,10 @@
 import '../../cubits/workbench/workbench_tab.dart';
 
 /// 1-based strip ordinal (Alt+1…9 / Alt+0 → 10). Null when empty or OOB.
-WorkbenchTabId? workbenchTabAt(List<WorkbenchTabId> order, int oneBasedOrdinal) {
+WorkbenchTabId? workbenchTabAt(
+  List<WorkbenchTabId> order,
+  int oneBasedOrdinal,
+) {
   if (oneBasedOrdinal < 1 || oneBasedOrdinal > 10) return null;
   final index = oneBasedOrdinal - 1;
   if (index >= order.length) return null;

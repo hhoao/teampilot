@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../services/follow_up/follow_up_queue.dart';
+import '../../services/chat/conversation/follow_up/follow_up_queue.dart';
 
 /// Finder key for the follow-up message queue strip.
 const Key kSessionFollowUpQueueStripKey = ValueKey(
@@ -248,10 +248,7 @@ class _QueueRow extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback onMoveUp;
 
-  static const _actionConstraints = BoxConstraints(
-    minWidth: 28,
-    minHeight: 28,
-  );
+  static const _actionConstraints = BoxConstraints(minWidth: 28, minHeight: 28);
 
   @override
   Widget build(BuildContext context) {
@@ -304,9 +301,9 @@ class _QueueRow extends StatelessWidget {
                             controller: editController,
                             autofocus: true,
                             maxLines: 1,
-                            style: styles.mdColored(cs.onSurface).copyWith(
-                              height: 1.2,
-                            ),
+                            style: styles
+                                .mdColored(cs.onSurface)
+                                .copyWith(height: 1.2),
                             cursorColor: cs.onSurface,
                             cursorWidth: 1.2,
                             textAlignVertical: TextAlignVertical.center,

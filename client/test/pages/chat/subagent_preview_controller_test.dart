@@ -99,39 +99,42 @@ void main() {
     );
   });
 
-  test('popAndStopFollow: nested pop keeps follow; back to parent stops it', () {
-    final c = SubagentPreviewController();
-    c.autoOpen('task-1');
-    c.push('nested');
-    c.popAndStopFollow(); // 嵌套层 → 仍在预览内
-    expect(c.stack, ['task-1']);
-    expect(c.followStopped, isFalse);
+  test(
+    'popAndStopFollow: nested pop keeps follow; back to parent stops it',
+    () {
+      final c = SubagentPreviewController();
+      c.autoOpen('task-1');
+      c.push('nested');
+      c.popAndStopFollow(); // 嵌套层 → 仍在预览内
+      expect(c.stack, ['task-1']);
+      expect(c.followStopped, isFalse);
 
-    c.popAndStopFollow(); // 回到父会话 → 停止跟随
-    expect(c.stack, isEmpty);
-    expect(c.followStopped, isTrue);
+      c.popAndStopFollow(); // 回到父会话 → 停止跟随
+      expect(c.stack, isEmpty);
+      expect(c.followStopped, isTrue);
 
-    // followStopped 后同一/其他子 agent 都不再自动开
-    expect(
-      c.computeAutoFollow(
-        prefEnabled: true,
-        runningIds: ['task-2'],
-        availableIds: {'task-2'},
-      ),
-      isNull,
-    );
+      // followStopped 后同一/其他子 agent 都不再自动开
+      expect(
+        c.computeAutoFollow(
+          prefEnabled: true,
+          runningIds: ['task-2'],
+          availableIds: {'task-2'},
+        ),
+        isNull,
+      );
 
-    // resetFollow(会话切换)解除
-    c.resetFollow();
-    expect(
-      c.computeAutoFollow(
-        prefEnabled: true,
-        runningIds: ['task-2'],
-        availableIds: {'task-2'},
-      ),
-      'task-2',
-    );
-  });
+      // resetFollow(会话切换)解除
+      c.resetFollow();
+      expect(
+        c.computeAutoFollow(
+          prefEnabled: true,
+          runningIds: ['task-2'],
+          availableIds: {'task-2'},
+        ),
+        'task-2',
+      );
+    },
+  );
 
   test('clear resets follow state', () {
     final c = SubagentPreviewController();

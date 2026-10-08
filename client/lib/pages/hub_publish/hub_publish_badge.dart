@@ -7,10 +7,7 @@ import '../team_hub/team_hub_cards.dart';
 
 /// Compact “PR open” chip for My Teams / My Experts cards.
 class HubPublishBadge extends StatelessWidget {
-  const HubPublishBadge({
-    super.key,
-    required this.record,
-  });
+  const HubPublishBadge({super.key, required this.record});
 
   final HubPublishRecord record;
 

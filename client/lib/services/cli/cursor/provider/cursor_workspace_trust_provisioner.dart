@@ -29,7 +29,9 @@ final class CursorWorkspaceTrustProvisioner {
     void add(String raw) {
       final trimmed = raw.trim();
       if (trimmed.isEmpty) return;
-      keys.addAll(workspaceMetadataKeys(trimmed, usesPosixPaths: usesPosixPaths));
+      keys.addAll(
+        workspaceMetadataKeys(trimmed, usesPosixPaths: usesPosixPaths),
+      );
     }
 
     add(workingDirectory ?? '');

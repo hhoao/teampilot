@@ -1,6 +1,7 @@
 import 'dart:io';
 
-import 'package:permission_handler/permission_handler.dart' as permission_handler;
+import 'package:permission_handler/permission_handler.dart'
+    as permission_handler;
 import 'package:shared_ui/shared_ui.dart';
 
 /// Storage permission gate for mobile file browsing; desktop is unrestricted.
@@ -29,8 +30,8 @@ class TeamPilotPermissionPort implements TpPermissionPort {
       return true;
     }
 
-    final manage =
-        await permission_handler.Permission.manageExternalStorage.request();
+    final manage = await permission_handler.Permission.manageExternalStorage
+        .request();
     return manage.isGranted;
   }
 

@@ -5,11 +5,15 @@ void main() {
   group('SkillRegistrySourceConfig', () {
     test('defaultBaseUrl per protocol', () {
       expect(
-        SkillRegistrySourceConfig.defaultBaseUrl(SkillRegistryProtocol.skillsSh),
+        SkillRegistrySourceConfig.defaultBaseUrl(
+          SkillRegistryProtocol.skillsSh,
+        ),
         'https://skills.sh',
       );
       expect(
-        SkillRegistrySourceConfig.defaultBaseUrl(SkillRegistryProtocol.skillsMp),
+        SkillRegistrySourceConfig.defaultBaseUrl(
+          SkillRegistryProtocol.skillsMp,
+        ),
         'https://skillsmp.com/api/v1',
       );
     });
@@ -45,42 +49,45 @@ void main() {
       expect(c.copyWith(enabled: false).enabled, isFalse);
     });
 
-    test('copyWith clearBaseUrl / clearBrowseQuery null each while keeping others', () {
-      final c = SkillRegistrySourceConfig(
-        id: 'a',
-        kind: SkillRegistryKind.api,
-        label: 'a',
-        protocol: SkillRegistryProtocol.skillsSh,
-        baseUrl: 'https://example.com',
-        apiToken: 'tok',
-        browseQuery: 'ai',
-      );
+    test(
+      'copyWith clearBaseUrl / clearBrowseQuery null each while keeping others',
+      () {
+        final c = SkillRegistrySourceConfig(
+          id: 'a',
+          kind: SkillRegistryKind.api,
+          label: 'a',
+          protocol: SkillRegistryProtocol.skillsSh,
+          baseUrl: 'https://example.com',
+          apiToken: 'tok',
+          browseQuery: 'ai',
+        );
 
-      final clearedUrl = c.copyWith(clearBaseUrl: true);
-      expect(clearedUrl.baseUrl, isNull);
-      expect(clearedUrl.apiToken, 'tok');
-      expect(clearedUrl.browseQuery, 'ai');
+        final clearedUrl = c.copyWith(clearBaseUrl: true);
+        expect(clearedUrl.baseUrl, isNull);
+        expect(clearedUrl.apiToken, 'tok');
+        expect(clearedUrl.browseQuery, 'ai');
 
-      final clearedQuery = c.copyWith(clearBrowseQuery: true);
-      expect(clearedQuery.baseUrl, 'https://example.com');
-      expect(clearedQuery.apiToken, 'tok');
-      expect(clearedQuery.browseQuery, isNull);
+        final clearedQuery = c.copyWith(clearBrowseQuery: true);
+        expect(clearedQuery.baseUrl, 'https://example.com');
+        expect(clearedQuery.apiToken, 'tok');
+        expect(clearedQuery.browseQuery, isNull);
 
-      final clearedToken = c.copyWith(clearApiToken: true);
-      expect(clearedToken.baseUrl, 'https://example.com');
-      expect(clearedToken.apiToken, isNull);
-      expect(clearedToken.browseQuery, 'ai');
+        final clearedToken = c.copyWith(clearApiToken: true);
+        expect(clearedToken.baseUrl, 'https://example.com');
+        expect(clearedToken.apiToken, isNull);
+        expect(clearedToken.browseQuery, 'ai');
 
-      final clearedAll = c.copyWith(
-        clearBaseUrl: true,
-        clearApiToken: true,
-        clearBrowseQuery: true,
-      );
-      expect(clearedAll.baseUrl, isNull);
-      expect(clearedAll.apiToken, isNull);
-      expect(clearedAll.browseQuery, isNull);
-      expect(clearedAll.label, 'a');
-    });
+        final clearedAll = c.copyWith(
+          clearBaseUrl: true,
+          clearApiToken: true,
+          clearBrowseQuery: true,
+        );
+        expect(clearedAll.baseUrl, isNull);
+        expect(clearedAll.apiToken, isNull);
+        expect(clearedAll.browseQuery, isNull);
+        expect(clearedAll.label, 'a');
+      },
+    );
 
     test('copyWith set then clear round trips to null', () {
       final c = SkillRegistrySourceConfig(
@@ -94,7 +101,10 @@ void main() {
       expect(withToken.copyWith(clearApiToken: true).apiToken, isNull);
       expect(withToken.copyWith(clearApiToken: true).hasApiToken, isFalse);
       expect(
-        withToken.copyWith(clearApiToken: true).copyWith(apiToken: 'tok2').apiToken,
+        withToken
+            .copyWith(clearApiToken: true)
+            .copyWith(apiToken: 'tok2')
+            .apiToken,
         'tok2',
       );
     });
@@ -110,9 +120,11 @@ void main() {
     });
 
     test('fromJson fills missing kinds with defaults', () {
-      final cfg = SkillRegistriesConfig.fromJson({'sources': [
-        {'id': 'skillsSh', 'kind': 'api', 'label': 'skills.sh'},
-      ]});
+      final cfg = SkillRegistriesConfig.fromJson({
+        'sources': [
+          {'id': 'skillsSh', 'kind': 'api', 'label': 'skills.sh'},
+        ],
+      });
       expect(cfg.byId('skillsSh'), isNotNull);
       expect(cfg.byId('skillsMp'), isNotNull);
       expect(cfg.sources.length, greaterThanOrEqualTo(2));

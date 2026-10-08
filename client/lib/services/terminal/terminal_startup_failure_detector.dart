@@ -30,10 +30,7 @@ abstract final class TerminalStartupFailureDetector {
       return LinuxGlibcProbe.launchFailureMessage();
     }
     if (looksLikeCliStartupFailure(text) || looksLikeExecFailure(text)) {
-      return launchFailureMessage(
-        executable,
-        validateLaunch: validateLaunch,
-      );
+      return launchFailureMessage(executable, validateLaunch: validateLaunch);
     }
     return null;
   }

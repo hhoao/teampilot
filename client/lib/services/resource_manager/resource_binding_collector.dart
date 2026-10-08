@@ -104,7 +104,11 @@ List<ResourceBinding> collectResourceBindings({
     final group = workspaceLabel != null
         ? (key: workspaceId, label: workspaceLabel)
         : _groupFor(
-            _matchWorktree(shell.cwd, worktrees, usesPosixPaths: usesPosixPaths),
+            _matchWorktree(
+              shell.cwd,
+              worktrees,
+              usesPosixPaths: usesPosixPaths,
+            ),
             worktrees,
           );
     bindings.add(

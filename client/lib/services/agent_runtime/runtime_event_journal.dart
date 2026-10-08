@@ -7,7 +7,6 @@ import 'package:meta/meta.dart';
 
 import '../../models/team_config.dart';
 import '../io/filesystem.dart';
-import '../io/local_filesystem.dart';
 import 'runtime_event.dart';
 
 abstract interface class RuntimeEventJournal {
@@ -241,7 +240,10 @@ final class FileRuntimeEventJournal implements RuntimeEventJournal {
     String path,
     int size,
   ) async {
-    ({int sequence, bool endsWithNewline}) from(List<int> bytes, bool wholeFile) {
+    ({int sequence, bool endsWithNewline}) from(
+      List<int> bytes,
+      bool wholeFile,
+    ) {
       final sequence = _lastSequenceIn(bytes, wholeFile: wholeFile);
       return (
         sequence: sequence ?? 0,

@@ -42,8 +42,11 @@ class _FakeFilesystem implements Filesystem {
   Future<void> writeBytes(String path, List<int> bytes) async {}
 
   @override
-  Future<List<int>?> readBytesRange(String path, int offset, int length) async =>
-      [];
+  Future<List<int>?> readBytesRange(
+    String path,
+    int offset,
+    int length,
+  ) async => [];
 
   @override
   Future<void> appendBytes(String path, List<int> bytes) async {}
@@ -155,40 +158,40 @@ void main() {
     },
   );
 
-  test(
-    'refreshPaths with an unchanged listing does not emit',
-    () async {
-      // agent 保存文件后的 watcher 突发：目录列表内容不变 → 不 emit、
-      // 不重建可见行（消费方的 BlocSelector/相等性短路都依赖这一点）。
-      final root = p.normalize('/proj');
-      final src = p.join(root, 'src');
-      final fs = _FakeFilesystem({
-        root: [const FsDirEntry(name: 'src', isDirectory: true)],
-        src: [const FsDirEntry(name: 'main.dart', isDirectory: false)],
-      });
-      final cubit = FileTreeCubit(fs: fs);
+  test('refreshPaths with an unchanged listing does not emit', () async {
+    // agent 保存文件后的 watcher 突发：目录列表内容不变 → 不 emit、
+    // 不重建可见行（消费方的 BlocSelector/相等性短路都依赖这一点）。
+    final root = p.normalize('/proj');
+    final src = p.join(root, 'src');
+    final fs = _FakeFilesystem({
+      root: [const FsDirEntry(name: 'src', isDirectory: true)],
+      src: [const FsDirEntry(name: 'main.dart', isDirectory: false)],
+    });
+    final cubit = FileTreeCubit(fs: fs);
 
-      await cubit.setRoot(root);
-      cubit.toggleExpand(src);
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-      final cacheBefore = cubit.state.dirCache[src];
-      final rowsBefore = cubit.state.visibleRows;
+    await cubit.setRoot(root);
+    cubit.toggleExpand(src);
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    final cacheBefore = cubit.state.dirCache[src];
+    final rowsBefore = cubit.state.visibleRows;
 
-      final states = <FileTreeState>[];
-      final sub = cubit.stream.listen(states.add);
+    final states = <FileTreeState>[];
+    final sub = cubit.stream.listen(states.add);
 
-      await cubit.refreshPaths({src});
-      await Future<void>.delayed(const Duration(milliseconds: 5));
+    await cubit.refreshPaths({src});
+    await Future<void>.delayed(const Duration(milliseconds: 5));
 
-      expect(states, isEmpty, reason: '列表未变不得 emit');
-      expect(identical(cubit.state.dirCache[src], cacheBefore), isTrue,
-          reason: '未变化的目录沿用旧列表引用');
-      expect(identical(cubit.state.visibleRows, rowsBefore), isTrue);
+    expect(states, isEmpty, reason: '列表未变不得 emit');
+    expect(
+      identical(cubit.state.dirCache[src], cacheBefore),
+      isTrue,
+      reason: '未变化的目录沿用旧列表引用',
+    );
+    expect(identical(cubit.state.visibleRows, rowsBefore), isTrue);
 
-      await sub.cancel();
-      await cubit.close();
-    },
-  );
+    await sub.cancel();
+    await cubit.close();
+  });
 
   test(
     'concurrent refreshPaths calls coalesce instead of overlapping IO',

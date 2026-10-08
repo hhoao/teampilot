@@ -57,7 +57,10 @@ void main() {
         },
       );
 
-      final key = InstallJobKeys.toolchain('git', scope: const InstallJobScopeLocal());
+      final key = InstallJobKeys.toolchain(
+        'git',
+        scope: const InstallJobScopeLocal(),
+      );
       final result = await runner.run(_spec(key), InstallJobContext());
 
       expect(installCalls, 1);
@@ -87,7 +90,10 @@ void main() {
         },
       );
 
-      final key = InstallJobKeys.toolchain('git', scope: const InstallJobScopeLocal());
+      final key = InstallJobKeys.toolchain(
+        'git',
+        scope: const InstallJobScopeLocal(),
+      );
       await runner.run(
         _spec(key),
         InstallJobContext(
@@ -111,7 +117,10 @@ void main() {
         },
       );
 
-      final key = InstallJobKeys.toolchain('git', scope: const InstallJobScopeLocal());
+      final key = InstallJobKeys.toolchain(
+        'git',
+        scope: const InstallJobScopeLocal(),
+      );
       expect(
         () => runner.run(_spec(key), InstallJobContext()),
         throwsA(

@@ -38,7 +38,7 @@ void main() {
         fs: testHomeStorage.fs,
         basePath: testHomeStorage.appDataRoot,
         resolveHomeDirectory: () => testHomeStorage.home,
-                                                        storage: testHomeStorage,
+        storage: testHomeStorage,
       );
       final credPath = credSvc.credentialPath('deepseek');
       await testHomeStorage.fs.ensureDir(credSvc.providerDir('deepseek'));
@@ -47,7 +47,7 @@ void main() {
       final files = await LocalCredentialExporter(
         basePath: testHomeStorage.appDataRoot,
         home: testHomeStorage.home,
-                                                   storage: testHomeStorage,
+        storage: testHomeStorage,
       ).export(CliTool.claude);
 
       expect(files.any((f) => f.relativePath == 'providers.json'), isTrue);

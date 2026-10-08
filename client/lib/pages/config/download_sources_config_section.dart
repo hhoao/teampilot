@@ -6,7 +6,6 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/remote_download_catalog_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../l10n/app_localizations.dart';
 import '../../services/remote_download/remote_download_source.dart';
 import '../../widgets/settings/workspace_pane_header.dart';
 
@@ -122,7 +121,8 @@ class _DownloadSourcesConfigWorkspaceState
                           ),
                           keyboardType: TextInputType.url,
                           textInputAction: TextInputAction.done,
-                          onFieldSubmitted: (_) => unawaited(_saveMirror(cubit)),
+                          onFieldSubmitted: (_) =>
+                              unawaited(_saveMirror(cubit)),
                         ),
                       ),
                       Padding(
@@ -186,16 +186,16 @@ class _SourceRow extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             source.matchHosts.join(', '),
-            style: TpTextStyles.of(context).smMediumColored(
-              scheme.onSurfaceVariant,
-            ),
+            style: TpTextStyles.of(
+              context,
+            ).smMediumColored(scheme.onSurfaceVariant),
           ),
           const SizedBox(height: 2),
           Text(
             rewriteLabel,
-            style: TpTextStyles.of(context).smMediumColored(
-              scheme.onSurfaceVariant,
-            ),
+            style: TpTextStyles.of(
+              context,
+            ).smMediumColored(scheme.onSurfaceVariant),
           ),
         ],
       ),

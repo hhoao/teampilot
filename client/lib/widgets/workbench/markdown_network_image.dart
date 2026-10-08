@@ -74,10 +74,8 @@ class _MarkdownNetworkImageState extends State<MarkdownNetworkImage> {
       return;
     }
 
-    final payload =
-        await (widget.store ?? MarkdownNetworkImageStore.instance).load(
-      widget.url,
-    );
+    final payload = await (widget.store ?? MarkdownNetworkImageStore.instance)
+        .load(widget.url);
     if (!mounted) return;
     if (payload == null) {
       setState(() => _failed = true);
@@ -177,13 +175,10 @@ String normalizeShieldsBadgeSvg(String svg) {
   var out = svg
       .replaceAll('font-size="110px"', 'font-size="11px"')
       .replaceAll('font-size="110"', 'font-size="11"');
-  out = out.replaceAllMapped(
-    RegExp(r'''stdDeviation="([\d.]+)"'''),
-    (m) {
-      final v = double.parse(m[1]!) / 10;
-      return 'stdDeviation="${_svgNumber(v)}"';
-    },
-  );
+  out = out.replaceAllMapped(RegExp(r'''stdDeviation="([\d.]+)"'''), (m) {
+    final v = double.parse(m[1]!) / 10;
+    return 'stdDeviation="${_svgNumber(v)}"';
+  });
   out = out.replaceAllMapped(RegExp(r'<text\b([^>]*)>'), (m) {
     var attrs = m[1]!;
     attrs = attrs.replaceAllMapped(

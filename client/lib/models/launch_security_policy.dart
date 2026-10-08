@@ -40,27 +40,6 @@ class LaunchSecurityPolicy {
     hookTrust: LaunchHookTrustPolicy.trustedOnly,
   );
 
-  factory LaunchSecurityPolicy.fromJson(Object? raw) {
-    if (raw is! Map) return LaunchSecurityPolicy.fullAccess;
-    return LaunchSecurityPolicy(
-      approval: _decodeEnum(
-        LaunchApprovalPolicy.values,
-        raw['approval'],
-        LaunchApprovalPolicy.never,
-      ),
-      sandbox: _decodeEnum(
-        LaunchSandboxPolicy.values,
-        raw['sandbox'],
-        LaunchSandboxPolicy.fullAccess,
-      ),
-      hookTrust: _decodeEnum(
-        LaunchHookTrustPolicy.values,
-        raw['hookTrust'],
-        LaunchHookTrustPolicy.bypass,
-      ),
-    );
-  }
-
   final LaunchApprovalPolicy approval;
   final LaunchSandboxPolicy sandbox;
   final LaunchHookTrustPolicy hookTrust;
@@ -83,12 +62,6 @@ class LaunchSecurityPolicy {
     );
   }
 
-  Map<String, Object?> toJson() => {
-    'approval': approval.name,
-    'sandbox': sandbox.name,
-    'hookTrust': hookTrust.name,
-  };
-
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -99,120 +72,4 @@ class LaunchSecurityPolicy {
 
   @override
   int get hashCode => Object.hash(approval, sandbox, hookTrust);
-}
-
-/// Nullable field-by-field override used by session continuation settings.
-@immutable
-class LaunchSecurityPolicyOverride {
-  const LaunchSecurityPolicyOverride({
-    this.approval,
-    this.sandbox,
-    this.hookTrust,
-  });
-
-  static const cliDefault = LaunchSecurityPolicyOverride(
-    approval: LaunchApprovalPolicy.cliDefault,
-    sandbox: LaunchSandboxPolicy.cliDefault,
-    hookTrust: LaunchHookTrustPolicy.cliDefault,
-  );
-
-  static const fullAccess = LaunchSecurityPolicyOverride(
-    approval: LaunchApprovalPolicy.never,
-    sandbox: LaunchSandboxPolicy.fullAccess,
-    hookTrust: LaunchHookTrustPolicy.bypass,
-  );
-
-  factory LaunchSecurityPolicyOverride.fromJson(Object? raw) {
-    if (raw is! Map) return const LaunchSecurityPolicyOverride();
-    return LaunchSecurityPolicyOverride(
-      approval: _decodeNullableEnum(
-        LaunchApprovalPolicy.values,
-        raw['approval'],
-      ),
-      sandbox: _decodeNullableEnum(LaunchSandboxPolicy.values, raw['sandbox']),
-      hookTrust: _decodeNullableEnum(
-        LaunchHookTrustPolicy.values,
-        raw['hookTrust'],
-      ),
-    );
-  }
-
-  factory LaunchSecurityPolicyOverride.fromPolicy(LaunchSecurityPolicy policy) {
-    return LaunchSecurityPolicyOverride(
-      approval: policy.approval,
-      sandbox: policy.sandbox,
-      hookTrust: policy.hookTrust,
-    );
-  }
-
-  final LaunchApprovalPolicy? approval;
-  final LaunchSandboxPolicy? sandbox;
-  final LaunchHookTrustPolicy? hookTrust;
-
-  static const Object _unset = Object();
-
-  /// Updates selected dimensions while preserving omitted fields.
-  ///
-  /// Passing `null` explicitly clears a dimension; omitting it leaves the
-  /// current override in place.
-  LaunchSecurityPolicyOverride copyWith({
-    Object? approval = _unset,
-    Object? sandbox = _unset,
-    Object? hookTrust = _unset,
-  }) {
-    return LaunchSecurityPolicyOverride(
-      approval: approval == _unset
-          ? this.approval
-          : approval as LaunchApprovalPolicy?,
-      sandbox: sandbox == _unset
-          ? this.sandbox
-          : sandbox as LaunchSandboxPolicy?,
-      hookTrust: hookTrust == _unset
-          ? this.hookTrust
-          : hookTrust as LaunchHookTrustPolicy?,
-    );
-  }
-
-  bool get requiresDangerousExecution =>
-      approval == LaunchApprovalPolicy.never &&
-      sandbox == LaunchSandboxPolicy.fullAccess &&
-      hookTrust == LaunchHookTrustPolicy.bypass;
-
-  LaunchSecurityPolicy applyTo(LaunchSecurityPolicy base) =>
-      base.copyWith(approval: approval, sandbox: sandbox, hookTrust: hookTrust);
-
-  Map<String, Object?> toJson() => {
-    if (approval != null) 'approval': approval!.name,
-    if (sandbox != null) 'sandbox': sandbox!.name,
-    if (hookTrust != null) 'hookTrust': hookTrust!.name,
-  };
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is LaunchSecurityPolicyOverride &&
-          approval == other.approval &&
-          sandbox == other.sandbox &&
-          hookTrust == other.hookTrust;
-
-  @override
-  int get hashCode => Object.hash(approval, sandbox, hookTrust);
-}
-
-T _decodeEnum<T extends Enum>(List<T> values, Object? raw, T fallback) {
-  final name = raw?.toString().trim();
-  if (name == null || name.isEmpty) return fallback;
-  for (final value in values) {
-    if (value.name == name) return value;
-  }
-  return fallback;
-}
-
-T? _decodeNullableEnum<T extends Enum>(List<T> values, Object? raw) {
-  final name = raw?.toString().trim();
-  if (name == null || name.isEmpty) return null;
-  for (final value in values) {
-    if (value.name == name) return value;
-  }
-  return null;
 }

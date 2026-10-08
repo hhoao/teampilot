@@ -1,13 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/chat_session_shell_factory.dart';
-import 'package:teampilot/cubits/chat/chat_tab_store.dart';
-import 'package:teampilot/cubits/chat/member_connector.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
-import 'package:teampilot/cubits/chat/tab_member_materializer.dart';
-import 'package:teampilot/cubits/chat/tab_session_runtime_coordinator.dart';
+import 'package:teampilot/services/chat/launch/connect/chat_session_shell_factory.dart';
+import 'package:teampilot/services/chat/session/chat_tab_store.dart';
+import 'package:teampilot/services/chat/launch/connect/member_connector.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
+import 'package:teampilot/services/chat/session/chat_tab_info.dart';
+import 'package:teampilot/services/chat/launch/session/tab_member_materializer.dart';
+import 'package:teampilot/services/chat/runtime/tab_session_runtime_coordinator.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -17,16 +17,18 @@ import '../../support/post_frame_test_harness.dart';
 class _RecordingConnector implements MemberConnector {
   var scheduleCalls = 0;
   String? lastMemberId;
+  bool? lastSelectMember;
 
   @override
   void scheduleMemberConnect(
     TeamProfile team,
     TeamMemberConfig member,
-    ChatTab tab, {
+    String sessionId, {
     bool selectMember = true,
   }) {
     scheduleCalls++;
     lastMemberId = member.id;
+    lastSelectMember = selectMember;
   }
 }
 
@@ -215,6 +217,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 100));
       expect(connector.scheduleCalls, 1);
       expect(connector.lastMemberId, 'builder-1');
+      expect(connector.lastSelectMember, isFalse);
 
       materializer.markMemberReady('sess-1', 'builder-1');
       await pending;

@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:path/path.dart' as p;
+
 import '../../../../models/team_config.dart';
 import '../../../../utils/logging/logger.dart';
 import '../provider/cursor_auth_artifacts.dart';
@@ -11,11 +13,11 @@ import '../provider/cursor_member_home_passthrough.dart';
 import '../provider/cursor_provider_credentials_service.dart';
 import '../provider/cursor_provider_settings_resolver.dart';
 import '../provider/cursor_session_config_dir.dart';
-import '../provider/cursor_workspace_warm_tier.dart';
+import '../provider/cursor_windows_home_junction.dart';
 import '../provider/cursor_workspace_trust_provisioner.dart';
 import '../../../storage/home_storage.dart';
 import '../../../storage/runtime_layout.dart';
-import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../../chat/team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/capabilities/cli_session_capability.dart';
 import '../../session_lifecycle/cli_session_manifest.dart';
@@ -74,6 +76,59 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
     memberId: memberId,
     teamId: teamId,
   );
+
+  @override
+  String? sessionIsolatedHomeRoot(
+    RuntimeLayout layout,
+    CliTool tool, {
+    required String workspaceId,
+    required String sessionId,
+    String? memberId,
+    String? teamId,
+  }) {
+    final trimmedMemberId = memberId?.trim() ?? '';
+    return layout.pathContext.join(
+      layout.sessionRuntimeToolDir(
+        workspaceId,
+        sessionId,
+        tool.value,
+        memberId: trimmedMemberId.isEmpty ? null : trimmedMemberId,
+      ),
+      CursorSessionConfigDir.homeSegment,
+    );
+  }
+
+  @override
+  Future<String> prepareSessionIsolatedHome({
+    required Filesystem fs,
+    required String canonicalHome,
+  }) =>
+      CursorWindowsHomeJunction.ensureAgentHome(
+        fs: fs,
+        canonicalHome: canonicalHome,
+      );
+
+  @override
+  SessionHookMaterializationPaths hookMaterializationPaths({
+    required p.Context pathContext,
+    required String memberToolDir,
+    String? memberHome,
+    TeamMemberConfig? member,
+  }) {
+    if (memberHome != null && memberHome.trim().isNotEmpty) {
+      final layout = CursorHomeLayout(pathContext: pathContext);
+      return (
+        hooksDir: layout.hooksDir(memberHome),
+        configPath: layout.hooksConfig(memberHome),
+      );
+    }
+    return const DefaultCliConfigLayout().hookMaterializationPaths(
+      pathContext: pathContext,
+      memberToolDir: memberToolDir,
+      memberHome: memberHome,
+      member: member,
+    );
+  }
 
   @override
   Future<void> afterManifestFlush(PostManifestFlushContext ctx) async {
@@ -159,14 +214,11 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
     final paths = _pathsForPersist(ctx);
     final slug = paths.workspaceSlug;
 
-    await paths.ensureSharedDirs();
+    await paths.ensureManifestDir();
 
     final memberIds = _resolveMemberIds(ctx);
     for (final memberId in memberIds) {
-      await paths.ensureMemberHomeLayout(
-        memberId: memberId,
-        realHomeRoot: ctx.paths.home,
-      );
+      await paths.ensureMemberHomeLayout(memberId: memberId);
       final agentHome = await paths.resolvedMemberHomeRoot(memberId);
       await _provisionMemberWorkspaceTrust(
         fs: ctx.paths.fs,
@@ -207,9 +259,6 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
           workspaceId: ctx.workspaceId,
           absolutePath: paths.sharedRoot(),
         );
-        final warmPaths = CursorWorkspaceWarmTier.manifestPaths(
-          sharedRootRelative,
-        );
         final shared = CliSessionManifestShared(
           root: sharedRootRelative,
           projectsDir: _workspaceRelativePath(
@@ -218,19 +267,11 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
             workspaceId: ctx.workspaceId,
             absolutePath: paths.sharedProjectsDir(slug),
           ),
-          cliConfigBase: _workspaceRelativePath(
-            fs: ctx.paths.fs,
-            layout: ctx.paths.layout,
-            workspaceId: ctx.workspaceId,
-            absolutePath: ctx.paths.fs.pathContext.join(
-              paths.sharedRoot(),
-              'cli-config.base.json',
-            ),
-          ),
-          pluginsLocalDir: warmPaths.pluginsLocalDir,
-          skillsCursorDir: warmPaths.skillsCursorDir,
-          mcpBase: warmPaths.mcpBase,
-          settingsJson: warmPaths.settingsJson,
+          cliConfigBase: '',
+          pluginsLocalDir: '',
+          skillsCursorDir: '',
+          mcpBase: '',
+          settingsJson: '',
         );
 
         return CliSessionManifest(
@@ -590,7 +631,8 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
         : <String, Object?>{};
     final warm = CursorCliConfigMerger.extractWarmTier(userConfig);
 
-    final basePath = _absoluteWorkspacePath(ctx, manifest.shared.cliConfigBase);
+    final memberHome = await paths.resolvedMemberHomeRoot(ctx.memberId);
+    final basePath = paths.memberCliConfigBasePath(memberHome);
     await ctx.paths.fs.atomicWrite(
       basePath,
       const JsonEncoder.withIndent('  ').convert(warm),
@@ -627,12 +669,8 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
     final team = ctx.team;
     final member = _memberFor(ctx);
     if (team != null && member != null && member.isValid) {
-      final basePath = _absoluteWorkspacePath(
-        ctx,
-        manifest.shared.cliConfigBase,
-      );
+      final basePath = paths.memberCliConfigBasePath(memberHome);
       final baseJson = await ctx.paths.fs.readString(basePath);
-      final mcpBasePath = _absoluteWorkspacePath(ctx, manifest.shared.mcpBase);
       final credentials = CursorProviderCredentialsService(
         storage: storage ?? _missingHomeStorage(),
         fs: ctx.paths.fs,
@@ -642,14 +680,19 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
         fs: ctx.paths.fs,
         credentials: credentials,
         layout: homeLayout,
+        runtimeLayout: ctx.paths.layout,
       ).provisionOverlayOnly(
         memberHome: memberHome,
         member: member,
         busIdle: ctx.busIdle,
         forceTeamLeadDelegateMode: team.forceTeamLeadDelegateMode,
         cliConfigJson: baseJson,
-        sharedMcpBasePath: mcpBasePath,
-        warmCacheHomeRoot: ctx.paths.home,
+        workspaceId: ctx.workspaceId,
+        sessionId: ctx.sessionId,
+        memberId: ctx.memberId,
+        providerId: ctx.resolvedProviderId,
+        additionalDirectories: ctx.additionalDirectories,
+        workspaceBaseInfo: ctx.workspaceBaseInfo,
       );
     }
 

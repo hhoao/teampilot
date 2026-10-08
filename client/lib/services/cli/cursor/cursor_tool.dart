@@ -6,7 +6,7 @@ import '../registry/cli_tool_definition.dart';
 import 'capabilities/team_behavior.dart';
 import 'capabilities/native_commands.dart';
 import 'capabilities/session_selection_launch.dart';
-import 'capabilities/workspace_access_launch.dart';
+import 'capabilities/workspace_base_info.dart';
 import 'capabilities/model_launch.dart';
 import 'capabilities/permission_launch.dart';
 import 'capabilities/chat_interaction.dart';
@@ -25,6 +25,7 @@ import '../registry/capabilities/native_command_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import '../registry/capabilities/runtime_event_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
+import '../registry/capabilities/cli_launch_security_capability.dart';
 import 'capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
 import '../registry/capabilities/plugin_capability.dart';
@@ -40,8 +41,9 @@ final class CursorCliTool implements CliToolDefinition {
   CursorCliTool({
     this.teamBehavior = const CursorTeamBehavior(),
     this.sessionSelection = const CursorSessionSelectionLaunch(),
-    this.workspaceAccess = const CursorWorkspaceAccessLaunch(),
+    this.workspaceBaseInfo = const CursorWorkspaceBaseInfo(),
     this.modelLaunch = const CursorModelLaunch(),
+    this.launchSecurity = const FullAccessOnlyCliLaunchSecurityCapability(),
     this.permissionLaunch = const CursorPermissionLaunch(),
     this.userExtraArgs = const UserExtraArgsProvider(),
     this.session = const CursorSessionLifecycleCapability(),
@@ -73,8 +75,9 @@ final class CursorCliTool implements CliToolDefinition {
 
   final TeamBehaviorCapability teamBehavior;
   final CursorSessionSelectionLaunch sessionSelection;
-  final CursorWorkspaceAccessLaunch workspaceAccess;
+  final CursorWorkspaceBaseInfo workspaceBaseInfo;
   final CursorModelLaunch modelLaunch;
+  final CliLaunchSecurityCapability launchSecurity;
   final CursorPermissionLaunch permissionLaunch;
   final UserExtraArgsProvider userExtraArgs;
   final HookCapability hookWriter;
@@ -95,8 +98,9 @@ final class CursorCliTool implements CliToolDefinition {
   Iterable<CliCapability> get capabilities => [
     teamBehavior,
     sessionSelection,
-    workspaceAccess,
+    workspaceBaseInfo,
     modelLaunch,
+    launchSecurity,
     permissionLaunch,
     userExtraArgs,
     executable,

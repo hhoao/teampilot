@@ -3,7 +3,7 @@ import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:teampilot/services/expert_hub/expert_clone_service.dart';
-import 'package:teampilot/services/team/team_clone_service.dart';
+import 'package:teampilot/services/team_config/team_clone_service.dart';
 
 DiscoverableTeam team() => const DiscoverableTeam(
   key: 'o/r/squad',
@@ -14,10 +14,7 @@ DiscoverableTeam team() => const DiscoverableTeam(
   cli: CliTool.claude,
   teamMode: TeamMode.mixed,
   roster: [
-    TeamRosterSlot(
-      id: 'team-lead',
-      expertKey: 'teampilot/builtin/team-lead',
-    ),
+    TeamRosterSlot(id: 'team-lead', expertKey: 'teampilot/builtin/team-lead'),
   ],
   skillDeps: [
     SkillDependencyRef(
@@ -175,8 +172,11 @@ void main() {
       ),
     );
 
-    expect(createdSlot!.expertKey, 'catalog/pm',
-        reason: 'shadow model keeps the catalog key');
+    expect(
+      createdSlot!.expertKey,
+      'catalog/pm',
+      reason: 'shadow model keeps the catalog key',
+    );
     expect(result.installed.expertCount, 1);
     expect(result.installed.expertKeys, ['catalog/pm']);
     expect(result.failedDeps, isEmpty);
@@ -220,8 +220,11 @@ void main() {
       ),
     );
 
-    expect(createdSlot!.expertKey, 'catalog/pm',
-        reason: 'original key kept on failure');
+    expect(
+      createdSlot!.expertKey,
+      'catalog/pm',
+      reason: 'original key kept on failure',
+    );
     expect(result.failedDeps, hasLength(1));
     expect(result.failedDeps.single.kind, DependencyKind.expert);
     expect(result.failedDeps.single.name, 'catalog/pm');

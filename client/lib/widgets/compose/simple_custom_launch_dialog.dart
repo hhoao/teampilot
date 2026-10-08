@@ -111,20 +111,22 @@ class _ComposeCustomModelIdDialogState
           ),
           const SizedBox(height: 16),
           TextField(controller: _controller, autofocus: true),
-          TpDialogActions(children: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(context.l10n.cancel),
-            ),
-            FilledButton(
-              onPressed: () {
-                final id = _controller.text.trim();
-                if (id.isEmpty) return;
-                Navigator.pop(context, id);
-              },
-              child: Text(widget.confirmLabel),
-            ),
-          ]),
+          TpDialogActions(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(context.l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final id = _controller.text.trim();
+                  if (id.isEmpty) return;
+                  Navigator.pop(context, id);
+                },
+                child: Text(widget.confirmLabel),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -203,8 +205,9 @@ class _SimpleCustomLaunchDialogState extends State<_SimpleCustomLaunchDialog> {
         .state
         .providersFor(catalogCli)
         .toList(growable: false);
-    final cliItems =
-        registry.launchable.map((d) => d.id).toList(growable: false);
+    final cliItems = registry.launchable
+        .map((d) => d.id)
+        .toList(growable: false);
 
     return TpDialog(
       maxWidth: 640,

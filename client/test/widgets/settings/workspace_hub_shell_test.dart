@@ -73,7 +73,9 @@ void main() {
     expect(outer.color, isNull);
   });
 
-  testWidgets('hub page paints workspacePage when not embedded', (tester) async {
+  testWidgets('hub page paints workspacePage when not embedded', (
+    tester,
+  ) async {
     late ColorScheme cs;
     await tester.pumpWidget(
       MaterialApp(

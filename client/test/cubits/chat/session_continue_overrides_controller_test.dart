@@ -1,6 +1,5 @@
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/session_continue_overrides_controller.dart';
+import 'package:teampilot/services/chat/session/session_continue_overrides_controller.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/session_continue_overrides.dart';
@@ -10,7 +9,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 void main() {
   const controller = SessionContinueOverridesController();
 
-  AppSession _simpleSession() {
+  AppSession simpleSession() {
     return AppSession(
       sessionId: 's1',
       workspaceId: 'w1',
@@ -25,7 +24,7 @@ void main() {
     );
   }
 
-  CliPreset _claudePreset({String id = 'preset-b'}) {
+  CliPreset claudePreset({String id = 'preset-b'}) {
     return CliPreset(
       id: id,
       name: 'Beta',
@@ -38,74 +37,11 @@ void main() {
     );
   }
 
-  group('patchSecurityPolicy', () {
-    test('writes session-level permission for Simple', () {
-      final patched = controller.patchSecurityPolicy(
-        session: _simpleSession(),
-        launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-      );
-
-      expect(
-        patched
-            .continueOverrides
-            .launchSecurityPolicy
-            ?.requiresDangerousExecution,
-        isTrue,
-      );
-      expect(patched.continueOverrides.memberOverrides, isEmpty);
-    });
-
-    test('writes per-member permission without touching other members', () {
-      final session = _simpleSession().copyWith(
-        sessionTeam: 'team-1',
-        continueOverrides: const SessionContinueOverrides(
-          memberOverrides: {
-            'builder-0': SessionMemberContinueOverride(
-              presetId: 'preset-a',
-              provider: 'anthropic',
-              model: 'claude-sonnet',
-            ),
-            'reviewer-0': SessionMemberContinueOverride(
-              launchSecurityPolicy: LaunchSecurityPolicyOverride.fullAccess,
-            ),
-          },
-        ),
-      );
-
-      final patched = controller.patchSecurityPolicy(
-        session: session,
-        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
-        memberId: 'builder-0',
-      );
-
-      expect(
-        patched
-            .continueOverrides
-            .memberOverrides['builder-0']
-            ?.launchSecurityPolicy
-            ?.requiresDangerousExecution,
-        isFalse,
-      );
-      expect(
-        patched.continueOverrides.memberOverrides['builder-0']?.presetId,
-        'preset-a',
-      );
-      expect(
-        patched
-            .continueOverrides
-            .memberOverrides['reviewer-0']
-            ?.launchSecurityPolicy
-            ?.requiresDangerousExecution,
-        isTrue,
-      );
-    });
-  });
-
   group('patchPreset', () {
     test('same-CLI preset updates Simple identity fields', () {
       final patched = controller.patchPreset(
-        session: _simpleSession(),
-        preset: _claudePreset(),
+        session: simpleSession(),
+        preset: claudePreset(),
         lockedCli: CliTool.claude,
       );
 
@@ -118,8 +54,8 @@ void main() {
 
     test('cross-CLI preset is rejected', () {
       final patched = controller.patchPreset(
-        session: _simpleSession(),
-        preset: _claudePreset().copyWith(cli: CliTool.codex),
+        session: simpleSession(),
+        preset: claudePreset().copyWith(cli: CliTool.codex),
         lockedCli: CliTool.claude,
       );
 
@@ -129,7 +65,7 @@ void main() {
     test(
       'team member preset expands override without touching other members',
       () {
-        final session = _simpleSession().copyWith(
+        final session = simpleSession().copyWith(
           sessionTeam: 'team-1',
           continueOverrides: const SessionContinueOverrides(
             memberOverrides: {
@@ -144,7 +80,7 @@ void main() {
 
         final patched = controller.patchPreset(
           session: session,
-          preset: _claudePreset(),
+          preset: claudePreset(),
           memberId: 'builder-0',
           lockedCli: CliTool.claude,
         );
@@ -166,7 +102,7 @@ void main() {
   group('patchCustom', () {
     test('clears presetId and updates provider/model/effort for Simple', () {
       final patched = controller.patchCustom(
-        session: _simpleSession(),
+        session: simpleSession(),
         provider: 'openai',
         model: 'gpt-4o',
         effort: 'low',
@@ -181,7 +117,7 @@ void main() {
     });
 
     test('returns null for team sessions', () {
-      final session = _simpleSession().copyWith(sessionTeam: 'team-1');
+      final session = simpleSession().copyWith(sessionTeam: 'team-1');
 
       final patched = controller.patchCustom(
         session: session,

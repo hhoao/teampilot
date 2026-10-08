@@ -63,7 +63,9 @@ void main() {
       CommandDefinition(
         id: 'test.a',
         category: CommandCategory.meta,
-        defaultChords: [KeyChord(key: 'a', mods: [KeyChordMod.mod])],
+        defaultChords: [
+          KeyChord(key: 'a', mods: [KeyChordMod.mod]),
+        ],
         when: ShortcutWhen.always,
         terminalPassthrough: true,
         titleL10nKey: 'x',
@@ -139,19 +141,16 @@ void main() {
       expect(result, isNull);
     });
 
-    test(
-      'ignored when inTerminal and terminalPassthrough is false',
-      () {
-        final result = KeybindingResolver.match(
-          event: keyDown(LogicalKeyboardKey.enter),
-          effectiveByCommand: effective,
-          context: const ShortcutContext(inTerminal: true, inCompose: true),
-          isMacOS: false,
-        );
+    test('ignored when inTerminal and terminalPassthrough is false', () {
+      final result = KeybindingResolver.match(
+        event: keyDown(LogicalKeyboardKey.enter),
+        effectiveByCommand: effective,
+        context: const ShortcutContext(inTerminal: true, inCompose: true),
+        isMacOS: false,
+      );
 
-        expect(result, isNull);
-      },
-    );
+      expect(result, isNull);
+    });
 
     test('allowed when inTerminal and terminalPassthrough is true', () {
       pressModifier(LogicalKeyboardKey.controlLeft);
@@ -347,7 +346,9 @@ void main() {
           // set cannot live in a const expression.
           context: ShortcutContext(
             hasWorkspace: true,
-            claimedChords: {KeyChord(key: 'n', mods: [KeyChordMod.mod])},
+            claimedChords: {
+              KeyChord(key: 'n', mods: [KeyChordMod.mod]),
+            },
           ),
           isMacOS: false,
         );
@@ -387,7 +388,9 @@ void main() {
 
     test('returns empty list when no chords are shared', () {
       final conflicts = KeybindingResolver.findConflicts({
-        'a': [KeyChord(key: 'k', mods: [KeyChordMod.mod])],
+        'a': [
+          KeyChord(key: 'k', mods: [KeyChordMod.mod]),
+        ],
         'b': [KeyChord(key: 'l')],
       });
 

@@ -166,7 +166,9 @@ abstract final class HostShellPathResolver {
       // argv goes straight to `<shell> -c`. `$PATH` must expand in the CHILD
       // shell, so build the string via concatenation to dodge Dart `$`
       // interpolation: literal output is `printf "%s" "__TP_PATH__$PATH"`.
-      final innerCommand = 'printf "%s" "$marker' r'$PATH"';
+      final innerCommand =
+          'printf "%s" "$marker'
+          r'$PATH"';
       process = await starter(shell, ['-ilc', innerCommand]);
     } on Object catch (error) {
       appLogger.d('[shell-path] $shell -ilc failed to start: $error');
@@ -196,8 +198,10 @@ abstract final class HostShellPathResolver {
       exitCode = -1;
     }
     if (timedOut) {
-      appLogger.w('[shell-path] $shell -ilc timed out; killing pid '
-          '${process.pid}');
+      appLogger.w(
+        '[shell-path] $shell -ilc timed out; killing pid '
+        '${process.pid}',
+      );
       unawaited(outSub.cancel());
       unawaited(errSub.cancel());
       process.kill();
@@ -208,6 +212,8 @@ abstract final class HostShellPathResolver {
     unawaited(outSub.cancel());
     unawaited(errSub.cancel());
     if (exitCode != 0) return null;
-    return parseMarkerOutput(utf8.decode(output.toBytes(), allowMalformed: true));
+    return parseMarkerOutput(
+      utf8.decode(output.toBytes(), allowMalformed: true),
+    );
   }
 }

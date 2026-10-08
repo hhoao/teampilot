@@ -70,12 +70,7 @@ void dispatchSplitDrop(
 }) {
   switch (zone) {
     case SplitDropZone.center:
-      workbench.moveTab(
-        workspaceId,
-        tab,
-        targetGroupId,
-        floating: floating,
-      );
+      workbench.moveTab(workspaceId, tab, targetGroupId, floating: floating);
     case SplitDropZone.left:
       _dispatchEdge(
         workbench,
@@ -148,7 +143,10 @@ void _dispatchEdge(
 /// the drop zone it lands in within the region, or null when the position is
 /// outside it.
 class WorkbenchDropRegionHandle {
-  const WorkbenchDropRegionHandle({required this.groupId, required this.zoneAt});
+  const WorkbenchDropRegionHandle({
+    required this.groupId,
+    required this.zoneAt,
+  });
 
   final String groupId;
   final SplitDropZone? Function(Offset globalPosition) zoneAt;
@@ -230,8 +228,7 @@ class WorkbenchTabDragController extends ChangeNotifier {
   }
 
   /// Registers a drop region (called by [WorkbenchTabDropRegions]).
-  void registerRegion(WorkbenchDropRegionHandle handle) =>
-      _regions.add(handle);
+  void registerRegion(WorkbenchDropRegionHandle handle) => _regions.add(handle);
 
   /// Unregisters a drop region.
   void unregisterRegion(WorkbenchDropRegionHandle handle) =>

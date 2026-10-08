@@ -4,7 +4,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 
 import '../../../../../utils/logging/logger.dart';
 import '../../../../io/filesystem.dart';
-import '../../../../session/session_history_context.dart';
+import '../../../../chat/conversation/history/session_history_context.dart';
 import '../../../registry/capabilities/history/tool_result_enricher.dart';
 
 /// opencode core-truncation marker: `...N bytes truncated...` /
@@ -36,6 +36,9 @@ final _savedToHint = RegExp(r'Full output saved to:\s*(.+)$', multiLine: true);
 /// next full parse.
 final class OpencodeToolOutputBackfillEnricher implements ToolResultEnricher {
   const OpencodeToolOutputBackfillEnricher();
+
+  @override
+  String? get workerId => null;
 
   @override
   bool get requiresFilesystem => true;

@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/model_launch.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/permission_launch.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/session_selection_launch.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/team_behavior.dart';
-import 'package:teampilot/services/cli/cursor/capabilities/workspace_access_launch.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/workspace_base_info.dart';
 import 'package:teampilot/services/cli/cursor/cursor_tool.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_launch_security_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -15,7 +15,7 @@ import 'package:teampilot/services/cli/registry/launch/cli_launch_arg_provider.d
 import 'package:teampilot/services/cli/registry/launch/cli_launch_capability_error.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 import 'package:teampilot/services/cli/registry/launch/user_extra_args_provider.dart';
-import 'package:teampilot/services/session/launch_command_builder.dart';
+import 'package:teampilot/services/chat/launch/connect/launch_command_builder.dart';
 
 void main() {
   test('assembles Cursor startup arguments from named providers', () {
@@ -33,7 +33,6 @@ void main() {
           name: 'Member',
           model: '  gpt-5.2  ',
           extraArgs: "--member-flag 'member value'",
-          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
         ),
         workingDirectory: '/work',
         additionalDirectories: const ['/repo/a', '/repo/b'],
@@ -66,7 +65,6 @@ void main() {
         workingDirectory: r'C:\work\root',
         additionalDirectories: const [' ', r'D:\repo\one', '', r'E:\repo\two'],
         useWslPaths: true,
-        launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
       ),
       [
         '--workspace',
@@ -75,6 +73,7 @@ void main() {
         '/mnt/d/repo/one',
         '--add-dir',
         '/mnt/e/repo/two',
+        '--force',
       ],
     );
   });
@@ -87,7 +86,6 @@ void main() {
           id: 'member',
           name: 'Member',
           model: 'composer-2.5',
-          launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
         ),
       ),
       isNot(contains('--model')),
@@ -99,7 +97,6 @@ void main() {
           id: 'member',
           name: 'Member',
           model: 'cursor-grok-4.6-high',
-          launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
         ),
       ),
       isNot(contains('--model')),
@@ -121,39 +118,56 @@ void main() {
     expect(
       _assemble(
         team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.cursor),
-        member: const TeamMemberConfig(
-          id: 'member',
-          name: 'Member',
-          launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-        ),
+        member: const TeamMemberConfig(id: 'member', name: 'Member'),
       ),
       ['--force'],
     );
-    expect(
-      _assemble(
-        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.cursor),
-        member: const TeamMemberConfig(
-          id: 'member',
-          name: 'Member',
-          launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
+  });
+
+  test('Cursor assembler rejects every non-full-access policy', () {
+    for (final policy in const [
+      LaunchSecurityPolicy.cliDefault,
+      LaunchSecurityPolicy.askReadOnlyTrusted,
+      LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
+    ]) {
+      expect(
+        () => _assemble(
+          team: const TeamProfile(
+            id: 'team',
+            name: 'Team',
+            cli: CliTool.cursor,
+          ),
+          member: const TeamMemberConfig(id: 'member', name: 'Member'),
+          launchSecurityPolicy: policy,
         ),
-      ),
-      isEmpty,
+        throwsA(
+          isA<CliLaunchCapabilityException>()
+              .having((error) => error.cli, 'cli', CliTool.cursor)
+              .having(
+                (error) => error.contributionKey,
+                'contributionKey',
+                'launch-security-policy',
+              ),
+        ),
+        reason: describeLaunchSecurityPolicy(policy),
+      );
+    }
+  });
+
+  test('Cursor permission provider rejects non-full access directly', () {
+    final context = CliLaunchContext(
+      team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.cursor),
+      member: const TeamMemberConfig(id: 'member', name: 'Member'),
+      launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
     );
+
     expect(
-      () => _assemble(
-        team: const TeamProfile(id: 'team', name: 'Team', cli: CliTool.cursor),
-        member: const TeamMemberConfig(
-          id: 'member',
-          name: 'Member',
-          launchSecurityPolicy: LaunchSecurityPolicy.askReadOnlyTrusted,
-        ),
-      ),
+      () => const CursorPermissionLaunch().buildLaunchArgs(context),
       throwsA(
         isA<CliLaunchCapabilityException>().having(
-          (error) => error.cli,
-          'cli',
-          CliTool.cursor,
+          (error) => error.contributionKey,
+          'contributionKey',
+          'cursor-permission',
         ),
       ),
     );
@@ -191,7 +205,7 @@ void main() {
 
       expect(providers, contains(isA<CursorTeamBehavior>()));
       expect(providers, contains(isA<CursorSessionSelectionLaunch>()));
-      expect(providers, contains(isA<CursorWorkspaceAccessLaunch>()));
+      expect(providers, contains(isA<CursorWorkspaceBaseInfo>()));
       expect(providers, contains(isA<CursorModelLaunch>()));
       expect(providers, contains(isA<CursorPermissionLaunch>()));
       expect(providers, contains(isA<UserExtraArgsProvider>()));
@@ -246,7 +260,8 @@ List<String> _assemble({
       fixedSessionId: fixedSessionId,
       resumeSessionId: resumeSessionId,
       useWslPaths: useWslPaths,
-      launchSecurityPolicy: launchSecurityPolicy,
+      launchSecurityPolicy:
+          launchSecurityPolicy ?? LaunchSecurityPolicy.fullAccess,
     ),
   );
 }
@@ -265,5 +280,7 @@ final class _EmptyCursorTool implements CliToolDefinition {
   bool get isLaunchSupported => true;
 
   @override
-  Iterable<CliCapability> get capabilities => const [];
+  Iterable<CliCapability> get capabilities => const [
+    FullAccessOnlyCliLaunchSecurityCapability(),
+  ];
 }

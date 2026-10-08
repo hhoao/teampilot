@@ -85,16 +85,19 @@ void main() {
       );
     });
 
-    test('multi-select with OpenCode returns true when askRequestId present', () {
-      expect(
-        shouldShowAskUserQuestionCard(
-          capability: const OpencodeChatInteraction(),
-          questions: const [multiSelectQuestion],
-          askRequestId: 'req-1',
-        ),
-        isTrue,
-      );
-    });
+    test(
+      'multi-select with OpenCode returns true when askRequestId present',
+      () {
+        expect(
+          shouldShowAskUserQuestionCard(
+            capability: const OpencodeChatInteraction(),
+            questions: const [multiSelectQuestion],
+            askRequestId: 'req-1',
+          ),
+          isTrue,
+        );
+      },
+    );
 
     test('pluginSdkReply missing askRequestId returns false', () {
       expect(
@@ -133,37 +136,38 @@ void main() {
       );
     });
 
-    test('multiple questions with multiSelect still require multiSelect support',
-        () {
-      expect(
-        shouldShowAskUserQuestionCard(
-          capability: const ClaudeChatInteraction(),
-          questions: const [
-            singleSelectQuestion,
-            multiSelectQuestion,
-          ],
-        ),
-        isTrue,
-      );
-    });
+    test(
+      'multiple questions with multiSelect still require multiSelect support',
+      () {
+        expect(
+          shouldShowAskUserQuestionCard(
+            capability: const ClaudeChatInteraction(),
+            questions: const [singleSelectQuestion, multiSelectQuestion],
+          ),
+          isTrue,
+        );
+      },
+    );
 
-    test('multiple questions with OpenCode returns true when askRequestId present',
-        () {
-      expect(
-        shouldShowAskUserQuestionCard(
-          capability: const OpencodeChatInteraction(),
-          questions: const [
-            singleSelectQuestion,
-            AgentAskUserQuestion(
-              question: 'Second',
-              options: [AgentAskUserOption(label: 'B')],
-            ),
-          ],
-          askRequestId: 'req-2',
-        ),
-        isTrue,
-      );
-    });
+    test(
+      'multiple questions with OpenCode returns true when askRequestId present',
+      () {
+        expect(
+          shouldShowAskUserQuestionCard(
+            capability: const OpencodeChatInteraction(),
+            questions: const [
+              singleSelectQuestion,
+              AgentAskUserQuestion(
+                question: 'Second',
+                options: [AgentAskUserOption(label: 'B')],
+              ),
+            ],
+            askRequestId: 'req-2',
+          ),
+          isTrue,
+        );
+      },
+    );
 
     test('null or empty questions returns false', () {
       expect(

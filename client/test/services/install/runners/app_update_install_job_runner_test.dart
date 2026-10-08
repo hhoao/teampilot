@@ -50,7 +50,9 @@ void main() {
         ctx: InstallJobContext(
           reportPhase: (label, {detail, fraction}) {
             phases.add(
-              fraction == null ? label : '$label@${fraction.toStringAsFixed(2)}',
+              fraction == null
+                  ? label
+                  : '$label@${fraction.toStringAsFixed(2)}',
             );
           },
         ),

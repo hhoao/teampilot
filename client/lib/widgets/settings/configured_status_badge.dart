@@ -10,9 +10,7 @@ Widget configuredStatusBadge(BuildContext context, {required bool configured}) {
     label: configured
         ? l10n.workspaceCliConfigured
         : l10n.workspaceCliNotConfigured,
-    tone: configured
-        ? TpStatusBadgeTone.success
-        : TpStatusBadgeTone.neutral,
+    tone: configured ? TpStatusBadgeTone.success : TpStatusBadgeTone.neutral,
     icon: configured
         ? Icons.check_circle_outline
         : Icons.radio_button_unchecked,

@@ -151,19 +151,20 @@ void main() {
     );
 
     RuntimeContext ctx(Filesystem fs, AppPaths paths) => RuntimeContext(
-          target: RuntimeTarget.local(),
-          filesystem: fs,
-          home: '/home/test',
-          cwd: '/home/test',
-          appDataRoot: paths.basePath,
-          paths: paths,
-        );
+      target: RuntimeTarget.local(),
+      filesystem: fs,
+      home: '/home/test',
+      cwd: '/home/test',
+      appDataRoot: paths.basePath,
+      paths: paths,
+    );
 
     // Injected-storage semantics: repositories follow their HomeStorage
     // facade, and a home swap publishes a new context to the SAME facade.
     final storage = HomeStorage(ctx(firstFs, firstPaths));
     final providerRepository = ManagedProviderRepository(
-      storage: storage, onProvidersDeleted: (_) async {},
+      storage: storage,
+      onProvidersDeleted: (_) async {},
     );
     final usageRepository = ManagedProviderUsageRepository(storage: storage);
     await providerRepository.save([provider]);
@@ -317,9 +318,7 @@ void main() {
 
 class _FakeManagedProviderRepository extends ManagedProviderRepository {
   _FakeManagedProviderRepository()
-    : super(
-        storage: fakeHomeStorage(), onProvidersDeleted: (_) async {},
-      );
+    : super(storage: fakeHomeStorage(), onProvidersDeleted: (_) async {});
 
   int loadCalls = 0;
   int closeCalls = 0;

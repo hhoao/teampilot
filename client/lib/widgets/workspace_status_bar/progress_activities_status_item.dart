@@ -81,7 +81,6 @@ class _ProgressActivitiesStatusSegmentState
         if (activities.isEmpty) return const SizedBox.shrink();
 
         final l10n = context.l10n;
-        final cubit = context.read<ProgressActivityCubit>();
 
         if (activities.length == 1) {
           final activity = activities.single;
@@ -248,10 +247,7 @@ class _PillButton extends StatelessWidget {
       trailing = SizedBox(
         width: 12,
         height: 12,
-        child: CircularProgressIndicator(
-          strokeWidth: 1.5,
-          color: cs.primary,
-        ),
+        child: CircularProgressIndicator(strokeWidth: 1.5, color: cs.primary),
       );
     } else {
       trailing = const SizedBox.shrink();
@@ -275,10 +271,7 @@ class _PillButton extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: styles.xs.copyWith(
-                  color: muted,
-                  height: 1.0,
-                ),
+                style: styles.xs.copyWith(color: muted, height: 1.0),
               ),
             ),
           ],

@@ -15,9 +15,9 @@ void main() {
     'listForWorkspace aggregates every launch context in workspace',
     () async {
       final layout = WorkspaceLayout(
-      teampilotRoot: testHomeStorage.paths.basePath,
-      fs: testHomeStorage.fs,
-    );
+        teampilotRoot: testHomeStorage.paths.basePath,
+        fs: testHomeStorage.fs,
+      );
       final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
       await repo.upsert(sampleAutomation(id: 'personal', workspaceId: 'ws1'));
       await repo.upsert(
@@ -141,9 +141,9 @@ void main() {
     'disableForSession disables matching automations in workspace',
     () async {
       final layout = WorkspaceLayout(
-      teampilotRoot: testHomeStorage.paths.basePath,
-      fs: testHomeStorage.fs,
-    );
+        teampilotRoot: testHomeStorage.paths.basePath,
+        fs: testHomeStorage.fs,
+      );
       final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
       await repo.upsert(
         sampleAutomation(

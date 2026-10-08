@@ -6,7 +6,7 @@ import 'package:teampilot/models/install_job/install_job_key.dart';
 import 'package:teampilot/models/install_job/install_job_spec.dart';
 import 'package:teampilot/services/install/install_job_keys.dart';
 import 'package:teampilot/services/install/runners/hub_clone_install_job_runner.dart';
-import 'package:teampilot/services/team/team_clone_service.dart';
+import 'package:teampilot/services/team_config/team_clone_service.dart';
 
 InstallJobSpec<CloneResult> _spec(InstallJobKey key) => InstallJobSpec(
   key: key,
@@ -77,12 +77,7 @@ void main() {
       );
 
       expect(result.teamId, 'team-1');
-      expect(reported, [
-        'skill-a',
-        'items:1/2',
-        'skill-b',
-        'items:2/2',
-      ]);
+      expect(reported, ['skill-a', 'items:1/2', 'skill-b', 'items:2/2']);
       expect(capturedCancelled, isNotNull);
       expect(capturedCancelled!(), isFalse);
     });

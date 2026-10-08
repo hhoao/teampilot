@@ -10,7 +10,7 @@ import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dar
 import 'package:teampilot/services/resource/providers/endpoint_hook_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/runtime_event_hook_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/bus_awareness_hook_contribution_provider.dart';
-import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
+import 'package:teampilot/services/chat/team_bus/member_bus_idle_endpoint.dart';
 
 void main() {
   const assembler = HookAssembler();
@@ -455,9 +455,8 @@ HookContribution _contribution(
 
 final class _Provider
     implements HookContributionProvider, HookContributionProviderOptional {
-  _Provider(this.providerId, this.entries, {this.delay, bool optional = false})
-    : failure = null,
-      optional = optional;
+  _Provider(this.providerId, this.entries, {this.delay, this.optional = false})
+    : failure = null;
 
   _Provider.failure(this.providerId, {this.optional = false})
     : entries = const [],

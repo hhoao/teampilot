@@ -7,17 +7,17 @@ import '../../registry/capabilities/plugin_capability.dart';
 import '../../registry/capabilities/plugin_manifest_paths.dart';
 import '../../registry/capabilities/skill_capability.dart';
 import '../../registry/cli_tool_registry.dart';
+import '../opencode_config.dart';
 import '../provider/opencode_shared_plugin_deps.dart';
-import 'provider.dart';
 import 'mcp.dart';
 
 /// Materializes plugin bundles for opencode:
 /// - decomposes skills/agents/mcp into opencode's on-disk layout
 /// - bundles shipping an opencode plugin (`.opencode/{plugin,plugins}/*.{js,ts}`
 ///   or a root `package.json` `main` entry) are copied into
-///   `<configDir>/plugins/<name>/` and registered in `opencode.json` `plugin`
+///   `<configDir>/plugins/<name>/` and registered in `opencode.json` `plugins`
 ///   so opencode loads them at startup (path specs resolve relative to the
-///   config file — no npm install needed).
+///   config file — no extra npm install needed).
 final class OpencodePluginCapability implements PluginCapability {
   const OpencodePluginCapability();
 
@@ -25,7 +25,7 @@ final class OpencodePluginCapability implements PluginCapability {
   PluginRuntimeOwnership get runtimeOwnership =>
       PluginRuntimeOwnership.teamPilot;
 
-  static const agentSubdir = 'agent';
+  static const agentSubdir = 'agents';
   static const pluginsSubdirName = 'plugins';
   static const opencodeFlavorDir = '.opencode';
   static const _opencodePluginDirs = ['plugins', 'plugin'];
@@ -125,7 +125,7 @@ final class OpencodePluginCapability implements PluginCapability {
       ResourceRepresentation.linkedDirectory;
 
   /// Copies the whole bundle into `<configDir>/plugins/<name>/` when it ships
-  /// an opencode plugin, returning `plugin` array entries (`./plugins/...`)
+  /// an opencode plugin, returning `plugins` array entries (`./plugins/...`)
   /// for each entry file. The full tree is copied (not just the entry file)
   /// because opencode plugins resolve sibling content relative to
   /// `import.meta.url` / `__dirname` (e.g. superpowers reads `../../skills`).
@@ -208,16 +208,13 @@ final class OpencodePluginCapability implements PluginCapability {
         name.endsWith('.tsx');
   }
 
-  /// Merges materialized plugin entries into `opencode.json` `plugin` array.
+  /// Merges materialized plugin entries into `opencode.json` `plugins` array.
   static Future<void> _mergePluginEntries(
     Filesystem fs,
     String configDir,
     List<String> entries,
   ) async {
-    final configPath = fs.pathContext.join(
-      configDir,
-      OpencodeProviderCapability.opencodeConfigFileName,
-    );
+    final configPath = fs.pathContext.join(configDir, 'opencode.json');
     final stat = await fs.stat(configPath);
     Map<String, Object?> existing;
     if (stat.isFile) {

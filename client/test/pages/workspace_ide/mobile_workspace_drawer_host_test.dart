@@ -5,6 +5,7 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/workspace_ide/mobile_workspace_drawer_host.dart';
+import 'package:teampilot/utils/ui/app_keys.dart';
 import 'package:teampilot/widgets/notification/notification_bell_button.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -72,14 +73,9 @@ void main() {
 
     await tester.pumpWidget(
       TpTheme(
-        data: TpThemeData.fromColorScheme(
-          theme.colorScheme,
-          scale: 1.0,
-        ),
+        data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
         child: MultiBlocProvider(
-          providers: [
-            BlocProvider(create: (_) => LayoutCubit()),
-          ],
+          providers: [BlocProvider(create: (_) => LayoutCubit())],
           child: MaterialApp(
             locale: const Locale('en'),
             localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -117,7 +113,15 @@ void main() {
   ) async {
     final state = await pumpHarness(tester);
 
-    await tester.tap(find.text('Tools'));
+    final modeSwitch = find.byKey(AppKeys.mobileWorkspaceDrawerModeSwitch);
+    await tester.tap(
+      find.descendant(
+        of: modeSwitch,
+        matching: find.byType(TpSelect<MobileDrawerMode>),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tools').last);
     await tester.pumpAndSettle();
 
     expect(state.modeChanges, [MobileDrawerMode.tools]);

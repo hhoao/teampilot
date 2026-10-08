@@ -27,7 +27,11 @@ void main() {
   group('HomeStorage', () {
     test('getters forward to the current context', () {
       final fs = InMemoryFilesystem();
-      final ctx = _context(filesystem: fs, home: '/home/a', appDataRoot: '/tp/a');
+      final ctx = _context(
+        filesystem: fs,
+        home: '/home/a',
+        appDataRoot: '/tp/a',
+      );
       final storage = HomeStorage(ctx);
 
       expect(storage.context, same(ctx));
@@ -40,37 +44,43 @@ void main() {
       expect(storage.generation, 0);
     });
 
-    test('swap publishes the new context before the retire drain completes',
-        () async {
-      final oldCtx = _context(
-        filesystem: InMemoryFilesystem(),
-        home: '/home/old',
-      );
-      final newFs = InMemoryFilesystem();
-      final newCtx = _context(filesystem: newFs, home: '/home/new');
-      final retireGate = Completer<void>();
-      var retireCalls = 0;
-      final storage = HomeStorage(
-        oldCtx,
-        retire: (old) async {
-          retireCalls++;
-          await retireGate.future;
-        },
-      );
+    test(
+      'swap publishes the new context before the retire drain completes',
+      () async {
+        final oldCtx = _context(
+          filesystem: InMemoryFilesystem(),
+          home: '/home/old',
+        );
+        final newFs = InMemoryFilesystem();
+        final newCtx = _context(filesystem: newFs, home: '/home/new');
+        final retireGate = Completer<void>();
+        var retireCalls = 0;
+        final storage = HomeStorage(
+          oldCtx,
+          retire: (old) async {
+            retireCalls++;
+            await retireGate.future;
+          },
+        );
 
-      final swapDone = storage.swap(newCtx);
+        final swapDone = storage.swap(newCtx);
 
-      // Synchronous publish: new operations must see the new plane before the
-      // old transport's drain finishes.
-      expect(storage.context, same(newCtx));
-      expect(storage.fs, same(newFs));
-      expect(storage.home, '/home/new');
-      expect(retireCalls, 1, reason: 'retire must have started (awaiting drain)');
+        // Synchronous publish: new operations must see the new plane before the
+        // old transport's drain finishes.
+        expect(storage.context, same(newCtx));
+        expect(storage.fs, same(newFs));
+        expect(storage.home, '/home/new');
+        expect(
+          retireCalls,
+          1,
+          reason: 'retire must have started (awaiting drain)',
+        );
 
-      retireGate.complete();
-      await swapDone;
-      expect(retireCalls, 1);
-    });
+        retireGate.complete();
+        await swapDone;
+        expect(retireCalls, 1);
+      },
+    );
 
     test('swap increments generation and emits changes exactly once', () async {
       final oldCtx = _context(filesystem: InMemoryFilesystem());
@@ -113,22 +123,24 @@ void main() {
       await sub.cancel();
     });
 
-    test('forTesting builds a native context bound to the given filesystem',
-        () {
-      final fs = InMemoryFilesystem();
-      final storage = HomeStorage.forTesting(
-        filesystem: fs,
-        paths: AppPaths('/tp-test'),
-        home: '/home/tester',
-        cwd: '/home/tester/work',
-      );
+    test(
+      'forTesting builds a native context bound to the given filesystem',
+      () {
+        final fs = InMemoryFilesystem();
+        final storage = HomeStorage.forTesting(
+          filesystem: fs,
+          paths: AppPaths('/tp-test'),
+          home: '/home/tester',
+          cwd: '/home/tester/work',
+        );
 
-      expect(storage.context.target.id, RuntimeTarget.localId);
-      expect(storage.fs, same(fs));
-      expect(storage.home, '/home/tester');
-      expect(storage.cwd, '/home/tester/work');
-      expect(storage.appDataRoot, '/tp-test');
-      expect(storage.context.pathsFromCache, isFalse);
-    });
+        expect(storage.context.target.id, RuntimeTarget.localId);
+        expect(storage.fs, same(fs));
+        expect(storage.home, '/home/tester');
+        expect(storage.cwd, '/home/tester/work');
+        expect(storage.appDataRoot, '/tp-test');
+        expect(storage.context.pathsFromCache, isFalse);
+      },
+    );
   });
 }

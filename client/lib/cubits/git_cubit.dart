@@ -6,8 +6,8 @@ import 'dart:io';
 import '../models/ai_feature_setting.dart';
 import '../models/git_status.dart';
 import '../models/runtime_target.dart';
-import '../services/ai/commit_message_prompt.dart';
-import '../services/ai/headless_ai_service.dart';
+import '../services/ai_generation/commit_message_prompt.dart';
+import '../services/ai_generation/headless_ai_service.dart';
 import '../services/git/git_changes_visible_rows.dart';
 import '../services/git/git_service.dart';
 import '../services/io/local_filesystem.dart';
@@ -152,11 +152,13 @@ class GitCubit extends Cubit<GitState> {
     required GitService service,
     HeadlessAiService? headless,
     HomeStorage? storage,
+    this.onHeadChanged,
   }) : _service = service,
        _headless =
            headless ??
            HeadlessAiService(
-             storage: storage ??
+             storage:
+                 storage ??
                  HomeStorage(
                    RuntimeContext(
                      target: RuntimeTarget.local(),
@@ -172,6 +174,10 @@ class GitCubit extends Cubit<GitState> {
 
   final GitService _service;
   final HeadlessAiService _headless;
+
+  /// Fired after a branch-affecting mutation succeeds; `repoRoot` is the repo
+  /// whose HEAD moved. Used to keep worktree/branch labels fresh.
+  final void Function(String repoRoot)? onHeadChanged;
 
   /// Seeds [GitState.expandedFolderPaths] once after the first status load.
   bool _treeExpansionInitialized = false;
@@ -575,6 +581,7 @@ class GitCubit extends Cubit<GitState> {
 
   Future<void> checkoutBranch(String name) async {
     if (await _mutate(() => _service.checkout(state.repoRoot, name))) {
+      onHeadChanged?.call(state.repoRoot);
       await ensureBranches(force: true);
     }
   }
@@ -583,6 +590,7 @@ class GitCubit extends Cubit<GitState> {
     if (await _mutate(
       () => _service.createBranch(state.repoRoot, name.trim()),
     )) {
+      onHeadChanged?.call(state.repoRoot);
       await ensureBranches(force: true);
     }
   }

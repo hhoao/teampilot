@@ -28,7 +28,7 @@ void main() {
         }
         return '{"id":"garrytan/gstack","name":"gstack","install":[{"FROM":"garrytan/gstack@main"}]}';
       },
-                                               storage: fakeHomeStorage(filesystem: fs),
+      storage: fakeHomeStorage(filesystem: fs),
     );
 
     final packs = await source.fetchPacks();
@@ -52,7 +52,7 @@ void main() {
         fs: fs,
         cacheDirOverride: '/cache',
         fetch: (_) async => null,
-                                                 storage: fakeHomeStorage(filesystem: fs),
+        storage: fakeHomeStorage(filesystem: fs),
       );
 
       expect(await source.fetchPacks(), isEmpty);
@@ -78,7 +78,7 @@ void main() {
         }
         return '{"id":"valid","name":"valid","install":[{"FROM":"org/repo@main"}]}';
       },
-                                               storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
 
     final packs = await source.fetchPacks();

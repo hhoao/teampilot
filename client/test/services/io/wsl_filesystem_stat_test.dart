@@ -12,18 +12,19 @@ void main() {
         processRunner: (executable, arguments) async {
           expect(executable, 'wsl.exe');
           capturedArgs = arguments;
-          return ProcessResult(
-            0,
-            0,
-            'regular file|42|1700000000\n',
-            '',
-          );
+          return ProcessResult(0, 0, 'regular file|42|1700000000\n', '');
         },
       );
 
       final stat = await fs.stat('/tmp/partial.bin');
 
-      expect(capturedArgs, ['stat', '-c', '%F|%s|%Y', '--', '/tmp/partial.bin']);
+      expect(capturedArgs, [
+        'stat',
+        '-c',
+        '%F|%s|%Y',
+        '--',
+        '/tmp/partial.bin',
+      ]);
       expect(stat.kind, FsEntityKind.file);
       expect(stat.size, 42);
       expect(
@@ -34,8 +35,7 @@ void main() {
 
     test('returns notFound when stat fails', () async {
       final fs = WslFilesystem(
-        processRunner: (_, __) async =>
-            ProcessResult(0, 1, '', 'No such file'),
+        processRunner: (_, __) async => ProcessResult(0, 1, '', 'No such file'),
       );
       final stat = await fs.stat('/missing');
       expect(stat.kind, FsEntityKind.notFound);

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../cubits/chat/model/chat_tab.dart';
+import '../../services/chat/session/chat_tab.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/editor_cubit.dart';
@@ -131,7 +131,7 @@ class WorkbenchGroupHost extends StatelessWidget {
     final order = strip.order;
     final activeId = strip.activeId;
     final activeTab = activeId?.kind == WorkbenchTabKind.session
-        ? chat.tabStore.openTabBySessionId(activeId!.id)
+        ? chat.tabStore.getOpenTabBySessionId(activeId!.id)
         : null;
     // The group's chrome resolves from its OWN active session, not the
     // (focused) strip's — each group may host a different team context.

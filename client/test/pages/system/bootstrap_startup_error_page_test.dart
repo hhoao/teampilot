@@ -53,10 +53,7 @@ void main() {
       ),
     );
 
-    expect(
-      find.text('Use Windows local storage instead'),
-      findsOneWidget,
-    );
+    expect(find.text('Use Windows local storage instead'), findsOneWidget);
 
     await tester.tap(find.byKey(AppKeys.bootstrapNativeStorageFallbackButton));
     expect(usedNative, isTrue);

@@ -15,12 +15,10 @@ import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/expert_hub_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/plugin_cubit.dart';
-import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/skill_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../models/config_bundle.dart';
 import '../../../models/landing_launch_context.dart';
-import '../../../models/launch_security_policy.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/ai_feature_setting.dart';
 import '../../../models/cli_preset.dart';
@@ -28,14 +26,14 @@ import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../models/runtime_target.dart';
 import '../../../models/git_worktree.dart';
-import '../../../services/compose/compose_at_file_refs.dart';
-import '../../../services/compose/compose_clip.dart';
-import '../../../services/compose/compose_draft_cache.dart';
-import '../../../services/compose/compose_file_attach.dart';
-import '../../../services/compose/compose_file_drop_ingestor.dart';
-import '../../../services/compose/compose_landing_bundle.dart';
-import '../../../services/compose/compose_text_edit.dart';
-import '../../../services/compose/compose_voice_input.dart';
+import '../../../services/chat/conversation/compose/compose_at_file_refs.dart';
+import '../../../services/chat/conversation/compose/compose_clip.dart';
+import '../../../services/chat/conversation/compose/compose_draft_cache.dart';
+import '../../../services/chat/conversation/compose/compose_file_attach.dart';
+import '../../../services/chat/conversation/compose/compose_file_drop_ingestor.dart';
+import '../../../services/chat/conversation/compose/compose_landing_bundle.dart';
+import '../../../services/chat/conversation/compose/compose_text_edit.dart';
+import '../../../services/chat/conversation/compose/compose_voice_input.dart';
 import '../../../services/storage/home_storage.dart';
 import '../../../services/expert_hub/expert_capability_resolver.dart';
 import '../../../services/expert_hub/expert_hub_recent_store.dart';
@@ -52,13 +50,13 @@ import '../../../pages/home_workspace/home_workspace_route.dart';
 import '../../../utils/workspace/landing_draft_resolver.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
 import '../../../services/storage/home_target_controller.dart';
-import '../../../services/team/team_landing_recent_store.dart';
+import '../../../services/team_config/team_landing_recent_store.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
 import '../../../widgets/compose/compose_chrome.dart';
 import '../../../widgets/compose/compose_model_preset_chip.dart';
 import '../../../widgets/compose/simple_custom_launch_dialog.dart';
 import '../../../widgets/compose/workspace_compose_card.dart';
-import '../../../services/launch/workspace_landing_launch_gate.dart';
+import '../../../services/chat/launch/pre_send/workspace_landing_launch_gate.dart';
 import '../../../services/workbench/workbench_editor_opener.dart';
 import '../../../repositories/workspace_project_config_repository.dart';
 import '../../expert_hub/expert_landing_chip_menu.dart';
@@ -124,7 +122,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
 
   var _conversationMode = _LandingConversationMode.simple;
   var _generateLaunch = false;
-  var _launchSecurityPolicy = LaunchSecurityPolicy.fullAccess;
   String? _selectedPresetId;
   CliTool? _selectedCli;
   String? _selectedProvider;
@@ -145,7 +142,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   late final _launchGate = WorkspaceLandingLaunchGate(
     storage: homeStorageOf(context),
   );
-  var _teamConfigLaunchReady = true;
   WorkspaceLandingLaunchBlock? _launchWarningBlock;
   int _teamLaunchReadinessGeneration = 0;
   ConfigBundle _workspaceProjectBundle = const ConfigBundle();
@@ -556,11 +552,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     final draft = await resolveLandingDraft(
       workspaceId: widget.workspace.workspaceId,
       storage: _homeStorage,
-      simpleModeDefaultFullAccess: context
-          .read<SessionPreferencesCubit>()
-          .state
-          .preferences
-          .simpleModeDefaultFullAccess,
     );
     if (!mounted) return;
 
@@ -657,7 +648,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       }
       if (!mounted || generation != _teamLaunchReadinessGeneration) return;
       setState(() {
-        _teamConfigLaunchReady = remoteBlock == null;
         _launchWarningBlock = remoteBlock;
       });
       return;
@@ -668,7 +658,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     if (team == null) {
       if (!mounted || generation != _teamLaunchReadinessGeneration) return;
       setState(() {
-        _teamConfigLaunchReady = false;
         _launchWarningBlock = const TeamNotSelectedLaunchBlock();
       });
       return;
@@ -681,7 +670,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     if (sync != null) {
       if (!mounted || generation != _teamLaunchReadinessGeneration) return;
       setState(() {
-        _teamConfigLaunchReady = false;
         _launchWarningBlock = sync;
       });
       return;
@@ -693,7 +681,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     if (!mounted || generation != _teamLaunchReadinessGeneration) return;
     if (configBlock != null) {
       setState(() {
-        _teamConfigLaunchReady = false;
         _launchWarningBlock = configBlock;
       });
       return;
@@ -710,7 +697,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           );
     if (!mounted || generation != _teamLaunchReadinessGeneration) return;
     setState(() {
-      _teamConfigLaunchReady = remoteBlock == null;
       _launchWarningBlock = remoteBlock;
     });
   }
@@ -757,7 +743,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         draft.workingDirectoryPath?.trim().isNotEmpty == true
         ? draft.workingDirectoryPath!.trim()
         : null;
-    _launchSecurityPolicy = draft.launchSecurityPolicy;
 
     if ((_selectedTeamId == null || _selectedTeamId!.isEmpty) &&
         _conversationMode == _LandingConversationMode.team) {
@@ -935,7 +920,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       workingDirectoryPath: selectedWorktreePath.trim().isEmpty
           ? null
           : selectedWorktreePath,
-      launchSecurityPolicy: _launchSecurityPolicy,
       // Keep custom four-tuple across Simple↔Team switches (ignored on Team submit).
       cli: _selectedCli,
       provider: _selectedProvider,
@@ -1036,7 +1020,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         if (!mounted) return;
         if (configBlock != null) {
           setState(() {
-            _teamConfigLaunchReady = false;
             _launchWarningBlock = configBlock;
           });
           showWorkspaceLandingLaunchBlock(context, configBlock);
@@ -1055,7 +1038,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           if (!mounted) return;
           if (remoteBlock != null) {
             setState(() {
-              _teamConfigLaunchReady = false;
               _launchWarningBlock = remoteBlock;
             });
             showWorkspaceLandingLaunchBlock(context, remoteBlock);
@@ -1064,7 +1046,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         }
 
         setState(() {
-          _teamConfigLaunchReady = true;
           _launchWarningBlock = null;
         });
       }
@@ -1085,7 +1066,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         if (!mounted) return;
         if (remoteBlock != null) {
           setState(() {
-            _teamConfigLaunchReady = false;
             _launchWarningBlock = remoteBlock;
           });
           showWorkspaceLandingLaunchBlock(context, remoteBlock);
@@ -1093,7 +1073,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         }
       }
       setState(() {
-        _teamConfigLaunchReady = true;
         _launchWarningBlock = null;
       });
     }
@@ -1126,12 +1105,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     if (first == null) return false;
     _selectedPresetId = first.id;
     return true;
-  }
-
-  void _setLaunchSecurityPolicy(LaunchSecurityPolicy value) {
-    if (_launchSecurityPolicy == value) return;
-    setState(() => _launchSecurityPolicy = value);
-    _persistDraft();
   }
 
   void _selectPreset(String presetId) {
@@ -1251,10 +1224,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   }
 
   Future<void> _openGenerateSettings() async {
-    final generatorSetting =
-        context.read<AiFeatureSettingsCubit>().state.settingFor(
-              AiFeatureId.teamGenerate,
-            );
+    final generatorSetting = context
+        .read<AiFeatureSettingsCubit>()
+        .state
+        .settingFor(AiFeatureId.teamGenerate);
     final presets = context.read<CliPresetsCubit>().state.presets;
     await showWorkspaceLandingGenerateSettingsDialog(
       context,
@@ -1578,129 +1551,120 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         ? launchWarningBlock.missing
         : null;
 
-    WorkspaceComposeCard buildCard(
-      BuildContext context,
-    ) => WorkspaceComposeCard(
-      controller: _controller,
-      clip: _clip,
-      focusNode: _focusNode,
-      hint: l10n.workspaceChatLandingInputHint,
-      isSubmitting: widget.isSubmitting,
-      canSubmit: _canSubmit,
-      onSubmit: _submit,
-      onChanged: (_) {},
-      chrome: UnboundComposeChrome(
-        conversationModeLabel: _conversationModeLabel(l10n),
-        autoChipLabel: _autoChipLabel(
-          context,
-          l10n,
-          presets: presets,
-          teams: teams,
-        ),
-        autoChipLeading: _autoChipLeading(context, presets: presets),
-        launchSecurityPolicy: _launchSecurityPolicy,
-        defaultPermissionsLabel: l10n.workspaceChatLandingDefaultPermissions,
-        fullAccessPermissionsLabel:
-            l10n.workspaceChatLandingFullAccessPermissions,
-        askReadOnlyPermissionsLabel:
-            l10n.workspaceChatLandingAskReadOnlyPermissions,
-        autoApproveWorkspaceWritePermissionsLabel:
-            l10n.workspaceChatLandingAutoApproveWorkspaceWritePermissions,
-        customPermissionsLabel: l10n.workspaceChatLandingCustomPermissions,
-        conversationModeSpecs: _conversationModeSpecs(l10n),
-        autoChipSpecs: _autoChipSpecs(l10n, presets: presets, teams: teams),
-        onConversationModeSelected: (value) {
-          if (value is _LandingConversationMode) {
-            _setConversationMode(value);
-          }
-        },
-        onAutoChipSelected: (value) async {
-          if (value == ComposeModelPresetChipAction.manage) {
-            _openPresetsManageDialog();
-            return;
-          }
-          final tuple = decodeComposeCascadeValue(value);
-          if (tuple != null) {
-            await _applyCascadeLaunch(tuple);
-            return;
-          }
-          if (value is CascadeCustomModelRequest) {
-            await _applyCustomModelId(request: value);
-            return;
-          }
-          if (value == ComposeModelPresetChipAction.savePreset) {
-            _openSaveAsPresetDialog();
-            return;
-          }
-          if (_conversationMode == _LandingConversationMode.team) {
-            _onTeamChipSelected(value);
-            return;
-          }
-          if (value is! String || value.isEmpty) return;
-          _selectPreset(value);
-        },
-        onPermissionSelected: _setLaunchSecurityPolicy,
-        expertChipLabel: isSimple ? _expertChipLabel(l10n, hubState) : null,
-        expertChipSpecs: isSimple ? _expertChipSpecs(l10n, hubState) : const [],
-        onExpertChipSelected: isSimple ? _onExpertChipSelected : null,
-        teamSettingsTooltip: _generateLaunch
-            ? l10n.teamGenerateOpenSettings
-            : (selectedTeam != null ? l10n.teamSettings : null),
-        onTeamSettings: _generateLaunch
-            ? () => unawaited(_openGenerateSettings())
-            : (selectedTeam != null
-                  ? () => unawaited(_openTeamSettings(teams))
-                  : null),
-        showTeamSettingsAttention:
-            !_generateLaunch &&
-            selectedTeam != null &&
-            landingTeamSettingsNeedsAttention(
-              workspace: launchWorkspace,
-              team: selectedTeam,
-            ),
-      ),
-      dropTarget: _composeDropIngestor(),
-      attachTooltip: l10n.workspaceChatLandingAttach,
-      voiceTooltip: l10n.workspaceChatLandingVoice,
-      voiceCancelTooltip: l10n.workspaceChatLandingVoiceCancel,
-      voiceStopTooltip: l10n.workspaceChatLandingVoiceStop,
-      isVoiceListening: _voiceListening,
-      voiceElapsed: _voiceElapsed,
-      voiceSoundLevel: _voiceSoundLevel,
-      onAttach: () => unawaited(_attachFiles()),
-      onVoice: () => unawaited(_toggleVoice()),
-      onVoiceCancel: () => unawaited(_cancelVoice()),
-      onVoiceStop: () => unawaited(_stopVoice()),
-      onPasteImage: _pasteComposeImage,
-      workspaceRoot: _activeLaunchDirectory(),
-      skills: skills,
-      plugins: plugins,
-      slashBundle: slashBundle,
-      skillSyntax: skillSyntax,
-      nativeCommands: nativeCommands,
-      onOpenAtFile: (path) {
-        unawaited(
-          context.read<WorkbenchEditorOpener>().openFile(
-            widget.workspace.workspaceId,
-            path,
-            preview: true,
-            fs: filesystemForComposeAtFileOpen(
-              path,
-              workspaceFilesystem: _homeStorage.fs,
-            ),
-          ),
-        );
-      },
-      deferFieldMount: widget.deferFieldMount,
-      submitBlockedTooltip:
-          launchWarningBlock != null && _controller.text.trim().isNotEmpty
-          ? landingLaunchBlockMessage(
+    WorkspaceComposeCard buildCard(BuildContext context) =>
+        WorkspaceComposeCard(
+          controller: _controller,
+          clip: _clip,
+          focusNode: _focusNode,
+          hint: l10n.workspaceChatLandingInputHint,
+          isSubmitting: widget.isSubmitting,
+          canSubmit: _canSubmit,
+          onSubmit: _submit,
+          onChanged: (_) {},
+          chrome: UnboundComposeChrome(
+            conversationModeLabel: _conversationModeLabel(l10n),
+            autoChipLabel: _autoChipLabel(
+              context,
               l10n,
-              launchWarningBlock,
-              registry: registry,
-            )
-          : null,
-    );
+              presets: presets,
+              teams: teams,
+            ),
+            autoChipLeading: _autoChipLeading(context, presets: presets),
+            conversationModeSpecs: _conversationModeSpecs(l10n),
+            autoChipSpecs: _autoChipSpecs(l10n, presets: presets, teams: teams),
+            onConversationModeSelected: (value) {
+              if (value is _LandingConversationMode) {
+                _setConversationMode(value);
+              }
+            },
+            onAutoChipSelected: (value) async {
+              if (value == ComposeModelPresetChipAction.manage) {
+                _openPresetsManageDialog();
+                return;
+              }
+              final tuple = decodeComposeCascadeValue(value);
+              if (tuple != null) {
+                await _applyCascadeLaunch(tuple);
+                return;
+              }
+              if (value is CascadeCustomModelRequest) {
+                await _applyCustomModelId(request: value);
+                return;
+              }
+              if (value == ComposeModelPresetChipAction.savePreset) {
+                _openSaveAsPresetDialog();
+                return;
+              }
+              if (_conversationMode == _LandingConversationMode.team) {
+                _onTeamChipSelected(value);
+                return;
+              }
+              if (value is! String || value.isEmpty) return;
+              _selectPreset(value);
+            },
+            expertChipLabel: isSimple ? _expertChipLabel(l10n, hubState) : null,
+            expertChipSpecs: isSimple
+                ? _expertChipSpecs(l10n, hubState)
+                : const [],
+            onExpertChipSelected: isSimple ? _onExpertChipSelected : null,
+            teamSettingsTooltip: _generateLaunch
+                ? l10n.teamGenerateOpenSettings
+                : (selectedTeam != null ? l10n.teamSettings : null),
+            onTeamSettings: _generateLaunch
+                ? () => unawaited(_openGenerateSettings())
+                : (selectedTeam != null
+                      ? () => unawaited(_openTeamSettings(teams))
+                      : null),
+            showTeamSettingsAttention:
+                !_generateLaunch &&
+                selectedTeam != null &&
+                landingTeamSettingsNeedsAttention(
+                  workspace: launchWorkspace,
+                  team: selectedTeam,
+                ),
+          ),
+          dropTarget: _composeDropIngestor(),
+          attachTooltip: l10n.workspaceChatLandingAttach,
+          voiceTooltip: l10n.workspaceChatLandingVoice,
+          voiceCancelTooltip: l10n.workspaceChatLandingVoiceCancel,
+          voiceStopTooltip: l10n.workspaceChatLandingVoiceStop,
+          isVoiceListening: _voiceListening,
+          voiceElapsed: _voiceElapsed,
+          voiceSoundLevel: _voiceSoundLevel,
+          onAttach: () => unawaited(_attachFiles()),
+          onVoice: () => unawaited(_toggleVoice()),
+          onVoiceCancel: () => unawaited(_cancelVoice()),
+          onVoiceStop: () => unawaited(_stopVoice()),
+          onPasteImage: _pasteComposeImage,
+          workspaceRoot: _activeLaunchDirectory(),
+          skills: skills,
+          plugins: plugins,
+          slashBundle: slashBundle,
+          skillSyntax: skillSyntax,
+          nativeCommands: nativeCommands,
+          onOpenAtFile: (path) {
+            unawaited(
+              context.read<WorkbenchEditorOpener>().openFile(
+                widget.workspace.workspaceId,
+                path,
+                preview: true,
+                fs: filesystemForComposeAtFileOpen(
+                  path,
+                  workspaceFilesystem: _homeStorage.fs,
+                ),
+              ),
+            );
+          },
+          deferFieldMount: widget.deferFieldMount,
+          submitBlockedTooltip:
+              launchWarningBlock != null && _controller.text.trim().isNotEmpty
+              ? landingLaunchBlockMessage(
+                  l10n,
+                  launchWarningBlock,
+                  registry: registry,
+                )
+              : null,
+        );
 
     final cascadeCatalog = _cascadeCatalog;
     final composeCard =

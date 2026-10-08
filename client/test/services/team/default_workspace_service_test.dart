@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/cubits/team/team_roster_editor.dart';
+import 'package:teampilot/services/launch_profile/team/team_roster_editor.dart';
 import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -11,7 +11,7 @@ import 'package:teampilot/services/expert_hub/expert_hub_catalog.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
-import 'package:teampilot/services/team/default_workspace_service.dart';
+import 'package:teampilot/services/team_config/default_workspace_service.dart';
 import 'package:teampilot/utils/workspace/workspace_path_utils.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -167,7 +167,10 @@ void main() {
       ),
     );
     expect(workspaces.first.folders.first.targetId, 'ssh:p1');
-    expect(Directory(p.join(remoteHome.path, 'TeamPilot')).existsSync(), isTrue);
+    expect(
+      Directory(p.join(remoteHome.path, 'TeamPilot')).existsSync(),
+      isTrue,
+    );
   });
 
   test('ensureDefault uses home/TeamPilot path for termux home', () async {

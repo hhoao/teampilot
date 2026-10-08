@@ -23,14 +23,7 @@ class LaunchConfiguration {
   final Map<String, String> env;
   final Map<String, Object?> extras;
 
-  static const _knownKeys = {
-    'id',
-    'name',
-    'type',
-    'request',
-    'cwd',
-    'env',
-  };
+  static const _knownKeys = {'id', 'name', 'type', 'request', 'cwd', 'env'};
 
   factory LaunchConfiguration.fromJson(Map<String, Object?> json) {
     final extras = <String, Object?>{};
@@ -141,6 +134,7 @@ Map<String, String> _stringMap(Object? raw) {
   if (raw is! Map) return const {};
   return {
     for (final entry in raw.entries)
-      if (entry.key != null) entry.key.toString(): entry.value?.toString() ?? '',
+      if (entry.key != null)
+        entry.key.toString(): entry.value?.toString() ?? '',
   };
 }

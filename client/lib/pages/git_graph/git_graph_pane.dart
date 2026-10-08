@@ -210,10 +210,7 @@ class _PaneBodyState extends State<_PaneBody> {
             onPrimarySizeChanged: layoutCubit.setGitGraphDetailWidth,
             first: Column(
               children: [
-                GitGraphToolbar(
-                  state: state,
-                  workspaceId: widget.workspaceId,
-                ),
+                GitGraphToolbar(state: state, workspaceId: widget.workspaceId),
                 if (headerVisible)
                   GitGraphColumnHeader(controller: _columnController),
                 Expanded(
@@ -228,28 +225,25 @@ class _PaneBodyState extends State<_PaneBody> {
                   _StatusBar(state: state),
               ],
             ),
-            second: GitGraphDetailPane(
-              onBack: () => cubit.selectCommit(null),
-            ),
+            second: GitGraphDetailPane(onBack: () => cubit.selectCommit(null)),
           );
         }
         return Column(
-            children: [
-              GitGraphToolbar(state: state, workspaceId: widget.workspaceId),
-              if (headerVisible)
-                GitGraphColumnHeader(controller: _columnController),
-              Expanded(
-                child: _GraphList(
-                  state: state,
-                  workspaceId: widget.workspaceId,
-                  columnController: _columnController,
-                ),
+          children: [
+            GitGraphToolbar(state: state, workspaceId: widget.workspaceId),
+            if (headerVisible)
+              GitGraphColumnHeader(controller: _columnController),
+            Expanded(
+              child: _GraphList(
+                state: state,
+                workspaceId: widget.workspaceId,
+                columnController: _columnController,
               ),
-              if (state.errorMessage != null ||
-                  state.currentBranch.isNotEmpty)
-                _StatusBar(state: state),
-            ],
-          );
+            ),
+            if (state.errorMessage != null || state.currentBranch.isNotEmpty)
+              _StatusBar(state: state),
+          ],
+        );
       },
     );
   }

@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
-import 'package:teampilot/cubits/team/model/launch_profile_state.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
@@ -43,12 +42,56 @@ void main() {
       final l10n = await AppLocalizations.delegate.load(const Locale('en'));
       expect(find.text(l10n.workspaceFoldersSectionTitle), findsOneWidget);
       expect(find.text(l10n.rootSandboxEnvOptInTitle), findsOneWidget);
+      expect(find.text(l10n.injectSessionSshMcpTitle), findsNothing);
       expect(
         find.text(l10n.workspaceFoldersAddOnAnotherMachine),
         findsOneWidget,
       );
     });
   });
+
+  testWidgets(
+    'WorkspaceInfoSection shows inject Session SSH MCP toggle for mixed topology',
+    (tester) async {
+      await tester.runAsync(() async {
+        await _pumpWorkspaceInfo(
+          tester,
+          workspace: Workspace(
+            workspaceId: 'w1',
+            folders: const [
+              WorkspaceFolder(path: '/proj'),
+              WorkspaceFolder(path: '/home', targetId: 'ssh:home'),
+            ],
+            createdAt: 1,
+          ),
+        );
+
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        expect(find.text(l10n.injectSessionSshMcpTitle), findsOneWidget);
+      });
+    },
+  );
+
+  testWidgets(
+    'WorkspaceInfoSection shows inject Session SSH MCP toggle for remote-only ssh folders',
+    (tester) async {
+      await tester.runAsync(() async {
+        await _pumpWorkspaceInfo(
+          tester,
+          workspace: Workspace(
+            workspaceId: 'w1',
+            folders: const [
+              WorkspaceFolder(path: '/home', targetId: 'ssh:home'),
+            ],
+            createdAt: 1,
+          ),
+        );
+
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        expect(find.text(l10n.injectSessionSshMcpTitle), findsOneWidget);
+      });
+    },
+  );
 
   testWidgets(
     'WorkspaceInfoSection does not show per-team member machine cards',
@@ -101,7 +144,11 @@ Future<void> _pumpWorkspaceInfo(
   final tmp = await Directory.systemTemp.createTemp('ws_info_target_');
   addTearDown(() => tmp.deleteSync(recursive: true));
   final fs = LocalFilesystem();
-  final sshRepo = SshProfileRepository(rootDir: tmp.path, fs: fs, storage: testHomeStorage, );
+  final sshRepo = SshProfileRepository(
+    rootDir: tmp.path,
+    fs: fs,
+    storage: testHomeStorage,
+  );
   await sshRepo.save(
     const SshProfile(
       id: 'p1',
@@ -123,13 +170,16 @@ Future<void> _pumpWorkspaceInfo(
   final chat = ChatCubit(
     executableResolver: () => 'flashskyai',
     automationRepository: testAutomationRepository(),
-                          storage: testHomeStorage,
+    storage: testHomeStorage,
   );
   addTearDown(chat.close);
   final launchProfiles = LaunchProfileCubit(
     storage: testHomeStorage,
     repository: testLaunchProfileRepository(tmp),
-    sessionRepository: SessionRepository(rootDir: tmp.path, storage: testHomeStorage, ),
+    sessionRepository: SessionRepository(
+      rootDir: tmp.path,
+      storage: testHomeStorage,
+    ),
     executableResolver: () => 'claude',
   );
   addTearDown(launchProfiles.close);
@@ -157,7 +207,10 @@ Future<void> _pumpWorkspaceInfo(
           RepositoryProvider<HomeTargetController>.value(value: controller),
           RepositoryProvider<SshProfileRepository>.value(value: sshRepo),
           RepositoryProvider<SessionRepository>.value(
-            value: SessionRepository(rootDir: tmp.path, storage: testHomeStorage, ),
+            value: SessionRepository(
+              rootDir: tmp.path,
+              storage: testHomeStorage,
+            ),
           ),
         ],
         child: MultiBlocProvider(

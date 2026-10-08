@@ -38,8 +38,7 @@ Future<void> main(List<String> args) async {
   final workspaceArg = _readArg(args, '--workspace') ?? 'first';
   final settleMs =
       int.tryParse(_readArg(args, '--settle-ms') ?? '') ?? _defaultSettleMs;
-  final port =
-      int.tryParse(_readArg(args, '--port') ?? '') ?? _defaultPort;
+  final port = int.tryParse(_readArg(args, '--port') ?? '') ?? _defaultPort;
   final noLaunch = args.contains('--no-launch');
   final base = 'http://127.0.0.1:$port';
 
@@ -47,7 +46,11 @@ Future<void> main(List<String> args) async {
   print('Workspace: $workspaceId');
 
   Process? launched;
-  var attached = await _waitHealth(base, readyRequired: false, timeout: const Duration(seconds: 2));
+  var attached = await _waitHealth(
+    base,
+    readyRequired: false,
+    timeout: const Duration(seconds: 2),
+  );
   if (attached == null) {
     if (noLaunch) {
       stderr.writeln(

@@ -107,7 +107,9 @@ abstract final class MixedTeamIdleBusyL2Scenario {
       final bus = ctx.harness.tabBus(ctx.session.sessionId)!;
       // Worker idle-notify may doorbell leader; drain unread before settling.
       await bus.readMessages('team-lead', markRead: true, unreadOnly: true);
-      final tab = ctx.cubit.tabStore.openTabBySessionId(ctx.session.sessionId);
+      final tab = ctx.cubit.tabStore.getOpenTabBySessionId(
+        ctx.session.sessionId,
+      );
       if (tab != null) {
         for (final shell in tab.memberShells.values) {
           simulateFingerprintQuietGap(shell);

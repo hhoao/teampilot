@@ -12,6 +12,7 @@ import '../../pages/ssh_profiles/ssh_profile_form_dialog.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../../services/terminal/workspace_shell_connector.dart';
 import '../../services/terminal/workspace_terminal_launch_catalog.dart';
+
 typedef WorkspaceTerminalSessionSelected =
     void Function(WorkspaceTerminalSessionSpec spec, String? launchCwd);
 
@@ -127,24 +128,17 @@ Future<void> showWorkspaceTerminalSettingsSheet(BuildContext context) async {
                     style: TpTextStyles.of(context).mdSemiboldTightSnug,
                   ),
                   const SizedBox(height: 12),
-                  SegmentedButton<String>(
-                    segments: [
-                      ButtonSegment(
-                        value: 'adaptive',
-                        label: Text(l10n.workspaceTerminalThemeAdaptive),
-                      ),
-                      ButtonSegment(
-                        value: 'classicDark',
-                        label: Text(l10n.workspaceTerminalThemeClassicDark),
-                      ),
-                      ButtonSegment(
-                        value: 'highContrast',
-                        label: Text(l10n.workspaceTerminalThemeHighContrast),
+                  TpCompactSelect<String>(
+                    value: mode,
+                    entries: [
+                      ('adaptive', l10n.workspaceTerminalThemeAdaptive),
+                      ('classicDark', l10n.workspaceTerminalThemeClassicDark),
+                      (
+                        'highContrast',
+                        l10n.workspaceTerminalThemeHighContrast,
                       ),
                     ],
-                    selected: {mode},
-                    onSelectionChanged: (selection) {
-                      final value = selection.firstOrNull;
+                    onChanged: (value) {
                       if (value == null) return;
                       context.read<LayoutCubit>().setTerminalThemeMode(value);
                       Navigator.pop(ctx);

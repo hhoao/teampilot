@@ -20,25 +20,28 @@ void main() {
   });
 
   group('parseUnixProcessTable', () {
-    test('parses headered fixture into rows with RSS KB converted to bytes', () {
-      final rows = parseUnixProcessTable(unixFixture);
+    test(
+      'parses headered fixture into rows with RSS KB converted to bytes',
+      () {
+        final rows = parseUnixProcessTable(unixFixture);
 
-      expect(rows, hasLength(3));
-      expect(rows[0].pid, 1);
-      expect(rows[0].ppid, 0);
-      expect(rows[0].cpuPercent, 0.0);
-      expect(rows[0].rssBytes, 1024 * 1024);
+        expect(rows, hasLength(3));
+        expect(rows[0].pid, 1);
+        expect(rows[0].ppid, 0);
+        expect(rows[0].cpuPercent, 0.0);
+        expect(rows[0].rssBytes, 1024 * 1024);
 
-      expect(rows[1].pid, 42);
-      expect(rows[1].ppid, 1);
-      expect(rows[1].cpuPercent, 1.5);
-      expect(rows[1].rssBytes, 20480 * 1024);
+        expect(rows[1].pid, 42);
+        expect(rows[1].ppid, 1);
+        expect(rows[1].cpuPercent, 1.5);
+        expect(rows[1].rssBytes, 20480 * 1024);
 
-      expect(rows[2].pid, 43);
-      expect(rows[2].ppid, 42);
-      expect(rows[2].cpuPercent, 0.2);
-      expect(rows[2].rssBytes, 4096 * 1024);
-    });
+        expect(rows[2].pid, 43);
+        expect(rows[2].ppid, 42);
+        expect(rows[2].cpuPercent, 0.2);
+        expect(rows[2].rssBytes, 4096 * 1024);
+      },
+    );
 
     test('parses headerless ps -eo style output', () {
       const text = '''

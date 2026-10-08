@@ -12,6 +12,7 @@ import '../services/remote/remote_connection_monitor.dart';
 import '../services/ssh/ssh_client_factory.dart';
 import '../services/ssh/ssh_connection_failure.dart';
 import '../services/ssh/ssh_profile_connection_coordinator.dart';
+import '../utils/logging/logger.dart';
 
 enum SshHostUiStatus {
   disconnected,
@@ -191,19 +192,38 @@ class SshConnectionCubit extends Cubit<SshConnectionState> {
         return;
       }
       emit(_buildState());
-    } catch (error) {
+    } catch (error, stackTrace) {
       _connectingIds.remove(profileId);
       if (!_profilesById.containsKey(profileId)) {
         return;
       }
       final cause = sshConnectionFailureCause(error);
-      final authFailed =
-          cause is SSHAuthFailError || cause is SSHHostkeyError;
+      // A paired profile pins the desktop's identity: its host-key
+      // fingerprints and, for embedded targets, the embedded port. A host-key
+      // rejection against the pins means the desktop re-keyed (upgrade,
+      // reset, re-pair); a TCP refusal means the desktop answered but
+      // nothing listens on the pinned port (the port was re-picked — an
+      // offline desktop would time out instead). Both are repaired only by
+      // scanning a new pairing code.
+      final stalePairing =
+          profile.pairedDesktopId != null &&
+          (((error is SshHostKeyMismatch || cause is SSHHostkeyError) &&
+                  profile.hostKeyFingerprints.isNotEmpty) ||
+              (profile.embeddedTarget && isTcpConnectionRefused(error)));
+      final authFailed = cause is SSHAuthFailError || cause is SSHHostkeyError;
       final status = authFailed
           ? SshHostUiStatus.authFailed
           : SshHostUiStatus.error;
       _lastFailureStatus[profileId] = status;
-      _lastErrorDetail[profileId] = error.toString();
+      _lastErrorDetail[profileId] = stalePairing
+          ? sshPairingStaleDetail
+          : error.toString();
+      appLogger.w(
+        '[ssh] profile $profileId connect failed (${status.name}): '
+        '${sshConnectionFailureLogMessage(error)}',
+        error: cause,
+        stackTrace: stackTrace,
+      );
       emit(_buildState());
     }
   }

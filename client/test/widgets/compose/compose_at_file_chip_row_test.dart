@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/compose/compose_at_file_refs.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_at_file_refs.dart';
 import 'package:teampilot/widgets/compose/compose_at_file_chip_row.dart';
 
 void main() {
@@ -29,10 +29,7 @@ void main() {
     expect(find.text('a.dart'), findsOneWidget);
     expect(find.text('photo.png'), findsOneWidget);
     expect(find.byType(Image), findsOneWidget);
-    expect(
-      find.byIcon(Icons.insert_drive_file_outlined),
-      findsOneWidget,
-    );
+    expect(find.byIcon(Icons.insert_drive_file_outlined), findsOneWidget);
 
     await tester.tap(find.text('a.dart'));
     expect(opened, ['/repo/src/a.dart']);

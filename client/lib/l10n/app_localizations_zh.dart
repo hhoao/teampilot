@@ -132,6 +132,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get visibilityGitHint => '显示当前仓库的源代码管理面板。';
 
   @override
+  String get workspaceSidebarGroupsView => '分组';
+
+  @override
+  String get workspaceSidebarProjectTreeView => '项目树';
+
+  @override
+  String get projectTreeOther => '其他';
+
+  @override
   String get extensionsSettingsTitle => '扩展';
 
   @override
@@ -853,6 +862,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get homeWorkspaceWorkspaceSortSessionCountDesc => '会话数量';
+
+  @override
+  String get homeWorkspaceWorkspaceFilterHint => '过滤工作区';
+
+  @override
+  String get homeWorkspaceWorkspaceFilterEmpty => '没有匹配的工作区';
 
   @override
   String get homeWorkspaceComingSoon => '功能开发中';
@@ -1864,26 +1879,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceChatLandingCustomLaunchTitle => '自定义启动';
 
   @override
-  String get workspaceChatLandingFullAccessPermissions => '完全访问权限';
-
-  @override
-  String get workspaceChatLandingAskReadOnlyPermissions => '询问 · 只读 · 仅信任钩子';
-
-  @override
-  String get workspaceChatLandingAutoApproveWorkspaceWritePermissions =>
-      '自动批准 · 工作区写入 · 仅信任钩子';
-
-  @override
-  String get workspaceChatLandingCustomPermissions => '自定义安全策略';
-
-  @override
   String get workspaceChatLandingSkills => '技能';
 
   @override
   String get workspaceChatLandingConnectApps => '连应用';
-
-  @override
-  String get workspaceChatLandingDefaultPermissions => '默认权限';
 
   @override
   String get workspaceChatLandingAttach => '附加文件';
@@ -2963,13 +2962,6 @@ class AppLocalizationsZh extends AppLocalizations {
       '关闭（默认）时，在聊天页发送（新建或继续）后仍留在聊天视图，终端在后台运行。开启后，发送后切换到终端。';
 
   @override
-  String get simpleModeDefaultFullAccessTitle => '简单模式默认：完全访问';
-
-  @override
-  String get simpleModeDefaultFullAccessDescription =>
-      '开启（默认）时，简单模式落地页默认使用完全访问权限。工作区里权限芯片的选择仍会覆盖并按工作区持久化。';
-
-  @override
   String get continueSwitchRestartTitle => '重启以应用切换？';
 
   @override
@@ -3051,6 +3043,13 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get rootSandboxEnvOptInSubtitle =>
       'root 启动 Claude 时保留 skip-permissions。';
+
+  @override
+  String get injectSessionSshMcpTitle => '注入 Session SSH MCP';
+
+  @override
+  String get injectSessionSshMcpSubtitle =>
+      '本机和远程座位都可通过 MCP 在本工作区的 SSH 机器上执行命令和传文件。更改后需重连 session。';
 
   @override
   String get rootSandboxEnvConfirmTitle => '确认为 root 启用 sandbox 环境变量？';
@@ -3931,6 +3930,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get skillsCardDetails => '详情';
+
+  @override
+  String get skillsCardView => '查看';
+
+  @override
+  String get skillsDetailMissing => '未找到该 skill 的 SKILL.md。';
+
+  @override
+  String get skillsDetailReadError => '无法读取 SKILL.md。';
 
   @override
   String get skillsCardInstalled => '已安装';
@@ -5003,6 +5011,43 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get mcpProbeChecking => '检测中…';
+
+  @override
+  String get mcpProbeOffline => '离线';
+
+  @override
+  String get mcpProbeNeedsAuth => '需要授权';
+
+  @override
+  String mcpProbeToolCount(int count) {
+    return '$count 个工具';
+  }
+
+  @override
+  String get mcpToolsEmpty => '该服务器没有工具。';
+
+  @override
+  String get mcpToolsReload => '重新加载';
+
+  @override
+  String get mcpToolsSection => '工具';
+
+  @override
+  String get mcpToolsDone => '完成';
+
+  @override
+  String get mcpProbeRefreshAll => '刷新状态';
+
+  @override
+  String get mcpProbeOfflineHint => '无法连接此 MCP 服务器。';
+
+  @override
+  String mcpToolsDialogTitle(String name) {
+    return '$name 的工具';
+  }
+
+  @override
   String get mcpNoInstalled => '还没有安装 MCP 服务器';
 
   @override
@@ -5451,12 +5496,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get workspaceAdvancedSettingsSubtitle => 'Agent 预设与本成员的额外 CLI 参数。';
-
-  @override
-  String get memberDangerouslySkipPermissions => '跳过所有权限检查';
-
-  @override
-  String get memberDangerouslySkipPermissionsHint => '仅限隔离或无网络沙箱使用，否则风险极高。';
 
   @override
   String get prompt => '提示词';
@@ -6751,19 +6790,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get automationsLaunchWorktree => 'Worktree';
-
-  @override
-  String get automationsPermissions => '权限';
-
-  @override
-  String get automationsPermissionsAskReadOnly => '询问 · 只读 · 仅信任钩子';
-
-  @override
-  String get automationsPermissionsAutoApproveWorkspaceWrite =>
-      '自动批准 · 工作区写入 · 仅信任钩子';
-
-  @override
-  String get automationsPermissionsCustom => '自定义安全策略';
 
   @override
   String get automationsLaunchProfile => '启动身份';
@@ -8333,6 +8359,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitGraphBranchesTags => '分支与标签';
 
   @override
+  String get gitGraphRefsFilterHint => '过滤分支与标签';
+
+  @override
+  String get gitGraphRefsFilterEmpty => '无匹配项';
+
+  @override
+  String get gitGraphCompareFilterHint => '过滤分支、标签与提交';
+
+  @override
   String get gitGraphLocalBranches => '本地分支';
 
   @override
@@ -8340,6 +8375,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitGraphTags => '标签';
+
+  @override
+  String get gitGraphCommits => '提交';
 
   @override
   String get gitGraphHashSearchEmptyHint =>
@@ -8381,9 +8419,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitGraphHideColumnHeader => '隐藏列头';
 
   @override
-  String get gitGraphShowDiffWithWorkingTree => '与工作区比较差异';
-
-  @override
   String get gitGraphCompareWith => '与…比较';
 
   @override
@@ -8418,7 +8453,39 @@ class AppLocalizationsZh extends AppLocalizations {
   String get connectRemoteReadyStatus => '局域网和远程';
 
   @override
-  String get connectSshdDown => '未检测到 OpenSSH，请先开启远程登录或 sshd。';
+  String get connectSshdDown => '内嵌连接服务启动失败。请重试或重启应用。';
+
+  @override
+  String get connectSshBackendLabel => 'SSH 服务器';
+
+  @override
+  String get connectSshBackendEmbedded => '内置';
+
+  @override
+  String get connectSshBackendSystem => '系统 OpenSSH (22)';
+
+  @override
+  String get connectSshBackendHelp => '用本机 OpenSSH 对比内置服务器。切换后需重新扫码配对。';
+
+  @override
+  String get connectSshBackendRePair => '已配对的手机需重新扫描此电脑的配对码。';
+
+  @override
+  String get connectSystemSshdDownLinux =>
+      '22 端口没有 SSH 服务在听。请启动 OpenSSH 的 sshd，然后重试。';
+
+  @override
+  String get connectSystemSshdDownMacos =>
+      '22 端口没有 SSH 服务在听。请在「共享」中打开远程登录，然后重试。';
+
+  @override
+  String get connectRevokeSystemHint => '新登录会被拒绝。已经建立的 OpenSSH 会话可能要等断开后才会失效。';
+
+  @override
+  String get connectSshdRetry => '重试';
+
+  @override
+  String get connectRepairHint => '桌面端已升级——请重新扫码配对以恢复连接。';
 
   @override
   String get connectScanHint => '在手机上的 TeamPilot 中扫描此码。';
@@ -8476,9 +8543,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get connectQrEnlargeHint => '点击二维码可放大后再扫。';
-
-  @override
-  String get connectCheckAgain => '重新检查';
 
   @override
   String get connectCopyLink => '复制链接';
@@ -8557,6 +8621,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get teamGenerateGeneratorModel => '生成模型';
+
+  @override
+  String get teamGenerateMinimumMemberCount => '团队最少成员数';
+
+  @override
+  String get teamGenerateMinimumMemberCountHint => '生成的团队至少包含这么多不同的角色。';
+
+  @override
+  String get teamGenerateMinimumMemberCountInvalid => '最少需要 3 名成员。';
 
   @override
   String get teamGenerateTeamMode => '团队模式';

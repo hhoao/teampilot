@@ -61,9 +61,7 @@ class TeamPilotDesktopPickerPort implements TpDesktopPickerPort {
     if (path == null) {
       return null;
     }
-    return [
-      TpPickedEntry(path: path, kind: TpPickedKind.directory),
-    ];
+    return [TpPickedEntry(path: path, kind: TpPickedKind.directory)];
   }
 
   static String? _resolveInitialDirectory(String? path) {

@@ -9,15 +9,16 @@ import '../../../../utils/team/team_member_naming.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../hook/glue_script_builder.dart';
 import '../../../catalog/catalog_mcp_policy.dart';
+import '../../../ssh/mcp/session_ssh_mcp_policy.dart';
 import '../../../io/filesystem.dart';
-import '../../../launch/work_plane_paths.dart';
+import '../../../chat/launch/staging/manifest/work_plane_paths.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/passthrough_provider_form_capability.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../remote/remote_credential_materializer.dart';
-import '../../../session/member_role_provision.dart';
+import '../../registry/member_role_provision.dart';
 import '../../../storage/home_storage.dart';
-import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../../chat/team_bus/member_bus_idle_endpoint.dart';
 import '../../claude/provider/claude_effort_catalog.dart';
 import '../../registry/capabilities/claude_family_hook_registry.dart';
 import '../../registry/capabilities/hook_capability.dart';
@@ -530,6 +531,10 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
       claudeEntries: CatalogMcpPolicy.claudeAllowEntries(
         CatalogMcpPolicy.advertisedRegistry(),
       ),
+    );
+    settings = MemberRoleProvision.applySessionSshMcpAllows(
+      settings,
+      claudeEntries: SessionSshMcpPolicy.claudeAllowEntries,
     );
     if (!hooksAlreadyMaterialized) {
       // 收敛：agent-status / team-lead delegate / 扩展 settings-hook / bus idle

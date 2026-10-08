@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -10,7 +9,6 @@ import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/content_search/content_search_cubit.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
-import '../../cubits/chat/model/session_workbench_view.dart';
 import '../../cubits/file_tree_cubit.dart';
 import '../../cubits/mailbox_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
@@ -377,38 +375,15 @@ class _RightToolsViewsCacheKey {
 class _RightToolsToolViewsState extends State<RightToolsToolViews> {
   _RightToolsViewsCacheKey? _cacheKey;
   List<ToolView>? _cachedViews;
-  var _mixedDefaultsSeeded = false;
 
-  @override
-  void didUpdateWidget(covariant RightToolsToolViews oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.toolsScopeId != widget.toolsScopeId) {
-      _mixedDefaultsSeeded = false;
-    }
-  }
-
-  void _seedMixedTeamDefaultsIfNeeded(
-    BuildContext context,
-    List<ToolView> views,
-  ) {
-    if (_mixedDefaultsSeeded) return;
-    final team = widget.team;
-    if (widget.isPersonalContext || team?.teamMode != TeamMode.mixed) return;
-
-    final available = views.map((v) => v.id).toSet();
-    final defaults = [
-      for (final id in RightToolIds.mixedTeamDefaults)
-        if (available.contains(id)) id,
-    ];
-    if (defaults.isEmpty) return;
-
-    _mixedDefaultsSeeded = true;
+  void _seedTeamToolsIfNeeded(BuildContext context, List<ToolView> views) {
+    if (widget.isPersonalContext || widget.team == null) return;
+    final catalog = [for (final view in views) view.id];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<WorkspaceToolsCubit>().openDefaultsIfEmpty(
+      context.read<WorkspaceToolsCubit>().seedTeamDefaults(
         widget.toolsScopeId,
-        defaults,
-        selectId: RightToolIds.members,
+        catalog,
       );
     });
   }
@@ -509,7 +484,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
       );
     }
 
-    _seedMixedTeamDefaultsIfNeeded(context, _cachedViews!);
+    _seedTeamToolsIfNeeded(context, _cachedViews!);
 
     return TabbedPanel(views: _cachedViews!, scopeId: widget.toolsScopeId);
   }
@@ -770,7 +745,7 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
     // thin-ChatCubit transition.
     final podView = chat.podFor(sessionId)?.view;
     if (podView != null) return podView;
-    final tab = chat.tabStore.openTabBySessionId(sessionId);
+    final tab = chat.tabStore.getOpenTabBySessionId(sessionId);
     return tab?.workbenchView ?? SessionWorkbenchView.chat;
   }
 
@@ -843,6 +818,7 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
       ),
       usesPosixPaths: chatCubit.lifecycle.storage.usesPosixPaths,
     );
+    final globalPresets = context.read<CliPresetsCubit>().state.presets;
     final workContext = await chatCubit.lifecycle.launchWorkContext(
       launchCtx,
       memberId: member.id,
@@ -850,16 +826,17 @@ class _ScopedMembersPanelState extends State<_ScopedMembersPanel> {
     final path = cached?.isNotEmpty == true
         ? cached!
         : (await MemberConfigInspector(
-            storage: chatCubit.lifecycle.storage,
-          ).inspect(
-            workspaceId: widget.workspaceId,
-            sessionId: activeTab?.info.id ?? '',
-            team: widget.team,
-            member: member,
-            workContext: workContext,
-            globalPresets: context.read<CliPresetsCubit>().state.presets,
-            preferExpectedRuntimeDir: true,
-          )).resolvedDir;
+                storage: chatCubit.lifecycle.storage,
+              ).inspect(
+                workspaceId: widget.workspaceId,
+                sessionId: activeTab?.info.id ?? '',
+                team: widget.team,
+                member: member,
+                workContext: workContext,
+                globalPresets: globalPresets,
+                preferExpectedRuntimeDir: true,
+              ))
+              .resolvedDir;
     if (!context.mounted || path.isEmpty) return;
     await openMemberConfigDirectory(
       context,

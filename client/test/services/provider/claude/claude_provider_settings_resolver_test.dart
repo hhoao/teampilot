@@ -25,11 +25,15 @@ void main() {
 
   setUp(() {
     fs = InMemoryFilesystem();
-    repository = AppProviderRepository(basePath: base, fs: fs, storage: fakeHomeStorage(filesystem: fs), );
+    repository = AppProviderRepository(
+      basePath: base,
+      fs: fs,
+      storage: fakeHomeStorage(filesystem: fs),
+    );
     resolver = ClaudeProviderSettingsResolver(
       basePath: base,
       repository: repository,
-                                               storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
   });
 
@@ -72,28 +76,31 @@ void main() {
     );
   });
 
-  test('resolveTeamClaudeSettings uses preset provider when shape is preset', () async {
-    await seedProviders();
+  test(
+    'resolveTeamClaudeSettings uses preset provider when shape is preset',
+    () async {
+      await seedProviders();
 
-    final team = TeamProfile(
-      id: 't',
-      name: 'T',
-      cli: CliTool.claude,
-      activePresetId: 'preset-third',
-      providerIdsByTool: {'claude': 'official'},
-    ).normalizedLaunchConfig();
+      final team = TeamProfile(
+        id: 't',
+        name: 'T',
+        cli: CliTool.claude,
+        activePresetId: 'preset-third',
+        providerIdsByTool: {'claude': 'official'},
+      ).normalizedLaunchConfig();
 
-    final settings = await resolver.resolveTeamClaudeSettings(
-      team,
-      globalPresets: const [thirdPartyPreset],
-    );
-    final env = settings?['env'] as Map?;
-    expect(
-      env?['ANTHROPIC_API_KEY'] ?? env?['ANTHROPIC_AUTH_TOKEN'],
-      'third-token',
-    );
-    expect(env?['ANTHROPIC_BASE_URL'], 'https://api.third.example/anthropic');
-  });
+      final settings = await resolver.resolveTeamClaudeSettings(
+        team,
+        globalPresets: const [thirdPartyPreset],
+      );
+      final env = settings?['env'] as Map?;
+      expect(
+        env?['ANTHROPIC_API_KEY'] ?? env?['ANTHROPIC_AUTH_TOKEN'],
+        'third-token',
+      );
+      expect(env?['ANTHROPIC_BASE_URL'], 'https://api.third.example/anthropic');
+    },
+  );
 
   test('resolveProviderId uses custom maps when shape is custom', () async {
     await seedProviders();
@@ -108,33 +115,36 @@ void main() {
     expect(await resolver.resolveProviderId(team), 'official');
   });
 
-  test('resolveMemberClaudeSettings prefers launch-resolved member provider', () async {
-    await seedProviders();
+  test(
+    'resolveMemberClaudeSettings prefers launch-resolved member provider',
+    () async {
+      await seedProviders();
 
-    const team = TeamProfile(
-      id: 't',
-      name: 'T',
-      cli: CliTool.claude,
-      activePresetId: 'preset-third',
-    );
-    final normalized = team.normalizedLaunchConfig();
+      const team = TeamProfile(
+        id: 't',
+        name: 'T',
+        cli: CliTool.claude,
+        activePresetId: 'preset-third',
+      );
+      final normalized = team.normalizedLaunchConfig();
 
-    const member = TeamMemberConfig(
-      id: 'developer-0',
-      name: 'developer #0',
-      provider: 'third-party',
-      model: 'third-model',
-    );
+      const member = TeamMemberConfig(
+        id: 'developer-0',
+        name: 'developer #0',
+        provider: 'third-party',
+        model: 'third-model',
+      );
 
-    final settings = await resolver.resolveMemberClaudeSettings(
-      team: normalized,
-      member: member,
-      globalPresets: const [thirdPartyPreset],
-    );
-    final env = settings?['env'] as Map?;
-    expect(
-      env?['ANTHROPIC_API_KEY'] ?? env?['ANTHROPIC_AUTH_TOKEN'],
-      'third-token',
-    );
-  });
+      final settings = await resolver.resolveMemberClaudeSettings(
+        team: normalized,
+        member: member,
+        globalPresets: const [thirdPartyPreset],
+      );
+      final env = settings?['env'] as Map?;
+      expect(
+        env?['ANTHROPIC_API_KEY'] ?? env?['ANTHROPIC_AUTH_TOKEN'],
+        'third-token',
+      );
+    },
+  );
 }

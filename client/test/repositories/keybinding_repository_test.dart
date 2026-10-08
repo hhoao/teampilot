@@ -48,10 +48,16 @@ void main() {
         'version': 1,
         'bindings': {
           'not.a.real.command': [
-            {'key': 'w', 'mods': ['mod']},
+            {
+              'key': 'w',
+              'mods': ['mod'],
+            },
           ],
           CommandIds.workspaceCloseTab: [
-            {'key': 'w', 'mods': ['mod', 'shift']},
+            {
+              'key': 'w',
+              'mods': ['mod', 'shift'],
+            },
           ],
         },
       }),
@@ -90,7 +96,10 @@ void main() {
       'version': 1,
       'bindings': {
         CommandIds.workspaceCloseTab: [
-          {'key': 'w', 'mods': ['mod']},
+          {
+            'key': 'w',
+            'mods': ['mod'],
+          },
         ],
       },
     });

@@ -6,8 +6,8 @@ import 'package:teampilot/services/catalog/catalog_kind_registry.dart';
 import 'package:teampilot/services/catalog/catalog_mcp_constants.dart';
 import 'package:teampilot/services/catalog/catalog_mcp_handler.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 
 import 'support/fake_catalog_module.dart';
 
@@ -98,8 +98,7 @@ void main() {
           jsonDecode(await resp.transform(utf8.decoder).join())
               as Map<String, Object?>;
       final result = json['result'];
-      final isToolError =
-          result is Map && result['isError'] == true;
+      final isToolError = result is Map && result['isError'] == true;
       expect(json['error'] != null || isToolError, isTrue);
     },
   );
@@ -115,11 +114,7 @@ void main() {
     req.headers.set(teammateBusMcpSessionHeader, 'sess-1');
     req.add(
       utf8.encode(
-        jsonEncode({
-          'jsonrpc': '2.0',
-          'id': 1,
-          'method': 'tools/list',
-        }),
+        jsonEncode({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'}),
       ),
     );
     final resp = await req.close();

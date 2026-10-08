@@ -3,10 +3,7 @@ import 'package:teampilot/services/cli/cursor/provider/cursor_auth_artifacts.dar
 
 void main() {
   test('cursorDirRequired includes cli-config.json', () {
-    expect(
-      CursorAuthArtifacts.cursorDirRequired,
-      contains('cli-config.json'),
-    );
+    expect(CursorAuthArtifacts.cursorDirRequired, contains('cli-config.json'));
   });
 
   test('optional cursor-dir artifacts include statsig-cache.json', () {

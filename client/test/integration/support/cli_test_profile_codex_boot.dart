@@ -39,7 +39,8 @@ Future<bool> bootCodexToPrompt(TerminalSession session) async {
     // Status footer is more reliable than the `›` composer glyph alone: the
     // sign-in landing also paints content, but only the ready TUI shows
     // `<model> default · <cwd>`.
-    final atPrompt = frame.contains('default \u00b7') ||
+    final atPrompt =
+        frame.contains('default \u00b7') ||
         frame.contains(kCodexComposerPrefix);
     final settled = !session.activityTracker.isWorking;
     if (atPrompt && settled) {

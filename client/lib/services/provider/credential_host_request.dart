@@ -54,8 +54,9 @@ class CredentialHostRequest {
     final linuxExecutable = _wslLinuxExecutable(invocation.prefixArgs);
     if (linuxExecutable == null) return subcommand;
     final index = invocation.prefixArgs.indexOf(linuxExecutable);
-    final trailing =
-        index < 0 ? const <String>[] : invocation.prefixArgs.sublist(index + 1);
+    final trailing = index < 0
+        ? const <String>[]
+        : invocation.prefixArgs.sublist(index + 1);
     return [...trailing, ...subcommand];
   }
 

@@ -25,8 +25,7 @@ class CliSessionManifestStore {
     required String workspaceId,
     required String teamId,
     required String tool,
-  }) =>
-      _peekCache[_lockKey(workspaceId, teamId, tool)];
+  }) => _peekCache[_lockKey(workspaceId, teamId, tool)];
 
   Future<CliSessionManifest?> read({
     required String workspaceId,

@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/ai_history_cubit.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
-import 'package:teampilot/cubits/chat/model/chat_tab.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
@@ -40,12 +40,12 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/file_tree/workspace_file_tree_store.dart';
 import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/ai_history_loader.dart';
+import 'package:teampilot/services/chat/conversation/history/ai_history_loader.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/plugin/plugin_repo_service.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/services/workspace/workspace_tools_scope.dart';
 import 'package:teampilot/widgets/workbench/workbench_split_layout_view.dart';
@@ -124,13 +124,22 @@ void _registerSession(
 void _seedTwoGroups(ChatCubit chatCubit, WorkbenchCubit workbenchCubit) {
   chatCubit.setActiveWorkspace(_workspaceId);
   _registerSession(
-    chatCubit, workbenchCubit, _session('sess-a1', 'Session A1'), 'Session A1',
+    chatCubit,
+    workbenchCubit,
+    _session('sess-a1', 'Session A1'),
+    'Session A1',
   );
   _registerSession(
-    chatCubit, workbenchCubit, _session('sess-a2', 'Session A2'), 'Session A2',
+    chatCubit,
+    workbenchCubit,
+    _session('sess-a2', 'Session A2'),
+    'Session A2',
   );
   _registerSession(
-    chatCubit, workbenchCubit, _session('sess-b', 'Session B'), 'Session B',
+    chatCubit,
+    workbenchCubit,
+    _session('sess-b', 'Session B'),
+    'Session B',
   );
   // Split B out into a sibling group to the right.
   workbenchCubit.splitTab(
@@ -169,11 +178,10 @@ class _SplitHost extends StatelessWidget {
             layout: layout,
             splitEnabled: true,
             onGroupFocused: (id) => workbenchCubit.focusGroup(_workspaceId, id),
-            onResizeCommit: (commits) =>
-                workbenchCubit.commitSplitResizeBatch(
-                  _workspaceId,
-                  commits: commits,
-                ),
+            onResizeCommit: (commits) => workbenchCubit.commitSplitResizeBatch(
+              _workspaceId,
+              commits: commits,
+            ),
             groupBuilder: (context, groupId, strip) => WorkbenchGroupHost(
               workspace: Workspace(
                 workspaceId: _workspaceId,
@@ -223,8 +231,8 @@ class GroupHostHarness {
           supportedLocales: AppLocalizations.supportedLocales,
           home: MultiRepositoryProvider(
             providers: [
-              
-            RepositoryProvider<HomeStorage>.value(value: testHomeStorage),RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
+              RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
+              RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
               RepositoryProvider<WorkspaceFileTreeStore>(
                 create: (_) => WorkspaceFileTreeStore(),
               ),
@@ -381,8 +389,9 @@ Future<GroupHostHarness> setUpHarness(WidgetTester tester) async {
   );
   addTearDown(() => cliPresetsCubit.close());
 
-  final sessionPreferencesCubit =
-      (await tester.runAsync(testSessionPreferencesCubit))!;
+  final sessionPreferencesCubit = (await tester.runAsync(
+    testSessionPreferencesCubit,
+  ))!;
   addTearDown(() => sessionPreferencesCubit.close());
 
   final runCubit = RunCubit(

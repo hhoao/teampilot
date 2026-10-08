@@ -17,7 +17,7 @@ import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing.
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
-import 'package:teampilot/services/compose/compose_draft_cache.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_draft_cache.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
 import '../../../support/post_frame_test_harness.dart';
@@ -92,7 +92,7 @@ void main() {
           ],
           child: MultiBlocProvider(
             providers: [
-        RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
+              RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
               BlocProvider<ChatCubit>.value(value: chatCubit),
               BlocProvider<AppProviderCubit>.value(value: appProviderCubit),
               BlocProvider<CliPresetsCubit>.value(value: cliPresetsCubit),

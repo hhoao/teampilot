@@ -22,4 +22,15 @@ final class GeminiMcpCapability implements McpCapability {
     required String sessionConfigDir,
     String? fallbackAppConfigDir,
   }) async {}
+
+  /// No-op for the same reason as [write]: gemini writes no MCP config in this
+  /// phase, so there is never a stale project-scoped teammate-bus entry to
+  /// remove.
+  @override
+  Future<void> maybeRemoveStaleProjectTeammateBus({
+    required Filesystem fs,
+    Map<String, Map<String, Object?>>? extraServers,
+    required String workingDirectory,
+    Iterable<String> additionalDirectories = const [],
+  }) async {}
 }

@@ -52,10 +52,7 @@ class ResourceManagerTree extends StatelessWidget {
       children: [
         if (includeColumnHeader) const ResourceManagerColumnHeader(),
         for (final group in tree.groups)
-          _GroupSection(
-            group: group,
-            onActivateLeaf: onActivateLeaf,
-          ),
+          _GroupSection(group: group, onActivateLeaf: onActivateLeaf),
       ],
     );
   }
@@ -118,10 +115,7 @@ class ResourceManagerColumnHeader extends StatelessWidget {
 }
 
 class _GroupSection extends StatefulWidget {
-  const _GroupSection({
-    required this.group,
-    this.onActivateLeaf,
-  });
+  const _GroupSection({required this.group, this.onActivateLeaf});
 
   final ResourceTreeGroupVm group;
   final void Function(ResourceTreeLeafVm leaf)? onActivateLeaf;
@@ -158,9 +152,7 @@ class _GroupSectionState extends State<_GroupSection> {
                   group.groupLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: styles.xs.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: styles.xs.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
               if (group.memoryHistory.length >= 2) ...[
@@ -181,20 +173,14 @@ class _GroupSectionState extends State<_GroupSection> {
         ),
         if (_expanded)
           for (final leaf in group.leaves)
-            _LeafRow(
-              leaf: leaf,
-              onActivate: widget.onActivateLeaf,
-            ),
+            _LeafRow(leaf: leaf, onActivate: widget.onActivateLeaf),
       ],
     );
   }
 }
 
 class _LeafRow extends StatelessWidget {
-  const _LeafRow({
-    required this.leaf,
-    this.onActivate,
-  });
+  const _LeafRow({required this.leaf, this.onActivate});
 
   final ResourceTreeLeafVm leaf;
   final void Function(ResourceTreeLeafVm leaf)? onActivate;
@@ -233,10 +219,7 @@ class _LeafRow extends StatelessWidget {
                 style: styles.xs,
               ),
             ),
-            _MetricText(
-              leaf.cpuDisplay,
-              width: kResourceManagerCpuColumnWidth,
-            ),
+            _MetricText(leaf.cpuDisplay, width: kResourceManagerCpuColumnWidth),
             _MetricText(
               leaf.memoryDisplay,
               width: kResourceManagerMemoryColumnWidth,

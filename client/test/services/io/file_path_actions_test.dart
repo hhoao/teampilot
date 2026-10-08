@@ -10,22 +10,17 @@ void main() {
   group('resolveContainingWorkspaceRoot', () {
     test('picks longest matching folder prefix', () {
       expect(
-        resolveContainingWorkspaceRoot(
-          '/a/b/c/file.dart',
-          ['/a', '/a/b'],
-          pathContext: ctx,
-        ),
+        resolveContainingWorkspaceRoot('/a/b/c/file.dart', [
+          '/a',
+          '/a/b',
+        ], pathContext: ctx),
         '/a/b',
       );
     });
 
     test('returns null when no folder contains path', () {
       expect(
-        resolveContainingWorkspaceRoot(
-          '/other/x',
-          ['/a/b'],
-          pathContext: ctx,
-        ),
+        resolveContainingWorkspaceRoot('/other/x', ['/a/b'], pathContext: ctx),
         isNull,
       );
     });

@@ -92,11 +92,7 @@ class WorkspaceLandingSkeleton extends StatelessWidget {
 }
 
 class _Bar extends StatelessWidget {
-  const _Bar({
-    required this.width,
-    required this.height,
-    required this.color,
-  });
+  const _Bar({required this.width, required this.height, required this.color});
 
   final double width;
   final double height;

@@ -122,14 +122,14 @@ void main() {
   SkillCubit buildCubit(List<SkillRegistrySource> sources) {
     final cfg = SkillRegistryConfigService(
       teampilotRoot: testHomeStorage.paths.basePath,
-                                            storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     return SkillCubit(
       SkillRepository(storage: fakeHomeStorage()),
       registryConfigService: cfg,
       initialSources: sources,
       rebuildSources: (c) => sources,
-                       storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
   }
 

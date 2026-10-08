@@ -11,10 +11,8 @@ void main() {
     test('getRepo maps 401 to unauthorized', () async {
       final client = HttpGithubApiClient(
         client: MockClient(
-          (_) async => http.Response(
-            jsonEncode({'message': 'Bad credentials'}),
-            401,
-          ),
+          (_) async =>
+              http.Response(jsonEncode({'message': 'Bad credentials'}), 401),
         ),
       );
 

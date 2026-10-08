@@ -53,90 +53,88 @@ MarkdownTokens buildAppMarkdownTokens(
     ruleMargin,
   ) = switch (profile) {
     MarkdownProfile.document => (
-        const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 26, bottom: 10),
-          xxl: EdgeInsets.only(top: 42, bottom: 10),
-        ).forWidth(width),
-        const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 24, bottom: 10),
-          xxl: EdgeInsets.only(top: 38, bottom: 10),
-        ).forWidth(width),
-        const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 22, bottom: 10),
-          xxl: EdgeInsets.only(top: 34, bottom: 10),
-        ).forWidth(width),
-        const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 20, bottom: 10),
-          xxl: EdgeInsets.only(top: 30, bottom: 10),
-        ).forWidth(width),
-        const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 20, bottom: 10),
-          xxl: EdgeInsets.only(top: 30, bottom: 10),
-        ).forWidth(width),
-        const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 20, bottom: 10),
-          xxl: EdgeInsets.only(top: 30, bottom: 10),
-        ).forWidth(width),
-        const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(bottom: 14),
-          xxl: EdgeInsets.only(bottom: 18),
-        ).forWidth(width),
-        const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(bottom: 18),
-          xxl: EdgeInsets.only(bottom: 30),
-        ).forWidth(width),
-        const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(bottom: 18),
-          xxl: EdgeInsets.only(bottom: 30),
-        ).forWidth(width),
-      ),
+      const TpScaledEdgeInsets(
+        sm: EdgeInsets.only(top: 26, bottom: 10),
+        xxl: EdgeInsets.only(top: 42, bottom: 10),
+      ).forWidth(width),
+      const TpScaledEdgeInsets(
+        sm: EdgeInsets.only(top: 24, bottom: 10),
+        xxl: EdgeInsets.only(top: 38, bottom: 10),
+      ).forWidth(width),
+      const TpScaledEdgeInsets(
+        sm: EdgeInsets.only(top: 22, bottom: 10),
+        xxl: EdgeInsets.only(top: 34, bottom: 10),
+      ).forWidth(width),
+      const TpScaledEdgeInsets(
+        sm: EdgeInsets.only(top: 20, bottom: 10),
+        xxl: EdgeInsets.only(top: 30, bottom: 10),
+      ).forWidth(width),
+      const TpScaledEdgeInsets(
+        sm: EdgeInsets.only(top: 20, bottom: 10),
+        xxl: EdgeInsets.only(top: 30, bottom: 10),
+      ).forWidth(width),
+      const TpScaledEdgeInsets(
+        sm: EdgeInsets.only(top: 20, bottom: 10),
+        xxl: EdgeInsets.only(top: 30, bottom: 10),
+      ).forWidth(width),
+      const TpScaledEdgeInsets(
+        sm: EdgeInsets.only(bottom: 14),
+        xxl: EdgeInsets.only(bottom: 18),
+      ).forWidth(width),
+      const TpScaledEdgeInsets(
+        sm: EdgeInsets.only(bottom: 18),
+        xxl: EdgeInsets.only(bottom: 30),
+      ).forWidth(width),
+      const TpScaledEdgeInsets(
+        sm: EdgeInsets.only(bottom: 18),
+        xxl: EdgeInsets.only(bottom: 30),
+      ).forWidth(width),
+    ),
     MarkdownProfile.compact => (
-        const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 14, bottom: 10),
-          xxl: EdgeInsets.only(top: 18, bottom: 10),
-        ).forWidth(width),
-        const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 12, bottom: 10),
-          xxl: EdgeInsets.only(top: 14, bottom: 10),
-        ).forWidth(width),
-        const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 8, bottom: 10),
-          xxl: EdgeInsets.only(top: 10, bottom: 10),
-        ).forWidth(width),
-        const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 8, bottom: 10),
-          xxl: EdgeInsets.only(top: 10, bottom: 10),
-        ).forWidth(width),
-        const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 8, bottom: 10),
-          xxl: EdgeInsets.only(top: 10, bottom: 10),
-        ).forWidth(width),
-        const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(top: 8, bottom: 10),
-          xxl: EdgeInsets.only(top: 10, bottom: 10),
-        ).forWidth(width),
-        const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(bottom: 10),
-          xxl: EdgeInsets.only(bottom: 14),
-        ).forWidth(width),
-        const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(bottom: 10),
-          xxl: EdgeInsets.only(bottom: 14),
-        ).forWidth(width),
-        const TpScaledEdgeInsets(
-          sm: EdgeInsets.only(bottom: 10),
-          xxl: EdgeInsets.only(bottom: 14),
-        ).forWidth(width),
-      ),
+      const TpScaledEdgeInsets(
+        sm: EdgeInsets.only(top: 14, bottom: 10),
+        xxl: EdgeInsets.only(top: 18, bottom: 10),
+      ).forWidth(width),
+      const TpScaledEdgeInsets(
+        sm: EdgeInsets.only(top: 12, bottom: 10),
+        xxl: EdgeInsets.only(top: 14, bottom: 10),
+      ).forWidth(width),
+      const TpScaledEdgeInsets(
+        sm: EdgeInsets.only(top: 8, bottom: 10),
+        xxl: EdgeInsets.only(top: 10, bottom: 10),
+      ).forWidth(width),
+      const TpScaledEdgeInsets(
+        sm: EdgeInsets.only(top: 8, bottom: 10),
+        xxl: EdgeInsets.only(top: 10, bottom: 10),
+      ).forWidth(width),
+      const TpScaledEdgeInsets(
+        sm: EdgeInsets.only(top: 8, bottom: 10),
+        xxl: EdgeInsets.only(top: 10, bottom: 10),
+      ).forWidth(width),
+      const TpScaledEdgeInsets(
+        sm: EdgeInsets.only(top: 8, bottom: 10),
+        xxl: EdgeInsets.only(top: 10, bottom: 10),
+      ).forWidth(width),
+      const TpScaledEdgeInsets(
+        sm: EdgeInsets.only(bottom: 10),
+        xxl: EdgeInsets.only(bottom: 14),
+      ).forWidth(width),
+      const TpScaledEdgeInsets(
+        sm: EdgeInsets.only(bottom: 10),
+        xxl: EdgeInsets.only(bottom: 14),
+      ).forWidth(width),
+      const TpScaledEdgeInsets(
+        sm: EdgeInsets.only(bottom: 10),
+        xxl: EdgeInsets.only(bottom: 14),
+      ).forWidth(width),
+    ),
   };
 
   return MarkdownTokens(
     body: body,
     // Size ladder (Material text theme): display → xl → lg → md.
     // Prefer warmup-covered TpTextStyles tokens over ad-hoc fontSize.
-    h1: withUi(
-      styles.display.copyWith(height: 1.3, letterSpacing: -0.02),
-    ),
+    h1: withUi(styles.display.copyWith(height: 1.3, letterSpacing: -0.02)),
     h2: withUi(styles.xl.copyWith(height: 1.3)),
     h3: withUi(styles.lgSemiboldSnug.copyWith(height: 1.3)),
     h4: withUi(styles.lgSnug.copyWith(height: 1.3)),
@@ -152,10 +150,7 @@ MarkdownTokens buildAppMarkdownTokens(
     codeLanguage: withUi(styles.mutedSm),
     listBullet: body,
     blockquote: withUi(
-      styles.mdRelaxed.copyWith(
-        color: scheme.onSurfaceVariant,
-        height: 1.7,
-      ),
+      styles.mdRelaxed.copyWith(color: scheme.onSurfaceVariant, height: 1.7),
     ),
     tableHead: withUi(styles.mdSemibold),
     tableBody: body,
@@ -207,4 +202,3 @@ AiMessageTheme buildAppAiMessageTheme(ThemeData theme) {
     ),
   );
 }
-

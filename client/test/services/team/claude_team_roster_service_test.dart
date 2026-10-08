@@ -98,17 +98,20 @@ void main() {
     expect(dev0['agentType'], 'developer');
   });
 
-  test('external teammateMode omits worker backendType for mailbox dispatch', () {
-    final service = ClaudeTeamRosterService(fs: LocalFilesystem());
-    final entry = service.buildMemberEntry(
-      member: const TeamMemberConfig(id: 'developer-0', name: 'developer-0'),
-      cliTeamName: 'runtime-team',
-      cwd: '/workspace',
-      teammateMode: 'auto',
-    );
-    expect(entry['tmuxPaneId'], '');
-    expect(entry.containsKey('backendType'), isFalse);
-  });
+  test(
+    'external teammateMode omits worker backendType for mailbox dispatch',
+    () {
+      final service = ClaudeTeamRosterService(fs: LocalFilesystem());
+      final entry = service.buildMemberEntry(
+        member: const TeamMemberConfig(id: 'developer-0', name: 'developer-0'),
+        cliTeamName: 'runtime-team',
+        cwd: '/workspace',
+        teammateMode: 'auto',
+      );
+      expect(entry['tmuxPaneId'], '');
+      expect(entry.containsKey('backendType'), isFalse);
+    },
+  );
 
   test('ensureInboxes creates pod files not type file', () async {
     final root = Directory.systemTemp.createTempSync('claude-roster-');
@@ -134,18 +137,21 @@ void main() {
       isTrue,
     );
     expect(
-      File(fs.pathContext.join(rosterDir, 'inboxes', 'developer-0.json'))
-          .existsSync(),
+      File(
+        fs.pathContext.join(rosterDir, 'inboxes', 'developer-0.json'),
+      ).existsSync(),
       isTrue,
     );
     expect(
-      File(fs.pathContext.join(rosterDir, 'inboxes', 'developer-1.json'))
-          .existsSync(),
+      File(
+        fs.pathContext.join(rosterDir, 'inboxes', 'developer-1.json'),
+      ).existsSync(),
       isTrue,
     );
     expect(
-      File(fs.pathContext.join(rosterDir, 'inboxes', 'developer.json'))
-          .existsSync(),
+      File(
+        fs.pathContext.join(rosterDir, 'inboxes', 'developer.json'),
+      ).existsSync(),
       isFalse,
     );
   });

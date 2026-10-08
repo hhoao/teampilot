@@ -46,8 +46,7 @@ fi
 
   static bool looksLikeDynamicLinkerVersionError(String text) {
     final lower = text.toLowerCase();
-    return (lower.contains('version `glibc_') &&
-            lower.contains('not found')) ||
+    return (lower.contains('version `glibc_') && lower.contains('not found')) ||
         (lower.contains('version `cxxabi_') && lower.contains('not found'));
   }
 

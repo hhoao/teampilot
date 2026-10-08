@@ -9,7 +9,7 @@ import '../../../host/host_execution_environment.dart';
 import '../../../provider/provider_catalog_access.dart';
 import '../../../storage/runtime_layout.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
-import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../../chat/team_bus/member_bus_idle_endpoint.dart';
 import '../../../resource/resource_provider_set.dart';
 import 'config_profile_scope.dart';
 

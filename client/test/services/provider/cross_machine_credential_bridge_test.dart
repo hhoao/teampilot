@@ -2,12 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/runtime_target.dart';
-import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/launch/work_plane_paths.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/work_plane_paths.dart';
 import 'package:teampilot/services/cli/claude/provider/claude_provider_credentials_service.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_auth_artifacts.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_provider_credentials_service.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/provider/control_plane_profile_paths.dart';
 import 'package:teampilot/services/provider/credential_binding.dart';
 import 'package:teampilot/services/provider/cross_machine_credential_bridge.dart';
@@ -99,7 +98,9 @@ void main() {
 
       expect(
         await CrossMachineCredentialBridge.materializeClaudeCredential(
-          storage: HomeStorage(_memoryContext('/home-catalog', InMemoryFilesystem())),
+          storage: HomeStorage(
+            _memoryContext('/home-catalog', InMemoryFilesystem()),
+          ),
           catalog: catalog,
           work: work,
           providerId: 'missing',

@@ -56,10 +56,7 @@ void main() {
     server = await DockerSshServer.start(clientRoot: Directory.current.path);
 
     final credentials = InMemorySshCredentialStore();
-    await credentials.savePassword(
-      _profileId,
-      DockerSshServer.defaultPassword,
-    );
+    await credentials.savePassword(_profileId, DockerSshServer.defaultPassword);
     sshFactory = SshClientFactory(
       credentialStore: credentials,
       knownHostRepository: InMemorySshKnownHostRepository(),
@@ -99,8 +96,11 @@ void main() {
         homeFs: homeFs!,
         homeRoot: homeRoot!.path,
       );
-      expect(first.workFs.writeBytesCount, _homeFileCount,
-          reason: 'first reconcile copies the whole tree');
+      expect(
+        first.workFs.writeBytesCount,
+        _homeFileCount,
+        reason: 'first reconcile copies the whole tree',
+      );
 
       // Fresh store + fs simulates a subsequent app launch (new connection).
       final second = await _materialize(
@@ -109,12 +109,16 @@ void main() {
         homeFs: homeFs!,
         homeRoot: homeRoot!.path,
       );
-      expect(second.workFs.writeBytesCount, 0,
-          reason: 'unchanged subtree must not be re-copied over SFTP');
+      expect(
+        second.workFs.writeBytesCount,
+        0,
+        reason: 'unchanged subtree must not be re-copied over SFTP',
+      );
       expect(
         (await second.workFs.stat(_manifestPath)).isFile,
         isTrue,
-        reason: 'cache manifest must persist at <machineRoot>/.materialized.json',
+        reason:
+            'cache manifest must persist at <machineRoot>/.materialized.json',
       );
     },
     timeout: const Timeout(Duration(minutes: 5)),
@@ -129,7 +133,7 @@ const _manifestPath =
 final _homeFileCount = 600 + 3;
 
 /// Mimics the production `cli-defaults/opencode` tree: a few config files plus
-/// a large npm `node_modules` subtree (the @opencode-ai/plugin install).
+/// a large npm `node_modules` subtree (the @opencode/plugin install).
 Future<void> _seedHomeTree(LocalFilesystem fs, String homeRoot) async {
   final posix = p.Context(style: p.Style.posix);
   final payload = Uint8List.fromList(
@@ -140,7 +144,7 @@ Future<void> _seedHomeTree(LocalFilesystem fs, String homeRoot) async {
     'cli-defaults',
     'opencode',
     'node_modules',
-    '@opencode-ai',
+    '@opencode',
     'plugin',
     'dist',
   );
@@ -153,7 +157,7 @@ Future<void> _seedHomeTree(LocalFilesystem fs, String homeRoot) async {
   }
   await fs.writeString(
     posix.join(homeRoot, 'cli-defaults', 'opencode', 'package.json'),
-    '{"dependencies":{"@opencode-ai/plugin":"0.1.0"}}',
+    '{"dependencies":{"@opencode/plugin":"0.1.0"}}',
   );
   await fs.writeString(
     posix.join(homeRoot, 'cli-defaults', 'opencode', 'package-lock.json'),
@@ -180,10 +184,7 @@ _materialize({
   required LocalFilesystem homeFs,
   required String homeRoot,
 }) async {
-  final store = RemoteFileStore(
-    profile: profile,
-    clientFactory: sshFactory,
-  );
+  final store = RemoteFileStore(profile: profile, clientFactory: sshFactory);
   final workFs = _CountingSftpFs(store);
   final materializer = WorkMachineMaterializer(
     homeFs: homeFs,

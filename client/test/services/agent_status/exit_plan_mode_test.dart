@@ -4,8 +4,7 @@ import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import 'package:teampilot/services/agent_status/exit_plan_mode.dart';
 
 void main() {
-  test('preserves plan payload and toolUseId across a later waiting hook',
-      () {
+  test('preserves plan payload and toolUseId across a later waiting hook', () {
     const previous = AgentStatusEvent(
       state: AgentSeatAttention.waiting,
       toolName: 'ExitPlanMode',

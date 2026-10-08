@@ -35,7 +35,9 @@ const cliStoreEnvKeys = <String>{
 
 /// Returns [environment] without [cliStoreEnvKeys], so probes resolve CLI
 /// stores from machine defaults instead of a live TeamPilot session.
-Map<String, String> sanitizeCliStoreEnvironment(Map<String, String> environment) {
+Map<String, String> sanitizeCliStoreEnvironment(
+  Map<String, String> environment,
+) {
   final sanitized = Map<String, String>.of(environment);
   sanitized.removeWhere((key, _) => cliStoreEnvKeys.contains(key));
   return sanitized;

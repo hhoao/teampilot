@@ -73,9 +73,14 @@ void main() {
   ) async {
     var copyPathCalls = 0;
     await tester.pumpWidget(
-      _host(_toolbar(onCopyAll: () async {}, onCopyPath: () async {
-        copyPathCalls++;
-      })),
+      _host(
+        _toolbar(
+          onCopyAll: () async {},
+          onCopyPath: () async {
+            copyPathCalls++;
+          },
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 

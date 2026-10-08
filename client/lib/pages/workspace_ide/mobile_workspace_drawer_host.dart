@@ -82,33 +82,29 @@ class _DrawerShell extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-          child: SegmentedButton<MobileDrawerMode>(
+          child: TpSegmentedPicker<MobileDrawerMode>(
             key: AppKeys.mobileWorkspaceDrawerModeSwitch,
+            selected: mode,
             segments: [
-              ButtonSegment(
+              TpSegmentedOption(
                 value: MobileDrawerMode.chat,
-                label: Text(l10n.appRailChat),
+                label: l10n.appRailChat,
+                icon: Icons.chat_bubble_outline_rounded,
               ),
-              ButtonSegment(
+              TpSegmentedOption(
                 value: MobileDrawerMode.tools,
-                label: Text(l10n.openRightTools),
+                label: l10n.openRightTools,
+                icon: Icons.handyman_outlined,
               ),
             ],
-            selected: {mode},
-            onSelectionChanged: (selection) {
-              final next = selection.firstOrNull;
-              if (next == null || next == mode) return;
+            onChanged: (next) {
+              if (next == mode) return;
               onModeChanged(next);
             },
           ),
         ),
-        Expanded(
-          child: mode == MobileDrawerMode.chat ? chatBody : toolsBody,
-        ),
-        Divider(
-          height: 1,
-          color: cs.outlineVariant.withValues(alpha: 0.5),
-        ),
+        Expanded(child: mode == MobileDrawerMode.chat ? chatBody : toolsBody),
+        Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
         Padding(
           padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
           child: _ManageTile(
@@ -122,10 +118,7 @@ class _DrawerShell extends StatelessWidget {
 }
 
 class _ManageTile extends StatefulWidget {
-  const _ManageTile({
-    required this.label,
-    required this.onTap,
-  });
+  const _ManageTile({required this.label, required this.onTap});
 
   final String label;
   final VoidCallback onTap;
@@ -155,15 +148,9 @@ class _ManageTileState extends State<_ManageTile> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         child: Row(
           children: [
-            Icon(
-              Icons.tune_outlined,
-              size: iconSize,
-              color: cs.onSurface,
-            ),
+            Icon(Icons.tune_outlined, size: iconSize, color: cs.onSurface),
             const SizedBox(width: 10),
-            Expanded(
-              child: Text(widget.label, style: labelStyle),
-            ),
+            Expanded(child: Text(widget.label, style: labelStyle)),
           ],
         ),
       ),

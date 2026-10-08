@@ -5,7 +5,6 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:teampilot/services/remote_download/remote_download_catalog.dart';
-import 'package:teampilot/services/remote_download/remote_download_http.dart';
 import 'package:teampilot/services/remote_download/remote_download_resolver.dart';
 import 'package:teampilot/services/remote_download/remote_download_source.dart';
 import 'package:teampilot/services/remote_download/remote_downloader.dart';
@@ -32,7 +31,7 @@ class _StreamingFakeClient extends http.BaseClient {
   _StreamingFakeClient(this._handler);
 
   final Future<http.StreamedResponse> Function(http.BaseRequest request)
-      _handler;
+  _handler;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) =>
@@ -80,7 +79,9 @@ void main() {
         resolver: _resolverWithMirror(),
       );
       final file = await downloader.fetch(
-        Uri.parse('https://api.github.com/repos/o/r/releases/download/v1/a.apk'),
+        Uri.parse(
+          'https://api.github.com/repos/o/r/releases/download/v1/a.apk',
+        ),
         destFileName: 'a.apk',
         tempRoot: Directory.systemTemp,
       );
@@ -114,7 +115,9 @@ void main() {
         resolver: _resolverWithMirror(),
       );
       final file = await downloader.fetch(
-        Uri.parse('https://api.github.com/repos/o/r/releases/download/v1/a.apk'),
+        Uri.parse(
+          'https://api.github.com/repos/o/r/releases/download/v1/a.apk',
+        ),
         destFileName: 'test.apk',
         tempRoot: Directory.systemTemp,
         expectedSha256: goodHash,

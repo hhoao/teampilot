@@ -53,10 +53,7 @@ Future<bool> pluginConfirmDialog(
               if (detailLines != null && detailLines.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 if (detailHeading != null)
-                  Text(
-                    detailHeading,
-                    style: TpTextStyles.of(ctx).mdSemibold,
-                  ),
+                  Text(detailHeading, style: TpTextStyles.of(ctx).mdSemibold),
                 for (final line in detailLines)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),

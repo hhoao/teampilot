@@ -134,9 +134,11 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
         final floating = context.read<FloatingWorkspaceCubit>();
         floating.ensureOpen();
         floating.setActiveWorkspace(widget.workspaceId);
-        context
-            .read<WorkbenchCubit>()
-            .openRun(widget.workspaceId, runSessionId, activate: true);
+        context.read<WorkbenchCubit>().openRun(
+          widget.workspaceId,
+          runSessionId,
+          activate: true,
+        );
       }
     } else if (intent.surface == RunToolSurface.terminal) {
       final entryId = intent.terminalEntryId?.trim() ?? '';
@@ -144,9 +146,11 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
         final floating = context.read<FloatingWorkspaceCubit>();
         floating.ensureOpen();
         floating.setActiveWorkspace(widget.workspaceId);
-        context
-            .read<WorkbenchCubit>()
-            .openShell(widget.workspaceId, entryId, activate: true);
+        context.read<WorkbenchCubit>().openShell(
+          widget.workspaceId,
+          entryId,
+          activate: true,
+        );
       }
     }
 
@@ -167,9 +171,7 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
     final runPanelSessions = runCubit.state.sessions
         .where(sessionUsesRunPanel)
         .toList(growable: false);
-    final runPanelIds = [
-      for (final session in runPanelSessions) session.id,
-    ];
+    final runPanelIds = [for (final session in runPanelSessions) session.id];
 
     // Stale center run tabs (legacy; floating owns run now).
     final tabOrder = workbench.centerOrder(widget.workspaceId);
@@ -197,8 +199,10 @@ class _WorkbenchShellRunSyncState extends State<WorkbenchShellRunSync> {
 
     if (!shouldSyncFloatingRuns(
       bridgeWorkspaceId: widget.workspaceId,
-      floatingActiveWorkspaceId:
-          context.read<FloatingWorkspaceCubit>().state.activeWorkspaceId,
+      floatingActiveWorkspaceId: context
+          .read<FloatingWorkspaceCubit>()
+          .state
+          .activeWorkspaceId,
       hasFloatingMutations:
           runIdsToRemove.isNotEmpty || runIdsToEnsure.isNotEmpty,
     )) {

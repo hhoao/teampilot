@@ -17,8 +17,8 @@ import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing.
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
-import 'package:teampilot/services/compose/compose_draft_cache.dart';
-import 'package:teampilot/services/compose/compose_draft_store.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_draft_cache.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_draft_store.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
 import '../../../support/post_frame_test_harness.dart';
@@ -179,9 +179,9 @@ Widget _landing({required String? initialText}) {
   final theme = buildDarkTheme();
   return MultiRepositoryProvider(
     providers: [
-        RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
-        RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
-      ],
+      RepositoryProvider<CommandBus>(create: (_) => CommandBus()),
+      RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
+    ],
     child: MultiBlocProvider(
       providers: [
         BlocProvider<ChatCubit>.value(value: chatCubit),

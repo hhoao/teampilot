@@ -44,12 +44,7 @@ class CliPresetDropdownField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (label != null) ...[
-          Text(
-            label!,
-            style: TpTextStyles.of(
-              context,
-            ).smSemibold,
-          ),
+          Text(label!, style: TpTextStyles.of(context).smSemibold),
           const SizedBox(height: 8),
         ],
         TpSelect<String>(
@@ -107,9 +102,7 @@ class _CliPresetDropdownItem extends StatelessWidget {
             preset.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TpTextStyles.of(
-              context,
-            ).lgColored(cs.onSurface),
+            style: TpTextStyles.of(context).lgColored(cs.onSurface),
           ),
         ),
       ],

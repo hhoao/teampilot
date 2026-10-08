@@ -20,6 +20,7 @@ class SystemFonts {
   final Map<String, String> _fontMap = {};
   final List<String> _loadedFonts = [];
   List<String>? _nativeFamilyCache;
+
   /// True when [listNativeFontFamilies] came from fontconfig (Skia-resolvable
   /// family names). False when falling back to file basenames that need
   /// [loadFont].
@@ -62,7 +63,10 @@ class SystemFonts {
         final dir = Directory(path);
         if (!dir.existsSync()) continue;
         try {
-          for (final entity in dir.listSync(recursive: true, followLinks: false)) {
+          for (final entity in dir.listSync(
+            recursive: true,
+            followLinks: false,
+          )) {
             if (entity is! File) continue;
             if (!_isFontFile(entity.path)) continue;
             found.add(entity.path);

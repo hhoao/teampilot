@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../../../io/filesystem.dart';
-import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
+import '../../../chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 
 /// Claude Code project-scoped MCP file at the repo / working-directory root.
 const claudeProjectMcpFileName = '.mcp.json';

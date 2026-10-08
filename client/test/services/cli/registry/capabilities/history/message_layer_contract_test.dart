@@ -13,7 +13,10 @@ Future<AiTranscriptBundle> jsonlBundle(String adapterId, String path) async {
   return AiTranscriptBundle(
     adapterId: adapterId,
     fragments: [
-      AiTranscriptFragment(name: path.split('/').last, bytes: await File(path).readAsBytes()),
+      AiTranscriptFragment(
+        name: path.split('/').last,
+        bytes: await File(path).readAsBytes(),
+      ),
     ],
   );
 }
@@ -29,11 +32,17 @@ void checkContract(String label, List<AiMessage> messages) {
         toolParts++;
         expect(part.toolCallId, isNotEmpty, reason: '$label: toolCallId 非空');
         expect(part.toolName, isNotEmpty, reason: '$label: toolName 非空');
-        expect(part.args, anyOf(isNull, isA<Map<String, Object?>>()),
-            reason: '$label: args 必须是 Map 或 null，不得是裸字符串');
+        expect(
+          part.args,
+          anyOf(isNull, isA<Map<String, Object?>>()),
+          reason: '$label: args 必须是 Map 或 null，不得是裸字符串',
+        );
         if (part.result != null) {
-          expect(part.status, isNot(AiToolCallStatus.running),
-              reason: '$label: 有 result 的 tool call 不得是 running');
+          expect(
+            part.status,
+            isNot(AiToolCallStatus.running),
+            reason: '$label: 有 result 的 tool call 不得是 running',
+          );
         }
       }
       if (part is AiTextPart) {
@@ -47,8 +56,11 @@ void checkContract(String label, List<AiMessage> messages) {
   // 见 docs/cli-formats/message-layer-audit.md Gap 清单 G6b。
   final finalized = finalizeAiMessagesForHistory(messages);
   for (final m in finalized) {
-    expect(m.status, AiMessageStatus.complete,
-        reason: '$label: 消息级 status 是 app 管理的流式标志，adapter 恒 complete 为既定语义');
+    expect(
+      m.status,
+      AiMessageStatus.complete,
+      reason: '$label: 消息级 status 是 app 管理的流式标志，adapter 恒 complete 为既定语义',
+    );
   }
 }
 
@@ -58,7 +70,10 @@ void main() {
       'claude',
       'test/fixtures/session_history/claude/truncated_bash.jsonl',
     );
-    checkContract('claude', await const ClaudeAiTranscriptAdapter().parse(bundle));
+    checkContract(
+      'claude',
+      await const ClaudeAiTranscriptAdapter().parse(bundle),
+    );
   });
 
   test('codex: 统一契约', () async {
@@ -66,16 +81,22 @@ void main() {
       'codex',
       'test/fixtures/session_history/codex/reasoning_and_tools.jsonl',
     );
-    checkContract('codex', await const CodexAiTranscriptAdapter().parse(bundle));
+    checkContract(
+      'codex',
+      await const CodexAiTranscriptAdapter().parse(bundle),
+    );
   });
 
   test('cursor: 统一契约', () async {
     final bundle = await jsonlBundle(
       'cursor',
       'test/fixtures/session_history/cursor/projects/home-me-proj/'
-      'agent-transcripts/chat-aaaa-bbbb-cccc-dddd/chat-aaaa-bbbb-cccc-dddd.jsonl',
+          'agent-transcripts/chat-aaaa-bbbb-cccc-dddd/chat-aaaa-bbbb-cccc-dddd.jsonl',
     );
-    checkContract('cursor', await const CursorAiTranscriptAdapter().parse(bundle));
+    checkContract(
+      'cursor',
+      await const CursorAiTranscriptAdapter().parse(bundle),
+    );
   });
 
   test('flashskyai: 统一契约', () async {
@@ -83,7 +104,10 @@ void main() {
       'flashskyai',
       'test/fixtures/session_history/flashskyai/streamed_tools.jsonl',
     );
-    checkContract('flashskyai', await const FlashskyaiAiTranscriptAdapter().parse(bundle));
+    checkContract(
+      'flashskyai',
+      await const FlashskyaiAiTranscriptAdapter().parse(bundle),
+    );
   });
 
   test('opencode: 统一契约（JSON tree 布局）', () async {
@@ -92,37 +116,50 @@ void main() {
       fragments: [
         AiTranscriptFragment(
           name: 'message/msg_asst1.json',
-          bytes: utf8.encode(jsonEncode({
-            'id': 'msg_asst1',
-            'role': 'assistant',
-            'time': {'created': 1720612802000},
-          })),
+          bytes: utf8.encode(
+            jsonEncode({
+              'id': 'msg_asst1',
+              'role': 'assistant',
+              'time': {'created': 1720612802000},
+            }),
+          ),
         ),
         AiTranscriptFragment(
           name: 'part/msg_asst1/prt_text1.json',
-          bytes: utf8.encode(jsonEncode({
-            'id': 'prt_text1',
-            'messageID': 'msg_asst1',
-            'type': 'text',
-            'text': 'done',
-          })),
+          bytes: utf8.encode(
+            jsonEncode({
+              'id': 'prt_text1',
+              'messageID': 'msg_asst1',
+              'type': 'text',
+              'text': 'done',
+            }),
+          ),
         ),
         AiTranscriptFragment(
           name: 'part/msg_asst1/prt_tool1.json',
-          bytes: utf8.encode(jsonEncode({
-            'id': 'prt_tool1',
-            'messageID': 'msg_asst1',
-            'type': 'tool',
-            'toolCallID': 'call_1',
-            'tool': 'edit',
-            'state': {
-              'status': 'completed',
-              'input': {'filePath': 'a.txt', 'oldString': 'x', 'newString': 'y'},
-            },
-          })),
+          bytes: utf8.encode(
+            jsonEncode({
+              'id': 'prt_tool1',
+              'messageID': 'msg_asst1',
+              'type': 'tool',
+              'toolCallID': 'call_1',
+              'tool': 'edit',
+              'state': {
+                'status': 'completed',
+                'input': {
+                  'filePath': 'a.txt',
+                  'oldString': 'x',
+                  'newString': 'y',
+                },
+              },
+            }),
+          ),
         ),
       ],
     );
-    checkContract('opencode', await const OpencodeAiTranscriptAdapter().parse(bundle));
+    checkContract(
+      'opencode',
+      await const OpencodeAiTranscriptAdapter().parse(bundle),
+    );
   });
 }

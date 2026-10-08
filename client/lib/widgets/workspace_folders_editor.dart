@@ -69,8 +69,7 @@ class _TargetFolderGroup {
 }
 
 class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
-  bool get _usesPosixPaths =>
-      context.read<HomeStorage>().usesPosixPaths;
+  bool get _usesPosixPaths => context.read<HomeStorage>().usesPosixPaths;
 
   late List<WorkspaceFolder> _folders;
   Future<List<RuntimeTarget>>? _targets;
@@ -207,33 +206,32 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
     final targets = await (_targets ?? _loadTargets());
     if (!mounted) return null;
     final targetIds = targets.map((t) => t.id).toSet();
-    return showDialog<String>(
+    final l10n = context.l10n;
+    return showTpDialog<String>(
       context: context,
-      builder: (ctx) => SimpleDialog(
-        title: Text(context.l10n.workspaceFoldersPickTarget),
-        children: [
-          for (final t in targets)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, t.id),
-              child: Row(
-                children: [
-                  Icon(
-                    t.kind == RuntimeKind.ssh
-                        ? Icons.cloud_outlined
-                        : Icons.computer_outlined,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text(t.label)),
-                ],
+      builder: (ctx) => TpDialog(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TpDialogHeader(title: l10n.workspaceFoldersPickTarget),
+            const SizedBox(height: 16),
+            for (final t in targets)
+              _WorkspaceFolderTargetTile(
+                icon: t.kind == RuntimeKind.ssh
+                    ? Icons.cloud_outlined
+                    : Icons.computer_outlined,
+                label: t.label,
+                onTap: () => Navigator.pop(ctx, t.id),
               ),
-            ),
-          if (!targetIds.contains(current))
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, current),
-              child: Text(current),
-            ),
-        ],
+            if (!targetIds.contains(current))
+              _WorkspaceFolderTargetTile(
+                icon: Icons.computer_outlined,
+                label: current,
+                onTap: () => Navigator.pop(ctx, current),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -249,11 +247,7 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
     if (_folders.any(
       (f) =>
           f.targetId == targetId &&
-          workspacePathsEqual(
-            f.path,
-            trimmed,
-            usesPosixPaths: _usesPosixPaths,
-          ),
+          workspacePathsEqual(f.path, trimmed, usesPosixPaths: _usesPosixPaths),
     )) {
       return;
     }
@@ -297,29 +291,29 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
     if (candidates.isEmpty) return;
     final chosen = candidates.length == 1
         ? candidates.first
-        : await showDialog<RuntimeTarget>(
+        : await showTpDialog<RuntimeTarget>(
             context: context,
-            builder: (ctx) => SimpleDialog(
-              title: Text(context.l10n.workspaceFoldersPickTarget),
-              children: [
-                for (final t in candidates)
-                  SimpleDialogOption(
-                    onPressed: () => Navigator.pop(ctx, t),
-                    child: Row(
-                      children: [
-                        Icon(
-                          t.kind == RuntimeKind.ssh
-                              ? Icons.cloud_outlined
-                              : Icons.computer_outlined,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(child: Text(t.label)),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
+            builder: (ctx) {
+              final l10n = context.l10n;
+              return TpDialog(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TpDialogHeader(title: l10n.workspaceFoldersPickTarget),
+                    const SizedBox(height: 16),
+                    for (final t in candidates)
+                      _WorkspaceFolderTargetTile(
+                        icon: t.kind == RuntimeKind.ssh
+                            ? Icons.cloud_outlined
+                            : Icons.computer_outlined,
+                        label: t.label,
+                        onTap: () => Navigator.pop(ctx, t),
+                      ),
+                  ],
+                ),
+              );
+            },
           );
     if (chosen == null || !mounted) return;
     await _addFolderOnTarget(chosen.id);
@@ -372,7 +366,8 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
                 enabled: widget.enabled,
                 allowRowTargetChange: !lockTargets,
                 isDead: widget.deadTargetIds.contains(groups.first.targetId),
-                onRemapDeadTarget: widget.enabled &&
+                onRemapDeadTarget:
+                    widget.enabled &&
                         widget.deadTargetIds.contains(groups.first.targetId)
                     ? widget.onRemapDeadTarget
                     : null,
@@ -402,7 +397,8 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
                     enabled: widget.enabled,
                     allowRowTargetChange: !lockTargets,
                     isDead: widget.deadTargetIds.contains(group.targetId),
-                    onRemapDeadTarget: widget.enabled &&
+                    onRemapDeadTarget:
+                        widget.enabled &&
                             widget.deadTargetIds.contains(group.targetId)
                         ? widget.onRemapDeadTarget
                         : null,
@@ -558,7 +554,8 @@ class _MachineFolderCard extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   emptyHint!,
-                  style: styles.smColored(cs.onSurfaceVariant.withValues(alpha: 0.85),
+                  style: styles.smColored(
+                    cs.onSurfaceVariant.withValues(alpha: 0.85),
                   ),
                 ),
               )
@@ -587,6 +584,35 @@ class _MachineFolderCard extends StatelessWidget {
                   ],
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WorkspaceFolderTargetTile extends StatelessWidget {
+  const _WorkspaceFolderTargetTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, size: context.tpIconSizes.md),
+            const SizedBox(width: 12),
+            Expanded(child: Text(label)),
           ],
         ),
       ),

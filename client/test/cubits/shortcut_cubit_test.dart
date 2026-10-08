@@ -32,7 +32,9 @@ void main() {
     addTearDown(sut.close);
     await sut.load();
 
-    final chords = [KeyChord(key: 'k', mods: [KeyChordMod.mod])];
+    final chords = [
+      KeyChord(key: 'k', mods: [KeyChordMod.mod]),
+    ];
     await sut.rebind(CommandIds.workspaceCloseTab, chords);
 
     expect(sut.effective[CommandIds.workspaceCloseTab], chords);
@@ -119,7 +121,9 @@ void main() {
       addTearDown(sut.close);
       await sut.load();
 
-      final chords = [KeyChord(key: 'p', mods: [KeyChordMod.mod])];
+      final chords = [
+        KeyChord(key: 'p', mods: [KeyChordMod.mod]),
+      ];
       final result = await sut.importOverrides({
         CommandIds.showCheatsheet: chords,
       });

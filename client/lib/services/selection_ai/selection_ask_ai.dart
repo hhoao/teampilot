@@ -35,9 +35,9 @@ abstract final class SelectionAskAi {
     } on ProviderNotFoundException {
       // Floating file preview is a Stack sibling of WorkspaceSplitPane, so it
       // misses the provider scope; resolve from the app-scoped registry.
-      final peeked = context
-          .read<WorkspaceWorktreeRegistry>()
-          .peek(workspace.workspaceId);
+      final peeked = context.read<WorkspaceWorktreeRegistry>().peek(
+        workspace.workspaceId,
+      );
       if (peeked == null) {
         AppLogger.instance.w(
           'Selection Ask AI requires a workspace WorktreeCubit; dialog not '
@@ -112,17 +112,18 @@ class _SelectionAskAiDialogState extends State<_SelectionAskAiDialog> {
       }
 
       final launchProfiles = context.read<LaunchProfileCubit>();
+      final storage = context.read<HomeStorage>();
       if (!draft.isPersonal) {
         final teamId = draft.teamId?.trim() ?? '';
         if (teamId.isNotEmpty) {
           await launchProfiles.selectTeam(teamId, silent: true);
         }
       }
-
+      if (!context.mounted) return;
       await persistLandingDraft(
         workspace.workspaceId,
         draft,
-        storage: context.read<HomeStorage>(),
+        storage: storage,
       );
 
       if (!mounted) return;

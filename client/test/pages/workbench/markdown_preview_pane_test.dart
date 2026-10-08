@@ -1,5 +1,4 @@
 import 'package:ai_message_ui/ai_message_ui.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -61,18 +60,14 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   GoogleFonts.config.allowRuntimeFetching = false;
 
-  testWidgets('markdown file preview renders MarkdownView', (
-    tester,
-  ) async {
+  testWidgets('markdown file preview renders MarkdownView', (tester) async {
     final theme = _themeForTest();
     await tester.pumpWidget(
       MaterialApp(
         theme: theme,
         home: TpTheme(
           data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
-          child: Scaffold(
-            body: _previewPaneFixture(theme, _readmeFixture),
-          ),
+          child: Scaffold(body: _previewPaneFixture(theme, _readmeFixture)),
         ),
       ),
     );
@@ -115,52 +110,53 @@ void main() {
     );
   });
 
-  testWidgets('document vs compact profiles change headingTop SizedBox heights', (
-    tester,
-  ) async {
-    final theme = _themeForTest();
-    final document = buildAppMarkdownTokens(
-      theme,
-      MarkdownProfile.document,
-      width: TpBreakpoints.xxl,
-    );
-    final compact = buildAppMarkdownTokens(
-      theme,
-      MarkdownProfile.compact,
-      width: TpBreakpoints.xxl,
-    );
-    final fixture = compileMarkdown(_readmeFixture);
-
-    Future<List<double>> headingTopHeights(MarkdownTokens tokens) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: MarkdownView(document: fixture, tokens: tokens),
-          ),
-        ),
+  testWidgets(
+    'document vs compact profiles change headingTop SizedBox heights',
+    (tester) async {
+      final theme = _themeForTest();
+      final document = buildAppMarkdownTokens(
+        theme,
+        MarkdownProfile.document,
+        width: TpBreakpoints.xxl,
       );
-      return tester
-          .widgetList<SizedBox>(find.byType(SizedBox))
-          .map((s) => s.height)
-          .whereType<double>()
-          .toList();
-    }
+      final compact = buildAppMarkdownTokens(
+        theme,
+        MarkdownProfile.compact,
+        width: TpBreakpoints.xxl,
+      );
+      final fixture = compileMarkdown(_readmeFixture);
 
-    final documentHeights = await headingTopHeights(document);
-    final compactHeights = await headingTopHeights(compact);
+      Future<List<double>> headingTopHeights(MarkdownTokens tokens) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: MarkdownView(document: fixture, tokens: tokens),
+            ),
+          ),
+        );
+        return tester
+            .widgetList<SizedBox>(find.byType(SizedBox))
+            .map((s) => s.height)
+            .whereType<double>()
+            .toList();
+      }
 
-    expect(
-      documentHeights,
-      contains(document.marginOf(MarkdownBlockKind.heading2).top),
-    );
-    expect(
-      compactHeights,
-      contains(compact.marginOf(MarkdownBlockKind.heading2).top),
-    );
-    expect(
-      document.marginOf(MarkdownBlockKind.heading2).top,
-      greaterThan(compact.marginOf(MarkdownBlockKind.heading2).top),
-    );
-    expect(documentHeights.length, compactHeights.length);
-  });
+      final documentHeights = await headingTopHeights(document);
+      final compactHeights = await headingTopHeights(compact);
+
+      expect(
+        documentHeights,
+        contains(document.marginOf(MarkdownBlockKind.heading2).top),
+      );
+      expect(
+        compactHeights,
+        contains(compact.marginOf(MarkdownBlockKind.heading2).top),
+      );
+      expect(
+        document.marginOf(MarkdownBlockKind.heading2).top,
+        greaterThan(compact.marginOf(MarkdownBlockKind.heading2).top),
+      );
+      expect(documentHeights.length, compactHeights.length);
+    },
+  );
 }

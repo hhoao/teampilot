@@ -11,10 +11,12 @@ import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/mcp_repository.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/mcp/mcp_catalog_service.dart';
+import 'package:teampilot/services/mcp/mcp_server_probe_service.dart';
+import 'package:teampilot/services/storage/home_storage.dart';
 
+import '../../services/mcp/support/fake_mcp_probe_handshake.dart';
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
-import 'package:teampilot/services/storage/home_storage.dart';
 
 void main() {
   late Filesystem fs;
@@ -32,9 +34,16 @@ void main() {
         catalogPath: '/root/mcp/mcp_servers.json',
         fs: fs,
       ),
-                                storage: testHomeStorage,
+      storage: testHomeStorage,
     );
-    cubit = McpCubit(repository, storage: testHomeStorage, );
+    cubit = McpCubit(
+      repository,
+      storage: testHomeStorage,
+      probeService: McpServerProbeService(
+        handshake: FakeMcpProbeHandshake(),
+        timeout: const Duration(seconds: 2),
+      ),
+    );
     discoverySettingsCubit = DiscoverySettingsCubit(
       repository: InMemoryAppSettingsRepository(),
     );
@@ -47,25 +56,27 @@ void main() {
 
   Future<void> pumpListPage(WidgetTester tester) async {
     final scheme = ColorScheme.fromSeed(seedColor: Colors.indigo);
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: TpTheme(
-          data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
-          child: BlocProvider<McpCubit>.value(
-            value: cubit,
-            child: BlocProvider<DiscoverySettingsCubit>.value(
-              value: discoverySettingsCubit,
-              child: const Scaffold(
-                body: McpManagementPage(section: McpSection.installed),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: TpTheme(
+            data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
+            child: BlocProvider<McpCubit>.value(
+              value: cubit,
+              child: BlocProvider<DiscoverySettingsCubit>.value(
+                value: discoverySettingsCubit,
+                child: const Scaffold(
+                  body: McpManagementPage(section: McpSection.installed),
+                ),
               ),
             ),
           ),
         ),
       ),
-      ));
+    );
     await tester.pumpAndSettle();
   }
 

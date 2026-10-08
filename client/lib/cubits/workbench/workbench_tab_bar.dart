@@ -12,9 +12,11 @@ import 'workbench_split_layout.dart';
 /// single-group layout built by [singleGroupLayout]. [WorkbenchState.bar]
 /// therefore serves a cached default instance.
 class WorkspaceTabBar extends Equatable {
-  WorkspaceTabBar({WorkbenchGroupLayout? center, WorkbenchGroupLayout? floating})
-    : center = center ?? singleGroupLayout(),
-      floating = floating ?? singleGroupLayout();
+  WorkspaceTabBar({
+    WorkbenchGroupLayout? center,
+    WorkbenchGroupLayout? floating,
+  }) : center = center ?? singleGroupLayout(),
+       floating = floating ?? singleGroupLayout();
 
   final WorkbenchGroupLayout center;
   final WorkbenchGroupLayout floating;

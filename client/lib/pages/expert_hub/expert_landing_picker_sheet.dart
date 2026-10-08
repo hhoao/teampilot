@@ -18,9 +18,7 @@ Future<String?> showExpertLandingPickerSheet(
 }) {
   return showDialog<String>(
     context: context,
-    builder: (_) => ExpertLandingPickerDialog(
-      selectedKey: selectedKey,
-    ),
+    builder: (_) => ExpertLandingPickerDialog(selectedKey: selectedKey),
   );
 }
 
@@ -31,19 +29,13 @@ Future<void> showExpertApplyPickerSheet(
 }) {
   return showDialog<void>(
     context: context,
-    builder: (_) => ExpertLandingPickerDialog(
-      onApply: onApply,
-    ),
+    builder: (_) => ExpertLandingPickerDialog(onApply: onApply),
   );
 }
 
 /// Expert Hub–style dialog: card grid → detail → Confirm.
 class ExpertLandingPickerDialog extends StatefulWidget {
-  const ExpertLandingPickerDialog({
-    this.selectedKey,
-    this.onApply,
-    super.key,
-  });
+  const ExpertLandingPickerDialog({this.selectedKey, this.onApply, super.key});
 
   final String? selectedKey;
 

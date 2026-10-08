@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/cli/claude/capabilities/prompt.dart';
+import 'package:teampilot/services/cli/claude/capabilities/workspace_base_info.dart';
 import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';
 import 'package:teampilot/services/resource/assemblers/prompt_assembler.dart';
 import 'package:teampilot/services/resource/contribution/resource_assembly_error.dart';
@@ -321,6 +323,19 @@ void main() {
     );
 
     await expectLater(future, throwsA(isA<ResourceAssemblyException>()));
+  });
+
+  test('empty role still materializes workspace-base-info extras', () async {
+    final document = (await const PromptAssembler().assemble(
+      context: PromptProviderContext(
+        cli: CliTool.claude,
+        member: const TeamMemberConfig(id: 'm1', name: 'Member'),
+        additionalDirectories: const ['/repo/a'],
+      ),
+      providers: const [ClaudePromptCapability(), ClaudeWorkspaceBaseInfo()],
+    )).document;
+    expect(document.content, contains('## Workspace directories'));
+    expect(document.content, contains('- /repo/a'));
   });
 }
 

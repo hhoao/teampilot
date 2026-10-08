@@ -78,23 +78,19 @@ void main() {
       );
 
       expect(
-        await fs.readSymlinkTarget(
-          fs.pathContext.join(memberHome, '.rustup'),
-        ),
+        await fs.readSymlinkTarget(fs.pathContext.join(memberHome, '.rustup')),
         fs.pathContext.join(realHome, '.rustup'),
       );
       expect(
-        await fs.readSymlinkTarget(
-          fs.pathContext.join(memberHome, '.cargo'),
-        ),
+        await fs.readSymlinkTarget(fs.pathContext.join(memberHome, '.cargo')),
         fs.pathContext.join(realHome, '.cargo'),
       );
       expect((await fs.stat(layout.cursorDir(memberHome))).isDirectory, isTrue);
+      expect((await fs.stat(layout.cursorDir(memberHome))).isSymlink, isFalse);
       expect(
-        (await fs.stat(layout.cursorDir(memberHome))).isSymlink,
-        isFalse,
+        (await fs.stat(layout.configCursorDir(memberHome))).isDirectory,
+        isTrue,
       );
-      expect((await fs.stat(layout.configCursorDir(memberHome))).isDirectory, isTrue);
       expect(
         await fs.readString(
           fs.pathContext.join(layout.cursorDir(memberHome), 'probe.txt'),
@@ -127,53 +123,69 @@ void main() {
         await fs.readString(layout.authJson(memberHome)),
         '{"accessToken":"member"}',
       );
-      expect((await fs.stat(layout.configCursorDir(memberHome))).isSymlink, isFalse);
-    });
-
-    test('windows mirror keeps AppData isolated instead of linking it', () async {
-      final winContext = p.Context(style: p.Style.windows);
-      final winFs = InMemoryFilesystem(pathContext: winContext);
-      final winLayout = CursorHomeLayout(
-        pathContext: winContext,
-        platform: CursorHomePlatform.windows,
-      );
-      final winPassthrough = CursorMemberHomePassthrough(
-        fs: winFs,
-        layout: winLayout,
-      );
-      const realHomeWin = r'C:\Users\user';
-      const memberHomeWin = r'C:\tp\workspace\ws\runtime\planner\cursor\home';
-
-      await winFs.ensureDir(
-        winContext.join(realHomeWin, 'AppData', 'Roaming', 'Cursor'),
-      );
-      await winFs.writeString(
-        winContext.join(realHomeWin, 'AppData', 'Roaming', 'Cursor', 'auth.json'),
-        '{"accessToken":"real"}',
-      );
-      await winFs.ensureDir(winContext.join(realHomeWin, '.cargo'));
-
-      await winPassthrough.mirror(
-        realHomeRoot: realHomeWin,
-        memberHomeRoot: memberHomeWin,
-      );
-
-      // A linked AppData would route the pinned APPDATA env (and thus
-      // cursor credentials) back to the real Roaming profile.
       expect(
-        (await winFs.stat(winContext.join(memberHomeWin, 'AppData'))).isSymlink,
+        (await fs.stat(layout.configCursorDir(memberHome))).isSymlink,
         isFalse,
       );
-      expect(
-        await winFs.readString(winLayout.authJson(memberHomeWin)),
-        isNull,
-      );
-      // Other real-home entries still passthrough.
-      expect(
-        await winFs.readSymlinkTarget(winContext.join(memberHomeWin, '.cargo')),
-        winContext.join(realHomeWin, '.cargo'),
-      );
     });
+
+    test(
+      'windows mirror keeps AppData isolated instead of linking it',
+      () async {
+        final winContext = p.Context(style: p.Style.windows);
+        final winFs = InMemoryFilesystem(pathContext: winContext);
+        final winLayout = CursorHomeLayout(
+          pathContext: winContext,
+          platform: CursorHomePlatform.windows,
+        );
+        final winPassthrough = CursorMemberHomePassthrough(
+          fs: winFs,
+          layout: winLayout,
+        );
+        const realHomeWin = r'C:\Users\user';
+        const memberHomeWin = r'C:\tp\workspace\ws\runtime\planner\cursor\home';
+
+        await winFs.ensureDir(
+          winContext.join(realHomeWin, 'AppData', 'Roaming', 'Cursor'),
+        );
+        await winFs.writeString(
+          winContext.join(
+            realHomeWin,
+            'AppData',
+            'Roaming',
+            'Cursor',
+            'auth.json',
+          ),
+          '{"accessToken":"real"}',
+        );
+        await winFs.ensureDir(winContext.join(realHomeWin, '.cargo'));
+
+        await winPassthrough.mirror(
+          realHomeRoot: realHomeWin,
+          memberHomeRoot: memberHomeWin,
+        );
+
+        // A linked AppData would route the pinned APPDATA env (and thus
+        // cursor credentials) back to the real Roaming profile.
+        expect(
+          (await winFs.stat(
+            winContext.join(memberHomeWin, 'AppData'),
+          )).isSymlink,
+          isFalse,
+        );
+        expect(
+          await winFs.readString(winLayout.authJson(memberHomeWin)),
+          isNull,
+        );
+        // Other real-home entries still passthrough.
+        expect(
+          await winFs.readSymlinkTarget(
+            winContext.join(memberHomeWin, '.cargo'),
+          ),
+          winContext.join(realHomeWin, '.cargo'),
+        );
+      },
+    );
 
     test('replaces orphan member-home dirs with symlinks', () async {
       await seedRealHome();
@@ -186,9 +198,7 @@ void main() {
       );
 
       expect(
-        await fs.readSymlinkTarget(
-          fs.pathContext.join(memberHome, '.rustup'),
-        ),
+        await fs.readSymlinkTarget(fs.pathContext.join(memberHome, '.rustup')),
         fs.pathContext.join(realHome, '.rustup'),
       );
       expect(
@@ -199,84 +209,98 @@ void main() {
       );
     });
 
-    test('graduates entity orphan when real home has no matching dir yet', () async {
-      await fs.ensureDir(realHome);
-      await fs.ensureDir(memberHome);
-      await fs.ensureDir(fs.pathContext.join(memberHome, '.rustup', 'toolchains'));
-      await fs.writeString(
-        fs.pathContext.join(memberHome, '.rustup', 'toolchains', 'stable'),
-        'toolchain',
-      );
+    test(
+      'graduates entity orphan when real home has no matching dir yet',
+      () async {
+        await fs.ensureDir(realHome);
+        await fs.ensureDir(memberHome);
+        await fs.ensureDir(
+          fs.pathContext.join(memberHome, '.rustup', 'toolchains'),
+        );
+        await fs.writeString(
+          fs.pathContext.join(memberHome, '.rustup', 'toolchains', 'stable'),
+          'toolchain',
+        );
 
-      await passthrough.mirror(
-        realHomeRoot: realHome,
-        memberHomeRoot: memberHome,
-      );
+        await passthrough.mirror(
+          realHomeRoot: realHome,
+          memberHomeRoot: memberHome,
+        );
 
-      expect(
-        await fs.readString(
-          fs.pathContext.join(realHome, '.rustup', 'toolchains', 'stable'),
-        ),
-        'toolchain',
-      );
-      expect((await fs.stat(fs.pathContext.join(memberHome, '.rustup'))).isSymlink, isTrue);
-      expect(
-        await fs.readSymlinkTarget(
-          fs.pathContext.join(memberHome, '.rustup'),
-        ),
-        fs.pathContext.join(realHome, '.rustup'),
-      );
-    });
+        expect(
+          await fs.readString(
+            fs.pathContext.join(realHome, '.rustup', 'toolchains', 'stable'),
+          ),
+          'toolchain',
+        );
+        expect(
+          (await fs.stat(fs.pathContext.join(memberHome, '.rustup'))).isSymlink,
+          isTrue,
+        );
+        expect(
+          await fs.readSymlinkTarget(
+            fs.pathContext.join(memberHome, '.rustup'),
+          ),
+          fs.pathContext.join(realHome, '.rustup'),
+        );
+      },
+    );
 
-    test('keeps correct dangling symlink when real home entry is gone', () async {
-      await seedRealHome();
-      await fs.ensureDir(memberHome);
+    test(
+      'keeps correct dangling symlink when real home entry is gone',
+      () async {
+        await seedRealHome();
+        await fs.ensureDir(memberHome);
 
-      await passthrough.mirror(
-        realHomeRoot: realHome,
-        memberHomeRoot: memberHome,
-      );
-      await fs.removeRecursive(fs.pathContext.join(realHome, '.rustup'));
+        await passthrough.mirror(
+          realHomeRoot: realHome,
+          memberHomeRoot: memberHome,
+        );
+        await fs.removeRecursive(fs.pathContext.join(realHome, '.rustup'));
 
-      await passthrough.mirror(
-        realHomeRoot: realHome,
-        memberHomeRoot: memberHome,
-      );
+        await passthrough.mirror(
+          realHomeRoot: realHome,
+          memberHomeRoot: memberHome,
+        );
 
-      expect(
-        await fs.readSymlinkTarget(
-          fs.pathContext.join(memberHome, '.rustup'),
-        ),
-        fs.pathContext.join(realHome, '.rustup'),
-      );
-    });
+        expect(
+          await fs.readSymlinkTarget(
+            fs.pathContext.join(memberHome, '.rustup'),
+          ),
+          fs.pathContext.join(realHome, '.rustup'),
+        );
+      },
+    );
 
-    test('moves member-only entity orphan onto real home when rename succeeds', () async {
-      await fs.ensureDir(realHome);
-      await fs.ensureDir(memberHome);
-      await fs.writeString(
-        fs.pathContext.join(memberHome, '.only-member', 'cache'),
-        'keep-me',
-      );
+    test(
+      'moves member-only entity orphan onto real home when rename succeeds',
+      () async {
+        await fs.ensureDir(realHome);
+        await fs.ensureDir(memberHome);
+        await fs.writeString(
+          fs.pathContext.join(memberHome, '.only-member', 'cache'),
+          'keep-me',
+        );
 
-      await passthrough.mirror(
-        realHomeRoot: realHome,
-        memberHomeRoot: memberHome,
-      );
+        await passthrough.mirror(
+          realHomeRoot: realHome,
+          memberHomeRoot: memberHome,
+        );
 
-      expect(
-        await fs.readString(
-          fs.pathContext.join(realHome, '.only-member', 'cache'),
-        ),
-        'keep-me',
-      );
-      expect(
-        await fs.readSymlinkTarget(
-          fs.pathContext.join(memberHome, '.only-member'),
-        ),
-        fs.pathContext.join(realHome, '.only-member'),
-      );
-    });
+        expect(
+          await fs.readString(
+            fs.pathContext.join(realHome, '.only-member', 'cache'),
+          ),
+          'keep-me',
+        );
+        expect(
+          await fs.readSymlinkTarget(
+            fs.pathContext.join(memberHome, '.only-member'),
+          ),
+          fs.pathContext.join(realHome, '.only-member'),
+        );
+      },
+    );
 
     test('falls back to delete and link when rename fails', () async {
       final failingFs = _RenameFailingFilesystem();
@@ -297,7 +321,12 @@ void main() {
         memberHomeRoot: memberHome,
       );
 
-      expect((await failingFs.stat(failingFs.pathContext.join(realHome, '.rustup'))).exists, isFalse);
+      expect(
+        (await failingFs.stat(
+          failingFs.pathContext.join(realHome, '.rustup'),
+        )).exists,
+        isFalse,
+      );
       expect(
         await failingFs.readSymlinkTarget(
           failingFs.pathContext.join(memberHome, '.rustup'),
@@ -320,9 +349,7 @@ void main() {
       );
 
       expect(
-        await fs.readSymlinkTarget(
-          fs.pathContext.join(memberHome, '.rustup'),
-        ),
+        await fs.readSymlinkTarget(fs.pathContext.join(memberHome, '.rustup')),
         fs.pathContext.join(realHome, '.rustup'),
       );
     });

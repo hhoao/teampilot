@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 
 import '../../cubits/git_cubit.dart';
 import '../../cubits/git_graph_cubit.dart';
+import '../storage/app_paths.dart';
 import '../storage/home_storage.dart';
 import '../storage/runtime_context.dart';
 import 'git_history_actions.dart';
@@ -32,7 +33,7 @@ class GitRepoStore {
     int maxRetained = 8,
     HomeStorage? storage,
   }) : _injectedCubitFactory = cubitFactory,
-       _graphFactory = graphCubitFactory ?? _defaultGraphFactory,
+       _injectedGraphFactory = graphCubitFactory,
        _now = clock ?? DateTime.now,
        _maxRetained = maxRetained,
        _storage = storage;
@@ -49,13 +50,11 @@ class GitRepoStore {
     return GitCubit(
       service: service,
       storage: _storage ?? HomeStorage(workContext),
+      onHeadChanged: notifyHeadChanged,
     )..setRepoRoot(root);
   }
 
-  static GitGraphCubit _defaultGraphFactory(
-    String root,
-    RuntimeContext workContext,
-  ) {
+  GitGraphCubit _defaultGraphFactory(String root, RuntimeContext workContext) {
     final history =
         GitHistoryService.debugOverrideFactory?.call() ??
         GitHistoryService.forContext(workContext);
@@ -65,15 +64,32 @@ class GitRepoStore {
     final actions =
         GitHistoryActions.debugOverrideFactory?.call() ??
         GitHistoryActions.forContext(workContext);
-    return GitGraphCubit(history: history, git: git, actions: actions);
+    return GitGraphCubit(
+      history: history,
+      git: git,
+      actions: actions,
+      onHeadChanged: notifyHeadChanged,
+    );
   }
 
-  final GitGraphCubit Function(String root, RuntimeContext workContext)
-  _graphFactory;
+  final GitGraphCubit Function(String root, RuntimeContext workContext)?
+  _injectedGraphFactory;
   final int _maxRetained;
   final DateTime Function() _now;
   final HomeStorage? _storage;
-  final p.Context _ctx = p.Context();
+
+
+  final _headChanged = StreamController<String>.broadcast(sync: true);
+
+  /// HEAD-branch mutation notifications (repoRoot), e.g. git panel / graph
+  /// checkouts. Worktree loading subscribes to keep branch labels fresh.
+  Stream<String> get headChanged => _headChanged.stream;
+
+  void notifyHeadChanged(String repoRoot) {
+    final root = repoRoot.trim();
+    if (root.isEmpty) return;
+    _headChanged.add(root);
+  }
 
   /// Normalized `targetId:root` → cubit. Insertion order is the LRU order.
   final Map<String, GitCubit> _cubits = <String, GitCubit>{};
@@ -96,7 +112,10 @@ class GitRepoStore {
       _cubits[key] = existing;
       return existing;
     }
-    final cubit = _cubitFactory(_ctx.normalize(root), workContext);
+    final cubit = _cubitFactory(
+      AppPaths.pathContextForDataRoot(root).normalize(root),
+      workContext,
+    );
     _cubits[key] = cubit;
     _evict();
     return cubit;
@@ -104,7 +123,8 @@ class GitRepoStore {
 
   /// Returns the retained graph cubit for [root] on [workContext], creating it
   /// on first access and warming it asynchronously.
-  GitGraphCubit graphCubitFor(    String root, {
+  GitGraphCubit graphCubitFor(
+    String root, {
     required RuntimeContext workContext,
   }) {
     final key = _cacheKey(root, workContext);
@@ -115,7 +135,10 @@ class GitRepoStore {
       _graphCubits[key] = existing;
       return existing;
     }
-    final cubit = _graphFactory(_ctx.normalize(root), workContext);
+    final cubit = (_injectedGraphFactory ?? _defaultGraphFactory)(
+      AppPaths.pathContextForDataRoot(root).normalize(root),
+      workContext,
+    );
     unawaited(cubit.setRepoRoot(root));
     _graphCubits[key] = cubit;
     _evict();
@@ -145,8 +168,7 @@ class GitRepoStore {
     final now = _now();
     final last = _lastBackgroundRefreshAt[key];
     final backgroundDue =
-        last == null ||
-        now.difference(last) >= backgroundRefreshInterval;
+        last == null || now.difference(last) >= backgroundRefreshInterval;
     for (final root in nonEmpty) {
       if (root == active || backgroundDue) {
         cubitFor(root, workContext: workContext).refresh();
@@ -212,5 +234,6 @@ class GitRepoStore {
     }
     _cubits.clear();
     _graphCubits.clear();
+    _headChanged.close();
   }
 }

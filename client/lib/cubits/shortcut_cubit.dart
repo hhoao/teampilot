@@ -13,10 +13,11 @@ class ShortcutState extends Equatable {
   final Map<String, List<KeyChord>> overrides;
   final bool loaded;
 
-  Map<String, List<KeyChord>> get effective => KeybindingResolver.effectiveBindings(
-    catalog: CommandCatalog.v1,
-    overrides: overrides,
-  );
+  Map<String, List<KeyChord>> get effective =>
+      KeybindingResolver.effectiveBindings(
+        catalog: CommandCatalog.v1,
+        overrides: overrides,
+      );
 
   List<KeybindingConflict> get conflicts =>
       KeybindingResolver.findConflicts(effective);
@@ -48,9 +49,11 @@ class ImportResult {
 ///
 /// See docs/superpowers/specs/2026-07-11-keyboard-shortcuts-platform-design.md.
 class ShortcutCubit extends Cubit<ShortcutState> {
-  ShortcutCubit({required HomeStorage storage, KeybindingRepository? repository})
-    : _repository = repository ?? KeybindingRepository(storage: storage),
-      super(const ShortcutState());
+  ShortcutCubit({
+    required HomeStorage storage,
+    KeybindingRepository? repository,
+  }) : _repository = repository ?? KeybindingRepository(storage: storage),
+       super(const ShortcutState());
 
   final KeybindingRepository _repository;
 

@@ -72,19 +72,13 @@ void main() {
     });
 
     test('empty branch name throws ArgumentError', () {
-      expect(
-        () => build(branch: '  '),
-        throwsArgumentError,
-      );
+      expect(() => build(branch: '  '), throwsArgumentError);
     });
   });
 
   group('worktreeOptionForLabel', () {
     test('matches local and remote-only by display label', () {
-      expect(
-        worktreeOptionForLabel(options, 'feat/x')?.name,
-        'feat/x',
-      );
+      expect(worktreeOptionForLabel(options, 'feat/x')?.name, 'feat/x');
       expect(
         worktreeOptionForLabel(options, 'origin/feature/expert-hub')?.remoteRef,
         'origin/feature/expert-hub',

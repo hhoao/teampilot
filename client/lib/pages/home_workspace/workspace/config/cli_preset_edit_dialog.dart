@@ -16,7 +16,12 @@ import 'workspace_cli_effort_helpers.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 class CliPresetEditDialog extends StatefulWidget {
-  const CliPresetEditDialog({this.existing, this.lockCli, this.draft, super.key});
+  const CliPresetEditDialog({
+    this.existing,
+    this.lockCli,
+    this.draft,
+    super.key,
+  });
 
   /// If non-null, editing an existing preset.
   final CliPreset? existing;

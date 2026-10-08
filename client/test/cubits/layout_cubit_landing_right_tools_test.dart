@@ -26,21 +26,24 @@ void main() {
   });
 
   group('LayoutCubit landing right tools override', () {
-    test('landing override does not change persisted rightToolsVisible', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final repo = _RecordingLayoutRepository(
-        const LayoutPreferences(rightToolsVisible: true),
-        prefs,
-      );
-      final cubit = LayoutCubit(repository: repo);
-      addTearDown(cubit.close);
-      await cubit.load();
+    test(
+      'landing override does not change persisted rightToolsVisible',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final repo = _RecordingLayoutRepository(
+          const LayoutPreferences(rightToolsVisible: true),
+          prefs,
+        );
+        final cubit = LayoutCubit(repository: repo);
+        addTearDown(cubit.close);
+        await cubit.load();
 
-      cubit.setLandingRightToolsOverride(true);
-      expect(cubit.state.landingRightToolsOverride, isTrue);
-      expect(cubit.state.preferences.rightToolsVisible, isTrue);
-      expect(repo.saveCount, 0);
-    });
+        cubit.setLandingRightToolsOverride(true);
+        expect(cubit.state.landingRightToolsOverride, isTrue);
+        expect(cubit.state.preferences.rightToolsVisible, isTrue);
+        expect(repo.saveCount, 0);
+      },
+    );
 
     test('toggleRightTools on compose flips override only', () async {
       final cubit = LayoutCubit();

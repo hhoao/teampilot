@@ -13,10 +13,12 @@ class _FakeExpertHubSource implements ExpertHubSource {
   _FakeExpertHubSource(this.members);
   final List<DiscoverableMember> members;
   @override
-  Future<List<DiscoverableMember>> fetchMembers({bool forceRefresh = false}) async =>
-      members;
+  Future<List<DiscoverableMember>> fetchMembers({
+    bool forceRefresh = false,
+  }) async => members;
   @override
-  Future<List<String>> categories({bool forceRefresh = false}) async => const [];
+  Future<List<String>> categories({bool forceRefresh = false}) async =>
+      const [];
 }
 
 DiscoverableMember _catalogExpert({String key = 'acme/experts/pm'}) =>

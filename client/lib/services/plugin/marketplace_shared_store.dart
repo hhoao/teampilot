@@ -19,9 +19,13 @@ import 'plugin_repo_service.dart';
 /// CONFIG_DIR (`{config}/plugins/marketplaces`).
 Iterable<CliTool> get marketplaceConsumerTools => CliToolRegistry.builtIn()
     .withCapability<PluginCapability>()
-    .where((def) => CliToolRegistry.builtIn()
-        .capability<PluginCapability>(def.id)
-        ?.consumesMarketplaces == true)
+    .where(
+      (def) =>
+          CliToolRegistry.builtIn()
+              .capability<PluginCapability>(def.id)
+              ?.consumesMarketplaces ==
+          true,
+    )
     .map((def) => def.id);
 
 /// Single owner of **shared** marketplace materialization.
@@ -171,7 +175,11 @@ class MarketplaceSharedStore {
     required PluginMarketplace marketplace,
     required PluginManifestPaths paths,
   }) async {
-    final shared = await ensureShared(tool: tool, marketplace: marketplace, paths: paths);
+    final shared = await ensureShared(
+      tool: tool,
+      marketplace: marketplace,
+      paths: paths,
+    );
     if (shared == null) return null;
     final dest = _ctx.join(
       configDir,
@@ -217,7 +225,10 @@ class MarketplaceSharedStore {
   }) async {
     final paths = pluginCapabilityForTool(tool)?.manifestPaths;
     if (paths == null) return;
-    final markets = await PluginRepoService.loadMarketplacesFor(fs, teampilotRoot);
+    final markets = await PluginRepoService.loadMarketplacesFor(
+      fs,
+      teampilotRoot,
+    );
     for (final m in markets) {
       try {
         await ensureSessionLinked(
@@ -247,7 +258,10 @@ class MarketplaceSharedStore {
     required Iterable<String> workspaceIds,
     Set<String> activeSessionKeys = const {},
   }) async {
-    final markets = await PluginRepoService.loadMarketplacesFor(fs, teampilotRoot);
+    final markets = await PluginRepoService.loadMarketplacesFor(
+      fs,
+      teampilotRoot,
+    );
     final byName = {for (final m in markets) m.name.trim(): m};
     if (byName.isEmpty) return;
 
@@ -263,8 +277,7 @@ class MarketplaceSharedStore {
       for (final sessionEntry in await fs.listDir(sessionsDir)) {
         if (!sessionEntry.isDirectory) continue;
         final sessionKey = sessionEntry.name;
-        if (sessionKey.isNotEmpty &&
-            activeSessionKeys.contains(sessionKey)) {
+        if (sessionKey.isNotEmpty && activeSessionKeys.contains(sessionKey)) {
           continue;
         }
         await _collectSessionMarketplaceCandidates(
@@ -334,7 +347,11 @@ class MarketplaceSharedStore {
         final stat = await fs.lstat(dest);
         if (stat.isSymlink || !stat.isDirectory) continue;
         candidates.add(
-          _MarketplaceCandidate(dest: dest, tool: tool, marketplace: marketplace),
+          _MarketplaceCandidate(
+            dest: dest,
+            tool: tool,
+            marketplace: marketplace,
+          ),
         );
       }
     }

@@ -1,10 +1,9 @@
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/config_bundle.dart';
-import 'package:teampilot/services/compose/compose_file_drop_ingestor.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_file_drop_ingestor.dart';
 import 'package:teampilot/widgets/compose/compose_chrome.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
 import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
@@ -41,14 +40,10 @@ void main() {
           chrome: UnboundComposeChrome(
             conversationModeLabel: 'Simple',
             autoChipLabel: 'Preset',
-            launchSecurityPolicy: LaunchSecurityPolicy.cliDefault,
-            defaultPermissionsLabel: 'Default permissions',
-            fullAccessPermissionsLabel: 'Full access',
             conversationModeSpecs: const [],
             autoChipSpecs: const [],
             onConversationModeSelected: (_) {},
             onAutoChipSelected: (_) {},
-            onPermissionSelected: (_) {},
             expertChipLabel: expertChipLabel,
             expertChipSpecs: expertChipLabel == null
                 ? const []
@@ -63,7 +58,7 @@ void main() {
           dropTarget: ComposeFileDropIngestor(
             workspaceRoot: '/tmp',
             onInsertReferences: (_) {},
-                                               usesPosixPaths: false,
+            usesPosixPaths: false,
           ),
           attachTooltip: 'Attach',
           voiceTooltip: 'Voice',
@@ -87,13 +82,15 @@ void main() {
   }
 
   testWidgets('expert chip visible in simple mode', (tester) async {
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: pumpComposeCard(
-        expertChipLabel: 'No expert',
-        onExpertChipSelected: (_) {},
+          expertChipLabel: 'No expert',
+          onExpertChipSelected: (_) {},
+        ),
       ),
-      ));
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('No expert'), findsOneWidget);
@@ -103,10 +100,12 @@ void main() {
   testWidgets('defers compose field behind TpDeferredMountShell', (
     tester,
   ) async {
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: pumpComposeCard(expertChipLabel: null),
-      ));
+      ),
+    );
 
     expect(find.byType(TpDeferredMountShell), findsOneWidget);
     // Tests mount the child immediately (FLUTTER_TEST).
@@ -114,10 +113,15 @@ void main() {
   });
 
   testWidgets('expert chip hidden in team mode', (tester) async {
-    await tester.pumpWidget(RepositoryProvider<HomeStorage>.value(
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
-        child: pumpComposeCard(expertChipLabel: null, onExpertChipSelected: null),
-      ));
+        child: pumpComposeCard(
+          expertChipLabel: null,
+          onExpertChipSelected: null,
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('No expert'), findsNothing);

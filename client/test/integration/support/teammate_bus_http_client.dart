@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 
 /// Loopback HTTP driver for teammate-bus MCP tools in integration tests.
 class TeammateBusHttpClient {

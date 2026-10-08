@@ -3,7 +3,7 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/member_instance.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/team/runtime_roster_cache.dart';
+import 'package:teampilot/services/team_config/runtime_roster_cache.dart';
 
 TeamProfile team(List<TeamMemberConfig> members) => TeamProfile(
   id: 'team-1',
@@ -131,10 +131,10 @@ void main() {
         SessionMemberBinding(rosterMemberId: 'builder-1', taskId: 't2'),
       ],
     );
-    expect(
-      sessionRosterMembers(session, profile).map((m) => m.id),
-      ['team-lead', 'builder-1'],
-    );
+    expect(sessionRosterMembers(session, profile).map((m) => m.id), [
+      'team-lead',
+      'builder-1',
+    ]);
   });
 
   test(
@@ -166,10 +166,11 @@ void main() {
       );
       final ids = sessionRosterMembers(session, profile).map((m) => m.id);
       expect(ids, ['team-lead', 'builder-0', 'builder-1']);
-      expect(
-        sessionRosterMembers(session, profile).map((m) => m.name),
-        ['team-lead', 'Builder #0', 'Builder #1'],
-      );
+      expect(sessionRosterMembers(session, profile).map((m) => m.name), [
+        'team-lead',
+        'Builder #0',
+        'Builder #1',
+      ]);
     },
   );
 
@@ -201,7 +202,11 @@ void main() {
     final ui = sessionRosterMembers(session, profile);
     expect(cli.map((m) => m.id), ui.map((m) => m.id));
     expect(cli.map((m) => m.id), ['team-lead', 'developer-0', 'developer-1']);
-    expect(cli.map((m) => m.agentType), ['team-lead', 'developer', 'developer']);
+    expect(cli.map((m) => m.agentType), [
+      'team-lead',
+      'developer',
+      'developer',
+    ]);
   });
 
   test('singleton replica keeps bare type id', () {
@@ -218,10 +223,10 @@ void main() {
         SessionMemberBinding(rosterMemberId: 'developer', taskId: 't1'),
       ],
     );
-    expect(
-      cliTeamRosterMembers(session, profile).map((m) => m.id),
-      ['team-lead', 'developer'],
-    );
+    expect(cliTeamRosterMembers(session, profile).map((m) => m.id), [
+      'team-lead',
+      'developer',
+    ]);
   });
 
   test(
@@ -239,10 +244,10 @@ void main() {
           SessionMemberBinding(rosterMemberId: 'builder-1', taskId: 't2'),
         ],
       );
-      expect(
-        sessionRosterMembers(session, profile).map((m) => m.id),
-        ['builder-0', 'builder-1'],
-      );
+      expect(sessionRosterMembers(session, profile).map((m) => m.id), [
+        'builder-0',
+        'builder-1',
+      ]);
     },
   );
 

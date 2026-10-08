@@ -8,11 +8,7 @@ void main() {
     test('lists local branches and remote-only refs', () {
       final options = mergeWorktreeBranchOptions(
         local: ['main', 'feat/notifications'],
-        remote: [
-          'origin/main',
-          'origin/feature/expert-hub',
-          'origin/HEAD',
-        ],
+        remote: ['origin/main', 'origin/feature/expert-hub', 'origin/HEAD'],
       );
 
       expect(options, [

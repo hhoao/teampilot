@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/floating_workspace/floating_workspace_tools_scope_bridge.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/workspace/workspace_tools_scope.dart';
 import 'package:teampilot/services/workspace/workspace_tools_scope_registry.dart';
 
@@ -20,7 +20,7 @@ void main() {
     final lifecycle = SessionLifecycleService(
       storageRootsResolver: () async => home,
       workContextResolver: (_) async => home,
-                                               storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     final registry = WorkspaceToolsScopeRegistry();
     addTearDown(registry.dispose);

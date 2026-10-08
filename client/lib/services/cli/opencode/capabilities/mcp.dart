@@ -6,7 +6,7 @@ import '../../../mcp/mcp_credentials_store.dart';
 import '../../registry/capabilities/mcp_capability.dart';
 import 'provider.dart';
 
-/// Merges MCP servers into `<configDir>/opencode.json` `mcp` map.
+/// Merges MCP servers into `<configDir>/opencode.json` `mcp.servers`.
 final class OpencodeMcpCapability implements McpCapability {
   const OpencodeMcpCapability();
 
@@ -18,7 +18,6 @@ final class OpencodeMcpCapability implements McpCapability {
     required Filesystem fs,
     required String configDir,
     required List<McpServerSpec> servers,
-    String? outputBasename,
   }) async {
     final configPath = fs.pathContext.join(configDir, configFileName);
     final stat = await fs.stat(configPath);
@@ -32,12 +31,11 @@ final class OpencodeMcpCapability implements McpCapability {
       existing = <String, Object?>{};
     }
 
-    final mergedMcp = <String, Object?>{
-      ...((existing['mcp'] as Map?)?.cast<String, Object?>() ??
-          const <String, Object?>{}),
+    final mergedServers = <String, Object?>{
+      ...opencodeMcpServersOf(existing),
       ..._opencodeMcpMap(servers),
     };
-    existing['mcp'] = mergedMcp;
+    existing = withOpencodeMcpServers(existing, mergedServers);
 
     await fs.ensureDir(fs.pathContext.dirname(configPath));
     await fs.atomicWrite(
@@ -69,9 +67,7 @@ final class OpencodeMcpCapability implements McpCapability {
     if (text == null || text.trim().isEmpty) return;
 
     final existing = (jsonDecode(text) as Map).cast<String, Object?>();
-    final mcp =
-        ((existing['mcp'] as Map?)?.cast<String, Object?>() ??
-        <String, Object?>{});
+    final mcp = Map<String, Object?>.of(opencodeMcpServersOf(existing));
     var changed = false;
 
     for (final entry in oauthEntries.values) {
@@ -99,12 +95,21 @@ final class OpencodeMcpCapability implements McpCapability {
 
     if (!changed) return;
 
-    existing['mcp'] = mcp;
     await fs.atomicWrite(
       configPath,
-      const JsonEncoder.withIndent('  ').convert(existing),
+      const JsonEncoder.withIndent(
+        '  ',
+      ).convert(withOpencodeMcpServers(existing, mcp)),
     );
   }
+
+  @override
+  Future<void> maybeRemoveStaleProjectTeammateBus({
+    required Filesystem fs,
+    Map<String, Map<String, Object?>>? extraServers,
+    required String workingDirectory,
+    Iterable<String> additionalDirectories = const [],
+  }) async {}
 }
 
 Future<Map<String, Object?>> _readOAuthEntries(
@@ -137,12 +142,12 @@ Map<String, Object?> _opencodeEntry(McpServerSpec spec) => switch (spec) {
     'type': 'local',
     'command': <String>[s.command, ...s.args],
     if (s.env.isNotEmpty) 'environment': s.env,
-    'enabled': true,
+    'disabled': false,
   },
   RemoteMcpServer r => {
     'type': 'remote',
     'url': r.url,
     if (r.headers.isNotEmpty) 'headers': r.headers,
-    'enabled': true,
+    'disabled': false,
   },
 };

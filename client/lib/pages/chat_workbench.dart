@@ -8,8 +8,8 @@ import 'package:shared_ui/shared_ui.dart';
 import '../widgets/app_toast/app_toast.dart';
 import '../widgets/home_storage_scope.dart';
 
-import '../cubits/chat/model/session_connect_request.dart';
-import '../cubits/chat/model/chat_tab.dart';
+import '../services/chat/session/session_connect_request.dart';
+import '../services/chat/session/chat_tab.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/launch_profile_cubit.dart';
@@ -373,7 +373,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
       }
       final podView = pod?.state.view;
       if (podView != null) return podView;
-      final tab = chatCubit.tabStore.openTabBySessionId(activeId);
+      final tab = chatCubit.tabStore.getOpenTabBySessionId(activeId);
       return tab?.workbenchView ?? SessionWorkbenchView.chat;
     }
 
@@ -411,7 +411,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
           var placeholder = false;
           final sid = slice.activeSessionId;
           if (sid != null && sid.isNotEmpty) {
-            final tab = chatCubit.tabStore.openTabBySessionId(sid);
+            final tab = chatCubit.tabStore.getOpenTabBySessionId(sid);
             final appSession = tab?.persistedSession;
             placeholder =
                 appSession != null && appSession.sessionTeam.trim().isEmpty;
@@ -432,10 +432,11 @@ class _ChatWorkbenchBody extends StatelessWidget {
               if (sid == null || sid.isEmpty) return null;
               final mid = memberId.isNotEmpty
                   ? memberId
-                  : c.tabStore.openTabBySessionId(sid)?.selectedMemberId ?? '';
+                  : c.tabStore.getOpenTabBySessionId(sid)?.selectedMemberId ??
+                        '';
               if (mid.isEmpty) return null;
               return c.tabStore
-                  .openTabBySessionId(sid)
+                  .getOpenTabBySessionId(sid)
                   ?.memberRemoteProvision[mid];
             });
 
@@ -846,7 +847,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
     // Terminal-less ACP session (gemini phase 1): same resolution as the
     // onSubmit branch below — the tab's attached ACP runtime, if any.
     final acpRuntime = chatCubit.tabStore
-        .openTabBySessionId(appSession.sessionId)
+        .getOpenTabBySessionId(appSession.sessionId)
         ?.acpRuntime;
 
     return SessionChatView(
@@ -890,7 +891,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
         // Terminal-less ACP session (gemini phase 1): the prompt goes to the
         // attached ACP runtime — no PTY connect/inject chain.
         final acpRuntime = chatCubit.tabStore
-            .openTabBySessionId(appSession.sessionId)
+            .getOpenTabBySessionId(appSession.sessionId)
             ?.acpRuntime;
         if (acpRuntime != null) {
           final sent = acpRuntime.sendPrompt(message);
@@ -956,6 +957,7 @@ class _ChatWorkbenchBody extends StatelessWidget {
                       directToPty: directToPty,
                     ),
             applyFirstPromptTitle: chatCubit.applyFirstPromptTitle,
+            abortMemberInject: chatCubit.sessionRuntime.abortMemberInject,
           ),
         );
       },

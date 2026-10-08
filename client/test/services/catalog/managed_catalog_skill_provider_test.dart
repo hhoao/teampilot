@@ -35,7 +35,10 @@ void main() {
 
   test('providerId is teampilot-catalog', () {
     expect(
-      ManagedCatalogSkillProvider(sourceDirectory: sourceDir.path, storage: fakeHomeStorage(), ).providerId,
+      ManagedCatalogSkillProvider(
+        sourceDirectory: sourceDir.path,
+        storage: fakeHomeStorage(),
+      ).providerId,
       'teampilot-catalog',
     );
   });
@@ -45,7 +48,7 @@ void main() {
     () async {
       final provider = ManagedCatalogSkillProvider(
         sourceDirectory: sourceDir.path,
-                                                    storage: fakeHomeStorage(),
+        storage: fakeHomeStorage(),
       );
       final contributions = [
         ...await provider.provide(
@@ -84,7 +87,9 @@ void main() {
       await fs.ensureDir(targetConfigDir);
 
       final contributions = [
-        ...await ManagedCatalogSkillProvider(storage: fakeHomeStorage()).provide(
+        ...await ManagedCatalogSkillProvider(
+          storage: fakeHomeStorage(),
+        ).provide(
           SkillProviderContext(
             cli: CliTool.claude,
             scope: const SimpleResourceScope(bundle: ConfigBundle()),
@@ -113,7 +118,7 @@ void main() {
     () async {
       final provider = ManagedCatalogSkillProvider(
         sourceDirectory: sourceDir.path,
-                                                    storage: fakeHomeStorage(),
+        storage: fakeHomeStorage(),
       );
       final contributions = [
         ...await provider.provide(

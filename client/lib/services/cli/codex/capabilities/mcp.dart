@@ -16,7 +16,6 @@ final class CodexMcpCapability implements McpCapability {
     required Filesystem fs,
     required String configDir,
     required List<McpServerSpec> servers,
-    String? outputBasename,
   }) async {
     final configPath = fs.pathContext.join(configDir, configFileName);
     final stat = await fs.stat(configPath);
@@ -53,4 +52,12 @@ final class CodexMcpCapability implements McpCapability {
     await fs.ensureDir(sessionConfigDir);
     await fs.atomicWrite(configPath, merged);
   }
+
+  @override
+  Future<void> maybeRemoveStaleProjectTeammateBus({
+    required Filesystem fs,
+    Map<String, Map<String, Object?>>? extraServers,
+    required String workingDirectory,
+    Iterable<String> additionalDirectories = const [],
+  }) async {}
 }

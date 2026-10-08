@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import '../../models/mcp_server.dart';
 import '../io/filesystem.dart';
-import '../io/local_filesystem.dart';
 
 class McpCatalogService {
   McpCatalogService({required this.catalogPath, required Filesystem fs})

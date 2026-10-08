@@ -22,7 +22,7 @@ class _FakeInspector extends MemberConfigInspector {
           fs: LocalFilesystem(),
         ),
         registry: CliToolRegistry(),
-             storage: fakeHomeStorage(),
+        storage: fakeHomeStorage(),
       );
 
   final MemberConfigDetail _result;
@@ -61,7 +61,7 @@ void main() {
           resolvedDir: '/x',
         ),
       ),
-                                     storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     final states = <MemberConfigStatus>[];
     cubit.stream.listen((s) => states.add(s.status));
@@ -84,7 +84,7 @@ void main() {
         const MemberConfigDetail(cli: CliTool.claude),
         throwIt: true,
       ),
-                                     storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     await cubit.load(
       workspaceId: 'p1',

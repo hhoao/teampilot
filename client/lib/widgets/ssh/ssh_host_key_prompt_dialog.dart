@@ -41,9 +41,7 @@ Future<void> _presentHostKeyPrompt(
 
   final context = appRouter.routerDelegate.navigatorKey.currentContext;
   if (context == null || !context.mounted) {
-    appLogger.w(
-      '[ssh] host-key prompt aborted: navigator context unavailable',
-    );
+    appLogger.w('[ssh] host-key prompt aborted: navigator context unavailable');
     completer.complete(false);
     return;
   }

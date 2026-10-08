@@ -30,15 +30,17 @@ void main() {
       expect(OscTitleExtractor.extractLast('\x1b]0;Incomplete title'), isNull);
     });
 
-    test('recovers when abandoned incomplete OSC is followed by a fresh title', () {
-      const data = '\x1b]0;abandoned\x1b]0;Fresh title\x07';
-      expect(OscTitleExtractor.extractLast(data), 'Fresh title');
-      expect(OscTitleExtractor.extractAll(data), ['Fresh title']);
-    });
+    test(
+      'recovers when abandoned incomplete OSC is followed by a fresh title',
+      () {
+        const data = '\x1b]0;abandoned\x1b]0;Fresh title\x07';
+        expect(OscTitleExtractor.extractLast(data), 'Fresh title');
+        expect(OscTitleExtractor.extractAll(data), ['Fresh title']);
+      },
+    );
 
     test('caps oversized OSC titles', () {
-      final title =
-          '${'a' * OscTitleExtractor.maxOscTitleChars}${'b' * 10000}';
+      final title = '${'a' * OscTitleExtractor.maxOscTitleChars}${'b' * 10000}';
       final data = 'before\x1b]0;$title\x07after';
       final extracted = OscTitleExtractor.extractLast(data);
       expect(extracted, hasLength(OscTitleExtractor.maxOscTitleChars));
@@ -48,8 +50,9 @@ void main() {
       );
       expect(
         extracted.endsWith(
-          'b' * (OscTitleExtractor.maxOscTitleChars -
-              OscTitleExtractor.maxOscTitleChars ~/ 2),
+          'b' *
+              (OscTitleExtractor.maxOscTitleChars -
+                  OscTitleExtractor.maxOscTitleChars ~/ 2),
         ),
         isTrue,
       );

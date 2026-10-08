@@ -26,9 +26,8 @@ class WorkspaceRouteActiveScope extends InheritedWidget {
   /// Must not be called outside build / `didChangeDependencies` (e.g. from
   /// `initState` or event callbacks) — use [maybePeekOf] there.
   static WorkspaceRouteActiveScope? maybeOf(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<
-      WorkspaceRouteActiveScope
-    >();
+    return context
+        .dependOnInheritedWidgetOfExactType<WorkspaceRouteActiveScope>();
   }
 
   static bool routeActiveOf(BuildContext context) {

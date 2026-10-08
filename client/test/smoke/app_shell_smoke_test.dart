@@ -11,7 +11,7 @@ import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
-import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
+import 'package:teampilot/services/chat/session/session_connect_request.dart';
 import 'package:teampilot/router/app_router.dart';
 import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
 import 'package:teampilot/theme/app_theme.dart';
@@ -21,7 +21,6 @@ import '../support/desktop_app_harness.dart';
 import '../support/fake_terminal_session.dart';
 import '../support/post_frame_test_harness.dart';
 import '../support/rust_lib_test_init.dart';
-import 'package:shared_ui/shared_ui.dart';
 import '../support/in_memory_filesystem.dart';
 
 void main() {
@@ -54,11 +53,11 @@ void main() {
               FakeTerminalSession(
                 executable: executable,
                 scrollbackLines: scrollbackLines,
-                                   fs: InMemoryFilesystem(),
+                fs: InMemoryFilesystem(),
               ),
       postFrameScheduler: postFrame.scheduler,
       sessionRepository: desktopHarnessSessionRepo,
-                                 storage: testHomeStorage,
+      storage: testHomeStorage,
     );
     late final Workspace workspace;
     late final Directory workspaceDir;
@@ -142,10 +141,7 @@ void main() {
     final workbenchCubit = tester
         .element(find.byKey(AppKeys.chatWorkspace))
         .read<WorkbenchCubit>();
-    expect(
-      workbenchCubit.centerLandingActive(workspace.workspaceId),
-      isFalse,
-    );
+    expect(workbenchCubit.centerLandingActive(workspace.workspaceId), isFalse);
     expect(
       WorkspacePanePolicy.effective(
         preferences: layoutCubit.state.preferences,

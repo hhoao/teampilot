@@ -30,26 +30,20 @@ class RemoteDownloadHttp {
   RemoteDownloadHttp({
     required http.Client client,
     required RemoteDownloadResolver resolver,
-  })  : _client = client,
-        _resolver = resolver;
+  }) : _client = client,
+       _resolver = resolver;
 
   final http.Client _client;
   final RemoteDownloadResolver _resolver;
 
-  Future<http.Response> get(
-    Uri logical, {
-    Map<String, String>? headers,
-  }) {
+  Future<http.Response> get(Uri logical, {Map<String, String>? headers}) {
     return _tryResponseCandidates(
       logical,
       (uri) => _client.get(uri, headers: headers),
     );
   }
 
-  Future<http.Response> head(
-    Uri logical, {
-    Map<String, String>? headers,
-  }) {
+  Future<http.Response> head(Uri logical, {Map<String, String>? headers}) {
     return _tryResponseCandidates(
       logical,
       (uri) => _client.head(uri, headers: headers),
@@ -78,10 +72,7 @@ class RemoteDownloadHttp {
       }
     }
 
-    throw RemoteDownloadException(
-      failureMessage(attempts),
-      attempts: attempts,
-    );
+    throw RemoteDownloadException(failureMessage(attempts), attempts: attempts);
   }
 
   Future<http.Response> _tryResponseCandidates(
@@ -115,10 +106,7 @@ class RemoteDownloadHttp {
       }
     }
 
-    throw RemoteDownloadException(
-      failureMessage(attempts),
-      attempts: attempts,
-    );
+    throw RemoteDownloadException(failureMessage(attempts), attempts: attempts);
   }
 
   static bool _isSuccessStatus(int statusCode) =>

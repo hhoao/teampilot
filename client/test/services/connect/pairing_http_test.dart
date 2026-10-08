@@ -1,19 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/connect/authorized_keys_file.dart';
 import 'package:teampilot/services/connect/pairing_http.dart';
 import 'package:teampilot/services/connect/pairing_token_gate.dart';
 
 void main() {
   final now = DateTime.utc(2026, 8, 25, 12);
-
-  AuthorizedKeysFile keysFor(List<String> writes) => AuthorizedKeysFile(
-    path: '/keys',
-    read: (_) async => '',
-    write: (_, value) async => writes.add(value),
-    chmod: (_, {required mode}) async {},
-  );
 
   PairingPostBody body(String token, {String publicKey = 'ssh-ed25519 AAAA'}) =>
       PairingPostBody(
@@ -25,11 +17,22 @@ void main() {
 
   test('accepts a valid single-use pairing request', () async {
     final gate = PairingTokenGate();
-    final writes = <String>[];
+    final accepted = <Map<String, String>>[];
     final result = await handlePairingPost(
       body: body(gate.mint(now: now)),
       gate: gate,
-      keys: keysFor(writes),
+      acceptDevice:
+          ({
+            required String deviceId,
+            required String deviceName,
+            required String publicKey,
+          }) async {
+            accepted.add({
+              'deviceId': deviceId,
+              'deviceName': deviceName,
+              'publicKey': publicKey,
+            });
+          },
       now: now,
       profileHint: 'alice-laptop',
       relayGrant: 'grant',
@@ -38,21 +41,45 @@ void main() {
     expect(result.ok, isTrue);
     expect(result.profileHint, 'alice-laptop');
     expect(result.relayGrant, 'grant');
-    expect(writes.single, contains('device=pixel-1'));
+    expect(accepted, [
+      {
+        'deviceId': 'pixel-1',
+        'deviceName': 'Pixel',
+        'publicKey': 'ssh-ed25519 AAAA',
+      },
+    ]);
   });
 
   test('rejects invalid, used, expired, and non-Ed25519 keys', () async {
-    final writes = <String>[];
+    final accepted = <Map<String, String>>[];
+    Future<void> sink({
+      required String deviceId,
+      required String deviceName,
+      required String publicKey,
+    }) async {
+      accepted.add({
+        'deviceId': deviceId,
+        'deviceName': deviceName,
+        'publicKey': publicKey,
+      });
+    }
+
     final invalidGate = PairingTokenGate();
     await expectLater(
       () => handlePairingPost(
         body: body('wrong'),
         gate: invalidGate,
-        keys: keysFor(writes),
+        acceptDevice: sink,
         now: now,
         profileHint: 'desktop',
       ),
-      throwsA(isA<PairingHttpException>()),
+      throwsA(
+        isA<PairingHttpException>().having(
+          (error) => error.code,
+          'code',
+          'invalid',
+        ),
+      ),
     );
 
     final expiredGate = PairingTokenGate();
@@ -61,11 +88,17 @@ void main() {
       () => handlePairingPost(
         body: body(expired),
         gate: expiredGate,
-        keys: keysFor(writes),
+        acceptDevice: sink,
         now: now.add(const Duration(seconds: 2)),
         profileHint: 'desktop',
       ),
-      throwsA(isA<PairingHttpException>()),
+      throwsA(
+        isA<PairingHttpException>().having(
+          (error) => error.code,
+          'code',
+          'used',
+        ),
+      ),
     );
 
     final keyGate = PairingTokenGate();
@@ -73,7 +106,7 @@ void main() {
       () => handlePairingPost(
         body: body(keyGate.mint(now: now), publicKey: 'ssh-rsa AAAA'),
         gate: keyGate,
-        keys: keysFor(writes),
+        acceptDevice: sink,
         now: now,
         profileHint: 'desktop',
       ),
@@ -82,6 +115,35 @@ void main() {
           (error) => error.code,
           'code',
           'badKey',
+        ),
+      ),
+    );
+
+    expect(accepted, isEmpty);
+  });
+
+  test('a device sink rejection surfaces as invalid', () async {
+    final gate = PairingTokenGate();
+    await expectLater(
+      () => handlePairingPost(
+        body: body(gate.mint(now: now)),
+        gate: gate,
+        acceptDevice:
+            ({
+              required String deviceId,
+              required String deviceName,
+              required String publicKey,
+            }) async {
+              throw ArgumentError.value(deviceId, 'deviceId');
+            },
+        now: now,
+        profileHint: 'desktop',
+      ),
+      throwsA(
+        isA<PairingHttpException>().having(
+          (error) => error.code,
+          'code',
+          'invalid',
         ),
       ),
     );

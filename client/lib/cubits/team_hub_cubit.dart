@@ -5,7 +5,7 @@ import '../models/catalog/catalog_types.dart';
 import '../models/discoverable_team.dart';
 import '../models/team_config.dart';
 import '../services/catalog/catalog_source_aggregation.dart';
-import '../services/team/team_clone_service.dart';
+import '../services/team_config/team_clone_service.dart';
 import '../services/team_hub/team_hub_source.dart';
 
 enum TeamHubLoadStatus { idle, loading, ready, error }

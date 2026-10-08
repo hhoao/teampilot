@@ -94,9 +94,7 @@ class WorkspaceRunPlatformFactory {
       detector: _detector,
       extensionPathFor: pathFor,
     );
-    final adapterClient = LaunchAdapterClient(
-      extensionPathResolver: pathFor,
-    );
+    final adapterClient = LaunchAdapterClient(extensionPathResolver: pathFor);
     final store = LaunchConfigStore(
       io: TargetAwareLaunchConfigIo(
         resolveFilesystem: _filesystemForTarget,
@@ -113,15 +111,13 @@ class WorkspaceRunPlatformFactory {
         processExecutor: executor,
         resolver: runTargetResolver,
         emitUiIntent: emitUiIntent,
-        registerTerminalSession: ({
-          required String entryId,
-          required String sessionId,
-        }) {
-          sessionManagerRef?.registerTerminalSession(
-            entryId: entryId,
-            sessionId: sessionId,
-          );
-        },
+        registerTerminalSession:
+            ({required String entryId, required String sessionId}) {
+              sessionManagerRef?.registerTerminalSession(
+                entryId: entryId,
+                sessionId: sessionId,
+              );
+            },
       ),
       launchAdapterClient: adapterClient,
       resolveLaunchType: registry.get,

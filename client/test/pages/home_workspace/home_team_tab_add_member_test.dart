@@ -98,16 +98,10 @@ void main() {
         name: 'Team',
         cli: CliTool.claude,
         roster: [
-          TeamRosterSlot(
-            id: TeamMemberNaming.teamLeadName,
-            expertKey: leadKey,
-          ),
+          TeamRosterSlot(id: TeamMemberNaming.teamLeadName, expertKey: leadKey),
         ],
         members: [
-          TeamMemberConfig(
-            id: TeamMemberNaming.teamLeadName,
-            name: 'Lead',
-          ),
+          TeamMemberConfig(id: TeamMemberNaming.teamLeadName, name: 'Lead'),
         ],
       );
 
@@ -152,8 +146,8 @@ void main() {
       await tester.pumpWidget(
         MultiBlocProvider(
           providers: [
-            
-        RepositoryProvider<HomeStorage>.value(value: testHomeStorage),BlocProvider.value(value: launchCubit),
+            RepositoryProvider<HomeStorage>.value(value: testHomeStorage),
+            BlocProvider.value(value: launchCubit),
             BlocProvider.value(value: expertHubCubit),
             BlocProvider.value(value: cliPresetsCubit),
             BlocProvider.value(value: providerCubit),
@@ -201,10 +195,7 @@ void main() {
 
       expect(find.byType(ExpertLandingPickerDialog), findsNothing);
       expect(launchCubit.state.selectedTeam!.members, hasLength(2));
-      expect(
-        launchCubit.state.selectedTeam!.roster.last.expertKey,
-        expert.key,
-      );
+      expect(launchCubit.state.selectedTeam!.roster.last.expertKey, expert.key);
     },
   );
 }

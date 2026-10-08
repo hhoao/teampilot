@@ -27,7 +27,9 @@ abstract final class OpencodeCredentialMaterializer {
     final id = provider.id.trim();
     return CredentialProbe(
       providerId: id,
-      status: isReady(provider) ? CredentialStatus.ready : CredentialStatus.missing,
+      status: isReady(provider)
+          ? CredentialStatus.ready
+          : CredentialStatus.missing,
       credentialPath: _catalogCredentialLabel(provider),
     );
   }
@@ -63,14 +65,17 @@ abstract final class OpencodeCredentialMaterializer {
     OpencodeCredentialKind kind,
     String apiKey,
     Map<String, Object?> configPatch,
-  })? catalogFieldsFromAuthEntry({
+  })?
+  catalogFieldsFromAuthEntry({
     required String providerId,
     required Object? entry,
     required Map<String, Object?> existingConfig,
   }) {
     if (entry is! Map) return null;
     final map = entry.cast<String, Object?>();
-    if (!OpencodeAuthArtifacts.entryIndicatesReady({providerId: map}, providerId)) {
+    if (!OpencodeAuthArtifacts.entryIndicatesReady({
+      providerId: map,
+    }, providerId)) {
       return null;
     }
 

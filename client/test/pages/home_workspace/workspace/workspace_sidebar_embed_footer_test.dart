@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/session_groups_cubit.dart';
 import 'package:teampilot/cubits/shortcut_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
@@ -73,6 +74,9 @@ void main() {
             child: MultiBlocProvider(
               providers: [
                 BlocProvider<ChatCubit>(lazy: false, create: (_) => chatCubit),
+                BlocProvider(
+                  create: (_) => MemberPresenceCubit(storage: testHomeStorage),
+                ),
                 BlocProvider<WorkbenchCubit>(create: (_) => WorkbenchCubit()),
                 BlocProvider<AutomationCubit>.value(value: automationCubit),
                 BlocProvider<WorktreeCubit>.value(value: worktreeCubit),

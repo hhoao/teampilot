@@ -9,7 +9,7 @@ import '../../cubits/chat_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/board_column.dart';
 import '../../models/team_config.dart';
-import '../../services/team_bus/tasks/team_task.dart';
+import '../../services/chat/team_bus/tasks/team_task.dart';
 
 /// Live read-only task board for a mixed-mode team. Polling is owned by
 /// [RightToolsPanel]. Tapping a claimed card opens the assignee's chat tab.

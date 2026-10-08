@@ -34,8 +34,7 @@ class SkillRegistrySourceConfig {
 
   bool get hasApiToken => apiToken != null && apiToken!.trim().isNotEmpty;
 
-  String get githubUrl =>
-      'https://github.com/$gitOwner/$gitName';
+  String get githubUrl => 'https://github.com/$gitOwner/$gitName';
 
   static String defaultBaseUrl(SkillRegistryProtocol protocol) =>
       switch (protocol) {
@@ -80,12 +79,16 @@ class SkillRegistrySourceConfig {
     'id': id,
     'kind': kind == SkillRegistryKind.api ? 'api' : 'git',
     'label': label,
-    if (kind == SkillRegistryKind.api) 'protocol': protocol == SkillRegistryProtocol.skillsMp ? 'skillsMp' : 'skillsSh',
+    if (kind == SkillRegistryKind.api)
+      'protocol': protocol == SkillRegistryProtocol.skillsMp
+          ? 'skillsMp'
+          : 'skillsSh',
     'enabled': enabled,
     if (kind == SkillRegistryKind.api) ...{
       if (baseUrl != null && baseUrl!.trim().isNotEmpty) 'baseUrl': baseUrl,
       if (hasApiToken) 'apiToken': apiToken!.trim(),
-      if (browseQuery != null && browseQuery!.trim().isNotEmpty) 'browseQuery': browseQuery,
+      if (browseQuery != null && browseQuery!.trim().isNotEmpty)
+        'browseQuery': browseQuery,
     } else ...{
       if (gitOwner != null && gitOwner!.isNotEmpty) 'gitOwner': gitOwner,
       if (gitName != null && gitName!.isNotEmpty) 'gitName': gitName,
@@ -134,8 +137,17 @@ class SkillRegistrySourceConfig {
 
   @override
   int get hashCode => Object.hash(
-    id, kind, label, protocol, enabled, baseUrl, apiToken,
-    browseQuery, gitOwner, gitName, gitBranch,
+    id,
+    kind,
+    label,
+    protocol,
+    enabled,
+    baseUrl,
+    apiToken,
+    browseQuery,
+    gitOwner,
+    gitName,
+    gitBranch,
   );
 }
 
@@ -159,7 +171,9 @@ class SkillRegistriesConfig {
         kind: SkillRegistryKind.api,
         label: 'skills.sh',
         protocol: SkillRegistryProtocol.skillsSh,
-        baseUrl: SkillRegistrySourceConfig.defaultBaseUrl(SkillRegistryProtocol.skillsSh),
+        baseUrl: SkillRegistrySourceConfig.defaultBaseUrl(
+          SkillRegistryProtocol.skillsSh,
+        ),
         browseQuery: 'ai',
       ),
       SkillRegistrySourceConfig(
@@ -167,7 +181,9 @@ class SkillRegistriesConfig {
         kind: SkillRegistryKind.api,
         label: 'SkillsMP',
         protocol: SkillRegistryProtocol.skillsMp,
-        baseUrl: SkillRegistrySourceConfig.defaultBaseUrl(SkillRegistryProtocol.skillsMp),
+        baseUrl: SkillRegistrySourceConfig.defaultBaseUrl(
+          SkillRegistryProtocol.skillsMp,
+        ),
       ),
       for (final (owner, name, branch) in _defaultGitRepos)
         SkillRegistrySourceConfig(
@@ -197,7 +213,9 @@ class SkillRegistriesConfig {
     if (raw is! List || raw.isEmpty) return defaults();
     final parsed = raw
         .whereType<Map>()
-        .map((m) => SkillRegistrySourceConfig.fromJson(m.cast<String, Object?>()))
+        .map(
+          (m) => SkillRegistrySourceConfig.fromJson(m.cast<String, Object?>()),
+        )
         .toList();
     final byId = <String, SkillRegistrySourceConfig>{
       for (final s in parsed) s.id: s,

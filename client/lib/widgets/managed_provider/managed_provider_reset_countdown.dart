@@ -8,11 +8,7 @@ import '../../l10n/l10n_extensions.dart';
 class ManagedProviderResetCountdown {
   const ManagedProviderResetCountdown._();
 
-  static String? label(
-    AppLocalizations l10n,
-    int? resetsAt, {
-    DateTime? now,
-  }) {
+  static String? label(AppLocalizations l10n, int? resetsAt, {DateTime? now}) {
     if (resetsAt == null) return null;
     final nowMs = (now ?? DateTime.now()).millisecondsSinceEpoch;
     final remainingMs = resetsAt - nowMs;

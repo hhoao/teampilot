@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/flashskyai/capabilities/stop_idle_hook.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_handler.dart';
-import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_handler.dart';
+import 'package:teampilot/services/chat/team_bus/member_bus_idle_endpoint.dart';
 
 void main() {
   const idle = MemberBusIdleEndpoint(url: 'http://127.0.0.1:54321/idle');

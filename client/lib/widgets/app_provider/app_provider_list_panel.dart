@@ -375,9 +375,11 @@ class _ProviderListTile extends StatelessWidget {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
-    final hasModelCount = CliToolRegistry.builtIn()
-        .capability<ProviderCapability>(provider.cli)
-        ?.showModelCount == true;
+    final hasModelCount =
+        CliToolRegistry.builtIn()
+            .capability<ProviderCapability>(provider.cli)
+            ?.showModelCount ==
+        true;
     final subtitle = hasModelCount
         ? l10n.providerListModelCount(providerModelCount(provider))
         : l10n.appProviderToolLabel(provider.cli);

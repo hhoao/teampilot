@@ -7,7 +7,10 @@ import '../services/storage/workspace_layout.dart';
 import '../utils/logging/logger.dart';
 
 class _WorkspaceAutomationStore {
-  const _WorkspaceAutomationStore({required this.automations, required this.runs});
+  const _WorkspaceAutomationStore({
+    required this.automations,
+    required this.runs,
+  });
 
   final List<Automation> automations;
   final List<AutomationRun> runs;
@@ -74,7 +77,9 @@ class AutomationRepository {
         .where(
           (a) =>
               a.sessionId == trimmedSession ||
-              (a.isLaunchPrompt && a.reuseSession && a.sessionId == trimmedSession),
+              (a.isLaunchPrompt &&
+                  a.reuseSession &&
+                  a.sessionId == trimmedSession),
         )
         .toList(growable: false);
   }
@@ -171,10 +176,7 @@ class AutomationRepository {
     await upsertRun(workspaceId, run);
   }
 
-  Future<void> disableForSession(
-    String workspaceId,
-    String sessionId,
-  ) async {
+  Future<void> disableForSession(String workspaceId, String sessionId) async {
     final trimmedSession = sessionId.trim();
     final store = await _readStore(workspaceId);
     var changed = false;

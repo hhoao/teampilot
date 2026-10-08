@@ -72,8 +72,7 @@ const _deepSeekEditorSchema = ManagedProviderEditorSchema(
       key: 'endpointConfig.windows',
       kind: ManagedProviderEditorFieldKind.json,
       required: false,
-      defaultValue:
-          r'''[
+      defaultValue: r'''[
   {
     "label": "USD",
     "remaining": "$.balance_infos[0].total_balance"

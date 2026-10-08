@@ -34,12 +34,14 @@ class SkillPackInstallRecord {
     final envRaw = json['envExports'];
     return SkillPackInstallRecord(
       packId: (json['packId'] as String?)?.trim() ?? '',
-      skillIds: (json['skillIds'] as List?)
+      skillIds:
+          (json['skillIds'] as List?)
               ?.map((e) => e.toString())
               .where((e) => e.isNotEmpty)
               .toList(growable: false) ??
           const [],
-      pathExports: (json['pathExports'] as List?)
+      pathExports:
+          (json['pathExports'] as List?)
               ?.map((e) => e.toString())
               .where((e) => e.isNotEmpty)
               .toList(growable: false) ??
@@ -71,8 +73,7 @@ class SkillPackInstallStore {
 
   Filesystem get _fs => _fsOverride ?? _storage.fs;
 
-  String get _root =>
-      _rootOverride ?? _storage.paths.skillPacksInstallDir;
+  String get _root => _rootOverride ?? _storage.paths.skillPacksInstallDir;
 
   static String safePackId(String packId) =>
       packId.trim().replaceAll(RegExp(r'[^a-zA-Z0-9._-]+'), '__');

@@ -72,6 +72,18 @@ class WorkspaceProjectConfigRepository {
     return next;
   }
 
+  /// Workspace directory names under `workspace/workspaces/`.
+  Future<List<String>> listWorkspaceIds() async {
+    final dir = _layout.workspacesDir;
+    final stat = await _fs.stat(dir);
+    if (!stat.isDirectory) return const [];
+    final entries = await _fs.listDir(dir);
+    return [
+      for (final entry in entries)
+        if (entry.isDirectory && entry.name.trim().isNotEmpty) entry.name,
+    ];
+  }
+
   void invalidate(String workspaceId) {
     _cache.remove(workspaceId.trim());
   }

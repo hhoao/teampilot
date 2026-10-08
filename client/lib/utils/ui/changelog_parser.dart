@@ -73,10 +73,7 @@ class ChangelogData {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          entry.version,
-          style: styles.smSemibold,
-        ),
+        Text(entry.version, style: styles.smSemibold),
         const SizedBox(height: 6),
         for (final item in entry.items)
           Padding(

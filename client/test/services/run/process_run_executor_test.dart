@@ -76,7 +76,7 @@ RunTargetPlan get localPlan => RunTargetPlan(
 void main() {
   test('process executor runs command and reports exit 0', () async {
     final spawner = FakeSpawner();
-    final exec = ProcessRunExecutor(spawner: spawner);
+    final exec = ProcessRunExecutor(spawner: spawner.call);
     final result = await exec.start(
       sessionId: 's1',
       command: 'true',
@@ -93,7 +93,7 @@ void main() {
   test('process executor forwards stdout output', () async {
     final spawner = FakeSpawner()
       ..stdout = Stream.value(utf8.encode('hello\n'));
-    final exec = ProcessRunExecutor(spawner: spawner);
+    final exec = ProcessRunExecutor(spawner: spawner.call);
     final outputs = <ProcessRunOutput>[];
     await exec.start(
       sessionId: 's1',
@@ -111,7 +111,7 @@ void main() {
 
   test('process executor stop kills the process', () async {
     final spawner = FakeSpawner();
-    final exec = ProcessRunExecutor(spawner: spawner);
+    final exec = ProcessRunExecutor(spawner: spawner.call);
     final result = await exec.start(
       sessionId: 's1',
       command: 'sleep',

@@ -215,7 +215,7 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
   bool _hasCompletedOnboarding;
   bool _autoCheckUpdatesEnabled;
   String? _skippedUpdateVersion;
-  String? _skillsMpApiKey;
+  final String? _skillsMpApiKey;
   bool _discoveryAutoRefreshEnabled;
 
   @override

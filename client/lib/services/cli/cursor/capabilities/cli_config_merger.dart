@@ -1,5 +1,6 @@
 import '../../../catalog/catalog_mcp_policy.dart';
-import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
+import '../../../ssh/mcp/session_ssh_mcp_policy.dart';
+import '../../../chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../provider/cursor_cli_config_policy.dart';
 
 /// Pure helpers for session warm-tier `cli-config.base.json` and per-member merge.
@@ -23,8 +24,8 @@ abstract final class CursorCliConfigMerger {
       warm['network'] = network;
     }
 
-    final userPermissions =
-        (userConfig['permissions'] as Map?)?.cast<String, Object?>();
+    final userPermissions = (userConfig['permissions'] as Map?)
+        ?.cast<String, Object?>();
     if (userPermissions != null) {
       final permissions = <String, Object?>{};
 
@@ -60,8 +61,7 @@ abstract final class CursorCliConfigMerger {
     for (final entry in memberOverrides.entries) {
       if (entry.key == 'permissions' && entry.value is Map) {
         merged['permissions'] = _mergePermissions(
-          (merged['permissions'] as Map?)?.cast<String, Object?>() ??
-              const {},
+          (merged['permissions'] as Map?)?.cast<String, Object?>() ?? const {},
           (entry.value as Map).cast<String, Object?>(),
         );
       } else {
@@ -69,11 +69,14 @@ abstract final class CursorCliConfigMerger {
       }
     }
 
-    return CursorCliConfigPolicy.applyCatalogReadPolicy(
-      CursorCliConfigPolicy.applyMixedTeamSessionPolicy(merged),
-      cursorEntries: CatalogMcpPolicy.cursorAllowEntries(
-        CatalogMcpPolicy.advertisedRegistry(),
+    return CursorCliConfigPolicy.applySessionSshMcpPolicy(
+      CursorCliConfigPolicy.applyCatalogReadPolicy(
+        CursorCliConfigPolicy.applyMixedTeamSessionPolicy(merged),
+        cursorEntries: CatalogMcpPolicy.cursorAllowEntries(
+          CatalogMcpPolicy.advertisedRegistry(),
+        ),
       ),
+      cursorEntries: SessionSshMcpPolicy.cursorAllowEntries,
     );
   }
 

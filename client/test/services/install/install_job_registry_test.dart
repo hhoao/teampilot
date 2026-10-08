@@ -8,7 +8,6 @@ import 'package:teampilot/models/install_job/install_job_cancelled_exception.dar
 import 'package:teampilot/models/install_job/install_job_key.dart';
 import 'package:teampilot/models/install_job/install_job_snapshot.dart';
 import 'package:teampilot/models/install_job/install_job_spec.dart';
-import 'package:teampilot/models/progress_activity.dart';
 import 'package:teampilot/services/install/install_job_registry.dart';
 import 'package:teampilot/services/notification/notification_recorder.dart';
 
@@ -127,10 +126,7 @@ void main() {
 
       registry.requestCancel(key);
 
-      await expectLater(
-        future,
-        throwsA(isA<InstallJobCancelledException>()),
-      );
+      await expectLater(future, throwsA(isA<InstallJobCancelledException>()));
       await waitUntil(
         () => snapshots.last.phase == InstallJobPhase.cancelled,
         timeout: const Duration(seconds: 5),

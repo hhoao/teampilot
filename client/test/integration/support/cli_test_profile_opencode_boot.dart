@@ -14,7 +14,8 @@ Future<void> dismissOpencodeBootGates(TerminalSession session) async {
   while (DateTime.now().isBefore(deadline)) {
     await session.probe.syncDisplayGrid();
     final frame = session.probe.describeProbeWindow(scanRows: 52);
-    final needsEsc = frame.contains('Update Available') ||
+    final needsEsc =
+        frame.contains('Update Available') ||
         frame.contains('scenario exhausted') ||
         frame.contains('Internal Server Error') ||
         frame.contains('retryin');
@@ -52,13 +53,14 @@ Future<bool> bootOpencodeToPrompt(TerminalSession session) async {
       continue;
     }
 
-    final atComposer = frame.contains(kOpencodeComposerHint) ||
+    final atComposer =
+        frame.contains(kOpencodeComposerHint) ||
         frame.contains(kOpencodeComposerPrefix);
     final settled = !session.activityTracker.isWorking;
-    final errorRetry = frame.contains('scenario exhausted') ||
+    final errorRetry =
+        frame.contains('scenario exhausted') ||
         frame.contains('Internal Server Error');
-    if (errorRetry &&
-        DateTime.now().difference(lastEsc).inMilliseconds > 600) {
+    if (errorRetry && DateTime.now().difference(lastEsc).inMilliseconds > 600) {
       session.input.writeToPty('\x1b');
       lastEsc = DateTime.now();
       stableReads = 0;

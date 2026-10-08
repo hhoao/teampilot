@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-
 class ChatWorkbenchSessionLoadingView extends StatelessWidget {
   const ChatWorkbenchSessionLoadingView({super.key, required this.message});
 

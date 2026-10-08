@@ -41,10 +41,7 @@ class RunConfigurationsDialog extends StatelessWidget {
   }
 
   Future<void> _create(BuildContext context) async {
-    await createRunConfiguration(
-      context,
-      workspaceId: workspaceId,
-    );
+    await createRunConfiguration(context, workspaceId: workspaceId);
   }
 }
 

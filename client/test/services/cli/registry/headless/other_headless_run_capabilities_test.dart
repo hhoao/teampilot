@@ -11,8 +11,6 @@ import 'package:teampilot/services/cli/cursor/capabilities/headless.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_launch_environment.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/headless.dart';
-import 'package:teampilot/services/cli/flashskyai/capabilities/headless.dart';
-
 HeadlessRunContext ctx({String effort = '', String model = 'm'}) =>
     HeadlessRunContext(
       prompt: 'P',
@@ -103,13 +101,12 @@ void main() {
       CliToolRegistry.builtIn().tryGet(CliTool.opencode)!,
       run,
     );
-    expect(args.first, 'run');
+    expect(args, containsAllInOrder(['--standalone', 'run']));
     expect(args, containsAllInOrder(['--model', 'm', 'P']));
     expect(cap.buildEnvironment(run)['OPENCODE_CONFIG_DIR'], '/tmp/c');
   });
 
   test('flashskyai: -p print mode', () {
-    const cap = FlashskyaiHeadlessCapability();
     final args = const CliLaunchArgAssembler().assembleHeadless(
       CliToolRegistry.builtIn().tryGet(CliTool.flashskyai)!,
       ctx(),

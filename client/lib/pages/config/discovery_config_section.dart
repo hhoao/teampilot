@@ -68,11 +68,7 @@ class _DiscoveryAutoRefreshRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(
-            Icons.storefront_outlined,
-            size: 22,
-            color: cs.onSurfaceVariant,
-          ),
+          Icon(Icons.storefront_outlined, size: 22, color: cs.onSurfaceVariant),
           const SizedBox(width: 14),
           Expanded(
             child: Column(

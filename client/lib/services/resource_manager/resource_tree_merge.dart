@@ -73,7 +73,8 @@ ResourceTreeViewModel mergeResourceTree({
   required List<ResourceBinding> bindings,
   ResourceMemorySnapshot? snapshot,
 }) {
-  final leafMetrics = snapshot?.leafMetrics ?? const <String, ResourceLeafMetrics>{};
+  final leafMetrics =
+      snapshot?.leafMetrics ?? const <String, ResourceLeafMetrics>{};
   final grouped = <String, _GroupAccumulator>{};
 
   for (final binding in bindings) {
@@ -123,8 +124,7 @@ ResourceTreeViewModel mergeResourceTree({
       aggregateMemoryBytes: acc.memorySum,
       memoryHistory: snapshot?.groupHistory[acc.groupKey] ?? const [],
     );
-  }).toList()
-    ..sort(_compareGroups);
+  }).toList()..sort(_compareGroups);
 
   return ResourceTreeViewModel(
     terminalCount: bindings.length,
@@ -135,10 +135,7 @@ ResourceTreeViewModel mergeResourceTree({
 }
 
 class _GroupAccumulator {
-  _GroupAccumulator({
-    required this.groupKey,
-    required this.groupLabel,
-  });
+  _GroupAccumulator({required this.groupKey, required this.groupLabel});
 
   final String groupKey;
   final String groupLabel;

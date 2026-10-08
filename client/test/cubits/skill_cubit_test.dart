@@ -172,7 +172,12 @@ void main() {
 
   test('manual mode syncs repos without disk cache once', () async {
     final fetch = _FakeSkillFetch();
-    final cubit = cubitWithRepos(SkillRepository(storage: HomeStorage(testHomeStorage.context), fetch: fetch));
+    final cubit = cubitWithRepos(
+      SkillRepository(
+        storage: HomeStorage(testHomeStorage.context),
+        fetch: fetch,
+      ),
+    );
 
     await cubit.ensureDiscoveryLoaded();
 

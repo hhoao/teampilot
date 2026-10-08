@@ -20,6 +20,20 @@ import 'workspace_list_tile.dart';
 import 'workspace_pane_animations.dart';
 import 'workspace_sort.dart';
 
+/// Outer height of [WorkspacesIconChip] (border + 7px padding ×2 + [md] icon).
+double _workspacesToolbarControlHeight(BuildContext context) {
+  return 2 + context.tpIconSizes.md + 14;
+}
+
+double _workspacesFilterFieldVerticalPadding(
+  double controlHeight,
+  double fontSize,
+) {
+  const lineHeight = 1.2;
+  final textBlock = fontSize * lineHeight;
+  return ((controlHeight - textBlock) / 2).clamp(0, 8);
+}
+
 class WorkspacesTab extends StatelessWidget {
   const WorkspacesTab({
     super.key,
@@ -29,6 +43,8 @@ class WorkspacesTab extends StatelessWidget {
     required this.onToggleView,
     required this.workspaceSort,
     required this.onWorkspaceSortChanged,
+    required this.workspaceFilterController,
+    required this.onWorkspaceFilterChanged,
     required this.favoriteWorkspaceIds,
     required this.onToggleWorkspaceFavorite,
   });
@@ -39,6 +55,8 @@ class WorkspacesTab extends StatelessWidget {
   final ValueChanged<bool> onToggleView;
   final WorkspaceSort workspaceSort;
   final ValueChanged<WorkspaceSort> onWorkspaceSortChanged;
+  final TextEditingController workspaceFilterController;
+  final ValueChanged<String> onWorkspaceFilterChanged;
   final Set<String> favoriteWorkspaceIds;
   final Future<void> Function(String workspaceId) onToggleWorkspaceFavorite;
 
@@ -52,12 +70,15 @@ class WorkspacesTab extends StatelessWidget {
           onToggleView: onToggleView,
           workspaceSort: workspaceSort,
           onWorkspaceSortChanged: onWorkspaceSortChanged,
+          filterController: workspaceFilterController,
+          onFilterChanged: onWorkspaceFilterChanged,
         ),
         const SizedBox(height: 16),
         Expanded(
           child: WorkspacesListBody(
             gridView: gridView,
             workspaceSort: workspaceSort,
+            workspaceFilterQuery: workspaceFilterController.text,
             favoriteWorkspaceIds: favoriteWorkspaceIds,
             onToggleWorkspaceFavorite: onToggleWorkspaceFavorite,
           ),
@@ -73,12 +94,14 @@ class WorkspacesListBody extends StatelessWidget {
     super.key,
     required this.gridView,
     required this.workspaceSort,
+    required this.workspaceFilterQuery,
     required this.favoriteWorkspaceIds,
     required this.onToggleWorkspaceFavorite,
   });
 
   final bool gridView;
   final WorkspaceSort workspaceSort;
+  final String workspaceFilterQuery;
   final Set<String> favoriteWorkspaceIds;
   final Future<void> Function(String workspaceId) onToggleWorkspaceFavorite;
 
@@ -92,10 +115,20 @@ class WorkspacesListBody extends StatelessWidget {
     final suppressMotion = context.select<AppBootstrapCubit, bool>(
       (c) => c.state.suppressHomeEntryMotion,
     );
+    final l10n = context.l10n;
+    final filteredWorkspaces = filterWorkspacesByQuery(
+      workspaces: workspaces,
+      query: workspaceFilterQuery,
+      displayName: (workspace) => workspace.localizedName(l10n),
+    );
     final content = workspaces.isEmpty
         ? const HomeEmptyWorkspaces()
+        : filteredWorkspaces.isEmpty
+        ? HomeEmptyWorkspaceFilterResults(
+            query: workspaceFilterQuery.trim(),
+          )
         : WorkspaceCollection(
-            workspaces: workspaces,
+            workspaces: filteredWorkspaces,
             sessions: sessions,
             gridView: gridView,
             workspaceSort: workspaceSort,
@@ -119,23 +152,39 @@ class WorkspacesToolbar extends StatelessWidget {
     required this.onToggleView,
     required this.workspaceSort,
     required this.onWorkspaceSortChanged,
+    required this.filterController,
+    required this.onFilterChanged,
   });
 
   final bool gridView;
   final ValueChanged<bool> onToggleView;
   final WorkspaceSort workspaceSort;
   final ValueChanged<WorkspaceSort> onWorkspaceSortChanged;
+  final TextEditingController filterController;
+  final ValueChanged<String> onFilterChanged;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         WorkspacesViewToggle(gridView: gridView, onToggleView: onToggleView),
         const SizedBox(width: 8),
         WorkspacesSortButton(
           workspaceSort: workspaceSort,
           onWorkspaceSortChanged: onWorkspaceSortChanged,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: WorkspacesFilterField(
+              controller: filterController,
+              hintText: l10n.homeWorkspaceWorkspaceFilterHint,
+              onChanged: onFilterChanged,
+            ),
+          ),
         ),
         const Spacer(),
         Flexible(
@@ -163,6 +212,130 @@ class WorkspacesToolbar extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class WorkspacesFilterField extends StatefulWidget {
+  const WorkspacesFilterField({
+    super.key,
+    required this.controller,
+    required this.hintText,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final String hintText;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<WorkspacesFilterField> createState() => _WorkspacesFilterFieldState();
+}
+
+class _WorkspacesFilterFieldState extends State<WorkspacesFilterField> {
+  final _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_onFocusChanged);
+  }
+
+  @override
+  void dispose() {
+    _focusNode
+      ..removeListener(_onFocusChanged)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onFocusChanged() => setState(() {});
+
+  void _clear() {
+    widget.controller.clear();
+    widget.onChanged('');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final styles = TpTextStyles.of(context);
+    final focused = _focusNode.hasFocus;
+    final borderColor = focused
+        ? cs.primary.withValues(alpha: 0.5)
+        : cs.outlineVariant.withValues(alpha: 0.7);
+
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: widget.controller,
+      builder: (context, value, _) {
+        final controlHeight = _workspacesToolbarControlHeight(context);
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          height: controlHeight,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainer,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: borderColor),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.search_rounded,
+                size: context.tpIconSizes.sm,
+                color: cs.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Theme(
+                  data: Theme.of(context).copyWith(
+                    splashFactory: NoSplash.splashFactory,
+                    highlightColor: Colors.transparent,
+                    hoverColor: Colors.transparent,
+                  ),
+                  child: TextField(
+                    controller: widget.controller,
+                    focusNode: _focusNode,
+                    maxLines: 1,
+                    style: styles.md.copyWith(color: cs.onSurface),
+                    textAlignVertical: TextAlignVertical.center,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: widget.hintText,
+                      hintStyle: styles.mdColored(
+                        cs.onSurfaceVariant.withValues(alpha: 0.75),
+                      ),
+                      filled: true,
+                      fillColor: Colors.transparent,
+                      hoverColor: Colors.transparent,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                        vertical: _workspacesFilterFieldVerticalPadding(
+                          controlHeight,
+                          styles.md.fontSize ?? 14,
+                        ),
+                      ),
+                    ),
+                    onChanged: widget.onChanged,
+                  ),
+                ),
+              ),
+              if (value.text.isNotEmpty)
+                TpIconButton(
+                  icon: Icons.clear_rounded,
+                  compact: true,
+                  size: TpIconButton.kCompactSize,
+                  onTap: _clear,
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -395,16 +568,9 @@ class _WorkspacesPrimaryActionState extends State<WorkspacesPrimaryAction> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            widget.icon,
-            size: context.tpIconSizes.md,
-            color: cs.onPrimary,
-          ),
+          Icon(widget.icon, size: context.tpIconSizes.md, color: cs.onPrimary),
           const SizedBox(width: 7),
-          Text(
-            widget.label,
-            style: styles.mdColored(cs.onPrimary),
-          ),
+          Text(widget.label, style: styles.mdColored(cs.onPrimary)),
         ],
       ),
     );
@@ -591,6 +757,39 @@ class WorkspaceList extends StatelessWidget {
   }
 }
 
+class HomeEmptyWorkspaceFilterResults extends StatelessWidget {
+  const HomeEmptyWorkspaceFilterResults({super.key, required this.query});
+
+  final String query;
+
+  @override
+  Widget build(BuildContext context) {
+    if (query.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final cs = Theme.of(context).colorScheme;
+    final styles = TpTextStyles.of(context);
+    final l10n = context.l10n;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.search_off_outlined,
+            size: context.tpIconSizes.md,
+            color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            l10n.homeWorkspaceWorkspaceFilterEmpty,
+            style: styles.mdColored(cs.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class HomeEmptyWorkspaces extends StatelessWidget {
   const HomeEmptyWorkspaces({super.key});
 
@@ -615,7 +814,8 @@ class HomeEmptyWorkspaces extends StatelessWidget {
           ),
           Text(
             l10n.homeWorkspaceEmptyWorkspacesHint,
-            style: styles.smColored(cs.onSurfaceVariant.withValues(alpha: 0.75),
+            style: styles.smColored(
+              cs.onSurfaceVariant.withValues(alpha: 0.75),
             ),
           ),
         ],

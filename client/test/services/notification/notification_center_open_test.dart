@@ -26,46 +26,50 @@ void main() {
     expect(navigated, ['/home-v2/workspace/w1?session=s1']);
   });
 
-  test('openNotificationCenterItem marks read without navigate when no payload',
-      () async {
-    final marked = <String>[];
-    final navigated = <String>[];
-    final notification = AppNotification(
-      id: 'n2',
-      variant: TpToastVariant.error,
-      message: 'Failed',
-      createdAt: DateTime(2026, 7, 19),
-    );
+  test(
+    'openNotificationCenterItem marks read without navigate when no payload',
+    () async {
+      final marked = <String>[];
+      final navigated = <String>[];
+      final notification = AppNotification(
+        id: 'n2',
+        variant: TpToastVariant.error,
+        message: 'Failed',
+        createdAt: DateTime(2026, 7, 19),
+      );
 
-    await openNotificationCenterItem(
-      notification: notification,
-      markRead: (id) async => marked.add(id),
-      go: navigated.add,
-    );
+      await openNotificationCenterItem(
+        notification: notification,
+        markRead: (id) async => marked.add(id),
+        go: navigated.add,
+      );
 
-    expect(marked, ['n2']);
-    expect(navigated, isEmpty);
-  });
+      expect(marked, ['n2']);
+      expect(navigated, isEmpty);
+    },
+  );
 
-  test('openNotificationCenterItem marks read without navigate for non-workspace',
-      () async {
-    final marked = <String>[];
-    final navigated = <String>[];
-    final notification = AppNotification(
-      id: 'n3',
-      variant: TpToastVariant.warning,
-      message: 'Warn',
-      createdAt: DateTime(2026, 7, 19),
-      payload: '/config/layout',
-    );
+  test(
+    'openNotificationCenterItem marks read without navigate for non-workspace',
+    () async {
+      final marked = <String>[];
+      final navigated = <String>[];
+      final notification = AppNotification(
+        id: 'n3',
+        variant: TpToastVariant.warning,
+        message: 'Warn',
+        createdAt: DateTime(2026, 7, 19),
+        payload: '/config/layout',
+      );
 
-    await openNotificationCenterItem(
-      notification: notification,
-      markRead: (id) async => marked.add(id),
-      go: navigated.add,
-    );
+      await openNotificationCenterItem(
+        notification: notification,
+        markRead: (id) async => marked.add(id),
+        go: navigated.add,
+      );
 
-    expect(marked, ['n3']);
-    expect(navigated, isEmpty);
-  });
+      expect(marked, ['n3']);
+      expect(navigated, isEmpty);
+    },
+  );
 }

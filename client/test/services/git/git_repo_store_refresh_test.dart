@@ -50,7 +50,9 @@ void main() {
     expect(b.refreshCalls, 2);
 
     // 间隔过后：全部 root 再保缓存一次。
-    now = now.add(GitRepoStore.backgroundRefreshInterval + const Duration(seconds: 1));
+    now = now.add(
+      GitRepoStore.backgroundRefreshInterval + const Duration(seconds: 1),
+    );
     store.refreshAll(
       ['/repo-a', '/repo-b'],
       workContext: context,
@@ -125,5 +127,18 @@ void main() {
     now = now.add(const Duration(seconds: 1));
     store.refreshAll(['/repo'], workContext: context);
     expect(cubit.refreshCalls, 2, reason: '单 root 无降频，行为与历史一致');
+  });
+
+  test('notifyHeadChanged publishes the repo root on headChanged', () async {
+    final store = GitRepoStore();
+    addTearDown(store.dispose);
+    final seen = <String>[];
+    final sub = store.headChanged.listen(seen.add);
+    addTearDown(sub.cancel);
+
+    store.notifyHeadChanged('/repo-a');
+    store.notifyHeadChanged('  '); // 空白被忽略
+    await Future<void>.delayed(Duration.zero);
+    expect(seen, ['/repo-a']);
   });
 }

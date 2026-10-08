@@ -64,39 +64,39 @@ class _TeamLandingPickerLocalCardState
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    TeamMonogram(seed: team.id, label: team.name),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        team.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: styles.mdSemiboldColored(cs.onSurface),
-                      ),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  TeamMonogram(seed: team.id, label: team.name),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      team.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: styles.mdSemiboldColored(cs.onSurface),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: Text(
-                    team.description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: styles.mutedMd,
                   ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: Text(
+                  team.description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: styles.mutedMd,
                 ),
-                TeamStatChip(
-                  icon: Icons.people_alt_outlined,
-                  label: l10n.myTeamsMemberCount(team.roster.length),
-                ),
-              ],
-            ),
+              ),
+              TeamStatChip(
+                icon: Icons.people_alt_outlined,
+                label: l10n.myTeamsMemberCount(team.roster.length),
+              ),
+            ],
           ),
         ),
+      ),
     );
   }
 }

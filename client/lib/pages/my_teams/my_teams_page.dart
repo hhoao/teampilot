@@ -141,7 +141,8 @@ class _MyTeamsPageState extends State<MyTeamsPage> {
           ),
           Expanded(
             child: BlocBuilder<LaunchProfileCubit, LaunchProfileState>(
-              buildWhen: (a, b) => a.teams != b.teams || a.isLoading != b.isLoading,
+              buildWhen: (a, b) =>
+                  a.teams != b.teams || a.isLoading != b.isLoading,
               builder: (context, state) {
                 if (state.isLoading) {
                   return const Center(child: CircularProgressIndicator());

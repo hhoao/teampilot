@@ -3,7 +3,7 @@ import '../../models/config_bundle.dart';
 import '../../models/discoverable_member.dart';
 import '../../models/team_config.dart';
 import '../../models/team_roster_slot.dart';
-import '../team/team_clone_service.dart';
+import '../team_config/team_clone_service.dart';
 import 'composite_expert_hub_source.dart';
 import 'expert_capability_pack.dart';
 import 'expert_member_materializer.dart';

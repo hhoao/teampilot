@@ -41,14 +41,22 @@ class PhoneRelayTunnel {
     if (_server != null) {
       throw StateError('Tunnel is already open');
     }
-    final server = await ServerSocket.bind(
-      InternetAddress.loopbackIPv4,
-      0,
-    );
+    final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
     _server = server;
     server.listen(
-      (client) => unawaited(_bridge(client, _dialUrl(relayUrl, hostId, channel,
-          deviceId, inviteToken, relayGrant))),
+      (client) => unawaited(
+        _bridge(
+          client,
+          _dialUrl(
+            relayUrl,
+            hostId,
+            channel,
+            deviceId,
+            inviteToken,
+            relayGrant,
+          ),
+        ),
+      ),
       onError: (Object _) {},
       cancelOnError: false,
     );

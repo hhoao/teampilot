@@ -65,17 +65,19 @@ class _SpyLogger implements AppLogger {
 }
 
 void main() {
-  test('dispatch returns before handlers run; order preserved globally',
-      () async {
-    final d = AsyncDispatcher()..start();
-    final r = _Recorder();
-    d.registerFamily<_FamKind>(_FamKind, r);
-    d.dispatch(_FamEvent(_FamKind.ping, DateTime(2026), 'a'));
-    expect(r.tags, isEmpty); // enqueue-only, not yet consumed
-    d.dispatch(_FamEvent(_FamKind.pong, DateTime(2026), 'b'));
-    await d.stop(); // drains
-    expect(r.tags, ['a', 'b']);
-  });
+  test(
+    'dispatch returns before handlers run; order preserved globally',
+    () async {
+      final d = AsyncDispatcher()..start();
+      final r = _Recorder();
+      d.registerFamily<_FamKind>(_FamKind, r);
+      d.dispatch(_FamEvent(_FamKind.ping, DateTime(2026), 'a'));
+      expect(r.tags, isEmpty); // enqueue-only, not yet consumed
+      d.dispatch(_FamEvent(_FamKind.pong, DateTime(2026), 'b'));
+      await d.stop(); // drains
+      expect(r.tags, ['a', 'b']);
+    },
+  );
 
   test('routes by family; unregistered families dropped silently', () async {
     final d = AsyncDispatcher()..start();
@@ -112,39 +114,44 @@ void main() {
     expect(r.tags, isEmpty);
   });
 
-  test('handler exception is isolated; subsequent events still processed',
-      () async {
-    final d = AsyncDispatcher()..start();
-    final good = _Recorder();
-    d.registerFamily<_FamKind>(_FamKind, _ThrowingHandler());
-    d.registerFamily<_FamKind>(_FamKind, good);
-    d.dispatch(_FamEvent(_FamKind.ping, DateTime(2026), '1'));
-    d.dispatch(_FamEvent(_FamKind.ping, DateTime(2026), '2'));
-    await d.stop();
-    // A throwing handler neither blocks other handlers for the same event
-    // nor subsequent events.
-    expect(good.tags, ['1', '2']);
-  });
+  test(
+    'handler exception is isolated; subsequent events still processed',
+    () async {
+      final d = AsyncDispatcher()..start();
+      final good = _Recorder();
+      d.registerFamily<_FamKind>(_FamKind, _ThrowingHandler());
+      d.registerFamily<_FamKind>(_FamKind, good);
+      d.dispatch(_FamEvent(_FamKind.ping, DateTime(2026), '1'));
+      d.dispatch(_FamEvent(_FamKind.ping, DateTime(2026), '2'));
+      await d.stop();
+      // A throwing handler neither blocks other handlers for the same event
+      // nor subsequent events.
+      expect(good.tags, ['1', '2']);
+    },
+  );
 
-  test('handler exception is logged without recording a global error', () async {
-    final spy = _SpyLogger();
-    final d = AsyncDispatcher(logger: spy)..start();
-    final good = _Recorder();
-    // A network-classified error would, via the default recordError: true,
-    // surface a global error toast (AppErrorUtils.showDecisionMessage).
-    d.registerFamily<_FamKind>(
-      _FamKind,
-      _ThrowingHandler(const SocketException('Connection refused')),
-    );
-    d.registerFamily<_FamKind>(_FamKind, good);
-    d.dispatch(_FamEvent(_FamKind.ping, DateTime(2026), '1'));
-    await d.stop();
-    expect(good.tags, ['1']); // isolation still holds
-    expect(spy.errors, hasLength(1));
-    // The side-effecting global-error path must NOT be triggered.
-    expect(spy.errors.single.recordError, isFalse);
-    expect(spy.errors.single.error, isA<SocketException>());
-  });
+  test(
+    'handler exception is logged without recording a global error',
+    () async {
+      final spy = _SpyLogger();
+      final d = AsyncDispatcher(logger: spy)..start();
+      final good = _Recorder();
+      // A network-classified error would, via the default recordError: true,
+      // surface a global error toast (AppErrorUtils.showDecisionMessage).
+      d.registerFamily<_FamKind>(
+        _FamKind,
+        _ThrowingHandler(const SocketException('Connection refused')),
+      );
+      d.registerFamily<_FamKind>(_FamKind, good);
+      d.dispatch(_FamEvent(_FamKind.ping, DateTime(2026), '1'));
+      await d.stop();
+      expect(good.tags, ['1']); // isolation still holds
+      expect(spy.errors, hasLength(1));
+      // The side-effecting global-error path must NOT be triggered.
+      expect(spy.errors.single.recordError, isFalse);
+      expect(spy.errors.single.error, isA<SocketException>());
+    },
+  );
 
   test('start during stop drain does not orphan the consume loop', () async {
     final d = AsyncDispatcher()..start();

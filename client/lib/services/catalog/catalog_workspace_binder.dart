@@ -28,6 +28,24 @@ class CatalogWorkspaceBinder {
     return _mutate(workspaceId: workspaceId, bindTo: bindTo, apply: apply);
   }
 
+  /// Drops [mcpId] from every workspace bundle. Returns ids that changed.
+  Future<List<String>> unbindMcpFromAllWorkspaces(String mcpId) async {
+    final id = mcpId.trim();
+    if (id.isEmpty) return const [];
+    final changed = <String>[];
+    for (final workspaceId in await repo.listWorkspaceIds()) {
+      final current = await repo.load(workspaceId);
+      if (!current.bundle.mcpServerIds.contains(id)) continue;
+      await unbindIds(
+        workspaceId: workspaceId,
+        bindTo: CatalogBindTo.workspace,
+        apply: (bundle) => bundle.mcpServerIds.remove(id),
+      );
+      changed.add(workspaceId);
+    }
+    return changed;
+  }
+
   Future<void> _mutate({
     required String workspaceId,
     required CatalogBindTo bindTo,

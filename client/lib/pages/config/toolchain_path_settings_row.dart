@@ -220,7 +220,7 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
       );
       return ToolchainExecutableDiscovery().locateRemoteTool(
         toolId: widget.toolId,
-        run: RemoteCliLocator.runnerForClient(client),
+        run: RemoteCliLocator.getRunnerForClient(client),
       );
     }
     return ToolchainExecutableDiscovery().locateLocalTool(widget.toolId);
@@ -271,9 +271,7 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
       AppToast.show(
         context,
         message: result.message,
-        variant: result.success
-            ? TpToastVariant.success
-            : TpToastVariant.error,
+        variant: result.success ? TpToastVariant.success : TpToastVariant.error,
       );
     } catch (error) {
       if (!mounted) return;
@@ -355,10 +353,7 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Icon(
-                      Icons.download_outlined,
-                      size: context.tpIconSizes.md,
-                    ),
+                  : Icon(Icons.download_outlined, size: context.tpIconSizes.md),
               label: Text(
                 isInstalling
                     ? l10n.cliInstallInstalling

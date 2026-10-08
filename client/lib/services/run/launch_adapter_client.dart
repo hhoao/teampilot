@@ -77,9 +77,7 @@ class LaunchAdapterClient {
 
     final key = _StickyPoolKey(type, targetId);
     final existing = _stickyPool[key];
-    if (existing != null &&
-        !existing.closed &&
-        existing.initialized) {
+    if (existing != null && !existing.closed && existing.initialized) {
       return;
     }
 
@@ -178,10 +176,7 @@ class LaunchAdapterClient {
       await _request(
         connection,
         method: LaunchAdapterProtocol.methodLaunch,
-        params: {
-          'sessionId': sessionId,
-          'configuration': configuration,
-        },
+        params: {'sessionId': sessionId, 'configuration': configuration},
         timeout: _launchTimeout,
         killOnTimeout: true,
       );
@@ -228,10 +223,7 @@ class LaunchAdapterClient {
     required Map<String, Object?> result,
     String targetId = 'local',
   }) async {
-    final connection = _requireStickyConnection(
-      type: type,
-      targetId: targetId,
-    );
+    final connection = _requireStickyConnection(type: type, targetId: targetId);
     final response = await _request(
       connection,
       method: LaunchAdapterProtocol.methodConfigureAction,

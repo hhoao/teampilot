@@ -4,7 +4,7 @@ import '../../../models/install_job/install_job_cancelled_exception.dart';
 import '../../../models/install_job/install_job_context.dart';
 import '../../../models/install_job/install_job_key.dart';
 import '../../../models/install_job/install_job_spec.dart';
-import '../../team/team_clone_service.dart';
+import '../../team_config/team_clone_service.dart';
 import '../install_job_runner.dart';
 
 typedef HubCloneInvoker<T> =

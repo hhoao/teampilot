@@ -11,12 +11,23 @@ import 'package:teampilot/services/git/parser/git_graph_parser.dart';
 void main(List<String> args) async {
   final dir = args.isNotEmpty ? args[0] : '.';
   const fieldSep = '\x1f';
-  final format = '%x1e'
+  final format =
+      '%x1e'
       '%H$fieldSep%P$fieldSep%an$fieldSep%ae$fieldSep%at$fieldSep%d$fieldSep%s';
-  final result = await Process.run('git', [
-    'log', '--all', '--date-order', '--max-count', '400',
-    '--pretty=format:$format', '--graph',
-  ], workingDirectory: dir, stdoutEncoding: utf8);
+  final result = await Process.run(
+    'git',
+    [
+      'log',
+      '--all',
+      '--date-order',
+      '--max-count',
+      '400',
+      '--pretty=format:$format',
+      '--graph',
+    ],
+    workingDirectory: dir,
+    stdoutEncoding: utf8,
+  );
   if (result.exitCode != 0) {
     stderr.write('git failed: ${result.stderr}');
     exitCode = 1;

@@ -65,7 +65,7 @@ TerminalSession _sessionWithFakeTransport(_FakeTransport handle) {
         }) {
           return Future.value(handle);
         },
-                          fs: InMemoryFilesystem(),
+    fs: InMemoryFilesystem(),
   );
 }
 

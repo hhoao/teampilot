@@ -5,20 +5,35 @@ import '../../registry/capabilities/mcp_capability.dart';
 import 'provider.dart';
 import '../../flashskyai/capabilities/provider.dart';
 import '../../registry/mcp_writers/metadata_mcp_merge.dart';
+import 'mcp_project_cleanup.dart' as project_mcp;
+
+Future<void> _removeStaleProjectTeammateBus({
+  required Filesystem fs,
+  Map<String, Map<String, Object?>>? extraServers,
+  required String workingDirectory,
+  Iterable<String> additionalDirectories = const [],
+}) {
+  return project_mcp.maybeRemoveStaleProjectTeammateBus(
+    fs: fs,
+    extraServers: extraServers,
+    projectRoots: project_mcp.projectMcpRootsFromLaunch(
+      workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
+    ),
+  );
+}
 
 /// Merges MCP servers into `<configDir>/.claude.json` `mcpServers`.
 final class ClaudeMcpCapability implements McpCapability {
   const ClaudeMcpCapability();
 
-  static const metadataFileName =
-      ClaudeProviderCapability.metadataFileName;
+  static const metadataFileName = ClaudeProviderCapability.metadataFileName;
 
   @override
   Future<void> write({
     required Filesystem fs,
     required String configDir,
     required List<McpServerSpec> servers,
-    String? outputBasename,
   }) async {
     await mergeMetadataMcpServers(
       fs: fs,
@@ -39,6 +54,21 @@ final class ClaudeMcpCapability implements McpCapability {
       fromConfigDir: appConfigDir,
       toConfigDir: sessionConfigDir,
       fallbackFromConfigDir: fallbackAppConfigDir,
+    );
+  }
+
+  @override
+  Future<void> maybeRemoveStaleProjectTeammateBus({
+    required Filesystem fs,
+    Map<String, Map<String, Object?>>? extraServers,
+    required String workingDirectory,
+    Iterable<String> additionalDirectories = const [],
+  }) {
+    return _removeStaleProjectTeammateBus(
+      fs: fs,
+      extraServers: extraServers,
+      workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
     );
   }
 }
@@ -47,15 +77,13 @@ final class ClaudeMcpCapability implements McpCapability {
 final class FlashskyaiMcpCapability implements McpCapability {
   const FlashskyaiMcpCapability();
 
-  static const metadataFileName =
-      FlashskyaiProviderCapability.metadataFileName;
+  static const metadataFileName = FlashskyaiProviderCapability.metadataFileName;
 
   @override
   Future<void> write({
     required Filesystem fs,
     required String configDir,
     required List<McpServerSpec> servers,
-    String? outputBasename,
   }) async {
     await mergeMetadataMcpServers(
       fs: fs,
@@ -76,6 +104,21 @@ final class FlashskyaiMcpCapability implements McpCapability {
       fromConfigDir: appConfigDir,
       toConfigDir: sessionConfigDir,
       fallbackFromConfigDir: fallbackAppConfigDir,
+    );
+  }
+
+  @override
+  Future<void> maybeRemoveStaleProjectTeammateBus({
+    required Filesystem fs,
+    Map<String, Map<String, Object?>>? extraServers,
+    required String workingDirectory,
+    Iterable<String> additionalDirectories = const [],
+  }) {
+    return _removeStaleProjectTeammateBus(
+      fs: fs,
+      extraServers: extraServers,
+      workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
     );
   }
 }

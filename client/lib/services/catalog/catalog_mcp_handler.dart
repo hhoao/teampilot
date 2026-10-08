@@ -2,9 +2,9 @@ import 'dart:convert';
 
 import '../io/filesystem.dart';
 import '../../models/app_session.dart';
-import '../team_bus/mcp/jsonrpc.dart';
-import '../team_bus/mcp/mcp_method.dart';
-import '../team_bus/mcp/toolkit/mcp_tool_response.dart';
+import '../chat/team_bus/mcp/jsonrpc.dart';
+import '../chat/team_bus/mcp/mcp_method.dart';
+import '../chat/team_bus/mcp/toolkit/mcp_tool_response.dart';
 import '../plugin/plugin_exceptions.dart';
 import '../skill/skill_install_service.dart';
 import 'catalog_kind.dart';

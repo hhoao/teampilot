@@ -17,7 +17,7 @@ import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/host/host_script_dialect.dart';
 import 'package:teampilot/services/host/host_script_runner.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
-import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
+import 'package:teampilot/services/chat/team_bus/member_bus_idle_endpoint.dart';
 
 void main() {
   const writer = CodexHookWriter();
@@ -191,13 +191,16 @@ void main() {
     final assembled = await const HookAssembler().assemble(
       context: HookProviderContext(cli: CliTool.codex),
       providers: [
-        RuntimeEventHookContributionProvider(endpoint: endpoint, memberId: 'm1'),
+        RuntimeEventHookContributionProvider(
+          endpoint: endpoint,
+          memberId: 'm1',
+        ),
       ],
     );
-    expect(assembled.entries.map((e) => e.event), containsAll(const [
-      HookEvent.subagentStart,
-      HookEvent.subagentStop,
-    ]));
+    expect(
+      assembled.entries.map((e) => e.event),
+      containsAll(const [HookEvent.subagentStart, HookEvent.subagentStop]),
+    );
     final result = writer.render(entries: assembled.entries, ctx: ctx);
     expect(result.warnings, isEmpty);
     final toml = result.configFragments['config.toml']! as String;

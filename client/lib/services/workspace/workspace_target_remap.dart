@@ -62,8 +62,7 @@ abstract final class WorkspaceTargetRemap {
     final nextPins = <String, MemberTargetAssignments>{};
     for (final e in memberTargetsByTeam.entries) {
       nextPins[e.key] = {
-        for (final p in e.value.entries)
-          p.key: p.value == from ? to : p.value,
+        for (final p in e.value.entries) p.key: p.value == from ? to : p.value,
       };
     }
 

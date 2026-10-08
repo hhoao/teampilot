@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -9,25 +10,21 @@ import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
-import '../../../repositories/session_repository.dart';
-import '../../../services/git/git_worktree_service.dart';
-import '../../../services/git/worktree_removal.dart';
-import '../../../services/storage/runtime_context.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../utils/session/app_session_sort.dart';
 import '../../../utils/session/session_reorder_merge.dart';
-import '../../../utils/session/session_project_grouping.dart';
 import '../../../utils/session/session_worktree_grouping.dart';
 import '../../../widgets/home_storage_scope.dart';
-import '../../../utils/session/workspace_sessions.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
-import '../../../widgets/app_toast/app_toast.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../../widgets/sidebar_session_tile.dart';
-import 'worktree_delete_dialog.dart';
+import 'worktree_directory_actions.dart';
 import 'workspace_session_actions.dart';
 import 'workspace_sidebar_probe.dart';
 import 'workspace_sidebar_row_metrics.dart';
+import 'workspace_nested_scroll_physics.dart';
+
+export 'worktree_directory_actions.dart';
 
 /// Collapse-set key for a group: worktree path, project folder path, or orphan.
 String worktreeGroupCollapseKey(
@@ -51,12 +48,6 @@ const int _groupCollapsedCap = 8;
 
 /// Row count of the fixed-height scrollable an expanded group reveals.
 const int _groupExpandedRowCount = 10;
-
-/// Worktree create/remove on the workspace work-plane (native, WSL, or SSH git).
-bool worktreeManagementEnabled(RuntimeContext workContext) =>
-    workContext.mode == StorageBackendMode.native ||
-    workContext.mode == StorageBackendMode.wsl ||
-    workContext.mode == StorageBackendMode.ssh;
 
 /// One collapsible worktree group in [WorkspaceSidebar]: header toggles collapse;
 /// right-click opens management actions.
@@ -84,12 +75,6 @@ class WorktreeGroupSection extends StatelessWidget {
   final List<String> workspaceOrderedSessionIds;
   final ValueChanged<List<String>> onSessionsReordered;
   final String? highlightSessionId;
-
-  GitWorktreeService? _worktreeService(BuildContext context) {
-    final tools = WorkspaceToolsScope.maybeOf(context)?.tools;
-    if (tools == null) return null;
-    return GitWorktreeService.forContext(tools.context);
-  }
 
   Future<void> _startConversationInWorktree(
     BuildContext context,
@@ -126,10 +111,10 @@ class WorktreeGroupSection extends StatelessWidget {
         workContext != null &&
         worktreeManagementEnabled(workContext);
 
-    final collapseKey = () => worktreeGroupCollapseKey(
-          group,
-          usesPosixPaths: homeStorageOf(context).usesPosixPaths,
-        );
+    String collapseKey() => worktreeGroupCollapseKey(
+      group,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -138,17 +123,25 @@ class WorktreeGroupSection extends StatelessWidget {
           collapsed: collapsed,
           label: label,
           launchPath: launchPath,
-          onToggleCollapse: () => context.read<WorktreeCubit>().toggleCollapsed(
-            collapseKey(),
-          ),
+          onToggleCollapse: () =>
+              context.read<WorktreeCubit>().toggleCollapsed(collapseKey()),
           onNewConversation: launchPath == null
               ? null
-              : () => unawaited(_startConversationInWorktree(context, launchPath)),
+              : () => unawaited(
+                  _startConversationInWorktree(context, launchPath),
+                ),
           onCopyPath: launchPath == null
               ? null
               : () => Clipboard.setData(ClipboardData(text: launchPath)),
           onDelete: wt != null && manageable
-              ? () => unawaited(_confirmAndRemove(context, wt.path, label))
+              ? () => unawaited(
+                  confirmAndRemoveWorktree(
+                    context: context,
+                    group: group,
+                    workspace: workspace,
+                    branchLabel: label,
+                  ),
+                )
               : null,
         ),
         if (!collapsed && group.sessions.isNotEmpty)
@@ -163,82 +156,6 @@ class WorktreeGroupSection extends StatelessWidget {
           ),
       ],
     );
-  }
-
-  Future<void> _confirmAndRemove(
-    BuildContext context,
-    String worktreePath,
-    String branchLabel,
-  ) async {
-    final chatCubit = context.read<ChatCubit>();
-    final repo = context.read<SessionRepository>();
-    final cubit = context.read<WorktreeCubit>();
-    final l10n = context.l10n;
-    final worktreesByProject = {
-      for (final folder in workspace.folders)
-        folder.path: cubit.worktreesForProject(folder.path),
-    };
-    final sessionsInGroup = unfilteredSessionsForWorktreeGroup(
-      group: group,
-      folders: workspace.folders,
-      worktreesByProjectPath: worktreesByProject,
-      sessions: sessionsForWorkspace(workspace, chatCubit.state.sessions),
-      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
-    );
-    // A running agent's cwd would vanish under it — make the user stop first.
-    final working = chatCubit.state.busySessionIds;
-    final hasBusy = sessionsInGroup.any(
-      (session) => working.contains(session.sessionId),
-    );
-    if (hasBusy) {
-      AppToast.show(
-        context,
-        message: l10n.worktreeDeleteBusyWarning,
-        variant: TpToastVariant.error,
-      );
-      return;
-    }
-    final dirty =
-        await _worktreeService(context)?.isDirty(worktreePath) ?? false;
-    if (!context.mounted) return;
-    final result = await showWorktreeDeleteDialog(
-      context,
-      branchLabel: branchLabel,
-      sessionCount: sessionsInGroup.length,
-      requireForce: dirty,
-    );
-    if (result == null) return;
-    try {
-      final service = _worktreeService(context);
-      if (service == null) return;
-      await removeWorktreeWithSessions(
-        service: service,
-        repoPath: _repoPathForGroup(cubit),
-        worktreePath: worktreePath,
-        worktree: group.worktree,
-        options: WorktreeDeleteOptions(
-          force: result.force,
-          deleteBranch: result.deleteBranch,
-          deleteSessions: result.deleteSessions,
-        ),
-        sessionsInGroup: sessionsInGroup,
-        deleteSession: (id) => chatCubit.deleteSession(repo, id),
-      );
-      await cubit.load(_repoPathForGroup(cubit), force: true);
-    } on Object catch (error) {
-      if (!context.mounted) return;
-      AppToast.show(
-        context,
-        message: l10n.worktreeDeleteFailed(error.toString()),
-        variant: TpToastVariant.error,
-      );
-    }
-  }
-
-  String _repoPathForGroup(WorktreeCubit cubit) {
-    final projectPath = group.projectFolderPath?.trim() ?? '';
-    if (projectPath.isNotEmpty) return projectPath;
-    return cubit.state.repoPath;
   }
 }
 
@@ -274,46 +191,23 @@ class _WorktreeGroupHeaderState extends State<_WorktreeGroupHeader> {
   bool get _showRowActions => _rowHovered || _menuOpen;
 
   Future<void> _showContextMenu(TapDownDetails details) async {
-    final l10n = context.l10n;
-    final specs = <TpActionMenuSpec>[
-      if (widget.onNewConversation != null)
-        TpActionMenuSpec.item(
-          value: 'new',
-          icon: Icons.edit_outlined,
-          label: l10n.worktreeNewConversationHere,
-        ),
-      if (widget.onCopyPath != null)
-        TpActionMenuSpec.item(
-          value: 'copy',
-          icon: Icons.copy_rounded,
-          label: l10n.worktreeMenuCopyPath,
-        ),
-      if (widget.onDelete != null)
-        TpActionMenuSpec.item(
-          value: 'delete',
-          icon: Icons.delete_outline_rounded,
-          label: l10n.worktreeMenuRemove,
-          destructive: true,
-        ),
-    ];
-    if (specs.isEmpty) return;
-
     setState(() => _menuOpen = true);
-    final selected = await showTpActionMenuFromSpecsAtTap<String>(
-      context: context,
+    final selected = await showWorktreeDirectoryContextMenu(
+      context,
       tapDetails: details,
-      specs: specs,
+      launchPath: widget.launchPath,
+      canRemove: widget.onDelete != null,
     );
     if (!mounted) return;
     setState(() => _menuOpen = false);
     if (selected == null) return;
 
     switch (selected) {
-      case 'new':
+      case WorktreeDirectoryMenuAction.newConversation:
         widget.onNewConversation?.call();
-      case 'copy':
+      case WorktreeDirectoryMenuAction.copyPath:
         widget.onCopyPath?.call();
-      case 'delete':
+      case WorktreeDirectoryMenuAction.remove:
         widget.onDelete?.call();
     }
   }
@@ -333,8 +227,7 @@ class _WorktreeGroupHeaderState extends State<_WorktreeGroupHeader> {
           hoverColor: workspaceSidebarRowHoverFill(cs),
           onHoverChanged: (hovered) => setState(() => _rowHovered = hovered),
           onTap: widget.onToggleCollapse,
-          onSecondaryTapDown: (details) =>
-              unawaited(_showContextMenu(details)),
+          onSecondaryTapDown: (details) => unawaited(_showContextMenu(details)),
           trailing: widget.onNewConversation != null
               ? TpIconButton(
                   icon: Icons.add_rounded,
@@ -402,11 +295,7 @@ class _GroupCollapseLeading extends StatelessWidget {
       width: 24,
       height: 24,
       child: Center(
-        child: Icon(
-          icon,
-          size: icons.md,
-          color: cs.onSurfaceVariant,
-        ),
+        child: Icon(icon, size: icons.md, color: cs.onSurfaceVariant),
       ),
     );
   }
@@ -441,25 +330,30 @@ class _GroupSessionList extends StatefulWidget {
 
 class _GroupSessionListState extends State<_GroupSessionList> {
   bool _showAll = false;
+  final _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final chatState = context.read<ChatCubit>().state;
     final byId = {for (final s in chatState.sessions) s.sessionId: s};
-    final all = sortAppSessions(
-      [
-        for (final id in widget.sessionIds)
-          if (byId[id] case final session?) session,
-      ],
-      sort: widget.sessionSort,
-    );
+    final all = sortAppSessions([
+      for (final id in widget.sessionIds)
+        if (byId[id] case final session?) session,
+    ], sort: widget.sessionSort);
     final allIds = [for (final s in all) s.sessionId];
     final overflow = all.length - _groupCollapsedCap;
     final visible = (_showAll || overflow <= 0)
         ? all
         : all.take(_groupCollapsedCap).toList();
     final visibleIds = [for (final s in visible) s.sessionId];
+    final outerPosition = Scrollable.maybeOf(context)?.position;
 
     // Collapsed: rows at natural height (no scroll). Expanded: fixed
     // row-count viewport that keeps the list lazy, so a busy group never
@@ -474,9 +368,14 @@ class _GroupSessionListState extends State<_GroupSessionList> {
         SizedBox(
           height: height,
           child: ReorderableListView.builder(
+            scrollController: _scrollController,
+            primary: false,
             buildDefaultDragHandles: false,
             padding: EdgeInsets.zero,
+            itemExtent: _groupSessionRowHeight,
+            scrollCacheExtent: const ScrollCacheExtent.pixels(0),
             itemCount: visible.length,
+            physics: WorkspaceNestedScrollPhysics(outerPosition: outerPosition),
             onReorderItem: (oldIndex, newIndex) {
               final groupOrdered = reorderVisibleSessionIds(
                 allIds: allIds,
@@ -525,10 +424,7 @@ class _GroupSessionListState extends State<_GroupSessionList> {
 /// Muted "more / less" row aligned with session tiles; hover fill matches
 /// [_SidebarTile] but slightly subtler.
 class _GroupShowMoreRow extends StatefulWidget {
-  const _GroupShowMoreRow({
-    required this.label,
-    required this.onTap,
-  });
+  const _GroupShowMoreRow({required this.label, required this.onTap});
 
   final String label;
   final VoidCallback onTap;
@@ -565,9 +461,9 @@ class _GroupShowMoreRowState extends State<_GroupShowMoreRow> {
                 widget.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TpTextStyles.of(context).mdColored(
-                  cs.onSurface.withValues(alpha: 0.55),
-                ),
+                style: TpTextStyles.of(
+                  context,
+                ).mdColored(cs.onSurface.withValues(alpha: 0.55)),
               ),
             ),
           ),

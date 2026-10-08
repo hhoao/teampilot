@@ -4,14 +4,27 @@ import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/widgets/compose/compose_model_preset_chip.dart';
 
-AppProviderConfig provider(String id, {String? name, Map<String, Object?> config = const {}}) =>
-    AppProviderConfig(id: id, cli: CliTool.claude, name: name ?? id, config: config);
+AppProviderConfig provider(
+  String id, {
+  String? name,
+  Map<String, Object?> config = const {},
+}) => AppProviderConfig(
+  id: id,
+  cli: CliTool.claude,
+  name: name ?? id,
+  config: config,
+);
 
 CliPreset preset(String id, String name) => CliPreset(
-      id: id, name: name, cli: CliTool.claude,
-      provider: 'p1', model: 'm1', effort: '',
-      createdAt: 0, updatedAt: 0,
-    );
+  id: id,
+  name: name,
+  cli: CliTool.claude,
+  provider: 'p1',
+  model: 'm1',
+  effort: '',
+  createdAt: 0,
+  updatedAt: 0,
+);
 
 void main() {
   final registry = CliToolRegistry.builtIn();
@@ -22,8 +35,16 @@ void main() {
         registry: registry,
         providersByCli: {
           CliTool.claude: [
-            provider('official', name: 'Claude Official',
-              config: {'models': {'m-a': {'model': 'm-a'}, 'm-b': {'model': 'm-b'}}}),
+            provider(
+              'official',
+              name: 'Claude Official',
+              config: {
+                'models': {
+                  'm-a': {'model': 'm-a'},
+                  'm-b': {'model': 'm-b'},
+                },
+              },
+            ),
           ],
         },
         cliItems: [CliTool.claude],
@@ -46,14 +67,23 @@ void main() {
 
     test('sorts providers by category then lowercase name', () {
       final zebra = AppProviderConfig(
-        id: 'z', cli: CliTool.claude, name: 'Zebra',
-        category: AppProviderCategory.custom);
+        id: 'z',
+        cli: CliTool.claude,
+        name: 'Zebra',
+        category: AppProviderCategory.custom,
+      );
       final alpha = AppProviderConfig(
-        id: 'a', cli: CliTool.claude, name: 'alpha',
-        category: AppProviderCategory.custom);
+        id: 'a',
+        cli: CliTool.claude,
+        name: 'alpha',
+        category: AppProviderCategory.custom,
+      );
       official() => AppProviderConfig(
-        id: 'o', cli: CliTool.claude, name: 'mid',
-        category: AppProviderCategory.official);
+        id: 'o',
+        cli: CliTool.claude,
+        name: 'mid',
+        category: AppProviderCategory.official,
+      );
       final groups = resolveComposeCascadeCliGroups(
         registry: registry,
         providersByCli: {
@@ -61,10 +91,11 @@ void main() {
         },
         cliItems: [CliTool.claude],
       );
-      expect(
-        groups.single.providers.map((p) => p.id).toList(),
-        ['a', 'z', 'o'],
-      );
+      expect(groups.single.providers.map((p) => p.id).toList(), [
+        'a',
+        'z',
+        'o',
+      ]);
     });
   });
 
@@ -75,93 +106,104 @@ void main() {
       bool supportsCustomModelEntry = false,
       List<String> models = const ['plain-model'],
       Map<String, List<String>> efforts = const {'plain-model': []},
-    }) =>
-        ComposeCascadeProvider(
-          id: id,
-          name: name,
-          supportsCustomModelEntry: supportsCustomModelEntry,
-          models: models,
-          config: provider(id, name: name),
-          effortByModel: efforts,
+    }) => ComposeCascadeProvider(
+      id: id,
+      name: name,
+      supportsCustomModelEntry: supportsCustomModelEntry,
+      models: models,
+      config: provider(id, name: name),
+      effortByModel: efforts,
+    );
+
+    test(
+      'presets group, provider drill-down, effort leaves, bottom actions',
+      () {
+        final groups = [
+          ComposeCascadeCliGroup(
+            cli: CliTool.claude,
+            providers: [
+              cascadeProvider(
+                id: 'p1',
+                name: 'DeepSeek',
+                supportsCustomModelEntry: true,
+                models: ['deepseek-chat'],
+                efforts: {
+                  'deepseek-chat': ['low', 'high'],
+                },
+              ),
+            ],
+          ),
+        ];
+        final specs = buildComposeModelCascadeMenuSpecs(
+          presets: [preset('preset-1', 'Work')],
+          selectedPresetId: 'preset-1',
+          emptyHintLabel: 'No presets',
+          emptyProvidersLabel: 'No providers',
+          presetsLabel: 'Presets',
+          defaultEffortLabel: 'Default',
+          customModelIdLabel: 'Custom model ID…',
+          noModelsLabel: 'No models',
+          savePresetLabel: 'Save as preset…',
+          managePresetsLabel: 'Manage',
+          cliGroups: groups,
+          groupByCli: true,
         );
 
-    test('presets group, provider drill-down, effort leaves, bottom actions',
-        () {
-      final groups = [
-        ComposeCascadeCliGroup(cli: CliTool.claude, providers: [
-          cascadeProvider(
-            id: 'p1',
-            name: 'DeepSeek',
-            supportsCustomModelEntry: true,
-            models: ['deepseek-chat'],
-            efforts: {'deepseek-chat': ['low', 'high']},
-          ),
-        ]),
-      ];
-      final specs = buildComposeModelCascadeMenuSpecs(
-        presets: [preset('preset-1', 'Work')],
-        selectedPresetId: 'preset-1',
-        emptyHintLabel: 'No presets',
-        emptyProvidersLabel: 'No providers',
-        presetsLabel: 'Presets',
-        defaultEffortLabel: 'Default',
-        customModelIdLabel: 'Custom model ID…',
-        noModelsLabel: 'No models',
-        savePresetLabel: 'Save as preset…',
-        managePresetsLabel: 'Manage',
-        cliGroups: groups,
-        groupByCli: true,
-      );
+        // Presets are a submenu whose sole child is a fixed-height scroll block.
+        expect(specs.first.isSubmenu, isTrue);
+        expect(specs.first.label, 'Presets');
+        final presetBlock = specs.first.children!.single;
+        expect(presetBlock.isScrollBlock, isTrue);
+        final presetRows = presetBlock.scrollChildren!;
+        expect(presetRows, hasLength(1));
+        final presetRow = presetRows.first;
+        expect(presetRow.selected, isTrue);
+        expect(presetRow.value, 'preset-1');
 
-      // Presets are a submenu whose sole child is a fixed-height scroll block.
-      expect(specs.first.isSubmenu, isTrue);
-      expect(specs.first.label, 'Presets');
-      final presetBlock = specs.first.children!.single;
-      expect(presetBlock.isScrollBlock, isTrue);
-      final presetRows = presetBlock.scrollChildren!;
-      expect(presetRows, hasLength(1));
-      final presetRow = presetRows.first;
-      expect(presetRow.selected, isTrue);
-      expect(presetRow.value, 'preset-1');
+        final cliSubmenu = specs.where((s) => s.isSubmenu).toList();
+        final providerLevel = cliSubmenu.last.children!;
+        final providerSpec = providerLevel.first;
+        expect(providerSpec.isSubmenu, isTrue);
 
-      final cliSubmenu = specs.where((s) => s.isSubmenu).toList();
-      final providerLevel = cliSubmenu.last.children!;
-      final providerSpec = providerLevel.first;
-      expect(providerSpec.isSubmenu, isTrue);
+        final modelLevel = providerSpec.children!;
+        final modelSpec = modelLevel.first;
+        expect(modelSpec.isSubmenu, isTrue); // has effort candidates ⇒ submenu
 
-      final modelLevel = providerSpec.children!;
-      final modelSpec = modelLevel.first;
-      expect(modelSpec.isSubmenu, isTrue); // has effort candidates ⇒ submenu
+        final effortLevel = modelSpec.children!;
+        expect(effortLevel.first.value, isA<CascadeModelPick>()); // 默认 entry
+        expect(effortLevel[1].value, isA<CascadeEffortPick>());
+        expect(modelLevel.last.value, isA<CascadeCustomModelRequest>());
 
-      final effortLevel = modelSpec.children!;
-      expect(effortLevel.first.value, isA<CascadeModelPick>()); // 默认 entry
-      expect(effortLevel[1].value, isA<CascadeEffortPick>());
-      expect(modelLevel.last.value, isA<CascadeCustomModelRequest>());
-
-      expect(
-        specs.any((s) => s.value == ComposeModelPresetChipAction.savePreset),
-        isTrue,
-      );
-      expect(
-        specs.any((s) => s.value == ComposeModelPresetChipAction.manage),
-        isTrue,
-      );
-    });
+        expect(
+          specs.any((s) => s.value == ComposeModelPresetChipAction.savePreset),
+          isTrue,
+        );
+        expect(
+          specs.any((s) => s.value == ComposeModelPresetChipAction.manage),
+          isTrue,
+        );
+      },
+    );
 
     test('onModelsOpened fires from provider submenu onOpen', () {
       final config = provider('prov-1', name: 'Prov');
       Object? captured;
       final groups = [
-        ComposeCascadeCliGroup(cli: CliTool.claude, providers: [
-          ComposeCascadeProvider(
-            id: 'prov-1',
-            name: 'Prov',
-            supportsCustomModelEntry: false,
-            models: ['m1'],
-            config: config,
-            effortByModel: {'m1': ['low']},
-          ),
-        ]),
+        ComposeCascadeCliGroup(
+          cli: CliTool.claude,
+          providers: [
+            ComposeCascadeProvider(
+              id: 'prov-1',
+              name: 'Prov',
+              supportsCustomModelEntry: false,
+              models: ['m1'],
+              config: config,
+              effortByModel: {
+                'm1': ['low'],
+              },
+            ),
+          ],
+        ),
       ];
       final specs = buildComposeModelCascadeMenuSpecs(
         presets: const [],
@@ -242,14 +284,17 @@ void main() {
         savePresetLabel: 'Save',
         managePresetsLabel: 'Manage',
         cliGroups: [
-          ComposeCascadeCliGroup(cli: CliTool.claude, providers: [
-            cascadeProvider(
-              id: 'p1',
-              name: 'X',
-              models: ['plain-model'],
-              efforts: {'plain-model': []},
-            ),
-          ]),
+          ComposeCascadeCliGroup(
+            cli: CliTool.claude,
+            providers: [
+              cascadeProvider(
+                id: 'p1',
+                name: 'X',
+                models: ['plain-model'],
+                efforts: {'plain-model': []},
+              ),
+            ],
+          ),
         ],
         groupByCli: false,
       );
@@ -259,7 +304,10 @@ void main() {
       final leaf = modelRows.firstWhere((s) => s.value is CascadeModelPick);
       expect(leaf.isSubmenu, isFalse);
       expect((leaf.value as CascadeModelPick).modelId, 'plain-model');
-      expect(modelRows.any((s) => s.value is CascadeCustomModelRequest), isFalse);
+      expect(
+        modelRows.any((s) => s.value is CascadeCustomModelRequest),
+        isFalse,
+      );
     });
 
     test('omits save preset when showSavePreset is false', () {
@@ -324,21 +372,27 @@ void main() {
         savePresetLabel: 'Save',
         managePresetsLabel: 'Manage',
         cliGroups: [
-          ComposeCascadeCliGroup(cli: CliTool.claude, providers: [
-            ComposeCascadeProvider(
-              id: 'p1', name: 'X',
-              supportsCustomModelEntry: true,
-              models: [],
-              config: provider('p1'),
-              effortByModel: {},
-            ),
-          ]),
+          ComposeCascadeCliGroup(
+            cli: CliTool.claude,
+            providers: [
+              ComposeCascadeProvider(
+                id: 'p1',
+                name: 'X',
+                supportsCustomModelEntry: true,
+                models: [],
+                config: provider('p1'),
+                effortByModel: {},
+              ),
+            ],
+          ),
         ],
         groupByCli: false,
       );
       final providerSpec = specs.firstWhere((s) => s.isSubmenu);
       expect(
-        providerSpec.children!.any((s) => !s.isDivider && s.enabled == false && s.label == 'No models'),
+        providerSpec.children!.any(
+          (s) => !s.isDivider && s.enabled == false && s.label == 'No models',
+        ),
         isTrue,
       );
       expect(
@@ -350,15 +404,29 @@ void main() {
 
   group('decodeComposeCascadeValue', () {
     test('decodeComposeCascadeValue maps picks and ignores actions', () {
-      final effort = decodeComposeCascadeValue(CascadeEffortPick(
-        cli: CliTool.claude, providerId: 'p', modelId: 'm', effort: 'high'))!;
+      final effort = decodeComposeCascadeValue(
+        CascadeEffortPick(
+          cli: CliTool.claude,
+          providerId: 'p',
+          modelId: 'm',
+          effort: 'high',
+        ),
+      )!;
       expect(effort.effort, 'high');
       final model = decodeComposeCascadeValue(
-        CascadeModelPick(cli: CliTool.claude, providerId: 'p', modelId: 'm'))!;
+        CascadeModelPick(cli: CliTool.claude, providerId: 'p', modelId: 'm'),
+      )!;
       expect(model.effort, isEmpty);
-      expect(decodeComposeCascadeValue(ComposeModelPresetChipAction.manage), isNull);
-      expect(decodeComposeCascadeValue(CascadeCustomModelRequest(
-        cli: CliTool.claude, providerId: 'p')), isNull);
+      expect(
+        decodeComposeCascadeValue(ComposeModelPresetChipAction.manage),
+        isNull,
+      );
+      expect(
+        decodeComposeCascadeValue(
+          CascadeCustomModelRequest(cli: CliTool.claude, providerId: 'p'),
+        ),
+        isNull,
+      );
     });
   });
 }

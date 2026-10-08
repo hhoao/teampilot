@@ -33,7 +33,11 @@ const _nestedFile = GitFileChange(
 );
 
 class _FakeHistory implements GitHistoryService {
-  _FakeHistory({this.files = const [], this.diffText = 'diff text', this.error});
+  _FakeHistory({
+    this.files = const [],
+    this.diffText = 'diff text',
+    this.error,
+  });
 
   List<GitFileChange> files;
   String diffText;
@@ -104,8 +108,7 @@ Widget _host(
   home: MultiProvider(
     providers: [
       BlocProvider.value(value: cubit),
-      if (opener != null)
-        Provider<WorkbenchEditorOpener>.value(value: opener),
+      if (opener != null) Provider<WorkbenchEditorOpener>.value(value: opener),
     ],
     child: const Scaffold(
       body: SizedBox(

@@ -16,12 +16,10 @@ void main() {
       fs: InMemoryFilesystem(),
       basePath: '/data/tp',
       httpClient: MockClient(
-        (_) async => http.Response(
-          '{"data":[{"id":"live-claude-model"}]}',
-          200,
-        ),
+        (_) async =>
+            http.Response('{"data":[{"id":"live-claude-model"}]}', 200),
       ),
-                                            storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     const provider = AppProviderConfig(
       id: 'anthropic-api',
@@ -64,6 +62,9 @@ void main() {
   });
 
   test('Claude capability is refreshable', () {
-    expect(ClaudeProviderCapability(), isA<RefreshableProviderModelCapability>());
+    expect(
+      ClaudeProviderCapability(),
+      isA<RefreshableProviderModelCapability>(),
+    );
   });
 }

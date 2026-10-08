@@ -12,10 +12,8 @@ import '../storage/home_storage.dart';
 import '../../utils/async_keyed_coalescer.dart';
 
 /// HTTP get that can attach conditional-request headers.
-typedef MarkdownNetworkImageHttpGet = Future<http.Response?> Function(
-  Uri uri, {
-  Map<String, String>? headers,
-});
+typedef MarkdownNetworkImageHttpGet =
+    Future<http.Response?> Function(Uri uri, {Map<String, String>? headers});
 
 /// Bytes + sniff result returned by [MarkdownNetworkImageStore.load].
 final class MarkdownImagePayload {
@@ -82,6 +80,7 @@ class MarkdownNetworkImageStore {
   final Directory? _cacheDir;
   final MarkdownNetworkImageHttpGet _httpGet;
   final int maxConcurrent;
+
   /// When true, disk hits still issue a conditional GET (tests / freshness).
   final bool revalidateOnLoad;
   final int _maxMemoryEntries;
@@ -109,7 +108,10 @@ class MarkdownNetworkImageStore {
   Future<MarkdownImagePayload?> load(String url) {
     final cached = _memoryLookup(url);
     if (cached != null && !revalidateOnLoad) return Future.value(cached);
-    return _coalescer.run(url, () => _gate.run(maxConcurrent, () => _loadBody(url)));
+    return _coalescer.run(
+      url,
+      () => _gate.run(maxConcurrent, () => _loadBody(url)),
+    );
   }
 
   /// Warm cache for [urls] without awaiting each consumer.
@@ -149,7 +151,10 @@ class MarkdownNetworkImageStore {
 
     http.Response? response;
     try {
-      response = await _httpGet(Uri.parse(url), headers: headers.isEmpty ? null : headers);
+      response = await _httpGet(
+        Uri.parse(url),
+        headers: headers.isEmpty ? null : headers,
+      );
     } on Exception catch (_) {
       response = null;
     } on Error catch (_) {
@@ -288,10 +293,7 @@ class MarkdownNetworkImageStore {
       try {
         final map =
             jsonDecode(await meta.readAsString()) as Map<String, dynamic>;
-        dated.add((
-          meta: meta,
-          savedAt: (map['savedAtMs'] as int?) ?? 0,
-        ));
+        dated.add((meta: meta, savedAt: (map['savedAtMs'] as int?) ?? 0));
       } on Exception catch (_) {
         dated.add((meta: meta, savedAt: 0));
       }

@@ -13,16 +13,16 @@ class PluginNotFoundException extends PluginException {
 }
 
 class PluginManifestException extends PluginException {
-  PluginManifestException(String path, {Object? cause})
-    : super('Failed to parse plugin manifest at $path', cause: cause);
+  PluginManifestException(String path, {super.cause})
+    : super('Failed to parse plugin manifest at $path');
 }
 
 class PluginInstallException extends PluginException {
-  PluginInstallException(String id, String reason, {Object? cause})
-    : super('Plugin install failed [$id]: $reason', cause: cause);
+  PluginInstallException(String id, String reason, {super.cause})
+    : super('Plugin install failed [$id]: $reason');
 }
 
 class MarketplaceUnreachableException extends PluginException {
-  MarketplaceUnreachableException(String marketplace, {Object? cause})
-    : super('Marketplace unreachable: $marketplace', cause: cause);
+  MarketplaceUnreachableException(String marketplace, {super.cause})
+    : super('Marketplace unreachable: $marketplace');
 }

@@ -6,11 +6,8 @@ import '../../../models/install_job/install_job_key.dart';
 import '../../../models/install_job/install_job_spec.dart';
 import '../install_job_runner.dart';
 
-typedef PackAcquireStepReporter = void Function({
-  String? subtitle,
-  int? completedSteps,
-  int? totalSteps,
-});
+typedef PackAcquireStepReporter =
+    void Function({String? subtitle, int? completedSteps, int? totalSteps});
 
 typedef PackAcquireInvoker<T> =
     Future<T> Function(
@@ -126,10 +123,9 @@ final class PackAcquireInstallJobRunner implements InstallJobRunner {
     return result;
   }
 
-  PackAcquireInvoker? _invokerFor(PackAcquireTargetKind kind) =>
-      switch (kind) {
-        PackAcquireTargetKind.skill => _installSkill,
-        PackAcquireTargetKind.plugin => _installPlugin,
-        PackAcquireTargetKind.extension => _installExtension,
-      };
+  PackAcquireInvoker? _invokerFor(PackAcquireTargetKind kind) => switch (kind) {
+    PackAcquireTargetKind.skill => _installSkill,
+    PackAcquireTargetKind.plugin => _installPlugin,
+    PackAcquireTargetKind.extension => _installExtension,
+  };
 }

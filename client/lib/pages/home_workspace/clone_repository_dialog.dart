@@ -15,10 +15,8 @@ import '../../utils/workspace/workspace_path_picker.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/workspace_create_directory_picker.dart';
 
-typedef RepoCloneParentDirPicker = Future<String?> Function(
-  BuildContext context,
-  String targetId,
-);
+typedef RepoCloneParentDirPicker =
+    Future<String?> Function(BuildContext context, String targetId);
 
 /// Opens the "Clone Repository" modal, starts the clone through
 /// [RepoCloneCubit], and surfaces a started toast.

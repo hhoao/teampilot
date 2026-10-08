@@ -102,8 +102,10 @@ void main() {
       expect(stat.exists, isTrue);
       final resolved = await fs.resolveSymlink(p.join(link, '.'));
       expect(resolved, isNotNull);
+      // macOS realpath expands /var → /private/var; compare canonical paths.
+      final canonicalB = await File(targetB).resolveSymbolicLinks();
       expect(
-        p.equals(p.normalize(resolved!), p.normalize(targetB)),
+        p.equals(p.normalize(resolved!), p.normalize(canonicalB)),
         isTrue,
         reason: 'link must now point at target B',
       );
@@ -145,6 +147,35 @@ void main() {
   });
 
   test(
+    'atomicWrite replaces dest when rename hits a sharing violation',
+    () async {
+      final dest = p.join(root.path, 'registries.json');
+      await File(dest).writeAsString('stale', flush: true);
+      final denied = LocalFilesystem(
+        pathContext: p.context,
+        renameFile: (from, to) {
+          throw PathAccessException(
+            from,
+            const OSError('Access denied', 5),
+            'Cannot rename file to \'$to\'',
+          );
+        },
+      );
+
+      await denied.atomicWrite(dest, '{"name":"My Skills"}');
+
+      expect(await File(dest).readAsString(), '{"name":"My Skills"}');
+      expect(
+        Directory(root.path)
+            .listSync()
+            .where((entity) => entity.path.contains('.tmp.'))
+            .toList(),
+        isEmpty,
+      );
+    },
+  );
+
+  test(
     'atomicWrite survives concurrent removeRecursive of its parent dir',
     () async {
       // Mirrors session launch: multiple members flush manifests that
@@ -177,42 +208,52 @@ void main() {
       return mode & 0x49; // any exec bit
     }
 
-    test('copyTree keeps an executable file executable and others not',
-        () async {
-      if (Platform.isWindows) {
-        return; // POSIX exec bits are meaningless on Windows
-      }
-      final src = p.join(root.path, 'src');
-      final dest = p.join(root.path, 'dst');
-      final hook = p.join(src, 'hooks', 'run-hook.cmd');
-      final plain = p.join(src, 'SKILL.md');
-      await fs.ensureDir(p.join(src, 'hooks'));
-      await fs.writeString(hook, '#!/usr/bin/env bash\n');
-      await fs.writeString(plain, 'content');
-      await Process.run('chmod', ['+x', hook]);
+    test(
+      'copyTree keeps an executable file executable and others not',
+      () async {
+        if (Platform.isWindows) {
+          return; // POSIX exec bits are meaningless on Windows
+        }
+        final src = p.join(root.path, 'src');
+        final dest = p.join(root.path, 'dst');
+        final hook = p.join(src, 'hooks', 'run-hook.cmd');
+        final plain = p.join(src, 'SKILL.md');
+        await fs.ensureDir(p.join(src, 'hooks'));
+        await fs.writeString(hook, '#!/usr/bin/env bash\n');
+        await fs.writeString(plain, 'content');
+        await Process.run('chmod', ['+x', hook]);
 
-      await fs.copyTree(source: src, destination: dest);
+        await fs.copyTree(source: src, destination: dest);
 
-      expect(await modeBits(p.join(dest, 'hooks', 'run-hook.cmd')),
-          isNot(equals(0)));
-      expect(await modeBits(p.join(dest, 'SKILL.md')), equals(0));
-    });
+        expect(
+          await modeBits(p.join(dest, 'hooks', 'run-hook.cmd')),
+          isNot(equals(0)),
+        );
+        expect(await modeBits(p.join(dest, 'SKILL.md')), equals(0));
+      },
+    );
 
-    test('copyFile keeps an executable file executable and others not', () async {
-      if (Platform.isWindows) {
-        return; // POSIX exec bits are meaningless on Windows
-      }
-      final hook = p.join(root.path, 'hook.sh');
-      final plain = p.join(root.path, 'plain.txt');
-      await fs.writeString(hook, '#!/usr/bin/env bash\n');
-      await fs.writeString(plain, 'content');
-      await Process.run('chmod', ['+x', hook]);
+    test(
+      'copyFile keeps an executable file executable and others not',
+      () async {
+        if (Platform.isWindows) {
+          return; // POSIX exec bits are meaningless on Windows
+        }
+        final hook = p.join(root.path, 'hook.sh');
+        final plain = p.join(root.path, 'plain.txt');
+        await fs.writeString(hook, '#!/usr/bin/env bash\n');
+        await fs.writeString(plain, 'content');
+        await Process.run('chmod', ['+x', hook]);
 
-      await fs.copyFile(hook, p.join(root.path, 'hook-copy.sh'));
-      await fs.copyFile(plain, p.join(root.path, 'plain-copy.txt'));
+        await fs.copyFile(hook, p.join(root.path, 'hook-copy.sh'));
+        await fs.copyFile(plain, p.join(root.path, 'plain-copy.txt'));
 
-      expect(await modeBits(p.join(root.path, 'hook-copy.sh')), isNot(equals(0)));
-      expect(await modeBits(p.join(root.path, 'plain-copy.txt')), equals(0));
-    });
+        expect(
+          await modeBits(p.join(root.path, 'hook-copy.sh')),
+          isNot(equals(0)),
+        );
+        expect(await modeBits(p.join(root.path, 'plain-copy.txt')), equals(0));
+      },
+    );
   });
 }

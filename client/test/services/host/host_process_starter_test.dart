@@ -73,10 +73,7 @@ void main() {
               environment,
               includeParentEnvironment = true,
             }) async {
-              calls.add({
-                'executable': executable,
-                'arguments': arguments,
-              });
+              calls.add({'executable': executable, 'arguments': arguments});
               return _FakeProcessRunHandle();
             },
         ttyFlavor: HostTtyScriptFlavor.gnu,

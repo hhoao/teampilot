@@ -1,13 +1,9 @@
 import '../../../../models/app_provider_config.dart';
 import '../../../../repositories/app_provider_repository.dart';
-import '../../../../models/team_config.dart';
 import '../../../storage/home_storage.dart';
 
 class FlashskyaiProviderMirrorResult {
-  const FlashskyaiProviderMirrorResult({
-    this.added = 0,
-    this.skipped = 0,
-  });
+  const FlashskyaiProviderMirrorResult({this.added = 0, this.skipped = 0});
 
   final int added;
   final int skipped;

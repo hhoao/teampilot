@@ -64,8 +64,7 @@ final class WorkspaceTrustProvisioner {
           tool: ClaudeProviderCapability.toolId,
           metadataFileName: ClaudeProviderCapability.metadataFileName,
           defaultMetadata: ClaudeProviderCapability.defaultMetadata,
-          defaultProjectConfig:
-              ClaudeProviderCapability.defaultProjectConfig,
+          defaultProjectConfig: ClaudeProviderCapability.defaultProjectConfig,
           directories: paths,
         ),
       );

@@ -129,7 +129,10 @@ void main() {
 
   group('worktreeRepoPathForToolsTarget', () {
     const folders = [
-      WorkspaceFolder(path: '/local/repo', targetId: WorkspaceFolder.localTargetId),
+      WorkspaceFolder(
+        path: '/local/repo',
+        targetId: WorkspaceFolder.localTargetId,
+      ),
       WorkspaceFolder(path: '/wsl/repo', targetId: 'wsl:ubuntu'),
     ];
 

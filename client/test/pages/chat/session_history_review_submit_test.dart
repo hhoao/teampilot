@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/member_input_ready_wait.dart';
-import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
+import 'package:teampilot/services/chat/launch/session/member_input_ready_wait.dart';
+import 'package:teampilot/services/chat/session/session_connect_request.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/chat/history_continue_delivery.dart';
@@ -13,6 +13,7 @@ void main() {
     late List<(String, String, bool)> readyCalls;
     late List<(String, String, String, bool)> deliverCalls;
     late List<(String, String)> titleCalls;
+    late List<(String, String)> abortCalls;
     late int openSessionCalls;
 
     setUp(() {
@@ -29,6 +30,7 @@ void main() {
       readyCalls = [];
       deliverCalls = [];
       titleCalls = [];
+      abortCalls = [];
       openSessionCalls = 0;
     });
 
@@ -66,6 +68,9 @@ void main() {
         applyFirstPromptTitle: (sessionId, firstPrompt) async {
           titleCalls.add((sessionId, firstPrompt));
         },
+        abortMemberInject: (sessionId, memberId) {
+          abortCalls.add((sessionId, memberId));
+        },
       );
     }
 
@@ -88,14 +93,12 @@ void main() {
       expect(readyCalls, [('sess-1', 'member-1', true)]);
       expect(deliverCalls, [('sess-1', 'member-1', 'continue here', true)]);
       expect(titleCalls, [('sess-1', 'continue here')]);
+      expect(abortCalls, [('sess-1', 'member-1')]);
       expect(openSessionCalls, 0);
     });
 
     test('pty fails when the terminal cannot confirm submission', () async {
-      final result = await runSubmit(
-        'continue here',
-        ptyDeliveryId: null,
-      );
+      final result = await runSubmit('continue here', ptyDeliveryId: null);
 
       expect(result.ok, isFalse);
       expect(result.channel, HistoryContinueChannel.pty);
@@ -117,6 +120,7 @@ void main() {
         expect(readyCalls, isEmpty);
         expect(deliverCalls, [('sess-1', 'member-1', 'follow up', false)]);
         expect(titleCalls, isEmpty);
+        expect(abortCalls, isEmpty);
       },
     );
 
@@ -294,15 +298,18 @@ void main() {
       expect(titleCalls, isEmpty);
     });
 
-    test('cancelled after connect skips ready-wait, deliver, and title', () async {
-      final result = await runSubmit('hello', cancelled: () => true);
+    test(
+      'cancelled after connect skips ready-wait, deliver, and title',
+      () async {
+        final result = await runSubmit('hello', cancelled: () => true);
 
-      expect(result.ok, isFalse);
-      expect(connectCalls, [connectRequest]);
-      expect(readyCalls, isEmpty);
-      expect(deliverCalls, isEmpty);
-      expect(titleCalls, isEmpty);
-    });
+        expect(result.ok, isFalse);
+        expect(connectCalls, [connectRequest]);
+        expect(readyCalls, isEmpty);
+        expect(deliverCalls, isEmpty);
+        expect(titleCalls, isEmpty);
+      },
+    );
 
     test('operator stop during ready-wait prevents the PTY deliver', () async {
       var stopped = false;
@@ -342,16 +349,19 @@ void main() {
       expect(titleCalls, isEmpty);
     });
 
-    test('operator stop before mailbox deliver skips the bus enqueue', () async {
-      final result = await runSubmit(
-        'hello',
-        channel: HistoryContinueChannel.mailbox,
-        cancelled: () => true,
-      );
+    test(
+      'operator stop before mailbox deliver skips the bus enqueue',
+      () async {
+        final result = await runSubmit(
+          'hello',
+          channel: HistoryContinueChannel.mailbox,
+          cancelled: () => true,
+        );
 
-      expect(result.ok, isFalse);
-      expect(result.channel, HistoryContinueChannel.mailbox);
-      expect(deliverCalls, isEmpty);
-    });
+        expect(result.ok, isFalse);
+        expect(result.channel, HistoryContinueChannel.mailbox);
+        expect(deliverCalls, isEmpty);
+      },
+    );
   });
 }

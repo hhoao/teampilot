@@ -44,7 +44,10 @@ void main() {
 
     // 未知列名 / 缺字段 / 非 map 容错回默认。
     final junk = LayoutPreferences.fromJson(const {
-      'gitGraphColumns': {'hiddenColumns': ['nonsense', 3], 'dateWidth': 'x'},
+      'gitGraphColumns': {
+        'hiddenColumns': ['nonsense', 3],
+        'dateWidth': 'x',
+      },
     });
     expect(junk.gitGraphColumns.hiddenColumns, isEmpty);
     expect(
@@ -52,9 +55,9 @@ void main() {
       GitGraphColumnPrefs.defaultDateWidth,
     );
     expect(
-      LayoutPreferences.fromJson(const {'gitGraphColumns': 42})
-          .gitGraphColumns
-          .hiddenColumns,
+      LayoutPreferences.fromJson(const {
+        'gitGraphColumns': 42,
+      }).gitGraphColumns.hiddenColumns,
       isEmpty,
     );
 
@@ -392,29 +395,33 @@ void main() {
     );
     // junk / 缺字段容错回默认。
     expect(
-      LayoutPreferences.fromJson(const {'gitGraphDetailWidth': 'x'})
-          .gitGraphDetailWidth,
+      LayoutPreferences.fromJson(const {
+        'gitGraphDetailWidth': 'x',
+      }).gitGraphDetailWidth,
       LayoutPreferences.defaultGitGraphDetailWidth,
     );
     // 过窄 clamp 到下限；超大值保留（父布局再 clamp显示）。
     expect(
-      LayoutPreferences.fromJson(const {'gitGraphDetailWidth': 10})
-          .gitGraphDetailWidth,
+      LayoutPreferences.fromJson(const {
+        'gitGraphDetailWidth': 10,
+      }).gitGraphDetailWidth,
       LayoutPreferences.minGitGraphDetailWidth,
     );
     expect(
-      LayoutPreferences.fromJson(const {'gitGraphDetailWidth': 900})
-          .gitGraphDetailWidth,
+      LayoutPreferences.fromJson(const {
+        'gitGraphDetailWidth': 900,
+      }).gitGraphDetailWidth,
       900,
     );
     final roundTrip = LayoutPreferences.fromJson(
       const LayoutPreferences(gitGraphDetailWidth: 500).toJson(),
     );
     expect(roundTrip.gitGraphDetailWidth, 500);
-    final clamped = const LayoutPreferences().copyWith(
-      gitGraphDetailWidth: 10,
+    final clamped = const LayoutPreferences().copyWith(gitGraphDetailWidth: 10);
+    expect(
+      clamped.gitGraphDetailWidth,
+      LayoutPreferences.minGitGraphDetailWidth,
     );
-    expect(clamped.gitGraphDetailWidth, LayoutPreferences.minGitGraphDetailWidth);
   });
 
   test('gitGraphHeaderVisible defaults true and round-trips', () {
@@ -446,9 +453,7 @@ void main() {
 
   test('floatingPreviewTabs defaults to true and round-trips', () {
     expect(const LayoutPreferences().floatingPreviewTabs, isTrue);
-    final off = const LayoutPreferences().copyWith(
-      floatingPreviewTabs: false,
-    );
+    final off = const LayoutPreferences().copyWith(floatingPreviewTabs: false);
     expect(off.toJson()['floatingPreviewTabs'], false);
     expect(
       LayoutPreferences.fromJson(off.toJson()).floatingPreviewTabs,
@@ -457,9 +462,46 @@ void main() {
   });
 
   test('fromJson tolerates missing floatingPreviewTabs', () {
+    expect(LayoutPreferences.fromJson(const {}).floatingPreviewTabs, isTrue);
+  });
+
+  test('right-tool open set defaults empty and round-trips', () {
+    expect(const LayoutPreferences().rightToolOpenIds, isEmpty);
+    expect(const LayoutPreferences().rightToolSelectedId, isNull);
+    expect(const LayoutPreferences().rightToolDismissedIds, isEmpty);
+    expect(LayoutPreferences.fromJson(const {}).rightToolOpenIds, isEmpty);
+
+    final parsed = LayoutPreferences.fromJson(const {
+      'rightToolOpenIds': ['members', 'nope', 'mailbox', 'members'],
+      'rightToolSelectedId': 'mailbox',
+      'rightToolDismissedIds': ['board', 'bogus'],
+    });
+    expect(parsed.rightToolOpenIds, ['members', 'mailbox']);
+    expect(parsed.rightToolSelectedId, 'mailbox');
+    expect(parsed.rightToolDismissedIds, ['board']);
+
+    final restored = LayoutPreferences.fromJson(parsed.toJson());
+    expect(restored.rightToolOpenIds, ['members', 'mailbox']);
+    expect(restored.rightToolSelectedId, 'mailbox');
+    expect(restored.rightToolDismissedIds, ['board']);
+  });
+
+  test('rightToolSelectedId unknown values become null', () {
     expect(
-      LayoutPreferences.fromJson(const {}).floatingPreviewTabs,
-      isTrue,
+      LayoutPreferences.fromJson(const {
+        'rightToolSelectedId': 'nope',
+      }).rightToolSelectedId,
+      isNull,
     );
+  });
+
+  test('copyWith can clear rightToolSelectedId', () {
+    const prefs = LayoutPreferences(
+      rightToolOpenIds: ['members'],
+      rightToolSelectedId: 'members',
+    );
+    final cleared = prefs.copyWith(clearRightToolSelectedId: true);
+    expect(cleared.rightToolSelectedId, isNull);
+    expect(cleared.rightToolOpenIds, ['members']);
   });
 }

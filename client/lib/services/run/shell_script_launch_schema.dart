@@ -18,7 +18,8 @@ abstract final class ShellScriptValidationCodes {
       'allowMultipleInstances must be a boolean';
   static const activateToolWindowMustBeBoolean =
       'activateToolWindow must be a boolean';
-  static const focusToolWindowMustBeBoolean = 'focusToolWindow must be a boolean';
+  static const focusToolWindowMustBeBoolean =
+      'focusToolWindow must be a boolean';
 }
 
 /// Built-in JSON schema fields for `type: shellScript` launch configurations.

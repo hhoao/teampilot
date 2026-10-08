@@ -77,7 +77,7 @@ import 'package:teampilot/services/home_workspace/home_workspace_ui_cache.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_repo_service.dart';
 import 'package:teampilot/services/install/install_job_registry.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_secret_store.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_coordinator.dart';
@@ -86,9 +86,8 @@ import 'package:teampilot/services/run/workspace_run_platform_factory.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/ssh/ssh_connection_events.dart';
 import 'package:teampilot/services/ssh/ssh_profile_connection_coordinator.dart';
-import 'package:teampilot/services/session/ai_history_loader.dart';
+import 'package:teampilot/services/chat/conversation/history/ai_history_loader.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
-import 'test_runtime_context.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/workspace/repo_clone_service.dart';
@@ -196,7 +195,10 @@ Widget buildTestApp({
       );
   final workbenchCubit = WorkbenchCubit();
   // Hoisted so the workbench editor opener below can share the same instances.
-  final editorCubit = EditorCubit(storage: fakeHomeStorage(), fs: LocalFilesystem());
+  final editorCubit = EditorCubit(
+    storage: fakeHomeStorage(),
+    fs: LocalFilesystem(),
+  );
   final floatingWorkspaceCubit = FloatingWorkspaceCubit();
   final workbenchEditorOpener = WorkbenchEditorOpener(
     editor: editorCubit,
@@ -207,10 +209,7 @@ Widget buildTestApp({
   );
   // Mirror the production bridge wiring (app_shell.dart) so session opens feed
   // the bar and bar-close tears down the domain in harness-driven tests too.
-  final chatBridge = WorkbenchChatBridge(
-    workbench: workbenchCubit,
-    chat: chat,
-  );
+  final chatBridge = WorkbenchChatBridge(workbench: workbenchCubit, chat: chat);
   workbenchCubit.port = chatBridge;
   chat.workbenchPort = chatBridge;
   chat.onSessionTabOpened = chatBridge.onSessionTabOpened;
@@ -364,15 +363,11 @@ Widget buildTestApp({
       RepositoryProvider<WorkspaceChromeCommands>(
         create: (_) => WorkspaceChromeCommands(),
       ),
-      RepositoryProvider<UiZoomBaseline>(
-        create: (_) => UiZoomBaseline(),
-      ),
+      RepositoryProvider<UiZoomBaseline>(create: (_) => UiZoomBaseline()),
       RepositoryProvider<WorkspaceRunRegistry>.value(
         value: workspaceRunRegistry,
       ),
-      RepositoryProvider<RunCommandHost>(
-        create: (_) => RunCommandHost(),
-      ),
+      RepositoryProvider<RunCommandHost>(create: (_) => RunCommandHost()),
       RepositoryProvider<WorkspaceSearchHost>(
         create: (_) => WorkspaceSearchHost(),
       ),
@@ -385,9 +380,7 @@ Widget buildTestApp({
       RepositoryProvider<WorkbenchEditorOpener>.value(
         value: workbenchEditorOpener,
       ),
-      RepositoryProvider<InstallJobRegistry>.value(
-        value: installJobRegistry,
-      ),
+      RepositoryProvider<InstallJobRegistry>.value(value: installJobRegistry),
     ],
     child: MultiBlocProvider(
       providers: [
@@ -401,9 +394,7 @@ Widget buildTestApp({
         BlocProvider.value(value: teamCubit),
         BlocProvider.value(value: chat),
         BlocProvider.value(value: presence),
-        BlocProvider(
-          create: (_) => AgentAttentionCubit(pruneInterval: null),
-        ),
+        BlocProvider(create: (_) => AgentAttentionCubit(pruneInterval: null)),
         BlocProvider(create: (_) => ConfigCubit()),
         BlocProvider.value(value: llmConfigCubit ?? testLlmConfigCubit()),
         BlocProvider.value(value: appProviderCubit!),
@@ -417,7 +408,8 @@ Widget buildTestApp({
         BlocProvider.value(value: editorCubit),
         BlocProvider.value(value: workbenchCubit),
         BlocProvider.value(
-          value: extensionCubit ??
+          value:
+              extensionCubit ??
               ExtensionCubit(
                 extensionRepo,
                 ExtensionAcquisitionEngine(
@@ -469,9 +461,8 @@ Widget buildTestApp({
           ),
         ),
         BlocProvider(
-          create: (_) => testAutomationCubit(
-            sessionRepository: desktopHarnessSessionRepo,
-          ),
+          create: (_) =>
+              testAutomationCubit(sessionRepository: desktopHarnessSessionRepo),
         ),
       ],
       child: CliToolRegistryScope(
@@ -544,7 +535,7 @@ Future<SessionPreferencesCubit> testSessionPreferencesCubit() async {
   );
 }
 
-Future<LaunchProfileCubit> createTeamCubit({TeamLauncher? launcher}) async {
+Future<LaunchProfileCubit> createTeamCubit() async {
   final tmp = await Directory.systemTemp.createTemp('teams_widget_');
   final appData = await Directory.systemTemp.createTemp('teams_widget_app_');
   final repository = testLaunchProfileRepository(tmp);
@@ -553,7 +544,6 @@ Future<LaunchProfileCubit> createTeamCubit({TeamLauncher? launcher}) async {
     sessionRepository: SessionRepository(storage: fakeHomeStorage()),
     storage: fakeHomeStorage(),
     executableResolver: desktopHarnessExecutable,
-    launcher: launcher ?? (_, __) async {},
     appDataBasePath: appData.path,
     configProfileService: ConfigProfileService(
       basePath: appData.path,
@@ -594,13 +584,8 @@ class _HarnessProviderHttp implements ProviderUsageHttpClient {
 
 /// [testWidgets] uses a fake-async zone; futures from real disk I/O (temp dirs,
 /// team JSON) must be created inside [WidgetTester.runAsync] or they never complete.
-Future<LaunchProfileCubit> createTeamCubitInTest(
-  WidgetTester tester, {
-  TeamLauncher? launcher,
-}) async {
-  final cubit = await tester.runAsync(
-    () => createTeamCubit(launcher: launcher),
-  );
+Future<LaunchProfileCubit> createTeamCubitInTest(WidgetTester tester) async {
+  final cubit = await tester.runAsync(() => createTeamCubit());
   expect(cubit, isNotNull);
   return cubit!;
 }

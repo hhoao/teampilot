@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
-import 'package:teampilot/services/follow_up/follow_up_queue.dart';
+import 'package:teampilot/services/chat/conversation/follow_up/follow_up_queue.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 import 'package:teampilot/widgets/follow_up/follow_up_queue_strip.dart';
 
@@ -42,9 +42,7 @@ FollowUpQueueStrip _strip({
 
 void main() {
   testWidgets('hides when queue is empty', (tester) async {
-    await tester.pumpWidget(
-      _host(_strip(queue: const FollowUpQueue())),
-    );
+    await tester.pumpWidget(_host(_strip(queue: const FollowUpQueue())));
     expect(find.byKey(kSessionFollowUpQueueStripKey), findsNothing);
   });
 

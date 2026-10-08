@@ -48,10 +48,11 @@ void main() {
   test('checkoutRemoteBranch splits remote prefix from full name', () async {
     final (cubit, controller) = await build();
     expect(await controller.checkoutRemoteBranch('origin/feature-x'), isTrue);
-    expect(
-      actions.calls.single,
-      ['checkout-remote-branch', 'origin', 'feature-x'],
-    );
+    expect(actions.calls.single, [
+      'checkout-remote-branch',
+      'origin',
+      'feature-x',
+    ]);
     await cubit.close();
   });
 
@@ -61,10 +62,11 @@ void main() {
       await controller.checkoutRemoteBranch('origin/feature/nested'),
       isTrue,
     );
-    expect(
-      actions.calls.single,
-      ['checkout-remote-branch', 'origin', 'feature/nested'],
-    );
+    expect(actions.calls.single, [
+      'checkout-remote-branch',
+      'origin',
+      'feature/nested',
+    ]);
     await cubit.close();
   });
 
@@ -78,10 +80,42 @@ void main() {
   test('deleteRemoteBranch splits remote prefix from full name', () async {
     final (cubit, controller) = await build();
     expect(await controller.deleteRemoteBranch('origin/feature-x'), isTrue);
-    expect(
-      actions.calls.single,
-      ['delete-remote-branch', 'origin', 'feature-x'],
+    expect(actions.calls.single, [
+      'delete-remote-branch',
+      'origin',
+      'feature-x',
+    ]);
+    await cubit.close();
+  });
+
+  test('successful action notifies onHeadChanged with repoRoot', () async {
+    final roots = <String>[];
+    final cubit = GitGraphCubit(
+      history: FakeHistoryForGraph(rows: []),
+      git: FakeGitForGraph(repoStatus()),
+      actions: actions,
+      onHeadChanged: roots.add,
     );
+    await cubit.setRepoRoot('/repo');
+    final controller = GitGraphActionsController(cubit: cubit);
+    await controller.createBranch('dev', atHash: 'c1');
+    expect(roots, ['/repo']);
+    await cubit.close();
+  });
+
+  test('failed action does not notify', () async {
+    final roots = <String>[];
+    final cubit = GitGraphCubit(
+      history: FakeHistoryForGraph(rows: []),
+      git: FakeGitForGraph(repoStatus()),
+      actions: actions,
+      onHeadChanged: roots.add,
+    );
+    await cubit.setRepoRoot('/repo');
+    actions.throwNext = GitException('conflict');
+    final controller = GitGraphActionsController(cubit: cubit);
+    expect(await controller.deleteBranch('dev'), isFalse);
+    expect(roots, isEmpty);
     await cubit.close();
   });
 }

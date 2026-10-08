@@ -92,14 +92,14 @@ class CliToolLocator {
         if (located != null) return located;
       }
       if (!includeShellFallback) return null;
-      return _locateWithShellFallback(runner, isWindows: isWindows);
+      return await _locateWithShellFallback(runner, isWindows: isWindows);
     } on ProcessException catch (error, stackTrace) {
       Logger().w(
         'Failed to locate $executableName: $error',
         stackTrace: stackTrace,
       );
       if (!includeShellFallback) return null;
-      return _locateWithShellFallback(runner, isWindows: isWindows);
+      return await _locateWithShellFallback(runner, isWindows: isWindows);
     } on Object catch (error, stackTrace) {
       Logger().w(
         'Failed to locate $executableName: $error',

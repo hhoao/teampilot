@@ -66,10 +66,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byKey(const Key('hook-name')), 'On start');
-    await tester.enterText(
-      find.byKey(const Key('hook-command')),
-      'echo start',
-    );
+    await tester.enterText(find.byKey(const Key('hook-command')), 'echo start');
     await tester.tap(find.byKey(const Key('hook-save')));
     await tester.pumpAndSettle();
 

@@ -150,10 +150,7 @@ class HubPublishGatesStep extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           for (final localKey in localExpertKeys) ...[
-            Text(
-              localKey,
-              style: TpTextStyles.of(context).mutedSm,
-            ),
+            Text(localKey, style: TpTextStyles.of(context).mutedSm),
             const SizedBox(height: 6),
             _buildRemapSelect(context, localKey, l10n),
             const SizedBox(height: 12),
@@ -235,7 +232,8 @@ class HubPublishConfirmStep extends StatelessWidget {
         _row(context, l10n.name, name),
         if (category.isNotEmpty)
           _row(context, l10n.expertEditorCategory, category),
-        if (author.isNotEmpty) _row(context, l10n.hubPublishAuthorLabel, author),
+        if (author.isNotEmpty)
+          _row(context, l10n.hubPublishAuthorLabel, author),
         _row(
           context,
           l10n.hubPublishKindLabel,
@@ -267,10 +265,7 @@ class HubPublishConfirmStep extends StatelessWidget {
         children: [
           SizedBox(
             width: 100,
-            child: Text(
-              label,
-              style: TpTextStyles.of(context).mdSemibold,
-            ),
+            child: Text(label, style: TpTextStyles.of(context).mdSemibold),
           ),
           Expanded(child: Text(value)),
         ],
@@ -301,10 +296,7 @@ class HubPublishSuccessStep extends StatelessWidget {
       children: [
         Text(l10n.hubPublishSuccessHint),
         const SizedBox(height: 12),
-        SelectableText(
-          prUrl,
-          key: const Key('hub-publish-pr-url'),
-        ),
+        SelectableText(prUrl, key: const Key('hub-publish-pr-url')),
         const SizedBox(height: 12),
         Row(
           children: [

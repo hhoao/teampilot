@@ -9,7 +9,7 @@ import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:teampilot/pages/team_hub/team_landing_picker_sheet.dart';
-import 'package:teampilot/services/team/team_clone_service.dart';
+import 'package:teampilot/services/team_config/team_clone_service.dart';
 import 'package:teampilot/services/team_hub/team_hub_source.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -42,7 +42,9 @@ class _FakeSource implements TeamHubSource {
 
 void _stubCubit(LaunchProfileCubit cubit, LaunchProfileState state) {
   when(() => cubit.state).thenReturn(state);
-  when(() => cubit.stream).thenAnswer((_) => Stream<LaunchProfileState>.empty());
+  when(
+    () => cubit.stream,
+  ).thenAnswer((_) => Stream<LaunchProfileState>.empty());
 }
 
 void main() {

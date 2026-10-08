@@ -46,7 +46,8 @@ Widget _narrowHost(GitGraphCubit cubit) => MaterialApp(
       body: SizedBox(
         width: 300,
         child: BlocBuilder<GitGraphCubit, GitGraphState>(
-          builder: (context, state) => GitGraphToolbar(state: state, workspaceId: 'ws'),
+          builder: (context, state) =>
+              GitGraphToolbar(state: state, workspaceId: 'ws'),
         ),
       ),
     ),
@@ -66,7 +67,8 @@ Future<void> _viewBranchHistory(WidgetTester tester, String branch) async {
 void main() {
   // 工具条控件较多，放宽测试表面避免与被测行为无关的布局挤压。
   setUp(() {
-    final view = TestWidgetsFlutterBinding.instance.platformDispatcher.views.first;
+    final view =
+        TestWidgetsFlutterBinding.instance.platformDispatcher.views.first;
     view.physicalSize = const Size(1600, 900);
     view.devicePixelRatio = 1.0;
     addTearDown(view.reset);
@@ -95,7 +97,10 @@ void main() {
     await _viewBranchHistory(tester, 'feature');
 
     expect(find.byKey(_chipKey), findsOneWidget);
-    expect(find.descendant(of: find.byKey(_chipKey), matching: find.text('feature')), findsOneWidget);
+    expect(
+      find.descendant(of: find.byKey(_chipKey), matching: find.text('feature')),
+      findsOneWidget,
+    );
     expect(history.lastArgs['revisionRange'], 'feature');
   });
 

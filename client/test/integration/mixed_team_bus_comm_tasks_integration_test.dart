@@ -4,8 +4,8 @@ library;
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/team_bus/agent_node.dart';
-import 'package:teampilot/services/team_bus/tasks/team_task.dart';
+import 'package:teampilot/services/chat/team_bus/agent_node.dart';
+import 'package:teampilot/services/chat/team_bus/tasks/team_task.dart';
 
 import 'support/team_bus_comm_task_harness.dart';
 import 'support/teammate_bus_http_client.dart';
@@ -487,10 +487,7 @@ void main() {
 
         // A': no member is eligible at ANY stage — matched → widened → open
         // chains inside the add_tasks reconcile, no window/tick wait.
-        expect(
-          harness.bus.listTasks().single.routing.stage,
-          RoutingStage.open,
-        );
+        expect(harness.bus.listTasks().single.routing.stage, RoutingStage.open);
 
         final claimed = harness.bus.claimNextTask('frontend-dev');
         expect(claimed!.title, 'api');

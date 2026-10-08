@@ -9,7 +9,7 @@ import '../../cubits/cli_presets_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/ai_feature_setting.dart';
 import '../../models/app_provider_config.dart';
-import '../../services/ai/ai_feature_setting_resolver.dart';
+import '../../services/ai_generation/ai_feature_setting_resolver.dart';
 import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -44,7 +44,9 @@ class AiFeaturesConfigWorkspace extends StatelessWidget {
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
                     child: Text(
                       l10n.aiFeaturesPageSubtitle,
-                      style: TpTextStyles.of(context).smMediumColored(Theme.of(context).colorScheme.onSurfaceVariant),
+                      style: TpTextStyles.of(context).smMediumColored(
+                        Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ],
@@ -169,7 +171,7 @@ class AiFeatureConfigRow extends StatelessWidget {
                             title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: styles.lgColored(cs.onSurface,),
+                            style: styles.lgColored(cs.onSurface),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -279,8 +281,9 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
   late String _modelId;
   late String _effortId;
 
-  List<CliTool> _cliItems(CliToolRegistry registry) =>
-      [for (final def in registry.launchable) def.id];
+  List<CliTool> _cliItems(CliToolRegistry registry) => [
+    for (final def in registry.launchable) def.id,
+  ];
 
   @override
   void initState() {

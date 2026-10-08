@@ -18,16 +18,6 @@ void main() {
     expect(policy.requiresDangerousExecution, isFalse);
   });
 
-  test('policy JSON round-trips all dimensions', () {
-    const policy = LaunchSecurityPolicy(
-      approval: LaunchApprovalPolicy.ask,
-      sandbox: LaunchSandboxPolicy.workspaceWrite,
-      hookTrust: LaunchHookTrustPolicy.trustedOnly,
-    );
-
-    expect(LaunchSecurityPolicy.fromJson(policy.toJson()), equals(policy));
-  });
-
   test('policy equality and copyWith compare semantic dimensions', () {
     const policy = LaunchSecurityPolicy(
       approval: LaunchApprovalPolicy.autoApprove,
@@ -69,14 +59,6 @@ void main() {
       ).requiresDangerousExecution,
       isFalse,
     );
-    expect(
-      const LaunchSecurityPolicyOverride(
-        approval: LaunchApprovalPolicy.never,
-        sandbox: LaunchSandboxPolicy.fullAccess,
-        hookTrust: LaunchHookTrustPolicy.trustedOnly,
-      ).requiresDangerousExecution,
-      isFalse,
-    );
   });
 
   test('named intermediate policy presets retain all three dimensions', () {
@@ -92,40 +74,6 @@ void main() {
       LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
       const LaunchSecurityPolicy(
         approval: LaunchApprovalPolicy.autoApprove,
-        sandbox: LaunchSandboxPolicy.workspaceWrite,
-        hookTrust: LaunchHookTrustPolicy.trustedOnly,
-      ),
-    );
-  });
-
-  test('override copyWith updates one dimension and preserves the others', () {
-    const override = LaunchSecurityPolicyOverride(
-      approval: LaunchApprovalPolicy.ask,
-      sandbox: LaunchSandboxPolicy.workspaceWrite,
-      hookTrust: LaunchHookTrustPolicy.trustedOnly,
-    );
-
-    expect(
-      override.copyWith(approval: LaunchApprovalPolicy.autoApprove),
-      const LaunchSecurityPolicyOverride(
-        approval: LaunchApprovalPolicy.autoApprove,
-        sandbox: LaunchSandboxPolicy.workspaceWrite,
-        hookTrust: LaunchHookTrustPolicy.trustedOnly,
-      ),
-    );
-    expect(override.copyWith(), equals(override));
-  });
-
-  test('override copyWith can clear one dimension without clearing others', () {
-    const override = LaunchSecurityPolicyOverride(
-      approval: LaunchApprovalPolicy.ask,
-      sandbox: LaunchSandboxPolicy.workspaceWrite,
-      hookTrust: LaunchHookTrustPolicy.trustedOnly,
-    );
-
-    expect(
-      override.copyWith(approval: null),
-      const LaunchSecurityPolicyOverride(
         sandbox: LaunchSandboxPolicy.workspaceWrite,
         hookTrust: LaunchHookTrustPolicy.trustedOnly,
       ),

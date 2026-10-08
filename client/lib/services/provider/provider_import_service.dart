@@ -73,8 +73,7 @@ class ProviderImportService {
     required bool onlyIfEmpty,
   }) async {
     final results = <ProviderImportResult>[];
-    for (final def
-        in _cliRegistry.withCapability<ProviderCapability>()) {
+    for (final def in _cliRegistry.withCapability<ProviderCapability>()) {
       results.add(await importForCli(def.id, onlyIfEmpty: onlyIfEmpty));
     }
     return results;

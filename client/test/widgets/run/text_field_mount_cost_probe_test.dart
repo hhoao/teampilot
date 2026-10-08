@@ -12,15 +12,15 @@ import 'package:re_editor/re_editor.dart';
 /// flutter test test/widgets/run/text_field_mount_cost_probe_test.dart --name cold_code_editor
 /// ```
 void main() {
-  Future<void> _warmShell(WidgetTester tester) async {
+  Future<void> warmShell(WidgetTester tester) async {
     await tester.pumpWidget(
       const MaterialApp(home: Scaffold(body: SizedBox.shrink())),
     );
     await tester.pump();
   }
 
-  Future<int> _mountBody(WidgetTester tester, Widget body) async {
-    await _warmShell(tester);
+  Future<int> mountBody(WidgetTester tester, Widget body) async {
+    await warmShell(tester);
     final sw = Stopwatch()..start();
     await tester.pumpWidget(
       MaterialApp(
@@ -39,14 +39,14 @@ void main() {
   }
 
   testWidgets('cold_one_text_field', (tester) async {
-    await _mountBody(
+    await mountBody(
       tester,
       const TextField(decoration: InputDecoration(labelText: 'a')),
     );
   });
 
   testWidgets('cold_six_text_fields', (tester) async {
-    await _mountBody(
+    await mountBody(
       tester,
       Column(
         children: [
@@ -58,7 +58,7 @@ void main() {
   });
 
   testWidgets('cold_multiline_text_field', (tester) async {
-    await _mountBody(
+    await mountBody(
       tester,
       const TextField(
         maxLines: 3,
@@ -68,7 +68,7 @@ void main() {
   });
 
   testWidgets('cold_code_editor', (tester) async {
-    await _mountBody(
+    await mountBody(
       tester,
       CodeEditor(
         controller: CodeLineEditingController.fromText(''),

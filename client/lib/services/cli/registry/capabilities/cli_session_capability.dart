@@ -1,11 +1,20 @@
+import 'package:path/path.dart' as p;
+
 import '../../../../models/team_config.dart';
 import '../../../io/filesystem.dart';
-import '../../../launch/work_plane_script_runner.dart';
+import '../../../chat/launch/staging/manifest/work_plane_script_runner.dart';
 import '../../../storage/runtime_layout.dart';
-import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../../chat/team_bus/member_bus_idle_endpoint.dart';
 import '../cli_capability.dart';
 import '../cli_tool_registry.dart';
 import '../config_profile/config_profile_context.dart';
+import 'workspace_base_info_capability.dart';
+
+/// On-disk hook writer targets for launch-time resource provision.
+typedef SessionHookMaterializationPaths = ({
+  String hooksDir,
+  String? configPath,
+});
 
 /// Phased initialization for a CLI session on the work plane.
 enum CliSessionPhase { persisted, auth, config, overlay, ready, degraded }
@@ -54,6 +63,7 @@ class CliSessionInitContext {
     this.busIdle,
     this.workingDirectory = '',
     this.additionalDirectories = const [],
+    this.workspaceBaseInfo = WorkspaceBaseInfoPromptInputs.empty,
     this.crossMachine = false,
     this.resolvedProviderId,
     this.credentialBasePath,
@@ -68,6 +78,7 @@ class CliSessionInitContext {
   final MemberBusIdleEndpoint? busIdle;
   final String workingDirectory;
   final List<String> additionalDirectories;
+  final WorkspaceBaseInfoPromptInputs workspaceBaseInfo;
   final bool crossMachine;
 
   /// Launch-resolved Cursor provider id (preset / member / team), when known.
@@ -216,6 +227,35 @@ abstract interface class CliSessionCapability implements CliCapability {
     String? memberId,
     String? teamId,
   });
+
+  /// Canonical fake `$HOME` root before host-specific preparation (junction).
+  ///
+  /// Null when this CLI does not isolate resources under a member home tree
+  /// (most CLIs use [sessionConfigDir] only).
+  String? sessionIsolatedHomeRoot(
+    RuntimeLayout layout,
+    CliTool tool, {
+    required String workspaceId,
+    required String sessionId,
+    String? memberId,
+    String? teamId,
+  });
+
+  /// Host-specific preparation so resource writers hit the resolved home path
+  /// (e.g. Windows junction). Only called when [sessionIsolatedHomeRoot] is
+  /// non-null.
+  Future<String> prepareSessionIsolatedHome({
+    required Filesystem fs,
+    required String canonicalHome,
+  });
+
+  /// Hook directory + optional sidecar config for [CliResourceProvisioner].
+  SessionHookMaterializationPaths hookMaterializationPaths({
+    required p.Context pathContext,
+    required String memberToolDir,
+    String? memberHome,
+    TeamMemberConfig? member,
+  });
 }
 
 /// Standard layout: the session tool dir *is* the CONFIG_DIR.
@@ -254,12 +294,51 @@ final class DefaultCliConfigLayout implements CliSessionCapability {
     required String sessionId,
     String? memberId,
     String? teamId,
-  }) => layout.sessionRuntimeToolDir(
+  }  ) => layout.sessionRuntimeToolDir(
     workspaceId,
     sessionId,
     tool.value,
     memberId: memberId,
   );
+
+  @override
+  String? sessionIsolatedHomeRoot(
+    RuntimeLayout layout,
+    CliTool tool, {
+    required String workspaceId,
+    required String sessionId,
+    String? memberId,
+    String? teamId,
+  }) =>
+      null;
+
+  @override
+  Future<String> prepareSessionIsolatedHome({
+    required Filesystem fs,
+    required String canonicalHome,
+  }) async =>
+      canonicalHome;
+
+  @override
+  SessionHookMaterializationPaths hookMaterializationPaths({
+    required p.Context pathContext,
+    required String memberToolDir,
+    String? memberHome,
+    TeamMemberConfig? member,
+  }) => (
+    hooksDir: pathContext.join(memberToolDir, 'hooks'),
+    configPath: null,
+  );
+}
+
+CliSessionCapability _sessionCapabilityFor(
+  CliTool tool, {
+  CliToolRegistry? registry,
+}) {
+  return (registry ?? CliToolRegistry.builtIn()).capability<CliSessionCapability>(
+        tool,
+      ) ??
+      const DefaultCliConfigLayout();
 }
 
 /// Resolves the CONFIG_DIR for [tool] via its [CliSessionCapability],
@@ -274,11 +353,7 @@ String sessionConfigDirForTool(
   String? teamId,
   CliToolRegistry? registry,
 }) {
-  final cap =
-      (registry ?? CliToolRegistry.builtIn()).capability<CliSessionCapability>(
-        tool,
-      ) ??
-      const DefaultCliConfigLayout();
+  final cap = _sessionCapabilityFor(tool, registry: registry);
   return cap.sessionConfigDir(
     layout,
     tool,
@@ -286,5 +361,68 @@ String sessionConfigDirForTool(
     sessionId: sessionId,
     memberId: memberId,
     teamId: teamId,
+  );
+}
+
+/// Isolated member home root for resource/prompt/hook writers, if any.
+String? sessionIsolatedHomeRootForTool(
+  CliTool tool,
+  RuntimeLayout layout, {
+  required String workspaceId,
+  required String sessionId,
+  String? memberId,
+  String? teamId,
+  CliToolRegistry? registry,
+}) {
+  final cap = _sessionCapabilityFor(tool, registry: registry);
+  return cap.sessionIsolatedHomeRoot(
+    layout,
+    tool,
+    workspaceId: workspaceId,
+    sessionId: sessionId,
+    memberId: memberId,
+    teamId: teamId,
+  );
+}
+
+/// Resolves and prepares isolated member home before Phase-A resource writes.
+Future<String?> sessionMemberHomePreparedForResourceWrites({
+  required Filesystem fs,
+  required CliTool tool,
+  required RuntimeLayout layout,
+  required String workspaceId,
+  required String sessionId,
+  String? memberId,
+  String? teamId,
+  CliToolRegistry? registry,
+}) async {
+  final cap = _sessionCapabilityFor(tool, registry: registry);
+  final root = cap.sessionIsolatedHomeRoot(
+    layout,
+    tool,
+    workspaceId: workspaceId,
+    sessionId: sessionId,
+    memberId: memberId,
+    teamId: teamId,
+  );
+  if (root == null || root.trim().isEmpty) return null;
+  return cap.prepareSessionIsolatedHome(fs: fs, canonicalHome: root);
+}
+
+/// Hook materialization paths for [tool] via [CliSessionCapability].
+SessionHookMaterializationPaths hookMaterializationPathsForTool(
+  CliTool tool, {
+  required p.Context pathContext,
+  required String memberToolDir,
+  String? memberHome,
+  TeamMemberConfig? member,
+  CliToolRegistry? registry,
+}) {
+  final cap = _sessionCapabilityFor(tool, registry: registry);
+  return cap.hookMaterializationPaths(
+    pathContext: pathContext,
+    memberToolDir: memberToolDir,
+    memberHome: memberHome,
+    member: member,
   );
 }

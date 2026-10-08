@@ -18,18 +18,24 @@ void main() {
 
     test('only unstaged is a writable working tree', () {
       expect(
-        const ScmDiffIdentity('/r/a.dart', ScmDiffMode.unstaged)
-            .isWritableWorkingTree,
+        const ScmDiffIdentity(
+          '/r/a.dart',
+          ScmDiffMode.unstaged,
+        ).isWritableWorkingTree,
         isTrue,
       );
       expect(
-        const ScmDiffIdentity('/r/a.dart', ScmDiffMode.staged)
-            .isWritableWorkingTree,
+        const ScmDiffIdentity(
+          '/r/a.dart',
+          ScmDiffMode.staged,
+        ).isWritableWorkingTree,
         isFalse,
       );
       expect(
-        const ScmDiffIdentity('/r/a.dart', ScmDiffMode.changes)
-            .isWritableWorkingTree,
+        const ScmDiffIdentity(
+          '/r/a.dart',
+          ScmDiffMode.changes,
+        ).isWritableWorkingTree,
         isFalse,
       );
     });
@@ -79,10 +85,7 @@ void main() {
     test('round trips scm identities', () {
       for (final mode in ScmDiffMode.values) {
         final identity = ScmDiffIdentity('/r/a.dart', mode);
-        expect(
-          DiffIdentity.parseStorageKey(identity.storageKey),
-          identity,
-        );
+        expect(DiffIdentity.parseStorageKey(identity.storageKey), identity);
       }
     });
 
@@ -105,10 +108,7 @@ void main() {
 
     test('WorkbenchTabId exposes the same parser', () {
       const identity = ScmDiffIdentity('/r/a.dart', ScmDiffMode.unstaged);
-      expect(
-        WorkbenchTabId.parseDiffStorageKey(identity.storageKey),
-        identity,
-      );
+      expect(WorkbenchTabId.parseDiffStorageKey(identity.storageKey), identity);
     });
   });
 

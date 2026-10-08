@@ -10,7 +10,6 @@ import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dar
 import 'package:teampilot/services/cli/codex/provider/codex_hook_writer.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/opencode_hook_writer.dart';
 import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dart';
-import 'package:teampilot/services/resource/providers/endpoint_hook_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/runtime_event_hook_contribution_provider.dart';
 import 'package:teampilot/services/cli/registry/capabilities/mcp_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';
@@ -914,7 +913,6 @@ final class _RecordingMcpCapability implements McpCapability {
     required Filesystem fs,
     required String configDir,
     required List<McpServerSpec> servers,
-    String? outputBasename,
   }) async {
     events.add('materialize:mcp');
   }
@@ -928,6 +926,14 @@ final class _RecordingMcpCapability implements McpCapability {
   }) async {
     events.add('materialize:mcp-credentials');
   }
+
+  @override
+  Future<void> maybeRemoveStaleProjectTeammateBus({
+    required Filesystem fs,
+    Map<String, Map<String, Object?>>? extraServers,
+    required String workingDirectory,
+    Iterable<String> additionalDirectories = const [],
+  }) async {}
 }
 
 final class _RecordingHookCapability implements HookCapability {

@@ -88,26 +88,11 @@ void main() {
     expect(TeamProfile.decodeLoop('maybe'), isNull);
   });
 
-  test('member security policy serializes under its normalized object', () {
-    const member = TeamMemberConfig(
-      id: 'builder-0',
-      name: 'Builder',
-      launchSecurityPolicy: LaunchSecurityPolicy(
-        approval: LaunchApprovalPolicy.ask,
-        sandbox: LaunchSandboxPolicy.workspaceWrite,
-        hookTrust: LaunchHookTrustPolicy.trustedOnly,
-      ),
-    );
+  test('member JSON does not persist launch security policy', () {
+    const member = TeamMemberConfig(id: 'builder-0', name: 'Builder');
     final json = member.toJson();
-    expect(json['launchSecurityPolicy'], isA<Map<String, Object?>>());
+    expect(json.containsKey('launchSecurityPolicy'), isFalse);
     expect(json.containsKey('dangerouslySkipPermissions'), isFalse);
-    expect(
-      TeamMemberConfig.fromJson({
-        ...json,
-        'dangerouslySkipPermissions': true,
-      }).launchSecurityPolicy,
-      equals(member.launchSecurityPolicy),
-    );
   });
 
   test('decodeForceTeamLeadDelegateMode accepts bool and string', () {

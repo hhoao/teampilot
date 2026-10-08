@@ -47,9 +47,7 @@ class RemoteCliPathCache {
   Future<void> save(String profileId, Map<CliTool, String> paths) async {
     try {
       final json = await _readAll();
-      json[profileId] = {
-        for (final e in paths.entries) e.key.value: e.value,
-      };
+      json[profileId] = {for (final e in paths.entries) e.key.value: e.value};
       await _fs.atomicWrite(filePath, jsonEncode(json));
     } on Object catch (error, stackTrace) {
       Logger().w(

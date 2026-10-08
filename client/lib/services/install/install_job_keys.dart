@@ -18,10 +18,8 @@ abstract final class InstallJobKeys {
     scope: scope,
   );
 
-  static InstallJobKey skill(String skillId) => InstallJobKey(
-    kind: InstallJobKind.packAcquire,
-    target: 'skill:$skillId',
-  );
+  static InstallJobKey skill(String skillId) =>
+      InstallJobKey(kind: InstallJobKind.packAcquire, target: 'skill:$skillId');
 
   static InstallJobKey plugin(String pluginId) => InstallJobKey(
     kind: InstallJobKind.packAcquire,
@@ -33,15 +31,11 @@ abstract final class InstallJobKeys {
     target: 'extension:$extId',
   );
 
-  static InstallJobKey hubTeam(String hubKey) => InstallJobKey(
-    kind: InstallJobKind.hubClone,
-    target: 'team:$hubKey',
-  );
+  static InstallJobKey hubTeam(String hubKey) =>
+      InstallJobKey(kind: InstallJobKind.hubClone, target: 'team:$hubKey');
 
-  static InstallJobKey hubExpert(String hubKey) => InstallJobKey(
-    kind: InstallJobKind.hubClone,
-    target: 'expert:$hubKey',
-  );
+  static InstallJobKey hubExpert(String hubKey) =>
+      InstallJobKey(kind: InstallJobKind.hubClone, target: 'expert:$hubKey');
 
   static InstallJobKey fileImport(String workspaceId, String planHash) =>
       InstallJobKey(
@@ -49,8 +43,6 @@ abstract final class InstallJobKeys {
         target: '$workspaceId:$planHash',
       );
 
-  static InstallJobKey appUpdate(String version) => InstallJobKey(
-    kind: InstallJobKind.appUpdate,
-    target: version,
-  );
+  static InstallJobKey appUpdate(String version) =>
+      InstallJobKey(kind: InstallJobKind.appUpdate, target: version);
 }

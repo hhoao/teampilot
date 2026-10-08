@@ -49,29 +49,36 @@ void main() {
       );
     });
 
-    test('persistFromLiveCodexHome copies referenced file into provider dir', () async {
-      const configToml = 'model_catalog_json = "cc-switch-model-catalog.json"\n';
-      final liveHome = p.join(root.path, 'user');
-      final codexHome = p.join(liveHome, '.codex');
-      await Directory(codexHome).create(recursive: true);
-      await File(p.join(codexHome, 'cc-switch-model-catalog.json'))
-          .writeAsString('{"models":[]}');
+    test(
+      'persistFromLiveCodexHome copies referenced file into provider dir',
+      () async {
+        const configToml =
+            'model_catalog_json = "cc-switch-model-catalog.json"\n';
+        final liveHome = p.join(root.path, 'user');
+        final codexHome = p.join(liveHome, '.codex');
+        await Directory(codexHome).create(recursive: true);
+        await File(
+          p.join(codexHome, 'cc-switch-model-catalog.json'),
+        ).writeAsString('{"models":[]}');
 
-      final providerDir = p.join(root.path, 'providers', 'deepseek');
-      await Directory(providerDir).create(recursive: true);
+        final providerDir = p.join(root.path, 'providers', 'deepseek');
+        await Directory(providerDir).create(recursive: true);
 
-      await CodexConfigSidecar.persistFromLiveCodexHome(
-        fs: LocalFilesystem(),
-        providerDir: providerDir,
-        configToml: configToml,
-        liveCodexHome: liveHome,
-      );
+        await CodexConfigSidecar.persistFromLiveCodexHome(
+          fs: LocalFilesystem(),
+          providerDir: providerDir,
+          configToml: configToml,
+          liveCodexHome: liveHome,
+        );
 
-      expect(
-        await File(p.join(providerDir, 'cc-switch-model-catalog.json')).exists(),
-        isTrue,
-      );
-    });
+        expect(
+          await File(
+            p.join(providerDir, 'cc-switch-model-catalog.json'),
+          ).exists(),
+          isTrue,
+        );
+      },
+    );
 
     test(
       'materializeIntoCodexHome copies sidecar after TomlDocument round-trip',
@@ -139,7 +146,9 @@ model_catalog_json = "cc-switch-model-catalog.json"
         final codexHome = p.join(root.path, 'codex-home');
         final existingToml = '${TomlDocument.parse(providerToml)}\n';
         await Directory(codexHome).create(recursive: true);
-        await File(p.join(codexHome, 'config.toml')).writeAsString(existingToml);
+        await File(
+          p.join(codexHome, 'config.toml'),
+        ).writeAsString(existingToml);
 
         await CodexHomeProvisioner(fs: LocalFilesystem()).provision(
           codexHome: codexHome,
@@ -147,9 +156,7 @@ model_catalog_json = "cc-switch-model-catalog.json"
             id: 'deepseek',
             cli: CliTool.codex,
             name: 'DeepSeek',
-            config: {
-              'configToml': providerToml,
-            },
+            config: {'configToml': providerToml},
           ),
           providerDir: providerDir,
         );

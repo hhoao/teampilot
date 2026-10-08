@@ -166,5 +166,4 @@ class ManagedProviderQuotaMeter extends StatelessWidget {
       ],
     );
   }
-
 }

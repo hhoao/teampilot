@@ -19,9 +19,12 @@ void main() {
   setUp(() async {
     temp = await Directory.systemTemp.createTemp('device_code_dialog_');
     cubit = AppProviderCubit(
-      repository: AppProviderRepository(basePath: temp.path, storage: fakeHomeStorage(), ),
+      repository: AppProviderRepository(
+        basePath: temp.path,
+        storage: fakeHomeStorage(),
+      ),
       basePath: temp.path,
-                              storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     cubit.beginCredentialLogin('openai-official');
     cubit.reportCredentialLoginProgress(

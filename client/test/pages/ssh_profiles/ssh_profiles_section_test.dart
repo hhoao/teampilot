@@ -238,7 +238,10 @@ void main() {
 
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('ssh_profiles_section_');
-    profileRepository = SshProfileRepository(rootDir: tempDir.path, storage: fakeHomeStorage(), );
+    profileRepository = SshProfileRepository(
+      rootDir: tempDir.path,
+      storage: fakeHomeStorage(),
+    );
     await profileRepository.save(_profile);
 
     harness = _Harness();

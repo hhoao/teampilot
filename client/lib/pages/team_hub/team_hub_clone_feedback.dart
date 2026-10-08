@@ -1,5 +1,5 @@
 import '../../l10n/app_localizations.dart';
-import '../../services/team/team_clone_service.dart';
+import '../../services/team_config/team_clone_service.dart';
 
 /// User-facing toast copy after a TeamHub clone attempt.
 String teamHubCloneToastMessage(

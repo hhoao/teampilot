@@ -161,22 +161,6 @@ void main() {
   });
 
   test(
-    'simpleModeDefaultFullAccess defaults to true and persists toggle',
-    () async {
-      final cubit = await makeCubit();
-      await cubit.load();
-      expect(cubit.state.preferences.simpleModeDefaultFullAccess, true);
-
-      await cubit.setSimpleModeDefaultFullAccess(false);
-      expect(cubit.state.preferences.simpleModeDefaultFullAccess, false);
-
-      final cubit2 = await makeCubit();
-      await cubit2.load();
-      expect(cubit2.state.preferences.simpleModeDefaultFullAccess, false);
-    },
-  );
-
-  test(
     'setDefaultSshWorkingDirectory persists the remote default cwd',
     () async {
       final cubit = await makeCubit();
@@ -307,19 +291,31 @@ void main() {
     });
 
     expect(cubit.state.locatedExecutablesRevision, 1);
-    expect(cubit.hasKnownToolchainExecutable(SessionPreferences.toolchainGit, 'git'), isTrue);
+    expect(
+      cubit.hasKnownToolchainExecutable(SessionPreferences.toolchainGit, 'git'),
+      isTrue,
+    );
     expect(
       cubit.resolveToolchainExecutable(SessionPreferences.toolchainGit, 'git'),
       '/usr/bin/git',
     );
   });
 
-  test('hasKnownToolchainExecutable is true for bare discovered git name', () async {
-    final cubit = await makeCubit(
-      locatedToolchains: const {SessionPreferences.toolchainGit: 'git'},
-    );
-    await cubit.load();
+  test(
+    'hasKnownToolchainExecutable is true for bare discovered git name',
+    () async {
+      final cubit = await makeCubit(
+        locatedToolchains: const {SessionPreferences.toolchainGit: 'git'},
+      );
+      await cubit.load();
 
-    expect(cubit.hasKnownToolchainExecutable(SessionPreferences.toolchainGit, 'git'), isTrue);
-  });
+      expect(
+        cubit.hasKnownToolchainExecutable(
+          SessionPreferences.toolchainGit,
+          'git',
+        ),
+        isTrue,
+      );
+    },
+  );
 }

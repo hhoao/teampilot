@@ -24,9 +24,7 @@ final class OpencodePermissionLaunch
   }
 
   void _validate(LaunchSecurityPolicy policy) {
-    if (policy == LaunchSecurityPolicy.cliDefault ||
-        policy == LaunchSecurityPolicy.fullAccess)
-      return;
+    if (policy == LaunchSecurityPolicy.fullAccess) return;
 
     throw const CliLaunchCapabilityException(
       cli: CliTool.opencode,

@@ -11,6 +11,14 @@ const EdgeInsets kUserBubbleContentPadding = EdgeInsets.fromLTRB(
   12,
 );
 
+/// Drop extra line-height above the first line and below the last so
+/// [kUserBubbleContentPadding] is the optical inset. Wrapped lines keep
+/// [MarkdownTokens.body] height between them.
+const TextHeightBehavior kUserBubbleTextHeightBehavior = TextHeightBehavior(
+  applyHeightToFirstAscent: false,
+  applyHeightToLastDescent: false,
+);
+
 /// Max width for a user message bubble (content + padding), independent of
 /// thread/column width. Narrow threads still clamp via action-bar reserve.
 const double kUserBubbleMaxWidth = 800;

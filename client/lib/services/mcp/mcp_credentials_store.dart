@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import '../io/filesystem.dart';
-import '../io/local_filesystem.dart';
 import 'mcp_oauth_server_key.dart';
 
 /// Claude Code secure storage file (`CLAUDE_CONFIG_DIR/.credentials.json`).

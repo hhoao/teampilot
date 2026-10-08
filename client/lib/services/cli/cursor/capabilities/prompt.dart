@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import '../../../../services/io/filesystem.dart';
-import '../../../../services/session/member_role_provision.dart';
+import '../../registry/member_role_provision.dart';
 import '../../registry/capabilities/prompt_capability.dart';
 import '../provider/cursor_home_layout.dart';
 import '../provider/cursor_role_rule_writer.dart';
@@ -41,7 +41,6 @@ final class CursorPromptCapability
           forceTeamLeadDelegateMode: ctx.forceTeamLeadDelegateMode,
           mixed: ctx.mixed,
           pushDelivery: ctx.pushDelivery,
-          additionalDirectories: const [],
         ).trim(),
         origin: const ContributionOrigin(
           providerId: 'cursor',

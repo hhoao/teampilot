@@ -361,9 +361,7 @@ class _ResultsBody extends StatelessWidget {
                     itemBuilder: (context, i) {
                       final entry = filtered[i];
                       return MarketplaceSkillCard(
-                        key: ValueKey(
-                          '${entry.sourceId}:${entry.skill.key}',
-                        ),
+                        key: ValueKey('${entry.sourceId}:${entry.skill.key}'),
                         skill: entry.skill,
                         installed: installedKeys.contains(
                           '${(entry.skill.directory ?? entry.skill.repoName).split('/').last.toLowerCase()}:${entry.skill.repoOwner.toLowerCase()}:${entry.skill.repoName.toLowerCase()}',

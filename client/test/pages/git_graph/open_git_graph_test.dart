@@ -7,27 +7,37 @@ import 'package:teampilot/cubits/workbench/workbench_tab.dart';
 import 'package:teampilot/pages/git_graph/open_git_graph.dart';
 
 void main() {
-  testWidgets('openGitGraphTab opens floating gitGraph tab for repo',
-      (tester) async {
+  testWidgets('openGitGraphTab opens floating gitGraph tab for repo', (
+    tester,
+  ) async {
     final workbench = WorkbenchCubit();
     final floating = FloatingWorkspaceCubit();
     floating.ensureOpen();
     floating.setActiveWorkspace('ws');
-    await tester.pumpWidget(MultiRepositoryProvider(
-      providers: [
-        RepositoryProvider.value(value: workbench),
-        RepositoryProvider.value(value: floating),
-      ],
-      child: MaterialApp(home: Builder(builder: (context) {
-        return Center(
-          child: TextButton(
-            onPressed: () => openGitGraphTab(context,
-                workspaceId: 'ws', repoRoot: '/repo'),
-            child: const Text('open'),
+    await tester.pumpWidget(
+      MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider.value(value: workbench),
+          RepositoryProvider.value(value: floating),
+        ],
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) {
+              return Center(
+                child: TextButton(
+                  onPressed: () => openGitGraphTab(
+                    context,
+                    workspaceId: 'ws',
+                    repoRoot: '/repo',
+                  ),
+                  child: const Text('open'),
+                ),
+              );
+            },
           ),
-        );
-      })),
-    ));
+        ),
+      ),
+    );
     await tester.tap(find.text('open'));
     await tester.pump();
     expect(

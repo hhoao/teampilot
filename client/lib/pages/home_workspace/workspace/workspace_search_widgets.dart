@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../../l10n/l10n_extensions.dart';
-import '../../../services/session/workspace_session_content_index.dart';
+import '../../../services/chat/session/workspace_session_content_index.dart';
 import '../../../utils/ui/coarse_relative_time.dart';
 
 /// Route-scoped widgets for the workspace search dialog (`workspace_search_dialog.dart`),
@@ -105,9 +105,11 @@ class WorkspaceSearchFilterChip extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             label,
-            style: styles.mdColored(color).copyWith(
-              fontWeight: active ? FontWeight.w500 : FontWeight.w400,
-            ),
+            style: styles
+                .mdColored(color)
+                .copyWith(
+                  fontWeight: active ? FontWeight.w500 : FontWeight.w400,
+                ),
           ),
         ],
       ),

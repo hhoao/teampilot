@@ -16,10 +16,7 @@ import 'package:shared_ui/shared_ui.dart';
 const double kComposeCascadePresetsMaxHeight = 320;
 
 /// Sentinel values for optional model chip menu rows.
-enum ComposeModelPresetChipAction {
-  manage,
-  savePreset,
-}
+enum ComposeModelPresetChipAction { manage, savePreset }
 
 sealed class CascadeSelection {
   final CliTool cli;
@@ -30,17 +27,29 @@ sealed class CascadeSelection {
 final class CascadeModelPick extends CascadeSelection {
   // Direct model-row pick: effort stays empty (identical to today's modal submit).
   final String modelId;
-  const CascadeModelPick({required super.cli, required super.providerId, required this.modelId});
+  const CascadeModelPick({
+    required super.cli,
+    required super.providerId,
+    required this.modelId,
+  });
 }
 
 final class CascadeEffortPick extends CascadeSelection {
   final String modelId;
   final String effort;
-  const CascadeEffortPick({required super.cli, required super.providerId, required this.modelId, required this.effort});
+  const CascadeEffortPick({
+    required super.cli,
+    required super.providerId,
+    required this.modelId,
+    required this.effort,
+  });
 }
 
 final class CascadeCustomModelRequest extends CascadeSelection {
-  const CascadeCustomModelRequest({required super.cli, required super.providerId});
+  const CascadeCustomModelRequest({
+    required super.cli,
+    required super.providerId,
+  });
 }
 
 class ComposeCascadeProvider {
@@ -49,7 +58,8 @@ class ComposeCascadeProvider {
   final bool supportsCustomModelEntry;
   final List<String> models;
   final AppProviderConfig config;
-  final Map<String, List<String>> effortByModel; // value empty ⇒ model is a leaf
+  final Map<String, List<String>>
+  effortByModel; // value empty ⇒ model is a leaf
   const ComposeCascadeProvider({
     required this.id,
     required this.name,
@@ -120,21 +130,27 @@ List<ComposeCascadeCliGroup> resolveComposeCascadeCliGroups({
       final mode = capability.pickerMode(p);
       final models = mode == ProviderModelPickerMode.hidden
           ? const <String>[]
-          : capability.modelCandidates(provider: p, providerId: p.id, currentModel: '');
-      cascadeProviders.add(ComposeCascadeProvider(
-        id: p.id,
-        name: p.name,
-        supportsCustomModelEntry:
-            mode == ProviderModelPickerMode.catalogWithCustomEntry,
-        models: models,
-        config: p,
-        effortByModel: {
-          for (final m in models)
-            m: capability.isApplicable(model: m)
-                ? capability.effortCandidates(model: m, provider: p)
-                : const <String>[],
-        },
-      ));
+          : capability.modelCandidates(
+              provider: p,
+              providerId: p.id,
+              currentModel: '',
+            );
+      cascadeProviders.add(
+        ComposeCascadeProvider(
+          id: p.id,
+          name: p.name,
+          supportsCustomModelEntry:
+              mode == ProviderModelPickerMode.catalogWithCustomEntry,
+          models: models,
+          config: p,
+          effortByModel: {
+            for (final m in models)
+              m: capability.isApplicable(model: m)
+                  ? capability.effortCandidates(model: m, provider: p)
+                  : const <String>[],
+          },
+        ),
+      );
     }
     groups.add(ComposeCascadeCliGroup(cli: cli, providers: cascadeProviders));
   }
@@ -223,48 +239,69 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
   bool showSavePreset = true,
   bool showManagePresets = true,
 }) {
-  List<TpActionMenuSpec> providerChildren(ComposeCascadeCliGroup group,
-      ComposeCascadeProvider p) {
+  List<TpActionMenuSpec> providerChildren(
+    ComposeCascadeCliGroup group,
+    ComposeCascadeProvider p,
+  ) {
     final rows = <TpActionMenuSpec>[
       if (p.models.isEmpty)
-        TpActionMenuSpec.item(
-          value: null,
-          label: noModelsLabel, enabled: false)
+        TpActionMenuSpec.item(value: null, label: noModelsLabel, enabled: false)
       else
         for (final model in p.models)
           if ((p.effortByModel[model]?.isNotEmpty ?? false))
             TpActionMenuSpec.submenu(
-              value: CascadeModelPick(cli: group.cli, providerId: p.id, modelId: model),
+              value: CascadeModelPick(
+                cli: group.cli,
+                providerId: p.id,
+                modelId: model,
+              ),
               label: model,
               children: [
                 TpActionMenuSpec.item(
-                  value: CascadeModelPick(cli: group.cli, providerId: p.id,
-                    modelId: model),
+                  value: CascadeModelPick(
+                    cli: group.cli,
+                    providerId: p.id,
+                    modelId: model,
+                  ),
                   label: defaultEffortLabel,
-                  selected: false),
+                  selected: false,
+                ),
                 for (final e in p.effortByModel[model]!)
                   TpActionMenuSpec.item(
-                    value: CascadeEffortPick(cli: group.cli, providerId: p.id,
-                      modelId: model, effort: e),
-                    label: e),
+                    value: CascadeEffortPick(
+                      cli: group.cli,
+                      providerId: p.id,
+                      modelId: model,
+                      effort: e,
+                    ),
+                    label: e,
+                  ),
               ],
             )
           else
             TpActionMenuSpec.item(
-              value: CascadeModelPick(cli: group.cli, providerId: p.id, modelId: model),
-              label: model),
+              value: CascadeModelPick(
+                cli: group.cli,
+                providerId: p.id,
+                modelId: model,
+              ),
+              label: model,
+            ),
       if (p.supportsCustomModelEntry) ...[
         const TpActionMenuSpec.divider(),
         TpActionMenuSpec.item(
           value: CascadeCustomModelRequest(cli: group.cli, providerId: p.id),
-          label: customModelIdLabel),
+          label: customModelIdLabel,
+        ),
       ],
     ];
     return rows;
   }
 
-  TpActionMenuSpec providerSpec(ComposeCascadeCliGroup group,
-      ComposeCascadeProvider p) {
+  TpActionMenuSpec providerSpec(
+    ComposeCascadeCliGroup group,
+    ComposeCascadeProvider p,
+  ) {
     return TpActionMenuSpec.submenu(
       value: p.id,
       label: p.name,
@@ -278,8 +315,12 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
 
   final specs = <TpActionMenuSpec>[
     if (presets.isEmpty)
-      TpActionMenuSpec.item(value: null, icon: Icons.terminal_outlined,
-        label: emptyHintLabel, enabled: false)
+      TpActionMenuSpec.item(
+        value: null,
+        icon: Icons.terminal_outlined,
+        label: emptyHintLabel,
+        enabled: false,
+      )
     else
       TpActionMenuSpec.submenu(
         value: null,
@@ -289,18 +330,24 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
             maxHeight: kComposeCascadePresetsMaxHeight,
             children: [
               for (final preset in presets)
-                TpActionMenuSpec.item(value: preset.id,
+                TpActionMenuSpec.item(
+                  value: preset.id,
                   iconWidget: _PresetCliMenuIcon(cli: preset.cli),
                   label: preset.name,
-                  selected: preset.id == selectedPresetId),
+                  selected: preset.id == selectedPresetId,
+                ),
             ],
           ),
         ],
       ),
     const TpActionMenuSpec.divider(),
     if (!hasProviderRows)
-      TpActionMenuSpec.item(value: null, icon: Icons.cloud_off_outlined,
-        label: emptyProvidersLabel, enabled: false)
+      TpActionMenuSpec.item(
+        value: null,
+        icon: Icons.cloud_off_outlined,
+        label: emptyProvidersLabel,
+        enabled: false,
+      )
     else
       for (final group in cliGroups)
         if (!groupByCli)
@@ -316,11 +363,15 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
     if (showSavePreset)
       TpActionMenuSpec.item(
         value: ComposeModelPresetChipAction.savePreset,
-        icon: Icons.bookmark_add_outlined, label: savePresetLabel),
+        icon: Icons.bookmark_add_outlined,
+        label: savePresetLabel,
+      ),
     if (showManagePresets)
       TpActionMenuSpec.item(
         value: ComposeModelPresetChipAction.manage,
-        icon: Icons.add, label: managePresetsLabel),
+        icon: Icons.add,
+        label: managePresetsLabel,
+      ),
   ];
   return specs;
 }

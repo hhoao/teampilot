@@ -9,7 +9,7 @@ import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/extension/extension_detector.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
@@ -79,7 +79,7 @@ void main() {
             },
           ),
         },
-                                      storage: fakeHomeStorage(),
+        storage: fakeHomeStorage(),
       );
     });
 
@@ -165,7 +165,7 @@ void main() {
         layout: RuntimeLayout(teampilotRoot: base.path, fs: LocalFilesystem()),
         loadEnabledExtensionIds: ({teamId, workspaceId}) async => {'rtk'},
         extensionDetector: ExtensionDetector(processRunner: _alwaysMissing),
-                                      storage: homeStorage,
+        storage: homeStorage,
       );
 
       final outcome = await service.prepareTeamLaunch(

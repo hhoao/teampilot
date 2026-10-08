@@ -4,6 +4,7 @@ import '../registry/cli_tool_definition.dart';
 import '../registry/capabilities/acp_capability.dart';
 import '../registry/capabilities/ai_history_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
+import '../registry/capabilities/cli_launch_security_capability.dart';
 import '../registry/capabilities/cli_session_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import '../registry/capabilities/hook_capability.dart';
@@ -17,6 +18,7 @@ import '../registry/capabilities/runtime_event_capability.dart';
 import '../registry/capabilities/skill_capability.dart';
 import '../registry/capabilities/team_behavior_capability.dart';
 import '../registry/capabilities/terminal_behavior_capability.dart';
+import '../registry/capabilities/workspace_base_info_capability.dart';
 import '../registry/launch/user_extra_args_provider.dart';
 import '../registry/resources/default_resource_capability.dart';
 import 'capabilities/acp.dart';
@@ -29,6 +31,7 @@ import 'capabilities/native_commands.dart';
 import 'capabilities/prompt.dart';
 import 'capabilities/provider.dart';
 import 'capabilities/session.dart';
+import 'capabilities/workspace_base_info.dart';
 
 /// Gemini CLI (`@google/gemini-cli`) tool definition.
 ///
@@ -54,6 +57,8 @@ final class GeminiCliTool implements CliToolDefinition {
     this.prompt = const GeminiPromptCapability(),
     this.mcp = const GeminiMcpCapability(),
     this.hookWriter = const GeminiHookWriter(),
+    this.workspaceBaseInfo = const GeminiWorkspaceBaseInfo(),
+    this.launchSecurity = const FullAccessOnlyCliLaunchSecurityCapability(),
     this.acp = const GeminiAcpCapability(),
   });
 
@@ -73,6 +78,8 @@ final class GeminiCliTool implements CliToolDefinition {
   final PromptCapability prompt;
   final McpCapability mcp;
   final HookCapability hookWriter;
+  final WorkspaceBaseInfoCapability workspaceBaseInfo;
+  final CliLaunchSecurityCapability launchSecurity;
   final AcpCapability acp;
 
   @override
@@ -99,6 +106,8 @@ final class GeminiCliTool implements CliToolDefinition {
     prompt,
     mcp,
     hookWriter,
+    workspaceBaseInfo,
+    launchSecurity,
     acp,
   ];
 }

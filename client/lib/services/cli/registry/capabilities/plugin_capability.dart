@@ -31,7 +31,6 @@ class PluginProvisionContext {
     required this.tool,
     this.memberProvisionJson,
     this.assembledMcpServers = const [],
-    this.mcpConfigFileName,
     this.hostOneShotRunner,
     this.executable,
     this.pathPrepend = const [],
@@ -58,8 +57,6 @@ class PluginProvisionContext {
   /// directory for npm-installed commands.
   final List<String> pathPrepend;
 
-  /// When set, overrides the MCP config filename (e.g. `mcp.base.json`).
-  final String? mcpConfigFileName;
 }
 
 /// PluginHub contract: plugin materialization + marketplace consumption +

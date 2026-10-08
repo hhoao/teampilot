@@ -14,7 +14,6 @@ import 'package:teampilot/services/plugin/plugin_manifest_service.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import '../../support/test_runtime_context.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
-import '../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory tmp;
@@ -45,7 +44,10 @@ void main() {
     workFs = LocalFilesystem();
     final homeStorage = HomeStorage(testHomeStorage.context);
     manifest = PluginManifestService();
-    install = PluginInstallService(manifestService: manifest, storage: homeStorage, );
+    install = PluginInstallService(
+      manifestService: manifest,
+      storage: homeStorage,
+    );
     repository = PluginRepository(
       storage: HomeStorage(testHomeStorage.context),
       manifest: manifest,

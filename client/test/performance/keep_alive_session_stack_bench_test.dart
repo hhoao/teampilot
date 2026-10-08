@@ -34,29 +34,35 @@ class _PerfState {
 class _PerfCubit extends Cubit<_PerfState> {
   _PerfCubit() : super(const _PerfState(activeSessionId: 's0'));
 
-  void switchSession(String id) => emit(_PerfState(
-        activeSessionId: id,
-        busySessionIds: state.busySessionIds,
-        structuralVersion: state.structuralVersion + 1,
-        messageVersionBySession: state.messageVersionBySession,
-      ));
+  void switchSession(String id) => emit(
+    _PerfState(
+      activeSessionId: id,
+      busySessionIds: state.busySessionIds,
+      structuralVersion: state.structuralVersion + 1,
+      messageVersionBySession: state.messageVersionBySession,
+    ),
+  );
 
-  void setWorking(Set<String> ids) => emit(_PerfState(
-        activeSessionId: state.activeSessionId,
-        busySessionIds: ids,
-        structuralVersion: state.structuralVersion,
-        messageVersionBySession: state.messageVersionBySession,
-      ));
+  void setWorking(Set<String> ids) => emit(
+    _PerfState(
+      activeSessionId: state.activeSessionId,
+      busySessionIds: ids,
+      structuralVersion: state.structuralVersion,
+      messageVersionBySession: state.messageVersionBySession,
+    ),
+  );
 
-  void emitMessage(String id) => emit(_PerfState(
-        activeSessionId: state.activeSessionId,
-        busySessionIds: state.busySessionIds,
-        structuralVersion: state.structuralVersion,
-        messageVersionBySession: {
-          ...state.messageVersionBySession,
-          id: (state.messageVersionBySession[id] ?? 0) + 1,
-        },
-      ));
+  void emitMessage(String id) => emit(
+    _PerfState(
+      activeSessionId: state.activeSessionId,
+      busySessionIds: state.busySessionIds,
+      structuralVersion: state.structuralVersion,
+      messageVersionBySession: {
+        ...state.messageVersionBySession,
+        id: (state.messageVersionBySession[id] ?? 0) + 1,
+      },
+    ),
+  );
 }
 
 class _Counters {
@@ -145,7 +151,7 @@ class _Shell extends StatelessWidget {
   final List<String> sessionIds;
   final _Counters counters;
   final Widget Function(List<String> sessionIds, _Counters counters)
-      stackBuilder;
+  stackBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -159,10 +165,7 @@ class _Shell extends StatelessWidget {
 }
 
 class _BaselineStack extends StatelessWidget {
-  const _BaselineStack({
-    required this.sessionIds,
-    required this.counters,
-  });
+  const _BaselineStack({required this.sessionIds, required this.counters});
 
   final List<String> sessionIds;
   final _Counters counters;
@@ -198,10 +201,7 @@ class _BaselineStack extends StatelessWidget {
 /// Proposed shape: TpKeepAliveLayer per host (skip layout/paint) + cached
 /// stateful slots that rebuild only when their own routeActive changes.
 class _ProposedStack extends StatelessWidget {
-  const _ProposedStack({
-    required this.sessionIds,
-    required this.counters,
-  });
+  const _ProposedStack({required this.sessionIds, required this.counters});
 
   final List<String> sessionIds;
   final _Counters counters;
@@ -337,9 +337,9 @@ Future<void> _pumpEmpty(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets(
-      'proposed shape does strictly less build/layout work per scenario',
-      (tester) async {
+  testWidgets('proposed shape does strictly less build/layout work per scenario', (
+    tester,
+  ) async {
     final steps = <void Function(_PerfCubit)>[
       (c) => c.switchSession('s3'),
       (c) => c.setWorking({'s2'}),

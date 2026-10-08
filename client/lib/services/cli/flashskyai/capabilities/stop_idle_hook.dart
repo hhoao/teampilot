@@ -1,5 +1,5 @@
-import '../../../team_bus/mcp/teammate_bus_mcp_handler.dart';
-import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../../chat/team_bus/mcp/teammate_bus_mcp_handler.dart';
+import '../../../chat/team_bus/member_bus_idle_endpoint.dart';
 
 /// Bash Stop-hook script filename under the member flashskyai config dir.
 const flashskyaiStopIdleScriptFileName = 'teammate-bus-stop-idle.sh';

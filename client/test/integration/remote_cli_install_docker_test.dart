@@ -65,7 +65,7 @@ void main() {
         profile,
         timeout: const Duration(seconds: 30),
       );
-      final run = RemoteCliLocator.runnerForClient(client);
+      final run = RemoteCliLocator.getRunnerForClient(client);
 
       final install = buildRemotePreflightCliInstall(
         registry: CliToolRegistry.builtIn(),

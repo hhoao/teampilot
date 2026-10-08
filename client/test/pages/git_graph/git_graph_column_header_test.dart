@@ -65,9 +65,7 @@ void main() {
   ) async {
     await pumpHost(
       tester,
-      prefs: const GitGraphColumnPrefs(
-        hiddenColumns: {GitGraphColumnId.date},
-      ),
+      prefs: const GitGraphColumnPrefs(hiddenColumns: {GitGraphColumnId.date}),
     );
 
     expect(find.text('Date'), findsNothing);
@@ -118,7 +116,8 @@ void main() {
         find.byKey(const ValueKey('git-graph-header-cell-date'));
     Finder firstHandle() => find
         .byWidgetPredicate(
-          (w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeColumn,
+          (w) =>
+              w is MouseRegion && w.cursor == SystemMouseCursors.resizeColumn,
         )
         .first;
     final before = tester.getSize(dateCell()).width;
@@ -138,16 +137,15 @@ void main() {
     );
   });
 
-  testWidgets('trailing edge handle widens the commit column', (
-    tester,
-  ) async {
+  testWidgets('trailing edge handle widens the commit column', (tester) async {
     await pumpHost(tester);
 
     Finder commitCell() =>
         find.byKey(const ValueKey('git-graph-header-cell-commit'));
     Finder lastHandle() => find
         .byWidgetPredicate(
-          (w) => w is MouseRegion && w.cursor == SystemMouseCursors.resizeColumn,
+          (w) =>
+              w is MouseRegion && w.cursor == SystemMouseCursors.resizeColumn,
         )
         .last;
     final before = tester.getSize(commitCell()).width;

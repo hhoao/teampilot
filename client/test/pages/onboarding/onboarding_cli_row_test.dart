@@ -37,9 +37,7 @@ Future<void> _pumpRow(
 
   final registry = CliToolRegistry.builtIn();
   final definition = registry.tryGet(CliTool.claude)!;
-  final controller = TextEditingController(
-    text: detectedPath ?? '',
-  );
+  final controller = TextEditingController(text: detectedPath ?? '');
   final busy = ValueNotifier<bool>(false);
   addTearDown(busy.dispose);
   addTearDown(controller.dispose);

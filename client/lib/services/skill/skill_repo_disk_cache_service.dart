@@ -92,7 +92,7 @@ class SkillRepoDiskCacheService {
           )
           .toList();
       if (skills.isNotEmpty) return skills;
-      return _recoverSkillsFromCachedFiles(repo, path);
+      return await _recoverSkillsFromCachedFiles(repo, path);
     } catch (e) {
       appLogger.w(
         '[SkillRepoCache] corrupt skills.json for ${repo.fullName}: $e',
@@ -246,7 +246,7 @@ class SkillRepoDiskCacheService {
         );
 
     if (maxStaleness != null && !force && trusted) {
-      final age = DateTime.now().millisecondsSinceEpoch - meta!.syncedAtMs;
+      final age = DateTime.now().millisecondsSinceEpoch - meta.syncedAtMs;
       if (age >= 0 && age < maxStaleness.inMilliseconds) {
         return SkillRepoSyncResult(
           skills: await readSkillsFromDisk(repo),
@@ -260,7 +260,7 @@ class SkillRepoDiskCacheService {
       final remoteSha = await _fetch.fetchBranchCommitSha(
         repo.owner,
         repo.name,
-        meta!.resolvedBranch,
+        meta.resolvedBranch,
       );
       if (remoteSha != null && remoteSha == meta.commitSha) {
         return SkillRepoSyncResult(

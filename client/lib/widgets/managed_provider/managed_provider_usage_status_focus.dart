@@ -10,9 +10,7 @@ String? resolveManagedProviderUsageFocus({
 }) {
   if (enabledProviders.isEmpty) return null;
 
-  final enabledIds = <String>{
-    for (final p in enabledProviders) p.id,
-  };
+  final enabledIds = <String>{for (final p in enabledProviders) p.id};
 
   final changedIds = <String>[];
   for (final provider in enabledProviders) {
@@ -65,16 +63,16 @@ String _pickByFetchedAtThenListOrder({
   required Map<String, ProviderUsageSnapshot> snapshots,
 }) {
   final order = <String, int>{
-    for (var i = 0; i < enabledProviders.length; i++)
-      enabledProviders[i].id: i,
+    for (var i = 0; i < enabledProviders.length; i++) enabledProviders[i].id: i,
   };
-  final sorted = [...candidates]..sort((a, b) {
-    final fa = snapshots[a]?.fetchedAt ?? -1;
-    final fb = snapshots[b]?.fetchedAt ?? -1;
-    final byFetched = fa.compareTo(fb);
-    if (byFetched != 0) return byFetched;
-    return (order[a] ?? 0).compareTo(order[b] ?? 0);
-  });
+  final sorted = [...candidates]
+    ..sort((a, b) {
+      final fa = snapshots[a]?.fetchedAt ?? -1;
+      final fb = snapshots[b]?.fetchedAt ?? -1;
+      final byFetched = fa.compareTo(fb);
+      if (byFetched != 0) return byFetched;
+      return (order[a] ?? 0).compareTo(order[b] ?? 0);
+    });
   return sorted.last;
 }
 
@@ -91,10 +89,7 @@ bool _snapshotChanged(
   );
 }
 
-bool _primaryMeasuresEqual(
-  ProviderUsageMeasure? a,
-  ProviderUsageMeasure? b,
-) {
+bool _primaryMeasuresEqual(ProviderUsageMeasure? a, ProviderUsageMeasure? b) {
   if (identical(a, b)) return true;
   if (a == null || b == null) return a == b;
   return a.remaining == b.remaining &&

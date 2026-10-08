@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/services/io/filesystem.dart';
@@ -122,7 +124,9 @@ class InMemoryFilesystem implements Filesystem {
       for (final dir in directories.toList()) {
         if (pathContext.isWithin(from, dir) && dir != from) {
           directories.remove(dir);
-          directories.add(pathContext.join(to, pathContext.relative(dir, from: from)));
+          directories.add(
+            pathContext.join(to, pathContext.relative(dir, from: from)),
+          );
         }
       }
       for (final key in files.keys.toList()) {
@@ -133,14 +137,22 @@ class InMemoryFilesystem implements Filesystem {
       }
       for (final key in byteFiles.keys.toList()) {
         if (pathContext.isWithin(from, key)) {
-          byteFiles[pathContext.join(to, pathContext.relative(key, from: from))] =
-              byteFiles.remove(key)!;
+          byteFiles[pathContext.join(
+            to,
+            pathContext.relative(key, from: from),
+          )] = byteFiles.remove(
+            key,
+          )!;
         }
       }
       for (final key in symlinks.keys.toList()) {
         if (pathContext.isWithin(from, key)) {
-          symlinks[pathContext.join(to, pathContext.relative(key, from: from))] =
-              symlinks.remove(key)!;
+          symlinks[pathContext.join(
+            to,
+            pathContext.relative(key, from: from),
+          )] = symlinks.remove(
+            key,
+          )!;
         }
       }
       return;
@@ -168,8 +180,14 @@ class InMemoryFilesystem implements Filesystem {
   Future<String?> readString(String path) async {
     final direct = files[path];
     if (direct != null) return direct;
+    final bytes = byteFiles[path];
+    if (bytes != null) return utf8.decode(bytes);
     final followed = _follow(path);
-    return followed == path ? null : files[followed];
+    if (followed == path) return null;
+    final followedText = files[followed];
+    if (followedText != null) return followedText;
+    final followedBytes = byteFiles[followed];
+    return followedBytes != null ? utf8.decode(followedBytes) : null;
   }
 
   @override
@@ -201,11 +219,7 @@ class InMemoryFilesystem implements Filesystem {
   }
 
   @override
-  Future<List<int>?> readBytesRange(
-    String path,
-    int offset,
-    int length,
-  ) async {
+  Future<List<int>?> readBytesRange(String path, int offset, int length) async {
     final all = await readBytes(path);
     if (all == null) return null;
     if (offset < 0) throw ArgumentError.value(offset, 'offset');

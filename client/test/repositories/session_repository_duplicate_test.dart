@@ -10,7 +10,6 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
-import '../support/in_memory_filesystem.dart';
 
 HomeStorage _repoStorage(Directory tmp, LocalFilesystem fs) =>
     HomeStorage.forTesting(
@@ -31,7 +30,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
     fs = LocalFilesystem();
     layout = RuntimeLayout(teampilotRoot: tmp.path, fs: fs);
-    repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp, fs), );
+    repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp, fs));
   });
 
   Future<AppSession> seedSimpleSession(CliTool cli) async {

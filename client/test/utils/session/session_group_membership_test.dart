@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/chat_state.dart';
+import 'package:teampilot/cubits/chat_state.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_activity.dart';
 import 'package:teampilot/models/session_group.dart';

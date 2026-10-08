@@ -1,128 +1,98 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dartssh2/dartssh2.dart';
+import 'package:crypto/crypto.dart' as crypto;
 
-class SshdPresenceSnapshot {
-  const SshdPresenceSnapshot({
-    required this.listening,
-    required this.port,
-    required this.fingerprints,
-    required this.enableHint,
-  });
+typedef SshdPortProbe = Future<bool> Function();
+typedef SshKeyScanRunner =
+    Future<({int exitCode, String stdout, String stderr})> Function();
 
-  final bool listening;
-  final int port;
-  final List<String> fingerprints;
-  final String enableHint;
+const int systemSshdPort = 22;
+
+/// Parses OpenSSH key-scan output into unique SHA256 host-key fingerprints.
+List<String> fingerprintsFromSshKeyScan(String stdout) {
+  final fingerprints = <String>{};
+  for (final line in const LineSplitter().convert(stdout)) {
+    final trimmed = line.trim();
+    if (trimmed.isEmpty || trimmed.startsWith('#')) continue;
+
+    final parts = trimmed.split(RegExp(r'\s+'));
+    if (parts.length < 3) continue;
+
+    try {
+      final blob = base64.decode(parts[2]);
+      final digest = crypto.sha256.convert(blob).bytes;
+      fingerprints.add('SHA256:${base64.encode(digest).replaceAll('=', '')}');
+    } on FormatException {
+      continue;
+    }
+  }
+  return fingerprints.toList(growable: false);
 }
 
-typedef SshdPresenceProbe = Future<SshdPresenceSnapshot> Function();
-typedef SshdTcpProbe =
-    Future<bool> Function(String host, int port, Duration timeout);
-typedef ReadHostFingerprints = Future<List<String>> Function();
-
+/// Samples whether a system OpenSSH server is reachable and has scannable keys.
 class SshdPresence {
-  SshdPresence({
-    this.port = 22,
-    this.timeout = const Duration(milliseconds: 300),
-    SshdTcpProbe? tcpProbe,
-    ReadHostFingerprints? readHostFingerprints,
-    String? enableHint,
-  }) : _tcpProbe = tcpProbe ?? _defaultTcpProbe,
-       _readHostFingerprints =
-           readHostFingerprints ??
-           SshdHostKeyScanner(port: port, timeout: timeout).scan,
-       _enableHint = enableHint ?? platformSshdEnableHint();
+  SshdPresence({required SshdPortProbe probe, required SshKeyScanRunner scan})
+    : _probe = probe,
+      _scan = scan;
 
-  final int port;
-  final Duration timeout;
-  final SshdTcpProbe _tcpProbe;
-  final ReadHostFingerprints _readHostFingerprints;
-  final String _enableHint;
+  final SshdPortProbe _probe;
+  final SshKeyScanRunner _scan;
 
-  Future<SshdPresenceSnapshot> probe() async {
-    final listening = await _tcpProbe('127.0.0.1', port, timeout);
-    if (!listening) {
-      return SshdPresenceSnapshot(
-        listening: false,
-        port: port,
-        fingerprints: const [],
-        enableHint: _enableHint,
-      );
+  Future<({bool listening, List<String> fingerprints})> sample() async {
+    if (!await _probe()) {
+      return (listening: false, fingerprints: const <String>[]);
     }
-    List<String> fingerprints;
+
+    final result = await _scan();
+    final fingerprints = fingerprintsFromSshKeyScan(result.stdout);
+    if (fingerprints.isEmpty) {
+      return (listening: false, fingerprints: const <String>[]);
+    }
+    return (listening: true, fingerprints: fingerprints);
+  }
+}
+
+/// Creates a probe that connects to the IPv4 loopback OpenSSH port.
+SshdPortProbe loopbackSshdProbe({
+  Duration timeout = const Duration(seconds: 1),
+}) {
+  return () async {
     try {
-      fingerprints = await _readHostFingerprints();
-    } on Object {
-      fingerprints = const [];
-    }
-    return SshdPresenceSnapshot(
-      listening: true,
-      port: port,
-      fingerprints: fingerprints
-          .where((value) => value.startsWith('SHA256:'))
-          .toSet()
-          .toList(growable: false),
-      enableHint: _enableHint,
-    );
-  }
-}
-
-/// Reads the server identity during key exchange and closes before user auth.
-class SshdHostKeyScanner {
-  SshdHostKeyScanner({
-    this.host = '127.0.0.1',
-    this.port = 22,
-    this.timeout = const Duration(milliseconds: 300),
-  });
-
-  final String host;
-  final int port;
-  final Duration timeout;
-
-  Future<List<String>> scan() async {
-    SSHSocket? socket;
-    SSHTransport? transport;
-    try {
-      socket = await SSHSocket.connect(host, port, timeout: timeout);
-      final captured = Completer<String>();
-      transport = SSHTransport(
-        socket,
-        onVerifyHostKey: (_, fingerprint) {
-          final identity = utf8.decode(fingerprint, allowMalformed: true);
-          if (!captured.isCompleted) captured.complete(identity);
-          return false;
-        },
+      final socket = await Socket.connect(
+        InternetAddress.loopbackIPv4,
+        systemSshdPort,
+        timeout: timeout,
       );
-      final identity = await captured.future.timeout(timeout);
-      return identity.startsWith('SHA256:') ? [identity] : const [];
+      await socket.close();
+      return true;
     } on Object {
-      return const [];
-    } finally {
-      transport?.close();
-      socket?.destroy();
+      return false;
     }
-  }
+  };
 }
 
-String platformSshdEnableHint() {
-  if (Platform.isMacOS) return 'Enable Remote Login in System Settings.';
-  if (Platform.isWindows) {
-    return 'Install OpenSSH Server in Optional Features, then start sshd.';
-  }
-  return 'Enable and start the ssh or sshd service.';
-}
-
-Future<bool> _defaultTcpProbe(String host, int port, Duration timeout) async {
-  Socket? socket;
-  try {
-    socket = await Socket.connect(host, port, timeout: timeout);
-    return true;
-  } on Object {
-    return false;
-  } finally {
-    socket?.destroy();
-  }
+/// Creates an OpenSSH host-key scanner backed by the supplied process runner.
+SshKeyScanRunner sshKeyScanRunner({
+  required Future<({int exitCode, String stdout, String stderr})> Function(
+    String executable,
+    List<String> arguments,
+  )
+  run,
+}) {
+  return () async {
+    try {
+      return await run('ssh-keyscan', const [
+        '-t',
+        'ed25519,ecdsa,rsa',
+        '-p',
+        '22',
+        '-T',
+        '3',
+        '127.0.0.1',
+      ]);
+    } on Object {
+      return (exitCode: 127, stdout: '', stderr: '');
+    }
+  };
 }

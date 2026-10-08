@@ -161,10 +161,7 @@ void main() {
     expect(find.textContaining('shared repository'), findsOneWidget);
     await tester.tap(find.byType(TpButton).last); // 接受确认
     await tester.pumpAndSettle();
-    expect(
-      actions.calls.single,
-      ['delete-remote-branch', 'origin', 'feature'],
-    );
+    expect(actions.calls.single, ['delete-remote-branch', 'origin', 'feature']);
   });
 
   testWidgets('remote branch history sets branch filter to remote name', (
@@ -262,7 +259,7 @@ void main() {
     expect(cubit.state.branchFilter, 'v1.0');
   });
 
-  Future<GitGraphCubit> _pumpRefsMenuWithCompare(
+  Future<GitGraphCubit> pumpRefsMenuWithCompare(
     WidgetTester tester, {
     required WorkbenchCubit workbench,
     required FloatingWorkspaceCubit floating,
@@ -310,8 +307,10 @@ void main() {
     return cubit;
   }
 
-  GitCompareSpec? _openedCompareSpec(WorkbenchCubit workbench) {
-    final tabId = workbench.mergedFloatingStrip('ws').order
+  GitCompareSpec? openedCompareSpec(WorkbenchCubit workbench) {
+    final tabId = workbench
+        .mergedFloatingStrip('ws')
+        .order
         .firstWhere((t) => t.kind == WorkbenchTabKind.gitCompare)
         .id;
     return GitCompareSpec.tryParseTabId(tabId);
@@ -324,7 +323,7 @@ void main() {
     final floating = FloatingWorkspaceCubit();
     addTearDown(workbench.close);
     addTearDown(floating.close);
-    await _pumpRefsMenuWithCompare(
+    await pumpRefsMenuWithCompare(
       tester,
       workbench: workbench,
       floating: floating,
@@ -337,7 +336,7 @@ void main() {
     await tester.tap(find.text('Working Tree (main)'));
     await tester.pumpAndSettle();
 
-    final spec = _openedCompareSpec(workbench);
+    final spec = openedCompareSpec(workbench);
     expect(spec?.repoRoot, '/repo');
     expect(spec?.left, const GitCompareRef('feature'));
     expect(spec?.right, const GitCompareWorkingTree());
@@ -350,7 +349,7 @@ void main() {
     final floating = FloatingWorkspaceCubit();
     addTearDown(workbench.close);
     addTearDown(floating.close);
-    await _pumpRefsMenuWithCompare(
+    await pumpRefsMenuWithCompare(
       tester,
       workbench: workbench,
       floating: floating,
@@ -363,7 +362,7 @@ void main() {
     await tester.tap(find.text('origin/main'));
     await tester.pumpAndSettle();
 
-    final spec = _openedCompareSpec(workbench);
+    final spec = openedCompareSpec(workbench);
     expect(spec?.left, const GitCompareRef('feature'));
     expect(spec?.right, const GitCompareRef('origin/main'));
   });
@@ -373,7 +372,7 @@ void main() {
     final floating = FloatingWorkspaceCubit();
     addTearDown(workbench.close);
     addTearDown(floating.close);
-    await _pumpRefsMenuWithCompare(
+    await pumpRefsMenuWithCompare(
       tester,
       workbench: workbench,
       floating: floating,
@@ -390,8 +389,127 @@ void main() {
 
     await tester.tap(find.text('main'));
     await tester.pumpAndSettle();
-    final spec = _openedCompareSpec(workbench);
+    final spec = openedCompareSpec(workbench);
     expect(spec?.left, const GitCompareRef('v1.0'));
     expect(spec?.right, const GitCompareRef('main'));
+  });
+
+  testWidgets('compare submenu opens branch vs loaded commit tab', (
+    tester,
+  ) async {
+    final workbench = WorkbenchCubit();
+    final floating = FloatingWorkspaceCubit();
+    addTearDown(workbench.close);
+    addTearDown(floating.close);
+    final commit = graphCommitRow('abcdef1234567890');
+    final actions = RecordingGraphActions();
+    final history = FakeHistoryForGraph(
+      rows: [commit],
+      branchInfos: [
+        GitBranchInfo('main', 'h0', isRemote: false, isCurrent: true),
+        GitBranchInfo('feature', 'h1', isRemote: false, isCurrent: false),
+      ],
+    );
+    final cubit = GitGraphCubit(
+      history: history,
+      git: FakeGitForGraph(repoStatus()),
+      actions: actions,
+    );
+    addTearDown(cubit.close);
+    await cubit.setRepoRoot('/repo');
+    await tester.pumpWidget(
+      MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider.value(value: workbench),
+          RepositoryProvider.value(value: floating),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('en'),
+          home: BlocProvider.value(
+            value: cubit,
+            child: Scaffold(
+              body: Center(
+                child: GitGraphRefsMenu(state: cubit.state, workspaceId: 'ws'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.account_tree_outlined));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('feature'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Compare with…'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('abcdef12 ${commit.subject}'));
+    await tester.pumpAndSettle();
+
+    final spec = openedCompareSpec(workbench);
+    expect(spec?.left, const GitCompareRef('feature'));
+    expect(spec?.right, GitCompareRef(commit.hash));
+  });
+
+  testWidgets('refs menu search filters branches and tags', (tester) async {
+    final actions = RecordingGraphActions();
+    final branchInfos = [
+      for (var i = 0; i < 11; i++)
+        GitBranchInfo('branch-$i', 'h$i', isRemote: false, isCurrent: i == 0),
+    ];
+    final history = FakeHistoryForGraph(
+      branchInfos: branchInfos,
+      tagInfos: [GitTagInfo('release-v2', 'h0')],
+    );
+    final cubit = GitGraphCubit(
+      history: history,
+      git: FakeGitForGraph(repoStatus()),
+      actions: actions,
+    );
+    addTearDown(cubit.close);
+    await cubit.setRepoRoot('/repo');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        home: BlocProvider.value(
+          value: cubit,
+          child: Scaffold(
+            body: Center(
+              child: GitGraphRefsMenu(state: cubit.state, workspaceId: 'ws'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.account_tree_outlined));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('branch-0'), findsOneWidget);
+    expect(find.text('release-v2'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'release');
+    await tester.pumpAndSettle();
+    expect(find.text('release-v2'), findsOneWidget);
+    expect(find.text('branch-0'), findsNothing);
+    expect(find.text('Local branches'), findsNothing);
+
+    await tester.enterText(find.byType(TextField), 'branch-10');
+    await tester.pumpAndSettle();
+    expect(find.text('branch-3'), findsNothing);
+    expect(find.text('release-v2'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(TpActionMenuItem),
+        matching: find.text('branch-10'),
+      ),
+      findsOneWidget,
+    );
   });
 }

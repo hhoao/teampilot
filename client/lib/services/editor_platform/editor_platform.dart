@@ -27,8 +27,7 @@ class EditorPlatform {
 
   /// The shared tree-sitter worker pool. Backed by [TreeSitterWorkerPool] in
   /// the app; overridable via [overridePlatform] for wiring tests.
-  static TsWorkerPool get workerPool =>
-      _workerPool ??= TreeSitterWorkerPool();
+  static TsWorkerPool get workerPool => _workerPool ??= TreeSitterWorkerPool();
 
   /// Best-effort prewarm of the given grammars so the first real file open
   /// isn't cold. Each id opens a short-lived worker session (which loads the

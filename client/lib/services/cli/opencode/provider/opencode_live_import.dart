@@ -1,11 +1,11 @@
 import 'dart:convert';
 
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/team_config.dart';
 import '../provider_presets.dart';
 import '../../registry/capabilities/provider_capability.dart';
 import '../../../io/filesystem.dart';
 import '../../codex/provider/codex_cc_switch_import.dart';
+import '../opencode_config.dart';
 import 'opencode_auth_artifacts.dart';
 import 'opencode_credential_materializer.dart';
 import 'opencode_data_layout.dart';
@@ -90,11 +90,12 @@ abstract final class OpencodeLiveImport {
     final defaultModel = _defaultModelForProvider(id, opencodeConfig);
     final presetConfig = preset?.template.config ?? const {};
     final config = _buildConfig(providerConfig, presetConfig);
-    final catalogFields = OpencodeCredentialMaterializer.catalogFieldsFromAuthEntry(
-      providerId: id,
-      entry: entry,
-      existingConfig: config,
-    );
+    final catalogFields =
+        OpencodeCredentialMaterializer.catalogFieldsFromAuthEntry(
+          providerId: id,
+          entry: entry,
+          existingConfig: config,
+        );
 
     if (preset != null) {
       return preset.template.copyWith(
@@ -131,7 +132,7 @@ abstract final class OpencodeLiveImport {
     Map<String, Object?> opencodeConfig,
     String id,
   ) {
-    final providers = opencodeConfig['provider'];
+    final providers = opencodeConfig[opencodeProvidersKey];
     if (providers is! Map) return const {};
     final entry = providers[id];
     if (entry is! Map) return const {};
@@ -147,9 +148,9 @@ abstract final class OpencodeLiveImport {
   }
 
   static String _readBaseUrl(Map<String, Object?> providerConfig) {
-    final options = providerConfig['options'];
-    if (options is! Map) return '';
-    final map = options.cast<String, Object?>();
+    final settings = providerConfig['settings'];
+    if (settings is! Map) return '';
+    final map = settings.cast<String, Object?>();
     return (map['baseURL'] ?? map['baseUrl'] ?? '').toString().trim();
   }
 
@@ -170,8 +171,8 @@ abstract final class OpencodeLiveImport {
     Map<String, Object?> presetConfig,
   ) {
     final config = <String, Object?>{...presetConfig};
-    final npm = providerConfig['npm']?.toString().trim() ?? '';
-    if (npm.isNotEmpty) config['npm'] = npm;
+    final packageName = providerConfig['package']?.toString().trim() ?? '';
+    if (packageName.isNotEmpty) config['npm'] = packageName;
     return config;
   }
 }

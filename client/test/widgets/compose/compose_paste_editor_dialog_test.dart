@@ -2,14 +2,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
-import 'package:teampilot/services/compose/compose_clip.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_clip.dart';
 import 'package:teampilot/widgets/compose/compose_paste_editor_dialog.dart';
 
 void main() {
-  Future<void> pumpEditor(
-    WidgetTester tester,
-    ComposeClip clip,
-  ) async {
+  Future<void> pumpEditor(WidgetTester tester, ComposeClip clip) async {
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -51,7 +48,9 @@ void main() {
 
     await pumpEditor(tester, clip);
     await tester.enterText(find.byType(TextField), 'changed');
-    await tester.tap(find.byIcon(Icons.close_rounded)); // leading close = cancel
+    await tester.tap(
+      find.byIcon(Icons.close_rounded),
+    ); // leading close = cancel
     await tester.pumpAndSettle();
 
     expect(clip.text, 'original');

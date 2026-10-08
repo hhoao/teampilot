@@ -109,26 +109,29 @@ void main() {
     expect(pool.queryCount, 1);
   });
 
-  test('constructor requests tokens for an already-set indicator value', () async {
-    final pool = FakeTsWorkerPool();
-    final session = newSession(pool);
-    addTearDown(session.dispose);
-    await session.open(path: 'a.json', text: text);
+  test(
+    'constructor requests tokens for an already-set indicator value',
+    () async {
+      final pool = FakeTsWorkerPool();
+      final session = newSession(pool);
+      addTearDown(session.dispose);
+      await session.open(path: 'a.json', text: text);
 
-    final notifier = CodeIndicatorValueNotifier(
-      CodeIndicatorValue(paragraphs: _paragraphsAt([3, 7])),
-    );
-    final binder = EditorViewportTokenBinder(
-      session: session,
-      notifier: notifier,
-    );
-    addTearDown(binder.dispose);
-    await pumpEventQueue();
+      final notifier = CodeIndicatorValueNotifier(
+        CodeIndicatorValue(paragraphs: _paragraphsAt([3, 7])),
+      );
+      final binder = EditorViewportTokenBinder(
+        session: session,
+        notifier: notifier,
+      );
+      addTearDown(binder.dispose);
+      await pumpEventQueue();
 
-    expect(session.tokensForLine(3), isNotEmpty);
-    expect(session.tokensForLine(7), isNotEmpty);
-    expect(pool.queryCount, 1);
-  });
+      expect(session.tokensForLine(3), isNotEmpty);
+      expect(session.tokensForLine(7), isNotEmpty);
+      expect(pool.queryCount, 1);
+    },
+  );
 
   test('does not re-request when the visible band is unchanged', () async {
     // autoRespond: false so the first query's tokens stay uncached — a

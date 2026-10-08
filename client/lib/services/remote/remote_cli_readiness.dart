@@ -73,9 +73,9 @@ class RemoteCliReadinessService {
       SshCommandRunner run,
     )?
     installActionBuilder,
-  }) : _installer = installer ?? RemoteCliInstaller(
-         locator: RemoteCliLocator(registry: registry),
-       ),
+  }) : _installer =
+           installer ??
+           RemoteCliInstaller(locator: RemoteCliLocator(registry: registry)),
        _installActionBuilder = installActionBuilder;
 
   final CliToolRegistry registry;
@@ -118,11 +118,7 @@ class RemoteCliReadinessService {
         error: e,
         stackTrace: st,
       );
-      return RemoteCliFailed(
-        targetId: target.id,
-        cli: cli,
-        message: message,
-      );
+      return RemoteCliFailed(targetId: target.id, cli: cli, message: message);
     }
   }
 
@@ -160,7 +156,7 @@ class RemoteCliReadinessService {
 
     try {
       final client = await sshClientFactory.clientForStorage(profile);
-      final run = RemoteCliLocator.runnerForClient(
+      final run = RemoteCliLocator.getRunnerForClient(
         client,
         includeStderr: true,
       );
@@ -197,11 +193,7 @@ class RemoteCliReadinessService {
         error: e,
         stackTrace: st,
       );
-      return RemoteCliFailed(
-        targetId: target.id,
-        cli: cli,
-        message: message,
-      );
+      return RemoteCliFailed(targetId: target.id, cli: cli, message: message);
     }
   }
 
@@ -214,7 +206,7 @@ class RemoteCliReadinessService {
       throw StateError('No SSH profile for target "${target.id}".');
     }
     final client = await sshClientFactory.clientForStorage(profile);
-    final run = RemoteCliLocator.runnerForClient(client);
+    final run = RemoteCliLocator.getRunnerForClient(client);
     final storedPath = (await cliPathOverride(target.id, cli.value) ?? '')
         .trim();
     return _installer.locate(

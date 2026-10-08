@@ -5,12 +5,12 @@ import '../../../../models/hook_event.dart';
 import '../../../../models/team_config.dart';
 import '../../registry/capabilities/hook_registry.dart';
 import '../../registry/capabilities/hook_capability.dart';
+import '../opencode_config.dart';
 
 const opencodeUserHooksPluginFileName = 'teampilot-user-hooks.js';
 
 /// 一条 JS 订阅：glue argv（writer 生成，无需 shell 拆分）；[tool] 非空 →
-/// `tool.execute.*` 按 tool 键限定（opencode plugin 返回的函数式 hook 内
-/// `input.tool` 正则过滤）。
+/// `ctx.tool.hook("execute.*")` 按 tool 键限定。
 class _OpencodeSubscription {
   const _OpencodeSubscription(this.argv, {this.tool});
 
@@ -19,10 +19,8 @@ class _OpencodeSubscription {
 }
 
 /// opencode 无原生 hooks，也无 http hooks —— 生成一个 JS plugin 桥：
-/// plugin 返回函数值 hooks（仓库已验证模式，同 agent_status_plugin）：
-/// `event` 函数按 `event.type`/`event.data.type` 分发非拦截订阅；tool.execute.*
-/// 的函数式 hook 按 tool 键限定。每个 hook 用 Node `child_process` 跑 glue
-/// 命令，stdout（决策 JSON）原样传回。
+/// v2 `Plugin.define` + `ctx.event.subscribe` / `ctx.tool.hook`.
+/// 每个 hook 用 Node `child_process` 跑 glue 命令，stdout（决策 JSON）原样传回。
 ///
 /// Managed runtime plugins use [NativePluginHookAction], so their JS artifacts
 /// and `opencode.json` entries follow this same writer path as user hooks.
@@ -81,8 +79,6 @@ class OpencodeHookWriter implements HookCapability {
       if (entry.policy != HookPolicy.none && !entry.event.isIntercepting) {
         warnings.add('hook_policy_ignored_${entry.id}_${entry.event.name}');
       }
-      // Matcher 仅对 tool.execute.before/after 生效（按 tool 键限定）；其余
-      // 事件上的 matcher 忽略并警告（spec §2.1）。
       final matcher = entry.matcher?.trim() ?? '';
       final toolKeyed =
           matcher.isNotEmpty &&
@@ -112,8 +108,6 @@ class OpencodeHookWriter implements HookCapability {
       );
       final scriptFileName = 'teampilot-hook-${entry.id}.sh';
       scripts.add(GeneratedScript(fileName: scriptFileName, content: glue));
-      // argv 由 writer 直接生成：会话运行时路径可能含空格（如 SSH home），
-      // 不能走 shell 字符串拆分。
       final argv = <String>['bash', '${ctx.hooksDir}/$scriptFileName'];
       subscriptions
           .putIfAbsent(native, () => [])
@@ -125,7 +119,10 @@ class OpencodeHookWriter implements HookCapability {
     }
     final pluginEntries = <Object?>[
       for (final plugin in nativePlugins)
-        [plugin.pluginPath, plugin.pluginOptions],
+        opencodePluginObject(
+          package: plugin.pluginPath,
+          options: plugin.pluginOptions,
+        ),
     ];
     if (subscriptions.isNotEmpty) {
       scripts.add(
@@ -138,7 +135,7 @@ class OpencodeHookWriter implements HookCapability {
     }
     return HookWriteResult(
       configFragments: {
-        'opencode.json': {'plugin': pluginEntries},
+        'opencode.json': {opencodePluginsKey: pluginEntries},
       },
       scripts: scripts,
       warnings: warnings,
@@ -160,43 +157,49 @@ class OpencodeHookWriter implements HookCapability {
       }
     }
     final buffer = StringBuffer()
-      ..writeln('export const TeampilotUserHooks = async (input, options) => {')
-      ..writeln('  const { execFile } = require("node:child_process");')
-      ..writeln('  const run = (args) =>')
+      ..writeln('import { Plugin } from "@opencode/plugin"')
+      ..writeln('')
+      ..writeln('export default Plugin.define({')
+      ..writeln('  id: "teampilot.user-hooks",')
+      ..writeln('  async setup(ctx) {')
+      ..writeln('    const { execFile } = await import("node:child_process");')
+      ..writeln('    const run = (args) =>')
       ..writeln(
-        '    new Promise((resolve) => {'
+        '      new Promise((resolve) => {'
         ' execFile(args[0], args.slice(1), '
         '{ encoding: "utf8" }, (err, stdout) => resolve(stdout || null)); });',
-      )
-      ..writeln('  return {');
-    // 非 tool.execute.* 订阅：`event` 函数按事件类型分发（仓库已验证模式）。
-    // 同一原生事件上的多条 hook **全部**执行：`last` 累积各分支输出，链尾
-    // 返回最后一个非空 JSON（无提前 return）。
+      );
     if (eventHooks.isNotEmpty) {
-      buffer.writeln('    event: async ({ event }) => {');
-      buffer.writeln('      const evt = event?.type || event?.data?.type;');
-      buffer.writeln('      let last;');
+      buffer
+        ..writeln('    const controller = new AbortController();')
+        ..writeln('    void (async () => {')
+        ..writeln(
+          '      for await (const event of ctx.event.subscribe({ signal: controller.signal })) {',
+        )
+        ..writeln('        const evt = event?.type || event?.data?.type;')
+        ..writeln('        let last;');
       for (final entry in eventHooks.entries) {
         final event = _jsString(entry.key);
         for (final sub in entry.value) {
           final args = jsonEncode(sub.argv);
-          buffer.writeln('      if (evt === "$event") {');
-          buffer.writeln('        const out = await run($args);');
+          buffer.writeln('        if (evt === "$event") {');
+          buffer.writeln('          const out = await run($args);');
           buffer.writeln(
-            '        try { if (out) last = JSON.parse(out); } catch (_) {}',
+            '          try { if (out) last = JSON.parse(out); } catch (_) {}',
           );
-          buffer.writeln('      }');
+          buffer.writeln('        }');
         }
       }
-      buffer.writeln('      return last || {};');
-      buffer.writeln('    },');
+      buffer
+        ..writeln('      }')
+        ..writeln('    })();');
     }
-    // tool.execute.before/after：函数式 hook 按 `input.tool`（工具名）正则
-    // 过滤，`{"decision":"deny"}` → throw 阻断工具调用。
     for (final entry in toolHooks.entries) {
-      final event = _jsString(entry.key);
       final intercepting = entry.key == 'tool.execute.before';
-      buffer.writeln('    "$event": async (ev, output) => {');
+      final hookName = entry.key == 'tool.execute.after'
+          ? 'execute.after'
+          : 'execute.before';
+      buffer.writeln('    await ctx.tool.hook("$hookName", async (ev) => {');
       for (final sub in entry.value) {
         final tool = _jsString(sub.tool!);
         final args = jsonEncode(sub.argv);
@@ -218,17 +221,17 @@ class OpencodeHookWriter implements HookCapability {
         }
         buffer.writeln('      }');
       }
-      buffer.writeln('    },');
+      buffer.writeln('    });');
+    }
+    if (eventHooks.isNotEmpty) {
+      buffer.writeln('    return () => controller.abort();');
     }
     buffer
-      ..writeln('  };')
-      ..writeln('};');
+      ..writeln('  },')
+      ..writeln('});');
     return buffer.toString();
   }
 
-  /// Escapes a Dart string for interpolation into a JS double-quoted string
-  /// literal: backslashes first (regex classes like `\b`, `\.` must survive),
-  /// then double quotes.
   String _jsString(String value) =>
       value.replaceAll(r'\', r'\\').replaceAll('"', r'\"');
 

@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/session_workbench_view.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 
@@ -23,7 +22,7 @@ void main() {
 
   setUp(() async {
     tmp = await Directory.systemTemp.createTemp('it_lazy_spawn_');
-    repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
+    repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
     postFrame = PostFrameTestHarness();
     cubit = ChatCubit(
       executableResolver: () => 'true',
@@ -37,9 +36,9 @@ void main() {
               FakeTerminalSession(
                 executable: executable,
                 scrollbackLines: scrollbackLines,
-                                   fs: InMemoryFilesystem(),
+                fs: InMemoryFilesystem(),
               ),
-                       storage: testHomeStorage,
+      storage: testHomeStorage,
     );
   });
 
@@ -50,6 +49,24 @@ void main() {
     await drainPendingAsyncWork();
     await deleteTempDirBestEffort(tmp);
   });
+
+  test(
+    'deferred team open installs TeamBus before lazy member spawning',
+    () async {
+      await openMixedSessionWithShells(
+        cubit: cubit,
+        repo: repo,
+        postFrame: postFrame,
+      );
+
+      expect(
+        cubit.activeTab?.teamBus,
+        isNotNull,
+        reason:
+            'connectImmediately:false must still run deferred team preparation',
+      );
+    },
+  );
 
   test(
     'selecting a declared member with terminal view shown spawns it',
@@ -69,6 +86,7 @@ void main() {
       );
 
       cubit.selectMember('worker-1');
+      expect(tab.selectedMemberId, 'worker-1');
       await drainPendingAsyncWork();
 
       expect(
@@ -109,6 +127,31 @@ void main() {
         reason:
             'switching to terminal view for a non-running member must spawn it',
       );
+    },
+  );
+
+  test(
+    'lazy terminal restore starts a member without changing current selection',
+    () async {
+      final opened = await openMixedSessionWithShells(
+        cubit: cubit,
+        repo: repo,
+        postFrame: postFrame,
+      );
+      final tab = cubit.activeTab!;
+      tab.memberShells.remove('worker-1');
+      tab.reclaimedMemberIds.add('worker-1');
+      tab.workbenchView = SessionWorkbenchView.terminal;
+      tab.selectedMemberId = 'team-lead';
+      tab.persistedSession = (await repo.loadSessions()).firstWhere(
+        (s) => s.sessionId == opened.sessionId,
+      );
+
+      await cubit.ensureMemberTerminalForView(opened.sessionId, 'worker-1');
+      await drainPendingAsyncWork();
+
+      expect(tab.selectedMemberId, 'team-lead');
+      expect(tab.membersPendingConnect, contains('worker-1'));
     },
   );
 }

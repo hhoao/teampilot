@@ -9,8 +9,8 @@ import '../../registry/capabilities/terminal_behavior_capability.dart';
 import '../../registry/capabilities/plugin_capability.dart';
 import '../../registry/capabilities/plugin_manifest_paths.dart';
 import '../../registry/capabilities/skill_capability.dart';
-import '../../../terminal/fullscreen_cr_ack_config.dart';
-import '../../../terminal/fullscreen_input_readiness.dart';
+import '../../../chat/runtime/pty/fullscreen_cr_ack_config.dart';
+import '../../../chat/runtime/pty/fullscreen_input_readiness.dart';
 
 /// Gemini is not team-launchable in this phase: no native team identity, no
 /// roster, no member agent preset. Mirrors the "unsupported" defaults of
@@ -119,6 +119,20 @@ final class GeminiTerminalBehavior implements TerminalBehaviorCapability {
   @override
   bool get usesGridPasteAck => true;
 
+  // Gemini CLI emits a submit hook, so the CR submit is hook-confirmed like
+  // every other built-in full-screen CLI (see the capability doc).
+  @override
+  bool get usesHookSubmitAck => true;
+
+  // Cursor-specific paste-denominator baseline; gemini's mirror caret sits in
+  // its composer, so the plain cursor input zone ACKs correctly.
+  @override
+  bool get usesPasteBaseline => false;
+
+  // Gemini draws no footer below its input box.
+  @override
+  int get pasteZoneBottomPad => 0;
+
   @override
   TerminalPathDropBehavior get pathDropBehavior =>
       TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
@@ -126,9 +140,6 @@ final class GeminiTerminalBehavior implements TerminalBehaviorCapability {
   @override
   FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
       FullscreenCrAckStrategy.anchorCellClears;
-
-  @override
-  String? get fullscreenComposerPrefix => null;
 
   @override
   bool get mentionAutocompletePopup => false;

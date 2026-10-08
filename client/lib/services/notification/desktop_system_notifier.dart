@@ -144,7 +144,8 @@ class DesktopSystemNotifier {
 
   static Future<bool> _defaultIsAppFocused() async {
     if (Platform.isAndroid || Platform.isIOS) {
-      return WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+      return WidgetsBinding.instance.lifecycleState ==
+          AppLifecycleState.resumed;
     }
     return windowManager.isFocused();
   }
@@ -178,9 +179,7 @@ class DesktopSystemNotifier {
     // On Darwin, initialize() returns permission grant status when permissions
     // are requested at init time. We defer prompts to
     // [requestPlatformPermissions] instead.
-    appLogger.d(
-      '[system-notifier] flutter_local_notifications ready ok=$ok',
-    );
+    appLogger.d('[system-notifier] flutter_local_notifications ready ok=$ok');
   }
 
   static Future<void> _requestPlatformPermissions(
@@ -272,6 +271,8 @@ class DesktopSystemNotifier {
       notificationDetails: details,
       payload: payload,
     );
-    appLogger.d('[system-notifier] showed id=$id title=$title payload=$payload');
+    appLogger.d(
+      '[system-notifier] showed id=$id title=$title payload=$payload',
+    );
   }
 }

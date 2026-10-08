@@ -167,64 +167,65 @@ void main() {
     expect(find.text('Codex review'), findsOneWidget);
   });
 
-  testWidgets('query shows merged conversations; filter chips switch sections', (
-    tester,
-  ) async {
-    final workspace = Workspace(workspaceId: 'ws-1', createdAt: 1);
-    final sessions = [_session('s1', 'Flutter test runner', updatedAt: 2000)];
-    final sessionRepo = SessionRepository(storage: buildTestHomeStorage());
-    final attention = AgentAttentionCubit(pruneInterval: null);
-    final automation = testAutomationCubit(sessionRepository: sessionRepo);
-    final workbench = WorkbenchCubit();
-    final chatCubit = ChatCubit(
-      executableResolver: () => 'claude',
-      storage: buildTestHomeStorage(),
-      automationRepository: testAutomationRepository(),
-      sessionRepository: sessionRepo,
-      agentAttentionCubit: attention,
-    );
-    chatCubit.ingestWorkspaceSessionSnapshot(
-      workspaces: [workspace],
-      sessions: sessions,
-    );
-    addTearDown(chatCubit.close);
-    addTearDown(attention.close);
-    addTearDown(automation.close);
-    addTearDown(workbench.close);
-
-    await _pumpDialog(
-      tester,
-      _host(
-        workspace: workspace,
+  testWidgets(
+    'query shows merged conversations; filter chips switch sections',
+    (tester) async {
+      final workspace = Workspace(workspaceId: 'ws-1', createdAt: 1);
+      final sessions = [_session('s1', 'Flutter test runner', updatedAt: 2000)];
+      final sessionRepo = SessionRepository(storage: buildTestHomeStorage());
+      final attention = AgentAttentionCubit(pruneInterval: null);
+      final automation = testAutomationCubit(sessionRepository: sessionRepo);
+      final workbench = WorkbenchCubit();
+      final chatCubit = ChatCubit(
+        executableResolver: () => 'claude',
+        storage: buildTestHomeStorage(),
+        automationRepository: testAutomationRepository(),
+        sessionRepository: sessionRepo,
+        agentAttentionCubit: attention,
+      );
+      chatCubit.ingestWorkspaceSessionSnapshot(
+        workspaces: [workspace],
         sessions: sessions,
-        chatCubit: chatCubit,
-        attentionCubit: attention,
-        automationCubit: automation,
-        sessionRepo: sessionRepo,
-        workbenchCubit: workbench,
-      ),
-    );
+      );
+      addTearDown(chatCubit.close);
+      addTearDown(attention.close);
+      addTearDown(automation.close);
+      addTearDown(workbench.close);
 
-    // A title match surfaces under the merged 对话 group.
-    await tester.enterText(find.byType(TextField), 'flutter');
-    await tester.pump(const Duration(milliseconds: 250)); // debounce
-    await tester.pump();
+      await _pumpDialog(
+        tester,
+        _host(
+          workspace: workspace,
+          sessions: sessions,
+          chatCubit: chatCubit,
+          attentionCubit: attention,
+          automationCubit: automation,
+          sessionRepo: sessionRepo,
+          workbenchCubit: workbench,
+        ),
+      );
 
-    expect(find.text('Conversations'), findsOneWidget);
-    expect(find.text('Recent sessions'), findsNothing);
-    expect(find.text('Flutter test runner'), findsOneWidget);
+      // A title match surfaces under the merged 对话 group.
+      await tester.enterText(find.byType(TextField), 'flutter');
+      await tester.pump(const Duration(milliseconds: 250)); // debounce
+      await tester.pump();
 
-    // 文件 filter hides the conversations group; nothing matches → empty state.
-    await tester.tap(find.text('Files'));
-    await tester.pump();
-    expect(find.text('No matches'), findsOneWidget);
-    expect(find.text('Conversations'), findsNothing);
+      expect(find.text('Conversations'), findsOneWidget);
+      expect(find.text('Recent sessions'), findsNothing);
+      expect(find.text('Flutter test runner'), findsOneWidget);
 
-    // 全部 restores the conversations group.
-    await tester.tap(find.text('All'));
-    await tester.pump();
-    expect(find.text('Conversations'), findsOneWidget);
-  });
+      // 文件 filter hides the conversations group; nothing matches → empty state.
+      await tester.tap(find.text('Files'));
+      await tester.pump();
+      expect(find.text('No matches'), findsOneWidget);
+      expect(find.text('Conversations'), findsNothing);
+
+      // 全部 restores the conversations group.
+      await tester.tap(find.text('All'));
+      await tester.pump();
+      expect(find.text('Conversations'), findsOneWidget);
+    },
+  );
 
   testWidgets('show more expands the recent section and disappears', (
     tester,

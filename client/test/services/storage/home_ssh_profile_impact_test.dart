@@ -65,7 +65,10 @@ void main() {
       resolveHomeSshProfileImpact(
         homeTargetId: 'ssh:p1',
         previous: [home, other],
-        next: [home, other.copyWith(host: 'changed.example.com')],
+        next: [
+          home,
+          other.copyWith(host: 'changed.example.com'),
+        ],
       ),
       HomeSshProfileImpact.none,
     );

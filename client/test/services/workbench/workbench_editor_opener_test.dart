@@ -36,15 +36,14 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(
-      workbench.centerOrder('ws').where(
-        (t) => t.kind == WorkbenchTabKind.file,
-      ),
+      workbench.centerOrder('ws').where((t) => t.kind == WorkbenchTabKind.file),
       isEmpty,
     );
     expect(
-      workbench.mergedFloatingStrip('ws').order.any(
-            (t) => t.kind == WorkbenchTabKind.file && t.id == '/repo/a.txt',
-          ),
+      workbench
+          .mergedFloatingStrip('ws')
+          .order
+          .any((t) => t.kind == WorkbenchTabKind.file && t.id == '/repo/a.txt'),
       isTrue,
     );
     expect(floating.state.visibility, FloatingPanelVisibility.open);
@@ -55,43 +54,52 @@ void main() {
     expect(editor.state.bucket('ws').openFilePaths, contains('/repo/a.txt'));
   });
 
-  test('openFile opens editor and floating tab, not workbench file tab', () async {
-    final gate = Completer<void>();
-    final fs = _GatedFilesystem(gate)..files['/repo/a.txt'] = 'hello';
-    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
-    final workbench = WorkbenchCubit();
-    final floating = FloatingWorkspaceCubit();
-    addTearDown(editor.close);
-    addTearDown(workbench.close);
-    addTearDown(floating.close);
-    floating.setActiveWorkspace('ws');
+  test(
+    'openFile opens editor and floating tab, not workbench file tab',
+    () async {
+      final gate = Completer<void>();
+      final fs = _GatedFilesystem(gate)..files['/repo/a.txt'] = 'hello';
+      final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
+      final workbench = WorkbenchCubit();
+      final floating = FloatingWorkspaceCubit();
+      addTearDown(editor.close);
+      addTearDown(workbench.close);
+      addTearDown(floating.close);
+      floating.setActiveWorkspace('ws');
 
-    final opener = WorkbenchEditorOpener(
-      editor: editor,
-      workbench: workbench,
-      floating: floating,
-      markdownViewModes: MarkdownViewModeStore(),
-      readMarkdownOpenMode: () => MarkdownOpenMode.preview,
-    );
-    gate.complete();
-    await opener.openFile('ws', '/repo/a.txt');
+      final opener = WorkbenchEditorOpener(
+        editor: editor,
+        workbench: workbench,
+        floating: floating,
+        markdownViewModes: MarkdownViewModeStore(),
+        readMarkdownOpenMode: () => MarkdownOpenMode.preview,
+      );
+      gate.complete();
+      await opener.openFile('ws', '/repo/a.txt');
 
-    expect(workbench.centerActiveId('ws')?.kind, isNot(WorkbenchTabKind.file));
-    expect(
-      workbench.centerOrder('ws').where(
-        (t) => t.kind == WorkbenchTabKind.file,
-      ),
-      isEmpty,
-    );
-    expect(
-      workbench.mergedFloatingStrip('ws').order.any(
-            (t) => t.kind == WorkbenchTabKind.file && t.id == '/repo/a.txt',
-          ),
-      isTrue,
-    );
-    expect(floating.state.visibility, FloatingPanelVisibility.open);
-    expect(editor.state.bucket('ws').openFilePaths, contains('/repo/a.txt'));
-  });
+      expect(
+        workbench.centerActiveId('ws')?.kind,
+        isNot(WorkbenchTabKind.file),
+      );
+      expect(
+        workbench
+            .centerOrder('ws')
+            .where((t) => t.kind == WorkbenchTabKind.file),
+        isEmpty,
+      );
+      expect(
+        workbench
+            .mergedFloatingStrip('ws')
+            .order
+            .any(
+              (t) => t.kind == WorkbenchTabKind.file && t.id == '/repo/a.txt',
+            ),
+        isTrue,
+      );
+      expect(floating.state.visibility, FloatingPanelVisibility.open);
+      expect(editor.state.bucket('ws').openFilePaths, contains('/repo/a.txt'));
+    },
+  );
 
   test('openFile ensures floating tab for image paths', () async {
     final gate = Completer<void>();
@@ -115,15 +123,14 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(
-      workbench.centerOrder('ws').where(
-        (t) => t.kind == WorkbenchTabKind.file,
-      ),
+      workbench.centerOrder('ws').where((t) => t.kind == WorkbenchTabKind.file),
       isEmpty,
     );
     expect(
-      workbench.mergedFloatingStrip('ws').order.any(
-            (t) => t.kind == WorkbenchTabKind.file && t.id == '/repo/a.png',
-          ),
+      workbench
+          .mergedFloatingStrip('ws')
+          .order
+          .any((t) => t.kind == WorkbenchTabKind.file && t.id == '/repo/a.png'),
       isTrue,
     );
     expect(floating.state.visibility, FloatingPanelVisibility.open);
@@ -157,71 +164,78 @@ void main() {
     const diffKey = '/repo/a.txt::scm.changes';
     expect(workbench.centerOrder('ws'), isEmpty);
     expect(
-      workbench.mergedFloatingStrip('ws').order.any(
-            (t) => t.kind == WorkbenchTabKind.diff && t.id == diffKey,
-          ),
+      workbench
+          .mergedFloatingStrip('ws')
+          .order
+          .any((t) => t.kind == WorkbenchTabKind.diff && t.id == diffKey),
       isTrue,
     );
     expect(floating.state.visibility, FloatingPanelVisibility.open);
     expect(editor.state.bucket('ws').openDiffs.containsKey(diffKey), isTrue);
   });
 
-  test('openDiff creates center workbench tab when filePreviewHost is center', () {
-    final editor = EditorCubit(storage: fakeHomeStorage());
-    final workbench = WorkbenchCubit();
-    final floating = FloatingWorkspaceCubit();
-    addTearDown(editor.close);
-    addTearDown(workbench.close);
-    addTearDown(floating.close);
+  test(
+    'openDiff creates center workbench tab when filePreviewHost is center',
+    () {
+      final editor = EditorCubit(storage: fakeHomeStorage());
+      final workbench = WorkbenchCubit();
+      final floating = FloatingWorkspaceCubit();
+      addTearDown(editor.close);
+      addTearDown(workbench.close);
+      addTearDown(floating.close);
 
-    final opener = WorkbenchEditorOpener(
-      editor: editor,
-      workbench: workbench,
-      floating: floating,
-      markdownViewModes: MarkdownViewModeStore(),
-      readMarkdownOpenMode: () => MarkdownOpenMode.preview,
-      readFilePreviewInFloating: () => false,
-    );
-    opener.openDiff(
-      workspaceId: 'ws',
-      identity: const ScmDiffIdentity('/repo/a.txt', ScmDiffMode.changes),
-      title: 'a.txt',
-      diffText: 'diff',
-    );
+      final opener = WorkbenchEditorOpener(
+        editor: editor,
+        workbench: workbench,
+        floating: floating,
+        markdownViewModes: MarkdownViewModeStore(),
+        readMarkdownOpenMode: () => MarkdownOpenMode.preview,
+        readFilePreviewInFloating: () => false,
+      );
+      opener.openDiff(
+        workspaceId: 'ws',
+        identity: const ScmDiffIdentity('/repo/a.txt', ScmDiffMode.changes),
+        title: 'a.txt',
+        diffText: 'diff',
+      );
 
-    expect(
-      workbench.centerActiveId('ws'),
-      WorkbenchTabId.diffChanges('/repo/a.txt'),
-    );
-    expect(workbench.mergedFloatingStrip('ws').order, isEmpty);
-  });
+      expect(
+        workbench.centerActiveId('ws'),
+        WorkbenchTabId.diffChanges('/repo/a.txt'),
+      );
+      expect(workbench.mergedFloatingStrip('ws').order, isEmpty);
+    },
+  );
 
-  test('openFile opens center workbench tab when filePreviewHost is center', () async {
-    final gate = Completer<void>();
-    final fs = _GatedFilesystem(gate)..files['/repo/a.txt'] = 'hello';
-    final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
-    final workbench = WorkbenchCubit();
-    final floating = FloatingWorkspaceCubit();
-    addTearDown(editor.close);
-    addTearDown(workbench.close);
-    addTearDown(floating.close);
+  test(
+    'openFile opens center workbench tab when filePreviewHost is center',
+    () async {
+      final gate = Completer<void>();
+      final fs = _GatedFilesystem(gate)..files['/repo/a.txt'] = 'hello';
+      final editor = EditorCubit(fs: fs, storage: fakeHomeStorage());
+      final workbench = WorkbenchCubit();
+      final floating = FloatingWorkspaceCubit();
+      addTearDown(editor.close);
+      addTearDown(workbench.close);
+      addTearDown(floating.close);
 
-    final opener = WorkbenchEditorOpener(
-      editor: editor,
-      workbench: workbench,
-      floating: floating,
-      markdownViewModes: MarkdownViewModeStore(),
-      readMarkdownOpenMode: () => MarkdownOpenMode.preview,
-      readFilePreviewInFloating: () => false,
-    );
-    gate.complete();
-    await opener.openFile('ws', '/repo/a.txt');
+      final opener = WorkbenchEditorOpener(
+        editor: editor,
+        workbench: workbench,
+        floating: floating,
+        markdownViewModes: MarkdownViewModeStore(),
+        readMarkdownOpenMode: () => MarkdownOpenMode.preview,
+        readFilePreviewInFloating: () => false,
+      );
+      gate.complete();
+      await opener.openFile('ws', '/repo/a.txt');
 
-    expect(workbench.centerActiveId('ws')?.kind, WorkbenchTabKind.file);
-    expect(workbench.centerActiveId('ws')?.id, '/repo/a.txt');
-    expect(workbench.mergedFloatingStrip('ws').order, isEmpty);
-    expect(editor.state.bucket('ws').openFilePaths, contains('/repo/a.txt'));
-  });
+      expect(workbench.centerActiveId('ws')?.kind, WorkbenchTabKind.file);
+      expect(workbench.centerActiveId('ws')?.id, '/repo/a.txt');
+      expect(workbench.mergedFloatingStrip('ws').order, isEmpty);
+      expect(editor.state.bucket('ws').openFilePaths, contains('/repo/a.txt'));
+    },
+  );
 
   group('floating preview slot', () {
     test('openFile reuses the floating preview slot (pref on)', () async {
@@ -245,7 +259,9 @@ void main() {
       await opener.openFile('ws', '/repo/a.txt');
       await opener.openFile('ws', '/repo/b.txt');
 
-      final floatingFiles = workbench.mergedFloatingStrip('ws').order
+      final floatingFiles = workbench
+          .mergedFloatingStrip('ws')
+          .order
           .where((t) => t.kind == WorkbenchTabKind.file)
           .toList();
       expect(floatingFiles, [WorkbenchTabId.file('/repo/b.txt')]);
@@ -280,7 +296,9 @@ void main() {
       await opener.openFile('ws', '/repo/b.txt');
 
       expect(
-        workbench.mergedFloatingStrip('ws').order
+        workbench
+            .mergedFloatingStrip('ws')
+            .order
             .where((t) => t.kind == WorkbenchTabKind.file)
             .length,
         2,
@@ -319,21 +337,19 @@ void main() {
 
       // Dirty tab was promoted (not replaced, not closed); the new file
       // becomes the next preview (VSCode semantics: the slot persists).
-      expect(
-        workbench.mergedFloatingStrip('ws').previewIds,
-        {WorkbenchTabId.file('/repo/b.txt')},
-      );
-      final floatingFiles = workbench.mergedFloatingStrip('ws').order
+      expect(workbench.mergedFloatingStrip('ws').previewIds, {
+        WorkbenchTabId.file('/repo/b.txt'),
+      });
+      final floatingFiles = workbench
+          .mergedFloatingStrip('ws')
+          .order
           .where((t) => t.kind == WorkbenchTabKind.file)
           .toList();
       expect(floatingFiles, [
         WorkbenchTabId.file('/repo/a.txt'),
         WorkbenchTabId.file('/repo/b.txt'),
       ]);
-      expect(
-        editor.state.bucket('ws').openFilePaths,
-        contains('/repo/a.txt'),
-      );
+      expect(editor.state.bucket('ws').openFilePaths, contains('/repo/a.txt'));
     });
   });
 

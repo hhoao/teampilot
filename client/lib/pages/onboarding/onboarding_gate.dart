@@ -14,7 +14,7 @@ import '../../repositories/app_settings_repository.dart';
 import '../../services/app/onboarding_service.dart';
 import '../../widgets/home_storage_scope.dart';
 import '../../services/storage/home_target_controller.dart';
-import '../../services/team/default_workspace_service.dart';
+import '../../services/team_config/default_workspace_service.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 import 'onboarding_wizard.dart';
 
@@ -55,31 +55,30 @@ class OnboardingGateState extends State<OnboardingGate> {
     // wizard so the first frame after onboarding is the compose landing, not
     // the library home page.
     final home = context.read<HomeTargetController>().current;
+    final homeStorage = homeStorageOf(context);
+    final router = GoRouter.of(context);
+    final bootstrap = context.read<AppBootstrapCubit>();
+    final chatCubit = context.read<ChatCubit>();
     final primaryPath = await DefaultWorkspaceService.resolvePrimaryPath(
       home: home,
-      storage: homeStorageOf(context),
+      storage: homeStorage,
     );
-    if (mounted) {
-      final chatCubit = context.read<ChatCubit>();
-      Workspace? defaultWorkspace;
-      for (final w in chatCubit.state.workspaces) {
-        if (workspacePathsEqual(
-          w.firstFolderPath,
-          primaryPath,
-          usesPosixPaths: homeStorageOf(context).usesPosixPaths,
-        )) {
-          defaultWorkspace = w;
-          break;
-        }
-      }
-      if (defaultWorkspace != null) {
-        GoRouter.of(context).go(
-          '/home-v2/workspace/${defaultWorkspace.workspaceId}',
-        );
+    if (!context.mounted) return;
+    Workspace? defaultWorkspace;
+    for (final w in chatCubit.state.workspaces) {
+      if (workspacePathsEqual(
+        w.firstFolderPath,
+        primaryPath,
+        usesPosixPaths: homeStorage.usesPosixPaths,
+      )) {
+        defaultWorkspace = w;
+        break;
       }
     }
-
-    context.read<AppBootstrapCubit>().dismissOnboardingWizard();
+    if (defaultWorkspace != null) {
+      router.go('/home-v2/workspace/${defaultWorkspace.workspaceId}');
+    }
+    bootstrap.dismissOnboardingWizard();
     setState(() => _reopenWizard = false);
   }
 

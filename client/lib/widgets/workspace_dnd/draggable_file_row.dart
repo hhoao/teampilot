@@ -18,6 +18,7 @@ class DraggableFileRow extends StatelessWidget {
     required this.label,
     required this.child,
     this.enabled = true,
+
     /// Zero keeps [DragTargetDetails.offset] as the pointer global position
     /// so empty-area panel drops can resolve dest by Y.
     this.dragAnchorStrategy = _globalPointerDragAnchor,
@@ -39,8 +40,7 @@ class DraggableFileRow extends StatelessWidget {
     Draggable<Object> draggable,
     BuildContext context,
     Offset position,
-  ) =>
-      Offset.zero;
+  ) => Offset.zero;
 
   @override
   Widget build(BuildContext context) {

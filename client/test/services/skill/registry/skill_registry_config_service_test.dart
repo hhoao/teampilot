@@ -7,7 +7,6 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/skill/registry/skill_registry_config_service.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import '../../../support/test_runtime_context.dart';
-import '../../../support/in_memory_filesystem.dart';
 
 void main() {
   late Directory tmp; // from dart:io
@@ -45,12 +44,17 @@ void main() {
   });
 
   test('migrates legacy repos.json git repos + skillsMp key once', () async {
-    final oldPath = AppPaths.skillReposConfigPathForTeampilotRoot(paths.basePath);
-    await testHomeStorage.fs.writeString(oldPath, const JsonEncoder.withIndent('  ').convert({
-      'repos': [
-        {'owner': 'vercel', 'name': 'ai', 'branch': 'main', 'enabled': true},
-      ],
-    }));
+    final oldPath = AppPaths.skillReposConfigPathForTeampilotRoot(
+      paths.basePath,
+    );
+    await testHomeStorage.fs.writeString(
+      oldPath,
+      const JsonEncoder.withIndent('  ').convert({
+        'repos': [
+          {'owner': 'vercel', 'name': 'ai', 'branch': 'main', 'enabled': true},
+        ],
+      }),
+    );
 
     final cfg = await service.load();
     final git = cfg.sources.where((s) => s.kind == SkillRegistryKind.gitRepo);
@@ -72,7 +76,9 @@ void main() {
   });
 
   test('corrupt registries.json falls back to defaults', () async {
-    final path = AppPaths.skillRegistriesConfigPathForTeampilotRoot(paths.basePath);
+    final path = AppPaths.skillRegistriesConfigPathForTeampilotRoot(
+      paths.basePath,
+    );
     await testHomeStorage.fs.writeString(path, '{not json');
     final cfg = await service.load();
     expect(cfg.byId('skillsSh'), isNotNull);

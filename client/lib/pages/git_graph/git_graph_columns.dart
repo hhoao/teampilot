@@ -26,8 +26,10 @@ abstract final class GitGraphColumns {
   static const double headerVerticalPadding = 6;
   static const double rowHeight = 32;
   static const double rowVerticalPadding = 4;
+
   /// 提交行整行高度（含上下呼吸留白）。连线画满整行，跨行才能无缝衔接。
   static const double rowTileHeight = rowHeight + 2 * rowVerticalPadding;
+
   /// Horizontal inset for header + rows (graph left edge + trailing meta).
   static const double horizontalPadding = 12;
   static const double afterGraphGap = 8;

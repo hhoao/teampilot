@@ -16,10 +16,10 @@ import '../../models/app_provider_config.dart';
 import '../../models/default_team_roster.dart';
 import '../../models/team_roster_slot.dart';
 import '../../models/team_config.dart';
-import '../../services/ai/ai_feature_setting_resolver.dart';
-import '../../services/ai/team_config_draft.dart';
-import '../../services/ai/team_config_generator.dart';
-import '../../services/ai/team_draft_roster_mapper.dart';
+import '../../services/ai_generation/ai_feature_setting_resolver.dart';
+import '../../services/ai_generation/team_config_draft.dart';
+import '../../services/ai_generation/team_config_generator.dart';
+import '../../services/ai_generation/team_draft_roster_mapper.dart';
 import '../../services/expert_hub/expert_hub_catalog.dart';
 import '../../services/expert_hub/local_expert_store.dart';
 import '../../services/storage/home_storage.dart';
@@ -139,9 +139,7 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
   CliTool? _providerCatalogCli(CliTool cli) {
     final registry = CliToolRegistryScope.maybeOf(context);
     if (registry == null) return null;
-    return registry.capability<ProviderCapability>(cli) != null
-        ? cli
-        : null;
+    return registry.capability<ProviderCapability>(cli) != null ? cli : null;
   }
 
   void _ensureNativeTeamCli() {
@@ -277,18 +275,19 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
     });
 
     try {
-      final draft = await TeamConfigGenerator(
-        storage: context.read<HomeStorage>(),
-      ).generateStreaming(
-        setting: setting,
-        description: description,
-        mode: mode,
-        joinedAt: DateTime.now().millisecondsSinceEpoch,
-        onProgress: (p) {
-          if (!mounted) return;
-          if (p > (_genProgress ?? 0)) setState(() => _genProgress = p);
-        },
-      );
+      final draft =
+          await TeamConfigGenerator(
+            storage: context.read<HomeStorage>(),
+          ).generateStreaming(
+            setting: setting,
+            description: description,
+            mode: mode,
+            joinedAt: DateTime.now().millisecondsSinceEpoch,
+            onProgress: (p) {
+              if (!mounted) return;
+              if (p > (_genProgress ?? 0)) setState(() => _genProgress = p);
+            },
+          );
       _easeTimer?.cancel();
       if (!mounted) return;
       setState(() {
@@ -442,10 +441,10 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
               ),
               validator: (_) =>
                   (_creationMethod == _TeamCreationMethod.custom &&
-                          _mode != null &&
-                          _nameController.text.trim().isEmpty)
-                      ? l10n.teamNameRequired
-                      : null,
+                      _mode != null &&
+                      _nameController.text.trim().isEmpty)
+                  ? l10n.teamNameRequired
+                  : null,
             ),
           ] else ...[
             TpFormField<bool>(
@@ -453,9 +452,9 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
               builder: (_) => const SizedBox.shrink(),
               validator: (_) =>
                   _creationMethod == _TeamCreationMethod.ai &&
-                          _aiDescription.trim().isEmpty
-                      ? l10n.formFieldRequired
-                      : null,
+                      _aiDescription.trim().isEmpty
+                  ? l10n.formFieldRequired
+                  : null,
             ),
             const SizedBox(height: 24),
             HomeTeamGenerateSection(
@@ -626,10 +625,7 @@ class _Badge extends StatelessWidget {
         color: fg.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(
-        label,
-        style: styles.xsSemiboldColored(fg),
-      ),
+      child: Text(label, style: styles.xsSemiboldColored(fg)),
     );
   }
 }
@@ -653,8 +649,7 @@ class _NativeTeamOptionsCard extends StatelessWidget {
     final registry = CliToolRegistryScope.of(context);
     final nativeTeamClis = registry.nativeTeamLaunchable.toList()
       ..sort((a, b) => a.id.value.compareTo(b.id.value));
-    final catalogCli =
-        registry.capability<ProviderCapability>(cli) != null
+    final catalogCli = registry.capability<ProviderCapability>(cli) != null
         ? cli
         : null;
     final providers = catalogCli == null

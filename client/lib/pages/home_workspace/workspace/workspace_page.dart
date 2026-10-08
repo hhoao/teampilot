@@ -9,7 +9,6 @@ import 'package:go_router/go_router.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/expert_hub_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
-import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/workspace_landing_context_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
@@ -164,11 +163,6 @@ class _WorkspacePageState extends State<WorkspacePage> {
       storage: homeStorage,
       hubState: context.mounted ? context.read<ExpertHubCubit>().state : null,
       resolver: resolver,
-      simpleModeDefaultFullAccess: context
-          .read<SessionPreferencesCubit>()
-          .state
-          .preferences
-          .simpleModeDefaultFullAccess,
     );
     if (!mounted) return;
 
@@ -248,17 +242,22 @@ class _WorkspacePageState extends State<WorkspacePage> {
       return;
     }
 
+    // WorkbenchLayoutPersistence.restoreForWorkspace must run AFTER sessions
+    // rehydrate: restore resolves session tabs against ChatCubit.state.sessions
+    // and prunes unknown ids, then persists the reduced bar. List hydrate is
+    // one sessions-index.json + listDir (not N session.json files).
     await context.read<ChatCubit>().ensureSessionsForWorkspace(
       widget.workspaceId,
     );
-    if (!mounted) return;
-    // Land the persisted split-layout snapshot before opening the deep-linked
-    // tab, so the restore cannot reset the tab away (no-op when already
-    // restored; concurrent callers share the in-flight restore).
     await _restoreWorkbenchLayoutSnapshot();
     if (!mounted) return;
 
-    final session = await _resolveSessionForDeepLink(sessionId);
+    final session =
+        await context.read<ChatCubit>().hydrateSessionDocument(
+          widget.workspaceId,
+          sessionId,
+        ) ??
+        await _resolveSessionForDeepLink(sessionId);
     if (!mounted) return;
     if (session == null) {
       appLogger.w(
@@ -275,21 +274,23 @@ class _WorkspacePageState extends State<WorkspacePage> {
   }
 
   Future<AppSession?> _resolveSessionForDeepLink(String sessionId) async {
-    final fromState = context
-        .read<ChatCubit>()
-        .state
-        .sessions
+    final chatCubit = context.read<ChatCubit>();
+    final fromState = chatCubit.state.sessions
         .where(
           (s) =>
               s.sessionId == sessionId && s.workspaceId == widget.workspaceId,
         )
         .firstOrNull;
-    if (fromState != null) return fromState;
+    // A list-row stub is not a session.json. Match `_sessionById`: use
+    // in-memory state only when the document is hydrated.
+    if (fromState != null && chatCubit.sessionHasDocument(sessionId)) {
+      return fromState;
+    }
 
-    final loaded = await context
-        .read<SessionRepository>()
-        .loadSessionsForWorkspace(widget.workspaceId);
-    return loaded.where((s) => s.sessionId == sessionId).firstOrNull;
+    return context.read<SessionRepository>().loadSession(
+      widget.workspaceId,
+      sessionId,
+    );
   }
 
   void _clearSessionQuery() {
@@ -383,7 +384,11 @@ class _WorkspacePageState extends State<WorkspacePage> {
   /// rebuilding the whole (heavy) workspace tree on tab switches — the tree
   /// stays mounted and live while inactive, so cubit-driven updates keep
   /// flowing into it between builds.
-  ({WorkspaceSection section, WorkspaceConfigSection configSection, bool visitedManage})?
+  ({
+    WorkspaceSection section,
+    WorkspaceConfigSection configSection,
+    bool visitedManage,
+  })?
   _livePageInputs;
 
   Widget _buildAndCacheLivePage(BuildContext context) {

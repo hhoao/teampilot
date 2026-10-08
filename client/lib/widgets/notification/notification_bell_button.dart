@@ -129,11 +129,13 @@ class _BellGlyph extends StatelessWidget {
                     badgeLabel,
                     textAlign: TextAlign.center,
                     textScaler: const TextScaler.linear(0.78),
-                    style: styles.xsSemiboldSnugColored(
-                      cs.brightness == Brightness.dark
-                          ? Colors.white
-                          : Colors.black,
-                    ).copyWith(height: 1.0),
+                    style: styles
+                        .xsSemiboldSnugColored(
+                          cs.brightness == Brightness.dark
+                              ? Colors.white
+                              : Colors.black,
+                        )
+                        .copyWith(height: 1.0),
                   ),
                 ),
               ),

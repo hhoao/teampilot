@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:ai_message_core/ai_message_core.dart';
-import 'package:collection/collection.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mock_model_gateway/core/turns.dart';
 import 'package:mock_model_gateway/scenarios/mixed_collab_3plus.dart';
@@ -11,7 +10,7 @@ import 'package:mock_model_gateway/scenarios/native_collab_replica_2plus.dart';
 import 'package:mock_model_gateway/scenarios/simple_3turn.dart';
 import 'package:mock_model_gateway/server.dart';
 import 'package:teampilot/cubits/ai_history_cubit.dart';
-import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
+import 'package:teampilot/services/chat/session/session_connect_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/app_session.dart';
@@ -27,15 +26,14 @@ import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/catalog/catalog_runtime.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/session/ai_history_loader.dart';
-import 'package:teampilot/services/session/session_history_context_builder.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import '../../support/test_runtime_context.dart';
-import 'package:teampilot/services/team_bus/mcp/bus_bridge_locator.dart';
-import 'package:teampilot/services/team_bus/persistence/bus_message_log.dart';
-import 'package:teampilot/services/team_bus/team_bus.dart';
-import 'package:teampilot/services/team_bus/team_message.dart';
-import 'package:teampilot/services/terminal/pending_user_message.dart';
+import 'package:teampilot/services/chat/conversation/history/ai_history_loader.dart';
+import 'package:teampilot/services/chat/conversation/history/session_history_context_builder.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/bus_bridge_locator.dart';
+import 'package:teampilot/services/chat/team_bus/persistence/bus_message_log.dart';
+import 'package:teampilot/services/chat/team_bus/team_bus.dart';
+import 'package:teampilot/services/chat/team_bus/team_message.dart';
+import 'package:teampilot/services/chat/runtime/pty/pending_user_message.dart';
 import 'package:teampilot/services/terminal/terminal_export.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
@@ -374,7 +372,8 @@ final class CliMessageMatrixHarness {
     }
     final runtime = CatalogRuntime.assemble(
       storage: testHomeStorage,
-      sessions: chat.sessionRepository ?? SessionRepository(storage: testHomeStorage),
+      sessions:
+          chat.sessionRepository ?? SessionRepository(storage: testHomeStorage),
     );
     catalogRuntime = runtime;
     chat.teammateBusMcpGateway.attachCatalogHandler(
@@ -890,17 +889,18 @@ final class CliMessageMatrixHarness {
       ),
       resolveChannel: resolveChannel,
       connectWorkspaceSession: chat.connectWorkspaceSession,
-      ensureMemberInputReady: (
-        sessionId,
-        member, {
-        bool directToPty = false,
-        bool Function()? aborted,
-      }) => chat.memberMaterializer.ensureMemberInputReady(
-        sessionId,
-        member,
-        directToPty: directToPty,
-        aborted: aborted,
-      ),
+      ensureMemberInputReady:
+          (
+            sessionId,
+            member, {
+            bool directToPty = false,
+            bool Function()? aborted,
+          }) => chat.memberMaterializer.ensureMemberInputReady(
+            sessionId,
+            member,
+            directToPty: directToPty,
+            aborted: aborted,
+          ),
       deliverUserCommandToMember:
           (sessionId, member, body, {bool directToPty = false}) =>
               chat.sessionRuntime.deliverUserCommandToMember(
@@ -910,6 +910,7 @@ final class CliMessageMatrixHarness {
                 directToPty: directToPty,
               ),
       applyFirstPromptTitle: chat.applyFirstPromptTitle,
+      abortMemberInject: chat.sessionRuntime.abortMemberInject,
     );
     lastSubmitResult = result;
 

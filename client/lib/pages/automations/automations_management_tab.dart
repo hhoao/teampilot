@@ -185,7 +185,9 @@ class AutomationsFilterPanel extends StatelessWidget {
         children: [
           Text(
             l10n.automationsFilterStatusLabel,
-            style: TpTextStyles.of(context).smSemiboldColored(cs.onSurfaceVariant),
+            style: TpTextStyles.of(
+              context,
+            ).smSemiboldColored(cs.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -203,7 +205,9 @@ class AutomationsFilterPanel extends StatelessWidget {
           const SizedBox(height: 14),
           Text(
             l10n.automationsFilterActionLabel,
-            style: TpTextStyles.of(context).smSemiboldColored(cs.onSurfaceVariant),
+            style: TpTextStyles.of(
+              context,
+            ).smSemiboldColored(cs.onSurfaceVariant),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -270,15 +274,12 @@ class _FilterPill extends StatelessWidget {
 
     return TpHover(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
+      shape: TpPressableShape.stadium,
       backgroundColor: restingBg,
       hoverColor: Color.alphaBlend(hoverTint, restingBg),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: borderColor),
-        ),
+      border: Border.all(color: borderColor),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         child: Text(
           label,
           style: selected

@@ -9,7 +9,6 @@ import '../../cubits/automation_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
-import '../../cubits/session_preferences_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/automation.dart';
 import '../../models/team_config.dart';
@@ -84,7 +83,6 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
   String? _expertKey;
   String? _projectFolderPath;
   String? _workingDirectoryPath;
-  late LaunchSecurityPolicy _launchSecurityPolicy;
   late String _targetMemberId;
   var _didSeedLaunchFields = false;
 
@@ -156,8 +154,6 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     _expertKey = initial?.expertKey;
     _projectFolderPath = initial?.projectFolderPath;
     _workingDirectoryPath = initial?.workingDirectoryPath;
-    _launchSecurityPolicy =
-        initial?.launchSecurityPolicy ?? LaunchSecurityPolicy.fullAccess;
     _targetMemberId = initial?.targetMemberId ?? 'team-lead';
     _reuseSession = initial?.reuseSession ?? false;
     _enabled = initial?.enabled ?? true;
@@ -199,11 +195,6 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     final draft = await resolveLandingDraft(
       workspaceId: workspaceId,
       storage: homeStorageOf(context),
-      simpleModeDefaultFullAccess: context
-          .read<SessionPreferencesCubit>()
-          .state
-          .preferences
-          .simpleModeDefaultFullAccess,
     );
     if (!mounted) return;
     setState(() {
@@ -213,7 +204,6 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       _expertKey = draft.expertKey;
       _projectFolderPath = draft.projectFolderPath;
       _workingDirectoryPath = draft.workingDirectoryPath;
-      _launchSecurityPolicy = draft.launchSecurityPolicy;
     });
     _seedTeamMemberDefault();
     _seedPresetDefault();
@@ -455,7 +445,6 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
           : null,
       projectFolderPath: _isScheduledMessage ? null : projectFolderPath,
       workingDirectoryPath: _isScheduledMessage ? null : workingDirectoryPath,
-      launchSecurityPolicy: _launchSecurityPolicy,
       sessionId: launchSessionId,
       targetMemberId: _isPersonal ? 'team-lead' : _targetMemberId,
       message: message,
@@ -535,15 +524,13 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
             messageController: _messageCtl,
             maxRunCountController: _maxRunCountCtl,
             schedule: _schedule,
-            onScheduleChanged: (draft) =>
-                setState(() => _schedule = draft),
+            onScheduleChanged: (draft) => setState(() => _schedule = draft),
             calculator: _calculator,
             enabled: _enabled,
             onEnabledChanged: (v) => setState(() => _enabled = v),
             runLimitReached: _runLimitReached,
             reuseSession: _reuseSession,
-            onReuseSessionChanged: (v) =>
-                setState(() => _reuseSession = v),
+            onReuseSessionChanged: (v) => setState(() => _reuseSession = v),
             reuseSessionSubtitle: _reuseSessionBoundSubtitle(l10n),
             onMaxRunCountChanged: () => setState(() {
               if (_runLimitReached && _enabled) _enabled = false;
@@ -555,20 +542,14 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
             presetId: _presetId,
             teamId: _teamId,
             expertKey: _expertKey,
-            launchSecurityPolicy: _launchSecurityPolicy,
             targetMemberId: _targetMemberId,
             onIsPersonalChanged: _onIsPersonalChanged,
-            onProjectChanged: (v) =>
-                setState(() => _projectFolderPath = v),
-            onWorktreeChanged: (v) =>
-                setState(() => _workingDirectoryPath = v),
+            onProjectChanged: (v) => setState(() => _projectFolderPath = v),
+            onWorktreeChanged: (v) => setState(() => _workingDirectoryPath = v),
             onPresetChanged: (v) => setState(() => _presetId = v),
             onTeamChanged: _onTeamChanged,
             onExpertChanged: (v) => setState(() => _expertKey = v),
-            onPermissionsChanged: (v) =>
-                setState(() => _launchSecurityPolicy = v),
-            onTargetMemberChanged: (v) =>
-                setState(() => _targetMemberId = v),
+            onTargetMemberChanged: (v) => setState(() => _targetMemberId = v),
           ),
         ),
         footer: TpDialogActions(

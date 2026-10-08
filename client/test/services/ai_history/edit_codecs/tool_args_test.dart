@@ -27,10 +27,7 @@ void main() {
     });
 
     test('returns null when args is null and argsText is null', () {
-      final part = AiToolCallPart(
-        toolCallId: 't1',
-        toolName: 'edit',
-      );
+      final part = AiToolCallPart(toolCallId: 't1', toolName: 'edit');
       expect(toolCallArgsMap(part), isNull);
     });
 
@@ -96,10 +93,7 @@ void main() {
         args: {'file_path': '/fromArgs.txt'},
         argsText: '{"file_path": "/fromText.txt"}',
       );
-      expect(
-        toolCallArgsMap(part),
-        equals({'file_path': '/fromArgs.txt'}),
-      );
+      expect(toolCallArgsMap(part), equals({'file_path': '/fromArgs.txt'}));
     });
   });
 

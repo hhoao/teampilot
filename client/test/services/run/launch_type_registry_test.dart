@@ -19,7 +19,10 @@ LaunchTypeContribution _flutterContrib(String extensionId) {
         'device': {'type': 'string'},
       },
     },
-    discover: const {'enabled': true, 'globs': ['pubspec.yaml']},
+    discover: const {
+      'enabled': true,
+      'globs': ['pubspec.yaml'],
+    },
   );
 }
 
@@ -49,13 +52,16 @@ void main() {
     expect(reg.get('flutter')?.extensionId, contribFlutterA.extensionId);
   });
 
-  test('isAvailable returns true for shellScript, false for extension types', () {
-    final reg = LaunchTypeRegistry.withBuiltIns();
-    reg.registerExtension(_flutterContrib('ext.flutter'));
-    expect(reg.isAvailable('shellScript', targetId: 'local'), isTrue);
-    expect(reg.isAvailable('process', targetId: 'local'), isFalse);
-    expect(reg.isAvailable('flutter', targetId: 'local'), isFalse);
-  });
+  test(
+    'isAvailable returns true for shellScript, false for extension types',
+    () {
+      final reg = LaunchTypeRegistry.withBuiltIns();
+      reg.registerExtension(_flutterContrib('ext.flutter'));
+      expect(reg.isAvailable('shellScript', targetId: 'local'), isTrue);
+      expect(reg.isAvailable('process', targetId: 'local'), isFalse);
+      expect(reg.isAvailable('flutter', targetId: 'local'), isFalse);
+    },
+  );
 
   test('shellScript schema requires execute / scriptPath', () {
     final errors = ShellScriptLaunchSchema.validate({

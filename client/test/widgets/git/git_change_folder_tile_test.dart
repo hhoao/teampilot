@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart' show PointerDeviceKind, kSecondaryMouseButton;
+import 'package:flutter/gestures.dart'
+    show PointerDeviceKind, kSecondaryMouseButton;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,10 +14,8 @@ class _FolderGitStub extends GitService {
   @override
   Future<bool> get isAvailable async => true;
   @override
-  Future<GitRepoStatus> status(String dir) async => const GitRepoStatus(
-    isRepository: true,
-    branch: 'main',
-  );
+  Future<GitRepoStatus> status(String dir) async =>
+      const GitRepoStatus(isRepository: true, branch: 'main');
   @override
   Future<List<String>> branches(String dir) async => const ['main'];
 }

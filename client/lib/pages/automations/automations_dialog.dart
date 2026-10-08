@@ -30,7 +30,9 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
     final scope = widget.listScope;
     final saved = await AutomationEditorDialog.show(
       context,
-      workspaceId: scope.isWorkspace || scope.isSession ? scope.workspaceId : null,
+      workspaceId: scope.isWorkspace || scope.isSession
+          ? scope.workspaceId
+          : null,
       sessionId: scope.sessionId,
     );
     if (saved != null && mounted) {

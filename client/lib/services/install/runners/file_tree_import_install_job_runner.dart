@@ -12,9 +12,7 @@ import '../../file_tree_import/workspace_import_service.dart';
 import '../install_job_runner.dart';
 
 typedef FileTreeImportExecutor =
-    Future<ImportSummary> Function({
-      required bool Function() isCancelled,
-    });
+    Future<ImportSummary> Function({required bool Function() isCancelled});
 
 final class FileTreeImportInstallJobRunner implements InstallJobRunner {
   FileTreeImportInstallJobRunner({
@@ -73,10 +71,7 @@ final class FileTreeImportInstallJobRunner implements InstallJobRunner {
       ctx.reportPhase(event.currentName);
     }
     if (event.totalItems > 0) {
-      ctx.reportItems(
-        completed: event.completedItems,
-        total: event.totalItems,
-      );
+      ctx.reportItems(completed: event.completedItems, total: event.totalItems);
     }
     if (event.bytesTotal > 0) {
       ctx.reportPhase(

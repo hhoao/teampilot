@@ -34,12 +34,20 @@ class _HomeAllWorkspacesPaneState extends State<HomeAllWorkspacesPane> {
   Set<String> _favoriteWorkspaceIds = {};
   var _gridView = true;
   var _workspaceSort = WorkspaceSort.recentlyUpdated;
+  late final TextEditingController _workspaceFilterController =
+      TextEditingController();
 
   @override
   void initState() {
     super.initState();
     unawaited(_loadWorkspaceFavorites());
     unawaited(_loadDisplayPrefs());
+  }
+
+  @override
+  void dispose() {
+    _workspaceFilterController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadWorkspaceFavorites() async {
@@ -109,6 +117,8 @@ class _HomeAllWorkspacesPaneState extends State<HomeAllWorkspacesPane> {
                       onToggleView: _setGridView,
                       workspaceSort: _workspaceSort,
                       onWorkspaceSortChanged: _setWorkspaceSort,
+                      workspaceFilterController: _workspaceFilterController,
+                      onWorkspaceFilterChanged: (_) => setState(() {}),
                       favoriteWorkspaceIds: _favoriteWorkspaceIds,
                       onToggleWorkspaceFavorite: _toggleWorkspaceFavorite,
                     )

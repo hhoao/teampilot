@@ -11,6 +11,7 @@
 ///
 /// Payload shapes verified against claude 2.1.156 — see
 /// docs/specs/2026-09-07-background-task-terminal-protection-design.md.
+library;
 
 /// True when [body] is the start of a background shell task.
 bool isBackgroundTaskStart(Map<String, Object?> body) {

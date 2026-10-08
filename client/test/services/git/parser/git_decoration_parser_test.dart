@@ -22,13 +22,17 @@ void main() {
       ]);
     });
 
-    test('local branch with slash stays local when not a known remote prefix',
-        () {
-      final refs =
-          parseGitDecorations('(feature/x)', remotePrefixes: {'origin/'});
-      expect(refs.single.kind, GitRefDecorationKind.localBranch);
-      expect(refs.single.name, 'feature/x');
-    });
+    test(
+      'local branch with slash stays local when not a known remote prefix',
+      () {
+        final refs = parseGitDecorations(
+          '(feature/x)',
+          remotePrefixes: {'origin/'},
+        );
+        expect(refs.single.kind, GitRefDecorationKind.localBranch);
+        expect(refs.single.name, 'feature/x');
+      },
+    );
 
     test('falls back to origin/ heuristic without prefixes', () {
       final refs = parseGitDecorations('(origin/main)');

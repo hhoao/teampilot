@@ -6,20 +6,30 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/connect_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../services/connect/connect_ssh_backend.dart';
 import '../../services/connect/ssh_pairing_offer.dart';
 import '../../utils/ui/app_keys.dart';
+
+String _connectSshdDownCopy(AppLocalizations l10n, ConnectState state) {
+  if (state.sshBackend != ConnectSshBackendKind.system) {
+    return l10n.connectSshdDown;
+  }
+  return state.systemSshdHint == ConnectSystemSshdHint.macos
+      ? l10n.connectSystemSshdDownMacos
+      : l10n.connectSystemSshdDownLinux;
+}
 
 class ConnectQrPanel extends StatelessWidget {
   const ConnectQrPanel({
     required this.state,
-    required this.onCheckSshd,
+    required this.onRetry,
     required this.onCopyLink,
     required this.onRegenerate,
     super.key,
   });
 
   final ConnectState state;
-  final VoidCallback onCheckSshd;
+  final VoidCallback onRetry;
   final VoidCallback onCopyLink;
   final VoidCallback onRegenerate;
 
@@ -27,27 +37,20 @@ class ConnectQrPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final offer = state.offer;
-    if (state.loading && state.sshd.enableHint.isEmpty) {
+    if (state.loading) {
       return const Center(child: CircularProgressIndicator());
     }
     if (!state.canPair) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l10n.connectSshdDown),
-          if (state.sshd.enableHint.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              state.sshd.enableHint,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
+          Text(_connectSshdDownCopy(l10n, state)),
           const SizedBox(height: 16),
           TpButton(
-            key: AppKeys.connectSshdEnableCta,
+            key: AppKeys.connectSshdRetryCta,
             variant: TpButtonVariant.outline,
-            onPressed: onCheckSshd,
-            child: Text(l10n.connectCheckAgain),
+            onPressed: onRetry,
+            child: Text(l10n.connectSshdRetry),
           ),
         ],
       );
@@ -59,7 +62,8 @@ class ConnectQrPanel extends StatelessWidget {
 
     // Reachability must be labeled honestly: without an extra endpoint or a
     // live relay registration the phone can only pair on LAN.
-    final lanOnly = state.extraEndpoints.isEmpty &&
+    final lanOnly =
+        state.extraEndpoints.isEmpty &&
         state.relayUrl.trim().isEmpty &&
         offer.relay == null;
 

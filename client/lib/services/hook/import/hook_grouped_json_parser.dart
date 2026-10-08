@@ -91,15 +91,17 @@ abstract final class HookGroupedJsonParser {
                 warnings.add('hook_import_bad_handler_$event');
                 continue;
               }
-              entries.add(RawHookEntry(
-                nativeEvent: event,
-                matcher: matcher,
-                type: 'command',
-                command: command,
-                timeoutSec: timeout,
-                native: native,
-                unsupportedFields: unsupported,
-              ));
+              entries.add(
+                RawHookEntry(
+                  nativeEvent: event,
+                  matcher: matcher,
+                  type: 'command',
+                  command: command,
+                  timeoutSec: timeout,
+                  native: native,
+                  unsupportedFields: unsupported,
+                ),
+              );
               break;
             case 'http':
               final url = hookJsonString(h, 'url');
@@ -107,16 +109,18 @@ abstract final class HookGroupedJsonParser {
                 warnings.add('hook_import_bad_handler_$event');
                 continue;
               }
-              entries.add(RawHookEntry(
-                nativeEvent: event,
-                matcher: matcher,
-                type: 'http',
-                url: url,
-                headers: hookJsonStringMap(h, 'headers'),
-                timeoutSec: timeout,
-                native: native,
-                unsupportedFields: unsupported,
-              ));
+              entries.add(
+                RawHookEntry(
+                  nativeEvent: event,
+                  matcher: matcher,
+                  type: 'http',
+                  url: url,
+                  headers: hookJsonStringMap(h, 'headers'),
+                  timeoutSec: timeout,
+                  native: native,
+                  unsupportedFields: unsupported,
+                ),
+              );
               break;
             default:
               warnings.add('hook_import_type_unsupported_$type');

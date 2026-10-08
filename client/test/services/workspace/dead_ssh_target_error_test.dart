@@ -8,15 +8,16 @@ void main() {
 
   test('returns null for unrelated messages', () {
     expect(deadSshTargetIdFromError('connection refused'), isNull);
-    expect(deadSshTargetIdFromError('No SSH profile for target "local".'), isNull);
+    expect(
+      deadSshTargetIdFromError('No SSH profile for target "local".'),
+      isNull,
+    );
   });
 
   test('parses workspace provisioner StateError text', () {
     const targetId = 'ssh:deleted-profile';
     expect(
-      deadSshTargetIdFromError(
-        'No SSH profile for target "$targetId".',
-      ),
+      deadSshTargetIdFromError('No SSH profile for target "$targetId".'),
       targetId,
     );
   });
@@ -24,9 +25,7 @@ void main() {
   test('parses remote cli readiness failure message text', () {
     const targetId = 'ssh:stale-host';
     expect(
-      deadSshTargetIdFromError(
-        'No SSH profile for target "$targetId".',
-      ),
+      deadSshTargetIdFromError('No SSH profile for target "$targetId".'),
       targetId,
     );
   });

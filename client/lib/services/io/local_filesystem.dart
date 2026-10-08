@@ -7,8 +7,13 @@ import 'filesystem.dart';
 import 'windows_junction.dart';
 
 class LocalFilesystem implements Filesystem, FsWatcher {
-  LocalFilesystem({p.Context? pathContext})
-    : pathContext = pathContext ?? p.context;
+  LocalFilesystem({
+    p.Context? pathContext,
+    Future<File> Function(String from, String to)? renameFile,
+  }) : pathContext = pathContext ?? p.context,
+       _renameFile = renameFile ?? ((from, to) => File(from).rename(to));
+
+  final Future<File> Function(String from, String to) _renameFile;
 
   static int _tmpWriteCounter = 0;
   static final _atomicWriteLocks = LockPool();
@@ -47,7 +52,6 @@ class LocalFilesystem implements Filesystem, FsWatcher {
     }
   }
 
-  @override
   Future<FsStat> lstat(String path) async {
     // Non-following stat: a symlink-to-directory reports symlink, not the
     // target's directory kind. size/mtime of the link itself are unavailable
@@ -199,11 +203,7 @@ class LocalFilesystem implements Filesystem, FsWatcher {
   }
 
   @override
-  Future<List<int>?> readBytesRange(
-    String path,
-    int offset,
-    int length,
-  ) async {
+  Future<List<int>?> readBytesRange(String path, int offset, int length) async {
     final file = File(path);
     if (!await file.exists()) return null;
     final raf = await file.open(mode: FileMode.read);
@@ -262,22 +262,27 @@ class LocalFilesystem implements Filesystem, FsWatcher {
 
   /// Renames [from] onto [to], overwriting any existing destination.
   ///
-  /// POSIX rename is an atomic replace, but on Windows `MoveFile` over an
-  /// existing target transiently fails with ACCESS_DENIED (errno 5) while
-  /// another rename to the same path is in flight (or AV/indexing briefly
-  /// holds it). Retry a handful of times so concurrent atomic writes settle.
+  /// POSIX rename is an atomic replace. On Windows `MoveFileEx` with
+  /// REPLACE_EXISTING still fails with ACCESS_DENIED (errno 5) while another
+  /// handle holds the dest (a concurrent reader, Defender, Search Indexer).
+  /// Copy-overwrite then drop the temp file is the replace that succeeds
+  /// with a shared reader; retrying the same rename does not.
   Future<void> _renameReplacing(String from, String to) async {
-    const maxAttempts = 20;
-    for (var attempt = 1; ; attempt++) {
+    try {
+      await _renameFile(from, to);
+    } on FileSystemException catch (error) {
+      if (!_isSharingViolation(error)) rethrow;
       try {
-        await File(from).rename(to);
-        return;
-      } on PathAccessException {
-        if (!Platform.isWindows || attempt >= maxAttempts) rethrow;
-        await Future<void>.delayed(Duration(milliseconds: 5 * attempt));
+        await File(from).copy(to);
+        await _deleteIfStillPresent(File(from));
+      } on Object {
+        throw error;
       }
     }
   }
+
+  bool _isSharingViolation(FileSystemException error) =>
+      error is PathAccessException || error.osError?.errorCode == 5;
 
   @override
   Future<List<FsDirEntry>> listDir(String path) async {
@@ -350,7 +355,10 @@ class LocalFilesystem implements Filesystem, FsWatcher {
         await Link(linkPath).create(normalizedTarget);
         return true;
       } on FileSystemException {
-        if (_linkAlreadyPointsTo(target: normalizedTarget, linkPath: linkPath)) {
+        if (_linkAlreadyPointsTo(
+          target: normalizedTarget,
+          linkPath: linkPath,
+        )) {
           return true;
         }
         if (!Platform.isWindows) rethrow;
@@ -464,7 +472,10 @@ class LocalFilesystem implements Filesystem, FsWatcher {
   /// script hooks (e.g. Claude Code plugin `hooks/*`) stay runnable in
   /// materialized trees. Best-effort: on failure the copy keeps its default
   /// mode (matches today's behavior, a non-blocking warning in the CLI).
-  Future<void> _mirrorModeIfExecutable(String source, String destination) async {
+  Future<void> _mirrorModeIfExecutable(
+    String source,
+    String destination,
+  ) async {
     if (Platform.isWindows) return; // no POSIX exec bits
     try {
       final mode = (await File(source).stat()).mode;
@@ -534,25 +545,27 @@ class LocalFilesystem implements Filesystem, FsWatcher {
       );
     }
 
-    subscription = Directory(path).watch(recursive: true).listen(
-      (event) {
-        if (controller.isClosed) return;
-        controller.add(
-          FsChangeEvent(path: event.path, type: _mapFsChangeType(event)),
+    subscription = Directory(path)
+        .watch(recursive: true)
+        .listen(
+          (event) {
+            if (controller.isClosed) return;
+            controller.add(
+              FsChangeEvent(path: event.path, type: _mapFsChangeType(event)),
+            );
+          },
+          onError: (Object error, StackTrace stack) {
+            if (!controller.isClosed) {
+              controller.addError(error, stack);
+            }
+          },
+          onDone: () {
+            if (!controller.isClosed) {
+              unawaited(controller.close());
+            }
+          },
+          cancelOnError: false,
         );
-      },
-      onError: (Object error, StackTrace stack) {
-        if (!controller.isClosed) {
-          controller.addError(error, stack);
-        }
-      },
-      onDone: () {
-        if (!controller.isClosed) {
-          unawaited(controller.close());
-        }
-      },
-      cancelOnError: false,
-    );
 
     return FsTreeWatch(
       events: controller.stream,

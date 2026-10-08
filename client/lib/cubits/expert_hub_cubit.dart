@@ -11,7 +11,7 @@ import '../models/install_job/install_job_spec.dart';
 import '../services/install/install_job_keys.dart';
 import '../services/install/install_job_registry.dart';
 import '../services/install/runners/hub_clone_install_job_runner.dart';
-import '../services/team/team_clone_service.dart';
+import '../services/team_config/team_clone_service.dart';
 import 'launch_profile_cubit.dart';
 
 enum ExpertHubLoadStatus { idle, loading, ready, error }
@@ -326,9 +326,7 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
         historyMessageFor: (result) => result.hasFailures
             ? 'Added ${member.name} with dependency failures'
             : 'Added ${member.name}',
-        run: (ctx) => run(
-          (progress) => reportHubCloneProgress(ctx, progress),
-        ),
+        run: (ctx) => run((progress) => reportHubCloneProgress(ctx, progress)),
       ),
     );
   }

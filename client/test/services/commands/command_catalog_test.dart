@@ -8,27 +8,30 @@ import 'package:teampilot/services/commands/key_chord.dart';
 void main() {
   test('v1 catalog contains required command ids', () {
     final ids = CommandCatalog.v1.map((c) => c.id).toSet();
-    expect(ids, containsAll([
-      CommandIds.workspaceNextTab,
-      CommandIds.workspaceSearch,
-      CommandIds.stripNextTab,
-      CommandIds.sessionNewChat,
-      CommandIds.sessionCloseTab,
-      CommandIds.zoomIn,
-      CommandIds.composeSubmit,
-      CommandIds.showCheatsheet,
-      CommandIds.toggleSidebar,
-      CommandIds.floatingToggle,
-      CommandIds.floatingMaximize,
-      CommandIds.floatingMinimize,
-      CommandIds.floatingNewTerminal,
-      CommandIds.floatingOpenFile,
-      CommandIds.workbenchSplitRight,
-      CommandIds.workbenchSplitDown,
-      CommandIds.workbenchSplitReset,
-      CommandIds.workbenchFocusNextGroup,
-      CommandIds.workbenchMoveTabToNextGroup,
-    ]));
+    expect(
+      ids,
+      containsAll([
+        CommandIds.workspaceNextTab,
+        CommandIds.workspaceSearch,
+        CommandIds.stripNextTab,
+        CommandIds.sessionNewChat,
+        CommandIds.sessionCloseTab,
+        CommandIds.zoomIn,
+        CommandIds.composeSubmit,
+        CommandIds.showCheatsheet,
+        CommandIds.toggleSidebar,
+        CommandIds.floatingToggle,
+        CommandIds.floatingMaximize,
+        CommandIds.floatingMinimize,
+        CommandIds.floatingNewTerminal,
+        CommandIds.floatingOpenFile,
+        CommandIds.workbenchSplitRight,
+        CommandIds.workbenchSplitDown,
+        CommandIds.workbenchSplitReset,
+        CommandIds.workbenchFocusNextGroup,
+        CommandIds.workbenchMoveTabToNextGroup,
+      ]),
+    );
   });
 
   test('workbench split commands default to backslash-based chords', () {
@@ -142,9 +145,7 @@ void main() {
     final def = CommandCatalog.v1.singleWhere(
       (c) => c.id == CommandIds.workspaceSearch,
     );
-    expect(def.defaultChords, [
-      KeyChord.doubleTapShift(),
-    ]);
+    expect(def.defaultChords, [KeyChord.doubleTapShift()]);
     expect(def.when, ShortcutWhen.hasWorkspace);
     expect(def.terminalPassthrough, isTrue);
   });
@@ -185,15 +186,9 @@ void main() {
       final def = CommandCatalog.v1.singleWhere(
         (c) => c.id == CommandIds.stripFocusTab(n),
       );
-      expect(
-        def.defaultChords,
-        [
-          KeyChord(
-            key: n == 10 ? 'digit0' : 'digit$n',
-            mods: [KeyChordMod.alt],
-          ),
-        ],
-      );
+      expect(def.defaultChords, [
+        KeyChord(key: n == 10 ? 'digit0' : 'digit$n', mods: [KeyChordMod.alt]),
+      ]);
       expect(def.when, ShortcutWhen.hasWorkspace);
       expect(def.terminalPassthrough, isTrue);
     }
@@ -204,15 +199,12 @@ void main() {
       final def = CommandCatalog.v1.singleWhere(
         (c) => c.id == CommandIds.workspaceFocusTab(n),
       );
-      expect(
-        def.defaultChords,
-        [
-          KeyChord(
-            key: n == 10 ? 'digit0' : 'digit$n',
-            mods: [KeyChordMod.alt, KeyChordMod.shift],
-          ),
-        ],
-      );
+      expect(def.defaultChords, [
+        KeyChord(
+          key: n == 10 ? 'digit0' : 'digit$n',
+          mods: [KeyChordMod.alt, KeyChordMod.shift],
+        ),
+      ]);
       expect(def.when, ShortcutWhen.hasOpenWorkspaceTabs);
       expect(def.terminalPassthrough, isTrue);
     }

@@ -1,11 +1,10 @@
 import 'dart:async';
 
-import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
-import 'package:teampilot/cubits/chat/acp/acp_chat_runtime_cubit.dart';
+import 'package:teampilot/cubits/session/acp/acp_chat_runtime_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/chat/acp_permission_card.dart';

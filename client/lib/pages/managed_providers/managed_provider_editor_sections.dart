@@ -84,11 +84,12 @@ class ManagedProviderBasicsSection extends StatelessWidget {
             key: const Key('managed-provider-name'),
             label: Text(l10n.managedProvidersName),
             controller: nameController,
-            decoration: InputDecoration(hintText: l10n.managedProvidersNameHint),
-            validator: (value) =>
-                (value == null || value.trim().isEmpty)
-                    ? context.l10n.formFieldRequired
-                    : null,
+            decoration: InputDecoration(
+              hintText: l10n.managedProvidersNameHint,
+            ),
+            validator: (value) => (value == null || value.trim().isEmpty)
+                ? context.l10n.formFieldRequired
+                : null,
           ),
         if (schema.hasField('enabled'))
           SwitchListTile.adaptive(
@@ -611,10 +612,9 @@ class ManagedProviderAdvancedSection extends StatelessWidget {
             decoration: InputDecoration(
               hintText: l10n.managedProvidersAdapterHint,
             ),
-            validator: (value) =>
-                (value == null || value.trim().isEmpty)
-                    ? context.l10n.formFieldRequired
-                    : null,
+            validator: (value) => (value == null || value.trim().isEmpty)
+                ? context.l10n.formFieldRequired
+                : null,
           ),
         ],
       ],
@@ -659,11 +659,7 @@ class _ManagedProviderTextField extends StatelessWidget {
 }
 
 class _LabeledControl extends StatelessWidget {
-  const _LabeledControl({
-    required this.label,
-    required this.child,
-    this.tip,
-  });
+  const _LabeledControl({required this.label, required this.child, this.tip});
 
   final String label;
   final String? tip;

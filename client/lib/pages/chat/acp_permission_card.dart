@@ -1,9 +1,8 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_ui/shared_ui.dart';
 
-import '../../cubits/chat/acp/acp_chat_runtime_cubit.dart';
+import '../../cubits/session/acp/acp_chat_runtime_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/agent_status/agent_permission_request.dart';
 import 'ai_message_strings_from_l10n.dart';

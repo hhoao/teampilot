@@ -12,9 +12,9 @@ class ContentSearchRunner {
     required Filesystem fs,
     required String root,
     bool forceFallback = false,
-  })  : _fs = fs,
-        _root = root,
-        _forceFallback = forceFallback;
+  }) : _fs = fs,
+       _root = root,
+       _forceFallback = forceFallback;
 
   final Filesystem _fs;
   final String _root;

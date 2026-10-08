@@ -94,7 +94,6 @@ void main() {
       storage: fakeHomeStorage(filesystem: fs),
       fs: fs,
       cachePath: '/tp/usage-cache.json',
-      now: () => 100,
     );
     providers = ManagedProviderRepository(
       storage: fakeHomeStorage(filesystem: fs),
@@ -109,11 +108,9 @@ void main() {
       registry: ManagedProviderUsageRegistry([adapter]),
       credentials: _NoCredentials(),
       http: _NoHttp(),
-      now: () => DateTime.fromMillisecondsSinceEpoch(100),
     );
     usageCubit = ManagedProviderUsageCubit(
       coordinator: coordinator,
-      now: () => DateTime.fromMillisecondsSinceEpoch(100),
     );
     providerCubit = ManagedProviderCubit(repository: providers);
     addTearDown(usageCubit.close);

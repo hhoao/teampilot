@@ -166,18 +166,22 @@ void main() {
     );
     await fs.writeString(
       ctx.join(dir, 'old-custom.json'),
-      jsonEncode(
-        _sampleMember().copyWith(key: 'local/old-custom').toJson(),
-      ),
+      jsonEncode(_sampleMember().copyWith(key: 'local/old-custom').toJson()),
     );
 
     await store.migrateLegacyLayout();
 
-    expect(await fs.readString(ctx.join(dir, 'old-clone.json')), isNull,
-        reason: 'old uuid clone is purged');
+    expect(
+      await fs.readString(ctx.join(dir, 'old-clone.json')),
+      isNull,
+      reason: 'old uuid clone is purged',
+    );
     final relocated = await store.getByKey('local/old-custom');
-    expect(relocated, isNotNull,
-        reason: 'legacy user-custom is relocated under local/');
+    expect(
+      relocated,
+      isNotNull,
+      reason: 'legacy user-custom is relocated under local/',
+    );
     expect(relocated!.name, 'Product Manager');
   });
 }

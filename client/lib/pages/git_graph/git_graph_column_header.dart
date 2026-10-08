@@ -34,11 +34,8 @@ class GitGraphColumnHeader extends StatelessWidget {
         ).mdColored(colorScheme.onSurfaceVariant);
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onSecondaryTapUp: (details) => _showMenu(
-            context,
-            details.globalPosition,
-            null,
-          ),
+          onSecondaryTapUp: (details) =>
+              _showMenu(context, details.globalPosition, null),
           child: Container(
             padding: const EdgeInsets.symmetric(
               horizontal: GitGraphColumns.horizontalPadding,
@@ -54,10 +51,7 @@ class GitGraphColumnHeader extends StatelessWidget {
               child: GitGraphColumnsRow(
                 layout: layout,
                 gapBuilder: (id) => _handleFor(layout, id),
-                graph: _HeaderLabel(
-                  l10n.gitGraphColumnGraph,
-                  style: textStyle,
-                ),
+                graph: _HeaderLabel(l10n.gitGraphColumnGraph, style: textStyle),
                 description: _HeaderLabel(
                   l10n.gitGraphColumnDescription,
                   style: textStyle,
@@ -118,12 +112,11 @@ class GitGraphColumnHeader extends StatelessWidget {
   }
 }
 
-String _columnLabel(AppLocalizations l10n, GitGraphColumnId id) =>
-    switch (id) {
-      GitGraphColumnId.date => l10n.gitGraphColumnDate,
-      GitGraphColumnId.author => l10n.gitGraphColumnAuthor,
-      GitGraphColumnId.commit => l10n.gitGraphColumnCommit,
-    };
+String _columnLabel(AppLocalizations l10n, GitGraphColumnId id) => switch (id) {
+  GitGraphColumnId.date => l10n.gitGraphColumnDate,
+  GitGraphColumnId.author => l10n.gitGraphColumnAuthor,
+  GitGraphColumnId.commit => l10n.gitGraphColumnCommit,
+};
 
 /// 可隐藏列的列头单元：右键弹「隐藏 <列>」+「隐藏列头」。
 /// 宽度与间隙由共享骨架提供。
@@ -142,11 +135,8 @@ class _HideableHeaderCell extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onSecondaryTapUp: (details) => _showMenu(
-        context,
-        details.globalPosition,
-        columnId,
-      ),
+      onSecondaryTapUp: (details) =>
+          _showMenu(context, details.globalPosition, columnId),
       child: SizedBox(
         key: ValueKey('git-graph-header-cell-${columnId.name}'),
         width: double.infinity,
@@ -189,9 +179,7 @@ Future<void> _showMenu(
     case 'hide-column':
       final prefs = cubit.state.preferences.gitGraphColumns;
       cubit.setGitGraphColumns(
-        prefs.copyWith(
-          hiddenColumns: {...prefs.hiddenColumns, columnId!},
-        ),
+        prefs.copyWith(hiddenColumns: {...prefs.hiddenColumns, columnId!}),
       );
     case 'hide-header':
       cubit.setGitGraphHeaderVisible(false);

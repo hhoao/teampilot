@@ -2,7 +2,7 @@ import 'dart:async';
 
 import '../../../../utils/team/team_member_naming.dart';
 import '../../registry/capabilities/prompt_capability.dart';
-import '../../../../services/session/member_role_provision.dart';
+import '../../registry/member_role_provision.dart';
 import '../team_roster_service.dart';
 import '../../../resource/contribution/resource_origin.dart';
 
@@ -33,7 +33,6 @@ final class ClaudePromptCapability
               TeamMemberNaming.isTeamLead(member) &&
               ctx.forceTeamLeadDelegateMode,
           mixed: ctx.mixed,
-          additionalDirectories: const [],
         ),
         origin: const ContributionOrigin(
           providerId: toolId,

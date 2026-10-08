@@ -202,10 +202,7 @@ class AppUpdateService {
     final headers = await _httpHeaders();
     final http.Response head;
     try {
-      head = await _downloadHttp.head(
-        Uri.parse(downloadUrl),
-        headers: headers,
-      );
+      head = await _downloadHttp.head(Uri.parse(downloadUrl), headers: headers);
     } on RemoteDownloadException catch (e) {
       throw _appUpdateExceptionFromRemoteDownload(e);
     }
@@ -232,15 +229,12 @@ class AppUpdateService {
     final pageUrl = appUpdateLatestReleasePageUrl(owner: owner, repo: repo);
     final headers = await _httpHeaders();
     try {
-      final streamed = await _downloadHttp.send(
-        (candidateUri) {
-          final request = http.Request('GET', candidateUri)
-            ..followRedirects = false
-            ..headers.addAll(headers);
-          return request;
-        },
-        Uri.parse(pageUrl),
-      );
+      final streamed = await _downloadHttp.send((candidateUri) {
+        final request = http.Request('GET', candidateUri)
+          ..followRedirects = false
+          ..headers.addAll(headers);
+        return request;
+      }, Uri.parse(pageUrl));
       await streamed.stream.drain();
 
       if (streamed.statusCode >= 300 && streamed.statusCode < 400) {

@@ -18,7 +18,11 @@ void main() {
     tmp = await Directory.systemTemp.createTemp('rt_registry_');
     final fs = LocalFilesystem();
     targetsRepo = TargetsRepository(rootDir: tmp.path, fs: fs);
-    sshRepo = SshProfileRepository(rootDir: tmp.path, fs: fs, storage: fakeHomeStorage(), );
+    sshRepo = SshProfileRepository(
+      rootDir: tmp.path,
+      fs: fs,
+      storage: fakeHomeStorage(),
+    );
   });
   tearDown(() => tmp.deleteSync(recursive: true));
 

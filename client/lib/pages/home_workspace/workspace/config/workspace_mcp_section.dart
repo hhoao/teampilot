@@ -26,7 +26,10 @@ class WorkspaceMcpSection extends StatelessWidget {
 
     final l10n = context.l10n;
     void onManage() => context.go(HomeGlobalView.mcp.homeLocation);
-    final enabled = context.watch<McpCubit>().state.servers
+    final enabled = context
+        .watch<McpCubit>()
+        .state
+        .servers
         .where((s) => s.enabled)
         .toList();
     final mcpIds = projectState.config.bundle.mcpServerIds;

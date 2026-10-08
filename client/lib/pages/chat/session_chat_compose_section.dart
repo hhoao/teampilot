@@ -6,9 +6,9 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/agent_attention_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
-import '../../cubits/chat/acp/acp_chat_runtime_cubit.dart';
+import '../../cubits/session/acp/acp_chat_runtime_cubit.dart';
 import '../../cubits/chat_cubit.dart';
-import '../../cubits/chat/model/session_connect_request.dart';
+import '../../services/chat/session/session_connect_request.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/expert_hub_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
@@ -20,7 +20,6 @@ import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/config_bundle.dart';
 import '../../models/landing_launch_context.dart';
-import '../../models/launch_security_policy.dart';
 import '../../models/plugin.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
@@ -33,20 +32,19 @@ import '../../services/cli/registry/capabilities/skill_capability.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../services/compose/compose_at_file_refs.dart';
+import '../../services/chat/conversation/compose/compose_at_file_refs.dart';
 import '../../widgets/home_storage_scope.dart';
-import '../../services/compose/compose_clip.dart';
-import '../../services/compose/compose_file_attach.dart';
-import '../../services/compose/compose_file_drop_ingestor.dart';
-import '../../services/compose/compose_landing_bundle.dart';
-import '../../services/compose/compose_voice_input.dart';
+import '../../services/chat/conversation/compose/compose_clip.dart';
+import '../../services/chat/conversation/compose/compose_file_attach.dart';
+import '../../services/chat/conversation/compose/compose_file_drop_ingestor.dart';
+import '../../services/chat/conversation/compose/compose_landing_bundle.dart';
+import '../../services/chat/conversation/compose/compose_voice_input.dart';
 import '../../services/expert_hub/expert_member_resolver.dart';
-import '../../services/follow_up/follow_up_queue.dart';
-import '../../services/session/history_seat_key.dart';
-import '../../services/session/session_continue_overrides_apply.dart';
-import '../../services/session/session_history_pagination.dart';
-import '../../services/terminal/pending_user_message.dart';
-import '../../services/terminal/session_member_cli_resolver.dart';
+import '../../services/chat/conversation/follow_up/follow_up_queue.dart';
+import '../../services/chat/conversation/history/history_seat_key.dart';
+import '../../services/chat/conversation/history/session_history_pagination.dart';
+import '../../services/chat/runtime/pty/pending_user_message.dart';
+import '../../services/chat/session/session_member_cli_resolver.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../utils/team/team_member_naming.dart';
 import '../../widgets/app_toast/app_toast.dart';
@@ -487,30 +485,6 @@ class SessionChatComposeSection extends StatelessWidget {
                                   value: v,
                                 ),
                               ),
-                              launchSecurityPolicy: _effectiveSecurityPolicy(
-                                session: session,
-                                team: team,
-                                selectedMemberId: selectedMemberId,
-                              ),
-                              defaultPermissionsLabel:
-                                  l10n.workspaceChatLandingDefaultPermissions,
-                              fullAccessPermissionsLabel: l10n
-                                  .workspaceChatLandingFullAccessPermissions,
-                              askReadOnlyPermissionsLabel: l10n
-                                  .workspaceChatLandingAskReadOnlyPermissions,
-                              autoApproveWorkspaceWritePermissionsLabel: l10n
-                                  .workspaceChatLandingAutoApproveWorkspaceWritePermissions,
-                              customPermissionsLabel:
-                                  l10n.workspaceChatLandingCustomPermissions,
-                              onPermissionSelected: (value) => unawaited(
-                                _onPermissionSelected(
-                                  context: context,
-                                  value: value,
-                                  session: session,
-                                  team: team,
-                                  selectedMemberId: selectedMemberId,
-                                ),
-                              ),
                               teamSettingsTooltip: showTeamSettings
                                   ? l10n.teamSettings
                                   : null,
@@ -749,32 +723,6 @@ class SessionChatComposeSection extends StatelessWidget {
     return team.members.where((m) => m.id == mid).firstOrNull;
   }
 
-  // -- Effective security policy -------------------------------------------
-
-  static LaunchSecurityPolicy _effectiveSecurityPolicy({
-    required AppSession session,
-    required TeamProfile? team,
-    required String selectedMemberId,
-  }) {
-    final overrides = session.continueOverrides;
-    if (session.isSimple) {
-      return resolveContinueSecurityPolicy(
-        launchDefault: LaunchSecurityPolicy.fullAccess,
-        sessionLevel: overrides.launchSecurityPolicy,
-        memberLevel: null,
-      );
-    }
-    final memberId = _effectiveMemberId(session, selectedMemberId, team);
-    final member = _selectedMember(team, memberId);
-    final memberOverride = overrides.memberOverrides[memberId];
-    return resolveContinueSecurityPolicy(
-      sessionLevel: overrides.launchSecurityPolicy,
-      memberLevel: memberOverride?.launchSecurityPolicy,
-      launchDefault:
-          member?.launchSecurityPolicy ?? LaunchSecurityPolicy.fullAccess,
-    );
-  }
-
   // -- Selected preset id --------------------------------------------------
 
   static List<TpActionMenuSpec> teamPresetMenuSpecs({
@@ -906,31 +854,6 @@ class SessionChatComposeSection extends StatelessWidget {
           memberId: memberId,
         );
       }
-    } on Object {
-      if (context.mounted) _toastContinueSaveFailed(context);
-    }
-  }
-
-  static Future<void> _onPermissionSelected({
-    required BuildContext context,
-    required LaunchSecurityPolicy value,
-    required AppSession session,
-    required TeamProfile? team,
-    required String selectedMemberId,
-  }) async {
-    final chatCubit = context.read<ChatCubit>();
-    final live = _cubitSession(chatCubit, session.sessionId) ?? session;
-    final memberId = live.isSimple
-        ? null
-        : _effectiveMemberId(live, selectedMemberId, team);
-    if (!live.isSimple && (memberId == null || memberId.isEmpty)) return;
-    try {
-      final ok = await chatCubit.setSessionContinueSecurityPolicy(
-        sessionId: live.sessionId,
-        launchSecurityPolicy: value,
-        memberId: memberId,
-      );
-      if (!ok && context.mounted) _toastContinueSaveFailed(context);
     } on Object {
       if (context.mounted) _toastContinueSaveFailed(context);
     }

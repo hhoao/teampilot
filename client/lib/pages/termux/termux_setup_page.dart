@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
-import 'package:provider/provider.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -193,10 +192,7 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
       _username = config.username.trim();
       _usernameController.text = _username;
     }
-    await Future.wait([
-      _probeTermuxInstalled(),
-      _prepareKeys(),
-    ]);
+    await Future.wait([_probeTermuxInstalled(), _prepareKeys()]);
   }
 
   Future<void> _probeTermuxInstalled() async {
@@ -273,15 +269,10 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
     final l10n = context.l10n;
     final message = switch (result.phase) {
       TermuxApkAcquirePhase.installFailed ||
-      TermuxApkAcquirePhase.installNoResult =>
-        l10n.termuxSetupInstallDenied,
+      TermuxApkAcquirePhase.installNoResult => l10n.termuxSetupInstallDenied,
       _ => l10n.termuxSetupDownloadFailed,
     };
-    AppToast.show(
-      context,
-      message: message,
-      variant: TpToastVariant.error,
-    );
+    AppToast.show(context, message: message, variant: TpToastVariant.error);
   }
 
   Future<void> _connect() async {
@@ -393,9 +384,9 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
         if (_termuxInstalled == true)
           Text(
             l10n.termuxSetupTermuxInstalled,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: cs.primary,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: cs.primary),
           )
         else ...[
           if (_acquiring) ...[
@@ -411,7 +402,9 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
           ],
           TpButton(
             key: const Key('termux_download_install_button'),
-            onPressed: _acquiring ? null : () => unawaited(_downloadAndInstall()),
+            onPressed: _acquiring
+                ? null
+                : () => unawaited(_downloadAndInstall()),
             child: Text(
               _acquiring
                   ? (_acquirePhase == _TermuxAcquireUiPhase.installing
@@ -486,9 +479,7 @@ class _TermuxSetupPageState extends State<TermuxSetupPage>
                       Text(
                         l10n.termuxSetupScriptHint,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurfaceVariant,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -605,7 +596,9 @@ class _CopyCommandBlock extends StatelessWidget {
         border: Border.all(color: cs.outlineVariant),
       ),
       child: Row(
-        crossAxisAlignment: multiline ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        crossAxisAlignment: multiline
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.center,
         children: [
           Expanded(
             child: SelectableText(

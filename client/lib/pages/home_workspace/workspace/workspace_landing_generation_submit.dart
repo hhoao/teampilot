@@ -11,9 +11,9 @@ import '../../../l10n/app_localizations.dart';
 import '../../../models/ai_feature_setting.dart';
 import '../../../models/simple_launch_identity.dart';
 import '../../../models/workspace.dart';
-import '../../../services/ai/ai_feature_setting_resolver.dart';
+import '../../../services/ai_generation/ai_feature_setting_resolver.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../../services/team_generation/team_generation_coordinator.dart';
+import '../../../services/chat/team_generation/team_generation_coordinator.dart';
 import '../../../utils/logging/logger.dart';
 
 /// Generation-mode landing submit: preflight → create job → open the visible

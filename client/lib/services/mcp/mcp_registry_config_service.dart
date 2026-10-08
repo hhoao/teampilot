@@ -4,19 +4,22 @@ import 'package:path/path.dart' as p;
 
 import '../../models/mcp_registry_source.dart';
 import '../io/filesystem.dart';
-import '../io/local_filesystem.dart';
 import '../storage/app_paths.dart';
 
 class McpRegistryConfigService {
-  McpRegistryConfigService({required String teampilotRoot, required Filesystem fs})
-    : _teampilotRoot = teampilotRoot.trim(),
-      _fs = fs;
+  McpRegistryConfigService({
+    required String teampilotRoot,
+    required Filesystem fs,
+  }) : _teampilotRoot = teampilotRoot.trim(),
+       _fs = fs;
 
   final String _teampilotRoot;
   final Filesystem _fs;
 
   Future<String> _configPath() async {
-    return AppPaths.mcpRegistrySourcesConfigPathForTeampilotRoot(_teampilotRoot);
+    return AppPaths.mcpRegistrySourcesConfigPathForTeampilotRoot(
+      _teampilotRoot,
+    );
   }
 
   Future<McpRegistrySourcesConfig> load() async {

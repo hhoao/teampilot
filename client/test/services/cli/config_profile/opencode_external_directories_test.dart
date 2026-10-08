@@ -6,12 +6,13 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/provider.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
-import 'package:teampilot/services/session/launch_command_builder.dart';
+import 'package:teampilot/services/chat/launch/connect/launch_command_builder.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/prompt.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/workspace_base_info.dart';
 import 'package:teampilot/services/cli/registry/capabilities/prompt_capability.dart';
 import 'package:teampilot/services/resource/assemblers/prompt_assembler.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import '../../../support/in_memory_filesystem.dart';
 
@@ -30,13 +31,18 @@ void main() {
         <String, Object?>{},
         <String>['/repo/a', '/repo/b'],
       );
-      final permission = merged['permission'] as Map;
-      final external = (permission['external_directory'] as Map)
-          .cast<String, Object?>();
-      expect(external, <String, Object?>{
-        '/repo/a/**': 'allow',
-        '/repo/b/**': 'allow',
-      });
+      expect(merged['permissions'], [
+        {
+          'action': 'external_directory',
+          'resource': '/repo/a/*',
+          'effect': 'allow',
+        },
+        {
+          'action': 'external_directory',
+          'resource': '/repo/b/*',
+          'effect': 'allow',
+        },
+      ]);
     },
   );
 
@@ -45,10 +51,11 @@ void main() {
       <String, Object?>{},
       LaunchSecurityPolicy.fullAccess,
     );
-    final permission = (merged['permission'] as Map).cast<String, Object?>();
-    expect(permission['edit'], 'allow');
-    expect(permission['bash'], 'allow');
-    expect(permission['external_directory'], <String, Object?>{'*': 'allow'});
+    expect(merged['permissions'], [
+      {'action': 'edit', 'resource': '*', 'effect': 'allow'},
+      {'action': 'shell', 'resource': '*', 'effect': 'allow'},
+      {'action': 'external_directory', 'resource': '*', 'effect': 'allow'},
+    ]);
   });
 
   test('external directories remain config-only and are not argv flags', () {
@@ -71,7 +78,7 @@ void main() {
           additionalDirectories: ['/repo/a', '/repo/b'],
         ),
       ),
-      ['--model', 'anthropic/claude-sonnet-4'],
+      ['--standalone', '--model', 'anthropic/claude-sonnet-4'],
     );
   });
 
@@ -80,23 +87,34 @@ void main() {
     () {
       final merged = mergeOpencodeExternalDirectories(
         <String, Object?>{
-          'permission': <String, Object?>{
-            'edit': 'deny',
-            'external_directory': <String, Object?>{'/existing/**': 'allow'},
-          },
+          'permissions': <Object?>[
+            <String, Object?>{
+              'action': 'edit',
+              'resource': '*',
+              'effect': 'deny',
+            },
+            <String, Object?>{
+              'action': 'external_directory',
+              'resource': '/existing/*',
+              'effect': 'allow',
+            },
+          ],
         },
         <String>['/repo/a'],
       );
-      final permission = merged['permission'] as Map;
-      expect(permission['edit'], 'deny');
-      final external = (permission['external_directory'] as Map)
-          .cast<String, Object?>();
-      expect(
-        external.keys,
-        containsAll(<String>['/existing/**', '/repo/a/**']),
-      );
-      expect(external['/existing/**'], 'allow');
-      expect(external['/repo/a/**'], 'allow');
+      expect(merged['permissions'], [
+        {'action': 'edit', 'resource': '*', 'effect': 'deny'},
+        {
+          'action': 'external_directory',
+          'resource': '/existing/*',
+          'effect': 'allow',
+        },
+        {
+          'action': 'external_directory',
+          'resource': '/repo/a/*',
+          'effect': 'allow',
+        },
+      ]);
     },
   );
 
@@ -133,8 +151,8 @@ void main() {
     },
   );
 
-  test('OpencodePromptCapability provider includes workspace directories '
-      'section and mixed addenda matching materialize', () async {
+  test('OpencodePromptCapability provider includes mixed addenda matching '
+      'materialize without workspace directories', () async {
     const member = TeamMemberConfig(
       id: 'm1',
       name: 'Member',
@@ -149,9 +167,10 @@ void main() {
         additionalDirectories: ['/abs/missing/repo'],
       ),
     );
-    expect(specs.single.content, contains('## Workspace directories'));
-    expect(specs.single.content, contains('- /abs/missing/repo'));
+    expect(specs.single.content, contains('You are the reviewer.'));
     expect(specs.single.content, contains('Multi-agent teammate'));
+    expect(specs.single.content, isNot(contains('## Workspace directories')));
+    expect(specs.single.content, isNot(contains('- /abs/missing/repo')));
   });
 
   test('OpencodePromptCapability writes role + dirs into AGENTS.md', () async {
@@ -164,7 +183,7 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-                                          storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     const member = TeamMemberConfig(
       id: 'm1',
@@ -229,7 +248,7 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-                                          storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
     const member = TeamMemberConfig(id: 'x', name: '');
     final scope = resolveLaunchProfileScope(
@@ -281,15 +300,10 @@ void main() {
       basePath: base.path,
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-                                          storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
 
-    const member = TeamMemberConfig(
-      id: 'm1',
-      name: 'Member',
-      model: 'test',
-      launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
-    );
+    const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
     const team = TeamProfile(
       id: 'team-a',
       name: 'agent',
@@ -340,15 +354,16 @@ void main() {
       '$opencodeDir/${OpencodeProviderCapability.opencodeConfigFileName}',
     );
     final config = jsonDecode(raw!) as Map<String, dynamic>;
-    final permission = config['permission'] as Map;
-    expect(permission['edit'], 'allow');
-    expect(permission['bash'], 'allow');
-    final external = (permission['external_directory'] as Map)
-        .cast<String, Object?>();
-    expect(external, <String, Object?>{
-      '*': 'allow',
-      '/abs/missing/repo/**': 'allow',
-    });
+    expect(config['permissions'], [
+      {'action': 'edit', 'resource': '*', 'effect': 'allow'},
+      {'action': 'shell', 'resource': '*', 'effect': 'allow'},
+      {'action': 'external_directory', 'resource': '*', 'effect': 'allow'},
+      {
+        'action': 'external_directory',
+        'resource': '/abs/missing/repo/*',
+        'effect': 'allow',
+      },
+    ]);
     expect(sibling.existsSync(), isTrue);
   });
 }
@@ -365,6 +380,6 @@ Future<PromptDocument> _document({
       mixed: mixed,
       additionalDirectories: additionalDirectories,
     ),
-    providers: [const OpencodePromptCapability()],
+    providers: const [OpencodePromptCapability(), OpencodeWorkspaceBaseInfo()],
   )).document;
 }

@@ -9,7 +9,8 @@ void main() async {
   final sessions = <String>{};
   final stoppedSessions = <String>{};
 
-  await for (final line in stdin.transform(utf8.decoder).transform(const LineSplitter())) {
+  await for (final line
+      in stdin.transform(utf8.decoder).transform(const LineSplitter())) {
     if (line.trim().isEmpty) continue;
     final decoded = jsonDecode(line);
     if (decoded is! Map) continue;
@@ -21,10 +22,7 @@ void main() async {
       case 'initialize':
         _respond(id, {
           'protocolVersion': 1,
-          'capabilities': {
-            'supportsOptions': true,
-            'supportsStop': true,
-          },
+          'capabilities': {'supportsOptions': true, 'supportsStop': true},
         });
         _notify('optionsChanged', {
           'options': [
@@ -61,24 +59,19 @@ void main() async {
           'category': 'stdout',
           'data': 'ok\n',
         });
-        if (stoppedSessions.contains(sessionId) || !sessions.contains(sessionId)) {
+        if (stoppedSessions.contains(sessionId) ||
+            !sessions.contains(sessionId)) {
           break;
         }
         sessions.remove(sessionId);
-        _notify('exited', {
-          'sessionId': sessionId,
-          'exitCode': 0,
-        });
+        _notify('exited', {'sessionId': sessionId, 'exitCode': 0});
       case 'stop':
         final params = _params(message);
         final sessionId = params['sessionId'] as String?;
         if (sessionId != null) {
           stoppedSessions.add(sessionId);
           if (sessions.remove(sessionId)) {
-            _notify('exited', {
-              'sessionId': sessionId,
-              'exitCode': 130,
-            });
+            _notify('exited', {'sessionId': sessionId, 'exitCode': 130});
           }
         }
         _respond(id, {'stopped': true});
@@ -123,10 +116,7 @@ void main() async {
             jsonEncode({
               'jsonrpc': '2.0',
               'id': id,
-              'error': {
-                'code': -32601,
-                'message': 'Method not found: $method',
-              },
+              'error': {'code': -32601, 'message': 'Method not found: $method'},
             }),
           );
         }
@@ -144,21 +134,11 @@ Map<String, Object?> _params(Map<String, Object?> message) {
 
 void _respond(Object? id, Map<String, Object?> result) {
   if (id == null) return;
-  stdout.writeln(
-    jsonEncode({
-      'jsonrpc': '2.0',
-      'id': id,
-      'result': result,
-    }),
-  );
+  stdout.writeln(jsonEncode({'jsonrpc': '2.0', 'id': id, 'result': result}));
 }
 
 void _notify(String method, Map<String, Object?> params) {
   stdout.writeln(
-    jsonEncode({
-      'jsonrpc': '2.0',
-      'method': method,
-      'params': params,
-    }),
+    jsonEncode({'jsonrpc': '2.0', 'method': method, 'params': params}),
   );
 }

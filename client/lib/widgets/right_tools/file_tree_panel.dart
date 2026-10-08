@@ -163,7 +163,9 @@ class _FileTreePanelState extends State<FileTreePanel> {
     // held past kPressTimeout (TapGestureRecognizer deadline bypasses the
     // arena), so guard here or the blank menu would open over the file menu.
     final rows = cubit.state.visibleRows;
-    final rowIndex = contentY < 0 ? -1 : (contentY / kFileTreeRowExtent).floor();
+    final rowIndex = contentY < 0
+        ? -1
+        : (contentY / kFileTreeRowExtent).floor();
     if (rowIndex >= 0 &&
         rowIndex < rows.length &&
         fileTreeDropRowKind(rows[rowIndex]) != FileTreeDropRowKind.empty) {
@@ -315,7 +317,8 @@ class _FileTreePanelState extends State<FileTreePanel> {
                         }
                         return Text(
                           'Directory unavailable',
-                          style: TpTextStyles.of(context).smColored(cs.onSurfaceVariant.withValues(alpha: 0.7),
+                          style: TpTextStyles.of(context).smColored(
+                            cs.onSurfaceVariant.withValues(alpha: 0.7),
                           ),
                         );
                       },
@@ -353,9 +356,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
                                       horizontalScrollController:
                                           _horizontalScrollController,
                                       desktopShellActions:
-                                          _desktopShellActionsFor(
-                                            _workContext,
-                                          ),
+                                          _desktopShellActionsFor(_workContext),
                                       remoteFileManagerActions:
                                           _remoteFileManagerActionsFor(
                                             _workContext,
@@ -800,13 +801,13 @@ class _FileTreeListState extends State<_FileTreeList> {
                             ImportMode? affordance;
                             if (inTreeHover) {
                               final payload = candidates.first!;
-                              final sourcePath =
-                                  payload.refs.first.nativePath;
+                              final sourcePath = payload.refs.first.nativePath;
                               final sameFs = fileTreePathsShareFilesystem(
                                 sourceFs: widget.cubit.fsFor(sourcePath),
                                 destFs: widget.cubit.fsFor(row.path),
-                                sourceWorkContext: widget.cubit
-                                    .workContextFor(sourcePath),
+                                sourceWorkContext: widget.cubit.workContextFor(
+                                  sourcePath,
+                                ),
                                 destWorkContext: widget.cubit.workContextFor(
                                   row.path,
                                 ),
@@ -854,8 +855,7 @@ class _FileTreeListState extends State<_FileTreeList> {
                           hoverEnabled: _hoverEnabled,
                           isRoot: row.isRoot,
                           rootMissing: row.rootMissing,
-                          activeFloatingFilePath:
-                              widget.activeFloatingFilePath,
+                          activeFloatingFilePath: widget.activeFloatingFilePath,
                         ),
                       );
                     },

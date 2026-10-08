@@ -16,9 +16,9 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/terminal_behavior.dart';
-import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
-import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
-import 'package:teampilot/services/terminal/terminal_fullscreen_pty_port.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_cr_ack_config.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_pty_automation.dart';
+import 'package:teampilot/services/chat/runtime/pty/terminal_fullscreen_pty_port.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import 'support/integration_prerequisites.dart';
@@ -44,7 +44,9 @@ Future<bool> _waitUntilPresent(
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
     await session.probe.syncDisplayGrid();
-    if (session.probe.describeProbeWindow(scanRows: scanRows).contains(marker)) {
+    if (session.probe
+        .describeProbeWindow(scanRows: scanRows)
+        .contains(marker)) {
       return true;
     }
     await Future<void>.delayed(const Duration(milliseconds: 200));
@@ -68,8 +70,10 @@ Future<void> _bootCursorPrompt(
   }
   final promptReady = await _waitUntilPresent(session, '→', scanRows: scanRows);
   if (!promptReady) {
-    fail('input prompt never appeared\n'
-        '${session.probe.describeProbeWindow(scanRows: scanRows)}');
+    fail(
+      'input prompt never appeared\n'
+      '${session.probe.describeProbeWindow(scanRows: scanRows)}',
+    );
   }
   await Future<void>.delayed(const Duration(seconds: 2));
   await session.probe.syncDisplayGrid();
@@ -88,8 +92,9 @@ void main() {
             return;
           }
 
-          final tmpWork =
-              await Directory.systemTemp.createTemp('cursor_deliver_work_');
+          final tmpWork = await Directory.systemTemp.createTemp(
+            'cursor_deliver_work_',
+          );
           addTearDown(() async {
             try {
               await tmpWork.delete(recursive: true);
@@ -106,15 +111,16 @@ void main() {
           );
           addTearDown(session.dispose);
 
-          const scanRows = 24;
           await _bootCursorPrompt(session, scanRows: viewport.rows);
 
           await session.probe.syncDisplayGrid();
           final grid = session.engine.grid;
           // ignore: avoid_print
-          print('--- pre-deliver ${viewport.cols}x${viewport.rows} '
-              'grid=${grid.columns}x${grid.rows} ---\n'
-              '${session.probe.describeProbeWindow(scanRows: viewport.rows)}');
+          print(
+            '--- pre-deliver ${viewport.cols}x${viewport.rows} '
+            'grid=${grid.columns}x${grid.rows} ---\n'
+            '${session.probe.describeProbeWindow(scanRows: viewport.rows)}',
+          );
 
           const text = 'hello';
           final automation = FullscreenPtyAutomation();
@@ -132,8 +138,10 @@ void main() {
 
           await session.probe.syncDisplayGrid();
           // ignore: avoid_print
-          print('--- deliver outcome=$outcome ---\n'
-              '${session.probe.describeProbeWindow(scanRows: viewport.rows)}');
+          print(
+            '--- deliver outcome=$outcome ---\n'
+            '${session.probe.describeProbeWindow(scanRows: viewport.rows)}',
+          );
 
           expect(
             outcome,
@@ -155,8 +163,9 @@ void main() {
         return;
       }
 
-      final tmpWork =
-          await Directory.systemTemp.createTemp('cursor_deliver_short_');
+      final tmpWork = await Directory.systemTemp.createTemp(
+        'cursor_deliver_short_',
+      );
       addTearDown(() async {
         try {
           await tmpWork.delete(recursive: true);
@@ -185,8 +194,6 @@ void main() {
         painted: session.observationPainted,
         crAckConfig: FullscreenCrAckConfig(
           strategy: const CursorTerminalBehavior().fullscreenCrAckStrategy,
-          composerPrefix:
-              const CursorTerminalBehavior().fullscreenComposerPrefix,
         ),
       );
 
@@ -198,8 +205,10 @@ void main() {
         );
         await session.probe.syncDisplayGrid();
         // ignore: avoid_print
-        print('--- short A deliver #$i outcome=$outcome ---\n'
-            '${session.probe.describeProbeWindow(scanRows: rows)}');
+        print(
+          '--- short A deliver #$i outcome=$outcome ---\n'
+          '${session.probe.describeProbeWindow(scanRows: rows)}',
+        );
         expect(
           outcome,
           FullscreenPtyDeliveryOutcome.submitted,

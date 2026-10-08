@@ -21,18 +21,22 @@ void main() {
   tearDown(() => cubit.close());
 
   test('load populates definitions sorted', () async {
-    await repository.save(const HookDefinition(
-      id: 'h2',
-      name: 'b',
-      event: HookEvent.stop,
-      action: CommandHookAction.raw('echo b'),
-    ));
-    await repository.save(const HookDefinition(
-      id: 'h1',
-      name: 'a',
-      event: HookEvent.sessionStart,
-      action: CommandHookAction.raw('echo a'),
-    ));
+    await repository.save(
+      const HookDefinition(
+        id: 'h2',
+        name: 'b',
+        event: HookEvent.stop,
+        action: CommandHookAction.raw('echo b'),
+      ),
+    );
+    await repository.save(
+      const HookDefinition(
+        id: 'h1',
+        name: 'a',
+        event: HookEvent.sessionStart,
+        action: CommandHookAction.raw('echo a'),
+      ),
+    );
     await cubit.load();
     expect(cubit.state.loading, isFalse);
     expect(cubit.state.definitions.map((d) => d.id), ['h1', 'h2']);
@@ -88,10 +92,7 @@ void main() {
         event: HookEvent.stop,
         action: CommandHookAction.script(fileName: 'hook.sh'),
       ),
-      scripts: const {
-        'hook.sh': 'echo new',
-        'extra.sh': 'echo old',
-      },
+      scripts: const {'hook.sh': 'echo new', 'extra.sh': 'echo old'},
     );
     expect(await repository.readScript('h1', 'extra.sh'), 'echo old');
     final ok = await cubit.upsert(

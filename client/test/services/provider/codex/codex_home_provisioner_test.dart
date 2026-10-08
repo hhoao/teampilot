@@ -10,7 +10,7 @@ import 'package:teampilot/services/cli/codex/provider/codex_home_provisioner.dar
 import 'package:teampilot/services/cli/codex/provider/codex_toml_parser.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_proxy_launch_auth.dart';
 import 'package:teampilot/services/cli/codex/provider/codex_team_bus_overlay.dart';
-import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
+import 'package:teampilot/services/chat/team_bus/member_bus_idle_endpoint.dart';
 
 void main() {
   group('CodexProxyLaunchAuth', () {
@@ -270,9 +270,7 @@ url = "http://127.0.0.1:1/idle"
 
         final codexHome = p.join(root.path, 'codex-http-fail');
         await expectLater(
-          CodexHomeProvisioner(
-            fs: LocalFilesystem(),
-          ).provision(
+          CodexHomeProvisioner(fs: LocalFilesystem()).provision(
             codexHome: codexHome,
             provider: provider,
             busOverlayToml: brokenOverlay,

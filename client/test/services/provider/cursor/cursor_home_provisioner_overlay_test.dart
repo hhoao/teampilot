@@ -8,8 +8,11 @@ import 'package:teampilot/services/cli/cursor/provider/cursor_auth_artifacts.dar
 import 'package:teampilot/services/cli/cursor/provider/cursor_cli_config_policy.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_provisioner.dart';
-import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/cli/registry/capabilities/workspace_base_info_capability.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
+import 'package:teampilot/services/storage/workspace_cli_cache.dart';
+import 'package:teampilot/services/chat/team_bus/member_bus_idle_endpoint.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 
@@ -158,10 +161,10 @@ void main() {
       expect(allow, contains(CursorCliConfigPolicy.teamBusMcpAllowEntry));
     });
 
-    test('seeds authInfo from warm cache when overlay base omits it', () async {
-      const realHome = '/home/user';
+    test('does not seed authInfo from OS home', () async {
+      const osHome = '/home/user';
       await fs.writeString(
-        layout.cliConfig(realHome),
+        layout.cliConfig(osHome),
         jsonEncode({
           'authInfo': {'userId': 'real', 'authId': 'a1'},
           'serverConfigCache': {'backendUrl': 'https://api2.cursor.sh'},
@@ -175,38 +178,55 @@ void main() {
         forceTeamLeadDelegateMode: false,
         cliConfigJson:
             '{"serverConfigCache":{"backendUrl":"https://api2.cursor.sh"}}',
-        warmCacheHomeRoot: realHome,
       );
 
       final cliConfig =
           jsonDecode((await fs.readString(layout.cliConfig(memberHome)))!)
               as Map<String, Object?>;
-      expect(cliConfig['authInfo'], {'userId': 'real', 'authId': 'a1'});
+      expect(cliConfig['authInfo'], isNull);
     });
 
-    test('seeds plugins/cache from the warm home', () async {
-      const realHome = '/home/user';
-      final warmCache = layout.pluginsCache(realHome);
+    test('seeds plugins/cache from workspace cli cache', () async {
+      const osHome = '/home/user';
       await fs.writeString(
         fs.pathContext.join(
-          warmCache,
-          'cursor-public',
-          'demo',
+          layout.pluginsCache(osHome),
+          'from-os',
           '.cache-complete',
         ),
         '',
       );
 
-      await provisioner.provisionOverlayOnly(
-        memberHome: memberHome,
+      final runtime = RuntimeLayout(teampilotRoot: '/tp', fs: fs);
+      final cache = WorkspaceCliCache(layout: runtime);
+      final sessionHome = runtime.pathContext.join(
+        runtime.sessionRuntimeToolDir('proj-1', 's1', 'cursor'),
+        'home',
+      );
+      await CursorHomeProvisioner(
+        fs: fs,
+        runtimeLayout: runtime,
+      ).provisionOverlayOnly(
+        memberHome: sessionHome,
         member: member,
         busIdle: null,
         forceTeamLeadDelegateMode: false,
-        warmCacheHomeRoot: realHome,
+        workspaceId: 'proj-1',
+        sessionId: 's1',
+        providerId: 'acct-1',
       );
 
-      final dest = layout.pluginsCache(memberHome);
-      expect(await fs.readSymlinkTarget(dest), warmCache);
+      final dest = layout.pluginsCache(sessionHome);
+      final workspace = cache.workspaceToolRelPath(
+        workspaceId: 'proj-1',
+        tool: 'cursor',
+        toolRel: 'home/.cursor/plugins/cache',
+      );
+      expect(await fs.readSymlinkTarget(dest), workspace);
+      expect(
+        await fs.readSymlinkTarget(dest),
+        isNot(layout.pluginsCache(osHome)),
+      );
     });
 
     test(
@@ -222,6 +242,71 @@ void main() {
         expect((await fs.stat(layout.roleRule(memberHome))).isFile, isTrue);
         expect((await fs.stat(layout.mcpConfig(memberHome))).isFile, isFalse);
         expect((await fs.stat(layout.cliConfig(memberHome))).isFile, isTrue);
+      },
+    );
+
+    test(
+      'empty role still materializes workspace-base-info extras into role.mdc',
+      () async {
+        const emptyRoleMember = TeamMemberConfig(id: 'm1', name: 'Member');
+
+        await provisioner.provisionOverlayOnly(
+          memberHome: memberHome,
+          member: emptyRoleMember,
+          busIdle: null,
+          forceTeamLeadDelegateMode: false,
+          additionalDirectories: const ['/repo/a'],
+        );
+
+        final roleRule = await fs.readString(layout.roleRule(memberHome));
+        expect(roleRule, contains('## Workspace directories'));
+        expect(roleRule, contains('- /repo/a'));
+      },
+    );
+
+    test(
+      'ssh rematerialize keeps Remote projects in role.mdc after extras overlay',
+      () async {
+        const emptyRoleMember = TeamMemberConfig(id: 'm1', name: 'Member');
+        const sshInfo = WorkspaceBaseInfoPromptInputs(
+          sshMcpInjected: true,
+          remoteFolders: [
+            WorkspaceRemoteFolderInfo(
+              profileId: 'home-server',
+              name: 'Home',
+              endpoint: 'alice@192.168.1.8:22',
+              folderPaths: ['/home/alice/proj'],
+            ),
+          ],
+        );
+
+        await provisioner.provisionOverlayOnly(
+          memberHome: memberHome,
+          member: emptyRoleMember,
+          busIdle: null,
+          forceTeamLeadDelegateMode: false,
+          workspaceBaseInfo: sshInfo,
+        );
+        expect(
+          await fs.readString(layout.roleRule(memberHome)),
+          contains('## Remote projects'),
+        );
+
+        await provisioner.provisionOverlayOnly(
+          memberHome: memberHome,
+          member: emptyRoleMember,
+          busIdle: null,
+          forceTeamLeadDelegateMode: false,
+          additionalDirectories: const ['/repo/a'],
+          workspaceBaseInfo: sshInfo,
+        );
+
+        final roleRule = await fs.readString(layout.roleRule(memberHome));
+        expect(roleRule, contains('## Workspace directories'));
+        expect(roleRule, contains('- /repo/a'));
+        expect(roleRule, contains('## Remote projects'));
+        expect(roleRule, contains('home-server'));
+        expect(roleRule, contains('/home/alice/proj'));
       },
     );
 

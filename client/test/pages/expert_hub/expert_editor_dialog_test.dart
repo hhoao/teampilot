@@ -21,7 +21,15 @@ import '../../support/post_frame_test_harness.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 
 class _FakeSource extends CompositeExpertHubSource {
-  _FakeSource() : super(builtIns: const [], registry: _EmptyRegistry(), localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir), );
+  _FakeSource()
+    : super(
+        builtIns: const [],
+        registry: _EmptyRegistry(),
+        localStore: LocalExpertStore(
+          fs: InMemoryFilesystem(),
+          dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
+        ),
+      );
 
   @override
   Future<List<DiscoverableMember>> fetchMembers({
@@ -45,7 +53,7 @@ class _EmptyRegistry implements ExpertHubSource {
 }
 
 class _SpyWriter extends LocalExpertWriter {
-  _SpyWriter({required LocalExpertStore store}) : super(store: store);
+  _SpyWriter({required super.store});
 
   final saved = <DiscoverableMember>[];
 

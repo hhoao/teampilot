@@ -147,7 +147,8 @@ double gitChangesMinContentWidth({
     if (row.isFolder) {
       painter.text = TextSpan(text: row.name, style: folderLabelStyle);
       painter.layout();
-      final leading = kGitChangesChevronWidth +
+      final leading =
+          kGitChangesChevronWidth +
           kGitChangesCheckboxColumnWidth +
           16 +
           6; // chevron + checkbox column + folder icon + gap
@@ -166,7 +167,9 @@ double gitChangesMinContentWidth({
     painter.text = TextSpan(text: label, style: fileLabelStyle);
     painter.layout();
     final leading =
-        kGitChangesCheckboxColumnWidth + 16 + 6; // checkbox column + file icon + gap
+        kGitChangesCheckboxColumnWidth +
+        16 +
+        6; // checkbox column + file icon + gap
     final rowWidth =
         row.depth * kGitChangesIndentWidth +
         kGitChangesChevronWidth +
@@ -187,7 +190,9 @@ double _rowWidthEstimate(GitChangesVisibleRow row) {
   for (final rune in label.runes) {
     units += rune >= 0x1100 ? 2.0 : 1.0;
   }
-  final extra = row.isFolder ? kGitChangesCheckboxWidth : kGitChangesTrailingBadgeWidth;
+  final extra = row.isFolder
+      ? kGitChangesCheckboxWidth
+      : kGitChangesTrailingBadgeWidth;
   return row.depth * 2.0 + units + extra / 8.0;
 }
 
@@ -346,7 +351,9 @@ void _insertChange(_GitChangesFolderNode root, GitFileChange change) {
   var selected = 0;
   final folderNames = node.subfolders.keys.toList()..sort();
   for (final name in folderNames) {
-    final childPath = folderPath.isEmpty ? name : p.posix.join(folderPath, name);
+    final childPath = folderPath.isEmpty
+        ? name
+        : p.posix.join(folderPath, name);
     final childRows = <GitChangesVisibleRow>[];
     final (childTotal, childSelected) = _walk(
       node: node.subfolders[name]!,

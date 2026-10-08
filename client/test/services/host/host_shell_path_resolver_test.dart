@@ -61,8 +61,7 @@ void main() {
       );
     });
 
-    test('uses content after the LAST marker, truncates lines, drops junk',
-        () {
+    test('uses content after the LAST marker, truncates lines, drops junk', () {
       const m = HostShellPathResolver.marker;
       final out =
           'nvm banner\r\n\$ PS1-active ${m}junk\nagain ${m}usr/relative\n'
@@ -70,17 +69,19 @@ void main() {
       expect(HostShellPathResolver.parseMarkerOutput(out), '/usr/bin');
     });
 
-    test('returns null when every absolute entry contains whitespace (fish)',
-        () {
-      const m = HostShellPathResolver.marker;
-      // fish joins $PATH with spaces → one giant space-containing "entry".
-      expect(
-        HostShellPathResolver.parseMarkerOutput(
-          '$m/usr/bin /opt/homebrew/bin ~/.local/bin',
-        ),
-        isNull,
-      );
-    });
+    test(
+      'returns null when every absolute entry contains whitespace (fish)',
+      () {
+        const m = HostShellPathResolver.marker;
+        // fish joins $PATH with spaces → one giant space-containing "entry".
+        expect(
+          HostShellPathResolver.parseMarkerOutput(
+            '$m/usr/bin /opt/homebrew/bin ~/.local/bin',
+          ),
+          isNull,
+        );
+      },
+    );
 
     test('drops whitespace entries but keeps clean absolute neighbors', () {
       const m = HostShellPathResolver.marker;
@@ -112,11 +113,13 @@ void main() {
   });
 
   group('shellCandidates', () {
-    test('uses \$SHELL path first, then zsh, then bash, deduped by basename',
-        () {
-      HostShellPathResolver.debugShellOverride = () => '/bin/bash';
-      expect(HostShellPathResolver.shellCandidates(), ['/bin/bash', 'zsh']);
-    });
+    test(
+      'uses \$SHELL path first, then zsh, then bash, deduped by basename',
+      () {
+        HostShellPathResolver.debugShellOverride = () => '/bin/bash';
+        expect(HostShellPathResolver.shellCandidates(), ['/bin/bash', 'zsh']);
+      },
+    );
 
     test('does not also spawn basename zsh when \$SHELL is already zsh', () {
       HostShellPathResolver.debugShellOverride = () => '/usr/bin/zsh';
@@ -125,10 +128,11 @@ void main() {
 
     test('prepends a non-fallback \$SHELL path before zsh and bash', () {
       HostShellPathResolver.debugShellOverride = () => '/usr/local/bin/fish';
-      expect(
-        HostShellPathResolver.shellCandidates(),
-        ['/usr/local/bin/fish', 'zsh', 'bash'],
-      );
+      expect(HostShellPathResolver.shellCandidates(), [
+        '/usr/local/bin/fish',
+        'zsh',
+        'bash',
+      ]);
     });
 
     test('falls back to zsh then bash when \$SHELL is empty', () {
@@ -152,23 +156,25 @@ void main() {
       expect(invoked, ['/bin/bash']);
     });
 
-    test('tries \$SHELL path first, then zsh, then stops at first hit',
-        () async {
-      HostShellPathResolver.debugShellOverride = () => '/usr/local/bin/fish';
-      final invoked = <String>[];
-      final result = await HostShellPathResolver.resolve(
-        posixPlatformOverride: true,
-        starter: (executable, arguments) async {
-          invoked.add(executable);
-          if (executable == '/usr/local/bin/fish') {
-            return _FakeShell.success('fish noise'); // parses to null
-          }
-          return _FakeShell.success('${HostShellPathResolver.marker}/z/bin');
-        },
-      );
-      expect(result, '/z/bin');
-      expect(invoked, ['/usr/local/bin/fish', 'zsh']);
-    });
+    test(
+      'tries \$SHELL path first, then zsh, then stops at first hit',
+      () async {
+        HostShellPathResolver.debugShellOverride = () => '/usr/local/bin/fish';
+        final invoked = <String>[];
+        final result = await HostShellPathResolver.resolve(
+          posixPlatformOverride: true,
+          starter: (executable, arguments) async {
+            invoked.add(executable);
+            if (executable == '/usr/local/bin/fish') {
+              return _FakeShell.success('fish noise'); // parses to null
+            }
+            return _FakeShell.success('${HostShellPathResolver.marker}/z/bin');
+          },
+        );
+        expect(result, '/z/bin');
+        expect(invoked, ['/usr/local/bin/fish', 'zsh']);
+      },
+    );
 
     test('kills every shell when each times out', () async {
       // Override SHELL so candidates dedupe to ['/bin/zsh', 'bash'],
@@ -195,17 +201,15 @@ void main() {
     });
 
     test('falls through a hanging first shell to the next one', () async {
-      HostShellPathResolver.debugShellOverride = () => '/bin/zsh'; // → /bin/zsh, bash
+      HostShellPathResolver.debugShellOverride = () =>
+          '/bin/zsh'; // → /bin/zsh, bash
       final zsh = _FakeShell.hanging();
       final result = await HostShellPathResolver.resolve(
         posixPlatformOverride: true,
         timeout: const Duration(milliseconds: 10),
-        starter: (executable, arguments) async =>
-            executable == '/bin/zsh'
-                ? zsh
-                : _FakeShell.success(
-                    '${HostShellPathResolver.marker}/b/bin',
-                  ),
+        starter: (executable, arguments) async => executable == '/bin/zsh'
+            ? zsh
+            : _FakeShell.success('${HostShellPathResolver.marker}/b/bin'),
       );
       expect(result, '/b/bin');
       expect(zsh.killed, isTrue);
@@ -222,7 +226,8 @@ void main() {
     });
 
     test('treats nonzero exit as probe failure', () async {
-      HostShellPathResolver.debugShellOverride = () => '/bin/zsh'; // → /bin/zsh, bash
+      HostShellPathResolver.debugShellOverride = () =>
+          '/bin/zsh'; // → /bin/zsh, bash
       final result = await HostShellPathResolver.resolve(
         posixPlatformOverride: true,
         starter: (executable, arguments) async => executable == '/bin/zsh'

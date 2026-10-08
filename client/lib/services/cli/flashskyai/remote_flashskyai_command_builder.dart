@@ -1,5 +1,10 @@
 import '../../host/remote_login_shell.dart';
 
+/// POSIX shell command string for a **legacy** (non-embedded) SSH target.
+///
+/// Reach this through [RemoteCommandCodec.encodeLegacy] (host layer), which
+/// delegates here so the legacy output stays byte-for-byte stable; embedded
+/// targets use the `tp1:` structured-exec payload instead.
 class RemoteFlashskyaiCommandBuilder {
   const RemoteFlashskyaiCommandBuilder();
 

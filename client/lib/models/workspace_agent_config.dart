@@ -1,7 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-import 'launch_security_policy.dart';
-
 @immutable
 class WorkspaceAgentConfig {
   const WorkspaceAgentConfig({
@@ -9,7 +7,6 @@ class WorkspaceAgentConfig {
     this.agentType = '',
     this.extraArgs = '',
     this.responsibilities = '',
-    this.launchSecurityPolicy = LaunchSecurityPolicy.fullAccess,
   });
 
   factory WorkspaceAgentConfig.fromJson(Map<String, Object?> json) {
@@ -18,9 +15,6 @@ class WorkspaceAgentConfig {
       agentType: json['agentType'] as String? ?? '',
       extraArgs: json['extraArgs'] as String? ?? '',
       responsibilities: json['responsibilities'] as String? ?? '',
-      launchSecurityPolicy: LaunchSecurityPolicy.fromJson(
-        json['launchSecurityPolicy'],
-      ),
     );
   }
 
@@ -28,21 +22,18 @@ class WorkspaceAgentConfig {
   final String agentType;
   final String extraArgs;
   final String responsibilities;
-  final LaunchSecurityPolicy launchSecurityPolicy;
 
   WorkspaceAgentConfig copyWith({
     String? agent,
     String? agentType,
     String? extraArgs,
     String? responsibilities,
-    LaunchSecurityPolicy? launchSecurityPolicy,
   }) {
     return WorkspaceAgentConfig(
       agent: agent ?? this.agent,
       agentType: agentType ?? this.agentType,
       extraArgs: extraArgs ?? this.extraArgs,
       responsibilities: responsibilities ?? this.responsibilities,
-      launchSecurityPolicy: launchSecurityPolicy ?? this.launchSecurityPolicy,
     );
   }
 
@@ -52,7 +43,6 @@ class WorkspaceAgentConfig {
       if (agentType.isNotEmpty) 'agentType': agentType,
       'extraArgs': extraArgs,
       'responsibilities': responsibilities,
-      'launchSecurityPolicy': launchSecurityPolicy.toJson(),
     };
   }
 
@@ -64,16 +54,10 @@ class WorkspaceAgentConfig {
             agent == other.agent &&
             agentType == other.agentType &&
             extraArgs == other.extraArgs &&
-            responsibilities == other.responsibilities &&
-            launchSecurityPolicy == other.launchSecurityPolicy;
+            responsibilities == other.responsibilities;
   }
 
   @override
-  int get hashCode => Object.hash(
-    agent,
-    agentType,
-    extraArgs,
-    responsibilities,
-    launchSecurityPolicy,
-  );
+  int get hashCode =>
+      Object.hash(agent, agentType, extraArgs, responsibilities);
 }

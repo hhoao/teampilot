@@ -3,7 +3,6 @@ import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../theme/app_fonts.dart';
 import '../../theme/app_typography_scale.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../editor_platform/editor_syntax_theme.dart';
@@ -126,14 +125,7 @@ const kEditorTextBasenames = {
 /// Maximum file size loaded into the editor (bytes).
 const kEditorMaxFileBytes = 2 * 1024 * 1024;
 
-const kEditorImageExtensions = {
-  'png',
-  'jpg',
-  'jpeg',
-  'gif',
-  'webp',
-  'bmp',
-};
+const kEditorImageExtensions = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'};
 
 /// Max image bytes loaded for in-app preview (separate from text editor cap).
 const kEditorMaxImageBytes = 25 * 1024 * 1024;

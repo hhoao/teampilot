@@ -145,10 +145,7 @@ class WorkspacePageCardShell extends StatelessWidget {
             borderRadius: borderRadius,
             border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
           ),
-          child: Material(
-            color: cs.workspaceCardChrome(chrome),
-            child: child,
-          ),
+          child: Material(color: cs.workspaceCardChrome(chrome), child: child),
         ),
       ),
     );

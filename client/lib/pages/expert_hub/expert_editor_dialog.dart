@@ -56,8 +56,9 @@ Future<DiscoverableMember?> showExpertEditorDialog(
               catalog: catalog,
               store: LocalExpertStore(
                 fs: homeStorageOf(context).fs,
-                dirOverride:
-                    homeStorageOf(context).paths.memberHubLocalTemplatesDir,
+                dirOverride: homeStorageOf(
+                  context,
+                ).paths.memberHubLocalTemplatesDir,
               ),
             ),
         initial: initial,
@@ -357,98 +358,101 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
               child: SingleChildScrollView(
                 padding: _pageHostPaddingH(context),
                 child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _textField(
-                id: 'name',
-                fieldKey: const Key('expert-editor-name'),
-                controller: _name,
-                label: l10n.name,
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? l10n.expertEditorNameRequired
-                    : null,
-              ),
-              const SizedBox(height: 12),
-              _textField(
-                id: 'description',
-                fieldKey: const Key('expert-editor-description'),
-                controller: _description,
-                label: l10n.expertEditorDescription,
-              ),
-              const SizedBox(height: 12),
-              _textField(
-                id: 'category',
-                fieldKey: const Key('expert-editor-category'),
-                controller: _category,
-                label: l10n.expertEditorCategory,
-              ),
-              const SizedBox(height: 12),
-              TpTextareaFormField(
-                key: const Key('expert-editor-prompt'),
-                id: 'prompt',
-                controller: _prompt,
-                label: Text(l10n.expertHubPrompt),
-                decoration: InputDecoration(
-                  hintText: l10n.expertEditorPromptHint,
-                ),
-                minHeight: tpTextareaHeightForLines(bodyStyle, lines: 3),
-                maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 6),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? l10n.expertEditorPromptRequired
-                    : null,
-              ),
-              const SizedBox(height: 12),
-              TpTextareaFormField(
-                key: const Key('expert-editor-playbook'),
-                id: 'playbook',
-                controller: _playbook,
-                label: Text(l10n.expertHubPlaybook),
-                decoration: InputDecoration(
-                  hintText: l10n.expertEditorPlaybookHint,
-                ),
-                minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
-                maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 5),
-              ),
-              const SizedBox(height: 12),
-              _textField(
-                id: 'tags',
-                fieldKey: const Key('expert-editor-tags'),
-                controller: _tags,
-                label: l10n.expertEditorTags,
-                hint: l10n.expertEditorTagsHint,
-                textInputAction: TextInputAction.done,
-              ),
-              const SizedBox(height: 20),
-              Text(l10n.expertEditorDepsHint, style: styles.sm),
-              const SizedBox(height: 12),
-              _ExpertEditorDepSummaryRow(
-                key: const Key('expert-editor-dep-skills'),
-                title: l10n.expertEditorSkillsSection,
-                countKey: const Key('expert-editor-skills-count'),
-                count: _selectedSkillIds.length,
-                configureKey: const Key('expert-editor-configure-skills'),
-                onConfigure: () =>
-                    _openDepPicker(ExpertEditorDepCategory.skills),
-              ),
-              _ExpertEditorDepSummaryRow(
-                key: const Key('expert-editor-dep-plugins'),
-                title: l10n.expertEditorPluginsSection,
-                countKey: const Key('expert-editor-plugins-count'),
-                count: _selectedPluginIds.length,
-                configureKey: const Key('expert-editor-configure-plugins'),
-                onConfigure: () =>
-                    _openDepPicker(ExpertEditorDepCategory.plugins),
-              ),
-              _ExpertEditorDepSummaryRow(
-                key: const Key('expert-editor-dep-mcp'),
-                title: l10n.expertEditorMcpSection,
-                countKey: const Key('expert-editor-mcp-count'),
-                count: _selectedMcpIds.length,
-                configureKey: const Key('expert-editor-configure-mcp'),
-                onConfigure: () => _openDepPicker(ExpertEditorDepCategory.mcp),
-              ),
-            ],
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _textField(
+                      id: 'name',
+                      fieldKey: const Key('expert-editor-name'),
+                      controller: _name,
+                      label: l10n.name,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? l10n.expertEditorNameRequired
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                    _textField(
+                      id: 'description',
+                      fieldKey: const Key('expert-editor-description'),
+                      controller: _description,
+                      label: l10n.expertEditorDescription,
+                    ),
+                    const SizedBox(height: 12),
+                    _textField(
+                      id: 'category',
+                      fieldKey: const Key('expert-editor-category'),
+                      controller: _category,
+                      label: l10n.expertEditorCategory,
+                    ),
+                    const SizedBox(height: 12),
+                    TpTextareaFormField(
+                      key: const Key('expert-editor-prompt'),
+                      id: 'prompt',
+                      controller: _prompt,
+                      label: Text(l10n.expertHubPrompt),
+                      decoration: InputDecoration(
+                        hintText: l10n.expertEditorPromptHint,
+                      ),
+                      minHeight: tpTextareaHeightForLines(bodyStyle, lines: 3),
+                      maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 6),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? l10n.expertEditorPromptRequired
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TpTextareaFormField(
+                      key: const Key('expert-editor-playbook'),
+                      id: 'playbook',
+                      controller: _playbook,
+                      label: Text(l10n.expertHubPlaybook),
+                      decoration: InputDecoration(
+                        hintText: l10n.expertEditorPlaybookHint,
+                      ),
+                      minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
+                      maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 5),
+                    ),
+                    const SizedBox(height: 12),
+                    _textField(
+                      id: 'tags',
+                      fieldKey: const Key('expert-editor-tags'),
+                      controller: _tags,
+                      label: l10n.expertEditorTags,
+                      hint: l10n.expertEditorTagsHint,
+                      textInputAction: TextInputAction.done,
+                    ),
+                    const SizedBox(height: 20),
+                    Text(l10n.expertEditorDepsHint, style: styles.sm),
+                    const SizedBox(height: 12),
+                    _ExpertEditorDepSummaryRow(
+                      key: const Key('expert-editor-dep-skills'),
+                      title: l10n.expertEditorSkillsSection,
+                      countKey: const Key('expert-editor-skills-count'),
+                      count: _selectedSkillIds.length,
+                      configureKey: const Key('expert-editor-configure-skills'),
+                      onConfigure: () =>
+                          _openDepPicker(ExpertEditorDepCategory.skills),
+                    ),
+                    _ExpertEditorDepSummaryRow(
+                      key: const Key('expert-editor-dep-plugins'),
+                      title: l10n.expertEditorPluginsSection,
+                      countKey: const Key('expert-editor-plugins-count'),
+                      count: _selectedPluginIds.length,
+                      configureKey: const Key(
+                        'expert-editor-configure-plugins',
+                      ),
+                      onConfigure: () =>
+                          _openDepPicker(ExpertEditorDepCategory.plugins),
+                    ),
+                    _ExpertEditorDepSummaryRow(
+                      key: const Key('expert-editor-dep-mcp'),
+                      title: l10n.expertEditorMcpSection,
+                      countKey: const Key('expert-editor-mcp-count'),
+                      count: _selectedMcpIds.length,
+                      configureKey: const Key('expert-editor-configure-mcp'),
+                      onConfigure: () =>
+                          _openDepPicker(ExpertEditorDepCategory.mcp),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -457,7 +461,9 @@ class _ExpertEditorDialogState extends State<ExpertEditorDialog> {
               child: TpDialogActions(
                 children: [
                   TextButton(
-                    onPressed: _saving ? null : () => Navigator.of(context).pop(),
+                    onPressed: _saving
+                        ? null
+                        : () => Navigator.of(context).pop(),
                     child: Text(l10n.cancel),
                   ),
                   FilledButton(

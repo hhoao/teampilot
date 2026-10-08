@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:ai_message_ui/ai_message_ui.dart';
@@ -35,9 +36,11 @@ const AiMessage kSessionHistoryRunningPlaceholder = AiMessage(
 /// History message list for session review.
 ///
 /// Owns scroll chrome (stick-to-end, load-older anchoring, hover-effects
-/// gate + cursor lock, [SelectionArea] nested inside the scroll content, new-messages chip). Mounts the full pagination data window (retain + chunked fill) so
-/// scrolling does not remount markdown — Claude-like residency within the
-/// loaded message set. Older pages still arrive via [onLoadOlder].
+/// gate + cursor lock, [SelectionArea] nested inside the scroll content,
+/// new-messages chip). Desktop mounts the full pagination data window (retain
+/// + chunked fill) so scrolling does not remount markdown. Mobile keeps only
+/// the visible/overscan turns mounted. Older pages still arrive via
+/// [onLoadOlder].
 class SessionHistoryThread extends StatefulWidget {
   const SessionHistoryThread({
     required this.runtime,
@@ -52,6 +55,7 @@ class SessionHistoryThread extends StatefulWidget {
     this.visibleOwnerId,
     this.scrollAnchorKey,
     this.scrollAnchors,
+    this.mobilePerformanceMode,
     super.key,
   });
 
@@ -86,6 +90,10 @@ class SessionHistoryThread extends StatefulWidget {
   /// `ChatCubit.sessionScrollAnchors`; passed as a plain map reference so the
   /// thread stays decoupled from the cubit (and testable without one).
   final Map<String, double>? scrollAnchors;
+
+  /// Overrides the mobile history mounting policy for deterministic tests.
+  /// Defaults to the Android/iOS platform check.
+  final bool? mobilePerformanceMode;
 
   @override
   State<SessionHistoryThread> createState() => _SessionHistoryThreadState();
@@ -770,6 +778,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   @override
   Widget build(BuildContext context) {
+    final mobile =
+        widget.mobilePerformanceMode ?? (Platform.isAndroid || Platform.isIOS);
     final displayMessages = _displayMessages;
     final lastId = displayMessages.isEmpty ? null : displayMessages.last.id;
     // Last *real* message (excludes the running footer appended to the tip).
@@ -847,10 +857,10 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                         header: header,
                         anchorEnd: true,
                         overscan: 5,
-                        // Claude-like: keep the loaded pagination window mounted while
-                        // scrolling; fill in chunks after open so the first paint stays light.
-                        retainMountedTurns: true,
-                        fillDataWindow: true,
+                        // Desktop keeps the loaded pagination window mounted while
+                        // scrolling; mobile stays bounded to visible/overscan turns.
+                        retainMountedTurns: !mobile,
+                        fillDataWindow: !mobile,
                         mountTurns: _mountTurns,
                         // Rebuild turn bodies when the highlight target changes
                         // so the ring moves even though the message list

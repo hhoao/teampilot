@@ -273,7 +273,9 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
     final cs = Theme.of(context).colorScheme;
     final colors = diffColorsFor(cs);
     final decorations = buildDiffPaneDecorations(_result.rows, colors);
-    final rightDecorations = widget.writable ? const <CodeLineDecoration>[] : decorations.right;
+    final rightDecorations = widget.writable
+        ? const <CodeLineDecoration>[]
+        : decorations.right;
     final rightNumbers = widget.writable
         ? _canonicalLineNumbers(widget.canonicalText)
         : _texts.rightNumbers;

@@ -6,7 +6,6 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 import 'package:teampilot/services/cli/claude/team_roster_service.dart';
-import 'package:teampilot/services/io/local_filesystem.dart';
 
 import 'bus_mail_assertions.dart';
 
@@ -19,7 +18,10 @@ void main() {
     const sessionId = 'sess-1';
     const memberId = 'team-lead';
 
-    final layout = WorkspaceLayout(teampilotRoot: tmp.path, fs: LocalFilesystem());
+    final layout = WorkspaceLayout(
+      teampilotRoot: tmp.path,
+      fs: LocalFilesystem(),
+    );
     final mailRoot = layout.busMailDir(workspaceId, sessionId);
     await Directory(mailRoot).create(recursive: true);
 

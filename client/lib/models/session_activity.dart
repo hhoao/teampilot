@@ -20,9 +20,7 @@ class SessionActivity extends Equatable {
   bool get isInTurn => reasons.contains(SessionBusyReason.inTurn);
   bool get isAttention => reasons.contains(SessionBusyReason.attention);
   bool get isReadyToChat =>
-      !isBusy &&
-      hadTurn &&
-      disposition == SessionTurnDisposition.completed;
+      !isBusy && hadTurn && disposition == SessionTurnDisposition.completed;
 
   SessionActivity copyWith({
     Set<SessionBusyReason>? reasons,

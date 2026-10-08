@@ -3,7 +3,7 @@ import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
-import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/chat/launch/config_profile_service.dart';
 import 'package:teampilot/services/provider/credential_binding.dart';
 import 'package:teampilot/services/cli/registry/cli_bootstrap.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -23,8 +23,16 @@ void main() {
       CliBootstrap(const {}, storage: testHomeStorage),
     );
     fs = InMemoryFilesystem();
-    service = ConfigProfileService(basePath: base, fs: fs, storage: testHomeStorage, );
-    repository = AppProviderRepository(basePath: base, fs: fs, storage: testHomeStorage, );
+    service = ConfigProfileService(
+      basePath: base,
+      fs: fs,
+      storage: testHomeStorage,
+    );
+    repository = AppProviderRepository(
+      basePath: base,
+      fs: fs,
+      storage: testHomeStorage,
+    );
   });
 
   tearDown(() => tearDownTestAppStorage());
@@ -156,7 +164,12 @@ void main() {
     'mixed launch links global credentials for official member provider',
     () async {
       const home = '/home/user';
-      service = ConfigProfileService(basePath: base, fs: fs, home: home, storage: testHomeStorage, );
+      service = ConfigProfileService(
+        basePath: base,
+        fs: fs,
+        home: home,
+        storage: testHomeStorage,
+      );
       await repository.saveProviders(CliTool.claude, [
         const AppProviderConfig(
           id: 'leaky',
@@ -205,9 +218,13 @@ void main() {
       );
 
       final sessionDir = outcome.environment['CLAUDE_CONFIG_DIR']!;
+      final sessionCred = fs.pathContext.join(sessionDir, '.credentials.json');
+      // ApplyPlan copies out-of-plane global credentials onto the work
+      // plane (symlink target is outside teampilot home). The session file
+      // must still carry the official OAuth payload.
       expect(
-        fs.symlinks[fs.pathContext.join(sessionDir, '.credentials.json')],
-        fs.pathContext.join(home, '.claude', '.credentials.json'),
+        await fs.readString(sessionCred),
+        contains('"accessToken":"global"'),
       );
       expect(outcome.warnings, isNot(contains('claude_credentials_missing')));
     },

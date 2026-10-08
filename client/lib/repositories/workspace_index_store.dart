@@ -26,8 +26,7 @@ class WorkspaceIndexStore {
 
   String get _indexFile => _fs.layout.workspacesIndexFile;
 
-  Lock get _mutationLock =>
-      _mutationLocks.putIfAbsent(_indexFile, Lock.new);
+  Lock get _mutationLock => _mutationLocks.putIfAbsent(_indexFile, Lock.new);
 
   /// Reads the derived index.
   ///

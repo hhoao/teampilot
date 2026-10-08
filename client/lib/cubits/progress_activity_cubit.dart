@@ -187,10 +187,7 @@ class ProgressActivityCubit extends Cubit<ProgressActivityState> {
     if (current.detailOpen == open) return;
 
     final activities = List<ProgressActivity>.from(state.activities)
-      ..[index] = current.copyWith(
-        detailOpen: open,
-        updatedAt: DateTime.now(),
-      );
+      ..[index] = current.copyWith(detailOpen: open, updatedAt: DateTime.now());
     emit(ProgressActivityState(activities: activities));
   }
 
@@ -232,11 +229,7 @@ class ProgressActivityCubit extends Cubit<ProgressActivityState> {
         current.title;
     final title = historyTitle ?? current.title;
 
-    _historyRecorder.record(
-      message: message,
-      variant: variant,
-      title: title,
-    );
+    _historyRecorder.record(message: message, variant: variant, title: title);
   }
 
   @override

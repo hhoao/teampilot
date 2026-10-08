@@ -110,7 +110,8 @@ class LlmConfigCubit extends Cubit<LlmConfigState> {
        _storage = storage,
        _executableResolver = executableResolver ?? (() => ''),
        _localStoreFactory =
-           storeFactory ?? ((path) => FilesystemLlmConfigStore(path: path, fs: storage.fs)),
+           storeFactory ??
+           ((path) => FilesystemLlmConfigStore(path: path, fs: storage.fs)),
        _isSshMode = isSshMode,
        _sshProfileResolver = sshProfileResolver,
        _sshClientFactory = sshClientFactory,

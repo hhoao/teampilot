@@ -26,11 +26,7 @@ void main() {
     chatCubit.applyState(
       chatCubit.state.copyWith(
         sessions: [
-          AppSession(
-            sessionId: 'sess-1',
-            workspaceId: 'ws1',
-            createdAt: 1,
-          ),
+          AppSession(sessionId: 'sess-1', workspaceId: 'ws1', createdAt: 1),
         ],
       ),
     );

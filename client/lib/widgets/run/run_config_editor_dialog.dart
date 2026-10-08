@@ -89,7 +89,8 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
     final cubit = context.read<RunCubit>();
     if (widget.createNew) {
       final folders = cubit.folders;
-      final target = widget.folder ??
+      final target =
+          widget.folder ??
           (folders.length == 1
               ? folders.single
               : folders.isNotEmpty
@@ -185,8 +186,7 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
               TpDialogActions(
                 children: [
                   TextButton(
-                    onPressed: () =>
-                        Navigator.of(ctx).pop(_DirtyChoice.cancel),
+                    onPressed: () => Navigator.of(ctx).pop(_DirtyChoice.cancel),
                     child: Text(l10n.cancel),
                   ),
                   TextButton(
@@ -370,86 +370,86 @@ class _RunConfigEditorDialogState extends State<RunConfigEditorDialog> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-        if (showFolderPicker) ...[
+          if (showFolderPicker) ...[
+            TpFormField<String>(
+              id: 'folder',
+              initialValue: draft.owner.path,
+              label: Text(l10n.runSelectFolder),
+              layoutStyle: TpFormFieldLayoutStyle.inline,
+              labelWidth: kLaunchConfigFormLabelWidth,
+              builder: (state) {
+                final selected = folders
+                    .where((f) => f.path == state.value)
+                    .firstOrNull;
+                return TpSelect<WorkspaceFolder>(
+                  key: const Key('run-config-folder-dropdown'),
+                  items: folders,
+                  initialItem: selected ?? draft.owner,
+                  searchable: folders.length >= 8,
+                  decoration: TpSelectDecorations.themed(context),
+                  itemLabel: _folderLabel,
+                  onChanged: (folder) {
+                    if (folder == null) return;
+                    state.didChange(folder.path);
+                    _onFolderChanged(folder);
+                  },
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
           TpFormField<String>(
-            id: 'folder',
-            initialValue: draft.owner.path,
-            label: Text(l10n.runSelectFolder),
+            key: ValueKey<String>('run-config-type-$type'),
+            id: 'type',
+            initialValue: type,
+            label: Text(l10n.runConfigurationType),
             layoutStyle: TpFormFieldLayoutStyle.inline,
             labelWidth: kLaunchConfigFormLabelWidth,
             builder: (state) {
-              final selected = folders
-                  .where((f) => f.path == state.value)
-                  .firstOrNull;
-              return TpSelect<WorkspaceFolder>(
-                key: const Key('run-config-folder-dropdown'),
-                items: folders,
-                initialItem: selected ?? draft.owner,
-                searchable: folders.length >= 8,
+              final targetId = draft.owner.targetId;
+              final types = _orderedLaunchTypes(cubit.launchTypes)
+                  .where(
+                    (item) =>
+                        item.type == type ||
+                        cubit.isTypeAvailableForTarget(
+                          item.type,
+                          targetId: targetId,
+                        ),
+                  )
+                  .toList();
+              final selected = types.where((t) => t.type == type).firstOrNull;
+              return TpSelect<LaunchTypeContribution>(
+                key: const Key('run-config-type-dropdown'),
+                items: types,
+                initialItem: selected,
+                searchable: types.length >= 8,
                 decoration: TpSelectDecorations.themed(context),
-                itemLabel: _folderLabel,
-                onChanged: (folder) {
-                  if (folder == null) return;
-                  state.didChange(folder.path);
-                  _onFolderChanged(folder);
+                itemLabel: (item) => localizeLaunchTypeLabel(l10n, item.type),
+                onChanged: (item) {
+                  if (item == null) return;
+                  state.didChange(item.type);
+                  _onTypeChanged(item.type);
                 },
               );
             },
           ),
           const SizedBox(height: 12),
-        ],
-        TpFormField<String>(
-          key: ValueKey<String>('run-config-type-$type'),
-          id: 'type',
-          initialValue: type,
-          label: Text(l10n.runConfigurationType),
-          layoutStyle: TpFormFieldLayoutStyle.inline,
-          labelWidth: kLaunchConfigFormLabelWidth,
-          builder: (state) {
-            final targetId = draft.owner.targetId;
-            final types = _orderedLaunchTypes(cubit.launchTypes)
-                .where(
-                  (item) =>
-                      item.type == type ||
-                      cubit.isTypeAvailableForTarget(
-                        item.type,
-                        targetId: targetId,
-                      ),
-                )
-                .toList();
-            final selected = types.where((t) => t.type == type).firstOrNull;
-            return TpSelect<LaunchTypeContribution>(
-              key: const Key('run-config-type-dropdown'),
-              items: types,
-              initialItem: selected,
-              searchable: types.length >= 8,
-              decoration: TpSelectDecorations.themed(context),
-              itemLabel: (item) => localizeLaunchTypeLabel(l10n, item.type),
-              onChanged: (item) {
-                if (item == null) return;
-                state.didChange(item.type);
-                _onTypeChanged(item.type);
-              },
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        LaunchConfigSchemaForm(
-          key: ValueKey<String>(
-            '${draft.selectionKey}|$type|${draft.configuration.id}',
+          LaunchConfigSchemaForm(
+            key: ValueKey<String>(
+              '${draft.selectionKey}|$type|${draft.configuration.id}',
+            ),
+            value: draft.configuration,
+            schema: _schemaFor(type),
+            errors: _formErrors,
+            onChanged: (next) {
+              // Update draft without setState — rebuilding the form on every
+              // keystroke resets caret position in the text fields.
+              _draft = OwnedLaunchConfiguration(
+                owner: draft.owner,
+                configuration: next,
+              );
+            },
           ),
-          value: draft.configuration,
-          schema: _schemaFor(type),
-          errors: _formErrors,
-          onChanged: (next) {
-            // Update draft without setState — rebuilding the form on every
-            // keystroke resets caret position in the text fields.
-            _draft = OwnedLaunchConfiguration(
-              owner: draft.owner,
-              configuration: next,
-            );
-          },
-        ),
         ],
       ),
     );

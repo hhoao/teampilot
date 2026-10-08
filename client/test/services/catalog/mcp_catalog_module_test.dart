@@ -227,4 +227,22 @@ void main() {
       await sub.cancel();
     },
   );
+
+  test('delete_mcp unbinds the id from every workspace', () async {
+    await module.handle(
+      CatalogOp.create,
+      req(arguments: {'name': 'echo', 'command': 'npx'}),
+    );
+    await binder.bindIds(
+      workspaceId: 'ws-other',
+      bindTo: CatalogBindTo.workspace,
+      apply: (current) => current.mcpServerIds.add('echo'),
+    );
+
+    await module.handle(CatalogOp.delete, req(arguments: {'id': 'echo'}));
+
+    expect((await configRepo.load(workspaceId)).bundle.mcpServerIds, isEmpty);
+    expect((await configRepo.load('ws-other')).bundle.mcpServerIds, isEmpty);
+    expect(await repository.findById('echo'), isNull);
+  });
 }

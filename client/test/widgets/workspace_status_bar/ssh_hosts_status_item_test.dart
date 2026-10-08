@@ -133,10 +133,7 @@ class _NoopSink implements StreamSink<List<int>> {
   Future get done async {}
 }
 
-Widget _host({
-  required SshConnectionCubit cubit,
-  required Widget child,
-}) {
+Widget _host({required SshConnectionCubit cubit, required Widget child}) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
@@ -148,9 +145,7 @@ Widget _host({
   );
 }
 
-SshConnectionState _stateWithHosts({
-  required List<SshHostConnectionVm> hosts,
-}) {
+SshConnectionState _stateWithHosts({required List<SshHostConnectionVm> hosts}) {
   final order = hosts.map((h) => h.profileId).toList(growable: false);
   return SshConnectionState(
     hostsById: {for (final h in hosts) h.profileId: h},
@@ -169,9 +164,7 @@ void main() {
     await tester.pumpWidget(
       _host(
         cubit: cubit,
-        child: WorkspaceStatusBar(
-          items: [SshHostsStatusItem()],
-        ),
+        child: WorkspaceStatusBar(items: [SshHostsStatusItem()]),
       ),
     );
 
@@ -205,9 +198,7 @@ void main() {
     await tester.pumpWidget(
       _host(
         cubit: cubit,
-        child: WorkspaceStatusBar(
-          items: [SshHostsStatusItem()],
-        ),
+        child: WorkspaceStatusBar(items: [SshHostsStatusItem()]),
       ),
     );
 
@@ -239,9 +230,7 @@ void main() {
     await tester.pumpWidget(
       _host(
         cubit: cubit,
-        child: WorkspaceStatusBar(
-          items: [SshHostsStatusItem()],
-        ),
+        child: WorkspaceStatusBar(items: [SshHostsStatusItem()]),
       ),
     );
 
@@ -278,9 +267,7 @@ void main() {
       _host(
         cubit: cubit,
         child: WorkspaceStatusBar(
-          items: [
-            SshHostsStatusItem(onManage: () => managed++),
-          ],
+          items: [SshHostsStatusItem(onManage: () => managed++)],
         ),
       ),
     );

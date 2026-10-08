@@ -22,10 +22,7 @@ void main() {
     expect(claude.template.name, 'Claude Code');
     expect(claude.template.kind, ManagedProviderKind.subscriptionQuota);
     expect(claude.template.adapterId, 'http-json');
-    expect(
-      claude.template.endpointConfig.credentialSource,
-      'cli:claude',
-    );
+    expect(claude.template.endpointConfig.credentialSource, 'cli:claude');
 
     final cursor = managedProviderPresetById('cursor')!;
     expect(cursor.template.adapterId, 'http-json');
@@ -34,10 +31,7 @@ void main() {
       cursor.template.endpointConfig.url,
       'https://cursor.com/api/usage-summary',
     );
-    expect(
-      cursor.template.endpointConfig.credentialSource,
-      'cli:cursor',
-    );
+    expect(cursor.template.endpointConfig.credentialSource, 'cli:cursor');
     expect(
       cursor.template.endpointConfig.credentialTemplate,
       'WorkosCursorSessionToken={accountId}::{accessToken}',
@@ -52,19 +46,16 @@ void main() {
     expect(preset.template.adapterId, 'http-json');
     expect(endpoint.url, 'https://api.deepseek.com/user/balance');
     expect(endpoint.method, 'GET');
-    expect(
-      endpoint.windows,
-      const [
-        ManagedProviderUsageWindow(
-          label: 'USD',
-          remaining: r'$.balance_infos[0].total_balance',
-        ),
-        ManagedProviderUsageWindow(
-          label: 'CNY',
-          remaining: r'$.balance_infos[1].total_balance',
-        ),
-      ],
-    );
+    expect(endpoint.windows, const [
+      ManagedProviderUsageWindow(
+        label: 'USD',
+        remaining: r'$.balance_infos[0].total_balance',
+      ),
+      ManagedProviderUsageWindow(
+        label: 'CNY',
+        remaining: r'$.balance_infos[1].total_balance',
+      ),
+    ]);
     expect(endpoint.credentialName, 'Authorization');
     expect(endpoint.credentialField, 'apiKey');
     expect(endpoint.credentialPlacement, 'header');

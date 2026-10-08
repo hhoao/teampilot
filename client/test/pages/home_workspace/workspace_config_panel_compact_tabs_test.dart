@@ -46,9 +46,8 @@ void main() {
           theme: theme,
           home: Scaffold(
             body: RepositoryProvider(
-              create: (_) => WorkspaceProjectConfigRepository(
-                storage: testHomeStorage,
-              ),
+              create: (_) =>
+                  WorkspaceProjectConfigRepository(storage: testHomeStorage),
               child: BlocProvider<SkillCubit>.value(
                 value: skillCubit,
                 child: SizedBox(

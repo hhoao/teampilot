@@ -74,11 +74,7 @@ class SessionWaitingMarker extends StatelessWidget {
       key: AppKeys.sidebarSessionWaitingMarker,
       width: size,
       height: size,
-      child: Icon(
-        Icons.front_hand_rounded,
-        size: size,
-        color: accent,
-      ),
+      child: Icon(Icons.front_hand_rounded, size: size, color: accent),
     );
   }
 }

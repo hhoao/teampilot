@@ -15,17 +15,14 @@ sealed class HookAction {
 
 @immutable
 final class CommandHookAction extends HookAction {
-  const CommandHookAction.raw(String command)
-    : command = command,
-      fileName = null,
+  const CommandHookAction.raw(String this.command)
+    : fileName = null,
       scriptContent = null;
 
   const CommandHookAction.script({
-    required String fileName,
-    String? scriptContent,
-  }) : command = null,
-       fileName = fileName,
-       scriptContent = scriptContent;
+    required String this.fileName,
+    this.scriptContent,
+  }) : command = null;
 
   /// 原始命令字符串（raw 用户命令；resolver 前未解析）。
   final String? command;

@@ -70,10 +70,7 @@ class ComposeVoiceRecordingStatus extends StatelessWidget {
 }
 
 class _ComposeVoiceLevelDots extends StatefulWidget {
-  const _ComposeVoiceLevelDots({
-    required this.soundLevel,
-    required this.color,
-  });
+  const _ComposeVoiceLevelDots({required this.soundLevel, required this.color});
 
   final double soundLevel;
   final Color color;
@@ -183,7 +180,9 @@ class _ComposeVoiceIconButton extends StatelessWidget {
         height: _size,
         backgroundColor: Colors.transparent,
         onTap: onTap,
-        child: Center(child: Icon(icon, size: icons.md, color: palette.muted)),
+        child: Center(
+          child: Icon(icon, size: icons.md, color: palette.muted),
+        ),
       ),
     );
   }

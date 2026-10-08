@@ -84,9 +84,7 @@ class CursorToolCallResolvers extends SharedToolCallResolvers {
     AiToolFileTargetRule(
       toolNames: SharedToolCallResolverKeys.fileWriteToolNames,
     ),
-    AiToolFileTargetRule(
-      toolNames: _fileEditToolNames,
-    ),
+    AiToolFileTargetRule(toolNames: _fileEditToolNames),
   ];
 
   @override

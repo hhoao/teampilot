@@ -42,8 +42,7 @@ class RunToolbar extends StatelessWidget {
         final kinds = _kindsForSelection(cubit, state);
         final choiceOptions = state.options
             .where(
-              (o) =>
-                  o.type == LaunchOptionType.choice && o.choices.isNotEmpty,
+              (o) => o.type == LaunchOptionType.choice && o.choices.isNotEmpty,
             )
             .toList();
 
@@ -79,10 +78,7 @@ List<String> _kindsForSelection(RunCubit cubit, RunState state) {
 }
 
 class _ChoiceOptionSelector extends StatelessWidget {
-  const _ChoiceOptionSelector({
-    required this.option,
-    required this.state,
-  });
+  const _ChoiceOptionSelector({required this.option, required this.state});
 
   final LaunchOption option;
   final RunState state;
@@ -90,8 +86,7 @@ class _ChoiceOptionSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<RunCubit>();
-    final current =
-        (state.optionValues[option.id] ?? option.value)?.toString();
+    final current = (state.optionValues[option.id] ?? option.value)?.toString();
     final selectedLabel = option.choices
         .where((choice) => choice.value == current)
         .map((choice) => choice.label)
@@ -184,10 +179,7 @@ class _ToolbarGlyph extends StatelessWidget {
 }
 
 class _RunOrStopGlyph extends StatelessWidget {
-  const _RunOrStopGlyph({
-    required this.state,
-    required this.workspaceId,
-  });
+  const _RunOrStopGlyph({required this.state, required this.workspaceId});
 
   final RunState state;
   final String workspaceId;
@@ -285,9 +277,8 @@ class _RunOrStopGlyph extends StatelessWidget {
                       child: Text(l10n.runNewInstance),
                     ),
                   FilledButton(
-                    onPressed: () => Navigator.of(
-                      dialogContext,
-                    ).pop(_RerunChoice.restart),
+                    onPressed: () =>
+                        Navigator.of(dialogContext).pop(_RerunChoice.restart),
                     child: Text(l10n.runRestart),
                   ),
                 ],

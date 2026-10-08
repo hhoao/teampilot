@@ -67,7 +67,7 @@ void main() {
     setUp(() async {
       HttpOverrides.global = null;
       tmp = await Directory.systemTemp.createTemp('chat_team_bus_');
-      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
+      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       postFrame = PostFrameTestHarness();
       cubit = ChatCubit(
         executableResolver: () => 'true',
@@ -77,7 +77,7 @@ void main() {
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
                 _FakeTerminalSession(executable: executable),
-                         storage: testHomeStorage,
+        storage: testHomeStorage,
       );
     });
 
@@ -168,7 +168,7 @@ void main() {
       await waitUntil(
         () =>
             cubit.teammateBusMcpEndpointForSession(sessionA.sessionId) !=
-            null &&
+                null &&
             cubit.teammateBusMcpEndpointForSession(sessionB.sessionId) != null,
         pump: drainPendingAsyncWork,
       );

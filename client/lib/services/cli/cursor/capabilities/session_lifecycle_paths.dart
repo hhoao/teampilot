@@ -1,18 +1,17 @@
-import 'dart:io';
-
 import 'package:path/path.dart' as p;
 
+import '../../../../models/team_config.dart';
 import '../../../io/filesystem.dart';
 import '../provider/cursor_home_layout.dart';
-import '../provider/cursor_member_home_passthrough.dart';
 import '../provider/cursor_session_config_dir.dart';
 import '../provider/cursor_windows_home_junction.dart';
 import '../provider/cursor_workspace_trust.dart';
 import '../provider/cursor_workspace_warm_tier.dart';
+import '../../registry/capabilities/cli_session_capability.dart';
 import '../../../storage/runtime_layout.dart';
 import 'skill.dart';
 
-/// Session lifecycle disk layout for mixed-mode cursor warm tier + member overlay.
+/// Session lifecycle disk layout for mixed-mode cursor (per-member runtime).
 final class CursorSessionLifecyclePaths {
   CursorSessionLifecyclePaths({
     required Filesystem fs,
@@ -32,6 +31,7 @@ final class CursorSessionLifecyclePaths {
            homeLayout ?? CursorHomeLayout(pathContext: fs.pathContext);
 
   static const tool = 'cursor';
+  static const cliConfigBaseFileName = 'cli-config.base.json';
 
   final Filesystem _fs;
   final RuntimeLayout _layout;
@@ -46,6 +46,7 @@ final class CursorSessionLifecyclePaths {
   String get workspaceSlug =>
       CursorWorkspaceTrust.slugifyWorkspacePath(_workingDirectory);
 
+  /// Team-scoped lifecycle manifest root (`init.json` only).
   String sharedRoot() =>
       _layout.workspaceRuntimeToolDir(_workspaceId, _teamId, tool);
 
@@ -54,31 +55,6 @@ final class CursorSessionLifecyclePaths {
     CursorWorkspaceTrust.projectsDirName,
     (slug ?? workspaceSlug).trim(),
   );
-
-  String sharedPluginsLocalDir() =>
-      CursorWorkspaceWarmTier.pluginsLocalDir(_layout, _workspaceId, _teamId);
-
-  String sharedPluginsMarketplacesDir() =>
-      CursorWorkspaceWarmTier.pluginsMarketplacesDir(
-        _layout,
-        _workspaceId,
-        _teamId,
-      );
-
-  String sharedInstalledPluginsFile() =>
-      CursorWorkspaceWarmTier.installedPluginsFile(_layout, _workspaceId, _teamId);
-
-  String sharedKnownMarketplacesFile() =>
-      CursorWorkspaceWarmTier.knownMarketplacesFile(_layout, _workspaceId, _teamId);
-
-  String sharedSkillsCursorDir() =>
-      CursorWorkspaceWarmTier.skillsCursorDir(_layout, _workspaceId, _teamId);
-
-  String sharedSettingsFile() =>
-      CursorWorkspaceWarmTier.settingsJson(_layout, _workspaceId, _teamId);
-
-  String sharedMcpBaseFile() =>
-      CursorWorkspaceWarmTier.mcpBase(_layout, _workspaceId, _teamId);
 
   String memberHomeRoot(String memberId) =>
       CursorSessionConfigDir.mixedHomeRoot(
@@ -94,14 +70,54 @@ final class CursorSessionLifecyclePaths {
         canonicalHome: memberHomeRoot(memberId),
       );
 
-  String memberCursorDir(String memberHome) => _homeLayout.cursorDir(memberHome);
+  String memberCursorDir(String memberHome) =>
+      _homeLayout.cursorDir(memberHome);
 
-  Future<void> ensureSharedDirs() async {
+  String memberCliConfigBasePath(String memberHome) =>
+      _ctx.join(memberHome, cliConfigBaseFileName);
+
+  String memberProjectsDir(String memberHome, [String? slug]) => _ctx.join(
+    memberCursorDir(memberHome),
+    CursorWorkspaceTrust.projectsDirName,
+    (slug ?? workspaceSlug).trim(),
+  );
+
+  String memberPluginsLocalDir(String memberHome) => _ctx.join(
+    memberCursorDir(memberHome),
+    CursorWorkspaceWarmTier.pluginsDirName,
+    CursorWorkspaceWarmTier.localPluginsSegment,
+  );
+
+  String memberPluginsMarketplacesDir(String memberHome) => _ctx.join(
+    memberCursorDir(memberHome),
+    CursorWorkspaceWarmTier.pluginsDirName,
+    CursorWorkspaceWarmTier.marketplacesSegment,
+  );
+
+  String memberInstalledPluginsFile(String memberHome) => _ctx.join(
+    memberCursorDir(memberHome),
+    CursorWorkspaceWarmTier.pluginsDirName,
+    CursorWorkspaceWarmTier.installedPluginsFileName,
+  );
+
+  String memberKnownMarketplacesFile(String memberHome) => _ctx.join(
+    memberCursorDir(memberHome),
+    CursorWorkspaceWarmTier.pluginsDirName,
+    CursorWorkspaceWarmTier.knownMarketplacesFileName,
+  );
+
+  String memberSkillsCursorDir(String memberHome) => _ctx.join(
+    memberCursorDir(memberHome),
+    CursorSkillCapability.skillsSubdirName,
+  );
+
+  String memberSettingsFile(String memberHome) => _ctx.join(
+    memberCursorDir(memberHome),
+    CursorWorkspaceWarmTier.settingsFileName,
+  );
+
+  Future<void> ensureManifestDir() async {
     await _fs.ensureDir(sharedRoot());
-    await _fs.ensureDir(sharedProjectsDir());
-    await _fs.ensureDir(sharedPluginsLocalDir());
-    await _fs.ensureDir(sharedPluginsMarketplacesDir());
-    await _fs.ensureDir(sharedSkillsCursorDir());
   }
 
   /// Directory holding the member's `auth.json` — the platform credential
@@ -109,159 +125,45 @@ final class CursorSessionLifecyclePaths {
   /// `.cursor` on macOS).
   String memberAuthDir(String memberHome) => _homeLayout.authDir(memberHome);
 
-  String memberAuthFile(String memberHome) =>
-      _homeLayout.authJson(memberHome);
+  String memberAuthFile(String memberHome) => _homeLayout.authJson(memberHome);
 
-  Future<void> ensureMemberHomeLayout({
-    required String memberId,
-    required String realHomeRoot,
-  }) async {
+  Future<void> ensureMemberHomeLayout({required String memberId}) async {
     final canonicalHome = memberHomeRoot(memberId);
-    final memberHome = await CursorWindowsHomeJunction.ensureAgentHome(
-      fs: _fs,
-      canonicalHome: canonicalHome,
-    );
+    final memberHome =
+        await sessionMemberHomePreparedForResourceWrites(
+          fs: _fs,
+          tool: CliTool.cursor,
+          layout: _layout,
+          workspaceId: _workspaceId,
+          sessionId: _sessionId,
+          memberId: memberId,
+        ) ??
+        canonicalHome;
     await _fs.ensureDir(memberHome);
     final cursorDir = memberCursorDir(memberHome);
     await _fs.ensureDir(cursorDir);
     await _fs.ensureDir(_ctx.join(cursorDir, CursorHomeLayout.rulesDirName));
     await _fs.ensureDir(_ctx.join(cursorDir, CursorHomeLayout.hooksDirName));
-    await _linkMemberSharedArtifacts(memberHome: memberHome);
+    await _ensureMemberCursorResourceDirs(memberHome: memberHome);
     await ensureMemberAuthDir(memberHome: memberHome);
-    await CursorMemberHomePassthrough(fs: _fs, layout: _homeLayout).mirror(
-      realHomeRoot: realHomeRoot,
-      memberHomeRoot: memberHome,
-    );
+    // Real-$HOME passthrough is deferred to [CursorSessionLifecycleCapability]
+    // after manifest flush (same as [CursorHomeProvisioner] with `realHomeRoot:
+    // null` during staging). Mirroring here leaves symlinks on disk before
+    // [ManifestFilesystem] staging; without a projection root those become
+    // manifest entries whose targets fall outside the work plane and flush
+    // materializes entire home trees on the UI isolate.
+  }
+
+  Future<void> _ensureMemberCursorResourceDirs({
+    required String memberHome,
+  }) async {
+    await _fs.ensureDir(memberProjectsDir(memberHome));
+    await _fs.ensureDir(memberPluginsLocalDir(memberHome));
+    await _fs.ensureDir(memberPluginsMarketplacesDir(memberHome));
+    await _fs.ensureDir(memberSkillsCursorDir(memberHome));
   }
 
   Future<void> ensureMemberAuthDir({required String memberHome}) async {
     await _fs.ensureDir(memberAuthDir(memberHome));
-  }
-
-  Future<void> _linkMemberSharedArtifacts({required String memberHome}) async {
-    final cursorDir = memberCursorDir(memberHome);
-    await _linkMemberProjects(memberHome: memberHome);
-    await _fs.ensureDir(_ctx.join(cursorDir, CursorWorkspaceWarmTier.pluginsDirName));
-    await _linkDirectory(
-      source: sharedPluginsLocalDir(),
-      target: _ctx.join(
-        cursorDir,
-        CursorWorkspaceWarmTier.pluginsDirName,
-        CursorWorkspaceWarmTier.localPluginsSegment,
-      ),
-    );
-    await _linkDirectory(
-      source: sharedPluginsMarketplacesDir(),
-      target: _ctx.join(
-        cursorDir,
-        CursorWorkspaceWarmTier.pluginsDirName,
-        CursorWorkspaceWarmTier.marketplacesSegment,
-      ),
-    );
-    await _linkFile(
-      source: sharedInstalledPluginsFile(),
-      target: _ctx.join(
-        cursorDir,
-        CursorWorkspaceWarmTier.pluginsDirName,
-        CursorWorkspaceWarmTier.installedPluginsFileName,
-      ),
-    );
-    await _linkFile(
-      source: sharedKnownMarketplacesFile(),
-      target: _ctx.join(
-        cursorDir,
-        CursorWorkspaceWarmTier.pluginsDirName,
-        CursorWorkspaceWarmTier.knownMarketplacesFileName,
-      ),
-    );
-    await _linkDirectory(
-      source: sharedSkillsCursorDir(),
-      target: _ctx.join(
-        cursorDir,
-        CursorSkillCapability.skillsSubdirName,
-      ),
-    );
-    await _linkFile(
-      source: sharedSettingsFile(),
-      target: _ctx.join(cursorDir, CursorWorkspaceWarmTier.settingsFileName),
-    );
-  }
-
-  Future<void> _linkMemberProjects({required String memberHome}) async {
-    final memberProjects = _ctx.join(
-      memberCursorDir(memberHome),
-      CursorWorkspaceTrust.projectsDirName,
-    );
-    final sharedProjectsRoot = _ctx.join(
-      sharedRoot(),
-      CursorWorkspaceTrust.projectsDirName,
-    );
-    await _linkDirectory(source: sharedProjectsRoot, target: memberProjects);
-  }
-
-  Future<bool> _linkDirectory({
-    required String source,
-    required String target,
-  }) async {
-    if (!(await _fs.stat(source)).exists) {
-      await _fs.ensureDir(source);
-    }
-    if (await _linkAlreadyPointsTo(source: source, target: target)) {
-      return true;
-    }
-    final targetStat = await _fs.stat(target);
-    if (targetStat.exists) {
-      await _fs.removeRecursive(target);
-    }
-    final linked = await _fs.createSymlink(target: source, linkPath: target);
-    if (linked) return true;
-    await _fs.copyTree(source: source, destination: target);
-    return false;
-  }
-
-  Future<bool> _linkFile({
-    required String source,
-    required String target,
-  }) async {
-    final sourceParent = _ctx.dirname(source);
-    if (!(await _fs.stat(sourceParent)).exists) {
-      await _fs.ensureDir(sourceParent);
-    }
-    if (await _linkAlreadyPointsTo(source: source, target: target)) {
-      return true;
-    }
-    final targetStat = await _fs.stat(target);
-    if (targetStat.exists) {
-      await _fs.removeRecursive(target);
-    }
-    final linked = await _fs.createSymlink(target: source, linkPath: target);
-    if (linked) return true;
-    if ((await _fs.stat(source)).isFile) {
-      final content = await _fs.readString(source);
-      if (content != null) {
-        await _fs.atomicWrite(target, content);
-      }
-    }
-    return false;
-  }
-
-  Future<bool> _linkAlreadyPointsTo({
-    required String source,
-    required String target,
-  }) async {
-    final targetStat = await _fs.stat(target);
-    if (!targetStat.exists) return false;
-    final normalizedSource = _ctx.normalize(_ctx.absolute(source));
-    if (targetStat.isSymlink) {
-      final linkTarget = await _fs.readSymlinkTarget(target);
-      if (linkTarget == null) return false;
-      return _ctx.normalize(_ctx.absolute(linkTarget)) == normalizedSource;
-    }
-    if (Platform.isWindows && targetStat.isDirectory) {
-      final resolvedTarget = await _fs.resolveSymlink(target);
-      if (resolvedTarget == null) return false;
-      return _ctx.normalize(resolvedTarget) == normalizedSource;
-    }
-    return false;
   }
 }

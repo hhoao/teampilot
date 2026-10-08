@@ -1,6 +1,6 @@
 import '../../models/config_bundle.dart';
 import '../../models/team_config.dart';
-import '../team/team_clone_service.dart';
+import '../team_config/team_clone_service.dart';
 
 /// Resolved expert capability pack: persona + installed global-library ids.
 class ExpertCapabilityPack {

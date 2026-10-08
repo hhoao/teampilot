@@ -42,17 +42,17 @@ class _FileEditorImagePreviewState extends State<FileEditorImagePreview>
 
   @override
   Widget build(BuildContext context) {
-    final model = context.select<
-      EditorCubit,
-      ({bool loading, String? error, bool hasBytes})
-    >((c) {
-      final bucket = c.state.bucket(widget.workspaceId);
-      return (
-        loading: bucket.loadingPaths.contains(widget.path),
-        error: bucket.errorByPath[widget.path],
-        hasBytes: c.bytesFor(widget.workspaceId, widget.path) != null,
-      );
-    });
+    final model = context
+        .select<EditorCubit, ({bool loading, String? error, bool hasBytes})>((
+          c,
+        ) {
+          final bucket = c.state.bucket(widget.workspaceId);
+          return (
+            loading: bucket.loadingPaths.contains(widget.path),
+            error: bucket.errorByPath[widget.path],
+            hasBytes: c.bytesFor(widget.workspaceId, widget.path) != null,
+          );
+        });
     final cs = Theme.of(context).colorScheme;
     final canZoom = model.hasBytes && model.error == null;
 

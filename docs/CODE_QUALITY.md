@@ -23,7 +23,7 @@ Run these commands and confirm success before claiming work is done.
 | Product / domain chrome | `widgets/` | App-specific layout and chrome reused across routes (`dropdown/`, `settings/`, `split_layout.dart`, etc.) — not generic controls |
 | State | `cubits/` | Actions, loading/error; calls repositories / services |
 | Persistence | `repositories/` | JSON/files via `Filesystem` + `AppStorage` |
-| Domain | `services/` | Install, probe, terminal, CLI profiles, skill/plugin linking |
+| Domain | `services/` | Install, probe, terminal, CLI profiles, skill/plugin linking. Team-session lifecycle is `services/chat/` — directory rules in [ARCHITECTURE.md](ARCHITECTURE.md#serviceschat--team-session-product-line) |
 | Models | `models/` | Immutable data, serialization |
 
 **Paths:** `AppStorage` / `RuntimeContextRegistry` only — not `Directory.current` for workspace or app data roots.
@@ -36,7 +36,7 @@ Apply these when adding or refactoring code. They complement the layering table 
 
 | Principle | Rule of thumb | In TeamPilot |
 |-----------|---------------|--------------|
-| **Single responsibility** | One class/file has one reason to change. | Split oversized cubits/services (see [file size](#file-size-soft-limits)); `SessionLaunchService` owns launch orchestration, `SessionLifecycleService` owns provisioning — do not merge unrelated flows. |
+| **Single responsibility** | One class/file has one reason to change. | Split oversized cubits/services (see [file size](#file-size-soft-limits)); `SessionLaunchService` (`services/chat/launch/`) owns launch orchestration, `SessionLifecycleService` (`services/chat/session/`) owns provisioning — do not merge unrelated flows. |
 | **Open/closed** | Open for extension, closed for modification. | Add or extend a `CliToolDefinition` + capabilities under `services/cli/registry/` instead of scattering `if (cli == …)` across pages and cubits. |
 | **Liskov substitution** | Subtypes must honor the contract of the base type. | Fakes in tests (`Filesystem`, transport runners) must behave like production implementations at the boundary you mock; do not rely on “test-only” quirks callers do not expect. |
 | **Interface segregation** | Prefer small, focused interfaces over fat ones. | Registry **capabilities** expose only what a CLI needs; cubits depend on narrow service seams (constructor injection), not whole `AppShell` or god-objects. |
@@ -212,7 +212,7 @@ For post-frame work (`ChatCubit`), use `PostFrameTestHarness` / `runScheduledCal
 | Doc | Topic |
 |-----|--------|
 | [AGENTS.md](../AGENTS.md) | AI guide: hard rules, doc index |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Architecture, key paths |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Core concepts, `services/chat/` directory rules, key paths |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Commands, integration tests |
 | [DEBUGGING.md](DEBUGGING.md) | Debugging process |
 | [PERFORMANCE_ANALYSIS.md](PERFORMANCE_ANALYSIS.md) | DevTools snapshot CLI |

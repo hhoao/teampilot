@@ -3,10 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../extension_manifest.dart';
 
 /// Adapter process lifecycle declared by a `launch-type` extension effect.
-enum LaunchAdapterLifecycle {
-  sticky,
-  oneshot,
-}
+enum LaunchAdapterLifecycle { sticky, oneshot }
 
 /// A registered launch type from a built-in definition or extension effect.
 @immutable

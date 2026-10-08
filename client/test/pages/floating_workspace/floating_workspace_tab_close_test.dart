@@ -13,10 +13,7 @@ void main() {
     addTearDown(workbench.close);
 
     var closed = false;
-    final surface = _FakeSurface(
-      id: 'terminal',
-      onClosed: () => closed = true,
-    );
+    final surface = _FakeSurface(id: 'terminal', onClosed: () => closed = true);
     final registry = FloatingSurfaceRegistry([surface]);
 
     const tab = FloatingTab(
@@ -68,34 +65,36 @@ void main() {
     );
 
     expect(closed, isFalse);
-    expect(
-      workbench.mergedFloatingStrip('ws-1').order,
-      [WorkbenchTabId.file('/a.txt')],
-    );
+    expect(workbench.mergedFloatingStrip('ws-1').order, [
+      WorkbenchTabId.file('/a.txt'),
+    ]);
   });
 
-  test('closeFloatingTab removes unknown surface tab without callback', () async {
-    final workbench = WorkbenchCubit();
-    addTearDown(workbench.close);
-    final registry = FloatingSurfaceRegistry([]);
+  test(
+    'closeFloatingTab removes unknown surface tab without callback',
+    () async {
+      final workbench = WorkbenchCubit();
+      addTearDown(workbench.close);
+      final registry = FloatingSurfaceRegistry([]);
 
-    const tab = FloatingTab(
-      id: 'orphan',
-      surfaceId: 'missing',
-      title: 'Orphan',
-    );
-    workbench.openFloating('ws-1', WorkbenchTabId.shell('orphan'));
+      const tab = FloatingTab(
+        id: 'orphan',
+        surfaceId: 'missing',
+        title: 'Orphan',
+      );
+      workbench.openFloating('ws-1', WorkbenchTabId.shell('orphan'));
 
-    await closeFloatingTab(
-      workbench: workbench,
-      workspaceId: 'ws-1',
-      registry: registry,
-      id: WorkbenchTabId.shell('orphan'),
-      tab: tab,
-    );
+      await closeFloatingTab(
+        workbench: workbench,
+        workspaceId: 'ws-1',
+        registry: registry,
+        id: WorkbenchTabId.shell('orphan'),
+        tab: tab,
+      );
 
-    expect(workbench.mergedFloatingStrip('ws-1').order, isEmpty);
-  });
+      expect(workbench.mergedFloatingStrip('ws-1').order, isEmpty);
+    },
+  );
 
   test('closeOtherFloatingTabs keeps only the requested tab', () async {
     final workbench = WorkbenchCubit();
@@ -114,10 +113,9 @@ void main() {
       keepId: WorkbenchTabId.shell('keep'),
     );
 
-    expect(
-      workbench.mergedFloatingStrip('ws-1').order,
-      [WorkbenchTabId.shell('keep')],
-    );
+    expect(workbench.mergedFloatingStrip('ws-1').order, [
+      WorkbenchTabId.shell('keep'),
+    ]);
   });
 
   test('closeFloatingTabsToTheRight trims after the pivot', () async {
@@ -138,10 +136,9 @@ void main() {
       fromId: WorkbenchTabId.shell('a'),
     );
 
-    expect(
-      workbench.mergedFloatingStrip('ws-1').order,
-      [WorkbenchTabId.shell('a')],
-    );
+    expect(workbench.mergedFloatingStrip('ws-1').order, [
+      WorkbenchTabId.shell('a'),
+    ]);
   });
 }
 

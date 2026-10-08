@@ -77,7 +77,10 @@ class ClaudeCcSwitchImport {
     final liveEnv = ClaudeSettingsParser.envFromSettings(liveSettings);
     final takeover = ClaudeSettingsParser.detectProxyTakeover(liveEnv);
 
-    final currentFromSettings = await _readCurrentClaudeProviderId(store, homeDir);
+    final currentFromSettings = await _readCurrentClaudeProviderId(
+      store,
+      homeDir,
+    );
     final currentFromDb = currentFromSettings.isNotEmpty
         ? currentFromSettings
         : await _readCurrentClaudeProviderIdFromDb(store, homeDir);
@@ -182,7 +185,8 @@ WHERE app_type = ?
             proxyTakeover: runtime.proxyTakeover,
           )
         : catalogEnv;
-    final upstreamEnv = isCurrent &&
+    final upstreamEnv =
+        isCurrent &&
             runtime.proxyTakeover &&
             catalogEnv.isNotEmpty &&
             effectiveEnv != catalogEnv
@@ -206,7 +210,8 @@ WHERE app_type = ?
 
     final config = <String, Object?>{
       ...effectiveSettings,
-      if (upstreamEnv != null && upstreamEnv.isNotEmpty) 'upstreamEnv': upstreamEnv,
+      if (upstreamEnv != null && upstreamEnv.isNotEmpty)
+        'upstreamEnv': upstreamEnv,
       if (meta.isNotEmpty) 'meta': meta,
     };
 
@@ -264,7 +269,9 @@ WHERE app_type = ?
     if (bytes == null || bytes.isEmpty) return '';
 
     Database? db;
-    final tempDir = await Directory.systemTemp.createTemp('cc-switch-claude-current-');
+    final tempDir = await Directory.systemTemp.createTemp(
+      'cc-switch-claude-current-',
+    );
     try {
       final tempFile = File(ctx.join(tempDir.path, 'cc-switch.db'));
       await tempFile.writeAsBytes(bytes);

@@ -21,9 +21,8 @@ class _WatchableFs extends InMemoryFilesystem implements FsWatcher {
   var closeCount = 0;
   var watchCount = 0;
 
-  void emit(FsChangeType type, String path) => _controller?.add(
-    FsChangeEvent(path: path, type: type),
-  );
+  void emit(FsChangeType type, String path) =>
+      _controller?.add(FsChangeEvent(path: path, type: type));
 
   Stream<FsChangeEvent> get watchStream => _controller!.stream;
 
@@ -214,8 +213,11 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 60));
       expect(batches, hasLength(1));
       expect(batches.single.changedDirs, isEmpty);
-      expect(batches.single.structural, isTrue,
-          reason: 'poke 语义未知 → 视为结构变更（消费方全量刷新）');
+      expect(
+        batches.single.structural,
+        isTrue,
+        reason: 'poke 语义未知 → 视为结构变更（消费方全量刷新）',
+      );
     });
 
     test('ignores churn inside noisy directories', () async {

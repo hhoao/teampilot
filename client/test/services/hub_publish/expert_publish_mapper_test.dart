@@ -98,7 +98,10 @@ void main() {
           id: 'mcp-fs',
           name: 'Filesystem',
           description: 'fs',
-          server: {'command': 'npx', 'args': ['mcp-fs']},
+          server: {
+            'command': 'npx',
+            'args': ['mcp-fs'],
+          },
         ),
       ],
     );

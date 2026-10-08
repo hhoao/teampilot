@@ -20,8 +20,7 @@ class LaunchConfigDocument {
       version: (json['version'] as num?)?.toInt() ?? 1,
       configurations: [
         for (final item in json['configurations'] as List? ?? const [])
-          if (item is Map<String, Object?>)
-            LaunchConfiguration.fromJson(item),
+          if (item is Map<String, Object?>) LaunchConfiguration.fromJson(item),
       ],
       compounds: [
         for (final item in json['compounds'] as List? ?? const [])
@@ -49,9 +48,7 @@ class LaunchConfigDocument {
         usedIds: usedIds,
       );
       usedIds.add(id);
-      normalizedConfigs.add(
-        config.id == id ? config : config.copyWith(id: id),
-      );
+      normalizedConfigs.add(config.id == id ? config : config.copyWith(id: id));
     }
 
     final normalizedCompounds = <LaunchCompound>[];
@@ -84,8 +81,11 @@ class LaunchConfigDocument {
           listEquals(compounds, other.compounds);
 
   @override
-  int get hashCode =>
-      Object.hash(version, Object.hashAll(configurations), Object.hashAll(compounds));
+  int get hashCode => Object.hash(
+    version,
+    Object.hashAll(configurations),
+    Object.hashAll(compounds),
+  );
 }
 
 /// A compound launch that starts multiple configurations in parallel.

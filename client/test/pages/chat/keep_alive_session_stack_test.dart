@@ -16,7 +16,10 @@ void main() {
             return KeepAliveSessionStack(
               sessionIds: const ['a', 'b'],
               activeSessionId: active,
-              hosts: const [_ProbeHost(id: 'a'), _ProbeHost(id: 'b')],
+              hosts: const [
+                _ProbeHost(id: 'a'),
+                _ProbeHost(id: 'b'),
+              ],
             );
           },
         ),

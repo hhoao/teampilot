@@ -8,9 +8,9 @@ void main() {
     final stream = SeatEventStream();
     const target = RuntimeSeatKey(sessionId: 'session', memberId: 'a');
     final sequences = <int>[];
-    final subscription = stream.eventsFor(target).listen(
-      (event) => sequences.add(event.sequence),
-    );
+    final subscription = stream
+        .eventsFor(target)
+        .listen((event) => sequences.add(event.sequence));
 
     stream.publish(_event(memberId: 'b', sequence: 1));
     stream.publish(_event(memberId: 'a', sequence: 1));
@@ -23,11 +23,13 @@ void main() {
   });
 }
 
-RuntimeEventEnvelope _event({required String memberId, required int sequence}) =>
-    RuntimeEventEnvelope(
-      seat: RuntimeSeatKey(sessionId: 'session', memberId: memberId),
-      cli: CliTool.codex,
-      kind: RuntimeEventKind.promptSubmitted,
-      occurredAt: DateTime.utc(2026),
-      sequence: sequence,
-    );
+RuntimeEventEnvelope _event({
+  required String memberId,
+  required int sequence,
+}) => RuntimeEventEnvelope(
+  seat: RuntimeSeatKey(sessionId: 'session', memberId: memberId),
+  cli: CliTool.codex,
+  kind: RuntimeEventKind.promptSubmitted,
+  occurredAt: DateTime.utc(2026),
+  sequence: sequence,
+);

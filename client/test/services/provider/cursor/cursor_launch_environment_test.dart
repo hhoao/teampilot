@@ -57,8 +57,24 @@ void main() {
         homeRoot: r'C:\tp\providers\cursor\work\home',
         useWslPaths: true,
       );
-      expect(env['XDG_CONFIG_HOME'], '/mnt/c/tp/providers/cursor/work/home/.config');
+      expect(
+        env['XDG_CONFIG_HOME'],
+        '/mnt/c/tp/providers/cursor/work/home/.config',
+      );
       expect(env.containsKey('APPDATA'), isFalse);
+    });
+
+    test('forMixed pins CURSOR_CONFIG_DIR when cursorConfigDir is given', () {
+      const homeRoot = '/fake/home';
+      const cursorConfigDir = '/fake/home/.cursor';
+
+      final env = CursorLaunchEnvironment.forMixed(
+        homeRoot: homeRoot,
+        useWslPaths: false,
+        cursorConfigDir: cursorConfigDir,
+      );
+
+      expect(env['CURSOR_CONFIG_DIR'], cursorConfigDir);
     });
 
     test(

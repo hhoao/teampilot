@@ -31,9 +31,8 @@ class _FakeSurface extends FloatingSurface {
       FloatingTab(id: 'fake:$payload', surfaceId: id, title: 'fake');
 }
 
-FloatingSurfaceRegistry _registry() => FloatingSurfaceRegistry([
-  _FakeSurface('terminal'),
-]);
+FloatingSurfaceRegistry _registry() =>
+    FloatingSurfaceRegistry([_FakeSurface('terminal')]);
 
 void main() {
   test('closeAllFloatingTabs keeps pinned tabs', () async {
@@ -52,41 +51,42 @@ void main() {
     // Whole-surface read: the bulk closes act on the merged floating strip,
     // so the assertion reads it too (a focused-group read would only pin the
     // sole-group case by accident).
-    expect(
-      workbench.mergedFloatingStrip('ws').order,
-      [WorkbenchTabId.shell('e2')],
-    );
-  });
-
-  test('closeOtherFloatingTabs and closeFloatingTabsToTheRight keep pinned',
-      () async {
-    final workbench = WorkbenchCubit();
-    addTearDown(workbench.close);
-    workbench.openFloating('ws', WorkbenchTabId.shell('e1'));
-    workbench.openFloating('ws', WorkbenchTabId.shell('e2'));
-    workbench.openFloating('ws', WorkbenchTabId.shell('e3'));
-    workbench.pin('ws', WorkbenchTabId.shell('e3'));
-
-    await closeOtherFloatingTabs(
-      workbench: workbench,
-      workspaceId: 'ws',
-      registry: _registry(),
-      keepId: WorkbenchTabId.shell('e1'),
-    );
     expect(workbench.mergedFloatingStrip('ws').order, [
-      WorkbenchTabId.shell('e1'),
-      WorkbenchTabId.shell('e3'),
-    ]);
-
-    await closeFloatingTabsToTheRight(
-      workbench: workbench,
-      workspaceId: 'ws',
-      registry: _registry(),
-      fromId: WorkbenchTabId.shell('e1'),
-    );
-    expect(workbench.mergedFloatingStrip('ws').order, [
-      WorkbenchTabId.shell('e1'),
-      WorkbenchTabId.shell('e3'),
+      WorkbenchTabId.shell('e2'),
     ]);
   });
+
+  test(
+    'closeOtherFloatingTabs and closeFloatingTabsToTheRight keep pinned',
+    () async {
+      final workbench = WorkbenchCubit();
+      addTearDown(workbench.close);
+      workbench.openFloating('ws', WorkbenchTabId.shell('e1'));
+      workbench.openFloating('ws', WorkbenchTabId.shell('e2'));
+      workbench.openFloating('ws', WorkbenchTabId.shell('e3'));
+      workbench.pin('ws', WorkbenchTabId.shell('e3'));
+
+      await closeOtherFloatingTabs(
+        workbench: workbench,
+        workspaceId: 'ws',
+        registry: _registry(),
+        keepId: WorkbenchTabId.shell('e1'),
+      );
+      expect(workbench.mergedFloatingStrip('ws').order, [
+        WorkbenchTabId.shell('e1'),
+        WorkbenchTabId.shell('e3'),
+      ]);
+
+      await closeFloatingTabsToTheRight(
+        workbench: workbench,
+        workspaceId: 'ws',
+        registry: _registry(),
+        fromId: WorkbenchTabId.shell('e1'),
+      );
+      expect(workbench.mergedFloatingStrip('ws').order, [
+        WorkbenchTabId.shell('e1'),
+        WorkbenchTabId.shell('e3'),
+      ]);
+    },
+  );
 }

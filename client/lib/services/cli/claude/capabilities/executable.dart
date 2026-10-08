@@ -111,8 +111,7 @@ final class ClaudeExecutableCapability extends NpmInstallerCapability
       if (smoke.exitCode == 0) {
         return CliInstallResult(
           success: true,
-          message:
-              '$displayName already present on ${profile.hostIdentifier}.',
+          message: '$displayName already present on ${profile.hostIdentifier}.',
           executablePath: existingPath,
         );
       }

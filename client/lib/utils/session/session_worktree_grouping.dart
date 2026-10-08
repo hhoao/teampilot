@@ -28,9 +28,10 @@ class WorktreeGroup {
 }
 
 /// Bucket [sessions] under the worktree whose normalized path is the longest
-/// prefix of the session's primaryPath. Unmatched sessions go to a trailing
-/// orphan group (only present when non-empty). Main worktree group is first;
-/// empty worktree groups are kept so the sidebar can offer "new conversation".
+/// prefix of the first matching session folder. Unmatched sessions go to a
+/// trailing orphan group (only present when non-empty). Main worktree group is
+/// first; empty worktree groups are kept so the sidebar can offer "new
+/// conversation".
 List<WorktreeGroup> groupSessionsByWorktree({
   required List<GitWorktree> worktrees,
   required List<AppSession> sessions,
@@ -47,13 +48,21 @@ List<WorktreeGroup> groupSessionsByWorktree({
   final orphans = <AppSession>[];
 
   for (final session in sessions) {
-    final bestPath = worktreePathForSessionPath(
-      session.firstFolderPath,
+    final bestPath = _worktreePathForSession(
+      session,
       ordered,
       usesPosixPaths: usesPosixPaths,
     );
     if (bestPath == null) {
-      orphans.add(session);
+      if (_hasNoFolderMetadata(session) && ordered.isNotEmpty) {
+        final main = ordered.firstWhere(
+          (worktree) => worktree.isMainWorktree,
+          orElse: () => ordered.first,
+        );
+        buckets[main.path]!.add(session);
+      } else {
+        orphans.add(session);
+      }
     } else {
       buckets[bestPath]!.add(session);
     }
@@ -68,6 +77,27 @@ List<WorktreeGroup> groupSessionsByWorktree({
   }
   return groups;
 }
+
+String? _worktreePathForSession(
+  AppSession session,
+  List<GitWorktree> worktrees, {
+  required bool usesPosixPaths,
+}) {
+  for (final folder in session.folders) {
+    final path = folder.path.trim();
+    if (path.isEmpty) continue;
+    final matched = worktreePathForSessionPath(
+      path,
+      worktrees,
+      usesPosixPaths: usesPosixPaths,
+    );
+    if (matched != null) return matched;
+  }
+  return null;
+}
+
+bool _hasNoFolderMetadata(AppSession session) =>
+    session.folders.every((folder) => folder.path.trim().isEmpty);
 
 /// Returns the worktree whose normalized path is the longest prefix of
 /// [sessionPrimaryPath], or null when no worktree contains the path.

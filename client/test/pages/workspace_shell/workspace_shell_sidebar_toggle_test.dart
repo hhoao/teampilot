@@ -21,84 +21,83 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  testWidgets(
-    'sidebar toggle uses effectiveOpen with narrowLeftSuppressed',
-    (tester) async {
-      final layout = LayoutCubit();
-      final shortcuts = ShortcutCubit(
-        storage: testHomeStorage,
-        repository: KeybindingRepository(storage: testHomeStorage),
-      );
-      addTearDown(layout.close);
-      addTearDown(shortcuts.close);
-      await layout.setSidebarVisible(true);
-      layout.setNarrowLeftSuppressed(true);
-      await tester.runAsync(() => shortcuts.load());
+  testWidgets('sidebar toggle uses effectiveOpen with narrowLeftSuppressed', (
+    tester,
+  ) async {
+    final layout = LayoutCubit();
+    final shortcuts = ShortcutCubit(
+      storage: testHomeStorage,
+      repository: KeybindingRepository(storage: testHomeStorage),
+    );
+    addTearDown(layout.close);
+    addTearDown(shortcuts.close);
+    await layout.setSidebarVisible(true);
+    layout.setNarrowLeftSuppressed(true);
+    await tester.runAsync(() => shortcuts.load());
 
-      final theme = ThemeData(useMaterial3: true);
+    final theme = ThemeData(useMaterial3: true);
 
-      await tester.pumpWidget(
-        TpTheme(
-          data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
-          child: MultiBlocProvider(
-            providers: [
-              BlocProvider<LayoutCubit>.value(value: layout),
-              BlocProvider<ShortcutCubit>.value(value: shortcuts),
-            ],
-            child: MaterialApp(
-              localizationsDelegates: AppLocalizations.localizationsDelegates,
-              supportedLocales: AppLocalizations.supportedLocales,
-              theme: theme,
-              home: const Scaffold(
-                body: WorkspaceShellSidebarVisibilityToggle(),
-              ),
-            ),
+    await tester.pumpWidget(
+      TpTheme(
+        data: TpThemeData.fromColorScheme(theme.colorScheme, scale: 1.0),
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider<LayoutCubit>.value(value: layout),
+            BlocProvider<ShortcutCubit>.value(value: shortcuts),
+          ],
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            theme: theme,
+            home: const Scaffold(body: WorkspaceShellSidebarVisibilityToggle()),
           ),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      final expectedChord = formatKeyChord(
-        KeyChord(key: 'b', mods: [KeyChordMod.mod]),
-        isMacOS: defaultIsMacOS(),
-      );
-      final l10n = AppLocalizations.of(
-        tester.element(find.byKey(AppKeys.sidebarVisibilityButton)),
-      );
-      expect(
-        tester
-            .widget<TpIconButton>(find.byKey(AppKeys.sidebarVisibilityButton))
-            .tooltip,
-        '${l10n.sidebarPanelVisible} ($expectedChord)',
-      );
+    final expectedChord = formatKeyChord(
+      KeyChord(key: 'b', mods: [KeyChordMod.mod]),
+      isMacOS: defaultIsMacOS(),
+    );
+    final l10n = AppLocalizations.of(
+      tester.element(find.byKey(AppKeys.sidebarVisibilityButton)),
+    );
+    expect(
+      tester
+          .widget<TpIconButton>(find.byKey(AppKeys.sidebarVisibilityButton))
+          .tooltip,
+      '${l10n.sidebarPanelVisible} ($expectedChord)',
+    );
 
-      final button = tester.widget<TpIconButton>(
-        find.byKey(AppKeys.sidebarVisibilityButton),
-      );
-      // 1ca3ceefc dropped the selected border in favor of icon-color-only
-      // active state: closed renders onSurfaceVariant, open renders primary.
-      expect(button.color, theme.colorScheme.onSurfaceVariant);
+    final button = tester.widget<TpIconButton>(
+      find.byKey(AppKeys.sidebarVisibilityButton),
+    );
+    // 1ca3ceefc dropped the selected border in favor of icon-color-only
+    // active state: closed renders onSurfaceVariant, open renders primary.
+    expect(button.color, theme.colorScheme.onSurfaceVariant);
 
-      await tester.tap(find.byKey(AppKeys.sidebarVisibilityButton));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byKey(AppKeys.sidebarVisibilityButton));
+    await tester.pumpAndSettle();
 
-      expect(layout.state.narrowLeftSuppressed, isFalse);
-      expect(layout.state.preferences.sidebarVisible, isTrue);
+    expect(layout.state.narrowLeftSuppressed, isFalse);
+    expect(layout.state.preferences.sidebarVisible, isTrue);
 
-      final buttonAfterClear = tester.widget<TpIconButton>(
-        find.byKey(AppKeys.sidebarVisibilityButton),
-      );
-      expect(buttonAfterClear.color, theme.colorScheme.primary);
+    final buttonAfterClear = tester.widget<TpIconButton>(
+      find.byKey(AppKeys.sidebarVisibilityButton),
+    );
+    expect(buttonAfterClear.color, theme.colorScheme.primary);
 
-      await tester.tap(find.byKey(AppKeys.sidebarVisibilityButton));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byKey(AppKeys.sidebarVisibilityButton));
+    await tester.pumpAndSettle();
 
-      expect(layout.state.preferences.sidebarVisible, isFalse);
-      expect(layout.state.narrowLeftSuppressed, isFalse);
-      expect(
-        tester.widget<TpIconButton>(find.byKey(AppKeys.sidebarVisibilityButton)).color,
-        theme.colorScheme.onSurfaceVariant,
-      );
-    },
-  );
+    expect(layout.state.preferences.sidebarVisible, isFalse);
+    expect(layout.state.narrowLeftSuppressed, isFalse);
+    expect(
+      tester
+          .widget<TpIconButton>(find.byKey(AppKeys.sidebarVisibilityButton))
+          .color,
+      theme.colorScheme.onSurfaceVariant,
+    );
+  });
 }

@@ -33,6 +33,7 @@ Widget _harness({
   SessionHistoryLiveChrome liveChrome = SessionHistoryLiveChrome.none,
   Future<void> Function()? onLoadOlder,
   ValueNotifier<String?>? visibleOwnerId,
+  bool? mobilePerformanceMode,
 }) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -50,6 +51,7 @@ Widget _harness({
           liveChrome: liveChrome,
           onLoadOlder: onLoadOlder,
           visibleOwnerId: visibleOwnerId,
+          mobilePerformanceMode: mobilePerformanceMode,
         ),
       ),
     ),
@@ -71,6 +73,42 @@ void main() {
       expect(find.byType(VirtualThreadViewport), findsOneWidget);
     },
   );
+
+  testWidgets('mobile history does not fill the loaded data window', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(_soloUserMessages(40));
+
+    await tester.pumpWidget(
+      _harness(runtime: store, mobilePerformanceMode: true),
+    );
+    await pumpUntilSettled(tester);
+
+    final viewport = tester.widget<VirtualThreadViewport>(
+      find.byType(VirtualThreadViewport),
+    );
+    expect(viewport.fillDataWindow, isFalse);
+    expect(viewport.retainMountedTurns, isFalse);
+  });
+
+  testWidgets('desktop history keeps the existing residency policy', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(_soloUserMessages(40));
+
+    await tester.pumpWidget(
+      _harness(runtime: store, mobilePerformanceMode: false),
+    );
+    await pumpUntilSettled(tester);
+
+    final viewport = tester.widget<VirtualThreadViewport>(
+      find.byType(VirtualThreadViewport),
+    );
+    expect(viewport.fillDataWindow, isTrue);
+    expect(viewport.retainMountedTurns, isTrue);
+  });
 
   // SelectionArea must sit *inside* the scroll content. As a scroll
   // ancestor, Scrollable's _ScrollableSelectionContainerDelegate re-dispatches

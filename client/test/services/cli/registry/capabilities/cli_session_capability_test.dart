@@ -3,7 +3,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_session_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/session_lifecycle.dart';
-import 'package:teampilot/services/launch/work_plane_script_runner.dart';
+import 'package:teampilot/services/chat/launch/staging/manifest/work_plane_script_runner.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 
 import '../../../../support/in_memory_filesystem.dart';
@@ -104,4 +104,12 @@ final class _RecordingRunner implements WorkPlaneScriptRunner {
   }) async {
     onRun(script);
   }
+
+  @override
+  Future<void> runStdinCommand({
+    required String command,
+    required List<int> stdin,
+    required String operation,
+    Duration? timeout,
+  }) async {}
 }

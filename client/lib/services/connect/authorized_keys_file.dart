@@ -1,79 +1,105 @@
-typedef AuthorizedKeysRead = Future<String?> Function(String path);
-typedef AuthorizedKeysWrite = Future<void> Function(String path, String value);
-typedef AuthorizedKeysChmod =
-    Future<void> Function(String path, {required int mode});
+import 'dart:convert';
+
+import '../io/filesystem.dart';
+
+typedef AuthorizedKeysChmod = Future<void> Function(String path);
 
 class AuthorizedKeysFile {
   AuthorizedKeysFile({
-    required this.path,
-    required AuthorizedKeysRead read,
-    required AuthorizedKeysWrite write,
-    required AuthorizedKeysChmod chmod,
-  }) : _read = read,
-       _write = write,
-       _chmod = chmod;
+    required this.fs,
+    required this.homePath,
+    AuthorizedKeysChmod? chmod600,
+  }) : _chmod600 = chmod600;
 
-  final String path;
-  final AuthorizedKeysRead _read;
-  final AuthorizedKeysWrite _write;
-  final AuthorizedKeysChmod _chmod;
+  final Filesystem fs;
+  final String homePath;
+  final AuthorizedKeysChmod? _chmod600;
 
-  Future<void> upsertDevice({
-    required String publicKey,
-    required String deviceId,
-    required String deviceName,
-  }) async {
-    _validateDeviceId(deviceId);
-    final lines = await _readLines();
-    lines.removeWhere((line) => _deviceIdFor(line) == deviceId);
-    final name = deviceName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
-    lines.add('$publicKey teampilot-pair device=$deviceId name=$name');
-    await _writeLines(lines);
-  }
+  String get path => '$homePath/.ssh/authorized_keys';
 
-  Future<void> revokeDevice(String deviceId) async {
-    _validateDeviceId(deviceId);
-    final lines = await _readLines();
-    lines.removeWhere((line) => _deviceIdFor(line) == deviceId);
-    await _writeLines(lines);
-  }
+  Future<void> authorize(String publicKey) async {
+    await fs.ensureDir('$homePath/.ssh');
+    final trimmed = publicKey.trim();
+    final targetBlob = _requirePublicKeyBlob(trimmed);
 
-  Future<List<({String deviceId, String name})>> listDevices() async {
-    final devices = <({String deviceId, String name})>[];
-    for (final line in await _readLines()) {
-      final match = RegExp(
-        r'\bteampilot-pair\s+device=([^\s]+)\s+name=([^\s]+)',
-      ).firstMatch(line);
-      if (match != null) {
-        devices.add((deviceId: match.group(1)!, name: match.group(2)!));
+    var content = await fs.readString(path) ?? '';
+    for (final line in content.split('\n')) {
+      if (line.isEmpty) continue;
+      final blob = _decodePublicKeyBlob(line);
+      if (blob != null && _bytesEqual(blob, targetBlob)) {
+        return;
       }
     }
-    return devices;
-  }
 
-  Future<List<String>> _readLines() async {
-    final contents = await _read(path) ?? '';
-    return contents
-        .split('\n')
-        .where((line) => line.trim().isNotEmpty)
-        .toList(growable: true);
-  }
-
-  Future<void> _writeLines(List<String> lines) async {
-    final contents = lines.isEmpty ? '' : '${lines.join('\n')}\n';
-    await _write(path, contents);
-    await _chmod(path, mode: 384);
-  }
-
-  String? _deviceIdFor(String line) {
-    return RegExp(
-      r'\bteampilot-pair\s+device=([^\s]+)',
-    ).firstMatch(line)?.group(1);
-  }
-
-  void _validateDeviceId(String value) {
-    if (!RegExp(r'^[A-Za-z0-9_-]{1,128}$').hasMatch(value)) {
-      throw ArgumentError.value(value, 'deviceId', 'must be a safe token');
+    if (content.isNotEmpty && !content.endsWith('\n')) {
+      content += '\n';
     }
+    content += '$trimmed\n';
+    await fs.atomicWrite(path, content);
+    await _chmod600?.call(path);
   }
+
+  Future<void> revoke(String publicKey) async {
+    final trimmed = publicKey.trim();
+    final targetBlob = _decodePublicKeyBlob(trimmed);
+    if (targetBlob == null) return;
+
+    final content = await fs.readString(path);
+    if (content == null) return;
+
+    final rawLines = content.split('\n');
+    final kept = <String>[];
+    var changed = false;
+    for (var index = 0; index < rawLines.length; index++) {
+      final line = rawLines[index];
+      if (index == rawLines.length - 1 && line.isEmpty) continue;
+
+      final blob = _decodePublicKeyBlob(line);
+      if (blob != null && _bytesEqual(blob, targetBlob)) {
+        changed = true;
+        continue;
+      }
+      kept.add(line);
+    }
+
+    if (!changed) return;
+
+    final newContent = kept.isEmpty ? '' : '${kept.join('\n')}\n';
+    await fs.atomicWrite(path, newContent);
+    await _chmod600?.call(path);
+  }
+}
+
+List<int> _requirePublicKeyBlob(String publicKeyLine) {
+  if (publicKeyLine.contains('\n') || publicKeyLine.contains('\r')) {
+    throw const FormatException('authorized_keys entry must be a single line');
+  }
+  final blob = _decodePublicKeyBlob(publicKeyLine);
+  if (blob == null) {
+    throw const FormatException(
+      'authorized_keys entry must be "<type> <base64> [comment]"',
+    );
+  }
+  return blob;
+}
+
+List<int>? _decodePublicKeyBlob(String publicKeyLine) {
+  final trimmed = publicKeyLine.trim();
+  if (trimmed.isEmpty || trimmed.startsWith('#')) return null;
+  final fields = trimmed.split(RegExp(r'\s+'));
+  if (fields.length < 2) return null;
+  try {
+    return base64.decode(base64.normalize(fields[1]));
+  } on FormatException {
+    return null;
+  }
+}
+
+bool _bytesEqual(List<int> left, List<int> right) {
+  if (left.length != right.length) return false;
+  var difference = 0;
+  for (var index = 0; index < left.length; index++) {
+    difference |= left[index] ^ right[index];
+  }
+  return difference == 0;
 }

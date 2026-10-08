@@ -38,7 +38,9 @@ class WorkspaceIconSettingsRow extends StatelessWidget {
                 width: 168,
                 child: Text(
                   l10n.workspaceIcon,
-                  style: TpTextStyles.of(context).mdMediumColored(cs.onSurfaceVariant),
+                  style: TpTextStyles.of(
+                    context,
+                  ).mdMediumColored(cs.onSurfaceVariant),
                 ),
               ),
               WorkspaceIcon.fromWorkspace(

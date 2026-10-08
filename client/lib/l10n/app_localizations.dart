@@ -344,6 +344,24 @@ abstract class AppLocalizations {
   /// **'Show the source control panel for the current repository.'**
   String get visibilityGitHint;
 
+  /// No description provided for @workspaceSidebarGroupsView.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups'**
+  String get workspaceSidebarGroupsView;
+
+  /// No description provided for @workspaceSidebarProjectTreeView.
+  ///
+  /// In en, this message translates to:
+  /// **'Project tree'**
+  String get workspaceSidebarProjectTreeView;
+
+  /// No description provided for @projectTreeOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get projectTreeOther;
+
   /// No description provided for @extensionsSettingsTitle.
   ///
   /// In en, this message translates to:
@@ -1729,6 +1747,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Session count'**
   String get homeWorkspaceWorkspaceSortSessionCountDesc;
+
+  /// No description provided for @homeWorkspaceWorkspaceFilterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter workspaces'**
+  String get homeWorkspaceWorkspaceFilterHint;
+
+  /// No description provided for @homeWorkspaceWorkspaceFilterEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No workspaces match your filter'**
+  String get homeWorkspaceWorkspaceFilterEmpty;
 
   /// No description provided for @homeWorkspaceComingSoon.
   ///
@@ -3536,30 +3566,6 @@ abstract class AppLocalizations {
   /// **'Custom launch'**
   String get workspaceChatLandingCustomLaunchTitle;
 
-  /// No description provided for @workspaceChatLandingFullAccessPermissions.
-  ///
-  /// In en, this message translates to:
-  /// **'Full access permissions'**
-  String get workspaceChatLandingFullAccessPermissions;
-
-  /// No description provided for @workspaceChatLandingAskReadOnlyPermissions.
-  ///
-  /// In en, this message translates to:
-  /// **'Ask · read-only · trusted hooks'**
-  String get workspaceChatLandingAskReadOnlyPermissions;
-
-  /// No description provided for @workspaceChatLandingAutoApproveWorkspaceWritePermissions.
-  ///
-  /// In en, this message translates to:
-  /// **'Auto-approve · workspace write · trusted hooks'**
-  String get workspaceChatLandingAutoApproveWorkspaceWritePermissions;
-
-  /// No description provided for @workspaceChatLandingCustomPermissions.
-  ///
-  /// In en, this message translates to:
-  /// **'Custom security policy'**
-  String get workspaceChatLandingCustomPermissions;
-
   /// No description provided for @workspaceChatLandingSkills.
   ///
   /// In en, this message translates to:
@@ -3571,12 +3577,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Connect apps'**
   String get workspaceChatLandingConnectApps;
-
-  /// No description provided for @workspaceChatLandingDefaultPermissions.
-  ///
-  /// In en, this message translates to:
-  /// **'Default permissions'**
-  String get workspaceChatLandingDefaultPermissions;
 
   /// No description provided for @workspaceChatLandingAttach.
   ///
@@ -5570,18 +5570,6 @@ abstract class AppLocalizations {
   /// **'When off (default), sending from Chat (new conversation or continue) stays on the Chat view while the terminal runs in the background. When on, switch to the Terminal after send.'**
   String get chatSubmitSwitchesToTerminalDescription;
 
-  /// No description provided for @simpleModeDefaultFullAccessTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Simple mode default: full access'**
-  String get simpleModeDefaultFullAccessTitle;
-
-  /// No description provided for @simpleModeDefaultFullAccessDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'When enabled (default), new Simple-mode compose landing starts with full access permissions. Workspace chip choices still override and persist per workspace.'**
-  String get simpleModeDefaultFullAccessDescription;
-
   /// No description provided for @continueSwitchRestartTitle.
   ///
   /// In en, this message translates to:
@@ -5725,6 +5713,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Keep skip-permissions when Claude runs as root.'**
   String get rootSandboxEnvOptInSubtitle;
+
+  /// No description provided for @injectSessionSshMcpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Inject Session SSH MCP'**
+  String get injectSessionSshMcpTitle;
+
+  /// No description provided for @injectSessionSshMcpSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Local and remote seats can run commands and transfer files on this workspace\'s SSH machines via MCP. Reconnect sessions after changing.'**
+  String get injectSessionSshMcpSubtitle;
 
   /// No description provided for @rootSandboxEnvConfirmTitle.
   ///
@@ -7316,6 +7316,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Details'**
   String get skillsCardDetails;
+
+  /// No description provided for @skillsCardView.
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get skillsCardView;
+
+  /// No description provided for @skillsDetailMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No SKILL.md found for this skill.'**
+  String get skillsDetailMissing;
+
+  /// No description provided for @skillsDetailReadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read SKILL.md.'**
+  String get skillsDetailReadError;
 
   /// No description provided for @skillsCardInstalled.
   ///
@@ -9272,6 +9290,72 @@ abstract class AppLocalizations {
   /// **'{count} installed'**
   String mcpInstalledCount(int count);
 
+  /// No description provided for @mcpProbeChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get mcpProbeChecking;
+
+  /// No description provided for @mcpProbeOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get mcpProbeOffline;
+
+  /// No description provided for @mcpProbeNeedsAuth.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs authorization'**
+  String get mcpProbeNeedsAuth;
+
+  /// No description provided for @mcpProbeToolCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} tools'**
+  String mcpProbeToolCount(int count);
+
+  /// No description provided for @mcpToolsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'This server has no tools.'**
+  String get mcpToolsEmpty;
+
+  /// No description provided for @mcpToolsReload.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload'**
+  String get mcpToolsReload;
+
+  /// No description provided for @mcpToolsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Tools'**
+  String get mcpToolsSection;
+
+  /// No description provided for @mcpToolsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get mcpToolsDone;
+
+  /// No description provided for @mcpProbeRefreshAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh status'**
+  String get mcpProbeRefreshAll;
+
+  /// No description provided for @mcpProbeOfflineHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach this MCP server.'**
+  String get mcpProbeOfflineHint;
+
+  /// No description provided for @mcpToolsDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} tools'**
+  String mcpToolsDialogTitle(String name);
+
   /// No description provided for @mcpNoInstalled.
   ///
   /// In en, this message translates to:
@@ -10123,18 +10207,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Agent preset and extra CLI flags for this member.'**
   String get workspaceAdvancedSettingsSubtitle;
-
-  /// No description provided for @memberDangerouslySkipPermissions.
-  ///
-  /// In en, this message translates to:
-  /// **'Skip all permission checks'**
-  String get memberDangerouslySkipPermissions;
-
-  /// No description provided for @memberDangerouslySkipPermissionsHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Only for isolated / no-network sandboxes. Extremely risky otherwise.'**
-  String get memberDangerouslySkipPermissionsHint;
 
   /// No description provided for @prompt.
   ///
@@ -12493,30 +12565,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Worktree'**
   String get automationsLaunchWorktree;
-
-  /// Session permission level for launch-prompt automations
-  ///
-  /// In en, this message translates to:
-  /// **'Permissions'**
-  String get automationsPermissions;
-
-  /// No description provided for @automationsPermissionsAskReadOnly.
-  ///
-  /// In en, this message translates to:
-  /// **'Ask · read-only · trusted hooks'**
-  String get automationsPermissionsAskReadOnly;
-
-  /// No description provided for @automationsPermissionsAutoApproveWorkspaceWrite.
-  ///
-  /// In en, this message translates to:
-  /// **'Auto-approve · workspace write · trusted hooks'**
-  String get automationsPermissionsAutoApproveWorkspaceWrite;
-
-  /// No description provided for @automationsPermissionsCustom.
-  ///
-  /// In en, this message translates to:
-  /// **'Custom security policy'**
-  String get automationsPermissionsCustom;
 
   /// Deprecated — use automationsLaunchMode
   ///
@@ -15464,6 +15512,24 @@ abstract class AppLocalizations {
   /// **'Branches & tags'**
   String get gitGraphBranchesTags;
 
+  /// No description provided for @gitGraphRefsFilterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter branches and tags'**
+  String get gitGraphRefsFilterHint;
+
+  /// No description provided for @gitGraphRefsFilterEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get gitGraphRefsFilterEmpty;
+
+  /// No description provided for @gitGraphCompareFilterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter branches, tags, and commits'**
+  String get gitGraphCompareFilterHint;
+
   /// No description provided for @gitGraphLocalBranches.
   ///
   /// In en, this message translates to:
@@ -15481,6 +15547,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tags'**
   String get gitGraphTags;
+
+  /// No description provided for @gitGraphCommits.
+  ///
+  /// In en, this message translates to:
+  /// **'Commits'**
+  String get gitGraphCommits;
 
   /// No description provided for @gitGraphHashSearchEmptyHint.
   ///
@@ -15554,12 +15626,6 @@ abstract class AppLocalizations {
   /// **'Hide column header'**
   String get gitGraphHideColumnHeader;
 
-  /// No description provided for @gitGraphShowDiffWithWorkingTree.
-  ///
-  /// In en, this message translates to:
-  /// **'Show Diff with Working Tree'**
-  String get gitGraphShowDiffWithWorkingTree;
-
   /// No description provided for @gitGraphCompareWith.
   ///
   /// In en, this message translates to:
@@ -15623,8 +15689,68 @@ abstract class AppLocalizations {
   /// No description provided for @connectSshdDown.
   ///
   /// In en, this message translates to:
-  /// **'OpenSSH is not listening. Enable Remote Login or start sshd before pairing.'**
+  /// **'The embedded connection server failed to start. Retry or restart the app.'**
   String get connectSshdDown;
+
+  /// No description provided for @connectSshBackendLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH server'**
+  String get connectSshBackendLabel;
+
+  /// No description provided for @connectSshBackendEmbedded.
+  ///
+  /// In en, this message translates to:
+  /// **'Embedded'**
+  String get connectSshBackendEmbedded;
+
+  /// No description provided for @connectSshBackendSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System OpenSSH (22)'**
+  String get connectSshBackendSystem;
+
+  /// No description provided for @connectSshBackendHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare the built-in server with this computer\'s OpenSSH. Switching requires re-scanning the pairing code.'**
+  String get connectSshBackendHelp;
+
+  /// No description provided for @connectSshBackendRePair.
+  ///
+  /// In en, this message translates to:
+  /// **'Paired phones must re-scan this computer\'s pairing code.'**
+  String get connectSshBackendRePair;
+
+  /// No description provided for @connectSystemSshdDownLinux.
+  ///
+  /// In en, this message translates to:
+  /// **'No SSH server is listening on port 22. Start the OpenSSH sshd service, then retry.'**
+  String get connectSystemSshdDownLinux;
+
+  /// No description provided for @connectSystemSshdDownMacos.
+  ///
+  /// In en, this message translates to:
+  /// **'No SSH server is listening on port 22. Enable Remote Login in Sharing settings, then retry.'**
+  String get connectSystemSshdDownMacos;
+
+  /// No description provided for @connectRevokeSystemHint.
+  ///
+  /// In en, this message translates to:
+  /// **'New logins are blocked. Already-open OpenSSH sessions may stay connected until they disconnect.'**
+  String get connectRevokeSystemHint;
+
+  /// No description provided for @connectSshdRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get connectSshdRetry;
+
+  /// No description provided for @connectRepairHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The desktop has been upgraded — re-scan its pairing code to reconnect.'**
+  String get connectRepairHint;
 
   /// No description provided for @connectScanHint.
   ///
@@ -15739,12 +15865,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap the QR code to enlarge it for easier scanning.'**
   String get connectQrEnlargeHint;
-
-  /// No description provided for @connectCheckAgain.
-  ///
-  /// In en, this message translates to:
-  /// **'Check again'**
-  String get connectCheckAgain;
 
   /// No description provided for @connectCopyLink.
   ///
@@ -15901,6 +16021,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Generator model'**
   String get teamGenerateGeneratorModel;
+
+  /// No description provided for @teamGenerateMinimumMemberCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum team members'**
+  String get teamGenerateMinimumMemberCount;
+
+  /// No description provided for @teamGenerateMinimumMemberCountHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The generated team will include at least this many distinct roles.'**
+  String get teamGenerateMinimumMemberCountHint;
+
+  /// No description provided for @teamGenerateMinimumMemberCountInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum must be at least 3.'**
+  String get teamGenerateMinimumMemberCountInvalid;
 
   /// No description provided for @teamGenerateTeamMode.
   ///

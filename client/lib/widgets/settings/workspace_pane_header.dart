@@ -22,8 +22,7 @@ class WorkspacePaneHeader extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
     final trimmed = subtitle?.trim();
-    final showSub =
-        showSubtitle && trimmed != null && trimmed.isNotEmpty;
+    final showSub = showSubtitle && trimmed != null && trimmed.isNotEmpty;
 
     final titleBlock = Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -47,24 +47,20 @@ abstract final class CatalogMcpPolicy {
   }
 
   static List<String> claudeAllowEntries(CatalogKindRegistry registry) {
-    return readToolNames(registry)
-        .map((name) => 'mcp__${catalogMcpServerName}__$name')
-        .toList();
+    return readToolNames(
+      registry,
+    ).map((name) => 'mcp__${catalogMcpServerName}__$name').toList();
   }
 
   static List<String> cursorAllowEntries(CatalogKindRegistry registry) {
-    return readToolNames(registry)
-        .map((name) => 'Mcp($catalogMcpServerName:$name)')
-        .toList();
+    return readToolNames(
+      registry,
+    ).map((name) => 'Mcp($catalogMcpServerName:$name)').toList();
   }
 }
 
 class _AdvertisedKind implements CatalogKindModule {
-  const _AdvertisedKind(
-    this.kind,
-    this._tools, {
-    this.supportsCreate = true,
-  });
+  const _AdvertisedKind(this.kind, this._tools, {this.supportsCreate = true});
 
   @override
   final String kind;

@@ -1,0 +1,15 @@
+name: tp_sshd
+description: Pure-Dart SSH server for TeamPilot's embedded desktop server.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  dartssh2:
+    path: ../dartssh2
+
+dev_dependencies:
+  lints: ">=4.0.0 <7.0.0"
+  test: ^1.25.15

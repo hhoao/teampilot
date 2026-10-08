@@ -32,7 +32,9 @@ Future<void> loadFontsFor(ResolvedFonts fonts) async {
     // GoogleFonts.pendingFonts here — that FontLoader key is
     // `Noto Sans SC_regular`, while [buildAppUiTextTheme] applies
     // `fontFamily: Noto Sans SC`, so Android never hits the bundled face.
-    await _loadBundledCatalogEntry(FontCatalog.entry(FontRole.ui, 'notoSansSc'));
+    await _loadBundledCatalogEntry(
+      FontCatalog.entry(FontRole.ui, 'notoSansSc'),
+    );
   }
 
   // Color emoji must be FontLoader-registered; fontconfig name alone is not
@@ -75,10 +77,10 @@ Future<void> _registerFontconfigFamily(String family) async {
   if (family.isEmpty || _loadedFamilies.contains(family)) return;
   if (_fontLoaderSkipFamilies.contains(family)) return;
   try {
-    final result = await Process.run(
-      'fc-match',
-      [family, '--format=%{file}\n%{index}'],
-    );
+    final result = await Process.run('fc-match', [
+      family,
+      '--format=%{file}\n%{index}',
+    ]);
     if (result.exitCode != 0) return;
     final parts = (result.stdout as String? ?? '')
         .split('\n')
@@ -108,11 +110,9 @@ Future<void> _registerFontconfigFamily(String family) async {
 }
 
 Future<void> _loadColorEmoji(ResolvedFonts fonts) async {
-  final chain = <String>{
-    ...fonts.uiFallback,
-    ...fonts.monoFallback,
-  };
-  final wantsBundled = chain.contains(AppFontResolver.bundledColorEmojiFamily) ||
+  final chain = <String>{...fonts.uiFallback, ...fonts.monoFallback};
+  final wantsBundled =
+      chain.contains(AppFontResolver.bundledColorEmojiFamily) ||
       chain.contains(AppFontResolver.bundledColorEmojiGoogleFamily);
   if (!wantsBundled) return;
   final alreadyLoaded =

@@ -123,9 +123,7 @@ exit 0
     // `--data-binary '@-'` curl reads the hook payload straight from its
     // inherited stdin: byte-exact, encoding-safe, and no command-line length
     // limit for large tool-result payloads.
-    final dataArg = forwardStdin
-        ? "--data-binary '@-' "
-        : bodyArg;
+    final dataArg = forwardStdin ? "--data-binary '@-' " : bodyArg;
     final urlSetup = _powershellUrlSetup(
       url: url,
       urlEnvKey: urlEnvKey,

@@ -5,7 +5,6 @@ import 'package:re_editor/re_editor.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
-import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/l10n/l10n_extensions.dart';
 import 'package:teampilot/models/layout_preferences.dart';
 import 'package:teampilot/pages/workbench/file_editor_surface.dart';
@@ -70,7 +69,10 @@ Future<_Harness> _createHarness(
   String source = svgSource,
 }) async {
   final fs = InMemoryFilesystem()..files['/repo/icon.svg'] = source;
-  final editor = EditorCubit(fs: fs, storage: fakeHomeStorage(filesystem: fs));
+  final editor = EditorCubit(
+    fs: fs,
+    storage: fakeHomeStorage(filesystem: fs),
+  );
   final workbench = WorkbenchCubit();
   final floating = FloatingWorkspaceCubit();
   final opener = WorkbenchEditorOpener(

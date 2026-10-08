@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../models/workspace_folder.dart';
 import '../../models/workspace_topology.dart';
 import '../../utils/logging/logger_utils.dart';
-import '../session/session_lifecycle_service.dart';
+import '../chat/session/session_lifecycle_service.dart';
 import '../storage/runtime_context.dart';
 import 'workspace_tools_context.dart';
 
@@ -240,10 +240,12 @@ class WorkspaceToolsScopeCubit extends Cubit<WorkspaceToolsScopeState> {
     required Set<String> failed,
   }) async {
     final preferredTargetId =
-        targetIdForFolderPaths(folders, [
-          cwd,
-          ...additionalPaths,
-        ], usesPosixPaths: _lifecycle.storage.usesPosixPaths, matchSubpaths: true) ??
+        targetIdForFolderPaths(
+          folders,
+          [cwd, ...additionalPaths],
+          usesPosixPaths: _lifecycle.storage.usesPosixPaths,
+          matchSubpaths: true,
+        ) ??
         folders.first.targetId;
 
     final preferred = await _tryResolveTarget(preferredTargetId);

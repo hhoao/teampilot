@@ -77,7 +77,8 @@ class TermuxApkAcquisition {
        _downloader = downloader,
        _installApk =
            installApk ??
-           ((apkPath) => AndroidPackageInstaller.installApk(apkFilePath: apkPath)),
+           ((apkPath) =>
+               AndroidPackageInstaller.installApk(apkFilePath: apkPath)),
        _githubToken = githubToken,
        _userAgent = userAgent;
 
@@ -91,7 +92,8 @@ class TermuxApkAcquisition {
     bool? preferArm64,
     void Function(int received, int? total)? onProgress,
   }) async {
-    final prefer = preferArm64 ?? await AppUpdateService.preferArm64AndroidApk();
+    final prefer =
+        preferArm64 ?? await AppUpdateService.preferArm64AndroidApk();
 
     final releaseResult = await _fetchLatestReleaseBody();
     if (releaseResult is TermuxApkAcquireResult) {
@@ -135,7 +137,9 @@ class TermuxApkAcquisition {
       apkFile = await _downloader.fetch(
         Uri.parse(downloadUrl),
         destFileName: assetName,
-        headers: githubHttpHeaders(userAgent: _userAgent ?? kGithubHttpUserAgent),
+        headers: githubHttpHeaders(
+          userAgent: _userAgent ?? kGithubHttpUserAgent,
+        ),
         onProgress: onProgress,
       );
     } on RemoteDownloadException catch (error) {

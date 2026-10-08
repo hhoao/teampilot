@@ -82,12 +82,12 @@ class _GitGraphRowTileState extends State<GitGraphRowTile> {
         onSecondaryTapUp: widget.onSecondaryTapUp == null
             ? null
             : (details) => widget.onSecondaryTapUp!(
-                  TapDownDetails(
-                    globalPosition: details.globalPosition,
-                    localPosition: details.localPosition,
-                    kind: details.kind,
-                  ),
+                TapDownDetails(
+                  globalPosition: details.globalPosition,
+                  localPosition: details.localPosition,
+                  kind: details.kind,
                 ),
+              ),
         child: Container(
           color: bg,
           padding: const EdgeInsets.symmetric(
@@ -126,11 +126,8 @@ class _GitGraphRowTileState extends State<GitGraphRowTile> {
                                 for (final r in widget.row.refs)
                                   _RefChip(
                                     decoration: r,
-                                    laneColor:
-                                        widget.palette[widget
-                                            .row
-                                            .node
-                                            .colorIndex],
+                                    laneColor: widget
+                                        .palette[widget.row.node.colorIndex],
                                   ),
                               ],
                             ),

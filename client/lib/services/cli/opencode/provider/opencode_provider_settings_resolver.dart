@@ -13,7 +13,8 @@ final class OpencodeProviderSettingsResolver {
     required HomeStorage storage,
     AppProviderRepository? repository,
   }) : _repository =
-           repository ?? AppProviderRepository(basePath: basePath, storage: storage);
+           repository ??
+           AppProviderRepository(basePath: basePath, storage: storage);
 
   final AppProviderRepository _repository;
 

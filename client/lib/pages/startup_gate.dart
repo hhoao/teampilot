@@ -10,11 +10,7 @@ import 'ssh_profiles_page.dart';
 import 'termux/work_environment_chooser_page.dart';
 
 class StartupGate extends StatelessWidget {
-  const StartupGate({
-    super.key,
-    required this.child,
-    this.isAndroid,
-  });
+  const StartupGate({super.key, required this.child, this.isAndroid});
 
   final Widget child;
 

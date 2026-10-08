@@ -8,7 +8,7 @@
 
 ## 一句话现状
 
-**期 1（中央事件发布层）与期 2（agent presence 事件化）均已完成并合入 `main`。** 期 3 第一刀（Event Transport）spec 已写，待审：`docs/superpowers/specs/2026-09-12-event-transport-design.md`。
+**期 1（中央事件发布层）与期 2（agent presence 事件化）均已完成并合入 `main`。** 期 3 第一刀（Event Transport）spec 与计划已写：`docs/superpowers/specs/2026-09-12-event-transport-design.md`、`docs/superpowers/plans/2026-09-12-event-transport.md`。
 
 ---
 
@@ -160,7 +160,7 @@
 - 新 worktree 需要：`git submodule update --init --recursive` + `cd client && dart run tool/sync_bundled_google_fonts.dart`（否则字体测试红）。
 - **绝不直接 `flutter test`**：一律 `cd client && dart run tool/run_tests.dart <paths>`。
 - 测试 runner 有 bug：即使「Some tests failed」，退出码仍为 0 —— **读摘要行，不要信退出码**。
-- `docs/ARCHITECTURE.md` 是 AGENTS.md 的**悬空引用**（该文件从未被提交过），值得补或修链接。
+- `docs/ARCHITECTURE.md` 已补（`services/chat/` 目录原则、改码位置、member placement）。
 
 ### 跑全套时会看到的失败（已知、与本路线无关）
 

@@ -142,9 +142,7 @@ class _ShortcutGroupList extends StatelessWidget {
           .toList(growable: false);
       if (defs.isEmpty) continue;
 
-      sections.add(
-        TpSectionHeader(title: titleForCategory(l10n, category)),
-      );
+      sections.add(TpSectionHeader(title: titleForCategory(l10n, category)));
       for (final (index, def) in defs.indexed) {
         sections.add(
           _ShortcutRow(
@@ -210,10 +208,7 @@ class _ShortcutRow extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (chords.isEmpty)
-            Text(
-              l10n.shortcutsNotSet,
-              style: TpTextStyles.of(context).mutedSm,
-            )
+            Text(l10n.shortcutsNotSet, style: TpTextStyles.of(context).mutedSm)
           else
             Wrap(
               spacing: 6,

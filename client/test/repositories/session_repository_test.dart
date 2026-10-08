@@ -7,7 +7,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
@@ -15,7 +15,6 @@ import 'package:teampilot/services/workspace/target_liveness.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/in_memory_filesystem.dart';
-import '../support/post_frame_test_harness.dart';
 
 HomeStorage _repoStorage(Directory root) => HomeStorage.forTesting(
   filesystem: LocalFilesystem(),
@@ -31,7 +30,10 @@ class _AlwaysAliveLiveness implements TargetLiveness {
 
 class _RecordingLifecycleService extends SessionLifecycleService {
   _RecordingLifecycleService()
-    : super(storage: fakeHomeStorage(), appDataBasePath: Directory.systemTemp.path);
+    : super(
+        storage: fakeHomeStorage(),
+        appDataBasePath: Directory.systemTemp.path,
+      );
 
   final destroyed = <({String teamId, String sessionId})>[];
 
@@ -56,7 +58,10 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     expect(await repo.loadWorkspaces(), isEmpty);
     expect(await repo.loadSessions(), isEmpty);
   });
@@ -67,7 +72,10 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
       addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/tmp/my-workspace'),
       ]);
@@ -101,7 +109,10 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
       addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/a'),
       ]);
@@ -121,24 +132,24 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
       addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/a'),
       ]);
       final s1 = (await repo.createSession(workspace.workspaceId)).session;
       final s2 = (await repo.createSession(workspace.workspaceId)).session;
       // Prime the index cache (boot path) before the third session.
-      expect(
-        (await repo.loadWorkspacesIndex()).single.sessionIds,
-        [s2.sessionId, s1.sessionId],
-      );
+      expect((await repo.loadWorkspacesIndex()).single.sessionIds, [
+        s2.sessionId,
+        s1.sessionId,
+      ]);
       final s3 = (await repo.createSession(workspace.workspaceId)).session;
 
       final indexed = (await repo.loadWorkspacesIndex()).single;
-      expect(
-        indexed.sessionIds,
-        [s3.sessionId, s2.sessionId, s1.sessionId],
-      );
+      expect(indexed.sessionIds, [s3.sessionId, s2.sessionId, s1.sessionId]);
     },
   );
 
@@ -146,7 +157,10 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/a')]);
     final s1 = (await repo.createSession(workspace.workspaceId)).session;
     final s2 = (await repo.createSession(workspace.workspaceId)).session;
@@ -239,7 +253,10 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final a = await repo.createWorkspace([const WorkspaceFolder(path: '/p')]);
     final b = await repo.createWorkspace([const WorkspaceFolder(path: '/p')]);
     expect(a.workspaceId, isNot(equals(b.workspaceId)));
@@ -250,7 +267,10 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final p = await repo.createWorkspace([
       WorkspaceFolder(path: '/base'),
       WorkspaceFolder(path: '/a'),
@@ -265,7 +285,10 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final p = await repo.createWorkspace([WorkspaceFolder(path: '/base')]);
     expect(p.rootSandboxEnvOptIn, isFalse);
 
@@ -277,11 +300,33 @@ void main() {
     expect(loaded.single.rootSandboxEnvOptIn, isTrue);
   });
 
+  test('updateWorkspaceMetadata persists injectSessionSshMcp', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
+    final p = await repo.createWorkspace([WorkspaceFolder(path: '/base')]);
+    expect(p.injectSessionSshMcp, isTrue);
+
+    await repo.updateWorkspaceMetadata(
+      p.workspaceId,
+      injectSessionSshMcp: false,
+    );
+    final loaded = await repo.loadWorkspaces();
+    expect(loaded.single.injectSessionSshMcp, isFalse);
+  });
+
   test('applyWorkspaceIcon persists preset and auto icons', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final p = await repo.createWorkspace([WorkspaceFolder(path: '/base')]);
     expect(p.icon, WorkspaceIconRef.auto);
 
@@ -303,7 +348,10 @@ void main() {
       final iconFile = File('${tmp.path}/picked.png');
       await iconFile.writeAsBytes([0x89, 0x50, 0x4E, 0x47]);
 
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
       final p = await repo.createWorkspace([WorkspaceFolder(path: '/base')]);
       await repo.importCustomWorkspaceIcon(p.workspaceId, iconFile.path);
 
@@ -323,7 +371,10 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final p = await repo.createWorkspace([WorkspaceFolder(path: '/old')]);
     await repo.updateWorkspaceFolders(p.workspaceId, [
       WorkspaceFolder(path: '/new'),
@@ -340,7 +391,10 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
       addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
       final p = await repo.createWorkspace([
         WorkspaceFolder(path: '/p'),
         WorkspaceFolder(path: '/q'),
@@ -365,7 +419,10 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/z')]);
     final good = (await repo.createSession(workspace.workspaceId)).session;
     final badDir = Directory(
@@ -385,7 +442,10 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
       addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/w'),
       ]);
@@ -403,7 +463,10 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
     final session = (await repo.createSession(
       workspace.workspaceId,
@@ -426,7 +489,10 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
     const roster = [
       TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
@@ -448,7 +514,10 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
     final session = (await repo.createSession(
       workspace.workspaceId,
@@ -471,12 +540,49 @@ void main() {
   });
 
   test(
+    'ensureMemberBinding finds session when workspace listing has no manifest',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/w'),
+      ]);
+      final session = (await repo.createSession(
+        workspace.workspaceId,
+        sessionTeam: 'team-a',
+        rosterMembers: const [
+          TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+        ],
+        memberClis: const {'team-lead': CliTool.claude},
+      )).session;
+
+      final fs = await repo.fs();
+      await File(fs.manifestFile(workspace.workspaceId)).delete();
+
+      final binding = await repo.ensureMemberBinding(
+        session.sessionId,
+        'developer',
+        cli: CliTool.claude,
+      );
+      expect(binding.rosterMemberId, 'developer');
+    },
+  );
+
+  test(
     'parallel updateSessionTeam and markSessionStarted do not drop fields',
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
       addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/w'),
       ]);
@@ -495,7 +601,10 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
     final session = (await repo.createSession(workspace.workspaceId)).session;
     await repo.updateSessionTeam(session.sessionId, 't1');
@@ -508,7 +617,10 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
     final session = (await repo.createSession(workspace.workspaceId)).session;
 
@@ -521,7 +633,10 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
     final session = (await repo.createSession(
       workspace.workspaceId,
@@ -540,7 +655,10 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
       addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/a'),
       ]);
@@ -566,7 +684,10 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/a')]);
     await repo.createSession(workspace.workspaceId);
 
@@ -587,7 +708,10 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
       addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/w'),
       ]);
@@ -623,7 +747,10 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
       addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/w'),
       ]);
@@ -655,7 +782,10 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
       addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/w'),
       ]);
@@ -696,7 +826,10 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
     final session = (await repo.createSession(
       workspace.workspaceId,
@@ -714,7 +847,10 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
       addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/w'),
       ]);
@@ -757,7 +893,10 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
       addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/w'),
       ]);
@@ -797,7 +936,10 @@ void main() {
       final clonedSession = (await repo.loadSessions()).firstWhere(
         (s) => s.workspaceId == cloned.workspace.workspaceId,
       );
-      expect(cloned.sessions.map((s) => s.sessionId), contains(clonedSession.sessionId));
+      expect(
+        cloned.sessions.map((s) => s.sessionId),
+        contains(clonedSession.sessionId),
+      );
 
       expect(clonedSession.bindingFor('team-lead')?.cli, CliTool.cursor);
       expect(clonedSession.bindingFor('worker')?.cli, isNull);
@@ -810,7 +952,10 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
       addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/tmp/known-ws'),
       ]);
@@ -820,7 +965,8 @@ void main() {
       final sessionsRoot =
           '${tmp.path}/workspace/workspaces/${workspace.workspaceId}/sessions';
       for (var i = 0; i < 80; i++) {
-        final dir = Directory('$sessionsRoot/seed-$i')..createSync(recursive: true);
+        final dir = Directory('$sessionsRoot/seed-$i')
+          ..createSync(recursive: true);
         File('${dir.path}/session.json').writeAsStringSync(
           jsonEncode({
             'sessionId': 'seed-$i',
@@ -843,54 +989,70 @@ void main() {
 
       final indexed = await repo.loadWorkspacesIndex();
       expect(
-        indexed.singleWhere((w) => w.workspaceId == workspace.workspaceId)
+        indexed
+            .singleWhere((w) => w.workspaceId == workspace.workspaceId)
             .sessionIds,
         contains(created.sessionId),
       );
     },
   );
 
-  test('mutation keeps workspaces-index fresh for a fresh repository', () async {
-    final tmp = await Directory.systemTemp.createTemp('repo_index_test_');
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
-    final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
-    final created = await repo.createSession(ws.workspaceId);
+  test(
+    'mutation keeps workspaces-index fresh for a fresh repository',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('repo_index_test_');
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
+      final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
+      final created = await repo.createSession(ws.workspaceId);
 
-    // 直接断言 index 文件内容(不依赖静态内存缓存):
-    final layout = WorkspaceLayout(
-      teampilotRoot: tmp.path,
-      fs: LocalFilesystem(),
-    );
-    final raw = await File(layout.workspacesIndexFile).readAsString();
-    final decoded = jsonDecode(raw) as Map<String, Object?>;
-    final list = decoded['workspaces'] as List;
-    expect(list, hasLength(1));
-    final wsJson = list.single as Map<String, Object?>;
-    expect(wsJson['sessionIds'], [created.session.sessionId]);
+      // 直接断言 index 文件内容(不依赖静态内存缓存):
+      final layout = WorkspaceLayout(
+        teampilotRoot: tmp.path,
+        fs: LocalFilesystem(),
+      );
+      final raw = await File(layout.workspacesIndexFile).readAsString();
+      final decoded = jsonDecode(raw) as Map<String, Object?>;
+      final list = decoded['workspaces'] as List;
+      expect(list, hasLength(1));
+      final wsJson = list.single as Map<String, Object?>;
+      expect(wsJson['sessionIds'], [created.session.sessionId]);
 
-    // 全新实例走快路径也能读到(缓存键按 rootDir 隔离):
-    final fresh = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
-    final index = await fresh.loadWorkspacesIndex();
-    expect(index, hasLength(1));
-    expect(index.single.sessionIds, [created.session.sessionId]);
+      // 全新实例走快路径也能读到(缓存键按 rootDir 隔离):
+      final fresh = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
+      final index = await fresh.loadWorkspacesIndex();
+      expect(index, hasLength(1));
+      expect(index.single.sessionIds, [created.session.sessionId]);
 
-    await repo.deleteSession(created.session.sessionId);
-    final raw2 = await File(layout.workspacesIndexFile).readAsString();
-    final decoded2 = jsonDecode(raw2) as Map<String, Object?>;
-    final list2 = decoded2['workspaces'] as List;
-    // deleteSession 只移除 sessionId;workspace 本身仍在快照中(与全量扫描一致)。
-    expect(list2, hasLength(1));
-    expect((list2.single as Map<String, Object?>)['sessionIds'], isEmpty);
+      await repo.deleteSession(created.session.sessionId);
+      final raw2 = await File(layout.workspacesIndexFile).readAsString();
+      final decoded2 = jsonDecode(raw2) as Map<String, Object?>;
+      final list2 = decoded2['workspaces'] as List;
+      // deleteSession 只移除 sessionId;workspace 本身仍在快照中(与全量扫描一致)。
+      expect(list2, hasLength(1));
+      expect((list2.single as Map<String, Object?>)['sessionIds'], isEmpty);
 
-    await repo.deleteWorkspace(ws.workspaceId);
-    final fresh2 = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
-    expect(await fresh2.loadWorkspacesIndex(), isEmpty);
-    await tmp.delete(recursive: true);
-  });
+      await repo.deleteWorkspace(ws.workspaceId);
+      final fresh2 = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
+      expect(await fresh2.loadWorkspacesIndex(), isEmpty);
+      await tmp.delete(recursive: true);
+    },
+  );
 
   test('createWorkspace appends to an already-populated index cache', () async {
     final tmp = await Directory.systemTemp.createTemp('repo_index_miss_');
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     // Boot fills the cache with an empty workspace list.
     expect(await repo.loadWorkspacesIndex(), isEmpty);
 
@@ -903,7 +1065,10 @@ void main() {
 
   test('remapWorkspaceTarget keeps index snapshot fresh', () async {
     final tmp = await Directory.systemTemp.createTemp('repo_remap_index_');
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final ws = await repo.createWorkspace([
       const WorkspaceFolder(path: '/p', targetId: 'wsl:ubuntu'),
     ]);
@@ -925,7 +1090,10 @@ void main() {
 
   test('touchSession returns the touched session', () async {
     final tmp = await Directory.systemTemp.createTemp('repo_touch_test_');
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
     final created = await repo.createSession(ws.workspaceId);
     final touched = await repo.touchSession(created.session.sessionId);
@@ -937,7 +1105,10 @@ void main() {
 
   test('toggleSessionPin flips pinned and returns the session', () async {
     final tmp = await Directory.systemTemp.createTemp('repo_pin_test_');
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
     final created = await repo.createSession(ws.workspaceId);
     final toggled = await repo.toggleSessionPin(created.session.sessionId);
@@ -949,21 +1120,32 @@ void main() {
 
   test('setSessionArchived persists archived flag', () async {
     final tmp = await Directory.systemTemp.createTemp('repo_archive_test_');
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
     final ws = await repo.createWorkspace([WorkspaceFolder(path: '/p')]);
     final created = await repo.createSession(ws.workspaceId);
     expect(created.session.archived, isFalse);
 
-    final archived = await repo.setSessionArchived(created.session.sessionId, true);
+    final archived = await repo.setSessionArchived(
+      created.session.sessionId,
+      true,
+    );
     expect(archived!.archived, isTrue);
 
     final reloaded = await repo.loadSessions();
     expect(
-      reloaded.singleWhere((s) => s.sessionId == created.session.sessionId).archived,
+      reloaded
+          .singleWhere((s) => s.sessionId == created.session.sessionId)
+          .archived,
       isTrue,
     );
 
-    final restored = await repo.setSessionArchived(created.session.sessionId, false);
+    final restored = await repo.setSessionArchived(
+      created.session.sessionId,
+      false,
+    );
     expect(restored!.archived, isFalse);
     await tmp.delete(recursive: true);
   });

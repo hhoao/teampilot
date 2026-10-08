@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('user bubble shows mailbox marker when deliveryChannel is mailbox', (
+  testWidgets('mailbox delivery does not badge the user bubble', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -22,11 +22,12 @@ void main() {
       ),
     );
 
+    expect(find.text('hello from mailbox'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('ai-user-bubble-mailbox-marker')),
-      findsOneWidget,
+      findsNothing,
     );
-    expect(find.byIcon(Icons.mail_outline), findsOneWidget);
+    expect(find.byIcon(Icons.mail_outline), findsNothing);
   });
 
   testWidgets('user bubble hides mailbox marker when deliveryChannel is null', (

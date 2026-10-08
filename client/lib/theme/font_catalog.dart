@@ -43,7 +43,11 @@ abstract final class FontCatalog {
   static const defaultMonoId = 'jetbrainsMono';
 
   static const List<FontCatalogEntry> all = [
-    FontCatalogEntry(id: systemId, role: FontRole.ui, source: FontSourceKind.system),
+    FontCatalogEntry(
+      id: systemId,
+      role: FontRole.ui,
+      source: FontSourceKind.system,
+    ),
     FontCatalogEntry(
       id: 'notoSansSc',
       role: FontRole.ui,
@@ -61,7 +65,11 @@ abstract final class FontCatalog {
         'google_fonts/NotoSansSC-ExtraBold.ttf',
       ],
     ),
-    FontCatalogEntry(id: systemId, role: FontRole.mono, source: FontSourceKind.system),
+    FontCatalogEntry(
+      id: systemId,
+      role: FontRole.mono,
+      source: FontSourceKind.system,
+    ),
     FontCatalogEntry(
       id: 'jetbrainsMono',
       role: FontRole.mono,
@@ -83,9 +91,7 @@ abstract final class FontCatalog {
     for (final e in all) {
       if (e.role == role && e.id == id) return e;
     }
-    return all.firstWhere(
-      (e) => e.role == role && e.id == systemId,
-    );
+    return all.firstWhere((e) => e.role == role && e.id == systemId);
   }
 
   static bool isKnown(FontRole role, String id) =>

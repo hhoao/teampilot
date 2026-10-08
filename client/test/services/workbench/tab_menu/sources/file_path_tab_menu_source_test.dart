@@ -92,10 +92,7 @@ void main() {
 
   test('no desktop or remote actions includes copy paths only', () {
     final items = source.buildItems(
-      ctx(
-        filePath: '/ws/src/a.dart',
-        workspaceRoot: '/ws',
-      ),
+      ctx(filePath: '/ws/src/a.dart', workspaceRoot: '/ws'),
     );
     expect(items.map((item) => item.id), [
       'file.copy_path',

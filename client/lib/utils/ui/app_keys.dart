@@ -50,9 +50,6 @@ class AppKeys {
   static const chatSubmitSwitchesToTerminalSwitch = Key(
     'chat-submit-switches-to-terminal-switch',
   );
-  static const simpleModeDefaultFullAccessSwitch = Key(
-    'simple-mode-default-full-access-switch',
-  );
   static const sessionWorkbenchViewToggle = Key(
     'session-workbench-view-toggle',
   );
@@ -146,7 +143,8 @@ class AppKeys {
   static const connectQrCode = Key('connect-qr-code');
   static const connectScanQr = Key('connect-scan-qr');
   static const connectPasteCode = Key('connect-paste-code');
-  static const connectSshdEnableCta = Key('connect-sshd-enable-cta');
+  static const connectSshdRetryCta = Key('connect-sshd-retry-cta');
+  static const connectSshBackendSelect = Key('connect-ssh-backend-select');
   static const connectRegenerateQr = Key('connect-regenerate-qr');
   static const configGithubSectionButton = Key('config-github-section-button');
   static const configDiscoverySectionButton = Key(

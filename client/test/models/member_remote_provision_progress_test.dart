@@ -45,10 +45,7 @@ void main() {
     const progress = CliInstallProgress(
       phase: CliInstallPhase.syncingRemoteWorkspace,
     );
-    expect(
-      remoteCliInstallProgressLabel(progress),
-      'Syncing remote workspace',
-    );
+    expect(remoteCliInstallProgressLabel(progress), 'Syncing remote workspace');
   });
 
   test('isUserFacingCliInstallDetail hides internal stage tags', () {

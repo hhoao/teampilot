@@ -106,9 +106,7 @@ command = "/s/hooks/a.sh"
 type = "webhook"
 url = "http://127.0.0.1:2/x"
 ''';
-      final root = Map<String, dynamic>.from(
-        TomlDocument.parse(toml).toMap(),
-      );
+      final root = Map<String, dynamic>.from(TomlDocument.parse(toml).toMap());
       CodexTomlParser.removeInvalidHooks(root);
       expect(
         CodexTomlParser.invalidHookTypes('${TomlDocument.fromMap(root)}\n'),

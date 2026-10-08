@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
-import '../../../team_bus/mcp/teammate_bus_mcp_handler.dart';
-import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../../chat/team_bus/mcp/teammate_bus_mcp_config.dart';
+import '../../../chat/team_bus/mcp/teammate_bus_mcp_handler.dart';
+import '../../../chat/team_bus/member_bus_idle_endpoint.dart';
 
 /// Pure builders for mixed-mode team-bus files under native `$HOME/.cursor/`.
 abstract final class CursorHomeBusOverlay {
@@ -28,7 +28,9 @@ abstract final class CursorHomeBusOverlay {
     final hooks = Map<String, Object?>.from(
       (existing['hooks'] as Map?)?.cast<String, Object?>() ?? const {},
     );
-    final stopEntries = List<Object?>.from((hooks['stop'] as List?) ?? const []);
+    final stopEntries = List<Object?>.from(
+      (hooks['stop'] as List?) ?? const [],
+    );
     if (!stopEntries.any((e) => e is Map && e['command'] == command)) {
       stopEntries.add({'command': command, 'loop_limit': null});
     }
@@ -87,5 +89,4 @@ esac
 exit 0
 ''';
   }
-
 }

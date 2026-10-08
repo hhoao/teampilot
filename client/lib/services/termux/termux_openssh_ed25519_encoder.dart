@@ -57,10 +57,9 @@ class TermuxOpenSshEd25519Encoder {
     _writeBytes(outer, privBlob);
 
     final b64 = base64.encode(outer.toBytes());
-    final lines = RegExp('.{1,70}')
-        .allMatches(b64)
-        .map((m) => m.group(0)!)
-        .join('\n');
+    final lines = RegExp(
+      '.{1,70}',
+    ).allMatches(b64).map((m) => m.group(0)!).join('\n');
     return '-----BEGIN OPENSSH PRIVATE KEY-----\n$lines\n-----END OPENSSH PRIVATE KEY-----\n';
   }
 

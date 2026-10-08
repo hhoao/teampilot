@@ -1,6 +1,6 @@
 import '../../../workspace_dnd/path_reference_formatter.dart';
-import '../../../terminal/fullscreen_cr_ack_config.dart';
-import '../../../terminal/fullscreen_input_readiness.dart';
+import '../../../chat/runtime/pty/fullscreen_cr_ack_config.dart';
+import '../../../chat/runtime/pty/fullscreen_input_readiness.dart';
 import '../cli_capability.dart';
 
 /// How a dropped file path is injected into a CLI's input box.
@@ -52,18 +52,31 @@ abstract interface class TerminalBehaviorCapability implements CliCapability {
   /// echoing it into PTY output (none of the built-in CLIs currently need it).
   bool get usesGridPasteAck;
 
+  /// Whether the CR submit is confirmed solely by the CLI's submit hook
+  /// (`promptSubmitted` runtime event) instead of the mirror grid. Grid submit
+  /// probing false-positives on resumed sessions; all built-in CLIs emit a
+  /// submit hook, so this should be true wherever [usesGridPasteAck] is true.
+  bool get usesHookSubmitAck;
+
+  /// Whether paste ACK uses the paste-denominator baseline flow (bottom-scan
+  /// + pre-paste baseline row) instead of the cursor input zone. True only for
+  /// cursor-agent: its mirror caret sits below its composer box, so the cursor
+  /// zone starts inside the paste and a whole-paste needle never ACKs.
+  bool get usesPasteBaseline;
+
+  /// Bottom rows of the screen to exclude from the paste-ACK / baseline bottom
+  /// scan. cursor-agent draws its composer footer (model / cwd) BELOW the input
+  /// box; needle text duplicating it would set the baseline below the box and
+  /// reject every fresh paste. cursor: 3 (box bottom border + 2 footer lines),
+  /// others: 0.
+  int get pasteZoneBottomPad;
+
   /// How a file dropped onto this CLI's terminal is quoted and injected.
   TerminalPathDropBehavior get pathDropBehavior;
 
   /// How grid automation ACKs a CR after paste. Most TUIs clear the anchor
   /// cell; codex keeps the line as history and paints a new composer below.
   FullscreenCrAckStrategy get fullscreenCrAckStrategy;
-
-  /// Leading prefix on mirror-grid rows that identify composer chrome (`→`, `›`,
-  /// `❯`, `┃`, …). Used to scope paste needle search away from stale transcript
-  /// on tall viewports, and required for
-  /// [FullscreenCrAckStrategy.composerMovesDown] CR ACK.
-  String? get fullscreenComposerPrefix;
 
   /// Whether the composer opens an autocomplete popup on "@" in pasted text
   /// that consumes the submit CR (Claude Code file-mention). When true, grid

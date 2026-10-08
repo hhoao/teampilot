@@ -3,10 +3,7 @@ import '../../models/workspace_topology.dart';
 import 'team_member_naming.dart';
 
 class MembersMachineGroup {
-  const MembersMachineGroup({
-    required this.targetId,
-    required this.members,
-  });
+  const MembersMachineGroup({required this.targetId, required this.members});
 
   final String targetId;
   final List<TeamMemberConfig> members;
@@ -36,10 +33,12 @@ List<MembersMachineGroup> groupMembersByMachine({
   for (final m in members) {
     final tid = resolveMemberMachineTargetId(memberTargets, m.id);
     if (TeamMemberNaming.isTeamLead(m)) leadTarget = tid;
-    buckets.putIfAbsent(tid, () {
-      order.add(tid);
-      return <TeamMemberConfig>[];
-    }).add(m);
+    buckets
+        .putIfAbsent(tid, () {
+          order.add(tid);
+          return <TeamMemberConfig>[];
+        })
+        .add(m);
   }
 
   final sortedKeys = [...order];
@@ -51,10 +50,7 @@ List<MembersMachineGroup> groupMembersByMachine({
 
   return [
     for (final tid in sortedKeys)
-      MembersMachineGroup(
-        targetId: tid,
-        members: _leadFirst(buckets[tid]!),
-      ),
+      MembersMachineGroup(targetId: tid, members: _leadFirst(buckets[tid]!)),
   ];
 }
 

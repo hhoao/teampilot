@@ -125,8 +125,7 @@ class AgentStatusEvent {
     planText: planText ?? this.planText,
     planFilePath: planFilePath ?? this.planFilePath,
     permissionRequest: permissionRequest ?? this.permissionRequest,
-    backgroundTaskStarted:
-        backgroundTaskStarted ?? this.backgroundTaskStarted,
+    backgroundTaskStarted: backgroundTaskStarted ?? this.backgroundTaskStarted,
     taskNotificationToolUseId:
         taskNotificationToolUseId ?? this.taskNotificationToolUseId,
   );

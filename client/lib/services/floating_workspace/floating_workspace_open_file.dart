@@ -33,15 +33,12 @@ Future<void> pickAndOpenFloatingWorkspaceFile({
 
   final picker =
       pickFiles ??
-      ({
-        type = FileType.any,
-        allowMultiple = false,
-        initialDirectory,
-      }) => FilePicker.platform.pickFiles(
-        type: type,
-        allowMultiple: allowMultiple,
-        initialDirectory: initialDirectory,
-      );
+      ({type = FileType.any, allowMultiple = false, initialDirectory}) =>
+          FilePicker.platform.pickFiles(
+            type: type,
+            allowMultiple: allowMultiple,
+            initialDirectory: initialDirectory,
+          );
 
   final result = await picker(
     type: FileType.any,

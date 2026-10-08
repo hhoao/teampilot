@@ -1,5 +1,5 @@
-import '../../../terminal/fullscreen_cr_ack_config.dart';
-import '../../../terminal/fullscreen_input_readiness.dart';
+import '../../../chat/runtime/pty/fullscreen_cr_ack_config.dart';
+import '../../../chat/runtime/pty/fullscreen_input_readiness.dart';
 import '../../registry/capabilities/terminal_behavior_capability.dart';
 
 final class FlashskyaiTerminalBehavior implements TerminalBehaviorCapability {
@@ -17,13 +17,18 @@ final class FlashskyaiTerminalBehavior implements TerminalBehaviorCapability {
   @override
   bool get usesGridPasteAck => true;
   @override
+  bool get usesHookSubmitAck => true;
+  @override
+  bool get usesPasteBaseline => false;
+  @override
+  int get pasteZoneBottomPad => 0;
+
+  @override
   TerminalPathDropBehavior get pathDropBehavior =>
       TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
   @override
   FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
       FullscreenCrAckStrategy.anchorCellClears;
-  @override
-  String? get fullscreenComposerPrefix => '\u276f';
   @override
   bool get mentionAutocompletePopup => true;
 

@@ -9,8 +9,6 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 
-import '../support/in_memory_filesystem.dart';
-
 HomeStorage _repoStorage(Directory tmp) => HomeStorage.forTesting(
   filesystem: LocalFilesystem(),
   paths: AppPaths(tmp.path),
@@ -25,7 +23,10 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_rep_');
       addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/replicas'),
       ]);
@@ -65,7 +66,10 @@ void main() {
         'fs_session_repo_heal_',
       );
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/local'),
@@ -116,7 +120,10 @@ void main() {
         'fs_session_repo_roster_',
       );
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/local'),
@@ -176,7 +183,10 @@ void main() {
         'fs_session_repo_omit_',
       );
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/local'),
@@ -209,7 +219,10 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_pin_');
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/local'),
@@ -249,7 +262,10 @@ void main() {
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_def_');
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/local'),
@@ -286,7 +302,10 @@ void main() {
       'fs_session_repo_uninit_',
     );
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
 
     final ws = await repo.createWorkspace([
       const WorkspaceFolder(path: '/local'),
@@ -320,7 +339,10 @@ void main() {
         'fs_session_repo_infer_',
       );
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/local'),
@@ -341,7 +363,10 @@ void main() {
       });
 
       // Infer is in-memory only — disk still lacks the flag until an explicit save.
-      final reloaded = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final reloaded = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
       final again = (await reloaded.loadWorkspaces()).single;
       expect(again.memberPlacementInitializedByTeam['team-a'], isTrue);
     },
@@ -354,7 +379,10 @@ void main() {
         'fs_session_repo_infer_empty_',
       );
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/local'),
@@ -374,7 +402,10 @@ void main() {
         'fs_session_repo_infer_bad_',
       );
       addTearDown(() => tmp.deleteSync(recursive: true));
-      final repo = SessionRepository(rootDir: tmp.path, storage: _repoStorage(tmp));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
 
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/local'),

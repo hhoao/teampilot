@@ -76,9 +76,7 @@ void main() {
 
     test('mirrorBaseUrl synthesizes github-mirror when absent', () async {
       await store.save(
-        const RemoteDownloadSettings(
-          mirrorBaseUrl: 'https://mirror.example/',
-        ),
+        const RemoteDownloadSettings(mirrorBaseUrl: 'https://mirror.example/'),
       );
 
       final catalog = await store.loadEffectiveCatalog();
@@ -93,29 +91,33 @@ void main() {
       expect(mirror.rewriteOrigin, 'https://mirror.example');
     });
 
-    test('does not duplicate github-mirror when explicitly persisted', () async {
-      await store.save(
-        RemoteDownloadSettings(
-          mirrorBaseUrl: 'https://mirror.example',
-          sources: [
-            RemoteDownloadSource(
-              id: RemoteDownloadSettingsStore.githubMirrorId,
-              priority: 15,
-              enabled: true,
-              matchHosts: const ['github.com', 'api.github.com'],
-              rewriteOrigin: 'https://custom-mirror.example',
-            ),
-          ],
-        ),
-      );
+    test(
+      'does not duplicate github-mirror when explicitly persisted',
+      () async {
+        await store.save(
+          RemoteDownloadSettings(
+            mirrorBaseUrl: 'https://mirror.example',
+            sources: [
+              RemoteDownloadSource(
+                id: RemoteDownloadSettingsStore.githubMirrorId,
+                priority: 15,
+                enabled: true,
+                matchHosts: const ['github.com', 'api.github.com'],
+                rewriteOrigin: 'https://custom-mirror.example',
+              ),
+            ],
+          ),
+        );
 
-      final catalog = await store.loadEffectiveCatalog();
-      final mirrors = catalog.sources
-          .where((s) => s.id == RemoteDownloadSettingsStore.githubMirrorId);
-      expect(mirrors, hasLength(1));
-      expect(mirrors.single.priority, 15);
-      expect(mirrors.single.rewriteOrigin, 'https://custom-mirror.example');
-    });
+        final catalog = await store.loadEffectiveCatalog();
+        final mirrors = catalog.sources.where(
+          (s) => s.id == RemoteDownloadSettingsStore.githubMirrorId,
+        );
+        expect(mirrors, hasLength(1));
+        expect(mirrors.single.priority, 15);
+        expect(mirrors.single.rewriteOrigin, 'https://custom-mirror.example');
+      },
+    );
 
     test('appends unknown source ids from persisted json', () async {
       const custom = RemoteDownloadSource(
@@ -126,16 +128,14 @@ void main() {
         rewriteOrigin: 'https://corp.example',
       );
 
-      await store.save(
-        const RemoteDownloadSettings(sources: [custom]),
-      );
+      await store.save(const RemoteDownloadSettings(sources: [custom]));
 
       final catalog = await store.loadEffectiveCatalog();
       expect(catalog.sources, hasLength(2));
-      expect(catalog.sources.map((s) => s.id), containsAll([
-        'github-official',
-        'corp-mirror',
-      ]));
+      expect(
+        catalog.sources.map((s) => s.id),
+        containsAll(['github-official', 'corp-mirror']),
+      );
       expect(
         catalog.sources.where((s) => s.id == 'corp-mirror').single,
         custom,

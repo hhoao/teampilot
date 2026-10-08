@@ -14,18 +14,19 @@ import '../../../../utils/logging/logger.dart';
 import '../../../../utils/team/team_member_naming.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../hook/glue_script_builder.dart';
-import '../../../launch/work_plane_paths.dart';
+import '../../../chat/launch/staging/manifest/work_plane_paths.dart';
 import '../../../provider/credential_binding.dart';
 import '../../../provider/api_model_catalog_service.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/provider_catalog_access.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../catalog/catalog_mcp_policy.dart';
+import '../../../ssh/mcp/session_ssh_mcp_policy.dart';
 import '../../../io/filesystem.dart';
 import '../../../remote/remote_credential_materializer.dart';
-import '../../../session/member_role_provision.dart';
+import '../../registry/member_role_provision.dart';
 import '../../../storage/home_storage.dart';
-import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../../chat/team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/capabilities/claude_family_hook_registry.dart';
 import '../../registry/capabilities/hook_capability.dart';
 import '../../registry/capabilities/provider_capability.dart';
@@ -402,6 +403,9 @@ final class ClaudeProviderCapability extends CatalogModelCapability
   static const toolId = 'claude';
   static const metadataFileName = '.claude.json';
   static const settingsFileEnvKey = 'TEAMPILOT_CLAUDE_SETTINGS_FILE';
+
+  @override
+  String? get launchSettingsFileEnvKey => settingsFileEnvKey;
 
   /// MCP 工具调用超时(毫秒)。team-bus 的 `wait_for_message` 是长阻塞工具,
   /// claude 默认的工具超时会在几分钟后掐断它(progress notification 不续命,
@@ -1152,6 +1156,10 @@ final class ClaudeProviderCapability extends CatalogModelCapability
       claudeEntries: CatalogMcpPolicy.claudeAllowEntries(
         CatalogMcpPolicy.advertisedRegistry(),
       ),
+    );
+    settings = MemberRoleProvision.applySessionSshMcpAllows(
+      settings,
+      claudeEntries: SessionSshMcpPolicy.claudeAllowEntries,
     );
     if (!hooksAlreadyMaterialized) {
       // 收敛：内部托管 hook（agent-status / bus idle / team-lead delegate /

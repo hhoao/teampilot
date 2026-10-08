@@ -108,9 +108,8 @@ void main() {
               groupBuilder: (context, id, strip) => _StatefulProbe(
                 key: paneKeys.putIfAbsent(
                   id,
-                  () => GlobalKey<State<StatefulWidget>>(
-                    debugLabel: 'pane-$id',
-                  ),
+                  () =>
+                      GlobalKey<State<StatefulWidget>>(debugLabel: 'pane-$id'),
                 ),
                 label: 'group-$id',
               ),
@@ -419,7 +418,9 @@ void main() {
           groupBuilder: (context, id, strip) => GestureDetector(
             // A competing tap recognizer on the content, like real panes.
             onTap: () => contentTaps++,
-            child: const SizedBox.expand(child: ColoredBox(color: Colors.amber)),
+            child: const SizedBox.expand(
+              child: ColoredBox(color: Colors.amber),
+            ),
           ),
         ),
       ),

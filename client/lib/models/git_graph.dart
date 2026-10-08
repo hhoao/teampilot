@@ -78,16 +78,16 @@ class GitCommitRow extends GitGraphRow {
 
   @override
   List<Object?> get props => [
-        ...super.props,
-        node,
-        hash,
-        parents,
-        authorName,
-        authorEmail,
-        authorDate,
-        subject,
-        refs,
-      ];
+    ...super.props,
+    node,
+    hash,
+    parents,
+    authorName,
+    authorEmail,
+    authorDate,
+    subject,
+    refs,
+  ];
 }
 
 /// 无提交记录的纯拓扑行（merge 的 |\ 、|/ 等），渲染为半高连线。
@@ -119,15 +119,15 @@ class GitCommitDetail extends Equatable {
 
   @override
   List<Object?> get props => [
-        hash,
-        parents,
-        authorName,
-        authorEmail,
-        authorDate,
-        subject,
-        body,
-        files,
-      ];
+    hash,
+    parents,
+    authorName,
+    authorEmail,
+    authorDate,
+    subject,
+    body,
+    files,
+  ];
 }
 
 /// diff-tree --name-status 的字母状态映射。

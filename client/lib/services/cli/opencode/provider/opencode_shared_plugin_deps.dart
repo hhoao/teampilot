@@ -7,12 +7,13 @@ import '../../../../utils/lock_pool.dart';
 import '../../cli_tool_locator.dart';
 import '../../../io/filesystem.dart';
 import '../../../storage/runtime_layout.dart';
+import '../../../storage/workspace_cli_cache.dart';
 
 typedef OpencodePluginVersionResolver = Future<String?> Function();
 typedef OpencodeNpmInstall = Future<int> Function(String cwd);
 
-/// Seeds `<teampilotRoot>/cli-defaults/opencode/{package.json,package-lock.json,node_modules}`
-/// for OpenCode local plugins (`@opencode-ai/plugin`).
+/// Seeds `<teampilotRoot>/workspace/cache/cli/opencode/_shared/{package.json,package-lock.json,node_modules}`
+/// for OpenCode local plugins (`@opencode/plugin`).
 ///
 /// Sessions inherit those three names into `OPENCODE_CONFIG_DIR` so OpenCode's
 /// `Npm.checkDirty` skips a second arborist reify on launch.
@@ -36,10 +37,11 @@ final class OpencodeSharedPluginDeps {
   static final _locks = LockPool();
   static const _lockKey = 'opencode|plugin-deps';
 
-  String get sharedRoot => layout.appToolRoot('opencode');
+  String get sharedRoot =>
+      WorkspaceCliCache(layout: layout).globalRoot(tool: 'opencode');
 
   String get _pluginPackageDir =>
-      p.join(sharedRoot, 'node_modules', '@opencode-ai', 'plugin');
+      p.join(sharedRoot, 'node_modules', '@opencode', 'plugin');
 
   Future<bool> get isComplete async =>
       (await fs.stat(_pluginPackageDir)).isDirectory;
@@ -50,6 +52,7 @@ final class OpencodeSharedPluginDeps {
   }
 
   Future<void> _ensureSharedInstalledUnlocked() async {
+    await _migrateLegacyAppRootIfNeeded();
     if (await isComplete) return;
 
     final version =
@@ -71,7 +74,7 @@ final class OpencodeSharedPluginDeps {
     await fs.atomicWrite(
       p.join(sharedRoot, 'package.json'),
       const JsonEncoder.withIndent('  ').convert({
-        'dependencies': {'@opencode-ai/plugin': version},
+        'dependencies': {'@opencode/plugin': version},
       }),
     );
 
@@ -81,7 +84,7 @@ final class OpencodeSharedPluginDeps {
         await fs.removeRecursive(nodeModules);
       }
       throw StateError(
-        'npm install @opencode-ai/plugin@$version failed (exit $code)',
+        'npm install @opencode/plugin@$version failed (exit $code)',
       );
     }
   }
@@ -95,7 +98,9 @@ final class OpencodeSharedPluginDeps {
       final result = await _runner(exe, ['--version']);
       if (result.exitCode != 0) return null;
       final text = '${result.stdout}'.trim();
-      final match = RegExp(r'(\d+\.\d+\.\d+)').firstMatch(text);
+      final match = RegExp(
+        r'(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.]+)?)',
+      ).firstMatch(text);
       return match?.group(1);
     } on Object {
       // Missing binary / PATH (CI without opencode) → treat as unavailable.
@@ -111,5 +116,20 @@ final class OpencodeSharedPluginDeps {
       runInShell: Platform.isWindows,
     );
     return result.exitCode;
+  }
+
+  Future<void> _migrateLegacyAppRootIfNeeded() async {
+    final cacheRoot = sharedRoot;
+    final legacy = layout.appToolRoot('opencode');
+    if (p.equals(cacheRoot, legacy)) return;
+    const names = ['node_modules', 'package.json', 'package-lock.json'];
+    for (final name in names) {
+      final from = p.join(legacy, name);
+      final to = p.join(cacheRoot, name);
+      if ((await fs.stat(to)).exists) continue;
+      if (!(await fs.stat(from)).exists) continue;
+      await fs.ensureDir(cacheRoot);
+      await fs.rename(from, to);
+    }
   }
 }

@@ -4,7 +4,8 @@ abstract final class CommandIds {
   static const String workspaceNextTab = 'workbench.workspace.nextTab';
   static const String workspacePrevTab = 'workbench.workspace.prevTab';
   static const String workspaceCloseTab = 'workbench.workspace.closeTab';
-  static const String workspaceReopenClosed = 'workbench.workspace.reopenClosed';
+  static const String workspaceReopenClosed =
+      'workbench.workspace.reopenClosed';
   static const String workspaceSearch = 'workbench.workspace.search';
 
   /// 1-based ordinal → `workbench.workspace.focusTabN` (N = 1…10).
@@ -46,7 +47,8 @@ abstract final class CommandIds {
   static const String workbenchSplitRight = 'workbench.split.splitRight';
   static const String workbenchSplitDown = 'workbench.split.splitDown';
   static const String workbenchSplitReset = 'workbench.split.reset';
-  static const String workbenchFocusNextGroup = 'workbench.split.focusNextGroup';
+  static const String workbenchFocusNextGroup =
+      'workbench.split.focusNextGroup';
   static const String workbenchMoveTabToNextGroup =
       'workbench.split.moveTabToNextGroup';
 

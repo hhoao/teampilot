@@ -30,7 +30,11 @@ void main() {
       memberTargets: const {'m1': 'ssh:p1'},
       createdAt: 1,
     );
-    final work = s.workDirsForMember('m1', folders: folders, usesPosixPaths: false, );
+    final work = s.workDirsForMember(
+      'm1',
+      folders: folders,
+      usesPosixPaths: false,
+    );
     expect(work.workingDirectory, '/remote');
     expect(work.addDirs, isEmpty);
   });

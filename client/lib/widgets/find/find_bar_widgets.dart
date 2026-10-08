@@ -321,9 +321,9 @@ class FindCounterText extends StatelessWidget {
         textAlign: TextAlign.center,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TpTextStyles.of(context).md.copyWith(
-          color: empty ? palette.mutedText : palette.text,
-        ),
+        style: TpTextStyles.of(
+          context,
+        ).md.copyWith(color: empty ? palette.mutedText : palette.text),
       ),
     );
   }

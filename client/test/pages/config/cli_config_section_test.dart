@@ -14,7 +14,6 @@ import 'package:teampilot/pages/config/cli_executable_path_settings_row.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/cli/cli_installer_service.dart';
-import 'package:teampilot/services/cli/installer_types.dart';
 import 'package:teampilot/services/install/install_job_registry.dart';
 import 'package:teampilot/services/install/install_job_runner_registry.dart';
 import 'package:teampilot/services/install/runners/cli_install_job_runner.dart';
@@ -97,9 +96,7 @@ Widget _wrap(SessionPreferencesCubit cubit) {
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: const Scaffold(
-          body: CliConfigWorkspace(showHeading: false),
-        ),
+        home: const Scaffold(body: CliConfigWorkspace(showHeading: false)),
       ),
     ),
   );
@@ -274,9 +271,7 @@ void main() {
   ) async {
     final cubit = await _makeCubit();
     addTearDown(cubit.close);
-    await tester.pumpWidget(
-      _wrapRow(cubit, locateOverride: () async => null),
-    );
+    await tester.pumpWidget(_wrapRow(cubit, locateOverride: () async => null));
     await tester.pump();
     await tester.tap(find.byKey(AppKeys.claudeCliExecutablePathResetButton));
     await tester.pump();

@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:teampilot/models/team_roster_slot.dart';
 
 void main() {
@@ -16,18 +15,9 @@ void main() {
     );
   });
 
-  test(
-    'TeamRosterSlotOverrides round-trips normalized launch security policy',
-    () {
-      const o = TeamRosterSlotOverrides(
-        launchSecurityPolicy: LaunchSecurityPolicy(
-          approval: LaunchApprovalPolicy.ask,
-          sandbox: LaunchSandboxPolicy.readOnly,
-          hookTrust: LaunchHookTrustPolicy.trustedOnly,
-        ),
-      );
+  test('roster slot JSON does not persist launch security policy', () {
+    const overrides = TeamRosterSlotOverrides();
 
-      expect(TeamRosterSlotOverrides.fromJson(o.toJson()), o);
-    },
-  );
+    expect(overrides.toJson().containsKey('launchSecurityPolicy'), isFalse);
+  });
 }

@@ -41,10 +41,12 @@ void main() {
 
   group('SessionGroupsFile', () {
     test('round-trip keeps group order and default version', () {
-      const file = SessionGroupsFile(groups: [
-        SessionGroup(id: 'g1', name: 'A'),
-        SessionGroup(id: 'g2', name: 'B', collapsed: true),
-      ]);
+      const file = SessionGroupsFile(
+        groups: [
+          SessionGroup(id: 'g1', name: 'A'),
+          SessionGroup(id: 'g2', name: 'B', collapsed: true),
+        ],
+      );
       final decoded = SessionGroupsFile.fromJson(
         Map<String, Object?>.from(file.toJson()),
       );

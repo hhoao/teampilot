@@ -19,11 +19,7 @@ void main() {
   );
 
   BundleProvenanceLookup lookupWith({List<Skill> skills = const []}) =>
-      BundleProvenanceLookup(
-        skills: skills,
-        plugins: const [],
-        mcps: const [],
-      );
+      BundleProvenanceLookup(skills: skills, plugins: const [], mcps: const []);
 
   test('mapper strips secrets and emits DiscoverableTeam', () {
     final team = TeamProfile(
@@ -78,14 +74,14 @@ void main() {
     final team = TeamProfile(
       id: 't',
       name: 'T',
-      roster: const [
-        TeamRosterSlot(id: 'arch', expertKey: 'local/abc'),
-      ],
+      roster: const [TeamRosterSlot(id: 'arch', expertKey: 'local/abc')],
     );
 
     final result = TeamProfilePublishMapper.map(
       team: team,
-      expertKeyRemap: const {'local/abc': 'hhoao/teampilot-resources/member-hub/arch'},
+      expertKeyRemap: const {
+        'local/abc': 'hhoao/teampilot-resources/member-hub/arch',
+      },
       lookup: lookupWith(),
       key: 'o/r/t',
       category: 'General',
@@ -93,16 +89,17 @@ void main() {
 
     expect(result, isA<PublishReadyTeam>());
     final ready = result as PublishReadyTeam;
-    expect(ready.team.roster.single.expertKey, 'hhoao/teampilot-resources/member-hub/arch');
+    expect(
+      ready.team.roster.single.expertKey,
+      'hhoao/teampilot-resources/member-hub/arch',
+    );
   });
 
   test('mapper fails closed when local expert keys remain', () {
     final team = TeamProfile(
       id: 't',
       name: 'T',
-      roster: const [
-        TeamRosterSlot(id: 'arch', expertKey: 'local/abc'),
-      ],
+      roster: const [TeamRosterSlot(id: 'arch', expertKey: 'local/abc')],
     );
 
     final result = TeamProfilePublishMapper.map(
@@ -116,10 +113,7 @@ void main() {
     expect(result, isA<PublishBlocked>());
     final blocked = result as PublishBlocked;
     expect(blocked.reasons, isNotEmpty);
-    expect(
-      blocked.reasons.any((r) => r.contains('local/abc')),
-      isTrue,
-    );
+    expect(blocked.reasons.any((r) => r.contains('local/abc')), isTrue);
   });
 
   test('mapper fails closed when bundle deps are non-portable', () {

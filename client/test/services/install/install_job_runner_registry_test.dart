@@ -44,20 +44,17 @@ void main() {
 
       expect(registry.resolve(cliKey), same(cliRunner));
       expect(registry.resolve(toolchainKey), same(toolchainRunner));
-      expect(
-        registry.resolve(
-          InstallJobKeys.skill('missing-runner'),
-        ),
-        isNull,
-      );
+      expect(registry.resolve(InstallJobKeys.skill('missing-runner')), isNull);
     });
   });
 
   group('InstallJobKeys', () {
     test('produce expected activityId strings', () {
       expect(
-        InstallJobKeys.cli('claude', scope: const InstallJobScopeLocal())
-            .activityId,
+        InstallJobKeys.cli(
+          'claude',
+          scope: const InstallJobScopeLocal(),
+        ).activityId,
         'install-cliExecutable-claude-local',
       );
       expect(
@@ -68,8 +65,10 @@ void main() {
         'install-cliExecutable-claude-ssh-profile-42',
       );
       expect(
-        InstallJobKeys.toolchain('node', scope: const InstallJobScopeLocal())
-            .activityId,
+        InstallJobKeys.toolchain(
+          'node',
+          scope: const InstallJobScopeLocal(),
+        ).activityId,
         'install-toolchain-node-local',
       );
       expect(

@@ -11,8 +11,8 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_team.dart';
 import '../../models/team_config.dart';
 import '../../widgets/home_storage_scope.dart';
-import '../../services/team/team_landing_recent_store.dart';
-import '../../services/team/team_landing_selection.dart';
+import '../../services/team_config/team_landing_recent_store.dart';
+import '../../services/team_config/team_landing_selection.dart';
 
 import 'team_hub_clone_feedback.dart';
 import 'team_hub_clone_options_dialog.dart';
@@ -67,9 +67,7 @@ class _TeamLandingPickerDialogState extends State<TeamLandingPickerDialog> {
         context.read<TeamHubCubit>().clone(team, teamMode: teamMode, cli: cli),
     touchRecent:
         widget.touchRecent ??
-        TeamLandingRecentStore(
-          storage: homeStorageOf(context),
-        ).touch,
+        TeamLandingRecentStore(storage: homeStorageOf(context)).touch,
   );
 
   @override
@@ -221,8 +219,9 @@ class _TeamLandingPickerDialogState extends State<TeamLandingPickerDialog> {
                     context.read<TeamHubCubit>().clearError();
                   },
                   builder: (context, hubState) {
-                    final launchState =
-                        context.watch<LaunchProfileCubit>().state;
+                    final launchState = context
+                        .watch<LaunchProfileCubit>()
+                        .state;
                     final detail = _detail;
                     if (detail is TeamLandingLocalEntry) {
                       return TeamLandingPickerLocalDetail(
@@ -234,8 +233,9 @@ class _TeamLandingPickerDialogState extends State<TeamLandingPickerDialog> {
                       );
                     }
                     if (detail is TeamLandingHubEntry) {
-                      final hubCloning =
-                          hubState.cloningKeys.contains(detail.team.key);
+                      final hubCloning = hubState.cloningKeys.contains(
+                        detail.team.key,
+                      );
                       final willClone =
                           detail.localTeamId == null && _confirming;
                       return TeamHubDetailOverlay(
@@ -260,8 +260,7 @@ class _TeamLandingPickerDialogState extends State<TeamLandingPickerDialog> {
                       favoritesOnly: _favoritesOnly,
                       category: _category,
                       selectedTeamId: widget.selectedTeamId,
-                      onSourceFilter: (f) =>
-                          setState(() => _sourceFilter = f),
+                      onSourceFilter: (f) => setState(() => _sourceFilter = f),
                       onSearch: (q) => setState(() => _search = q),
                       onFavoritesOnly: (v) =>
                           setState(() => _favoritesOnly = v),
@@ -269,9 +268,8 @@ class _TeamLandingPickerDialogState extends State<TeamLandingPickerDialog> {
                       onOpen: (entry) => setState(() => _detail = entry),
                       onToggleFavorite: (key) =>
                           context.read<TeamHubCubit>().toggleFavorite(key),
-                      onRefresh: () => context
-                          .read<TeamHubCubit>()
-                          .load(forceRefresh: true),
+                      onRefresh: () =>
+                          context.read<TeamHubCubit>().load(forceRefresh: true),
                     );
                   },
                 ),

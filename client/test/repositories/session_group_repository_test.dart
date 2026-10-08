@@ -49,6 +49,9 @@ void main() {
   test('empty workspace id is a no-op', () async {
     await repository.save('  ', const SessionGroupsFile());
     expect((await repository.load('')).groups, isEmpty);
-    expect((await repository.load('')).version, SessionGroupsFile.currentVersion);
+    expect(
+      (await repository.load('')).version,
+      SessionGroupsFile.currentVersion,
+    );
   });
 }

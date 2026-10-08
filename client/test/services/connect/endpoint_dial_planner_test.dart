@@ -43,12 +43,15 @@ void main() {
     expect(plan, const [lanB, lanA, extraA, relayA]);
   });
 
-  test('drops unknown-reachability duplicates of nothing but keeps all kinds', () {
-    // Same candidate listed twice must stay twice: the phone dials each.
-    final plan = planEndpointDials(pairedProfile(const [lanA, lanA]));
+  test(
+    'drops unknown-reachability duplicates of nothing but keeps all kinds',
+    () {
+      // Same candidate listed twice must stay twice: the phone dials each.
+      final plan = planEndpointDials(pairedProfile(const [lanA, lanA]));
 
-    expect(plan, const [lanA, lanA]);
-  });
+      expect(plan, const [lanA, lanA]);
+    },
+  );
 
   test('lanOnly policy drops extra and relay candidates', () {
     final plan = planEndpointDials(

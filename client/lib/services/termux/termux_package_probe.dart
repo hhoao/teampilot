@@ -3,12 +3,9 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 
 class TermuxPackageProbe {
-  TermuxPackageProbe({
-    MethodChannel? channel,
-    bool? isAndroid,
-  })  : _channel = channel ??
-            const MethodChannel('com.hhoa.teampilot/packages'),
-        _isAndroid = isAndroid;
+  TermuxPackageProbe({MethodChannel? channel, bool? isAndroid})
+    : _channel = channel ?? const MethodChannel('com.hhoa.teampilot/packages'),
+      _isAndroid = isAndroid;
 
   static const _termuxPackageName = 'com.termux';
 

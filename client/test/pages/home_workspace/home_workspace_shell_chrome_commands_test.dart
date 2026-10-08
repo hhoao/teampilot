@@ -12,10 +12,7 @@ const _c = WorkspaceTabRef(workspaceId: 'ws-c');
 void main() {
   group('HomeShell.nextTab', () {
     test('is null with no open tabs', () {
-      expect(
-        HomeShell.nextTab(tabs: const [], activeTabKey: null),
-        isNull,
-      );
+      expect(HomeShell.nextTab(tabs: const [], activeTabKey: null), isNull);
     });
 
     test('is a no-op (same tab) with a single open tab', () {
@@ -29,18 +26,9 @@ void main() {
     test('wraps forward across open tabs', () {
       const tabs = [_a, _b, _c];
 
-      expect(
-        HomeShell.nextTab(tabs: tabs, activeTabKey: _a.tabKey),
-        _b,
-      );
-      expect(
-        HomeShell.nextTab(tabs: tabs, activeTabKey: _b.tabKey),
-        _c,
-      );
-      expect(
-        HomeShell.nextTab(tabs: tabs, activeTabKey: _c.tabKey),
-        _a,
-      );
+      expect(HomeShell.nextTab(tabs: tabs, activeTabKey: _a.tabKey), _b);
+      expect(HomeShell.nextTab(tabs: tabs, activeTabKey: _b.tabKey), _c);
+      expect(HomeShell.nextTab(tabs: tabs, activeTabKey: _c.tabKey), _a);
     });
 
     test('starts from the first tab when no tab is active', () {
@@ -52,10 +40,7 @@ void main() {
 
     test('starts from the first tab when the active key is unknown', () {
       expect(
-        HomeShell.nextTab(
-          tabs: const [_a, _b, _c],
-          activeTabKey: 'ws-unknown',
-        ),
+        HomeShell.nextTab(tabs: const [_a, _b, _c], activeTabKey: 'ws-unknown'),
         _a,
       );
     });
@@ -63,10 +48,7 @@ void main() {
 
   group('HomeShell.prevTab', () {
     test('is null with no open tabs', () {
-      expect(
-        HomeShell.prevTab(tabs: const [], activeTabKey: null),
-        isNull,
-      );
+      expect(HomeShell.prevTab(tabs: const [], activeTabKey: null), isNull);
     });
 
     test('is a no-op (same tab) with a single open tab', () {
@@ -80,18 +62,9 @@ void main() {
     test('wraps backward across open tabs', () {
       const tabs = [_a, _b, _c];
 
-      expect(
-        HomeShell.prevTab(tabs: tabs, activeTabKey: _c.tabKey),
-        _b,
-      );
-      expect(
-        HomeShell.prevTab(tabs: tabs, activeTabKey: _b.tabKey),
-        _a,
-      );
-      expect(
-        HomeShell.prevTab(tabs: tabs, activeTabKey: _a.tabKey),
-        _c,
-      );
+      expect(HomeShell.prevTab(tabs: tabs, activeTabKey: _c.tabKey), _b);
+      expect(HomeShell.prevTab(tabs: tabs, activeTabKey: _b.tabKey), _a);
+      expect(HomeShell.prevTab(tabs: tabs, activeTabKey: _a.tabKey), _c);
     });
 
     test('starts from the last tab when no tab is active', () {
@@ -104,10 +77,7 @@ void main() {
 
   group('HomeShell.focusTabAt', () {
     test('is null with no open tabs', () {
-      expect(
-        HomeShell.focusTabAt(tabs: const [], oneBasedOrdinal: 1),
-        isNull,
-      );
+      expect(HomeShell.focusTabAt(tabs: const [], oneBasedOrdinal: 1), isNull);
     });
 
     test('picks the Nth open tab (1-based)', () {
@@ -207,17 +177,20 @@ void main() {
       expect(host.openTabCount, 3);
     });
 
-    test('workspaceNextTab / workspacePrevTab commands wrap via HomeShell logic', () {
-      bus.invoke(CommandIds.workspaceNextTab);
-      expect(selected, _b);
+    test(
+      'workspaceNextTab / workspacePrevTab commands wrap via HomeShell logic',
+      () {
+        bus.invoke(CommandIds.workspaceNextTab);
+        expect(selected, _b);
 
-      bus.invoke(CommandIds.workspaceNextTab);
-      bus.invoke(CommandIds.workspaceNextTab);
-      expect(selected, _a);
+        bus.invoke(CommandIds.workspaceNextTab);
+        bus.invoke(CommandIds.workspaceNextTab);
+        expect(selected, _a);
 
-      bus.invoke(CommandIds.workspacePrevTab);
-      expect(selected, _c);
-    });
+        bus.invoke(CommandIds.workspacePrevTab);
+        expect(selected, _c);
+      },
+    );
 
     test('workspace.focusTabN commands select the Nth open tab', () {
       bus.invoke(CommandIds.workspaceFocusTab(3));
@@ -232,13 +205,16 @@ void main() {
       expect(selected, _a);
     });
 
-    test('workspaceCloseTab command closes the active tab and updates openTabCount', () {
-      bus.invoke(CommandIds.workspaceCloseTab);
+    test(
+      'workspaceCloseTab command closes the active tab and updates openTabCount',
+      () {
+        bus.invoke(CommandIds.workspaceCloseTab);
 
-      expect(openTabs, [_a, _b]);
-      expect(closedTabs, [_c]);
-      expect(host.openTabCount, 2);
-    });
+        expect(openTabs, [_a, _b]);
+        expect(closedTabs, [_c]);
+        expect(host.openTabCount, 2);
+      },
+    );
 
     test(
       'workspaceReopenClosed command reopens the most recently closed tab',
@@ -283,8 +259,7 @@ void main() {
     });
 
     test('restores last deep link including manage view', () {
-      const manage =
-          '/home-v2/workspace/ws-a?view=manage&section=settings';
+      const manage = '/home-v2/workspace/ws-a?view=manage&section=settings';
       expect(
         HomeShell.resolveTabRoute(
           tab: _a,

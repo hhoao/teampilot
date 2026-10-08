@@ -9,7 +9,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../../widgets/app_toast/app_toast.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../../cubits/chat/member_input_ready_wait.dart';
+import '../../../services/chat/launch/session/member_input_ready_wait.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/expert_hub_cubit.dart';
@@ -21,7 +21,6 @@ import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/failed_message_record.dart';
 import '../../../models/landing_launch_context.dart';
-import '../../../models/launch_security_policy.dart';
 import '../../../models/simple_launch_identity.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
@@ -68,7 +67,11 @@ SessionOpenRequest buildOpenExistingSessionRequest({
     session: session,
     workspace: workspace,
     team: team,
-    member: member,
+    member:
+        member ??
+        (session.sessionTeam.trim().isEmpty
+            ? null
+            : _teamLead(team, session: session)),
     repo: repo,
     emptyDisplayTitleFallback: emptyDisplayTitleFallback,
     connectImmediately: connectImmediately,
@@ -114,6 +117,7 @@ Future<void> openWorkspaceSessionTab(
     'personal=$isPersonal launchState=${session.launchState.name}',
   );
   final team = await _syncSessionTeam(context, session);
+  if (!context.mounted) return;
 
   _syncWorktreeForSession(context, session);
 
@@ -136,7 +140,6 @@ Future<void> openWorkspaceSessionTab(
       session: session,
       workspace: workspace,
       team: team,
-      member: isPersonal ? null : _teamLead(team),
       repo: repo,
       emptyDisplayTitleFallback: fallback,
       connectImmediately: connectImmediately,
@@ -179,9 +182,7 @@ Future<void> openWorkspaceSessionTabToSide(
   }
   final tab = WorkbenchTabId.session(session.sessionId);
   final layout = workbench.centerLayout(workspace.workspaceId);
-  final hosted = layout.groups.values.any(
-    (strip) => strip.order.contains(tab),
-  );
+  final hosted = layout.groups.values.any((strip) => strip.order.contains(tab));
   if (!hosted) return;
   workbench.revealTabBeside(
     workspace.workspaceId,
@@ -244,9 +245,12 @@ Future<TeamProfile?> _syncSessionTeam(
   return resolved is TeamProfile ? resolved : null;
 }
 
-TeamMemberConfig? _teamLead(TeamProfile? team) {
+TeamMemberConfig? _teamLead(TeamProfile? team, {AppSession? session}) {
   if (team == null) return null;
-  for (final member in team.members) {
+  final members = session == null
+      ? team.members
+      : sessionRosterMembers(session, team);
+  for (final member in members) {
     if (TeamMemberNaming.isTeamLead(member)) return member;
   }
   return null;
@@ -369,11 +373,6 @@ Future<void> showWorkspaceComposeLandingWithWorktree(
   final draft = await resolveLandingDraft(
     workspaceId: workspace.workspaceId,
     storage: storage,
-    simpleModeDefaultFullAccess: context
-        .read<SessionPreferencesCubit>()
-        .state
-        .preferences
-        .simpleModeDefaultFullAccess,
   );
   if (!context.mounted) return;
 
@@ -485,11 +484,6 @@ Future<bool> submitWorkspaceLandingMessage(
     workingDirectory: workingDirectory,
     fixedSessionId: plannedSessionId,
     expertKey: trimmedExpert.isNotEmpty ? trimmedExpert : null,
-    continueOverrides: SessionContinueOverrides(
-      launchSecurityPolicy: LaunchSecurityPolicyOverride.fromPolicy(
-        launch.launchSecurityPolicy,
-      ),
-    ),
     // Default preference keeps Chat; coordinator forces Terminal when false.
     preserveWorkbenchView: !switchToTerminal,
     purpose: purpose,
@@ -516,11 +510,11 @@ Future<bool> submitWorkspaceLandingMessage(
     );
   }
 
-  if (trimmedExpert.isNotEmpty) {
+  if (trimmedExpert.isNotEmpty && context.mounted) {
     unawaited(
-      ExpertHubRecentStore(storage: context.read<HomeStorage>()).touch(
-        trimmedExpert,
-      ),
+      ExpertHubRecentStore(
+        storage: context.read<HomeStorage>(),
+      ).touch(trimmedExpert),
     );
   }
 
@@ -561,7 +555,7 @@ Future<bool> submitWorkspaceLandingMessage(
 
   final historyMemberId = isPersonal
       ? ''
-      : (_teamLead(team)?.id ?? 'team-lead');
+      : (_teamLead(team, session: session)?.id ?? 'team-lead');
   FailedMessageRecord? pendingRecord;
   if (!switchToTerminal) {
     pendingRecord = await chatCubit.persistHistoryPending(
@@ -623,12 +617,13 @@ Future<bool> submitWorkspaceLandingMessage(
     }
 
     try {
-      final deliveryId = await chatCubit.sessionRuntime.deliverUserCommandToMember(
-        session.sessionId,
-        memberId,
-        trimmed,
-        directToPty: true,
-      );
+      final deliveryId = await chatCubit.sessionRuntime
+          .deliverUserCommandToMember(
+            session.sessionId,
+            memberId,
+            trimmed,
+            directToPty: true,
+          );
       if (deliveryId == null || deliveryId.trim().isEmpty) {
         if (pendingRecord != null) {
           await chatCubit.markHistoryPendingFailed(
@@ -688,9 +683,10 @@ Future<AppSession?> _sessionById({
   final fromState = chatCubit.state.sessions
       .where((s) => s.sessionId == sessionId && s.workspaceId == workspaceId)
       .firstOrNull;
-  if (fromState != null) return fromState;
-  final loaded = await repo.loadSessionsForWorkspace(workspaceId);
-  return loaded.where((s) => s.sessionId == sessionId).firstOrNull;
+  if (fromState != null && chatCubit.sessionHasDocument(sessionId)) {
+    return fromState;
+  }
+  return repo.loadSession(workspaceId, sessionId);
 }
 
 Future<String> _resolveLandingMemberId({
@@ -703,7 +699,7 @@ Future<String> _resolveLandingMemberId({
   if (isPersonal) {
     return session.sessionId;
   }
-  final lead = _teamLead(team);
+  final lead = _teamLead(team, session: session);
   return lead?.id ?? 'team-lead';
 }
 
@@ -853,11 +849,6 @@ Future<SimpleLaunchIdentity> _resolvePersonalLaunchIdentity(
   final draft = await resolveLandingDraft(
     workspaceId: workspace.workspaceId,
     storage: context.read<HomeStorage>(),
-    simpleModeDefaultFullAccess: context
-        .read<SessionPreferencesCubit>()
-        .state
-        .preferences
-        .simpleModeDefaultFullAccess,
   );
   final seeded = seedLandingDraftPresetDefault(draft, presets);
   return resolveLandingSimpleLaunchIdentity(

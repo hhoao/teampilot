@@ -216,11 +216,7 @@ void main() {
           root: fixture.path,
           label: 'root',
         ),
-        ContentSearchSlice(
-          fs: LocalFilesystem(),
-          root: dirA.path,
-          label: 'a',
-        ),
+        ContentSearchSlice(fs: LocalFilesystem(), root: dirA.path, label: 'a'),
       ];
       final cubit = ContentSearchCubit(
         slices: slices,
@@ -312,19 +308,18 @@ void main() {
     expect(File('${fixture.path}/a.dart').readAsStringSync(), 'hi world\n');
   });
 
-  testWidgets(
-    'results over the 2000 cap set the truncated flag',
-    (tester) async {
-      File('${fixture.path}/big.txt').writeAsStringSync(
-        List.generate(2100, (i) => 'match line $i\n').join(),
-      );
-      final cubit = buildCubit();
-      addTearDown(cubit.close);
-      await tester.pumpWidget(wrap(cubit));
-      await runSearch(tester, 'match');
-      expect(cubit.state.truncated, isTrue);
-    },
-  );
+  testWidgets('results over the 2000 cap set the truncated flag', (
+    tester,
+  ) async {
+    File(
+      '${fixture.path}/big.txt',
+    ).writeAsStringSync(List.generate(2100, (i) => 'match line $i\n').join());
+    final cubit = buildCubit();
+    addTearDown(cubit.close);
+    await tester.pumpWidget(wrap(cubit));
+    await runSearch(tester, 'match');
+    expect(cubit.state.truncated, isTrue);
+  });
 
   testWidgets('empty query clears results and shows the empty hint', (
     tester,

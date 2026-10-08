@@ -26,8 +26,7 @@ void main() {
 
   test('python3 with quoted path', () async {
     await fs.writeString('/a b/x.py', 'print(1)');
-    final result = await extractor()
-        .extract('python3 "/a b/x.py"');
+    final result = await extractor().extract('python3 "/a b/x.py"');
     final copy = result as ScriptCopy;
     expect(copy.interpreter, 'python3');
     expect(copy.fileName, 'x.py');
@@ -49,8 +48,9 @@ void main() {
   });
 
   test('placeholder path degrades to raw with reason', () async {
-    final result = await extractor()
-        .extract('bash \${CLAUDE_PROJECT_DIR}/.claude/hooks/x.sh');
+    final result = await extractor().extract(
+      'bash \${CLAUDE_PROJECT_DIR}/.claude/hooks/x.sh',
+    );
     expect(result, isA<RawCommand>());
     expect((result as RawCommand).reason, 'placeholder');
   });

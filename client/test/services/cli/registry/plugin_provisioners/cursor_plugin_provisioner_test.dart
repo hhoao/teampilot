@@ -49,7 +49,6 @@ void main() {
             assembledMcpServers: const [
               StdioMcpServer(name: 'assembled', command: 'assembled-command'),
             ],
-            mcpConfigFileName: 'mcp.base.json',
           ),
         );
 
@@ -75,8 +74,7 @@ void main() {
         expect(enabled['demo@local'], isTrue);
 
         final mcp =
-            jsonDecode((await fs.readString('$configDir/mcp.base.json'))!)
-                as Map;
+            jsonDecode((await fs.readString('$configDir/mcp.json'))!) as Map;
         final servers = (mcp['mcpServers'] as Map).cast<String, Object?>();
         expect((servers['assembled'] as Map)['command'], 'assembled-command');
         expect(servers.containsKey('bundled'), isFalse);

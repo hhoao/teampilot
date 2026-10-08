@@ -73,10 +73,7 @@ void main() {
     );
 
     expect(
-      invalidator.impactOf(
-        previous: const [home],
-        next: [home, other],
-      ),
+      invalidator.impactOf(previous: const [home], next: [home, other]),
       HomeSshProfileImpact.none,
     );
     expect(

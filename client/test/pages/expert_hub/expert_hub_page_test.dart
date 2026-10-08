@@ -17,7 +17,14 @@ import 'package:teampilot/services/storage/app_paths.dart';
 
 class _FakeSource extends CompositeExpertHubSource {
   _FakeSource(this.members)
-    : super(builtIns: members, registry: _EmptyRegistry(), localStore: LocalExpertStore(fs: InMemoryFilesystem(), dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir), );
+    : super(
+        builtIns: members,
+        registry: _EmptyRegistry(),
+        localStore: LocalExpertStore(
+          fs: InMemoryFilesystem(),
+          dirOverride: AppPaths('/tp').memberHubLocalTemplatesDir,
+        ),
+      );
 
   final List<DiscoverableMember> members;
 
@@ -43,7 +50,10 @@ DiscoverableMember _member(String name) => DiscoverableMember(
   description: 'desc',
   category: 'AI',
   source: ExpertMemberSource.registry,
-  member: DiscoverableTeamMember(name: name.toLowerCase(), responsibilities: 'p'),
+  member: DiscoverableTeamMember(
+    name: name.toLowerCase(),
+    responsibilities: 'p',
+  ),
 );
 
 void main() {

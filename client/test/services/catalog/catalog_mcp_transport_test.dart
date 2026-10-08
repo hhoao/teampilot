@@ -6,8 +6,8 @@ import 'package:teampilot/services/cli/registry/capabilities/team_behavior_capab
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
-import 'package:teampilot/services/team_bus/remote/member_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/remote/member_bus_mcp_config.dart';
 
 class _FakeTeamBehavior implements TeamBehaviorCapability {
   const _FakeTeamBehavior({required this.supportsLocalStdioBridge});

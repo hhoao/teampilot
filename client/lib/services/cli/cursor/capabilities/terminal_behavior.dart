@@ -2,8 +2,8 @@ import 'dart:typed_data';
 
 import '../../../agent_status/agent_attention_state.dart';
 import '../../../agent_status/agent_status_event.dart';
-import '../../../terminal/fullscreen_cr_ack_config.dart';
-import '../../../terminal/fullscreen_input_readiness.dart';
+import '../../../chat/runtime/pty/fullscreen_cr_ack_config.dart';
+import '../../../chat/runtime/pty/fullscreen_input_readiness.dart';
 import '../../../terminal/observation/terminal_observation_bus.dart';
 import '../../../terminal/observation/terminal_observation_events.dart';
 import '../../../terminal/observation/terminal_observation_seat.dart';
@@ -51,13 +51,18 @@ final class CursorTerminalBehavior
   @override
   bool get usesGridPasteAck => true;
   @override
+  bool get usesHookSubmitAck => true;
+  @override
+  bool get usesPasteBaseline => true;
+  @override
+  int get pasteZoneBottomPad => 3;
+
+  @override
   TerminalPathDropBehavior get pathDropBehavior =>
       TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
   @override
   FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
       FullscreenCrAckStrategy.composerMovesDown;
-  @override
-  String? get fullscreenComposerPrefix => '→';
   @override
   bool get mentionAutocompletePopup => false;
 

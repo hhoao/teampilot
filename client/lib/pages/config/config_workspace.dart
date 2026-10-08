@@ -259,9 +259,7 @@ class ConfigSettingsHubPage extends StatelessWidget {
           title: l10n.shortcutsSettingsTitle,
           icon: Icons.keyboard_outlined,
           onTap: throttledTap('config_hub_shortcuts', () {
-            context.read<ConfigCubit>().selectSection(
-              ConfigSection.shortcuts,
-            );
+            context.read<ConfigCubit>().selectSection(ConfigSection.shortcuts);
             context.push('/config/${ConfigSection.shortcuts.routeSegment}');
           }),
         ),

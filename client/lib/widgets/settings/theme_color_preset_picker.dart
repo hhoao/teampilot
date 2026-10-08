@@ -135,10 +135,7 @@ class _ThemeColorPresetChipState extends State<ThemeColorPresetChip> {
       borderRadius: BorderRadius.circular(999),
       backgroundColor: cs.workspaceInset,
       hoverColor: cs.workspaceInset,
-      border: Border.all(
-        color: borderColor,
-        width: widget.selected ? 2 : 1,
-      ),
+      border: Border.all(color: borderColor, width: widget.selected ? 2 : 1),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -146,19 +143,13 @@ class _ThemeColorPresetChipState extends State<ThemeColorPresetChip> {
           Container(
             width: 10,
             height: 10,
-            decoration: BoxDecoration(
-              color: primary,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: primary, shape: BoxShape.circle),
           ),
           const SizedBox(width: 4),
           Container(
             width: 10,
             height: 10,
-            decoration: BoxDecoration(
-              color: secondary,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: secondary, shape: BoxShape.circle),
           ),
           const SizedBox(width: 8),
           Text(widget.label),

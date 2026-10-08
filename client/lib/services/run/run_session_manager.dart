@@ -17,10 +17,7 @@ import 'shell_script_launch_schema.dart';
 
 /// Handle returned by process and adapter launchers.
 class RunLaunchHandle {
-  const RunLaunchHandle({
-    required this.exitCode,
-    required this.stop,
-  });
+  const RunLaunchHandle({required this.exitCode, required this.stop});
 
   final Future<int> exitCode;
   final Future<void> Function() stop;
@@ -78,8 +75,8 @@ class DefaultRunProcessLauncher implements RunProcessLauncher {
         throw StateError(errors.join('; '));
       }
       final shell = ShellScriptConfiguration.fromLaunchConfiguration(expanded);
-      final invocation =
-          const ShellScriptCommandBuilder().buildProcessInvocation(shell);
+      final invocation = const ShellScriptCommandBuilder()
+          .buildProcessInvocation(shell);
       final plan = _resolver.resolve(
         owner: owned.owner,
         cwd: invocation.cwd,
@@ -226,6 +223,7 @@ class RunSessionManager {
   final Map<String, RunSession> _sessions = {};
   final Map<String, _ActiveRun> _activeRuns = {};
   final Map<String, StringBuffer> _outputBuffers = {};
+
   /// Terminal entry id → lightweight [RunSession] id (Shell Script inject).
   final Map<String, String> _sessionByTerminalEntry = {};
   final StreamController<List<RunSession>> _sessionsController =
@@ -401,7 +399,10 @@ class RunSessionManager {
       compound.configurationIds.map((configId) async {
         final owned = byId[configId];
         if (owned == null) {
-          return (id: null as String?, error: 'missing configuration: $configId');
+          return (
+            id: null as String?,
+            error: 'missing configuration: $configId',
+          );
         }
         try {
           final session = await start(owned, compoundId: compound.id);

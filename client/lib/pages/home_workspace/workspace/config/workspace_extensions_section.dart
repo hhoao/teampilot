@@ -51,8 +51,10 @@ class WorkspaceExtensionsSection extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   l10n.workspaceExtensionsSubtitle,
-                  style: TpTextStyles.of(context).smColored(Theme.of(
-                      context,).colorScheme.onSurface.withValues(alpha: 0.6),
+                  style: TpTextStyles.of(context).smColored(
+                    Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 14),

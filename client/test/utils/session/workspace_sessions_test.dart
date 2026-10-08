@@ -99,11 +99,7 @@ void main() {
       session(id: 'xyz-999', workspaceId: 'p1'),
     ];
 
-    final filtered = filterSessionsByQuery(
-      sessions,
-      query: 'abc',
-      l10n: l10n,
-    );
+    final filtered = filterSessionsByQuery(sessions, query: 'abc', l10n: l10n);
 
     expect(filtered.map((s) => s.sessionId).toList(), ['abc-123']);
   });
@@ -127,11 +123,7 @@ void main() {
       session(id: 's2', workspaceId: 'p1', display: 'Two'),
     ];
 
-    final filtered = filterSessionsByQuery(
-      sessions,
-      query: '   ',
-      l10n: l10n,
-    );
+    final filtered = filterSessionsByQuery(sessions, query: '   ', l10n: l10n);
 
     expect(filtered, sessions);
   });

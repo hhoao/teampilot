@@ -61,9 +61,7 @@ class LivePerfDriver {
       );
       return;
     }
-    AppLogger.instance.i(
-      'LivePerfDriver listening on http://127.0.0.1:$port/',
-    );
+    AppLogger.instance.i('LivePerfDriver listening on http://127.0.0.1:$port/');
     unawaited(_serve());
   }
 
@@ -105,10 +103,7 @@ class LivePerfDriver {
         return;
       case '/vm-service':
         final info = await developer.Service.getInfo();
-        await _json(request, {
-          'ok': true,
-          'uri': info.serverUri?.toString(),
-        });
+        await _json(request, {'ok': true, 'uri': info.serverUri?.toString()});
         return;
       case '/go':
         if (request.method != 'POST') {

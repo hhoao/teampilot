@@ -7,7 +7,7 @@ import '../registry/cli_tool_definition.dart';
 import 'capabilities/team_behavior.dart';
 import 'capabilities/native_commands.dart';
 import 'capabilities/session_selection_launch.dart';
-import 'capabilities/workspace_access_launch.dart';
+import 'capabilities/workspace_base_info.dart';
 import 'capabilities/model_launch.dart';
 import 'capabilities/permission_launch.dart';
 import 'capabilities/prompt_launch.dart';
@@ -24,6 +24,7 @@ import '../registry/capabilities/native_command_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import '../registry/capabilities/runtime_event_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
+import '../registry/capabilities/cli_launch_security_capability.dart';
 import 'capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
 import 'capabilities/prompt.dart';
@@ -39,8 +40,9 @@ final class ClaudeCliTool implements CliToolDefinition {
   ClaudeCliTool({
     this.teamBehavior = const ClaudeTeamBehavior(),
     this.sessionSelection = const ClaudeSessionSelectionLaunch(),
-    this.workspaceAccess = const ClaudeWorkspaceAccessLaunch(),
+    this.workspaceBaseInfo = const ClaudeWorkspaceBaseInfo(),
     this.modelLaunch = const ClaudeModelLaunch(),
+    this.launchSecurity = const FullAccessOnlyCliLaunchSecurityCapability(),
     this.permissionLaunch = const ClaudePermissionLaunch(),
     this.promptLaunch = const ClaudePromptLaunch(),
     this.userExtraArgs = const UserExtraArgsProvider(),
@@ -78,8 +80,9 @@ final class ClaudeCliTool implements CliToolDefinition {
 
   final TeamBehaviorCapability teamBehavior;
   final ClaudeSessionSelectionLaunch sessionSelection;
-  final ClaudeWorkspaceAccessLaunch workspaceAccess;
+  final ClaudeWorkspaceBaseInfo workspaceBaseInfo;
   final ClaudeModelLaunch modelLaunch;
+  final CliLaunchSecurityCapability launchSecurity;
   final ClaudePermissionLaunch permissionLaunch;
   final ClaudePromptLaunch promptLaunch;
   final UserExtraArgsProvider userExtraArgs;
@@ -100,8 +103,9 @@ final class ClaudeCliTool implements CliToolDefinition {
   Iterable<CliCapability> get capabilities => [
     teamBehavior,
     sessionSelection,
-    workspaceAccess,
+    workspaceBaseInfo,
     modelLaunch,
+    launchSecurity,
     permissionLaunch,
     promptLaunch,
     userExtraArgs,

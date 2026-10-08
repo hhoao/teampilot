@@ -178,9 +178,7 @@ class _FileTreeNodeState extends State<FileTreeNode> {
     final payload = WorkspaceDragPayload.singleFile(
       WorkspaceFileRef(
         nativePath: widget.path,
-        namespace: PathNamespace.ofCurrentStorage(
-          homeStorageOf(context),
-        ),
+        namespace: PathNamespace.ofCurrentStorage(homeStorageOf(context)),
         isDirectory: isDir,
       ),
     );
@@ -210,9 +208,7 @@ class _FileTreeNodeState extends State<FileTreeNode> {
                           size: context.tpIconSizes.md,
                           color: isActive
                               ? iconMuted
-                              : widget.textColor.withValues(
-                                  alpha: 0.55,
-                                ),
+                              : widget.textColor.withValues(alpha: 0.55),
                         ),
                       )
                     : null,

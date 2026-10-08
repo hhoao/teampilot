@@ -2,15 +2,17 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/ssh_reachability.dart';
 import 'package:teampilot/services/connect/ssh_pairing_offer.dart';
 
 String base64UrlEncodeNoPad(List<int> bytes) =>
     base64Url.encode(bytes).replaceAll('=', '');
 
-SshPairingOffer _offer({SshRelayOffer? relay}) {
+SshPairingOffer _offer({SshRelayOffer? relay, int v = 1, bool? emb}) {
   return SshPairingOffer(
-    v: 1,
+    v: v,
+    emb: emb,
     hostId: 'AbCdEf0123_-xyZ9',
     username: 'alice',
     displayName: 'alice-laptop',
@@ -83,15 +85,9 @@ void main() {
     expect(decoded.appDataRoot, '/home/alice/.local/share/com.hhoa.teampilot');
     expect(
       decoded.endpoints.map((endpoint) => (endpoint.kind, endpoint.port)),
-      [
-        (SshEndpointKind.lan, 22),
-        (SshEndpointKind.extra, 2222),
-      ],
+      [(SshEndpointKind.lan, 22), (SshEndpointKind.extra, 2222)],
     );
-    expect(
-      decoded.hostKeyFingerprints,
-      const ['SHA256:abcdefgh'],
-    );
+    expect(decoded.hostKeyFingerprints, const ['SHA256:abcdefgh']);
     expect(decoded.pairing.token, offer.pairing.token);
     expect(decoded.pairing.tlsCertSha256, offer.pairing.tlsCertSha256);
     expect(decoded.pairing.url, 'https://192.168.1.20:2768/pair');
@@ -157,8 +153,40 @@ void main() {
     ]);
   });
 
+  test('v2 offer round-trips emb and rejects v3', () {
+    final offer = _offer(v: 2, emb: true);
+    final parsed = SshPairingOffer.fromJson(offer.toJson());
+    expect(parsed.v, 2);
+    expect(parsed.emb, isTrue);
+    expect(offer.toJson()['emb'], isTrue);
+
+    final tooNew = _offer(v: 2, emb: true).toJson()..['v'] = 3;
+    expect(
+      () => SshPairingOffer.fromJson(tooNew),
+      throwsA(isA<SshPairingOfferFormatException>()),
+    );
+  });
+
+  test('v1 offer carries no emb through round trip', () {
+    final offer = _offer();
+    expect(offer.toJson().containsKey('emb'), isFalse);
+    final parsed = SshPairingOffer.fromJson(offer.toJson());
+    expect(parsed.v, 1);
+    expect(parsed.emb, isNull);
+  });
+
+  test('v2 QR payloads preserve emb for the phone', () {
+    final offer = _offer(v: 2, emb: true);
+    expect(SshPairingOffer.decode(offer.qrPayload).emb, isTrue);
+    expect(
+      SshPairingOffer.decodeBytes(Uint8List.fromList(offer.qrBytes)).emb,
+      isTrue,
+    );
+    expect(SshPairingOffer.decode(offer.bareCode).emb, isTrue);
+  });
+
   test('rejects unknown offer version', () {
-    final json = _offer().toJson()..['v'] = 2;
+    final json = _offer().toJson()..['v'] = 3;
     expect(
       () => SshPairingOffer.fromJson(json),
       throwsA(isA<SshPairingOfferFormatException>()),
@@ -177,5 +205,57 @@ void main() {
     final json = _offer().toJson();
     expect(json.containsKey('password'), isFalse);
     expect(json['pairing'], isNot(contains('privateKey')));
+  });
+
+  group('offerMatchesProfile', () {
+    test(
+      'matches when a pinned fingerprint intersects and the port matches',
+      () {
+        const profile = SshProfile(
+          id: 'p',
+          name: 'Alice desktop',
+          host: '192.168.1.20',
+          port: 22,
+          username: 'alice',
+          hostKeyFingerprints: ['SHA256:abcdefgh'],
+        );
+        expect(offerMatchesProfile(_offer(), profile), isTrue);
+      },
+    );
+
+    test('mismatches when the desktop rotated its host key', () {
+      const profile = SshProfile(
+        id: 'p',
+        name: 'Alice desktop',
+        host: '192.168.1.20',
+        port: 22,
+        username: 'alice',
+        hostKeyFingerprints: ['SHA256:old-key'],
+      );
+      expect(offerMatchesProfile(_offer(), profile), isFalse);
+    });
+
+    test('mismatches when the embedded port was re-picked', () {
+      const profile = SshProfile(
+        id: 'p',
+        name: 'Alice desktop',
+        host: '192.168.1.20',
+        port: 2768,
+        username: 'alice',
+        hostKeyFingerprints: ['SHA256:abcdefgh'],
+      );
+      expect(offerMatchesProfile(_offer(), profile), isFalse);
+    });
+
+    test('unpinned profiles match on the LAN port alone', () {
+      const profile = SshProfile(
+        id: 'p',
+        name: 'Alice desktop',
+        host: '192.168.1.20',
+        port: 22,
+        username: 'alice',
+      );
+      expect(offerMatchesProfile(_offer(), profile), isTrue);
+    });
   });
 }

@@ -17,7 +17,10 @@ void main() {
     await nested.create(recursive: true);
 
     final fs = LocalFilesystem();
-    expect(await findCanonicalGitRoot(fs, nested.path, usesPosixPaths: false, ), root.path);
+    expect(
+      await findCanonicalGitRoot(fs, nested.path, usesPosixPaths: false),
+      root.path,
+    );
   });
 
   test('collectTrustedProjectKeys includes git root for nested path', () async {
@@ -34,10 +37,16 @@ void main() {
     final keys = await collectTrustedProjectKeys(
       fs: fs,
       directories: [nested.path],
-                                                  usesPosixPaths: false,
+      usesPosixPaths: false,
     );
 
-    expect(workspacePathsContains(keys, root.path, usesPosixPaths: false, ), isTrue);
-    expect(workspacePathsContains(keys, nested.path, usesPosixPaths: false, ), isTrue);
+    expect(
+      workspacePathsContains(keys, root.path, usesPosixPaths: false),
+      isTrue,
+    );
+    expect(
+      workspacePathsContains(keys, nested.path, usesPosixPaths: false),
+      isTrue,
+    );
   });
 }

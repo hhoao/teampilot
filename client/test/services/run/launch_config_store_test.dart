@@ -35,13 +35,25 @@ void main() {
     await writeLaunchJson(folderA, {
       'version': 1,
       'configurations': [
-        {'id': 'main', 'name': 'Main A', 'type': 'shellScript', 'execute': 'scriptText', 'scriptText': 'a'},
+        {
+          'id': 'main',
+          'name': 'Main A',
+          'type': 'shellScript',
+          'execute': 'scriptText',
+          'scriptText': 'a',
+        },
       ],
     });
     await writeLaunchJson(folderB, {
       'version': 1,
       'configurations': [
-        {'id': 'main', 'name': 'Main B', 'type': 'shellScript', 'execute': 'scriptText', 'scriptText': 'b'},
+        {
+          'id': 'main',
+          'name': 'Main B',
+          'type': 'shellScript',
+          'execute': 'scriptText',
+          'scriptText': 'b',
+        },
       ],
     });
 
@@ -55,8 +67,20 @@ void main() {
     await writeLaunchJson(folderA, {
       'version': 1,
       'configurations': [
-        {'id': 'a', 'name': 'A', 'type': 'shellScript', 'execute': 'scriptText', 'scriptText': 'a'},
-        {'id': 'b', 'name': 'B', 'type': 'shellScript', 'execute': 'scriptText', 'scriptText': 'b'},
+        {
+          'id': 'a',
+          'name': 'A',
+          'type': 'shellScript',
+          'execute': 'scriptText',
+          'scriptText': 'a',
+        },
+        {
+          'id': 'b',
+          'name': 'B',
+          'type': 'shellScript',
+          'execute': 'scriptText',
+          'scriptText': 'b',
+        },
       ],
       'compounds': [
         {
@@ -74,10 +98,7 @@ void main() {
   });
 
   test('missing launch.json yields empty lists', () async {
-    expect(
-      await store.listConfigurations(folders: [folderA]),
-      isEmpty,
-    );
+    expect(await store.listConfigurations(folders: [folderA]), isEmpty);
     expect(await store.listCompounds(folders: [folderA]), isEmpty);
   });
 
@@ -86,10 +107,7 @@ void main() {
       id: 'api',
       name: 'API',
       type: 'shellScript',
-      extras: {
-        'execute': 'scriptText',
-        'scriptText': 'npm run dev',
-      },
+      extras: {'execute': 'scriptText', 'scriptText': 'npm run dev'},
     );
 
     await store.upsertConfiguration(folder: folderA, configuration: config);
@@ -97,10 +115,7 @@ void main() {
     expect(listed.single.configuration, config);
 
     final updated = config.copyWith(
-      extras: {
-        'execute': 'scriptText',
-        'scriptText': 'pnpm run dev',
-      },
+      extras: {'execute': 'scriptText', 'scriptText': 'pnpm run dev'},
     );
     await store.upsertConfiguration(folder: folderA, configuration: updated);
     final relisted = await store.listConfigurations(folders: [folderA]);
@@ -116,10 +131,7 @@ void main() {
           id: 'one',
           name: 'One',
           type: 'shellScript',
-          extras: {
-            'execute': 'scriptText',
-            'scriptText': 'true',
-          },
+          extras: {'execute': 'scriptText', 'scriptText': 'true'},
         ),
       ],
       compounds: [
@@ -151,10 +163,7 @@ void main() {
         id: 'api',
         name: 'API',
         type: 'shellScript',
-        extras: {
-          'execute': 'scriptText',
-          'scriptText': 'echo',
-        },
+        extras: {'execute': 'scriptText', 'scriptText': 'echo'},
       ),
     );
     await store.deleteConfiguration(folder: folder, id: 'api');
@@ -171,9 +180,121 @@ void main() {
         type: 'shellScript',
       ),
     );
-    expect(
-      owned.selectionKey,
-      'ssh:host|/x|run',
-    );
+    expect(owned.selectionKey, 'ssh:host|/x|run');
   });
+
+  test(
+    'unreachable folder target does not drop other folders configs',
+    () async {
+      await writeLaunchJson(folderA, {
+        'version': 1,
+        'configurations': [
+          {
+            'id': 'main',
+            'name': 'Main A',
+            'type': 'shellScript',
+            'execute': 'scriptText',
+            'scriptText': 'a',
+          },
+        ],
+      });
+      const unreachable = WorkspaceFolder(
+        path: '/home/hhoa',
+        targetId: 'ssh:down',
+      );
+      final faultIo = _FaultLaunchConfigIo(
+        delegate: memoryIo,
+        throwForTargetId: 'ssh:down',
+      );
+      final faultStore = LaunchConfigStore(io: faultIo);
+
+      final list = await faultStore.listConfigurations(
+        folders: [unreachable, folderA],
+      );
+
+      expect(list, hasLength(1));
+      expect(list.single.owner.path, '/proj/a');
+    },
+  );
+
+  test(
+    'unreachable folder target does not drop other folders compounds',
+    () async {
+      await writeLaunchJson(folderA, {
+        'version': 1,
+        'configurations': [
+          {
+            'id': 'a',
+            'name': 'A',
+            'type': 'shellScript',
+            'execute': 'scriptText',
+            'scriptText': 'a',
+          },
+        ],
+        'compounds': [
+          {
+            'id': 'both',
+            'name': 'Both',
+            'configurations': ['a'],
+          },
+        ],
+      });
+      const unreachable = WorkspaceFolder(
+        path: '/home/hhoa',
+        targetId: 'ssh:down',
+      );
+      final faultIo = _FaultLaunchConfigIo(
+        delegate: memoryIo,
+        throwForTargetId: 'ssh:down',
+      );
+      final faultStore = LaunchConfigStore(io: faultIo);
+
+      final compounds = await faultStore.listCompounds(
+        folders: [unreachable, folderA],
+      );
+
+      expect(compounds, hasLength(1));
+      expect(compounds.single.owner.path, '/proj/a');
+    },
+  );
+}
+
+/// Delegates to [delegate] but throws for [throwForTargetId], simulating an
+/// unreachable SSH/WSL machine.
+class _FaultLaunchConfigIo implements LaunchConfigIo {
+  _FaultLaunchConfigIo({
+    required this.delegate,
+    required this.throwForTargetId,
+  });
+
+  final LaunchConfigIo delegate;
+  final String throwForTargetId;
+
+  void _guard(String targetId) {
+    if (targetId == throwForTargetId) {
+      throw StateError('target unreachable: $targetId');
+    }
+  }
+
+  @override
+  Future<bool> exists(String path, {required String targetId}) {
+    _guard(targetId);
+    return delegate.exists(path, targetId: targetId);
+  }
+
+  @override
+  Future<String?> readString(String path, {required String targetId}) {
+    _guard(targetId);
+    return delegate.readString(path, targetId: targetId);
+  }
+
+  @override
+  Future<void> writeString(
+    String path,
+    String content, {
+    required String targetId,
+  }) {
+    _guard(targetId);
+    return delegate.writeString(path, content, targetId: targetId);
+  }
 }

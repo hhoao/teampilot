@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/managed_provider.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_link_binding.dart';
@@ -28,17 +27,16 @@ class _FakeSecureKeyValueStore implements SecureKeyValueStore {
   }
 }
 
-ManagedProvider _linkedEntry(CliTool cli, String providerId) =>
-    ManagedProvider(
-      id: 'm1',
-      name: 'M1',
-      kind: ManagedProviderKind.apiBalance,
-      adapterId: 'http-json',
-      endpointConfig: ManagedProviderEndpointConfig(
-        credentialSource: managedProviderLinkSourceValue(cli, providerId),
-        credentialField: 'apiKey',
-      ),
-    );
+ManagedProvider _linkedEntry(CliTool cli, String providerId) => ManagedProvider(
+  id: 'm1',
+  name: 'M1',
+  kind: ManagedProviderKind.apiBalance,
+  adapterId: 'http-json',
+  endpointConfig: ManagedProviderEndpointConfig(
+    credentialSource: managedProviderLinkSourceValue(cli, providerId),
+    credentialField: 'apiKey',
+  ),
+);
 
 ManagedProvider _secretEntry() => ManagedProvider(
   id: 'm2',
@@ -46,9 +44,7 @@ ManagedProvider _secretEntry() => ManagedProvider(
   kind: ManagedProviderKind.apiBalance,
   adapterId: 'http-json',
   credentialRef: 'managed-provider:m2',
-  endpointConfig: ManagedProviderEndpointConfig(
-    credentialField: 'apiKey',
-  ),
+  endpointConfig: ManagedProviderEndpointConfig(credentialField: 'apiKey'),
 );
 
 void main() {
@@ -103,7 +99,10 @@ void main() {
       appProviders: repo,
     );
     // No provider row at all.
-    expect(await resolver.resolve(_linkedEntry(CliTool.claude, 'nope')), isNull);
+    expect(
+      await resolver.resolve(_linkedEntry(CliTool.claude, 'nope')),
+      isNull,
+    );
     // Provider row exists but key is blank.
     await seedProvider(CliTool.claude, 'empty', '', writeKey: false);
     expect(
@@ -127,14 +126,16 @@ void main() {
     expect(scope!.valueFor('apiKey'), 'sk-secret');
   });
 
-  test('null appProviders repository leaves provider sources unresolved',
-      () async {
-    final resolver = ManagedProviderCredentialResolver(
-      ManagedProviderSecretStore(_FakeSecureKeyValueStore()),
-    );
-    expect(
-      await resolver.resolve(_linkedEntry(CliTool.claude, 'deepseek')),
-      isNull,
-    );
-  });
+  test(
+    'null appProviders repository leaves provider sources unresolved',
+    () async {
+      final resolver = ManagedProviderCredentialResolver(
+        ManagedProviderSecretStore(_FakeSecureKeyValueStore()),
+      );
+      expect(
+        await resolver.resolve(_linkedEntry(CliTool.claude, 'deepseek')),
+        isNull,
+      );
+    },
+  );
 }

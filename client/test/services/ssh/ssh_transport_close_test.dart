@@ -98,57 +98,60 @@ void main() {
     expect(factory.hasLiveStorageClient(profile.id), isFalse);
   });
 
-  test('coalesce keeps specific transport error over generic remote close', () async {
-    final events = SshConnectionEvents();
-    final disconnects = <Object>[];
-    final factory = SshClientFactory(
-      credentialStore: InMemorySshCredentialStore(),
-      knownHostRepository: InMemorySshKnownHostRepository(),
-      events: events,
-      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
-        return _InstantAuthClient();
-      },
-    );
-    final coordinator = SshProfileConnectionCoordinator(
-      factory: factory,
-      events: events,
-      profileResolver: (_) => profile,
-      policy: const SshProfileReconnectPolicy(
-        disconnectCoalesce: Duration(milliseconds: 20),
-        maxAttempts: 0,
-      ),
-      onDisconnect: (_, error, _) => disconnects.add(error),
-    );
+  test(
+    'coalesce keeps specific transport error over generic remote close',
+    () async {
+      final events = SshConnectionEvents();
+      final disconnects = <Object>[];
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        events: events,
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          return _InstantAuthClient();
+        },
+      );
+      final coordinator = SshProfileConnectionCoordinator(
+        factory: factory,
+        events: events,
+        profileResolver: (_) => profile,
+        policy: const SshProfileReconnectPolicy(
+          disconnectCoalesce: Duration(milliseconds: 20),
+          maxAttempts: 0,
+        ),
+        onDisconnect: (_, error, _) => disconnects.add(error),
+      );
 
-    events.onTransportClosed?.call(
-      profile.id,
-      const SshTransportClosed(
-        reason: SshTransportCloseReason.transportError,
-        plane: SshTransportPlane.storage,
-        cause: SocketException('Connection reset by peer'),
-      ),
-      StackTrace.empty,
-    );
-    events.onTransportClosed?.call(
-      profile.id,
-      const SshTransportClosed(
-        reason: SshTransportCloseReason.remotePeerClosed,
-        plane: SshTransportPlane.storage,
-      ),
-      StackTrace.empty,
-    );
+      events.onTransportClosed?.call(
+        profile.id,
+        const SshTransportClosed(
+          reason: SshTransportCloseReason.transportError,
+          plane: SshTransportPlane.storage,
+          cause: SocketException('Connection reset by peer'),
+        ),
+        StackTrace.empty,
+      );
+      events.onTransportClosed?.call(
+        profile.id,
+        const SshTransportClosed(
+          reason: SshTransportCloseReason.remotePeerClosed,
+          plane: SshTransportPlane.storage,
+        ),
+        StackTrace.empty,
+      );
 
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(disconnects, hasLength(1));
-    final closed = disconnects.single;
-    expect(closed, isA<SshTransportClosed>());
-    expect(
-      (closed as SshTransportClosed).reason,
-      SshTransportCloseReason.transportError,
-    );
-    expect(closed.cause, isA<SocketException>());
-    await coordinator.dispose();
-  });
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(disconnects, hasLength(1));
+      final closed = disconnects.single;
+      expect(closed, isA<SshTransportClosed>());
+      expect(
+        (closed as SshTransportClosed).reason,
+        SshTransportCloseReason.transportError,
+      );
+      expect(closed.cause, isA<SocketException>());
+      await coordinator.dispose();
+    },
+  );
 
   test('isExpectedLocalSshTransportClose covers intentional teardowns', () {
     expect(

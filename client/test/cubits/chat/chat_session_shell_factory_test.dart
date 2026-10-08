@@ -1,11 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/chat_session_shell_factory.dart';
+import 'package:teampilot/services/chat/launch/connect/chat_session_shell_factory.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
+import 'package:teampilot/services/cli/flashskyai/remote_flashskyai_command_builder.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 import '../../support/in_memory_filesystem.dart';
@@ -18,7 +19,10 @@ void main() {
       cliExecutableResolver: (cli) => 'exec-${cli.value}',
       terminalSessionFactory: ({required executable, scrollbackLines = 10000}) {
         seenExecutable = executable;
-        return TerminalSession(executable: executable, fs: InMemoryFilesystem(), );
+        return TerminalSession(
+          executable: executable,
+          fs: InMemoryFilesystem(),
+        );
       },
       defaultTargetResolver: RuntimeTarget.local,
     );
@@ -36,7 +40,10 @@ void main() {
       cliExecutableResolver: (cli) => 'exec-${cli.value}',
       terminalSessionFactory: ({required executable, scrollbackLines = 10000}) {
         seenExecutable = executable;
-        return TerminalSession(executable: executable, fs: InMemoryFilesystem(), );
+        return TerminalSession(
+          executable: executable,
+          fs: InMemoryFilesystem(),
+        );
       },
       // ssh kind but no transportFactory/profile → falls back to local PTY,
       // matching the legacy connectionMode==ssh-without-profile behavior.
@@ -83,7 +90,7 @@ void main() {
       executableResolver: () => 'flashskyai',
       terminalSessionFactory:
           ({required executable, scrollbackLines = 10000}) =>
-              TerminalSession(executable: executable, fs: InMemoryFilesystem(), ),
+              TerminalSession(executable: executable, fs: InMemoryFilesystem()),
     );
     const team = TeamProfile(id: 't', name: 'T', members: []);
 
@@ -106,8 +113,9 @@ void main() {
     final factory = ChatSessionShellFactory(
       executableResolver: () => 'cursor-agent',
       cliExecutableResolver: (cli) => 'exec-${cli.value}',
-      terminalSessionFactory: ({required executable, scrollbackLines = 10000}) =>
-          _RunningFakeShell(executable: executable),
+      terminalSessionFactory:
+          ({required executable, scrollbackLines = 10000}) =>
+              _RunningFakeShell(executable: executable),
       defaultTargetResolver: RuntimeTarget.local,
     );
 
@@ -115,6 +123,85 @@ void main() {
 
     expect(session, isA<_RunningFakeShell>());
     expect(session.isRunning, isTrue);
+  });
+
+  group('ChatSessionShellFactory.buildMemberRemoteCommand', () {
+    test('embedded profile gets a tp1: structured exec payload', () {
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'desktop',
+        host: '127.0.0.1',
+        username: 'u',
+        embeddedTarget: true,
+      );
+
+      final command = ChatSessionShellFactory.buildMemberRemoteCommand(
+        profile: profile,
+        executable: 'claude',
+        arguments: const ['--resume', 's1'],
+        remoteWorkingDirectory: '/remote/work',
+        environment: const {'K': 'V'},
+        useLoginShell: true,
+      );
+
+      expect(
+        command,
+        'tp1:{"argv":["claude","--resume","s1"],'
+        '"cwd":"/remote/work","env":{"K":"V"}}',
+      );
+    });
+
+    test('embedded payload omits cwd and env when empty', () {
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'desktop',
+        host: '127.0.0.1',
+        username: 'u',
+        embeddedTarget: true,
+      );
+
+      final command = ChatSessionShellFactory.buildMemberRemoteCommand(
+        profile: profile,
+        executable: 'claude',
+        arguments: const [],
+        remoteWorkingDirectory: '',
+        environment: const {},
+        useLoginShell: false,
+      );
+
+      expect(command, 'tp1:{"argv":["claude"]}');
+    });
+
+    test('legacy profile keeps the pre-codec login-shell command', () {
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'box',
+        host: '127.0.0.1',
+        username: 'u',
+      );
+
+      final command = ChatSessionShellFactory.buildMemberRemoteCommand(
+        profile: profile,
+        executable: 'claude',
+        arguments: const ['--resume', 's1'],
+        remoteWorkingDirectory: '/remote/work',
+        environment: const {'K': 'V'},
+        useLoginShell: true,
+      );
+
+      expect(command, startsWith(r'TERM="${TERM:-xterm-256color}" bash -lc '));
+      // Byte-for-byte what the code built before the codec existed.
+      expect(
+        command,
+        RemoteFlashskyaiCommandBuilder().buildCommand(
+          remoteExecutablePath: 'claude',
+          arguments: const ['--resume', 's1'],
+          workingDirectory: '/remote/work',
+          environment: const {'K': 'V'},
+          useLoginShell: true,
+        ),
+      );
+    });
   });
 }
 

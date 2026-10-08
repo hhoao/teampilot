@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_session_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/workspace_base_info_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/config_profile_context.dart';
-import 'package:teampilot/services/cli/session_lifecycle/cli_session_manifest.dart';
 import 'package:teampilot/services/cli/session_lifecycle/cli_session_manifest_store.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/session_lifecycle.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/session_lifecycle_paths.dart';
@@ -15,8 +15,8 @@ import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_cli_config_policy.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
-import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
+import 'package:teampilot/services/chat/team_bus/member_bus_idle_endpoint.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
 
 import '../../../../support/in_memory_filesystem.dart';
@@ -25,7 +25,6 @@ void main() {
   const workspaceId = 'ws';
   const sessionId = 'sess';
   const workingDirectory = '/home/hhoa/git/hhoa/teampilot';
-  const slug = 'home-hhoa-git-hhoa-teampilot';
   const providerId = 'official';
 
   late InMemoryFilesystem fs;
@@ -56,6 +55,9 @@ void main() {
   CliSessionInitContext initContext({
     String memberId = TeamMemberNaming.teamLeadName,
     TeamProfile? team,
+    List<String> additionalDirectories = const [],
+    WorkspaceBaseInfoPromptInputs workspaceBaseInfo =
+        WorkspaceBaseInfoPromptInputs.empty,
   }) {
     return CliSessionInitContext(
       workspaceId: workspaceId,
@@ -66,6 +68,8 @@ void main() {
       team: team ?? mixedCursorTeam(),
       busIdle: busIdle,
       workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
+      workspaceBaseInfo: workspaceBaseInfo,
     );
   }
 
@@ -117,7 +121,7 @@ void main() {
   });
 
   group('CursorSessionLifecycleCapability.initialize', () {
-    test('writes warm-tier base config from user cli-config.json', () async {
+    test('writes member cli-config base from user cli-config.json', () async {
       await fs.writeString(
         homeLayout.cliConfig('/home/user'),
         jsonEncode({
@@ -134,10 +138,8 @@ void main() {
       final result = await cap.initialize(initContext());
 
       expect(result.blocked, isFalse);
-      final basePath = fs.pathContext.join(
-        lifecyclePaths.sharedRoot(),
-        'cli-config.base.json',
-      );
+      final memberHome = lifecyclePaths.memberHomeRoot('team-lead');
+      final basePath = lifecyclePaths.memberCliConfigBasePath(memberHome);
       final base =
           jsonDecode((await fs.readString(basePath))!) as Map<String, Object?>;
       expect(base['serverConfigCache'], {'feature': true});
@@ -222,6 +224,41 @@ void main() {
       );
       expect(manifest!.phase, CliSessionPhase.ready);
     });
+
+    test(
+      'overlay rematerialize keeps Remote projects from init workspaceBaseInfo',
+      () async {
+        await seedPersisted();
+
+        final cap = await capability();
+        await cap.initialize(
+          initContext(
+            additionalDirectories: const ['/repo/a'],
+            workspaceBaseInfo: const WorkspaceBaseInfoPromptInputs(
+              sshMcpInjected: true,
+              remoteFolders: [
+                WorkspaceRemoteFolderInfo(
+                  profileId: 'home-server',
+                  name: 'Home',
+                  endpoint: 'alice@192.168.1.8:22',
+                  folderPaths: ['/home/alice/proj'],
+                ),
+              ],
+            ),
+          ),
+        );
+
+        final memberHome = lifecyclePaths.memberHomeRoot(
+          TeamMemberNaming.teamLeadName,
+        );
+        final roleRule = await fs.readString(homeLayout.roleRule(memberHome));
+        expect(roleRule, contains('## Workspace directories'));
+        expect(roleRule, contains('- /repo/a'));
+        expect(roleRule, contains('## Remote projects'));
+        expect(roleRule, contains('home-server'));
+        expect(roleRule, contains('/home/alice/proj'));
+      },
+    );
   });
 }
 

@@ -5,6 +5,7 @@ import 'package:tp_markdown/tp_markdown.dart' show ContentDisplayMode;
 import '../theme/app_theme.dart';
 import '../theme/app_typography_scale.dart';
 import '../theme/font_catalog.dart';
+import 'right_tool_open_set.dart';
 
 enum LayoutPreset { workbench, chatFocus, inspector }
 
@@ -39,8 +40,12 @@ class GitGraphColumnPrefs extends Equatable {
   final double commitWidth;
 
   @override
-  List<Object?> get props =>
-      [hiddenColumns, dateWidth, authorWidth, commitWidth];
+  List<Object?> get props => [
+    hiddenColumns,
+    dateWidth,
+    authorWidth,
+    commitWidth,
+  ];
 
   double widthOf(GitGraphColumnId id) => switch (id) {
     GitGraphColumnId.date => dateWidth,
@@ -111,7 +116,6 @@ class GitGraphColumnPrefs extends Equatable {
     'commitWidth': commitWidth,
   };
 }
-
 
 /// Dropdown value for language preference: `system` | `en` | `zh`.
 String languagePreferenceUiValue(String locale) {
@@ -189,10 +193,20 @@ class LayoutPreferences {
     this.floatingMaximized = false,
     this.filePreviewHost = FilePreviewHost.floating,
     this.floatingPreviewTabs = true,
+    this.rightToolOpenIds = const [],
+    this.rightToolSelectedId,
+    this.rightToolDismissedIds = const [],
     this.foldToolCallCategories = defaultFoldToolCallCategories,
   });
 
   factory LayoutPreferences.fromJson(Map<String, Object?> json) {
+    final openSet = RightToolOpenSet.sanitize(
+      openIds: RightToolOpenSet.sanitizeIds(json['rightToolOpenIds']),
+      selectedId: RightToolOpenSet.sanitizeSelected(
+        json['rightToolSelectedId'],
+      ),
+      dismissedIds: RightToolOpenSet.sanitizeIds(json['rightToolDismissedIds']),
+    );
     return LayoutPreferences(
       preset:
           _enumValue(LayoutPreset.values, json['preset']) ??
@@ -205,8 +219,7 @@ class LayoutPreferences {
       membersVisible: json['membersVisible'] as bool? ?? true,
       fileTreeVisible: json['fileTreeVisible'] as bool? ?? true,
       gitVisible: json['gitVisible'] as bool? ?? true,
-      gitGraphHeaderVisible:
-          json['gitGraphHeaderVisible'] as bool? ?? true,
+      gitGraphHeaderVisible: json['gitGraphHeaderVisible'] as bool? ?? true,
       gitGraphColumns: GitGraphColumnPrefs.fromJson(json['gitGraphColumns']),
       gitGraphDetailWidth: _doubleValue(
         json['gitGraphDetailWidth'],
@@ -296,6 +309,9 @@ class LayoutPreferences {
           _enumValue(FilePreviewHost.values, json['filePreviewHost']) ??
           FilePreviewHost.floating,
       floatingPreviewTabs: json['floatingPreviewTabs'] as bool? ?? true,
+      rightToolOpenIds: openSet.openIds,
+      rightToolSelectedId: openSet.selectedId,
+      rightToolDismissedIds: openSet.dismissedIds,
       foldToolCallCategories: _categorySet(json['foldToolCallCategories']),
     ).withAtLeastOneToolVisible();
   }
@@ -415,6 +431,10 @@ class LayoutPreferences {
   /// tab until promoted/pinned. Default on.
   final bool floatingPreviewTabs;
 
+  final List<String> rightToolOpenIds;
+  final String? rightToolSelectedId;
+  final List<String> rightToolDismissedIds;
+
   final Set<AiToolCallCategory> foldToolCallCategories;
 
   LayoutPreferences copyWith({
@@ -467,6 +487,10 @@ class LayoutPreferences {
     bool? floatingMaximized,
     FilePreviewHost? filePreviewHost,
     bool? floatingPreviewTabs,
+    List<String>? rightToolOpenIds,
+    String? rightToolSelectedId,
+    bool clearRightToolSelectedId = false,
+    List<String>? rightToolDismissedIds,
     Set<AiToolCallCategory>? foldToolCallCategories,
   }) {
     return LayoutPreferences(
@@ -555,6 +579,12 @@ class LayoutPreferences {
       floatingMaximized: floatingMaximized ?? this.floatingMaximized,
       filePreviewHost: filePreviewHost ?? this.filePreviewHost,
       floatingPreviewTabs: floatingPreviewTabs ?? this.floatingPreviewTabs,
+      rightToolOpenIds: rightToolOpenIds ?? this.rightToolOpenIds,
+      rightToolSelectedId: clearRightToolSelectedId
+          ? null
+          : (rightToolSelectedId ?? this.rightToolSelectedId),
+      rightToolDismissedIds:
+          rightToolDismissedIds ?? this.rightToolDismissedIds,
       foldToolCallCategories:
           foldToolCallCategories ?? this.foldToolCallCategories,
     ).withAtLeastOneToolVisible();
@@ -613,6 +643,9 @@ class LayoutPreferences {
       floatingToggleDy: floatingToggleDy,
       floatingMaximized: floatingMaximized,
       filePreviewHost: filePreviewHost,
+      rightToolOpenIds: rightToolOpenIds,
+      rightToolSelectedId: rightToolSelectedId,
+      rightToolDismissedIds: rightToolDismissedIds,
       foldToolCallCategories: foldToolCallCategories,
     );
   }
@@ -668,6 +701,9 @@ class LayoutPreferences {
       'floatingMaximized': floatingMaximized,
       'filePreviewHost': filePreviewHost.name,
       'floatingPreviewTabs': floatingPreviewTabs,
+      'rightToolOpenIds': rightToolOpenIds,
+      'rightToolSelectedId': rightToolSelectedId,
+      'rightToolDismissedIds': rightToolDismissedIds,
       'foldToolCallCategories': foldToolCallCategories
           .map((c) => c.name)
           .toList(),

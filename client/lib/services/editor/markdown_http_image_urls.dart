@@ -52,9 +52,7 @@ void _collectFromBlock(MarkdownBlock block, Set<String> out) {
           _collectFromRuns(cell.runs, out);
         }
       }
-    case CodeBlock() ||
-          HorizontalRuleBlock() ||
-          RawLiteralBlock():
+    case CodeBlock() || HorizontalRuleBlock() || RawLiteralBlock():
       break;
   }
 }
@@ -65,9 +63,9 @@ void _collectFromRuns(List<InlineRun> runs, Set<String> out) {
       case ImageRun(:final src):
         _maybeAdd(src, out);
       case StrongRun(:final children) ||
-            EmphasisRun(:final children) ||
-            StrikeRun(:final children) ||
-            LinkRun(:final children):
+          EmphasisRun(:final children) ||
+          StrikeRun(:final children) ||
+          LinkRun(:final children):
         _collectFromRuns(children, out);
       case TextRun() || CodeRun():
         break;

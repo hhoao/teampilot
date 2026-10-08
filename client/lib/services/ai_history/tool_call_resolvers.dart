@@ -12,8 +12,7 @@ final Expando<AiEditToolTarget> _editTargetCache = Expando();
 ///
 /// Successful results are cached on [part] identity so History `build()`
 /// does not re-split Write/Edit payloads every frame.
-class ConfigurableAiEditToolTargetResolver
-    implements AiEditToolTargetResolver {
+class ConfigurableAiEditToolTargetResolver implements AiEditToolTargetResolver {
   const ConfigurableAiEditToolTargetResolver({required this.codecs});
 
   /// Codecs tried in order for each tool call.
@@ -39,8 +38,7 @@ class ConfigurableAiEditToolTargetResolver
 /// Matches [rules] by [AiToolFileTargetRule.toolNames] (case-insensitive),
 /// extracts a file path and optional line range from the tool-call arguments
 /// using the shared [tool_args] utilities.
-class ConfigurableAiToolFileTargetResolver
-    implements AiToolFileTargetResolver {
+class ConfigurableAiToolFileTargetResolver implements AiToolFileTargetResolver {
   const ConfigurableAiToolFileTargetResolver({required this.rules});
 
   /// Rules tried in order; the first whose [AiToolFileTargetRule.toolNames]
@@ -64,11 +62,7 @@ class ConfigurableAiToolFileTargetResolver
     if (path == null) return null;
 
     final lines = _extractLines(args, part.argsText, rule);
-    return AiToolFileTarget(
-      path: path,
-      startLine: lines.$1,
-      endLine: lines.$2,
-    );
+    return AiToolFileTarget(path: path, startLine: lines.$1, endLine: lines.$2);
   }
 
   static (int?, int?) _extractLines(

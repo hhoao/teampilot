@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../pages/home_workspace/workspace/workspace_chat_landing_palette.dart';
-import '../../services/compose/compose_at_file_refs.dart';
+import '../../services/chat/conversation/compose/compose_at_file_refs.dart';
 import '../../services/editor/file_editor_theme.dart';
 import 'compose_menu_chip.dart';
 
@@ -23,9 +23,7 @@ class ComposeAtFileChipRow extends StatelessWidget {
   Widget build(BuildContext context) {
     if (refs.isEmpty) return const SizedBox.shrink();
 
-    final palette = WorkspaceChatLandingPalette(
-      Theme.of(context).colorScheme,
-    );
+    final palette = WorkspaceChatLandingPalette(Theme.of(context).colorScheme);
     final spacing = context.tpSpacing;
 
     return SingleChildScrollView(
@@ -61,9 +59,7 @@ class _ComposeAtFileChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final spacing = context.tpSpacing;
     final icons = context.tpIconSizes;
-    final labelStyle = TpTextStyles.of(
-      context,
-    ).smColored(palette.muted);
+    final labelStyle = TpTextStyles.of(context).smColored(palette.muted);
 
     return TpHover(
       backgroundColor: palette.chipFill,

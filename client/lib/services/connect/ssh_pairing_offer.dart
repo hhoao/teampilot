@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import '../../models/ssh_profile.dart';
 import '../../models/ssh_reachability.dart';
 
 class SshPairingOfferFormatException implements Exception {
@@ -107,6 +108,7 @@ class SshPairingOffer {
     required this.hostKeyFingerprints,
     required this.pairing,
     this.relay,
+    this.emb,
   });
 
   final int v;
@@ -118,6 +120,10 @@ class SshPairingOffer {
   final List<String> hostKeyFingerprints;
   final SshPairingSession pairing;
   final SshRelayOffer? relay;
+
+  /// Offer v2 flag: the host runs the embedded SSH server. `null` on v1
+  /// offers, which predate embedded hosts.
+  final bool? emb;
 
   /// Uncompressed base64 JSON for copy/paste links.
   String get bareCode =>
@@ -136,9 +142,9 @@ class SshPairingOffer {
   /// form above inflates ~1.33x inside the QR's byte mode.
   List<int> get qrBytes => [
     _binaryMarker,
-    ...ZLibEncoder(raw: true).convert(
-      utf8.encode(jsonEncode(_toCompactQrJson())),
-    ),
+    ...ZLibEncoder(
+      raw: true,
+    ).convert(utf8.encode(jsonEncode(_toCompactQrJson()))),
   ];
 
   static const int _binaryMarker = 0x7A;
@@ -161,6 +167,7 @@ class SshPairingOffer {
         'port': pairingUri.port,
       },
       if (relay != null) 'relay': {'url': relay!.url},
+      if (emb != null) 'emb': emb,
     };
   }
 
@@ -187,6 +194,7 @@ class SshPairingOffer {
         'p': Uri.parse(pairing.url).port,
       },
       if (relay != null) 'r': {'u': relay!.url},
+      if (emb != null) 'b': emb,
     };
   }
 
@@ -204,8 +212,8 @@ class SshPairingOffer {
   };
 
   /// `SHA256:<body>` → `<body>`; the prefix is re-added when decoding.
-  static String _stripFingerprintPrefix(String fingerprint) => fingerprint
-      .startsWith('SHA256:')
+  static String _stripFingerprintPrefix(String fingerprint) =>
+      fingerprint.startsWith('SHA256:')
       ? fingerprint.substring('SHA256:'.length)
       : fingerprint;
 
@@ -231,20 +239,18 @@ class SshPairingOffer {
   /// [fromJson]. Detected by `h` presence; full-key offers pass through.
   static Map<String, Object?> _expandCompactQrJson(Map<String, Object?> json) {
     if (json['h'] == null || json['hostId'] != null) return json;
-    final endpoints =
-        (json['e'] as List?)
-            ?.whereType<Map>()
-            .map((entry) {
-              final endpoint = entry.cast<String, Object?>();
-              return {
-                'kind': _endpointKindFromCode(endpoint['k'] as String? ?? '')
-                    ?.name,
-                'host': endpoint['h'],
-                'port': endpoint['p'],
-              };
-            })
-            .where((endpoint) => endpoint['kind'] != null)
-            .toList();
+    final endpoints = (json['e'] as List?)
+        ?.whereType<Map>()
+        .map((entry) {
+          final endpoint = entry.cast<String, Object?>();
+          return {
+            'kind': _endpointKindFromCode(endpoint['k'] as String? ?? '')?.name,
+            'host': endpoint['h'],
+            'port': endpoint['p'],
+          };
+        })
+        .where((endpoint) => endpoint['kind'] != null)
+        .toList();
     Map<String, Object?> pairing = const {};
     final pairingRaw = json['g'];
     if (pairingRaw is Map) {
@@ -264,13 +270,13 @@ class SshPairingOffer {
       'username': json['u'],
       'appDataRoot': json['a'],
       'endpoints': endpoints,
-      'hostKeyFingerprints':
-          (json['f'] as List?)
-              ?.whereType<String>()
-              .map((body) => 'SHA256:$body')
-              .toList(),
+      'hostKeyFingerprints': (json['f'] as List?)
+          ?.whereType<String>()
+          .map((body) => 'SHA256:$body')
+          .toList(),
       'pairing': pairing,
       if (relayRaw is Map) 'relay': {'url': relayRaw['u']},
+      if (json['b'] is bool) 'emb': json['b'],
     };
   }
 
@@ -284,6 +290,7 @@ class SshPairingOffer {
     'hostKeyFingerprints': hostKeyFingerprints,
     'pairing': pairing.toJson(),
     if (relay != null) 'relay': relay!.toJson(),
+    if (emb != null) 'emb': emb,
   };
 
   static SshPairingOffer decode(String input) {
@@ -321,7 +328,9 @@ class SshPairingOffer {
           throw const SshPairingOfferFormatException('offer must be an object');
         }
         return SshPairingOffer.fromJson(
-          _normalizeDecodedJson(_expandCompactQrJson(decoded.cast<String, Object?>())),
+          _normalizeDecodedJson(
+            _expandCompactQrJson(decoded.cast<String, Object?>()),
+          ),
         );
       } on SshPairingOfferFormatException {
         rethrow;
@@ -416,7 +425,8 @@ class SshPairingOffer {
   }
 
   factory SshPairingOffer.fromJson(Map<String, Object?> json) {
-    if ((json['v'] as num?)?.toInt() != 1) {
+    final v = (json['v'] as num?)?.toInt();
+    if (v == null || (v != 1 && v != 2)) {
       throw const SshPairingOfferFormatException('unsupported offer version');
     }
     final endpointJson = json['endpoints'];
@@ -446,7 +456,7 @@ class SshPairingOffer {
             .toList(growable: false) ??
         const <String>[];
     return SshPairingOffer(
-      v: 1,
+      v: v,
       hostId: _hostId(_requiredString(json, 'hostId')),
       username: _requiredString(json, 'username'),
       displayName: _requiredString(json, 'displayName'),
@@ -457,6 +467,7 @@ class SshPairingOffer {
       relay: relayRaw == null
           ? null
           : SshRelayOffer.fromJson((relayRaw as Map).cast<String, Object?>()),
+      emb: json['emb'] is bool ? json['emb'] as bool : null,
     );
   }
 }
@@ -484,11 +495,28 @@ String _hostId(String value) {
   return value;
 }
 
+/// Whether a live [offer] still matches what [profile] pinned at pairing
+/// time: a non-empty fingerprint-set intersection (profiles without pins
+/// match any key) and the same LAN port.
+///
+/// A mismatch means the desktop re-keyed or re-picked its embedded port
+/// since pairing — the profile cannot connect until the phone re-scans a
+/// pairing code, so connect-failure handling surfaces the repair hint.
+bool offerMatchesProfile(SshPairingOffer offer, SshProfile profile) {
+  final pinned = profile.hostKeyFingerprints;
+  final fingerprintsMatch =
+      pinned.isEmpty || offer.hostKeyFingerprints.any(pinned.contains);
+  final lanPort = offer.endpoints
+      .where((endpoint) => endpoint.kind == SshEndpointKind.lan)
+      .firstOrNull
+      ?.port;
+  return fingerprintsMatch && lanPort != null && lanPort == profile.port;
+}
+
 List<int> _hexDecode(String hex) => [
   for (var i = 0; i + 1 < hex.length; i += 2)
     int.parse(hex.substring(i, i + 2), radix: 16),
 ];
 
-String _hexEncode(List<int> bytes) => bytes
-    .map((byte) => byte.toRadixString(16).padLeft(2, '0'))
-    .join();
+String _hexEncode(List<int> bytes) =>
+    bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();

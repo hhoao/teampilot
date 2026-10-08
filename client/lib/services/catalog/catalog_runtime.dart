@@ -71,7 +71,8 @@ class CatalogRuntime {
         CatalogMutationBus(
           dispatcher: EventPublisher.instance.attachedDispatcher,
         );
-    final configRepo = workspaceConfig ?? WorkspaceProjectConfigRepository(storage: home);
+    final configRepo =
+        workspaceConfig ?? WorkspaceProjectConfigRepository(storage: home);
     final binder = CatalogWorkspaceBinder(repo: configRepo);
     final skills = skillRepository ?? SkillRepository(storage: home);
     final plugins = pluginRepository ?? PluginRepository(storage: home);

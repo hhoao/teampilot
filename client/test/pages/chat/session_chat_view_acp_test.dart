@@ -11,8 +11,8 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/ai_history_cubit.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
-import 'package:teampilot/cubits/chat/acp/acp_chat_runtime_cubit.dart';
-import 'package:teampilot/cubits/chat/chat_tab_store.dart';
+import 'package:teampilot/cubits/session/acp/acp_chat_runtime_cubit.dart';
+import 'package:teampilot/services/chat/session/chat_tab_store.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
@@ -43,11 +43,11 @@ import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
-import 'package:teampilot/services/compose/compose_draft_cache.dart';
-import 'package:teampilot/services/follow_up/follow_up_queue.dart';
-import 'package:teampilot/services/session/failed_message_store.dart';
-import 'package:teampilot/services/session/history_awaiting_working_sync.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_draft_cache.dart';
+import 'package:teampilot/services/chat/conversation/follow_up/follow_up_queue.dart';
+import 'package:teampilot/services/chat/conversation/history/failed_message_store.dart';
+import 'package:teampilot/services/chat/conversation/history/history_awaiting_working_sync.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
@@ -298,6 +298,11 @@ void main() {
         memberId: any(named: 'memberId'),
       ),
     ).thenReturn(false);
+    // Cold-load hydration is a live ChatCubit concern (document store); the
+    // harness has no persisted session document, so return null.
+    when(
+      () => chatCubit.hydrateSessionDocument(any(), any()),
+    ).thenAnswer((_) async => null);
     when(() => chatCubit.lifecycle).thenReturn(lifecycle);
     when(
       () => chatCubit.followUpQueue,

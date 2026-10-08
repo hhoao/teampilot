@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_cli_binding.dart';
 
 void main() {
@@ -100,7 +99,10 @@ void main() {
       binding.rowIdForCredentialSource('cli:cursor-mp-managed-1'),
       'cursor-mp-managed-1',
     );
-    expect(binding.rowIdForCredentialSource('cli:cursor-account'), 'cursor-account');
+    expect(
+      binding.rowIdForCredentialSource('cli:cursor-account'),
+      'cursor-account',
+    );
     expect(binding.rowIdForCredentialSource('secret'), isNull);
   });
 

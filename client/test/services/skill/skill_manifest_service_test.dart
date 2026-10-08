@@ -11,7 +11,7 @@ void main() {
 
   setUp(() {
     tmp = Directory.systemTemp.createTempSync('skill_manifest_test_');
-    svc = SkillManifestService(rootDir: tmp.path, storage: fakeHomeStorage(), );
+    svc = SkillManifestService(rootDir: tmp.path, storage: fakeHomeStorage());
   });
 
   tearDown(() {

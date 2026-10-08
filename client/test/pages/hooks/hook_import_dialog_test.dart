@@ -44,8 +44,7 @@ void main() {
             child: BlocProvider<HookCubit>.value(
               value: cubit,
               child: MaterialApp(
-                localizationsDelegates:
-                    AppLocalizations.localizationsDelegates,
+                localizationsDelegates: AppLocalizations.localizationsDelegates,
                 supportedLocales: AppLocalizations.supportedLocales,
                 home: TpTheme(
                   data: TpThemeData.fromColorScheme(scheme, scale: 1.0),
@@ -107,8 +106,9 @@ void main() {
     expect(find.byKey(const Key('hook-import-confirm')), findsNothing);
   });
 
-  testWidgets('empty group parses to a no-hooks error, not silence',
-      (tester) async {
+  testWidgets('empty group parses to a no-hooks error, not silence', (
+    tester,
+  ) async {
     await pumpDialog(tester);
 
     await tester.tap(find.text('import'));
@@ -125,10 +125,12 @@ void main() {
     expect(find.byKey(const Key('hook-import-preview')), findsNothing);
   });
 
-  testWidgets('draft matching an existing definition shows overwrite badge',
-      (tester) async {
+  testWidgets('draft matching an existing definition shows overwrite badge', (
+    tester,
+  ) async {
     // 预置一条与解析 draft 同 id 的定义（确定性 id，先解析拿 id）。
-    const json = '{"hooks": {"Stop": ['
+    const json =
+        '{"hooks": {"Stop": ['
         '{"hooks": [{"type": "command", "command": "echo done"}]}]}}';
     final parsed = await parser.parseJson(cli: CliTool.claude, jsonText: json);
     final id = parsed.drafts.single.definition.id;
@@ -150,10 +152,7 @@ void main() {
     await tester.tap(find.byKey(const Key('hook-import-parse')));
     await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(Key('hook-import-overwrite-$id')),
-      findsOneWidget,
-    );
+    expect(find.byKey(Key('hook-import-overwrite-$id')), findsOneWidget);
     expect(find.text('Will overwrite'), findsOneWidget);
   });
 }

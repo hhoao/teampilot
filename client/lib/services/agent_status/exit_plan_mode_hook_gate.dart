@@ -192,11 +192,7 @@ final class ExitPlanPermissionRequestGate {
     required String sessionId,
     required String memberId,
     required ExitPlanPermissionRequestReply reply,
-  }) => _hold.complete(
-    sessionId: sessionId,
-    memberId: memberId,
-    reply: reply,
-  );
+  }) => _hold.complete(sessionId: sessionId, memberId: memberId, reply: reply);
 
   bool hasWaiter({required String sessionId, required String memberId}) =>
       _hold.hasWaiter(sessionId: sessionId, memberId: memberId);

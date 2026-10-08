@@ -1,4 +1,6 @@
 @Tags(['integration', 'linux-pty'])
+library;
+
 import 'dart:io';
 
 import 'package:flutter_pty_new/flutter_pty_new.dart';

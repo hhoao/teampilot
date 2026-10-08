@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mock_model_gateway/scenarios/mixed_collab_3plus.dart';
 import 'package:mock_model_gateway/scenarios/simple_3turn.dart';
 import 'package:teampilot/models/team_config.dart';
-import '../support/test_runtime_context.dart';
 
 import '../support/post_frame_test_harness.dart';
 import 'support/bus_mail_assertions.dart';
@@ -62,7 +61,8 @@ void main() {
           expect(
             result.ok,
             isTrue,
-            reason: 'submitCompose failed at turn ${i + 1}\n'
+            reason:
+                'submitCompose failed at turn ${i + 1}\n'
                 '${harness.diagnosticsBundle()}',
           );
           await harness.waitForGatewayTurns(
@@ -129,7 +129,8 @@ void main() {
         expect(
           result.ok,
           isTrue,
-          reason: 'submitCompose failed on lead\n'
+          reason:
+              'submitCompose failed on lead\n'
               '${harness.diagnosticsBundle()}',
         );
 
@@ -193,8 +194,7 @@ void main() {
         expect(
           leadMail.any(
             (row) =>
-                row['from'] == kMatrixWorkerTypeId &&
-                row['content'] == 'pong',
+                row['from'] == kMatrixWorkerTypeId && row['content'] == 'pong',
           ),
           isTrue,
           reason: harness.diagnosticsBundle(),
@@ -256,7 +256,8 @@ void main() {
           expect(
             result.ok,
             isTrue,
-            reason: 'submitCompose failed at turn ${i + 1}\n'
+            reason:
+                'submitCompose failed at turn ${i + 1}\n'
                 '${harness.diagnosticsBundle()}',
           );
           await harness.waitForPtyMarkers([markers[i]]);

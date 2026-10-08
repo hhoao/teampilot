@@ -16,7 +16,10 @@ import '../support/in_memory_filesystem.dart';
 void main() {
   test('simple cursor: PTY quiet clears the attention working seat', () async {
     final tmp = await Directory.systemTemp.createTemp('cubit_turn_end_');
-    final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(),
+    );
     final attention = AgentAttentionCubit(pruneInterval: null);
     final postFrame = PostFrameTestHarness();
     final cubit = ChatCubit(
@@ -28,7 +31,7 @@ void main() {
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) =>
               RunningConnectedFakeShell(executable: executable),
-                             storage: fakeHomeStorage(),
+      storage: fakeHomeStorage(),
     );
 
     final workspace = await repo.createWorkspace([
@@ -94,7 +97,10 @@ void main() {
     'personal Claude: Stop/done hook ends inTurn when PTY quiet does not',
     () async {
       final tmp = await Directory.systemTemp.createTemp('cubit_turn_end_');
-      final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: fakeHomeStorage(),
+      );
       final attention = AgentAttentionCubit(pruneInterval: null);
       final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
@@ -106,7 +112,7 @@ void main() {
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
                 RunningConnectedFakeShell(executable: executable),
-                               storage: fakeHomeStorage(),
+        storage: fakeHomeStorage(),
       );
 
       final workspace = await repo.createWorkspace([

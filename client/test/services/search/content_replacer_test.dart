@@ -17,20 +17,24 @@ void main() {
 
   tearDown(() => dir.deleteSync(recursive: true));
 
-  TpSearchMatch match(String path, int line, String text, int start, int end,
-          {String rel = 'f.txt'}) =>
-      TpSearchMatch(
-        path: path,
-        relativePath: rel,
-        lineNumber: line,
-        lineText: text,
-        matchStart: start,
-        matchEnd: end,
-      );
+  TpSearchMatch match(
+    String path,
+    int line,
+    String text,
+    int start,
+    int end, {
+    String rel = 'f.txt',
+  }) => TpSearchMatch(
+    path: path,
+    relativePath: rel,
+    lineNumber: line,
+    lineText: text,
+    matchStart: start,
+    matchEnd: end,
+  );
 
   test('replaces multiple matches across lines', () async {
-    final f = File('${dir.path}/f.txt')
-      ..writeAsStringSync('aa bb aa\ncc aa\n');
+    final f = File('${dir.path}/f.txt')..writeAsStringSync('aa bb aa\ncc aa\n');
     final replacer = ContentReplacer(fs: fs);
     final n = await replacer.replaceAllInFile(
       path: f.path,

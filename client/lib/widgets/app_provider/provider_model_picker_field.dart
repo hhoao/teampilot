@@ -159,17 +159,16 @@ class _ProviderModelPickerFieldState extends State<ProviderModelPickerField> {
         onChanged: (next) => widget.onChanged(next ?? ''),
         itemLabel: (item) => item,
       ),
-      ProviderModelPickerMode.catalogWithCustomEntry =>
-        TpSelectWithCustomInput(
-          key: ValueKey('provider-model-custom-${widget.providerId}'),
-          value: widget.value,
-          items: candidates,
-          hintText: hint,
-          decoration: deco,
-          searchable: true,
-          searchMinItems: 8,
-          onChanged: widget.onChanged,
-        ),
+      ProviderModelPickerMode.catalogWithCustomEntry => TpSelectWithCustomInput(
+        key: ValueKey('provider-model-custom-${widget.providerId}'),
+        value: widget.value,
+        items: candidates,
+        hintText: hint,
+        decoration: deco,
+        searchable: true,
+        searchMinItems: 8,
+        onChanged: widget.onChanged,
+      ),
       ProviderModelPickerMode.hidden => const SizedBox.shrink(),
     };
 

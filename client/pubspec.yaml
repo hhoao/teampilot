@@ -2,7 +2,7 @@ name: teampilot
 description: "A team-oriented and easy-to-use desktop client packaged based on the terminal AI Agent"
 publish_to: 'none'
 
-version: 3.23.0
+version: 3.24.0
 
 environment:
   sdk: ^3.8.1
@@ -31,6 +31,8 @@ dependencies:
     path: packages/acpd/packages/acpd
   acpd_test:
     path: packages/acpd/packages/acpd_test
+  tp_sshd:
+    path: packages/tp_sshd
   pinenacl: ^0.6.0
   ai_message_core:
     path: packages/ai_message_core
@@ -94,6 +96,7 @@ dependencies:
   sqlite3_connection_pool: ^0.2.9
   cached_network_image: ^3.4.1
   mobile_scanner: ^7.4.0
+  mcp_dart: ^2.4.2
 dependency_overrides:
   html: 0.15.6
   acpd:

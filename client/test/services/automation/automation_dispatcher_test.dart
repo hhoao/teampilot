@@ -1,7 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/chat/model/session_open_status.dart';
+import 'package:teampilot/services/chat/session/session_open_status.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/automation.dart';
+import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/repositories/automation_repository.dart';
@@ -138,58 +139,134 @@ void main() {
     expect(runs, hasLength(1));
   });
 
-  test('scheduledMessage wraps ensure+deliver in runDeliveryInFlight', () async {
+  test('existing session resolves a bound member instance', () async {
     final layout = WorkspaceLayout(
       teampilotRoot: testHomeStorage.paths.basePath,
       fs: testHomeStorage.fs,
     );
     final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
     final session = AppSession(
-      sessionId: 'sess-1',
+      sessionId: 'sess-bound',
       workspaceId: 'ws1',
       sessionTeam: 'team-1',
       createdAt: 1,
+      members: const [
+        SessionMemberBinding(
+          rosterMemberId: 'builder-1',
+          typeId: 'builder',
+          taskId: 'task-builder-1',
+        ),
+      ],
     );
-    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
     final team = TeamProfile(
       id: 'team-1',
       name: 'Team',
-      members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+      members: const [
+        TeamMemberConfig(id: 'team-lead', name: 'Lead'),
+        TeamMemberConfig(id: 'builder', name: 'Builder', replicas: 1),
+      ],
     );
-    final events = <String>[];
-    final bus = _RecordingBusGateway(events: events);
-
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    final bus = _RecordingBusGateway();
+    TeamMemberConfig? openedMember;
     final dispatcher = AutomationDispatcher(
       repository: repo,
       scheduleCalculator: AutomationScheduleCalculator(),
       sessionRepository: _FakeSessionRepository([session]),
       busGateway: bus,
-      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestOpenSession: (request) async {
+        openedMember = request.member;
+        return SessionOpenStatus.opened;
+      },
       requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
       workspaceById: (_) => workspace,
-      teamById: (id) => id == 'team-1' ? team : null,
+      teamById: (_) => team,
       nowMs: () => 100,
-      runDeliveryInFlight: <T>(sessionId, action) async {
-        events.add('begin:$sessionId');
-        try {
-          return await action();
-        } finally {
-          events.add('end:$sessionId');
-        }
-      },
     );
 
-    await dispatcher.dispatch(
-      _scheduledMessageAutomation(sessionId: 'sess-1'),
+    final result = await dispatcher.dispatch(
+      Automation(
+        id: 'launch-bound',
+        name: 'Bound member',
+        action: AutomationAction.launchPrompt,
+        workspaceId: 'ws1',
+        isPersonal: false,
+        teamId: 'team-1',
+        targetMemberId: 'builder-1',
+        sessionId: 'sess-bound',
+        message: 'continue',
+        reuseSession: true,
+        preset: AutomationSchedulePreset.daily,
+        hourMinute: '09:00',
+        timezone: 'UTC',
+        dtstartMs: 1,
+        enabled: true,
+        nextRunAtMs: 1,
+        createdAtMs: 1,
+        updatedAtMs: 1,
+      ),
     );
 
-    expect(events, [
-      'begin:sess-1',
-      'ensure:sess-1',
-      'deliver:sess-1',
-      'end:sess-1',
-    ]);
+    expect(result.run.status, AutomationRunStatus.completed);
+    expect(openedMember?.id, 'builder-1');
+    expect(bus.deliverCalls, [('sess-bound', 'builder-1', 'continue')]);
   });
+
+  test(
+    'scheduledMessage wraps ensure+deliver in runDeliveryInFlight',
+    () async {
+      final layout = WorkspaceLayout(
+        teampilotRoot: testHomeStorage.paths.basePath,
+        fs: testHomeStorage.fs,
+      );
+      final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+      final session = AppSession(
+        sessionId: 'sess-1',
+        workspaceId: 'ws1',
+        sessionTeam: 'team-1',
+        createdAt: 1,
+      );
+      final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+      final team = TeamProfile(
+        id: 'team-1',
+        name: 'Team',
+        members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+      );
+      final events = <String>[];
+      final bus = _RecordingBusGateway(events: events);
+
+      final dispatcher = AutomationDispatcher(
+        repository: repo,
+        scheduleCalculator: AutomationScheduleCalculator(),
+        sessionRepository: _FakeSessionRepository([session]),
+        busGateway: bus,
+        requestOpenSession: (_) async => SessionOpenStatus.opened,
+        requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
+        workspaceById: (_) => workspace,
+        teamById: (id) => id == 'team-1' ? team : null,
+        nowMs: () => 100,
+        runDeliveryInFlight: <T>(sessionId, action) async {
+          events.add('begin:$sessionId');
+          try {
+            return await action();
+          } finally {
+            events.add('end:$sessionId');
+          }
+        },
+      );
+
+      await dispatcher.dispatch(
+        _scheduledMessageAutomation(sessionId: 'sess-1'),
+      );
+
+      expect(events, [
+        'begin:sess-1',
+        'ensure:sess-1',
+        'deliver:sess-1',
+        'end:sess-1',
+      ]);
+    },
+  );
 
   test('scheduledMessage skips when session is missing', () async {
     final layout = WorkspaceLayout(
@@ -366,63 +443,63 @@ void main() {
     expect(persisted.single.sessionId, createdSessionId);
   });
 
-  test('launchPrompt passes automation working directory to session create', () async {
-    final layout = WorkspaceLayout(
-      teampilotRoot: testHomeStorage.paths.basePath,
-      fs: testHomeStorage.fs,
-    );
-    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
-    final workspace = Workspace(
-      workspaceId: 'ws1',
-      createdAt: 1,
-    );
-    final bus = _RecordingBusGateway();
-    String? capturedWorkingDirectory;
+  test(
+    'launchPrompt passes automation working directory to session create',
+    () async {
+      final layout = WorkspaceLayout(
+        teampilotRoot: testHomeStorage.paths.basePath,
+        fs: testHomeStorage.fs,
+      );
+      final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+      final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+      final bus = _RecordingBusGateway();
+      String? capturedWorkingDirectory;
 
-    final dispatcher = AutomationDispatcher(
-      repository: repo,
-      scheduleCalculator: AutomationScheduleCalculator(),
-      sessionRepository: _FakeSessionRepository(const []),
-      busGateway: bus,
-      requestOpenSession: (_) async => SessionOpenStatus.opened,
-      requestCreateAndOpenSession: (request) async {
-        capturedWorkingDirectory = request.workingDirectory;
-        return SessionOpenStatus.opened;
-      },
-      workspaceById: (_) => workspace,
-      teamById: (_) => null,
-      sessionById: (sessionId, workspaceId) => AppSession(
-        sessionId: sessionId,
-        workspaceId: workspaceId,
-        createdAt: 1,
-      ),
-      nowMs: () => 100,
-    );
+      final dispatcher = AutomationDispatcher(
+        repository: repo,
+        scheduleCalculator: AutomationScheduleCalculator(),
+        sessionRepository: _FakeSessionRepository(const []),
+        busGateway: bus,
+        requestOpenSession: (_) async => SessionOpenStatus.opened,
+        requestCreateAndOpenSession: (request) async {
+          capturedWorkingDirectory = request.workingDirectory;
+          return SessionOpenStatus.opened;
+        },
+        workspaceById: (_) => workspace,
+        teamById: (_) => null,
+        sessionById: (sessionId, workspaceId) => AppSession(
+          sessionId: sessionId,
+          workspaceId: workspaceId,
+          createdAt: 1,
+        ),
+        nowMs: () => 100,
+      );
 
-    final automation = Automation(
-      id: 'launch-3',
-      name: 'Worktree prompt',
-      action: AutomationAction.launchPrompt,
-      workspaceId: 'ws1',
-      isPersonal: true,
-      presetId: 'preset-1',
-      projectFolderPath: '/repo',
-      workingDirectoryPath: '/repo/feature',
-      message: 'run',
-      preset: AutomationSchedulePreset.daily,
-      hourMinute: '09:00',
-      timezone: 'UTC',
-      dtstartMs: 1,
-      enabled: true,
-      nextRunAtMs: 1,
-      createdAtMs: 1,
-      updatedAtMs: 1,
-    );
+      final automation = Automation(
+        id: 'launch-3',
+        name: 'Worktree prompt',
+        action: AutomationAction.launchPrompt,
+        workspaceId: 'ws1',
+        isPersonal: true,
+        presetId: 'preset-1',
+        projectFolderPath: '/repo',
+        workingDirectoryPath: '/repo/feature',
+        message: 'run',
+        preset: AutomationSchedulePreset.daily,
+        hourMinute: '09:00',
+        timezone: 'UTC',
+        dtstartMs: 1,
+        enabled: true,
+        nextRunAtMs: 1,
+        createdAtMs: 1,
+        updatedAtMs: 1,
+      );
 
-    await dispatcher.dispatch(automation);
+      await dispatcher.dispatch(automation);
 
-    expect(capturedWorkingDirectory, '/repo/feature');
-  });
+      expect(capturedWorkingDirectory, '/repo/feature');
+    },
+  );
 
   test('launchPrompt with reuse reopens bound session on later runs', () async {
     final layout = WorkspaceLayout(

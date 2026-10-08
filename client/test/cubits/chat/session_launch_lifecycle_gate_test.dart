@@ -12,7 +12,7 @@ import 'package:teampilot/services/cli/registry/capabilities/noop_cli_session_ca
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -125,7 +125,7 @@ void main() {
 
     setUp(() async {
       tmp = await Directory.systemTemp.createTemp('launch_lifecycle_gate_');
-      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage, );
+      repo = SessionRepository(rootDir: tmp.path, storage: testHomeStorage);
       denyLifecycle = _DenyGateLifecycle();
       postFrame = PostFrameTestHarness();
       shells.clear();
@@ -138,7 +138,7 @@ void main() {
             CliTool.claude,
             denyLifecycle,
           ),
-                                                   storage: testHomeStorage,
+          storage: testHomeStorage,
         ),
         postFrameScheduler: postFrame.scheduler,
         terminalSessionFactory:
@@ -147,7 +147,7 @@ void main() {
               shells.add(shell);
               return shell;
             },
-                         storage: testHomeStorage,
+        storage: testHomeStorage,
       );
     });
 
@@ -191,10 +191,7 @@ void main() {
       expect(denyLifecycle.initializeCalls, greaterThanOrEqualTo(1));
       expect(shells, isNotEmpty);
       expect(shells.first.connectCalls, 0);
-      expect(
-        cubit.isSessionConnecting(session.sessionId),
-        isFalse,
-      );
+      expect(cubit.isSessionConnecting(session.sessionId), isFalse);
       expect(cubit.tabStore.activeTabs.first.info.launchError, isNotNull);
     });
   });

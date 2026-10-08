@@ -66,11 +66,13 @@ class RunningSessionIds {
     required List<AppSession> sessions,
     required Set<String> busySessionIds,
     required Set<String> openTabSessionIds,
+    Set<String> occupiedSessionIds = const {},
   }) {
     final running = workspaceRunningSessions(
       sessions: sessions,
       busySessionIds: busySessionIds,
       openTabSessionIds: openTabSessionIds,
+      occupiedSessionIds: occupiedSessionIds,
     );
     return RunningSessionIds([for (final s in running) s.sessionId]);
   }
@@ -79,14 +81,19 @@ class RunningSessionIds {
   factory RunningSessionIds.fromOpenSessionTabs({
     required List<AppSession> sessions,
     required List<String> openTabSessionIdsInOrder,
+    Set<String> occupiedSessionIds = const {},
   }) {
-    if (openTabSessionIdsInOrder.isEmpty) {
+    if (openTabSessionIdsInOrder.isEmpty && occupiedSessionIds.isEmpty) {
       return const RunningSessionIds([]);
     }
     final known = {for (final s in sessions) s.sessionId};
     final ids = <String>[];
     final seen = <String>{};
     for (final id in openTabSessionIdsInOrder) {
+      if (id.isEmpty || id.startsWith('local-') || !seen.add(id)) continue;
+      if (known.contains(id)) ids.add(id);
+    }
+    for (final id in occupiedSessionIds) {
       if (id.isEmpty || id.startsWith('local-') || !seen.add(id)) continue;
       if (known.contains(id)) ids.add(id);
     }

@@ -23,11 +23,7 @@ void main() {
 
   test('saves and loads team profiles', () async {
     await repo.save(
-      const TeamProfile(
-        id: 'squad',
-        name: 'Squad',
-        skillIds: ['s'],
-      ),
+      const TeamProfile(id: 'squad', name: 'Squad', skillIds: ['s']),
     );
 
     final all = await repo.loadAll();

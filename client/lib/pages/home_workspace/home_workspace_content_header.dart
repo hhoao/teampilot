@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
-import '../../cubits/team/launch_profile_selectors.dart';
+import '../../services/launch_profile/team/launch_profile_selectors.dart';
 import '../../widgets/settings/workspace_section_tab_bar.dart';
 import '../../models/team_config.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -27,8 +27,7 @@ class HomeTeamHeader extends StatelessWidget {
         ? l10n.teamModeMixedTitle
         : l10n.teamModeNativeTitle;
     final badgeColor = isMixed ? cs.tertiary : cs.primary;
-    final title =
-        builtInTeamDisplayName(l10n, snapshot.id) ?? snapshot.display;
+    final title = builtInTeamDisplayName(l10n, snapshot.id) ?? snapshot.display;
     return Row(
       children: [
         Icon(Icons.groups_2_outlined, color: cs.primary),
@@ -48,10 +47,7 @@ class HomeTeamHeader extends StatelessWidget {
             color: badgeColor.withValues(alpha: 0.16),
             borderRadius: BorderRadius.circular(6),
           ),
-          child: Text(
-            modeLabel,
-            style: styles.xsSemiboldColored(badgeColor),
-          ),
+          child: Text(modeLabel, style: styles.xsSemiboldColored(badgeColor)),
         ),
       ],
     );

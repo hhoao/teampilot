@@ -44,14 +44,13 @@ class GitChangeFolderTile extends StatelessWidget {
   /// Shared always-on listenable for tiles constructed without [hoverEnabled].
   static final ValueListenable<bool> _hoverAlwaysOn = ValueNotifier<bool>(true);
 
-  bool? get _triState =>
-      subtreeTotalCount == 0
-          ? false
-          : subtreeSelectedCount == subtreeTotalCount
-          ? true
-          : subtreeSelectedCount == 0
-          ? false
-          : null;
+  bool? get _triState => subtreeTotalCount == 0
+      ? false
+      : subtreeSelectedCount == subtreeTotalCount
+      ? true
+      : subtreeSelectedCount == 0
+      ? false
+      : null;
 
   @override
   Widget build(BuildContext context) {
@@ -96,9 +95,7 @@ class GitChangeFolderTile extends StatelessWidget {
               child: Checkbox(
                 value: _triState,
                 tristate: true,
-                onChanged: (_) => _triState == true
-                    ? onUnstage()
-                    : onStage(),
+                onChanged: (_) => _triState == true ? onUnstage() : onStage(),
                 visualDensity: VisualDensity.compact,
               ),
             ),

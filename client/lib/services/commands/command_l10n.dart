@@ -70,7 +70,7 @@ String? _titleForKey(AppLocalizations l10n, String titleL10nKey) {
     'shortcutsWorkbenchSplitReset' => l10n.shortcutsWorkbenchSplitReset,
     'shortcutsWorkbenchFocusNextGroup' => l10n.shortcutsWorkbenchFocusNextGroup,
     'shortcutsWorkbenchMoveTabToNextGroup' =>
-        l10n.shortcutsWorkbenchMoveTabToNextGroup,
+      l10n.shortcutsWorkbenchMoveTabToNextGroup,
     'shortcutsToggleSidebar' => l10n.shortcutsToggleSidebar,
     'shortcutsTogglePanel' => l10n.shortcutsTogglePanel,
     'shortcutsToggleSecondarySidebar' => l10n.shortcutsToggleSecondarySidebar,

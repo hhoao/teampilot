@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/flashskyai/capabilities/provider.dart';
@@ -73,10 +72,10 @@ void main() {
       'high',
       memberModel: 'claude-sonnet-4-20250514',
     );
-    final providerEntry = (merged['provider'] as Map)['anthropic'] as Map;
+    final providerEntry = (merged['providers'] as Map)['anthropic'] as Map;
     final modelEntry =
         (providerEntry['models'] as Map)['claude-sonnet-4-20250514'] as Map;
-    final options = modelEntry['options'] as Map;
+    final options = modelEntry['settings'] as Map;
     expect(options['reasoningEffort'], 'high');
   });
 

@@ -11,64 +11,60 @@ void main() {
     _LinkActionsProbe.builds = 0;
   });
 
-  testWidgets(
-    'parent rebuild does not notify markdown link dependents',
-    (tester) async {
-      late StateSetter setParentState;
-      final session = _session();
-      final workspace = _workspace();
+  testWidgets('parent rebuild does not notify markdown link dependents', (
+    tester,
+  ) async {
+    late StateSetter setParentState;
+    final session = _session();
+    final workspace = _workspace();
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: StatefulBuilder(
-            builder: (context, setState) {
-              setParentState = setState;
-              return SessionChatMarkdownLinkScope(
-                session: session,
-                workspace: workspace,
-                selectedMemberId: 'm1',
-                hrefRoots: const ['/repo'],
-                child: const _LinkActionsProbe(),
-              );
-            },
-          ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            setParentState = setState;
+            return SessionChatMarkdownLinkScope(
+              session: session,
+              workspace: workspace,
+              selectedMemberId: 'm1',
+              hrefRoots: const ['/repo'],
+              child: const _LinkActionsProbe(),
+            );
+          },
         ),
-      );
+      ),
+    );
 
-      expect(_LinkActionsProbe.builds, 1);
-      setParentState(() {});
-      await tester.pump();
-      expect(_LinkActionsProbe.builds, 1);
-    },
-  );
+    expect(_LinkActionsProbe.builds, 1);
+    setParentState(() {});
+    await tester.pump();
+    expect(_LinkActionsProbe.builds, 1);
+  });
 
-  testWidgets(
-    'new AiMarkdownLinkActions instance notifies dependents',
-    (tester) async {
-      late StateSetter setParentState;
+  testWidgets('new AiMarkdownLinkActions instance notifies dependents', (
+    tester,
+  ) async {
+    late StateSetter setParentState;
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: StatefulBuilder(
-            builder: (context, setState) {
-              setParentState = setState;
-              return AiMarkdownLinkActionsScope(
-                actions: AiMarkdownLinkActions(
-                  onLinkTap: (href) async {},
-                ),
-                child: const _LinkActionsProbe(),
-              );
-            },
-          ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            setParentState = setState;
+            return AiMarkdownLinkActionsScope(
+              actions: AiMarkdownLinkActions(onLinkTap: (href) async {}),
+              child: const _LinkActionsProbe(),
+            );
+          },
         ),
-      );
+      ),
+    );
 
-      expect(_LinkActionsProbe.builds, 1);
-      setParentState(() {});
-      await tester.pump();
-      expect(_LinkActionsProbe.builds, 2);
-    },
-  );
+    expect(_LinkActionsProbe.builds, 1);
+    setParentState(() {});
+    await tester.pump();
+    expect(_LinkActionsProbe.builds, 2);
+  });
 }
 
 AppSession _session() => AppSession(

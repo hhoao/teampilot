@@ -364,9 +364,11 @@ class DocumentSession extends ChangeNotifier {
     }
 
     final perLine = <int, List<TokenSpan>>{};
-    for (var line = pending.startLine;
-        line <= pending.endLine && line < lineCount;
-        line++) {
+    for (
+      var line = pending.startLine;
+      line <= pending.endLine && line < lineCount;
+      line++
+    ) {
       perLine[line] = <TokenSpan>[];
     }
     for (final capture in result.captures) {
@@ -400,7 +402,9 @@ class DocumentSession extends ChangeNotifier {
       final clipStart = cuStart > lineStart ? cuStart : lineStart;
       final clipEnd = cuEnd < lineEnd ? cuEnd : lineEnd;
       if (clipEnd <= clipStart) continue;
-      perLine.putIfAbsent(line, () => <TokenSpan>[]).add(
+      perLine
+          .putIfAbsent(line, () => <TokenSpan>[])
+          .add(
             TokenSpan(
               start: clipStart - lineStart,
               length: clipEnd - clipStart,

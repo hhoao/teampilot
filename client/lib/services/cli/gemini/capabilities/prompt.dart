@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import '../../registry/capabilities/prompt_capability.dart';
-import '../../../launch/work_plane_paths.dart';
-import '../../../session/member_role_provision.dart';
+import '../../registry/member_role_provision.dart';
+import '../../../chat/launch/staging/manifest/work_plane_paths.dart';
 import '../../../resource/contribution/resource_origin.dart';
 
 /// Gemini reads a `GEMINI.md` hierarchical memory file from its config dir;
@@ -30,7 +30,6 @@ final class GeminiPromptCapability
           member: member,
           forceTeamLeadDelegateMode: ctx.forceTeamLeadDelegateMode,
           mixed: ctx.mixed,
-          additionalDirectories: const [],
         ).trim(),
         origin: const ContributionOrigin(
           providerId: toolId,

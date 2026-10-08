@@ -15,7 +15,7 @@ import 'package:teampilot/services/expert_hub/expert_member_resolver.dart';
 import 'package:teampilot/services/expert_hub/local_expert_store.dart';
 import 'package:teampilot/services/home_workspace/landing_prefs_store.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
-import 'package:teampilot/services/team/team_clone_service.dart';
+import 'package:teampilot/services/team_config/team_clone_service.dart';
 
 import '../support/in_memory_filesystem.dart';
 

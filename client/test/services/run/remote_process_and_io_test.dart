@@ -79,7 +79,7 @@ void main() {
   group('ProcessRunExecutor remote transport', () {
     test('spawns wsl.exe argv for wsl plan', () async {
       final spawner = RecordingSpawner();
-      final exec = ProcessRunExecutor(spawner: spawner);
+      final exec = ProcessRunExecutor(spawner: spawner.call);
       final plan = RunTargetPlan(
         workingDirectory: '/home/user/proj',
         runtimeTarget: RuntimeTarget.wsl('Ubuntu'),
@@ -185,10 +185,7 @@ void main() {
           id: 'local-run',
           name: 'Local',
           type: 'shellScript',
-          extras: {
-            'execute': 'scriptText',
-            'scriptText': 'echo',
-          },
+          extras: {'execute': 'scriptText', 'scriptText': 'echo'},
         ),
       );
       await store.upsertConfiguration(
@@ -197,10 +194,7 @@ void main() {
           id: 'ssh-run',
           name: 'SSH',
           type: 'shellScript',
-          extras: {
-            'execute': 'scriptText',
-            'scriptText': 'echo',
-          },
+          extras: {'execute': 'scriptText', 'scriptText': 'echo'},
         ),
       );
 
@@ -212,7 +206,10 @@ void main() {
         await sshFs.readString('/remote/.teampilot/launch.json'),
         isNotNull,
       );
-      expect(await localFs.readString('/remote/.teampilot/launch.json'), isNull);
+      expect(
+        await localFs.readString('/remote/.teampilot/launch.json'),
+        isNull,
+      );
       expect(await sshFs.readString('/local/.teampilot/launch.json'), isNull);
 
       final listed = await store.listConfigurations(

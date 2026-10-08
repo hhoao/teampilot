@@ -29,5 +29,5 @@ class SeatLease extends Equatable {
 /// before re-invocation, task killed via TaskStop, hook POST lost).
 /// Event-paired leases normally clear long before this.
 Duration seatLeaseTtl(SeatLeaseKind kind) => switch (kind) {
-      SeatLeaseKind.backgroundTask => const Duration(minutes: 60),
-    };
+  SeatLeaseKind.backgroundTask => const Duration(minutes: 60),
+};

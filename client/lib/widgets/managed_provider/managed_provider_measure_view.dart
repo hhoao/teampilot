@@ -62,7 +62,10 @@ class ManagedProviderMeasureView extends StatelessWidget {
     return unit == '%' || unit == 'percent' || unit == 'percentage';
   }
 
-  static String statusLabel(AppLocalizations l10n, ProviderUsageStatus? status) {
+  static String statusLabel(
+    AppLocalizations l10n,
+    ProviderUsageStatus? status,
+  ) {
     if (status == null) return l10n.managedProvidersNoUsage;
     return switch (status) {
       ProviderUsageStatus.ready => l10n.managedProvidersCachedUsage,

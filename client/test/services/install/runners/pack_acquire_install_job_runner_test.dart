@@ -95,34 +95,35 @@ void main() {
 
       expect(capturedId, 'lint');
       expect(result, 'skill-id');
-      expect(steps, [
-        'Downloading',
-        'items:1/3',
-        'Registering',
-        'items:3/3',
-      ]);
+      expect(steps, ['Downloading', 'items:1/3', 'Registering', 'items:3/3']);
       expect(capturedCancelled, isNotNull);
       expect(capturedCancelled!(), isFalse);
     });
 
-    test('run routes plugin and extension targets to matching invokers', () async {
-      final runner = PackAcquireInstallJobRunner(
-        installPlugin: (id, onStep, isCancelled) async => 'plugin:$id',
-        installExtension: (id, onStep, isCancelled) async => 'extension:$id',
-      );
+    test(
+      'run routes plugin and extension targets to matching invokers',
+      () async {
+        final runner = PackAcquireInstallJobRunner(
+          installPlugin: (id, onStep, isCancelled) async => 'plugin:$id',
+          installExtension: (id, onStep, isCancelled) async => 'extension:$id',
+        );
 
-      expect(
-        await runner.run(_spec(InstallJobKeys.plugin('git')), InstallJobContext()),
-        'plugin:git',
-      );
-      expect(
-        await runner.run(
-          _spec(InstallJobKeys.extension('rtk')),
-          InstallJobContext(),
-        ),
-        'extension:rtk',
-      );
-    });
+        expect(
+          await runner.run(
+            _spec(InstallJobKeys.plugin('git')),
+            InstallJobContext(),
+          ),
+          'plugin:git',
+        );
+        expect(
+          await runner.run(
+            _spec(InstallJobKeys.extension('rtk')),
+            InstallJobContext(),
+          ),
+          'extension:rtk',
+        );
+      },
+    );
 
     test('run throws when cancelled before start', () async {
       final runner = PackAcquireInstallJobRunner(

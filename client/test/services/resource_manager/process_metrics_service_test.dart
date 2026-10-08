@@ -180,9 +180,7 @@ void main() {
 
   test('groupHistory retained when all pids in a group go missing', () async {
     var table = unixFixture;
-    final svc = buildService(
-      readProcessTable: () async => table,
-    );
+    final svc = buildService(readProcessTable: () async => table);
 
     final good = await svc.collect(
       registeredPids: {'chat:s1:m1': 42},
@@ -221,44 +219,32 @@ PID PPID %CPU RSS
     expect(snap.app?.cpu, 0.0);
     expect(snap.app?.memoryBytes, 1024 * 1024);
     expect(snap.totalCpu, closeTo(0.0 + 1.7, 0.001));
-    expect(
-      snap.totalMemory,
-      1024 * 1024 + (20480 + 4096) * 1024,
-    );
+    expect(snap.totalMemory, 1024 * 1024 + (20480 + 4096) * 1024);
   });
 
-  test('does not double-count PTY subtree inside app or across leaves', () async {
-    // App=1, leafA=42→43, leafB=43 (shared descendant of A).
-    final svc = buildService();
-    final snap = await svc.collect(
-      registeredPids: {
-        'chat:s1:a': 42,
-        'chat:s1:b': 43,
-      },
-      bindingKeyToGroupKey: {
-        'chat:s1:a': 'main',
-        'chat:s1:b': 'main',
-      },
-    );
+  test(
+    'does not double-count PTY subtree inside app or across leaves',
+    () async {
+      // App=1, leafA=42→43, leafB=43 (shared descendant of A).
+      final svc = buildService();
+      final snap = await svc.collect(
+        registeredPids: {'chat:s1:a': 42, 'chat:s1:b': 43},
+        bindingKeyToGroupKey: {'chat:s1:a': 'main', 'chat:s1:b': 'main'},
+      );
 
-    expect(snap.app?.memoryBytes, 1024 * 1024);
-    // First leaf claims 42+43; second leaf finds 43 already claimed → 0.
-    expect(snap.leafMetrics['chat:s1:a']?.memoryBytes, (20480 + 4096) * 1024);
-    expect(snap.leafMetrics['chat:s1:b']?.memoryBytes, 0);
-    expect(
-      snap.totalMemory,
-      1024 * 1024 + (20480 + 4096) * 1024,
-    );
-  });
+      expect(snap.app?.memoryBytes, 1024 * 1024);
+      // First leaf claims 42+43; second leaf finds 43 already claimed → 0.
+      expect(snap.leafMetrics['chat:s1:a']?.memoryBytes, (20480 + 4096) * 1024);
+      expect(snap.leafMetrics['chat:s1:b']?.memoryBytes, 0);
+      expect(snap.totalMemory, 1024 * 1024 + (20480 + 4096) * 1024);
+    },
+  );
 
   // Orca: `ps -eo pid=,ppid=,pcpu=,rss=` — one format string. Splitting into
   // separate argv tokens makes Linux ps treat later tokens as PID lists and
   // exit 1 with an empty table (all Resource Manager CPU/Mem become —).
   test('unix ps argv is a single -eo format string like Orca', () {
-    expect(
-      ProcessMetricsService.unixPsArgs,
-      ['-eo', 'pid=,ppid=,pcpu=,rss='],
-    );
+    expect(ProcessMetricsService.unixPsArgs, ['-eo', 'pid=,ppid=,pcpu=,rss=']);
   });
 
   test('real unix ps with unixPsArgs returns a non-empty table', () async {
@@ -267,11 +253,7 @@ PID PPID %CPU RSS
     final result = await Process.run(
       'ps',
       ProcessMetricsService.unixPsArgs,
-      environment: {
-        ...Platform.environment,
-        'LC_ALL': 'C',
-        'LANG': 'C',
-      },
+      environment: {...Platform.environment, 'LC_ALL': 'C', 'LANG': 'C'},
     );
     expect(result.exitCode, 0, reason: '${result.stderr}');
     expect((result.stdout as String).trim(), isNotEmpty);

@@ -201,7 +201,9 @@ class _FileRow extends StatelessWidget {
                 child: Text(
                   change.badge,
                   textAlign: TextAlign.center,
-                  style: TpTextStyles.of(context).smBoldColored(_badgeColor(cs)),
+                  style: TpTextStyles.of(
+                    context,
+                  ).smBoldColored(_badgeColor(cs)),
                 ),
               ),
             ],

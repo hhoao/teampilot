@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ai_feature_setting.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/ai/team_config_draft.dart';
-import 'package:teampilot/services/ai/team_config_generator.dart';
+import 'package:teampilot/services/ai_generation/team_config_draft.dart';
+import 'package:teampilot/services/ai_generation/team_config_generator.dart';
 import 'package:teampilot/utils/team/team_member_naming.dart';
 import '../../support/post_frame_test_harness.dart';
 

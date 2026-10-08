@@ -44,7 +44,13 @@ void main() {
       ..pin(_ws, _s1)
       ..openFloating(_ws, _sh1)
       ..openFloating(_ws, _r1)
-      ..splitTab(_ws, _r1, axis: Axis.horizontal, before: false, floating: true);
+      ..splitTab(
+        _ws,
+        _r1,
+        axis: Axis.horizontal,
+        before: false,
+        floating: true,
+      );
   }
 
   test('save → reset → restore puts the layout back', () async {
@@ -83,10 +89,10 @@ void main() {
 
     final center = cubit.centerLayout(_ws);
     // s3 was rejected; only s1 and s2 survive (s2's split group keeps s2).
-    expect(
-      center.groups.values.expand((strip) => strip.order).toSet(),
-      {_s1, _s2},
-    );
+    expect(center.groups.values.expand((strip) => strip.order).toSet(), {
+      _s1,
+      _s2,
+    });
     // Rejected floating shell tab pruned as well; the run tab survives.
     expect(cubit.mergedFloatingStrip(_ws).order, [_r1]);
   });

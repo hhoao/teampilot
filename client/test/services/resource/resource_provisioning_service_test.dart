@@ -37,7 +37,7 @@ void main() {
       final service = ResourceProvisioningService(
         fs: fs,
         registry: CliToolRegistry.builtIn(),
-                                                   storage: testHomeStorage,
+        storage: testHomeStorage,
       );
 
       await service.provisionForLaunch(
@@ -83,7 +83,7 @@ void main() {
     final service = ResourceProvisioningService(
       fs: fs,
       registry: CliToolRegistry.builtIn(),
-                                                 storage: testHomeStorage,
+      storage: testHomeStorage,
     );
 
     await service.provisionForLaunch(
@@ -151,7 +151,7 @@ void main() {
       final service = ResourceProvisioningService(
         fs: fs,
         registry: CliToolRegistry.builtIn(),
-                                                   storage: testHomeStorage,
+        storage: testHomeStorage,
       );
       const scope = SimpleResourceScope(
         bundle: ConfigBundle(skillIds: ['catalog'], pluginIds: ['acme/plugin']),
@@ -179,10 +179,7 @@ void main() {
 
       // The managed always-on teampilot-catalog skill is provisioned next to
       // the catalog skill; plugin skills must NOT be flattened into skills/.
-      expect(
-        first,
-        containsAll(<String>['catalog-dir', 'teampilot-catalog']),
-      );
+      expect(first, containsAll(<String>['catalog-dir', 'teampilot-catalog']));
       expect(first, hasLength(2));
       expect(second, first);
     },
@@ -199,7 +196,7 @@ void main() {
       final service = ResourceProvisioningService(
         fs: fs,
         registry: _registryWithCapabilities(const []),
-                                                   storage: testHomeStorage,
+        storage: testHomeStorage,
       );
 
       await expectLater(
@@ -253,7 +250,11 @@ void main() {
       final registry = _registryWithCapabilities(const [
         _UnsupportedSkillCapability(),
       ]);
-      final service = ResourceProvisioningService(fs: fs, registry: registry, storage: testHomeStorage, );
+      final service = ResourceProvisioningService(
+        fs: fs,
+        registry: registry,
+        storage: testHomeStorage,
+      );
 
       await expectLater(
         service.provisionForLaunch(

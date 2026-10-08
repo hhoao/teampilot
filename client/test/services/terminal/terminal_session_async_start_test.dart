@@ -59,7 +59,7 @@ void main() {
               started = true;
               return Future.value(transport);
             },
-                                       fs: InMemoryFilesystem(),
+        fs: InMemoryFilesystem(),
       );
       addTearDown(session.dispose);
 
@@ -89,7 +89,7 @@ void main() {
           }) {
             return starter.future;
           },
-                                     fs: InMemoryFilesystem(),
+      fs: InMemoryFilesystem(),
     );
     addTearDown(session.dispose);
 
@@ -109,7 +109,7 @@ void main() {
     final session = TerminalSession(
       executable: '/bin/echo',
       validateLaunch: false,
-                                     fs: InMemoryFilesystem(),
+      fs: InMemoryFilesystem(),
     );
     session.dispose();
     session.connect(workingDirectory: '/tmp');
@@ -138,7 +138,7 @@ void main() {
             }) {
               return starter.future;
             },
-                                       fs: InMemoryFilesystem(),
+        fs: InMemoryFilesystem(),
       );
 
       session.connect(workingDirectory: '/tmp');

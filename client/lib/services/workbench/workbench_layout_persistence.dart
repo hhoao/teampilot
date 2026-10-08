@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import '../../cubits/chat_cubit.dart';
-import '../../cubits/chat/model/chat_tab.dart';
+import '../chat/session/chat_tab.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
 import '../../cubits/workbench/workbench_tab_bar.dart';
@@ -103,7 +103,9 @@ class WorkbenchLayoutPersistence {
   ///
   /// Concurrent callers share the in-flight restore, so `await`ing this from
   /// a deep-link open is deterministic even when the workspace activation
-  /// chain kicked the restore off first.
+  /// chain kicked the restore off first. After applying the snapshot, open
+  /// session tabs are registered then `hydrateSessionDocument`'d (list-row
+  /// stubs are not persistedSession documents).
   Future<void> restoreForWorkspace(String workspaceId) async {
     final id = workspaceId.trim();
     if (_disposed || id.isEmpty) return;
@@ -117,7 +119,10 @@ class WorkbenchLayoutPersistence {
     _restoreInFlight = true;
     final restore = _repositoryFor(id)
         .restore(_workbench, tabResolves: (tab) => _tabResolves(id, tab))
-        .then((_) => _registerRestoredSessionTabs(id));
+        .then((_) async {
+          _registerRestoredSessionTabs(id);
+          await _hydrateRestoredSessionTabs(id);
+        });
     _restoreFutures[id] = restore;
     try {
       await restore;
@@ -151,12 +156,10 @@ class WorkbenchLayoutPersistence {
           if (tab.kind != WorkbenchTabKind.session) continue;
           final sessionId = tab.id;
           if (sessionId.isEmpty || sessionId.startsWith('local-')) continue;
-          if (_chat.tabStore.openTabBySessionId(sessionId) != null) continue;
+          if (_chat.tabStore.getOpenTabBySessionId(sessionId) != null) continue;
           final session = _chat.state.sessions
               .where(
-                (s) =>
-                    s.sessionId == sessionId &&
-                    s.workspaceId == workspaceId,
+                (s) => s.sessionId == sessionId && s.workspaceId == workspaceId,
               )
               .firstOrNull;
           if (session == null) continue;
@@ -178,6 +181,34 @@ class WorkbenchLayoutPersistence {
           );
         }
       }
+    }
+  }
+
+  /// List hydrate leaves row stubs on [ChatTab.persistedSession]. Load
+  /// `session.json` for each restored open tab (not the whole workspace).
+  Future<void> _hydrateRestoredSessionTabs(String workspaceId) async {
+    if (_disposed) return;
+    final ids = <String>[];
+    for (final layout in [
+      _workbench.centerLayout(workspaceId),
+      _workbench.floatingLayout(workspaceId),
+    ]) {
+      for (final strip in layout.groups.values) {
+        for (final tab in strip.order) {
+          if (tab.kind != WorkbenchTabKind.session) continue;
+          final sessionId = tab.id;
+          if (sessionId.isEmpty || sessionId.startsWith('local-')) continue;
+          if (_chat.sessionHasDocument(sessionId)) continue;
+          ids.add(sessionId);
+        }
+      }
+    }
+    for (final sessionId in ids) {
+      if (_disposed) return;
+      final full = await _chat.hydrateSessionDocument(workspaceId, sessionId);
+      if (full == null) continue;
+      final tab = _chat.tabStore.getOpenTabBySessionId(sessionId);
+      if (tab != null) tab.persistedSession = full;
     }
   }
 

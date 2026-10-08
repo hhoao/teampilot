@@ -91,8 +91,7 @@ class WorkbenchTabId extends Equatable {
   final WorkbenchTabKind kind;
   final String id;
 
-  String? get sessionId =>
-      kind == WorkbenchTabKind.session ? id : null;
+  String? get sessionId => kind == WorkbenchTabKind.session ? id : null;
 
   String? get filePath => kind == WorkbenchTabKind.file ? id : null;
 

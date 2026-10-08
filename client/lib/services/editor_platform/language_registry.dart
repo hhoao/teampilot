@@ -5,7 +5,8 @@ import 'language_pack.dart';
 /// resolve to `null` — callers must not substitute a different language's
 /// grammar as a stand-in.
 class LanguageRegistry {
-  LanguageRegistry(List<LanguagePack> packs) : _packs = List.unmodifiable(packs);
+  LanguageRegistry(List<LanguagePack> packs)
+    : _packs = List.unmodifiable(packs);
 
   /// Built-in packs shipped with the app. First-wave grammars (Task 10) cover
   /// common config/code file types; `.scss` intentionally stays plain text

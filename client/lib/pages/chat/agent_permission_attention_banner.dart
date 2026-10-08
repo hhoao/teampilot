@@ -22,11 +22,11 @@ import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/chat_interaction_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../services/compose/compose_at_file_refs.dart';
+import '../../services/chat/conversation/compose/compose_at_file_refs.dart';
 import '../../widgets/home_storage_scope.dart';
-import '../../services/terminal/ask_user_question_answer_service.dart';
-import '../../services/terminal/exit_plan_mode_approval_service.dart';
-import '../../services/terminal/session_member_cli_resolver.dart';
+import '../../services/chat/conversation/approvals/ask_user_question_answer_service.dart';
+import '../../services/chat/conversation/approvals/exit_plan_mode_approval_service.dart';
+import '../../services/chat/session/session_member_cli_resolver.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../utils/ui/app_keys.dart';
 import 'ai_message_strings_from_l10n.dart';
@@ -117,7 +117,7 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
     final workbenchView = seatSelect<ChatCubit, SessionWorkbenchView>(context, (
       c,
     ) {
-      final tab = c.tabStore.openTabBySessionId(sessionId);
+      final tab = c.tabStore.getOpenTabBySessionId(sessionId);
       return tab?.workbenchView ?? SessionWorkbenchView.chat;
     });
     if (workbenchView != SessionWorkbenchView.chat) {
@@ -234,9 +234,9 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
           onAnswerInTerminal: () {
             unawaited(
               context.read<ChatCubit>().releasePermissionToTerminal(
-                    sessionId: sessionId,
-                    memberId: seatId,
-                  ),
+                sessionId: sessionId,
+                memberId: seatId,
+              ),
             );
             _openTerminal(
               context,
@@ -318,9 +318,9 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
                 path,
                 preview: true,
                 fs: filesystemForComposeAtFileOpen(
-                path,
-                workspaceFilesystem: homeStorageOf(context).fs,
-              ),
+                  path,
+                  workspaceFilesystem: homeStorageOf(context).fs,
+                ),
               ),
             );
           },

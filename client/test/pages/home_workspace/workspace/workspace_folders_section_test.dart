@@ -23,14 +23,17 @@ void main() {
         final tmp = await Directory.systemTemp.createTemp('ws_folders_');
         addTearDown(() => tmp.deleteSync(recursive: true));
 
-        final repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage(), );
+        final repo = SessionRepository(
+          rootDir: tmp.path,
+          storage: fakeHomeStorage(),
+        );
         final ws = await repo.createWorkspace([
           const WorkspaceFolder(path: '/proj'),
         ]);
         final chat = ChatCubit(
           executableResolver: () => 'flashskyai',
           automationRepository: testAutomationRepository(),
-                                storage: fakeHomeStorage(),
+          storage: fakeHomeStorage(),
         );
         addTearDown(chat.close);
         chat.ingestWorkspaceSessionSnapshot(

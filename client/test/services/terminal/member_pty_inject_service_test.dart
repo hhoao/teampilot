@@ -1,22 +1,25 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
-import 'package:teampilot/services/terminal/fullscreen_pty_automation.dart';
-import 'package:teampilot/services/terminal/fullscreen_pty_delivery_port.dart';
-import 'package:teampilot/services/terminal/member_pty_inject_service.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_cr_ack_config.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_pty_automation.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_pty_delivery_port.dart';
+import 'package:teampilot/services/chat/runtime/pty/fullscreen_pty_submission_machine.dart';
+import 'package:teampilot/services/chat/runtime/pty/member_pty_inject_service.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import '../../support/in_memory_filesystem.dart';
 
 final class _CrStuckAutomation extends FullscreenPtyAutomation {
-  var retryCalls = 0;
+  var continueCalls = 0;
 
   @override
-  Future<FullscreenPtyDeliveryOutcome> retry({
+  Future<FullscreenPtyDeliveryOutcome> continueSubmission(
+    FullscreenPtySubmission machine, {
     required FullscreenPtyDeliveryPort port,
     required String text,
     required Duration pasteSettle,
     bool Function()? isAcked,
+    bool dismissMentionPopup = false,
   }) async {
-    retryCalls++;
+    continueCalls++;
     return FullscreenPtyDeliveryOutcome.crStuck;
   }
 }
@@ -29,7 +32,7 @@ void main() {
       executable: 'unused',
       validateLaunch: false,
       parseExecutable: false,
-                                     fs: InMemoryFilesystem(),
+      fs: InMemoryFilesystem(),
     );
     addTearDown(session.dispose);
 
@@ -45,7 +48,7 @@ void main() {
     );
 
     expect(outcome, FullscreenPtyDeliveryOutcome.crStuck);
-    expect(automation.retryCalls, 1);
+    expect(automation.continueCalls, 1);
   });
 
   test('abort state is explicit and can be cleared by the caller', () {

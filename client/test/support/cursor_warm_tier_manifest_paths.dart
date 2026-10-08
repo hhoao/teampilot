@@ -2,24 +2,28 @@ import 'package:teampilot/services/cli/session_lifecycle/cli_session_manifest.da
 import 'package:teampilot/services/cli/cursor/provider/cursor_workspace_warm_tier.dart';
 
 const cursorTestTeamId = 'team-a';
+const cursorTestSessionId = 'sess';
 
-/// Shared warm-tier manifest paths for cursor lifecycle tests.
+/// Lifecycle manifest paths for cursor mixed-mode tests.
 CliSessionManifestShared cursorTestSharedManifest({
   required String slug,
   String teamId = cursorTestTeamId,
 }) {
   final sharedRootRelative = CursorWorkspaceWarmTier.sharedRootRelative(teamId);
-  final warm = CursorWorkspaceWarmTier.manifestPaths(sharedRootRelative);
   return CliSessionManifestShared(
-    root: warm.root,
+    root: sharedRootRelative,
     projectsDir: '$sharedRootRelative/projects/$slug',
-    cliConfigBase: '$sharedRootRelative/cli-config.base.json',
-    pluginsLocalDir: warm.pluginsLocalDir,
-    skillsCursorDir: warm.skillsCursorDir,
-    mcpBase: warm.mcpBase,
-    settingsJson: warm.settingsJson,
+    cliConfigBase: '',
+    pluginsLocalDir: '',
+    skillsCursorDir: '',
+    mcpBase: '',
+    settingsJson: '',
   );
 }
 
-String cursorTestMemberHomeRelative(String memberId, {String teamId = cursorTestTeamId}) =>
-    'runtime/teams/$teamId/$memberId/cursor/home';
+String cursorTestMemberHomeRelative(
+  String memberId, {
+  String teamId = cursorTestTeamId,
+  String sessionId = cursorTestSessionId,
+}) =>
+    'sessions/$sessionId/runtime/$memberId/cursor/home';

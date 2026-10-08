@@ -88,12 +88,7 @@ void main() {
       matching: find.byType(TpHover),
     );
     final tabHover = tester.widget<MouseRegion>(
-      find
-          .descendant(
-            of: tabTpHover,
-            matching: find.byType(MouseRegion),
-          )
-          .first,
+      find.descendant(of: tabTpHover, matching: find.byType(MouseRegion)).first,
     );
     expect(tabHover.cursor, SystemMouseCursors.click);
 
@@ -106,10 +101,7 @@ void main() {
     );
     final pickerHover = tester.widget<MouseRegion>(
       find
-          .descendant(
-            of: pickerTpHover,
-            matching: find.byType(MouseRegion),
-          )
+          .descendant(of: pickerTpHover, matching: find.byType(MouseRegion))
           .first,
     );
     expect(pickerHover.cursor, SystemMouseCursors.click);
@@ -213,9 +205,7 @@ void main() {
     );
 
     final title = tester.widget<Text>(find.text('Open a tab'));
-    final styles = TpTextStyles.of(
-      tester.element(find.text('Open a tab')),
-    );
+    final styles = TpTextStyles.of(tester.element(find.text('Open a tab')));
     expect(title.style?.fontSize, styles.xl.fontSize);
   });
 
@@ -319,5 +309,54 @@ void main() {
     await tester.pump();
     expect(find.text('Open a tab'), findsOneWidget);
     expect(find.text('members-body'), findsNothing);
+  });
+
+  testWidgets('catalog shrink keeps remembered ids for the next catalog', (
+    tester,
+  ) async {
+    final toolsCubit = WorkspaceToolsCubit()
+      ..ensureOpenAndSelect('ws-1', 'members')
+      ..ensureOpenAndSelect('ws-1', 'fileTree');
+    addTearDown(toolsCubit.close);
+
+    Widget panel(List<ToolView> views) => _wrap(
+      TabbedPanel(scopeId: 'ws-1', views: views),
+      toolsCubit: toolsCubit,
+    );
+
+    const membersAndTree = [
+      ToolView(
+        id: 'members',
+        icon: Icons.groups_outlined,
+        label: 'Members',
+        child: Text('members-body'),
+      ),
+      ToolView(
+        id: 'fileTree',
+        icon: Icons.folder_outlined,
+        label: 'Files',
+        child: Text('tree-body'),
+      ),
+    ];
+    const treeOnly = [
+      ToolView(
+        id: 'fileTree',
+        icon: Icons.folder_outlined,
+        label: 'Files',
+        child: Text('tree-body'),
+      ),
+    ];
+
+    await tester.pumpWidget(panel(membersAndTree));
+    expect(find.text('members-body'), findsOneWidget);
+
+    await tester.pumpWidget(panel(treeOnly));
+    await tester.pump();
+    expect(find.text('members-body'), findsNothing);
+    expect(toolsCubit.openIdsFor('ws-1'), ['members', 'fileTree']);
+
+    await tester.pumpWidget(panel(membersAndTree));
+    await tester.pump();
+    expect(find.text('members-body'), findsOneWidget);
   });
 }
