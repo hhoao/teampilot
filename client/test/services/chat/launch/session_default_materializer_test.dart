@@ -253,6 +253,7 @@ class _MaterializeRepo extends Fake implements SessionRepository {
     List<SessionMemberBinding>? members,
     Map<String, String>? memberTargets,
     Workspace? knownWorkspace,
+    bool acp = false,
   }) async {
     createCalls++;
     lastSessionTeam = sessionTeam;

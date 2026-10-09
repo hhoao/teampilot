@@ -405,6 +405,7 @@ class _CapturingSessionRepository extends Fake implements SessionRepository {
     List<SessionMemberBinding>? members,
     Map<String, String>? memberTargets,
     Workspace? knownWorkspace,
+    bool acp = false,
   }) async {
     createCalls.add(
       _CreateSessionCall(
@@ -420,6 +421,7 @@ class _CapturingSessionRepository extends Fake implements SessionRepository {
       sessionTeam: sessionTeam,
       members: members ?? const [],
       memberTargets: memberTargets ?? const {},
+      acp: acp,
       createdAt: 1,
       updatedAt: 1,
     );

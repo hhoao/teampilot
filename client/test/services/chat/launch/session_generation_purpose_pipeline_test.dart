@@ -64,6 +64,7 @@ class CapturingSessionRepository extends Fake implements SessionRepository {
     Workspace? knownWorkspace,
     SessionPurpose purpose = SessionPurpose.normal,
     String workflowId = '',
+    bool acp = false,
   }) async {
     createCalls.add(
       _CreateSessionCall(
@@ -81,6 +82,7 @@ class CapturingSessionRepository extends Fake implements SessionRepository {
       expertKey: expertKey ?? '',
       members: members ?? const [],
       memberTargets: memberTargets ?? const {},
+      acp: acp,
       createdAt: 1,
       updatedAt: 1,
     );
