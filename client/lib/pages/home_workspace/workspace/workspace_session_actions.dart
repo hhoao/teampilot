@@ -38,6 +38,7 @@ import '../../../utils/logging/logger.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
 import '../../chat/session_history_review_submit.dart';
 import '../home_workspace_route.dart';
+import 'claude_acp_launch_switch.dart';
 
 const _uuid = Uuid();
 
@@ -488,6 +489,7 @@ Future<bool> submitWorkspaceLandingMessage(
     preserveWorkbenchView: !switchToTerminal,
     purpose: purpose,
     workflowId: workflowId,
+    acp: launch.acp,
   );
   if (status == null) return false;
   if (status != SessionOpenStatus.opened) {
@@ -730,6 +732,55 @@ Future<bool> _ensureLandingSessionConnected({
   }
 }
 
+/// Builds the create request for a workspace conversation.
+///
+/// [acp] only survives for personal Claude on desktop (see [resolveLaunchAcp]);
+/// team creates and Android always get false. Gemini ACP is inferred by
+/// session create, so it needs no flag here.
+SessionCreateRequest buildWorkspaceConversationCreateRequest({
+  required Workspace workspace,
+  required bool isPersonal,
+  TeamProfile? team,
+  TeamMemberConfig? member,
+  SessionRepository? repo,
+  CliTool? cli,
+  SimpleLaunchIdentity? simpleIdentity,
+  String? workingDirectory,
+  String emptyDisplayTitleFallback = 'New Chat',
+  String? fixedSessionId,
+  String? expertKey,
+  SessionContinueOverrides? continueOverrides,
+  bool preserveWorkbenchView = false,
+  SessionPurpose purpose = SessionPurpose.normal,
+  String workflowId = '',
+  bool acp = false,
+  bool? isAndroidOverride,
+}) {
+  return SessionCreateRequest(
+    workspace: workspace,
+    isPersonal: isPersonal,
+    team: team,
+    member: member,
+    repo: repo,
+    cli: cli,
+    simpleIdentity: simpleIdentity,
+    workingDirectory: workingDirectory,
+    emptyDisplayTitleFallback: emptyDisplayTitleFallback,
+    fixedSessionId: fixedSessionId,
+    expertKey: expertKey,
+    continueOverrides: continueOverrides,
+    preserveWorkbenchView: preserveWorkbenchView,
+    purpose: purpose,
+    workflowId: workflowId,
+    acp: resolveLaunchAcp(
+      isPersonal: isPersonal,
+      cli: cli,
+      requested: acp,
+      isAndroidOverride: isAndroidOverride,
+    ),
+  );
+}
+
 Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
   BuildContext context,
   Workspace workspace, {
@@ -744,6 +795,7 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
   bool preserveWorkbenchView = false,
   SessionPurpose purpose = SessionPurpose.normal,
   String workflowId = '',
+  bool acp = false,
 }) async {
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
@@ -766,7 +818,7 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
 
   try {
     return await chatCubit.requestCreateAndOpenSession(
-      SessionCreateRequest(
+      buildWorkspaceConversationCreateRequest(
         workspace: workspace,
         isPersonal: isPersonal,
         team: team,
@@ -782,6 +834,7 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
         preserveWorkbenchView: preserveWorkbenchView,
         purpose: purpose,
         workflowId: workflowId,
+        acp: acp,
       ),
     );
   } on Object catch (error, stackTrace) {

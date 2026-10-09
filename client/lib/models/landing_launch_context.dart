@@ -19,6 +19,7 @@ class LandingLaunchContext {
     this.provider,
     this.model,
     this.effort,
+    this.acp = false,
   }) : generateLaunch = !isPersonal && generateLaunch;
 
   /// True when launching Simple (unteamed) mode — empty [sessionTeam].
@@ -54,6 +55,10 @@ class LandingLaunchContext {
   /// Custom Simple launch effort tier.
   final String? effort;
 
+  /// Start this personal Claude session as ACP chat. Compose-only: it is not
+  /// persisted with the landing draft.
+  final bool acp;
+
   LandingLaunchContext copyWith({
     bool? isPersonal,
     bool? generateLaunch,
@@ -66,6 +71,7 @@ class LandingLaunchContext {
     Object? provider = _unset,
     Object? model = _unset,
     Object? effort = _unset,
+    bool? acp,
   }) {
     final nextPersonal = isPersonal ?? this.isPersonal;
     return LandingLaunchContext(
@@ -84,6 +90,7 @@ class LandingLaunchContext {
       provider: provider == _unset ? this.provider : provider as String?,
       model: model == _unset ? this.model : model as String?,
       effort: effort == _unset ? this.effort : effort as String?,
+      acp: acp ?? this.acp,
     );
   }
 
@@ -101,7 +108,8 @@ class LandingLaunchContext {
           cli == other.cli &&
           provider == other.provider &&
           model == other.model &&
-          effort == other.effort;
+          effort == other.effort &&
+          acp == other.acp;
 
   @override
   int get hashCode => Object.hash(
@@ -116,5 +124,6 @@ class LandingLaunchContext {
     provider,
     model,
     effort,
+    acp,
   );
 }

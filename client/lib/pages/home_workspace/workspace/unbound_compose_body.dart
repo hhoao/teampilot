@@ -64,6 +64,7 @@ import '../../expert_hub/expert_landing_picker_sheet.dart';
 import '../../expert_hub/expert_landing_preflight_feedback.dart';
 import '../../team_hub/team_landing_chip_menu.dart';
 import '../../team_hub/team_landing_picker_sheet.dart';
+import 'claude_acp_launch_switch.dart';
 import 'config/cli_preset_edit_dialog.dart';
 import 'config/cli_presets_manage_dialog.dart';
 import 'workspace_landing_generate_settings_dialog.dart';
@@ -129,6 +130,9 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   String? _selectedEffort;
   String? _selectedTeamId;
   String? _selectedExpertKey;
+
+  /// This compose's ACP choice; null follows the settings default.
+  bool? _composeAcpOverride;
   var _voiceListening = false;
   var _voiceSoundLevel = 0.0;
   var _discardVoiceTranscript = false;
@@ -908,8 +912,19 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     final worktreeResolver = _worktreeResolver(worktreeState);
     final selectedWorktreePath = worktreeResolver.resolveSelectedWorktreePath();
     final isSimple = _conversationMode == _LandingConversationMode.simple;
+    final launchCli = isSimple
+        ? _cliForDraft(
+            presets: context.read<CliPresetsCubit>().state.presets,
+            selectedTeam: null,
+          )
+        : null;
     return LandingLaunchContext(
       isPersonal: isSimple,
+      acp: resolveLaunchAcp(
+        isPersonal: isSimple,
+        cli: launchCli,
+        requested: _composeAcpOverride ?? readClaudePersonalAcpDefault(context),
+      ),
       generateLaunch: !isSimple && _generateLaunch,
       presetId: _selectedPresetId,
       teamId: _selectedTeamId,
@@ -1676,21 +1691,36 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           )
         : buildCard(context);
 
-    Widget composeSection = composeCard;
-    if (remoteCliMissing != null &&
+    final showRemotePanel =
+        remoteCliMissing != null &&
         remoteCliMissing.isNotEmpty &&
-        remoteCliReadiness != null) {
+        remoteCliReadiness != null;
+    final showAcpSwitch = claudeAcpLaunchSwitchVisible(
+      isPersonal: isSimple,
+      cli: cli,
+    );
+
+    Widget composeSection = composeCard;
+    if (showRemotePanel || showAcpSwitch) {
       composeSection = Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           composeCard,
-          RemoteCliMachineReadinessPanel(
-            fixedRequirements: remoteCliMissing,
-            selectableTargets: _runtimeTargets,
-            readiness: remoteCliReadiness,
-            onReadinessChanged: _scheduleTeamLaunchReadinessCheck,
-          ),
+          if (showAcpSwitch)
+            ClaudeAcpLaunchSwitch(
+              cli: cli,
+              isPersonal: isSimple,
+              localOverride: _composeAcpOverride,
+              onChanged: (value) => setState(() => _composeAcpOverride = value),
+            ),
+          if (showRemotePanel)
+            RemoteCliMachineReadinessPanel(
+              fixedRequirements: remoteCliMissing,
+              selectableTargets: _runtimeTargets,
+              readiness: remoteCliReadiness,
+              onReadinessChanged: _scheduleTeamLaunchReadinessCheck,
+            ),
         ],
       );
     }
