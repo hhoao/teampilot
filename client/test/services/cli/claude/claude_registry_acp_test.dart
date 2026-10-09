@@ -114,4 +114,58 @@ void main() {
       expect(none.authToken, isNull);
     });
   });
+
+  group('pickClaudeAcpProvider', () {
+    const official = AppProviderConfig(
+      id: 'claude-official',
+      cli: CliTool.claude,
+      name: 'Official',
+      category: AppProviderCategory.official,
+    );
+    const key = AppProviderConfig(
+      id: 'k',
+      cli: CliTool.claude,
+      name: 'K',
+      config: {
+        'env': {'ANTHROPIC_API_KEY': ' sk-1 '},
+      },
+    );
+    const providers = [official, key];
+
+    test('selected key id returns that row', () {
+      expect(
+        pickClaudeAcpProvider(providers: providers, selectedId: 'k'),
+        same(key),
+      );
+    });
+
+    test('selected official id returns that row', () {
+      expect(
+        pickClaudeAcpProvider(
+          providers: providers,
+          selectedId: 'claude-official',
+        ),
+        same(official),
+      );
+    });
+
+    test('missing or empty selected id returns null', () {
+      expect(
+        pickClaudeAcpProvider(providers: providers, selectedId: null),
+        isNull,
+      );
+      expect(
+        pickClaudeAcpProvider(providers: providers, selectedId: ''),
+        isNull,
+      );
+      expect(
+        pickClaudeAcpProvider(providers: providers, selectedId: '  '),
+        isNull,
+      );
+      expect(
+        pickClaudeAcpProvider(providers: providers, selectedId: 'missing'),
+        isNull,
+      );
+    });
+  });
 }

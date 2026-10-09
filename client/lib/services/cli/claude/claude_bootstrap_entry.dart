@@ -21,6 +21,22 @@ final class ClaudeBootstrapEntry implements CliBootstrapEntry {
   final ClaudeAcpAuthSource? acpAuthSource;
 }
 
+/// Picks the Claude provider row that matches [selectedId] (trimmed).
+///
+/// Empty / missing / unmatched ids return null so [claudeAcpAuthForProvider]
+/// yields an empty [ClaudeAcpAuth] (CLAUDE_CONFIG_DIR still set, no keys).
+AppProviderConfig? pickClaudeAcpProvider({
+  required List<AppProviderConfig> providers,
+  required String? selectedId,
+}) {
+  final id = selectedId?.trim() ?? '';
+  if (id.isEmpty) return null;
+  for (final provider in providers) {
+    if (provider.id == id) return provider;
+  }
+  return null;
+}
+
 /// Maps the current Claude provider row to the ACP launch auth.
 ///
 /// - Official (OAuth) → `official: true` + the effective credential path; no

@@ -1258,8 +1258,8 @@ Future<AppShell> buildAppShell({
     // Cached Gemini API key for the ACP agent env (refreshed from provider
     // rows; the ACP credential source is a sync closure).
     String? cachedGeminiApiKey;
-    // Cached Claude provider row (default official, else first official) for
-    // the sync ACP auth source; refreshed alongside the Gemini key below.
+    // Cached Claude provider row matching the CLI's selected official-vs-key
+    // id for the sync ACP auth source; refreshed alongside the Gemini key.
     AppProviderConfig? cachedClaudeProvider;
 
     cliToolRegistry.configure(
@@ -1323,20 +1323,12 @@ Future<AppShell> buildAppShell({
       appProviderCubit
           .loadProvidersFor(CliTool.claude)
           .then((providers) {
-            final officialId = cliToolRegistry.defaultOfficialProviderId(
-              CliTool.claude,
+            cachedClaudeProvider = pickClaudeAcpProvider(
+              providers: providers,
+              selectedId: appProviderCubit
+                  .state
+                  .selectedProviderIdByCli[CliTool.claude],
             );
-            AppProviderConfig? pick;
-            for (final p in providers) {
-              if (p.id == officialId) {
-                pick = p;
-                break;
-              }
-              if (pick == null && p.category == AppProviderCategory.official) {
-                pick = p;
-              }
-            }
-            cachedClaudeProvider = pick;
           })
           .catchError((Object _) {})
           .whenComplete(() => claudeProviderRefreshInFlight = false);
