@@ -3,7 +3,6 @@ import 'dart:async';
 import '../../../models/app_session.dart';
 import '../../../models/member_remote_provision_progress.dart';
 import '../../../cubits/session/acp/acp_chat_runtime_cubit.dart';
-import '../../../models/team_config.dart' show CliTool;
 import '../../ssh/ssh_member_session.dart';
 import '../team_bus/mcp/teammate_bus_session_registry.dart';
 import '../team_bus/remote/remote_bus_mount.dart';
