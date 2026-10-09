@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:acpd/acpd.dart';
 
 import '../../../acp/acp_agent_translator.dart';
@@ -25,12 +27,16 @@ class ClaudeAcpAuth {
   const ClaudeAcpAuth({
     this.apiKey,
     this.authToken,
+    this.baseUrl,
     this.official = false,
     this.officialCredentialsPath,
   });
 
   final String? apiKey;
   final String? authToken;
+
+  /// `ANTHROPIC_BASE_URL` for third-party providers; never set for Official.
+  final String? baseUrl;
 
   /// Official (OAuth) login: no API key / auth token is ever injected.
   final bool official;
@@ -79,17 +85,43 @@ final class ClaudeAcpCapability implements AcpCapability {
     final env = Map<String, String>.of(baseEnv);
     final configDir = '$sessionToolDir/claude';
     env['CLAUDE_CONFIG_DIR'] = configDir;
+    // Process.start inherits the parent environment; overwrite with empty
+    // strings so TeamPilot's own ANTHROPIC_* never reach the adapter.
+    for (final key in _anthropicKeys) {
+      env[key] = '';
+    }
     final auth = _authSource?.call();
     if (auth == null) return env;
     if (auth.official) {
       env['CCGUI_CLI_LOGIN_AUTHORIZED'] = '1';
       final src = auth.officialCredentialsPath;
-      if (src != null) _copyFile?.call('$configDir/.credentials.json', src);
-    } else if (auth.apiKey != null) {
-      env['ANTHROPIC_API_KEY'] = auth.apiKey!;
-    } else if (auth.authToken != null) {
-      env['ANTHROPIC_AUTH_TOKEN'] = auth.authToken!;
+      if (src != null) {
+        (_copyFile ?? _defaultCopyFile)('$configDir/.credentials.json', src);
+      }
+      return env;
     }
+    final apiKey = auth.apiKey;
+    final authToken = auth.authToken;
+    final baseUrl = auth.baseUrl;
+    if (apiKey != null) {
+      env['ANTHROPIC_API_KEY'] = apiKey;
+    } else if (authToken != null) {
+      env['ANTHROPIC_AUTH_TOKEN'] = authToken;
+    }
+    if (baseUrl != null) env['ANTHROPIC_BASE_URL'] = baseUrl;
     return env;
+  }
+
+  static const _anthropicKeys = [
+    'ANTHROPIC_API_KEY',
+    'ANTHROPIC_AUTH_TOKEN',
+    'ANTHROPIC_BASE_URL',
+  ];
+
+  static void _defaultCopyFile(String dest, String src) {
+    final source = File(src);
+    if (!source.existsSync()) return;
+    File(dest).parent.createSync(recursive: true);
+    source.copySync(dest);
   }
 }

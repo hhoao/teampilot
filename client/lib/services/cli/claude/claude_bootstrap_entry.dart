@@ -42,7 +42,8 @@ AppProviderConfig? pickClaudeAcpProvider({
 /// - Official (OAuth) → `official: true` + the effective credential path; no
 ///   API key / auth token is ever returned.
 /// - Key / token in the provider's settings env (or its `apiKey` field) →
-///   [ClaudeAcpAuth.apiKey] / [ClaudeAcpAuth.authToken].
+///   [ClaudeAcpAuth.apiKey] / [ClaudeAcpAuth.authToken]; `ANTHROPIC_BASE_URL`
+///   → [ClaudeAcpAuth.baseUrl].
 /// - Otherwise (or a null provider) → empty [ClaudeAcpAuth].
 ClaudeAcpAuth claudeAcpAuthForProvider(
   AppProviderConfig? provider,
@@ -75,5 +76,9 @@ ClaudeAcpAuth claudeAcpAuthForProvider(
       authToken = rowKey;
     }
   }
-  return ClaudeAcpAuth(apiKey: apiKey, authToken: authToken);
+  return ClaudeAcpAuth(
+    apiKey: apiKey,
+    authToken: authToken,
+    baseUrl: nonEmpty(envValue('ANTHROPIC_BASE_URL')),
+  );
 }

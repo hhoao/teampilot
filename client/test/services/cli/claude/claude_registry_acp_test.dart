@@ -76,6 +76,43 @@ void main() {
       );
       expect(auth.apiKey, isNull);
       expect(auth.authToken, isNull);
+      expect(auth.baseUrl, isNull);
+    });
+
+    test('official (empty env BASE_URL) never yields baseUrl', () {
+      final auth = claudeAcpAuthForProvider(
+        const AppProviderConfig(
+          id: 'claude-official',
+          cli: CliTool.claude,
+          name: 'Official',
+          category: AppProviderCategory.official,
+          config: {
+            'env': {'ANTHROPIC_BASE_URL': ''},
+          },
+        ),
+        credentials,
+      );
+      expect(auth.official, isTrue);
+      expect(auth.baseUrl, isNull);
+    });
+
+    test('key provider maps ANTHROPIC_BASE_URL from settings env', () {
+      final auth = claudeAcpAuthForProvider(
+        const AppProviderConfig(
+          id: 'p',
+          cli: CliTool.claude,
+          name: 'P',
+          config: {
+            'env': {
+              'ANTHROPIC_API_KEY': 'sk-1',
+              'ANTHROPIC_BASE_URL': ' https://proxy.example/v1 ',
+            },
+          },
+        ),
+        credentials,
+      );
+      expect(auth.apiKey, 'sk-1');
+      expect(auth.baseUrl, 'https://proxy.example/v1');
     });
 
     test('settings env key / token map to apiKey / authToken', () {
