@@ -12,6 +12,9 @@ typedef AcpCredentialSource = String? Function();
 /// order — the runtime tries the first, falls back on failure), its
 /// per-agent translator, and the isolated environment for the agent process.
 abstract interface class AcpCapability implements CliCapability {
+  /// Binary that speaks ACP on stdio. Gemini returns [cliExecutable].
+  String agentExecutable(String cliExecutable);
+
   /// Full argv candidates (executable + one ACP flag each), probe order.
   List<List<String>> launchArgCandidates(String executable);
 

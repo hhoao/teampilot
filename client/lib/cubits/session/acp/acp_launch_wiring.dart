@@ -37,6 +37,7 @@ AcpLaunchPlan? capabilityToPlan(AcpCapability? capability) {
           workingDirectory: workingDirectory,
           baseEnv: baseEnv,
         ),
+    agentExecutable: capability.agentExecutable,
   );
 }
 

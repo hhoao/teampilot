@@ -55,6 +55,7 @@ void main() {
     return AcpLaunchPlan(
       launchArgCandidates: capability.launchArgCandidates,
       buildEnvironment: capability.buildEnvironment,
+      agentExecutable: capability.agentExecutable,
     );
   }
 
@@ -165,6 +166,38 @@ void main() {
       await expectLater(startRuntime(runtime), throwsStateError);
     },
   );
+
+  test('start maps CLI executable through plan.agentExecutable', () async {
+    final argvCalls = <List<String>>[];
+    final plan = AcpLaunchPlan(
+      launchArgCandidates: (executable) => [
+        [executable, '--acp'],
+      ],
+      buildEnvironment:
+          ({
+            required String sessionToolDir,
+            required String workingDirectory,
+            Map<String, String> baseEnv = const {},
+          }) => Map<String, String>.of(baseEnv),
+      agentExecutable: (cli) => '$cli-agent',
+    );
+    final runtime = makeRuntime((argv, env) async {
+      argvCalls.add(List.of(argv));
+      return conn;
+    }, launchPlanFor: (_) => plan);
+
+    await runtime.start(
+      tool: CliTool.gemini,
+      executable: 'my-cli',
+      sessionToolDir: sessionToolDir,
+      workingDirectory: cwd,
+    );
+
+    expect(argvCalls, [
+      ['my-cli-agent', '--acp'],
+    ]);
+    await runtime.close();
+  });
 
   test('a tool without an ACP capability fails with a clear error', () async {
     final runtime = makeRuntime(

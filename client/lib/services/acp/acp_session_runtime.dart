@@ -41,6 +41,7 @@ class AcpLaunchPlan {
   const AcpLaunchPlan({
     required this.launchArgCandidates,
     required this.buildEnvironment,
+    required this.agentExecutable,
   });
 
   /// Full argv candidates (executable + one ACP flag each), probe order.
@@ -53,6 +54,9 @@ class AcpLaunchPlan {
     Map<String, String> baseEnv,
   })
   buildEnvironment;
+
+  /// Binary that speaks ACP on stdio, mapped from the CLI executable.
+  final String Function(String cliExecutable) agentExecutable;
 }
 
 /// The spawner reported that the candidate flag was rejected: the agent
@@ -193,7 +197,8 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
       baseEnv: baseEnv,
     );
 
-    for (final argv in plan.launchArgCandidates(executable)) {
+    final agent = plan.agentExecutable(executable);
+    for (final argv in plan.launchArgCandidates(agent)) {
       AcpAgentConnection? connection;
       try {
         connection = await _spawner(argv, env);

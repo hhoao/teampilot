@@ -43,4 +43,9 @@ void main() {
       '--experimental-acp',
     ]);
   });
+
+  test('agentExecutable is the gemini binary', () {
+    const cap = GeminiAcpCapability();
+    expect(cap.agentExecutable('/usr/bin/gemini'), '/usr/bin/gemini');
+  });
 }

@@ -57,6 +57,9 @@ final class GeminiAcpCapability implements AcpCapability {
   final AcpCredentialSource? _credentialSource;
 
   @override
+  String agentExecutable(String cliExecutable) => cliExecutable;
+
+  @override
   List<List<String>> launchArgCandidates(String executable) => [
     for (final flag in translator.flagCandidates) [executable, flag],
   ];
