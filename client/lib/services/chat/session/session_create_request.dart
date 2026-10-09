@@ -23,6 +23,7 @@ class SessionCreateRequest {
     this.expertKey,
     this.continueOverrides,
     this.preserveWorkbenchView = false,
+    this.acp = false,
   });
 
   final Workspace workspace;
@@ -57,4 +58,7 @@ class SessionCreateRequest {
 
   /// When true, keep the new tab on Chat instead of forcing Terminal on connect.
   final bool preserveWorkbenchView;
+
+  /// Personal ACP chat runtime preference; ignored for teams.
+  final bool acp;
 }

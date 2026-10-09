@@ -776,6 +776,7 @@ class SessionRepository {
     List<SessionMemberBinding>? members,
     Map<String, String>? memberTargets,
     Workspace? knownWorkspace,
+    bool acp = false,
   }) async {
     final total = Stopwatch()..start();
     var stepAt = total.elapsedMilliseconds;
@@ -882,6 +883,7 @@ class SessionRepository {
                 )
               : workflowId.trim())
         : '';
+    final resolvedAcp = trimmedTeam.isEmpty && (acp || cli == CliTool.gemini);
     final session = AppSession(
       sessionId: sessionId,
       workspaceId: workspaceId,
@@ -913,6 +915,7 @@ class SessionRepository {
       continueOverrides: continueOverrides ?? const SessionContinueOverrides(),
       purpose: purpose,
       workflowId: resolvedWorkflowId,
+      acp: resolvedAcp,
     );
     await fs.ensureSessionDir(workspaceId, sessionId);
     mark('ensure-dir');

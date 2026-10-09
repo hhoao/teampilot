@@ -165,6 +165,7 @@ class SessionLaunchCoordinator
       home: _host.lifecycle.currentHome,
       purpose: request.purpose,
       workflowId: workflowId,
+      acp: request.acp,
     );
     if (!request.isPersonal && request.team != null) {
       final title = request.emptyDisplayTitleFallback.trim();
@@ -223,6 +224,7 @@ class SessionLaunchCoordinator
           workingDirectory: request.workingDirectory,
           expertKey: request.expertKey,
           continueOverrides: request.continueOverrides,
+          acp: request.acp,
         ),
       ),
       reason: LaunchReason.create,

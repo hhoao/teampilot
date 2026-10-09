@@ -15,6 +15,7 @@ class SessionPersistParams {
     this.workingDirectory,
     this.expertKey,
     this.continueOverrides,
+    this.acp = false,
   });
 
   final String sessionTeamId;
@@ -32,4 +33,7 @@ class SessionPersistParams {
   final String? workingDirectory;
   final String? expertKey;
   final SessionContinueOverrides? continueOverrides;
+
+  /// Requested ACP chat runtime; resolved against team/Gemini rules on persist.
+  final bool acp;
 }

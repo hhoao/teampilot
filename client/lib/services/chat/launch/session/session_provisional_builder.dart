@@ -20,6 +20,7 @@ AppSession buildProvisionalSession({
   RuntimeTarget? home,
   SessionPurpose purpose = SessionPurpose.normal,
   String workflowId = '',
+  bool? acp,
 }) {
   final now = DateTime.now().millisecondsSinceEpoch;
   final trimmedTeam = sessionTeamId.trim();
@@ -40,6 +41,11 @@ AppSession buildProvisionalSession({
                   CliToolRegistry.builtIn().defaultOfficialProviderId,
             ))
       : null;
+
+  final resolvedAcp =
+      trimmedTeam.isEmpty &&
+      isPersonal &&
+      ((acp ?? false) || (identity?.cli ?? cli) == CliTool.gemini);
 
   return AppSession(
     sessionId: sessionId,
@@ -64,5 +70,6 @@ AppSession buildProvisionalSession({
         : (expertKey?.trim() ?? ''),
     purpose: purpose,
     workflowId: workflowId,
+    acp: resolvedAcp,
   );
 }
