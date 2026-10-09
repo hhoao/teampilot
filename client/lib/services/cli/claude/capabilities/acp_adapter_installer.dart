@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import '../../../storage/app_paths.dart';
 import '../../registry/installer/npm_installer_capability.dart';
 
 /// In-app npm installer for the Claude ACP adapter
@@ -28,8 +29,9 @@ final class ClaudeAcpAdapterInstaller extends NpmInstallerCapability {
 
 /// Resolves the adapter binary without installing anything.
 ///
-/// Order: an absolute match on `PATH`, then the `~/.local/bin` prefix that
-/// TeamPilot's npm install uses, else the bare name (so a missing adapter
+/// Order: an absolute match on `PATH`, then `~/.local/bin`, then the
+/// TeamPilot node prefix (`$HOME/.local/share/<app-data>/toolchain/node/current/bin`
+/// — in-app npm installs land here), else the bare name (so a missing adapter
 /// still fails closed at spawn with `acpLaunchFailedAdapter`).
 String locateClaudeAcpAdapter({
   Map<String, String>? environment,
@@ -50,6 +52,9 @@ String locateClaudeAcpAdapter({
   if (home != null && home.isNotEmpty) {
     final local = '$home/.local/bin/$name';
     if (exists(local)) return local;
+    final toolchain =
+        '$home/.local/share/${AppPaths.teampilotAppDataDirName}/toolchain/node/current/bin/$name';
+    if (exists(toolchain)) return toolchain;
   }
   return name;
 }
