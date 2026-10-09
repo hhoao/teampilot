@@ -50,6 +50,7 @@ import '../services/agent_status/general_permission_request_gate.dart';
 import '../services/chat/conversation/approvals/ask_user_question_answer_service.dart';
 import '../services/chat/conversation/approvals/exit_plan_mode_approval_service.dart';
 import '../services/chat/team_generation/mcp/team_composer_mcp_handler.dart';
+import '../models/app_provider_config.dart';
 import '../models/app_session.dart';
 import '../services/catalog/catalog_runtime.dart';
 import '../services/catalog/catalog_production.dart';
@@ -1257,11 +1258,18 @@ Future<AppShell> buildAppShell({
     // Cached Gemini API key for the ACP agent env (refreshed from provider
     // rows; the ACP credential source is a sync closure).
     String? cachedGeminiApiKey;
+    // Cached Claude provider row (default official, else first official) for
+    // the sync ACP auth source; refreshed alongside the Gemini key below.
+    AppProviderConfig? cachedClaudeProvider;
 
     cliToolRegistry.configure(
       CliBootstrap({
         CliTool.claude: ClaudeBootstrapEntry(
           credentialsService: claudeCredentialsService,
+          acpAuthSource: () => claudeAcpAuthForProvider(
+            cachedClaudeProvider,
+            claudeCredentialsService,
+          ),
           modelsService: ApiModelCatalogService(
             storage: homeStorage,
             protocol: ApiModelCatalogProtocol.anthropic,
@@ -1308,10 +1316,38 @@ Future<AppShell> buildAppShell({
           .whenComplete(() => geminiCredentialRefreshInFlight = false);
     }
 
+    var claudeProviderRefreshInFlight = false;
+    void refreshClaudeProvider() {
+      if (claudeProviderRefreshInFlight) return;
+      claudeProviderRefreshInFlight = true;
+      appProviderCubit
+          .loadProvidersFor(CliTool.claude)
+          .then((providers) {
+            final officialId = cliToolRegistry.defaultOfficialProviderId(
+              CliTool.claude,
+            );
+            AppProviderConfig? pick;
+            for (final p in providers) {
+              if (p.id == officialId) {
+                pick = p;
+                break;
+              }
+              if (pick == null && p.category == AppProviderCategory.official) {
+                pick = p;
+              }
+            }
+            cachedClaudeProvider = pick;
+          })
+          .catchError((Object _) {})
+          .whenComplete(() => claudeProviderRefreshInFlight = false);
+    }
+
+    refreshClaudeProvider();
     refreshGeminiCredential();
     // Self-managing: when appProviderCubit closes (shell teardown), the
     // broadcast stream's onDone fires and nothing further is refreshed.
     appProviderCubit.stream.listen((_) {
+      refreshClaudeProvider();
       refreshGeminiCredential();
     }, onDone: () {});
 

@@ -1,3 +1,4 @@
+import 'capabilities/acp.dart';
 import 'capabilities/provider.dart';
 import '../registry/capabilities/provider_capability.dart';
 import '../../../models/team_config.dart';
@@ -64,6 +65,8 @@ final class ClaudeCliTool implements CliToolDefinition {
 
     this.prompt = const ClaudePromptCapability(),
 
+    this.acp = const ClaudeAcpCapability(),
+
     HookCapability? hookWriter,
   }) : hookWriter = hookWriter ?? const ClaudeFamilyHookWriter();
 
@@ -92,6 +95,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final SkillCapability skill;
   final NativeCommandCapability nativeCommands;
   final PromptCapability prompt;
+  final ClaudeAcpCapability acp;
 
   @override
   CliTool get id => CliTool.claude;
@@ -124,5 +128,6 @@ final class ClaudeCliTool implements CliToolDefinition {
     nativeCommands,
     prompt,
     hookWriter,
+    acp,
   ];
 }
