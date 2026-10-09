@@ -148,6 +148,7 @@ class AppSession {
     this.archived = false,
     this.purpose = SessionPurpose.normal,
     String workflowId = '',
+    this.acp = false,
   }) : workflowId = purpose == SessionPurpose.teamGeneration ? workflowId : '';
 
   factory AppSession({
@@ -177,7 +178,11 @@ class AppSession {
     bool archived = false,
     SessionPurpose purpose = SessionPurpose.normal,
     String workflowId = '',
+    bool? acp,
   }) {
+    final trimmedTeam = sessionTeam.trim();
+    final resolvedAcp =
+        acp ?? (trimmedTeam.isEmpty && cli == CliTool.gemini);
     return AppSession._(
       sessionId: sessionId,
       workspaceId: workspaceId,
@@ -208,6 +213,7 @@ class AppSession {
       archived: archived,
       purpose: purpose,
       workflowId: workflowId,
+      acp: resolvedAcp,
     );
   }
 
@@ -273,6 +279,7 @@ class AppSession {
       archived: json['archived'] as bool? ?? false,
       purpose: SessionPurpose.decode(json['purpose']),
       workflowId: json['workflowId'] as String? ?? '',
+      acp: json.containsKey('acp') ? json['acp'] == true : null,
     );
   }
 
@@ -360,6 +367,9 @@ class AppSession {
   /// Workflow this session belongs to (builder sessions only; otherwise '').
   final String workflowId;
 
+  /// True when this session uses terminal-less ACP chat (Gemini simple default).
+  final bool acp;
+
   /// True when this session has no team roster (Simple / unteamed).
   bool get isSimple => sessionTeam.trim().isEmpty;
 
@@ -422,6 +432,7 @@ class AppSession {
     bool? archived,
     SessionPurpose? purpose,
     String? workflowId,
+    bool? acp,
   }) {
     final nextPurpose = purpose ?? this.purpose;
     return AppSession(
@@ -452,6 +463,7 @@ class AppSession {
       workflowId: nextPurpose == SessionPurpose.teamGeneration
           ? (workflowId ?? this.workflowId).trim()
           : '',
+      acp: acp ?? this.acp,
     );
   }
 
@@ -485,6 +497,7 @@ class AppSession {
       if (archived) 'archived': archived,
       if (purpose != SessionPurpose.normal) 'purpose': purpose.value,
       if (workflowId.isNotEmpty) 'workflowId': workflowId,
+      if (acp) 'acp': acp,
     };
   }
 
@@ -517,7 +530,8 @@ class AppSession {
             continueOverrides == other.continueOverrides &&
             archived == other.archived &&
             purpose == other.purpose &&
-            workflowId == other.workflowId;
+            workflowId == other.workflowId &&
+            acp == other.acp;
   }
 
   @override
@@ -549,5 +563,6 @@ class AppSession {
     archived,
     purpose,
     workflowId,
+    acp,
   ]);
 }

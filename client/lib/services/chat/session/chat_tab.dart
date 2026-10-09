@@ -16,7 +16,7 @@ import 'session_workbench_view.dart';
 /// personal gemini session). Such sessions skip shell-connect and attach an
 /// [AcpChatRuntimeCubit] instead; the chat center view is their only view.
 bool isAcpChatSession(AppSession session) =>
-    session.sessionTeam.trim().isEmpty && session.cli == CliTool.gemini;
+    session.isSimple && session.acp;
 
 /// Per-tab runtime aggregate shared by ChatCubit and its collaborators.
 /// (Formerly the private `_InternalTab`.)
