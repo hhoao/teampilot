@@ -1,6 +1,7 @@
 import '../../../models/team_config.dart';
 import '../../../services/cli/claude/claude_bootstrap_entry.dart';
 import '../../../services/cli/claude/capabilities/acp.dart';
+import '../../../services/cli/claude/capabilities/acp_adapter_installer.dart';
 import '../../../services/cli/claude/capabilities/headless.dart';
 import '../../../services/cli/codex/codex_bootstrap_entry.dart';
 import '../../../services/cli/codex/capabilities/headless.dart';
@@ -59,7 +60,10 @@ void registerBuiltInCliTools(
       ),
       headless: ClaudeHeadlessCapability(storage: storage),
       // Auth is resolved lazily from buildEnvironment, not at construction.
-      acp: ClaudeAcpCapability(authSource: claudeEntry?.acpAuthSource),
+      acp: ClaudeAcpCapability(
+        authSource: claudeEntry?.acpAuthSource,
+        locateAdapter: (_) => locateClaudeAcpAdapter(),
+      ),
     ),
   );
   registry.register(

@@ -8869,6 +8869,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get claudePersonalAcpAndroidDisabled => '在远程 SSH exec 就绪前，ACP 聊天仅限桌面。';
 
   @override
+  String get claudeAcpAdapterInstallButton => '安装 ACP 适配器';
+
+  @override
   String get acpLaunchFailedAdapter =>
       '无法启动 Claude ACP 适配器（claude-agent-acp）。请安装后重试。';
 }

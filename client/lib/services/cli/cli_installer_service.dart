@@ -11,6 +11,7 @@ import 'installer_types.dart';
 import 'registry/capabilities/cli_executable_capability.dart';
 import 'registry/cli_tool_registry.dart';
 import 'registry/installer/installer_context.dart';
+import 'registry/installer/npm_installer_capability.dart';
 import 'registry/installer/teampilot_node_install.dart';
 import 'registry/installer/termux_remote_detect.dart';
 import '../host/host_executable_locator.dart';
@@ -73,11 +74,49 @@ class CliInstallerService {
       );
     }
 
+    return _runInstall(
+      capability.install,
+      mode: mode,
+      sshProfile: sshProfile,
+      onProgress: onProgress,
+      isCancelled: isCancelled,
+      onProcessStarted: onProcessStarted,
+    );
+  }
+
+  /// Installs a non-CLI npm package (e.g. the Claude ACP adapter) with the
+  /// same [CliInstallContext] host as [install].
+  Future<CliInstallResult> installAdapter({
+    required NpmInstallerCapability installer,
+    required CliInstallMode mode,
+    SshProfile? sshProfile,
+    CliInstallProgressCallback? onProgress,
+    bool Function()? isCancelled,
+    void Function(Process process)? onProcessStarted,
+  }) {
+    return _runInstall(
+      installer.install,
+      mode: mode,
+      sshProfile: sshProfile,
+      onProgress: onProgress,
+      isCancelled: isCancelled,
+      onProcessStarted: onProcessStarted,
+    );
+  }
+
+  Future<CliInstallResult> _runInstall(
+    Future<CliInstallResult> Function(CliInstallContext context) install, {
+    required CliInstallMode mode,
+    SshProfile? sshProfile,
+    CliInstallProgressCallback? onProgress,
+    bool Function()? isCancelled,
+    void Function(Process process)? onProcessStarted,
+  }) async {
     _onProgress = onProgress;
     _isCancelled = isCancelled;
     _onProcessStarted = onProcessStarted;
     try {
-      return await capability.install(
+      return await install(
         CliInstallContext(
           mode: mode,
           host: _CliInstallerHost(this),

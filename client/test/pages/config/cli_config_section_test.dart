@@ -14,6 +14,7 @@ import 'package:teampilot/pages/config/cli_executable_path_settings_row.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/cli/cli_installer_service.dart';
+import 'package:teampilot/services/cli/registry/installer/npm_installer_capability.dart';
 import 'package:teampilot/services/install/install_job_registry.dart';
 import 'package:teampilot/services/install/install_job_runner_registry.dart';
 import 'package:teampilot/services/install/runners/cli_install_job_runner.dart';
@@ -31,6 +32,29 @@ class _FakeRecorder implements NotificationRecorder {
     String title = '',
     String payload = '',
   }) {}
+}
+
+class _AdapterInstallerService extends CliInstallerService {
+  _AdapterInstallerService(this.installs) : super(isWindowsOverride: false);
+
+  final List<String> installs;
+
+  @override
+  Future<CliInstallResult> installAdapter({
+    required NpmInstallerCapability installer,
+    required CliInstallMode mode,
+    sshProfile,
+    onProgress,
+    isCancelled,
+    onProcessStarted,
+  }) async {
+    installs.add(installer.npmPackage);
+    return const CliInstallResult(
+      success: true,
+      message: 'Adapter installed',
+      executablePath: '/bin/claude-agent-acp',
+    );
+  }
 }
 
 class _DelayedCliInstallerService extends CliInstallerService {
@@ -156,16 +180,34 @@ Widget _wrapRow(
   );
 }
 
-Widget _wrapAcpRow(SessionPreferencesCubit cubit, {bool isAndroid = false}) {
-  return BlocProvider.value(
-    value: cubit,
-    child: MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(
-        body: ClaudePersonalAcpSettingsRow(
-          cubit: cubit,
-          isAndroidOverride: isAndroid,
+Widget _wrapAcpRow(
+  SessionPreferencesCubit cubit, {
+  bool isAndroid = false,
+  List<String>? adapterInstalls,
+}) {
+  final registry = InstallJobRegistry(
+    progressCubit: ProgressActivityCubit(historyRecorder: _FakeRecorder()),
+    runnerRegistry: InstallJobRunnerRegistry(
+      runners: [
+        CliInstallJobRunner(
+          installerFactory: () =>
+              _AdapterInstallerService(adapterInstalls ?? []),
+        ),
+      ],
+    ),
+  );
+  return RepositoryProvider<InstallJobRegistry>.value(
+    value: registry,
+    child: BlocProvider.value(
+      value: cubit,
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: ClaudePersonalAcpSettingsRow(
+            cubit: cubit,
+            isAndroidOverride: isAndroid,
+          ),
         ),
       ),
     ),
@@ -374,5 +416,39 @@ void main() {
     await tester.tap(find.byKey(AppKeys.claudePersonalAcpSwitch));
     await tester.pump();
     expect(cubit.state.preferences.claudePersonalAcpDefault, isFalse);
+  });
+
+  testWidgets(
+    'Claude ACP adapter install button installs the adapter package',
+    (tester) async {
+      final cubit = await _makeCubit();
+      addTearDown(cubit.close);
+      final installs = <String>[];
+
+      await tester.pumpWidget(_wrapAcpRow(cubit, adapterInstalls: installs));
+      await tester.pump();
+      expect(find.text('Install ACP adapter'), findsOneWidget);
+
+      await tester.tap(find.byKey(AppKeys.claudeAcpAdapterInstallButton));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(installs, ['@agentclientprotocol/claude-agent-acp']);
+      AppToast.dismiss();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+    },
+  );
+
+  testWidgets('Claude ACP adapter install button is hidden on Android', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrapAcpRow(cubit, isAndroid: true));
+    await tester.pump();
+
+    expect(find.byKey(AppKeys.claudeAcpAdapterInstallButton), findsNothing);
   });
 }

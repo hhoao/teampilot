@@ -9272,6 +9272,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'ACP chat is desktop-only until remote SSH exec is available.';
 
   @override
+  String get claudeAcpAdapterInstallButton => 'Install ACP adapter';
+
+  @override
   String get acpLaunchFailedAdapter =>
       'Could not start the Claude ACP adapter (claude-agent-acp). Install it and try again.';
 }

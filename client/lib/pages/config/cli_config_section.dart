@@ -11,7 +11,11 @@ import '../../models/team_config.dart';
 import '../../services/app/connection_mode_service.dart';
 import '../../services/cli/registry/capabilities/cli_executable_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
+import '../../services/install/install_job_enqueue.dart';
+import '../../services/install/install_job_keys.dart';
+import '../../services/install/install_job_registry.dart';
 import '../../utils/ui/app_keys.dart';
+import '../../widgets/app_toast/app_toast.dart';
 import 'cli_executable_path_settings_row.dart';
 import 'toolchain_path_settings_row.dart';
 
@@ -155,7 +159,10 @@ Widget _buildCliRow(
   if (cli == CliTool.claude) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [pathRow, ClaudePersonalAcpSettingsRow(cubit: cubit)],
+      children: [
+        pathRow,
+        ClaudePersonalAcpSettingsRow(cubit: cubit),
+      ],
     );
   }
   return pathRow;
@@ -201,10 +208,77 @@ class ClaudePersonalAcpSettingsRow extends StatelessWidget {
                   ? null
                   : (value) => cubit.setClaudePersonalAcpDefault(value),
             ),
+            // Desktop-only: ACP spawns a local process. Install is
+            // user-initiated here; connect never installs.
+            if (!isAndroid) const _ClaudeAcpAdapterInstallButton(),
             const Divider(height: 1),
           ],
         );
       },
+    );
+  }
+}
+
+class _ClaudeAcpAdapterInstallButton extends StatefulWidget {
+  const _ClaudeAcpAdapterInstallButton();
+
+  @override
+  State<_ClaudeAcpAdapterInstallButton> createState() =>
+      _ClaudeAcpAdapterInstallButtonState();
+}
+
+class _ClaudeAcpAdapterInstallButtonState
+    extends State<_ClaudeAcpAdapterInstallButton> {
+  Future<void> _install() async {
+    final registry = context.read<InstallJobRegistry>();
+    final title = context.l10n.cliInstallInstalling;
+    setState(() {});
+    try {
+      final result = await registry.installClaudeAcpAdapter(title: title);
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: result.message,
+        variant: result.success ? TpToastVariant.success : TpToastVariant.error,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: error.toString(),
+        variant: TpToastVariant.error,
+      );
+    } finally {
+      if (mounted) setState(() {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final registry = context.read<InstallJobRegistry>();
+    final installing = registry.isRunning(InstallJobKeys.claudeAcpAdapter());
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: OutlinedButton.icon(
+          key: AppKeys.claudeAcpAdapterInstallButton,
+          onPressed: installing ? null : _install,
+          icon: installing
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(Icons.download_outlined, size: context.tpIconSizes.md),
+          label: Text(
+            installing
+                ? l10n.cliInstallInstalling
+                : l10n.claudeAcpAdapterInstallButton,
+          ),
+        ),
+      ),
     );
   }
 }

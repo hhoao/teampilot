@@ -4,6 +4,7 @@ import '../../../models/install_job/install_job_scope.dart';
 import '../../../models/install_job/install_job_spec.dart';
 import '../../../models/ssh_profile.dart';
 import '../../../models/team_config.dart';
+import '../../cli/claude/capabilities/acp_adapter_installer.dart';
 import '../../cli/cli_installer_service.dart';
 import '../install_job_runner.dart';
 
@@ -25,25 +26,38 @@ final class CliInstallJobRunner implements InstallJobRunner {
   @override
   bool supports(InstallJobKey key) {
     if (key.kind != kind) return false;
-    return CliTool.tryParse(key.target) != null;
+    return key.target == ClaudeAcpAdapterInstaller.jobTarget ||
+        CliTool.tryParse(key.target) != null;
   }
 
   @override
   Future<T> run<T>(InstallJobSpec<T> spec, InstallJobContext ctx) async {
+    final isAdapter = spec.key.target == ClaudeAcpAdapterInstaller.jobTarget;
     final cli = CliTool.tryParse(spec.key.target);
-    if (cli == null) {
+    if (!isAdapter && cli == null) {
       throw StateError('Unknown CLI target: ${spec.key.target}');
     }
 
     final (mode, sshProfile) = _resolveInstallTarget(spec.key.scope);
-    final result = await _installerFactory().install(
-      cli: cli,
-      mode: mode,
-      sshProfile: sshProfile,
-      onProgress: (progress) => _reportCliProgress(ctx, progress),
-      isCancelled: () => ctx.isCancelled,
-      onProcessStarted: ctx.registerProcess,
-    );
+    void onProgress(CliInstallProgress progress) =>
+        _reportCliProgress(ctx, progress);
+    final result = isAdapter
+        ? await _installerFactory().installAdapter(
+            installer: const ClaudeAcpAdapterInstaller(),
+            mode: mode,
+            sshProfile: sshProfile,
+            onProgress: onProgress,
+            isCancelled: () => ctx.isCancelled,
+            onProcessStarted: ctx.registerProcess,
+          )
+        : await _installerFactory().install(
+            cli: cli!,
+            mode: mode,
+            sshProfile: sshProfile,
+            onProgress: onProgress,
+            isCancelled: () => ctx.isCancelled,
+            onProcessStarted: ctx.registerProcess,
+          );
 
     if (!result.success) {
       throw StateError(result.message);

@@ -15,9 +15,11 @@ void main() {
     registerBuiltInCliTools(registry);
     final cap = registry.capability<AcpCapability>(CliTool.claude);
     expect(cap, isNotNull);
-    expect(cap!.agentExecutable('/usr/bin/claude'), 'claude-agent-acp');
-    expect(cap.launchArgCandidates('claude-agent-acp'), [
-      ['claude-agent-acp'],
+    // Resolves via PATH / ~/.local/bin when installed; bare name otherwise.
+    final exe = cap!.agentExecutable('/usr/bin/claude');
+    expect(exe, endsWith('claude-agent-acp'));
+    expect(cap.launchArgCandidates(exe), [
+      [exe],
     ]);
   });
 

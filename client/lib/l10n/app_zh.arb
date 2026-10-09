@@ -3948,5 +3948,6 @@
   "claudePersonalAcpDefaultLabel": "个人会话使用 ACP 聊天",
   "claudePersonalAcpDefaultDescription": "新建个人 Claude 会话走无终端 ACP（claude-agent-acp）。已有会话保持原启动方式。团队会话始终用终端。",
   "claudePersonalAcpAndroidDisabled": "在远程 SSH exec 就绪前，ACP 聊天仅限桌面。",
+  "claudeAcpAdapterInstallButton": "安装 ACP 适配器",
   "acpLaunchFailedAdapter": "无法启动 Claude ACP 适配器（claude-agent-acp）。请安装后重试。"
 }

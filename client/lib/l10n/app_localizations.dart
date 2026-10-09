@@ -16466,6 +16466,12 @@ abstract class AppLocalizations {
   /// **'ACP chat is desktop-only until remote SSH exec is available.'**
   String get claudePersonalAcpAndroidDisabled;
 
+  /// No description provided for @claudeAcpAdapterInstallButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Install ACP adapter'**
+  String get claudeAcpAdapterInstallButton;
+
   /// No description provided for @acpLaunchFailedAdapter.
   ///
   /// In en, this message translates to:
