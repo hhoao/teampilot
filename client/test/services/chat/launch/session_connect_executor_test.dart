@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/chat/session/session_open_request.dart';
 import 'package:teampilot/services/chat/launch/session_launch_host.dart';
+import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
@@ -51,6 +52,25 @@ void main() {
       ]);
     },
   );
+
+  test('simple claude acp session attaches ACP and skips shell stages', () async {
+    job = _job(cli: CliTool.claude, acp: true, simple: true);
+
+    await executor.execute(job);
+
+    expect(events, <String>['persist', 'ensure-ready', 'attach-acp']);
+    expect(events, isNot(contains('resolve-member')));
+    expect(shellConnector.connectCalls, 0);
+  });
+
+  test('simple claude PTY session falls through to the shell', () async {
+    job = _job(cli: CliTool.claude, acp: false, simple: true);
+
+    await executor.execute(job);
+
+    expect(events, contains('resolve-member'));
+    expect(events, contains('connect-shell'));
+  });
 
   test('executor reports the attachment result after connect', () async {
     final results = <ConnectShellResult>[];
@@ -230,6 +250,9 @@ void main() {
 SessionConnectJob _job({
   bool connectShell = true,
   bool propagateErrors = false,
+  CliTool? cli,
+  bool acp = false,
+  bool simple = false,
 }) {
   final workspace = Workspace(workspaceId: 'workspace-1', createdAt: 1);
   const member = TeamMemberConfig(id: 'member-1', name: 'Member');
@@ -241,7 +264,9 @@ SessionConnectJob _job({
   final session = AppSession(
     sessionId: 'session-1',
     workspaceId: workspace.workspaceId,
-    sessionTeam: team.id,
+    sessionTeam: simple ? '' : team.id,
+    cli: cli,
+    acp: acp,
     createdAt: 1,
   );
   final request = SessionOpenRequest(
@@ -283,10 +308,10 @@ class _FakePreparation implements SessionConnectPreparationPort {
     SessionConnectJob job,
     AppSession session,
   ) async {
-    // Only reached for terminal-less ACP sessions; these fixtures are regular
-    // PTY sessions, so the executor must fall through to the shell stages.
+    // Only reached for ACP chat sessions; PTY fixtures return false so the
+    // executor falls through to the shell stages.
     events.add('attach-acp');
-    return false;
+    return isAcpChatSession(session);
   }
 
   @override

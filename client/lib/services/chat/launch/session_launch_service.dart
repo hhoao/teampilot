@@ -111,8 +111,8 @@ class SessionLaunchService
     _teamConfigValidator = teamConfigValidator;
   }
 
-  /// Terminal-less ACP branch (gemini phase 1): attach an
-  /// [AcpChatRuntimeCubit] to the session's tab and spawn the agent process.
+  /// Terminal-less ACP branch: attach an [AcpChatRuntimeCubit] to the
+  /// session's tab and spawn the ACP agent for `session.cli`.
   /// No roster, no TeamBus, no shell connect — the chat center view is the
   /// only view. Returns true once the job is fully handled, so the executor
   /// skips every member/shell stage.
@@ -129,11 +129,15 @@ class SessionLaunchService
       _h.updateTabRunning(tab.info.id);
       return true;
     }
+    final cli = session.cli;
+    if (cli == null) {
+      throw StateError('ACP session requires session.cli');
+    }
     final logger = AcpFrameLogger();
     final runtime = AcpSessionRuntime(
       spawner: productionAcpSpawner(
         registry: _h.cliRegistry,
-        tool: session.cli ?? CliTool.gemini,
+        tool: cli,
         workingDirectory: _acpWorkingDirectory(session, job.workspace),
         logger: logger,
       ),
@@ -143,14 +147,14 @@ class SessionLaunchService
     final cubit = AcpChatRuntimeCubit(
       runtime: runtime,
       sessionId: session.sessionId,
-      tool: session.cli ?? CliTool.gemini,
+      tool: cli,
       attention: _h.agentAttentionCubit,
       transcript: _acpTranscriptFor(session),
     )..ensureStrings(_h.acpChatStrings?.call() ?? defaultAcpChatStrings);
     tab.acpRuntime = cubit;
     await cubit.start(
-      executable: _h.shellFactory.executableFor(session.cli ?? CliTool.gemini),
-      sessionToolDir: _acpSessionToolDir(session),
+      executable: _h.shellFactory.executableFor(cli),
+      sessionToolDir: _acpSessionToolDir(session, cli),
       workingDirectory: _acpWorkingDirectory(session, job.workspace),
       baseEnv: _acpBaseEnv(),
     );
@@ -170,16 +174,16 @@ class SessionLaunchService
 
   /// Isolated config dir for the agent process: the session's runtime tool
   /// dir (DefaultCliConfigLayout slot) on the home plane.
-  String _acpSessionToolDir(AppSession session) {
+  String _acpSessionToolDir(AppSession session, CliTool cli) {
     return _storage.context.layout.sessionRuntimeToolDir(
       session.workspaceId,
       session.sessionId,
-      'gemini',
+      cli.value,
     );
   }
 
   Map<String, String> _acpBaseEnv() {
-    // Inherit the login-shell PATH so a locally installed gemini resolves.
+    // Inherit the login-shell PATH so a locally installed ACP agent resolves.
     return {'PATH': Platform.environment['PATH'] ?? ''};
   }
 
