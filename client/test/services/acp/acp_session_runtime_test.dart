@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:acpd/acpd.dart' as acpd;
@@ -164,6 +165,88 @@ void main() {
       });
 
       await expectLater(startRuntime(runtime), throwsStateError);
+    },
+  );
+
+  AcpLaunchPlan adapterPlan() => AcpLaunchPlan(
+    launchArgCandidates: (executable) => [
+      [executable],
+    ],
+    buildEnvironment:
+        ({
+          required String sessionToolDir,
+          required String workingDirectory,
+          Map<String, String> baseEnv = const {},
+        }) => Map<String, String>.of(baseEnv),
+    agentExecutable: (cli) => 'my-adapter',
+  );
+
+  test(
+    'missing separate adapter binary → AcpLaunchException adapter key',
+    () async {
+      final runtime = makeRuntime(
+        (argv, env) async => throw const ProcessException(
+          'my-adapter',
+          [],
+          'No such file or directory',
+          2,
+        ),
+        launchPlanFor: (_) => adapterPlan(),
+      );
+
+      await expectLater(
+        startRuntime(runtime),
+        throwsA(
+          isA<AcpLaunchException>().having(
+            (e) => e.reason,
+            'reason',
+            acpLaunchFailedAdapter,
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'PathNotFoundException for the adapter maps to the adapter key',
+    () async {
+      final runtime = makeRuntime(
+        (argv, env) async => throw const PathNotFoundException(
+          'my-adapter',
+          OSError('No such file or directory', 2),
+        ),
+        launchPlanFor: (_) => adapterPlan(),
+      );
+
+      await expectLater(
+        startRuntime(runtime),
+        throwsA(
+          isA<AcpLaunchException>().having(
+            (e) => e.reason,
+            'reason',
+            acpLaunchFailedAdapter,
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'missing in-place CLI binary (no adapter) is rethrown unchanged',
+    () async {
+      final runtime = makeRuntime(
+        (argv, env) async => throw const ProcessException(
+          'gemini',
+          [],
+          'No such file or directory',
+          2,
+        ),
+      );
+
+      await expectLater(
+        startRuntime(runtime),
+        throwsA(isA<ProcessException>()),
+      );
     },
   );
 

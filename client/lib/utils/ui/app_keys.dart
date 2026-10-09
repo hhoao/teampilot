@@ -182,6 +182,7 @@ class AppKeys {
     'claude-cli-executable-path-reset-button',
   );
   static const claudeCliInstallButton = Key('claude-cli-install-button');
+  static const claudePersonalAcpSwitch = Key('claude-personal-acp-switch');
   static const codexCliExecutablePathField = Key(
     'codex-cli-executable-path-field',
   );

@@ -4632,5 +4632,9 @@
   "acpLaunchFailedVersion": "This Gemini CLI version does not support the ACP chat mode. Update Gemini CLI and try again.",
   "acpChatLaunchFailed": "Couldn't start Gemini. Make sure Gemini CLI is installed and try again.",
   "acpChatTurnFailed": "This turn failed",
-  "acpChatProcessExited": "Gemini exited unexpectedly"
+  "acpChatProcessExited": "Gemini exited unexpectedly",
+  "claudePersonalAcpDefaultLabel": "Personal sessions use ACP chat",
+  "claudePersonalAcpDefaultDescription": "Run new personal Claude sessions as terminal-less ACP chat via claude-agent-acp. Existing sessions stay as they were started. Team sessions always use the terminal.",
+  "claudePersonalAcpAndroidDisabled": "ACP chat is desktop-only until remote SSH exec is available.",
+  "acpLaunchFailedAdapter": "Could not start the Claude ACP adapter (claude-agent-acp). Install it and try again."
 }

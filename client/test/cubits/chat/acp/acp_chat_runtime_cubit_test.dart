@@ -84,6 +84,7 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
 
 const _testStrings = AcpChatStrings(
   launchFailedVersion: 'Gemini ACP unsupported',
+  launchFailedAdapter: 'Adapter missing',
   launchFailed: 'Failed to start the agent',
   turnFailed: 'Turn failed',
   processExited: 'Process exited',
@@ -312,6 +313,24 @@ void main() {
     expect(
       (message.parts.single as AiTextPart).text,
       contains('Gemini ACP unsupported'),
+    );
+    await cubit.close();
+  });
+
+  test('adapter launch failure → launchFailedAdapter kind + copy', () async {
+    runtime.startError = AcpLaunchException(reason: acpLaunchFailedAdapter);
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'claude',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+
+    expect(cubit.state.phase, AcpChatPhase.ended);
+    expect(cubit.state.error?.kind, AcpChatErrorKind.launchFailedAdapter);
+    expect(
+      (cubit.state.messages.single.parts.single as AiTextPart).text,
+      'Adapter missing',
     );
     await cubit.close();
   });

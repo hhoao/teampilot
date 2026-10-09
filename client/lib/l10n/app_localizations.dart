@@ -16447,6 +16447,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Gemini exited unexpectedly'**
   String get acpChatProcessExited;
+
+  /// No description provided for @claudePersonalAcpDefaultLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal sessions use ACP chat'**
+  String get claudePersonalAcpDefaultLabel;
+
+  /// No description provided for @claudePersonalAcpDefaultDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Run new personal Claude sessions as terminal-less ACP chat via claude-agent-acp. Existing sessions stay as they were started. Team sessions always use the terminal.'**
+  String get claudePersonalAcpDefaultDescription;
+
+  /// No description provided for @claudePersonalAcpAndroidDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'ACP chat is desktop-only until remote SSH exec is available.'**
+  String get claudePersonalAcpAndroidDisabled;
+
+  /// No description provided for @acpLaunchFailedAdapter.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the Claude ACP adapter (claude-agent-acp). Install it and try again.'**
+  String get acpLaunchFailedAdapter;
 }
 
 class _AppLocalizationsDelegate

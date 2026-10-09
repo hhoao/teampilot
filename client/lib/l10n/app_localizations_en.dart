@@ -9259,4 +9259,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get acpChatProcessExited => 'Gemini exited unexpectedly';
+
+  @override
+  String get claudePersonalAcpDefaultLabel => 'Personal sessions use ACP chat';
+
+  @override
+  String get claudePersonalAcpDefaultDescription =>
+      'Run new personal Claude sessions as terminal-less ACP chat via claude-agent-acp. Existing sessions stay as they were started. Team sessions always use the terminal.';
+
+  @override
+  String get claudePersonalAcpAndroidDisabled =>
+      'ACP chat is desktop-only until remote SSH exec is available.';
+
+  @override
+  String get acpLaunchFailedAdapter =>
+      'Could not start the Claude ACP adapter (claude-agent-acp). Install it and try again.';
 }

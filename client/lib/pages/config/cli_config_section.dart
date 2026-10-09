@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -147,6 +149,74 @@ Widget _buildCliRow(
 
   final label = l10n.appProviderToolLabel(cli);
 
+  final pathRow = _buildCliPathRow(cli, cubit, isSshMode, l10n, spec, label);
+  // Per-CLI extra settings row: built per `def.id` here, not scattered
+  // through feature code.
+  if (cli == CliTool.claude) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [pathRow, ClaudePersonalAcpSettingsRow(cubit: cubit)],
+    );
+  }
+  return pathRow;
+}
+
+/// Claude: run new personal sessions as terminal-less ACP chat.
+///
+/// Disabled on Android (ACP spawns a local process; remote SSH exec is not
+/// available there yet).
+class ClaudePersonalAcpSettingsRow extends StatelessWidget {
+  const ClaudePersonalAcpSettingsRow({
+    required this.cubit,
+    @visibleForTesting this.isAndroidOverride,
+    super.key,
+  });
+
+  final SessionPreferencesCubit cubit;
+  final bool? isAndroidOverride;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final isAndroid = isAndroidOverride ?? Platform.isAndroid;
+    return BlocBuilder<SessionPreferencesCubit, SessionPreferencesState>(
+      bloc: cubit,
+      buildWhen: (a, b) =>
+          a.preferences.claudePersonalAcpDefault !=
+          b.preferences.claudePersonalAcpDefault,
+      builder: (context, state) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SwitchListTile(
+              key: AppKeys.claudePersonalAcpSwitch,
+              title: Text(l10n.claudePersonalAcpDefaultLabel),
+              subtitle: Text(
+                isAndroid
+                    ? l10n.claudePersonalAcpAndroidDisabled
+                    : l10n.claudePersonalAcpDefaultDescription,
+              ),
+              value: !isAndroid && state.preferences.claudePersonalAcpDefault,
+              onChanged: isAndroid
+                  ? null
+                  : (value) => cubit.setClaudePersonalAcpDefault(value),
+            ),
+            const Divider(height: 1),
+          ],
+        );
+      },
+    );
+  }
+}
+
+Widget _buildCliPathRow(
+  CliTool cli,
+  SessionPreferencesCubit cubit,
+  bool isSshMode,
+  AppLocalizations l10n,
+  CliExecutablePathRowSpec spec,
+  String label,
+) {
   return CliExecutablePathSettingsRow(
     cubit: cubit,
     cli: cli,

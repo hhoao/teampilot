@@ -2247,6 +2247,7 @@ Future<AppShell> buildAppShell({
       );
       return AcpChatStrings(
         launchFailedVersion: l10n.acpLaunchFailedVersion,
+        launchFailedAdapter: l10n.acpLaunchFailedAdapter,
         launchFailed: l10n.acpChatLaunchFailed,
         turnFailed: l10n.acpChatTurnFailed,
         processExited: l10n.acpChatProcessExited,

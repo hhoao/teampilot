@@ -36,6 +36,10 @@ enum AcpChatErrorKind {
   /// [AcpLaunchException] with [acpLaunchFailedVersion].
   launchFailedVersion,
 
+  /// The separate ACP adapter binary is not installed —
+  /// [AcpLaunchException] with [acpLaunchFailedAdapter].
+  launchFailedAdapter,
+
   /// The agent process could not be spawned or never completed the handshake
   /// (binary missing, spawn/install failure, handshake error). Distinct from
   /// [processExited], which is a mid-session crash of an already-open session.
@@ -163,6 +167,14 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         baseEnv: baseEnv,
       );
     } on AcpLaunchException catch (error) {
+      if (error.reason == acpLaunchFailedAdapter) {
+        _endWith(
+          AcpChatErrorKind.launchFailedAdapter,
+          _strings?.launchFailedAdapter ??
+              defaultAcpChatStrings.launchFailedAdapter,
+        );
+        return;
+      }
       _endWith(
         AcpChatErrorKind.launchFailedVersion,
         error.reason == acpLaunchFailedVersion

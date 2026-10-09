@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import '../../models/team_config.dart';
 import '../../utils/logging/logger_utils.dart';
@@ -12,6 +13,11 @@ import 'acp_session.dart';
 /// The runtime stays l10n-free; the UI layer resolves this key for the
 /// user-facing message.
 const String acpLaunchFailedVersion = 'acpLaunchFailedVersion';
+
+/// l10n key surfaced when a separate ACP adapter binary (one whose
+/// `agentExecutable` differs from the CLI executable, e.g. Claude's
+/// `claude-agent-acp`) is not installed.
+const String acpLaunchFailedAdapter = 'acpLaunchFailedAdapter';
 
 /// Creates the [AcpAgentConnection] for one full agent argv + environment.
 ///
@@ -163,6 +169,13 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
 
   static AcpLaunchPlan? _unsupportedLaunchPlan(CliTool tool) => null;
 
+  /// `Process.start` executable-not-found (ENOENT / ERROR_FILE_NOT_FOUND)
+  /// or a [PathNotFoundException].
+  static bool _isMissingExecutable(Object error) {
+    if (error is PathNotFoundException) return true;
+    return error is ProcessException && error.errorCode == 2;
+  }
+
   /// Whether [start] has produced a live session.
   @override
   bool get isStarted => _session != null;
@@ -211,10 +224,16 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
           'ACP: flag candidate rejected ($argv): $error; trying next',
         );
         await connection?.dispose();
-      } on Object {
+      } on Object catch (error) {
         // A real failure (not a flag rejection): dispose the spawned
         // connection so the process is not left running, then rethrow.
         await connection?.dispose();
+        // A separate adapter binary that is not installed gets its own
+        // user-actionable key; a missing CLI itself (agent == executable)
+        // stays a generic launch failure. Never falls back to a PTY.
+        if (agent != executable && _isMissingExecutable(error)) {
+          throw AcpLaunchException(reason: acpLaunchFailedAdapter);
+        }
         rethrow;
       }
     }

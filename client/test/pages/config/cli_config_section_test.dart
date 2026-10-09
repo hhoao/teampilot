@@ -156,6 +156,22 @@ Widget _wrapRow(
   );
 }
 
+Widget _wrapAcpRow(SessionPreferencesCubit cubit, {bool isAndroid = false}) {
+  return BlocProvider.value(
+    value: cubit,
+    child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: ClaudePersonalAcpSettingsRow(
+          cubit: cubit,
+          isAndroidOverride: isAndroid,
+        ),
+      ),
+    ),
+  );
+}
+
 void main() {
   setUp(() {
     setUpTestAppStorage();
@@ -300,5 +316,63 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(cubit.configuredExecutablePath(CliTool.claude), '/installed/claude');
+  });
+
+  testWidgets('Claude ACP switch is shown in the Claude CLI section', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pump();
+
+    final tile = find.byKey(AppKeys.claudePersonalAcpSwitch);
+    expect(tile, findsOneWidget);
+    expect(tester.widget<SwitchListTile>(tile).value, isFalse);
+    expect(find.text('Personal sessions use ACP chat'), findsOneWidget);
+  });
+
+  testWidgets('Claude ACP switch toggles claudePersonalAcpDefault', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrapAcpRow(cubit));
+    await tester.pump();
+    await tester.tap(find.byKey(AppKeys.claudePersonalAcpSwitch));
+    await tester.pump();
+
+    expect(cubit.state.preferences.claudePersonalAcpDefault, isTrue);
+    expect(
+      tester
+          .widget<SwitchListTile>(find.byKey(AppKeys.claudePersonalAcpSwitch))
+          .value,
+      isTrue,
+    );
+  });
+
+  testWidgets('Claude ACP switch is disabled with a note on Android', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrapAcpRow(cubit, isAndroid: true));
+    await tester.pump();
+
+    final tile = tester.widget<SwitchListTile>(
+      find.byKey(AppKeys.claudePersonalAcpSwitch),
+    );
+    expect(tile.onChanged, isNull);
+    expect(
+      find.text('ACP chat is desktop-only until remote SSH exec is available.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(AppKeys.claudePersonalAcpSwitch));
+    await tester.pump();
+    expect(cubit.state.preferences.claudePersonalAcpDefault, isFalse);
   });
 }

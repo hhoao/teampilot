@@ -8857,4 +8857,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get acpChatProcessExited => 'Gemini 意外退出';
+
+  @override
+  String get claudePersonalAcpDefaultLabel => '个人会话使用 ACP 聊天';
+
+  @override
+  String get claudePersonalAcpDefaultDescription =>
+      '新建个人 Claude 会话走无终端 ACP（claude-agent-acp）。已有会话保持原启动方式。团队会话始终用终端。';
+
+  @override
+  String get claudePersonalAcpAndroidDisabled => '在远程 SSH exec 就绪前，ACP 聊天仅限桌面。';
+
+  @override
+  String get acpLaunchFailedAdapter =>
+      '无法启动 Claude ACP 适配器（claude-agent-acp）。请安装后重试。';
 }
