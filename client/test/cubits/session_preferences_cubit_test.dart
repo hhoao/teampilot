@@ -99,6 +99,19 @@ void main() {
     expect(cubit.state.preferences.autoLaunchAllMembersOnConnect, true);
   });
 
+  test('setClaudePersonalAcpDefault persists the flag', () async {
+    final cubit = await makeCubit();
+    await cubit.load();
+    expect(cubit.state.preferences.claudePersonalAcpDefault, false);
+
+    await cubit.setClaudePersonalAcpDefault(true);
+    expect(cubit.state.preferences.claudePersonalAcpDefault, true);
+
+    final cubit2 = await makeCubit();
+    await cubit2.load();
+    expect(cubit2.state.preferences.claudePersonalAcpDefault, true);
+  });
+
   test('setReclaimIdleTerminals persists the flag', () async {
     final cubit = await makeCubit();
     await cubit.load();

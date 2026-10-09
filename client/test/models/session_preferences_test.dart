@@ -91,6 +91,20 @@ void main() {
       );
     });
 
+    test('claudePersonalAcpDefault defaults false and round-trips', () {
+      expect(SessionPreferences().claudePersonalAcpDefault, isFalse);
+      expect(
+        SessionPreferences.fromJson(const {}).claudePersonalAcpDefault,
+        isFalse,
+      );
+      final on = SessionPreferences(claudePersonalAcpDefault: true);
+      expect(on.toJson()['claudePersonalAcpDefault'], isTrue);
+      expect(
+        SessionPreferences.fromJson(on.toJson()).claudePersonalAcpDefault,
+        isTrue,
+      );
+    });
+
     test('git auto-fetch defaults on with 5 minute interval', () {
       final prefs = SessionPreferences();
       expect(prefs.gitAutoFetchEnabled, isTrue);

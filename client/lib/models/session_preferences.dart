@@ -15,6 +15,7 @@ class SessionPreferences {
     this.notifyOnSessionIdle = true,
     this.openExistingSessionStartsTerminal = false,
     this.chatSubmitSwitchesToTerminal = false,
+    this.claudePersonalAcpDefault = false,
   }) : cliExecutablePaths = Map.unmodifiable(
          _normalizeCliExecutablePaths(cliExecutablePaths),
        ),
@@ -54,6 +55,8 @@ class SessionPreferences {
           json['openExistingSessionStartsTerminal'] as bool? ?? false,
       chatSubmitSwitchesToTerminal:
           json['chatSubmitSwitchesToTerminal'] as bool? ?? false,
+      claudePersonalAcpDefault:
+          json['claudePersonalAcpDefault'] as bool? ?? false,
     );
   }
 
@@ -119,6 +122,9 @@ class SessionPreferences {
   /// background.
   final bool chatSubmitSwitchesToTerminal;
 
+  /// When true, new personal Claude sessions launch as ACP chat instead of PTY.
+  final bool claudePersonalAcpDefault;
+
   String cliExecutablePathFor(String toolId) =>
       cliExecutablePaths[toolId]?.trim() ?? '';
 
@@ -138,6 +144,7 @@ class SessionPreferences {
     bool? notifyOnSessionIdle,
     bool? openExistingSessionStartsTerminal,
     bool? chatSubmitSwitchesToTerminal,
+    bool? claudePersonalAcpDefault,
   }) {
     return SessionPreferences(
       cliExecutablePaths: cliExecutablePaths ?? this.cliExecutablePaths,
@@ -166,6 +173,8 @@ class SessionPreferences {
           this.openExistingSessionStartsTerminal,
       chatSubmitSwitchesToTerminal:
           chatSubmitSwitchesToTerminal ?? this.chatSubmitSwitchesToTerminal,
+      claudePersonalAcpDefault:
+          claudePersonalAcpDefault ?? this.claudePersonalAcpDefault,
     );
   }
 
@@ -186,6 +195,7 @@ class SessionPreferences {
       'notifyOnSessionIdle': notifyOnSessionIdle,
       'openExistingSessionStartsTerminal': openExistingSessionStartsTerminal,
       'chatSubmitSwitchesToTerminal': chatSubmitSwitchesToTerminal,
+      'claudePersonalAcpDefault': claudePersonalAcpDefault,
     };
   }
 
