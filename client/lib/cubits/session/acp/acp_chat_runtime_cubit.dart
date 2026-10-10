@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../../../models/team_config.dart';
 import '../../../services/acp/acp_chat_strings.dart';
 import '../../../services/acp/acp_chat_transcript.dart';
+import '../../../services/acp/acp_chat_transcript_replay.dart';
 import '../../../services/acp/acp_session.dart';
 import '../../../services/acp/acp_session_runtime.dart';
 import '../../../services/agent_status/agent_attention_state.dart';
@@ -140,6 +141,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   AcpChatStrings? _strings;
   StreamSubscription<AcpSessionUpdate>? _updatesSub;
   StreamSubscription<AgentPermissionRequest>? _permissionSub;
+  String? _queuedPrompt;
+  bool _closing = false;
 
   /// Injects localized copy; must run before [start].
   void ensureStrings(AcpChatStrings strings) => _strings ??= strings;
@@ -147,7 +150,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// Spawns the agent and opens the ACP session.
   ///
   /// On success: subscribes to updates + permissions (before any prompt),
-  /// stamps the attention seat working, and moves to [AcpChatPhase.ready].
+  /// stamps the attention seat idle, and moves to [AcpChatPhase.ready].
   /// On [AcpLaunchException]: inline system message + ended phase. Any other
   /// failure is logged and also ends the session with its raw text (a
   /// non-launch failure here has no user-actionable copy of its own).
@@ -158,6 +161,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     Map<String, String> baseEnv = const {},
   }) async {
     if (state.phase != AcpChatPhase.launching) return;
+    await _hydrateTranscript();
+    if (isClosed) return;
     try {
       await _runtime.start(
         tool: tool,
@@ -203,6 +208,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         appLogger.w('[acp-chat] session $sessionId updates error: $e');
       },
     );
+    final handshakeAuth = _runtime.lastAuthNotice;
     _permissionSub = _runtime.permissionRequests.listen(_onPermissionRequest);
     // Agent process exit (mid-session crash or out-of-turn death): inline
     // system message + ended phase. Attached in the same step as the other
@@ -215,8 +221,16 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     if (agentExitCode != null) {
       unawaited(agentExitCode.then(handleProcessExited));
     }
-    _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.working));
+    _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
     emit(state.copyWith(phase: AcpChatPhase.ready));
+    final queued = _queuedPrompt;
+    _queuedPrompt = null;
+    if (queued != null) {
+      // Flush before replaying handshake auth so a CLI probe `none` cannot
+      // land as the first row ahead of the user's already-visible bubble.
+      _dispatchPrompt(queued);
+    }
+    if (handshakeAuth != null) unawaited(_onUpdate(handshakeAuth));
   }
 
   /// Sends one prompt turn. Returns false (and does nothing) when a turn is
@@ -225,11 +239,49 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   bool sendPrompt(String text) {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return false;
-    if (state.inTurn) return false;
+    if (state.inTurn || _queuedPrompt != null) return false;
     if (state.phase == AcpChatPhase.ended) return false;
-    if (!_runtime.isStarted) return false;
+    // Handshake `kind=none` is a CLI probe, not a confirmed logout. Drop it
+    // as soon as the user sends so it never sits above the turn.
+    _removeAuthNoticeMessage();
+    if (state.phase == AcpChatPhase.launching || !_runtime.isStarted) {
+      _queuedPrompt = trimmed;
+      _showUserMessage(trimmed);
+      emit(state.copyWith(inTurn: true));
+      return true;
+    }
+    _dispatchPrompt(trimmed);
+    return true;
+  }
 
+  Future<void> _hydrateTranscript() async {
+    final loaded = await _transcript?.loadMessages();
+    if (loaded == null || loaded.isEmpty || isClosed) return;
+    emit(
+      state.copyWith(
+        messages: mergeHydratedAcpMessages(
+          loaded: loaded,
+          live: state.messages,
+        ),
+      ),
+    );
+  }
+
+  void _showUserMessage(String trimmed) {
+    if (_hasMatchingTipUser(trimmed)) return;
     emit(state.copyWith(messages: [...state.messages, _userMessage(trimmed)]));
+  }
+
+  bool _hasMatchingTipUser(String trimmed) {
+    if (state.messages.isEmpty) return false;
+    final tip = state.messages.last;
+    if (tip.role != AiRole.user) return false;
+    return tip.parts.whereType<AiTextPart>().map((p) => p.text).join() ==
+        trimmed;
+  }
+
+  void _dispatchPrompt(String trimmed) {
+    _showUserMessage(trimmed);
     emit(state.copyWith(inTurn: true));
     unawaited(
       _recordAndPrompt(trimmed).catchError((Object error, StackTrace st) {
@@ -243,7 +295,6 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         _endTurn();
       }),
     );
-    return true;
   }
 
   Future<void> _recordAndPrompt(String text) async {
@@ -282,7 +333,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// The agent process died (exit watcher callback). Inline crash message +
   /// ended phase — no global error dialog.
   void handleProcessExited(int exitCode) {
-    if (state.phase == AcpChatPhase.ended) return;
+    if (_closing || isClosed || state.phase == AcpChatPhase.ended) return;
     _endWith(
       AcpChatErrorKind.processExited,
       '${_strings?.processExited ?? 'Agent process exited'} ($exitCode)',
@@ -291,6 +342,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   @override
   Future<void> close() async {
+    // Mark before killing the agent: `_runtime.close()` awaits process exit,
+    // so the watcher fires with 0 while this cubit is still open.
+    _closing = true;
     await _updatesSub?.cancel();
     await _permissionSub?.cancel();
     _updatesSub = null;
@@ -315,6 +369,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       case AcpMessageChunk():
         await _transcript?.recordChunk(update);
         if (isClosed) return;
+        _removeAuthNoticeMessage();
         _appendMessageParts(_chunkParts(update));
       case AcpToolCallUpdate():
         await _transcript?.recordToolCall(update);
@@ -328,6 +383,16 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         await _transcript?.recordStop(update);
         if (isClosed) return;
         _onStop(update);
+      case AcpAuthNotice():
+        if (isClosed) return;
+        // `_auth/status_update` is reporting-only. `kind: none` comes from an
+        // async `claude auth status --json` probe at initialize / prompt start
+        // and is not a confirmed TeamPilot logout — session OAuth under
+        // CLAUDE_CONFIG_DIR can still succeed. Never turn that probe into a
+        // chat row. A later logged-in notice still drops a stale banner.
+        if (update.loggedIn) {
+          _removeAuthNoticeMessage();
+        }
     }
   }
 
@@ -449,24 +514,69 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   /// Appends parts onto the tip assistant message (streaming continuation),
   /// or opens a new assistant message when the tip is not appendable.
+  ///
+  /// Consecutive [AiTextPart] / [AiReasoningPart] of the same type are
+  /// concatenated. ACP streams one NDJSON chunk per token; appending each as
+  /// its own part makes the UI render hundreds of thinking-process steps.
   void _appendMessageParts(List<AiMessagePart> parts) {
+    final incoming = [
+      for (final part in parts)
+        if (!_isEmptyStreamPart(part)) part,
+    ];
+    if (incoming.isEmpty) return;
     final messages = [...state.messages];
     if (messages.isNotEmpty && messages.last.role == AiRole.assistant) {
       final tip = messages.last;
       messages[messages.length - 1] = tip.copyWith(
-        parts: [...tip.parts, ...parts],
+        parts: _coalesceStreamingParts(tip.parts, incoming),
       );
     } else {
       messages.add(
         AiMessage(
           id: 'acp-a-${_uuid.v4()}',
           role: AiRole.assistant,
-          parts: parts,
+          parts: _coalesceStreamingParts(const [], incoming),
           createdAt: DateTime.now(),
         ),
       );
     }
     emit(state.copyWith(messages: messages));
+  }
+
+  static bool _isEmptyStreamPart(AiMessagePart part) => switch (part) {
+    AiTextPart(:final text) => text.isEmpty,
+    AiReasoningPart(:final text) => text.isEmpty,
+    _ => false,
+  };
+
+  static List<AiMessagePart> _coalesceStreamingParts(
+    List<AiMessagePart> existing,
+    List<AiMessagePart> incoming,
+  ) {
+    final out = [...existing];
+    for (final part in incoming) {
+      if (out.isEmpty) {
+        out.add(part);
+        continue;
+      }
+      final merged = _mergeStreamParts(out.last, part);
+      if (merged != null) {
+        out[out.length - 1] = merged;
+      } else {
+        out.add(part);
+      }
+    }
+    return out;
+  }
+
+  static AiMessagePart? _mergeStreamParts(AiMessagePart a, AiMessagePart b) {
+    if (a is AiTextPart && b is AiTextPart) {
+      return AiTextPart(text: '${a.text}${b.text}');
+    }
+    if (a is AiReasoningPart && b is AiReasoningPart) {
+      return AiReasoningPart(text: '${a.text}${b.text}');
+    }
+    return null;
   }
 
   void _applyAttention(AgentStatusEvent event) {
@@ -475,6 +585,27 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       memberId: acpMemberId,
       event: event,
       skipPermissions: false,
+    );
+  }
+
+  bool _isAuthNoticeMessage(AiMessage message) {
+    final text = _strings?.notLoggedIn ?? defaultAcpChatStrings.notLoggedIn;
+    return message.role == AiRole.system &&
+        message.parts.any((p) => p is AiTextPart && p.text == text);
+  }
+
+  /// Drops the handshake "not logged in" row once the agent is actually
+  /// authenticated or has started streaming (the CLI probe can report `none`
+  /// while session OAuth in CLAUDE_CONFIG_DIR still works).
+  void _removeAuthNoticeMessage() {
+    if (!state.messages.any(_isAuthNoticeMessage)) return;
+    emit(
+      state.copyWith(
+        messages: [
+          for (final message in state.messages)
+            if (!_isAuthNoticeMessage(message)) message,
+        ],
+      ),
     );
   }
 
@@ -497,6 +628,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   void _endWith(AcpChatErrorKind kind, String message) {
     if (isClosed) return;
+    _queuedPrompt = null;
     _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
     unawaited(_transcript?.recordSystem(kind.name, message));
     _appendSystemMessage(message);

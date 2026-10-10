@@ -64,6 +64,9 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
       permissionsController.stream;
 
   @override
+  AcpAuthNotice? lastAuthNotice;
+
+  @override
   Future<int>? get agentProcessExitCode => agentExit?.future;
 
   @override
@@ -79,7 +82,15 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   void cancel() => cancelled = true;
 
   @override
-  Future<void> close() async => closed = true;
+  Future<void> close() async {
+    closed = true;
+    // Production `_runtime.close()` awaits process exit; SIGTERM typically
+    // completes [agentExit] with 0 before the cubit finishes closing.
+    final exit = agentExit;
+    if (exit != null && !exit.isCompleted) {
+      exit.complete(0);
+    }
+  }
 }
 
 const _testStrings = AcpChatStrings(
@@ -88,6 +99,7 @@ const _testStrings = AcpChatStrings(
   launchFailed: 'Failed to start the agent',
   turnFailed: 'Turn failed',
   processExited: 'Process exited',
+  notLoggedIn: 'Not logged in',
 );
 
 void main() {
@@ -127,6 +139,148 @@ void main() {
     expect(cubit.state.inTurn, isFalse);
     await cubit.close();
   });
+
+  test(
+    'handshake kind=none is not a chat row — the CLI probe is reporting-only',
+    () async {
+      runtime.lastAuthNotice = const AcpAuthNotice(
+        loggedIn: false,
+        message: 'Not logged in',
+      );
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      await pumpEventQueue();
+      expect(cubit.state.phase, AcpChatPhase.ready);
+      expect(cubit.state.messages, isEmpty);
+      await cubit.close();
+    },
+  );
+
+  test(
+    'later logged-in auth notice is silent when no warning was shown',
+    () async {
+      runtime.lastAuthNotice = const AcpAuthNotice(
+        loggedIn: false,
+        message: 'Not logged in',
+      );
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      await pumpEventQueue();
+      expect(cubit.state.messages, isEmpty);
+
+      runtime.emit(const AcpAuthNotice(loggedIn: true, message: 'Claude Pro'));
+      await pumpEventQueue();
+      expect(cubit.state.messages, isEmpty);
+      await cubit.close();
+    },
+  );
+
+  test('assistant stream is unaffected by a handshake none probe', () async {
+    runtime.lastAuthNotice = const AcpAuthNotice(
+      loggedIn: false,
+      message: 'Not logged in',
+    );
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'Hello',
+        isThought: false,
+      ),
+    );
+    await pumpEventQueue();
+    expect(cubit.state.messages, hasLength(1));
+    expect(cubit.state.messages.single.role, AiRole.assistant);
+    await cubit.close();
+  });
+
+  test('sendPrompt during launching is flushed after start', () async {
+    final cubit = bootCubit();
+    expect(cubit.sendPrompt('hello'), isTrue);
+    expect(runtime.prompts, isEmpty);
+    expect(cubit.state.messages.single.role, AiRole.user);
+    expect(
+      (cubit.state.messages.single.parts.single as AiTextPart).text,
+      'hello',
+    );
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+    expect(runtime.prompts, ['hello']);
+    expect(cubit.state.messages, hasLength(1));
+    expect(cubit.state.messages.single.role, AiRole.user);
+    await cubit.close();
+  });
+
+  test(
+    'queued landing prompt is not preceded by a handshake not-logged-in row',
+    () async {
+      runtime.lastAuthNotice = const AcpAuthNotice(
+        loggedIn: false,
+        message: 'Not logged in',
+      );
+      final cubit = bootCubit();
+      expect(cubit.sendPrompt('hello'), isTrue);
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      await pumpEventQueue();
+      expect(cubit.state.messages, hasLength(1));
+      expect(cubit.state.messages.single.role, AiRole.user);
+      expect(
+        (cubit.state.messages.single.parts.single as AiTextPart).text,
+        'hello',
+      );
+      await cubit.close();
+    },
+  );
+
+  test(
+    'sendPrompt after handshake warning replaces it with the user row',
+    () async {
+      runtime.lastAuthNotice = const AcpAuthNotice(
+        loggedIn: false,
+        message: 'Not logged in',
+      );
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      await pumpEventQueue();
+      expect(cubit.state.messages, isEmpty);
+
+      expect(cubit.sendPrompt('hello'), isTrue);
+      await pumpEventQueue();
+      expect(cubit.state.messages, hasLength(1));
+      expect(cubit.state.messages.single.role, AiRole.user);
+      expect(
+        (cubit.state.messages.single.parts.single as AiTextPart).text,
+        'hello',
+      );
+      await cubit.close();
+    },
+  );
 
   test(
     'message chunk + end_turn stop → one assistant message + idle',
@@ -178,6 +332,122 @@ void main() {
     final message = cubit.state.messages.single;
     expect(message.parts.single, isA<AiReasoningPart>());
     expect(aiMessageIsThinkingOnly(message), isTrue);
+    await cubit.close();
+  });
+
+  test('consecutive thought chunks coalesce into one reasoning part', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'think',
+        isThought: true,
+      ),
+    );
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'ing…',
+        isThought: true,
+      ),
+    );
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: ' more',
+        isThought: true,
+      ),
+    );
+    await pumpEventQueue();
+
+    final message = cubit.state.messages.single;
+    expect(
+      message.parts,
+      hasLength(1),
+      reason: 'streaming thoughts are one step',
+    );
+    expect(message.parts.single, isA<AiReasoningPart>());
+    expect((message.parts.single as AiReasoningPart).text, 'thinking… more');
+    await cubit.close();
+  });
+
+  test(
+    'consecutive text chunks coalesce; thought stays a separate part',
+    () async {
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      runtime.emit(
+        const AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: 'think',
+          isThought: true,
+        ),
+      );
+      runtime.emit(
+        const AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: 'ing',
+          isThought: true,
+        ),
+      );
+      runtime.emit(
+        const AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: 'Hello',
+          isThought: false,
+        ),
+      );
+      runtime.emit(
+        const AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: ' world',
+          isThought: false,
+        ),
+      );
+      await pumpEventQueue();
+
+      final parts = cubit.state.messages.single.parts;
+      expect(parts, hasLength(2));
+      expect((parts[0] as AiReasoningPart).text, 'thinking');
+      expect((parts[1] as AiTextPart).text, 'Hello world');
+      await cubit.close();
+    },
+  );
+
+  test('empty stream chunks do not open extra parts', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: '',
+        isThought: true,
+      ),
+    );
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'ok',
+        isThought: false,
+      ),
+    );
+    await pumpEventQueue();
+
+    expect(cubit.state.messages.single.parts, hasLength(1));
+    expect((cubit.state.messages.single.parts.single as AiTextPart).text, 'ok');
     await cubit.close();
   });
 
@@ -487,6 +757,130 @@ void main() {
     await cubit.close();
   });
 
+  test('start hydrates prior transcript into messages', () async {
+    final fs = InMemoryFilesystem();
+    final transcript = AcpChatTranscriptWriter(fs: fs, path: '/tp/acp.jsonl');
+    final live = bootCubit(transcript: transcript);
+    await live.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    live.sendPrompt('hi');
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'Hello',
+        isThought: false,
+      ),
+    );
+    runtime.emit(const AcpStop(kind: AcpStopKind.endTurn));
+    await pumpEventQueue();
+    final liveShape = _messageShape(live.state.messages);
+    await live.close();
+
+    await runtime.updatesController.close();
+    await runtime.permissionsController.close();
+    runtime = _FakeAcpRuntime();
+    final restored = bootCubit(transcript: transcript);
+    await restored.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    expect(_messageShape(restored.state.messages), liveShape);
+    await restored.close();
+  });
+
+  test('hydrated history suppresses the handshake not-logged-in row', () async {
+    final fs = InMemoryFilesystem();
+    final transcript = AcpChatTranscriptWriter(fs: fs, path: '/tp/acp.jsonl');
+    await transcript.recordUserPrompt('hi');
+    await transcript.recordChunk(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'Hello',
+        isThought: false,
+      ),
+    );
+    runtime.lastAuthNotice = const AcpAuthNotice(
+      loggedIn: false,
+      message: 'Not logged in',
+    );
+    final cubit = bootCubit(transcript: transcript);
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+    expect(cubit.state.messages, hasLength(2));
+    expect(cubit.state.messages[0].role, AiRole.user);
+    expect(cubit.state.messages[1].role, AiRole.assistant);
+    await cubit.close();
+  });
+
+  test(
+    'start keeps an in-memory landing prompt after hydrating history',
+    () async {
+      final fs = InMemoryFilesystem();
+      final transcript = AcpChatTranscriptWriter(fs: fs, path: '/tp/acp.jsonl');
+      await transcript.recordUserPrompt('old');
+      await transcript.recordChunk(
+        const AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: 'prior',
+          isThought: false,
+        ),
+      );
+      final cubit = bootCubit(transcript: transcript);
+      expect(cubit.sendPrompt('next'), isTrue);
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      expect(cubit.state.messages, hasLength(3));
+      expect((cubit.state.messages[0].parts.single as AiTextPart).text, 'old');
+      expect(
+        (cubit.state.messages[1].parts.single as AiTextPart).text,
+        'prior',
+      );
+      expect(
+        (cubit.state.messages.last.parts.single as AiTextPart).text,
+        'next',
+      );
+      await cubit.close();
+    },
+  );
+
+  test('intentional close does not record a process-exited crash', () async {
+    runtime.agentExit = Completer<int>();
+    final fs = InMemoryFilesystem();
+    final transcript = AcpChatTranscriptWriter(fs: fs, path: '/tp/acp.jsonl');
+    final cubit = bootCubit(transcript: transcript);
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    cubit.sendPrompt('hi');
+    await pumpEventQueue();
+    await cubit.close();
+    await pumpEventQueue();
+
+    expect(cubit.state.phase, isNot(AcpChatPhase.ended));
+    final loaded = await transcript.loadMessages();
+    expect(
+      loaded.any(
+        (m) =>
+            m.role == AiRole.system &&
+            (m.parts.single as AiTextPart).text.contains('Process exited'),
+      ),
+      isFalse,
+    );
+  });
+
   test('close cancels subscriptions and closes the runtime', () async {
     final cubit = bootCubit();
     await cubit.start(
@@ -501,4 +895,15 @@ void main() {
     await pumpEventQueue();
     expect(cubit.state.phase, AcpChatPhase.ready);
   });
+}
+
+List<String> _messageShape(List<AiMessage> messages) {
+  return [
+    for (final message in messages)
+      '${message.role.name}:${[for (final part in message.parts) switch (part) {
+          AiTextPart(:final text) => 'text:$text',
+          AiReasoningPart(:final text) => 'think:$text',
+          AiToolCallPart(:final toolCallId, :final toolName, :final status) => 'tool:$toolCallId:$toolName:${status.name}',
+        }].join('|')}',
+  ];
 }

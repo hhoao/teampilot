@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:ai_message_core/ai_message_core.dart';
+
+import 'acp_chat_transcript_replay.dart';
 import 'acp_session.dart';
 import '../io/filesystem.dart';
 
@@ -27,6 +30,13 @@ class AcpChatTranscriptWriter {
 
   /// Number of records written so far (lifetime of this writer).
   int get writtenCount => _seq;
+
+  /// Replays this file into chat bubbles. Waits for in-flight appends so a
+  /// caller that just recorded a turn sees it.
+  Future<List<AiMessage>> loadMessages() async {
+    await _pending;
+    return replayAcpChatTranscript(await _fs.readString(path));
+  }
 
   /// Runs [write] strictly after the previous record completes.
   Future<void> _enqueue(Future<void> Function() write) {
