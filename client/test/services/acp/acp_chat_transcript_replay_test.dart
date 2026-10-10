@@ -2,7 +2,10 @@ import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/acp/acp_chat_transcript.dart';
 import 'package:teampilot/services/acp/acp_chat_transcript_replay.dart';
+
+import '../../support/in_memory_filesystem.dart';
 
 String _line(Map<String, Object?> entry) => jsonEncode(entry);
 
@@ -105,5 +108,54 @@ void main() {
     final merged = mergeHydratedAcpMessages(loaded: loaded, live: live);
     expect(merged, hasLength(2));
     expect((merged.last.parts.single as AiTextPart).text, 'next');
+  });
+
+  test('saveMessages round-trips through loadMessages', () async {
+    final fs = InMemoryFilesystem();
+    const path = '/tp/acp-transcript.jsonl';
+    final writer = AcpChatTranscriptWriter(fs: fs, path: path);
+    await writer.saveMessages([
+      AiMessage(
+        id: 'acp-u-1',
+        role: AiRole.user,
+        parts: const [AiTextPart(text: 'hello')],
+      ),
+    ]);
+    final loaded = await writer.loadMessages();
+    expect(loaded, hasLength(1));
+    expect((loaded.single.parts.single as AiTextPart).text, 'hello');
+    expect(fs.files[path], contains('"v":1'));
+    expect(fs.files[path], isNot(contains('"type":"chunk"')));
+  });
+
+  test('loadMessages treats a missing file as empty', () async {
+    final writer = AcpChatTranscriptWriter(
+      fs: InMemoryFilesystem(),
+      path: '/tp/missing.jsonl',
+    );
+    expect(await writer.loadMessages(), isEmpty);
+  });
+
+  test('second saveMessages replaces the previous snapshot', () async {
+    final fs = InMemoryFilesystem();
+    const path = '/tp/acp-transcript.jsonl';
+    final writer = AcpChatTranscriptWriter(fs: fs, path: path);
+    await writer.saveMessages([
+      AiMessage(
+        id: 'acp-u-1',
+        role: AiRole.user,
+        parts: const [AiTextPart(text: 'first')],
+      ),
+    ]);
+    await writer.saveMessages([
+      AiMessage(
+        id: 'acp-u-2',
+        role: AiRole.user,
+        parts: const [AiTextPart(text: 'second')],
+      ),
+    ]);
+    final loaded = await writer.loadMessages();
+    expect(loaded, hasLength(1));
+    expect((loaded.single.parts.single as AiTextPart).text, 'second');
   });
 }

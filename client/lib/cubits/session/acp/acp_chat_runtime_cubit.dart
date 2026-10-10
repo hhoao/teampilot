@@ -75,6 +75,7 @@ class AcpChatRuntimeState {
     this.pendingPermission,
     this.error,
     this.activity = AcpChatActivity.none,
+    this.historyHydrated = false,
   });
 
   final AcpChatPhase phase;
@@ -93,6 +94,9 @@ class AcpChatRuntimeState {
   /// What the agent is doing inside the current turn.
   final AcpChatActivity activity;
 
+  /// True after the app-side JSONL has been read (including a missing file).
+  final bool historyHydrated;
+
   AcpChatRuntimeState copyWith({
     AcpChatPhase? phase,
     List<AiMessage>? messages,
@@ -101,6 +105,7 @@ class AcpChatRuntimeState {
     AcpChatError? error,
     bool clearError = false,
     AcpChatActivity? activity,
+    bool? historyHydrated,
   }) => AcpChatRuntimeState(
     phase: phase ?? this.phase,
     messages: messages ?? this.messages,
@@ -110,6 +115,7 @@ class AcpChatRuntimeState {
         : pendingPermission as AgentPermissionRequest?,
     error: clearError ? null : (error ?? this.error),
     activity: activity ?? this.activity,
+    historyHydrated: historyHydrated ?? this.historyHydrated,
   );
 
   static const _unset = Object();
@@ -119,8 +125,8 @@ class AcpChatRuntimeState {
 ///
 /// Maps [AcpSessionUpdate]s onto the shared [AiMessage] model (chunks → text
 /// parts, thoughts → reasoning parts, tool calls → tool-card parts, stops →
-/// idle), records every event into the app-side transcript (single source per
-/// spec), surfaces permission requests onto the existing attention/card
+/// idle), persists folded messages as an atomic snapshot on commit (not per
+/// chunk), surfaces permission requests onto the existing attention/card
 /// plumbing, and keeps turns strictly sequential (the overlap guard in
 /// [AcpAgentSession.prompt] throws otherwise).
 ///
@@ -289,9 +295,14 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   Future<void> _hydrateTranscript() async {
     final loaded = await _transcript?.loadMessages();
-    if (loaded == null || loaded.isEmpty || isClosed) return;
+    if (isClosed) return;
+    if (loaded == null || loaded.isEmpty) {
+      emit(state.copyWith(historyHydrated: true));
+      return;
+    }
     emit(
       state.copyWith(
+        historyHydrated: true,
         messages: mergeHydratedAcpMessages(
           loaded: loaded,
           live: state.messages,
@@ -335,7 +346,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   }
 
   Future<void> _recordAndPrompt(String text) async {
-    await _transcript?.recordUserPrompt(text);
+    await _persist();
     await _runtime.prompt(text);
   }
 
@@ -382,6 +393,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     // Mark before killing the agent: `_runtime.close()` awaits process exit,
     // so the watcher fires with 0 while this cubit is still open.
     _closing = true;
+    await _persist();
     await _updatesSub?.cancel();
     await _permissionSub?.cancel();
     _updatesSub = null;
@@ -398,27 +410,25 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   // ----- update mapping -----
 
-  /// Awaits each transcript record before mapping the next event so the
-  /// app-side message table preserves arrival order.
+  /// Maps protocol updates onto in-memory messages. Chunks stay in RAM;
+  /// tool cards, stops, and system rows rewrite the snapshot.
   Future<void> _onUpdate(AcpSessionUpdate update) async {
     if (isClosed) return;
     switch (update) {
       case AcpMessageChunk():
-        await _transcript?.recordChunk(update);
         if (isClosed) return;
         _removeAuthNoticeMessage();
         _seenChunkThisTurn = true;
         _appendMessageParts(_chunkParts(update));
       case AcpToolCallUpdate():
-        await _transcript?.recordToolCall(update);
         if (isClosed) return;
         _applyToolCall(update);
+        unawaited(_persist());
       case AcpPlan():
         // Plan updates have no chat-layer rendering yet (spec: recorded but
         // no mode-switching UI ships).
         break;
       case AcpStop():
-        await _transcript?.recordStop(update);
         if (isClosed) return;
         _onStop(update);
       case AcpAuthNotice():
@@ -517,11 +527,12 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     switch (stop.kind) {
       case AcpStopKind.cancelled:
         // User cancel: silent (spec).
+        unawaited(_persist());
         _endTurn();
       case AcpStopKind.endTurn:
       case AcpStopKind.aborted:
-        _endTurn();
       case AcpStopKind.maxTokens:
+        unawaited(_persist());
         _endTurn();
       case AcpStopKind.error:
         final prefix = _strings?.turnFailed ?? 'Turn failed';
@@ -529,7 +540,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
             ? prefix
             : '$prefix: ${stop.message}';
         _appendSystemMessage(text);
-        unawaited(_transcript?.recordSystem('turn_error', text));
+        unawaited(_persist());
         _endTurn();
     }
   }
@@ -686,12 +697,39 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     );
   }
 
+  List<AiMessage> _messagesForDisk() {
+    final error = state.error;
+    if (error == null || error.kind != AcpChatErrorKind.processExited) {
+      return state.messages;
+    }
+    return [
+      for (final message in state.messages)
+        if (!(message.role == AiRole.system &&
+            message.parts.whereType<AiTextPart>().map((p) => p.text).join() ==
+                error.message))
+          message,
+    ];
+  }
+
+  Future<void> _persist() async {
+    final transcript = _transcript;
+    if (transcript == null) return;
+    try {
+      await transcript.saveMessages(_messagesForDisk());
+    } on Object catch (error, stackTrace) {
+      appLogger.e(
+        '[acp-chat] persist failed session=$sessionId: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
   void _endWith(AcpChatErrorKind kind, String message) {
     if (isClosed) return;
     _queuedPrompt = null;
     _resetTurnTrackers();
     _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
-    unawaited(_transcript?.recordSystem(kind.name, message));
     _appendSystemMessage(message);
     emit(
       state.copyWith(
@@ -702,5 +740,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         activity: AcpChatActivity.none,
       ),
     );
+    if (kind != AcpChatErrorKind.processExited) {
+      unawaited(_persist());
+    }
   }
 }

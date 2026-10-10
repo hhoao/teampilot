@@ -29,10 +29,6 @@ List<AiMessage> decodeAcpChatTranscript(String? jsonl) {
   return messages;
 }
 
-/// Compatibility alias until Task 2 switches the writer to encode/decode.
-List<AiMessage> replayAcpChatTranscript(String? jsonl) =>
-    decodeAcpChatTranscript(jsonl);
-
 List<AiMessage> mergeHydratedAcpMessages({
   required List<AiMessage> loaded,
   required List<AiMessage> live,
