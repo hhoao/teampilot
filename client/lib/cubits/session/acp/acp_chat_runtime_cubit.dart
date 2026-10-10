@@ -94,7 +94,8 @@ class AcpChatRuntimeState {
   /// What the agent is doing inside the current turn.
   final AcpChatActivity activity;
 
-  /// True after the app-side JSONL has been read (including a missing file).
+  /// True after the hydrate attempt finishes, including a thrown read.
+  /// The loading pane may clear; this is not permission to rewrite the file.
   final bool historyHydrated;
 
   AcpChatRuntimeState copyWith({
@@ -162,6 +163,13 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   String? _queuedPrompt;
   bool _closing = false;
   Future<void>? _hydrateInFlight;
+
+  /// True only when [AcpChatTranscriptWriter.loadMessages] returned (missing
+  /// file, empty, garbage→[], or a decoded list). Stays false for this cubit's
+  /// lifetime if the initial load threw, so a later persist cannot replace an
+  /// unread file after a transient I/O error. The user still chats in memory;
+  /// disk stays the unread file until the next successful reopen.
+  bool _allowPersist = false;
 
   /// Tool-call ids opened this turn and not yet terminated.
   final Set<String> _runningToolCalls = {};
@@ -305,9 +313,11 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         error: error,
         stackTrace: stackTrace,
       );
+      if (!isClosed) emit(state.copyWith(historyHydrated: true));
       return;
     }
     if (isClosed) return;
+    _allowPersist = true;
     if (loaded == null || loaded.isEmpty) {
       emit(state.copyWith(historyHydrated: true));
       return;
@@ -419,7 +429,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         stackTrace: stackTrace,
       );
     } finally {
-      if (state.historyHydrated) await _persist();
+      if (_allowPersist) await _persist();
       // The exit watcher holds no handle to cancel, and a never-completing exit
       // future (the common no-crash case) must not keep close pending — its
       // callback is a no-op once the cubit is closed.
@@ -735,7 +745,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   }
 
   Future<void> _persist() async {
-    if (!state.historyHydrated) return;
+    if (!_allowPersist) return;
     final transcript = _transcript;
     if (transcript == null) return;
     try {

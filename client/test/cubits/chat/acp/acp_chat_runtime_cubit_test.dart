@@ -1065,7 +1065,7 @@ void main() {
         sessionToolDir: '/tmp/tool',
         workingDirectory: '/w',
       );
-      expect(cubit.state.historyHydrated, isFalse);
+      expect(cubit.state.historyHydrated, isTrue);
       expect(runtime.started, isTrue);
 
       await cubit.close();
