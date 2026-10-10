@@ -115,7 +115,7 @@ notification surfaces agree with the chat footer.
 ### 3. Render the status in the chat footer
 
 Extend `SessionHistoryLiveChrome` (`session_history_live_chrome.dart`) with
-`thinking`, `generating`, `toolRunning`, and `ended`, plus a resolver:
+`thinking`, `generating`, and `toolRunning`, plus a resolver:
 
 ```dart
 static SessionHistoryLiveChrome resolveAcp({
@@ -127,31 +127,32 @@ static SessionHistoryLiveChrome resolveAcp({
 | Input | Chrome | Label |
 |---|---|---|
 | `phase == launching` | `starting` | 启动中… |
-| `phase == ended` | `ended` | 已结束 |
 | `activity == thinking` | `thinking` | 思考中… |
 | `activity == generating` | `generating` | 生成中… |
 | `activity == toolRunning` | `toolRunning` | 执行工具中… |
-| otherwise (`ready` / `idle`) | `none` | (no footer) |
+| otherwise (`ready` / `idle` / `ended`) | `none` | (no footer) |
 
-Phase is checked first: a prompt queued during launch
-(`sendPrompt` sets `inTurn` while `phase == launching`) still reads 启动中,
-which is correct — the agent has not started answering yet.
+`resolveAcp` mirrors `resolve`'s contract: `turnInFlight == false` returns
+`none` first. Phase is checked before activity, so a prompt queued during
+launch (`sendPrompt` sets `inTurn` while `phase == launching`) still reads
+启动中 — the agent has not started answering yet.
 
-`ended` is a state chip only ("已结束"); the inline system message keeps
-carrying the cause and exit code, so the two are complementary, not
-duplicated.
+No `ended` value is added. A session that has ended has `inTurn == false`
+(cleared by `_endWith`), so `turnInFlight` is already false and the footer is
+not rendered at all; the inline system message stays the sole surface for the
+end state. An `ended` chrome value would be unreachable.
 
 `session_chat_message_area.dart` picks the resolver by runtime presence —
 `acpRuntime != null` uses `resolveAcp`, otherwise the existing `resolve` is
 untouched (**the PTY path has zero changes**).
 
 `SessionHistoryThread._buildRunningInMessage` (`session_history_thread.dart:737`)
-gains the new switches. `thinking` / `generating` / `toolRunning` reuse the
-`TpIndeterminateSpinner` row; `ended` renders a static, spinner-free row.
+gains the new switches. All three reuse the existing `TpIndeterminateSpinner`
+row; only the label differs.
 
 New l10n keys in `app_en.arb` + `app_zh.arb` only:
 `sessionHistoryThinking`, `sessionHistoryGenerating`,
-`sessionHistoryToolRunning`, `sessionHistoryEnded`.
+`sessionHistoryToolRunning`.
 
 ### 4. Remove the empty-state flash
 
@@ -163,13 +164,11 @@ Two independent layers:
    runs before the next frame — then `await _discardComposeDraftForSubmit()`.
    Ordering is safe: `sendPrompt` already rejects a second submit while a turn
    is queued or in flight.
-2. **Guard.** `SessionHistoryReviewMessages` gains a `suppressEmpty` flag,
-   passed true while an ACP turn is in flight or the session is still
-   launching. When set, the `empty` branch renders nothing instead of the
-   placeholder.
-
-Both are cheap and independent; the first is the precise cause, the second
-covers any other path that publishes messages late.
+2. **Guard.** `SessionHistoryReviewMessages._showThread` also returns true when
+   `liveChrome.isActive`. A turn in flight with no messages yet is not an empty
+   history — it is a turn whose footer is the content. This covers any other
+   path that publishes messages late, and needs no new constructor parameter
+   (the widget already holds `liveChrome`).
 
 ## Testing
 
@@ -177,12 +176,13 @@ covers any other path that publishes messages late.
   activity walks `none → thinking → generating → toolRunning → generating →
   none`; two overlapping tool calls keep `toolRunning` until both terminate;
   `working` attention is emitted on dispatch and `done` on stop.
-- **Resolver unit**: `resolveAcp` maps every phase/activity pair; `ended` is
-  not spinner-backed.
+- **Resolver unit**: `resolveAcp` maps every phase/activity pair, and returns
+  `none` for `phase == ended`.
 - **Widget** (`test/pages/chat/session_chat_view_acp_test.dart`): an ACP
-  generating turn renders 生成中… and never 启动中…; ended renders 会话已结束.
-- **Empty flash**: after submit, no frame paints `sessionHistoryEmpty`;
-  `suppressEmpty` returns nothing on the empty branch.
+  generating turn renders 生成中… and never 启动中….
+- **Empty flash**: `_showThread` keeps the thread (no `sessionHistoryEmpty`)
+  when the chrome is active and messages are empty; and after a real submit on
+  an ACP session the user bubble renders without the empty pane.
 - **Regression**: the existing PTY live-chrome tests must pass unmodified —
   that is the behavior-equivalence evidence for the untouched `resolve` path.
 
@@ -193,6 +193,7 @@ covers any other path that publishes messages late.
   `activityTracker.isBootFrameReady` — a PTY latch, not an attention signal.
   Fixing it means changing the boot predicate and is its own slice.
 - **Error recovery entry points.** Retry / reconnect affordances for an ended
-  session (inline system message stays the only surface).
+  session, and any footer chip for the ended state — the inline system message
+  stays the only surface.
 - **Launch-phase granularity.** Process spawn vs handshake stays a single
   "启动中"; no sub-phases are introduced.
