@@ -928,6 +928,53 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
     _syncAwaitingAfterPendingRemoval();
   }
 
+  /// ACP JSONL hydrate is in flight — same full-pane spinner as a PTY cold load.
+  void markExternalLoading() {
+    if (isClosed) return;
+    if (runtime.messages.isNotEmpty) return;
+    if (state.status == AiHistoryViewStatus.loading) return;
+    runtime.setLoading();
+    emit(state.copyWith(status: AiHistoryViewStatus.loading));
+  }
+
+  /// Replace the seat with the ACP cubit's transcript (app-side single source).
+  void adoptExternalMessages(List<AiMessage> messages) {
+    if (isClosed) return;
+    _cliMessages = List.unmodifiable(messages);
+    final sessionId = state.sessionId ?? '';
+    final memberId = state.memberId ?? '';
+    final cold =
+        state.status == AiHistoryViewStatus.loading ||
+        state.status == AiHistoryViewStatus.empty ||
+        _allMessages.isEmpty;
+    if (cold) {
+      _applyMessages(messages, sessionId, memberId);
+      return;
+    }
+    messages = reuseHistoryMessageIdentity(
+      previous: _allMessages,
+      next: messages,
+    );
+    final oldLength = _allMessages.length;
+    final oldVisible = _visibleCount;
+    _allMessages = messages;
+    final newLength = _allMessages.length;
+    _committedLength = newLength;
+    if (newLength < oldLength) {
+      _visibleCount = math.min(oldVisible, newLength);
+    } else if (newLength > oldLength) {
+      _visibleCount = math.min(
+        newLength,
+        oldVisible + (newLength - oldLength),
+      );
+    }
+    if (newLength == 0) {
+      _emitEmptyOrPendingReady(sessionId, memberId);
+      return;
+    }
+    _emitReadyWindow(sessionId, memberId);
+  }
+
   void setAwaitingAssistant(bool value) {
     if (isClosed) return;
     if (!value) {
