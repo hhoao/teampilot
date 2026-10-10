@@ -2,32 +2,37 @@ import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
 
-import 'acp_session.dart';
-
-/// Folds one ACP session's JSONL transcript into chat bubbles.
-///
-/// Mirrors the live ACP chat mapping: consecutive text/thought
-/// chunks coalesce, tool-call updates upsert, `stop` rows are not bubbles
-/// (error copy is in the following `system` record), and handshake `auth`
-/// system rows are skipped — they are live probes, not history.
-List<AiMessage> replayAcpChatTranscript(String? jsonl) {
-  if (jsonl == null || jsonl.isEmpty) return const [];
-  final fold = _AcpChatTranscriptFold();
-  for (final line in jsonl.split('\n')) {
-    if (line.trim().isEmpty) continue;
-    try {
-      final decoded = jsonDecode(line);
-      if (decoded is Map) {
-        fold.apply(Map<String, Object?>.from(decoded));
-      }
-    } on FormatException {
-      // Torn tail from a crash mid-append: skip.
-    }
+String encodeAcpChatTranscript(List<AiMessage> messages) {
+  final buffer = StringBuffer();
+  for (final message in messages) {
+    final line = _encodeMessage(message);
+    if (line == null) continue;
+    buffer.writeln(jsonEncode(line));
   }
-  return fold.messages;
+  return buffer.toString();
 }
 
-/// Appends in-memory bubbles (e.g. a landing prompt) after disk history.
+List<AiMessage> decodeAcpChatTranscript(String? jsonl) {
+  if (jsonl == null || jsonl.isEmpty) return const [];
+  final messages = <AiMessage>[];
+  for (final raw in jsonl.split('\n')) {
+    if (raw.trim().isEmpty) continue;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) continue;
+      final message = _decodeMessage(Map<String, Object?>.from(decoded));
+      if (message != null) messages.add(message);
+    } on FormatException {
+      continue;
+    }
+  }
+  return messages;
+}
+
+/// Compatibility alias until Task 2 switches the writer to encode/decode.
+List<AiMessage> replayAcpChatTranscript(String? jsonl) =>
+    decodeAcpChatTranscript(jsonl);
+
 List<AiMessage> mergeHydratedAcpMessages({
   required List<AiMessage> loaded,
   required List<AiMessage> live,
@@ -45,195 +50,144 @@ String? _userText(AiMessage message) {
   return message.parts.whereType<AiTextPart>().map((p) => p.text).join();
 }
 
-class _AcpChatTranscriptFold {
-  final List<AiMessage> messages = [];
-
-  void apply(Map<String, Object?> entry) {
-    switch (entry['type']) {
-      case 'user':
-        _addUser(entry);
-      case 'chunk':
-        _addChunk(entry);
-      case 'tool_call':
-        _applyToolCall(entry);
-      case 'system':
-        _addSystem(entry);
-      case 'stop':
-        break;
-    }
+Map<String, Object?>? _encodeMessage(AiMessage message) {
+  final at = message.createdAt?.toUtc().toIso8601String();
+  switch (message.role) {
+    case AiRole.user:
+      final text = message.parts.whereType<AiTextPart>().map((p) => p.text).join();
+      if (text.isEmpty) return null;
+      return {
+        'v': 1,
+        'type': 'user',
+        'id': message.id,
+        'text': text,
+        if (at != null) 'at': at,
+      };
+    case AiRole.system:
+      final text = message.parts.whereType<AiTextPart>().map((p) => p.text).join();
+      if (text.isEmpty) return null;
+      return {
+        'v': 1,
+        'type': 'system',
+        'id': message.id,
+        'message': text,
+        if (at != null) 'at': at,
+      };
+    case AiRole.assistant:
+      final parts = <Map<String, Object?>>[
+        for (final part in message.parts)
+          if (_encodePart(part) case final encoded?) encoded,
+      ];
+      if (parts.isEmpty) return null;
+      return {
+        'v': 1,
+        'type': 'assistant',
+        'id': message.id,
+        if (at != null) 'at': at,
+        'parts': parts,
+      };
   }
+}
 
-  void _addUser(Map<String, Object?> entry) {
-    final text = entry['text'];
-    if (text is! String || text.isEmpty) return;
-    messages.add(
-      AiMessage(
-        id: _id('u', entry),
+Map<String, Object?>? _encodePart(AiMessagePart part) {
+  switch (part) {
+    case AiTextPart(:final text):
+      if (text.isEmpty) return null;
+      return {'kind': 'text', 'text': text};
+    case AiReasoningPart(:final text):
+      if (text.isEmpty) return null;
+      return {'kind': 'reasoning', 'text': text};
+    case AiToolCallPart():
+      return {
+        'kind': 'tool',
+        'toolCallId': part.toolCallId,
+        'title': part.toolName,
+        'status': part.status.name,
+        'isError': part.isError,
+      };
+  }
+}
+
+AiMessage? _decodeMessage(Map<String, Object?> entry) {
+  if (entry['v'] != 1) return null;
+  final id = entry['id'];
+  if (id is! String || id.isEmpty) return null;
+  final at = _at(entry);
+  switch (entry['type']) {
+    case 'user':
+      final text = entry['text'];
+      if (text is! String || text.isEmpty) return null;
+      return AiMessage(
+        id: id,
         role: AiRole.user,
         parts: [AiTextPart(text: text)],
-        createdAt: _at(entry),
-      ),
-    );
-  }
-
-  void _addChunk(Map<String, Object?> entry) {
-    final text = entry['text'];
-    if (text is! String || text.isEmpty) return;
-    final thought = entry['thought'] == true;
-    _appendParts(
-      [thought ? AiReasoningPart(text: text) : AiTextPart(text: text)],
-      at: _at(entry),
-      id: _id('a', entry),
-    );
-  }
-
-  void _addSystem(Map<String, Object?> entry) {
-    if (entry['kind'] == 'auth') return;
-    // Previous-process death is not chat history. Closing a tab waits for
-    // SIGTERM (exit 0) and used to record that as "unexpected exit".
-    if (entry['kind'] == 'processExited') return;
-    final message = entry['message'];
-    if (message is! String || message.isEmpty) return;
-    if (messages.isNotEmpty) {
-      final tip = messages.last;
-      if (tip.role == AiRole.system &&
-          tip.parts.whereType<AiTextPart>().map((p) => p.text).join() ==
-              message) {
-        return;
-      }
-    }
-    messages.add(
-      AiMessage(
-        id: _id('sys', entry),
+        createdAt: at,
+      );
+    case 'system':
+      final message = entry['message'];
+      if (message is! String || message.isEmpty) return null;
+      return AiMessage(
+        id: id,
         role: AiRole.system,
         parts: [AiTextPart(text: message)],
-        createdAt: _at(entry),
-      ),
-    );
-  }
-
-  void _applyToolCall(Map<String, Object?> entry) {
-    final toolCallId = entry['toolCallId'];
-    if (toolCallId is! String || toolCallId.isEmpty) return;
-    final title = entry['title'];
-    final status = _mapToolStatus(
-      entry['status'] is String ? entry['status'] as String : null,
-    );
-    final failed = entry['status'] == AcpToolCallStatus.failed.name;
-    for (var i = messages.length - 1; i >= 0; i--) {
-      final message = messages[i];
-      if (message.role != AiRole.assistant) break;
-      final parts = [...message.parts];
-      for (var j = parts.length - 1; j >= 0; j--) {
-        final part = parts[j];
-        if (part is AiToolCallPart && part.toolCallId == toolCallId) {
-          parts[j] = part.copyWith(
-            toolName: title is String ? title : part.toolName,
-            status: status ?? part.status,
-            isError: failed || part.isError,
-          );
-          messages[i] = message.copyWith(parts: parts);
-          return;
-        }
-      }
-      if (i == messages.length - 1) {
-        messages[i] = message.copyWith(
-          parts: [
-            ...parts,
-            AiToolCallPart(
-              toolCallId: toolCallId,
-              toolName: title is String ? title : toolCallId,
-              status: status ?? AiToolCallStatus.incomplete,
-              isError: failed,
-            ),
-          ],
-        );
-        return;
-      }
-    }
-    _appendParts(
-      [
-        AiToolCallPart(
-          toolCallId: toolCallId,
-          toolName: title is String ? title : toolCallId,
-          status: status ?? AiToolCallStatus.incomplete,
-          isError: failed,
-        ),
-      ],
-      at: _at(entry),
-      id: _id('a', entry),
-    );
-  }
-
-  void _appendParts(
-    List<AiMessagePart> incoming, {
-    required DateTime? at,
-    required String id,
-  }) {
-    if (messages.isNotEmpty && messages.last.role == AiRole.assistant) {
-      final tip = messages.last;
-      messages[messages.length - 1] = tip.copyWith(
-        parts: _coalesceStreamingParts(tip.parts, incoming),
+        createdAt: at,
       );
-      return;
-    }
-    messages.add(
-      AiMessage(
+    case 'assistant':
+      final rawParts = entry['parts'];
+      if (rawParts is! List) return null;
+      final parts = <AiMessagePart>[];
+      for (final item in rawParts) {
+        if (item is! Map) continue;
+        final part = _decodePart(Map<String, Object?>.from(item));
+        if (part != null) parts.add(part);
+      }
+      if (parts.isEmpty) return null;
+      return AiMessage(
         id: id,
         role: AiRole.assistant,
-        parts: _coalesceStreamingParts(const [], incoming),
+        parts: parts,
         createdAt: at,
-      ),
-    );
+      );
+    default:
+      return null;
   }
+}
 
-  static List<AiMessagePart> _coalesceStreamingParts(
-    List<AiMessagePart> existing,
-    List<AiMessagePart> incoming,
-  ) {
-    final out = [...existing];
-    for (final part in incoming) {
-      if (out.isEmpty) {
-        out.add(part);
-        continue;
-      }
-      final merged = _mergeStreamParts(out.last, part);
-      if (merged != null) {
-        out[out.length - 1] = merged;
-      } else {
-        out.add(part);
-      }
-    }
-    return out;
+AiMessagePart? _decodePart(Map<String, Object?> entry) {
+  switch (entry['kind']) {
+    case 'text':
+      final text = entry['text'];
+      if (text is! String || text.isEmpty) return null;
+      return AiTextPart(text: text);
+    case 'reasoning':
+      final text = entry['text'];
+      if (text is! String || text.isEmpty) return null;
+      return AiReasoningPart(text: text);
+    case 'tool':
+      final toolCallId = entry['toolCallId'];
+      if (toolCallId is! String || toolCallId.isEmpty) return null;
+      final title = entry['title'];
+      return AiToolCallPart(
+        toolCallId: toolCallId,
+        toolName: title is String && title.isNotEmpty ? title : toolCallId,
+        status: _status(entry['status']),
+        isError: entry['isError'] == true,
+      );
+    default:
+      return null;
   }
+}
 
-  static AiMessagePart? _mergeStreamParts(AiMessagePart a, AiMessagePart b) {
-    if (a is AiTextPart && b is AiTextPart) {
-      return AiTextPart(text: '${a.text}${b.text}');
-    }
-    if (a is AiReasoningPart && b is AiReasoningPart) {
-      return AiReasoningPart(text: '${a.text}${b.text}');
-    }
-    return null;
+AiToolCallStatus _status(Object? raw) {
+  if (raw is! String) return AiToolCallStatus.incomplete;
+  for (final value in AiToolCallStatus.values) {
+    if (value.name == raw) return value;
   }
+  return AiToolCallStatus.incomplete;
+}
 
-  static AiToolCallStatus? _mapToolStatus(String? status) => switch (status) {
-    null => null,
-    'pending' => AiToolCallStatus.incomplete,
-    'inProgress' => AiToolCallStatus.running,
-    'completed' => AiToolCallStatus.complete,
-    'failed' => AiToolCallStatus.complete,
-    _ => null,
-  };
-
-  static String _id(String prefix, Map<String, Object?> entry) {
-    final seq = entry['seq'];
-    return 'acp-$prefix-${seq is int ? seq : 0}';
-  }
-
-  static DateTime? _at(Map<String, Object?> entry) {
-    final at = entry['at'];
-    if (at is! String || at.isEmpty) return null;
-    return DateTime.tryParse(at);
-  }
+DateTime? _at(Map<String, Object?> entry) {
+  final at = entry['at'];
+  if (at is! String || at.isEmpty) return null;
+  return DateTime.tryParse(at);
 }
