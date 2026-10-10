@@ -1044,6 +1044,59 @@ void main() {
     await cubit.close();
   });
 
+  test(
+    'close during in-flight hydrate does not wipe seeded transcript',
+    () async {
+      const path = '/tp/acp.jsonl';
+      final gate = Completer<void>();
+      final fs = _DelayedReadFilesystem(delayPath: path, gate: gate);
+      final transcript = AcpChatTranscriptWriter(fs: fs, path: path);
+      await transcript.saveMessages([
+        AiMessage(
+          id: 'acp-u-old',
+          role: AiRole.user,
+          parts: const [AiTextPart(text: 'seeded-user')],
+        ),
+        AiMessage(
+          id: 'acp-a-old',
+          role: AiRole.assistant,
+          parts: const [AiTextPart(text: 'seeded-assistant')],
+        ),
+      ]);
+
+      final cubit = bootCubit(transcript: transcript);
+      final started = cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      final closed = cubit.close();
+      if (!gate.isCompleted) gate.complete();
+      await closed;
+
+      final loaded = await transcript.loadMessages();
+      expect(
+        loaded.any(
+          (m) =>
+              m.role == AiRole.user &&
+              m.parts.whereType<AiTextPart>().map((p) => p.text).join() ==
+                  'seeded-user',
+        ),
+        isTrue,
+      );
+      expect(
+        loaded.any(
+          (m) =>
+              m.role == AiRole.assistant &&
+              m.parts.whereType<AiTextPart>().map((p) => p.text).join() ==
+                  'seeded-assistant',
+        ),
+        isTrue,
+      );
+      await started;
+    },
+  );
+
   test('intentional close does not record a process-exited crash', () async {
     runtime.agentExit = Completer<int>();
     final fs = InMemoryFilesystem();
@@ -1123,6 +1176,21 @@ void main() {
     await pumpEventQueue();
     expect(cubit.state.phase, AcpChatPhase.ready);
   });
+}
+
+/// Delays [readString] of [delayPath] until [gate] completes; all other
+/// [InMemoryFilesystem] methods delegate immediately so seed writes succeed.
+class _DelayedReadFilesystem extends InMemoryFilesystem {
+  _DelayedReadFilesystem({required this.delayPath, required this.gate});
+
+  final String delayPath;
+  final Completer<void> gate;
+
+  @override
+  Future<String?> readString(String path) async {
+    if (path == delayPath) await gate.future;
+    return super.readString(path);
+  }
 }
 
 List<String> _messageShape(List<AiMessage> messages) {

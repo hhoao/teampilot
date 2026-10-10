@@ -161,6 +161,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   StreamSubscription<AgentPermissionRequest>? _permissionSub;
   String? _queuedPrompt;
   bool _closing = false;
+  Future<void>? _hydrateInFlight;
 
   /// Tool-call ids opened this turn and not yet terminated.
   final Set<String> _runningToolCalls = {};
@@ -199,8 +200,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     Map<String, String> baseEnv = const {},
   }) async {
     if (state.phase != AcpChatPhase.launching) return;
-    await _hydrateTranscript();
-    if (isClosed) return;
+    _hydrateInFlight ??= _hydrateTranscript();
+    await _hydrateInFlight;
+    if (_closing || isClosed) return;
     try {
       await _runtime.start(
         tool: tool,
@@ -239,7 +241,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       );
       return;
     }
-    if (isClosed) return;
+    if (_closing || isClosed) return;
     _updatesSub = _runtime.updates.listen(
       _onUpdate,
       onError: (Object e) {
@@ -393,11 +395,13 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     // Mark before killing the agent: `_runtime.close()` awaits process exit,
     // so the watcher fires with 0 while this cubit is still open.
     _closing = true;
-    await _persist();
     await _updatesSub?.cancel();
     await _permissionSub?.cancel();
     _updatesSub = null;
     _permissionSub = null;
+    final hydrate = _hydrateInFlight;
+    if (hydrate != null) await hydrate;
+    if (state.historyHydrated) await _persist();
     // The exit watcher holds no handle to cancel, and a never-completing exit
     // future (the common no-crash case) must not keep close pending — its
     // callback is a no-op once the cubit is closed.
@@ -413,7 +417,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// Maps protocol updates onto in-memory messages. Chunks stay in RAM;
   /// tool cards, stops, and system rows rewrite the snapshot.
   Future<void> _onUpdate(AcpSessionUpdate update) async {
-    if (isClosed) return;
+    if (_closing || isClosed) return;
     switch (update) {
       case AcpMessageChunk():
         if (isClosed) return;
@@ -546,7 +550,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   }
 
   void _endTurn() {
-    if (isClosed) return;
+    if (_closing || isClosed) return;
     _resetTurnTrackers();
     _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
     emit(
@@ -560,7 +564,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   }
 
   void _onPermissionRequest(AgentPermissionRequest request) {
-    if (isClosed || state.phase == AcpChatPhase.ended) return;
+    if (_closing || isClosed || state.phase == AcpChatPhase.ended) return;
     emit(state.copyWith(pendingPermission: request));
     _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.waiting));
   }
@@ -712,6 +716,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   }
 
   Future<void> _persist() async {
+    if (!state.historyHydrated) return;
     final transcript = _transcript;
     if (transcript == null) return;
     try {
@@ -726,7 +731,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   }
 
   void _endWith(AcpChatErrorKind kind, String message) {
-    if (isClosed) return;
+    if (_closing || isClosed) return;
     _queuedPrompt = null;
     _resetTurnTrackers();
     _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
