@@ -1045,6 +1045,36 @@ void main() {
   });
 
   test(
+    'failed hydrate on close skips persist and still closes runtime',
+    () async {
+      const path = '/tp/acp.jsonl';
+      final fs = _ThrowingReadFilesystem(throwPath: path);
+      final transcript = AcpChatTranscriptWriter(fs: fs, path: path);
+      await transcript.saveMessages([
+        AiMessage(
+          id: 'acp-u-old',
+          role: AiRole.user,
+          parts: const [AiTextPart(text: 'seeded-user')],
+        ),
+      ]);
+      final seededSnapshot = fs.files[path] ?? '';
+
+      final cubit = bootCubit(transcript: transcript);
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      expect(cubit.state.historyHydrated, isFalse);
+      expect(runtime.started, isTrue);
+
+      await cubit.close();
+      expect(runtime.closed, isTrue);
+      expect(fs.files[path], seededSnapshot);
+    },
+  );
+
+  test(
     'close during in-flight hydrate does not wipe seeded transcript',
     () async {
       const path = '/tp/acp.jsonl';
@@ -1176,6 +1206,21 @@ void main() {
     await pumpEventQueue();
     expect(cubit.state.phase, AcpChatPhase.ready);
   });
+}
+
+/// Throws on [readString] for [throwPath] so hydrate fails without touching disk.
+class _ThrowingReadFilesystem extends InMemoryFilesystem {
+  _ThrowingReadFilesystem({required this.throwPath});
+
+  final String throwPath;
+
+  @override
+  Future<String?> readString(String path) async {
+    if (path == throwPath) {
+      throw StateError('simulated transcript read failure');
+    }
+    return super.readString(path);
+  }
 }
 
 /// Delays [readString] of [delayPath] until [gate] completes; all other

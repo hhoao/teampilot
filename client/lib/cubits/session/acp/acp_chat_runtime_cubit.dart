@@ -296,7 +296,17 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   }
 
   Future<void> _hydrateTranscript() async {
-    final loaded = await _transcript?.loadMessages();
+    List<AiMessage>? loaded;
+    try {
+      loaded = await _transcript?.loadMessages();
+    } on Object catch (error, stackTrace) {
+      appLogger.e(
+        '[acp-chat] session $sessionId history hydrate failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return;
+    }
     if (isClosed) return;
     if (loaded == null || loaded.isEmpty) {
       emit(state.copyWith(historyHydrated: true));
@@ -400,15 +410,24 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     _updatesSub = null;
     _permissionSub = null;
     final hydrate = _hydrateInFlight;
-    if (hydrate != null) await hydrate;
-    if (state.historyHydrated) await _persist();
-    // The exit watcher holds no handle to cancel, and a never-completing exit
-    // future (the common no-crash case) must not keep close pending — its
-    // callback is a no-op once the cubit is closed.
-    if (state.phase != AcpChatPhase.ended) {
-      _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
+    try {
+      if (hydrate != null) await hydrate;
+    } on Object catch (error, stackTrace) {
+      appLogger.e(
+        '[acp-chat] session $sessionId hydrate await failed on close: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      if (state.historyHydrated) await _persist();
+      // The exit watcher holds no handle to cancel, and a never-completing exit
+      // future (the common no-crash case) must not keep close pending — its
+      // callback is a no-op once the cubit is closed.
+      if (state.phase != AcpChatPhase.ended) {
+        _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
+      }
+      await _runtime.close();
     }
-    await _runtime.close();
     return super.close();
   }
 
