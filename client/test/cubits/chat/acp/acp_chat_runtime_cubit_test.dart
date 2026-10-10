@@ -485,6 +485,122 @@ void main() {
     await cubit.close();
   });
 
+  test('activity walks thinking → generating → toolRunning → generating → none', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    expect(cubit.state.activity, AcpChatActivity.none);
+
+    cubit.sendPrompt('hi');
+    expect(cubit.state.activity, AcpChatActivity.thinking);
+
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'he',
+        isThought: false,
+      ),
+    );
+    await pumpEventQueue();
+    expect(cubit.state.activity, AcpChatActivity.generating);
+
+    runtime.emit(
+      const AcpToolCallUpdate(
+        toolCallId: 't1',
+        title: 'read file',
+        status: AcpToolCallStatus.inProgress,
+      ),
+    );
+    await pumpEventQueue();
+    expect(cubit.state.activity, AcpChatActivity.toolRunning);
+
+    runtime.emit(
+      const AcpToolCallUpdate(
+        toolCallId: 't1',
+        status: AcpToolCallStatus.completed,
+      ),
+    );
+    await pumpEventQueue();
+    expect(cubit.state.activity, AcpChatActivity.generating);
+
+    runtime.emit(const AcpStop(kind: AcpStopKind.endTurn));
+    await pumpEventQueue();
+    expect(cubit.state.activity, AcpChatActivity.none);
+    await cubit.close();
+  });
+
+  test('two overlapping tool calls keep toolRunning until both end', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    cubit.sendPrompt('go');
+    runtime.emit(
+      const AcpToolCallUpdate(
+        toolCallId: 't1',
+        status: AcpToolCallStatus.inProgress,
+      ),
+    );
+    runtime.emit(
+      const AcpToolCallUpdate(
+        toolCallId: 't2',
+        status: AcpToolCallStatus.pending,
+      ),
+    );
+    await pumpEventQueue();
+    expect(cubit.state.activity, AcpChatActivity.toolRunning);
+
+    runtime.emit(
+      const AcpToolCallUpdate(
+        toolCallId: 't1',
+        status: AcpToolCallStatus.completed,
+      ),
+    );
+    await pumpEventQueue();
+    expect(cubit.state.activity, AcpChatActivity.toolRunning);
+
+    runtime.emit(
+      const AcpToolCallUpdate(
+        toolCallId: 't2',
+        status: AcpToolCallStatus.failed,
+      ),
+    );
+    await pumpEventQueue();
+    // Neither tool terminated the turn, and no chunk has arrived: back to the
+    // pre-first-token state.
+    expect(cubit.state.activity, AcpChatActivity.thinking);
+    await cubit.close();
+  });
+
+  test('a chunk with no visible text still moves thinking → generating', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    cubit.sendPrompt('go');
+    expect(cubit.state.activity, AcpChatActivity.thinking);
+
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: '',
+        isThought: false,
+      ),
+    );
+    await pumpEventQueue();
+    expect(cubit.state.activity, AcpChatActivity.generating);
+    // Only the user bubble exists — the empty chunk added no message.
+    expect(cubit.state.messages, hasLength(1));
+    await cubit.close();
+  });
+
   test('cancelled stop is silent — no system message, idle', () async {
     final cubit = bootCubit();
     await cubit.start(

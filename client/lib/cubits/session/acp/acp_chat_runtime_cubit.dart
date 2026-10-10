@@ -31,6 +31,12 @@ enum AcpChatPhase {
   ended,
 }
 
+/// What the agent is doing inside the current turn.
+///
+/// [none] means no turn is in flight. When several signals are live at once
+/// the precedence is [toolRunning] > [generating] > [thinking].
+enum AcpChatActivity { none, thinking, generating, toolRunning }
+
 /// Why the session ended / errored.
 enum AcpChatErrorKind {
   /// Every ACP flag candidate failed (old CLI version) —
@@ -68,6 +74,7 @@ class AcpChatRuntimeState {
     this.inTurn = false,
     this.pendingPermission,
     this.error,
+    this.activity = AcpChatActivity.none,
   });
 
   final AcpChatPhase phase;
@@ -83,6 +90,9 @@ class AcpChatRuntimeState {
 
   final AcpChatError? error;
 
+  /// What the agent is doing inside the current turn.
+  final AcpChatActivity activity;
+
   AcpChatRuntimeState copyWith({
     AcpChatPhase? phase,
     List<AiMessage>? messages,
@@ -90,6 +100,7 @@ class AcpChatRuntimeState {
     Object? pendingPermission = _unset,
     AcpChatError? error,
     bool clearError = false,
+    AcpChatActivity? activity,
   }) => AcpChatRuntimeState(
     phase: phase ?? this.phase,
     messages: messages ?? this.messages,
@@ -98,6 +109,7 @@ class AcpChatRuntimeState {
         ? this.pendingPermission
         : pendingPermission as AgentPermissionRequest?,
     error: clearError ? null : (error ?? this.error),
+    activity: activity ?? this.activity,
   );
 
   static const _unset = Object();
@@ -143,6 +155,26 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   StreamSubscription<AgentPermissionRequest>? _permissionSub;
   String? _queuedPrompt;
   bool _closing = false;
+
+  /// Tool-call ids opened this turn and not yet terminated.
+  final Set<String> _runningToolCalls = {};
+
+  /// Whether the current turn has emitted any message chunk yet.
+  bool _seenChunkThisTurn = false;
+
+  /// Activity implied by the turn trackers. Callers must have already updated
+  /// the trackers for the event in hand.
+  AcpChatActivity _turnActivity() {
+    if (_runningToolCalls.isNotEmpty) return AcpChatActivity.toolRunning;
+    if (_seenChunkThisTurn) return AcpChatActivity.generating;
+    return AcpChatActivity.thinking;
+  }
+
+  /// Clears the per-turn trackers. Called when a turn opens and when it ends.
+  void _resetTurnTrackers() {
+    _seenChunkThisTurn = false;
+    _runningToolCalls.clear();
+  }
 
   /// Injects localized copy; must run before [start].
   void ensureStrings(AcpChatStrings strings) => _strings ??= strings;
@@ -247,7 +279,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     if (state.phase == AcpChatPhase.launching || !_runtime.isStarted) {
       _queuedPrompt = trimmed;
       _showUserMessage(trimmed);
-      emit(state.copyWith(inTurn: true));
+      _resetTurnTrackers();
+      emit(state.copyWith(inTurn: true, activity: AcpChatActivity.thinking));
       return true;
     }
     _dispatchPrompt(trimmed);
@@ -282,7 +315,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   void _dispatchPrompt(String trimmed) {
     _showUserMessage(trimmed);
-    emit(state.copyWith(inTurn: true));
+    _resetTurnTrackers();
+    emit(state.copyWith(inTurn: true, activity: AcpChatActivity.thinking));
     unawaited(
       _recordAndPrompt(trimmed).catchError((Object error, StackTrace st) {
         appLogger.e(
@@ -370,6 +404,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         await _transcript?.recordChunk(update);
         if (isClosed) return;
         _removeAuthNoticeMessage();
+        _seenChunkThisTurn = true;
         _appendMessageParts(_chunkParts(update));
       case AcpToolCallUpdate():
         await _transcript?.recordToolCall(update);
@@ -403,6 +438,17 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   ];
 
   void _applyToolCall(AcpToolCallUpdate update) {
+    switch (update.status) {
+      case AcpToolCallStatus.pending:
+      case AcpToolCallStatus.inProgress:
+        _runningToolCalls.add(update.toolCallId);
+      case AcpToolCallStatus.completed:
+      case AcpToolCallStatus.failed:
+        _runningToolCalls.remove(update.toolCallId);
+      case null:
+        break;
+    }
+    final activity = _turnActivity();
     // Upsert onto the last assistant message's matching tool part; a new
     // toolCallId appends a fresh part (tool card).
     final messages = [...state.messages];
@@ -425,7 +471,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       }
       if (matched) {
         messages[i] = message.copyWith(parts: parts);
-        emit(state.copyWith(messages: messages));
+        emit(state.copyWith(messages: messages, activity: activity));
         return;
       }
       // No match in this message yet — append if it is the tip.
@@ -441,7 +487,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
             ),
           ],
         );
-        emit(state.copyWith(messages: messages));
+        emit(state.copyWith(messages: messages, activity: activity));
         return;
       }
     }
@@ -487,12 +533,14 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   void _endTurn() {
     if (isClosed) return;
+    _resetTurnTrackers();
     _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
     emit(
       state.copyWith(
         inTurn: false,
         phase: AcpChatPhase.idle,
         pendingPermission: null,
+        activity: AcpChatActivity.none,
       ),
     );
   }
@@ -518,12 +566,21 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// Consecutive [AiTextPart] / [AiReasoningPart] of the same type are
   /// concatenated. ACP streams one NDJSON chunk per token; appending each as
   /// its own part makes the UI render hundreds of thinking-process steps.
+  ///
+  /// Always re-emits the derived turn activity: a chunk that carries no
+  /// visible text is dropped as an empty stream part but must still move the
+  /// status from thinking to generating.
   void _appendMessageParts(List<AiMessagePart> parts) {
     final incoming = [
       for (final part in parts)
         if (!_isEmptyStreamPart(part)) part,
     ];
-    if (incoming.isEmpty) return;
+    final activity = _turnActivity();
+    if (incoming.isEmpty) {
+      if (activity == state.activity) return;
+      emit(state.copyWith(activity: activity));
+      return;
+    }
     final messages = [...state.messages];
     if (messages.isNotEmpty && messages.last.role == AiRole.assistant) {
       final tip = messages.last;
@@ -540,7 +597,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         ),
       );
     }
-    emit(state.copyWith(messages: messages));
+    emit(state.copyWith(messages: messages, activity: activity));
   }
 
   static bool _isEmptyStreamPart(AiMessagePart part) => switch (part) {
@@ -629,6 +686,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   void _endWith(AcpChatErrorKind kind, String message) {
     if (isClosed) return;
     _queuedPrompt = null;
+    _resetTurnTrackers();
     _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
     unawaited(_transcript?.recordSystem(kind.name, message));
     _appendSystemMessage(message);
@@ -638,6 +696,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         inTurn: false,
         pendingPermission: null,
         error: AcpChatError(kind: kind, message: message),
+        activity: AcpChatActivity.none,
       ),
     );
   }
