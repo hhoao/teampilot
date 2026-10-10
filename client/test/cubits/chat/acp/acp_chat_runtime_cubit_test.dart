@@ -997,6 +997,36 @@ void main() {
     );
   });
 
+  test('dispatch marks attention working; stop marks it done', () async {
+    final attention = AgentAttentionCubit(pruneInterval: null);
+    final cubit = bootCubit(attention: attention);
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    expect(
+      attention.state.attentionFor(sessionId: 's1', memberId: 'acp'),
+      AgentSeatAttention.done,
+    );
+
+    cubit.sendPrompt('do work');
+    await pumpEventQueue();
+    expect(
+      attention.state.attentionFor(sessionId: 's1', memberId: 'acp'),
+      AgentSeatAttention.working,
+    );
+
+    runtime.emit(const AcpStop(kind: AcpStopKind.endTurn));
+    await pumpEventQueue();
+    expect(
+      attention.state.attentionFor(sessionId: 's1', memberId: 'acp'),
+      AgentSeatAttention.done,
+    );
+    await cubit.close();
+    await attention.close();
+  });
+
   test('close cancels subscriptions and closes the runtime', () async {
     final cubit = bootCubit();
     await cubit.start(

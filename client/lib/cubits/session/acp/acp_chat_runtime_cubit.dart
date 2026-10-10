@@ -317,6 +317,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     _showUserMessage(trimmed);
     _resetTurnTrackers();
     emit(state.copyWith(inTurn: true, activity: AcpChatActivity.thinking));
+    // A turn is in flight: without this the ACP seat sits at `done` for the
+    // whole turn and every attention-driven surface reads "starting".
+    _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.working));
     unawaited(
       _recordAndPrompt(trimmed).catchError((Object error, StackTrace st) {
         appLogger.e(
