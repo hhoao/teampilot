@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:ai_message_core/ai_message_core.dart'
-    show ExternalStoreAiThreadRuntime;
+    show AiMessage, ExternalStoreAiThreadRuntime;
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -129,6 +129,9 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
       permissionsController.stream;
 
   @override
+  AcpAuthNotice? get lastAuthNotice => null;
+
+  @override
   Future<int>? get agentProcessExitCode => null;
 
   @override
@@ -195,6 +198,7 @@ void main() {
       ),
     );
     registerFallbackValue(_FakeFailedMessageStore());
+    registerFallbackValue(<AiMessage>[]);
   });
 
   setUp(() {
@@ -209,6 +213,8 @@ void main() {
     when(() => seat.loadedMessages).thenReturn(const []);
     when(() => seat.pendingDeliveryStatuses).thenReturn(const {});
     when(() => seat.hasOptimisticPending).thenReturn(false);
+    when(() => seat.markExternalLoading()).thenReturn(null);
+    when(() => seat.adoptExternalMessages(any())).thenReturn(null);
     when(
       () => seat.hydratePendingUsers(
         store: any(named: 'store'),
@@ -376,11 +382,12 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  AppSession session(String id) => AppSession(
+  AppSession session(String id, {bool acp = false}) => AppSession(
     sessionId: id,
     workspaceId: 'ws-1',
     folders: const [],
     cli: CliTool.gemini,
+    acp: acp,
     createdAt: 1,
   );
 
@@ -442,44 +449,78 @@ void main() {
   });
 
   testWidgets(
-    'ACP compose Stop cancels the in-flight turn via the runtime',
+    'ACP session without a runtime yet does not load PTY transcript history',
     (tester) async {
-      final runtime = _FakeAcpRuntime();
-      final cubit = AcpChatRuntimeCubit(
-        runtime: runtime,
-        sessionId: 's1',
-        tool: CliTool.gemini,
-      );
-      addTearDown(() async {
-        await cubit.close();
-        await runtime.permissionsController.close();
+      var ptyHistoryLoads = 0;
+      when(
+        () => seat.load(
+          session: any(named: 'session'),
+          memberId: any(named: 'memberId'),
+          launchContext: any(named: 'launchContext'),
+          team: any(named: 'team'),
+          workingDirectory: any(named: 'workingDirectory'),
+          force: any(named: 'force'),
+        ),
+      ).thenAnswer((_) async {
+        ptyHistoryLoads++;
+      });
+      when(
+        () => seat.softReloadOrLoad(
+          session: any(named: 'session'),
+          memberId: any(named: 'memberId'),
+          launchContext: any(named: 'launchContext'),
+          team: any(named: 'team'),
+          workingDirectory: any(named: 'workingDirectory'),
+        ),
+      ).thenAnswer((_) async {
+        ptyHistoryLoads++;
       });
 
-      await tester.runAsync(() async {
-        await cubit.start(
-          executable: 'gemini',
-          sessionToolDir: '/tmp/tool',
-          workingDirectory: '/w',
-        );
-      });
-      await pumpSession(tester, session: session('s1'), acpRuntime: cubit);
+      await pumpSession(tester, session: session('s-acp', acp: true));
       expect(tester.takeException(), isNull);
-
-      // Start a turn; the compose Stop button must appear (empty compose) and
-      // route to the runtime's cancel, not the PTY interrupt path.
-      await tester.runAsync(() async {
-        cubit.sendPrompt('do work');
-        await Future<void>.delayed(Duration.zero);
-      });
-      await tester.pumpAndSettle();
-
-      expect(cubit.state.inTurn, isTrue);
-      expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
-
-      await tester.tap(find.byIcon(Icons.stop_rounded));
-      await tester.pumpAndSettle();
-
-      expect(runtime.cancelled, isTrue);
+      expect(ptyHistoryLoads, 0);
+      verify(() => seat.markExternalLoading()).called(greaterThan(0));
     },
   );
+
+  testWidgets('ACP compose Stop cancels the in-flight turn via the runtime', (
+    tester,
+  ) async {
+    final runtime = _FakeAcpRuntime();
+    final cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: 's1',
+      tool: CliTool.gemini,
+    );
+    addTearDown(() async {
+      await cubit.close();
+      await runtime.permissionsController.close();
+    });
+
+    await tester.runAsync(() async {
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+    });
+    await pumpSession(tester, session: session('s1'), acpRuntime: cubit);
+    expect(tester.takeException(), isNull);
+
+    // Start a turn; the compose Stop button must appear (empty compose) and
+    // route to the runtime's cancel, not the PTY interrupt path.
+    await tester.runAsync(() async {
+      cubit.sendPrompt('do work');
+      await Future<void>.delayed(Duration.zero);
+    });
+    await tester.pumpAndSettle();
+
+    expect(cubit.state.inTurn, isTrue);
+    expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.stop_rounded));
+    await tester.pumpAndSettle();
+
+    expect(runtime.cancelled, isTrue);
+  });
 }

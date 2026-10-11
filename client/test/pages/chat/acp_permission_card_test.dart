@@ -53,6 +53,9 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
       permissionsController.stream;
 
   @override
+  AcpAuthNotice? get lastAuthNotice => null;
+
+  @override
   Future<int>? get agentProcessExitCode => null;
 
   @override

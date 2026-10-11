@@ -38,12 +38,14 @@ import '../../services/cli/tasks/cli_task_board_controller.dart';
 import '../../services/chat/conversation/compose/compose_clip.dart';
 import '../../services/chat/conversation/compose/compose_draft_cache.dart';
 import '../../services/chat/conversation/compose/compose_file_attach.dart';
+import 'acp_seat_message_sync.dart';
 import 'session_chat_voice_controller.dart';
 import '../../services/chat/conversation/follow_up/follow_up_queue.dart';
 import '../../services/chat/conversation/history/ai_history_live_refresh_controller.dart';
 import '../../services/chat/conversation/history/failed_message_store.dart';
 import '../../services/chat/conversation/history/chat_transcript_find_controller.dart';
 import '../../services/chat/conversation/history/history_seat_key.dart';
+import '../../services/chat/session/chat_tab.dart';
 import 'ai_message_strings_from_l10n.dart';
 import '../../services/chat/conversation/history/history_hydration_scope.dart';
 import '../../services/chat/conversation/history/history_awaiting_working_sync.dart';
@@ -297,7 +299,19 @@ class _SessionChatViewState extends State<SessionChatView> {
   void _syncAcpMessages(AcpChatRuntimeCubit runtime) {
     final seat = _seat;
     if (seat == null || seat.isClosed) return;
-    seat.runtime.setMessages(runtime.state.messages);
+    if (shouldShowAcpHistoryLoading(
+      cubitMessages: runtime.state.messages,
+      historyHydrated: runtime.state.historyHydrated,
+    )) {
+      seat.markExternalLoading();
+    } else if (shouldPublishAcpSeatMessages(
+      cubitMessages: runtime.state.messages,
+      phase: runtime.state.phase,
+      seatHasMessages: seat.loadedMessages.isNotEmpty,
+      historyHydrated: runtime.state.historyHydrated,
+    )) {
+      seat.adoptExternalMessages(runtime.state.messages);
+    }
     if (seat.state.awaitingAssistant != runtime.state.inTurn) {
       seat.setAwaitingAssistant(runtime.state.inTurn);
     }
@@ -404,10 +418,18 @@ class _SessionChatViewState extends State<SessionChatView> {
     // Terminal-less ACP session: the cubit owns the transcript (app-side
     // message table), and the failed-message store is a PTY delivery concern —
     // hydrating persisted pending records here would resurrect stale bubbles
-    // that the cubit never reconciles.
-    final acpRuntime = widget.acpRuntime;
-    if (acpRuntime != null) {
-      _syncAcpMessages(acpRuntime);
+    // that the cubit never reconciles. Gate on the session flag, not the
+    // runtime cubit: the view often mounts before attachAcpRuntime assigns
+    // it, and a PTY load in that window starts live-refresh on a missing
+    // transcript (blank thread, never the empty-state pane).
+    if (_usesAcpTranscript) {
+      await _stopLiveRefreshForAcp();
+      final acpRuntime = widget.acpRuntime;
+      if (acpRuntime == null) {
+        seat.markExternalLoading();
+      } else {
+        _syncAcpMessages(acpRuntime);
+      }
       return;
     }
     final scope = HistoryHydrationScope(
@@ -608,9 +630,14 @@ class _SessionChatViewState extends State<SessionChatView> {
     // [AcpChatRuntimeCubit] is the single source. The CLI transcript loader
     // has nothing to read for ACP and a `seat.load()`/`softReloadOrLoad()`
     // would blank the thread on rebuild. Re-publish and return.
-    final acpRuntime = widget.acpRuntime;
-    if (acpRuntime != null) {
-      _syncAcpMessages(acpRuntime);
+    if (_usesAcpTranscript) {
+      await _stopLiveRefreshForAcp();
+      final acpRuntime = widget.acpRuntime;
+      if (acpRuntime == null) {
+        seat.markExternalLoading();
+      } else {
+        _syncAcpMessages(acpRuntime);
+      }
       return;
     }
     final chat = context.read<ChatCubit>();
@@ -690,6 +717,10 @@ class _SessionChatViewState extends State<SessionChatView> {
   /// seat, otherwise (re)start or stop live refresh.
   Future<void> _refreshWhenHot() async {
     if (!mounted) return;
+    if (_usesAcpTranscript) {
+      await _loadHistoryThenHydratePersistedPendingUsers();
+      return;
+    }
     final seat = _seat;
     final running = context.read<ChatCubit>().isMemberRunning(
       sessionId: widget.session.sessionId,
@@ -713,6 +744,12 @@ class _SessionChatViewState extends State<SessionChatView> {
     }
     _maybeStartLiveRefreshForRunningPty();
   }
+
+  /// Terminal-less ACP transcript: the session flag (before the cubit is
+  /// attached) or an already-attached runtime. Either one must skip PTY
+  /// history load / live-refresh.
+  bool get _usesAcpTranscript =>
+      widget.acpRuntime != null || isAcpChatSession(widget.session);
 
   /// PTY shells for Simple seats are keyed by [AppSession.sessionId].
   String get _shellMemberId => shellMemberIdForHistory(
@@ -761,8 +798,18 @@ class _SessionChatViewState extends State<SessionChatView> {
     _userStoppedTurn.value = false;
   }
 
+  Future<void> _stopLiveRefreshForAcp() async {
+    await _liveRefresh?.stop();
+    _liveRefresh = null;
+    _liveRefreshScope = null;
+  }
+
   void _maybeStartLiveRefreshForRunningPty() {
     if (!mounted) return;
+    if (_usesAcpTranscript) {
+      unawaited(_stopLiveRefreshForAcp());
+      return;
+    }
     final running = context.read<ChatCubit>().isMemberRunning(
       sessionId: widget.session.sessionId,
       memberId: _shellMemberId,
@@ -815,6 +862,10 @@ class _SessionChatViewState extends State<SessionChatView> {
   Future<void> _startLiveRefreshImpl({bool skipInitialRefresh = false}) async {
     final seat = _seat;
     if (seat == null) return;
+    if (_usesAcpTranscript) {
+      await _stopLiveRefreshForAcp();
+      return;
+    }
     final chat = context.read<ChatCubit>();
     final running = chat.isMemberRunning(
       sessionId: widget.session.sessionId,
@@ -1132,8 +1183,14 @@ class _SessionChatViewState extends State<SessionChatView> {
     // a persisted pending record here would never be reconciled (the cubit's
     // messages are the single source) and would leak a stale bubble. Deliver
     // straight to the runtime and skip the pending-record machinery entirely.
-    final acpRuntime = widget.acpRuntime;
-    if (acpRuntime != null) {
+    // Do not fall through to PTY inject when the runtime cubit is not
+    // attached yet — that path waits up to 10 minutes for a shell that
+    // ACP sessions never spawn.
+    if (_usesAcpTranscript) {
+      final acpRuntime = widget.acpRuntime;
+      if (acpRuntime == null) {
+        return const HistoryContinueSubmitResult.failed();
+      }
       if (clearCompose) {
         await _discardComposeDraftForSubmit();
       }

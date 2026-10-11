@@ -274,6 +274,55 @@ void main() {
     },
   );
 
+  test('personal ACP materialize completes without a shell', () async {
+    final store = ChatTabStore(storage: testHomeStorage);
+    store.setActiveWorkspaceId('ws-1');
+    final tab =
+        ChatTab(
+            info: const ChatTabInfo(id: 'sess-1', title: 't', subtitle: ''),
+            workspaceId: 'ws-1',
+            cliTeamName: '',
+          )
+          ..persistedSession = AppSession(
+            sessionId: 'sess-1',
+            workspaceId: 'ws-1',
+            sessionTeam: '',
+            cli: CliTool.claude,
+            acp: true,
+            createdAt: 0,
+          );
+    store.registerSession(tab);
+
+    final materializer = TabMemberMaterializer(
+      runtime: TabSessionRuntimeCoordinator(
+        tabStore: store,
+        shellFactory: ChatSessionShellFactory(executableResolver: () => 'true'),
+        globalPresets: () => const [],
+        activeTeam: () => null,
+        isClosed: () => false,
+      ),
+      tabStore: store,
+      connector: _RecordingConnector(),
+      activeTeam: () => null,
+      isClosed: () => false,
+      isMixedBusRegistered: (_) => false,
+      isMemberConnectOwnedElsewhere: (_, _) => false,
+    );
+
+    await expectLater(
+      materializer
+          .materializeMember('sess-1', 'sess-1', '')
+          .timeout(const Duration(milliseconds: 200)),
+      completes,
+    );
+    await expectLater(
+      materializer
+          .ensureMemberInputReady('sess-1', 'sess-1', directToPty: true)
+          .timeout(const Duration(milliseconds: 200)),
+      completes,
+    );
+  });
+
   test('input readiness exits when the session tab no longer exists', () async {
     final store = ChatTabStore(storage: testHomeStorage);
     store.setActiveWorkspaceId('ws-1');

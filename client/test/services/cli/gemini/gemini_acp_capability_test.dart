@@ -18,7 +18,7 @@ void main() {
       workingDirectory: '/work',
       baseEnv: const {'HOME': '/home/me'},
     );
-    expect(env['GEMINI_CONFIG_DIR'], '/runtime/sessions/s1/tools/gemini');
+    expect(env['GEMINI_CONFIG_DIR'], '/runtime/sessions/s1/tools');
     expect(env['GEMINI_API_KEY'], 'test-key');
     expect(env['SURFACE'], 'teampilot');
     expect(env.containsKey('HOME'), isTrue, reason: 'base env preserved');

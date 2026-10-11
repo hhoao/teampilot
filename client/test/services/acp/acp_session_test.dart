@@ -67,6 +67,62 @@ void main() {
     chunk: acpd.ContentChunk(content: acpd.TextContentBlock(text: text)),
   );
 
+  test('parseAcpAuthNotice reads Claude adapter payloads', () async {
+    session = await openSession();
+    expect(
+      parseAcpAuthNotice({
+        'kind': 'none',
+        'message': 'Not logged in',
+      }, method: '_auth/status_update'),
+      const AcpAuthNotice(loggedIn: false, message: 'Not logged in'),
+    );
+    expect(
+      parseAcpAuthNotice({
+        'sessionId': sessionId,
+        'update': {
+          'sessionUpdate': '_auth/status_update',
+          'status': {'kind': 'none', 'message': 'Not logged in'},
+        },
+      }),
+      const AcpAuthNotice(loggedIn: false, message: 'Not logged in'),
+    );
+    expect(
+      parseAcpAuthNotice({
+        'authStatus': {'kind': 'none', 'label': 'Not logged in'},
+      }, method: '_auth/status_update'),
+      const AcpAuthNotice(loggedIn: false, message: 'Not logged in'),
+    );
+    expect(
+      parseAcpAuthNotice({
+        'authStatus': {
+          'kind': 'account',
+          'label': 'Claude Pro',
+          'account': {'email': 'a@b.c'},
+        },
+      }, method: '_auth/status_update'),
+      const AcpAuthNotice(loggedIn: true, message: 'Claude Pro'),
+    );
+  });
+
+  test(
+    '_auth/status_update during session/new is kept on the connection',
+    () async {
+      agent.connection.onRequest('session/new', (params) {
+        agent.connection.notify(
+          '_auth/status_update',
+          params: {'kind': 'none', 'message': 'Not logged in'},
+        );
+        return acpd.NewSessionResponse(sessionId: sessionId).toJson();
+      });
+
+      await openSession();
+      expect(
+        conn.lastAuthNotice,
+        const AcpAuthNotice(loggedIn: false, message: 'Not logged in'),
+      );
+    },
+  );
+
   test(
     'a second openSession on the same connection throws StateError',
     () async {

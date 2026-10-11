@@ -121,6 +121,10 @@ abstract interface class AcpSessionRuntimeApi {
   /// Permission cards surfaced by the agent during the open session.
   Stream<AgentPermissionRequest> get permissionRequests;
 
+  /// Auth notice captured during handshake (`_auth/status_update` can
+  /// arrive before the chat layer subscribes to [updates]).
+  AcpAuthNotice? get lastAuthNotice;
+
   /// The live session's agent-process exit code, if observable.
   ///
   /// Never completes for non-process-backed spawn connections (tests /
@@ -267,6 +271,9 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
     }
     return session.permissionRequests;
   }
+
+  @override
+  AcpAuthNotice? get lastAuthNotice => _connection?.lastAuthNotice;
 
   /// The live session's agent-process exit code, if observable.
   @override

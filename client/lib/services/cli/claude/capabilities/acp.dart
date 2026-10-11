@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:acpd/acpd.dart';
 
 import '../../../acp/acp_agent_translator.dart';
@@ -41,7 +39,9 @@ class ClaudeAcpAuth {
   /// Official (OAuth) login: no API key / auth token is ever injected.
   final bool official;
 
-  /// Absolute path to Official `.credentials.json` to copy into CLAUDE_CONFIG_DIR.
+  /// Source Official `.credentials.json`. Linking into [CLAUDE_CONFIG_DIR]
+  /// is done by PTY `contributeLaunch` / `ensureLinked`, not by this env
+  /// builder.
   final String? officialCredentialsPath;
 }
 
@@ -53,16 +53,13 @@ final class ClaudeAcpCapability implements AcpCapability {
   const ClaudeAcpCapability({
     ClaudeAcpAuthSource? authSource,
     String Function(String cliExecutable)? locateAdapter,
-    void Function(String destCredentialsPath, String srcPath)? copyFile,
   }) : _authSource = authSource,
-       _locateAdapter = locateAdapter,
-       _copyFile = copyFile;
+       _locateAdapter = locateAdapter;
 
   static const adapterName = 'claude-agent-acp';
 
   final ClaudeAcpAuthSource? _authSource;
   final String Function(String cliExecutable)? _locateAdapter;
-  final void Function(String destCredentialsPath, String srcPath)? _copyFile;
 
   @override
   String agentExecutable(String cliExecutable) =>
@@ -83,10 +80,12 @@ final class ClaudeAcpCapability implements AcpCapability {
     Map<String, String> baseEnv = const {},
   }) {
     final env = Map<String, String>.of(baseEnv);
-    final configDir = '$sessionToolDir/claude';
-    env['CLAUDE_CONFIG_DIR'] = configDir;
-    // Process.start inherits the parent environment; overwrite with empty
-    // strings so TeamPilot's own ANTHROPIC_* never reach the adapter.
+    // Same slot as PTY contributeLaunch: sessionRuntimeToolDir is already
+    // `…/runtime/claude`, so do not nest another `/claude`.
+    env['CLAUDE_CONFIG_DIR'] = sessionToolDir;
+    // Empty strings are an "unset" signal. [mergeAcpProcessEnvironment]
+    // drops them so the adapter never sees ANTHROPIC_API_KEY= (API-key mode
+    // with no key → Official OAuth reports "Not logged in").
     for (final key in _anthropicKeys) {
       env[key] = '';
     }
@@ -94,10 +93,6 @@ final class ClaudeAcpCapability implements AcpCapability {
     if (auth == null) return env;
     if (auth.official) {
       env['CCGUI_CLI_LOGIN_AUTHORIZED'] = '1';
-      final src = auth.officialCredentialsPath;
-      if (src != null) {
-        (_copyFile ?? _defaultCopyFile)('$configDir/.credentials.json', src);
-      }
       return env;
     }
     final apiKey = auth.apiKey;
@@ -117,11 +112,4 @@ final class ClaudeAcpCapability implements AcpCapability {
     'ANTHROPIC_AUTH_TOKEN',
     'ANTHROPIC_BASE_URL',
   ];
-
-  static void _defaultCopyFile(String dest, String src) {
-    final source = File(src);
-    if (!source.existsSync()) return;
-    File(dest).parent.createSync(recursive: true);
-    source.copySync(dest);
-  }
 }

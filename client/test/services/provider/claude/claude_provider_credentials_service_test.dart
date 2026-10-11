@@ -73,6 +73,27 @@ void main() {
     );
   });
 
+  test('linked path without a home resolver is the isolated provider file', () {
+    final noHome = ClaudeProviderCredentialsService(
+      fs: fs,
+      basePath: base,
+      storage: fakeHomeStorage(filesystem: fs),
+    );
+    expect(
+      noHome.effectiveCredentialPath(
+        'claude-official',
+        binding: CredentialBindingKind.linked,
+      ),
+      fs.pathContext.join(
+        base,
+        'providers',
+        'claude',
+        'claude-official',
+        '.credentials.json',
+      ),
+    );
+  });
+
   test('linked probe reads global credential path', () async {
     final global = fs.pathContext.join(home, '.claude', '.credentials.json');
     await fs.writeString(global, '{"claudeAiOauth":{"accessToken":"global"}}');

@@ -31,25 +31,27 @@ void main() {
       expect(await frames, ['{"a":1}', '{"b":2}']);
     });
 
-    test('decodes multi-byte UTF-8 split inside a character across chunks',
-        () async {
-      final decoder = NdjsonDecoder();
-      final controller = StreamController<Uint8List>();
-      final frames = decoder.decode(controller.stream).toList();
-      final bytes = utf8.encode('{"msg":"你好"}\n');
-      // '你' encodes to E4 BD A0 and '好' to E5 A5 BD. Split after the
-      // first byte of '你' (offset 9) and after the second byte of '好'
-      // (offset 13) so both chunk boundaries fall mid-character.
-      controller.add(Uint8List.fromList(bytes.sublist(0, 9)));
-      await Future<void>.delayed(Duration.zero);
-      controller.add(Uint8List.fromList(bytes.sublist(9, 13)));
-      await Future<void>.delayed(Duration.zero);
-      controller.add(Uint8List.fromList(bytes.sublist(13)));
-      await controller.close();
-      final result = await frames;
-      expect(result, ['{"msg":"你好"}']);
-      expect(result.single.contains('\u{FFFD}'), isFalse);
-    });
+    test(
+      'decodes multi-byte UTF-8 split inside a character across chunks',
+      () async {
+        final decoder = NdjsonDecoder();
+        final controller = StreamController<Uint8List>();
+        final frames = decoder.decode(controller.stream).toList();
+        final bytes = utf8.encode('{"msg":"你好"}\n');
+        // '你' encodes to E4 BD A0 and '好' to E5 A5 BD. Split after the
+        // first byte of '你' (offset 9) and after the second byte of '好'
+        // (offset 13) so both chunk boundaries fall mid-character.
+        controller.add(Uint8List.fromList(bytes.sublist(0, 9)));
+        await Future<void>.delayed(Duration.zero);
+        controller.add(Uint8List.fromList(bytes.sublist(9, 13)));
+        await Future<void>.delayed(Duration.zero);
+        controller.add(Uint8List.fromList(bytes.sublist(13)));
+        await controller.close();
+        final result = await frames;
+        expect(result, ['{"msg":"你好"}']);
+        expect(result.single.contains('\u{FFFD}'), isFalse);
+      },
+    );
 
     test('skips empty lines between frames', () async {
       final decoder = NdjsonDecoder();
@@ -104,10 +106,10 @@ void main() {
         gracefulShutdownTimeout: const Duration(milliseconds: 50),
       );
       await transport.close();
-      expect(
-        process.killSignals,
-        [ProcessSignal.sigterm, ProcessSignal.sigkill],
-      );
+      expect(process.killSignals, [
+        ProcessSignal.sigterm,
+        ProcessSignal.sigkill,
+      ]);
       expect(transport.isClosed, isTrue);
     });
 
@@ -123,29 +125,95 @@ void main() {
       expect(process.killSignals, [ProcessSignal.sigterm]);
     });
 
-    test('start uses Process.start without a shell', () async {
-      // `cat` echoes stdin, so a frame written comes back on stdout.
-      final transport = await AcpProcessTransport.start(        executable: 'cat',
-        args: const [],
-        environment: Platform.environment,
-        workingDirectory: Directory.systemTemp.path,
-      );
-      final received = <String>[];
-      final firstFrame = Completer<String>();
-      late final StreamSubscription<String> subscription;
-      subscription = NdjsonDecoder().decode(transport.input).listen((line) {
-        received.add(line);
-        if (!firstFrame.isCompleted) firstFrame.complete(line);
-      });
-      transport.write('{"ping":1}');
-      final echoed = await firstFrame.future.timeout(const Duration(seconds: 5));
-      await subscription.cancel();
-      await transport.close();
-      expect(echoed, '{"ping":1}');
-      expect(received, ['{"ping":1}']);
-    },
-        skip: Platform.isWindows ? 'spawns POSIX `cat`' : false,
-        timeout: const Timeout(Duration(seconds: 15)));
+    test(
+      'mergeAcpProcessEnvironment drops empty values so Official OAuth is not API-key mode',
+      () {
+        final merged = mergeAcpProcessEnvironment(
+          const {
+            'CLAUDE_CONFIG_DIR': '/runtime/s1/claude',
+            'ANTHROPIC_API_KEY': '',
+            'ANTHROPIC_AUTH_TOKEN': '',
+            'ANTHROPIC_BASE_URL': '',
+            'CCGUI_CLI_LOGIN_AUTHORIZED': '1',
+          },
+          parent: const {
+            'PATH': '/usr/bin',
+            'ANTHROPIC_API_KEY': 'parent-key',
+            'HOME': '/home/me',
+          },
+        );
+        expect(merged['CLAUDE_CONFIG_DIR'], '/runtime/s1/claude');
+        expect(merged['CCGUI_CLI_LOGIN_AUTHORIZED'], '1');
+        expect(merged['PATH'], '/usr/bin');
+        expect(merged['HOME'], '/home/me');
+        expect(merged.containsKey('ANTHROPIC_API_KEY'), isFalse);
+        expect(merged.containsKey('ANTHROPIC_AUTH_TOKEN'), isFalse);
+        expect(merged.containsKey('ANTHROPIC_BASE_URL'), isFalse);
+      },
+    );
+
+    test(
+      'start omits empty ANTHROPIC_API_KEY from the child process',
+      () async {
+        const marker = 'ACP_ENV_PROBE';
+        final transport = await AcpProcessTransport.start(
+          executable: 'sh',
+          args: const [
+            '-c',
+            r'if [ -z "${ANTHROPIC_API_KEY+x}" ]; then echo "$MARKER=ABSENT"; else echo "$MARKER=PRESENT"; fi',
+          ],
+          environment: {
+            'PATH': Platform.environment['PATH'] ?? '/usr/bin',
+            'MARKER': marker,
+            'ANTHROPIC_API_KEY': '',
+            'CLAUDE_CONFIG_DIR': '/tmp/claude-acp',
+          },
+          workingDirectory: Directory.systemTemp.path,
+        );
+        final lines = <String>[];
+        final done = Completer<void>();
+        late final StreamSubscription<String> subscription;
+        subscription = NdjsonDecoder()
+            .decode(transport.input)
+            .listen(lines.add, onDone: done.complete);
+        await done.future.timeout(const Duration(seconds: 5));
+        await subscription.cancel();
+        await transport.close();
+        expect(lines.join('\n'), contains('$marker=ABSENT'));
+      },
+      skip: Platform.isWindows ? 'spawns POSIX sh' : false,
+      timeout: const Timeout(Duration(seconds: 15)),
+    );
+
+    test(
+      'start uses Process.start without a shell',
+      () async {
+        // `cat` echoes stdin, so a frame written comes back on stdout.
+        final transport = await AcpProcessTransport.start(
+          executable: 'cat',
+          args: const [],
+          environment: Platform.environment,
+          workingDirectory: Directory.systemTemp.path,
+        );
+        final received = <String>[];
+        final firstFrame = Completer<String>();
+        late final StreamSubscription<String> subscription;
+        subscription = NdjsonDecoder().decode(transport.input).listen((line) {
+          received.add(line);
+          if (!firstFrame.isCompleted) firstFrame.complete(line);
+        });
+        transport.write('{"ping":1}');
+        final echoed = await firstFrame.future.timeout(
+          const Duration(seconds: 5),
+        );
+        await subscription.cancel();
+        await transport.close();
+        expect(echoed, '{"ping":1}');
+        expect(received, ['{"ping":1}']);
+      },
+      skip: Platform.isWindows ? 'spawns POSIX `cat`' : false,
+      timeout: const Timeout(Duration(seconds: 15)),
+    );
   });
 }
 

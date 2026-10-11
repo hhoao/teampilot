@@ -76,6 +76,13 @@ class TabMemberMaterializer implements MemberMaterializer {
       'session=$sessionId directToPty=$directToPty '
       '${_inputReadyGateSummary(sessionId, memberId)}',
     );
+    if (_isAcpChatSession(sessionId)) {
+      appLogger.d(
+        '[member-materializer] input-ready skip acp '
+        'member=$memberId session=$sessionId',
+      );
+      return;
+    }
     if (aborted?.call() ?? false) {
       appLogger.d(
         '[member-materializer] input-ready cancelled operator-stop '
@@ -268,6 +275,14 @@ class TabMemberMaterializer implements MemberMaterializer {
     final tab = _tabStore.getOpenTabBySessionId(sessionId);
     if (tab == null) return;
 
+    if (_isAcpChatSession(sessionId)) {
+      appLogger.d(
+        '[member-materializer] materialize skip acp '
+        'member=$memberId session=$sessionId',
+      );
+      return;
+    }
+
     if (MemberCoordinationScope.isPersonalSession(tab: tab)) {
       final ready = Completer<void>();
       _memberReady[(sessionId, memberId)] = ready;
@@ -413,6 +428,13 @@ class TabMemberMaterializer implements MemberMaterializer {
       if (completed) return;
     }
     if (identical(_memberReady[key], ready)) _memberReady.remove(key);
+  }
+
+  bool _isAcpChatSession(String sessionId) {
+    final session = _tabStore
+        .getOpenTabBySessionId(sessionId)
+        ?.persistedSession;
+    return session != null && isAcpChatSession(session);
   }
 
   TeamMemberConfig? _resolveMemberForMaterialize(

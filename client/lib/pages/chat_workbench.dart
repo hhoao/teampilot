@@ -888,12 +888,17 @@ class _ChatWorkbenchBody extends StatelessWidget {
             )
           : null,
       onSubmit: (message) async {
-        // Terminal-less ACP session (gemini phase 1): the prompt goes to the
-        // attached ACP runtime — no PTY connect/inject chain.
-        final acpRuntime = chatCubit.tabStore
-            .getOpenTabBySessionId(appSession.sessionId)
-            ?.acpRuntime;
-        if (acpRuntime != null) {
+        // Terminal-less ACP session: the prompt goes to the attached ACP
+        // runtime — no PTY connect/inject chain. Never fall through when
+        // the session is ACP but the cubit is not attached yet; that path
+        // waits for a shell these sessions never spawn.
+        if (isAcpChatSession(appSession)) {
+          final acpRuntime = chatCubit.tabStore
+              .getOpenTabBySessionId(appSession.sessionId)
+              ?.acpRuntime;
+          if (acpRuntime == null) {
+            return const HistoryContinueSubmitResult.failed();
+          }
           final sent = acpRuntime.sendPrompt(message);
           return HistoryContinueSubmitResult(
             ok: sent,

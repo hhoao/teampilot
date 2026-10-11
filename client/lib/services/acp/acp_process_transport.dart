@@ -4,6 +4,25 @@ import 'dart:typed_data';
 
 import 'acp_transport.dart';
 
+/// Merges [requested] over [parent] and drops empty values.
+///
+/// Dart [Process.start] cannot unset a parent variable: with
+/// `includeParentEnvironment: true`, `ANTHROPIC_API_KEY: ''` becomes an empty
+/// child value. `claude-agent-acp` then treats that as API-key mode with no
+/// key and reports `_auth/status_update` kind=none ("Not logged in"), skipping
+/// Official OAuth in `CLAUDE_CONFIG_DIR`. Empty requested values mean unset.
+Map<String, String> mergeAcpProcessEnvironment(
+  Map<String, String> requested, {
+  Map<String, String>? parent,
+}) {
+  final merged = <String, String>{
+    ...parent ?? Platform.environment,
+    ...requested,
+  };
+  merged.removeWhere((_, value) => value.isEmpty);
+  return merged;
+}
+
 /// [AcpTransport] backed by a `dart:io` [Process].
 ///
 /// Launches the agent directly (no PTY, no shell) and keeps stderr fully
@@ -55,7 +74,8 @@ class AcpProcessTransport implements AcpTransport {
     final process = await Process.start(
       executable,
       args,
-      environment: environment,
+      environment: mergeAcpProcessEnvironment(environment),
+      includeParentEnvironment: false,
       workingDirectory: workingDirectory,
       runInShell: false,
     );

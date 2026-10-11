@@ -1235,6 +1235,7 @@ Future<AppShell> buildAppShell({
       basePath: homeStorage.paths.basePath,
       resolveClaudeExecutable: () =>
           sessionPreferencesCubit.resolveExecutable(CliTool.claude),
+      resolveHomeDirectory: () => homeStorage.home,
       hostRunner: credentialHostRunner,
     );
     final cursorCredentialsService = CursorProviderCredentialsService(
@@ -2251,6 +2252,7 @@ Future<AppShell> buildAppShell({
         launchFailed: l10n.acpChatLaunchFailed,
         turnFailed: l10n.acpChatTurnFailed,
         processExited: l10n.acpChatProcessExited,
+        notLoggedIn: l10n.acpChatNotLoggedIn,
       );
     };
     final promptDeliveryStore = FilePromptDeliveryStore(

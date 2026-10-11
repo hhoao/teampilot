@@ -121,10 +121,7 @@ void main() {
         ['gemini', '--experimental-acp'],
       ]);
       // The capability-built environment reached the spawner.
-      expect(
-        envCalls.last,
-        containsPair('GEMINI_CONFIG_DIR', '$sessionToolDir/gemini'),
-      );
+      expect(envCalls.last, containsPair('GEMINI_CONFIG_DIR', sessionToolDir));
       expect(envCalls.last, containsPair('SURFACE', 'teampilot'));
       expect(envCalls.last, containsPair('PATH', '/usr/bin'));
 

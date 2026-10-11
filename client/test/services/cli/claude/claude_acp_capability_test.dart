@@ -48,7 +48,7 @@ void main() {
     final env = _env(cap, baseEnv: const {'HOME': '/home/me'});
     expect(env['ANTHROPIC_API_KEY'], 'sk-test');
     expect(env['ANTHROPIC_AUTH_TOKEN'], '');
-    expect(env['CLAUDE_CONFIG_DIR'], '/runtime/s1/tools/claude');
+    expect(env['CLAUDE_CONFIG_DIR'], '/runtime/s1/tools');
     expect(env['HOME'], '/home/me', reason: 'base env preserved');
     expect(env.containsKey('CCGUI_CLI_LOGIN_AUTHORIZED'), isFalse);
     expect(env.containsKey('SURFACE'), isFalse);
@@ -72,8 +72,7 @@ void main() {
     expect(env['ANTHROPIC_AUTH_TOKEN'], '');
   });
 
-  test('official omits keys, flags login, and copies credentials', () {
-    final copies = <List<String>>[];
+  test('official omits keys, flags login, and does not copy credentials', () {
     final cap = ClaudeAcpCapability(
       authSource: () => const ClaudeAcpAuth(
         official: true,
@@ -81,31 +80,30 @@ void main() {
         authToken: 'should-not-leak',
         officialCredentialsPath: '/creds/.credentials.json',
       ),
-      copyFile: (dest, src) => copies.add([dest, src]),
     );
     final env = _env(cap, baseEnv: const {'PATH': '/bin'});
     expect(env['ANTHROPIC_API_KEY'], '');
     expect(env['ANTHROPIC_AUTH_TOKEN'], '');
     expect(env['CCGUI_CLI_LOGIN_AUTHORIZED'], '1');
-    expect(env['CLAUDE_CONFIG_DIR'], '/runtime/s1/tools/claude');
+    expect(env['CLAUDE_CONFIG_DIR'], '/runtime/s1/tools');
     expect(env['PATH'], '/bin');
-    expect(copies, [
-      [
-        '/runtime/s1/tools/claude/.credentials.json',
-        '/creds/.credentials.json',
-      ],
-    ]);
   });
 
-  test('official without credentials path does not copy', () {
-    var copied = false;
+  test('official without credentials path still flags login', () {
     final cap = ClaudeAcpCapability(
       authSource: () => const ClaudeAcpAuth(official: true),
-      copyFile: (_, _) => copied = true,
     );
     final env = _env(cap);
     expect(env['CCGUI_CLI_LOGIN_AUTHORIZED'], '1');
-    expect(copied, isFalse);
+  });
+
+  test('keeps contributeLaunch CLAUDE_CONFIG_DIR from base env', () {
+    const cap = ClaudeAcpCapability();
+    final env = _env(
+      cap,
+      baseEnv: const {'CLAUDE_CONFIG_DIR': '/runtime/s1/tools'},
+    );
+    expect(env['CLAUDE_CONFIG_DIR'], '/runtime/s1/tools');
   });
 
   test('no auth source yields only config dir and base env', () {
@@ -113,7 +111,7 @@ void main() {
     final env = _env(cap, baseEnv: const {'A': 'b'});
     expect(env, {
       'A': 'b',
-      'CLAUDE_CONFIG_DIR': '/runtime/s1/tools/claude',
+      'CLAUDE_CONFIG_DIR': '/runtime/s1/tools',
       'ANTHROPIC_API_KEY': '',
       'ANTHROPIC_AUTH_TOKEN': '',
       'ANTHROPIC_BASE_URL': '',
@@ -128,7 +126,6 @@ void main() {
         authToken: 'leak',
         baseUrl: 'https://leak.example',
       ),
-      copyFile: (_, _) {},
     );
     final env = _env(
       cap,
@@ -159,43 +156,25 @@ void main() {
     expect(env['ANTHROPIC_API_KEY'], '');
   });
 
-  group('default copyFile', () {
+  group('official does not provision credentials files', () {
     late Directory tmp;
     setUp(() => tmp = Directory.systemTemp.createTempSync('acp_cap_'));
     tearDown(() => tmp.deleteSync(recursive: true));
 
-    test('creates claude dir and copies credentials', () {
+    test('does not copy into the session tool dir', () {
       final src = File('${tmp.path}/src/.credentials.json')
         ..createSync(recursive: true)
         ..writeAsStringSync('{"oauth":1}');
       final cap = ClaudeAcpCapability(
-        authSource: () => ClaudeAcpAuth(
-          official: true,
-          officialCredentialsPath: src.path,
-        ),
+        authSource: () =>
+            ClaudeAcpAuth(official: true, officialCredentialsPath: src.path),
       );
       final env = cap.buildEnvironment(
         sessionToolDir: '${tmp.path}/tools',
         workingDirectory: '/work',
       );
-      expect(env['CLAUDE_CONFIG_DIR'], '${tmp.path}/tools/claude');
-      final dest = File('${tmp.path}/tools/claude/.credentials.json');
-      expect(dest.existsSync(), isTrue);
-      expect(dest.readAsStringSync(), '{"oauth":1}');
-    });
-
-    test('missing source does not throw and leaves dir empty', () {
-      final cap = ClaudeAcpCapability(
-        authSource: () => ClaudeAcpAuth(
-          official: true,
-          officialCredentialsPath: '${tmp.path}/nope/.credentials.json',
-        ),
-      );
-      final env = cap.buildEnvironment(
-        sessionToolDir: '${tmp.path}/tools',
-        workingDirectory: '/work',
-      );
-      expect(env['CCGUI_CLI_LOGIN_AUTHORIZED'], '1');
+      expect(env['CLAUDE_CONFIG_DIR'], '${tmp.path}/tools');
+      expect(File('${tmp.path}/tools/.credentials.json').existsSync(), isFalse);
       expect(
         File('${tmp.path}/tools/claude/.credentials.json').existsSync(),
         isFalse,

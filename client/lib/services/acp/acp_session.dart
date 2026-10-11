@@ -160,6 +160,72 @@ final class AcpStop extends AcpSessionUpdate {
   int get hashCode => Object.hash(kind, message);
 }
 
+/// Auth status from the agent (`_auth/status_update` or an unknown
+/// `session/update` with the same payload). Reporting-only: `kind: none`
+/// is a CLI probe, not a confirmed logout, so the chat cubit does not
+/// insert a system row from it.
+final class AcpAuthNotice extends AcpSessionUpdate {
+  const AcpAuthNotice({required this.loggedIn, this.message});
+
+  final bool loggedIn;
+  final String? message;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AcpAuthNotice &&
+          loggedIn == other.loggedIn &&
+          message == other.message;
+
+  @override
+  int get hashCode => Object.hash(loggedIn, message);
+}
+
+/// Parses Claude-adapter auth notices from a JSON-RPC params map.
+///
+/// Wire shapes observed:
+/// - method `_auth/status_update` with `{authStatus: {kind, label}}`
+///   (`kind` is `none` / `account` / `api_key` / `gateway` / `external`)
+/// - method `_auth/status_update` with `{kind, message}`
+/// - `session/update` whose inner `sessionUpdate` is `_auth/status_update`
+AcpAuthNotice? parseAcpAuthNotice(
+  Map<String, Object?> params, {
+  String? method,
+}) {
+  final nested = params['update'];
+  final map = nested is Map ? Map<String, Object?>.from(nested) : params;
+  final sessionUpdate = map['sessionUpdate'] as String? ?? method ?? '';
+  final statusRaw = map['authStatus'] ?? map['status'];
+  final status = statusRaw is Map ? Map<String, Object?>.from(statusRaw) : map;
+  final kind = (status['kind'] as String? ?? map['kind'] as String? ?? '')
+      .toLowerCase();
+  final message =
+      (status['label'] as String? ??
+              status['message'] as String? ??
+              map['label'] as String? ??
+              map['message'] as String?)
+          ?.trim();
+  final looksAuth =
+      method == '_auth/status_update' ||
+      sessionUpdate.contains('auth') ||
+      map.containsKey('authStatus') ||
+      (message != null && message.toLowerCase().contains('not logged in'));
+  if (!looksAuth) return null;
+  const loggedInKinds = {
+    'account',
+    'api_key',
+    'gateway',
+    'external',
+    'logged_in',
+    'authenticated',
+    'ok',
+  };
+  return AcpAuthNotice(
+    loggedIn: loggedInKinds.contains(kind),
+    message: (message == null || message.isEmpty) ? null : message,
+  );
+}
+
 /// The user's reply to a held permission request: the card answer plus the
 /// chosen "always allow" option (whose payload carries the ACP optionId).
 typedef _PermissionReply = ({
@@ -322,15 +388,31 @@ class AcpAgentSession {
     _connection.sessionDisposed(this);
   }
 
+  /// Replays a `session/update` that arrived before this session object
+  /// existed (agent emits auth/commands during `session/new`).
+  void replayRawNotification(Map<String, Object?> params) =>
+      _onSessionUpdate(params);
+
+  /// Replays a parsed `_auth/status_update` that arrived during handshake.
+  void replayAuth(AcpAuthNotice notice) {
+    _connection.lastAuthNotice = notice;
+    _emit(notice);
+  }
+
   void _onSessionUpdate(Object? params) {
     if (_disposed) return;
     if (params is! Map) return;
+    final raw = Map<String, Object?>.from(params);
     final acpd.SessionUpdateNotification notification;
     try {
-      notification = acpd.SessionUpdateNotification.fromJson(
-        Map<String, Object?>.from(params),
-      );
+      notification = acpd.SessionUpdateNotification.fromJson(raw);
     } on Object catch (error, stackTrace) {
+      final notice = parseAcpAuthNotice(raw);
+      if (notice != null) {
+        _connection.lastAuthNotice = notice;
+        _emit(notice);
+        return;
+      }
       AppLogger.instance.w(
         'ACP: dropping malformed update: $error',
         stackTrace: stackTrace,

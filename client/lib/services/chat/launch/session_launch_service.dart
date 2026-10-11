@@ -18,6 +18,7 @@ import 'connect/member_connect_stage.dart';
 import 'connect/session_connect_executor.dart';
 import 'connect/session_connect_job.dart';
 import 'connect/session_connect_scheduler.dart';
+import 'connect/acp_launch_environment.dart';
 import 'connect/launch_generation_store.dart';
 import 'connect/session_personal_shell.dart';
 import 'connect/session_ssh_profile_reconnect.dart';
@@ -65,6 +66,8 @@ class SessionLaunchService
     required HomeStorage storage,
     this.onSessionTabOpened,
     LaunchGenerationStore? generations,
+    this.acpRuntimeFactory,
+    this.prepareAcpContribution,
   }) : _storage = storage,
        _generations = generations ?? LaunchGenerationStore();
 
@@ -81,6 +84,12 @@ class SessionLaunchService
     bool activate,
   })?
   onSessionTabOpened;
+
+  /// Test seam: skip the process-backed ACP runtime.
+  final AcpRuntimeFactory? acpRuntimeFactory;
+
+  /// Test seam: skip [SessionConnectOrchestrator.prepareSimpleConnect].
+  final AcpContributionEnvBuilder? prepareAcpContribution;
 
   static const _uuid = Uuid();
   SessionConnectScheduler? _connectScheduler;
@@ -113,9 +122,9 @@ class SessionLaunchService
 
   /// Terminal-less ACP branch: attach an [AcpChatRuntimeCubit] to the
   /// session's tab and spawn the ACP agent for `session.cli`.
-  /// No roster, no TeamBus, no shell connect — the chat center view is the
-  /// only view. Returns true once the job is fully handled, so the executor
-  /// skips every member/shell stage.
+  /// Runs the same simple `contributeLaunch` / `ensureLinked` path as PTY,
+  /// then skips roster, TeamBus, and the PTY shell. Returns true once the
+  /// job is fully handled.
   @override
   Future<bool> attachAcpRuntime(
     SessionConnectJob job,
@@ -134,16 +143,18 @@ class SessionLaunchService
       throw StateError('ACP session requires session.cli');
     }
     final logger = AcpFrameLogger();
-    final runtime = AcpSessionRuntime(
-      spawner: productionAcpSpawner(
-        registry: _h.cliRegistry,
-        tool: cli,
-        workingDirectory: _acpWorkingDirectory(session, job.workspace),
-        logger: logger,
-      ),
-      logger: logger,
-      launchPlanFor: acpLaunchPlanResolver(_h.cliRegistry),
-    );
+    final runtime =
+        acpRuntimeFactory?.call(logger: logger, tool: cli) ??
+        AcpSessionRuntime(
+          spawner: productionAcpSpawner(
+            registry: _h.cliRegistry,
+            tool: cli,
+            workingDirectory: _acpWorkingDirectory(session, job.workspace),
+            logger: logger,
+          ),
+          logger: logger,
+          launchPlanFor: acpLaunchPlanResolver(_h.cliRegistry),
+        );
     final cubit = AcpChatRuntimeCubit(
       runtime: runtime,
       sessionId: session.sessionId,
@@ -152,11 +163,14 @@ class SessionLaunchService
       transcript: _acpTranscriptFor(session),
     )..ensureStrings(_h.acpChatStrings?.call() ?? defaultAcpChatStrings);
     tab.acpRuntime = cubit;
+    // Rebuild the chat view with the cubit before the handshake so it
+    // never takes the PTY history/live-refresh path while waiting.
+    _h.updateTabRunning(tab.info.id);
     await cubit.start(
       executable: _h.shellFactory.executableFor(cli),
       sessionToolDir: _acpSessionToolDir(session, cli),
       workingDirectory: _acpWorkingDirectory(session, job.workspace),
-      baseEnv: _acpBaseEnv(),
+      baseEnv: await _acpLaunchEnv(session, job),
     );
     if (_h.isClosed) return true;
     _h.finishSessionConnect(session.sessionId);
@@ -173,7 +187,7 @@ class SessionLaunchService
   }
 
   /// Isolated config dir for the agent process: the session's runtime tool
-  /// dir (DefaultCliConfigLayout slot) on the home plane.
+  /// dir (`…/runtime/<cli>`), the same slot PTY sets as CLAUDE_CONFIG_DIR.
   String _acpSessionToolDir(AppSession session, CliTool cli) {
     return _storage.context.layout.sessionRuntimeToolDir(
       session.workspaceId,
@@ -182,9 +196,33 @@ class SessionLaunchService
     );
   }
 
-  Map<String, String> _acpBaseEnv() {
-    // Inherit the login-shell PATH so a locally installed ACP agent resolves.
-    return {'PATH': Platform.environment['PATH'] ?? ''};
+  Future<Map<String, String>> _acpLaunchEnv(
+    AppSession session,
+    SessionConnectJob job,
+  ) async {
+    final workspace = job.workspace ?? _workspaceById(session.workspaceId);
+    if (workspace == null) {
+      throw StateError('Simple session requires workspace');
+    }
+    final injected = prepareAcpContribution;
+    if (injected != null) {
+      return {
+        'PATH': Platform.environment['PATH'] ?? '',
+        ...await injected(session, workspace),
+      };
+    }
+    return prepareAcpLaunchEnvironment(
+      prepareSimpleConnect:
+          ({required session, required workspace, required launchTarget}) =>
+              _h.sessionConnect.prepareSimpleConnect(
+                session: session,
+                workspace: workspace,
+                launchTarget: launchTarget,
+              ),
+      session: session,
+      workspace: workspace,
+      launchTarget: _launchWorkTarget(session),
+    );
   }
 
   AcpChatTranscriptWriter? _acpTranscriptFor(AppSession session) {

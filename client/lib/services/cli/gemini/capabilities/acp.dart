@@ -46,10 +46,11 @@ final class GeminiAcpTranslator implements AcpAgentTranslator {
 /// Gemini's ACP launch/env declaration (part 2: capability).
 ///
 /// Launch probes `--acp` first, falling back to `--experimental-acp`
-/// (gemini-cli renamed the flag); the agent process gets an isolated
-/// `GEMINI_CONFIG_DIR` under the session tool dir, an injected
-/// `GEMINI_API_KEY` when [credentialSource] yields one, and
-/// `SURFACE=teampilot` for upstream telemetry attribution.
+/// (gemini-cli renamed the flag); the agent process gets
+/// `GEMINI_CONFIG_DIR` equal to the session tool dir (same slot as PTY
+/// `contributeLaunch`), an injected `GEMINI_API_KEY` when
+/// [credentialSource] yields one, and `SURFACE=teampilot` for upstream
+/// telemetry attribution.
 final class GeminiAcpCapability implements AcpCapability {
   const GeminiAcpCapability({AcpCredentialSource? credentialSource})
     : _credentialSource = credentialSource;
@@ -74,7 +75,9 @@ final class GeminiAcpCapability implements AcpCapability {
     Map<String, String> baseEnv = const {},
   }) {
     final env = Map<String, String>.of(baseEnv);
-    env['GEMINI_CONFIG_DIR'] = '$sessionToolDir/gemini';
+    // Same slot as PTY contributeLaunch: sessionRuntimeToolDir is already
+    // `…/runtime/gemini`, so do not nest another `/gemini`.
+    env['GEMINI_CONFIG_DIR'] = sessionToolDir;
     final key = _credentialSource?.call();
     if (key != null) {
       env['GEMINI_API_KEY'] = key;

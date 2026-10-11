@@ -9277,4 +9277,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get acpLaunchFailedAdapter =>
       'Could not start the Claude ACP adapter (claude-agent-acp). Install it and try again.';
+
+  @override
+  String get acpChatNotLoggedIn =>
+      'Claude isn\'t logged in. Sign in under Settings → Providers, or switch to a Claude API key.';
 }

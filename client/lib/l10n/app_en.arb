@@ -4637,5 +4637,6 @@
   "claudePersonalAcpDefaultDescription": "Run new personal Claude sessions as terminal-less ACP chat via claude-agent-acp. Existing sessions stay as they were started. Team sessions always use the terminal.",
   "claudePersonalAcpAndroidDisabled": "ACP chat is desktop-only until remote SSH exec is available.",
   "claudeAcpAdapterInstallButton": "Install ACP adapter",
-  "acpLaunchFailedAdapter": "Could not start the Claude ACP adapter (claude-agent-acp). Install it and try again."
+  "acpLaunchFailedAdapter": "Could not start the Claude ACP adapter (claude-agent-acp). Install it and try again.",
+  "acpChatNotLoggedIn": "Claude isn't logged in. Sign in under Settings → Providers, or switch to a Claude API key."
 }

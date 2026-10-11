@@ -56,7 +56,7 @@ void main() {
           .capability<AcpCapability>(CliTool.claude)!
           .buildEnvironment(sessionToolDir: '/s/tool', workingDirectory: '/w');
       expect(calls, 1);
-      expect(env['CLAUDE_CONFIG_DIR'], '/s/tool/claude');
+      expect(env['CLAUDE_CONFIG_DIR'], '/s/tool');
     });
 
     test('official provider yields official auth without key or token', () {
@@ -188,22 +188,22 @@ void main() {
       );
     });
 
-    test('missing or empty selected id returns null', () {
+    test('missing or empty selected id falls back to official', () {
       expect(
         pickClaudeAcpProvider(providers: providers, selectedId: null),
-        isNull,
+        same(official),
       );
       expect(
         pickClaudeAcpProvider(providers: providers, selectedId: ''),
-        isNull,
+        same(official),
       );
       expect(
         pickClaudeAcpProvider(providers: providers, selectedId: '  '),
-        isNull,
+        same(official),
       );
       expect(
         pickClaudeAcpProvider(providers: providers, selectedId: 'missing'),
-        isNull,
+        same(official),
       );
     });
   });

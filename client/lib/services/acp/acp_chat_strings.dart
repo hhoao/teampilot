@@ -18,6 +18,8 @@ const AcpChatStrings defaultAcpChatStrings = AcpChatStrings(
   launchFailed: 'Failed to start the agent',
   turnFailed: 'Turn failed',
   processExited: 'Agent process exited',
+  notLoggedIn:
+      "Claude isn't logged in. Sign in under Settings → Providers, or switch to a Claude API key.",
 );
 
 class AcpChatStrings {
@@ -27,6 +29,7 @@ class AcpChatStrings {
     required this.launchFailed,
     required this.turnFailed,
     required this.processExited,
+    required this.notLoggedIn,
   });
 
   /// [acpLaunchFailedVersion] copy: no ACP flag candidate produced a usable
@@ -46,4 +49,7 @@ class AcpChatStrings {
 
   /// Prefix for the agent process dying mid-session (`{exitCode}` appended).
   final String processExited;
+
+  /// Adapter reported the agent is unauthenticated (Official login missing).
+  final String notLoggedIn;
 }

@@ -16477,6 +16477,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not start the Claude ACP adapter (claude-agent-acp). Install it and try again.'**
   String get acpLaunchFailedAdapter;
+
+  /// No description provided for @acpChatNotLoggedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude isn\'t logged in. Sign in under Settings → Providers, or switch to a Claude API key.'**
+  String get acpChatNotLoggedIn;
 }
 
 class _AppLocalizationsDelegate

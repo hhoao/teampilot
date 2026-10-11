@@ -94,6 +94,26 @@ class AcpAgentConnection {
     _stderrSubscription = transport.stderr.listen(
       (chunk) => logger.logStderr(utf8.decode(chunk, allowMalformed: true)),
     );
+    // Claude's adapter emits `_auth/status_update` during `session/new`,
+    // before [AcpAgentSession] exists to listen for `session/update`.
+    _authRegistration = _client.connection.onNotification(
+      '_auth/status_update',
+      (params) {
+        if (params is! Map) return;
+        final notice = parseAcpAuthNotice(
+          Map<String, Object?>.from(params),
+          method: '_auth/status_update',
+        );
+        if (notice == null) return;
+        lastAuthNotice = notice;
+        final session = _openSession;
+        if (session == null) {
+          _pendingAuth.add(notice);
+        } else {
+          session.replayAuth(notice);
+        }
+      },
+    );
   }
 
   final AcpTransport _transport;
@@ -103,6 +123,9 @@ class AcpAgentConnection {
 
   late final acpd.ClientConnection _client;
   StreamSubscription<List<int>>? _stderrSubscription;
+  acpd.HandlerRegistration? _authRegistration;
+  final List<AcpAuthNotice> _pendingAuth = [];
+  AcpAuthNotice? lastAuthNotice;
   AcpNegotiatedCapabilities? _capabilities;
   bool _disposed = false;
 
@@ -165,15 +188,35 @@ class AcpAgentConnection {
         '(${existing.sessionId}); dispose it before opening another.',
       );
     }
-    final response = await _client.client.newSession(
-      acpd.NewSessionRequest(cwd: cwd, mcpServers: const []),
-    );
+    final earlyUpdates = <Map<String, Object?>>[];
+    final earlyUpdateReg = _client.connection.onNotification('session/update', (
+      params,
+    ) {
+      if (params is Map) {
+        earlyUpdates.add(Map<String, Object?>.from(params));
+      }
+    });
+    late final acpd.NewSessionResponse response;
+    try {
+      response = await _client.client.newSession(
+        acpd.NewSessionRequest(cwd: cwd, mcpServers: const []),
+      );
+    } finally {
+      earlyUpdateReg.dispose();
+    }
     final session = AcpAgentSession(
       connection: this,
       sessionId: response.sessionId,
       permissionTimeout: permissionTimeout,
     );
     _openSession = session;
+    for (final params in earlyUpdates) {
+      session.replayRawNotification(params);
+    }
+    for (final notice in _pendingAuth) {
+      session.replayAuth(notice);
+    }
+    _pendingAuth.clear();
     return session;
   }
 
@@ -226,6 +269,9 @@ class AcpAgentConnection {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    _authRegistration?.dispose();
+    _authRegistration = null;
+    _pendingAuth.clear();
     await _stderrSubscription?.cancel();
     await _client.close();
   }

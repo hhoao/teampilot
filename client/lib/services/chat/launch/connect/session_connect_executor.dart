@@ -42,10 +42,10 @@ abstract interface class SessionConnectPreparationPort {
   /// Releases a member materialization waiter when shell attachment fails.
   void markConnectFailed(SessionConnectJob job, String memberId);
 
-  /// Terminal-less ACP chat session (gemini phase 1): attach the ACP chat
-  /// runtime instead of a shell — no roster, no TeamBus, no shell connect.
-  /// Returns true when the job is fully handled and the executor must skip
-  /// every member/shell stage.
+  /// Terminal-less ACP chat session: attach the ACP chat runtime instead of
+  /// a shell. ContributeLaunch still runs inside attach; roster, TeamBus,
+  /// and PTY shell stages are skipped. Returns true when the job is fully
+  /// handled.
   Future<bool> attachAcpRuntime(SessionConnectJob job, AppSession session);
 
   TerminalSession shellForLaunch(
@@ -90,8 +90,8 @@ class SessionConnectExecutor implements SessionConnectExecutorPort {
       activeSession =
           await preparation.ensureReady(job, activeSession) ?? activeSession;
       if (!preparation.isValid(job)) return;
-      // Terminal-less ACP chat session: attach the ACP runtime and stop —
-      // there are no roster members and no shell to connect.
+      // Terminal-less ACP chat session: attach the ACP runtime (which runs
+      // the same simple contributeLaunch as PTY) and skip the PTY shell.
       if (isAcpChatSession(activeSession)) {
         final handled = await preparation.attachAcpRuntime(job, activeSession);
         if (handled) return;
