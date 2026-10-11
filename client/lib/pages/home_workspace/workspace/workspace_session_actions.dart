@@ -36,9 +36,11 @@ import '../../../utils/workspace/landing_draft_resolver.dart';
 import '../../../utils/team/team_member_naming.dart';
 import '../../../utils/logging/logger.dart';
 import '../../../utils/workspace/workspace_path_utils.dart';
+import '../../../services/chat/session/chat_tab.dart';
 import '../../chat/session_history_review_submit.dart';
 import '../home_workspace_route.dart';
 import 'claude_acp_launch_switch.dart';
+import 'workspace_landing_prompt_delivery.dart';
 
 const _uuid = Uuid();
 
@@ -559,7 +561,10 @@ Future<bool> submitWorkspaceLandingMessage(
       ? ''
       : (_teamLead(team, session: session)?.id ?? 'team-lead');
   FailedMessageRecord? pendingRecord;
-  if (!switchToTerminal) {
+  if (shouldPersistLandingHistoryPending(
+    switchToTerminal: switchToTerminal,
+    session: session,
+  )) {
     pendingRecord = await chatCubit.persistHistoryPending(
       workspaceId: liveWorkspace.workspaceId,
       sessionId: session.sessionId,
@@ -571,12 +576,60 @@ Future<bool> submitWorkspaceLandingMessage(
   return chatCubit.withCancellableOperatorDelivery(session.sessionId, (
     cancelled,
   ) async {
-    final connected = await _ensureLandingSessionConnected(
-      chatCubit: chatCubit,
-      session: session,
-      memberId: memberId,
-      aborted: cancelled,
-    );
+    late final bool connected;
+    late final bool delivered;
+    try {
+      if (isAcpChatSession(session)) {
+        // Queue sendPrompt as soon as the cubit is attached (before
+        // handshake). Waiting for connect first paints the CLI probe
+        // "not logged in" row, then replaces it with the user bubble.
+        final result = await queueAcpLandingPromptDuringConnect(
+          connect: _ensureLandingSessionConnected(
+            chatCubit: chatCubit,
+            session: session,
+            memberId: memberId,
+            aborted: cancelled,
+          ),
+          lookup: () => chatCubit.tabStore
+              .getOpenTabBySessionId(session.sessionId)
+              ?.acpRuntime,
+          cancelled: cancelled,
+          message: trimmed,
+        );
+        connected = result.connected;
+        delivered = result.queued;
+      } else {
+        connected = await _ensureLandingSessionConnected(
+          chatCubit: chatCubit,
+          session: session,
+          memberId: memberId,
+          aborted: cancelled,
+        );
+        delivered = false;
+      }
+    } on Object catch (error, stackTrace) {
+      if (pendingRecord != null) {
+        await chatCubit.markHistoryPendingFailed(
+          workspaceId: liveWorkspace.workspaceId,
+          sessionId: session.sessionId,
+          memberId: historyMemberId,
+          record: pendingRecord,
+        );
+      }
+      appLogger.e(
+        'submitWorkspaceLandingMessage',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (context.mounted) {
+        AppToast.show(
+          context,
+          message: '${l10n.homeWorkspaceNewConversation}: $error',
+          variant: TpToastVariant.error,
+        );
+      }
+      return false;
+    }
     if (cancelled()) {
       // Operator pressed Stop during launch: the message must never reach the
       // CLI. Mark the pending bubble failed (retryable) and exit silently —
@@ -618,15 +671,21 @@ Future<bool> submitWorkspaceLandingMessage(
       return false;
     }
 
+    if (delivered) {
+      // ACP prompt already queued on the cubit during handshake.
+      return true;
+    }
+
     try {
-      final deliveryId = await chatCubit.sessionRuntime
-          .deliverUserCommandToMember(
-            session.sessionId,
-            memberId,
-            trimmed,
-            directToPty: true,
-          );
-      if (deliveryId == null || deliveryId.trim().isEmpty) {
+      final ptyDelivered = await deliverWorkspaceLandingPrompt(
+        session: session,
+        acpRuntime: null,
+        memberId: memberId,
+        message: trimmed,
+        ptySubmit: (sid, mid, msg) => chatCubit.sessionRuntime
+            .deliverUserCommandToMember(sid, mid, msg, directToPty: true),
+      );
+      if (!ptyDelivered) {
         if (pendingRecord != null) {
           await chatCubit.markHistoryPendingFailed(
             workspaceId: liveWorkspace.workspaceId,
@@ -636,7 +695,7 @@ Future<bool> submitWorkspaceLandingMessage(
           );
         }
         appLogger.w(
-          'submitWorkspaceLandingMessage: terminal submit unconfirmed '
+          'submitWorkspaceLandingMessage: submit unconfirmed '
           'session=${session.sessionId} member=$memberId',
         );
         if (context.mounted) {

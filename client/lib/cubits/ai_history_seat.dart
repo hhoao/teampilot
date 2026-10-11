@@ -940,6 +940,9 @@ class AiHistorySeat extends Cubit<AiHistoryState> {
   /// Replace the seat with the ACP cubit's transcript (app-side single source).
   void adoptExternalMessages(List<AiMessage> messages) {
     if (isClosed) return;
+    // Cubit ids (`acp-u-<uuid>`) never match PTY pending ids (`pending:<uuid>`).
+    // Rematching a leftover landing overlay would paint a second user bubble.
+    _dropAllPendings(removePersisted: true);
     _cliMessages = List.unmodifiable(messages);
     final sessionId = state.sessionId ?? '';
     final memberId = state.memberId ?? '';
