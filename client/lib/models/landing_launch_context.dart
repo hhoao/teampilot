@@ -55,8 +55,8 @@ class LandingLaunchContext {
   /// Custom Simple launch effort tier.
   final String? effort;
 
-  /// Start this personal Claude session as ACP chat. Compose-only: it is not
-  /// persisted with the landing draft.
+  /// Start this personal Claude session as ACP chat. Seeded from CLI settings
+  /// at submit time; not persisted with the landing draft.
   final bool acp;
 
   LandingLaunchContext copyWith({

@@ -371,7 +371,7 @@ void main() {
 
     final tile = find.byKey(AppKeys.claudePersonalAcpSwitch);
     expect(tile, findsOneWidget);
-    expect(tester.widget<SwitchListTile>(tile).value, isFalse);
+    expect(tester.widget<SwitchListTile>(tile).value, isTrue);
     expect(find.text('Personal sessions use ACP chat'), findsOneWidget);
   });
 
@@ -386,12 +386,12 @@ void main() {
     await tester.tap(find.byKey(AppKeys.claudePersonalAcpSwitch));
     await tester.pump();
 
-    expect(cubit.state.preferences.claudePersonalAcpDefault, isTrue);
+    expect(cubit.state.preferences.claudePersonalAcpDefault, isFalse);
     expect(
       tester
           .widget<SwitchListTile>(find.byKey(AppKeys.claudePersonalAcpSwitch))
           .value,
-      isTrue,
+      isFalse,
     );
   });
 
@@ -415,7 +415,7 @@ void main() {
 
     await tester.tap(find.byKey(AppKeys.claudePersonalAcpSwitch));
     await tester.pump();
-    expect(cubit.state.preferences.claudePersonalAcpDefault, isFalse);
+    expect(cubit.state.preferences.claudePersonalAcpDefault, isTrue);
   });
 
   testWidgets(

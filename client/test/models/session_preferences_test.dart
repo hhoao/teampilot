@@ -91,17 +91,17 @@ void main() {
       );
     });
 
-    test('claudePersonalAcpDefault defaults false and round-trips', () {
-      expect(SessionPreferences().claudePersonalAcpDefault, isFalse);
+    test('claudePersonalAcpDefault defaults true and round-trips', () {
+      expect(SessionPreferences().claudePersonalAcpDefault, isTrue);
       expect(
         SessionPreferences.fromJson(const {}).claudePersonalAcpDefault,
-        isFalse,
-      );
-      final on = SessionPreferences(claudePersonalAcpDefault: true);
-      expect(on.toJson()['claudePersonalAcpDefault'], isTrue);
-      expect(
-        SessionPreferences.fromJson(on.toJson()).claudePersonalAcpDefault,
         isTrue,
+      );
+      final off = SessionPreferences(claudePersonalAcpDefault: false);
+      expect(off.toJson()['claudePersonalAcpDefault'], isFalse);
+      expect(
+        SessionPreferences.fromJson(off.toJson()).claudePersonalAcpDefault,
+        isFalse,
       );
     });
 

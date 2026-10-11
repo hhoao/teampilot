@@ -186,7 +186,6 @@ class AppKeys {
   static const claudeAcpAdapterInstallButton = Key(
     'claude-acp-adapter-install-button',
   );
-  static const claudeAcpLaunchSwitch = Key('claude-acp-launch-switch');
   static const codexCliExecutablePathField = Key(
     'codex-cli-executable-path-field',
   );

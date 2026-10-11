@@ -67,7 +67,7 @@ void main() {
   });
   tearDown(tearDownTestAppStorage);
 
-  Future<_MockSessionPreferencesCubit> pumpCompose(
+  Future<void> pumpCompose(
     WidgetTester tester, {
     required CliTool cli,
     required bool preferenceDefault,
@@ -150,7 +150,6 @@ void main() {
     );
     await tester.pump();
     await tester.pump();
-    return sessionPreferencesCubit;
   }
 
   Future<void> submit(WidgetTester tester) async {
@@ -163,42 +162,32 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('Claude preset shows the compose ACP switch', (tester) async {
+  testWidgets('Claude preset does not show a compose ACP switch', (
+    tester,
+  ) async {
     await pumpCompose(
       tester,
       cli: CliTool.claude,
-      preferenceDefault: false,
+      preferenceDefault: true,
       submitted: [],
     );
-    expect(find.byKey(AppKeys.claudeAcpLaunchSwitch), findsOneWidget);
+    expect(find.text('Personal sessions use ACP chat'), findsNothing);
+    expect(find.byKey(AppKeys.claudePersonalAcpSwitch), findsNothing);
   });
 
-  testWidgets('non-Claude preset hides the compose ACP switch', (tester) async {
+  testWidgets('non-Claude preset does not show a compose ACP switch', (
+    tester,
+  ) async {
     await pumpCompose(
       tester,
       cli: CliTool.codex,
       preferenceDefault: true,
       submitted: [],
     );
-    expect(find.byKey(AppKeys.claudeAcpLaunchSwitch), findsNothing);
+    expect(find.text('Personal sessions use ACP chat'), findsNothing);
   });
 
-  testWidgets('submit carries acp=false by default', (tester) async {
-    final submitted = <LandingLaunchContext>[];
-    await pumpCompose(
-      tester,
-      cli: CliTool.claude,
-      preferenceDefault: false,
-      submitted: submitted,
-    );
-    await submit(tester);
-    expect(submitted, hasLength(1));
-    expect(submitted.single.acp, isFalse);
-  });
-
-  testWidgets('compose switch initializes from the settings default', (
-    tester,
-  ) async {
+  testWidgets('submit uses the settings ACP default', (tester) async {
     final submitted = <LandingLaunchContext>[];
     await pumpCompose(
       tester,
@@ -206,30 +195,22 @@ void main() {
       preferenceDefault: true,
       submitted: submitted,
     );
-    expect(
-      tester
-          .widget<SwitchListTile>(find.byKey(AppKeys.claudeAcpLaunchSwitch))
-          .value,
-      isTrue,
-    );
     await submit(tester);
+    expect(submitted, hasLength(1));
     expect(submitted.single.acp, isTrue);
   });
 
-  testWidgets('flipping the compose switch sets acp without writing the pref', (
+  testWidgets('submit stays off when settings ACP default is off', (
     tester,
   ) async {
     final submitted = <LandingLaunchContext>[];
-    final prefs = await pumpCompose(
+    await pumpCompose(
       tester,
       cli: CliTool.claude,
       preferenceDefault: false,
       submitted: submitted,
     );
-    await tester.tap(find.byKey(AppKeys.claudeAcpLaunchSwitch));
-    await tester.pump();
     await submit(tester);
-    expect(submitted.single.acp, isTrue);
-    verifyNever(() => prefs.setClaudePersonalAcpDefault(any()));
+    expect(submitted.single.acp, isFalse);
   });
 }

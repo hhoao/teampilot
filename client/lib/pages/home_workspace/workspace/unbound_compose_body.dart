@@ -131,8 +131,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   String? _selectedTeamId;
   String? _selectedExpertKey;
 
-  /// This compose's ACP choice; null follows the settings default.
-  bool? _composeAcpOverride;
   var _voiceListening = false;
   var _voiceSoundLevel = 0.0;
   var _discardVoiceTranscript = false;
@@ -923,7 +921,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       acp: resolveLaunchAcp(
         isPersonal: isSimple,
         cli: launchCli,
-        requested: _composeAcpOverride ?? readClaudePersonalAcpDefault(context),
+        requested: readClaudePersonalAcpDefault(context),
       ),
       generateLaunch: !isSimple && _generateLaunch,
       presetId: _selectedPresetId,
@@ -1695,32 +1693,20 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         remoteCliMissing != null &&
         remoteCliMissing.isNotEmpty &&
         remoteCliReadiness != null;
-    final showAcpSwitch = claudeAcpLaunchSwitchVisible(
-      isPersonal: isSimple,
-      cli: cli,
-    );
 
     Widget composeSection = composeCard;
-    if (showRemotePanel || showAcpSwitch) {
+    if (showRemotePanel) {
       composeSection = Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           composeCard,
-          if (showAcpSwitch)
-            ClaudeAcpLaunchSwitch(
-              cli: cli,
-              isPersonal: isSimple,
-              localOverride: _composeAcpOverride,
-              onChanged: (value) => setState(() => _composeAcpOverride = value),
-            ),
-          if (showRemotePanel)
-            RemoteCliMachineReadinessPanel(
-              fixedRequirements: remoteCliMissing,
-              selectableTargets: _runtimeTargets,
-              readiness: remoteCliReadiness,
-              onReadinessChanged: _scheduleTeamLaunchReadinessCheck,
-            ),
+          RemoteCliMachineReadinessPanel(
+            fixedRequirements: remoteCliMissing,
+            selectableTargets: _runtimeTargets,
+            readiness: remoteCliReadiness,
+            onReadinessChanged: _scheduleTeamLaunchReadinessCheck,
+          ),
         ],
       );
     }
