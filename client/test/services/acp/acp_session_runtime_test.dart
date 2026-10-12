@@ -411,6 +411,11 @@ void main() {
     expect(outcome, isA<acpd.PermissionSelected>());
   });
 
+  test('cancel before start does not throw', () {
+    final runtime = makeRuntime((argv, env) async => conn);
+    expect(() => runtime.cancel(), returnsNormally);
+  });
+
   test('delegates cancel; close disposes the connection', () async {
     final cancelReceived = Completer<void>();
     agent.connection.onNotification('session/cancel', (params) {

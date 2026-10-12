@@ -345,8 +345,10 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
       _session!.answerPlan(reply);
 
   /// Cancels the current prompt turn.
+  ///
+  /// No-op when called before [start] opens a session.
   @override
-  void cancel() => _session!.cancel();
+  void cancel() => _session?.cancel();
 
   /// Disposes the open session (if any) and the agent connection (if any).
   ///
