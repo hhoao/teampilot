@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -2525,6 +2526,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get terminalFindNoResults => '无匹配';
+
+  @override
+  String get terminalClear => '清除终端';
 
   @override
   String get terminalDropCrossMachineRejected => '无法将本地文件拖入远程终端';
