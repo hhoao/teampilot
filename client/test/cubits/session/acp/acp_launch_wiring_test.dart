@@ -52,18 +52,15 @@ class _NoopTranslator implements AcpAgentTranslator {
 }
 
 void main() {
-  test('spawnAuthenticateMethodId uses resolver not the declared getter', () async {
-    final cap = _FixedAuthCapability('cursor_login');
-    expect(
-      await spawnAuthenticateMethodId(cap, {'FORCE_SKIP': '1'}),
-      isNull,
-    );
-    expect(
-      await spawnAuthenticateMethodId(cap, const {}),
-      'cursor_login',
-    );
-    expect(await spawnAuthenticateMethodId(null, const {}), isNull);
-  });
+  test(
+    'spawnAuthenticateMethodId uses resolver not the declared getter',
+    () async {
+      final cap = _FixedAuthCapability('cursor_login');
+      expect(await spawnAuthenticateMethodId(cap, {'FORCE_SKIP': '1'}), isNull);
+      expect(await spawnAuthenticateMethodId(cap, const {}), 'cursor_login');
+      expect(await spawnAuthenticateMethodId(null, const {}), isNull);
+    },
+  );
 
   test(
     'process exit during authenticate is AcpAuthenticateException, not a flag reject',
