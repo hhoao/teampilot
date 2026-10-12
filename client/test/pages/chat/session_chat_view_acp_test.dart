@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:acpd/acpd.dart' as acpd;
 import 'package:ai_message_core/ai_message_core.dart'
     show
         AiAskUserOption,
@@ -120,6 +121,7 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
     required String sessionToolDir,
     required String workingDirectory,
     Map<String, String> baseEnv = const {},
+    List<acpd.McpServer> mcpServers = const [],
   }) async {}
 
   @override

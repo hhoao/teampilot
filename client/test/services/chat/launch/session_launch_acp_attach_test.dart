@@ -1,3 +1,4 @@
+import 'package:acpd/acpd.dart' as acpd;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -262,6 +263,7 @@ class _RecordingAcpRuntime implements AcpSessionRuntimeApi {
     required String sessionToolDir,
     required String workingDirectory,
     Map<String, String> baseEnv = const {},
+    List<acpd.McpServer> mcpServers = const [],
   }) async {
     started = true;
     this.baseEnv = baseEnv;

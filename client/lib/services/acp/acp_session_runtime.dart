@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:acpd/acpd.dart' as acpd;
+
 import '../../models/team_config.dart';
 import '../../utils/logging/logger_utils.dart';
 import '../agent_status/agent_permission_request.dart';
@@ -125,12 +127,15 @@ abstract interface class AcpSessionRuntimeApi {
   String get sessionId;
 
   /// Spawns the agent process and opens the ACP session.
+  ///
+  /// [mcpServers] is forwarded to `session/new`. Personal callers omit it.
   Future<void> start({
     required CliTool tool,
     required String executable,
     required String sessionToolDir,
     required String workingDirectory,
     Map<String, String> baseEnv = const {},
+    List<acpd.McpServer> mcpServers = const [],
   });
 
   /// Sends one prompt turn; resolves once the turn's stop event is emitted.
@@ -219,7 +224,8 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
   /// Resolves the launch plan for [tool] (throws [ArgumentError] when the CLI
   /// declares no ACP capability), builds the agent environment, probes the
   /// flag candidates in order, and opens the session with
-  /// `cwd = workingDirectory`. Throws [StateError] when a session is already
+  /// `cwd = workingDirectory`. [mcpServers] is forwarded to `session/new`
+  /// (empty when omitted). Throws [StateError] when a session is already
   /// open — this runtime is one-shot; [close] first.
   @override
   Future<void> start({
@@ -228,6 +234,7 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
     required String sessionToolDir,
     required String workingDirectory,
     Map<String, String> baseEnv = const {},
+    List<acpd.McpServer> mcpServers = const [],
   }) async {
     if (_session != null) {
       throw StateError(
@@ -249,7 +256,10 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
       AcpAgentConnection? connection;
       try {
         connection = await _spawner(argv, env);
-        final session = await connection.openSession(cwd: workingDirectory);
+        final session = await connection.openSession(
+          cwd: workingDirectory,
+          mcpServers: mcpServers,
+        );
         _connection = connection;
         _session = session;
         return;

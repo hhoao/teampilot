@@ -276,6 +276,33 @@ void main() {
     ]);
   });
 
+  test('openSession records mcpServers on session/new', () async {
+    acpd.NewSessionRequest? seenNew;
+    agent.connection.onRequest('session/new', (params) {
+      seenNew = acpd.NewSessionRequest.fromJson(
+        (params! as Map).cast<String, Object?>(),
+      );
+      return acpd.NewSessionResponse(sessionId: sessionId).toJson();
+    });
+
+    session = await conn.openSession(
+      cwd: cwd,
+      mcpServers: const [
+        acpd.McpServerStdio(
+          name: 'teammate-bus',
+          command: '/bin/bridge',
+          args: ['--bus-url', 'http://x'],
+        ),
+      ],
+    );
+
+    expect(seenNew!.mcpServers, hasLength(1));
+    final server = seenNew!.mcpServers.single as acpd.McpServerStdio;
+    expect(server.name, 'teammate-bus');
+    expect(server.command, '/bin/bridge');
+    expect(server.args, ['--bus-url', 'http://x']);
+  });
+
   test('maps thought, tool call, and plan updates', () async {
     scriptPrompt(() {
       agentCtx.sessionUpdate(

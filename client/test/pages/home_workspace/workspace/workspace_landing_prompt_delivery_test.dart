@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:acpd/acpd.dart' as acpd;
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/session/acp/acp_chat_runtime_cubit.dart';
@@ -204,6 +205,7 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
     required String sessionToolDir,
     required String workingDirectory,
     Map<String, String> baseEnv = const {},
+    List<acpd.McpServer> mcpServers = const [],
   }) async {
     started = true;
   }

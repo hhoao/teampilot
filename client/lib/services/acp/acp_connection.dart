@@ -172,14 +172,15 @@ class AcpAgentConnection {
 
   /// Creates a new ACP session via `session/new` for [cwd].
   ///
-  /// MCP servers are per-session in ACP and TeamPilot registers none, so the
-  /// request always passes an explicit empty list. [permissionTimeout] bounds
-  /// how long the session's permission hold waits before auto-rejecting.
+  /// MCP servers are per-session in ACP. [mcpServers] is sent on the request;
+  /// personal callers omit it and the list stays empty. [permissionTimeout]
+  /// bounds how long the session's permission hold waits before auto-rejecting.
   ///
   /// Throws [StateError] when this connection already has an open session;
   /// dispose it first (its [AcpAgentSession.dispose] releases the slot).
   Future<AcpAgentSession> openSession({
     required String cwd,
+    List<acpd.McpServer> mcpServers = const [],
     Duration permissionTimeout = AcpAgentSession.defaultPermissionTimeout,
   }) async {
     final existing = _openSession;
@@ -200,7 +201,7 @@ class AcpAgentConnection {
     late final acpd.NewSessionResponse response;
     try {
       response = await _client.client.newSession(
-        acpd.NewSessionRequest(cwd: cwd, mcpServers: const []),
+        acpd.NewSessionRequest(cwd: cwd, mcpServers: mcpServers),
       );
     } finally {
       earlyUpdateReg.dispose();

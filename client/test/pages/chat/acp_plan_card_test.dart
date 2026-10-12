@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:acpd/acpd.dart' as acpd;
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -34,6 +35,7 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
     required String sessionToolDir,
     required String workingDirectory,
     Map<String, String> baseEnv = const {},
+    List<acpd.McpServer> mcpServers = const [],
   }) async {}
 
   @override

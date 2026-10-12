@@ -128,9 +128,43 @@ void main() {
 
       // The session was opened on the surviving candidate with cwd set.
       expect(seenNew!.cwd, cwd);
+      expect(seenNew!.mcpServers, isEmpty);
       await runtime.close();
     },
   );
+
+  test('start forwards mcpServers to session/new', () async {
+    acpd.NewSessionRequest? seenNew;
+    agent.connection.onRequest('session/new', (params) {
+      seenNew = acpd.NewSessionRequest.fromJson(
+        (params! as Map).cast<String, Object?>(),
+      );
+      return acpd.NewSessionResponse(sessionId: sessionId).toJson();
+    });
+
+    const servers = [
+      acpd.McpServerStdio(
+        name: 'teammate-bus',
+        command: '/bin/bridge',
+        args: ['--bus-url', 'http://x'],
+      ),
+    ];
+    final runtime = makeRuntime((argv, env) async => conn);
+    await runtime.start(
+      tool: CliTool.gemini,
+      executable: 'gemini',
+      sessionToolDir: sessionToolDir,
+      workingDirectory: cwd,
+      mcpServers: servers,
+    );
+
+    expect(seenNew!.mcpServers, hasLength(1));
+    final server = seenNew!.mcpServers.single as acpd.McpServerStdio;
+    expect(server.name, 'teammate-bus');
+    expect(server.command, '/bin/bridge');
+    expect(server.args, ['--bus-url', 'http://x']);
+    await runtime.close();
+  });
 
   test(
     'all candidates rejected → AcpLaunchException carrying the version key',
