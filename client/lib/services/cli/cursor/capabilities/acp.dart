@@ -1,7 +1,11 @@
 import 'package:acpd/acpd.dart';
 
 import '../../../acp/acp_agent_translator.dart';
+import '../../../io/filesystem.dart';
+import '../../../io/local_filesystem.dart';
 import '../../registry/capabilities/acp_capability.dart';
+import '../provider/cursor_auth_artifacts.dart';
+import '../provider/cursor_home_layout.dart';
 
 final class CursorAcpTranslator implements AcpAgentTranslator {
   const CursorAcpTranslator();
@@ -32,7 +36,10 @@ final class CursorAcpTranslator implements AcpAgentTranslator {
 }
 
 final class CursorAcpCapability implements AcpCapability {
-  const CursorAcpCapability();
+  const CursorAcpCapability({this.fs, this.platform});
+
+  final Filesystem? fs;
+  final CursorHomePlatform? platform;
 
   @override
   String agentExecutable(String cliExecutable) => cliExecutable;
@@ -44,6 +51,23 @@ final class CursorAcpCapability implements AcpCapability {
 
   @override
   String? get authenticateMethodId => 'cursor_login';
+
+  @override
+  Future<String?> resolveAuthenticateMethodId(Map<String, String> env) async {
+    final home = (env['HOME'] ?? env['USERPROFILE'] ?? '').trim();
+    if (home.isEmpty) return authenticateMethodId;
+    final filesystem = fs ?? LocalFilesystem();
+    final layout = CursorHomeLayout(
+      pathContext: filesystem.pathContext,
+      platform: platform,
+    );
+    final content = await filesystem.readString(layout.authJson(home));
+    if (content != null &&
+        CursorAuthArtifacts.authJsonIndicatesLoggedIn(content)) {
+      return null;
+    }
+    return authenticateMethodId;
+  }
 
   @override
   AcpAgentTranslator get translator => const CursorAcpTranslator();

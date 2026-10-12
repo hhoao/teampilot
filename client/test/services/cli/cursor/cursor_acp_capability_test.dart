@@ -1,6 +1,22 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/cursor/capabilities/acp.dart';
+import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_launch_environment.dart';
+import 'package:teampilot/services/io/filesystem.dart';
+
+import '../../../support/in_memory_filesystem.dart';
+
+const _loggedInAuth = '{"accessToken":"at1","refreshToken":"rt1"}';
+const _loggedOutAuth = '{"accessToken":"","refreshToken":""}';
+
+CursorAcpCapability _linuxCap(Filesystem fs) => CursorAcpCapability(
+  fs: fs,
+  platform: CursorHomePlatform.linux,
+);
+
+String _linuxAuthPath(String home) =>
+    CursorHomeLayout(platform: CursorHomePlatform.linux).authJson(home);
 
 void main() {
   test('launchArgCandidates is cursor-agent acp', () {
@@ -56,5 +72,63 @@ void main() {
       'cursor/generate_image',
     ]);
     expect(cap.translator.flagCandidates, isEmpty);
+  });
+
+  test('resolveAuthenticateMethodId skips cursor_login when auth.json has tokens',
+      () async {
+    final fs = InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix));
+    const home = '/iso/home';
+    await fs.writeString(_linuxAuthPath(home), _loggedInAuth);
+    final cap = _linuxCap(fs);
+    expect(cap.authenticateMethodId, 'cursor_login');
+    expect(
+      await cap.resolveAuthenticateMethodId({'HOME': home}),
+      isNull,
+    );
+  });
+
+  test('resolveAuthenticateMethodId sends cursor_login when auth.json is missing',
+      () async {
+    final fs = InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix));
+    final cap = _linuxCap(fs);
+    expect(
+      await cap.resolveAuthenticateMethodId({'HOME': '/iso/home'}),
+      'cursor_login',
+    );
+  });
+
+  test('resolveAuthenticateMethodId sends cursor_login when tokens are empty',
+      () async {
+    final fs = InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix));
+    const home = '/iso/home';
+    await fs.writeString(_linuxAuthPath(home), _loggedOutAuth);
+    final cap = _linuxCap(fs);
+    expect(
+      await cap.resolveAuthenticateMethodId({'HOME': home}),
+      'cursor_login',
+    );
+  });
+
+  test('resolveAuthenticateMethodId sends cursor_login when HOME is empty',
+      () async {
+    final fs = InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix));
+    final cap = _linuxCap(fs);
+    expect(await cap.resolveAuthenticateMethodId(const {}), 'cursor_login');
+    expect(
+      await cap.resolveAuthenticateMethodId({'HOME': '  '}),
+      'cursor_login',
+    );
+  });
+
+  test('resolveAuthenticateMethodId falls back to USERPROFILE when HOME is absent',
+      () async {
+    final fs = InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix));
+    const home = '/iso/home';
+    await fs.writeString(_linuxAuthPath(home), _loggedInAuth);
+    final cap = _linuxCap(fs);
+    expect(
+      await cap.resolveAuthenticateMethodId({'USERPROFILE': home}),
+      isNull,
+    );
   });
 }

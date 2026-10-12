@@ -24,6 +24,12 @@ abstract interface class AcpCapability implements CliCapability {
   /// ACP `authenticate` methodId after initialize, or null to skip.
   String? get authenticateMethodId;
 
+  /// Spawn-time authenticate method. Default: [authenticateMethodId].
+  ///
+  /// Cursor returns null when isolated-home `auth.json` already has tokens.
+  Future<String?> resolveAuthenticateMethodId(Map<String, String> env) async =>
+      authenticateMethodId;
+
   /// Env for the agent process: [baseEnv] preserved plus isolated config
   /// dir, injected credentials, and surface identification.
   Map<String, String> buildEnvironment({

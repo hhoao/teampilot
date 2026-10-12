@@ -83,6 +83,10 @@ final class ClaudeAcpCapability implements AcpCapability {
   String? get authenticateMethodId => null;
 
   @override
+  Future<String?> resolveAuthenticateMethodId(Map<String, String> env) async =>
+      authenticateMethodId;
+
+  @override
   Map<String, String> buildEnvironment({
     required String sessionToolDir,
     required String workingDirectory,
