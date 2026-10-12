@@ -72,6 +72,25 @@ void main() {
     expect(events, contains('connect-shell'));
   });
 
+  test('simple codex acp session attaches ACP and skips shell stages', () async {
+    job = _job(cli: CliTool.codex, acp: true, simple: true);
+
+    await executor.execute(job);
+
+    expect(events, <String>['persist', 'ensure-ready', 'attach-acp']);
+    expect(events, isNot(contains('resolve-member')));
+    expect(shellConnector.connectCalls, 0);
+  });
+
+  test('simple codex PTY session falls through to the shell', () async {
+    job = _job(cli: CliTool.codex, acp: false, simple: true);
+
+    await executor.execute(job);
+
+    expect(events, contains('resolve-member'));
+    expect(events, contains('connect-shell'));
+  });
+
   test('executor reports the attachment result after connect', () async {
     final results = <ConnectShellResult>[];
     executor = SessionConnectExecutor(
