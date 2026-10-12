@@ -38,6 +38,7 @@ AcpLaunchPlan? capabilityToPlan(AcpCapability? capability) {
           baseEnv: baseEnv,
         ),
     agentExecutable: capability.agentExecutable,
+    authenticateMethodId: capability.authenticateMethodId,
   );
 }
 
@@ -92,6 +93,9 @@ AcpConnectionSpawner productionAcpSpawner({
         clientName: clientName,
         clientVersion: clientVersion,
         timeout: handshakeTimeout,
+        authenticateMethodId: registry
+            .capability<AcpCapability>(tool)
+            ?.authenticateMethodId,
       );
       final winner = await Future.any([
         handshake.then((_) => const _HandshakeDone()),

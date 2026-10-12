@@ -149,6 +149,53 @@ void main() {
     // Dispose is idempotent.
     await conn.dispose();
   });
+
+  test('initialize skips authenticate when methodId is null', () async {
+    var authenticated = false;
+    stubInitialize();
+    agent.connection.onRequest('authenticate', (params) {
+      authenticated = true;
+      return const acpd.AuthenticateResponse().toJson();
+    });
+
+    await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
+    expect(authenticated, isFalse);
+  });
+
+  test('initialize sends authenticate when methodId is set', () async {
+    String? methodId;
+    stubInitialize();
+    agent.connection.onRequest('authenticate', (params) {
+      methodId = (params! as Map)['methodId'] as String?;
+      return const acpd.AuthenticateResponse().toJson();
+    });
+
+    await conn.initialize(
+      clientName: 'teampilot',
+      clientVersion: '1.0.0',
+      authenticateMethodId: 'cursor_login',
+    );
+    expect(methodId, 'cursor_login');
+  });
+
+  test('initialize fails when authenticate errors', () async {
+    stubInitialize();
+    agent.connection.onRequest('authenticate', (params) {
+      throw acpd.RpcError(
+        code: acpd.ErrorCode.internalError.code,
+        message: 'not logged in',
+      );
+    });
+
+    await expectLater(
+      conn.initialize(
+        clientName: 'teampilot',
+        clientVersion: '1.0.0',
+        authenticateMethodId: 'cursor_login',
+      ),
+      throwsA(isA<acpd.RpcError>()),
+    );
+  });
 }
 
 /// Bridges an acpd_test in-memory transport into our byte-pipe [AcpTransport].

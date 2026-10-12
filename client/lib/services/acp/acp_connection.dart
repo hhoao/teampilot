@@ -234,6 +234,7 @@ class AcpAgentConnection {
     required String clientName,
     required String clientVersion,
     Duration timeout = const Duration(seconds: 30),
+    String? authenticateMethodId,
   }) async {
     final response = await _client.client.initialize(
       acpd.InitializeRequest(
@@ -255,6 +256,12 @@ class AcpAgentConnection {
     _capabilities = AcpNegotiatedCapabilities.fromAgentCapabilities(
       response.agentCapabilities,
     );
+    if (authenticateMethodId != null) {
+      await _client.client.authenticate(
+        acpd.AuthenticateRequest(methodId: authenticateMethodId),
+        timeout: timeout,
+      );
+    }
     return AcpInitializeResult(
       protocolVersion: response.protocolVersion.value,
       agentName: response.agentInfo?.name,

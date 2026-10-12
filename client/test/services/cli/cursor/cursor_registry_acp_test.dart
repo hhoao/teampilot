@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/session/acp/acp_launch_wiring.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cursor/capabilities/acp.dart';
 import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
@@ -16,5 +17,6 @@ void main() {
       ['/usr/bin/cursor-agent', 'acp'],
     ]);
     expect(cap.authenticateMethodId, 'cursor_login');
+    expect(capabilityToPlan(cap)!.authenticateMethodId, 'cursor_login');
   });
 }

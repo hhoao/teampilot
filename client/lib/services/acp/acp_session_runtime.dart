@@ -48,6 +48,7 @@ class AcpLaunchPlan {
     required this.launchArgCandidates,
     required this.buildEnvironment,
     required this.agentExecutable,
+    this.authenticateMethodId,
   });
 
   /// Full argv candidates (executable + one ACP flag each), probe order.
@@ -63,6 +64,12 @@ class AcpLaunchPlan {
 
   /// Binary that speaks ACP on stdio, mapped from the CLI executable.
   final String Function(String cliExecutable) agentExecutable;
+
+  /// ACP `authenticate` method id to send after initialize, if any.
+  ///
+  /// Cursor sets `cursor_login`; Gemini and Claude leave this null so the
+  /// handshake stays initialize-only.
+  final String? authenticateMethodId;
 }
 
 /// The spawner reported that the candidate flag was rejected: the agent
