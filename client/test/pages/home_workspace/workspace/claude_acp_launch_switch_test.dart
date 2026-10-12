@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/pages/home_workspace/workspace/claude_acp_launch_switch.dart';
@@ -148,6 +150,79 @@ void main() {
         isAndroidOverride: true,
       );
       expect(request.acp, isFalse);
+    });
+  });
+
+  group('resolveMemberBindingAcp', () {
+    test('mixed local Claude/Codex follow requested; Gemini always', () {
+      bool resolve({
+        CliTool? cli = CliTool.claude,
+        TeamMode mode = TeamMode.mixed,
+        String target = 'local',
+        bool requested = true,
+        bool android = false,
+      }) => resolveMemberBindingAcp(
+        cli: cli,
+        teamMode: mode,
+        targetId: target,
+        requested: requested,
+        isAndroidOverride: android,
+      );
+
+      expect(resolve(), isTrue);
+      expect(resolve(requested: false), isFalse);
+      expect(resolve(cli: CliTool.codex), isTrue);
+      expect(resolve(cli: CliTool.gemini, requested: false), isTrue);
+      expect(resolve(cli: CliTool.opencode), isFalse);
+      expect(resolve(mode: TeamMode.native), isFalse);
+      expect(resolve(target: 'ssh:prod'), isFalse);
+      expect(resolve(target: 'wsl:ubuntu'), isFalse);
+      expect(resolve(android: true), isFalse);
+    });
+  });
+
+  group('shouldAttachMemberAcp', () {
+    test('false when binding true but target is ssh', () {
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        createdAt: 1,
+        sessionTeam: 't1',
+        members: const [
+          SessionMemberBinding(
+            rosterMemberId: 'lead',
+            taskId: 't',
+            cli: CliTool.claude,
+            acp: true,
+          ),
+        ],
+      );
+      const team = TeamProfile(
+        id: 't1',
+        name: 'T',
+        teamMode: TeamMode.mixed,
+        members: [TeamMemberConfig(id: 'lead', name: 'Lead')],
+      );
+      expect(
+        shouldAttachMemberAcp(
+          session: session,
+          memberId: 'lead',
+          team: team,
+          targetId: 'ssh:prod',
+          isAndroidOverride: false,
+        ),
+        isFalse,
+      );
+      expect(
+        shouldAttachMemberAcp(
+          session: session,
+          memberId: 'lead',
+          team: team,
+          targetId: 'local',
+          isAndroidOverride: false,
+        ),
+        isTrue,
+      );
     });
   });
 }
