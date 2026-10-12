@@ -1,7 +1,11 @@
 import 'dart:async';
 
 import 'package:ai_message_core/ai_message_core.dart'
-    show AiMessage, ExternalStoreAiThreadRuntime;
+    show
+        AiAskUserOption,
+        AiAskUserQuestion,
+        AiMessage,
+        ExternalStoreAiThreadRuntime;
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -32,6 +36,7 @@ import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
+import 'package:teampilot/pages/chat/acp_ask_card.dart';
 import 'package:teampilot/pages/chat/acp_permission_card.dart';
 import 'package:teampilot/pages/chat/history_continue_delivery.dart';
 import 'package:teampilot/pages/chat/operator_history_send.dart'
@@ -100,9 +105,12 @@ class _FakeFailedMessageStore extends Fake implements FailedMessageStore {}
 class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   final permissionsController =
       StreamController<AgentPermissionRequest>.broadcast();
+  final clientRequestsController =
+      StreamController<AcpPendingClientRequest>.broadcast();
 
   ({AgentPermissionReplyKind kind, AgentPermissionAlwaysOption? always})?
   lastAnswer;
+  AcpAskHoldReply? lastAsk;
 
   @override
   Future<void> start({
@@ -130,7 +138,8 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
       permissionsController.stream;
 
   @override
-  Stream<AcpPendingClientRequest> get clientRequests => const Stream.empty();
+  Stream<AcpPendingClientRequest> get clientRequests =>
+      clientRequestsController.stream;
 
   @override
   AcpAuthNotice? get lastAuthNotice => null;
@@ -148,7 +157,9 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   }
 
   @override
-  Future<void> answerAsk(AcpAskHoldReply reply) async {}
+  Future<void> answerAsk(AcpAskHoldReply reply) async {
+    lastAsk = reply;
+  }
 
   @override
   Future<void> answerPlan(AcpPlanHoldReply reply) async {}
@@ -414,6 +425,7 @@ void main() {
       addTearDown(() async {
         await cubit.close();
         await runtime.permissionsController.close();
+        await runtime.clientRequestsController.close();
       });
 
       // Cubit lifecycle (start + stream delivery) needs the real event loop
@@ -505,6 +517,7 @@ void main() {
     addTearDown(() async {
       await cubit.close();
       await runtime.permissionsController.close();
+      await runtime.clientRequestsController.close();
     });
 
     await tester.runAsync(() async {
@@ -532,5 +545,67 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(runtime.cancelled, isTrue);
+  });
+
+  testWidgets('ACP chat view renders the ask card through the compose slot', (
+    tester,
+  ) async {
+    final runtime = _FakeAcpRuntime();
+    final cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: 's1',
+      tool: CliTool.gemini,
+    );
+    addTearDown(() async {
+      await cubit.close();
+      await runtime.permissionsController.close();
+      await runtime.clientRequestsController.close();
+    });
+
+    await tester.runAsync(() async {
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+    });
+
+    await pumpSession(tester, session: session('s1'), acpRuntime: cubit);
+    expect(tester.takeException(), isNull);
+
+    const questions = [
+      AiAskUserQuestion(
+        question: 'Pick a color?',
+        options: [
+          AiAskUserOption(label: 'Red'),
+          AiAskUserOption(label: 'Blue'),
+        ],
+      ),
+    ];
+    await tester.runAsync(() async {
+      runtime.clientRequestsController.add(
+        const AcpPendingAsk(questions: questions, toolCallId: 'ask-1'),
+      );
+      await Future<void>.delayed(Duration.zero);
+    });
+    expect(cubit.state.pendingClient, isA<AcpPendingAsk>());
+    await tester.pump();
+
+    expect(find.byType(AcpAskCard), findsOneWidget);
+    expect(find.byKey(AiAskUserQuestionCard.cardKey), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(
+        AiAskUserQuestionCard.optionKey(questionIndex: 0, optionIndex: 0),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(AiAskUserQuestionCard.submitButtonKey));
+    await tester.pumpAndSettle();
+
+    expect(runtime.lastAsk?.skipped, isFalse);
+    expect(runtime.lastAsk?.submission?.optionIndices, [0]);
+    expect(cubit.state.pendingClient, isNull);
+    expect(find.byType(AcpAskCard), findsNothing);
   });
 }

@@ -25,7 +25,7 @@ import '../../models/skill.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../repositories/session_repository.dart';
-import '../../services/agent_status/agent_permission_request.dart';
+import '../../services/acp/acp_client_extensions.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/native_command_capability.dart';
 import '../../services/cli/registry/capabilities/skill_capability.dart';
@@ -57,7 +57,9 @@ import '../../widgets/follow_up/follow_up_queue_strip.dart';
 import '../home_workspace/workspace/config/cli_preset_edit_dialog.dart';
 import '../home_workspace/workspace/config/cli_presets_manage_dialog.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
+import 'acp_ask_card.dart';
 import 'acp_permission_card.dart';
+import 'acp_plan_card.dart';
 import 'agent_permission_attention_banner.dart';
 import 'compose_stop_visibility.dart';
 import 'session_seat_working.dart';
@@ -183,18 +185,14 @@ class SessionChatComposeSection extends StatelessWidget {
     // session).
     final acpPending = acpRuntime == null
         ? null
-        : seatSelect<AcpChatRuntimeCubit, AgentPermissionRequest?>(
+        : seatSelect<AcpChatRuntimeCubit, AcpPendingClientRequest?>(
             context,
-            (c) => c.state.pendingPermission,
+            (c) => c.state.pendingClient,
           );
     final acpPermissionWaiting = acpPending != null;
-    final acpTurnInFlight =
-        acpRuntime == null
-            ? false
-            : seatSelect<AcpChatRuntimeCubit, bool>(
-                context,
-                (c) => c.state.inTurn,
-              );
+    final acpTurnInFlight = acpRuntime == null
+        ? false
+        : seatSelect<AcpChatRuntimeCubit, bool>(context, (c) => c.state.inTurn);
 
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
@@ -285,6 +283,24 @@ class SessionChatComposeSection extends StatelessWidget {
       hubState: hubState,
     );
 
+    final Widget acpPendingCard;
+    switch (acpPending) {
+      case AcpPendingPermission(:final request):
+        acpPendingCard = AcpPermissionCard(
+          runtime: acpRuntime!,
+          pendingPermission: request,
+        );
+      case AcpPendingAsk(:final questions):
+        acpPendingCard = AcpAskCard(runtime: acpRuntime!, questions: questions);
+      case AcpPendingPlan(:final planText):
+        acpPendingCard = AcpPlanCard(runtime: acpRuntime!, planText: planText);
+      case null:
+        acpPendingCard = AgentPermissionAttentionBanner(
+          session: session,
+          selectedMemberId: selectedMemberId,
+        );
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final columnWidth = resolveSessionHistoryColumnWidth(
@@ -305,16 +321,7 @@ class SessionChatComposeSection extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (acpPending != null)
-                    AcpPermissionCard(
-                      runtime: acpRuntime!,
-                      pendingPermission: acpPending,
-                    )
-                  else
-                    AgentPermissionAttentionBanner(
-                      session: session,
-                      selectedMemberId: selectedMemberId,
-                    ),
+                  acpPendingCard,
                   StreamBuilder<FollowUpQueue>(
                     stream: chat.followUpQueue.watch(followUpSeatKey),
                     initialData: chat.followUpQueue.queueFor(followUpSeatKey),
