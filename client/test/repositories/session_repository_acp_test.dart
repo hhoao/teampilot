@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -57,7 +58,16 @@ void main() {
       memberClis: const {'team-lead': CliTool.claude},
       cli: CliTool.gemini,
       acp: true,
+      members: const [
+        SessionMemberBinding(
+          rosterMemberId: 'team-lead',
+          taskId: 'task-lead',
+          cli: CliTool.claude,
+          acp: true,
+        ),
+      ],
     )).session;
     expect(session.acp, isFalse);
+    expect(session.members.first.acp, isTrue);
   });
 }

@@ -793,10 +793,11 @@ Future<bool> _ensureLandingSessionConnected({
 
 /// Builds the create request for a workspace conversation.
 ///
-/// [acp] only survives for personal Claude or Cursor on desktop (see
+/// [acp] only survives for personal Claude, Cursor, or Codex on desktop (see
 /// [resolveLaunchAcp]);
-/// team creates and Android always get false. Gemini ACP is inferred by
-/// session create, so it needs no flag here.
+/// team creates and Android always get false. Mixed member ACP is copied from
+/// the Claude/Codex/Cursor settings seeds. Gemini ACP is inferred by session
+/// create, so it needs no flag here.
 SessionCreateRequest buildWorkspaceConversationCreateRequest({
   required Workspace workspace,
   required bool isPersonal,
@@ -814,6 +815,9 @@ SessionCreateRequest buildWorkspaceConversationCreateRequest({
   SessionPurpose purpose = SessionPurpose.normal,
   String workflowId = '',
   bool acp = false,
+  bool seedClaudeMemberAcp = true,
+  bool seedCodexMemberAcp = false,
+  bool seedCursorMemberAcp = true,
   bool? isAndroidOverride,
 }) {
   return SessionCreateRequest(
@@ -838,6 +842,9 @@ SessionCreateRequest buildWorkspaceConversationCreateRequest({
       requested: acp,
       isAndroidOverride: isAndroidOverride,
     ),
+    seedClaudeMemberAcp: seedClaudeMemberAcp,
+    seedCodexMemberAcp: seedCodexMemberAcp,
+    seedCursorMemberAcp: seedCursorMemberAcp,
   );
 }
 
@@ -860,6 +867,9 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
   final l10n = context.l10n;
+  final seedClaudeMemberAcp = readPersonalAcpDefault(context, CliTool.claude);
+  final seedCodexMemberAcp = readPersonalAcpDefault(context, CliTool.codex);
+  final seedCursorMemberAcp = readPersonalAcpDefault(context, CliTool.cursor);
   final team = isPersonal ? null : _teamProfileById(context, sessionTeamId);
 
   final identity = isPersonal
@@ -895,6 +905,9 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
         purpose: purpose,
         workflowId: workflowId,
         acp: acp,
+        seedClaudeMemberAcp: seedClaudeMemberAcp,
+        seedCodexMemberAcp: seedCodexMemberAcp,
+        seedCursorMemberAcp: seedCursorMemberAcp,
       ),
     );
   } on Object catch (error, stackTrace) {

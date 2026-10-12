@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../cubits/session_preferences_cubit.dart';
 import '../../../models/app_session.dart';
 import '../../../models/runtime_target.dart';
+import '../../../models/session_member_binding.dart';
 import '../../../models/team_config.dart';
 import '../../../services/chat/session/chat_tab.dart';
 import '../../../services/cli/registry/capabilities/acp_capability.dart';
@@ -91,6 +92,65 @@ bool resolveMemberBindingAcp({
   }
   if (cli == CliTool.gemini) return true;
   return requested;
+}
+
+bool _requestedMemberAcpSeed(
+  CliTool? cli, {
+  required bool seedClaudeMemberAcp,
+  required bool seedCodexMemberAcp,
+  required bool seedCursorMemberAcp,
+}) => switch (cli) {
+  CliTool.claude => seedClaudeMemberAcp,
+  CliTool.codex => seedCodexMemberAcp,
+  CliTool.cursor => seedCursorMemberAcp,
+  _ => false,
+};
+
+/// Stamps mixed local member bindings with ACP from CLI settings seeds.
+///
+/// Gemini is true whenever the mixed-local gates pass. Team session `acp`
+/// stays on the session, not on this list.
+List<SessionMemberBinding> stampMemberAcp({
+  required List<SessionMemberBinding> members,
+  required Map<String, String> memberTargets,
+  required TeamMode teamMode,
+  required bool seedClaudeMemberAcp,
+  required bool seedCodexMemberAcp,
+  bool seedCursorMemberAcp = true,
+  bool? isAndroidOverride,
+}) {
+  return [
+    for (final member in members)
+      _bindingWithAcp(
+        member,
+        memberTargets[member.rosterMemberId] == null
+            ? false
+            : resolveMemberBindingAcp(
+                cli: member.cli,
+                teamMode: teamMode,
+                targetId: memberTargets[member.rosterMemberId]!,
+                requested: _requestedMemberAcpSeed(
+                  member.cli,
+                  seedClaudeMemberAcp: seedClaudeMemberAcp,
+                  seedCodexMemberAcp: seedCodexMemberAcp,
+                  seedCursorMemberAcp: seedCursorMemberAcp,
+                ),
+                isAndroidOverride: isAndroidOverride,
+              ),
+      ),
+  ];
+}
+
+SessionMemberBinding _bindingWithAcp(SessionMemberBinding member, bool acp) {
+  if (member.acp == acp) return member;
+  return SessionMemberBinding(
+    rosterMemberId: member.rosterMemberId,
+    taskId: member.taskId,
+    typeId: member.typeId,
+    cli: member.cli,
+    nativeSessionIds: member.nativeSessionIds,
+    acp: acp,
+  );
 }
 
 bool shouldAttachMemberAcp({

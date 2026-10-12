@@ -24,6 +24,9 @@ class SessionCreateRequest {
     this.continueOverrides,
     this.preserveWorkbenchView = false,
     this.acp = false,
+    this.seedClaudeMemberAcp = true,
+    this.seedCodexMemberAcp = false,
+    this.seedCursorMemberAcp = true,
   });
 
   final Workspace workspace;
@@ -61,4 +64,13 @@ class SessionCreateRequest {
 
   /// Personal ACP chat runtime preference; ignored for teams.
   final bool acp;
+
+  /// Mixed-seat Claude ACP seed (`claudePersonalAcpDefault`, default true).
+  final bool seedClaudeMemberAcp;
+
+  /// Mixed-seat Codex ACP seed (`codexPersonalAcpDefault`, default false).
+  final bool seedCodexMemberAcp;
+
+  /// Mixed-seat Cursor ACP seed (`cursorPersonalAcpDefault`, default true).
+  final bool seedCursorMemberAcp;
 }

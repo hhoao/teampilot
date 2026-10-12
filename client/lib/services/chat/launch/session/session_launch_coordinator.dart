@@ -25,6 +25,7 @@ import 'session_tab_surface_coordinator.dart';
 import 'session_launch_open_validator.dart';
 import 'session_launch_workspace_index.dart';
 import 'session_provisional_builder.dart';
+import '../../../../pages/home_workspace/workspace/claude_acp_launch_switch.dart';
 
 typedef OpenMemberIntent =
     Future<void> Function(
@@ -185,7 +186,14 @@ class SessionLaunchCoordinator
           memberClis: memberClis,
         );
         provisional = provisional.copyWith(
-          members: plan.members,
+          members: stampMemberAcp(
+            members: plan.members,
+            memberTargets: plan.memberTargets,
+            teamMode: request.team!.teamMode,
+            seedClaudeMemberAcp: request.seedClaudeMemberAcp,
+            seedCodexMemberAcp: request.seedCodexMemberAcp,
+            seedCursorMemberAcp: request.seedCursorMemberAcp,
+          ),
           memberTargets: plan.memberTargets,
         );
       } on StateError catch (error) {

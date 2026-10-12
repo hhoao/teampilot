@@ -151,6 +151,36 @@ void main() {
       );
       expect(request.acp, isFalse);
     });
+
+    test('team create keeps request.acp false and copies CLI seeds', () {
+      final request = buildWorkspaceConversationCreateRequest(
+        workspace: workspace,
+        isPersonal: false,
+        cli: CliTool.claude,
+        acp: true,
+        seedClaudeMemberAcp: true,
+        seedCodexMemberAcp: true,
+        seedCursorMemberAcp: true,
+        isAndroidOverride: false,
+      );
+      expect(request.acp, isFalse);
+      expect(request.seedClaudeMemberAcp, isTrue);
+      expect(request.seedCodexMemberAcp, isTrue);
+      expect(request.seedCursorMemberAcp, isTrue);
+    });
+
+    test('team create seed defaults match preference defaults', () {
+      final request = buildWorkspaceConversationCreateRequest(
+        workspace: workspace,
+        isPersonal: false,
+        cli: CliTool.claude,
+        isAndroidOverride: false,
+      );
+      expect(request.acp, isFalse);
+      expect(request.seedClaudeMemberAcp, isTrue);
+      expect(request.seedCodexMemberAcp, isFalse);
+      expect(request.seedCursorMemberAcp, isTrue);
+    });
   });
 
   group('resolveMemberBindingAcp', () {
@@ -178,6 +208,114 @@ void main() {
       expect(resolve(target: 'ssh:prod'), isFalse);
       expect(resolve(target: 'wsl:ubuntu'), isFalse);
       expect(resolve(android: true), isFalse);
+    });
+  });
+
+  group('stampMemberAcp', () {
+    SessionMemberBinding member(CliTool cli, String id) =>
+        SessionMemberBinding(rosterMemberId: id, taskId: 'task-$id', cli: cli);
+
+    List<SessionMemberBinding> stamp({
+      required List<SessionMemberBinding> members,
+      Map<String, String>? targets,
+      TeamMode mode = TeamMode.mixed,
+      bool seedClaude = true,
+      bool seedCodex = false,
+      bool seedCursor = true,
+      bool android = false,
+    }) => stampMemberAcp(
+      members: members,
+      memberTargets:
+          targets ?? {for (final m in members) m.rosterMemberId: 'local'},
+      teamMode: mode,
+      seedClaudeMemberAcp: seedClaude,
+      seedCodexMemberAcp: seedCodex,
+      seedCursorMemberAcp: seedCursor,
+      isAndroidOverride: android,
+    );
+
+    test('Claude follows seed on mixed local and stays false when off', () {
+      expect(
+        stamp(
+          members: [member(CliTool.claude, 'lead')],
+          seedClaude: true,
+        ).single.acp,
+        isTrue,
+      );
+      expect(
+        stamp(
+          members: [member(CliTool.claude, 'lead')],
+          seedClaude: false,
+        ).single.acp,
+        isFalse,
+      );
+    });
+
+    test('Gemini is true even when both Claude and Codex seeds are false', () {
+      expect(
+        stamp(
+          members: [member(CliTool.gemini, 'gem')],
+          seedClaude: false,
+          seedCodex: false,
+          seedCursor: false,
+        ).single.acp,
+        isTrue,
+      );
+    });
+
+    test('Cursor follows seedCursorMemberAcp', () {
+      expect(
+        stamp(
+          members: [member(CliTool.cursor, 'cursor')],
+          seedCursor: true,
+        ).single.acp,
+        isTrue,
+      );
+      expect(
+        stamp(
+          members: [member(CliTool.cursor, 'cursor')],
+          seedCursor: false,
+        ).single.acp,
+        isFalse,
+      );
+    });
+
+    test('Codex follows seed and non-local or native seats stay false', () {
+      expect(
+        stamp(
+          members: [member(CliTool.codex, 'codex')],
+          seedCodex: true,
+        ).single.acp,
+        isTrue,
+      );
+      expect(
+        stamp(
+          members: [member(CliTool.codex, 'codex')],
+          seedCodex: false,
+        ).single.acp,
+        isFalse,
+      );
+      expect(
+        stamp(
+          members: [member(CliTool.claude, 'lead')],
+          targets: const {'lead': 'ssh:prod'},
+        ).single.acp,
+        isFalse,
+      );
+      expect(
+        stamp(
+          members: [member(CliTool.gemini, 'gem')],
+          mode: TeamMode.native,
+        ).single.acp,
+        isFalse,
+      );
+      expect(
+        stamp(
+          members: [member(CliTool.claude, 'lead')],
+          android: true,
+        ).single.acp,
+        isFalse,
+      );
     });
   });
 
