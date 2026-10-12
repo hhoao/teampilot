@@ -16,6 +16,7 @@ class SessionPreferences {
     this.openExistingSessionStartsTerminal = false,
     this.chatSubmitSwitchesToTerminal = false,
     this.claudePersonalAcpDefault = true,
+    this.codexPersonalAcpDefault = false,
   }) : cliExecutablePaths = Map.unmodifiable(
          _normalizeCliExecutablePaths(cliExecutablePaths),
        ),
@@ -57,6 +58,8 @@ class SessionPreferences {
           json['chatSubmitSwitchesToTerminal'] as bool? ?? false,
       claudePersonalAcpDefault:
           json['claudePersonalAcpDefault'] as bool? ?? true,
+      codexPersonalAcpDefault:
+          json['codexPersonalAcpDefault'] as bool? ?? false,
     );
   }
 
@@ -127,6 +130,10 @@ class SessionPreferences {
   /// the runtime they were started with.
   final bool claudePersonalAcpDefault;
 
+  /// When true, new personal Codex sessions launch as ACP chat instead of PTY.
+  /// Default false. Existing sessions keep the runtime they were started with.
+  final bool codexPersonalAcpDefault;
+
   String cliExecutablePathFor(String toolId) =>
       cliExecutablePaths[toolId]?.trim() ?? '';
 
@@ -147,6 +154,7 @@ class SessionPreferences {
     bool? openExistingSessionStartsTerminal,
     bool? chatSubmitSwitchesToTerminal,
     bool? claudePersonalAcpDefault,
+    bool? codexPersonalAcpDefault,
   }) {
     return SessionPreferences(
       cliExecutablePaths: cliExecutablePaths ?? this.cliExecutablePaths,
@@ -177,6 +185,8 @@ class SessionPreferences {
           chatSubmitSwitchesToTerminal ?? this.chatSubmitSwitchesToTerminal,
       claudePersonalAcpDefault:
           claudePersonalAcpDefault ?? this.claudePersonalAcpDefault,
+      codexPersonalAcpDefault:
+          codexPersonalAcpDefault ?? this.codexPersonalAcpDefault,
     );
   }
 
@@ -198,6 +208,7 @@ class SessionPreferences {
       'openExistingSessionStartsTerminal': openExistingSessionStartsTerminal,
       'chatSubmitSwitchesToTerminal': chatSubmitSwitchesToTerminal,
       'claudePersonalAcpDefault': claudePersonalAcpDefault,
+      'codexPersonalAcpDefault': codexPersonalAcpDefault,
     };
   }
 
