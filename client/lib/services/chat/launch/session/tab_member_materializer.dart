@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../../../cubits/session/acp/acp_chat_runtime_cubit.dart';
 import '../../../../models/app_session.dart';
 import '../../../../models/member_instance.dart';
 import '../../../../models/team_config.dart';
@@ -80,6 +81,15 @@ class TabMemberMaterializer implements MemberMaterializer {
       appLogger.d(
         '[member-materializer] input-ready skip acp '
         'member=$memberId session=$sessionId',
+      );
+      return;
+    }
+    if (_isAcpChatSeat(sessionId, memberId)) {
+      await _awaitAcpSeatInputReady(
+        sessionId: sessionId,
+        memberId: memberId,
+        waitCap: waitCap,
+        aborted: aborted,
       );
       return;
     }
@@ -437,6 +447,70 @@ class TabMemberMaterializer implements MemberMaterializer {
     return session != null && isAcpChatSession(session);
   }
 
+  bool _isAcpChatSeat(String sessionId, String memberId) {
+    final session = _tabStore
+        .getOpenTabBySessionId(sessionId)
+        ?.persistedSession;
+    return session != null && isAcpChatSeat(session, memberId);
+  }
+
+  /// ACP seats have no PTY composer. Ready means the cubit exists and its
+  /// phase is [AcpChatPhase.ready] or [AcpChatPhase.idle].
+  Future<void> _awaitAcpSeatInputReady({
+    required String sessionId,
+    required String memberId,
+    required Duration waitCap,
+    required bool Function()? aborted,
+  }) async {
+    final startedAt = DateTime.now();
+    var waitTicks = 0;
+    while (!_isClosed()) {
+      if (aborted?.call() ?? false) {
+        appLogger.d(
+          '[member-materializer] input-ready cancelled operator-stop '
+          'member=$memberId session=$sessionId acp=true ticks=$waitTicks',
+        );
+        return;
+      }
+      final tab = _tabStore.getOpenTabBySessionId(sessionId);
+      if (tab == null) {
+        appLogger.d(
+          '[member-materializer] input-ready cancelled no-tab '
+          'member=$memberId session=$sessionId acp=true',
+        );
+        return;
+      }
+      if (memberInputWaitTimedOut(
+        startedAt: startedAt,
+        cap: waitCap,
+        now: DateTime.now(),
+      )) {
+        appLogger.d(
+          '[member-materializer] input-ready acp wait cap '
+          'member=$memberId session=$sessionId',
+        );
+        throw const MemberInputReadyException(MemberInputReadyFailure.timedOut);
+      }
+      final phase = tab.memberAcpRuntimes[memberId]?.state.phase;
+      if (phase == AcpChatPhase.ready || phase == AcpChatPhase.idle) {
+        appLogger.d(
+          '[member-materializer] input-ready acp member=$memberId '
+          'session=$sessionId phase=$phase',
+        );
+        return;
+      }
+      waitTicks++;
+      if (waitTicks == 1 || waitTicks % 50 == 0) {
+        appLogger.d(
+          '[member-materializer] input-ready acp still-waiting '
+          'member=$memberId session=$sessionId ticks=$waitTicks '
+          'phase=$phase',
+        );
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+  }
+
   TeamMemberConfig? _resolveMemberForMaterialize(
     ChatTab tab,
     TeamProfile team,
@@ -456,6 +530,7 @@ class TabMemberMaterializer implements MemberMaterializer {
 
   @override
   void injectMemberStdin(String sessionId, String memberId, String text) {
+    if (_sendAcpPrompt(sessionId, memberId, text)) return;
     unawaited(
       _runtime.deliverMemberStdin(
         sessionId,
@@ -469,6 +544,17 @@ class TabMemberMaterializer implements MemberMaterializer {
 
   @override
   void retryDelivery(String sessionId, String memberId, String notice) {
+    if (_sendAcpPrompt(sessionId, memberId, notice)) return;
     unawaited(_runtime.retryMemberDelivery(sessionId, memberId, notice));
+  }
+
+  /// Shared wake path for an ACP seat cubit. False leaves the PTY inject.
+  bool _sendAcpPrompt(String sessionId, String memberId, String text) {
+    final cubit = _tabStore
+        .getOpenTabBySessionId(sessionId)
+        ?.memberAcpRuntimes[memberId];
+    if (cubit == null) return false;
+    cubit.sendPrompt(text);
+    return true;
   }
 }

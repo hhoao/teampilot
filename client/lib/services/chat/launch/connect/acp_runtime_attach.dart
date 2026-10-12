@@ -16,6 +16,7 @@ import '../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../runtime/runtime_extra_mcp_servers.dart';
 import '../../../../cubits/session/acp/acp_chat_runtime_cubit.dart';
 import '../../../../cubits/session/acp/acp_launch_wiring.dart';
+import '../../../../utils/logging/logger.dart';
 import '../session/member_acp_stamp.dart';
 import '../session_launch_host.dart';
 import '../../session/chat_tab.dart';
@@ -178,6 +179,7 @@ class AcpRuntimeAttach {
       processWorkingDirectory: staged.workingDirectory,
     );
     tab.memberAcpRuntimes[member.id] = cubit;
+    _listenForMemberIdle(tab, member.id, cubit);
     _host.updateTabRunning(tab.info.id);
     await cubit.start(
       executable: _host.shellFactory.executableFor(cli),
@@ -194,6 +196,28 @@ class AcpRuntimeAttach {
     _host.finishSessionConnect(session.sessionId);
     _host.updateTabRunning(tab.info.id);
     return true;
+  }
+
+  /// TeamBus idle is the transition into [AcpChatPhase.idle]. [Cubit.close]
+  /// closes the state stream and cancels this listener. Personal attach does
+  /// not subscribe.
+  void _listenForMemberIdle(
+    ChatTab tab,
+    String memberId,
+    AcpChatRuntimeCubit cubit,
+  ) {
+    var previous = cubit.state.phase;
+    cubit.stream.listen((state) {
+      final was = previous;
+      previous = state.phase;
+      if (was == AcpChatPhase.idle || state.phase != AcpChatPhase.idle) {
+        return;
+      }
+      appLogger.d(
+        '[acp-attach] member idle member=$memberId session=${cubit.sessionId}',
+      );
+      tab.teamBus?.onMemberIdle(memberId);
+    });
   }
 
   AcpChatRuntimeCubit _cubit({
