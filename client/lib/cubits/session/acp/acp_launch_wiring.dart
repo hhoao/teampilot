@@ -126,6 +126,12 @@ class _NoopAcpTranslator implements AcpAgentTranslator {
   List<String> get flagCandidates => const [];
 
   @override
+  List<String> get blockingClientMethods => const [];
+
+  @override
+  List<String> get notificationClientMethods => const [];
+
+  @override
   String translateStopError(Object error, {required bool suppressAbort}) {
     AppLogger.instance.w(
       'ACP: translator missing; surfacing raw stop error: $error',

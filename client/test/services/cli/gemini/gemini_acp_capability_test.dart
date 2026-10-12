@@ -48,4 +48,11 @@ void main() {
     const cap = GeminiAcpCapability();
     expect(cap.agentExecutable('/usr/bin/gemini'), '/usr/bin/gemini');
   });
+
+  test('authenticateMethodId is null', () {
+    const cap = GeminiAcpCapability();
+    expect(cap.authenticateMethodId, isNull);
+    expect(cap.translator.blockingClientMethods, isEmpty);
+    expect(cap.translator.notificationClientMethods, isEmpty);
+  });
 }

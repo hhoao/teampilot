@@ -17,6 +17,12 @@ final class GeminiAcpTranslator implements AcpAgentTranslator {
   List<String> get flagCandidates => const ['--acp', '--experimental-acp'];
 
   @override
+  List<String> get blockingClientMethods => const [];
+
+  @override
+  List<String> get notificationClientMethods => const [];
+
+  @override
   String translateStopError(Object error, {required bool suppressAbort}) {
     if (error is RpcError) {
       if (suppressAbort && _isAbortInternalError(error)) {
@@ -67,6 +73,9 @@ final class GeminiAcpCapability implements AcpCapability {
 
   @override
   AcpAgentTranslator get translator => const GeminiAcpTranslator();
+
+  @override
+  String? get authenticateMethodId => null;
 
   @override
   Map<String, String> buildEnvironment({
