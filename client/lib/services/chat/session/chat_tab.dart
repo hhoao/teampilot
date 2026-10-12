@@ -14,11 +14,29 @@ import 'session_workbench_view.dart';
 /// True when [session] is a terminal-less ACP chat session (phase 1: a
 /// personal gemini session). Such sessions skip shell-connect and attach an
 /// [AcpChatRuntimeCubit] instead; the chat center view is their only view.
-bool isAcpChatSession(AppSession session) =>
-    session.isSimple && session.acp;
+bool isAcpChatSession(AppSession session) => session.isSimple && session.acp;
 
 bool isAcpChatSeat(AppSession session, String memberId) =>
     !session.isSimple && (session.bindingFor(memberId)?.acp ?? false);
+
+/// Cubit for the chat surface the user is looking at.
+///
+/// Personal ACP reads the session-id alias. A mixed seat reads that member's
+/// entry and nothing else, so a lead cubit is not shown for a PTY teammate.
+AcpChatRuntimeCubit? acpRuntimeForView({
+  required AppSession session,
+  required ChatTab tab,
+  required String selectedMemberId,
+}) {
+  if (isAcpChatSession(session)) return tab.acpRuntime;
+  return tab.memberAcpRuntimes[selectedMemberId];
+}
+
+/// Chat-only seats have no terminal view to toggle to.
+bool hideTerminalToggle({
+  required AppSession session,
+  required String selectedMemberId,
+}) => isAcpChatSession(session) || isAcpChatSeat(session, selectedMemberId);
 
 /// Per-tab runtime aggregate shared by ChatCubit and its collaborators.
 /// (Formerly the private `_InternalTab`.)

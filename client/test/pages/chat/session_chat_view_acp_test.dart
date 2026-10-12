@@ -32,7 +32,9 @@ import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
 import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/failed_message_record.dart';
 import 'package:teampilot/models/runtime_target.dart';
+import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
@@ -55,9 +57,12 @@ import 'package:teampilot/services/chat/conversation/follow_up/follow_up_queue.d
 import 'package:teampilot/services/chat/conversation/history/failed_message_store.dart';
 import 'package:teampilot/services/chat/conversation/history/history_awaiting_working_sync.dart';
 import 'package:teampilot/services/chat/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/theme/app_theme.dart';
+import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
 
+import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 /// `SessionChatMessageArea` reads the non-nullable `sessionScrollAnchors`
@@ -225,10 +230,23 @@ void main() {
     );
     registerFallbackValue(_FakeFailedMessageStore());
     registerFallbackValue(<AiMessage>[]);
+    registerFallbackValue(
+      FailedMessageRecord(
+        id: 'fb-pending',
+        text: 'fb',
+        createdAt: DateTime.utc(2020),
+      ),
+    );
   });
 
   setUp(() {
     setUpTestAppStorage();
+    installTestHomeStorage(
+      filesystem: InMemoryFilesystem(),
+      paths: const AppPaths('/acp-chat-view-test'),
+      home: '/acp-chat-view-test',
+      cwd: '/acp-chat-view-test',
+    );
     composeDraftCache.clear();
 
     seat = _MockAiHistorySeat();
@@ -282,6 +300,8 @@ void main() {
     WidgetTester tester, {
     required AppSession session,
     AcpChatRuntimeCubit? acpRuntime,
+    String selectedMemberId = '',
+    Future<HistoryContinueSubmitResult> Function(String message)? onSubmit,
   }) async {
     final workspace = Workspace(
       workspaceId: 'ws-1',
@@ -313,6 +333,7 @@ void main() {
     _stubCubit(aiHistoryCubit, const AiHistoryState());
     _stubCubit(cliPresetsCubit, const CliPresetsState());
     _stubCubit(launchProfileCubit, const LaunchProfileState());
+    when(() => launchProfileCubit.byId(any())).thenReturn(null);
     _stubCubit(pluginCubit, const PluginState());
     _stubCubit(skillCubit, const SkillState());
     _stubCubit(sessionPreferencesCubit, SessionPreferencesState());
@@ -391,12 +412,14 @@ void main() {
                   body: SessionChatView(
                     session: session,
                     workspace: workspace,
-                    selectedMemberId: '',
+                    selectedMemberId: selectedMemberId,
                     acpRuntime: acpRuntime,
-                    onSubmit: (_) async => const HistoryContinueSubmitResult(
-                      ok: true,
-                      channel: HistoryContinueChannel.pty,
-                    ),
+                    onSubmit:
+                        onSubmit ??
+                        (_) async => const HistoryContinueSubmitResult(
+                          ok: true,
+                          channel: HistoryContinueChannel.pty,
+                        ),
                   ),
                 ),
               ),
@@ -416,6 +439,99 @@ void main() {
     acp: acp,
     createdAt: 1,
   );
+
+  /// Mixed team: lead is an ACP seat, worker stays on the PTY.
+  AppSession mixedTeamSession() => AppSession(
+    sessionId: 's-mixed',
+    workspaceId: 'ws-1',
+    folders: const [],
+    sessionTeam: 'team-1',
+    createdAt: 1,
+    members: const [
+      SessionMemberBinding(
+        rosterMemberId: 'lead',
+        taskId: 'task-lead',
+        acp: true,
+      ),
+      SessionMemberBinding(rosterMemberId: 'worker', taskId: 'task-worker'),
+    ],
+  );
+
+  void stubPtyPendingDelivery() {
+    when(
+      () => seat.persistPendingUser(
+        store: any(named: 'store'),
+        workspaceId: any(named: 'workspaceId'),
+        sessionId: any(named: 'sessionId'),
+        text: any(named: 'text'),
+      ),
+    ).thenAnswer((invocation) async {
+      return FailedMessageRecord(
+        id: 'pending:test',
+        text: invocation.namedArguments[#text] as String,
+        createdAt: DateTime.utc(2020),
+      );
+    });
+    when(
+      () => seat.markPendingFailed(
+        store: any(named: 'store'),
+        workspaceId: any(named: 'workspaceId'),
+        sessionId: any(named: 'sessionId'),
+        record: any(named: 'record'),
+      ),
+    ).thenAnswer((_) async {});
+  }
+
+  Future<void> enterCompose(WidgetTester tester, String text) async {
+    final composeField = find.descendant(
+      of: find.byType(TpTokenTextField),
+      matching: find.byType(TextField),
+    );
+    expect(composeField, findsOneWidget);
+    await tester.enterText(composeField, text);
+    await tester.pump();
+    expect(tester.widget<TextField>(composeField).controller?.text, text);
+    expect(
+      tester
+          .widget<WorkspaceComposeCard>(find.byType(WorkspaceComposeCard))
+          .controller
+          .text,
+      text,
+    );
+  }
+
+  Future<void> submitCompose(WidgetTester tester) async {
+    tester
+        .widget<WorkspaceComposeCard>(find.byType(WorkspaceComposeCard))
+        .onSubmit();
+    await tester.pumpAndSettle();
+  }
+
+  void countPtyHistoryLoads(List<int> loads) {
+    when(
+      () => seat.load(
+        session: any(named: 'session'),
+        memberId: any(named: 'memberId'),
+        launchContext: any(named: 'launchContext'),
+        team: any(named: 'team'),
+        workingDirectory: any(named: 'workingDirectory'),
+        force: any(named: 'force'),
+      ),
+    ).thenAnswer((_) async {
+      loads.add(1);
+    });
+    when(
+      () => seat.softReloadOrLoad(
+        session: any(named: 'session'),
+        memberId: any(named: 'memberId'),
+        launchContext: any(named: 'launchContext'),
+        team: any(named: 'team'),
+        workingDirectory: any(named: 'workingDirectory'),
+      ),
+    ).thenAnswer((_) async {
+      loads.add(1);
+    });
+  }
 
   testWidgets(
     'ACP chat view builds and renders the permission card through the '
@@ -663,5 +779,99 @@ void main() {
     expect(runtime.lastPlan!.cancelled, isFalse);
     expect(cubit.state.pendingClient, isNull);
     expect(find.byType(AcpPlanCard), findsNothing);
+  });
+
+  testWidgets('mixed ACP seat with a runtime cubit submits to that cubit', (
+    tester,
+  ) async {
+    final runtime = _FakeAcpRuntime();
+    final cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: 's-mixed',
+      tool: CliTool.gemini,
+      seatMemberId: 'lead',
+    );
+    addTearDown(() async {
+      await cubit.close();
+      await runtime.permissionsController.close();
+      await runtime.clientRequestsController.close();
+    });
+    stubPtyPendingDelivery();
+    final ptySubmits = <String>[];
+
+    await pumpSession(
+      tester,
+      session: mixedTeamSession(),
+      selectedMemberId: 'lead',
+      acpRuntime: cubit,
+      onSubmit: (message) async {
+        ptySubmits.add(message);
+        return const HistoryContinueSubmitResult.failed();
+      },
+    );
+    expect(tester.takeException(), isNull);
+
+      await enterCompose(tester, 'ship the seat');
+      await submitCompose(tester);
+
+    expect(ptySubmits, isEmpty);
+    expect(cubit.state.inTurn, isTrue);
+    expect(cubit.state.messages, isNotEmpty);
+  });
+
+  testWidgets(
+    'mixed ACP seat without a runtime does not deliver through PTY onSubmit',
+    (tester) async {
+      stubPtyPendingDelivery();
+      final ptySubmits = <String>[];
+
+      await pumpSession(
+        tester,
+        session: mixedTeamSession(),
+        selectedMemberId: 'lead',
+        onSubmit: (message) async {
+          ptySubmits.add(message);
+          return const HistoryContinueSubmitResult.failed();
+        },
+      );
+      expect(tester.takeException(), isNull);
+
+      await enterCompose(tester, 'do not inject');
+      await submitCompose(tester);
+
+      expect(ptySubmits, isEmpty);
+    },
+  );
+
+  testWidgets(
+    'mixed ACP seat without a runtime does not load PTY transcript history',
+    (tester) async {
+      final loads = <int>[];
+      countPtyHistoryLoads(loads);
+
+      await pumpSession(
+        tester,
+        session: mixedTeamSession(),
+        selectedMemberId: 'lead',
+      );
+      expect(tester.takeException(), isNull);
+      expect(loads, isEmpty);
+      verify(() => seat.markExternalLoading()).called(greaterThan(0));
+    },
+  );
+
+  testWidgets('mixed PTY seat still loads PTY transcript history', (
+    tester,
+  ) async {
+    final loads = <int>[];
+    countPtyHistoryLoads(loads);
+
+    await pumpSession(
+      tester,
+      session: mixedTeamSession(),
+      selectedMemberId: 'worker',
+    );
+    expect(tester.takeException(), isNull);
+    expect(loads, isNotEmpty);
   });
 }

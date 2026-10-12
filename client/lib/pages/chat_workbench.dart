@@ -11,6 +11,7 @@ import '../widgets/home_storage_scope.dart';
 import '../services/chat/session/session_connect_request.dart';
 import '../services/chat/session/chat_tab.dart';
 import '../cubits/chat_cubit.dart';
+import '../cubits/session/acp/acp_chat_runtime_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/launch_profile_cubit.dart';
 import '../cubits/session_preferences_cubit.dart';
@@ -844,17 +845,25 @@ class _ChatWorkbenchBody extends StatelessWidget {
       );
     }
 
-    // Terminal-less ACP session (gemini phase 1): same resolution as the
-    // onSubmit branch below — the tab's attached ACP runtime, if any.
-    final acpRuntime = chatCubit.tabStore
-        .getOpenTabBySessionId(appSession.sessionId)
-        ?.acpRuntime;
+    // Same seat the history pane uses. Personal ACP is the session alias;
+    // a mixed seat is that member's cubit only.
+    final acpRuntime = _acpRuntimeForSelectedSeat(
+      chatCubit: chatCubit,
+      session: appSession,
+      selectedMemberId: historyMemberId,
+    );
 
     return SessionChatView(
       session: appSession,
       acpRuntime: acpRuntime,
-      // ACP sessions are chat-only — there is no terminal view to toggle to.
-      viewToggle: isAcpChatSession(appSession) ? null : viewToggle,
+      // ACP seats are chat-only — there is no terminal view to toggle to.
+      viewToggle:
+          hideTerminalToggle(
+            session: appSession,
+            selectedMemberId: historyMemberId,
+          )
+          ? null
+          : viewToggle,
       workspace:
           chatCubit.state.workspaces
               .where((w) => w.workspaceId == workspaceId)
@@ -888,22 +897,27 @@ class _ChatWorkbenchBody extends StatelessWidget {
             )
           : null,
       onSubmit: (message) async {
-        // Terminal-less ACP session: the prompt goes to the attached ACP
-        // runtime — no PTY connect/inject chain. Never fall through when
-        // the session is ACP but the cubit is not attached yet; that path
-        // waits for a shell these sessions never spawn.
-        if (isAcpChatSession(appSession)) {
-          final acpRuntime = chatCubit.tabStore
-              .getOpenTabBySessionId(appSession.sessionId)
-              ?.acpRuntime;
-          if (acpRuntime == null) {
-            return const HistoryContinueSubmitResult.failed();
-          }
+        // Terminal-less ACP: the prompt goes to the selected seat's cubit.
+        // Never fall through to PTY connect/inject when the seat is ACP but
+        // the cubit is not attached yet — that path waits for a shell these
+        // seats never spawn.
+        final acpRuntime = _acpRuntimeForSelectedSeat(
+          chatCubit: chatCubit,
+          session: appSession,
+          selectedMemberId: historyMemberId,
+        );
+        if (acpRuntime != null) {
           final sent = acpRuntime.sendPrompt(message);
           return HistoryContinueSubmitResult(
             ok: sent,
             channel: HistoryContinueChannel.pty,
           );
+        }
+        if (hideTerminalToggle(
+          session: appSession,
+          selectedMemberId: historyMemberId,
+        )) {
+          return const HistoryContinueSubmitResult.failed();
         }
         final switchToTerminal = shouldSwitchToTerminalAfterChatSubmit(
           context
@@ -977,6 +991,20 @@ class _ChatWorkbenchBody extends StatelessWidget {
     if (teamId.isEmpty) return null;
     final profile = context.read<LaunchProfileCubit>().byId(teamId);
     return profile is TeamProfile ? profile : null;
+  }
+
+  AcpChatRuntimeCubit? _acpRuntimeForSelectedSeat({
+    required ChatCubit chatCubit,
+    required AppSession session,
+    required String selectedMemberId,
+  }) {
+    final tab = chatCubit.tabStore.getOpenTabBySessionId(session.sessionId);
+    if (tab == null) return null;
+    return acpRuntimeForView(
+      session: session,
+      tab: tab,
+      selectedMemberId: selectedMemberId,
+    );
   }
 
   String _tabSelectedMemberId(ChatCubit chatCubit) {

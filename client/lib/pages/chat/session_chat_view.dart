@@ -415,13 +415,13 @@ class _SessionChatViewState extends State<SessionChatView> {
   Future<void> _loadHistoryThenHydratePersistedPendingUsers() async {
     final seat = _seat;
     if (seat == null) return;
-    // Terminal-less ACP session: the cubit owns the transcript (app-side
-    // message table), and the failed-message store is a PTY delivery concern —
+    // Terminal-less ACP: the cubit owns the transcript (app-side message
+    // table), and the failed-message store is a PTY delivery concern —
     // hydrating persisted pending records here would resurrect stale bubbles
-    // that the cubit never reconciles. Gate on the session flag, not the
-    // runtime cubit: the view often mounts before attachAcpRuntime assigns
-    // it, and a PTY load in that window starts live-refresh on a missing
-    // transcript (blank thread, never the empty-state pane).
+    // that the cubit never reconciles. Gate on the session or the selected
+    // mixed seat, not only an already-attached cubit: the view often mounts
+    // before attach, and a PTY load in that window starts live-refresh on a
+    // missing transcript (blank thread, never the empty-state pane).
     if (_usesAcpTranscript) {
       await _stopLiveRefreshForAcp();
       final acpRuntime = widget.acpRuntime;
@@ -745,11 +745,13 @@ class _SessionChatViewState extends State<SessionChatView> {
     _maybeStartLiveRefreshForRunningPty();
   }
 
-  /// Terminal-less ACP transcript: the session flag (before the cubit is
-  /// attached) or an already-attached runtime. Either one must skip PTY
-  /// history load / live-refresh.
+  /// Terminal-less ACP transcript: an attached cubit, a personal ACP session,
+  /// or the selected mixed ACP seat (before that seat's cubit is attached).
+  /// Any of these must skip PTY history load / live-refresh.
   bool get _usesAcpTranscript =>
-      widget.acpRuntime != null || isAcpChatSession(widget.session);
+      widget.acpRuntime != null ||
+      isAcpChatSession(widget.session) ||
+      isAcpChatSeat(widget.session, widget.selectedMemberId);
 
   /// PTY shells for Simple seats are keyed by [AppSession.sessionId].
   String get _shellMemberId => shellMemberIdForHistory(
