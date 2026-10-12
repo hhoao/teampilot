@@ -17,6 +17,9 @@ import 'session_workbench_view.dart';
 bool isAcpChatSession(AppSession session) =>
     session.isSimple && session.acp;
 
+bool isAcpChatSeat(AppSession session, String memberId) =>
+    !session.isSimple && (session.bindingFor(memberId)?.acp ?? false);
+
 /// Per-tab runtime aggregate shared by ChatCubit and its collaborators.
 /// (Formerly the private `_InternalTab`.)
 class ChatTab {

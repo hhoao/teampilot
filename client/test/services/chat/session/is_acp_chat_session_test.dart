@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/chat/session/chat_tab.dart';
 
@@ -39,5 +40,28 @@ void main() {
       ),
       isFalse,
     );
+  });
+
+  test('isAcpChatSeat is binding-only and never true for simple sessions', () {
+    final mixed = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      createdAt: 1,
+      sessionTeam: 't1',
+      members: const [
+        SessionMemberBinding(
+          rosterMemberId: 'lead',
+          taskId: 't',
+          acp: true,
+        ),
+      ],
+    );
+    expect(isAcpChatSeat(mixed, 'lead'), isTrue);
+    expect(isAcpChatSeat(mixed, 'missing'), isFalse);
+    expect(isAcpChatSession(mixed), isFalse);
+
+    final simple = session(cli: CliTool.claude, acp: true);
+    expect(isAcpChatSeat(simple, simple.sessionId), isFalse);
+    expect(isAcpChatSession(simple), isTrue);
   });
 }
