@@ -71,6 +71,7 @@ void main() {
     WidgetTester tester, {
     required CliTool cli,
     required bool preferenceDefault,
+    bool codexPreferenceDefault = false,
     required List<LandingLaunchContext> submitted,
   }) async {
     final workspace = Workspace(workspaceId: 'workspace-1', createdAt: 1);
@@ -96,6 +97,7 @@ void main() {
       SessionPreferencesState(
         preferences: SessionPreferences(
           claudePersonalAcpDefault: preferenceDefault,
+          codexPersonalAcpDefault: codexPreferenceDefault,
         ),
       ),
     );
@@ -208,6 +210,32 @@ void main() {
       tester,
       cli: CliTool.claude,
       preferenceDefault: false,
+      submitted: submitted,
+    );
+    await submit(tester);
+    expect(submitted.single.acp, isFalse);
+  });
+
+  testWidgets('Codex submit uses the Codex settings default', (tester) async {
+    final submitted = <LandingLaunchContext>[];
+    await pumpCompose(
+      tester,
+      cli: CliTool.codex,
+      preferenceDefault: false,
+      codexPreferenceDefault: true,
+      submitted: submitted,
+    );
+    await submit(tester);
+    expect(submitted.single.acp, isTrue);
+  });
+
+  testWidgets('Codex submit ignores the Claude ACP default', (tester) async {
+    final submitted = <LandingLaunchContext>[];
+    await pumpCompose(
+      tester,
+      cli: CliTool.codex,
+      preferenceDefault: true,
+      codexPreferenceDefault: false,
       submitted: submitted,
     );
     await submit(tester);

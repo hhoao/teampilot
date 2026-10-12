@@ -18,6 +18,48 @@ void main() {
       );
     });
 
+    test('true for personal Codex when requested on desktop', () {
+      expect(
+        resolveLaunchAcp(
+          isPersonal: true,
+          cli: CliTool.codex,
+          requested: true,
+          isAndroidOverride: false,
+        ),
+        isTrue,
+      );
+    });
+
+    test('false for Codex team, not requested, or Android', () {
+      expect(
+        resolveLaunchAcp(
+          isPersonal: false,
+          cli: CliTool.codex,
+          requested: true,
+          isAndroidOverride: false,
+        ),
+        isFalse,
+      );
+      expect(
+        resolveLaunchAcp(
+          isPersonal: true,
+          cli: CliTool.codex,
+          requested: false,
+          isAndroidOverride: false,
+        ),
+        isFalse,
+      );
+      expect(
+        resolveLaunchAcp(
+          isPersonal: true,
+          cli: CliTool.codex,
+          requested: true,
+          isAndroidOverride: true,
+        ),
+        isFalse,
+      );
+    });
+
     test('false for team, non-Claude, not requested, or Android', () {
       bool resolve({
         bool isPersonal = true,
@@ -40,6 +82,17 @@ void main() {
 
   group('buildWorkspaceConversationCreateRequest', () {
     final workspace = Workspace(workspaceId: 'ws', createdAt: 1);
+
+    test('personal Codex with ACP requested sets request.acp', () {
+      final request = buildWorkspaceConversationCreateRequest(
+        workspace: workspace,
+        isPersonal: true,
+        cli: CliTool.codex,
+        acp: true,
+        isAndroidOverride: false,
+      );
+      expect(request.acp, isTrue);
+    });
 
     test('personal Claude with ACP requested sets request.acp', () {
       final request = buildWorkspaceConversationCreateRequest(
