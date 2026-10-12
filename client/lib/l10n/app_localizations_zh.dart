@@ -8846,8 +8846,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get acpLaunchFailedVersion =>
-      '当前 Gemini CLI 版本不支持 ACP 聊天模式，请更新 Gemini CLI 后重试。';
+  String get acpLaunchFailedVersion => '当前 CLI 版本不支持 ACP 聊天模式，请更新后再试。';
 
   @override
   String get acpChatLaunchFailed => '无法启动 Gemini，请确认已安装 Gemini CLI 后重试。';
@@ -8864,6 +8863,13 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get claudePersonalAcpDefaultDescription =>
       '新建个人 Claude 会话走无终端 ACP（claude-agent-acp）。已有会话保持原启动方式。团队会话始终用终端。';
+
+  @override
+  String get cursorPersonalAcpDefaultLabel => '个人会话使用 ACP 聊天';
+
+  @override
+  String get cursorPersonalAcpDefaultDescription =>
+      '新建个人 Cursor 会话走无终端 ACP（cursor-agent acp）。已有会话保持原启动方式。团队会话始终用终端。';
 
   @override
   String get claudePersonalAcpAndroidDisabled => '在远程 SSH exec 就绪前，ACP 聊天仅限桌面。';

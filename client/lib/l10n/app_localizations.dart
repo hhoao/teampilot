@@ -16427,7 +16427,7 @@ abstract class AppLocalizations {
   /// No description provided for @acpLaunchFailedVersion.
   ///
   /// In en, this message translates to:
-  /// **'This Gemini CLI version does not support the ACP chat mode. Update Gemini CLI and try again.'**
+  /// **'This CLI version does not support ACP chat mode. Update the CLI and try again.'**
   String get acpLaunchFailedVersion;
 
   /// No description provided for @acpChatLaunchFailed.
@@ -16459,6 +16459,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Run new personal Claude sessions as terminal-less ACP chat via claude-agent-acp. Existing sessions stay as they were started. Team sessions always use the terminal.'**
   String get claudePersonalAcpDefaultDescription;
+
+  /// No description provided for @cursorPersonalAcpDefaultLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal sessions use ACP chat'**
+  String get cursorPersonalAcpDefaultLabel;
+
+  /// No description provided for @cursorPersonalAcpDefaultDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Run new personal Cursor sessions as terminal-less ACP chat via cursor-agent acp. Existing sessions stay as they were started. Team sessions always use the terminal.'**
+  String get cursorPersonalAcpDefaultDescription;
 
   /// No description provided for @claudePersonalAcpAndroidDisabled.
   ///
