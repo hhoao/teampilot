@@ -196,6 +196,10 @@ class AppKeys {
     'codex-cli-executable-path-reset-button',
   );
   static const codexCliInstallButton = Key('codex-cli-install-button');
+  static const codexPersonalAcpSwitch = Key('codex-personal-acp-switch');
+  static const codexAcpAdapterInstallButton = Key(
+    'codex-acp-adapter-install-button',
+  );
   static const opencodeCliExecutablePathField = Key(
     'opencode-cli-executable-path-field',
   );

@@ -165,6 +165,15 @@ Widget _buildCliRow(
       ],
     );
   }
+  if (cli == CliTool.codex) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        pathRow,
+        CodexPersonalAcpSettingsRow(cubit: cubit),
+      ],
+    );
+  }
   return pathRow;
 }
 
@@ -264,6 +273,121 @@ class _ClaudeAcpAdapterInstallButtonState
         alignment: AlignmentDirectional.centerStart,
         child: OutlinedButton.icon(
           key: AppKeys.claudeAcpAdapterInstallButton,
+          onPressed: installing ? null : _install,
+          icon: installing
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(Icons.download_outlined, size: context.tpIconSizes.md),
+          label: Text(
+            installing
+                ? l10n.cliInstallInstalling
+                : l10n.claudeAcpAdapterInstallButton,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Codex: run new personal sessions as terminal-less ACP chat.
+///
+/// Disabled on Android (ACP spawns a local process; remote SSH exec is not
+/// available there yet).
+class CodexPersonalAcpSettingsRow extends StatelessWidget {
+  const CodexPersonalAcpSettingsRow({
+    required this.cubit,
+    @visibleForTesting this.isAndroidOverride,
+    super.key,
+  });
+
+  final SessionPreferencesCubit cubit;
+  final bool? isAndroidOverride;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final isAndroid = isAndroidOverride ?? Platform.isAndroid;
+    return BlocBuilder<SessionPreferencesCubit, SessionPreferencesState>(
+      bloc: cubit,
+      buildWhen: (a, b) =>
+          a.preferences.codexPersonalAcpDefault !=
+          b.preferences.codexPersonalAcpDefault,
+      builder: (context, state) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SwitchListTile(
+              key: AppKeys.codexPersonalAcpSwitch,
+              title: Text(l10n.codexPersonalAcpDefaultLabel),
+              subtitle: Text(
+                isAndroid
+                    ? l10n.codexPersonalAcpAndroidDisabled
+                    : l10n.codexPersonalAcpDefaultDescription,
+              ),
+              value: !isAndroid && state.preferences.codexPersonalAcpDefault,
+              onChanged: isAndroid
+                  ? null
+                  : (value) => cubit.setCodexPersonalAcpDefault(value),
+            ),
+            // Desktop-only: ACP spawns a local process. Install is
+            // user-initiated here; connect never installs.
+            if (!isAndroid) const _CodexAcpAdapterInstallButton(),
+            const Divider(height: 1),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _CodexAcpAdapterInstallButton extends StatefulWidget {
+  const _CodexAcpAdapterInstallButton();
+
+  @override
+  State<_CodexAcpAdapterInstallButton> createState() =>
+      _CodexAcpAdapterInstallButtonState();
+}
+
+class _CodexAcpAdapterInstallButtonState
+    extends State<_CodexAcpAdapterInstallButton> {
+  Future<void> _install() async {
+    final registry = context.read<InstallJobRegistry>();
+    final title = context.l10n.cliInstallInstalling;
+    setState(() {});
+    try {
+      final result = await registry.installCodexAcpAdapter(title: title);
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: result.message,
+        variant: result.success ? TpToastVariant.success : TpToastVariant.error,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: error.toString(),
+        variant: TpToastVariant.error,
+      );
+    } finally {
+      if (mounted) setState(() {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final registry = context.read<InstallJobRegistry>();
+    final installing = registry.isRunning(InstallJobKeys.codexAcpAdapter());
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: OutlinedButton.icon(
+          key: AppKeys.codexAcpAdapterInstallButton,
           onPressed: installing ? null : _install,
           icon: installing
               ? const SizedBox(
