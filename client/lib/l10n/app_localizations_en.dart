@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -9269,14 +9268,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get claudePersonalAcpDefaultDescription =>
-      'Run new personal Claude sessions as terminal-less ACP chat via claude-agent-acp. Existing sessions stay as they were started. Team sessions always use the terminal.';
+      'Run new personal and mixed-team Claude sessions as terminal-less ACP chat via claude-agent-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.';
 
   @override
   String get cursorPersonalAcpDefaultLabel => 'Personal sessions use ACP chat';
 
   @override
   String get cursorPersonalAcpDefaultDescription =>
-      'Run new personal Cursor sessions as terminal-less ACP chat via cursor-agent acp. Existing sessions stay as they were started. Team sessions always use the terminal.';
+      'Run new personal and mixed-team Cursor sessions as terminal-less ACP chat via cursor-agent acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.';
 
   @override
   String get claudePersonalAcpAndroidDisabled =>
@@ -9298,7 +9297,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get codexPersonalAcpDefaultDescription =>
-      'Run new personal Codex sessions as terminal-less ACP chat via codex-acp. Existing sessions stay as they were started. Team sessions always use the terminal.';
+      'Run new personal and mixed-team Codex sessions as terminal-less ACP chat via codex-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.';
 
   @override
   String get codexPersonalAcpAndroidDisabled =>

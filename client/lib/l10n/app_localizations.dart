@@ -16463,7 +16463,7 @@ abstract class AppLocalizations {
   /// No description provided for @claudePersonalAcpDefaultDescription.
   ///
   /// In en, this message translates to:
-  /// **'Run new personal Claude sessions as terminal-less ACP chat via claude-agent-acp. Existing sessions stay as they were started. Team sessions always use the terminal.'**
+  /// **'Run new personal and mixed-team Claude sessions as terminal-less ACP chat via claude-agent-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.'**
   String get claudePersonalAcpDefaultDescription;
 
   /// No description provided for @cursorPersonalAcpDefaultLabel.
@@ -16475,7 +16475,7 @@ abstract class AppLocalizations {
   /// No description provided for @cursorPersonalAcpDefaultDescription.
   ///
   /// In en, this message translates to:
-  /// **'Run new personal Cursor sessions as terminal-less ACP chat via cursor-agent acp. Existing sessions stay as they were started. Team sessions always use the terminal.'**
+  /// **'Run new personal and mixed-team Cursor sessions as terminal-less ACP chat via cursor-agent acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.'**
   String get cursorPersonalAcpDefaultDescription;
 
   /// No description provided for @claudePersonalAcpAndroidDisabled.
@@ -16511,7 +16511,7 @@ abstract class AppLocalizations {
   /// No description provided for @codexPersonalAcpDefaultDescription.
   ///
   /// In en, this message translates to:
-  /// **'Run new personal Codex sessions as terminal-less ACP chat via codex-acp. Existing sessions stay as they were started. Team sessions always use the terminal.'**
+  /// **'Run new personal and mixed-team Codex sessions as terminal-less ACP chat via codex-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.'**
   String get codexPersonalAcpDefaultDescription;
 
   /// No description provided for @codexPersonalAcpAndroidDisabled.

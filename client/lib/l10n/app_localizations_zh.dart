@@ -1,6 +1,5 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -8866,14 +8865,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get claudePersonalAcpDefaultDescription =>
-      '新建个人 Claude 会话走无终端 ACP（claude-agent-acp）。已有会话保持原启动方式。团队会话始终用终端。';
+      '新建个人和混合团队 Claude 会话走无终端 ACP（claude-agent-acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。';
 
   @override
   String get cursorPersonalAcpDefaultLabel => '个人会话使用 ACP 聊天';
 
   @override
   String get cursorPersonalAcpDefaultDescription =>
-      '新建个人 Cursor 会话走无终端 ACP（cursor-agent acp）。已有会话保持原启动方式。团队会话始终用终端。';
+      '新建个人和混合团队 Cursor 会话走无终端 ACP（cursor-agent acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。';
 
   @override
   String get claudePersonalAcpAndroidDisabled => '在远程 SSH exec 就绪前，ACP 聊天仅限桌面。';
@@ -8893,7 +8892,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get codexPersonalAcpDefaultDescription =>
-      '新建个人 Codex 会话走无终端 ACP（codex-acp）。已有会话保持原启动方式。团队会话始终用终端。';
+      '新建个人和混合团队 Codex 会话走无终端 ACP（codex-acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。';
 
   @override
   String get codexPersonalAcpAndroidDisabled => '在远程 SSH exec 就绪前，ACP 聊天仅限桌面。';
