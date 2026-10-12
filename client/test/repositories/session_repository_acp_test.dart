@@ -70,4 +70,58 @@ void main() {
     expect(session.acp, isFalse);
     expect(session.members.first.acp, isTrue);
   });
+
+  test(
+    'mixed local Gemini plan path persists binding acp and keeps session acp false',
+    () async {
+      final created = await repo.createSession(
+        workspaceId,
+        sessionTeam: 'team-1',
+        rosterMembers: const [TeamMemberConfig(id: 'gem', name: 'Gem')],
+        memberClis: const {'gem': CliTool.gemini},
+        teamMode: TeamMode.mixed,
+      );
+      final loaded = await repo.loadSessionsForWorkspace(workspaceId);
+      final session = loaded.singleWhere(
+        (s) => s.sessionId == created.session.sessionId,
+      );
+      expect(session.acp, isFalse);
+      expect(session.members.single.cli, CliTool.gemini);
+      expect(session.members.single.acp, isTrue);
+    },
+  );
+
+  test('mixed local Claude plan path follows seedClaudeMemberAcp', () async {
+    final on = (await repo.createSession(
+      workspaceId,
+      sessionTeam: 'team-claude-on',
+      rosterMembers: const [TeamMemberConfig(id: 'lead', name: 'Lead')],
+      memberClis: const {'lead': CliTool.claude},
+      teamMode: TeamMode.mixed,
+    )).session;
+    expect(on.acp, isFalse);
+    expect(on.members.single.acp, isTrue);
+
+    final off = (await repo.createSession(
+      workspaceId,
+      sessionTeam: 'team-claude-off',
+      rosterMembers: const [TeamMemberConfig(id: 'lead', name: 'Lead')],
+      memberClis: const {'lead': CliTool.claude},
+      teamMode: TeamMode.mixed,
+      seedClaudeMemberAcp: false,
+    )).session;
+    expect(off.members.single.acp, isFalse);
+  });
+
+  test('native Gemini plan path keeps binding acp false', () async {
+    final session = (await repo.createSession(
+      workspaceId,
+      sessionTeam: 'team-1',
+      rosterMembers: const [TeamMemberConfig(id: 'gem', name: 'Gem')],
+      memberClis: const {'gem': CliTool.gemini},
+      teamMode: TeamMode.native,
+    )).session;
+    expect(session.acp, isFalse);
+    expect(session.members.single.acp, isFalse);
+  });
 }

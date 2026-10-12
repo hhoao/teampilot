@@ -65,6 +65,10 @@ class CapturingSessionRepository extends Fake implements SessionRepository {
     SessionPurpose purpose = SessionPurpose.normal,
     String workflowId = '',
     bool acp = false,
+    TeamMode teamMode = TeamMode.native,
+    bool seedClaudeMemberAcp = true,
+    bool seedCodexMemberAcp = false,
+    bool seedCursorMemberAcp = true,
   }) async {
     createCalls.add(
       _CreateSessionCall(

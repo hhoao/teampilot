@@ -1989,6 +1989,7 @@ class ChatCubit extends Cubit<ChatState>
       cli: cli,
       workingDirectory: workingDirectory,
       fixedSessionId: fixedSessionId,
+      teamMode: team?.teamMode ?? TeamMode.native,
     );
     _dataStore.markSessionDocument(session.sessionId);
     _emitSnapshot(_dataStore.appendSession(stateSnapshot(), session));

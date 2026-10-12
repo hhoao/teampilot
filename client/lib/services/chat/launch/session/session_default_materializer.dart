@@ -93,6 +93,7 @@ class SessionDefaultMaterializer {
         rosterMembers: runtimeRosterMembers(team),
         globalPresets: _host.lifecycle.globalPresets,
       ),
+      teamMode: team.teamMode,
     );
     session = created.session;
     if (_host.isClosed) return;

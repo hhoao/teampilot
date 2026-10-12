@@ -406,6 +406,10 @@ class _CapturingSessionRepository extends Fake implements SessionRepository {
     Map<String, String>? memberTargets,
     Workspace? knownWorkspace,
     bool acp = false,
+    TeamMode teamMode = TeamMode.native,
+    bool seedClaudeMemberAcp = true,
+    bool seedCodexMemberAcp = false,
+    bool seedCursorMemberAcp = true,
   }) async {
     createCalls.add(
       _CreateSessionCall(

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_state.dart';
 import 'package:teampilot/services/chat/session/session_create_request.dart';
@@ -138,6 +140,60 @@ void main() {
       expect(last.sessions.map((s) => s.sessionId), contains('sess-team'));
       expect(last.workspaces.single.sessionIds, contains('sess-team'));
     });
+
+    test(
+      'mixed local Gemini materialize persists binding.acp and keeps session.acp false',
+      () async {
+        final tmp = await Directory.systemTemp.createTemp(
+          'fs_materialize_member_acp_',
+        );
+        addTearDown(() => tmp.deleteSync(recursive: true));
+        final repo = SessionRepository(
+          rootDir: tmp.path,
+          storage: fakeHomeStorage(),
+        );
+        final workspace = await repo.createWorkspace([
+          const WorkspaceFolder(path: '/proj'),
+        ]);
+        const team = TeamProfile(
+          id: 'team-1',
+          name: 'Team',
+          teamMode: TeamMode.mixed,
+          cli: CliTool.gemini,
+          members: [
+            TeamMemberConfig(id: 'gem', name: 'Gem', cli: CliTool.gemini),
+          ],
+        );
+        final host = _MaterializeHost(ChatState(workspaces: [workspace]));
+        final materializer = SessionDefaultMaterializer(
+          host: host,
+          coordinator: _RecordingLaunchCoordinator(),
+          workspaceIndex: () => SessionLaunchWorkspaceIndex(
+            workspaces: host.state.workspaces,
+            sessions: host.state.sessions,
+            usesPosixPaths: false,
+          ),
+          isTabsEmpty: () => true,
+          activeBucketKey: () => workspace.workspaceId,
+        );
+
+        await materializer.materializeTeamSession(
+          team,
+          repo,
+          connectImmediately: false,
+          memberForInitialShell: team.members.first,
+          workspaceCwd: '/proj',
+        );
+
+        final loaded = await repo.loadSessionsForWorkspace(
+          workspace.workspaceId,
+        );
+        expect(loaded, hasLength(1));
+        expect(loaded.single.acp, isFalse);
+        expect(loaded.single.members.single.cli, CliTool.gemini);
+        expect(loaded.single.members.single.acp, isTrue);
+      },
+    );
   });
 }
 
@@ -254,6 +310,10 @@ class _MaterializeRepo extends Fake implements SessionRepository {
     Map<String, String>? memberTargets,
     Workspace? knownWorkspace,
     bool acp = false,
+    TeamMode teamMode = TeamMode.native,
+    bool seedClaudeMemberAcp = true,
+    bool seedCodexMemberAcp = false,
+    bool seedCursorMemberAcp = true,
   }) async {
     createCalls++;
     lastSessionTeam = sessionTeam;

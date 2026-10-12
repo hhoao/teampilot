@@ -466,6 +466,7 @@ class WorkspaceCatalog {
       rosterMembers: rosterMembers,
       memberClis: resolvedClis,
       knownWorkspace: workspace,
+      teamMode: team?.teamMode ?? TeamMode.native,
     );
     _sessions = [..._sessions, created.session];
     patchWorkspace(
@@ -498,6 +499,10 @@ class WorkspaceCatalog {
     SessionContinueOverrides? continueOverrides,
     List<SessionMemberBinding>? members,
     Map<String, String>? memberTargets,
+    TeamMode teamMode = TeamMode.native,
+    bool seedClaudeMemberAcp = true,
+    bool seedCodexMemberAcp = false,
+    bool seedCursorMemberAcp = true,
   }) async {
     final ws = workspaceById(workspaceId);
     final result = await repo.createSession(
@@ -517,6 +522,10 @@ class WorkspaceCatalog {
       members: members,
       memberTargets: memberTargets,
       knownWorkspace: ws,
+      teamMode: teamMode,
+      seedClaudeMemberAcp: seedClaudeMemberAcp,
+      seedCodexMemberAcp: seedCodexMemberAcp,
+      seedCursorMemberAcp: seedCursorMemberAcp,
     );
     _sessions = [..._sessions, result.session];
     patchWorkspace(

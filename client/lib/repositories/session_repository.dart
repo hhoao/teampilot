@@ -18,6 +18,7 @@ import '../services/storage/runtime_layout.dart';
 import '../services/io/filesystem.dart';
 import '../services/chat/launch/session/session_member_cli_locks.dart';
 import '../services/chat/session/session_team_counter.dart';
+import '../services/chat/launch/session/member_acp_stamp.dart';
 import '../services/chat/launch/session/team_session_member_plan.dart';
 import '../services/cli/registry/capabilities/ai_history_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
@@ -777,6 +778,10 @@ class SessionRepository {
     Map<String, String>? memberTargets,
     Workspace? knownWorkspace,
     bool acp = false,
+    TeamMode teamMode = TeamMode.native,
+    bool seedClaudeMemberAcp = true,
+    bool seedCodexMemberAcp = false,
+    bool seedCursorMemberAcp = true,
   }) async {
     final total = Stopwatch()..start();
     var stepAt = total.elapsedMilliseconds;
@@ -840,7 +845,14 @@ class SessionRepository {
           sessionTargets = plan.memberTargets;
         }
       } else {
-        resolvedMembers = plan.members;
+        resolvedMembers = stampMemberAcp(
+          members: plan.members,
+          memberTargets: plan.memberTargets,
+          teamMode: teamMode,
+          seedClaudeMemberAcp: seedClaudeMemberAcp,
+          seedCodexMemberAcp: seedCodexMemberAcp,
+          seedCursorMemberAcp: seedCursorMemberAcp,
+        );
         sessionTargets = plan.memberTargets;
       }
 

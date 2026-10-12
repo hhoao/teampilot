@@ -25,7 +25,7 @@ import 'session_tab_surface_coordinator.dart';
 import 'session_launch_open_validator.dart';
 import 'session_launch_workspace_index.dart';
 import 'session_provisional_builder.dart';
-import '../../../../pages/home_workspace/workspace/claude_acp_launch_switch.dart';
+import 'member_acp_stamp.dart';
 
 typedef OpenMemberIntent =
     Future<void> Function(
