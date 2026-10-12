@@ -70,6 +70,48 @@ void main() {
     },
   );
 
+  test(
+    'member attach calls onMemberIdle again when a later turn ends',
+    () async {
+      final harness = _Harness();
+      final bus = _RecordingBus();
+      harness.tab.teamBus = bus;
+      final session = _mixedSession();
+      final team = _mixedTeam();
+      final member = _lead();
+
+      await harness.service.attachMemberAcpRuntime(
+        _memberJob(session, team, member),
+        session,
+        (team: team, member: member, cli: CliTool.claude),
+      );
+
+      final cubit = harness.tab.memberAcpRuntimes['lead']!;
+      harness.runtime.add(const AcpStop(kind: AcpStopKind.endTurn));
+      await pumpEventQueue();
+      expect(cubit.state.phase, AcpChatPhase.idle);
+      expect(bus.idleCalls, [(memberId: 'lead', fromPtyQuietWatch: false)]);
+
+      final accepted = cubit.sendPrompt('second turn');
+      await pumpEventQueue();
+      expect(accepted, isTrue);
+      expect(cubit.state.inTurn, isTrue);
+      expect(cubit.state.phase, AcpChatPhase.idle);
+      expect(bus.idleCalls, hasLength(1));
+
+      harness.runtime.add(const AcpStop(kind: AcpStopKind.endTurn));
+      await pumpEventQueue();
+
+      expect(cubit.state.inTurn, isFalse);
+      expect(cubit.state.phase, AcpChatPhase.idle);
+      expect(bus.idleCalls, [
+        (memberId: 'lead', fromPtyQuietWatch: false),
+        (memberId: 'lead', fromPtyQuietWatch: false),
+      ]);
+      await cubit.close();
+    },
+  );
+
   test('member attach ended does not call onMemberIdle', () async {
     final harness = _Harness()..runtime.armExit();
     final bus = _RecordingBus();

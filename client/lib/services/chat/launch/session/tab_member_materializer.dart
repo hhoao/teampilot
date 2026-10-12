@@ -480,6 +480,22 @@ class TabMemberMaterializer implements MemberMaterializer {
         );
         return;
       }
+      final cubit = tab.memberAcpRuntimes[memberId];
+      final phase = cubit?.state.phase;
+      if (cubit != null && phase == AcpChatPhase.ended) {
+        appLogger.d(
+          '[member-materializer] input-ready acp dead '
+          'member=$memberId session=$sessionId',
+        );
+        throw const MemberInputReadyException(MemberInputReadyFailure.dead);
+      }
+      if (phase == AcpChatPhase.ready || phase == AcpChatPhase.idle) {
+        appLogger.d(
+          '[member-materializer] input-ready acp member=$memberId '
+          'session=$sessionId phase=$phase',
+        );
+        return;
+      }
       if (memberInputWaitTimedOut(
         startedAt: startedAt,
         cap: waitCap,
@@ -490,14 +506,6 @@ class TabMemberMaterializer implements MemberMaterializer {
           'member=$memberId session=$sessionId',
         );
         throw const MemberInputReadyException(MemberInputReadyFailure.timedOut);
-      }
-      final phase = tab.memberAcpRuntimes[memberId]?.state.phase;
-      if (phase == AcpChatPhase.ready || phase == AcpChatPhase.idle) {
-        appLogger.d(
-          '[member-materializer] input-ready acp member=$memberId '
-          'session=$sessionId phase=$phase',
-        );
-        return;
       }
       waitTicks++;
       if (waitTicks == 1 || waitTicks % 50 == 0) {

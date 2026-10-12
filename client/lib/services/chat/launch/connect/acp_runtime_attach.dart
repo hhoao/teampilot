@@ -198,21 +198,30 @@ class AcpRuntimeAttach {
     return true;
   }
 
-  /// TeamBus idle is the transition into [AcpChatPhase.idle]. [Cubit.close]
-  /// closes the state stream and cancels this listener. Personal attach does
-  /// not subscribe.
+  /// TeamBus idle fires when the seat becomes prompt-ready: the first
+  /// transition into [AcpChatPhase.idle], and each later turn whose [inTurn]
+  /// falls while the phase stays idle. [AcpChatPhase.ended] does not fire.
+  /// Later emits that stay idle with [inTurn] already false do not fire.
+  /// [Cubit.close] closes the state stream and cancels this listener.
+  /// Personal attach does not subscribe.
   void _listenForMemberIdle(
     ChatTab tab,
     String memberId,
     AcpChatRuntimeCubit cubit,
   ) {
-    var previous = cubit.state.phase;
+    var previousPhase = cubit.state.phase;
+    var previousInTurn = cubit.state.inTurn;
     cubit.stream.listen((state) {
-      final was = previous;
-      previous = state.phase;
-      if (was == AcpChatPhase.idle || state.phase != AcpChatPhase.idle) {
-        return;
-      }
+      final wasPhase = previousPhase;
+      final wasInTurn = previousInTurn;
+      previousPhase = state.phase;
+      previousInTurn = state.inTurn;
+      if (state.phase == AcpChatPhase.ended) return;
+      final enteredIdle =
+          wasPhase != AcpChatPhase.idle && state.phase == AcpChatPhase.idle;
+      final turnEnded =
+          state.phase == AcpChatPhase.idle && wasInTurn && !state.inTurn;
+      if (!enteredIdle && !turnEnded) return;
       appLogger.d(
         '[acp-attach] member idle member=$memberId session=${cubit.sessionId}',
       );

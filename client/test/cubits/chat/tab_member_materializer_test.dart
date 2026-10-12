@@ -12,6 +12,7 @@ import 'package:teampilot/services/chat/session/chat_tab_store.dart';
 import 'package:teampilot/services/chat/launch/connect/member_connector.dart';
 import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/services/chat/session/chat_tab_info.dart';
+import 'package:teampilot/services/chat/launch/session/member_input_ready_wait.dart';
 import 'package:teampilot/services/chat/launch/session/tab_member_materializer.dart';
 import 'package:teampilot/services/chat/runtime/tab_session_runtime_coordinator.dart';
 import 'package:teampilot/models/app_session.dart';
@@ -526,6 +527,44 @@ void main() {
 
       await pending;
       expect(worker.state.phase, AcpChatPhase.ready);
+      await worker.close();
+      await harness.runtime.close();
+    },
+  );
+
+  test(
+    'ACP seat ensureMemberInputReady aborts when the cubit phase is ended',
+    () async {
+      final harness = _AcpSeatHarness();
+      final worker = harness.liveCubit('worker');
+      await worker.start(
+        executable: 'claude',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      worker.handleProcessExited(1);
+      harness.tab.memberAcpRuntimes['worker'] = worker;
+      expect(worker.state.phase, AcpChatPhase.ended);
+
+      final started = DateTime.now();
+      await expectLater(
+        harness.materializer.ensureMemberInputReady(
+          'sess-1',
+          'worker',
+          waitCap: const Duration(seconds: 5),
+        ),
+        throwsA(
+          isA<MemberInputReadyException>().having(
+            (e) => e.failure,
+            'failure',
+            MemberInputReadyFailure.dead,
+          ),
+        ),
+      );
+      expect(
+        DateTime.now().difference(started),
+        lessThan(const Duration(seconds: 2)),
+      );
       await worker.close();
       await harness.runtime.close();
     },
