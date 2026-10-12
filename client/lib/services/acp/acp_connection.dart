@@ -6,6 +6,7 @@ import 'package:acpd/acpd.dart' as acpd;
 import 'acp_agent_translator.dart';
 import 'acp_frame_logger.dart';
 import 'acp_session.dart';
+import 'acp_session_runtime.dart';
 import 'acp_transport.dart';
 
 /// Result of the ACP `initialize` handshake.
@@ -260,6 +261,24 @@ class AcpAgentConnection {
       agentName: response.agentInfo?.name,
       agentVersion: response.agentInfo?.version,
     );
+  }
+
+  /// Sends ACP `authenticate` after a successful [initialize].
+  ///
+  /// RPC failures become [AcpAuthenticateException] (not-logged-in).
+  /// [TimeoutException] and other non-RPC errors are rethrown unwrapped.
+  Future<void> authenticate(
+    String methodId, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    try {
+      await _client.client.authenticate(
+        acpd.AuthenticateRequest(methodId: methodId),
+        timeout: timeout,
+      );
+    } on acpd.RpcError catch (error) {
+      throw AcpAuthenticateException(error.toString());
+    }
   }
 
   /// Closes the connection and terminates the agent transport.

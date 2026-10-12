@@ -60,6 +60,27 @@ void main() {
     expect(text, contains('GEMINI_API_KEY=[REDACTED]'));
   });
 
+  test('redacts CURSOR_API_KEY values in frames', () {
+    final logger = AcpFrameLogger();
+    logger.logOutgoing(
+      jsonEncode({
+        'method': 'session/prompt',
+        'env': {'CURSOR_API_KEY': 'secret'},
+      }),
+    );
+    final text = logger.snapshot().join('\n');
+    expect(text, contains('[REDACTED]'));
+    expect(text, isNot(contains('secret')));
+  });
+
+  test('redacts CURSOR_AUTH_TOKEN in stderr env form too', () {
+    final logger = AcpFrameLogger();
+    logger.logStderr('CURSOR_AUTH_TOKEN=secret');
+    final text = logger.snapshot().join('\n');
+    expect(text, isNot(contains('secret')));
+    expect(text, contains('CURSOR_AUTH_TOKEN=[REDACTED]'));
+  });
+
   test('can disable disk log mirroring', () {
     final logger = AcpFrameLogger(enableDiskLog: false);
     logger.logOutgoing('{"ok":true}');

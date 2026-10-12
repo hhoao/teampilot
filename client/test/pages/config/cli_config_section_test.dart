@@ -180,6 +180,25 @@ Widget _wrapRow(
   );
 }
 
+Widget _wrapCursorAcpRow(
+  SessionPreferencesCubit cubit, {
+  bool isAndroid = false,
+}) {
+  return BlocProvider.value(
+    value: cubit,
+    child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: CursorPersonalAcpSettingsRow(
+          cubit: cubit,
+          isAndroidOverride: isAndroid,
+        ),
+      ),
+    ),
+  );
+}
+
 Widget _wrapAcpRow(
   SessionPreferencesCubit cubit, {
   bool isAndroid = false,
@@ -492,6 +511,67 @@ void main() {
     expect(find.byKey(AppKeys.claudeAcpAdapterInstallButton), findsNothing);
   });
 
+  testWidgets('Cursor ACP switch is shown in the Cursor CLI section', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pump();
+
+    final tile = find.byKey(AppKeys.cursorPersonalAcpSwitch);
+    expect(tile, findsOneWidget);
+    expect(tester.widget<SwitchListTile>(tile).value, isTrue);
+
+    await tester.pumpWidget(_wrapCursorAcpRow(cubit));
+    await tester.pump();
+    expect(find.text('Install ACP adapter'), findsNothing);
+  });
+
+  testWidgets('Cursor ACP switch toggles cursorPersonalAcpDefault', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrapCursorAcpRow(cubit));
+    await tester.pump();
+    await tester.tap(find.byKey(AppKeys.cursorPersonalAcpSwitch));
+    await tester.pump();
+
+    expect(cubit.state.preferences.cursorPersonalAcpDefault, isFalse);
+    expect(
+      tester
+          .widget<SwitchListTile>(find.byKey(AppKeys.cursorPersonalAcpSwitch))
+          .value,
+      isFalse,
+    );
+  });
+
+  testWidgets('Cursor ACP switch is disabled with a note on Android', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrapCursorAcpRow(cubit, isAndroid: true));
+    await tester.pump();
+
+    final tile = tester.widget<SwitchListTile>(
+      find.byKey(AppKeys.cursorPersonalAcpSwitch),
+    );
+    expect(tile.onChanged, isNull);
+    expect(
+      find.text('ACP chat is desktop-only until remote SSH exec is available.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(AppKeys.cursorPersonalAcpSwitch));
+    await tester.pump();
+    expect(cubit.state.preferences.cursorPersonalAcpDefault, isTrue);
+  });
+
   testWidgets('Codex ACP switch is shown in the Codex CLI section', (
     tester,
   ) async {
@@ -556,29 +636,26 @@ void main() {
     expect(cubit.state.preferences.codexPersonalAcpDefault, isFalse);
   });
 
-  testWidgets(
-    'Codex ACP adapter install button installs the adapter package',
-    (tester) async {
-      final cubit = await _makeCubit();
-      addTearDown(cubit.close);
-      final installs = <String>[];
+  testWidgets('Codex ACP adapter install button installs the adapter package', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+    final installs = <String>[];
 
-      await tester.pumpWidget(
-        _wrapCodexAcpRow(cubit, adapterInstalls: installs),
-      );
-      await tester.pump();
-      expect(find.text('Install ACP adapter'), findsOneWidget);
+    await tester.pumpWidget(_wrapCodexAcpRow(cubit, adapterInstalls: installs));
+    await tester.pump();
+    expect(find.text('Install ACP adapter'), findsOneWidget);
 
-      await tester.tap(find.byKey(AppKeys.codexAcpAdapterInstallButton));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(find.byKey(AppKeys.codexAcpAdapterInstallButton));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
 
-      expect(installs, ['@agentclientprotocol/codex-acp']);
-      AppToast.dismiss();
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 250));
-    },
-  );
+    expect(installs, ['@agentclientprotocol/codex-acp']);
+    AppToast.dismiss();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+  });
 
   testWidgets('Codex ACP adapter install button is hidden on Android', (
     tester,

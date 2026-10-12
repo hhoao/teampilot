@@ -9,18 +9,18 @@ import '../../../models/team_config.dart';
 bool _isAndroid(bool? isAndroidOverride) =>
     isAndroidOverride ?? Platform.isAndroid;
 
-bool _personalAdapterAcpAllowed({
+bool _personalAcpAllowed({
   required bool isPersonal,
   required CliTool? cli,
   bool? isAndroidOverride,
 }) =>
     isPersonal &&
-    (cli == CliTool.claude || cli == CliTool.codex) &&
+    (cli == CliTool.claude || cli == CliTool.cursor || cli == CliTool.codex) &&
     !_isAndroid(isAndroidOverride);
 
-/// Final ACP flag for a launch: [requested] only counts for personal Claude
-/// or Codex on desktop and is always false on Android. Gemini ACP is inferred
-/// by session create.
+/// Final ACP flag for a launch: [requested] only counts for personal Claude,
+/// Cursor, or Codex on desktop and is always false on Android. Gemini ACP is
+/// inferred by session create.
 bool resolveLaunchAcp({
   required bool isPersonal,
   required CliTool? cli,
@@ -28,40 +28,30 @@ bool resolveLaunchAcp({
   bool? isAndroidOverride,
 }) =>
     requested &&
-    _personalAdapterAcpAllowed(
+    _personalAcpAllowed(
       isPersonal: isPersonal,
       cli: cli,
       isAndroidOverride: isAndroidOverride,
     );
 
+bool readPersonalAcpDefault(BuildContext context, CliTool? cli) {
+  try {
+    final prefs = context.read<SessionPreferencesCubit>().state.preferences;
+    return switch (cli) {
+      CliTool.claude => prefs.claudePersonalAcpDefault,
+      CliTool.cursor => prefs.cursorPersonalAcpDefault,
+      CliTool.codex => prefs.codexPersonalAcpDefault,
+      _ => false,
+    };
+  } on ProviderNotFoundException {
+    return cli == CliTool.claude || cli == CliTool.cursor;
+  }
+}
+
 /// Current settings default for "personal Claude uses ACP"; true when the
 /// preferences cubit is not in scope (matches [SessionPreferences] default).
-bool readClaudePersonalAcpDefault(BuildContext context) {
-  try {
-    return context
-        .read<SessionPreferencesCubit>()
-        .state
-        .preferences
-        .claudePersonalAcpDefault;
-  } on ProviderNotFoundException {
-    return true;
-  }
-}
+bool readClaudePersonalAcpDefault(BuildContext context) =>
+    readPersonalAcpDefault(context, CliTool.claude);
 
-bool readCodexPersonalAcpDefault(BuildContext context) {
-  try {
-    return context
-        .read<SessionPreferencesCubit>()
-        .state
-        .preferences
-        .codexPersonalAcpDefault;
-  } on ProviderNotFoundException {
-    return false;
-  }
-}
-
-bool readPersonalAcpDefault(BuildContext context, CliTool? cli) {
-  if (cli == CliTool.claude) return readClaudePersonalAcpDefault(context);
-  if (cli == CliTool.codex) return readCodexPersonalAcpDefault(context);
-  return false;
-}
+bool readCodexPersonalAcpDefault(BuildContext context) =>
+    readPersonalAcpDefault(context, CliTool.codex);

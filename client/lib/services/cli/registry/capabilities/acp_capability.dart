@@ -21,6 +21,9 @@ abstract interface class AcpCapability implements CliCapability {
   /// Per-agent absorption of ACP protocol quirks.
   AcpAgentTranslator get translator;
 
+  /// ACP `authenticate` methodId after initialize, or null to skip.
+  String? get authenticateMethodId;
+
   /// Env for the agent process: [baseEnv] preserved plus isolated config
   /// dir, injected credentials, and surface identification.
   Map<String, String> buildEnvironment({

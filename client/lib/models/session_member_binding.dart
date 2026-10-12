@@ -9,6 +9,7 @@ class SessionMemberBinding {
     String? typeId,
     this.cli,
     this.nativeSessionIds = const {},
+    this.acp = false,
   }) : typeId = typeId ?? rosterMemberId;
 
   factory SessionMemberBinding.fromJson(Map<String, Object?> json) {
@@ -26,6 +27,7 @@ class SessionMemberBinding {
       typeId: json['typeId'] as String? ?? instanceId,
       cli: CliTool.tryParse(json['cli'] as String?),
       nativeSessionIds: native,
+      acp: json['acp'] == true,
     );
   }
 
@@ -45,6 +47,8 @@ class SessionMemberBinding {
   /// `docs/session-resume-architecture.md`.
   final Map<String, String> nativeSessionIds;
 
+  final bool acp;
+
   /// Returns this binding with [nativeId] recorded for [toolValue], or `this`
   /// unchanged when already equal.
   SessionMemberBinding withNativeSessionId(String toolValue, String nativeId) {
@@ -57,6 +61,7 @@ class SessionMemberBinding {
       typeId: typeId,
       cli: cli,
       nativeSessionIds: {...nativeSessionIds, tool: id},
+      acp: acp,
     );
   }
 
@@ -66,6 +71,7 @@ class SessionMemberBinding {
     'taskId': taskId,
     if (cli != null) 'cli': cli!.value,
     if (nativeSessionIds.isNotEmpty) 'nativeSessionIds': nativeSessionIds,
+    if (acp) 'acp': true,
   };
 
   @override
@@ -77,7 +83,8 @@ class SessionMemberBinding {
             typeId == other.typeId &&
             taskId == other.taskId &&
             cli == other.cli &&
-            mapEquals(nativeSessionIds, other.nativeSessionIds);
+            mapEquals(nativeSessionIds, other.nativeSessionIds) &&
+            acp == other.acp;
   }
 
   @override
@@ -89,5 +96,6 @@ class SessionMemberBinding {
     Object.hashAll(
       nativeSessionIds.entries.map((e) => Object.hash(e.key, e.value)),
     ),
+    acp,
   );
 }

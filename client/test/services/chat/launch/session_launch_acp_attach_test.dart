@@ -3,6 +3,7 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/services/acp/acp_chat_strings.dart';
+import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
 import 'package:teampilot/services/acp/acp_session_runtime.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
@@ -282,6 +283,9 @@ class _RecordingAcpRuntime implements AcpSessionRuntimeApi {
   Stream<AgentPermissionRequest> get permissionRequests => const Stream.empty();
 
   @override
+  Stream<AcpPendingClientRequest> get clientRequests => const Stream.empty();
+
+  @override
   AcpAuthNotice? get lastAuthNotice => null;
 
   @override
@@ -292,6 +296,12 @@ class _RecordingAcpRuntime implements AcpSessionRuntimeApi {
     AgentPermissionReplyKind reply, {
     AgentPermissionAlwaysOption? always,
   }) async => reply;
+
+  @override
+  Future<void> answerAsk(AcpAskHoldReply reply) async {}
+
+  @override
+  Future<void> answerPlan(AcpPlanHoldReply reply) async {}
 
   @override
   void cancel() {}

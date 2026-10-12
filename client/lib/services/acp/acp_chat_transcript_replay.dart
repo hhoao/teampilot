@@ -50,7 +50,10 @@ Map<String, Object?>? _encodeMessage(AiMessage message) {
   final at = message.createdAt?.toUtc().toIso8601String();
   switch (message.role) {
     case AiRole.user:
-      final text = message.parts.whereType<AiTextPart>().map((p) => p.text).join();
+      final text = message.parts
+          .whereType<AiTextPart>()
+          .map((p) => p.text)
+          .join();
       if (text.isEmpty) return null;
       return {
         'v': 1,
@@ -60,7 +63,10 @@ Map<String, Object?>? _encodeMessage(AiMessage message) {
         if (at != null) 'at': at,
       };
     case AiRole.system:
-      final text = message.parts.whereType<AiTextPart>().map((p) => p.text).join();
+      final text = message.parts
+          .whereType<AiTextPart>()
+          .map((p) => p.text)
+          .join();
       if (text.isEmpty) return null;
       return {
         'v': 1,
@@ -94,12 +100,16 @@ Map<String, Object?>? _encodePart(AiMessagePart part) {
       if (text.isEmpty) return null;
       return {'kind': 'reasoning', 'text': text};
     case AiToolCallPart():
+      final args = _jsonSafeMap(part.args);
       return {
         'kind': 'tool',
         'toolCallId': part.toolCallId,
         'title': part.toolName,
         'status': part.status.name,
         'isError': part.isError,
+        if (args != null) 'args': args,
+        if (part.category != AiToolCallCategory.other)
+          'category': part.category.name,
       };
   }
 }
@@ -168,10 +178,46 @@ AiMessagePart? _decodePart(Map<String, Object?> entry) {
         toolName: title is String && title.isNotEmpty ? title : toolCallId,
         status: _status(entry['status']),
         isError: entry['isError'] == true,
+        args: _decodeArgs(entry['args']),
+        category: _category(entry['category']),
       );
     default:
       return null;
   }
+}
+
+Map<String, Object?>? _jsonSafeMap(Map<String, Object?>? args) {
+  if (args == null) return null;
+  try {
+    final encoded = jsonDecode(jsonEncode(args));
+    if (encoded is! Map) return null;
+    return _asStringKeyedMap(encoded);
+  } on Object {
+    return null;
+  }
+}
+
+Map<String, Object?>? _decodeArgs(Object? raw) {
+  if (raw is! Map) return null;
+  return _asStringKeyedMap(raw);
+}
+
+Map<String, Object?> _asStringKeyedMap(Map<dynamic, dynamic> raw) => {
+  for (final entry in raw.entries) '${entry.key}': _normalizeJson(entry.value),
+};
+
+Object? _normalizeJson(Object? value) {
+  if (value is Map) return _asStringKeyedMap(value);
+  if (value is List) return [for (final item in value) _normalizeJson(item)];
+  return value;
+}
+
+AiToolCallCategory _category(Object? raw) {
+  if (raw is! String) return AiToolCallCategory.other;
+  for (final value in AiToolCallCategory.values) {
+    if (value.name == raw) return value;
+  }
+  return AiToolCallCategory.other;
 }
 
 AiToolCallStatus _status(Object? raw) {

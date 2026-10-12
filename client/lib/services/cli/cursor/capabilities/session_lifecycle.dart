@@ -861,18 +861,6 @@ final class CursorSessionLifecycleCapability implements CliSessionCapability {
     }
   }
 
-  String _absoluteWorkspacePath(
-    CliSessionInitContext ctx,
-    String relativePath,
-  ) {
-    final workspaceDir = ctx.paths.layout.workspace.workspaceDir(
-      ctx.workspaceId,
-    );
-    return ctx.paths.fs.pathContext.normalize(
-      ctx.paths.fs.pathContext.join(workspaceDir, relativePath),
-    );
-  }
-
   bool _phaseAtLeast(CliSessionPhase current, CliSessionPhase target) {
     return _phaseRank(current) >= _phaseRank(target);
   }

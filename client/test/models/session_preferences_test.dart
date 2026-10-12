@@ -105,6 +105,20 @@ void main() {
       );
     });
 
+    test('cursorPersonalAcpDefault defaults true and round-trips', () {
+      expect(SessionPreferences().cursorPersonalAcpDefault, isTrue);
+      expect(
+        SessionPreferences.fromJson(const {}).cursorPersonalAcpDefault,
+        isTrue,
+      );
+      final off = SessionPreferences(cursorPersonalAcpDefault: false);
+      expect(off.toJson()['cursorPersonalAcpDefault'], isFalse);
+      expect(
+        SessionPreferences.fromJson(off.toJson()).cursorPersonalAcpDefault,
+        isFalse,
+      );
+    });
+
     test('codexPersonalAcpDefault defaults false and round-trips', () {
       expect(SessionPreferences().codexPersonalAcpDefault, isFalse);
       expect(

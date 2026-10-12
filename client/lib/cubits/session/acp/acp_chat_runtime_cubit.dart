@@ -5,9 +5,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../models/team_config.dart';
+import '../../../services/acp/acp_chat_extension_fold.dart';
 import '../../../services/acp/acp_chat_strings.dart';
 import '../../../services/acp/acp_chat_transcript.dart';
 import '../../../services/acp/acp_chat_transcript_replay.dart';
+import '../../../services/acp/acp_client_extensions.dart';
 import '../../../services/acp/acp_session.dart';
 import '../../../services/acp/acp_session_runtime.dart';
 import '../../../services/agent_status/agent_attention_state.dart';
@@ -72,7 +74,7 @@ class AcpChatRuntimeState {
     this.phase = AcpChatPhase.launching,
     this.messages = const [],
     this.inTurn = false,
-    this.pendingPermission,
+    this.pendingClient,
     this.error,
     this.activity = AcpChatActivity.none,
     this.historyHydrated = false,
@@ -86,8 +88,14 @@ class AcpChatRuntimeState {
   /// True from prompt submit until the turn's stop event.
   final bool inTurn;
 
-  /// The currently held permission card, if any.
-  final AgentPermissionRequest? pendingPermission;
+  /// The currently held permission / ask / plan card, if any.
+  final AcpPendingClientRequest? pendingClient;
+
+  /// Permission payload when [pendingClient] is [AcpPendingPermission].
+  AgentPermissionRequest? get pendingPermission {
+    final pending = pendingClient;
+    return pending is AcpPendingPermission ? pending.request : null;
+  }
 
   final AcpChatError? error;
 
@@ -102,7 +110,7 @@ class AcpChatRuntimeState {
     AcpChatPhase? phase,
     List<AiMessage>? messages,
     bool? inTurn,
-    Object? pendingPermission = _unset,
+    Object? pendingClient = _unset,
     AcpChatError? error,
     bool clearError = false,
     AcpChatActivity? activity,
@@ -111,9 +119,9 @@ class AcpChatRuntimeState {
     phase: phase ?? this.phase,
     messages: messages ?? this.messages,
     inTurn: inTurn ?? this.inTurn,
-    pendingPermission: identical(pendingPermission, _unset)
-        ? this.pendingPermission
-        : pendingPermission as AgentPermissionRequest?,
+    pendingClient: identical(pendingClient, _unset)
+        ? this.pendingClient
+        : pendingClient as AcpPendingClientRequest?,
     error: clearError ? null : (error ?? this.error),
     activity: activity ?? this.activity,
     historyHydrated: historyHydrated ?? this.historyHydrated,
@@ -160,6 +168,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   AcpChatStrings? _strings;
   StreamSubscription<AcpSessionUpdate>? _updatesSub;
   StreamSubscription<AgentPermissionRequest>? _permissionSub;
+  StreamSubscription<AcpPendingClientRequest>? _clientRequestsSub;
   String? _queuedPrompt;
   bool _closing = false;
   Future<void>? _hydrateInFlight;
@@ -235,6 +244,12 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
             : error.reason,
       );
       return;
+    } on AcpAuthenticateException {
+      _endWith(
+        AcpChatErrorKind.launchFailed,
+        _strings?.notLoggedIn ?? defaultAcpChatStrings.notLoggedIn,
+      );
+      return;
     } on Object catch (error, stackTrace) {
       appLogger.e(
         '[acp-chat] session $sessionId launch failed: $error',
@@ -258,6 +273,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     );
     final handshakeAuth = _runtime.lastAuthNotice;
     _permissionSub = _runtime.permissionRequests.listen(_onPermissionRequest);
+    _clientRequestsSub = _runtime.clientRequests.listen(_onClientRequest);
     // Agent process exit (mid-session crash or out-of-turn death): inline
     // system message + ended phase. Attached in the same step as the other
     // subscriptions, after a successful start — a launch failure path has
@@ -373,7 +389,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   }
 
   /// Cancels the current turn (silently resolved via the cancelled stop).
-  void cancelTurn() => _runtime.cancel();
+  void cancelTurn() {
+    if (!isClosed) emit(state.copyWith(pendingClient: null));
+    _runtime.cancel();
+  }
 
   /// Answers the pending permission card. Returns whether a reply was
   /// delivered to the agent (false when nothing was held or already ended).
@@ -394,10 +413,22 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       }
       always ??= pending.always.isEmpty ? null : pending.always.first;
     }
-    emit(state.copyWith(pendingPermission: null));
+    emit(state.copyWith(pendingClient: null));
     _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.working));
     final delivered = await _runtime.answerPermission(kind, always: always);
     return delivered != null;
+  }
+
+  Future<void> answerAsk(AcpAskHoldReply reply) =>
+      _clearPendingThen(() => _runtime.answerAsk(reply));
+
+  Future<void> answerPlan(AcpPlanHoldReply reply) =>
+      _clearPendingThen(() => _runtime.answerPlan(reply));
+
+  Future<void> _clearPendingThen(Future<void> Function() run) async {
+    emit(state.copyWith(pendingClient: null));
+    _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.working));
+    await run();
   }
 
   /// The agent process died (exit watcher callback). Inline crash message +
@@ -417,8 +448,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     _closing = true;
     await _updatesSub?.cancel();
     await _permissionSub?.cancel();
+    await _clientRequestsSub?.cancel();
     _updatesSub = null;
     _permissionSub = null;
+    _clientRequestsSub = null;
     final hydrate = _hydrateInFlight;
     try {
       if (hydrate != null) await hydrate;
@@ -474,6 +507,20 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         if (update.loggedIn) {
           _removeAuthNoticeMessage();
         }
+      case AcpTodoListUpdate() || AcpTaskUpdate() || AcpGeneratedImageUpdate():
+        if (isClosed) return;
+        emit(
+          state.copyWith(
+            messages: foldAcpExtensionNotification(
+              messages: state.messages,
+              update: update,
+              newId: () => 'acp-a-${_uuid.v4()}',
+            ),
+          ),
+        );
+        unawaited(_persist());
+      default:
+        break;
     }
   }
 
@@ -586,15 +633,18 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       state.copyWith(
         inTurn: false,
         phase: AcpChatPhase.idle,
-        pendingPermission: null,
+        pendingClient: null,
         activity: AcpChatActivity.none,
       ),
     );
   }
 
-  void _onPermissionRequest(AgentPermissionRequest request) {
+  void _onPermissionRequest(AgentPermissionRequest request) =>
+      _onClientRequest(AcpPendingPermission(request));
+
+  void _onClientRequest(AcpPendingClientRequest pending) {
     if (_closing || isClosed || state.phase == AcpChatPhase.ended) return;
-    emit(state.copyWith(pendingPermission: request));
+    emit(state.copyWith(pendingClient: pending));
     _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.waiting));
   }
 
@@ -769,7 +819,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       state.copyWith(
         phase: AcpChatPhase.ended,
         inTurn: false,
-        pendingPermission: null,
+        pendingClient: null,
         error: AcpChatError(kind: kind, message: message),
         activity: AcpChatActivity.none,
       ),

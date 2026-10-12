@@ -6,6 +6,7 @@ import '../agent_status/agent_permission_request.dart';
 import '../agent_status/seat_hold_gate.dart';
 import '../../utils/logging/logger_utils.dart';
 import 'acp_agent_translator.dart';
+import 'acp_client_extensions.dart';
 import 'acp_connection.dart';
 
 /// The sender of a streamed message chunk.
@@ -63,7 +64,10 @@ class AcpPlanEntry {
 }
 
 /// A turn event mapped from ACP `session/update` notifications.
-sealed class AcpSessionUpdate {
+///
+/// `base` (not `sealed`) so Cursor extension updates in
+/// [acp_client_extensions] can subclass without living in this file.
+base class AcpSessionUpdate {
   const AcpSessionUpdate();
 }
 
@@ -226,13 +230,6 @@ AcpAuthNotice? parseAcpAuthNotice(
   );
 }
 
-/// The user's reply to a held permission request: the card answer plus the
-/// chosen "always allow" option (whose payload carries the ACP optionId).
-typedef _PermissionReply = ({
-  AgentPermissionReplyKind kind,
-  AgentPermissionAlwaysOption? always,
-});
-
 /// One prompt turn of an ACP agent session.
 ///
 /// Wraps the acpd client connection bound to a `session/new` id: maps
@@ -257,6 +254,17 @@ class AcpAgentSession {
     _permissionRegistration = _client.connection.onRequest(
       'session/request_permission',
       _onRequestPermission,
+    );
+    _extensionRegistrations.addAll(
+      registerCursorClientExtensions(
+        rpc: _client.connection,
+        blockingMethods: connection.translator.blockingClientMethods,
+        notificationMethods: connection.translator.notificationClientMethods,
+        isDisposed: () => _disposed,
+        emitRequest: _emitClientRequest,
+        wait: _waitHold,
+        emitUpdate: _emit,
+      ),
     );
   }
 
@@ -285,9 +293,11 @@ class AcpAgentSession {
   final _updates = StreamController<AcpSessionUpdate>.broadcast();
   final _permissionRequests =
       StreamController<AgentPermissionRequest>.broadcast();
-  final _gate = SeatHoldGate<_PermissionReply>(
-    staleReply: () => (kind: AgentPermissionReplyKind.reject, always: null),
+  final _clientRequests = StreamController<AcpPendingClientRequest>.broadcast();
+  final _gate = SeatHoldGate<AcpHoldReply>(
+    staleReply: () => const AcpCancelledHoldReply(),
   );
+  final _extensionRegistrations = <acpd.HandlerRegistration>[];
 
   acpd.HandlerRegistration? _updateRegistration;
   acpd.HandlerRegistration? _permissionRegistration;
@@ -307,6 +317,9 @@ class AcpAgentSession {
   /// Surfaced permission cards, one at a time (single-slot hold).
   Stream<AgentPermissionRequest> get permissionRequests =>
       _permissionRequests.stream;
+
+  /// Blocking Cursor extension requests (ask / plan) waiting on the hold.
+  Stream<AcpPendingClientRequest> get clientRequests => _clientRequests.stream;
 
   /// Sends `session/prompt` and resolves once the stop reason is emitted.
   ///
@@ -352,6 +365,11 @@ class AcpAgentSession {
   void cancel() {
     _suppressAbort = true;
     _client.client.cancel(sessionId);
+    _gate.complete(
+      sessionId: sessionId,
+      memberId: _permissionMemberId,
+      reply: const AcpCancelledHoldReply(),
+    );
   }
 
   /// Answers the held permission request (if any).
@@ -367,9 +385,29 @@ class AcpAgentSession {
     final delivered = _gate.complete(
       sessionId: sessionId,
       memberId: _permissionMemberId,
-      reply: (kind: reply, always: always),
+      reply: AcpPermissionHoldReply(kind: reply, always: always),
     );
     return delivered ? reply : null;
+  }
+
+  /// Answers the held ask-question request (if any).
+  Future<void> answerAsk(AcpAskHoldReply reply) async {
+    if (_disposed) return;
+    _gate.complete(
+      sessionId: sessionId,
+      memberId: _permissionMemberId,
+      reply: reply,
+    );
+  }
+
+  /// Answers the held create-plan request (if any).
+  Future<void> answerPlan(AcpPlanHoldReply reply) async {
+    if (_disposed) return;
+    _gate.complete(
+      sessionId: sessionId,
+      memberId: _permissionMemberId,
+      reply: reply,
+    );
   }
 
   /// Releases the notification/request registrations and stream controllers.
@@ -383,8 +421,13 @@ class AcpAgentSession {
     _gate.clearSeat(sessionId: sessionId, memberId: _permissionMemberId);
     _updateRegistration?.dispose();
     _permissionRegistration?.dispose();
+    for (final registration in _extensionRegistrations) {
+      registration.dispose();
+    }
+    _extensionRegistrations.clear();
     _updates.close();
     _permissionRequests.close();
+    _clientRequests.close();
     _connection.sessionDisposed(this);
   }
 
@@ -448,11 +491,7 @@ class AcpAgentSession {
     }
 
     _permissionRequests.add(_toPermissionRequest(request));
-    final reply = await _gate.wait(
-      sessionId: sessionId,
-      memberId: _permissionMemberId,
-      timeout: permissionTimeout,
-    );
+    final reply = await _waitHold();
     final outcome = _outcomeFor(reply, request.options);
     return acpd.RequestPermissionResponse(outcome: outcome).toJson();
   }
@@ -466,10 +505,13 @@ class AcpAgentSession {
   /// [AgentPermissionAlwaysOption.payload], assigned when the card was built)
   /// and falls back to the request's first allow-always option.
   acpd.RequestPermissionOutcome _outcomeFor(
-    _PermissionReply? reply,
+    AcpHoldReply? reply,
     List<acpd.PermissionOption> options,
   ) {
-    switch (reply?.kind) {
+    if (reply is! AcpPermissionHoldReply) {
+      return const acpd.PermissionCancelled();
+    }
+    switch (reply.kind) {
       case AgentPermissionReplyKind.allowOnce:
         final optionId = _firstOptionOfKind(
           options,
@@ -480,7 +522,7 @@ class AcpAgentSession {
         }
         return acpd.PermissionSelected(optionId: optionId);
       case AgentPermissionReplyKind.always:
-        final payload = reply?.always?.payload;
+        final payload = reply.always?.payload;
         final optionId = payload is String
             ? payload
             : _firstOptionOfKind(
@@ -492,10 +534,19 @@ class AcpAgentSession {
         }
         return acpd.PermissionSelected(optionId: optionId);
       case AgentPermissionReplyKind.reject:
-      case null:
         return const acpd.PermissionCancelled();
     }
   }
+
+  void _emitClientRequest(AcpPendingClientRequest pending) {
+    if (!_clientRequests.isClosed) _clientRequests.add(pending);
+  }
+
+  Future<AcpHoldReply?> _waitHold() => _gate.wait(
+    sessionId: sessionId,
+    memberId: _permissionMemberId,
+    timeout: permissionTimeout,
+  );
 
   String? _firstOptionOfKind(
     List<acpd.PermissionOption> options,

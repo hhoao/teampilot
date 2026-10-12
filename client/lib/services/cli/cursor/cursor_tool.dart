@@ -1,3 +1,4 @@
+import 'capabilities/acp.dart';
 import 'capabilities/provider.dart';
 import '../registry/capabilities/provider_capability.dart';
 import '../../../models/team_config.dart';
@@ -60,6 +61,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.nativeCommands = const CursorNativeCommands(),
     this.hookWriter = const CursorHookWriter(),
     this.prompt = const CursorPromptCapability(),
+    this.acp = const CursorAcpCapability(),
     CursorProviderCapability? provider,
   }) : provider = provider ?? CursorProviderCapability();
 
@@ -87,6 +89,7 @@ final class CursorCliTool implements CliToolDefinition {
   final SkillCapability skill;
   final NativeCommandCapability nativeCommands;
   final PromptCapability prompt;
+  final CursorAcpCapability acp;
 
   @override
   CliTool get id => CliTool.cursor;
@@ -118,5 +121,6 @@ final class CursorCliTool implements CliToolDefinition {
     nativeCommands,
     prompt,
     hookWriter,
+    acp,
   ];
 }

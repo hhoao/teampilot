@@ -19,7 +19,7 @@ const AcpChatStrings defaultAcpChatStrings = AcpChatStrings(
   turnFailed: 'Turn failed',
   processExited: 'Agent process exited',
   notLoggedIn:
-      "Claude isn't logged in. Sign in under Settings → Providers, or switch to a Claude API key.",
+      "The agent isn't logged in. Sign in under Settings → Providers, then try again.",
 );
 
 class AcpChatStrings {

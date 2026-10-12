@@ -42,4 +42,30 @@ void main() {
     expect(kept.cli, CliTool.claude);
     expect(kept.nativeSessionIds['cursor'], 'native-1');
   });
+
+  test('acp defaults false, omits JSON, round-trips true', () {
+    const off = SessionMemberBinding(rosterMemberId: 'lead', taskId: 't1');
+    expect(off.acp, isFalse);
+    expect(off.toJson().containsKey('acp'), isFalse);
+    expect(
+      SessionMemberBinding.fromJson({
+        'rosterMemberId': 'lead',
+        'taskId': 't1',
+      }).acp,
+      isFalse,
+    );
+
+    const on = SessionMemberBinding(
+      rosterMemberId: 'lead',
+      taskId: 't1',
+      acp: true,
+    );
+    expect(on.toJson()['acp'], isTrue);
+    expect(SessionMemberBinding.fromJson(on.toJson()).acp, isTrue);
+
+    final kept = on.withNativeSessionId('cursor', 'n1');
+    expect(kept.acp, isTrue);
+    expect(on, isNot(off));
+    expect(on.hashCode, isNot(off.hashCode));
+  });
 }

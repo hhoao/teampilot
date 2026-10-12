@@ -4,6 +4,7 @@ import 'dart:io';
 import '../../models/team_config.dart';
 import '../../utils/logging/logger_utils.dart';
 import '../agent_status/agent_permission_request.dart';
+import 'acp_client_extensions.dart';
 import 'acp_connection.dart';
 import 'acp_frame_logger.dart';
 import 'acp_session.dart';
@@ -48,6 +49,7 @@ class AcpLaunchPlan {
     required this.launchArgCandidates,
     required this.buildEnvironment,
     required this.agentExecutable,
+    this.authenticateMethodId,
   });
 
   /// Full argv candidates (executable + one ACP flag each), probe order.
@@ -63,6 +65,12 @@ class AcpLaunchPlan {
 
   /// Binary that speaks ACP on stdio, mapped from the CLI executable.
   final String Function(String cliExecutable) agentExecutable;
+
+  /// ACP `authenticate` method id to send after initialize, if any.
+  ///
+  /// Cursor sets `cursor_login`; Gemini and Claude leave this null so the
+  /// handshake stays initialize-only.
+  final String? authenticateMethodId;
 }
 
 /// The spawner reported that the candidate flag was rejected: the agent
@@ -76,6 +84,19 @@ class AcpFlagRejected implements Exception {
 
   @override
   String toString() => 'AcpFlagRejected: $message';
+}
+
+/// The agent rejected or aborted ACP `authenticate` (typically not logged in).
+///
+/// [message] is diagnostic. The UI surfaces the not-logged-in copy and the
+/// runtime must not try another argv candidate.
+class AcpAuthenticateException implements Exception {
+  AcpAuthenticateException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'AcpAuthenticateException: $message';
 }
 
 /// Thrown by [AcpSessionRuntime.start] when every ACP flag candidate failed.
@@ -121,6 +142,9 @@ abstract interface class AcpSessionRuntimeApi {
   /// Permission cards surfaced by the agent during the open session.
   Stream<AgentPermissionRequest> get permissionRequests;
 
+  /// Blocking Cursor extension requests (ask / plan) for the open session.
+  Stream<AcpPendingClientRequest> get clientRequests;
+
   /// Auth notice captured during handshake (`_auth/status_update` can
   /// arrive before the chat layer subscribes to [updates]).
   AcpAuthNotice? get lastAuthNotice;
@@ -136,6 +160,12 @@ abstract interface class AcpSessionRuntimeApi {
     AgentPermissionReplyKind reply, {
     AgentPermissionAlwaysOption? always,
   });
+
+  /// Answers the currently held ask-question request (if any).
+  Future<void> answerAsk(AcpAskHoldReply reply);
+
+  /// Answers the currently held create-plan request (if any).
+  Future<void> answerPlan(AcpPlanHoldReply reply);
 
   /// Cancels the current prompt turn.
   void cancel();
@@ -272,6 +302,16 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
     return session.permissionRequests;
   }
 
+  /// Blocking Cursor extension requests (ask / plan) for the open session.
+  @override
+  Stream<AcpPendingClientRequest> get clientRequests {
+    final session = _session;
+    if (session == null) {
+      throw StateError('AcpSessionRuntime has no open session yet.');
+    }
+    return session.clientRequests;
+  }
+
   @override
   AcpAuthNotice? get lastAuthNotice => _connection?.lastAuthNotice;
 
@@ -286,6 +326,13 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
     AgentPermissionReplyKind reply, {
     AgentPermissionAlwaysOption? always,
   }) => _session!.answerPermission(reply, always: always);
+
+  @override
+  Future<void> answerAsk(AcpAskHoldReply reply) => _session!.answerAsk(reply);
+
+  @override
+  Future<void> answerPlan(AcpPlanHoldReply reply) =>
+      _session!.answerPlan(reply);
 
   /// Cancels the current prompt turn.
   @override

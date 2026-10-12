@@ -7,6 +7,7 @@ import 'package:acpd_test/acpd_test.dart' as acpd_test;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/acp/acp_connection.dart';
 import 'package:teampilot/services/acp/acp_frame_logger.dart';
+import 'package:teampilot/services/acp/acp_session_runtime.dart';
 import 'package:teampilot/services/acp/acp_transport.dart';
 import 'package:teampilot/services/cli/gemini/capabilities/acp.dart';
 
@@ -148,6 +149,63 @@ void main() {
     expect(transport.isClosed, isTrue);
     // Dispose is idempotent.
     await conn.dispose();
+  });
+
+  test('initialize skips authenticate when methodId is null', () async {
+    var authenticated = false;
+    stubInitialize();
+    agent.connection.onRequest('authenticate', (params) {
+      authenticated = true;
+      return const acpd.AuthenticateResponse().toJson();
+    });
+
+    await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
+    expect(authenticated, isFalse);
+  });
+
+  test('authenticate sends the methodId', () async {
+    String? methodId;
+    stubInitialize();
+    await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
+    agent.connection.onRequest('authenticate', (params) {
+      methodId = (params! as Map)['methodId'] as String?;
+      return const acpd.AuthenticateResponse().toJson();
+    });
+
+    await conn.authenticate('cursor_login');
+    expect(methodId, 'cursor_login');
+  });
+
+  test('authenticate wraps RpcError as AcpAuthenticateException', () async {
+    stubInitialize();
+    await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
+    agent.connection.onRequest('authenticate', (params) {
+      throw acpd.RpcError(
+        code: acpd.ErrorCode.internalError.code,
+        message: 'not logged in',
+      );
+    });
+
+    await expectLater(
+      conn.authenticate('cursor_login'),
+      throwsA(isA<AcpAuthenticateException>()),
+    );
+  });
+
+  test('authenticate does not wrap TimeoutException as not-logged-in', () async {
+    stubInitialize();
+    await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
+    agent.connection.onRequest('authenticate', (params) {
+      return Completer<Map<String, dynamic>>().future;
+    });
+
+    await expectLater(
+      conn.authenticate(
+        'cursor_login',
+        timeout: const Duration(milliseconds: 20),
+      ),
+      throwsA(isA<TimeoutException>()),
+    );
   });
 }
 

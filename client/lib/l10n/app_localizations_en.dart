@@ -9248,7 +9248,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get acpLaunchFailedVersion =>
-      'This Gemini CLI version does not support the ACP chat mode. Update Gemini CLI and try again.';
+      'This CLI version does not support ACP chat mode. Update the CLI and try again.';
 
   @override
   String get acpChatLaunchFailed =>
@@ -9268,6 +9268,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Run new personal Claude sessions as terminal-less ACP chat via claude-agent-acp. Existing sessions stay as they were started. Team sessions always use the terminal.';
 
   @override
+  String get cursorPersonalAcpDefaultLabel => 'Personal sessions use ACP chat';
+
+  @override
+  String get cursorPersonalAcpDefaultDescription =>
+      'Run new personal Cursor sessions as terminal-less ACP chat via cursor-agent acp. Existing sessions stay as they were started. Team sessions always use the terminal.';
+
+  @override
   String get claudePersonalAcpAndroidDisabled =>
       'ACP chat is desktop-only until remote SSH exec is available.';
 
@@ -9280,7 +9287,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get acpChatNotLoggedIn =>
-      'Claude isn\'t logged in. Sign in under Settings → Providers, or switch to a Claude API key.';
+      'The agent isn\'t logged in. Sign in under Settings → Providers, then try again.';
 
   @override
   String get codexPersonalAcpDefaultLabel => 'Personal sessions use ACP chat';

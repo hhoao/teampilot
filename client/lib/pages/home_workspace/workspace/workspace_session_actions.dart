@@ -793,7 +793,8 @@ Future<bool> _ensureLandingSessionConnected({
 
 /// Builds the create request for a workspace conversation.
 ///
-/// [acp] only survives for personal Claude on desktop (see [resolveLaunchAcp]);
+/// [acp] only survives for personal Claude or Cursor on desktop (see
+/// [resolveLaunchAcp]);
 /// team creates and Android always get false. Gemini ACP is inferred by
 /// session create, so it needs no flag here.
 SessionCreateRequest buildWorkspaceConversationCreateRequest({

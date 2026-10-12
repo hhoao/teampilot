@@ -8,6 +8,12 @@ abstract interface class AcpAgentTranslator {
   /// Candidate ACP flags in preference order (probed at launch).
   List<String> get flagCandidates;
 
+  /// Client JSON-RPC methods that block until the client replies.
+  List<String> get blockingClientMethods;
+
+  /// Client JSON-RPC methods sent as notifications (no reply).
+  List<String> get notificationClientMethods;
+
   /// Map a prompt-phase error to a display string, or [acpStopCancelled].
   String translateStopError(Object error, {required bool suppressAbort});
 }

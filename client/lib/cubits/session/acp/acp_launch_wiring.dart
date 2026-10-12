@@ -38,6 +38,7 @@ AcpLaunchPlan? capabilityToPlan(AcpCapability? capability) {
           baseEnv: baseEnv,
         ),
     agentExecutable: capability.agentExecutable,
+    authenticateMethodId: capability.authenticateMethodId,
   );
 }
 
@@ -50,11 +51,13 @@ AcpLaunchPlanResolver acpLaunchPlanResolver(CliToolRegistry registry) {
 ///
 /// [workingDirectory] and the tool's [AcpAgentTranslator] are captured here
 /// (the spawner's signature is argv+env only, per the runtime seam). The
-/// spawner runs the `initialize` handshake and classifies failures:
+/// spawner runs initialize, then optional authenticate, each raced against
+/// process exit and classified by handshake phase:
 ///
-/// - agent exits **non-zero while the handshake is still in flight** →
-///   [AcpFlagRejected] (unknown/renamed flag signature; the runtime tries the
-///   next candidate);
+/// - agent exits **during initialize** → [AcpFlagRejected] (unknown/renamed
+///   flag; the runtime tries the next candidate);
+/// - agent exits **during authenticate** (after initialize succeeded) →
+///   [AcpAuthenticateException] (not logged in; do not try another candidate);
 /// - everything else (handshake timeout, malformed response, zero exit) →
 ///   rethrown as a normal error — a timeout must NOT burn another candidate.
 AcpConnectionSpawner productionAcpSpawner({
@@ -88,25 +91,30 @@ AcpConnectionSpawner productionAcpSpawner({
       processExitCode: processExitCode,
     );
     try {
-      final handshake = connection.initialize(
-        clientName: clientName,
-        clientVersion: clientVersion,
-        timeout: handshakeTimeout,
+      final authenticateMethodId = registry
+          .capability<AcpCapability>(tool)
+          ?.authenticateMethodId;
+      // Initialize race uses authenticating: false — an old CLI dying on
+      // the flag is still AcpFlagRejected, not not-logged-in.
+      await raceHandshake(
+        connection.initialize(
+          clientName: clientName,
+          clientVersion: clientVersion,
+          timeout: handshakeTimeout,
+        ),
+        processExitCode,
+        authenticating: false,
       );
-      final winner = await Future.any([
-        handshake.then((_) => const _HandshakeDone()),
-        processExitCode.then(_ProcessExited.new),
-      ]);
-      if (winner is _ProcessExited) {
-        if (winner.exitCode != 0) {
-          throw AcpFlagRejected(
-            'agent process exited with code ${winner.exitCode} '
-            'before the ACP handshake completed',
-          );
-        }
-        throw StateError(
-          'agent process exited cleanly (code 0) before completing the '
-          'ACP handshake',
+      if (authenticateMethodId != null) {
+        // Authenticate race uses authenticating: true — exit after
+        // initialize succeeded is not-logged-in, not a bad flag.
+        await raceHandshake(
+          connection.authenticate(
+            authenticateMethodId,
+            timeout: handshakeTimeout,
+          ),
+          processExitCode,
+          authenticating: true,
         );
       }
       return connection;
@@ -126,11 +134,64 @@ class _NoopAcpTranslator implements AcpAgentTranslator {
   List<String> get flagCandidates => const [];
 
   @override
+  List<String> get blockingClientMethods => const [];
+
+  @override
+  List<String> get notificationClientMethods => const [];
+
+  @override
   String translateStopError(Object error, {required bool suppressAbort}) {
     AppLogger.instance.w(
       'ACP: translator missing; surfacing raw stop error: $error',
     );
     return error.toString();
+  }
+}
+
+/// Classifies a process exit that won the handshake race.
+///
+/// Returns [AcpAuthenticateException], [AcpFlagRejected], or [StateError].
+/// [StateError] is an [Error], so the return type cannot be [Exception].
+Object classifyHandshakeProcessExit({
+  required int exitCode,
+  required bool authenticating,
+}) {
+  if (authenticating) {
+    return AcpAuthenticateException(
+      'agent process exited with code $exitCode during authenticate',
+    );
+  }
+  if (exitCode != 0) {
+    return AcpFlagRejected(
+      'agent process exited with code $exitCode '
+      'before the ACP handshake completed',
+    );
+  }
+  return StateError(
+    'agent process exited cleanly (code 0) before completing the '
+    'ACP handshake',
+  );
+}
+
+/// Races [handshake] against [processExitCode] and classifies a process
+/// death by handshake phase.
+///
+/// [authenticating] is false for the initialize race ([AcpFlagRejected])
+/// and true for the authenticate race ([AcpAuthenticateException]).
+Future<void> raceHandshake<T>(
+  Future<T> handshake,
+  Future<int> processExitCode, {
+  required bool authenticating,
+}) async {
+  final winner = await Future.any([
+    handshake.then((_) => const _HandshakeDone()),
+    processExitCode.then(_ProcessExited.new),
+  ]);
+  if (winner is _ProcessExited) {
+    throw classifyHandshakeProcessExit(
+      exitCode: winner.exitCode,
+      authenticating: authenticating,
+    );
   }
 }
 

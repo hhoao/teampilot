@@ -30,12 +30,7 @@ void main() {
     final jsonl = [
       'not-json',
       _line({'v': 1, 'type': 'nope', 'id': 'x'}),
-      _line({
-        'v': 1,
-        'type': 'user',
-        'id': 'acp-u-1',
-        'text': 'hi',
-      }),
+      _line({'v': 1, 'type': 'user', 'id': 'acp-u-1', 'text': 'hi'}),
     ].join('\n');
     final messages = decodeAcpChatTranscript(jsonl);
     expect(messages, hasLength(1));
@@ -88,6 +83,85 @@ void main() {
     expect(tool.status, AiToolCallStatus.complete);
     expect(tool.isError, isFalse);
     expect((loaded[2].parts.single as AiTextPart).text, 'Turn failed');
+  });
+
+  test('round-trips TodoWrite args and task category', () {
+    final original = [
+      AiMessage(
+        id: 'acp-a-todo',
+        role: AiRole.assistant,
+        parts: const [
+          AiToolCallPart(
+            toolCallId: 'TodoWrite',
+            toolName: 'TodoWrite',
+            category: AiToolCallCategory.task,
+            status: AiToolCallStatus.complete,
+            args: {
+              'merge': true,
+              'todos': [
+                {'id': 'a', 'content': 'Task A', 'status': 'completed'},
+                {'id': 'b', 'content': 'Task B', 'status': 'pending'},
+              ],
+            },
+          ),
+        ],
+      ),
+    ];
+    final loaded = decodeAcpChatTranscript(encodeAcpChatTranscript(original));
+    expect(loaded, hasLength(1));
+    final part = loaded.single.parts.single as AiToolCallPart;
+    expect(part.toolName, 'TodoWrite');
+    expect(part.category, AiToolCallCategory.task);
+    expect(part.args?['merge'], isTrue);
+    expect(part.args?['todos'], [
+      {'id': 'a', 'content': 'Task A', 'status': 'completed'},
+      {'id': 'b', 'content': 'Task B', 'status': 'pending'},
+    ]);
+  });
+
+  test('round-trips generate_image filePath in args', () {
+    final original = [
+      AiMessage(
+        id: 'acp-a-img',
+        role: AiRole.assistant,
+        parts: const [
+          AiToolCallPart(
+            toolCallId: 'img-1',
+            toolName: 'generate_image',
+            status: AiToolCallStatus.complete,
+            args: {'description': 'a cat', 'filePath': '/tmp/cat.png'},
+          ),
+        ],
+      ),
+    ];
+    final loaded = decodeAcpChatTranscript(encodeAcpChatTranscript(original));
+    final part = loaded.single.parts.single as AiToolCallPart;
+    expect(part.toolName, 'generate_image');
+    expect(part.args, {'description': 'a cat', 'filePath': '/tmp/cat.png'});
+  });
+
+  test('old tool lines without args or category still decode', () {
+    final jsonl = _line({
+      'v': 1,
+      'type': 'assistant',
+      'id': 'acp-a-1',
+      'parts': [
+        {
+          'kind': 'tool',
+          'toolCallId': 't1',
+          'title': 'Read',
+          'status': 'complete',
+          'isError': false,
+        },
+      ],
+    });
+    final loaded = decodeAcpChatTranscript(jsonl);
+    final part = loaded.single.parts.single as AiToolCallPart;
+    expect(part.toolCallId, 't1');
+    expect(part.toolName, 'Read');
+    expect(part.status, AiToolCallStatus.complete);
+    expect(part.category, AiToolCallCategory.other);
+    expect(part.args, isNull);
   });
 
   test('mergeHydratedAcpMessages appends a live landing prompt', () {

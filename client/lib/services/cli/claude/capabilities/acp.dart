@@ -12,6 +12,12 @@ final class ClaudeAcpTranslator implements AcpAgentTranslator {
   List<String> get flagCandidates => const [];
 
   @override
+  List<String> get blockingClientMethods => const [];
+
+  @override
+  List<String> get notificationClientMethods => const [];
+
+  @override
   String translateStopError(Object error, {required bool suppressAbort}) {
     if (error is RpcError) {
       return 'ACP error ${error.code}: ${error.message}';
@@ -72,6 +78,9 @@ final class ClaudeAcpCapability implements AcpCapability {
 
   @override
   AcpAgentTranslator get translator => const ClaudeAcpTranslator();
+
+  @override
+  String? get authenticateMethodId => null;
 
   @override
   Map<String, String> buildEnvironment({

@@ -16,6 +16,7 @@ class SessionPreferences {
     this.openExistingSessionStartsTerminal = false,
     this.chatSubmitSwitchesToTerminal = false,
     this.claudePersonalAcpDefault = true,
+    this.cursorPersonalAcpDefault = true,
     this.codexPersonalAcpDefault = false,
   }) : cliExecutablePaths = Map.unmodifiable(
          _normalizeCliExecutablePaths(cliExecutablePaths),
@@ -58,6 +59,8 @@ class SessionPreferences {
           json['chatSubmitSwitchesToTerminal'] as bool? ?? false,
       claudePersonalAcpDefault:
           json['claudePersonalAcpDefault'] as bool? ?? true,
+      cursorPersonalAcpDefault:
+          json['cursorPersonalAcpDefault'] as bool? ?? true,
       codexPersonalAcpDefault:
           json['codexPersonalAcpDefault'] as bool? ?? false,
     );
@@ -130,6 +133,11 @@ class SessionPreferences {
   /// the runtime they were started with.
   final bool claudePersonalAcpDefault;
 
+  /// When true (the default), new personal Cursor sessions launch as ACP chat
+  /// instead of PTY. Controlled from CLI settings; existing sessions keep
+  /// the runtime they were started with.
+  final bool cursorPersonalAcpDefault;
+
   /// When true, new personal Codex sessions launch as ACP chat instead of PTY.
   /// Default false. Existing sessions keep the runtime they were started with.
   final bool codexPersonalAcpDefault;
@@ -154,6 +162,7 @@ class SessionPreferences {
     bool? openExistingSessionStartsTerminal,
     bool? chatSubmitSwitchesToTerminal,
     bool? claudePersonalAcpDefault,
+    bool? cursorPersonalAcpDefault,
     bool? codexPersonalAcpDefault,
   }) {
     return SessionPreferences(
@@ -185,6 +194,8 @@ class SessionPreferences {
           chatSubmitSwitchesToTerminal ?? this.chatSubmitSwitchesToTerminal,
       claudePersonalAcpDefault:
           claudePersonalAcpDefault ?? this.claudePersonalAcpDefault,
+      cursorPersonalAcpDefault:
+          cursorPersonalAcpDefault ?? this.cursorPersonalAcpDefault,
       codexPersonalAcpDefault:
           codexPersonalAcpDefault ?? this.codexPersonalAcpDefault,
     );
@@ -208,6 +219,7 @@ class SessionPreferences {
       'openExistingSessionStartsTerminal': openExistingSessionStartsTerminal,
       'chatSubmitSwitchesToTerminal': chatSubmitSwitchesToTerminal,
       'claudePersonalAcpDefault': claudePersonalAcpDefault,
+      'cursorPersonalAcpDefault': cursorPersonalAcpDefault,
       'codexPersonalAcpDefault': codexPersonalAcpDefault,
     };
   }

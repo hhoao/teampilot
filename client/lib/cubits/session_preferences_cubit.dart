@@ -268,6 +268,12 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     return _save(state.preferences.copyWith(codexPersonalAcpDefault: value));
   }
 
+  Future<void> setCursorPersonalAcpDefault(bool value) {
+    return _save(
+      state.preferences.copyWith(cursorPersonalAcpDefault: value),
+    );
+  }
+
   /// Returns the actual executable string to invoke for [cli]:
   ///   1. user-configured path (if non-empty after trim)
   ///   2. path discovered at startup (if non-null and non-empty)
