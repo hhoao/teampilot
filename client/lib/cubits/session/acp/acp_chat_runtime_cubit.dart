@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:acpd/acpd.dart' as acpd;
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
@@ -217,6 +218,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     required String sessionToolDir,
     required String workingDirectory,
     Map<String, String> baseEnv = const {},
+    List<acpd.McpServer> mcpServers = const [],
   }) async {
     if (state.phase != AcpChatPhase.launching) return;
     _hydrateInFlight ??= _hydrateTranscript();
@@ -229,6 +231,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         sessionToolDir: sessionToolDir,
         workingDirectory: workingDirectory,
         baseEnv: baseEnv,
+        mcpServers: mcpServers,
       );
     } on AcpLaunchException catch (error) {
       if (error.reason == acpLaunchFailedAdapter) {

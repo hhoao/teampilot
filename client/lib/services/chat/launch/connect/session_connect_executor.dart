@@ -48,6 +48,14 @@ abstract interface class SessionConnectPreparationPort {
   /// handled.
   Future<bool> attachAcpRuntime(SessionConnectJob job, AppSession session);
 
+  /// Mixed-seat ACP after TeamBus staging. False means the executor should
+  /// keep the PTY path. The executor does not call this yet.
+  Future<bool> attachMemberAcpRuntime(
+    SessionConnectJob job,
+    AppSession session,
+    ResolvedLaunchMembers resolved,
+  );
+
   TerminalSession shellForLaunch(
     SessionConnectJob job,
     AppSession session,

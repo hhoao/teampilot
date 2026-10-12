@@ -1,9 +1,11 @@
+import 'package:acpd/acpd.dart' as acpd;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/services/chat/launch/connect/acp_launch_environment.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:teampilot/services/chat/launch/session/shell_launch_spec.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 
@@ -62,5 +64,121 @@ void main() {
     expect(env['PATH'], '/usr/bin');
     expect(env['CLAUDE_CONFIG_DIR'], '/runtime/s1/claude');
     expect(env['CLAUDE_CODE_NO_FLICKER'], '1');
+  });
+
+  test('team prepare merges PATH with team connect env and maps MCP', () async {
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      sessionTeam: 'team-1',
+      createdAt: 1,
+    );
+    final workspace = Workspace(workspaceId: 'w1', createdAt: 1);
+    const team = TeamProfile(
+      id: 'team-1',
+      name: 'Team',
+      teamMode: TeamMode.mixed,
+    );
+    const member = TeamMemberConfig(id: 'lead', name: 'Lead');
+    Map<String, Map<String, Object?>>? seenExtra;
+
+    final staged = await prepareAcpTeamLaunchEnvironment(
+      prepareTeamConnect:
+          ({
+            required session,
+            required team,
+            required member,
+            required workspace,
+            required launchTarget,
+            required workingDirectory,
+            extraMcpServers,
+          }) async {
+            seenExtra = extraMcpServers;
+            return (
+              shellLaunch: ShellLaunchSpec(
+                plan: LaunchPlan(
+                  env: const {'ACP_TEAM_STAGING': 'mixed-lead'},
+                  resume: false,
+                  taskId: 'lead',
+                  cliTeamName: 'team-1',
+                  memberConfigDir: '/runtime/s1/claude',
+                  resolvedRoots: const [],
+                ),
+                launchContext: CliLaunchContext(
+                  team: team,
+                  member: member,
+                  workingDirectory: '/from-team-prepare',
+                ),
+              ),
+              warnings: const <String>[],
+              remoteCliPath: '',
+            );
+          },
+      session: session,
+      team: team,
+      member: member,
+      workspace: workspace,
+      launchTarget: RuntimeTarget.local(),
+      workingDirectory: '/session/folder',
+      extraMcpServers: const {
+        teammateBusMcpServerName: {
+          'type': 'http',
+          'url': 'http://127.0.0.1:9/mcp',
+        },
+      },
+      path: '/usr/bin',
+    );
+
+    expect(seenExtra?.containsKey(teammateBusMcpServerName), isTrue);
+    expect(staged.env['PATH'], '/usr/bin');
+    expect(staged.env['ACP_TEAM_STAGING'], 'mixed-lead');
+    expect(staged.workingDirectory, '/from-team-prepare');
+    expect(
+      (staged.mcpServers.single as acpd.McpServerHttp).name,
+      teammateBusMcpServerName,
+    );
+  });
+
+  test('team prepare throws when teammate-bus does not map', () async {
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      sessionTeam: 'team-1',
+      createdAt: 1,
+    );
+    const team = TeamProfile(id: 'team-1', name: 'Team');
+    const member = TeamMemberConfig(id: 'lead', name: 'Lead');
+
+    await expectLater(
+      prepareAcpTeamLaunchEnvironment(
+        prepareTeamConnect:
+            ({
+              required session,
+              required team,
+              required member,
+              required workspace,
+              required launchTarget,
+              required workingDirectory,
+              extraMcpServers,
+            }) async =>
+                throw StateError('prepare should not run'),
+        session: session,
+        team: team,
+        member: member,
+        workspace: Workspace(workspaceId: 'w1', createdAt: 1),
+        launchTarget: RuntimeTarget.local(),
+        workingDirectory: '',
+        extraMcpServers: const {
+          teammateBusMcpServerName: {'type': 'http'},
+        },
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'ACP teammate-bus MCP did not map to a session server',
+        ),
+      ),
+    );
   });
 }

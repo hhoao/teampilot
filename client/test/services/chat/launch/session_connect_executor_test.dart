@@ -53,15 +53,18 @@ void main() {
     },
   );
 
-  test('simple claude acp session attaches ACP and skips shell stages', () async {
-    job = _job(cli: CliTool.claude, acp: true, simple: true);
+  test(
+    'simple claude acp session attaches ACP and skips shell stages',
+    () async {
+      job = _job(cli: CliTool.claude, acp: true, simple: true);
 
-    await executor.execute(job);
+      await executor.execute(job);
 
-    expect(events, <String>['persist', 'ensure-ready', 'attach-acp']);
-    expect(events, isNot(contains('resolve-member')));
-    expect(shellConnector.connectCalls, 0);
-  });
+      expect(events, <String>['persist', 'ensure-ready', 'attach-acp']);
+      expect(events, isNot(contains('resolve-member')));
+      expect(shellConnector.connectCalls, 0);
+    },
+  );
 
   test('simple claude PTY session falls through to the shell', () async {
     job = _job(cli: CliTool.claude, acp: false, simple: true);
@@ -72,15 +75,18 @@ void main() {
     expect(events, contains('connect-shell'));
   });
 
-  test('simple codex acp session attaches ACP and skips shell stages', () async {
-    job = _job(cli: CliTool.codex, acp: true, simple: true);
+  test(
+    'simple codex acp session attaches ACP and skips shell stages',
+    () async {
+      job = _job(cli: CliTool.codex, acp: true, simple: true);
 
-    await executor.execute(job);
+      await executor.execute(job);
 
-    expect(events, <String>['persist', 'ensure-ready', 'attach-acp']);
-    expect(events, isNot(contains('resolve-member')));
-    expect(shellConnector.connectCalls, 0);
-  });
+      expect(events, <String>['persist', 'ensure-ready', 'attach-acp']);
+      expect(events, isNot(contains('resolve-member')));
+      expect(shellConnector.connectCalls, 0);
+    },
+  );
 
   test('simple codex PTY session falls through to the shell', () async {
     job = _job(cli: CliTool.codex, acp: false, simple: true);
@@ -240,9 +246,7 @@ void main() {
       releaseConnect.complete();
       await execution;
 
-      expect(shellConnector.cleanedMemberIds, <String>[
-        resolvedMember.id,
-      ]);
+      expect(shellConnector.cleanedMemberIds, <String>[resolvedMember.id]);
       expect(host.launchErrors, isEmpty);
     },
   );
@@ -332,6 +336,13 @@ class _FakePreparation implements SessionConnectPreparationPort {
     events.add('attach-acp');
     return isAcpChatSession(session);
   }
+
+  @override
+  Future<bool> attachMemberAcpRuntime(
+    SessionConnectJob job,
+    AppSession session,
+    ResolvedLaunchMembers resolved,
+  ) async => false;
 
   @override
   Future<AppSession> persist(SessionConnectJob job) async {

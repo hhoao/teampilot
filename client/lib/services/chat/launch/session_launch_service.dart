@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:uuid/uuid.dart';
 
@@ -19,6 +18,7 @@ import 'connect/session_connect_executor.dart';
 import 'connect/session_connect_job.dart';
 import 'connect/session_connect_scheduler.dart';
 import 'connect/acp_launch_environment.dart';
+import 'connect/acp_runtime_attach.dart';
 import 'connect/launch_generation_store.dart';
 import 'connect/session_personal_shell.dart';
 import 'connect/session_ssh_profile_reconnect.dart';
@@ -27,10 +27,6 @@ import 'session/session_prompt_metadata_sync.dart';
 import 'connect/session_shell_connector.dart';
 import 'session/session_launch_coordinator.dart';
 import 'session/session_launch_workspace_index.dart';
-import '../../acp/acp_chat_strings.dart';
-import '../../acp/acp_chat_transcript.dart';
-import '../../acp/acp_frame_logger.dart';
-import '../../acp/acp_session_runtime.dart';
 import '../../cli/preset_resolver.dart';
 import 'session/session_launch_config_snapshot.dart';
 import 'session/session_member_cli_locks.dart';
@@ -51,8 +47,6 @@ import '../session/session_open_request.dart';
 import '../session/session_open_status.dart';
 import '../session/session_connect_request.dart';
 import 'connect/member_connector.dart';
-import '../../../cubits/session/acp/acp_chat_runtime_cubit.dart';
-import '../../../cubits/session/acp/acp_launch_wiring.dart';
 
 /// Owns application/state adapters for the launch coordinator and connect
 /// executor. Construction of the launch graph belongs to `launch_factory.dart`.
@@ -68,6 +62,8 @@ class SessionLaunchService
     LaunchGenerationStore? generations,
     this.acpRuntimeFactory,
     this.prepareAcpContribution,
+    this.prepareAcpTeamConnect,
+    this.acpMemberExtraMcp,
   }) : _storage = storage,
        _generations = generations ?? LaunchGenerationStore();
 
@@ -90,6 +86,24 @@ class SessionLaunchService
 
   /// Test seam: skip [SessionConnectOrchestrator.prepareSimpleConnect].
   final AcpContributionEnvBuilder? prepareAcpContribution;
+
+  /// Test seam: skip [SessionConnectOrchestrator.prepareTeamConnect].
+  final AcpTeamConnectPrepare? prepareAcpTeamConnect;
+
+  /// Test seam: extra MCP for a mixed ACP seat. Production builds TeamBus
+  /// extra when this is null.
+  final AcpMemberExtraMcp? acpMemberExtraMcp;
+
+  late final AcpRuntimeAttach _acpAttach = AcpRuntimeAttach(
+    host: _h,
+    storage: _storage,
+    workspaceById: workspaceById,
+    launchWorkTarget: _launchWorkTarget,
+    runtimeFactory: acpRuntimeFactory,
+    preparePersonalContribution: prepareAcpContribution,
+    prepareTeamConnect: prepareAcpTeamConnect,
+    extraMcpForMember: acpMemberExtraMcp,
+  );
 
   static const _uuid = Uuid();
   SessionConnectScheduler? _connectScheduler;
@@ -120,123 +134,17 @@ class SessionLaunchService
     _teamConfigValidator = teamConfigValidator;
   }
 
-  /// Terminal-less ACP branch: attach an [AcpChatRuntimeCubit] to the
-  /// session's tab and spawn the ACP agent for `session.cli`.
-  /// Runs the same simple `contributeLaunch` / `ensureLinked` path as PTY,
-  /// then skips roster, TeamBus, and the PTY shell. Returns true once the
-  /// job is fully handled.
+  /// Terminal-less personal ACP. Mixed seats use [attachMemberAcpRuntime].
   @override
-  Future<bool> attachAcpRuntime(
+  Future<bool> attachAcpRuntime(SessionConnectJob job, AppSession session) =>
+      _acpAttach.attachAcpRuntime(job, session);
+
+  @override
+  Future<bool> attachMemberAcpRuntime(
     SessionConnectJob job,
     AppSession session,
-  ) async {
-    final tab = _h.tabStore.getOpenTabBySessionId(session.sessionId);
-    if (tab == null) return false;
-    final existing = tab.acpRuntime;
-    if (existing != null) {
-      // Already attached (or the launch already failed): nothing to do.
-      _h.updateTabRunning(tab.info.id);
-      return true;
-    }
-    final cli = session.cli;
-    if (cli == null) {
-      throw StateError('ACP session requires session.cli');
-    }
-    final logger = AcpFrameLogger();
-    final runtime =
-        acpRuntimeFactory?.call(logger: logger, tool: cli) ??
-        AcpSessionRuntime(
-          spawner: productionAcpSpawner(
-            registry: _h.cliRegistry,
-            tool: cli,
-            workingDirectory: _acpWorkingDirectory(session, job.workspace),
-            logger: logger,
-          ),
-          logger: logger,
-          launchPlanFor: acpLaunchPlanResolver(_h.cliRegistry),
-        );
-    final cubit = AcpChatRuntimeCubit(
-      runtime: runtime,
-      sessionId: session.sessionId,
-      tool: cli,
-      attention: _h.agentAttentionCubit,
-      transcript: _acpTranscriptFor(session),
-    )..ensureStrings(_h.acpChatStrings?.call(cli) ?? defaultAcpChatStrings);
-    tab.acpRuntime = cubit;
-    // Rebuild the chat view with the cubit before the handshake so it
-    // never takes the PTY history/live-refresh path while waiting.
-    _h.updateTabRunning(tab.info.id);
-    await cubit.start(
-      executable: _h.shellFactory.executableFor(cli),
-      sessionToolDir: _acpSessionToolDir(session, cli),
-      workingDirectory: _acpWorkingDirectory(session, job.workspace),
-      baseEnv: await _acpLaunchEnv(session, job),
-    );
-    if (_h.isClosed) return true;
-    _h.finishSessionConnect(session.sessionId);
-    _h.updateTabRunning(tab.info.id);
-    return true;
-  }
-
-  String _acpWorkingDirectory(AppSession session, Workspace? workspace) {
-    final firstFolder = session.folders.isNotEmpty
-        ? session.folders.first.path
-        : '';
-    if (firstFolder.trim().isNotEmpty) return firstFolder;
-    return workspace?.firstFolderPath ?? '';
-  }
-
-  /// Isolated config dir for the agent process: the session's runtime tool
-  /// dir (`…/runtime/<cli>`), the same slot PTY sets as CLAUDE_CONFIG_DIR.
-  String _acpSessionToolDir(AppSession session, CliTool cli) {
-    return _storage.context.layout.sessionRuntimeToolDir(
-      session.workspaceId,
-      session.sessionId,
-      cli.value,
-    );
-  }
-
-  Future<Map<String, String>> _acpLaunchEnv(
-    AppSession session,
-    SessionConnectJob job,
-  ) async {
-    final workspace = job.workspace ?? _workspaceById(session.workspaceId);
-    if (workspace == null) {
-      throw StateError('Simple session requires workspace');
-    }
-    final injected = prepareAcpContribution;
-    if (injected != null) {
-      return {
-        'PATH': Platform.environment['PATH'] ?? '',
-        ...await injected(session, workspace),
-      };
-    }
-    return prepareAcpLaunchEnvironment(
-      prepareSimpleConnect:
-          ({required session, required workspace, required launchTarget}) =>
-              _h.sessionConnect.prepareSimpleConnect(
-                session: session,
-                workspace: workspace,
-                launchTarget: launchTarget,
-              ),
-      session: session,
-      workspace: workspace,
-      launchTarget: _launchWorkTarget(session),
-    );
-  }
-
-  AcpChatTranscriptWriter? _acpTranscriptFor(AppSession session) {
-    return AcpChatTranscriptWriter(
-      fs: _storage.fs,
-      path: _storage.context.layout.pathContext.join(
-        _storage.context.layout.workspace.sessionRuntimeDir(
-          session.workspaceId,
-          session.sessionId,
-        ),
-        'acp-transcript.jsonl',
-      ),
-    );
-  }
+    ResolvedLaunchMembers resolved,
+  ) => _acpAttach.attachMemberAcpRuntime(job, session, resolved);
 
   ChatDataSnapshot get _state => _h.stateSnapshot();
   ChatTabStore get _tabStore => _h.tabStore;

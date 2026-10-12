@@ -1,8 +1,12 @@
 import 'package:acpd/acpd.dart' as acpd;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/runtime_target.dart';
+import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/services/chat/launch/session/shell_launch_spec.dart';
+import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 import 'package:teampilot/services/acp/acp_chat_strings.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
@@ -216,6 +220,118 @@ void main() {
     expect(runtime.baseEnv['CODEX_HOME'], '/runtime/s1/codex');
     expect(tab.acpRuntime, isNotNull);
   });
+
+  test('attachMemberAcpRuntime stores the mixed seat runtime', () async {
+    final tabStore = ChatTabStore(storage: fakeHomeStorage())
+      ..setActiveWorkspaceId('w1');
+    final tab = ChatTab(
+      info: ChatTabInfo(id: 's1', title: 'S', subtitle: ''),
+      cliTeamName: '',
+    );
+    tabStore.registerSession(tab);
+    final runtime = _RecordingAcpRuntime();
+    Map<String, Map<String, Object?>>? seenExtra;
+    final team = TeamProfile(
+      id: 'team-1',
+      name: 'Team',
+      teamMode: TeamMode.mixed,
+      members: const [TeamMemberConfig(id: 'lead', name: 'Lead')],
+    );
+    final member = const TeamMemberConfig(
+      id: 'lead',
+      name: 'Lead',
+      cli: CliTool.claude,
+    );
+    final service = SessionLaunchService(
+      _Host(tabStore),
+      storage: fakeHomeStorage(),
+      acpRuntimeFactory: ({required logger, required tool}) => runtime,
+      prepareAcpTeamConnect:
+          ({
+            required session,
+            required team,
+            required member,
+            required workspace,
+            required launchTarget,
+            required workingDirectory,
+            extraMcpServers,
+          }) async {
+            seenExtra = extraMcpServers;
+            expect(launchTarget.kind, RuntimeKind.local);
+            return (
+              shellLaunch: ShellLaunchSpec(
+                plan: LaunchPlan(
+                  env: const {'ACP_TEAM_STAGING': 'mixed-lead'},
+                  resume: false,
+                  taskId: 'lead',
+                  cliTeamName: 'team-1',
+                  memberConfigDir: '/runtime/s1/claude',
+                  resolvedRoots: const [],
+                ),
+                launchContext: CliLaunchContext(
+                  team: team,
+                  member: member,
+                  workingDirectory: '/from-team-prepare',
+                ),
+              ),
+              warnings: const <String>[],
+              remoteCliPath: '',
+            );
+          },
+      acpMemberExtraMcp: ({required session, required member}) => const {
+        'teammate-bus': {'type': 'http', 'url': 'http://127.0.0.1:9/mcp'},
+      },
+    );
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      sessionTeam: team.id,
+      members: const [
+        SessionMemberBinding(
+          rosterMemberId: 'lead',
+          taskId: 'task-lead',
+          cli: CliTool.claude,
+          acp: true,
+        ),
+      ],
+      memberTargets: const {'lead': 'local'},
+      createdAt: 1,
+    );
+    final workspace = Workspace(workspaceId: 'w1', createdAt: 1);
+    final job = SessionConnectJob(
+      session: session,
+      request: SessionOpenRequest(
+        session: session,
+        workspace: workspace,
+        team: team,
+        member: member,
+      ),
+      generation: 1,
+      workspace: workspace,
+      team: team,
+      member: member,
+      reason: LaunchReason.create,
+    );
+    final handled = await service.attachMemberAcpRuntime(job, session, (
+      team: team,
+      member: member,
+      cli: CliTool.claude,
+    ));
+
+    expect(handled, isTrue);
+    expect(tab.memberAcpRuntimes['lead'], isNotNull);
+    expect(tab.memberAcpRuntimes['lead']!.seatMemberId, 'lead');
+    expect(tab.acpRuntime, isNull);
+    expect(seenExtra?.containsKey('teammate-bus'), isTrue);
+    expect(runtime.started, isTrue);
+    expect(runtime.workingDirectory, '/from-team-prepare');
+    expect(runtime.baseEnv['ACP_TEAM_STAGING'], 'mixed-lead');
+    expect(runtime.mcpServers, isNotEmpty);
+    expect(
+      (runtime.mcpServers.single as acpd.McpServerHttp).name,
+      'teammate-bus',
+    );
+  });
 }
 
 class _Host implements SessionLaunchHost {
@@ -255,6 +371,8 @@ class _Host implements SessionLaunchHost {
 class _RecordingAcpRuntime implements AcpSessionRuntimeApi {
   var started = false;
   Map<String, String> baseEnv = const {};
+  String workingDirectory = '';
+  List<acpd.McpServer> mcpServers = const [];
 
   @override
   Future<void> start({
@@ -267,6 +385,8 @@ class _RecordingAcpRuntime implements AcpSessionRuntimeApi {
   }) async {
     started = true;
     this.baseEnv = baseEnv;
+    this.workingDirectory = workingDirectory;
+    this.mcpServers = mcpServers;
   }
 
   @override
