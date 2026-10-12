@@ -161,7 +161,7 @@ class SessionLaunchService
       tool: cli,
       attention: _h.agentAttentionCubit,
       transcript: _acpTranscriptFor(session),
-    )..ensureStrings(_h.acpChatStrings?.call() ?? defaultAcpChatStrings);
+    )..ensureStrings(_h.acpChatStrings?.call(cli) ?? defaultAcpChatStrings);
     tab.acpRuntime = cubit;
     // Rebuild the chat view with the cubit before the handshake so it
     // never takes the PTY history/live-refresh path while waiting.

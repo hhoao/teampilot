@@ -2266,18 +2266,24 @@ Future<AppShell> buildAppShell({
     );
     // Terminal-less ACP chat copy: l10n is resolved per-call from the
     // platform locale (the launch service reads it at session connect).
-    chatCubit.acpChatStringsResolver = () {
+    chatCubit.acpChatStringsResolver = (tool) {
       final locale = PlatformDispatcher.instance.locale;
       final l10n = lookupAppLocalizations(
         basicLocaleListResolution([locale], AppLocalizations.supportedLocales),
       );
+      final adapter = tool == CliTool.codex
+          ? l10n.codexAcpLaunchFailedAdapter
+          : l10n.acpLaunchFailedAdapter;
+      final notLoggedIn = tool == CliTool.codex
+          ? l10n.codexAcpChatNotLoggedIn
+          : l10n.acpChatNotLoggedIn;
       return AcpChatStrings(
         launchFailedVersion: l10n.acpLaunchFailedVersion,
-        launchFailedAdapter: l10n.acpLaunchFailedAdapter,
+        launchFailedAdapter: adapter,
         launchFailed: l10n.acpChatLaunchFailed,
         turnFailed: l10n.acpChatTurnFailed,
         processExited: l10n.acpChatProcessExited,
-        notLoggedIn: l10n.acpChatNotLoggedIn,
+        notLoggedIn: notLoggedIn,
       );
     };
     final promptDeliveryStore = FilePromptDeliveryStore(

@@ -16483,6 +16483,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Claude isn\'t logged in. Sign in under Settings → Providers, or switch to a Claude API key.'**
   String get acpChatNotLoggedIn;
+
+  /// No description provided for @codexPersonalAcpDefaultLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal sessions use ACP chat'**
+  String get codexPersonalAcpDefaultLabel;
+
+  /// No description provided for @codexPersonalAcpDefaultDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Run new personal Codex sessions as terminal-less ACP chat via codex-acp. Existing sessions stay as they were started. Team sessions always use the terminal.'**
+  String get codexPersonalAcpDefaultDescription;
+
+  /// No description provided for @codexPersonalAcpAndroidDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'ACP chat is desktop-only until remote SSH exec is available.'**
+  String get codexPersonalAcpAndroidDisabled;
+
+  /// No description provided for @codexAcpLaunchFailedAdapter.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the Codex ACP adapter (codex-acp). Install it and try again.'**
+  String get codexAcpLaunchFailedAdapter;
+
+  /// No description provided for @codexAcpChatNotLoggedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Codex isn\'t logged in. Sign in with ChatGPT under Settings → Providers, or switch to an API key.'**
+  String get codexAcpChatNotLoggedIn;
 }
 
 class _AppLocalizationsDelegate

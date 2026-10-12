@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/services/acp/acp_chat_strings.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
 import 'package:teampilot/services/acp/acp_session_runtime.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
@@ -110,13 +111,121 @@ void main() {
       expect(tab.acpRuntime, isNotNull);
     },
   );
+
+  test(
+    'attachAcpRuntime injects Codex ACP strings for Codex sessions',
+    () async {
+      final tabStore = ChatTabStore(storage: fakeHomeStorage())
+        ..setActiveWorkspaceId('w1');
+      final tab = ChatTab(
+        info: ChatTabInfo(id: 's1', title: 'S', subtitle: ''),
+        cliTeamName: '',
+      );
+      tabStore.registerSession(tab);
+      CliTool? seenTool;
+      final host = _Host(
+        tabStore,
+        acpStrings: (tool) {
+          seenTool = tool;
+          return const AcpChatStrings(
+            launchFailedVersion: 'v',
+            launchFailedAdapter: 'codex-adapter-missing',
+            launchFailed: 'fail',
+            turnFailed: 'turn',
+            processExited: 'exit',
+            notLoggedIn: 'codex-not-logged-in',
+          );
+        },
+      );
+      final service = SessionLaunchService(
+        host,
+        storage: fakeHomeStorage(),
+        acpRuntimeFactory: ({required logger, required tool}) {
+          return _RecordingAcpRuntime();
+        },
+        prepareAcpContribution: (session, workspace) async => const {},
+      );
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        cli: CliTool.codex,
+        acp: true,
+        createdAt: 1,
+      );
+      final workspace = Workspace(workspaceId: 'w1', createdAt: 1);
+      final job = SessionConnectJob(
+        session: session,
+        request: SessionOpenRequest(session: session, workspace: workspace),
+        generation: 1,
+        workspace: workspace,
+        reason: LaunchReason.create,
+      );
+
+      await service.attachAcpRuntime(job, session);
+
+      expect(seenTool, CliTool.codex);
+      expect(tab.acpRuntime, isNotNull);
+    },
+  );
+
+  test('attachAcpRuntime for Codex passes contributeLaunch env', () async {
+    final tabStore = ChatTabStore(storage: fakeHomeStorage())
+      ..setActiveWorkspaceId('w1');
+    final tab = ChatTab(
+      info: ChatTabInfo(id: 's1', title: 'S', subtitle: ''),
+      cliTeamName: '',
+    );
+    tabStore.registerSession(tab);
+    final runtime = _RecordingAcpRuntime();
+    var contributionCalls = 0;
+    final service = SessionLaunchService(
+      _Host(tabStore),
+      storage: fakeHomeStorage(),
+      acpRuntimeFactory: ({required logger, required tool}) {
+        return runtime;
+      },
+      prepareAcpContribution: (session, workspace) async {
+        contributionCalls++;
+        expect(session.sessionId, 's1');
+        expect(workspace.workspaceId, 'w1');
+        return const {'CODEX_HOME': '/runtime/s1/codex'};
+      },
+    );
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      cli: CliTool.codex,
+      acp: true,
+      createdAt: 1,
+    );
+    final workspace = Workspace(workspaceId: 'w1', createdAt: 1);
+    final job = SessionConnectJob(
+      session: session,
+      request: SessionOpenRequest(session: session, workspace: workspace),
+      generation: 1,
+      workspace: workspace,
+      reason: LaunchReason.create,
+    );
+
+    await service.attachAcpRuntime(job, session);
+
+    expect(contributionCalls, 1);
+    expect(runtime.started, isTrue);
+    expect(runtime.baseEnv['CODEX_HOME'], '/runtime/s1/codex');
+    expect(tab.acpRuntime, isNotNull);
+  });
 }
 
 class _Host implements SessionLaunchHost {
-  _Host(this.tabStore);
+  _Host(this.tabStore, {this.acpStrings});
 
   @override
   final ChatTabStore tabStore;
+
+  final AcpChatStrings? Function(CliTool)? acpStrings;
+
+  @override
+  AcpChatStrings? Function(CliTool tool)? get acpChatStrings => acpStrings;
 
   @override
   bool get isClosed => false;
