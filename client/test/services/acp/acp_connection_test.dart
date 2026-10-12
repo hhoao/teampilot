@@ -163,24 +163,22 @@ void main() {
     expect(authenticated, isFalse);
   });
 
-  test('initialize sends authenticate when methodId is set', () async {
+  test('authenticate sends the methodId', () async {
     String? methodId;
     stubInitialize();
+    await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
     agent.connection.onRequest('authenticate', (params) {
       methodId = (params! as Map)['methodId'] as String?;
       return const acpd.AuthenticateResponse().toJson();
     });
 
-    await conn.initialize(
-      clientName: 'teampilot',
-      clientVersion: '1.0.0',
-      authenticateMethodId: 'cursor_login',
-    );
+    await conn.authenticate('cursor_login');
     expect(methodId, 'cursor_login');
   });
 
-  test('initialize fails when authenticate errors', () async {
+  test('authenticate wraps RpcError as AcpAuthenticateException', () async {
     stubInitialize();
+    await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
     agent.connection.onRequest('authenticate', (params) {
       throw acpd.RpcError(
         code: acpd.ErrorCode.internalError.code,
@@ -189,12 +187,24 @@ void main() {
     });
 
     await expectLater(
-      conn.initialize(
-        clientName: 'teampilot',
-        clientVersion: '1.0.0',
-        authenticateMethodId: 'cursor_login',
-      ),
+      conn.authenticate('cursor_login'),
       throwsA(isA<AcpAuthenticateException>()),
+    );
+  });
+
+  test('authenticate does not wrap TimeoutException as not-logged-in', () async {
+    stubInitialize();
+    await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
+    agent.connection.onRequest('authenticate', (params) {
+      return Completer<Map<String, dynamic>>().future;
+    });
+
+    await expectLater(
+      conn.authenticate(
+        'cursor_login',
+        timeout: const Duration(milliseconds: 20),
+      ),
+      throwsA(isA<TimeoutException>()),
     );
   });
 }

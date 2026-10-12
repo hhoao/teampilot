@@ -235,7 +235,6 @@ class AcpAgentConnection {
     required String clientName,
     required String clientVersion,
     Duration timeout = const Duration(seconds: 30),
-    String? authenticateMethodId,
   }) async {
     final response = await _client.client.initialize(
       acpd.InitializeRequest(
@@ -257,21 +256,29 @@ class AcpAgentConnection {
     _capabilities = AcpNegotiatedCapabilities.fromAgentCapabilities(
       response.agentCapabilities,
     );
-    if (authenticateMethodId != null) {
-      try {
-        await _client.client.authenticate(
-          acpd.AuthenticateRequest(methodId: authenticateMethodId),
-          timeout: timeout,
-        );
-      } on Object catch (error) {
-        throw AcpAuthenticateException(error.toString());
-      }
-    }
     return AcpInitializeResult(
       protocolVersion: response.protocolVersion.value,
       agentName: response.agentInfo?.name,
       agentVersion: response.agentInfo?.version,
     );
+  }
+
+  /// Sends ACP `authenticate` after a successful [initialize].
+  ///
+  /// RPC failures become [AcpAuthenticateException] (not-logged-in).
+  /// [TimeoutException] and other non-RPC errors are rethrown unwrapped.
+  Future<void> authenticate(
+    String methodId, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    try {
+      await _client.client.authenticate(
+        acpd.AuthenticateRequest(methodId: methodId),
+        timeout: timeout,
+      );
+    } on acpd.RpcError catch (error) {
+      throw AcpAuthenticateException(error.toString());
+    }
   }
 
   /// Closes the connection and terminates the agent transport.
