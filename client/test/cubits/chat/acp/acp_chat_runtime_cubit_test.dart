@@ -19,6 +19,8 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   final updatesController = StreamController<AcpSessionUpdate>.broadcast();
   final permissionsController =
       StreamController<AgentPermissionRequest>.broadcast();
+  final clientRequestsController =
+      StreamController<AcpPendingClientRequest>.broadcast();
 
   Object? startError;
   bool started = false;
@@ -27,6 +29,8 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   final List<String> prompts = [];
   ({AgentPermissionReplyKind kind, AgentPermissionAlwaysOption? always})?
   lastAnswer;
+  AcpAskHoldReply? lastAskReply;
+  AcpPlanHoldReply? lastPlanReply;
 
   /// Exit-code future the cubit's exit watcher observes (null = never).
   Completer<int>? agentExit;
@@ -64,7 +68,8 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
       permissionsController.stream;
 
   @override
-  Stream<AcpPendingClientRequest> get clientRequests => const Stream.empty();
+  Stream<AcpPendingClientRequest> get clientRequests =>
+      clientRequestsController.stream;
 
   @override
   AcpAuthNotice? lastAuthNotice;
@@ -82,10 +87,14 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   }
 
   @override
-  Future<void> answerAsk(AcpAskHoldReply reply) async {}
+  Future<void> answerAsk(AcpAskHoldReply reply) async {
+    lastAskReply = reply;
+  }
 
   @override
-  Future<void> answerPlan(AcpPlanHoldReply reply) async {}
+  Future<void> answerPlan(AcpPlanHoldReply reply) async {
+    lastPlanReply = reply;
+  }
 
   @override
   void cancel() => cancelled = true;
@@ -121,6 +130,7 @@ void main() {
   tearDown(() async {
     await runtime.updatesController.close();
     await runtime.permissionsController.close();
+    await runtime.clientRequestsController.close();
   });
 
   AcpChatRuntimeCubit bootCubit({
@@ -699,6 +709,133 @@ void main() {
     },
   );
 
+  test(
+    'ask pending: clientRequests emit → pendingClient ask; answerAsk delegates and clears',
+    () async {
+      final attention = AgentAttentionCubit(pruneInterval: null);
+      final cubit = bootCubit(attention: attention);
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      const ask = AcpPendingAsk(
+        questions: [
+          AiAskUserQuestion(
+            question: 'Mode?',
+            options: [AiAskUserOption(label: 'Agent')],
+          ),
+        ],
+        toolCallId: 'ask-1',
+      );
+      runtime.clientRequestsController.add(ask);
+      await pumpEventQueue();
+
+      expect(cubit.state.pendingClient, same(ask));
+      expect(cubit.state.pendingPermission, isNull);
+      expect(
+        attention.state.attentionFor(sessionId: 's1', memberId: 'acp'),
+        AgentSeatAttention.waiting,
+      );
+
+      await cubit.answerAsk(const AcpAskHoldReply.skipped());
+      expect(cubit.state.pendingClient, isNull);
+      expect(runtime.lastAskReply?.skipped, isTrue);
+      expect(
+        attention.state.attentionFor(sessionId: 's1', memberId: 'acp'),
+        AgentSeatAttention.working,
+      );
+      await cubit.close();
+      await attention.close();
+    },
+  );
+
+  test(
+    'cancelTurn while ask pending clears pendingClient and cancels runtime',
+    () async {
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      runtime.clientRequestsController.add(
+        const AcpPendingAsk(
+          questions: [
+            AiAskUserQuestion(
+              question: 'Mode?',
+              options: [AiAskUserOption(label: 'Agent')],
+            ),
+          ],
+          toolCallId: 'ask-1',
+        ),
+      );
+      await pumpEventQueue();
+      expect(cubit.state.pendingClient, isA<AcpPendingAsk>());
+
+      cubit.cancelTurn();
+      expect(cubit.state.pendingClient, isNull);
+      expect(runtime.cancelled, isTrue);
+      await cubit.close();
+    },
+  );
+
+  test('todo merge vs replace folds TodoWrite parts and persists', () async {
+    final fs = InMemoryFilesystem();
+    final transcript = AcpChatTranscriptWriter(fs: fs, path: '/tp/acp.jsonl');
+    final cubit = bootCubit(transcript: transcript);
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+
+    runtime.emit(
+      const AcpTodoListUpdate(
+        AcpTodoListNotification(
+          todos: [
+            AcpTodoItem(id: 'a', content: 'A', status: 'pending'),
+            AcpTodoItem(id: 'b', content: 'B', status: 'pending'),
+          ],
+          merge: false,
+        ),
+      ),
+    );
+    await pumpEventQueue();
+
+    runtime.emit(
+      const AcpTodoListUpdate(
+        AcpTodoListNotification(
+          todos: [
+            AcpTodoItem(id: 'a', content: '', status: 'completed'),
+            AcpTodoItem(id: 'c', content: 'C', status: 'in_progress'),
+          ],
+          merge: true,
+        ),
+      ),
+    );
+    await pumpEventQueue();
+
+    final part = cubit.state.messages.single.parts.single as AiToolCallPart;
+    expect(part.toolName, 'TodoWrite');
+    expect(part.category, AiToolCallCategory.task);
+    expect(part.status, AiToolCallStatus.complete);
+    expect(part.args?['merge'], isTrue);
+    expect(part.args?['todos'], [
+      {'id': 'a', 'content': 'A', 'status': 'completed'},
+      {'id': 'b', 'content': 'B', 'status': 'pending'},
+      {'id': 'c', 'content': 'C', 'status': 'in_progress'},
+    ]);
+
+    final loaded = await transcript.loadMessages();
+    expect(loaded, hasLength(1));
+    expect(
+      loaded.single.parts.whereType<AiToolCallPart>().single.toolName,
+      'TodoWrite',
+    );
+    await cubit.close();
+  });
+
   test('AcpLaunchException → inline error message + ended phase', () async {
     runtime.startError = AcpLaunchException(reason: acpLaunchFailedVersion);
     final cubit = bootCubit();
@@ -913,6 +1050,7 @@ void main() {
 
     await runtime.updatesController.close();
     await runtime.permissionsController.close();
+    await runtime.clientRequestsController.close();
     runtime = _FakeAcpRuntime();
     final restored = bootCubit(transcript: transcript);
     await restored.start(
