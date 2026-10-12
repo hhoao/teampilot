@@ -195,6 +195,23 @@ void main() {
     },
   );
 
+  testWidgets(
+    'Cursor ACP off stays PTY even when Claude ACP is on',
+    (tester) async {
+      final submitted = <LandingLaunchContext>[];
+      await pumpCompose(
+        tester,
+        cli: CliTool.cursor,
+        cursorPersonalAcpDefault: false,
+        claudePersonalAcpDefault: true,
+        submitted: submitted,
+      );
+      await submit(tester);
+      expect(submitted, hasLength(1));
+      expect(submitted.single.acp, isFalse);
+    },
+  );
+
   testWidgets('Cursor preset does not show a compose ACP switch', (
     tester,
   ) async {
