@@ -23,6 +23,14 @@ import '../../../utils/logging/logger_utils.dart';
 /// [ArgumentError]). Tear-off-free because [AcpLaunchPlan]'s
 /// `buildEnvironment` typedef has a default value for [baseEnv] that the
 /// capability's matching signature satisfies structurally.
+Future<String?> spawnAuthenticateMethodId(
+  AcpCapability? capability,
+  Map<String, String> env,
+) async {
+  if (capability == null) return null;
+  return capability.resolveAuthenticateMethodId(env);
+}
+
 AcpLaunchPlan? capabilityToPlan(AcpCapability? capability) {
   if (capability == null) return null;
   return AcpLaunchPlan(
@@ -91,9 +99,10 @@ AcpConnectionSpawner productionAcpSpawner({
       processExitCode: processExitCode,
     );
     try {
-      final authenticateMethodId = registry
-          .capability<AcpCapability>(tool)
-          ?.authenticateMethodId;
+      final authenticateMethodId = await spawnAuthenticateMethodId(
+        registry.capability<AcpCapability>(tool),
+        env,
+      );
       // Initialize race uses authenticating: false — an old CLI dying on
       // the flag is still AcpFlagRejected, not not-logged-in.
       await raceHandshake(

@@ -55,4 +55,12 @@ void main() {
     expect(cap.translator.blockingClientMethods, isEmpty);
     expect(cap.translator.notificationClientMethods, isEmpty);
   });
+
+  test(
+    'resolveAuthenticateMethodId defaults to authenticateMethodId',
+    () async {
+      const cap = GeminiAcpCapability();
+      expect(await cap.resolveAuthenticateMethodId({'HOME': '/x'}), isNull);
+    },
+  );
 }
