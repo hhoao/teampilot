@@ -38,6 +38,7 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/pages/chat/acp_ask_card.dart';
 import 'package:teampilot/pages/chat/acp_permission_card.dart';
+import 'package:teampilot/pages/chat/acp_plan_card.dart';
 import 'package:teampilot/pages/chat/history_continue_delivery.dart';
 import 'package:teampilot/pages/chat/operator_history_send.dart'
     show OperatorMailboxQueuedEvent;
@@ -111,6 +112,7 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   ({AgentPermissionReplyKind kind, AgentPermissionAlwaysOption? always})?
   lastAnswer;
   AcpAskHoldReply? lastAsk;
+  AcpPlanHoldReply? lastPlan;
 
   @override
   Future<void> start({
@@ -162,7 +164,9 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   }
 
   @override
-  Future<void> answerPlan(AcpPlanHoldReply reply) async {}
+  Future<void> answerPlan(AcpPlanHoldReply reply) async {
+    lastPlan = reply;
+  }
 
   @override
   void cancel() => cancelled = true;
@@ -607,5 +611,56 @@ void main() {
     expect(runtime.lastAsk?.submission?.optionIndices, [0]);
     expect(cubit.state.pendingClient, isNull);
     expect(find.byType(AcpAskCard), findsNothing);
+  });
+
+  testWidgets('ACP chat view renders the plan card through the compose slot', (
+    tester,
+  ) async {
+    final runtime = _FakeAcpRuntime();
+    final cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: 's1',
+      tool: CliTool.gemini,
+    );
+    addTearDown(() async {
+      await cubit.close();
+      await runtime.permissionsController.close();
+      await runtime.clientRequestsController.close();
+    });
+
+    await tester.runAsync(() async {
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+    });
+
+    await pumpSession(tester, session: session('s1'), acpRuntime: cubit);
+    expect(tester.takeException(), isNull);
+
+    await tester.runAsync(() async {
+      runtime.clientRequestsController.add(
+        const AcpPendingPlan(
+          toolCallId: 'plan-1',
+          planText: 'Ship the ACP ask and plan cards.',
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+    });
+    expect(cubit.state.pendingClient, isA<AcpPendingPlan>());
+    await tester.pump();
+
+    expect(find.byType(AcpPlanCard), findsOneWidget);
+    expect(find.byKey(AiExitPlanModeCard.cardKey), findsOneWidget);
+
+    await tester.tap(find.byKey(AiExitPlanModeCard.approveButtonKey));
+    await tester.pumpAndSettle();
+
+    expect(runtime.lastPlan, isNotNull);
+    expect(runtime.lastPlan!.rejected, isFalse);
+    expect(runtime.lastPlan!.cancelled, isFalse);
+    expect(cubit.state.pendingClient, isNull);
+    expect(find.byType(AcpPlanCard), findsNothing);
   });
 }
