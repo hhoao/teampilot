@@ -26,6 +26,16 @@ class AcpFrameLogger {
   static final RegExp _geminiApiKeyEnvPattern = RegExp(
     r'GEMINI_API_KEY\s*=\s*\S+',
   );
+  static final RegExp _cursorApiKeyQuotedPattern =
+      RegExp(r'"CURSOR_API_KEY"\s*:\s*"[^"]*"');
+  static final RegExp _cursorApiKeyEnvPattern = RegExp(
+    r'CURSOR_API_KEY\s*=\s*\S+',
+  );
+  static final RegExp _cursorAuthTokenQuotedPattern =
+      RegExp(r'"CURSOR_AUTH_TOKEN"\s*:\s*"[^"]*"');
+  static final RegExp _cursorAuthTokenEnvPattern = RegExp(
+    r'CURSOR_AUTH_TOKEN\s*=\s*\S+',
+  );
 
   final ListQueue<String> _outgoing = ListQueue<String>();
   final ListQueue<String> _incoming = ListQueue<String>();
@@ -78,7 +88,26 @@ class AcpFrameLogger {
       _geminiApiKeyQuotedPattern,
       '"GEMINI_API_KEY": "[REDACTED]"',
     );
-    redacted = redacted.replaceAll(_geminiApiKeyEnvPattern, 'GEMINI_API_KEY=[REDACTED]');
+    redacted = redacted.replaceAll(
+      _geminiApiKeyEnvPattern,
+      'GEMINI_API_KEY=[REDACTED]',
+    );
+    redacted = redacted.replaceAll(
+      _cursorApiKeyQuotedPattern,
+      '"CURSOR_API_KEY": "[REDACTED]"',
+    );
+    redacted = redacted.replaceAll(
+      _cursorApiKeyEnvPattern,
+      'CURSOR_API_KEY=[REDACTED]',
+    );
+    redacted = redacted.replaceAll(
+      _cursorAuthTokenQuotedPattern,
+      '"CURSOR_AUTH_TOKEN": "[REDACTED]"',
+    );
+    redacted = redacted.replaceAll(
+      _cursorAuthTokenEnvPattern,
+      'CURSOR_AUTH_TOKEN=[REDACTED]',
+    );
     return redacted;
   }
 }
