@@ -33,6 +33,7 @@ import '../utils/ui/app_keys.dart';
 import 'workspace_terminal/workspace_terminal_body_kind.dart';
 import 'workspace_terminal/workspace_terminal_context_menu.dart';
 import 'workspace_terminal/workspace_terminal_empty_pane.dart';
+import 'workspace_terminal/workspace_terminal_find_host.dart';
 import 'workspace_terminal/workspace_terminal_view.dart';
 
 /// Debug label for the workspace panel's stable [GlobalKey<TerminalViewState>].
@@ -130,6 +131,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   var _registrationScheduled = false;
   final Map<String, int> _lastTerminalThemeFingerprintByEntry = {};
   final _menuOpen = ValueNotifier(false);
+  final _findHostKey = GlobalKey<WorkspaceTerminalFindHostState>();
 
   List<WorkspaceFolder> get _folders =>
       WorkspaceToolsScope.maybeOf(context)?.effectiveFolders ?? const [];
@@ -429,6 +431,8 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   ) async {
     final homeFs = context.read<HomeStorage>().fs;
     _menuOpen.value = true;
+    // Find autofocuses its TextField; refocusing the terminal would steal it.
+    var findRequested = false;
     try {
       await showWorkspaceTerminalContextMenu(
         context: context,
@@ -437,7 +441,10 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
         engine: entry.session.engine,
         globalPosition: globalPosition,
         cellOffset: cellOffset,
-        onFindRequested: () {},
+        onFindRequested: () {
+          findRequested = true;
+          _findHostKey.currentState?.openFind();
+        },
         onClearTerminal: () {
           entry.controller.clearSelection();
           entry.controller.searchClear();
@@ -453,7 +460,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     } finally {
       if (mounted) _menuOpen.value = false;
     }
-    if (!menuContext.mounted) return;
+    if (!menuContext.mounted || findRequested) return;
     _refocusTerminal();
   }
 
@@ -533,22 +540,28 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
           onContextMenu: (position, cell) =>
               _showContextMenu(context, active, position, cell),
         );
-        terminalBody = ValueListenableBuilder<bool>(
-          valueListenable: _menuOpen,
-          child: terminalView,
-          builder: (context, menuOpen, child) {
-            return SelectionAskAiFabHost(
-              listenable: active.controller,
-              selectionActive: () => active.controller.selectionActive,
-              readAiContext: () => buildTerminalAiContextClipboardText(
-                surfaceLabel: 'workspace-shell',
-                text: active.controller.readSelectionText() ?? '',
-              ),
-              onAskAi: _openAskAi,
-              menuOpen: menuOpen,
-              child: child!,
-            );
-          },
+        terminalBody = WorkspaceTerminalFindHost(
+          key: _findHostKey,
+          engine: active.session.engine,
+          controller: active.controller,
+          activeEntryId: active.id,
+          child: ValueListenableBuilder<bool>(
+            valueListenable: _menuOpen,
+            child: terminalView,
+            builder: (context, menuOpen, child) {
+              return SelectionAskAiFabHost(
+                listenable: active.controller,
+                selectionActive: () => active.controller.selectionActive,
+                readAiContext: () => buildTerminalAiContextClipboardText(
+                  surfaceLabel: 'workspace-shell',
+                  text: active.controller.readSelectionText() ?? '',
+                ),
+                onAskAi: _openAskAi,
+                menuOpen: menuOpen,
+                child: child!,
+              );
+            },
+          ),
         );
     }
 
