@@ -146,6 +146,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     required AcpSessionRuntimeApi runtime,
     required this.sessionId,
     required this.tool,
+    this.seatMemberId = acpMemberId,
     AgentAttentionPort? attention,
     AcpChatTranscriptWriter? transcript,
   }) : _runtime = runtime,
@@ -162,6 +163,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   final AcpSessionRuntimeApi _runtime;
   final String sessionId;
   final CliTool tool;
+  final String seatMemberId;
   final AgentAttentionPort? _attention;
   final AcpChatTranscriptWriter? _transcript;
 
@@ -736,7 +738,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   void _applyAttention(AgentStatusEvent event) {
     _attention?.applyEvent(
       sessionId: sessionId,
-      memberId: acpMemberId,
+      memberId: seatMemberId,
       event: event,
       skipPermissions: false,
     );

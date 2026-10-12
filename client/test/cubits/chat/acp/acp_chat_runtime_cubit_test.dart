@@ -11,9 +11,31 @@ import 'package:teampilot/services/acp/acp_chat_transcript.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
 import 'package:teampilot/services/acp/acp_session_runtime.dart';
+import 'package:teampilot/services/agent_status/agent_attention_port.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
+import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import '../../../support/in_memory_filesystem.dart';
+
+class _RecordingAttention implements AgentAttentionPort {
+  final memberIds = <String>[];
+
+  @override
+  void applyEvent({
+    required String sessionId,
+    required String memberId,
+    required AgentStatusEvent event,
+    required bool skipPermissions,
+  }) {
+    memberIds.add(memberId);
+  }
+
+  @override
+  void clearSeat({required String sessionId, required String memberId}) {}
+
+  @override
+  void clearSession(String sessionId) {}
+}
 
 /// All-stub [AcpSessionRuntimeApi] for cubit tests.
 class _FakeAcpRuntime implements AcpSessionRuntimeApi {
@@ -148,6 +170,25 @@ void main() {
     )..ensureStrings(_testStrings);
     return cubit;
   }
+
+  test('attention events use seatMemberId', () async {
+    final attention = _RecordingAttention();
+    final cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: 's1',
+      tool: CliTool.gemini,
+      attention: attention,
+      seatMemberId: 'lead',
+    )..ensureStrings(_testStrings);
+    await cubit.start(
+      executable: 'x',
+      sessionToolDir: '/t',
+      workingDirectory: '/w',
+    );
+    expect(attention.memberIds, contains('lead'));
+    expect(attention.memberIds, isNot(contains('acp')));
+    await cubit.close();
+  });
 
   test('start completes → ready phase', () async {
     final cubit = bootCubit();
