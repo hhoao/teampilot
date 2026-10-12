@@ -51,10 +51,8 @@ void main() {
 
   test('official blanks keys even when auth or parent env has them', () {
     final cap = CodexAcpCapability(
-      authSource: () => const CodexAcpAuth(
-        official: true,
-        apiKey: 'should-not-leak',
-      ),
+      authSource: () =>
+          const CodexAcpAuth(official: true, apiKey: 'should-not-leak'),
       codexPathSource: () => '/usr/bin/codex',
     );
     final env = _env(
@@ -80,21 +78,31 @@ void main() {
     expect(env['CODEX_API_KEY'], '');
   });
 
-  test('no auth source blanks keys and sets CODEX_HOME plus default CODEX_PATH', () {
-    const cap = CodexAcpCapability();
-    final env = _env(cap, baseEnv: const {'A': 'b'});
-    expect(env['A'], 'b');
-    expect(env['CODEX_HOME'], '/runtime/s1/codex');
-    expect(env['CODEX_PATH'], 'codex');
-    expect(env['OPENAI_API_KEY'], '');
-    expect(env['CODEX_API_KEY'], '');
-  });
+  test(
+    'no auth source blanks keys and sets CODEX_HOME plus default CODEX_PATH',
+    () {
+      const cap = CodexAcpCapability();
+      final env = _env(cap, baseEnv: const {'A': 'b'});
+      expect(env['A'], 'b');
+      expect(env['CODEX_HOME'], '/runtime/s1/codex');
+      expect(env['CODEX_PATH'], 'codex');
+      expect(env['OPENAI_API_KEY'], '');
+      expect(env['CODEX_API_KEY'], '');
+    },
+  );
 
   test('does not nest another /codex under sessionToolDir', () {
     const cap = CodexAcpCapability();
     final env = _env(cap);
     expect(env['CODEX_HOME'], '/runtime/s1/codex');
     expect(env['CODEX_HOME']!.endsWith('/codex/codex'), isFalse);
+  });
+
+  test('authenticateMethodId is null and translator has no extra methods', () {
+    const cap = CodexAcpCapability();
+    expect(cap.authenticateMethodId, isNull);
+    expect(cap.translator.blockingClientMethods, isEmpty);
+    expect(cap.translator.notificationClientMethods, isEmpty);
   });
 
   test('translator formats RpcError without abort mapping', () {

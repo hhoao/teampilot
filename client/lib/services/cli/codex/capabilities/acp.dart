@@ -10,6 +10,12 @@ final class CodexAcpTranslator implements AcpAgentTranslator {
   List<String> get flagCandidates => const [];
 
   @override
+  List<String> get blockingClientMethods => const [];
+
+  @override
+  List<String> get notificationClientMethods => const [];
+
+  @override
   String translateStopError(Object error, {required bool suppressAbort}) {
     if (error is RpcError) {
       return 'ACP error ${error.code}: ${error.message}';
@@ -54,6 +60,9 @@ final class CodexAcpCapability implements AcpCapability {
 
   @override
   AcpAgentTranslator get translator => const CodexAcpTranslator();
+
+  @override
+  String? get authenticateMethodId => null;
 
   @override
   Map<String, String> buildEnvironment({
