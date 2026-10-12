@@ -5,6 +5,7 @@ import 'package:teampilot/services/chat/session/session_open_request.dart';
 import 'package:teampilot/services/chat/launch/session_launch_host.dart';
 import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -47,6 +48,7 @@ void main() {
         'ensure-ready',
         'resolve-member',
         'install-team-runtime',
+        'attach-member-acp',
         'acquire-shell',
         'connect-shell',
       ]);
@@ -95,6 +97,61 @@ void main() {
 
     expect(events, contains('resolve-member'));
     expect(events, contains('connect-shell'));
+  });
+
+  test('mixed ACP seat attaches after TeamBus and skips PTY', () async {
+    job = _mixedAcpJob();
+    preparation.memberAcpHandled = true;
+
+    await executor.execute(job);
+
+    expect(events, <String>[
+      'persist',
+      'ensure-ready',
+      'resolve-member',
+      'install-team-runtime',
+      'attach-member-acp',
+    ]);
+    expect(shellConnector.connectCalls, 0);
+  });
+
+  test('mixed ACP success reports attached for fan-out', () async {
+    job = _mixedAcpJob();
+    preparation.memberAcpHandled = true;
+    final results = <ConnectShellResult>[];
+    executor = SessionConnectExecutor(
+      preparation: preparation,
+      shellConnector: shellConnector,
+      onResult: (job, session, resolved, result) => results.add(result),
+    );
+    await executor.execute(job);
+    expect(results, [ConnectShellResult.attached]);
+  });
+
+  test('mixed ACP attach false falls through to PTY', () async {
+    job = _mixedAcpJob();
+    preparation.memberAcpHandled = false;
+    await executor.execute(job);
+    expect(events, contains('connect-shell'));
+  });
+
+  test('mixed ACP attach throw does not open PTY', () async {
+    job = _mixedAcpJob();
+    preparation.memberAcpError = StateError('adapter missing');
+    final results = <ConnectShellResult>[];
+    executor = SessionConnectExecutor(
+      preparation: preparation,
+      shellConnector: shellConnector,
+      onResult: (job, session, resolved, result) => results.add(result),
+    );
+
+    await executor.execute(job);
+
+    expect(shellConnector.connectCalls, 0);
+    expect(events, isNot(contains('connect-shell')));
+    expect(results, isEmpty);
+    expect(preparation.failedMemberIds, <String>['member-1']);
+    expect(preparation.rollbackCalls, 0);
   });
 
   test('executor reports the attachment result after connect', () async {
@@ -276,20 +333,38 @@ SessionConnectJob _job({
   CliTool? cli,
   bool acp = false,
   bool simple = false,
+  List<TeamMemberConfig>? members,
+  String? sessionTeam,
+  bool bindingAcp = false,
 }) {
   final workspace = Workspace(workspaceId: 'workspace-1', createdAt: 1);
-  const member = TeamMemberConfig(id: 'member-1', name: 'Member');
-  const team = TeamProfile(
+  final roster =
+      members ??
+      const <TeamMemberConfig>[
+        TeamMemberConfig(id: 'member-1', name: 'Member'),
+      ];
+  final member = roster.first;
+  final team = TeamProfile(
     id: 'team-1',
     name: 'Team',
-    members: <TeamMemberConfig>[member],
+    members: roster,
+    teamMode: bindingAcp ? TeamMode.mixed : TeamMode.native,
   );
   final session = AppSession(
     sessionId: 'session-1',
     workspaceId: workspace.workspaceId,
-    sessionTeam: simple ? '' : team.id,
+    sessionTeam: sessionTeam ?? (simple ? '' : team.id),
     cli: cli,
     acp: acp,
+    members: bindingAcp
+        ? <SessionMemberBinding>[
+            SessionMemberBinding(
+              rosterMemberId: member.id,
+              taskId: 'task-1',
+              acp: true,
+            ),
+          ]
+        : const <SessionMemberBinding>[],
     createdAt: 1,
   );
   final request = SessionOpenRequest(
@@ -311,6 +386,14 @@ SessionConnectJob _job({
   );
 }
 
+SessionConnectJob _mixedAcpJob() => _job(
+  members: const <TeamMemberConfig>[
+    TeamMemberConfig(id: 'member-1', name: 'Member'),
+  ],
+  sessionTeam: 'team-1',
+  bindingAcp: true,
+);
+
 class _FakePreparation implements SessionConnectPreparationPort {
   _FakePreparation(this.events, this.host);
 
@@ -319,6 +402,8 @@ class _FakePreparation implements SessionConnectPreparationPort {
   final TerminalSession shell = FakeTerminalSession(fs: InMemoryFilesystem());
   bool valid = true;
   Object? persistError;
+  bool memberAcpHandled = false;
+  Object? memberAcpError;
   int rollbackCalls = 0;
   final failedMemberIds = <String>[];
   final materializationSettled = Completer<void>();
@@ -342,7 +427,12 @@ class _FakePreparation implements SessionConnectPreparationPort {
     SessionConnectJob job,
     AppSession session,
     ResolvedLaunchMembers resolved,
-  ) async => false;
+  ) async {
+    events.add('attach-member-acp');
+    final error = memberAcpError;
+    if (error != null) throw error;
+    return memberAcpHandled;
+  }
 
   @override
   Future<AppSession> persist(SessionConnectJob job) async {

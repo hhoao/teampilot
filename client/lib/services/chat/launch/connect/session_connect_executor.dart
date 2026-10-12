@@ -49,7 +49,7 @@ abstract interface class SessionConnectPreparationPort {
   Future<bool> attachAcpRuntime(SessionConnectJob job, AppSession session);
 
   /// Mixed-seat ACP after TeamBus staging. False means the executor should
-  /// keep the PTY path. The executor does not call this yet.
+  /// keep the PTY path.
   Future<bool> attachMemberAcpRuntime(
     SessionConnectJob job,
     AppSession session,
@@ -118,6 +118,25 @@ class SessionConnectExecutor implements SessionConnectExecutorPort {
         await preparation.markDeferredReady(job, activeSession, resolved);
         return;
       }
+      // Member id is recorded before attach so a throw settles the waiter
+      // without starting a shell. False falls through to PTY.
+      attachedMemberId = resolved.member.id;
+      if (await preparation.attachMemberAcpRuntime(
+        job,
+        activeSession,
+        resolved,
+      )) {
+        if (preparation.isValid(job)) {
+          await onResult?.call(
+            job,
+            activeSession,
+            resolved,
+            ConnectShellResult.attached,
+          );
+        }
+        return;
+      }
+      attachedMemberId = null;
       final shell = preparation.shellForLaunch(job, activeSession, resolved);
       attachedMemberId = resolved.member.id;
       attachmentStarted = true;
@@ -157,6 +176,8 @@ class SessionConnectExecutor implements SessionConnectExecutorPort {
             preparation.markConnectFailed(job, attachedMemberId!);
           }
         }
+      } else if (attachedMemberId != null) {
+        preparation.markConnectFailed(job, attachedMemberId);
       } else if (reportFailure) {
         preparation.rollback(job, activeSession);
       }
