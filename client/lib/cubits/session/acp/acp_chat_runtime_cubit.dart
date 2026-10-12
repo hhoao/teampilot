@@ -172,7 +172,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   StreamSubscription<AcpSessionUpdate>? _updatesSub;
   StreamSubscription<AgentPermissionRequest>? _permissionSub;
   StreamSubscription<AcpPendingClientRequest>? _clientRequestsSub;
-  String? _queuedPrompt;
+  ({String text, int serial})? _queuedPrompt;
+  int _turnSerial = 0;
   bool _closing = false;
   Future<void>? _hydrateInFlight;
 
@@ -294,10 +295,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     emit(state.copyWith(phase: AcpChatPhase.ready));
     final queued = _queuedPrompt;
     _queuedPrompt = null;
-    if (queued != null) {
+    if (queued != null && queued.serial == _turnSerial) {
       // Flush before replaying handshake auth so a CLI probe `none` cannot
       // land as the first row ahead of the user's already-visible bubble.
-      _dispatchPrompt(queued);
+      _dispatchPrompt(queued.text, queued.serial);
     }
     if (handshakeAuth != null) unawaited(_onUpdate(handshakeAuth));
   }
@@ -313,14 +314,16 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     // Handshake `kind=none` is a CLI probe, not a confirmed logout. Drop it
     // as soon as the user sends so it never sits above the turn.
     _removeAuthNoticeMessage();
+    _turnSerial++;
+    final serial = _turnSerial;
     if (state.phase == AcpChatPhase.launching || !_runtime.isStarted) {
-      _queuedPrompt = trimmed;
+      _queuedPrompt = (text: trimmed, serial: serial);
       _showUserMessage(trimmed);
       _resetTurnTrackers();
       emit(state.copyWith(inTurn: true, activity: AcpChatActivity.thinking));
       return true;
     }
-    _dispatchPrompt(trimmed);
+    _dispatchPrompt(trimmed, serial);
     return true;
   }
 
@@ -367,7 +370,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         trimmed;
   }
 
-  void _dispatchPrompt(String trimmed) {
+  void _dispatchPrompt(String trimmed, int serial) {
     _showUserMessage(trimmed);
     _resetTurnTrackers();
     emit(state.copyWith(inTurn: true, activity: AcpChatActivity.thinking));
@@ -375,7 +378,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     // whole turn and every attention-driven surface reads "starting".
     _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.working));
     unawaited(
-      _recordAndPrompt(trimmed).catchError((Object error, StackTrace st) {
+      _recordAndPrompt(trimmed, serial).catchError((Object error, StackTrace st) {
         appLogger.e(
           '[acp-chat] session $sessionId prompt failed: $error',
           error: error,
@@ -388,15 +391,42 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     );
   }
 
-  Future<void> _recordAndPrompt(String text) async {
+  Future<void> _recordAndPrompt(String text, int serial) async {
     await _persist();
+    if (_closing || isClosed) return;
+    if (serial != _turnSerial) {
+      if (state.phase != AcpChatPhase.launching && state.inTurn) {
+        _endTurn();
+      }
+      return;
+    }
     await _runtime.prompt(text);
   }
 
   /// Cancels the current turn (silently resolved via the cancelled stop).
   void cancelTurn() {
+    _turnSerial++;
+    _queuedPrompt = null;
     if (!isClosed) emit(state.copyWith(pendingClient: null));
+    if (!_runtime.isStarted) {
+      _clearInTurnKeepingPhase();
+      unawaited(_persist());
+      return;
+    }
     _runtime.cancel();
+  }
+
+  void _clearInTurnKeepingPhase() {
+    if (_closing || isClosed) return;
+    _resetTurnTrackers();
+    _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
+    emit(
+      state.copyWith(
+        inTurn: false,
+        pendingClient: null,
+        activity: AcpChatActivity.none,
+      ),
+    );
   }
 
   /// Answers the pending permission card. Returns whether a reply was
