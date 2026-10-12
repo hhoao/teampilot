@@ -67,10 +67,25 @@ class ChatTab {
 
   final Map<String, TerminalSession> memberShells = {};
 
-  /// Terminal-less ACP chat runtime for this tab (gemini phase 1). Parallel
-  /// to [memberShells]: set at tab connect for an ACP session and closed with
-  /// the tab. Chat center view only — no terminal toggle for this kind.
-  AcpChatRuntimeCubit? acpRuntime;
+  /// Per-member terminal-less ACP chat runtimes (parallel to [memberShells]).
+  /// Closed with the tab in [disposeBus].
+  final Map<String, AcpChatRuntimeCubit> memberAcpRuntimes = {};
+
+  /// Personal-session alias into [memberAcpRuntimes] for the tab's own session
+  /// seat. Team UI must not use this for a selected teammate — use the map.
+  AcpChatRuntimeCubit? get acpRuntime {
+    final key = persistedSession?.sessionId ?? info.id;
+    return memberAcpRuntimes[key];
+  }
+
+  set acpRuntime(AcpChatRuntimeCubit? value) {
+    final key = persistedSession?.sessionId ?? info.id;
+    if (value == null) {
+      memberAcpRuntimes.remove(key);
+    } else {
+      memberAcpRuntimes[key] = value;
+    }
+  }
 
   /// mixed 模式：本 team 会话的进程内总线与其 gateway 注册（随 tab 建/销）。
   TeamBus? teamBus;
@@ -110,8 +125,11 @@ class ChatTab {
     teamBus?.dispose();
     teamBus = null;
     busSessionRegistration = null;
-    await acpRuntime?.close();
-    acpRuntime = null;
+    final cubits = memberAcpRuntimes.values.toList();
+    memberAcpRuntimes.clear();
+    for (final cubit in cubits) {
+      await cubit.close();
+    }
   }
 
   /// Member ids with a scheduled or in-flight member connect.
