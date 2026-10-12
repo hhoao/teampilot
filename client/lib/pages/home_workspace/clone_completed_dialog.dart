@@ -11,7 +11,9 @@ import '../../models/workspace_folder.dart';
 import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
 import '../../utils/logging/logger.dart';
+import '../../utils/workspace/workspace_display_name.dart';
 import '../../widgets/app_toast/app_toast.dart';
+import '../../widgets/workspace_icon.dart';
 
 /// What the user picked in the clone-completion dialog.
 enum CloneCompletionAction { newWorkspace, addToWorkspace }
@@ -200,9 +202,11 @@ class _CloneAddToWorkspaceDialogState extends State<CloneAddToWorkspaceDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    final styles = TpTextStyles.of(context);
     return TpDialog(
       maxWidth: 480,
-      maxHeight: 420,
+      maxHeight: MediaQuery.sizeOf(context).height * 0.7,
       scrollable: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -215,21 +219,53 @@ class _CloneAddToWorkspaceDialogState extends State<CloneAddToWorkspaceDialog> {
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
                 l10n.cloneRepositoryCompletedBody(widget.task.destPath),
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: styles.mdColored(cs.onSurfaceVariant),
               ),
             )
           else
             for (final workspace in widget.workspaces)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                title: Text(workspace.effectiveDisplay),
-                subtitle: Text(
-                  workspace.firstFolderPath,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: TpHoverRow(
+                  onTap: () => _pick(workspace),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 10,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      WorkspaceIcon(
+                        workspace: workspace,
+                        size: 36,
+                        borderRadius: 10,
+                        padding: 6,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              workspace.localizedName(l10n),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: styles.mdMedium,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              workspace.firstFolderPath,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: styles.smColored(cs.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                onTap: () => _pick(workspace),
               ),
         ],
       ),
