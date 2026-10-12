@@ -1,6 +1,7 @@
 import '../../models/install_job/install_job_key.dart';
 import '../../models/install_job/install_job_scope.dart';
 import '../cli/claude/capabilities/acp_adapter_installer.dart';
+import '../cli/codex/capabilities/acp_adapter_installer.dart';
 
 abstract final class InstallJobKeys {
   static InstallJobKey cli(String cliValue, {required InstallJobScope scope}) =>
@@ -14,6 +15,12 @@ abstract final class InstallJobKeys {
   static InstallJobKey claudeAcpAdapter() => const InstallJobKey(
     kind: InstallJobKind.cliExecutable,
     target: ClaudeAcpAdapterInstaller.jobTarget,
+  );
+
+  /// Codex ACP adapter npm install (desktop-local; not a [CliTool]).
+  static InstallJobKey codexAcpAdapter() => const InstallJobKey(
+    kind: InstallJobKind.cliExecutable,
+    target: CodexAcpAdapterInstaller.jobTarget,
   );
 
   static InstallJobKey toolchain(

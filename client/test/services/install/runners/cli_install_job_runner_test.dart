@@ -10,6 +10,7 @@ import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/claude/capabilities/acp_adapter_installer.dart';
 import 'package:teampilot/services/cli/cli_installer_service.dart';
+import 'package:teampilot/services/cli/codex/capabilities/acp_adapter_installer.dart';
 import 'package:teampilot/services/cli/registry/installer/npm_installer_capability.dart';
 import 'package:teampilot/services/install/install_job_keys.dart';
 import 'package:teampilot/services/install/runners/cli_install_job_runner.dart';
@@ -85,10 +86,10 @@ class _AdapterRecordingService extends CliInstallerService {
   }) async {
     this.installer = installer;
     this.mode = mode;
-    return const CliInstallResult(
+    return CliInstallResult(
       success: true,
       message: 'adapter',
-      executablePath: '/bin/claude-agent-acp',
+      executablePath: '/bin/${installer.executableName}',
     );
   }
 }
@@ -106,6 +107,19 @@ void main() {
       expect(result.executablePath, '/bin/claude-agent-acp');
       expect(service.installer, isA<ClaudeAcpAdapterInstaller>());
       expect(service.mode, CliInstallMode.local);
+      expect(service.cliInstallCalls, 0);
+    });
+
+    test('supports and runs the Codex ACP adapter key locally', () async {
+      final service = _AdapterRecordingService();
+      final runner = CliInstallJobRunner(installerFactory: () => service);
+      final key = InstallJobKeys.codexAcpAdapter();
+
+      expect(runner.supports(key), isTrue);
+      final result = await runner.run(_spec(key), InstallJobContext());
+
+      expect(result.executablePath, '/bin/codex-acp');
+      expect(service.installer, isA<CodexAcpAdapterInstaller>());
       expect(service.cliInstallCalls, 0);
     });
   });
