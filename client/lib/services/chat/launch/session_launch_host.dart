@@ -1,5 +1,6 @@
 import '../../../models/app_session.dart';
 import '../../../models/member_remote_provision_progress.dart';
+import '../../../models/team_config.dart';
 import '../launch/staging/session_connect_orchestrator.dart';
 import '../../acp/acp_chat_strings.dart';
 import '../../agent_status/agent_status_seat_lookup_port.dart';
@@ -118,7 +119,7 @@ abstract interface class SessionLaunchHost
   /// Localized copy for terminal-less ACP chat sessions (gemini phase 1).
   /// Null in tests / before the app shell wires l10n — the launch service
   /// falls back to bare diagnostic strings.
-  AcpChatStrings? Function()? get acpChatStrings => null;
+  AcpChatStrings? Function(CliTool tool)? get acpChatStrings => null;
 }
 
 /// Drop attention + seat lookup (+ pending ask answers) for every seat in

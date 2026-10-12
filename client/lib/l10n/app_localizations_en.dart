@@ -9281,4 +9281,23 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get acpChatNotLoggedIn =>
       'Claude isn\'t logged in. Sign in under Settings → Providers, or switch to a Claude API key.';
+
+  @override
+  String get codexPersonalAcpDefaultLabel => 'Personal sessions use ACP chat';
+
+  @override
+  String get codexPersonalAcpDefaultDescription =>
+      'Run new personal Codex sessions as terminal-less ACP chat via codex-acp. Existing sessions stay as they were started. Team sessions always use the terminal.';
+
+  @override
+  String get codexPersonalAcpAndroidDisabled =>
+      'ACP chat is desktop-only until remote SSH exec is available.';
+
+  @override
+  String get codexAcpLaunchFailedAdapter =>
+      'Could not start the Codex ACP adapter (codex-acp). Install it and try again.';
+
+  @override
+  String get codexAcpChatNotLoggedIn =>
+      'Codex isn\'t logged in. Sign in with ChatGPT under Settings → Providers, or switch to an API key.';
 }

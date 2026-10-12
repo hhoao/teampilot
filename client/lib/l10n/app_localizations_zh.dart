@@ -8877,4 +8877,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get acpChatNotLoggedIn => 'Claude 尚未登录。请到设置 → 服务商完成登录，或改用 API Key。';
+
+  @override
+  String get codexPersonalAcpDefaultLabel => '个人会话使用 ACP 聊天';
+
+  @override
+  String get codexPersonalAcpDefaultDescription =>
+      '新建个人 Codex 会话走无终端 ACP（codex-acp）。已有会话保持原启动方式。团队会话始终用终端。';
+
+  @override
+  String get codexPersonalAcpAndroidDisabled => '在远程 SSH exec 就绪前，ACP 聊天仅限桌面。';
+
+  @override
+  String get codexAcpLaunchFailedAdapter =>
+      '无法启动 Codex ACP 适配器（codex-acp）。请安装后重试。';
+
+  @override
+  String get codexAcpChatNotLoggedIn =>
+      'Codex 尚未登录。请到设置 → 服务商完成 ChatGPT 登录，或改用 API Key。';
 }

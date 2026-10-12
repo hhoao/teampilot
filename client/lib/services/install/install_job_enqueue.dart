@@ -73,6 +73,35 @@ extension InstallJobEnqueue on InstallJobRegistry {
     return enqueue(spec);
   }
 
+  /// Installs the Codex ACP adapter (local desktop only).
+  Future<CliInstallResult> installCodexAcpAdapter({
+    required String title,
+    String? subtitle,
+    FutureOr<void> Function(CliInstallResult result)? onSucceeded,
+    FutureOr<void> Function(Object error)? onFailed,
+  }) {
+    final runnerRegistry = this.runnerRegistry;
+    if (runnerRegistry == null) {
+      throw StateError('InstallJobRegistry has no runner registry');
+    }
+    final key = InstallJobKeys.codexAcpAdapter();
+    final runner = runnerRegistry.resolve(key);
+    if (runner == null) {
+      throw StateError('No InstallJobRunner for ${key.kind}');
+    }
+    late final InstallJobSpec<CliInstallResult> spec;
+    spec = InstallJobSpec(
+      key: key,
+      title: title,
+      subtitle: subtitle,
+      cancelPolicy: InstallCancelPolicy.cooperative,
+      onSucceeded: onSucceeded,
+      onFailed: onFailed,
+      run: (ctx) => runner.run(spec, ctx),
+    );
+    return enqueue(spec);
+  }
+
   Future<GitInstallResult> installToolchain({
     required String toolId,
     required InstallJobScope scope,

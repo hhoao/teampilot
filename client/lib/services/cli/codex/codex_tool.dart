@@ -1,3 +1,4 @@
+import 'capabilities/acp.dart';
 import 'capabilities/provider.dart';
 import '../registry/capabilities/provider_capability.dart';
 import '../../../models/team_config.dart';
@@ -58,6 +59,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.nativeCommands = const CodexNativeCommands(),
     this.prompt = const CodexPromptCapability(),
     this.hookWriter = const CodexHookWriter(),
+    this.acp = const CodexAcpCapability(),
     CodexProviderCapability? provider,
   }) : provider = provider ?? CodexProviderCapability();
 
@@ -85,6 +87,7 @@ final class CodexCliTool implements CliToolDefinition {
   final NativeCommandCapability nativeCommands;
   final HookCapability hookWriter;
   final PromptCapability prompt;
+  final CodexAcpCapability acp;
 
   @override
   CliTool get id => CliTool.codex;
@@ -116,5 +119,6 @@ final class CodexCliTool implements CliToolDefinition {
     nativeCommands,
     prompt,
     hookWriter,
+    acp,
   ];
 }

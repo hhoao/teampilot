@@ -4,6 +4,8 @@ import '../../../services/cli/claude/capabilities/acp.dart';
 import '../../../services/cli/claude/capabilities/acp_adapter_installer.dart';
 import '../../../services/cli/claude/capabilities/headless.dart';
 import '../../../services/cli/codex/codex_bootstrap_entry.dart';
+import '../../../services/cli/codex/capabilities/acp.dart';
+import '../../../services/cli/codex/capabilities/acp_adapter_installer.dart';
 import '../../../services/cli/codex/capabilities/headless.dart';
 import '../../../services/cli/cursor/cursor_bootstrap_entry.dart';
 import '../../../services/cli/flashskyai/capabilities/headless.dart';
@@ -74,6 +76,11 @@ void registerBuiltInCliTools(
         storage: storage,
       ),
       headless: CodexHeadlessCapability(storage: storage),
+      acp: CodexAcpCapability(
+        authSource: codexEntry?.acpAuthSource,
+        locateAdapter: (_) => locateCodexAcpAdapter(),
+        codexPathSource: codexEntry?.codexPathSource,
+      ),
     ),
   );
   registry.register(

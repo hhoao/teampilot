@@ -1262,6 +1262,9 @@ Future<AppShell> buildAppShell({
     // Cached Claude provider row matching the CLI's selected official-vs-key
     // id for the sync ACP auth source; refreshed alongside the Gemini key.
     AppProviderConfig? cachedClaudeProvider;
+    // Cached Codex provider row matching the CLI's selected official-vs-key
+    // id for the sync ACP auth source; refreshed alongside Claude / Gemini.
+    AppProviderConfig? cachedCodexProvider;
 
     cliToolRegistry.configure(
       CliBootstrap({
@@ -1283,6 +1286,9 @@ Future<AppShell> buildAppShell({
         ),
         CliTool.codex: CodexBootstrapEntry(
           credentialsService: codexCredentialsService,
+          acpAuthSource: () => codexAcpAuthForProvider(cachedCodexProvider),
+          codexPathSource: () =>
+              sessionPreferencesCubit.resolveExecutable(CliTool.codex),
           modelsService: ApiModelCatalogService(
             storage: homeStorage,
             protocol: ApiModelCatalogProtocol.openAi,
@@ -1335,12 +1341,31 @@ Future<AppShell> buildAppShell({
           .whenComplete(() => claudeProviderRefreshInFlight = false);
     }
 
+    var codexProviderRefreshInFlight = false;
+    void refreshCodexProvider() {
+      if (codexProviderRefreshInFlight) return;
+      codexProviderRefreshInFlight = true;
+      appProviderCubit
+          .loadProvidersFor(CliTool.codex)
+          .then((providers) {
+            cachedCodexProvider = pickCodexAcpProvider(
+              providers: providers,
+              selectedId:
+                  appProviderCubit.state.selectedProviderIdByCli[CliTool.codex],
+            );
+          })
+          .catchError((Object _) {})
+          .whenComplete(() => codexProviderRefreshInFlight = false);
+    }
+
     refreshClaudeProvider();
+    refreshCodexProvider();
     refreshGeminiCredential();
     // Self-managing: when appProviderCubit closes (shell teardown), the
     // broadcast stream's onDone fires and nothing further is refreshed.
     appProviderCubit.stream.listen((_) {
       refreshClaudeProvider();
+      refreshCodexProvider();
       refreshGeminiCredential();
     }, onDone: () {});
 
@@ -2241,18 +2266,24 @@ Future<AppShell> buildAppShell({
     );
     // Terminal-less ACP chat copy: l10n is resolved per-call from the
     // platform locale (the launch service reads it at session connect).
-    chatCubit.acpChatStringsResolver = () {
+    chatCubit.acpChatStringsResolver = (tool) {
       final locale = PlatformDispatcher.instance.locale;
       final l10n = lookupAppLocalizations(
         basicLocaleListResolution([locale], AppLocalizations.supportedLocales),
       );
+      final adapter = tool == CliTool.codex
+          ? l10n.codexAcpLaunchFailedAdapter
+          : l10n.acpLaunchFailedAdapter;
+      final notLoggedIn = tool == CliTool.codex
+          ? l10n.codexAcpChatNotLoggedIn
+          : l10n.acpChatNotLoggedIn;
       return AcpChatStrings(
         launchFailedVersion: l10n.acpLaunchFailedVersion,
-        launchFailedAdapter: l10n.acpLaunchFailedAdapter,
+        launchFailedAdapter: adapter,
         launchFailed: l10n.acpChatLaunchFailed,
         turnFailed: l10n.acpChatTurnFailed,
         processExited: l10n.acpChatProcessExited,
-        notLoggedIn: l10n.acpChatNotLoggedIn,
+        notLoggedIn: notLoggedIn,
       );
     };
     final promptDeliveryStore = FilePromptDeliveryStore(

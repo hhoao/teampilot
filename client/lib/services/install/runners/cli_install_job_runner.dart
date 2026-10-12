@@ -6,6 +6,8 @@ import '../../../models/ssh_profile.dart';
 import '../../../models/team_config.dart';
 import '../../cli/claude/capabilities/acp_adapter_installer.dart';
 import '../../cli/cli_installer_service.dart';
+import '../../cli/codex/capabilities/acp_adapter_installer.dart';
+import '../../cli/registry/installer/npm_installer_capability.dart';
 import '../install_job_runner.dart';
 
 typedef SshProfileById = SshProfile? Function(String profileId);
@@ -26,24 +28,24 @@ final class CliInstallJobRunner implements InstallJobRunner {
   @override
   bool supports(InstallJobKey key) {
     if (key.kind != kind) return false;
-    return key.target == ClaudeAcpAdapterInstaller.jobTarget ||
+    return _adapterFor(key.target) != null ||
         CliTool.tryParse(key.target) != null;
   }
 
   @override
   Future<T> run<T>(InstallJobSpec<T> spec, InstallJobContext ctx) async {
-    final isAdapter = spec.key.target == ClaudeAcpAdapterInstaller.jobTarget;
+    final adapter = _adapterFor(spec.key.target);
     final cli = CliTool.tryParse(spec.key.target);
-    if (!isAdapter && cli == null) {
+    if (adapter == null && cli == null) {
       throw StateError('Unknown CLI target: ${spec.key.target}');
     }
 
     final (mode, sshProfile) = _resolveInstallTarget(spec.key.scope);
     void onProgress(CliInstallProgress progress) =>
         _reportCliProgress(ctx, progress);
-    final result = isAdapter
+    final result = adapter != null
         ? await _installerFactory().installAdapter(
-            installer: const ClaudeAcpAdapterInstaller(),
+            installer: adapter,
             mode: mode,
             sshProfile: sshProfile,
             onProgress: onProgress,
@@ -89,6 +91,16 @@ void _reportCliProgress(InstallJobContext ctx, CliInstallProgress progress) {
     return;
   }
   ctx.reportPhase(phaseLabel);
+}
+
+NpmInstallerCapability? _adapterFor(String target) {
+  if (target == ClaudeAcpAdapterInstaller.jobTarget) {
+    return const ClaudeAcpAdapterInstaller();
+  }
+  if (target == CodexAcpAdapterInstaller.jobTarget) {
+    return const CodexAcpAdapterInstaller();
+  }
+  return null;
 }
 
 String _cliInstallPhaseLabel(CliInstallPhase phase) => switch (phase) {

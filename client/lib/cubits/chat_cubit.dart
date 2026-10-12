@@ -891,9 +891,10 @@ class ChatCubit extends Cubit<ChatState>
   /// shell (which owns the locale); null until then — the launch service
   /// falls back to diagnostic strings.
   @override
-  AcpChatStrings? Function()? get acpChatStrings => _acpChatStringsResolver;
-  AcpChatStrings? Function()? _acpChatStringsResolver;
-  set acpChatStringsResolver(AcpChatStrings? Function()? value) =>
+  AcpChatStrings? Function(CliTool tool)? get acpChatStrings =>
+      _acpChatStringsResolver;
+  AcpChatStrings? Function(CliTool tool)? _acpChatStringsResolver;
+  set acpChatStringsResolver(AcpChatStrings? Function(CliTool tool)? value) =>
       _acpChatStringsResolver = value;
 
   /// Drops cached Phase A provision for [workspace] (e.g. after folder/target edits).
