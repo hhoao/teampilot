@@ -165,13 +165,62 @@ Widget _buildCliRow(
       ],
     );
   }
+  if (cli == CliTool.cursor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        pathRow,
+        CursorPersonalAcpSettingsRow(cubit: cubit),
+      ],
+    );
+  }
   return pathRow;
 }
 
-/// Claude: run new personal sessions as terminal-less ACP chat.
+/// Shared personal-ACP default switch.
 ///
 /// Disabled on Android (ACP spawns a local process; remote SSH exec is not
 /// available there yet).
+class PersonalAcpSettingsRow extends StatelessWidget {
+  const PersonalAcpSettingsRow({
+    required this.switchKey,
+    required this.label,
+    required this.description,
+    required this.androidDescription,
+    required this.value,
+    required this.onChanged,
+    this.trailing,
+    super.key,
+  });
+
+  final Key switchKey;
+  final String label;
+  final String description;
+  final String androidDescription;
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SwitchListTile(
+          key: switchKey,
+          title: Text(label),
+          subtitle: Text(onChanged == null ? androidDescription : description),
+          value: value,
+          onChanged: onChanged,
+        ),
+        if (trailing != null) trailing!,
+        const Divider(height: 1),
+      ],
+    );
+  }
+}
+
+/// Claude: run new personal sessions as terminal-less ACP chat.
 class ClaudePersonalAcpSettingsRow extends StatelessWidget {
   const ClaudePersonalAcpSettingsRow({
     required this.cubit,
@@ -192,27 +241,54 @@ class ClaudePersonalAcpSettingsRow extends StatelessWidget {
           a.preferences.claudePersonalAcpDefault !=
           b.preferences.claudePersonalAcpDefault,
       builder: (context, state) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SwitchListTile(
-              key: AppKeys.claudePersonalAcpSwitch,
-              title: Text(l10n.claudePersonalAcpDefaultLabel),
-              subtitle: Text(
-                isAndroid
-                    ? l10n.claudePersonalAcpAndroidDisabled
-                    : l10n.claudePersonalAcpDefaultDescription,
-              ),
-              value: !isAndroid && state.preferences.claudePersonalAcpDefault,
-              onChanged: isAndroid
-                  ? null
-                  : (value) => cubit.setClaudePersonalAcpDefault(value),
-            ),
-            // Desktop-only: ACP spawns a local process. Install is
-            // user-initiated here; connect never installs.
-            if (!isAndroid) const _ClaudeAcpAdapterInstallButton(),
-            const Divider(height: 1),
-          ],
+        return PersonalAcpSettingsRow(
+          switchKey: AppKeys.claudePersonalAcpSwitch,
+          label: l10n.claudePersonalAcpDefaultLabel,
+          description: l10n.claudePersonalAcpDefaultDescription,
+          androidDescription: l10n.claudePersonalAcpAndroidDisabled,
+          value: !isAndroid && state.preferences.claudePersonalAcpDefault,
+          onChanged: isAndroid
+              ? null
+              : (value) => cubit.setClaudePersonalAcpDefault(value),
+          trailing: isAndroid ? null : const _ClaudeAcpAdapterInstallButton(),
+        );
+      },
+    );
+  }
+}
+
+/// Cursor: run new personal sessions as terminal-less ACP chat.
+///
+/// No adapter install button — `cursor-agent acp` is built in.
+class CursorPersonalAcpSettingsRow extends StatelessWidget {
+  const CursorPersonalAcpSettingsRow({
+    required this.cubit,
+    @visibleForTesting this.isAndroidOverride,
+    super.key,
+  });
+
+  final SessionPreferencesCubit cubit;
+  final bool? isAndroidOverride;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final isAndroid = isAndroidOverride ?? Platform.isAndroid;
+    return BlocBuilder<SessionPreferencesCubit, SessionPreferencesState>(
+      bloc: cubit,
+      buildWhen: (a, b) =>
+          a.preferences.cursorPersonalAcpDefault !=
+          b.preferences.cursorPersonalAcpDefault,
+      builder: (context, state) {
+        return PersonalAcpSettingsRow(
+          switchKey: AppKeys.cursorPersonalAcpSwitch,
+          label: l10n.cursorPersonalAcpDefaultLabel,
+          description: l10n.cursorPersonalAcpDefaultDescription,
+          androidDescription: l10n.claudePersonalAcpAndroidDisabled,
+          value: !isAndroid && state.preferences.cursorPersonalAcpDefault,
+          onChanged: isAndroid
+              ? null
+              : (value) => cubit.setCursorPersonalAcpDefault(value),
         );
       },
     );
