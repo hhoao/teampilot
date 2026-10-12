@@ -474,6 +474,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         if (update.loggedIn) {
           _removeAuthNoticeMessage();
         }
+      default:
+        // Cursor todo/task/image updates are folded in a later task.
+        break;
     }
   }
 

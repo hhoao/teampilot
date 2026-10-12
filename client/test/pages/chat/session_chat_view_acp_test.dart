@@ -37,6 +37,7 @@ import 'package:teampilot/pages/chat/history_continue_delivery.dart';
 import 'package:teampilot/pages/chat/operator_history_send.dart'
     show OperatorMailboxQueuedEvent;
 import 'package:teampilot/pages/chat/session_chat_view.dart';
+import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
 import 'package:teampilot/services/acp/acp_session_runtime.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
@@ -129,6 +130,9 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
       permissionsController.stream;
 
   @override
+  Stream<AcpPendingClientRequest> get clientRequests => const Stream.empty();
+
+  @override
   AcpAuthNotice? get lastAuthNotice => null;
 
   @override
@@ -142,6 +146,12 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
     lastAnswer = (kind: reply, always: always);
     return reply;
   }
+
+  @override
+  Future<void> answerAsk(AcpAskHoldReply reply) async {}
+
+  @override
+  Future<void> answerPlan(AcpPlanHoldReply reply) async {}
 
   @override
   void cancel() => cancelled = true;

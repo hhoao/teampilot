@@ -4,12 +4,16 @@ import 'dart:typed_data';
 
 import 'package:acpd/acpd.dart' as acpd;
 import 'package:acpd_test/acpd_test.dart' as acpd_test;
+import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/agent_status/agent_permission_request.dart';
+import 'package:teampilot/services/acp/acp_agent_translator.dart';
+import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_connection.dart';
 import 'package:teampilot/services/acp/acp_frame_logger.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
 import 'package:teampilot/services/acp/acp_transport.dart';
+import 'package:teampilot/services/agent_status/agent_permission_request.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/acp.dart';
 import 'package:teampilot/services/cli/gemini/capabilities/acp.dart';
 
 void main() {
@@ -56,6 +60,33 @@ void main() {
           permissionTimeout ?? AcpAgentSession.defaultPermissionTimeout,
     );
     return session;
+  }
+
+  /// Replaces the Gemini connection from [setUp] with [translator].
+  ///
+  /// Cursor tests must construct [AcpAgentConnection] with
+  /// [CursorAcpTranslator]; disposing the previous connection closes the
+  /// paired transport, so the mock agent is rebuilt too.
+  Future<void> rebuildConnection(AcpAgentTranslator translator) async {
+    await conn.dispose();
+    await agent.close();
+    agent = acpd_test.MockAgent();
+    agentCtx = acpd.AgentContext(agent.connection);
+    transport = _PairAcpTransport(agent.clientTransport);
+    conn = AcpAgentConnection(
+      transport: transport,
+      logger: AcpFrameLogger(enableDiskLog: false),
+      translator: translator,
+    );
+    agent.connection.onRequest('initialize', (params) {
+      return acpd.InitializeResponse(
+        protocolVersion: acpd.ProtocolVersion.v1,
+      ).toJson();
+    });
+    await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
+    agent.connection.onRequest('session/new', (params) {
+      return acpd.NewSessionResponse(sessionId: sessionId).toJson();
+    });
   }
 
   /// Scripts the agent's `session/prompt` handler.
@@ -605,6 +636,288 @@ void main() {
       expect(stop.message, contains('boom'));
     },
   );
+
+  test(
+    'Cursor ask_question emits AcpPendingAsk; answerAsk returns option ids',
+    () async {
+      await rebuildConnection(const CursorAcpTranslator());
+
+      Object? askResult;
+      scriptPrompt(() async {
+        askResult = await agent.connection.sendRequest(
+          'cursor/ask_question',
+          params: _askParams,
+          mapResult: (r) => r,
+        );
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+
+      await openSession();
+
+      AcpPendingClientRequest? captured;
+      final requestSub = session.clientRequests.listen((pending) {
+        captured = pending;
+        session.answerAsk(
+          AcpAskHoldReply.answered(
+            const AiAskUserSubmission(
+              answers: [
+                ['Agent'],
+              ],
+              optionIndices: [0],
+            ),
+          ),
+        );
+      });
+      await session.prompt('go');
+      await pumpEventQueue();
+      requestSub.cancel();
+
+      expect(captured, isA<AcpPendingAsk>());
+      final ask = captured! as AcpPendingAsk;
+      expect(ask.toolCallId, 'ask-1');
+      expect(ask.questions.single.id, 'q1');
+      expect(askResult, {
+        'outcome': {
+          'outcome': 'answered',
+          'answers': [
+            {
+              'questionId': 'q1',
+              'selectedOptionIds': ['agent'],
+            },
+          ],
+        },
+      });
+    },
+  );
+
+  test('cancel while ask is held answers the agent with cancelled', () async {
+    await rebuildConnection(const CursorAcpTranslator());
+
+    Object? askResult;
+    scriptPrompt(() async {
+      askResult = await agent.connection.sendRequest(
+        'cursor/ask_question',
+        params: _askParams,
+        mapResult: (r) => r,
+      );
+      return acpd.PromptResponse(
+        stopReason: acpd.StopReason.cancelled,
+      ).toJson();
+    });
+
+    await openSession();
+
+    final held = Completer<void>();
+    final requestSub = session.clientRequests.listen((pending) {
+      expect(pending, isA<AcpPendingAsk>());
+      held.complete();
+    });
+    final promptDone = session.prompt('go');
+    await held.future;
+    session.cancel();
+    await promptDone;
+    requestSub.cancel();
+
+    expect(askResult, {
+      'outcome': {'outcome': 'cancelled'},
+    });
+  });
+
+  test(
+    'Cursor create_plan emits AcpPendingPlan; answerPlan returns accepted',
+    () async {
+      await rebuildConnection(const CursorAcpTranslator());
+
+      Object? planResult;
+      scriptPrompt(() async {
+        planResult = await agent.connection.sendRequest(
+          'cursor/create_plan',
+          params: _planParams,
+          mapResult: (r) => r,
+        );
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+
+      await openSession();
+
+      AcpPendingClientRequest? captured;
+      final requestSub = session.clientRequests.listen((pending) {
+        captured = pending;
+        session.answerPlan(const AcpPlanHoldReply.accepted());
+      });
+      await session.prompt('go');
+      await pumpEventQueue();
+      requestSub.cancel();
+
+      expect(captured, isA<AcpPendingPlan>());
+      final plan = captured! as AcpPendingPlan;
+      expect(plan.toolCallId, 'plan-1');
+      expect(plan.planText, '# Ship it');
+      expect(planResult, {
+        'outcome': {'outcome': 'accepted'},
+      });
+    },
+  );
+
+  test(
+    'Cursor update_todos notification appears on updates as AcpTodoListUpdate',
+    () async {
+      await rebuildConnection(const CursorAcpTranslator());
+
+      scriptPrompt(() {
+        agent.connection.notify(
+          'cursor/update_todos',
+          params: {
+            'todos': [
+              {'id': '1', 'content': 'A', 'status': 'pending'},
+            ],
+            'merge': true,
+          },
+        );
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+
+      await openSession();
+
+      final events = <AcpSessionUpdate>[];
+      final sub = session.updates.listen(events.add);
+      await session.prompt('go');
+      await pumpEventQueue();
+      sub.cancel();
+
+      final todo = events.whereType<AcpTodoListUpdate>().single;
+      expect(todo.notification.merge, isTrue);
+      expect(todo.notification.todos.single.id, '1');
+      expect(todo.notification.todos.single.content, 'A');
+      expect(events.last, const AcpStop(kind: AcpStopKind.endTurn));
+    },
+  );
+
+  test(
+    'Gemini translator does not register Cursor ask_question (method-not-found)',
+    () async {
+      await openSession();
+
+      await expectLater(
+        agent.connection.sendRequest(
+          'cursor/ask_question',
+          params: _askParams,
+          mapResult: (r) => r,
+        ),
+        throwsA(
+          isA<acpd.RpcError>().having(
+            (e) => e.code,
+            'code',
+            acpd.ErrorCode.methodNotFound.code,
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'malformed registered ask_question encodes cancelled and does not hang',
+    () async {
+      await rebuildConnection(const CursorAcpTranslator());
+
+      Object? askResult;
+      scriptPrompt(() async {
+        askResult = await agent.connection.sendRequest(
+          'cursor/ask_question',
+          params: const {'toolCallId': 'bad'},
+          mapResult: (r) => r,
+        );
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+
+      await openSession();
+
+      final pending = <AcpPendingClientRequest>[];
+      final requestSub = session.clientRequests.listen(pending.add);
+      await session.prompt('go');
+      await pumpEventQueue();
+      requestSub.cancel();
+
+      expect(pending, isEmpty);
+      expect(askResult, {
+        'outcome': {'outcome': 'cancelled'},
+      });
+    },
+  );
+
+  test(
+    'unknown registered blocking method encodes cancelled and does not hang',
+    () async {
+      await rebuildConnection(const _UnknownBlockingTranslator());
+
+      Object? result;
+      scriptPrompt(() async {
+        result = await agent.connection.sendRequest(
+          'cursor/mystery',
+          params: const {'foo': 'bar'},
+          mapResult: (r) => r,
+        );
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+
+      await openSession();
+
+      await session.prompt('go');
+      await pumpEventQueue();
+
+      expect(result, {
+        'outcome': {'outcome': 'cancelled'},
+      });
+    },
+  );
+}
+
+const _askParams = {
+  'toolCallId': 'ask-1',
+  'questions': [
+    {
+      'id': 'q1',
+      'prompt': 'Mode?',
+      'options': [
+        {'id': 'agent', 'label': 'Agent'},
+        {'id': 'plan', 'label': 'Plan'},
+      ],
+    },
+  ],
+};
+
+const _planParams = {
+  'toolCallId': 'plan-1',
+  'plan': '# Ship it',
+  'name': 'Ship',
+  'overview': 'Do the thing',
+};
+
+final class _UnknownBlockingTranslator implements AcpAgentTranslator {
+  const _UnknownBlockingTranslator();
+
+  @override
+  List<String> get flagCandidates => const [];
+
+  @override
+  List<String> get blockingClientMethods => const ['cursor/mystery'];
+
+  @override
+  List<String> get notificationClientMethods => const [];
+
+  @override
+  String translateStopError(Object error, {required bool suppressAbort}) =>
+      error.toString();
 }
 
 /// Bridges an acpd_test in-memory transport into our byte-pipe [AcpTransport].

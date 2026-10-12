@@ -4,6 +4,7 @@ import 'dart:io';
 import '../../models/team_config.dart';
 import '../../utils/logging/logger_utils.dart';
 import '../agent_status/agent_permission_request.dart';
+import 'acp_client_extensions.dart';
 import 'acp_connection.dart';
 import 'acp_frame_logger.dart';
 import 'acp_session.dart';
@@ -128,6 +129,9 @@ abstract interface class AcpSessionRuntimeApi {
   /// Permission cards surfaced by the agent during the open session.
   Stream<AgentPermissionRequest> get permissionRequests;
 
+  /// Blocking Cursor extension requests (ask / plan) for the open session.
+  Stream<AcpPendingClientRequest> get clientRequests;
+
   /// Auth notice captured during handshake (`_auth/status_update` can
   /// arrive before the chat layer subscribes to [updates]).
   AcpAuthNotice? get lastAuthNotice;
@@ -143,6 +147,12 @@ abstract interface class AcpSessionRuntimeApi {
     AgentPermissionReplyKind reply, {
     AgentPermissionAlwaysOption? always,
   });
+
+  /// Answers the currently held ask-question request (if any).
+  Future<void> answerAsk(AcpAskHoldReply reply);
+
+  /// Answers the currently held create-plan request (if any).
+  Future<void> answerPlan(AcpPlanHoldReply reply);
 
   /// Cancels the current prompt turn.
   void cancel();
@@ -279,6 +289,16 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
     return session.permissionRequests;
   }
 
+  /// Blocking Cursor extension requests (ask / plan) for the open session.
+  @override
+  Stream<AcpPendingClientRequest> get clientRequests {
+    final session = _session;
+    if (session == null) {
+      throw StateError('AcpSessionRuntime has no open session yet.');
+    }
+    return session.clientRequests;
+  }
+
   @override
   AcpAuthNotice? get lastAuthNotice => _connection?.lastAuthNotice;
 
@@ -293,6 +313,13 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
     AgentPermissionReplyKind reply, {
     AgentPermissionAlwaysOption? always,
   }) => _session!.answerPermission(reply, always: always);
+
+  @override
+  Future<void> answerAsk(AcpAskHoldReply reply) => _session!.answerAsk(reply);
+
+  @override
+  Future<void> answerPlan(AcpPlanHoldReply reply) =>
+      _session!.answerPlan(reply);
 
   /// Cancels the current prompt turn.
   @override

@@ -1,7 +1,9 @@
+import 'package:acpd/acpd.dart' as acpd;
 import 'package:ai_message_core/ai_message_core.dart';
 
 import '../agent_status/agent_permission_request.dart';
 import '../agent_status/ask_user_question.dart';
+import 'acp_session.dart';
 
 /// Cursor ACP blocking methods the client must answer.
 const cursorAskQuestionMethod = 'cursor/ask_question';
@@ -136,6 +138,116 @@ final class AcpGeneratedImageNotification extends AcpExtensionNotification {
   final String toolCallId;
   final String description;
   final String? filePath;
+}
+
+/// Todo-list notification wrapped as a session update.
+final class AcpTodoListUpdate extends AcpSessionUpdate {
+  const AcpTodoListUpdate(this.notification);
+  final AcpTodoListNotification notification;
+}
+
+/// Subagent-task notification wrapped as a session update.
+final class AcpTaskUpdate extends AcpSessionUpdate {
+  const AcpTaskUpdate(this.notification);
+  final AcpTaskNotification notification;
+}
+
+/// Generated-image notification wrapped as a session update.
+final class AcpGeneratedImageUpdate extends AcpSessionUpdate {
+  const AcpGeneratedImageUpdate(this.notification);
+  final AcpGeneratedImageNotification notification;
+}
+
+/// Answers a registered Cursor blocking method. Malformed / unknown payloads
+/// encode cancelled so the agent is never left waiting.
+Future<Object?> handleCursorBlockingRequest({
+  required String method,
+  required Object? params,
+  required bool disposed,
+  required void Function(AcpPendingClientRequest pending) emit,
+  required Future<AcpHoldReply?> Function() wait,
+}) async {
+  if (disposed) {
+    return encodeCursorBlockingReply(
+      method,
+      const AcpCancelledHoldReply(),
+      questions: const [],
+    );
+  }
+  if (params is! Map) {
+    return encodeCursorBlockingReply(
+      method,
+      const AcpCancelledHoldReply(),
+      questions: const [],
+    );
+  }
+  final pending = parseCursorBlockingRequest(
+    method,
+    Map<String, Object?>.from(params),
+  );
+  if (pending == null) {
+    return encodeCursorBlockingReply(
+      method,
+      const AcpCancelledHoldReply(),
+      questions: const [],
+    );
+  }
+  emit(pending);
+  final reply = await wait();
+  final questions = pending is AcpPendingAsk
+      ? pending.questions
+      : const <AiAskUserQuestion>[];
+  return encodeCursorBlockingReply(
+    method,
+    reply ?? const AcpCancelledHoldReply(),
+    questions: questions,
+  );
+}
+
+/// Registers translator-declared blocking and notification methods.
+List<acpd.HandlerRegistration> registerCursorClientExtensions({
+  required acpd.Connection rpc,
+  required List<String> blockingMethods,
+  required List<String> notificationMethods,
+  required bool Function() isDisposed,
+  required void Function(AcpPendingClientRequest pending) emitRequest,
+  required Future<AcpHoldReply?> Function() wait,
+  required void Function(AcpSessionUpdate update) emitUpdate,
+}) {
+  return [
+    for (final method in blockingMethods)
+      rpc.onRequest(
+        method,
+        (params) => handleCursorBlockingRequest(
+          method: method,
+          params: params,
+          disposed: isDisposed(),
+          emit: emitRequest,
+          wait: wait,
+        ),
+      ),
+    for (final method in notificationMethods)
+      rpc.onNotification(method, (params) {
+        if (isDisposed()) return;
+        final update = handleCursorNotification(method, params);
+        if (update != null) emitUpdate(update);
+      }),
+  ];
+}
+
+/// Maps a Cursor notification onto an [AcpSessionUpdate], or null to drop.
+AcpSessionUpdate? handleCursorNotification(String method, Object? params) {
+  if (params is! Map) return null;
+  final parsed = parseCursorNotification(
+    method,
+    Map<String, Object?>.from(params),
+  );
+  return switch (parsed) {
+    AcpTodoListNotification() => AcpTodoListUpdate(parsed),
+    AcpTaskNotification() => AcpTaskUpdate(parsed),
+    AcpGeneratedImageNotification() => AcpGeneratedImageUpdate(parsed),
+    null => null,
+  };
 }
 
 /// Parses a Cursor blocking JSON-RPC request. Returns null when the method

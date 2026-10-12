@@ -8,6 +8,7 @@ import 'package:acpd_test/acpd_test.dart' as acpd_test;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
+import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_connection.dart';
 import 'package:teampilot/services/acp/acp_frame_logger.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
@@ -301,6 +302,18 @@ void main() {
     final runtime = makeRuntime((argv, env) async => conn);
 
     expect(() => runtime.updates, throwsStateError);
+    expect(() => runtime.permissionRequests, throwsStateError);
+    expect(() => runtime.clientRequests, throwsStateError);
+  });
+
+  test('delegates clientRequests after start', () async {
+    final runtime = makeRuntime((argv, env) async => conn);
+    await startRuntime(runtime);
+
+    expect(runtime.clientRequests, isA<Stream<AcpPendingClientRequest>>());
+    await runtime.answerAsk(const AcpAskHoldReply.skipped());
+    await runtime.answerPlan(const AcpPlanHoldReply.accepted());
+    await runtime.close();
   });
 
   test('delegates prompt and updates to the session', () async {
