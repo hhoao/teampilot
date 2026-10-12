@@ -211,20 +211,19 @@ AcpPendingPlan? _parsePlan(Map<String, Object?> params) {
   );
 }
 
-AcpTodoListNotification _parseTodos(Map<String, Object?> params) {
+AcpTodoListNotification? _parseTodos(Map<String, Object?> params) {
   final raw = params['todos'];
+  if (raw is! List) return null;
   final todos = <AcpTodoItem>[];
-  if (raw is List) {
-    for (final item in raw) {
-      if (item is! Map) continue;
-      todos.add(
-        AcpTodoItem(
-          id: _stringify(item['id']),
-          content: _stringify(item['content']),
-          status: _stringify(item['status']),
-        ),
-      );
-    }
+  for (final item in raw) {
+    if (item is! Map) continue;
+    todos.add(
+      AcpTodoItem(
+        id: _stringify(item['id']),
+        content: _stringify(item['content']),
+        status: _stringify(item['status']),
+      ),
+    );
   }
   return AcpTodoListNotification(todos: todos, merge: params['merge'] == true);
 }
