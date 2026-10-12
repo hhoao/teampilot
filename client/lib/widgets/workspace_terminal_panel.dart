@@ -2,10 +2,7 @@ import 'dart:async';
 import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
-import 'package:flutter_alacritty/input/paste.dart' as alacritty_paste;
-import 'package:flutter_alacritty/input/term_mode.dart' show anyMouse;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/chat_cubit.dart';
@@ -16,7 +13,6 @@ import '../models/runtime_target.dart';
 import '../models/workspace_folder.dart';
 import '../models/workspace_terminal_session_spec.dart';
 import '../services/selection_ai/selection_ai_context.dart';
-import '../services/selection_ai/selection_ai_menu_specs.dart';
 import '../services/selection_ai/selection_ask_ai.dart';
 import '../services/selection_ai/selection_ask_ai_fab_host.dart';
 import '../services/ssh/ssh_profile_connection_coordinator.dart';
@@ -35,7 +31,9 @@ import '../services/workspace/workspace_tools_scope.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/ui/app_keys.dart';
 import 'workspace_terminal/workspace_terminal_body_kind.dart';
+import 'workspace_terminal/workspace_terminal_context_menu.dart';
 import 'workspace_terminal/workspace_terminal_empty_pane.dart';
+import 'workspace_terminal/workspace_terminal_find_host.dart';
 import 'workspace_terminal/workspace_terminal_view.dart';
 
 /// Debug label for the workspace panel's stable [GlobalKey<TerminalViewState>].
@@ -133,6 +131,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   var _registrationScheduled = false;
   final Map<String, int> _lastTerminalThemeFingerprintByEntry = {};
   final _menuOpen = ValueNotifier(false);
+  final _findHostKey = GlobalKey<WorkspaceTerminalFindHostState>();
 
   List<WorkspaceFolder> get _folders =>
       WorkspaceToolsScope.maybeOf(context)?.effectiveFolders ?? const [];
@@ -430,104 +429,39 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     Offset globalPosition,
     CellOffset? cellOffset,
   ) async {
-    final mloc = MaterialLocalizations.of(menuContext);
-    final hasSelection = entry.controller.selectionActive;
-    final selectionText = entry.controller.readSelectionText() ?? '';
-    final aiContext = buildTerminalAiContextClipboardText(
-      surfaceLabel: 'workspace-shell',
-      text: selectionText,
-    );
-    final hasAi = aiContext.isNotEmpty;
-    final mouseReporting = anyMouse(entry.session.engine.grid.modeFlags);
-    final linkUri = cellOffset != null
-        ? entry.session.engine.hyperlinkAt(cellOffset.row, cellOffset.column)
-        : null;
-    final specs = <TpActionMenuSpec>[
-      if (linkUri != null)
-        TpActionMenuSpec.item(
-          value: 'openLink',
-          icon: Icons.link,
-          label: context.l10n.terminalOpenLink,
-        ),
-      if (linkUri != null) const TpActionMenuSpec.divider(),
-      TpActionMenuSpec.item(
-        value: 'paste',
-        icon: Icons.content_paste,
-        label: mloc.pasteButtonLabel,
-      ),
-      TpActionMenuSpec.item(
-        value: 'copy',
-        icon: Icons.content_copy,
-        label: (!hasSelection && mouseReporting)
-            ? menuContext.l10n.terminalCopySelectHint
-            : mloc.copyButtonLabel,
-        enabled: hasSelection,
-      ),
-      ...selectionAiMenuSpecs(
-        l10n: menuContext.l10n,
-        copyEnabled: hasAi,
-        askAiEnabled: hasAi,
-        onCopyAsAiContext: () {
-          unawaited(Clipboard.setData(ClipboardData(text: aiContext)));
-        },
-        onAskAi: () {
-          unawaited(_openAskAi(aiContext));
-        },
-      ),
-      TpActionMenuSpec.item(
-        value: 'selectAll',
-        icon: Icons.select_all,
-        label: mloc.selectAllButtonLabel,
-      ),
-    ];
-
-    String? selected;
     final homeFs = context.read<HomeStorage>().fs;
     _menuOpen.value = true;
+    // Find autofocuses its TextField; refocusing the terminal would steal it.
+    var findRequested = false;
     try {
-      selected = await showTpActionMenuFromSpecs<String>(
-        context: menuContext,
+      await showWorkspaceTerminalContextMenu(
+        context: context,
+        menuContext: menuContext,
+        terminalController: entry.controller,
+        engine: entry.session.engine,
         globalPosition: globalPosition,
-        popUpAnimationStyle: const AnimationStyle(duration: Duration.zero),
-        specs: specs,
+        cellOffset: cellOffset,
+        onFindRequested: () {
+          findRequested = true;
+          _findHostKey.currentState?.openFind();
+        },
+        onClearTerminal: () {
+          entry.controller.clearSelection();
+          entry.controller.searchClear();
+          entry.session.engine.clearTerminal();
+        },
+        onOpenLink: (link) => TerminalUriOpener.open(
+          link,
+          workingDirectory: entry.cwd,
+          fs: homeFs,
+        ),
+        onAskAi: _openAskAi,
       );
     } finally {
       if (mounted) _menuOpen.value = false;
     }
-    if (!menuContext.mounted) return;
+    if (!menuContext.mounted || findRequested) return;
     _refocusTerminal();
-    switch (selected) {
-      case 'openLink':
-        if (linkUri != null) {
-          await TerminalUriOpener.open(
-            linkUri,
-            workingDirectory: entry.cwd,
-            fs: homeFs,
-          );
-        }
-      case 'paste':
-        final data = await Clipboard.getData(Clipboard.kTextPlain);
-        final text = data?.text;
-        if (text != null && text.isNotEmpty) {
-          entry.controller.onTerminalInputStart();
-          entry.session.engine.write(
-            alacritty_paste.pasteBytes(
-              text,
-              modeFlags: entry.session.engine.grid.modeFlags,
-            ),
-          );
-          entry.controller.clearSelection();
-        }
-      case 'copy':
-        final text = entry.controller.readSelectionText();
-        if (text != null && text.isNotEmpty) {
-          await Clipboard.setData(ClipboardData(text: text));
-        }
-      case 'selectAll':
-        await entry.controller.selectAll();
-      default:
-        break;
-    }
   }
 
   Future<void> _openAskAi(String aiContext) {
@@ -606,22 +540,28 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
           onContextMenu: (position, cell) =>
               _showContextMenu(context, active, position, cell),
         );
-        terminalBody = ValueListenableBuilder<bool>(
-          valueListenable: _menuOpen,
-          child: terminalView,
-          builder: (context, menuOpen, child) {
-            return SelectionAskAiFabHost(
-              listenable: active.controller,
-              selectionActive: () => active.controller.selectionActive,
-              readAiContext: () => buildTerminalAiContextClipboardText(
-                surfaceLabel: 'workspace-shell',
-                text: active.controller.readSelectionText() ?? '',
-              ),
-              onAskAi: _openAskAi,
-              menuOpen: menuOpen,
-              child: child!,
-            );
-          },
+        terminalBody = WorkspaceTerminalFindHost(
+          key: _findHostKey,
+          engine: active.session.engine,
+          controller: active.controller,
+          activeEntryId: active.id,
+          child: ValueListenableBuilder<bool>(
+            valueListenable: _menuOpen,
+            child: terminalView,
+            builder: (context, menuOpen, child) {
+              return SelectionAskAiFabHost(
+                listenable: active.controller,
+                selectionActive: () => active.controller.selectionActive,
+                readAiContext: () => buildTerminalAiContextClipboardText(
+                  surfaceLabel: 'workspace-shell',
+                  text: active.controller.readSelectionText() ?? '',
+                ),
+                onAskAi: _openAskAi,
+                menuOpen: menuOpen,
+                child: child!,
+              );
+            },
+          ),
         );
     }
 

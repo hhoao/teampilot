@@ -1294,6 +1294,7 @@
   "shellSession": "Shell session",
   "terminalFind": "Find in terminal",
   "terminalFindNoResults": "No results",
+  "terminalClear": "Clear terminal",
   "terminalDropCrossMachineRejected": "Can't drop a local file onto a remote terminal",
   "@terminalDropCrossMachineRejected": {
     "description": "Shown when a dragged file lives on a different machine than the terminal it was dropped on."

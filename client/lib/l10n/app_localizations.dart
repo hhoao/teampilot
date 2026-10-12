@@ -4760,6 +4760,12 @@ abstract class AppLocalizations {
   /// **'No results'**
   String get terminalFindNoResults;
 
+  /// No description provided for @terminalClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear terminal'**
+  String get terminalClear;
+
   /// Shown when a dragged file lives on a different machine than the terminal it was dropped on.
   ///
   /// In en, this message translates to:
