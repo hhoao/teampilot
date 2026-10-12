@@ -8,10 +8,13 @@ import '../../../../chat/conversation/history/ai_history_watch_meta.dart';
 import '../../../../chat/conversation/history/session_history_context.dart';
 import '../../../registry/capabilities/ai_history_capability.dart';
 import '../native_session_id.dart';
+import 'ai_transcript_adapter.dart';
 
-/// 行级增量状态:每个 message 的指纹 = (part 数, MAX(part.time_updated),
-/// message.time_updated)。全量 parse 后由 [seedFromFullParse] 对齐,之后
-/// 每次 refresh 只重读指纹变化的行并原地合并进 [messages]。
+export 'ai_transcript_adapter.dart';
+
+/// 行级增量状态:每个 `session_message` 的指纹 = (seq, time_updated)。
+/// 全量 parse 后由 [seedFromFullParse] 对齐,之后每次 refresh 只重读
+/// 指纹变化的行并原地合并进 [messages]。
 class OpencodeHistoryIncrementalState extends AiTranscriptIncrementalState {
   final Map<String, _MessageFingerprint> _seen = {};
   List<AiMessage> _messages = [];
@@ -35,21 +38,19 @@ class OpencodeHistoryIncrementalState extends AiTranscriptIncrementalState {
 }
 
 class _MessageFingerprint {
-  const _MessageFingerprint(this.partCount, this.maxPartUpdated, this.updated);
+  const _MessageFingerprint(this.seq, this.updated);
 
-  final int partCount;
-  final int? maxPartUpdated;
+  final int seq;
   final int? updated;
 
   @override
   bool operator ==(Object other) =>
       other is _MessageFingerprint &&
-      other.partCount == partCount &&
-      other.maxPartUpdated == maxPartUpdated &&
+      other.seq == seq &&
       other.updated == updated;
 
   @override
-  int get hashCode => Object.hash(partCount, maxPartUpdated, updated);
+  int get hashCode => Object.hash(seq, updated);
 }
 
 /// opencode SQLite 的行级增量刷新器。
@@ -99,11 +100,7 @@ class OpencodeHistoryIncrementalRefresher
     }
     s._unsupported = false;
     for (final row in rows) {
-      s._seen[row.messageId] = _MessageFingerprint(
-        row.partCount,
-        row.maxPartUpdated,
-        row.updated,
-      );
+      s._seen[row.messageId] = _MessageFingerprint(row.seq, row.updated);
     }
   }
 
@@ -133,11 +130,7 @@ class OpencodeHistoryIncrementalRefresher
     final changed = <String>[];
     for (final row in rows) {
       final seen = s._seen[row.messageId];
-      final fp = _MessageFingerprint(
-        row.partCount,
-        row.maxPartUpdated,
-        row.updated,
-      );
+      final fp = _MessageFingerprint(row.seq, row.updated);
       if (seen == null || seen != fp) {
         changed.add(row.messageId);
         s._seen[row.messageId] = fp;
@@ -212,12 +205,7 @@ int _compareMessageOrder(AiMessage a, AiMessage b) {
   return a.id.compareTo(b.id);
 }
 
-typedef _FingerprintRow = ({
-  String messageId,
-  int partCount,
-  int? maxPartUpdated,
-  int? updated,
-});
+typedef _FingerprintRow = ({String messageId, int seq, int? updated});
 
 /// Session 级聚合指纹:一条索引查询,不读 data 大字段。
 /// [sessionId] 由调用方传入(增量状态 seed 时固定),不在查询内重新解析。
@@ -241,27 +229,24 @@ List<_FingerprintRow>? _readFingerprintsQuery(Database db, Object? args) {
   final sessionId = args as String;
   final rows = db.select(
     '''
-SELECT m.id AS mid, m.time_updated AS mtu,
-       COUNT(p.id) AS pc, MAX(p.time_updated) AS ptu
-FROM message m
-LEFT JOIN part p ON p.message_id = m.id
-WHERE m.session_id = ?
-GROUP BY m.id
+SELECT id, seq, time_updated
+FROM session_message
+WHERE session_id = ?
+ORDER BY seq ASC, id ASC
 ''',
     [sessionId],
   );
   return [
     for (final row in rows)
       (
-        messageId: '${row['mid']}',
-        partCount: row['pc'] is int ? row['pc'] as int : 0,
-        maxPartUpdated: row['ptu'] is int ? row['ptu'] as int : null,
-        updated: row['mtu'] is int ? row['mtu'] as int : null,
+        messageId: '${row['id']}',
+        seq: _intColumn(row['seq']),
+        updated: row['time_updated'] is int ? row['time_updated'] as int : null,
       ),
   ];
 }
 
-/// 重读 [messageIds] 的完整行(message data + 全部 part),构建单消息 bundle。
+/// 重读 [messageIds] 的完整 `session_message` 行,构建单消息 bundle。
 /// [sessionId] 由调用方传入(增量状态 seed 时固定),不在查询内重新解析。
 Future<List<AiTranscriptBundle>?> _loadMessageBundles(
   SessionHistoryContext ctx,
@@ -283,7 +268,7 @@ Future<List<AiTranscriptBundle>?> _loadMessageBundles(
   return bundles;
 }
 
-/// 重读 [messageIds] 的完整行(message data + 全部 part),构建单消息 bundle。
+/// 重读 [messageIds] 的完整 `session_message` 行,构建单消息 bundle。
 /// (worker isolate 上执行,args = {sessionId, messageIds})。
 List<AiTranscriptBundle>? _messageBundlesQuery(Database db, Object? args) {
   final map = args as Map<String, Object?>;
@@ -293,14 +278,14 @@ List<AiTranscriptBundle>? _messageBundlesQuery(Database db, Object? args) {
   for (final messageId in messageIds) {
     final messageRows = db.select(
       '''
-SELECT id, data, time_created
-FROM message
+SELECT id, type, data, time_created
+FROM session_message
 WHERE session_id = ? AND id = ?
 ''',
       [sessionId, messageId],
     );
     if (messageRows.isEmpty) continue;
-    final fragments = _buildSqliteFragments(db, sessionId, messageRows);
+    final fragments = _buildSqliteFragments(sessionId, messageRows);
     out.add(
       AiTranscriptBundle(
         adapterId: 'opencode',
@@ -316,16 +301,14 @@ WHERE session_id = ? AND id = ?
   return out;
 }
 
-/// Locate OpenCode session/message/part rows under the session data dir.
+/// Locate OpenCode `session_v2` / `session_message` rows under the session
+/// data dir.
 ///
 /// Reads the SQLite store (`opencode.db` with WAL) — copying `-wal`/`-shm`
 /// sidecars so a live writer is visible — and emits the fragment layout so
 /// [OpencodeAiTranscriptAdapter] stays one parser.
 ///
-/// Fragment names:
-/// - `session/{sessionId}.json`
-/// - `message/{messageId}.json`
-/// - `part/{messageID}/{partId}.json`
+/// Fragment names: `session_message/{id}.json`
 Future<AiTranscriptBundle?> locateOpencodeTranscript(
   SessionHistoryContext ctx,
 ) async {
@@ -358,8 +341,8 @@ Future<AiTranscriptBundle?> locateOpencodeTranscript(
   return located;
 }
 
-/// Seat-only change signal: part row count + newest `time_updated` for the
-/// seat session itself (not its children).
+/// Seat-only change signal: `session_message` row count + newest
+/// `time_updated` for the seat session itself (not its children).
 Future<String?> _seatFingerprint(
   SessionHistoryContext ctx,
   String dataDir,
@@ -379,7 +362,8 @@ Future<String?> _seatFingerprint(
 String? _seatFingerprintQuery(Database db, Object? args) {
   final sessionId = args as String;
   final rows = db.select(
-    'SELECT COUNT(*), MAX(time_updated) FROM part WHERE session_id = ?',
+    'SELECT COUNT(*), MAX(time_updated) FROM session_message '
+    'WHERE session_id = ?',
     [sessionId],
   );
   if (rows.isEmpty) return null;
@@ -455,7 +439,7 @@ Future<String?> opencodeLiveCacheToken(SessionHistoryContext ctx) async {
 }
 
 /// Cursor-backed SQLite transcript source. It deliberately reuses the full
-/// locator's message/part query ordering and fragment conversion, then asks
+/// locator's `session_message` ordering and fragment conversion, then asks
 /// [OpencodeAiTranscriptAdapter] to perform the one canonical conversion.
 ///
 /// A missing modern store fingerprint, a changed source token, or a malformed
@@ -617,7 +601,7 @@ typedef _OpencodePageRows = ({
 
 typedef _OpencodePageRead = ({String? firstMessageId, AiHistoryPage page});
 
-/// Page query with the same `(time_created, id)` message order and
+/// Page query with the same `seq` message order and
 /// `_buildSqliteFragments` conversion used by the full SQLite locator. The
 /// descending read makes the recent page cheap; fragments are restored to
 /// ascending order before the adapter sees them.
@@ -629,10 +613,10 @@ _OpencodePageRows? _pageRowsQuery(Database db, Object? args) {
   if (offset < 0 || limit <= 0) return null;
   final rows = db.select(
     '''
-SELECT id, data, time_created
-FROM message
+SELECT id, type, data, time_created
+FROM session_message
 WHERE session_id = ?
-ORDER BY time_created DESC, id DESC
+ORDER BY seq DESC, id DESC
 LIMIT ? OFFSET ?
 ''',
     [sessionId, limit + 1, offset],
@@ -642,7 +626,6 @@ LIMIT ? OFFSET ?
   final nextId = rows.length > limit ? '${rows[limit]['id']}' : null;
   final firstId = '${visible.first['id']}';
   final fragments = _buildSqliteFragments(
-    db,
     sessionId,
     visible.reversed.toList(growable: false),
   );
@@ -659,38 +642,44 @@ int _stableHash(String value) {
 
 /// Store 级指纹(worker isolate 上执行,args = null)。
 String? _storeCacheTokenQuery(Database db, Object? args) {
-  final parts = db.select('SELECT COUNT(*), MAX(time_updated) FROM part');
-  final sessions = db.select('SELECT COUNT(*), MAX(time_updated) FROM session');
-  if (parts.isEmpty || sessions.isEmpty) return null;
-  return 'oc|${parts.first['COUNT(*)']}|${parts.first['MAX(time_updated)']}'
+  final messages = db.select(
+    'SELECT COUNT(*), MAX(time_updated) FROM session_message',
+  );
+  final sessions = db.select(
+    'SELECT COUNT(*), MAX(time_updated) FROM session_v2',
+  );
+  if (messages.isEmpty || sessions.isEmpty) return null;
+  return 'oc|${messages.first['COUNT(*)']}|${messages.first['MAX(time_updated)']}'
       '|${sessions.first['COUNT(*)']}|${sessions.first['MAX(time_updated)']}';
 }
 
-/// Incremental sqlite locate: only messages with `id > [afterMessageId]`.
+/// Incremental sqlite locate: only messages with `seq > [afterSeq]`.
 ///
 /// Uses the same read path + fragment builder as [_locateSqliteStorage]
 /// so both callers share one consistent read.
 ///
-/// Worker isolate 上执行,args = {sessionId, afterMessageId}。
-({List<SqliteFragmentData> fragments, String lastId})? _incrementalLocateQuery(
-  Database db,
-  Object? args,
-) {
+/// Worker isolate 上执行,args = {sessionId, afterSeq}。
+({List<SqliteFragmentData> fragments, String lastId, int lastSeq})?
+_incrementalLocateQuery(Database db, Object? args) {
   final map = args as Map<String, Object?>;
   final sessionId = map['sessionId'] as String;
-  final afterMessageId = map['afterMessageId'] as int;
+  final afterSeq = map['afterSeq'] as int;
   final messageRows = db.select(
     '''
-SELECT id, data, time_created
-FROM message
-WHERE session_id = ? AND id > ?
-ORDER BY id ASC
+SELECT id, type, data, time_created, seq
+FROM session_message
+WHERE session_id = ? AND seq > ?
+ORDER BY seq ASC, id ASC
 ''',
-    [sessionId, afterMessageId],
+    [sessionId, afterSeq],
   );
   if (messageRows.isEmpty) return null;
-  final fragments = _buildSqliteFragments(db, sessionId, messageRows);
-  return (fragments: fragments, lastId: '${messageRows.last['id']}');
+  final fragments = _buildSqliteFragments(sessionId, messageRows);
+  return (
+    fragments: fragments,
+    lastId: '${messageRows.last['id']}',
+    lastSeq: _intColumn(messageRows.last['seq']),
+  );
 }
 
 /// 全量 sqlite locate 查询(worker isolate 上执行,args = sessionId)。
@@ -698,20 +687,20 @@ List<SqliteFragmentData>? _fullLocateQuery(Database db, Object? args) {
   final sessionId = args as String;
   final messageRows = db.select(
     '''
-SELECT id, data, time_created
-FROM message
+SELECT id, type, data, time_created
+FROM session_message
 WHERE session_id = ?
-ORDER BY time_created ASC, id ASC
+ORDER BY seq ASC, id ASC
 ''',
     [sessionId],
   );
   if (messageRows.isEmpty) return null;
-  return _buildSqliteFragments(db, sessionId, messageRows);
+  return _buildSqliteFragments(sessionId, messageRows);
 }
 
 Future<AiTranscriptBundle?> locateOpencodeTranscriptIncremental(
   SessionHistoryContext ctx, {
-  required int afterMessageId,
+  required int afterSeq,
 }) async {
   final dataDir = opencodeDataDirFromEnv(ctx);
   if (dataDir.isEmpty) return null;
@@ -728,14 +717,16 @@ Future<AiTranscriptBundle?> locateOpencodeTranscriptIncremental(
   if (handle == null) return null;
 
   final read = await handle
-      .read<({List<SqliteFragmentData> fragments, String lastId})?>(
-        _incrementalLocateQuery,
-        {'sessionId': sessionId, 'afterMessageId': afterMessageId},
-      );
+      .read<
+        ({List<SqliteFragmentData> fragments, String lastId, int lastSeq})?
+      >(_incrementalLocateQuery, {
+        'sessionId': sessionId,
+        'afterSeq': afterSeq,
+      });
   if (read == null) return null;
 
   final fragments = _toTranscriptFragments(read.fragments);
-  if (fragments.where((f) => f.name.startsWith('message/')).isEmpty) {
+  if (fragments.where((f) => f.name.startsWith('session_message/')).isEmpty) {
     return null;
   }
 
@@ -747,8 +738,9 @@ Future<AiTranscriptBundle?> locateOpencodeTranscriptIncremental(
       'sessionId': sessionId,
       'source': 'sqlite',
       'incremental': 'true',
-      'afterMessageId': '$afterMessageId',
+      'afterSeq': '$afterSeq',
       'lastMessageId': lastId,
+      'lastSeq': '${read.lastSeq}',
       'cacheToken': 'opencode-sqlite|$sessionId|$lastId',
       ...AiHistoryWatchMeta(
         changeWatchRoot: dataDir,
@@ -777,7 +769,7 @@ Future<AiTranscriptBundle?> _locateSqliteStorage(
   );
   if (fragmentsData == null) return null;
   final fragments = _toTranscriptFragments(fragmentsData);
-  if (fragments.where((f) => f.name.startsWith('message/')).isEmpty) {
+  if (fragments.where((f) => f.name.startsWith('session_message/')).isEmpty) {
     return null;
   }
 
@@ -807,87 +799,39 @@ List<AiTranscriptFragment> _toTranscriptFragments(
   ];
 }
 
-/// Message → `message/{id}.json` (+ parts → `part/{messageId}/{partId}.json`)
-/// fragments, shared by the full and incremental sqlite locates.
+/// `session_message` → `session_message/{id}.json` fragments, shared by the
+/// full and incremental sqlite locates.
+///
+/// OpenCode stores `data` as `Omit<Info, "type"|"id">`; the locator merges
+/// the row `id` and `type` so [OpencodeAiTranscriptAdapter] sees one object.
 ///
 /// Returns sendable name+bytes records so the whole query + fragment build can
 /// run on a worker isolate ([OpencodeSqliteReadHandle.read]).
 typedef SqliteFragmentData = ({String name, List<int> bytes});
 
 List<SqliteFragmentData> _buildSqliteFragments(
-  Database db,
   String sessionId,
   List<Row> messageRows,
 ) {
   final fragments = <SqliteFragmentData>[];
-
-  // Batch the per-message part lookups into one session-scoped query; the
-  // old N+1 (one `WHERE message_id = ?` per message) multiplied the query
-  // count by the message count on every live refresh. Schemas without the
-  // `part.session_id` column fall back to the per-message queries.
-  final partsByMessage = <String, List<Row>>{};
-  var batchedParts = false;
-  try {
-    final partRows = db.select(
-      '''
-SELECT id, message_id, data, time_created
-FROM part
-WHERE session_id = ?
-ORDER BY time_created ASC, id ASC
-''',
-      [sessionId],
-    );
-    for (final part in partRows) {
-      partsByMessage
-          .putIfAbsent('${part['message_id']}', () => <Row>[])
-          .add(part);
-    }
-    batchedParts = true;
-  } on SqliteException {
-    // Legacy schema without `part.session_id`; fall back below.
-  }
-
   for (final row in messageRows) {
     final messageId = '${row['id']}';
-    final raw = row['data'];
-    final obj = _decodeDbJson(raw);
+    final type = '${row['type'] ?? ''}';
+    final obj = _decodeDbJson(row['data']);
     if (obj == null) continue;
-    obj.putIfAbsent('id', () => messageId);
+    obj['id'] = messageId;
+    obj['type'] = type;
     obj.putIfAbsent('sessionID', () => sessionId);
-    final time = obj['time'];
-    if (time is! Map) {
+    if (obj['time'] is! Map) {
       final created = row['time_created'];
       if (created is int) {
         obj['time'] = {'created': created};
       }
     }
     fragments.add((
-      name: 'message/$messageId.json',
+      name: 'session_message/$messageId.json',
       bytes: utf8.encode(jsonEncode(obj)),
     ));
-
-    final partsForMessage = batchedParts
-        ? partsByMessage[messageId] ?? const <Row>[]
-        : db.select(
-            '''
-SELECT id, data, time_created
-FROM part
-WHERE message_id = ?
-ORDER BY time_created ASC, id ASC
-''',
-            [messageId],
-          );
-    for (final part in partsForMessage) {
-      final partId = '${part['id']}';
-      final partObj = _decodeDbJson(part['data']);
-      if (partObj == null) continue;
-      partObj.putIfAbsent('id', () => partId);
-      partObj.putIfAbsent('messageID', () => messageId);
-      fragments.add((
-        name: 'part/$messageId/$partId.json',
-        bytes: utf8.encode(jsonEncode(partObj)),
-      ));
-    }
   }
   return fragments;
 }
@@ -915,169 +859,8 @@ Future<String?> _resolveSessionId(SessionHistoryContext ctx, String dataDir) {
   );
 }
 
-/// OpenCode storage fragments → [AiMessage] with text / tool-call parts.
-final class OpencodeAiTranscriptAdapter implements AiTranscriptAdapter {
-  const OpencodeAiTranscriptAdapter();
-
-  @override
-  String get id => 'opencode';
-
-  @override
-  Future<List<AiMessage>> parse(AiTranscriptBundle bundle) async {
-    final messageInfos = <_OcMessage>[];
-    final partsByMessage = <String, List<Map<String, dynamic>>>{};
-
-    for (final fragment in bundle.fragments) {
-      final name = fragment.name;
-      final content = utf8.decode(fragment.bytes, allowMalformed: true);
-      if (name.startsWith('message/')) {
-        final obj = _tryDecodeObject(content);
-        if (obj == null) continue;
-        final id = '${obj['id'] ?? ''}'.trim();
-        final role = '${obj['role'] ?? ''}'.trim();
-        if (id.isEmpty || (role != 'user' && role != 'assistant')) continue;
-        messageInfos.add(
-          _OcMessage(id: id, role: role, createdMs: _createdMs(obj['time'])),
-        );
-      } else if (name.startsWith('part/')) {
-        // part/{messageId}/{partId}.json
-        final segments = name.split('/');
-        if (segments.length < 3) continue;
-        final messageId = segments[1];
-        final obj = _tryDecodeObject(content);
-        if (obj == null) continue;
-        partsByMessage.putIfAbsent(messageId, () => []).add(obj);
-      }
-    }
-
-    messageInfos.sort((a, b) {
-      final byTime = a.createdMs.compareTo(b.createdMs);
-      if (byTime != 0) return byTime;
-      return a.id.compareTo(b.id);
-    });
-
-    final messages = <AiMessage>[];
-    for (final info in messageInfos) {
-      final partsRaw = partsByMessage[info.id] ?? const [];
-      // Stable order by part id when present.
-      final sorted = List<Map<String, dynamic>>.of(partsRaw)
-        ..sort((a, b) => '${a['id'] ?? ''}'.compareTo('${b['id'] ?? ''}'));
-
-      final parts = <AiMessagePart>[];
-      for (final part in sorted) {
-        parts.addAll(_partsFromOcPart(part, info));
-      }
-      if (parts.isEmpty) continue;
-
-      messages.add(
-        AiMessage(
-          id: info.id,
-          role: info.role == 'user' ? AiRole.user : AiRole.assistant,
-          parts: parts,
-          createdAt: info.createdMs > 0
-              ? DateTime.fromMillisecondsSinceEpoch(info.createdMs, isUtc: true)
-              : null,
-        ),
-      );
-    }
-
-    return finalizeAiMessagesForHistory(messages);
-  }
-}
-
-class _OcMessage {
-  const _OcMessage({
-    required this.id,
-    required this.role,
-    required this.createdMs,
-  });
-
-  final String id;
-  final String role;
-  final int createdMs;
-}
-
-Map<String, dynamic>? _tryDecodeObject(String raw) {
-  try {
-    final decoded = jsonDecode(raw);
-    if (decoded is Map<String, dynamic>) return decoded;
-    if (decoded is Map) return Map<String, dynamic>.from(decoded);
-  } on FormatException {
-    return null;
-  }
-  return null;
-}
-
-int _createdMs(Object? time) {
-  if (time is Map) {
-    final created = time['created'];
-    if (created is num) return created.toInt();
-  }
+int _intColumn(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
   return 0;
-}
-
-Iterable<AiMessagePart> _partsFromOcPart(
-  Map<String, dynamic> part,
-  _OcMessage message,
-) {
-  final type = part['type'];
-  switch (type) {
-    case 'text':
-      if (part['synthetic'] == true || part['ignored'] == true) {
-        return const [];
-      }
-      final text = '${part['text'] ?? ''}'.trim();
-      if (text.isEmpty) return const [];
-      return [AiTextPart(text: text)];
-    case 'reasoning':
-      final text = '${part['text'] ?? ''}'.trim();
-      if (text.isEmpty) return const [];
-      return [AiReasoningPart(text: text)];
-    case 'tool':
-      if (message.role != 'assistant') return const [];
-      final toolName = '${part['tool'] ?? ''}'.trim();
-      final callId = '${part['callID'] ?? part['id'] ?? ''}'.trim();
-      if (callId.isEmpty) return const [];
-      final name = toolName.isEmpty ? 'tool' : toolName;
-      final stateRaw = part['state'];
-      if (stateRaw is! Map) {
-        return [AiToolCallPart(toolCallId: callId, toolName: name)];
-      }
-      final state = Map<String, dynamic>.from(stateRaw);
-      final statusRaw = '${state['status'] ?? ''}';
-      final isError = statusRaw == 'error';
-      Object? result;
-      AiToolCallStatus status;
-      if (statusRaw == 'completed') {
-        result = '${state['output'] ?? ''}';
-        status = AiToolCallStatus.complete;
-      } else if (isError) {
-        final error = '${state['error'] ?? ''}'.trim();
-        result = error.isEmpty ? null : error;
-        status = AiToolCallStatus.complete;
-      } else if (statusRaw == 'pending' ||
-          statusRaw == 'running' ||
-          statusRaw.isEmpty) {
-        status = AiToolCallStatus.incomplete;
-      } else {
-        status = AiToolCallStatus.incomplete;
-      }
-      return [
-        AiToolCallPart(
-          toolCallId: callId,
-          toolName: name,
-          args: _asArgs(state['input']),
-          result: result,
-          status: status,
-          isError: isError,
-        ),
-      ];
-    default:
-      return const [];
-  }
-}
-
-Map<String, Object?>? _asArgs(Object? input) {
-  if (input is! Map) return null;
-  return {for (final entry in input.entries) '${entry.key}': entry.value};
 }

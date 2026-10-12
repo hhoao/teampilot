@@ -110,6 +110,42 @@ void main() {
     expect(path, '/opt/bin/claude');
   });
 
+  test('locateLocalCli prefers OpenCode official ~/.opencode/bin', () async {
+    final discovery = CliExecutableDiscovery();
+    final path = await discovery.locateLocalCli(
+      CliTool.opencode,
+      includeShellFallback: false,
+      runner:
+          (
+            executable,
+            arguments, {
+            environment,
+            stdoutEncoding,
+            stderrEncoding,
+          }) async {
+            final line = [executable, ...arguments].join(' ');
+            if (line.contains('.opencode/bin/opencode')) {
+              return ProcessResult(
+                0,
+                0,
+                '/home/alice/.opencode/bin/opencode\n',
+                '',
+              );
+            }
+            if (executable == 'which' || executable == 'where') {
+              return ProcessResult(
+                0,
+                0,
+                '/home/alice/.local/bin/${arguments.single}\n',
+                '',
+              );
+            }
+            return ProcessResult(1, 1, '', '');
+          },
+    );
+    expect(path, '/home/alice/.opencode/bin/opencode');
+  });
+
   test('locateLocalCli returns null when missing', () async {
     final discovery = CliExecutableDiscovery();
     final path = await discovery.locateLocalCli(

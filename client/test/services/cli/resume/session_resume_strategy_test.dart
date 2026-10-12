@@ -14,6 +14,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../support/cursor_warm_tier_manifest_paths.dart';
+import '../../../support/opencode_v2_sqlite.dart';
 
 void main() {
   late Directory base;
@@ -89,20 +90,9 @@ void main() {
     test('captures ses_ id from opencode.db', () async {
       final dbPath = p.join(base.path, 'opencode.db');
       final db = sqlite3.open(dbPath);
-      db.execute('''
-CREATE TABLE session (
-  id TEXT PRIMARY KEY,
-  parent_id TEXT,
-  time_updated INTEGER,
-  data TEXT
-);
-''');
-      db.execute(
-        "INSERT INTO session(id, parent_id, time_updated) VALUES ('ses_old', NULL, 1)",
-      );
-      db.execute(
-        "INSERT INTO session(id, parent_id, time_updated) VALUES ('ses_new', NULL, 2)",
-      );
+      createOpencodeV2Schema(db);
+      insertOpencodeV2Session(db, id: 'ses_old', timeUpdated: 1);
+      insertOpencodeV2Session(db, id: 'ses_new', timeUpdated: 2);
       db.close();
 
       final got = await const OpencodeAiHistoryCapability().detectNativeId(
@@ -114,13 +104,8 @@ CREATE TABLE session (
     test('persisted id wins over sqlite scan', () async {
       final dbPath = p.join(base.path, 'opencode.db');
       final db = sqlite3.open(dbPath);
-      db.execute('''
-CREATE TABLE session (
-  id TEXT PRIMARY KEY,
-  time_updated INTEGER
-);
-''');
-      db.execute("INSERT INTO session(id, time_updated) VALUES ('ses_db', 1)");
+      createOpencodeV2Schema(db);
+      insertOpencodeV2Session(db, id: 'ses_db', timeUpdated: 1);
       db.close();
 
       final got = await const OpencodeAiHistoryCapability().detectNativeId(

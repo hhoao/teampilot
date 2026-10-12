@@ -78,7 +78,7 @@ void main() {
           additionalDirectories: ['/repo/a', '/repo/b'],
         ),
       ),
-      ['--standalone', '--model', 'anthropic/claude-sonnet-4'],
+      ['--standalone'],
     );
   });
 

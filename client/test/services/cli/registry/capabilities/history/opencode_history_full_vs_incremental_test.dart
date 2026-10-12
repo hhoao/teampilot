@@ -25,6 +25,7 @@ import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
+import '../../../../../support/opencode_v2_sqlite.dart';
 import '../../../../../support/post_frame_test_harness.dart';
 
 /// 聊天界面 live refresh 的端到端模拟:真实 opencode.db(SQLite+WAL,
@@ -108,94 +109,44 @@ void main() {
     paths: AppPaths(base.path),
   );
 
-  /// 现代 schema:part 表带 `time_updated`(opencode 2025+ v1 存储)。
-  /// 写连接保持打开并启用 WAL,模拟运行中的 CLI。
+  /// OpenCode v2 schema. 写连接保持打开并启用 WAL,模拟运行中的 CLI。
   void openModernDb() {
     writer = sqlite3.open(dbPath);
     writer.execute('PRAGMA journal_mode=WAL;');
-    writer.execute('''
-    CREATE TABLE session (
-      id TEXT PRIMARY KEY,
-      parent_id TEXT,
-      time_created INTEGER NOT NULL,
-      time_updated INTEGER NOT NULL
-    )''');
-    writer.execute('''
-    CREATE TABLE message (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      session_id TEXT NOT NULL,
-      data TEXT NOT NULL,
-      time_created INTEGER NOT NULL,
-      time_updated INTEGER NOT NULL
-    )''');
-    writer.execute('''
-    CREATE TABLE part (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      session_id TEXT NOT NULL,
-      message_id INTEGER NOT NULL,
-      data TEXT NOT NULL,
-      time_created INTEGER NOT NULL,
-      time_updated INTEGER NOT NULL
-    )''');
-    writer.execute(
-      'INSERT INTO session (id, time_created, time_updated) VALUES (?, ?, ?)',
-      ['ses_1', 1000, 1000],
+    createOpencodeV2Schema(writer);
+    insertOpencodeV2Session(
+      writer,
+      id: 'ses_1',
+      timeCreated: 1000,
+      timeUpdated: 1000,
     );
-  }
-
-  /// 旧 schema:part 表没有 `time_updated`(本仓库测试 fixture
-  /// opencode_ai_transcript_test 建模的版本)。
-  void openLegacyDb() {
-    writer = sqlite3.open(dbPath);
-    writer.execute('PRAGMA journal_mode=WAL;');
-    writer.execute('''
-    CREATE TABLE session (
-      id TEXT PRIMARY KEY,
-      time_updated INTEGER NOT NULL
-    )''');
-    writer.execute('''
-    CREATE TABLE message (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      session_id TEXT NOT NULL,
-      data TEXT NOT NULL,
-      time_created INTEGER NOT NULL
-    )''');
-    writer.execute('''
-    CREATE TABLE part (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      message_id INTEGER NOT NULL,
-      data TEXT NOT NULL,
-      time_created INTEGER NOT NULL
-    )''');
-    writer.execute('INSERT INTO session (id, time_updated) VALUES (?, ?)', [
-      'ses_1',
-      1000,
-    ]);
   }
 
   void insertMessage({
     required int id,
     required String role,
     required int created,
-    bool withTimeUpdated = true,
+    String sessionId = 'ses_1',
   }) {
-    final data = jsonEncode({
-      'role': role,
-      'time': {'created': created},
-    });
-    if (withTimeUpdated) {
-      writer.execute(
-        'INSERT INTO message (id, session_id, data, time_created, time_updated) '
-        'VALUES (?, ?, ?, ?, ?)',
-        [id, 'ses_1', data, created, created],
+    if (role == 'user') {
+      insertOpencodeV2User(
+        writer,
+        id: '$id',
+        sessionId: sessionId,
+        seq: id,
+        text: 'hi',
+        timeCreated: created,
       );
-    } else {
-      writer.execute(
-        'INSERT INTO message (id, session_id, data, time_created) '
-        'VALUES (?, ?, ?, ?)',
-        [id, 'ses_1', data, created],
-      );
+      return;
     }
+    insertOpencodeV2Assistant(
+      writer,
+      id: '$id',
+      sessionId: sessionId,
+      seq: id,
+      timeCreated: created,
+      content: [opencodeV2Text('hello')],
+    );
   }
 
   void insertPart({
@@ -203,60 +154,50 @@ void main() {
     required int messageId,
     required String text,
     required int created,
-    bool withTimeUpdated = true,
-    bool withSessionId = true,
   }) {
-    final data = jsonEncode({'type': 'text', 'text': text});
-    if (withTimeUpdated) {
-      writer.execute(
-        'INSERT INTO part (id, session_id, message_id, data, time_created, '
-        'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
-        [id, 'ses_1', messageId, data, created, created],
-      );
-    } else if (withSessionId) {
-      writer.execute(
-        'INSERT INTO part (id, session_id, message_id, data, time_created) '
-        'VALUES (?, ?, ?, ?, ?)',
-        [id, 'ses_1', messageId, data, created],
-      );
-    } else {
-      writer.execute(
-        'INSERT INTO part (id, message_id, data, time_created) '
-        'VALUES (?, ?, ?, ?)',
-        [id, messageId, data, created],
-      );
-    }
+    final rows = writer.select(
+      'SELECT type FROM session_message WHERE id = ?',
+      ['$messageId'],
+    );
+    final type = rows.isEmpty ? 'assistant' : '${rows.first['type']}';
+    final data = type == 'user'
+        ? jsonEncode({
+            'text': text,
+            'time': {'created': created},
+          })
+        : jsonEncode({
+            'agent': 'build',
+            'content': [opencodeV2Text(text)],
+            'time': {'created': created},
+          });
+    writer.execute(
+      'UPDATE session_message SET data = ?, time_updated = ? WHERE id = ?',
+      [data, created, '$messageId'],
+    );
   }
 
   /// 种子:1 条 user 消息 + 1 条 assistant 消息。
-  void seedConversation({bool legacy = false}) {
-    insertMessage(id: 1, role: 'user', created: 1000, withTimeUpdated: !legacy);
-    insertPart(
-      id: 1,
-      messageId: 1,
+  void seedConversation() {
+    insertOpencodeV2User(
+      writer,
+      id: '1',
+      sessionId: 'ses_1',
+      seq: 1,
       text: 'hi',
-      created: 1000,
-      withTimeUpdated: !legacy,
-      withSessionId: !legacy,
+      timeCreated: 1000,
     );
-    insertMessage(
-      id: 2,
-      role: 'assistant',
-      created: 2000,
-      withTimeUpdated: !legacy,
-    );
-    insertPart(
-      id: 2,
-      messageId: 2,
-      text: 'hello',
-      created: 2000,
-      withTimeUpdated: !legacy,
-      withSessionId: !legacy,
+    insertOpencodeV2Assistant(
+      writer,
+      id: '2',
+      sessionId: 'ses_1',
+      seq: 2,
+      timeCreated: 2000,
+      content: [opencodeV2Text('hello')],
     );
   }
 
-  /// 已完成 task 调用:父消息 + tool part(输出携带 `<task id="ses_…">`) +
-  /// 子会话(session/message/part 行)。
+  /// 已完成 task 调用:父消息 + tool content(输出携带 `<task id="ses_…">`) +
+  /// 子会话(`session_v2` / `session_message` 行)。
   void insertTaskCallAndChild({
     required int messageId,
     required int created,
@@ -264,145 +205,75 @@ void main() {
     required String childSessionId,
     required String output,
   }) {
-    writer.execute(
-      'INSERT INTO message (id, session_id, data, time_created, time_updated) '
-      'VALUES (?, ?, ?, ?, ?)',
-      [
-        messageId,
-        'ses_1',
-        jsonEncode({
-          'role': 'assistant',
-          'time': {'created': created},
-        }),
-        created,
-        created,
+    insertOpencodeV2Assistant(
+      writer,
+      id: '$messageId',
+      sessionId: 'ses_1',
+      seq: messageId,
+      timeCreated: created,
+      content: [
+        opencodeV2Tool(
+          id: toolCallId,
+          name: 'task',
+          status: 'completed',
+          input: {'prompt': 'x'},
+          output: output,
+        ),
       ],
     );
-    writer.execute(
-      'INSERT INTO part (id, session_id, message_id, data, time_created, '
-      'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
-      [
-        messageId * 1000,
-        'ses_1',
-        messageId,
-        jsonEncode({
-          'type': 'tool',
-          'tool': 'task',
-          'callID': toolCallId,
-          'state': {
-            'status': 'completed',
-            'input': {'prompt': 'x'},
-            'output': output,
-          },
-        }),
-        created,
-        created,
-      ],
+    insertOpencodeV2Session(
+      writer,
+      id: childSessionId,
+      parentId: 'ses_1',
+      timeCreated: created + 1,
+      timeUpdated: created + 1,
     );
-    writer.execute(
-      'INSERT INTO session (id, parent_id, time_created, time_updated) '
-      'VALUES (?, ?, ?, ?)',
-      [childSessionId, 'ses_1', created + 1, created + 1],
-    );
-    writer.execute(
-      'INSERT INTO message (id, session_id, data, time_created, time_updated) '
-      'VALUES (?, ?, ?, ?, ?)',
-      [
-        messageId * 100,
-        childSessionId,
-        jsonEncode({
-          'role': 'user',
-          'time': {'created': created + 2},
-        }),
-        created + 2,
-        created + 2,
-      ],
-    );
-    writer.execute(
-      'INSERT INTO part (id, session_id, message_id, data, time_created, '
-      'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
-      [
-        messageId * 1000 + 1,
-        childSessionId,
-        messageId * 100,
-        jsonEncode({'type': 'text', 'text': 'child output $messageId'}),
-        created + 2,
-        created + 2,
-      ],
+    insertOpencodeV2User(
+      writer,
+      id: '${messageId * 100}',
+      sessionId: childSessionId,
+      seq: 1,
+      text: 'child output $messageId',
+      timeCreated: created + 2,
     );
   }
 
-  /// 运行中的 task 调用:父 part status=running、output 为空;子会话已存在。
+  /// 运行中的 task 调用:父 tool status=running、output 为空;子会话已存在。
   void insertRunningTaskCall({
     required int messageId,
     required int created,
     required String toolCallId,
     required String childSessionId,
   }) {
-    writer.execute(
-      'INSERT INTO message (id, session_id, data, time_created, time_updated) '
-      'VALUES (?, ?, ?, ?, ?)',
-      [
-        messageId,
-        'ses_1',
-        jsonEncode({
-          'role': 'assistant',
-          'time': {'created': created},
-        }),
-        created,
-        created,
+    insertOpencodeV2Assistant(
+      writer,
+      id: '$messageId',
+      sessionId: 'ses_1',
+      seq: messageId,
+      timeCreated: created,
+      content: [
+        opencodeV2Tool(
+          id: toolCallId,
+          name: 'task',
+          status: 'running',
+          input: {'prompt': 'x'},
+        ),
       ],
     );
-    writer.execute(
-      'INSERT INTO part (id, session_id, message_id, data, time_created, '
-      'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
-      [
-        messageId * 1000,
-        'ses_1',
-        messageId,
-        jsonEncode({
-          'type': 'tool',
-          'tool': 'task',
-          'callID': toolCallId,
-          'state': {
-            'status': 'running',
-            'input': {'prompt': 'x'},
-          },
-        }),
-        created,
-        created,
-      ],
+    insertOpencodeV2Session(
+      writer,
+      id: childSessionId,
+      parentId: 'ses_1',
+      timeCreated: created + 1,
+      timeUpdated: created + 1,
     );
-    writer.execute(
-      'INSERT INTO session (id, parent_id, time_created, time_updated) '
-      'VALUES (?, ?, ?, ?)',
-      [childSessionId, 'ses_1', created + 1, created + 1],
-    );
-    writer.execute(
-      'INSERT INTO message (id, session_id, data, time_created, time_updated) '
-      'VALUES (?, ?, ?, ?, ?)',
-      [
-        messageId * 100,
-        childSessionId,
-        jsonEncode({
-          'role': 'user',
-          'time': {'created': created + 2},
-        }),
-        created + 2,
-        created + 2,
-      ],
-    );
-    writer.execute(
-      'INSERT INTO part (id, session_id, message_id, data, time_created, '
-      'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
-      [
-        messageId * 1000 + 1,
-        childSessionId,
-        messageId * 100,
-        jsonEncode({'type': 'text', 'text': 'child running $messageId'}),
-        created + 2,
-        created + 2,
-      ],
+    insertOpencodeV2User(
+      writer,
+      id: '${messageId * 100}',
+      sessionId: childSessionId,
+      seq: 1,
+      text: 'child running $messageId',
+      timeCreated: created + 2,
     );
   }
 
@@ -450,7 +321,7 @@ void main() {
     );
   }
 
-  group('chat live refresh (modern schema, part.time_updated exists)', () {
+  group('chat live refresh (session_v2 / session_message)', () {
     test(
       'idle seat: token gate + seat memo skip locate/parse entirely',
       () async {
@@ -535,9 +406,15 @@ void main() {
         expect(first.isComplete, isTrue, reason: '首页覆盖全部消息 → 直接 complete');
 
         writer.execute(
-          "UPDATE part SET data = ?, time_updated = 3000 WHERE id = 2",
+          'UPDATE session_message SET data = ?, time_updated = 3000 WHERE id = ?',
           [
-            jsonEncode({'type': 'text', 'text': 'hello chunk'}),
+            jsonEncode({
+              'agent': 'build',
+              'model': {'providerID': 'opencode', 'id': 'test'},
+              'content': [opencodeV2Text('hello chunk')],
+              'time': {'created': 2000},
+            }),
+            '2',
           ],
         );
 
@@ -589,9 +466,15 @@ void main() {
         // CLI 流式写入:新增 assistant 消息 + 原地增长已有 text part 行
         // (time_updated 前进,count 与行内容都变)。
         writer.execute(
-          "UPDATE part SET data = ?, time_updated = 3000 WHERE id = 2",
+          'UPDATE session_message SET data = ?, time_updated = 3000 WHERE id = ?',
           [
-            jsonEncode({'type': 'text', 'text': 'hello chunk'}),
+            jsonEncode({
+              'agent': 'build',
+              'model': {'providerID': 'opencode', 'id': 'test'},
+              'content': [opencodeV2Text('hello chunk')],
+              'time': {'created': 2000},
+            }),
+            '2',
           ],
         );
         insertMessage(id: 3, role: 'assistant', created: 3000);
@@ -756,31 +639,13 @@ void main() {
 
         // 子 agent 继续输出(子会话追加消息),但父 part 冻结:签名不变 →
         // 附件索引必须复用,不空转重解析,预览停留在快照。
-        writer.execute(
-          'INSERT INTO message (id, session_id, data, time_created, '
-          'time_updated) VALUES (?, ?, ?, ?, ?)',
-          [
-            301,
-            'ses_2',
-            jsonEncode({
-              'role': 'assistant',
-              'time': {'created': 3500},
-            }),
-            3500,
-            3500,
-          ],
-        );
-        writer.execute(
-          'INSERT INTO part (id, session_id, message_id, data, time_created, '
-          'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
-          [
-            3003,
-            'ses_2',
-            301,
-            jsonEncode({'type': 'text', 'text': 'more progress'}),
-            3500,
-            3500,
-          ],
+        insertOpencodeV2Assistant(
+          writer,
+          id: '301',
+          sessionId: 'ses_2',
+          seq: 2,
+          timeCreated: 3500,
+          content: [opencodeV2Text('more progress')],
         );
         final middle = await loader.load(
           session: session,
@@ -801,18 +666,23 @@ void main() {
         // 任务完成:父 part 更新为 completed + 输出携带子会话 id → 签名变化
         // → 重新 inflate,预览刷新到子会话的最新完整内容。
         writer.execute(
-          'UPDATE part SET data = ?, time_updated = 3600 WHERE id = 3000',
+          'UPDATE session_message SET data = ?, time_updated = 3600 WHERE id = ?',
           [
             jsonEncode({
-              'type': 'tool',
-              'tool': 'task',
-              'callID': 'toolu_1',
-              'state': {
-                'status': 'completed',
-                'input': {'prompt': 'x'},
-                'output': '<task id="ses_2" state="completed">done</task>',
-              },
+              'agent': 'build',
+              'model': {'providerID': 'opencode', 'id': 'test'},
+              'content': [
+                opencodeV2Tool(
+                  id: 'toolu_1',
+                  name: 'task',
+                  status: 'completed',
+                  input: {'prompt': 'x'},
+                  output: '<task id="ses_2" state="completed">done</task>',
+                ),
+              ],
+              'time': {'created': 3000},
             }),
+            '3',
           ],
         );
         final second = await loader.load(
@@ -843,59 +713,62 @@ void main() {
       },
     );
 
-    test(
-      'in-place growth only (count unchanged): incremental replace',
-      () async {
-        openModernDb();
-        seedConversation();
-        final loader = buildLoader();
-        final session = opencodeSession();
-        final ctx = launchContextFor(session);
+    test('in-place growth only (count unchanged): incremental replace', () async {
+      openModernDb();
+      seedConversation();
+      final loader = buildLoader();
+      final session = opencodeSession();
+      final ctx = launchContextFor(session);
 
-        final first = await loader.load(
-          session: session,
-          memberId: '',
-          launchContext: ctx,
-        );
-        expect(locator.calls, 0, reason: '首屏 page-first');
-        final baseline = await warmFullIndex(loader, session);
-        expect(locator.calls, 0);
+      final first = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      expect(locator.calls, 0, reason: '首屏 page-first');
+      final baseline = await warmFullIndex(loader, session);
+      expect(locator.calls, 0);
 
-        // 只有一条流式 text 原地增长:行数不变,MAX(time_updated) 前进。
-        writer.execute(
-          "UPDATE part SET data = ?, time_updated = 4000 WHERE id = 2",
-          [
-            jsonEncode({'type': 'text', 'text': 'hello grow'}),
-          ],
-        );
+      // 只有一条流式 text 原地增长:行数不变,MAX(time_updated) 前进。
+      writer.execute(
+        'UPDATE session_message SET data = ?, time_updated = 4000 WHERE id = ?',
+        [
+          jsonEncode({
+            'agent': 'build',
+            'model': {'providerID': 'opencode', 'id': 'test'},
+            'content': [opencodeV2Text('hello grow')],
+            'time': {'created': 2000},
+          }),
+          '2',
+        ],
+      );
 
-        final second = await loader.load(
-          session: session,
-          memberId: '',
-          launchContext: ctx,
-        );
-        expect(locator.calls, 0, reason: '原地增长 → 行级增量,不 locate');
-        expect(
-          second.messages.any(
-            (m) => m.parts.any(
-              (p) => p is AiTextPart && p.text.contains('hello grow'),
-            ),
+      final second = await loader.load(
+        session: session,
+        memberId: '',
+        launchContext: ctx,
+      );
+      expect(locator.calls, 0, reason: '原地增长 → 行级增量,不 locate');
+      expect(
+        second.messages.any(
+          (m) => m.parts.any(
+            (p) => p is AiTextPart && p.text.contains('hello grow'),
           ),
-          isTrue,
-        );
-        expect(
-          identical(second.messages, baseline.messages),
-          isFalse,
-          reason: '原地增长也必须返回新 List 实例(同 seat identical 判定问题)',
-        );
-        expect(
-          identical(second.messages[0], baseline.messages[0]),
-          isTrue,
-          reason: '未变化消息保持实例身份',
-        );
-        expect(first.isComplete, isTrue);
-      },
-    );
+        ),
+        isTrue,
+      );
+      expect(
+        identical(second.messages, baseline.messages),
+        isFalse,
+        reason: '原地增长也必须返回新 List 实例(同 seat identical 判定问题)',
+      );
+      expect(
+        identical(second.messages[0], baseline.messages[0]),
+        isTrue,
+        reason: '未变化消息保持实例身份',
+      );
+      expect(first.isComplete, isTrue);
+    });
 
     test(
       'task child session becoming newest must not flip the seat transcript',
@@ -927,35 +800,19 @@ void main() {
 
         // task 子会话创建并写入:time_updated 最新 → 旧实现把"最新会话"
         // 解析成子会话,指纹/重读全落在子会话上。
-        writer.execute(
-          'INSERT INTO session (id, time_created, time_updated) VALUES (?, ?, ?)',
-          ['ses_2', 9000, 9000],
+        insertOpencodeV2Session(
+          writer,
+          id: 'ses_2',
+          timeCreated: 9000,
+          timeUpdated: 9000,
         );
-        writer.execute(
-          'INSERT INTO message (id, session_id, data, time_created, time_updated) '
-          'VALUES (?, ?, ?, ?, ?)',
-          [
-            10,
-            'ses_2',
-            jsonEncode({
-              'role': 'assistant',
-              'time': {'created': 9000},
-            }),
-            9000,
-            9000,
-          ],
-        );
-        writer.execute(
-          'INSERT INTO part (id, session_id, message_id, data, time_created, '
-          'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
-          [
-            10,
-            'ses_2',
-            10,
-            jsonEncode({'type': 'text', 'text': 'task output'}),
-            9000,
-            9000,
-          ],
+        insertOpencodeV2Assistant(
+          writer,
+          id: '10',
+          sessionId: 'ses_2',
+          seq: 1,
+          timeCreated: 9000,
+          content: [opencodeV2Text('task output')],
         );
         // 同时 seat 会话自己新增一条消息。
         insertMessage(id: 5, role: 'assistant', created: 5000);
@@ -991,43 +848,6 @@ void main() {
     );
   });
 
-  group('legacy schema (part without time_updated)', () {
-    test('page-first misses and full index still locates sqlite', () async {
-      openLegacyDb();
-      seedConversation(legacy: true);
-      final loader = buildLoader();
-      final session = opencodeSession();
-      final ctx = launchContextFor(session);
-
-      final first = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
-      expect(
-        first.messages,
-        isEmpty,
-        reason:
-            'page-first cannot fingerprint stores without part.time_updated',
-      );
-      expect(locator.calls, 0);
-
-      final indexed = await warmFullIndex(loader, session);
-      expect(indexed.messages, hasLength(2));
-      expect(locator.calls, 1);
-      expect(locator.lastBundle!.hints['source'], 'sqlite');
-
-      // Incremental fingerprints need part.time_updated, so idle reload
-      // cannot delta-merge. The cached full index still paints the seat.
-      final second = await loader.load(
-        session: session,
-        memberId: '',
-        launchContext: ctx,
-      );
-      expect(second.messages, hasLength(2));
-    });
-  });
-
   group('delta fallback', () {
     test('message deletion (compaction) forces a full reload', () async {
       openModernDb();
@@ -1047,8 +867,7 @@ void main() {
       expect(locator.calls, 0);
 
       // 压缩:删除一条 message(连同其 part)后新增一条。
-      writer.execute('DELETE FROM part WHERE message_id = 2');
-      writer.execute('DELETE FROM message WHERE id = 2');
+      writer.execute('DELETE FROM session_message WHERE id = ?', ['2']);
       insertMessage(id: 4, role: 'assistant', created: 4000);
       insertPart(id: 4, messageId: 4, text: 'compact', created: 4000);
 

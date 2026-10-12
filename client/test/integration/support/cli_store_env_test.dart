@@ -8,6 +8,7 @@ void main() {
       final env = sanitizeCliStoreEnvironment(const {
         'OPENCODE_DB': '/session/runtime/opencode/opencode.db',
         'OPENCODE_CONFIG_DIR': '/session/runtime/opencode',
+        'OPENCODE_CLI_CONFIG_CONTENT': '{"tabs":{"mode":"off"}}',
         'XDG_DATA_HOME': '/session/xdg/data',
         'CLAUDE_CONFIG_DIR': '/session/runtime/claude',
         'TEAMPILOT_CLAUDE_SETTINGS_FILE': '/session/settings.json',

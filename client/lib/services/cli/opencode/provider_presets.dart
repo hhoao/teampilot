@@ -4,8 +4,9 @@ import 'provider/opencode_credential_kind.dart';
 /// Built-in opencode provider presets.
 ///
 /// The saved provider **id** (slugified from `name`) becomes opencode's
-/// provider key — it is what the launch adapter emits as `--model <id>/<model>`
-/// and the key written under `provider.<id>.options` in opencode.json. So each
+/// provider key — it is stamped as `opencode.json` `"model": "<id>/<model>"`
+/// (TUI) and as `opencode run --model <id>/<model>` (headless), and the key
+/// written under `providers.<id>` in opencode.json. So each
 /// preset is named to slugify to a provider id opencode recognises natively
 /// (`openai`, `anthropic`, `google`, `openrouter`, `deepseek`, `xai`, `groq`).
 ///

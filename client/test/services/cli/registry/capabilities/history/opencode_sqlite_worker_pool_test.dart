@@ -8,6 +8,8 @@ import 'package:sqlite3_connection_pool/sqlite3_connection_pool.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/native_session_id.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/sqlite_worker_pool.dart';
 
+import '../../../../../support/opencode_v2_sqlite.dart';
+
 /// 测试专用查询:失败路径(worker isolate 上抛错 → null)。
 String? _boomQuery(Database db, Object? args) {
   throw StateError('boom');
@@ -30,14 +32,12 @@ void main() {
     dbPath = p.join(tmp.path, 'opencode.db');
     final db = sqlite3.open(dbPath);
     try {
-      db.execute(
-        'CREATE TABLE session ('
-        'id TEXT, parent_id TEXT, time_updated INTEGER, data TEXT)',
-      );
-      db.execute(
-        'INSERT INTO session (id, parent_id, time_updated) '
-        'VALUES (?, ?, ?)',
-        ['ses_1', null, 100],
+      createOpencodeV2Schema(db);
+      insertOpencodeV2Session(
+        db,
+        id: 'ses_1',
+        timeCreated: 100,
+        timeUpdated: 100,
       );
     } finally {
       db.close();
@@ -199,13 +199,18 @@ void main() {
     final pool = OpencodeSqliteWorkerPool.instance;
     final db = sqlite3.open(dbPath);
     try {
-      db.execute(
-        'INSERT INTO session (id, parent_id, time_updated) VALUES (?, ?, ?)',
-        ['ses_child', 'ses_1', 200],
+      insertOpencodeV2Session(
+        db,
+        id: 'ses_child',
+        parentId: 'ses_1',
+        timeCreated: 200,
+        timeUpdated: 200,
       );
-      db.execute(
-        'INSERT INTO session (id, parent_id, time_updated) VALUES (?, ?, ?)',
-        ['ses_other_root', null, 50],
+      insertOpencodeV2Session(
+        db,
+        id: 'ses_other_root',
+        timeCreated: 50,
+        timeUpdated: 50,
       );
     } finally {
       db.close();
@@ -222,9 +227,12 @@ void main() {
     final pool = OpencodeSqliteWorkerPool.instance;
     final db = sqlite3.open(dbPath);
     try {
-      db.execute(
-        'INSERT INTO session (id, parent_id, time_updated) VALUES (?, ?, ?)',
-        ['ses_2', '', 200],
+      insertOpencodeV2Session(
+        db,
+        id: 'ses_2',
+        parentId: '',
+        timeCreated: 200,
+        timeUpdated: 200,
       );
     } finally {
       db.close();
@@ -236,37 +244,4 @@ void main() {
     expect(result, 'ses_2');
     await pool.disposeAndWait(dbPath);
   });
-
-  test(
-    'legacy layout without parent_id column filters children via data JSON',
-    () async {
-      final pool = OpencodeSqliteWorkerPool.instance;
-      final legacyDir = tmp.createTempSync('legacy-');
-      final legacyDbPath = p.join(legacyDir.path, 'opencode.db');
-      final db = sqlite3.open(legacyDbPath);
-      try {
-        db.execute(
-          'CREATE TABLE session (id TEXT, data TEXT, time_updated INTEGER)',
-        );
-        db.execute('INSERT INTO session VALUES (?, ?, ?)', [
-          'ses_child',
-          '{"parentID":"ses_p"}',
-          300,
-        ]);
-        db.execute('INSERT INTO session VALUES (?, ?, ?)', [
-          'ses_root',
-          '{}',
-          100,
-        ]);
-      } finally {
-        db.close();
-      }
-      final result = await pool.run<String?>(
-        dbPath: legacyDbPath,
-        query: opencodeNewestSessionId,
-      );
-      expect(result, 'ses_root');
-      await pool.disposeAndWait(legacyDbPath);
-    },
-  );
 }

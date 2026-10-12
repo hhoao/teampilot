@@ -80,5 +80,11 @@ void main() {
     );
     expect(contribution.environment.containsKey('OPENCODE_DATA_DIR'), isFalse);
     expect(contribution.environment.containsKey('XDG_DATA_HOME'), isFalse);
+    // v2 TUI tabs.json is keyed by cwd, not OPENCODE_DB; turn the strip off
+    // so two seats in the same workspace do not share Greeting tabs.
+    expect(
+      contribution.environment[OpencodeProviderCapability.cliConfigContentEnv],
+      '{"tabs":{"mode":"off"}}',
+    );
   });
 }

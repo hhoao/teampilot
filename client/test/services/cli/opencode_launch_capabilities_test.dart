@@ -49,10 +49,6 @@ void main() {
         '--standalone',
         '--session',
         'session-1',
-        '--model',
-        'anthropic/claude-sonnet-4',
-        '--agent',
-        'build',
         '--team-flag',
         'team value',
         '--member-flag',
@@ -61,7 +57,7 @@ void main() {
     );
   });
 
-  test('OpenCode omits absent session and agent and supports bare models', () {
+  test('OpenCode TUI omits --model/--agent; those live in opencode.json', () {
     expect(
       _assemble(
         team: const TeamProfile(
@@ -73,9 +69,10 @@ void main() {
           id: 'member',
           name: 'Member',
           model: 'gpt-5',
+          agent: 'build',
         ),
       ),
-      ['--standalone', '--model', 'gpt-5'],
+      ['--standalone'],
     );
   });
 
@@ -201,28 +198,34 @@ void main() {
     );
   });
 
-  test('OpenCode registers standalone/session/workspace/model/agent/user providers', () {
-    final tool = OpencodeCliTool();
-    final providers = tool.capabilities.whereType<CliLaunchArgProvider>();
+  test(
+    'OpenCode registers standalone/session/workspace/model/agent/user providers',
+    () {
+      final tool = OpencodeCliTool();
+      final providers = tool.capabilities.whereType<CliLaunchArgProvider>();
 
-    expect(providers, contains(isA<OpencodeStandaloneLaunch>()));
-    expect(providers, contains(isA<OpencodeSessionSelectionLaunch>()));
-    expect(providers, contains(isA<OpencodeWorkspaceBaseInfo>()));
-    expect(providers, contains(isA<OpencodeModelLaunch>()));
-    expect(providers, contains(isA<OpencodeAgentLaunch>()));
-    expect(providers, contains(isA<OpencodeUserExtraArgsLaunch>()));
-    expect(
-      tool.capabilities.whereType<CliLaunchConstraint>(),
-      contains(isA<OpencodePermissionLaunch>()),
-    );
-    expect(
-      tool.capabilities.whereType<CliHeadlessLaunchConstraint>(),
-      contains(isA<OpencodePermissionLaunch>()),
-    );
-    expect(providers, hasLength(6));
-    expect(tool.capabilities.whereType<OpencodeTeamBehavior>(), hasLength(1));
-    expect(tool.capabilities.whereType<TeamBehaviorCapability>(), hasLength(1));
-  });
+      expect(providers, contains(isA<OpencodeStandaloneLaunch>()));
+      expect(providers, contains(isA<OpencodeSessionSelectionLaunch>()));
+      expect(providers, contains(isA<OpencodeWorkspaceBaseInfo>()));
+      expect(providers, contains(isA<OpencodeModelLaunch>()));
+      expect(providers, contains(isA<OpencodeAgentLaunch>()));
+      expect(providers, contains(isA<OpencodeUserExtraArgsLaunch>()));
+      expect(
+        tool.capabilities.whereType<CliLaunchConstraint>(),
+        contains(isA<OpencodePermissionLaunch>()),
+      );
+      expect(
+        tool.capabilities.whereType<CliHeadlessLaunchConstraint>(),
+        contains(isA<OpencodePermissionLaunch>()),
+      );
+      expect(providers, hasLength(6));
+      expect(tool.capabilities.whereType<OpencodeTeamBehavior>(), hasLength(1));
+      expect(
+        tool.capabilities.whereType<TeamBehaviorCapability>(),
+        hasLength(1),
+      );
+    },
+  );
 
   test('OpenCode launch rejects a tool without launch providers', () {
     final context = CliLaunchContext(

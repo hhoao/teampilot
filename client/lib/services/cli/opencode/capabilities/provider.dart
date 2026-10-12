@@ -276,6 +276,15 @@ final class OpencodeProviderCapability extends CatalogModelCapability
   static const dbPathEnv = 'OPENCODE_DB';
   static const authContentEnv = 'OPENCODE_AUTH_CONTENT';
 
+  /// Inline v2 CLI settings (`~/.config/opencode/cli.json` overlay).
+  ///
+  /// The TUI tab strip is stored in `$XDG_STATE_HOME/opencode/.../tui/tabs.json`
+  /// and keyed by cwd, not by [dbPathEnv]. Two seats in the same workspace
+  /// would otherwise share Greeting tabs. `tabs.mode=off` keeps one
+  /// conversation per TeamPilot session.
+  static const cliConfigContentEnv = 'OPENCODE_CLI_CONFIG_CONTENT';
+  static const cliConfigContent = '{"tabs":{"mode":"off"}}';
+
   /// Assembles profile-provided hooks before the OpenCode-specific writer.
   /// OpenCode's endpoint plugins remain target-native because its HookCapability
   /// has no native HTTP action; user/resource hooks still share the same
@@ -391,6 +400,23 @@ final class OpencodeProviderCapability extends CatalogModelCapability
         );
       }
       changed = true;
+    }
+
+    if (member != null) {
+      final withModel = mergeOpencodeDefaultModel(
+        config,
+        providerId: member.provider,
+        modelId: member.model,
+      );
+      if (!identical(withModel, config)) {
+        config = withModel;
+        changed = true;
+      }
+      final withAgent = mergeOpencodeDefaultAgent(config, member.agent);
+      if (!identical(withAgent, config)) {
+        config = withAgent;
+        changed = true;
+      }
     }
 
     final securityPolicy = LaunchSecurityPolicy.fullAccess;
@@ -554,6 +580,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       dbPathEnv: paths.normalizeWork(
         paths.pathContext.join(opencodeDir, 'opencode.db'),
       ),
+      cliConfigContentEnv: cliConfigContent,
     };
     if (launchProvider != null) {
       final authContent = _authContentForLaunch(launchProvider);

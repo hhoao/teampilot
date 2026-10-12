@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:meta/meta.dart';
 import 'package:sqlite3/sqlite3.dart';
@@ -169,8 +167,8 @@ final class OpencodeSideResolver implements SubagentSideResolver {
   @visibleForTesting
   static void clearChildResultMemo() => _childResults.clear();
 
-  /// Cheap change signal for one child session: part row count + newest
-  /// `time_updated` (parts are appended/updated while a task streams output).
+  /// Cheap change signal for one child session: `session_message` row count
+  /// + newest `time_updated` (rows are appended/updated while a task streams).
   Future<String?> _childFingerprint(
     SessionHistoryContext ctx,
     String childId,
@@ -191,7 +189,8 @@ final class OpencodeSideResolver implements SubagentSideResolver {
   static String? _childFingerprintQuery(Database db, Object? args) {
     final childId = args as String;
     final rows = db.select(
-      'SELECT COUNT(*), MAX(time_updated) FROM part WHERE session_id = ?',
+      'SELECT COUNT(*), MAX(time_updated) FROM session_message '
+      'WHERE session_id = ?',
       [childId],
     );
     if (rows.isEmpty) return null;
@@ -315,34 +314,16 @@ final class OpencodeSideResolver implements SubagentSideResolver {
     final parentSessionId = map['parentSessionId'] as String;
     final toolCallAt = map['toolCallAt'] as DateTime?;
     final candidates = <({String id, int createdMs})>[];
-    try {
-      // Current OpenCode layout: `parent_id` is a real column — one
-      // indexed scoped query, no full-scan + JSON decode.
-      final rows = db.select(
-        'SELECT id, time_created FROM session WHERE parent_id = ?',
-        [parentSessionId],
-      );
-      for (final row in rows) {
-        final id = '${row['id']}'.trim();
-        if (!id.startsWith('ses_')) continue;
-        final ms = _intValue(row['time_created']);
-        if (ms <= 0) continue;
-        candidates.add((id: id, createdMs: ms));
-      }
-    } on SqliteException {
-      // Legacy layout: parent linkage inside the `data` JSON blob.
-      final rows = db.select('SELECT id, data, time_created FROM session');
-      for (final row in rows) {
-        final id = '${row['id']}'.trim();
-        if (!id.startsWith('ses_')) continue;
-        final obj = _decodeRowData(row['data']);
-        if (obj == null) continue;
-        if (_parentOf(obj) != parentSessionId) continue;
-        final created = _createdMs(obj['time']);
-        final ms = created > 0 ? created : _intValue(row['time_created']);
-        if (ms <= 0) continue;
-        candidates.add((id: id, createdMs: ms));
-      }
+    final rows = db.select(
+      'SELECT id, time_created FROM session_v2 WHERE parent_id = ?',
+      [parentSessionId],
+    );
+    for (final row in rows) {
+      final id = '${row['id']}'.trim();
+      if (!id.startsWith('ses_')) continue;
+      final ms = _intValue(row['time_created']);
+      if (ms <= 0) continue;
+      candidates.add((id: id, createdMs: ms));
     }
     return OpencodeSideResolver._pickRunningChild(candidates, toolCallAt);
   }
@@ -371,32 +352,6 @@ final class OpencodeSideResolver implements SubagentSideResolver {
       }
     }
     return bestId.isEmpty ? null : bestId;
-  }
-
-  static String _parentOf(Map<String, dynamic> obj) =>
-      '${obj['parent_id'] ?? obj['parentID'] ?? ''}'.trim();
-
-  static Map<String, dynamic>? _decodeRowData(Object? raw) {
-    try {
-      final decoded = switch (raw) {
-        final String s => jsonDecode(s),
-        final List<int> bytes => jsonDecode(utf8.decode(bytes)),
-        _ => null,
-      };
-      if (decoded is Map<String, dynamic>) return decoded;
-      if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    } on Object {
-      return null;
-    }
-    return null;
-  }
-
-  static int _createdMs(Object? time) {
-    if (time is Map) {
-      final created = time['created'];
-      if (created is num) return created.toInt();
-    }
-    return 0;
   }
 
   static int _intValue(Object? value) {

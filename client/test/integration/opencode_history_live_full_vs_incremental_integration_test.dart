@@ -361,60 +361,32 @@ void main() {
         final child = sqlite3.open(dbPath);
         try {
           final seatRows = child.select(
-            'SELECT id, time_updated FROM session ORDER BY time_updated DESC '
+            'SELECT id, time_updated FROM session_v2 ORDER BY time_updated DESC '
             'LIMIT 1',
           );
           final seatUpdated = seatRows.isEmpty
               ? 0
               : (seatRows.first['time_updated'] as int?) ?? 0;
           final newest = seatUpdated + 100000;
-          // 真实 schema 的 NOT NULL 列需全部提供(project_id/slug/...)。
           child.execute(
-            'INSERT INTO session (id, project_id, slug, directory, title, '
-            'version, cost, tokens_input, tokens_output, tokens_reasoning, '
-            'tokens_cache_read, tokens_cache_write, time_created, time_updated) '
-            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [
-              'ses_child',
-              'global',
-              'child-test',
-              '/tmp/child',
-              'child-test',
-              '1.18.4',
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              newest,
-              newest,
-            ],
+            'INSERT INTO session_v2 (id, parent_id, time_created, time_updated) '
+            'VALUES (?, ?, ?, ?)',
+            ['ses_child', null, newest, newest],
           );
           child.execute(
-            'INSERT INTO message (id, session_id, data, time_created, '
-            'time_updated) VALUES (?, ?, ?, ?, ?)',
+            'INSERT INTO session_message (id, session_id, type, seq, '
+            'time_created, time_updated, data) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [
               'msg_child_1',
               'ses_child',
+              'user',
+              1,
+              newest + 1,
+              newest + 1,
               jsonEncode({
-                'role': 'user',
+                'text': marker,
                 'time': {'created': newest + 1},
               }),
-              newest + 1,
-              newest + 1,
-            ],
-          );
-          child.execute(
-            'INSERT INTO part (id, session_id, message_id, data, time_created, '
-            'time_updated) VALUES (?, ?, ?, ?, ?, ?)',
-            [
-              'part_child_1',
-              'ses_child',
-              'msg_child_1',
-              jsonEncode({'type': 'text', 'text': marker}),
-              newest + 1,
-              newest + 1,
             ],
           );
         } finally {

@@ -13,7 +13,8 @@ library;
 /// Environment variables TeamPilot injects to redirect CLI stores.
 ///
 /// Keep in sync with `client/lib/services/cli/**/capabilities/*` launch env:
-/// - `OPENCODE_DB` / `OPENCODE_CONFIG_DIR` (opencode session isolation)
+/// - `OPENCODE_DB` / `OPENCODE_CONFIG_DIR` / `OPENCODE_CLI_CONFIG_CONTENT`
+///   (opencode session isolation)
 /// - `XDG_DATA_HOME` (opencode provider credentials + global data dir)
 /// - `CLAUDE_CONFIG_DIR` / `TEAMPILOT_CLAUDE_SETTINGS_FILE` (claude)
 /// - `CODEX_HOME` (codex)
@@ -23,6 +24,7 @@ library;
 const cliStoreEnvKeys = <String>{
   'OPENCODE_DB',
   'OPENCODE_CONFIG_DIR',
+  'OPENCODE_CLI_CONFIG_CONTENT',
   'XDG_DATA_HOME',
   'CLAUDE_CONFIG_DIR',
   'TEAMPILOT_CLAUDE_SETTINGS_FILE',

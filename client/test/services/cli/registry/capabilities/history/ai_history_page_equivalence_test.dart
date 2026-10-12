@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:ai_message_core/ai_message_core.dart';
@@ -22,6 +21,7 @@ import 'package:teampilot/services/storage/app_paths.dart';
 import '../../../../../support/test_runtime_context.dart';
 
 import '../../../../../support/in_memory_filesystem.dart';
+import '../../../../../support/opencode_v2_sqlite.dart';
 
 /// Capability-level guard: every launch CLI must opt into paged history.
 /// When a reader cannot prove a page safe, it returns null and the loader
@@ -168,12 +168,12 @@ void main() {
     },
   );
 
-  test('OpenCode paging returns null without a stable store token', () async {
+  test('OpenCode paging returns null without session_v2 tables', () async {
     final dataDir = p.join(base.path, 'oc-no-token');
-    await _writeOpencodeDb(
-      p.join(dataDir, 'opencode.db'),
-      includeTimeUpdated: false,
-    );
+    await File(p.join(dataDir, 'opencode.db')).parent.create(recursive: true);
+    final db = sqlite3.open(p.join(dataDir, 'opencode.db'));
+    db.execute('CREATE TABLE unrelated (id TEXT)');
+    db.close();
     const capability = OpencodeAiHistoryCapability();
     final ctx = SessionHistoryContext(
       fs: fs,
@@ -504,186 +504,16 @@ Future<void> _copyCursorProjectTree(String destination) async {
   }
 }
 
-Future<void> _writeOpencodeDbFromJsonTree(
-  String dbPath,
-  String storageRoot,
-) async {
-  await File(dbPath).parent.create(recursive: true);
-  final db = sqlite3.open(dbPath);
-  try {
-    db.execute('''
-CREATE TABLE session (id TEXT PRIMARY KEY, parent_id TEXT, time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL);
-CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, data TEXT NOT NULL, time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL);
-CREATE TABLE part (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, message_id TEXT NOT NULL, data TEXT NOT NULL, time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL);
-''');
-    final messagesDir = Directory(p.join(storageRoot, 'message'));
-    final partsDir = Directory(p.join(storageRoot, 'part'));
-    final sessionIds = <String>{};
-    if (await messagesDir.exists()) {
-      await for (final entity in messagesDir.list(recursive: true)) {
-        if (entity is! File || !entity.path.endsWith('.json')) continue;
-        final raw = await entity.readAsString();
-        final obj = jsonDecode(raw);
-        if (obj is! Map) continue;
-        final id = '${obj['id'] ?? p.basenameWithoutExtension(entity.path)}';
-        final sessionId = '${obj['sessionID'] ?? ''}';
-        if (id.isEmpty || sessionId.isEmpty) continue;
-        sessionIds.add(sessionId);
-        final created = _jsonTime(Map<Object?, Object?>.from(obj)) ?? 1;
-        db.execute('INSERT INTO message VALUES (?, ?, ?, ?, ?)', [
-          id,
-          sessionId,
-          raw,
-          created,
-          created,
-        ]);
-      }
-    }
-    if (await partsDir.exists()) {
-      await for (final entity in partsDir.list(recursive: true)) {
-        if (entity is! File) continue;
-        final raw = await entity.readAsString();
-        Map<String, dynamic>? obj;
-        try {
-          final decoded = jsonDecode(raw);
-          if (decoded is Map) obj = Map<String, dynamic>.from(decoded);
-        } on Object {
-          obj = null;
-        }
-        final id = obj == null
-            ? p.basenameWithoutExtension(entity.path)
-            : '${obj['id'] ?? p.basenameWithoutExtension(entity.path)}';
-        final messageId = obj == null
-            ? p.basename(p.dirname(entity.path))
-            : '${obj['messageID'] ?? p.basename(p.dirname(entity.path))}';
-        final sessionId = obj == null
-            ? sessionIds.first
-            : '${obj['sessionID'] ?? sessionIds.first}';
-        final created = obj == null
-            ? 1
-            : (_jsonTime(Map<Object?, Object?>.from(obj)) ?? 1);
-        db.execute('INSERT INTO part VALUES (?, ?, ?, ?, ?, ?)', [
-          id,
-          sessionId,
-          messageId,
-          raw,
-          created,
-          created,
-        ]);
-      }
-    }
-    for (final sessionId in sessionIds) {
-      db.execute('INSERT INTO session VALUES (?, ?, ?, ?)', [
-        sessionId,
-        null,
-        1,
-        1,
-      ]);
-    }
-  } finally {
-    db.close();
-  }
+Future<void> _writeOpencodeDbFromJsonTree(String dbPath, String storageRoot) {
+  return writeOpencodeV2DbFromV1JsonTree(dbPath, storageRoot);
 }
 
-int? _jsonTime(Map<Object?, Object?> obj) {
-  final time = obj['time'];
-  if (time is! Map) return null;
-  final created = time['created'];
-  if (created is int) return created;
-  if (created is num) return created.toInt();
-  return null;
-}
-
-Future<void> _writeOpencodeDb(
-  String path, {
-  bool includeTimeUpdated = true,
-  int extraTurns = 0,
-}) async {
+Future<void> _writeOpencodeDb(String path, {int extraTurns = 0}) async {
   await File(path).parent.create(recursive: true);
   final db = sqlite3.open(path);
   try {
-    if (includeTimeUpdated) {
-      db.execute('''
-CREATE TABLE session (id TEXT PRIMARY KEY, parent_id TEXT, time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL);
-CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, data TEXT NOT NULL, time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL);
-CREATE TABLE part (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, message_id TEXT NOT NULL, data TEXT NOT NULL, time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL);
-''');
-    } else {
-      db.execute('''
-CREATE TABLE session (id TEXT PRIMARY KEY, parent_id TEXT, time_created INTEGER NOT NULL);
-CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, data TEXT NOT NULL, time_created INTEGER NOT NULL);
-CREATE TABLE part (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, message_id TEXT NOT NULL, data TEXT NOT NULL, time_created INTEGER NOT NULL);
-''');
-    }
-    void insertSession() {
-      if (includeTimeUpdated) {
-        db.execute('INSERT INTO session VALUES (?, ?, ?, ?)', [
-          'ses_1',
-          null,
-          1001,
-          1001,
-        ]);
-      } else {
-        db.execute('INSERT INTO session VALUES (?, ?, ?)', [
-          'ses_1',
-          null,
-          1001,
-        ]);
-      }
-    }
-
-    void insertMessage(String id, String role, int created) {
-      final data = '{"role":"$role","time":{"created":$created}}';
-      if (includeTimeUpdated) {
-        db.execute('INSERT INTO message VALUES (?, ?, ?, ?, ?)', [
-          id,
-          'ses_1',
-          data,
-          created,
-          created,
-        ]);
-      } else {
-        db.execute('INSERT INTO message VALUES (?, ?, ?, ?)', [
-          id,
-          'ses_1',
-          data,
-          created,
-        ]);
-      }
-    }
-
-    void insertPart(String id, String messageId, String text, int created) {
-      final data = '{"type":"text","text":"$text"}';
-      if (includeTimeUpdated) {
-        db.execute('INSERT INTO part VALUES (?, ?, ?, ?, ?, ?)', [
-          id,
-          'ses_1',
-          messageId,
-          data,
-          created,
-          created,
-        ]);
-      } else {
-        db.execute('INSERT INTO part VALUES (?, ?, ?, ?, ?)', [
-          id,
-          'ses_1',
-          messageId,
-          data,
-          created,
-        ]);
-      }
-    }
-
-    insertSession();
-    insertMessage('msg_user', 'user', 1001);
-    insertMessage('msg_assistant', 'assistant', 2001);
-    insertPart('part_user', 'msg_user', 'hi', 1001);
-    insertPart('part_assistant', 'msg_assistant', 'hello', 2001);
-    for (var i = 0; i < extraTurns; i++) {
-      final created = 3001 + i;
-      insertMessage('msg_extra_$i', 'user', created);
-      insertPart('part_extra_$i', 'msg_extra_$i', 'extra $i', created);
-    }
+    createOpencodeV2Schema(db);
+    writeOpencodeV2TextTurns(db, extraTurns: extraTurns);
   } finally {
     db.close();
   }

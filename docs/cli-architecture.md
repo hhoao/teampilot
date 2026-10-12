@@ -570,7 +570,7 @@ Provider 可以在语义未启用时返回空结果。是否存在某个 Provide
 | FlashskyAI | 原生团队身份、会话、工作区（`WorkspaceBaseInfoCapability`）、模型、权限、提示、用户额外参数 |
 | Codex | 会话、工作区（`WorkspaceBaseInfoCapability`）、模型、权限、用户额外参数；不注册原生团队身份 Provider |
 | Cursor | 团队行为、会话、工作区（`WorkspaceBaseInfoCapability`）、模型、权限、用户额外参数 |
-| OpenCode | 会话、模型、agent、用户额外参数；始终带 `--standalone`；`WorkspaceBaseInfoCapability` argv 为空，外部目录走 `permissions` 的 `external_directory` 规则 |
+| OpenCode | 会话、用户额外参数；始终带 `--standalone`；TUI 的模型/agent 写入 `opencode.json` 的 `model` / `default_agent`（v2 TUI 无 `--model`/`--agent`）；`opencode run` 仍带这些 flag；官方二进制在 `~/.opencode/bin`；`WorkspaceBaseInfoCapability` argv 为空，外部目录走 `permissions` 的 `external_directory` 规则 |
 
 新增 CLI 时，先在该 CLI 的 `capabilities/` 中实现它实际支持的 Provider，再把实例按
 稳定语义顺序放入 `{cli_name}_tool.dart` 的 `capabilities` 列表。不要在测试或调用方为

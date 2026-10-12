@@ -117,8 +117,7 @@ void main() {
       final idleEntry =
           plugin.firstWhere(
                 (e) =>
-                    e is Map &&
-                    e['package'] == './$opencodeIdlePluginFileName',
+                    e is Map && e['package'] == './$opencodeIdlePluginFileName',
               )
               as Map;
       expect(idleEntry['package'], './$opencodeIdlePluginFileName');
@@ -176,6 +175,49 @@ void main() {
     final headers = (bus['headers'] as Map).cast<String, Object?>();
     expect(headers[teammateBusMcpMemberHeader], 'm1');
     expect(headers[teammateBusMcpSessionHeader], 'session-1');
+  });
+
+  test('mergeOpencodeDefaultModel stamps provider/model for the TUI', () {
+    expect(
+      mergeOpencodeDefaultModel(
+        const <String, Object?>{'plugins': <Object?>[]},
+        providerId: ' opencode-go ',
+        modelId: ' deepseek-v4-flash ',
+      )['model'],
+      'opencode-go/deepseek-v4-flash',
+    );
+    expect(
+      mergeOpencodeDefaultModel(
+        const <String, Object?>{},
+        providerId: '',
+        modelId: 'gpt-5',
+      )['model'],
+      'gpt-5',
+    );
+    expect(
+      mergeOpencodeDefaultModel(
+        const <String, Object?>{'model': 'keep'},
+        providerId: 'x',
+        modelId: '',
+      )['model'],
+      'keep',
+    );
+  });
+
+  test('mergeOpencodeDefaultAgent stamps default_agent', () {
+    expect(
+      mergeOpencodeDefaultAgent(
+        const <String, Object?>{},
+        ' build ',
+      )['default_agent'],
+      'build',
+    );
+    expect(
+      mergeOpencodeDefaultAgent(const <String, Object?>{
+        'default_agent': 'keep',
+      }, ''),
+      const <String, Object?>{'default_agent': 'keep'},
+    );
   });
 
   test('mergeOpencodeProvider writes apiKey/baseURL into provider options', () {
@@ -306,6 +348,7 @@ void main() {
       final options = provider['settings'] as Map;
       expect(options['apiKey'], 'sk-team');
       expect(options['baseURL'], 'https://llm.example.com/v1');
+      expect(config['model'], 'team-openai/gpt-test');
       // mixed-mode bus wiring still present alongside provider/identity.
       expect(config['mcp'], isNotNull);
       expect(config['plugins'], isNotNull);

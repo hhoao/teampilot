@@ -90,6 +90,23 @@ void main() {
     expect(path, '/opt/claude');
   });
 
+  test('OpenCode prefers ~/.opencode/bin over PATH', () async {
+    final run = _FakeRun({
+      "sh -c 'test -x \"\$HOME/.opencode/bin/opencode\" && printf \"%s\\n\" \"\$HOME/.opencode/bin/opencode\"'":
+          const SshCommandResult(
+            exitCode: 0,
+            stdout: '/home/alice/.opencode/bin/opencode\n',
+          ),
+      'command -v opencode': const SshCommandResult(
+        exitCode: 0,
+        stdout: '/home/alice/.local/bin/opencode\n',
+      ),
+    });
+    final path = await locator.resolve(cli: CliTool.opencode, run: run.call);
+    expect(path, '/home/alice/.opencode/bin/opencode');
+    expect(run.calls.first, contains('.opencode/bin/opencode'));
+  });
+
   test('falls back to ~/.local/bin when PATH probes miss', () async {
     final run = _FakeRun({
       "sh -c 'test -x \"\$HOME/.local/bin/claude\" && printf \"%s\\n\" \"\$HOME/.local/bin/claude\"'":

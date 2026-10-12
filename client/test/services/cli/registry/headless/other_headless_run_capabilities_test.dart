@@ -11,6 +11,7 @@ import 'package:teampilot/services/cli/cursor/capabilities/headless.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_home_layout.dart';
 import 'package:teampilot/services/cli/cursor/provider/cursor_launch_environment.dart';
 import 'package:teampilot/services/cli/opencode/capabilities/headless.dart';
+
 HeadlessRunContext ctx({String effort = '', String model = 'm'}) =>
     HeadlessRunContext(
       prompt: 'P',
@@ -103,6 +104,7 @@ void main() {
     );
     expect(args, containsAllInOrder(['--standalone', 'run']));
     expect(args, containsAllInOrder(['--model', 'm', 'P']));
+    expect(args, isNot(contains('--agent')));
     expect(cap.buildEnvironment(run)['OPENCODE_CONFIG_DIR'], '/tmp/c');
   });
 

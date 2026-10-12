@@ -261,9 +261,7 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   }
 
   Future<void> setClaudePersonalAcpDefault(bool value) {
-    return _save(
-      state.preferences.copyWith(claudePersonalAcpDefault: value),
-    );
+    return _save(state.preferences.copyWith(claudePersonalAcpDefault: value));
   }
 
   /// Returns the actual executable string to invoke for [cli]:
@@ -272,10 +270,17 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   ///   3. the CLI's command name (OS resolves via PATH)
   String resolveExecutable([CliTool cli = CliTool.claude]) {
     final user = _userExecutableFor(cli);
+    final located = _locatedExecutables[cli];
+    final preferred = _cliToolRegistry
+        .capability<CliPreferredLaunchExecutable>(cli)
+        ?.preferLaunchExecutable(userPath: user, discoveredPath: located)
+        ?.trim();
+    if (preferred != null && preferred.isNotEmpty) {
+      return CliToolLocator.resolveSpawnExecutable(preferred);
+    }
     if (user.isNotEmpty) {
       return CliToolLocator.resolveSpawnExecutable(user);
     }
-    final located = _locatedExecutables[cli];
     if (located != null && located.isNotEmpty) {
       return CliToolLocator.resolveSpawnExecutable(located);
     }

@@ -6,7 +6,7 @@ import '../registry/launch/cli_launch_capability_error.dart';
 /// Native OpenCode v2 `opencode.json` merge helpers.
 ///
 /// TeamPilot writes v2 keys only (`plugins`, `permissions`, `mcp.servers`,
-/// `providers`). V1 fields are not read or preserved.
+/// `providers`, `model`, `default_agent`). V1 fields are not read or preserved.
 
 const opencodeBusToolTimeoutMs = 86400000; // 24h
 
@@ -15,6 +15,33 @@ const opencodePermissionsKey = 'permissions';
 const opencodeProvidersKey = 'providers';
 const opencodeMcpKey = 'mcp';
 const opencodeMcpServersKey = 'servers';
+const opencodeModelKey = 'model';
+const opencodeDefaultAgentKey = 'default_agent';
+
+/// v2 TUI has no `--model`; the default is `opencode.json` `"model"`.
+Map<String, Object?> mergeOpencodeDefaultModel(
+  Map<String, Object?> config, {
+  required String? providerId,
+  required String? modelId,
+}) {
+  final provider = providerId?.trim() ?? '';
+  final model = modelId?.trim() ?? '';
+  if (model.isEmpty) return config;
+  final selector = provider.isEmpty ? model : '$provider/$model';
+  if (config[opencodeModelKey] == selector) return config;
+  return {...config, opencodeModelKey: selector};
+}
+
+/// v2 TUI has no `--agent`; the default is `opencode.json` `"default_agent"`.
+Map<String, Object?> mergeOpencodeDefaultAgent(
+  Map<String, Object?> config,
+  String? agent,
+) {
+  final id = agent?.trim() ?? '';
+  if (id.isEmpty) return config;
+  if (config[opencodeDefaultAgentKey] == id) return config;
+  return {...config, opencodeDefaultAgentKey: id};
+}
 
 Map<String, Object?> opencodePluginObject({
   required String package,

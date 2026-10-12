@@ -43,12 +43,6 @@ void main() {
       ),
     );
 
-    expect(args, [
-      '--standalone',
-      '--model',
-      'anthropic/claude-sonnet-4',
-      '--agent',
-      'build',
-    ]);
+    expect(args, ['--standalone']);
   });
 }

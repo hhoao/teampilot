@@ -11,6 +11,8 @@ import 'package:teampilot/services/cli/opencode/capabilities/sqlite_worker_pool.
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/chat/conversation/history/session_history_context.dart';
 
+import '../../../../../support/opencode_v2_sqlite.dart';
+
 void main() {
   late Directory base;
   final fs = LocalFilesystem();
@@ -49,39 +51,15 @@ void main() {
     );
   }
 
-  /// Current OpenCode SQLite layout: parent_id is a real column.
   Database openDb() {
     final db = sqlite3.open(p.join(base.path, 'opencode.db'));
     addTearDown(db.close);
-    db.execute('''
-CREATE TABLE session (
-  id TEXT PRIMARY KEY,
-  parent_id TEXT,
-  time_created INTEGER,
-  time_updated INTEGER,
-  data TEXT
-);
-CREATE TABLE message (
-  id TEXT PRIMARY KEY,
-  session_id TEXT,
-  time_created INTEGER,
-  time_updated INTEGER,
-  data TEXT
-);
-CREATE TABLE part (
-  id TEXT PRIMARY KEY,
-  message_id TEXT,
-  session_id TEXT,
-  time_created INTEGER,
-  time_updated INTEGER,
-  data TEXT
-);
-''');
+    createOpencodeV2Schema(db);
     return db;
   }
 
-  /// One user message (+ text part) for a child session, plus its session row.
-  /// Message/part ids derive from [sessionId] so they stay unique per DB.
+  /// One user message for a child session, plus its `session_v2` row.
+  /// Message ids derive from [sessionId] so they stay unique per DB.
   void insertChildSession(
     Database db, {
     required String sessionId,
@@ -89,51 +67,20 @@ CREATE TABLE part (
     String userText = 'child hello',
     int created = 3,
   }) {
-    db.execute(
-      'INSERT INTO session(id, parent_id, time_created, time_updated, data) '
-      'VALUES (?, ?, ?, ?, ?)',
-      [
-        sessionId,
-        parentId,
-        created,
-        created,
-        jsonEncode({
-          'id': sessionId,
-          'time': {'created': created},
-        }),
-      ],
+    insertOpencodeV2Session(
+      db,
+      id: sessionId,
+      parentId: parentId,
+      timeCreated: created,
+      timeUpdated: created,
     );
-    final msgId = 'msg_u_$sessionId';
-    db.execute(
-      'INSERT INTO message(id, session_id, time_created, data) '
-      'VALUES (?, ?, ?, ?)',
-      [
-        msgId,
-        sessionId,
-        created + 1,
-        jsonEncode({
-          'id': msgId,
-          'sessionID': sessionId,
-          'role': 'user',
-          'time': {'created': created + 1},
-        }),
-      ],
-    );
-    db.execute(
-      'INSERT INTO part(id, message_id, session_id, time_created, data) '
-      'VALUES (?, ?, ?, ?, ?)',
-      [
-        'prt_u_$sessionId',
-        msgId,
-        sessionId,
-        created + 1,
-        jsonEncode({
-          'id': 'prt_u_$sessionId',
-          'messageID': msgId,
-          'type': 'text',
-          'text': userText,
-        }),
-      ],
+    insertOpencodeV2User(
+      db,
+      id: 'msg_u_$sessionId',
+      sessionId: sessionId,
+      seq: 1,
+      text: userText,
+      timeCreated: created + 1,
     );
   }
 
@@ -201,30 +148,23 @@ CREATE TABLE part (
             adapterId: 'opencode',
             fragments: [
               AiTranscriptFragment(
-                name: 'message/msg_task.json',
+                name: 'session_message/msg_task.json',
                 bytes: utf8.encode(
                   jsonEncode({
                     'id': 'msg_task',
-                    'role': 'assistant',
+                    'type': 'assistant',
                     'time': {'created': 1},
-                  }),
-                ),
-              ),
-              AiTranscriptFragment(
-                name: 'part/msg_task/prt_task.json',
-                bytes: utf8.encode(
-                  jsonEncode({
-                    'id': 'prt_task',
-                    'type': 'tool',
-                    'tool': 'task',
-                    'callID': 'call_task_1',
-                    'state': {
-                      'status': 'completed',
-                      'input': {'prompt': 'do work'},
-                      'output':
-                          '<task id="$childSessionId" state="completed">'
-                          '<task_result>done</task_result></task>',
-                    },
+                    'content': [
+                      opencodeV2Tool(
+                        id: 'call_task_1',
+                        name: 'task',
+                        status: 'completed',
+                        input: {'prompt': 'do work'},
+                        output:
+                            '<task id="$childSessionId" state="completed">'
+                            '<task_result>done</task_result></task>',
+                      ),
+                    ],
                   }),
                 ),
               ),
@@ -349,39 +289,13 @@ CREATE TABLE part (
 
     // 子会话追加一条 message + part → 指纹移动 → 必须重新解析出增长后的
     // 内容(否则运行中的预览永远停留在旧快照)。
-    final msgId = 'msg_grow_$childSessionId';
-    db.execute(
-      'INSERT INTO message(id, session_id, time_created, time_updated, data) '
-      'VALUES (?, ?, ?, ?, ?)',
-      [
-        msgId,
-        childSessionId,
-        50,
-        50,
-        jsonEncode({
-          'id': msgId,
-          'sessionID': childSessionId,
-          'role': 'assistant',
-          'time': {'created': 50},
-        }),
-      ],
-    );
-    db.execute(
-      'INSERT INTO part(id, message_id, session_id, time_created, '
-      'time_updated, data) VALUES (?, ?, ?, ?, ?, ?)',
-      [
-        'prt_grow_$childSessionId',
-        msgId,
-        childSessionId,
-        50,
-        50,
-        jsonEncode({
-          'id': 'prt_grow_$childSessionId',
-          'messageID': msgId,
-          'type': 'text',
-          'text': 'more progress',
-        }),
-      ],
+    insertOpencodeV2Assistant(
+      db,
+      id: 'msg_grow_$childSessionId',
+      sessionId: childSessionId,
+      seq: 2,
+      timeCreated: 50,
+      content: [opencodeV2Text('more progress')],
     );
 
     final second = await resolver.resolve(
@@ -621,77 +535,6 @@ CREATE TABLE part (
       },
     );
 
-    test('discovery falls back to legacy data-blob parent linkage', () async {
-      final db = sqlite3.open(p.join(base.path, 'opencode.db'));
-      addTearDown(db.close);
-      db.execute('''
-CREATE TABLE session (
-  id TEXT PRIMARY KEY,
-  data TEXT,
-  time_created INTEGER
-);
-''');
-      db.execute('''
-INSERT INTO session(id, data, time_created)
-VALUES (
-  'ses_child004',
-  '{"id":"ses_child004","parentID":"ses_parent001","time":{"created":3}}',
-  3
-)
-''');
-      db.execute('''
-CREATE TABLE message (
-  id TEXT PRIMARY KEY,
-  session_id TEXT,
-  time_created INTEGER,
-  data TEXT
-);
-CREATE TABLE part (
-  id TEXT PRIMARY KEY,
-  message_id TEXT,
-  session_id TEXT,
-  time_created INTEGER,
-  data TEXT
-);
-''');
-      db.execute('''
-INSERT INTO message(id, session_id, time_created, data)
-VALUES (
-  'msg_child_user',
-  'ses_child004',
-  4,
-  '{"role":"user","time":{"created":4}}'
-)
-''');
-      db.execute('''
-INSERT INTO part(id, message_id, session_id, time_created, data)
-VALUES (
-  'prt_child_text',
-  'msg_child_user',
-  'ses_child004',
-  4,
-  '{"type":"text","text":"legacy child"}'
-)
-''');
-
-      final result = await resolver.resolve(
-        part: runningTaskPart(),
-        ctx: ctx(dataDir: base.path, persistedNativeId: parentSessionId),
-        parentHandle: null,
-        rootTranscriptPath: null,
-      );
-
-      expect(result, isNotNull);
-      expect(
-        (result!.handle as SubagentSessionHandle).sessionId,
-        'ses_child004',
-      );
-      expect(
-        (result.messages.first.parts.single as AiTextPart).text,
-        'legacy child',
-      );
-    });
-
     test(
       'does not discover for completed/error parts without a result id',
       () async {
@@ -808,7 +651,7 @@ VALUES (
 
       // Remove the child's session row → the store fingerprint moves and the
       // re-scan finds nothing; the memo must not resurrect the old child.
-      db.execute('DELETE FROM session WHERE id = ?', [childSessionId]);
+      db.execute('DELETE FROM session_v2 WHERE id = ?', [childSessionId]);
 
       expect(
         await resolver.resolve(

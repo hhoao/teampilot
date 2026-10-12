@@ -753,6 +753,12 @@ void main() {
           )) {
             return const CliInstallerCommandResult(exitCode: 0);
           }
+          if (command.commandLine.contains('.opencode/bin/opencode')) {
+            return const CliInstallerCommandResult(
+              exitCode: 0,
+              stdout: '/home/alice/.opencode/bin/opencode\n',
+            );
+          }
           if (command.commandLine == 'which opencode') {
             return const CliInstallerCommandResult(
               exitCode: 0,
@@ -769,14 +775,14 @@ void main() {
       );
 
       expect(result.success, isTrue, reason: result.message);
-      expect(result.executablePath, '/home/alice/.local/bin/opencode');
+      expect(result.executablePath, '/home/alice/.opencode/bin/opencode');
       expect(
         commands.any(
           (c) => c.contains('curl -fsSL https://opencode.ai/v2/install'),
         ),
         isTrue,
       );
-      expect(commands.any((c) => c == 'which opencode'), isTrue);
+      expect(commands.any((c) => c.contains('.opencode/bin/opencode')), isTrue);
     },
   );
 
@@ -792,6 +798,12 @@ void main() {
           'curl -fsSL https://opencode.ai/v2/install | bash',
         )) {
           return const CliInstallerCommandResult(exitCode: 0);
+        }
+        if (command.commandLine.contains('.opencode/bin/opencode')) {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/home/alice/.opencode/bin/opencode\n',
+          );
         }
         if (command.commandLine.startsWith('sh -c') &&
             command.commandLine.contains('command -v opencode')) {
@@ -811,7 +823,7 @@ void main() {
     );
 
     expect(result.success, isTrue, reason: result.message);
-    expect(result.executablePath, '/home/alice/.local/bin/opencode');
+    expect(result.executablePath, '/home/alice/.opencode/bin/opencode');
     expect(_isTermuxProbe(commands[0]), isTrue);
     expect(
       commands.any(

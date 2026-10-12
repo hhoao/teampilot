@@ -1,5 +1,6 @@
 import '../../models/team_config.dart';
 import 'cli_tool_locator.dart';
+import 'registry/capabilities/cli_executable_capability.dart';
 import 'registry/cli_tool_registry.dart';
 import 'remote_cli_locator.dart';
 
@@ -29,10 +30,11 @@ class CliExecutableDiscovery {
     final discoveries = await Future.wait([
       for (final cli in _localDiscoverable)
         () async {
-          final resolver = _registry.capability<CliExecutableCapability>(cli)!;
-          final path = await CliToolLocator(
-            resolver.defaultExecutableName,
-          ).locate(runner: runner, includeShellFallback: includeShellFallback);
+          final path = await _locateLocalCli(
+            cli,
+            runner: runner,
+            includeShellFallback: includeShellFallback,
+          );
           if (path == null || path.isEmpty) return null;
           return MapEntry(cli, path);
         }(),
@@ -47,7 +49,28 @@ class CliExecutableDiscovery {
     CliTool cli, {
     ProcessRunner runner = cliToolDefaultProcessRun,
     bool includeShellFallback = true,
+  }) {
+    return _locateLocalCli(
+      cli,
+      runner: runner,
+      includeShellFallback: includeShellFallback,
+    );
+  }
+
+  Future<String?> _locateLocalCli(
+    CliTool cli, {
+    required ProcessRunner runner,
+    required bool includeShellFallback,
   }) async {
+    final custom = _registry.capability<CliLocalExecutableLocator>(cli);
+    if (custom != null) {
+      final path = await custom.locateLocal(
+        runner: runner,
+        includeShellFallback: includeShellFallback,
+      );
+      final trimmed = path?.trim() ?? '';
+      return trimmed.isEmpty ? null : trimmed;
+    }
     final resolver = _registry.capability<CliExecutableCapability>(cli);
     if (resolver == null) return null;
     final path = await CliToolLocator(

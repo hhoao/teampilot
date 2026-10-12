@@ -61,8 +61,8 @@ final class OpencodeHeadlessCapability
       args: ['run'],
     );
     yield* const OpencodeSessionSelectionLaunch().buildLaunchArgs(interactive);
-    yield* const OpencodeModelLaunch().buildLaunchArgs(interactive);
-    yield* const OpencodeAgentLaunch().buildLaunchArgs(interactive);
+    yield* const OpencodeModelLaunch().buildHeadlessLaunchArgs(interactive);
+    yield* const OpencodeAgentLaunch().buildHeadlessLaunchArgs(interactive);
     yield CliLaunchArgContribution(
       key: 'opencode-headless-prompt',
       phase: LaunchArgPhase.prompt,
@@ -105,6 +105,11 @@ final class OpencodeHeadlessCapability
     );
     var config = await readJsonMap(configPath);
     config = mergeOpencodeProvider(config, resolved);
+    config = mergeOpencodeDefaultModel(
+      config,
+      providerId: resolved.id,
+      modelId: ctx.model,
+    );
     config = mergeOpencodeSecurityPolicy(config, ctx.securityPolicy);
     final externalDirectories = <String>[
       for (final directory in ctx.additionalDirectories)

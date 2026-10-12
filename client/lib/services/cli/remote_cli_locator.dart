@@ -58,16 +58,26 @@ class RemoteCliLocator {
   }
 }
 
-/// Default probe: a non-interactive `command -v <bin>` first, then bash/zsh login
-/// shells so the remote PATH matches an interactive terminal. Parameterized by
-/// the CLI's [executableName] (claude/flashskyai/codex/opencode/cursor-agent).
+/// Default probe: optional [extraWellKnownProbes] first, then `command -v`,
+/// then bash/zsh login shells so the remote PATH matches an interactive
+/// terminal. Parameterized by the CLI's [executableName].
 final class DefaultRemoteCliLocator {
-  const DefaultRemoteCliLocator(this.executableName);
+  const DefaultRemoteCliLocator(
+    this.executableName, {
+    this.extraWellKnownProbes = const [],
+  });
 
   final String executableName;
 
+  /// Tried before `command -v` (official install dirs that beat PATH).
+  final List<String> extraWellKnownProbes;
+
   Future<String?> locate(SshCommandRunner run) async {
     final failures = _ProbeFailures();
+    for (final extra in extraWellKnownProbes) {
+      final located = await _tryCommand(run, extra, failures);
+      if (located != null) return located;
+    }
     final probe = 'command -v $executableName';
     final direct = await _tryCommand(run, probe, failures);
     if (direct != null) return direct;

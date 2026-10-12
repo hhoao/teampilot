@@ -1,17 +1,25 @@
+import 'dart:io';
+
 import '../../../../l10n/app_localizations.dart';
+import '../../cli_tool_locator.dart';
 import '../../installer_types.dart';
 import '../../remote_cli_locator.dart';
 import '../../registry/capabilities/cli_executable_capability.dart';
 import '../../registry/installer/installer_context.dart';
 import '../../registry/installer/npm_installer_capability.dart';
 import '../../registry/installer/termux_remote_detect.dart';
+import '../opencode_bin.dart';
 
 /// OpenCode identity & binary, plus its in-app v2 curl installer.
 ///
 /// Installs from https://opencode.ai/v2/install (native `opencode` binary).
 /// Termux/Android is rejected up front — the official script targets
 /// desktop glibc/musl Linux and macOS, not bionic.
-final class OpencodeExecutableCapability implements CliExecutableCapability {
+final class OpencodeExecutableCapability
+    implements
+        CliExecutableCapability,
+        CliLocalExecutableLocator,
+        CliPreferredLaunchExecutable {
   const OpencodeExecutableCapability();
 
   static const installUrl = 'https://opencode.ai/v2/install';
@@ -25,6 +33,12 @@ final class OpencodeExecutableCapability implements CliExecutableCapability {
 
   static String get unixInstallScript => 'curl -fsSL $installUrl | bash';
 
+  static String get _postInstallLocateScript => opencodePostInstallLocateScript(
+    fallbackScript: NpmInstallerCapability.remotePostInstallLocateScript(
+      executableName,
+    ),
+  );
+
   @override
   String label(AppLocalizations l10n) => l10n.appProviderToolOpencode;
 
@@ -36,7 +50,55 @@ final class OpencodeExecutableCapability implements CliExecutableCapability {
 
   @override
   Future<String?> locateRemote(SshCommandRunner run) =>
-      const DefaultRemoteCliLocator(executableName).locate(run);
+      const DefaultRemoteCliLocator(
+        executableName,
+        extraWellKnownProbes: [opencodeOfficialRemoteBinProbe],
+      ).locate(run);
+
+  @override
+  Future<String?> locateLocal({
+    required ProcessRunner runner,
+    bool includeShellFallback = true,
+  }) async {
+    final home =
+        Platform.environment['HOME']?.trim() ??
+        Platform.environment['USERPROFILE']?.trim() ??
+        '';
+    final wellKnown = opencodeOfficialExecutablePath(
+      homeDirectory: home,
+      isWindows: Platform.isWindows,
+    );
+    if (wellKnown != null) {
+      final probed = await _probeExistingPath(runner, wellKnown);
+      if (probed != null) return probed;
+    }
+    return CliToolLocator(
+      executableName,
+    ).locate(runner: runner, includeShellFallback: includeShellFallback);
+  }
+
+  @override
+  String? preferLaunchExecutable({
+    required String userPath,
+    required String? discoveredPath,
+  }) {
+    final home =
+        Platform.environment['HOME']?.trim() ??
+        Platform.environment['USERPROFILE']?.trim() ??
+        '';
+    final wellKnown = opencodeOfficialExecutablePath(
+      homeDirectory: home,
+      isWindows: Platform.isWindows,
+    );
+    final wellKnownExists = wellKnown != null && File(wellKnown).existsSync();
+    return preferOpencodeLaunchExecutable(
+      userPath: userPath,
+      discoveredPath: discoveredPath,
+      wellKnownPath: wellKnownExists ? wellKnown : null,
+      isStaleInstall: (path) =>
+          isStaleOpencodeNpmInstall(path, linkTarget: _linkTarget(path)),
+    );
+  }
 
   @override
   CliExecutablePathRowSpec get executablePathRowSpec =>
@@ -88,13 +150,19 @@ final class OpencodeExecutableCapability implements CliExecutableCapability {
     }
 
     host.report(CliInstallPhase.locatingExecutable);
-    final path = await host.locateExecutable(executableName);
+    final located = await host.runLocal(
+      CliInstallerCommand.unixShellScript(_postInstallLocateScript),
+      phase: CliInstallPhase.locatingExecutable,
+    );
+    final path =
+        firstInstallerOutputLine(located) ??
+        await host.locateExecutable(executableName);
     if (path == null) {
       return CliInstallResult(
         success: false,
         message:
             '$displayName install finished but the executable could not be '
-            'located. Add ~/.local/bin to PATH if needed.',
+            'located. Add ~/.opencode/bin to PATH if needed.',
       );
     }
     return CliInstallResult(
@@ -124,9 +192,7 @@ final class OpencodeExecutableCapability implements CliExecutableCapability {
       host.report(CliInstallPhase.locatingExecutable);
       final existing = await host.runSsh(
         profile,
-        CliInstallerCommand.unixShellScript(
-          NpmInstallerCapability.remotePostInstallLocateScript(executableName),
-        ),
+        CliInstallerCommand.unixShellScript(_postInstallLocateScript),
       );
       final path = firstInstallerOutputLine(existing);
       if (path != null) {
@@ -160,9 +226,7 @@ final class OpencodeExecutableCapability implements CliExecutableCapability {
     host.report(CliInstallPhase.locatingExecutable);
     final resolved = await host.runSsh(
       profile,
-      CliInstallerCommand.unixShellScript(
-        NpmInstallerCapability.remotePostInstallLocateScript(executableName),
-      ),
+      CliInstallerCommand.unixShellScript(_postInstallLocateScript),
     );
     final path = firstInstallerOutputLine(resolved);
     if (path == null) {
@@ -178,5 +242,33 @@ final class OpencodeExecutableCapability implements CliExecutableCapability {
       message: '$displayName installed on ${profile.hostIdentifier}.',
       executablePath: path,
     );
+  }
+
+  static Future<String?> _probeExistingPath(
+    ProcessRunner runner,
+    String path,
+  ) async {
+    try {
+      final quoted = path.replaceAll("'", r"'\''");
+      final result = await runner('sh', [
+        '-c',
+        'test -x \'$quoted\' && printf \'%s\\n\' \'$quoted\'',
+      ]);
+      if (result.exitCode != 0) return null;
+      return CliToolLocator.parseFirstStdoutLine(result.stdout);
+    } on Object {
+      return null;
+    }
+  }
+
+  static String? _linkTarget(String path) {
+    try {
+      if (FileSystemEntity.isLinkSync(path)) {
+        return Link(path).targetSync();
+      }
+    } on Object {
+      return null;
+    }
+    return null;
   }
 }

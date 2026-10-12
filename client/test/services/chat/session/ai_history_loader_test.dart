@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:sqlite3/sqlite3.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -44,6 +43,7 @@ import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../../../support/fake_ai_history_registry.dart';
+import '../../../support/opencode_v2_sqlite.dart';
 import '../../../support/post_frame_test_harness.dart';
 
 void main() {
@@ -3980,92 +3980,6 @@ Future<void> _copyTree(String source, String destination) async {
   }
 }
 
-Future<void> _writeOpencodeDbFromJsonTree(
-  String dbPath,
-  String storageRoot,
-) async {
-  await File(dbPath).parent.create(recursive: true);
-  final db = sqlite3.open(dbPath);
-  try {
-    db.execute('''
-CREATE TABLE session (id TEXT PRIMARY KEY, parent_id TEXT, time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL);
-CREATE TABLE message (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, data TEXT NOT NULL, time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL);
-CREATE TABLE part (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, message_id TEXT NOT NULL, data TEXT NOT NULL, time_created INTEGER NOT NULL, time_updated INTEGER NOT NULL);
-''');
-    final messagesDir = Directory(p.join(storageRoot, 'message'));
-    final partsDir = Directory(p.join(storageRoot, 'part'));
-    final sessionIds = <String>{};
-    if (await messagesDir.exists()) {
-      await for (final entity in messagesDir.list(recursive: true)) {
-        if (entity is! File || !entity.path.endsWith('.json')) continue;
-        final raw = await entity.readAsString();
-        final obj = jsonDecode(raw);
-        if (obj is! Map) continue;
-        final id = '${obj['id'] ?? p.basenameWithoutExtension(entity.path)}';
-        final sessionId = '${obj['sessionID'] ?? ''}';
-        if (id.isEmpty || sessionId.isEmpty) continue;
-        sessionIds.add(sessionId);
-        final created = _jsonTime(Map<Object?, Object?>.from(obj)) ?? 1;
-        db.execute('INSERT INTO message VALUES (?, ?, ?, ?, ?)', [
-          id,
-          sessionId,
-          raw,
-          created,
-          created,
-        ]);
-      }
-    }
-    if (await partsDir.exists()) {
-      await for (final entity in partsDir.list(recursive: true)) {
-        if (entity is! File) continue;
-        final raw = await entity.readAsString();
-        Map<String, dynamic>? obj;
-        try {
-          final decoded = jsonDecode(raw);
-          if (decoded is Map) obj = Map<String, dynamic>.from(decoded);
-        } on Object {
-          obj = null;
-        }
-        final id = obj == null
-            ? p.basenameWithoutExtension(entity.path)
-            : '${obj['id'] ?? p.basenameWithoutExtension(entity.path)}';
-        final messageId = obj == null
-            ? p.basename(p.dirname(entity.path))
-            : '${obj['messageID'] ?? p.basename(p.dirname(entity.path))}';
-        final sessionId = obj == null
-            ? sessionIds.first
-            : '${obj['sessionID'] ?? sessionIds.first}';
-        final created = obj == null
-            ? 1
-            : (_jsonTime(Map<Object?, Object?>.from(obj)) ?? 1);
-        db.execute('INSERT INTO part VALUES (?, ?, ?, ?, ?, ?)', [
-          id,
-          sessionId,
-          messageId,
-          raw,
-          created,
-          created,
-        ]);
-      }
-    }
-    for (final sessionId in sessionIds) {
-      db.execute('INSERT INTO session VALUES (?, ?, ?, ?)', [
-        sessionId,
-        null,
-        1,
-        1,
-      ]);
-    }
-  } finally {
-    db.close();
-  }
-}
-
-int? _jsonTime(Map<Object?, Object?> obj) {
-  final time = obj['time'];
-  if (time is! Map) return null;
-  final created = time['created'];
-  if (created is int) return created;
-  if (created is num) return created.toInt();
-  return null;
+Future<void> _writeOpencodeDbFromJsonTree(String dbPath, String storageRoot) {
+  return writeOpencodeV2DbFromV1JsonTree(dbPath, storageRoot);
 }

@@ -1,4 +1,5 @@
 import '../../../../l10n/app_localizations.dart';
+import '../../cli_tool_locator.dart';
 import '../../installer_types.dart';
 import '../installer/installer_context.dart';
 import '../cli_capability.dart';
@@ -87,4 +88,22 @@ abstract interface class CliExecutableCapability implements CliCapability {
 
   /// Settings-row metadata for the executable-path control.
   CliExecutablePathRowSpec get executablePathRowSpec;
+}
+
+/// Optional local locate override so a CLI can probe well-known install dirs
+/// before PATH / `~/.local/bin`.
+abstract interface class CliLocalExecutableLocator implements CliCapability {
+  Future<String?> locateLocal({
+    required ProcessRunner runner,
+    bool includeShellFallback = true,
+  });
+}
+
+/// Optional rewrite of the path TeamPilot will spawn, e.g. skip a leftover
+/// installer when the official binary exists.
+abstract interface class CliPreferredLaunchExecutable implements CliCapability {
+  String? preferLaunchExecutable({
+    required String userPath,
+    required String? discoveredPath,
+  });
 }
