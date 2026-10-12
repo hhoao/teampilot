@@ -7,6 +7,7 @@ import 'package:acpd_test/acpd_test.dart' as acpd_test;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/acp/acp_connection.dart';
 import 'package:teampilot/services/acp/acp_frame_logger.dart';
+import 'package:teampilot/services/acp/acp_session_runtime.dart';
 import 'package:teampilot/services/acp/acp_transport.dart';
 import 'package:teampilot/services/cli/gemini/capabilities/acp.dart';
 
@@ -193,7 +194,7 @@ void main() {
         clientVersion: '1.0.0',
         authenticateMethodId: 'cursor_login',
       ),
-      throwsA(isA<acpd.RpcError>()),
+      throwsA(isA<AcpAuthenticateException>()),
     );
   });
 }

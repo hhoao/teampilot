@@ -86,6 +86,19 @@ class AcpFlagRejected implements Exception {
   String toString() => 'AcpFlagRejected: $message';
 }
 
+/// The agent rejected or aborted ACP `authenticate` (typically not logged in).
+///
+/// [message] is diagnostic. The UI surfaces the not-logged-in copy and the
+/// runtime must not try another argv candidate.
+class AcpAuthenticateException implements Exception {
+  AcpAuthenticateException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'AcpAuthenticateException: $message';
+}
+
 /// Thrown by [AcpSessionRuntime.start] when every ACP flag candidate failed.
 ///
 /// [reason] carries the l10n key [acpLaunchFailedVersion]; the UI layer

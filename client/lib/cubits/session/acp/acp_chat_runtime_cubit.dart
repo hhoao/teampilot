@@ -244,6 +244,12 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
             : error.reason,
       );
       return;
+    } on AcpAuthenticateException {
+      _endWith(
+        AcpChatErrorKind.launchFailed,
+        _strings?.notLoggedIn ?? defaultAcpChatStrings.notLoggedIn,
+      );
+      return;
     } on Object catch (error, stackTrace) {
       appLogger.e(
         '[acp-chat] session $sessionId launch failed: $error',

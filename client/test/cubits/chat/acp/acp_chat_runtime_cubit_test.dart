@@ -902,6 +902,27 @@ void main() {
     },
   );
 
+  test(
+    'AcpAuthenticateException → launchFailed kind + notLoggedIn copy',
+    () async {
+      runtime.startError = AcpAuthenticateException('x');
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'cursor-agent',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+
+      expect(cubit.state.phase, AcpChatPhase.ended);
+      expect(cubit.state.error?.kind, AcpChatErrorKind.launchFailed);
+      expect(
+        (cubit.state.messages.single.parts.single as AiTextPart).text,
+        'Not logged in',
+      );
+      await cubit.close();
+    },
+  );
+
   test('sendPrompt guards concurrent turns (sequential only)', () async {
     final cubit = bootCubit();
     await cubit.start(

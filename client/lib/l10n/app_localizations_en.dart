@@ -9287,5 +9287,5 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get acpChatNotLoggedIn =>
-      'Claude isn\'t logged in. Sign in under Settings → Providers, or switch to a Claude API key.';
+      'The agent isn\'t logged in. Sign in under Settings → Providers, then try again.';
 }

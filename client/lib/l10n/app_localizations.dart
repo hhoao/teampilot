@@ -16493,7 +16493,7 @@ abstract class AppLocalizations {
   /// No description provided for @acpChatNotLoggedIn.
   ///
   /// In en, this message translates to:
-  /// **'Claude isn\'t logged in. Sign in under Settings → Providers, or switch to a Claude API key.'**
+  /// **'The agent isn\'t logged in. Sign in under Settings → Providers, then try again.'**
   String get acpChatNotLoggedIn;
 }
 

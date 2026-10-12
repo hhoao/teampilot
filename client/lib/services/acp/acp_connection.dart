@@ -6,6 +6,7 @@ import 'package:acpd/acpd.dart' as acpd;
 import 'acp_agent_translator.dart';
 import 'acp_frame_logger.dart';
 import 'acp_session.dart';
+import 'acp_session_runtime.dart';
 import 'acp_transport.dart';
 
 /// Result of the ACP `initialize` handshake.
@@ -257,10 +258,14 @@ class AcpAgentConnection {
       response.agentCapabilities,
     );
     if (authenticateMethodId != null) {
-      await _client.client.authenticate(
-        acpd.AuthenticateRequest(methodId: authenticateMethodId),
-        timeout: timeout,
-      );
+      try {
+        await _client.client.authenticate(
+          acpd.AuthenticateRequest(methodId: authenticateMethodId),
+          timeout: timeout,
+        );
+      } on Object catch (error) {
+        throw AcpAuthenticateException(error.toString());
+      }
     }
     return AcpInitializeResult(
       protocolVersion: response.protocolVersion.value,

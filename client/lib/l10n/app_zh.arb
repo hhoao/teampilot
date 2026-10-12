@@ -3952,5 +3952,5 @@
   "claudePersonalAcpAndroidDisabled": "在远程 SSH exec 就绪前，ACP 聊天仅限桌面。",
   "claudeAcpAdapterInstallButton": "安装 ACP 适配器",
   "acpLaunchFailedAdapter": "无法启动 Claude ACP 适配器（claude-agent-acp）。请安装后重试。",
-  "acpChatNotLoggedIn": "Claude 尚未登录。请到设置 → 服务商完成登录，或改用 API Key。"
+  "acpChatNotLoggedIn": "代理尚未登录。请到设置 → 服务商完成登录后重试。"
 }

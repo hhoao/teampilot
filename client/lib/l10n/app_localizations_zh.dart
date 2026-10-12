@@ -8882,5 +8882,5 @@ class AppLocalizationsZh extends AppLocalizations {
       '无法启动 Claude ACP 适配器（claude-agent-acp）。请安装后重试。';
 
   @override
-  String get acpChatNotLoggedIn => 'Claude 尚未登录。请到设置 → 服务商完成登录，或改用 API Key。';
+  String get acpChatNotLoggedIn => '代理尚未登录。请到设置 → 服务商完成登录后重试。';
 }
