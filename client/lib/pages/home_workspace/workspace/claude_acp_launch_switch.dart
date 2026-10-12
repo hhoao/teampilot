@@ -6,17 +6,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../cubits/session_preferences_cubit.dart';
 import '../../../models/team_config.dart';
 
-bool _isAndroid(bool? isAndroidOverride) =>
-    isAndroidOverride ?? Platform.isAndroid;
-
-bool _personalClaudeAcpAllowed({
+bool _personalAcpAllowed({
   required bool isPersonal,
   required CliTool? cli,
   bool? isAndroidOverride,
-}) => isPersonal && cli == CliTool.claude && !_isAndroid(isAndroidOverride);
+}) =>
+    isPersonal &&
+    (cli == CliTool.claude || cli == CliTool.cursor) &&
+    !(isAndroidOverride ?? Platform.isAndroid);
 
-/// Final ACP flag for a launch: [requested] only counts for personal Claude
-/// and is always false on Android. Gemini ACP is inferred by session create.
 bool resolveLaunchAcp({
   required bool isPersonal,
   required CliTool? cli,
@@ -24,22 +22,24 @@ bool resolveLaunchAcp({
   bool? isAndroidOverride,
 }) =>
     requested &&
-    _personalClaudeAcpAllowed(
+    _personalAcpAllowed(
       isPersonal: isPersonal,
       cli: cli,
       isAndroidOverride: isAndroidOverride,
     );
 
-/// Current settings default for "personal Claude uses ACP"; true when the
-/// preferences cubit is not in scope (matches [SessionPreferences] default).
-bool readClaudePersonalAcpDefault(BuildContext context) {
+bool readPersonalAcpDefault(BuildContext context, CliTool? cli) {
   try {
-    return context
-        .read<SessionPreferencesCubit>()
-        .state
-        .preferences
-        .claudePersonalAcpDefault;
+    final prefs = context.read<SessionPreferencesCubit>().state.preferences;
+    return switch (cli) {
+      CliTool.claude => prefs.claudePersonalAcpDefault,
+      CliTool.cursor => prefs.cursorPersonalAcpDefault,
+      _ => false,
+    };
   } on ProviderNotFoundException {
-    return true;
+    return cli == CliTool.claude || cli == CliTool.cursor;
   }
 }
+
+bool readClaudePersonalAcpDefault(BuildContext context) =>
+    readPersonalAcpDefault(context, CliTool.claude);

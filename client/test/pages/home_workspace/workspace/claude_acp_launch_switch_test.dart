@@ -18,7 +18,19 @@ void main() {
       );
     });
 
-    test('false for team, non-Claude, not requested, or Android', () {
+    test('true for personal Cursor when requested on desktop', () {
+      expect(
+        resolveLaunchAcp(
+          isPersonal: true,
+          cli: CliTool.cursor,
+          requested: true,
+          isAndroidOverride: false,
+        ),
+        isTrue,
+      );
+    });
+
+    test('false for team, Gemini, not requested, or Android', () {
       bool resolve({
         bool isPersonal = true,
         CliTool? cli = CliTool.claude,
@@ -35,6 +47,10 @@ void main() {
       expect(resolve(cli: null), isFalse);
       expect(resolve(requested: false), isFalse);
       expect(resolve(isAndroid: true), isFalse);
+      expect(
+        resolve(cli: CliTool.cursor, isAndroid: true),
+        isFalse,
+      );
     });
   });
 

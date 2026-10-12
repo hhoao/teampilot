@@ -921,7 +921,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       acp: resolveLaunchAcp(
         isPersonal: isSimple,
         cli: launchCli,
-        requested: readClaudePersonalAcpDefault(context),
+        requested: readPersonalAcpDefault(context, launchCli),
       ),
       generateLaunch: !isSimple && _generateLaunch,
       presetId: _selectedPresetId,

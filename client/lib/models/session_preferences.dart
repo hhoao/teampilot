@@ -16,6 +16,7 @@ class SessionPreferences {
     this.openExistingSessionStartsTerminal = false,
     this.chatSubmitSwitchesToTerminal = false,
     this.claudePersonalAcpDefault = true,
+    this.cursorPersonalAcpDefault = true,
   }) : cliExecutablePaths = Map.unmodifiable(
          _normalizeCliExecutablePaths(cliExecutablePaths),
        ),
@@ -57,6 +58,8 @@ class SessionPreferences {
           json['chatSubmitSwitchesToTerminal'] as bool? ?? false,
       claudePersonalAcpDefault:
           json['claudePersonalAcpDefault'] as bool? ?? true,
+      cursorPersonalAcpDefault:
+          json['cursorPersonalAcpDefault'] as bool? ?? true,
     );
   }
 
@@ -127,6 +130,11 @@ class SessionPreferences {
   /// the runtime they were started with.
   final bool claudePersonalAcpDefault;
 
+  /// When true (the default), new personal Cursor sessions launch as ACP chat
+  /// instead of PTY. Controlled from CLI settings; existing sessions keep
+  /// the runtime they were started with.
+  final bool cursorPersonalAcpDefault;
+
   String cliExecutablePathFor(String toolId) =>
       cliExecutablePaths[toolId]?.trim() ?? '';
 
@@ -147,6 +155,7 @@ class SessionPreferences {
     bool? openExistingSessionStartsTerminal,
     bool? chatSubmitSwitchesToTerminal,
     bool? claudePersonalAcpDefault,
+    bool? cursorPersonalAcpDefault,
   }) {
     return SessionPreferences(
       cliExecutablePaths: cliExecutablePaths ?? this.cliExecutablePaths,
@@ -177,6 +186,8 @@ class SessionPreferences {
           chatSubmitSwitchesToTerminal ?? this.chatSubmitSwitchesToTerminal,
       claudePersonalAcpDefault:
           claudePersonalAcpDefault ?? this.claudePersonalAcpDefault,
+      cursorPersonalAcpDefault:
+          cursorPersonalAcpDefault ?? this.cursorPersonalAcpDefault,
     );
   }
 
@@ -198,6 +209,7 @@ class SessionPreferences {
       'openExistingSessionStartsTerminal': openExistingSessionStartsTerminal,
       'chatSubmitSwitchesToTerminal': chatSubmitSwitchesToTerminal,
       'claudePersonalAcpDefault': claudePersonalAcpDefault,
+      'cursorPersonalAcpDefault': cursorPersonalAcpDefault,
     };
   }
 

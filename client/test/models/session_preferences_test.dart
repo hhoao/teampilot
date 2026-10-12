@@ -105,6 +105,20 @@ void main() {
       );
     });
 
+    test('cursorPersonalAcpDefault defaults true and round-trips', () {
+      expect(SessionPreferences().cursorPersonalAcpDefault, isTrue);
+      expect(
+        SessionPreferences.fromJson(const {}).cursorPersonalAcpDefault,
+        isTrue,
+      );
+      final off = SessionPreferences(cursorPersonalAcpDefault: false);
+      expect(off.toJson()['cursorPersonalAcpDefault'], isFalse);
+      expect(
+        SessionPreferences.fromJson(off.toJson()).cursorPersonalAcpDefault,
+        isFalse,
+      );
+    });
+
     test('git auto-fetch defaults on with 5 minute interval', () {
       final prefs = SessionPreferences();
       expect(prefs.gitAutoFetchEnabled, isTrue);

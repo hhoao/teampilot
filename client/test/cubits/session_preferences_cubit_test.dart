@@ -112,6 +112,19 @@ void main() {
     expect(cubit2.state.preferences.claudePersonalAcpDefault, false);
   });
 
+  test('setCursorPersonalAcpDefault persists the flag', () async {
+    final cubit = await makeCubit();
+    await cubit.load();
+    expect(cubit.state.preferences.cursorPersonalAcpDefault, true);
+
+    await cubit.setCursorPersonalAcpDefault(false);
+    expect(cubit.state.preferences.cursorPersonalAcpDefault, false);
+
+    final cubit2 = await makeCubit();
+    await cubit2.load();
+    expect(cubit2.state.preferences.cursorPersonalAcpDefault, false);
+  });
+
   test('setReclaimIdleTerminals persists the flag', () async {
     final cubit = await makeCubit();
     await cubit.load();
