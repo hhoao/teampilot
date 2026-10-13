@@ -24,8 +24,9 @@ Decisions locked with the user (2026-10-12):
   personal Gemini).
 - Desktop local only (`RuntimeKind.local`). Android, SSH, WSL, Termux,
   and native teams stay PTY.
-- First-wave CLIs: Claude, Codex, Gemini (already declare
-  `AcpCapability`). OpenCode, FlashskyAI, unshipped Cursor stay PTY.
+- First-wave CLIs: Claude, Codex, Gemini, Cursor, and OpenCode (each
+  declares `AcpCapability`). FlashskyAI stays PTY.
+  OpenCode mixed seats: docs/superpowers/specs/2026-10-13-opencode-acp-session-design.md.
 - Protocol stack stays vendored `acpd` + `AcpProcessTransport`.
 - Do not fall back to PTY when ACP attach fails for that seat.
 - Do not rewrite TeamBus. Wire idle / wake onto the existing launcher.
