@@ -440,7 +440,7 @@ void main() {
       );
     });
 
-    test('false when binding true but target is ssh', () {
+    test('OpenCode false when binding true but target is ssh', () {
       final session = AppSession(
         sessionId: 's1',
         workspaceId: 'w1',
