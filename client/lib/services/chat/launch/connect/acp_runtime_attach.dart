@@ -116,6 +116,7 @@ class AcpRuntimeAttach {
       sessionToolDir: _sessionToolDir(session, cli),
       workingDirectory: workingDirectory,
       baseEnv: await _personalLaunchEnv(session, job, workspace),
+      permissionPolicy: session.acpPermission,
     );
     if (_host.isClosed) return true;
     _host.finishSessionConnect(session.sessionId);
@@ -233,6 +234,9 @@ class AcpRuntimeAttach {
       workingDirectory: staged.workingDirectory,
       baseEnv: staged.env,
       mcpServers: staged.mcpServers,
+      permissionPolicy:
+          session.bindingFor(member.id)?.acpPermission ??
+          LaunchSecurityPolicy.fullAccess,
     );
     if (_host.isClosed) return true;
     _host.finishSessionConnect(session.sessionId);

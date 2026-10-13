@@ -18,7 +18,6 @@ import '../../../services/agent_status/agent_permission_request.dart';
 import '../../../services/agent_status/agent_status_event.dart';
 import '../../../utils/logging/logger.dart';
 import '../../../services/agent_status/agent_attention_port.dart';
-import '../../../services/chat/team_bus/teammate_bus_permission.dart';
 
 /// Lifecycle phase of the terminal-less ACP chat session.
 enum AcpChatPhase {
@@ -221,6 +220,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     required String workingDirectory,
     Map<String, String> baseEnv = const {},
     List<acpd.McpServer> mcpServers = const [],
+    LaunchSecurityPolicy permissionPolicy = LaunchSecurityPolicy.fullAccess,
   }) async {
     if (state.phase != AcpChatPhase.launching) return;
     _hydrateInFlight ??= _hydrateTranscript();
@@ -234,6 +234,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         workingDirectory: workingDirectory,
         baseEnv: baseEnv,
         mcpServers: mcpServers,
+        permissionPolicy: permissionPolicy,
       );
     } on AcpLaunchException catch (error) {
       if (error.reason == acpLaunchFailedAdapter) {
@@ -444,6 +445,12 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       return;
     }
     _runtime.cancel();
+  }
+
+  /// Assigns [policy] for subsequent permission requests on the open session.
+  void setPermissionPolicy(LaunchSecurityPolicy policy) {
+    if (_closing || isClosed) return;
+    _runtime.setPermissionPolicy(policy);
   }
 
   void _clearInTurnKeepingPhase() {
@@ -705,27 +712,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   }
 
   void _onPermissionRequest(AgentPermissionRequest request) {
-    if (isTeammateBusPermissionRequest(request)) {
-      unawaited(_autoAllowTeammateBus(request));
-      return;
-    }
     _onClientRequest(AcpPendingPermission(request));
-  }
-
-  /// TeamPilot installed teammate-bus; Cursor ACP still asks via
-  /// `session/request_permission` before `read_messages` / `send_message`.
-  /// Auto-allow so mixed collaboration is not blocked on a host-owned MCP.
-  Future<void> _autoAllowTeammateBus(AgentPermissionRequest request) async {
-    if (_closing || isClosed || state.phase == AcpChatPhase.ended) return;
-    final always = request.always.isEmpty ? null : request.always.first;
-    final kind = always == null
-        ? AgentPermissionReplyKind.allowOnce
-        : AgentPermissionReplyKind.always;
-    appLogger.i(
-      '[acp-chat] session $sessionId auto-allow teammate-bus '
-      '${request.description}',
-    );
-    await _runtime.answerPermission(kind, always: always);
   }
 
   void _onClientRequest(AcpPendingClientRequest pending) {

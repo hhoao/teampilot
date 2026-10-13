@@ -49,6 +49,8 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   bool started = false;
   bool closed = false;
   bool cancelled = false;
+  LaunchSecurityPolicy startPermissionPolicy = LaunchSecurityPolicy.fullAccess;
+  LaunchSecurityPolicy? lastSetPermissionPolicy;
   final List<String> prompts = [];
   ({AgentPermissionReplyKind kind, AgentPermissionAlwaysOption? always})?
   lastAnswer;
@@ -68,9 +70,16 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
     required String workingDirectory,
     Map<String, String> baseEnv = const {},
     List<acpd.McpServer> mcpServers = const [],
+    LaunchSecurityPolicy permissionPolicy = LaunchSecurityPolicy.fullAccess,
   }) async {
     if (startError != null) throw startError!;
     started = true;
+    startPermissionPolicy = permissionPolicy;
+  }
+
+  @override
+  void setPermissionPolicy(LaunchSecurityPolicy policy) {
+    lastSetPermissionPolicy = policy;
   }
 
   @override
@@ -782,7 +791,7 @@ void main() {
   });
 
   test(
-    'teammate-bus MCP permission is auto-allowed without a pending card',
+    'leaked teammate-bus permission still becomes a pending card',
     () async {
       final attention = AgentAttentionCubit(pruneInterval: null);
       final cubit = bootCubit(attention: attention);
@@ -804,17 +813,41 @@ void main() {
       runtime.permissionsController.add(request);
       await pumpEventQueue();
 
-      expect(cubit.state.pendingPermission, isNull);
+      expect(cubit.state.pendingPermission, request);
+      expect(cubit.state.pendingClient, isA<AcpPendingPermission>());
       expect(
         attention.state.attentionFor(sessionId: 's1', memberId: 'acp'),
-        isNot(AgentSeatAttention.waiting),
+        AgentSeatAttention.waiting,
       );
-      expect(runtime.lastAnswer?.kind, AgentPermissionReplyKind.always);
-      expect(runtime.lastAnswer?.always?.payload, 'always-1');
+      expect(runtime.lastAnswer, isNull);
       await cubit.close();
       await attention.close();
     },
   );
+
+  test('start forwards permissionPolicy to the runtime', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+      permissionPolicy: LaunchSecurityPolicy.ask,
+    );
+    expect(runtime.startPermissionPolicy, LaunchSecurityPolicy.ask);
+    await cubit.close();
+  });
+
+  test('setPermissionPolicy forwards to the runtime', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    cubit.setPermissionPolicy(LaunchSecurityPolicy.ask);
+    expect(runtime.lastSetPermissionPolicy, LaunchSecurityPolicy.ask);
+    await cubit.close();
+  });
 
   test(
     'permission request → pending card + attention waiting; answer delegates',

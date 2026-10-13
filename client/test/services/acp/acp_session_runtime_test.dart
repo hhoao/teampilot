@@ -87,6 +87,41 @@ void main() {
     agent.connection.onRequest('session/prompt', (params) => body());
   }
 
+  acpd.RequestPermissionRequest bashPermission(String toolCallId) {
+    return acpd.RequestPermissionRequest(
+      sessionId: sessionId,
+      toolCall: acpd.ToolCallUpdate(
+        toolCallId: toolCallId,
+        title: 'Run npm install',
+      ),
+      options: const [
+        acpd.PermissionOption(
+          optionId: 'allow-1',
+          name: 'Yes',
+          kind: acpd.PermissionOptionKind.allowOnce,
+        ),
+        acpd.PermissionOption(
+          optionId: 'always-1',
+          name: 'Always allow',
+          kind: acpd.PermissionOptionKind.allowAlways,
+        ),
+      ],
+    );
+  }
+
+  Future<void> driveBashPermission(
+    AcpSessionRuntime runtime, {
+    required String toolCallId,
+    required void Function(acpd.RequestPermissionOutcome? outcome) onOutcome,
+  }) async {
+    scriptPrompt(() async {
+      onOutcome(await agentCtx.requestPermission(bashPermission(toolCallId)));
+      return acpd.PromptResponse(stopReason: acpd.StopReason.endTurn).toJson();
+    });
+    await runtime.prompt('go');
+    await pumpEventQueue();
+  }
+
   acpd.AgentMessageChunk message(String text) => acpd.AgentMessageChunk(
     chunk: acpd.ContentChunk(content: acpd.TextContentBlock(text: text)),
   );
@@ -448,6 +483,130 @@ void main() {
     expect(captured!.id, 'perm-1');
     expect(outcome, isA<acpd.PermissionCancelled>());
   });
+
+  test(
+    'default Full access auto-allows bash without a card and prefers allow-always',
+    () async {
+      acpd.RequestPermissionOutcome? outcome;
+      final runtime = makeRuntime((argv, env) async => conn);
+      await startRuntime(runtime);
+
+      final cards = <AgentPermissionRequest>[];
+      final permissionSub = runtime.permissionRequests.listen(cards.add);
+      await driveBashPermission(
+        runtime,
+        toolCallId: 'perm-fa',
+        onOutcome: (value) => outcome = value,
+      );
+      permissionSub.cancel();
+
+      expect(cards, isEmpty);
+      expect(outcome, isA<acpd.PermissionSelected>());
+      expect((outcome! as acpd.PermissionSelected).optionId, 'always-1');
+      await runtime.close();
+    },
+  );
+
+  test(
+    'start with permissionPolicy fullAccess auto-allows bash without a card',
+    () async {
+      acpd.RequestPermissionOutcome? outcome;
+      final runtime = makeRuntime((argv, env) async => conn);
+      await runtime.start(
+        tool: CliTool.gemini,
+        executable: 'gemini',
+        sessionToolDir: sessionToolDir,
+        workingDirectory: cwd,
+        baseEnv: const {'PATH': '/usr/bin'},
+        permissionPolicy: LaunchSecurityPolicy.fullAccess,
+      );
+
+      final cards = <AgentPermissionRequest>[];
+      final permissionSub = runtime.permissionRequests.listen(cards.add);
+      await driveBashPermission(
+        runtime,
+        toolCallId: 'perm-fa-explicit',
+        onOutcome: (value) => outcome = value,
+      );
+      permissionSub.cancel();
+
+      expect(cards, isEmpty);
+      expect(outcome, isA<acpd.PermissionSelected>());
+      expect((outcome! as acpd.PermissionSelected).optionId, 'always-1');
+      await runtime.close();
+    },
+  );
+
+  test('start with permissionPolicy Ask surfaces a bash permission card', () async {
+    acpd.RequestPermissionOutcome? outcome;
+    final runtime = makeRuntime((argv, env) async => conn);
+    await runtime.start(
+      tool: CliTool.gemini,
+      executable: 'gemini',
+      sessionToolDir: sessionToolDir,
+      workingDirectory: cwd,
+      baseEnv: const {'PATH': '/usr/bin'},
+      permissionPolicy: LaunchSecurityPolicy.ask,
+    );
+
+    final cards = <AgentPermissionRequest>[];
+    final permissionSub = runtime.permissionRequests.listen((request) {
+      cards.add(request);
+      runtime.answerPermission(AgentPermissionReplyKind.allowOnce);
+    });
+    await driveBashPermission(
+      runtime,
+      toolCallId: 'perm-ask',
+      onOutcome: (value) => outcome = value,
+    );
+    permissionSub.cancel();
+
+    expect(cards, hasLength(1));
+    expect(cards.single.id, 'perm-ask');
+    expect(outcome, isA<acpd.PermissionSelected>());
+    expect((outcome! as acpd.PermissionSelected).optionId, 'allow-1');
+    await runtime.close();
+  });
+
+  test(
+    'setPermissionPolicy(Ask) after start surfaces the next bash request',
+    () async {
+      acpd.RequestPermissionOutcome? first;
+      acpd.RequestPermissionOutcome? second;
+      final runtime = makeRuntime((argv, env) async => conn);
+      await startRuntime(runtime);
+
+      final cards = <AgentPermissionRequest>[];
+      final permissionSub = runtime.permissionRequests.listen((request) {
+        cards.add(request);
+        runtime.answerPermission(AgentPermissionReplyKind.allowOnce);
+      });
+
+      await driveBashPermission(
+        runtime,
+        toolCallId: 'perm-before',
+        onOutcome: (value) => first = value,
+      );
+      expect(cards, isEmpty);
+      expect(first, isA<acpd.PermissionSelected>());
+      expect((first! as acpd.PermissionSelected).optionId, 'always-1');
+
+      runtime.setPermissionPolicy(LaunchSecurityPolicy.ask);
+
+      await driveBashPermission(
+        runtime,
+        toolCallId: 'perm-after',
+        onOutcome: (value) => second = value,
+      );
+      permissionSub.cancel();
+
+      expect(cards, hasLength(1));
+      expect(cards.single.id, 'perm-after');
+      expect(second, isA<acpd.PermissionSelected>());
+      expect((second! as acpd.PermissionSelected).optionId, 'allow-1');
+      await runtime.close();
+    },
+  );
 
   test('cancel before start does not throw', () {
     final runtime = makeRuntime((argv, env) async => conn);
