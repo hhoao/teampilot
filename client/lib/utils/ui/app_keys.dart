@@ -210,6 +210,7 @@ class AppKeys {
     'opencode-cli-executable-path-reset-button',
   );
   static const opencodeCliInstallButton = Key('opencode-cli-install-button');
+  static const opencodePersonalAcpSwitch = Key('opencode-personal-acp-switch');
   static const cursorCliExecutablePathField = Key(
     'cursor-cli-executable-path-field',
   );

@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../models/team_config.dart';
+import '../../../services/acp/acp_agent_translator.dart';
 import '../../../services/acp/acp_chat_extension_fold.dart';
 import '../../../services/acp/acp_chat_strings.dart';
 import '../../../services/acp/acp_chat_transcript.dart';
@@ -693,10 +694,11 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         unawaited(_persist());
         _endTurn();
       case AcpStopKind.error:
-        final prefix = _strings?.turnFailed ?? 'Turn failed';
-        final text = stop.message == null || stop.message!.isEmpty
-            ? prefix
-            : '$prefix: ${stop.message}';
+        final text = stop.message == acpStopAuthRequired
+            ? (_strings?.notLoggedIn ?? defaultAcpChatStrings.notLoggedIn)
+            : (stop.message == null || stop.message!.isEmpty
+                  ? (_strings?.turnFailed ?? 'Turn failed')
+                  : '${_strings?.turnFailed ?? 'Turn failed'}: ${stop.message}');
         _appendSystemMessage(text);
         unawaited(_persist());
         _endTurn();

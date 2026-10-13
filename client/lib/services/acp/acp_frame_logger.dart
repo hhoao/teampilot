@@ -36,6 +36,11 @@ class AcpFrameLogger {
   static final RegExp _cursorAuthTokenEnvPattern = RegExp(
     r'CURSOR_AUTH_TOKEN\s*=\s*\S+',
   );
+  static final RegExp _opencodeAuthContentQuotedPattern =
+      RegExp(r'"OPENCODE_AUTH_CONTENT"\s*:\s*"(?:\\.|[^"\\])*"');
+  static final RegExp _opencodeAuthContentEnvPattern = RegExp(
+    r'OPENCODE_AUTH_CONTENT\s*=\s*(?:\{[\s\S]*|\S+)',
+  );
 
   final ListQueue<String> _outgoing = ListQueue<String>();
   final ListQueue<String> _incoming = ListQueue<String>();
@@ -107,6 +112,14 @@ class AcpFrameLogger {
     redacted = redacted.replaceAll(
       _cursorAuthTokenEnvPattern,
       'CURSOR_AUTH_TOKEN=[REDACTED]',
+    );
+    redacted = redacted.replaceAll(
+      _opencodeAuthContentQuotedPattern,
+      '"OPENCODE_AUTH_CONTENT": "[REDACTED]"',
+    );
+    redacted = redacted.replaceAll(
+      _opencodeAuthContentEnvPattern,
+      'OPENCODE_AUTH_CONTENT=[REDACTED]',
     );
     return redacted;
   }

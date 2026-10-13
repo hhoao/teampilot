@@ -48,10 +48,12 @@ bool _requestedMemberAcpSeed(
   required bool seedClaudeMemberAcp,
   required bool seedCodexMemberAcp,
   required bool seedCursorMemberAcp,
+  required bool seedOpencodeMemberAcp,
 }) => switch (cli) {
   CliTool.claude => seedClaudeMemberAcp,
   CliTool.codex => seedCodexMemberAcp,
   CliTool.cursor => seedCursorMemberAcp,
+  CliTool.opencode => seedOpencodeMemberAcp,
   _ => false,
 };
 
@@ -66,6 +68,7 @@ List<SessionMemberBinding> stampMemberAcp({
   required bool seedClaudeMemberAcp,
   required bool seedCodexMemberAcp,
   bool seedCursorMemberAcp = true,
+  bool seedOpencodeMemberAcp = true,
   bool? isAndroidOverride,
 }) {
   return [
@@ -83,6 +86,7 @@ List<SessionMemberBinding> stampMemberAcp({
                   seedClaudeMemberAcp: seedClaudeMemberAcp,
                   seedCodexMemberAcp: seedCodexMemberAcp,
                   seedCursorMemberAcp: seedCursorMemberAcp,
+                  seedOpencodeMemberAcp: seedOpencodeMemberAcp,
                 ),
                 isAndroidOverride: isAndroidOverride,
               ),

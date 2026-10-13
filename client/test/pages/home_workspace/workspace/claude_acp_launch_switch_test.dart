@@ -44,6 +44,48 @@ void main() {
       );
     });
 
+    test('true for personal OpenCode when requested on desktop', () {
+      expect(
+        resolveLaunchAcp(
+          isPersonal: true,
+          cli: CliTool.opencode,
+          requested: true,
+          isAndroidOverride: false,
+        ),
+        isTrue,
+      );
+    });
+
+    test('false for OpenCode team, not requested, or Android', () {
+      expect(
+        resolveLaunchAcp(
+          isPersonal: false,
+          cli: CliTool.opencode,
+          requested: true,
+          isAndroidOverride: false,
+        ),
+        isFalse,
+      );
+      expect(
+        resolveLaunchAcp(
+          isPersonal: true,
+          cli: CliTool.opencode,
+          requested: false,
+          isAndroidOverride: false,
+        ),
+        isFalse,
+      );
+      expect(
+        resolveLaunchAcp(
+          isPersonal: true,
+          cli: CliTool.opencode,
+          requested: true,
+          isAndroidOverride: true,
+        ),
+        isFalse,
+      );
+    });
+
     test('false for Codex team, not requested, or Android', () {
       expect(
         resolveLaunchAcp(
@@ -109,6 +151,17 @@ void main() {
       expect(request.acp, isTrue);
     });
 
+    test('personal OpenCode with ACP requested sets request.acp', () {
+      final request = buildWorkspaceConversationCreateRequest(
+        workspace: workspace,
+        isPersonal: true,
+        cli: CliTool.opencode,
+        acp: true,
+        isAndroidOverride: false,
+      );
+      expect(request.acp, isTrue);
+    });
+
     test('personal Claude with ACP requested sets request.acp', () {
       final request = buildWorkspaceConversationCreateRequest(
         workspace: workspace,
@@ -161,12 +214,14 @@ void main() {
         seedClaudeMemberAcp: true,
         seedCodexMemberAcp: true,
         seedCursorMemberAcp: true,
+        seedOpencodeMemberAcp: true,
         isAndroidOverride: false,
       );
       expect(request.acp, isFalse);
       expect(request.seedClaudeMemberAcp, isTrue);
       expect(request.seedCodexMemberAcp, isTrue);
       expect(request.seedCursorMemberAcp, isTrue);
+      expect(request.seedOpencodeMemberAcp, isTrue);
     });
 
     test('team create seed defaults match preference defaults', () {
@@ -180,11 +235,12 @@ void main() {
       expect(request.seedClaudeMemberAcp, isTrue);
       expect(request.seedCodexMemberAcp, isFalse);
       expect(request.seedCursorMemberAcp, isTrue);
+      expect(request.seedOpencodeMemberAcp, isTrue);
     });
   });
 
   group('resolveMemberBindingAcp', () {
-    test('mixed local Claude/Codex follow requested; Gemini always', () {
+    test('mixed local Claude/Codex/OpenCode follow requested; Gemini always', () {
       bool resolve({
         CliTool? cli = CliTool.claude,
         TeamMode mode = TeamMode.mixed,
@@ -203,7 +259,9 @@ void main() {
       expect(resolve(requested: false), isFalse);
       expect(resolve(cli: CliTool.codex), isTrue);
       expect(resolve(cli: CliTool.gemini, requested: false), isTrue);
-      expect(resolve(cli: CliTool.opencode), isFalse);
+      expect(resolve(cli: CliTool.opencode), isTrue);
+      expect(resolve(cli: CliTool.opencode, requested: false), isFalse);
+      expect(resolve(cli: CliTool.flashskyai), isFalse);
       expect(resolve(mode: TeamMode.native), isFalse);
       expect(resolve(target: 'ssh:prod'), isFalse);
       expect(resolve(target: 'wsl:ubuntu'), isFalse);
@@ -222,6 +280,7 @@ void main() {
       bool seedClaude = true,
       bool seedCodex = false,
       bool seedCursor = true,
+      bool seedOpencode = true,
       bool android = false,
     }) => stampMemberAcp(
       members: members,
@@ -231,6 +290,7 @@ void main() {
       seedClaudeMemberAcp: seedClaude,
       seedCodexMemberAcp: seedCodex,
       seedCursorMemberAcp: seedCursor,
+      seedOpencodeMemberAcp: seedOpencode,
       isAndroidOverride: android,
     );
 
@@ -275,6 +335,23 @@ void main() {
         stamp(
           members: [member(CliTool.cursor, 'cursor')],
           seedCursor: false,
+        ).single.acp,
+        isFalse,
+      );
+    });
+
+    test('OpenCode follows seedOpencodeMemberAcp', () {
+      expect(
+        stamp(
+          members: [member(CliTool.opencode, 'oc')],
+          seedOpencode: true,
+        ).single.acp,
+        isTrue,
+      );
+      expect(
+        stamp(
+          members: [member(CliTool.opencode, 'oc')],
+          seedOpencode: false,
         ).single.acp,
         isFalse,
       );
@@ -331,6 +408,49 @@ void main() {
             rosterMemberId: 'lead',
             taskId: 't',
             cli: CliTool.claude,
+            acp: true,
+          ),
+        ],
+      );
+      const team = TeamProfile(
+        id: 't1',
+        name: 'T',
+        teamMode: TeamMode.mixed,
+        members: [TeamMemberConfig(id: 'lead', name: 'Lead')],
+      );
+      expect(
+        shouldAttachMemberAcp(
+          session: session,
+          memberId: 'lead',
+          team: team,
+          targetId: 'ssh:prod',
+          isAndroidOverride: false,
+        ),
+        isFalse,
+      );
+      expect(
+        shouldAttachMemberAcp(
+          session: session,
+          memberId: 'lead',
+          team: team,
+          targetId: 'local',
+          isAndroidOverride: false,
+        ),
+        isTrue,
+      );
+    });
+
+    test('OpenCode false when binding true but target is ssh', () {
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        createdAt: 1,
+        sessionTeam: 't1',
+        members: const [
+          SessionMemberBinding(
+            rosterMemberId: 'lead',
+            taskId: 't',
+            cli: CliTool.opencode,
             acp: true,
           ),
         ],

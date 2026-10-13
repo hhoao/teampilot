@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/session/acp/acp_chat_runtime_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/acp/acp_agent_translator.dart';
 import 'package:teampilot/services/acp/acp_chat_strings.dart';
 import 'package:teampilot/services/acp/acp_chat_transcript.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
@@ -785,6 +786,36 @@ void main() {
     expect((message.parts.single as AiTextPart).text, contains('Turn failed'));
     await cubit.close();
   });
+
+  test(
+    'authRequired sentinel stop uses notLoggedIn copy, not Turn failed',
+    () async {
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'opencode',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      runtime.emit(
+        const AcpStop(kind: AcpStopKind.error, message: acpStopAuthRequired),
+      );
+      await pumpEventQueue();
+
+      expect(cubit.state.phase, AcpChatPhase.idle);
+      final message = cubit.state.messages.single;
+      expect(message.role, AiRole.system);
+      expect((message.parts.single as AiTextPart).text, 'Not logged in');
+      expect(
+        (message.parts.single as AiTextPart).text,
+        isNot(contains('Turn failed')),
+      );
+      expect(
+        (message.parts.single as AiTextPart).text,
+        isNot(contains(acpStopAuthRequired)),
+      );
+      await cubit.close();
+    },
+  );
 
   test(
     'teammate-bus MCP permission is auto-allowed without a pending card',

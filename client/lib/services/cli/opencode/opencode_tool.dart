@@ -31,6 +31,7 @@ import '../registry/capabilities/hook_capability.dart';
 import 'capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
 import '../registry/capabilities/plugin_capability.dart';
+import 'capabilities/acp.dart';
 import 'capabilities/prompt.dart';
 import 'capabilities/skill.dart';
 import 'capabilities/opencode_hook_writer.dart';
@@ -63,6 +64,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.nativeCommands = const OpencodeNativeCommands(),
     this.prompt = const OpencodePromptCapability(),
     this.hookWriter = const OpencodeHookWriter(),
+    this.acp = const OpencodeAcpCapability(),
   }) : provider = provider ?? OpencodeProviderCapability();
 
   final ProviderCapability provider;
@@ -91,6 +93,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final SkillCapability skill;
   final NativeCommandCapability nativeCommands;
   final PromptCapability prompt;
+  final OpencodeAcpCapability acp;
 
   @override
   CliTool get id => CliTool.opencode;
@@ -124,5 +127,6 @@ final class OpencodeCliTool implements CliToolDefinition {
     nativeCommands,
     prompt,
     hookWriter,
+    acp,
   ];
 }

@@ -125,6 +125,19 @@ void main() {
     expect(cubit2.state.preferences.cursorPersonalAcpDefault, false);
   });
 
+  test('setOpencodePersonalAcpDefault persists the flag', () async {
+    final cubit = await makeCubit();
+    await cubit.load();
+    expect(cubit.state.preferences.opencodePersonalAcpDefault, true);
+
+    await cubit.setOpencodePersonalAcpDefault(false);
+    expect(cubit.state.preferences.opencodePersonalAcpDefault, false);
+
+    final cubit2 = await makeCubit();
+    await cubit2.load();
+    expect(cubit2.state.preferences.opencodePersonalAcpDefault, false);
+  });
+
   test('setCodexPersonalAcpDefault persists the flag', () async {
     final cubit = await makeCubit();
     await cubit.load();

@@ -810,8 +810,8 @@ Future<bool> _ensureLandingSessionConnected({
 
 /// Builds the create request for a workspace conversation.
 ///
-/// [acp] only survives for personal Claude, Cursor, or Codex on desktop (see
-/// [resolveLaunchAcp]);
+/// [acp] only survives for personal Claude, Cursor, Codex, or OpenCode on
+/// desktop (see [resolveLaunchAcp]);
 /// team creates and Android always get false. Mixed member ACP is copied from
 /// the Claude/Codex/Cursor settings seeds. Gemini ACP is inferred by session
 /// create, so it needs no flag here.
@@ -835,6 +835,7 @@ SessionCreateRequest buildWorkspaceConversationCreateRequest({
   bool seedClaudeMemberAcp = true,
   bool seedCodexMemberAcp = false,
   bool seedCursorMemberAcp = true,
+  bool seedOpencodeMemberAcp = true,
   bool? isAndroidOverride,
 }) {
   return SessionCreateRequest(
@@ -862,6 +863,7 @@ SessionCreateRequest buildWorkspaceConversationCreateRequest({
     seedClaudeMemberAcp: seedClaudeMemberAcp,
     seedCodexMemberAcp: seedCodexMemberAcp,
     seedCursorMemberAcp: seedCursorMemberAcp,
+    seedOpencodeMemberAcp: seedOpencodeMemberAcp,
   );
 }
 
@@ -887,6 +889,10 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
   final seedClaudeMemberAcp = readPersonalAcpDefault(context, CliTool.claude);
   final seedCodexMemberAcp = readPersonalAcpDefault(context, CliTool.codex);
   final seedCursorMemberAcp = readPersonalAcpDefault(context, CliTool.cursor);
+  final seedOpencodeMemberAcp = readPersonalAcpDefault(
+    context,
+    CliTool.opencode,
+  );
   final team = isPersonal ? null : _teamProfileById(context, sessionTeamId);
 
   final identity = isPersonal
@@ -925,6 +931,7 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
         seedClaudeMemberAcp: seedClaudeMemberAcp,
         seedCodexMemberAcp: seedCodexMemberAcp,
         seedCursorMemberAcp: seedCursorMemberAcp,
+        seedOpencodeMemberAcp: seedOpencodeMemberAcp,
       ),
     );
   } on Object catch (error, stackTrace) {

@@ -81,6 +81,65 @@ void main() {
     expect(text, contains('CURSOR_AUTH_TOKEN=[REDACTED]'));
   });
 
+  test('redacts OPENCODE_AUTH_CONTENT values in frames', () {
+    final logger = AcpFrameLogger();
+    logger.logOutgoing(
+      jsonEncode({
+        'method': 'session/prompt',
+        'env': {'OPENCODE_AUTH_CONTENT': 'super-secret'},
+      }),
+    );
+    final text = logger.snapshot().join('\n');
+    expect(text, contains('[REDACTED]'));
+    expect(text, isNot(contains('super-secret')));
+  });
+
+  test('redacts OPENCODE_AUTH_CONTENT in stderr env form too', () {
+    final logger = AcpFrameLogger();
+    logger.logStderr('OPENCODE_AUTH_CONTENT=super-secret-2');
+    final text = logger.snapshot().join('\n');
+    expect(text, isNot(contains('super-secret-2')));
+    expect(text, contains('OPENCODE_AUTH_CONTENT=[REDACTED]'));
+  });
+
+  test('redacts indented JSON OPENCODE_AUTH_CONTENT payloads', () {
+    const secretKey = 'sk-live-must-not-appear';
+    const blob = '''
+{
+  "openai": {
+    "type": "api",
+    "key": "$secretKey"
+  }
+}''';
+    final logger = AcpFrameLogger();
+    logger.logOutgoing(
+      jsonEncode({
+        'method': 'session/prompt',
+        'env': {'OPENCODE_AUTH_CONTENT': blob},
+      }),
+    );
+    logger.logStderr('OPENCODE_AUTH_CONTENT=$blob');
+    final text = logger.snapshot().join('\n');
+    expect(text, isNot(contains(secretKey)));
+    expect(text, contains('[REDACTED]'));
+    expect(text, contains('OPENCODE_AUTH_CONTENT=[REDACTED]'));
+  });
+
+  test('redacts truncated OPENCODE_AUTH_CONTENT stderr chunks', () {
+    const secretKey = 'sk-trunc-must-not-appear';
+    const truncated = '''
+OPENCODE_AUTH_CONTENT={
+  "openai": {
+    "type": "api",
+    "key": "$secretKey"
+''';
+    final logger = AcpFrameLogger();
+    logger.logStderr(truncated);
+    final text = logger.snapshot().join('\n');
+    expect(text, isNot(contains(secretKey)));
+    expect(text, contains('[REDACTED]'));
+  });
+
   test('can disable disk log mirroring', () {
     final logger = AcpFrameLogger(enableDiskLog: false);
     logger.logOutgoing('{"ok":true}');

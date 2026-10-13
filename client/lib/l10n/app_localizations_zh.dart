@@ -8887,6 +8887,13 @@ class AppLocalizationsZh extends AppLocalizations {
       '新建个人和混合团队 Cursor 会话走无终端 ACP（cursor-agent acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。';
 
   @override
+  String get opencodePersonalAcpDefaultLabel => '个人会话使用 ACP 聊天';
+
+  @override
+  String get opencodePersonalAcpDefaultDescription =>
+      '新建个人和混合团队 OpenCode 会话走无终端 ACP（opencode acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。';
+
+  @override
   String get claudePersonalAcpAndroidDisabled => '在远程 SSH exec 就绪前，ACP 聊天仅限桌面。';
 
   @override

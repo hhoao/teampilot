@@ -9289,6 +9289,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Run new personal and mixed-team Cursor sessions as terminal-less ACP chat via cursor-agent acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.';
 
   @override
+  String get opencodePersonalAcpDefaultLabel =>
+      'Personal sessions use ACP chat';
+
+  @override
+  String get opencodePersonalAcpDefaultDescription =>
+      'Run new personal and mixed-team OpenCode sessions as terminal-less ACP chat via opencode acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.';
+
+  @override
   String get claudePersonalAcpAndroidDisabled =>
       'ACP chat is desktop-only until remote SSH exec is available.';
 

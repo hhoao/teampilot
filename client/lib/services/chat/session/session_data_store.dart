@@ -264,6 +264,7 @@ class SessionDataStore {
     bool seedClaudeMemberAcp = true,
     bool seedCodexMemberAcp = false,
     bool seedCursorMemberAcp = true,
+    bool seedOpencodeMemberAcp = true,
   }) async {
     return (await repo.createSession(
       workspaceId,
@@ -279,6 +280,7 @@ class SessionDataStore {
       seedClaudeMemberAcp: seedClaudeMemberAcp,
       seedCodexMemberAcp: seedCodexMemberAcp,
       seedCursorMemberAcp: seedCursorMemberAcp,
+      seedOpencodeMemberAcp: seedOpencodeMemberAcp,
     )).session;
   }
 
