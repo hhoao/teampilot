@@ -1,4 +1,5 @@
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:teampilot/models/session_preferences.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
@@ -137,6 +138,26 @@ void main() {
     await cubit2.load();
     expect(cubit2.state.preferences.codexPersonalAcpDefault, true);
     expect(cubit2.state.preferences.claudePersonalAcpDefault, true);
+  });
+
+  test('setAcpPermissionDefault persists ask', () async {
+    final cubit = await makeCubit();
+    await cubit.load();
+    expect(
+      cubit.state.preferences.acpPermissionDefault,
+      LaunchSecurityPolicy.fullAccess,
+    );
+    await cubit.setAcpPermissionDefault(LaunchSecurityPolicy.ask);
+    expect(
+      cubit.state.preferences.acpPermissionDefault,
+      LaunchSecurityPolicy.ask,
+    );
+    final cubit2 = await makeCubit();
+    await cubit2.load();
+    expect(
+      cubit2.state.preferences.acpPermissionDefault,
+      LaunchSecurityPolicy.ask,
+    );
   });
 
   test('setReclaimIdleTerminals persists the flag', () async {

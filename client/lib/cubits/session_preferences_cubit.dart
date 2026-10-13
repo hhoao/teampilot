@@ -274,6 +274,10 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     );
   }
 
+  Future<void> setAcpPermissionDefault(LaunchSecurityPolicy value) {
+    return _save(state.preferences.copyWith(acpPermissionDefault: value));
+  }
+
   /// Returns the actual executable string to invoke for [cli]:
   ///   1. user-configured path (if non-empty after trim)
   ///   2. path discovered at startup (if non-null and non-empty)

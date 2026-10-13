@@ -1,3 +1,5 @@
+import 'launch_security_policy.dart';
+
 class SessionPreferences {
   SessionPreferences({
     Map<String, String> cliExecutablePaths = const {},
@@ -18,6 +20,7 @@ class SessionPreferences {
     this.claudePersonalAcpDefault = true,
     this.cursorPersonalAcpDefault = true,
     this.codexPersonalAcpDefault = false,
+    this.acpPermissionDefault = LaunchSecurityPolicy.fullAccess,
   }) : cliExecutablePaths = Map.unmodifiable(
          _normalizeCliExecutablePaths(cliExecutablePaths),
        ),
@@ -63,6 +66,7 @@ class SessionPreferences {
           json['cursorPersonalAcpDefault'] as bool? ?? true,
       codexPersonalAcpDefault:
           json['codexPersonalAcpDefault'] as bool? ?? false,
+      acpPermissionDefault: acpPermissionFromJson(json['acpPermissionDefault']),
     );
   }
 
@@ -142,6 +146,10 @@ class SessionPreferences {
   /// Default false. Existing sessions keep the runtime they were started with.
   final bool codexPersonalAcpDefault;
 
+  /// Default ACP compose permission for new personal ACP launches and new
+  /// mixed ACP seats. Missing JSON key → [LaunchSecurityPolicy.fullAccess].
+  final LaunchSecurityPolicy acpPermissionDefault;
+
   String cliExecutablePathFor(String toolId) =>
       cliExecutablePaths[toolId]?.trim() ?? '';
 
@@ -164,6 +172,7 @@ class SessionPreferences {
     bool? claudePersonalAcpDefault,
     bool? cursorPersonalAcpDefault,
     bool? codexPersonalAcpDefault,
+    LaunchSecurityPolicy? acpPermissionDefault,
   }) {
     return SessionPreferences(
       cliExecutablePaths: cliExecutablePaths ?? this.cliExecutablePaths,
@@ -198,6 +207,7 @@ class SessionPreferences {
           cursorPersonalAcpDefault ?? this.cursorPersonalAcpDefault,
       codexPersonalAcpDefault:
           codexPersonalAcpDefault ?? this.codexPersonalAcpDefault,
+      acpPermissionDefault: acpPermissionDefault ?? this.acpPermissionDefault,
     );
   }
 
@@ -221,6 +231,8 @@ class SessionPreferences {
       'claudePersonalAcpDefault': claudePersonalAcpDefault,
       'cursorPersonalAcpDefault': cursorPersonalAcpDefault,
       'codexPersonalAcpDefault': codexPersonalAcpDefault,
+      if (acpPermissionToJson(acpPermissionDefault) case final id?)
+        'acpPermissionDefault': id,
     };
   }
 
