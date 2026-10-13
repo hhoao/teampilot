@@ -40,6 +40,13 @@ class LaunchSecurityPolicy {
     hookTrust: LaunchHookTrustPolicy.trustedOnly,
   );
 
+  /// ACP client-side ask: show permission cards. Not a PTY sandbox mode.
+  static const ask = LaunchSecurityPolicy(
+    approval: LaunchApprovalPolicy.ask,
+    sandbox: LaunchSandboxPolicy.fullAccess,
+    hookTrust: LaunchHookTrustPolicy.cliDefault,
+  );
+
   final LaunchApprovalPolicy approval;
   final LaunchSandboxPolicy sandbox;
   final LaunchHookTrustPolicy hookTrust;
@@ -73,3 +80,9 @@ class LaunchSecurityPolicy {
   @override
   int get hashCode => Object.hash(approval, sandbox, hookTrust);
 }
+
+String? acpPermissionToJson(LaunchSecurityPolicy policy) =>
+    policy == LaunchSecurityPolicy.ask ? 'ask' : null;
+
+LaunchSecurityPolicy acpPermissionFromJson(Object? value) =>
+    value == 'ask' ? LaunchSecurityPolicy.ask : LaunchSecurityPolicy.fullAccess;
