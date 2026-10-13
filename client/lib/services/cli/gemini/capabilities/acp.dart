@@ -10,7 +10,7 @@ import '../../registry/capabilities/acp_capability.dart';
 /// message) carries one of two abort phrases. While that upstream bug is
 /// open, translate those errors to [acpStopCancelled] so a user-initiated
 /// stop is reported as Cancelled rather than a surfaced error.
-final class GeminiAcpTranslator implements AcpAgentTranslator {
+final class GeminiAcpTranslator extends AcpAgentTranslator {
   const GeminiAcpTranslator();
 
   @override

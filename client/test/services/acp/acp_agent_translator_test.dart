@@ -1,6 +1,7 @@
 import 'package:acpd/acpd.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/acp/acp_agent_translator.dart';
+import 'package:teampilot/services/cli/cursor/capabilities/acp.dart';
 import 'package:teampilot/services/cli/gemini/capabilities/acp.dart';
 
 void main() {
@@ -36,6 +37,37 @@ void main() {
     final out = translator.translateStopError(err, suppressAbort: true);
     expect(out, isNot(acpStopCancelled));
     expect(out, contains('boom'));
+  });
+
+  test('Gemini permission response is flat ACP', () {
+    expect(
+      translator.encodePermissionResponse(
+        const PermissionSelected(optionId: 'always-1'),
+      ),
+      {'outcome': 'selected', 'optionId': 'always-1'},
+    );
+    expect(
+      translator.encodePermissionResponse(const PermissionCancelled()),
+      {'outcome': 'cancelled'},
+    );
+  });
+
+  test('Cursor permission response nests outcome', () {
+    const cursor = CursorAcpTranslator();
+    expect(
+      cursor.encodePermissionResponse(
+        const PermissionSelected(optionId: 'allow-once'),
+      ),
+      {
+        'outcome': {'outcome': 'selected', 'optionId': 'allow-once'},
+      },
+    );
+    expect(
+      cursor.encodePermissionResponse(const PermissionCancelled()),
+      {
+        'outcome': {'outcome': 'cancelled'},
+      },
+    );
   });
 }
 

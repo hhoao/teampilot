@@ -5,6 +5,7 @@ import 'package:acpd/acpd.dart' as acpd;
 
 import 'acp_agent_translator.dart';
 import 'acp_frame_logger.dart';
+import 'acp_host_mcp_permission.dart';
 import 'acp_session.dart';
 import 'acp_session_runtime.dart';
 import 'acp_transport.dart';
@@ -198,11 +199,31 @@ class AcpAgentConnection {
         earlyUpdates.add(Map<String, Object?>.from(params));
       }
     });
+    // Agents ask `session/request_permission` during `session/new` (MCP init).
+    // No [AcpAgentSession] exists yet; an unhandled request is method-not-found
+    // and Cursor remembers "User rejected MCP" for the whole session.
+    final earlyPermissionReg = _client.connection.onRequest(
+      'session/request_permission',
+      (params) {
+        final optionId = autoAllowAcpPermissionOptionId(params);
+        if (optionId != null) {
+          return translator.encodePermissionResponse(
+            acpd.PermissionSelected(optionId: optionId),
+          );
+        }
+        return translator.encodePermissionResponse(
+          const acpd.PermissionCancelled(),
+        );
+      },
+    );
     late final acpd.NewSessionResponse response;
     try {
       response = await _client.client.newSession(
         acpd.NewSessionRequest(cwd: cwd, mcpServers: mcpServers),
       );
+    } catch (_) {
+      earlyPermissionReg.dispose();
+      rethrow;
     } finally {
       earlyUpdateReg.dispose();
     }
@@ -211,6 +232,8 @@ class AcpAgentConnection {
       sessionId: response.sessionId,
       permissionTimeout: permissionTimeout,
     );
+    // Session replaced the handshake handler; this dispose is then a no-op.
+    earlyPermissionReg.dispose();
     _openSession = session;
     for (final params in earlyUpdates) {
       session.replayRawNotification(params);

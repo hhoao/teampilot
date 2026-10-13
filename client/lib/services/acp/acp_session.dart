@@ -8,6 +8,7 @@ import '../../utils/logging/logger_utils.dart';
 import 'acp_agent_translator.dart';
 import 'acp_client_extensions.dart';
 import 'acp_connection.dart';
+import 'acp_host_mcp_permission.dart';
 
 /// The sender of a streamed message chunk.
 enum AcpRole { assistant, user }
@@ -470,9 +471,16 @@ class AcpAgentSession {
   Future<Object?> _onRequestPermission(Object? params) async {
     // dispose() closed the request stream; answer with the cancelled default
     // so the agent is never left waiting (mirrors the stale/timeout paths).
-    if (_disposed) return const acpd.PermissionCancelled().toJson();
+    if (_disposed) return _encodePermission(const acpd.PermissionCancelled());
+    if (_rawSessionIdMismatch(params)) {
+      return _encodePermission(const acpd.PermissionCancelled());
+    }
+    final optionId = autoAllowAcpPermissionOptionId(params);
+    if (optionId != null) {
+      return _encodePermission(acpd.PermissionSelected(optionId: optionId));
+    }
     if (params is! Map) {
-      return const acpd.PermissionCancelled().toJson();
+      return _encodePermission(const acpd.PermissionCancelled());
     }
     final acpd.RequestPermissionRequest request;
     try {
@@ -484,16 +492,30 @@ class AcpAgentSession {
         'ACP: dropping malformed permission: $error',
         stackTrace: stackTrace,
       );
-      return const acpd.PermissionCancelled().toJson();
+      return _encodePermission(const acpd.PermissionCancelled());
     }
     if (request.sessionId != sessionId) {
-      return const acpd.PermissionCancelled().toJson();
+      return _encodePermission(const acpd.PermissionCancelled());
     }
 
     _permissionRequests.add(_toPermissionRequest(request));
     final reply = await _waitHold();
-    final outcome = _outcomeFor(reply, request.options);
-    return acpd.RequestPermissionResponse(outcome: outcome).toJson();
+    return _encodePermission(_outcomeFor(reply, request.options));
+  }
+
+  Map<String, Object?> _encodePermission(acpd.RequestPermissionOutcome outcome) {
+    return _connection.translator.encodePermissionResponse(outcome);
+  }
+
+  /// True when the payload names a different ACP session than this one.
+  ///
+  /// A missing `sessionId` is treated as matching so handshake-shaped
+  /// permission requests still auto-allow.
+  bool _rawSessionIdMismatch(Object? params) {
+    if (params is! Map) return false;
+    final id = params['sessionId'] ?? params['session_id'];
+    if (id == null) return false;
+    return id != sessionId;
   }
 
   /// Maps the held reply to the ACP outcome the agent receives.

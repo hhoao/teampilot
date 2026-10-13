@@ -204,9 +204,9 @@ void main() {
             toolCall: const acpd.ToolCallUpdate(toolCallId: 'perm-d'),
             options: const [
               acpd.PermissionOption(
-                optionId: 'allow-d',
-                name: 'Yes',
-                kind: acpd.PermissionOptionKind.allowOnce,
+                optionId: 'reject-d',
+                name: 'Reject',
+                kind: acpd.PermissionOptionKind.rejectOnce,
               ),
             ],
           ),
@@ -385,7 +385,249 @@ void main() {
   });
 
   test(
-    'permission request surfaces; allowOnce selects the allow option',
+    'teammate-bus permission during session/new is auto-allowed',
+    () async {
+      acpd.RequestPermissionOutcome? outcome;
+      agent.connection.onRequest('session/new', (params) async {
+        outcome = await agentCtx.requestPermission(
+          acpd.RequestPermissionRequest(
+            sessionId: sessionId,
+            toolCall: const acpd.ToolCallUpdate(
+              toolCallId: 'perm-early',
+              title: 'teammate-bus-read_messages: read_messages',
+            ),
+            options: const [
+              acpd.PermissionOption(
+                optionId: 'reject-1',
+                name: 'Reject',
+                kind: acpd.PermissionOptionKind.rejectOnce,
+              ),
+              acpd.PermissionOption(
+                optionId: 'allow-1',
+                name: 'Allow once',
+                kind: acpd.PermissionOptionKind.allowOnce,
+              ),
+              acpd.PermissionOption(
+                optionId: 'always-1',
+                name: 'Allow always',
+                kind: acpd.PermissionOptionKind.allowAlways,
+              ),
+            ],
+          ),
+        );
+        return acpd.NewSessionResponse(sessionId: sessionId).toJson();
+      });
+
+      await openSession();
+
+      expect(outcome, isA<acpd.PermissionSelected>());
+      expect((outcome! as acpd.PermissionSelected).optionId, 'always-1');
+    },
+  );
+
+  test(
+    'teammate-bus permission after open is auto-allowed without a card',
+    () async {
+      acpd.RequestPermissionOutcome? outcome;
+      scriptPrompt(() async {
+        outcome = await agentCtx.requestPermission(
+          acpd.RequestPermissionRequest(
+            sessionId: sessionId,
+            toolCall: const acpd.ToolCallUpdate(
+              toolCallId: 'perm-bus',
+              title: 'list_teammates',
+            ),
+            options: const [
+              acpd.PermissionOption(
+                optionId: 'allow-1',
+                name: 'Allow once',
+                kind: acpd.PermissionOptionKind.allowOnce,
+              ),
+              acpd.PermissionOption(
+                optionId: 'always-1',
+                name: 'Allow always',
+                kind: acpd.PermissionOptionKind.allowAlways,
+              ),
+            ],
+          ),
+        );
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+
+      await openSession();
+      AgentPermissionRequest? captured;
+      final permissionSub = session.permissionRequests.listen((request) {
+        captured = request;
+      });
+      await session.prompt('go');
+      permissionSub.cancel();
+
+      expect(captured, isNull);
+      expect(outcome, isA<acpd.PermissionSelected>());
+      expect((outcome! as acpd.PermissionSelected).optionId, 'always-1');
+    },
+  );
+
+  test(
+    'fullAccess auto-allows bash-style permission without a card',
+    () async {
+      acpd.RequestPermissionOutcome? outcome;
+      scriptPrompt(() async {
+        outcome = await agentCtx.requestPermission(
+          acpd.RequestPermissionRequest(
+            sessionId: sessionId,
+            toolCall: const acpd.ToolCallUpdate(
+              toolCallId: 'perm-bash',
+              title: 'Run `npm install`',
+            ),
+            options: const [
+              acpd.PermissionOption(
+                optionId: 'allow-1',
+                name: 'Allow once',
+                kind: acpd.PermissionOptionKind.allowOnce,
+              ),
+              acpd.PermissionOption(
+                optionId: 'always-1',
+                name: 'Allow always',
+                kind: acpd.PermissionOptionKind.allowAlways,
+              ),
+            ],
+          ),
+        );
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+
+      await openSession();
+      AgentPermissionRequest? captured;
+      final permissionSub = session.permissionRequests.listen((request) {
+        captured = request;
+      });
+      await session.prompt('go');
+      permissionSub.cancel();
+
+      expect(captured, isNull);
+      expect(outcome, isA<acpd.PermissionSelected>());
+      expect((outcome! as acpd.PermissionSelected).optionId, 'always-1');
+    },
+  );
+
+  test(
+    'hyphenated Cursor permission kinds auto-allow without a card',
+    () async {
+      Object? result;
+      scriptPrompt(() async {
+        result = await agent.connection.sendRequest(
+          'session/request_permission',
+          params: {
+            'sessionId': sessionId,
+            'toolCall': {
+              'toolCallId': 'perm-hyphen',
+              'title': 'teammate-bus-read_messages: read_messages',
+            },
+            'options': [
+              {
+                'optionId': 'allow-once',
+                'name': 'Allow once',
+                'kind': 'allow-once',
+              },
+              {
+                'optionId': 'allow-always',
+                'name': 'Allow always',
+                'kind': 'allow-always',
+              },
+              {
+                'optionId': 'reject-once',
+                'name': 'Reject',
+                'kind': 'reject-once',
+              },
+            ],
+          },
+          mapResult: (r) => r,
+        );
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+
+      await openSession(
+        permissionTimeout: const Duration(milliseconds: 200),
+      );
+      AgentPermissionRequest? captured;
+      final permissionSub = session.permissionRequests.listen((request) {
+        captured = request;
+      });
+      await session.prompt('go');
+      permissionSub.cancel();
+
+      expect(captured, isNull);
+      expect(result, {
+        'outcome': 'selected',
+        'optionId': 'allow-always',
+      });
+    },
+  );
+
+  test(
+    'Cursor auto-allow nests permission selected for hyphenated kinds',
+    () async {
+      await rebuildConnection(const CursorAcpTranslator());
+
+      Object? result;
+      scriptPrompt(() async {
+        result = await agent.connection.sendRequest(
+          'session/request_permission',
+          params: {
+            'sessionId': sessionId,
+            'toolCall': {
+              'toolCallId': 'perm-cursor',
+              'title': 'teammate-bus-read_messages: read_messages',
+            },
+            'options': [
+              {
+                'optionId': 'allow-once',
+                'name': 'Allow once',
+                'kind': 'allow-once',
+              },
+              {
+                'optionId': 'allow-always',
+                'name': 'Allow always',
+                'kind': 'allow-always',
+              },
+            ],
+          },
+          mapResult: (r) => r,
+        );
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+
+      await openSession(
+        permissionTimeout: const Duration(milliseconds: 200),
+      );
+      AgentPermissionRequest? captured;
+      final permissionSub = session.permissionRequests.listen((request) {
+        captured = request;
+      });
+      await session.prompt('go');
+      permissionSub.cancel();
+
+      expect(captured, isNull);
+      expect(result, {
+        'outcome': {
+          'outcome': 'selected',
+          'optionId': 'allow-always',
+        },
+      });
+    },
+  );
+
+  test(
+    'reject-only permission still surfaces a card',
     () async {
       acpd.RequestPermissionOutcome? outcome;
       scriptPrompt(() async {
@@ -398,14 +640,9 @@ void main() {
             ),
             options: const [
               acpd.PermissionOption(
-                optionId: 'allow-1',
-                name: 'Yes',
-                kind: acpd.PermissionOptionKind.allowOnce,
-              ),
-              acpd.PermissionOption(
-                optionId: 'always-1',
-                name: 'Always allow',
-                kind: acpd.PermissionOptionKind.allowAlways,
+                optionId: 'reject-1',
+                name: 'Reject',
+                kind: acpd.PermissionOptionKind.rejectOnce,
               ),
             ],
           ),
@@ -421,7 +658,7 @@ void main() {
       AgentPermissionRequest? captured;
       final permissionSub = session.permissionRequests.listen((request) {
         captured = request;
-        session.answerPermission(AgentPermissionReplyKind.allowOnce);
+        session.answerPermission(AgentPermissionReplyKind.reject);
       });
       final events = <AcpSessionUpdate>[];
       final sub = session.updates.listen(events.add);
@@ -435,15 +672,9 @@ void main() {
       expect(captured!.description, 'Run `npm install`');
       expect(captured!.sessionID, sessionId);
       expect(captured!.toolCallID, 'perm-1');
-      expect(captured!.always, [
-        const AgentPermissionAlwaysOption(
-          label: 'Always allow',
-          payload: 'always-1',
-        ),
-      ]);
+      expect(captured!.always, isEmpty);
 
-      expect(outcome, isA<acpd.PermissionSelected>());
-      expect((outcome! as acpd.PermissionSelected).optionId, 'allow-1');
+      expect(outcome, isA<acpd.PermissionCancelled>());
 
       expect(events, [
         const AcpMessageChunk(
@@ -489,9 +720,9 @@ void main() {
               toolCall: const acpd.ToolCallUpdate(toolCallId: 'perm-b'),
               options: const [
                 acpd.PermissionOption(
-                  optionId: 'allow-b',
-                  name: 'Yes',
-                  kind: acpd.PermissionOptionKind.allowOnce,
+                  optionId: 'reject-b',
+                  name: 'Reject',
+                  kind: acpd.PermissionOptionKind.rejectOnce,
                 ),
               ],
             ),
@@ -588,9 +819,9 @@ void main() {
             toolCall: const acpd.ToolCallUpdate(toolCallId: 'perm-t'),
             options: const [
               acpd.PermissionOption(
-                optionId: 'allow-t',
-                name: 'Yes',
-                kind: acpd.PermissionOptionKind.allowOnce,
+                optionId: 'reject-t',
+                name: 'Reject',
+                kind: acpd.PermissionOptionKind.rejectOnce,
               ),
             ],
           ),
@@ -930,7 +1161,7 @@ const _planParams = {
   'overview': 'Do the thing',
 };
 
-final class _UnknownBlockingTranslator implements AcpAgentTranslator {
+final class _UnknownBlockingTranslator extends AcpAgentTranslator {
   const _UnknownBlockingTranslator();
 
   @override

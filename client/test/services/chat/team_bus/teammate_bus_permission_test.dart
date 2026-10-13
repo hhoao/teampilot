@@ -26,4 +26,19 @@ void main() {
       isFalse,
     );
   });
+
+  test('bare teammate-bus tool names are host-owned', () {
+    expect(
+      isTeammateBusPermissionRequest(
+        const AgentPermissionRequest(id: 'p3', description: 'list_teammates'),
+      ),
+      isTrue,
+    );
+    expect(
+      isTeammateBusPermissionRequest(
+        const AgentPermissionRequest(id: 'p4', description: 'read_messages'),
+      ),
+      isTrue,
+    );
+  });
 }

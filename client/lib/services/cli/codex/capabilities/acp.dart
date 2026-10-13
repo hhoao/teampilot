@@ -3,7 +3,7 @@ import 'package:acpd/acpd.dart';
 import '../../../acp/acp_agent_translator.dart';
 import '../../registry/capabilities/acp_capability.dart';
 
-final class CodexAcpTranslator implements AcpAgentTranslator {
+final class CodexAcpTranslator extends AcpAgentTranslator {
   const CodexAcpTranslator();
 
   @override

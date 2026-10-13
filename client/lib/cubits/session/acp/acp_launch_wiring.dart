@@ -143,7 +143,7 @@ AcpConnectionSpawner productionAcpSpawner({
 
 /// Fallback translator for tools whose ACP capability is missing (fails
 /// loudly upstream anyway; keeps the spawner total).
-class _NoopAcpTranslator implements AcpAgentTranslator {
+class _NoopAcpTranslator extends AcpAgentTranslator {
   const _NoopAcpTranslator();
 
   @override

@@ -7,7 +7,7 @@ import '../../registry/capabilities/acp_capability.dart';
 import '../provider/cursor_auth_artifacts.dart';
 import '../provider/cursor_home_layout.dart';
 
-final class CursorAcpTranslator implements AcpAgentTranslator {
+final class CursorAcpTranslator extends AcpAgentTranslator {
   const CursorAcpTranslator();
 
   @override
@@ -32,6 +32,13 @@ final class CursorAcpTranslator implements AcpAgentTranslator {
       return 'ACP error ${error.code}: ${error.message}';
     }
     return error.toString();
+  }
+
+  @override
+  Map<String, Object?> encodePermissionResponse(
+    RequestPermissionOutcome outcome,
+  ) {
+    return {'outcome': RequestPermissionResponse(outcome: outcome).toJson()};
   }
 }
 

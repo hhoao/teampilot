@@ -439,9 +439,9 @@ void main() {
     await pumpEventQueue();
     permissionSub.cancel();
 
-    expect(captured, isNotNull);
-    expect(captured!.id, 'perm-1');
+    expect(captured, isNull);
     expect(outcome, isA<acpd.PermissionSelected>());
+    expect((outcome! as acpd.PermissionSelected).optionId, 'allow-1');
   });
 
   test('cancel before start does not throw', () {

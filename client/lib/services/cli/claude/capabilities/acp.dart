@@ -5,7 +5,7 @@ import '../../registry/capabilities/acp_capability.dart';
 
 /// Claude absorption of ACP protocol quirks. The adapter
 /// (`claude-agent-acp`) takes no ACP flag, and no abort workaround is needed.
-final class ClaudeAcpTranslator implements AcpAgentTranslator {
+final class ClaudeAcpTranslator extends AcpAgentTranslator {
   const ClaudeAcpTranslator();
 
   @override

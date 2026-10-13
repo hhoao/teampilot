@@ -41,7 +41,7 @@ class _FixedAuthCapability implements AcpCapability {
   }) => Map<String, String>.of(baseEnv);
 }
 
-class _NoopTranslator implements AcpAgentTranslator {
+class _NoopTranslator extends AcpAgentTranslator {
   const _NoopTranslator();
   @override
   List<String> get flagCandidates => const [];
