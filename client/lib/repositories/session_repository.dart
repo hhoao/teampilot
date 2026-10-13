@@ -1206,6 +1206,56 @@ class SessionRepository {
     });
   }
 
+  /// Persists ACP compose permission for a personal session or mixed ACP seat.
+  ///
+  /// Personal writes [AppSession.acpPermission] when [AppSession.acp] is true.
+  /// Mixed writes the named binding when that binding is ACP. PTY personal,
+  /// missing/non-ACP bindings, and unknown sessions are no-ops.
+  Future<AppSession?> updateAcpPermission(
+    String sessionId, {
+    String? memberId,
+    required LaunchSecurityPolicy policy,
+  }) {
+    return _withSessionFile(sessionId, () async {
+      final fs = await _fs();
+      final existing = await _findSession(fs, sessionId);
+      if (existing == null) return null;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (existing.acp) {
+        if (existing.acpPermission == policy) return existing;
+        final updated = existing.copyWith(
+          acpPermission: policy,
+          updatedAt: now,
+        );
+        await _writeSession(fs, updated);
+        return updated;
+      }
+      final id = memberId?.trim() ?? '';
+      if (id.isEmpty) return existing;
+      final binding = existing.bindingFor(id);
+      if (binding == null || !binding.acp) return existing;
+      if (binding.acpPermission == policy) return existing;
+      final updatedBinding = SessionMemberBinding(
+        rosterMemberId: binding.rosterMemberId,
+        taskId: binding.taskId,
+        typeId: binding.typeId,
+        cli: binding.cli,
+        nativeSessionIds: binding.nativeSessionIds,
+        acp: binding.acp,
+        acpPermission: policy,
+      );
+      final updated = existing.copyWith(
+        members: [
+          for (final member in existing.members)
+            if (member.rosterMemberId == id) updatedBinding else member,
+        ],
+        updatedAt: now,
+      );
+      await _writeSession(fs, updated);
+      return updated;
+    });
+  }
+
   Future<AppSession?> setSessionArchived(String sessionId, bool archived) {
     return _withSessionFile(sessionId, () async {
       final fs = await _fs();
