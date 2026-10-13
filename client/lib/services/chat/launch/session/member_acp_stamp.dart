@@ -66,6 +66,7 @@ List<SessionMemberBinding> stampMemberAcp({
   required bool seedClaudeMemberAcp,
   required bool seedCodexMemberAcp,
   bool seedCursorMemberAcp = true,
+  LaunchSecurityPolicy acpPermission = LaunchSecurityPolicy.fullAccess,
   bool? isAndroidOverride,
 }) {
   return [
@@ -86,12 +87,22 @@ List<SessionMemberBinding> stampMemberAcp({
                 ),
                 isAndroidOverride: isAndroidOverride,
               ),
+        acpPermission,
       ),
   ];
 }
 
-SessionMemberBinding _bindingWithAcp(SessionMemberBinding member, bool acp) {
-  if (member.acp == acp) return member;
+SessionMemberBinding _bindingWithAcp(
+  SessionMemberBinding member,
+  bool acp,
+  LaunchSecurityPolicy acpPermission,
+) {
+  final resolvedPermission = acp
+      ? acpPermission
+      : LaunchSecurityPolicy.fullAccess;
+  if (member.acp == acp && member.acpPermission == resolvedPermission) {
+    return member;
+  }
   return SessionMemberBinding(
     rosterMemberId: member.rosterMemberId,
     taskId: member.taskId,
@@ -99,6 +110,7 @@ SessionMemberBinding _bindingWithAcp(SessionMemberBinding member, bool acp) {
     cli: member.cli,
     nativeSessionIds: member.nativeSessionIds,
     acp: acp,
+    acpPermission: resolvedPermission,
   );
 }
 

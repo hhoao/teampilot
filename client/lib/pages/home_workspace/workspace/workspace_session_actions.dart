@@ -835,6 +835,7 @@ SessionCreateRequest buildWorkspaceConversationCreateRequest({
   bool seedClaudeMemberAcp = true,
   bool seedCodexMemberAcp = false,
   bool seedCursorMemberAcp = true,
+  LaunchSecurityPolicy acpPermission = LaunchSecurityPolicy.fullAccess,
   bool? isAndroidOverride,
 }) {
   return SessionCreateRequest(
@@ -862,6 +863,7 @@ SessionCreateRequest buildWorkspaceConversationCreateRequest({
     seedClaudeMemberAcp: seedClaudeMemberAcp,
     seedCodexMemberAcp: seedCodexMemberAcp,
     seedCursorMemberAcp: seedCursorMemberAcp,
+    acpPermission: acpPermission,
   );
 }
 
@@ -887,6 +889,7 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
   final seedClaudeMemberAcp = readPersonalAcpDefault(context, CliTool.claude);
   final seedCodexMemberAcp = readPersonalAcpDefault(context, CliTool.codex);
   final seedCursorMemberAcp = readPersonalAcpDefault(context, CliTool.cursor);
+  final acpPermission = readAcpPermissionDefault(context);
   final team = isPersonal ? null : _teamProfileById(context, sessionTeamId);
 
   final identity = isPersonal
@@ -925,6 +928,7 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
         seedClaudeMemberAcp: seedClaudeMemberAcp,
         seedCodexMemberAcp: seedCodexMemberAcp,
         seedCursorMemberAcp: seedCursorMemberAcp,
+        acpPermission: acpPermission,
       ),
     );
   } on Object catch (error, stackTrace) {

@@ -58,3 +58,15 @@ bool readClaudePersonalAcpDefault(BuildContext context) =>
 
 bool readCodexPersonalAcpDefault(BuildContext context) =>
     readPersonalAcpDefault(context, CliTool.codex);
+
+LaunchSecurityPolicy readAcpPermissionDefault(BuildContext context) {
+  try {
+    return context
+        .read<SessionPreferencesCubit>()
+        .state
+        .preferences
+        .acpPermissionDefault;
+  } on ProviderNotFoundException {
+    return LaunchSecurityPolicy.fullAccess;
+  }
+}

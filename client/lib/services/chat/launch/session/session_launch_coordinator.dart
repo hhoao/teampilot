@@ -193,6 +193,7 @@ class SessionLaunchCoordinator
             seedClaudeMemberAcp: request.seedClaudeMemberAcp,
             seedCodexMemberAcp: request.seedCodexMemberAcp,
             seedCursorMemberAcp: request.seedCursorMemberAcp,
+            acpPermission: request.acpPermission,
           ),
           memberTargets: plan.memberTargets,
         );
@@ -233,6 +234,7 @@ class SessionLaunchCoordinator
           expertKey: request.expertKey,
           continueOverrides: request.continueOverrides,
           acp: request.acp,
+          acpPermission: request.acpPermission,
         ),
       ),
       reason: LaunchReason.create,

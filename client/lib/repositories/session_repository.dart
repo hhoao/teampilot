@@ -782,6 +782,7 @@ class SessionRepository {
     bool seedClaudeMemberAcp = true,
     bool seedCodexMemberAcp = false,
     bool seedCursorMemberAcp = true,
+    LaunchSecurityPolicy acpPermission = LaunchSecurityPolicy.fullAccess,
   }) async {
     final total = Stopwatch()..start();
     var stepAt = total.elapsedMilliseconds;
@@ -852,6 +853,7 @@ class SessionRepository {
           seedClaudeMemberAcp: seedClaudeMemberAcp,
           seedCodexMemberAcp: seedCodexMemberAcp,
           seedCursorMemberAcp: seedCursorMemberAcp,
+          acpPermission: acpPermission,
         );
         sessionTargets = plan.memberTargets;
       }
@@ -928,6 +930,9 @@ class SessionRepository {
       purpose: purpose,
       workflowId: resolvedWorkflowId,
       acp: resolvedAcp,
+      acpPermission: resolvedAcp
+          ? acpPermission
+          : LaunchSecurityPolicy.fullAccess,
     );
     await fs.ensureSessionDir(workspaceId, sessionId);
     mark('ensure-dir');

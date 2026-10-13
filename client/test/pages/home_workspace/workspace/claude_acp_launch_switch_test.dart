@@ -223,6 +223,7 @@ void main() {
       bool seedCodex = false,
       bool seedCursor = true,
       bool android = false,
+      LaunchSecurityPolicy acpPermission = LaunchSecurityPolicy.fullAccess,
     }) => stampMemberAcp(
       members: members,
       memberTargets:
@@ -232,6 +233,7 @@ void main() {
       seedCodexMemberAcp: seedCodex,
       seedCursorMemberAcp: seedCursor,
       isAndroidOverride: android,
+      acpPermission: acpPermission,
     );
 
     test('Claude follows seed on mixed local and stays false when off', () {
@@ -316,6 +318,21 @@ void main() {
         ).single.acp,
         isFalse,
       );
+    });
+
+    test('ACP seats receive acpPermission seed; PTY seats omit it', () {
+      final mixed = stamp(
+        members: [
+          member(CliTool.claude, 'lead'),
+          member(CliTool.flashskyai, 'pty'),
+        ],
+        seedClaude: true,
+        acpPermission: LaunchSecurityPolicy.ask,
+      );
+      expect(mixed.first.acp, isTrue);
+      expect(mixed.first.acpPermission, LaunchSecurityPolicy.ask);
+      expect(mixed.last.acp, isFalse);
+      expect(mixed.last.acpPermission, LaunchSecurityPolicy.fullAccess);
     });
   });
 
