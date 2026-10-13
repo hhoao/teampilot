@@ -143,7 +143,6 @@ const _testStrings = AcpChatStrings(
   processExited: 'Process exited',
   notLoggedIn: 'Not logged in',
   sessionOpenFailed: 'Failed to open the session',
-
 );
 
 void main() {
@@ -294,51 +293,57 @@ void main() {
     await cubit.close();
   });
 
-  test('cancelTurn during launching drops the queue and does not prompt', () async {
-    final cubit = bootCubit();
-    expect(cubit.sendPrompt('hello'), isTrue);
-    expect(cubit.state.inTurn, isTrue);
-    expect(cubit.state.phase, AcpChatPhase.launching);
+  test(
+    'cancelTurn during launching drops the queue and does not prompt',
+    () async {
+      final cubit = bootCubit();
+      expect(cubit.sendPrompt('hello'), isTrue);
+      expect(cubit.state.inTurn, isTrue);
+      expect(cubit.state.phase, AcpChatPhase.launching);
 
-    cubit.cancelTurn();
-    expect(cubit.state.inTurn, isFalse);
-    expect(cubit.state.phase, AcpChatPhase.launching);
-    expect(runtime.cancelled, isFalse);
-    expect(cubit.state.messages, hasLength(1));
-    expect(cubit.state.messages.single.role, AiRole.user);
+      cubit.cancelTurn();
+      expect(cubit.state.inTurn, isFalse);
+      expect(cubit.state.phase, AcpChatPhase.launching);
+      expect(runtime.cancelled, isFalse);
+      expect(cubit.state.messages, hasLength(1));
+      expect(cubit.state.messages.single.role, AiRole.user);
 
-    await cubit.start(
-      executable: 'gemini',
-      sessionToolDir: '/tmp/tool',
-      workingDirectory: '/w',
-    );
-    await pumpEventQueue();
-    expect(runtime.prompts, isEmpty);
-    expect(runtime.cancelled, isFalse);
-    expect(cubit.state.inTurn, isFalse);
-    expect(cubit.state.phase, AcpChatPhase.ready);
-    expect(cubit.state.messages.single.role, AiRole.user);
-    await cubit.close();
-  });
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      await pumpEventQueue();
+      expect(runtime.prompts, isEmpty);
+      expect(runtime.cancelled, isFalse);
+      expect(cubit.state.inTurn, isFalse);
+      expect(cubit.state.phase, AcpChatPhase.ready);
+      expect(cubit.state.messages.single.role, AiRole.user);
+      await cubit.close();
+    },
+  );
 
-  test('sendPrompt after launching cancel queues a new turn that flushes', () async {
-    final cubit = bootCubit();
-    expect(cubit.sendPrompt('hello'), isTrue);
-    cubit.cancelTurn();
-    expect(cubit.sendPrompt('world'), isTrue);
-    await cubit.start(
-      executable: 'gemini',
-      sessionToolDir: '/tmp/tool',
-      workingDirectory: '/w',
-    );
-    await pumpEventQueue();
-    expect(runtime.prompts, ['world']);
-    expect(
-      cubit.state.messages.where((m) => m.role == AiRole.user),
-      hasLength(2),
-    );
-    await cubit.close();
-  });
+  test(
+    'sendPrompt after launching cancel queues a new turn that flushes',
+    () async {
+      final cubit = bootCubit();
+      expect(cubit.sendPrompt('hello'), isTrue);
+      cubit.cancelTurn();
+      expect(cubit.sendPrompt('world'), isTrue);
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      await pumpEventQueue();
+      expect(runtime.prompts, ['world']);
+      expect(
+        cubit.state.messages.where((m) => m.role == AiRole.user),
+        hasLength(2),
+      );
+      await cubit.close();
+    },
+  );
 
   test('cancelTurn before start does not throw', () async {
     final cubit = bootCubit();
@@ -1096,12 +1101,36 @@ void main() {
   );
 
   test(
-    'session/new RpcError → launchFailed kind + sessionOpenFailed copy',
+    'session/new RpcError → launchFailed kind + sessionOpenFailed copy with reason',
     () async {
       runtime.startError = acpd.RpcError(
         code: -32603,
         message: 'Internal error',
         data: {'message': 'Failed to initialize session services'},
+      );
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'cursor-agent',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+
+      expect(cubit.state.phase, AcpChatPhase.ended);
+      expect(cubit.state.error?.kind, AcpChatErrorKind.launchFailed);
+      expect(
+        (cubit.state.messages.single.parts.single as AiTextPart).text,
+        'Failed to open the session: Failed to initialize session services',
+      );
+      await cubit.close();
+    },
+  );
+
+  test(
+    'session/new RpcError without useful data → sessionOpenFailed copy only',
+    () async {
+      runtime.startError = const acpd.RpcError(
+        code: -32603,
+        message: 'Internal error',
       );
       final cubit = bootCubit();
       await cubit.start(

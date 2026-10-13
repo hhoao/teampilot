@@ -11,6 +11,7 @@ import '../../../services/acp/acp_chat_strings.dart';
 import '../../../services/acp/acp_chat_transcript.dart';
 import '../../../services/acp/acp_chat_transcript_replay.dart';
 import '../../../services/acp/acp_client_extensions.dart';
+import '../../../services/acp/acp_rpc_error.dart';
 import '../../../services/acp/acp_session.dart';
 import '../../../services/acp/acp_session_runtime.dart';
 import '../../../services/agent_status/agent_attention_state.dart';
@@ -214,7 +215,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// stamps the attention seat idle, and moves to [AcpChatPhase.ready].
   /// On [AcpLaunchException]: inline system message + ended phase.
   /// [AcpAuthenticateException] and authenticate [TimeoutException] use
-  /// not-logged-in copy. Any other failure is logged and ends the session.
+  /// not-logged-in copy. [acpd.RpcError] from `session/new` uses
+  /// session-open-failed copy plus the agent's nested reason when present.
+  /// Any other failure is logged and ends the session.
   Future<void> start({
     required String executable,
     required String sessionToolDir,
@@ -276,14 +279,21 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       );
       return;
     } on acpd.RpcError catch (error, stackTrace) {
+      final detail = acpRpcErrorUserDetail(error);
       appLogger.e(
-        '[acp-chat] session $sessionId launch failed: $error',
+        '[acp-chat] session $sessionId launch failed: $error'
+        '${detail == null ? '' : ' ($detail)'}',
         error: error,
         stackTrace: stackTrace,
       );
       _endWith(
         AcpChatErrorKind.launchFailed,
-        _strings?.sessionOpenFailed ?? defaultAcpChatStrings.sessionOpenFailed,
+        acpSessionOpenFailedCopy(
+          prefix:
+              _strings?.sessionOpenFailed ??
+              defaultAcpChatStrings.sessionOpenFailed,
+          detail: detail,
+        ),
       );
       return;
     } on Object catch (error, stackTrace) {
@@ -408,7 +418,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     // whole turn and every attention-driven surface reads "starting".
     _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.working));
     unawaited(
-      _recordAndPrompt(trimmed, serial).catchError((Object error, StackTrace st) {
+      _recordAndPrompt(trimmed, serial).catchError((
+        Object error,
+        StackTrace st,
+      ) {
         appLogger.e(
           '[acp-chat] session $sessionId prompt failed: $error',
           error: error,
