@@ -651,6 +651,41 @@ void main() {
     },
   );
 
+  test(
+    'setPermissionPolicy(Ask) before start is not clobbered by fullAccess arg',
+    () async {
+      final runtime = makeRuntime((argv, env) async => conn);
+      runtime.setPermissionPolicy(LaunchSecurityPolicy.ask);
+      await runtime.start(
+        tool: CliTool.gemini,
+        executable: 'gemini',
+        sessionToolDir: sessionToolDir,
+        workingDirectory: cwd,
+        baseEnv: const {'PATH': '/usr/bin'},
+        permissionPolicy: LaunchSecurityPolicy.fullAccess,
+      );
+
+      acpd.RequestPermissionOutcome? outcome;
+      final cards = <AgentPermissionRequest>[];
+      final permissionSub = runtime.permissionRequests.listen((request) {
+        cards.add(request);
+        runtime.answerPermission(AgentPermissionReplyKind.allowOnce);
+      });
+      await driveBashPermission(
+        runtime,
+        toolCallId: 'perm-before-start',
+        onOutcome: (value) => outcome = value,
+      );
+      permissionSub.cancel();
+
+      expect(cards, hasLength(1));
+      expect(cards.single.id, 'perm-before-start');
+      expect(outcome, isA<acpd.PermissionSelected>());
+      expect((outcome! as acpd.PermissionSelected).optionId, 'allow-1');
+      await runtime.close();
+    },
+  );
+
   test('cancel before start does not throw', () {
     final runtime = makeRuntime((argv, env) async => conn);
     expect(() => runtime.cancel(), returnsNormally);
