@@ -166,38 +166,41 @@ void main() {
     await runtime.close();
   });
 
-  test('start omits mcpServers when the launch plan says not to forward', () async {
-    acpd.NewSessionRequest? seenNew;
-    agent.connection.onRequest('session/new', (params) {
-      seenNew = acpd.NewSessionRequest.fromJson(
-        (params! as Map).cast<String, Object?>(),
+  test(
+    'start omits mcpServers when the launch plan says not to forward',
+    () async {
+      acpd.NewSessionRequest? seenNew;
+      agent.connection.onRequest('session/new', (params) {
+        seenNew = acpd.NewSessionRequest.fromJson(
+          (params! as Map).cast<String, Object?>(),
+        );
+        return acpd.NewSessionResponse(sessionId: sessionId).toJson();
+      });
+
+      const capability = GeminiAcpCapability();
+      final runtime = makeRuntime(
+        (argv, env) async => conn,
+        launchPlanFor: (_) => AcpLaunchPlan(
+          launchArgCandidates: capability.launchArgCandidates,
+          buildEnvironment: capability.buildEnvironment,
+          agentExecutable: capability.agentExecutable,
+          forwardSessionNewMcpServers: false,
+        ),
       );
-      return acpd.NewSessionResponse(sessionId: sessionId).toJson();
-    });
+      await runtime.start(
+        tool: CliTool.gemini,
+        executable: 'gemini',
+        sessionToolDir: sessionToolDir,
+        workingDirectory: cwd,
+        mcpServers: const [
+          acpd.McpServerHttp(name: 'teammate-bus', url: 'http://127.0.0.1/mcp'),
+        ],
+      );
 
-    const capability = GeminiAcpCapability();
-    final runtime = makeRuntime(
-      (argv, env) async => conn,
-      launchPlanFor: (_) => AcpLaunchPlan(
-        launchArgCandidates: capability.launchArgCandidates,
-        buildEnvironment: capability.buildEnvironment,
-        agentExecutable: capability.agentExecutable,
-        forwardSessionNewMcpServers: false,
-      ),
-    );
-    await runtime.start(
-      tool: CliTool.gemini,
-      executable: 'gemini',
-      sessionToolDir: sessionToolDir,
-      workingDirectory: cwd,
-      mcpServers: const [
-        acpd.McpServerHttp(name: 'teammate-bus', url: 'http://127.0.0.1/mcp'),
-      ],
-    );
-
-    expect(seenNew!.mcpServers, isEmpty);
-    await runtime.close();
-  });
+      expect(seenNew!.mcpServers, isEmpty);
+      await runtime.close();
+    },
+  );
 
   test(
     'all candidates rejected → AcpLaunchException carrying the version key',
@@ -416,10 +419,12 @@ void main() {
           sessionId: sessionId,
           toolCall: const acpd.ToolCallUpdate(toolCallId: 'perm-1'),
           options: const [
+            // Reject-only cannot be auto-allowed under default Full access,
+            // so a card still surfaces for this runtime delegation check.
             acpd.PermissionOption(
-              optionId: 'allow-1',
-              name: 'Yes',
-              kind: acpd.PermissionOptionKind.allowOnce,
+              optionId: 'reject-1',
+              name: 'Reject',
+              kind: acpd.PermissionOptionKind.rejectOnce,
             ),
           ],
         ),
@@ -433,7 +438,7 @@ void main() {
     AgentPermissionRequest? captured;
     final permissionSub = runtime.permissionRequests.listen((request) {
       captured = request;
-      runtime.answerPermission(AgentPermissionReplyKind.allowOnce);
+      runtime.answerPermission(AgentPermissionReplyKind.reject);
     });
     await runtime.prompt('go');
     await pumpEventQueue();
@@ -441,7 +446,7 @@ void main() {
 
     expect(captured, isNotNull);
     expect(captured!.id, 'perm-1');
-    expect(outcome, isA<acpd.PermissionSelected>());
+    expect(outcome, isA<acpd.PermissionCancelled>());
   });
 
   test('cancel before start does not throw', () {

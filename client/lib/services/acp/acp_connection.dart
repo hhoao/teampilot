@@ -3,8 +3,10 @@ import 'dart:convert';
 
 import 'package:acpd/acpd.dart' as acpd;
 
+import '../../utils/logging/logger_utils.dart';
 import 'acp_agent_translator.dart';
 import 'acp_frame_logger.dart';
+import 'acp_host_mcp_permission.dart';
 import 'acp_session.dart';
 import 'acp_session_runtime.dart';
 import 'acp_transport.dart';
@@ -198,6 +200,13 @@ class AcpAgentConnection {
         earlyUpdates.add(Map<String, Object?>.from(params));
       }
     });
+    // Agents may request MCP permission during session/new (before a
+    // session object exists). Answer grantable options so the agent does
+    // not record a handshake rejection; there is no card to surface yet.
+    final earlyPermissionReg = _client.connection.onRequest(
+      'session/request_permission',
+      _onHandshakePermission,
+    );
     late final acpd.NewSessionResponse response;
     try {
       response = await _client.client.newSession(
@@ -205,6 +214,7 @@ class AcpAgentConnection {
       );
     } finally {
       earlyUpdateReg.dispose();
+      earlyPermissionReg.dispose();
     }
     final session = AcpAgentSession(
       connection: this,
@@ -225,6 +235,24 @@ class AcpAgentConnection {
   /// Releases the open-session slot; called by [AcpAgentSession.dispose].
   void sessionDisposed(AcpAgentSession session) {
     if (identical(_openSession, session)) _openSession = null;
+  }
+
+  /// Handshake `session/request_permission`: auto-allow grantable options
+  /// (including non-host tools). Reject-only cannot be auto-allowed and
+  /// there is no session yet to surface a card, so answer cancelled.
+  Object? _onHandshakePermission(Object? params) {
+    final optionId = autoAllowAcpPermissionOptionId(params, allowNonHost: true);
+    if (optionId != null) {
+      return acpd.RequestPermissionResponse(
+        outcome: acpd.PermissionSelected(optionId: optionId),
+      ).toJson();
+    }
+    AppLogger.instance.i(
+      'ACP: handshake permission cancelled (no auto-allow option)',
+    );
+    return acpd.RequestPermissionResponse(
+      outcome: const acpd.PermissionCancelled(),
+    ).toJson();
   }
 
   /// Runs the `initialize` handshake and caches the negotiated capabilities.

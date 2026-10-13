@@ -26,4 +26,30 @@ void main() {
       isFalse,
     );
   });
+
+  test('isTeammateBusPermissionText matches the bus server name', () {
+    expect(
+      isTeammateBusPermissionText('teammate-bus-read_messages: read_messages'),
+      isTrue,
+    );
+    expect(isTeammateBusPermissionText('Run `npm install`'), isFalse);
+  });
+
+  test('isTeammateBusToolCall matches title, rawInput, and meta', () {
+    expect(
+      isTeammateBusToolCall(title: 'teammate-bus-read_messages: read_messages'),
+      isTrue,
+    );
+    expect(isTeammateBusToolCall(rawInput: {'server': 'teammate-bus'}), isTrue);
+    expect(
+      isTeammateBusToolCall(meta: {'_serverName': 'teammate-bus'}),
+      isTrue,
+    );
+    expect(isTeammateBusToolCall(title: 'Run npm install'), isFalse);
+  });
+
+  test('bare teammate-bus tool names are not host-owned', () {
+    expect(isTeammateBusToolCall(title: 'read_messages'), isFalse);
+    expect(isTeammateBusPermissionText('list_teammates'), isFalse);
+  });
 }

@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:acpd/acpd.dart' as acpd;
 
+import '../../models/launch_security_policy.dart';
+import '../../utils/logging/logger_utils.dart';
 import '../agent_status/agent_permission_request.dart';
 import '../agent_status/seat_hold_gate.dart';
-import '../../utils/logging/logger_utils.dart';
 import 'acp_agent_translator.dart';
 import 'acp_client_extensions.dart';
 import 'acp_connection.dart';
+import 'acp_host_mcp_permission.dart';
 
 /// The sender of a streamed message chunk.
 enum AcpRole { assistant, user }
@@ -245,6 +247,7 @@ class AcpAgentSession {
     required AcpAgentConnection connection,
     required this.sessionId,
     this.permissionTimeout = defaultPermissionTimeout,
+    this.permissionPolicy = LaunchSecurityPolicy.fullAccess,
   }) : _connection = connection,
        _client = connection.acpdClient {
     _updateRegistration = _client.connection.onNotification(
@@ -289,6 +292,19 @@ class AcpAgentSession {
   /// How long the permission hold waits before answering the agent with the
   /// cancelled default outcome.
   final Duration permissionTimeout;
+
+  /// Client-side ACP permission policy for this session.
+  ///
+  /// [LaunchSecurityPolicy.fullAccess] auto-allows grantable options.
+  /// [LaunchSecurityPolicy.ask] auto-allows only teammate-bus (host MCP)
+  /// and surfaces a card for everything else.
+  LaunchSecurityPolicy permissionPolicy;
+
+  /// Assigns [policy] for subsequent permission requests. Does not rewrite
+  /// an in-flight card.
+  void setPermissionPolicy(LaunchSecurityPolicy policy) {
+    permissionPolicy = policy;
+  }
 
   final _updates = StreamController<AcpSessionUpdate>.broadcast();
   final _permissionRequests =
@@ -473,6 +489,15 @@ class AcpAgentSession {
     if (_disposed) return const acpd.PermissionCancelled().toJson();
     if (params is! Map) {
       return const acpd.PermissionCancelled().toJson();
+    }
+    final autoOptionId = autoAllowAcpPermissionOptionId(
+      params,
+      allowNonHost: permissionPolicy != LaunchSecurityPolicy.ask,
+    );
+    if (autoOptionId != null) {
+      return acpd.RequestPermissionResponse(
+        outcome: acpd.PermissionSelected(optionId: autoOptionId),
+      ).toJson();
     }
     final acpd.RequestPermissionRequest request;
     try {
