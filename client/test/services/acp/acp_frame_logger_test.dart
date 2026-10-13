@@ -125,6 +125,21 @@ void main() {
     expect(text, contains('OPENCODE_AUTH_CONTENT=[REDACTED]'));
   });
 
+  test('redacts truncated OPENCODE_AUTH_CONTENT stderr chunks', () {
+    const secretKey = 'sk-trunc-must-not-appear';
+    const truncated = '''
+OPENCODE_AUTH_CONTENT={
+  "openai": {
+    "type": "api",
+    "key": "$secretKey"
+''';
+    final logger = AcpFrameLogger();
+    logger.logStderr(truncated);
+    final text = logger.snapshot().join('\n');
+    expect(text, isNot(contains(secretKey)));
+    expect(text, contains('[REDACTED]'));
+  });
+
   test('can disable disk log mirroring', () {
     final logger = AcpFrameLogger(enableDiskLog: false);
     logger.logOutgoing('{"ok":true}');

@@ -39,7 +39,7 @@ class AcpFrameLogger {
   static final RegExp _opencodeAuthContentQuotedPattern =
       RegExp(r'"OPENCODE_AUTH_CONTENT"\s*:\s*"(?:\\.|[^"\\])*"');
   static final RegExp _opencodeAuthContentEnvPattern = RegExp(
-    r'OPENCODE_AUTH_CONTENT\s*=\s*(?:\{[\s\S]*\}|\S+)',
+    r'OPENCODE_AUTH_CONTENT\s*=\s*(?:\{[\s\S]*|\S+)',
   );
 
   final ListQueue<String> _outgoing = ListQueue<String>();
