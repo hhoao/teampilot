@@ -2,6 +2,10 @@
 /// reason instead of a surfaced error.
 const String acpStopCancelled = '__acp_stop_cancelled__';
 
+/// Sentinel returned when the agent reports ACP `auth_required` (-32000).
+/// Cubit surfaces the generic not-logged-in copy instead of the raw RPC error.
+const String acpStopAuthRequired = '__acp_stop_auth_required__';
+
 /// Per-agent absorption of protocol quirks. One implementation per ACP CLI,
 /// declared by its AcpCapability — never an if (cli == …) at call sites.
 abstract interface class AcpAgentTranslator {
@@ -14,6 +18,7 @@ abstract interface class AcpAgentTranslator {
   /// Client JSON-RPC methods sent as notifications (no reply).
   List<String> get notificationClientMethods;
 
-  /// Map a prompt-phase error to a display string, or [acpStopCancelled].
+  /// Map a prompt-phase error to a display string, or a sentinel
+  /// ([acpStopCancelled] / [acpStopAuthRequired]).
   String translateStopError(Object error, {required bool suppressAbort});
 }

@@ -256,7 +256,9 @@ void main() {
       expect(resolve(requested: false), isFalse);
       expect(resolve(cli: CliTool.codex), isTrue);
       expect(resolve(cli: CliTool.gemini, requested: false), isTrue);
-      expect(resolve(cli: CliTool.opencode), isFalse);
+      expect(resolve(cli: CliTool.opencode), isTrue);
+      expect(resolve(cli: CliTool.opencode, requested: false), isFalse);
+      expect(resolve(cli: CliTool.flashskyai), isFalse);
       expect(resolve(mode: TeamMode.native), isFalse);
       expect(resolve(target: 'ssh:prod'), isFalse);
       expect(resolve(target: 'wsl:ubuntu'), isFalse);

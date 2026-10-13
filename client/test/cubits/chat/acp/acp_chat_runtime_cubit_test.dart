@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/session/acp/acp_chat_runtime_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/acp/acp_agent_translator.dart';
 import 'package:teampilot/services/acp/acp_chat_strings.dart';
 import 'package:teampilot/services/acp/acp_chat_transcript.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
@@ -143,7 +144,6 @@ const _testStrings = AcpChatStrings(
   processExited: 'Process exited',
   notLoggedIn: 'Not logged in',
   sessionOpenFailed: 'Failed to open the session',
-
 );
 
 void main() {
@@ -294,51 +294,57 @@ void main() {
     await cubit.close();
   });
 
-  test('cancelTurn during launching drops the queue and does not prompt', () async {
-    final cubit = bootCubit();
-    expect(cubit.sendPrompt('hello'), isTrue);
-    expect(cubit.state.inTurn, isTrue);
-    expect(cubit.state.phase, AcpChatPhase.launching);
+  test(
+    'cancelTurn during launching drops the queue and does not prompt',
+    () async {
+      final cubit = bootCubit();
+      expect(cubit.sendPrompt('hello'), isTrue);
+      expect(cubit.state.inTurn, isTrue);
+      expect(cubit.state.phase, AcpChatPhase.launching);
 
-    cubit.cancelTurn();
-    expect(cubit.state.inTurn, isFalse);
-    expect(cubit.state.phase, AcpChatPhase.launching);
-    expect(runtime.cancelled, isFalse);
-    expect(cubit.state.messages, hasLength(1));
-    expect(cubit.state.messages.single.role, AiRole.user);
+      cubit.cancelTurn();
+      expect(cubit.state.inTurn, isFalse);
+      expect(cubit.state.phase, AcpChatPhase.launching);
+      expect(runtime.cancelled, isFalse);
+      expect(cubit.state.messages, hasLength(1));
+      expect(cubit.state.messages.single.role, AiRole.user);
 
-    await cubit.start(
-      executable: 'gemini',
-      sessionToolDir: '/tmp/tool',
-      workingDirectory: '/w',
-    );
-    await pumpEventQueue();
-    expect(runtime.prompts, isEmpty);
-    expect(runtime.cancelled, isFalse);
-    expect(cubit.state.inTurn, isFalse);
-    expect(cubit.state.phase, AcpChatPhase.ready);
-    expect(cubit.state.messages.single.role, AiRole.user);
-    await cubit.close();
-  });
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      await pumpEventQueue();
+      expect(runtime.prompts, isEmpty);
+      expect(runtime.cancelled, isFalse);
+      expect(cubit.state.inTurn, isFalse);
+      expect(cubit.state.phase, AcpChatPhase.ready);
+      expect(cubit.state.messages.single.role, AiRole.user);
+      await cubit.close();
+    },
+  );
 
-  test('sendPrompt after launching cancel queues a new turn that flushes', () async {
-    final cubit = bootCubit();
-    expect(cubit.sendPrompt('hello'), isTrue);
-    cubit.cancelTurn();
-    expect(cubit.sendPrompt('world'), isTrue);
-    await cubit.start(
-      executable: 'gemini',
-      sessionToolDir: '/tmp/tool',
-      workingDirectory: '/w',
-    );
-    await pumpEventQueue();
-    expect(runtime.prompts, ['world']);
-    expect(
-      cubit.state.messages.where((m) => m.role == AiRole.user),
-      hasLength(2),
-    );
-    await cubit.close();
-  });
+  test(
+    'sendPrompt after launching cancel queues a new turn that flushes',
+    () async {
+      final cubit = bootCubit();
+      expect(cubit.sendPrompt('hello'), isTrue);
+      cubit.cancelTurn();
+      expect(cubit.sendPrompt('world'), isTrue);
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      await pumpEventQueue();
+      expect(runtime.prompts, ['world']);
+      expect(
+        cubit.state.messages.where((m) => m.role == AiRole.user),
+        hasLength(2),
+      );
+      await cubit.close();
+    },
+  );
 
   test('cancelTurn before start does not throw', () async {
     final cubit = bootCubit();
@@ -780,6 +786,36 @@ void main() {
     expect((message.parts.single as AiTextPart).text, contains('Turn failed'));
     await cubit.close();
   });
+
+  test(
+    'authRequired sentinel stop uses notLoggedIn copy, not Turn failed',
+    () async {
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'opencode',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      runtime.emit(
+        const AcpStop(kind: AcpStopKind.error, message: acpStopAuthRequired),
+      );
+      await pumpEventQueue();
+
+      expect(cubit.state.phase, AcpChatPhase.idle);
+      final message = cubit.state.messages.single;
+      expect(message.role, AiRole.system);
+      expect((message.parts.single as AiTextPart).text, 'Not logged in');
+      expect(
+        (message.parts.single as AiTextPart).text,
+        isNot(contains('Turn failed')),
+      );
+      expect(
+        (message.parts.single as AiTextPart).text,
+        isNot(contains(acpStopAuthRequired)),
+      );
+      await cubit.close();
+    },
+  );
 
   test(
     'teammate-bus MCP permission is auto-allowed without a pending card',

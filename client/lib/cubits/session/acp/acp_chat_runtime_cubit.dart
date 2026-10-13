@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../models/team_config.dart';
+import '../../../services/acp/acp_agent_translator.dart';
 import '../../../services/acp/acp_chat_extension_fold.dart';
 import '../../../services/acp/acp_chat_strings.dart';
 import '../../../services/acp/acp_chat_transcript.dart';
@@ -408,7 +409,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     // whole turn and every attention-driven surface reads "starting".
     _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.working));
     unawaited(
-      _recordAndPrompt(trimmed, serial).catchError((Object error, StackTrace st) {
+      _recordAndPrompt(trimmed, serial).catchError((
+        Object error,
+        StackTrace st,
+      ) {
         appLogger.e(
           '[acp-chat] session $sessionId prompt failed: $error',
           error: error,
@@ -680,10 +684,11 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         unawaited(_persist());
         _endTurn();
       case AcpStopKind.error:
-        final prefix = _strings?.turnFailed ?? 'Turn failed';
-        final text = stop.message == null || stop.message!.isEmpty
-            ? prefix
-            : '$prefix: ${stop.message}';
+        final text = stop.message == acpStopAuthRequired
+            ? (_strings?.notLoggedIn ?? defaultAcpChatStrings.notLoggedIn)
+            : (stop.message == null || stop.message!.isEmpty
+                  ? (_strings?.turnFailed ?? 'Turn failed')
+                  : '${_strings?.turnFailed ?? 'Turn failed'}: ${stop.message}');
         _appendSystemMessage(text);
         unawaited(_persist());
         _endTurn();
