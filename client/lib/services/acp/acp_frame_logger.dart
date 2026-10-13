@@ -37,9 +37,9 @@ class AcpFrameLogger {
     r'CURSOR_AUTH_TOKEN\s*=\s*\S+',
   );
   static final RegExp _opencodeAuthContentQuotedPattern =
-      RegExp(r'"OPENCODE_AUTH_CONTENT"\s*:\s*"[^"]*"');
+      RegExp(r'"OPENCODE_AUTH_CONTENT"\s*:\s*"(?:\\.|[^"\\])*"');
   static final RegExp _opencodeAuthContentEnvPattern = RegExp(
-    r'OPENCODE_AUTH_CONTENT\s*=\s*\S+',
+    r'OPENCODE_AUTH_CONTENT\s*=\s*(?:\{[\s\S]*\}|\S+)',
   );
 
   final ListQueue<String> _outgoing = ListQueue<String>();

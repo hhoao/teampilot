@@ -102,6 +102,29 @@ void main() {
     expect(text, contains('OPENCODE_AUTH_CONTENT=[REDACTED]'));
   });
 
+  test('redacts indented JSON OPENCODE_AUTH_CONTENT payloads', () {
+    const secretKey = 'sk-live-must-not-appear';
+    const blob = '''
+{
+  "openai": {
+    "type": "api",
+    "key": "$secretKey"
+  }
+}''';
+    final logger = AcpFrameLogger();
+    logger.logOutgoing(
+      jsonEncode({
+        'method': 'session/prompt',
+        'env': {'OPENCODE_AUTH_CONTENT': blob},
+      }),
+    );
+    logger.logStderr('OPENCODE_AUTH_CONTENT=$blob');
+    final text = logger.snapshot().join('\n');
+    expect(text, isNot(contains(secretKey)));
+    expect(text, contains('[REDACTED]'));
+    expect(text, contains('OPENCODE_AUTH_CONTENT=[REDACTED]'));
+  });
+
   test('can disable disk log mirroring', () {
     final logger = AcpFrameLogger(enableDiskLog: false);
     logger.logOutgoing('{"ok":true}');
