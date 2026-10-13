@@ -8921,4 +8921,10 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get codexAcpChatNotLoggedIn =>
       'Codex 尚未登录。请到设置 → 服务商完成 ChatGPT 登录，或改用 API Key。';
+
+  @override
+  String get acpPermissionAskLabel => '询问';
+
+  @override
+  String get acpPermissionFullAccessLabel => '完全访问';
 }

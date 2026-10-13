@@ -9326,4 +9326,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get codexAcpChatNotLoggedIn =>
       'Codex isn\'t logged in. Sign in with ChatGPT under Settings → Providers, or switch to an API key.';
+
+  @override
+  String get acpPermissionAskLabel => 'Ask';
+
+  @override
+  String get acpPermissionFullAccessLabel => 'Full access';
 }

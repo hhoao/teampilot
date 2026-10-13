@@ -16549,6 +16549,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Codex isn\'t logged in. Sign in with ChatGPT under Settings → Providers, or switch to an API key.'**
   String get codexAcpChatNotLoggedIn;
+
+  /// No description provided for @acpPermissionAskLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask'**
+  String get acpPermissionAskLabel;
+
+  /// No description provided for @acpPermissionFullAccessLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Full access'**
+  String get acpPermissionFullAccessLabel;
 }
 
 class _AppLocalizationsDelegate

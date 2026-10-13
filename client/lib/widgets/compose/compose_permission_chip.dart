@@ -16,6 +16,7 @@ class ComposePermissionChip extends StatelessWidget {
     required this.defaultLabel,
     required this.fullAccessLabel,
     required this.onSelected,
+    this.askLabel,
     this.askReadOnlyLabel,
     this.autoApproveWorkspaceWriteLabel,
     this.customLabel,
@@ -29,6 +30,7 @@ class ComposePermissionChip extends StatelessWidget {
   final LaunchSecurityPolicy launchSecurityPolicy;
   final String defaultLabel;
   final String fullAccessLabel;
+  final String? askLabel;
   final String? askReadOnlyLabel;
   final String? autoApproveWorkspaceWriteLabel;
   final String? customLabel;
@@ -37,6 +39,9 @@ class ComposePermissionChip extends StatelessWidget {
   List<LaunchSecurityPolicy> get _renderablePolicies => [
     if (supportedPolicies.contains(LaunchSecurityPolicy.cliDefault))
       LaunchSecurityPolicy.cliDefault,
+    if (supportedPolicies.contains(LaunchSecurityPolicy.ask) &&
+        askLabel != null)
+      LaunchSecurityPolicy.ask,
     if (supportedPolicies.contains(LaunchSecurityPolicy.askReadOnlyTrusted) &&
         askReadOnlyLabel != null)
       LaunchSecurityPolicy.askReadOnlyTrusted,
@@ -62,6 +67,9 @@ class ComposePermissionChip extends StatelessWidget {
     if (policy == LaunchSecurityPolicy.fullAccess) {
       return fullAccessLabel;
     }
+    if (policy == LaunchSecurityPolicy.ask) {
+      return askLabel!;
+    }
     if (policy == LaunchSecurityPolicy.askReadOnlyTrusted) {
       return askReadOnlyLabel ?? customLabel ?? defaultLabel;
     }
@@ -84,6 +92,13 @@ class ComposePermissionChip extends StatelessWidget {
           icon: Icons.verified_outlined,
           label: defaultLabel,
           selected: selectedPolicy == LaunchSecurityPolicy.cliDefault,
+        ),
+      if (renderablePolicies.contains(LaunchSecurityPolicy.ask))
+        TpActionMenuSpec.item(
+          value: LaunchSecurityPolicy.ask,
+          icon: Icons.help_outline,
+          label: askLabel!,
+          selected: selectedPolicy == LaunchSecurityPolicy.ask,
         ),
       if (renderablePolicies.contains(LaunchSecurityPolicy.askReadOnlyTrusted))
         TpActionMenuSpec.item(

@@ -321,5 +321,43 @@ void main() {
 
       expect(selected, LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted);
     });
+
+    testWidgets(
+      'ask + fullAccess shows Ask and selecting Full access fires onSelected',
+      (tester) async {
+        LaunchSecurityPolicy? selected;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => ComposePermissionChip(
+                  palette: WorkspaceChatLandingPalette(
+                    Theme.of(context).colorScheme,
+                  ),
+                  supportedPolicies: Set.unmodifiable({
+                    LaunchSecurityPolicy.ask,
+                    LaunchSecurityPolicy.fullAccess,
+                  }),
+                  launchSecurityPolicy: LaunchSecurityPolicy.ask,
+                  defaultLabel: 'Default',
+                  askLabel: 'Ask',
+                  fullAccessLabel: 'Full access',
+                  onSelected: (value) => selected = value,
+                ),
+              ),
+            ),
+          ),
+        );
+
+        expect(find.text('Ask'), findsOneWidget);
+
+        await tester.tap(find.text('Ask'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Full access'));
+        await tester.pumpAndSettle();
+
+        expect(selected, LaunchSecurityPolicy.fullAccess);
+      },
+    );
   });
 }

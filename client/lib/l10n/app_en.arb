@@ -4677,5 +4677,7 @@
   "codexPersonalAcpDefaultDescription": "Run new personal and mixed-team Codex sessions as terminal-less ACP chat via codex-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.",
   "codexPersonalAcpAndroidDisabled": "ACP chat is desktop-only until remote SSH exec is available.",
   "codexAcpLaunchFailedAdapter": "Could not start the Codex ACP adapter (codex-acp). Install it and try again.",
-  "codexAcpChatNotLoggedIn": "Codex isn't logged in. Sign in with ChatGPT under Settings → Providers, or switch to an API key."
+  "codexAcpChatNotLoggedIn": "Codex isn't logged in. Sign in with ChatGPT under Settings → Providers, or switch to an API key.",
+  "acpPermissionAskLabel": "Ask",
+  "acpPermissionFullAccessLabel": "Full access"
 }
