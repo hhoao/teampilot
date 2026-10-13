@@ -168,6 +168,10 @@ class SessionChatComposeSection extends StatelessWidget {
       context,
       (c) => c.state.presets,
     );
+    final liveSession = seatSelect<ChatCubit, AppSession>(
+      context,
+      (c) => _cubitSession(c, session.sessionId) ?? session,
+    );
     final team = _readLiveTeam(context);
     final hubState = _readExpertHubState(context);
 
@@ -495,7 +499,7 @@ class SessionChatComposeSection extends StatelessWidget {
                               ),
                               permissionControl: sessionAcpPermissionControl(
                                 context: context,
-                                session: session,
+                                session: liveSession,
                                 selectedMemberId: selectedMemberId,
                                 l10n: l10n,
                                 runtime: acpRuntime,

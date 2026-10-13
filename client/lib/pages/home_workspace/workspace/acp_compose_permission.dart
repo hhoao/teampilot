@@ -190,6 +190,7 @@ ComposePermissionControl? landingAcpPermissionControl({
   Workspace? workspace,
   List<CliPreset> presets = const [],
 }) {
+  final current = watchAcpPermissionDefault(context);
   final stamped = !isPersonal && selectedTeam != null && workspace != null
       ? stampedLandingMembers(
           team: selectedTeam,
@@ -198,7 +199,7 @@ ComposePermissionControl? landingAcpPermissionControl({
           seedCodexMemberAcp: readPersonalAcpDefault(context, CliTool.codex),
           seedCursorMemberAcp: readPersonalAcpDefault(context, CliTool.cursor),
           globalPresets: presets,
-          acpPermission: readAcpPermissionDefault(context),
+          acpPermission: current,
         )
       : const <SessionMemberBinding>[];
   final registry =
@@ -208,7 +209,7 @@ ComposePermissionControl? landingAcpPermissionControl({
     launchCli: launchCli,
     requested: readPersonalAcpDefault(context, launchCli),
     stampedMembers: stamped,
-    current: readAcpPermissionDefault(context),
+    current: current,
     registry: registry,
     l10n: l10n,
     onSelected: (policy) {

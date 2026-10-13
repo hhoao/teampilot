@@ -1,4 +1,8 @@
+import 'package:flutter/widgets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/l10n/app_localizations_en.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_member_binding.dart';
@@ -6,7 +10,9 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace/acp_compose_permission.dart';
+import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/widgets/compose/compose_chrome.dart';
 
 void main() {
   test(
@@ -339,4 +345,45 @@ void main() {
       );
     });
   });
+
+  testWidgets(
+    'landingAcpPermissionControl rebuilds current after setAcpPermissionDefault',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final cubit = SessionPreferencesCubit(
+        repository: SessionPreferencesRepository(
+          await SharedPreferences.getInstance(),
+        ),
+      );
+      await cubit.load();
+      addTearDown(cubit.close);
+
+      final l10n = AppLocalizationsEn();
+      ComposePermissionControl? latest;
+      await tester.pumpWidget(
+        BlocProvider<SessionPreferencesCubit>.value(
+          value: cubit,
+          child: Builder(
+            builder: (context) {
+              latest = landingAcpPermissionControl(
+                context: context,
+                isPersonal: true,
+                launchCli: CliTool.gemini,
+                l10n: l10n,
+              );
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+
+      expect(latest, isNotNull);
+      expect(latest!.launchSecurityPolicy, LaunchSecurityPolicy.fullAccess);
+
+      await cubit.setAcpPermissionDefault(LaunchSecurityPolicy.ask);
+      await tester.pump();
+
+      expect(latest!.launchSecurityPolicy, LaunchSecurityPolicy.ask);
+    },
+  );
 }
