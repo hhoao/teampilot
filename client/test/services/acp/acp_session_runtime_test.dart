@@ -608,6 +608,49 @@ void main() {
     },
   );
 
+  test(
+    'setPermissionPolicy(Ask) during session/new surfaces a bash card',
+    () async {
+      final gate = Completer<void>();
+      agent.connection.onRequest('session/new', (params) async {
+        await gate.future;
+        return acpd.NewSessionResponse(sessionId: sessionId).toJson();
+      });
+
+      final runtime = makeRuntime((argv, env) async => conn);
+      final started = runtime.start(
+        tool: CliTool.gemini,
+        executable: 'gemini',
+        sessionToolDir: sessionToolDir,
+        workingDirectory: cwd,
+        baseEnv: const {'PATH': '/usr/bin'},
+      );
+      await pumpEventQueue();
+      runtime.setPermissionPolicy(LaunchSecurityPolicy.ask);
+      gate.complete();
+      await started;
+
+      acpd.RequestPermissionOutcome? outcome;
+      final cards = <AgentPermissionRequest>[];
+      final permissionSub = runtime.permissionRequests.listen((request) {
+        cards.add(request);
+        runtime.answerPermission(AgentPermissionReplyKind.allowOnce);
+      });
+      await driveBashPermission(
+        runtime,
+        toolCallId: 'perm-during-new',
+        onOutcome: (value) => outcome = value,
+      );
+      permissionSub.cancel();
+
+      expect(cards, hasLength(1));
+      expect(cards.single.id, 'perm-during-new');
+      expect(outcome, isA<acpd.PermissionSelected>());
+      expect((outcome! as acpd.PermissionSelected).optionId, 'allow-1');
+      await runtime.close();
+    },
+  );
+
   test('cancel before start does not throw', () {
     final runtime = makeRuntime((argv, env) async => conn);
     expect(() => runtime.cancel(), returnsNormally);

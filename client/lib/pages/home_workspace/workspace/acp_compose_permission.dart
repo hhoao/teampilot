@@ -287,6 +287,7 @@ Future<void> applyAcpComposePermission({
   required LaunchSecurityPolicy policy,
   AcpChatRuntimeCubit? runtime,
 }) async {
+  runtime?.setPermissionPolicy(policy);
   await preferences.setAcpPermissionDefault(policy);
   await chat.setAcpPermission(
     repo,
@@ -294,5 +295,4 @@ Future<void> applyAcpComposePermission({
     memberId: memberId,
     policy: policy,
   );
-  runtime?.setPermissionPolicy(policy);
 }

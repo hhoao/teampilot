@@ -77,6 +77,27 @@ void main() {
     expect(session.acp, isTrue);
   });
 
+  test(
+    'personal Gemini acp false + acpPermission ask persists ask',
+    () async {
+      final session = (await repo.createSession(
+        workspaceId,
+        cli: CliTool.gemini,
+        acp: false,
+        acpPermission: LaunchSecurityPolicy.ask,
+      )).session;
+      expect(session.acp, isTrue);
+      expect(session.acpPermission, LaunchSecurityPolicy.ask);
+
+      final loaded = await repo.loadSessionsForWorkspace(workspaceId);
+      final reloaded = loaded.singleWhere(
+        (s) => s.sessionId == session.sessionId,
+      );
+      expect(reloaded.acp, isTrue);
+      expect(reloaded.acpPermission, LaunchSecurityPolicy.ask);
+    },
+  );
+
   test('team session persists false even when acp is true', () async {
     final session = (await repo.createSession(
       workspaceId,

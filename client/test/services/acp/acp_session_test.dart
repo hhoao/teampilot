@@ -860,6 +860,66 @@ void main() {
     expect((bashOutcome! as acpd.PermissionSelected).optionId, 'allow-1');
   });
 
+  test(
+    'setPermissionPolicy(fullAccess) while bash card is held still waits for user',
+    () async {
+      acpd.RequestPermissionOutcome? outcome;
+      scriptPrompt(() async {
+        outcome = await agentCtx.requestPermission(
+          acpd.RequestPermissionRequest(
+            sessionId: sessionId,
+            toolCall: const acpd.ToolCallUpdate(
+              toolCallId: 'perm-held',
+              title: 'Run npm install',
+            ),
+            options: const [
+              acpd.PermissionOption(
+                optionId: 'allow-1',
+                name: 'Yes',
+                kind: acpd.PermissionOptionKind.allowOnce,
+              ),
+              acpd.PermissionOption(
+                optionId: 'always-1',
+                name: 'Always allow',
+                kind: acpd.PermissionOptionKind.allowAlways,
+              ),
+            ],
+          ),
+        );
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+
+      await openSession();
+      session.setPermissionPolicy(LaunchSecurityPolicy.ask);
+
+      final held = Completer<void>();
+      AgentPermissionRequest? captured;
+      final permissionSub = session.permissionRequests.listen((request) {
+        captured = request;
+        held.complete();
+      });
+      final promptDone = session.prompt('go');
+      await held.future;
+      await pumpEventQueue();
+
+      expect(outcome, isNull);
+      session.setPermissionPolicy(LaunchSecurityPolicy.fullAccess);
+      await pumpEventQueue();
+      expect(outcome, isNull);
+
+      session.answerPermission(AgentPermissionReplyKind.allowOnce);
+      await promptDone;
+      permissionSub.cancel();
+
+      expect(captured, isNotNull);
+      expect(captured!.id, 'perm-held');
+      expect(outcome, isA<acpd.PermissionSelected>());
+      expect((outcome! as acpd.PermissionSelected).optionId, 'allow-1');
+    },
+  );
+
   test('reject-only still surfaces a card under Full access', () async {
     acpd.RequestPermissionOutcome? outcome;
     scriptPrompt(() async {
