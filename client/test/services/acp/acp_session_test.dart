@@ -926,6 +926,48 @@ void main() {
     expect(result, {'outcome': 'selected', 'optionId': 'always-1'});
   });
 
+  test('Ask surfaces a card for Cursor hyphen option kinds', () async {
+    Object? result;
+    scriptPrompt(() async {
+      result = await agent.connection.sendRequest(
+        'session/request_permission',
+        params: {
+          'sessionId': sessionId,
+          'toolCall': {
+            'toolCallId': 'perm-hyphen-ask',
+            'title': 'Run npm install',
+          },
+          'options': [
+            {'optionId': 'allow-1', 'name': 'Yes', 'kind': 'allow-once'},
+            {'optionId': 'always-1', 'name': 'Always', 'kind': 'allow-always'},
+          ],
+        },
+        mapResult: (r) => r,
+      );
+      return acpd.PromptResponse(stopReason: acpd.StopReason.endTurn).toJson();
+    });
+
+    await openSession();
+    session.setPermissionPolicy(LaunchSecurityPolicy.ask);
+
+    AgentPermissionRequest? captured;
+    final permissionSub = session.permissionRequests.listen((request) {
+      captured = request;
+      session.answerPermission(AgentPermissionReplyKind.allowOnce);
+    });
+    await session.prompt('go');
+    await pumpEventQueue();
+    permissionSub.cancel();
+
+    expect(captured, isNotNull);
+    expect(captured!.id, 'perm-hyphen-ask');
+    expect(captured!.description, 'Run npm install');
+    expect(captured!.always, [
+      const AgentPermissionAlwaysOption(label: 'Always', payload: 'always-1'),
+    ]);
+    expect(result, {'outcome': 'selected', 'optionId': 'allow-1'});
+  });
+
   test('abort-shaped error after cancel becomes a cancelled stop', () async {
     scriptPrompt(() async {
       throw acpd.RpcError(

@@ -41,7 +41,8 @@ String? _preferredAllowOptionId(Object? options) {
   for (final item in options) {
     if (item is! Map) continue;
     final option = Map<String, Object?>.from(item);
-    final kind = (option['kind'] as String?)?.toLowerCase();
+    final rawKind = option['kind'];
+    final kind = rawKind is String ? rawKind.toLowerCase() : null;
     if (kind == null || _isRejectKind(kind)) continue;
     final id = option['optionId'] ?? option['option_id'] ?? option['id'];
     if (id is! String || id.isEmpty) continue;
@@ -66,4 +67,31 @@ bool _isRejectKind(String kind) =>
 Map<String, Object?>? _asStringKeyedMap(Object? value) {
   if (value is! Map) return null;
   return Map<String, Object?>.from(value);
+}
+
+/// Copies [params] with option `kind` hyphens rewritten to underscores.
+///
+/// Cursor sends `allow-always` / `allow-once`; acpd's typed
+/// `RequestPermissionRequest.fromJson` only accepts `allow_always`.
+Map<String, Object?> normalizeAcpPermissionOptionKinds(
+  Map<String, Object?> params,
+) {
+  final options = params['options'];
+  if (options is! List) return Map<String, Object?>.from(params);
+  return {
+    ...params,
+    'options': [
+      for (final item in options) _normalizePermissionOptionKind(item),
+    ],
+  };
+}
+
+Object? _normalizePermissionOptionKind(Object? item) {
+  if (item is! Map) return item;
+  final option = Map<String, Object?>.from(item);
+  final kind = option['kind'];
+  if (kind is String) {
+    option['kind'] = kind.replaceAll('-', '_');
+  }
+  return option;
 }

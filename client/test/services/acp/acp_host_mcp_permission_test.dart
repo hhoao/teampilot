@@ -115,4 +115,33 @@ void main() {
       'always-1',
     );
   });
+
+  test('normalizeAcpPermissionOptionKinds rewrites hyphen kinds', () {
+    expect(
+      normalizeAcpPermissionOptionKinds({
+        'options': [
+          {'optionId': 'always-1', 'kind': 'allow-always'},
+          {'optionId': 'once-1', 'kind': 'allow-once'},
+          {'optionId': 'reject-1', 'kind': 'reject-once'},
+        ],
+      })['options'],
+      [
+        {'optionId': 'always-1', 'kind': 'allow_always'},
+        {'optionId': 'once-1', 'kind': 'allow_once'},
+        {'optionId': 'reject-1', 'kind': 'reject_once'},
+      ],
+    );
+  });
+
+  test('non-string option kind is ignored instead of throwing', () {
+    expect(
+      autoAllowAcpPermissionOptionId({
+        'options': [
+          {'optionId': 'bad', 'kind': 1},
+          {'optionId': 'once-1', 'kind': 'allow-once'},
+        ],
+      }),
+      'once-1',
+    );
+  });
 }

@@ -502,7 +502,7 @@ class AcpAgentSession {
     final acpd.RequestPermissionRequest request;
     try {
       request = acpd.RequestPermissionRequest.fromJson(
-        Map<String, Object?>.from(params),
+        normalizeAcpPermissionOptionKinds(Map<String, Object?>.from(params)),
       );
     } on Object catch (error, stackTrace) {
       AppLogger.instance.w(
