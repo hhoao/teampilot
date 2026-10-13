@@ -1607,6 +1607,14 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String agentPermissionTitle(String cliName) {
+    return '$cliName 需要你的授权';
+  }
+
+  @override
+  String get agentPermissionTitleGeneric => '需要你的授权';
+
+  @override
   String get opencodePermissionTitle => 'OpenCode 需要你的授权';
 
   @override
@@ -8852,13 +8860,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get acpLaunchFailedVersion => '当前 CLI 版本不支持 ACP 聊天模式，请更新后再试。';
 
   @override
-  String get acpChatLaunchFailed => '无法启动 Gemini，请确认已安装 Gemini CLI 后重试。';
+  String acpChatLaunchFailed(String cliName) {
+    return '无法启动 $cliName，请确认已安装对应 CLI 后重试。';
+  }
 
   @override
   String get acpChatTurnFailed => '本轮对话失败';
 
   @override
-  String get acpChatProcessExited => 'Gemini 意外退出';
+  String acpChatProcessExited(String cliName) {
+    return '$cliName 意外退出';
+  }
 
   @override
   String get claudePersonalAcpDefaultLabel => '个人会话使用 ACP 聊天';
@@ -8886,6 +8898,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get acpChatNotLoggedIn => '代理尚未登录。请到设置 → 服务商完成登录后重试。';
+
+  @override
+  String acpChatSessionOpenFailed(String cliName) {
+    return '无法打开 $cliName 会话。';
+  }
 
   @override
   String get codexPersonalAcpDefaultLabel => '个人会话使用 ACP 聊天';

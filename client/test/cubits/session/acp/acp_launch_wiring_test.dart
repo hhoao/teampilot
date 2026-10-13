@@ -14,6 +14,9 @@ class _FixedAuthCapability implements AcpCapability {
   final String? resolved;
 
   @override
+  bool get forwardSessionNewMcpServers => true;
+
+  @override
   Future<String?> resolveAuthenticateMethodId(Map<String, String> env) async {
     if (env['FORCE_SKIP'] == '1') return null;
     return resolved ?? authenticateMethodId;

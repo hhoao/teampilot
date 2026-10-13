@@ -78,6 +78,28 @@ void main() {
   });
 
   test(
+    'markMemberRunning rings doorbell when unread mail is already waiting',
+    () {
+      final launcher = FakeMemberLauncher();
+      final bus = TeamBus(launcher: launcher);
+      final worker = AgentNode.test(
+        memberId: 'developer',
+        lifecycle: MemberLifecycle.declared,
+      );
+      bus.declareMember(worker);
+      worker.inbox.deliver(
+        TeamMessage(id: '1', from: 'team-lead', to: 'developer', content: 'hi'),
+      );
+
+      bus.markMemberRunning('developer');
+
+      expect(worker.lifecycle, MemberLifecycle.running);
+      expect(launcher.woken, isNotEmpty);
+      expect(launcher.woken.single.memberId, 'developer');
+    },
+  );
+
+  test(
     'markTurnStarted moves running-at-prompt member to active (working)',
     () {
       final bus = TeamBus(launcher: FakeMemberLauncher());

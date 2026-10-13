@@ -53,6 +53,9 @@ final class CursorAcpCapability implements AcpCapability {
   String? get authenticateMethodId => 'cursor_login';
 
   @override
+  bool get forwardSessionNewMcpServers => false;
+
+  @override
   Future<String?> resolveAuthenticateMethodId(Map<String, String> env) async {
     final home = (env['HOME'] ?? env['USERPROFILE'] ?? '').trim();
     if (home.isEmpty) return authenticateMethodId;

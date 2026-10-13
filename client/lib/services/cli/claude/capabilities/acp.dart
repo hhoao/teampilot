@@ -83,6 +83,9 @@ final class ClaudeAcpCapability implements AcpCapability {
   String? get authenticateMethodId => null;
 
   @override
+  bool get forwardSessionNewMcpServers => true;
+
+  @override
   Future<String?> resolveAuthenticateMethodId(Map<String, String> env) async =>
       authenticateMethodId;
 

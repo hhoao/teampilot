@@ -18,6 +18,7 @@ import '../../../services/agent_status/agent_permission_request.dart';
 import '../../../services/agent_status/agent_status_event.dart';
 import '../../../utils/logging/logger.dart';
 import '../../../services/agent_status/agent_attention_port.dart';
+import '../../../services/chat/team_bus/teammate_bus_permission.dart';
 
 /// Lifecycle phase of the terminal-less ACP chat session.
 enum AcpChatPhase {
@@ -211,9 +212,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   ///
   /// On success: subscribes to updates + permissions (before any prompt),
   /// stamps the attention seat idle, and moves to [AcpChatPhase.ready].
-  /// On [AcpLaunchException]: inline system message + ended phase. Any other
-  /// failure is logged and also ends the session with its raw text (a
-  /// non-launch failure here has no user-actionable copy of its own).
+  /// On [AcpLaunchException]: inline system message + ended phase.
+  /// [AcpAuthenticateException] and authenticate [TimeoutException] use
+  /// not-logged-in copy. Any other failure is logged and ends the session.
   Future<void> start({
     required String executable,
     required String sessionToolDir,
@@ -254,6 +255,35 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       _endWith(
         AcpChatErrorKind.launchFailed,
         _strings?.notLoggedIn ?? defaultAcpChatStrings.notLoggedIn,
+      );
+      return;
+    } on TimeoutException catch (error, stackTrace) {
+      if ((error.message ?? error.toString()).contains('authenticate')) {
+        _endWith(
+          AcpChatErrorKind.launchFailed,
+          _strings?.notLoggedIn ?? defaultAcpChatStrings.notLoggedIn,
+        );
+        return;
+      }
+      appLogger.e(
+        '[acp-chat] session $sessionId launch failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _endWith(
+        AcpChatErrorKind.launchFailed,
+        _strings?.launchFailed ?? defaultAcpChatStrings.launchFailed,
+      );
+      return;
+    } on acpd.RpcError catch (error, stackTrace) {
+      appLogger.e(
+        '[acp-chat] session $sessionId launch failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      _endWith(
+        AcpChatErrorKind.launchFailed,
+        _strings?.sessionOpenFailed ?? defaultAcpChatStrings.sessionOpenFailed,
       );
       return;
     } on Object catch (error, stackTrace) {
@@ -674,8 +704,29 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     );
   }
 
-  void _onPermissionRequest(AgentPermissionRequest request) =>
-      _onClientRequest(AcpPendingPermission(request));
+  void _onPermissionRequest(AgentPermissionRequest request) {
+    if (isTeammateBusPermissionRequest(request)) {
+      unawaited(_autoAllowTeammateBus(request));
+      return;
+    }
+    _onClientRequest(AcpPendingPermission(request));
+  }
+
+  /// TeamPilot installed teammate-bus; Cursor ACP still asks via
+  /// `session/request_permission` before `read_messages` / `send_message`.
+  /// Auto-allow so mixed collaboration is not blocked on a host-owned MCP.
+  Future<void> _autoAllowTeammateBus(AgentPermissionRequest request) async {
+    if (_closing || isClosed || state.phase == AcpChatPhase.ended) return;
+    final always = request.always.isEmpty ? null : request.always.first;
+    final kind = always == null
+        ? AgentPermissionReplyKind.allowOnce
+        : AgentPermissionReplyKind.always;
+    appLogger.i(
+      '[acp-chat] session $sessionId auto-allow teammate-bus '
+      '${request.description}',
+    );
+    await _runtime.answerPermission(kind, always: always);
+  }
 
   void _onClientRequest(AcpPendingClientRequest pending) {
     if (_closing || isClosed || state.phase == AcpChatPhase.ended) return;

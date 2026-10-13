@@ -351,6 +351,7 @@ void main() {
 
     expect(find.byKey(AppKeys.opencodePermissionCard), findsOneWidget);
     expect(find.textContaining('npm install'), findsWidgets);
+    expect(find.text('OpenCode needs your permission'), findsOneWidget);
     // Terminal banner must not double-render for the interactive card.
     expect(find.byKey(AppKeys.agentPermissionAttentionBanner), findsNothing);
   });
@@ -412,6 +413,8 @@ void main() {
 
     expect(find.byKey(AppKeys.opencodePermissionCard), findsOneWidget);
     expect(find.byKey(AppKeys.agentPermissionAttentionBanner), findsNothing);
+    expect(find.text('Claude Code needs your permission'), findsOneWidget);
+    expect(find.text('OpenCode needs your permission'), findsNothing);
     // Claude-family always options are rule-wrapped.
     expect(find.text('Always allow Bash(rm -rf node_modules)'), findsOneWidget);
 

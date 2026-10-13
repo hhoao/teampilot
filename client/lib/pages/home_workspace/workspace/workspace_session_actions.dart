@@ -564,6 +564,7 @@ Future<bool> submitWorkspaceLandingMessage(
   if (shouldPersistLandingHistoryPending(
     switchToTerminal: switchToTerminal,
     session: session,
+    memberId: memberId,
   )) {
     pendingRecord = await chatCubit.persistHistoryPending(
       workspaceId: liveWorkspace.workspaceId,
@@ -579,10 +580,11 @@ Future<bool> submitWorkspaceLandingMessage(
     late final bool connected;
     late final bool delivered;
     try {
-      if (isAcpChatSession(session)) {
+      if (landingPromptUsesAcp(session, memberId)) {
         // Queue sendPrompt as soon as the cubit is attached (before
         // handshake). Waiting for connect first paints the CLI probe
         // "not logged in" row, then replaces it with the user bubble.
+        // Mixed seats live on [ChatTab.memberAcpRuntimes], not [ChatTab.acpRuntime].
         final result = await queueAcpLandingPromptDuringConnect(
           connect: _ensureLandingSessionConnected(
             chatCubit: chatCubit,
@@ -590,9 +592,17 @@ Future<bool> submitWorkspaceLandingMessage(
             memberId: memberId,
             aborted: cancelled,
           ),
-          lookup: () => chatCubit.tabStore
-              .getOpenTabBySessionId(session.sessionId)
-              ?.acpRuntime,
+          lookup: () {
+            final tab = chatCubit.tabStore.getOpenTabBySessionId(
+              session.sessionId,
+            );
+            if (tab == null) return null;
+            return acpRuntimeForView(
+              session: session,
+              tab: tab,
+              selectedMemberId: memberId,
+            );
+          },
           cancelled: cancelled,
           message: trimmed,
         );
@@ -677,9 +687,16 @@ Future<bool> submitWorkspaceLandingMessage(
     }
 
     try {
+      final tab = chatCubit.tabStore.getOpenTabBySessionId(session.sessionId);
       final ptyDelivered = await deliverWorkspaceLandingPrompt(
         session: session,
-        acpRuntime: null,
+        acpRuntime: tab == null
+            ? null
+            : acpRuntimeForView(
+                session: session,
+                tab: tab,
+                selectedMemberId: memberId,
+              ),
         memberId: memberId,
         message: trimmed,
         ptySubmit: (sid, mid, msg) => chatCubit.sessionRuntime

@@ -37,7 +37,8 @@ class PresenceTarget {
 
   bool get eligible =>
       memberShells.isNotEmpty ||
-      (memberToolConfigDir?.trim().isNotEmpty ?? false);
+      (memberToolConfigDir?.trim().isNotEmpty ?? false) ||
+      session?.acpSeatPresence != null;
 }
 
 class MemberPresenceState extends Equatable {

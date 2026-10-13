@@ -44,7 +44,10 @@ class AcpPermissionCard extends StatelessWidget {
             : l10n.agentPermissionAlwaysAllowRule(option.label),
     ];
     return AiMessageStringsScope(
-      strings: aiMessageStringsFromL10n(l10n),
+      strings: aiMessageStringsFromL10n(
+        l10n,
+        permissionCliName: l10n.appProviderToolLabel(runtime.tool),
+      ),
       child: AiPermissionCard(
         description: pendingPermission.description,
         alwaysOptions: alwaysOptions,

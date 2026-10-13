@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import '../../../models/team_config.dart';
 import '../../../services/acp/acp_agent_translator.dart';
@@ -47,6 +48,7 @@ AcpLaunchPlan? capabilityToPlan(AcpCapability? capability) {
         ),
     agentExecutable: capability.agentExecutable,
     authenticateMethodId: capability.authenticateMethodId,
+    forwardSessionNewMcpServers: capability.forwardSessionNewMcpServers,
   );
 }
 
@@ -86,7 +88,12 @@ AcpConnectionSpawner productionAcpSpawner({
       args: argv.skip(1).toList(),
       environment: env,
       workingDirectory: workingDirectory,
-      onStderr: (_) {},
+      onStderr: (chunk) {
+        if (chunk.isEmpty) return;
+        AppLogger.instance.d(
+          '[acp-stderr] ${utf8.decode(chunk, allowMalformed: true)}',
+        );
+      },
     );
     // Observed by the runtime's agent-exit watcher after a successful start
     // (mid-session crash → inline system message). Futures are multicast, so

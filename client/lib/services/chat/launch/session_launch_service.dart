@@ -64,6 +64,7 @@ class SessionLaunchService
     this.prepareAcpContribution,
     this.prepareAcpTeamConnect,
     this.acpMemberExtraMcp,
+    this.acpMemberLifecycleGate,
   }) : _storage = storage,
        _generations = generations ?? LaunchGenerationStore();
 
@@ -94,6 +95,10 @@ class SessionLaunchService
   /// extra when this is null.
   final AcpMemberExtraMcp? acpMemberExtraMcp;
 
+  /// Test seam: mixed ACP lifecycle gate. Production assigns
+  /// [lifecycleGateBeforeAttach] in [configureLaunchComponents].
+  final AcpMemberLifecycleGate? acpMemberLifecycleGate;
+
   late final AcpRuntimeAttach _acpAttach = AcpRuntimeAttach(
     host: _h,
     storage: _storage,
@@ -103,6 +108,7 @@ class SessionLaunchService
     preparePersonalContribution: prepareAcpContribution,
     prepareTeamConnect: prepareAcpTeamConnect,
     extraMcpForMember: acpMemberExtraMcp,
+    memberLifecycleGate: acpMemberLifecycleGate,
   );
 
   static const _uuid = Uuid();
@@ -132,6 +138,22 @@ class SessionLaunchService
     _lifecycleCoordinator = lifecycleCoordinator;
     _promptMetadata = promptMetadata;
     _teamConfigValidator = teamConfigValidator;
+    _acpAttach.memberLifecycleGate ??=
+        ({
+          required team,
+          required member,
+          required session,
+          required sessionId,
+          required teamBusInstalled,
+          extraMcpServers,
+        }) => lifecycleGateBeforeAttach(
+          team: team,
+          member: member,
+          session: session,
+          sessionId: sessionId,
+          teamBusInstalled: teamBusInstalled,
+          extraMcpServers: extraMcpServers,
+        );
   }
 
   /// Terminal-less personal ACP. Mixed seats use [attachMemberAcpRuntime].

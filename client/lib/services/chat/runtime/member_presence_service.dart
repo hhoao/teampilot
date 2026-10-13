@@ -6,6 +6,7 @@ import '../../cli/registry/capabilities/team_behavior_capability.dart';
 import '../../cli/registry/cli_tool_registry.dart';
 import '../../io/filesystem.dart';
 import '../../storage/home_storage.dart';
+import '../team_bus/agent_node.dart';
 import '../team_bus/team_bus.dart';
 import '../../terminal/terminal_session.dart';
 import '../../cli/claude/roster_activity_source.dart';
@@ -18,6 +19,7 @@ class PresenceSessionContext {
     this.appSession,
     this.teamBus,
     this.globalPresets = const [],
+    this.acpSeatPresence,
   });
 
   final TeamProfile team;
@@ -27,6 +29,10 @@ class PresenceSessionContext {
   final AppSession? appSession;
   final TeamBus? teamBus;
   final List<CliPreset> globalPresets;
+
+  /// Mixed ACP seats have no [TerminalSession]. ChatCubit supplies live
+  /// connection/availability from each seat cubit.
+  final MemberPresence? Function(String memberId)? acpSeatPresence;
 }
 
 /// Aggregates terminal connection + agent availability into [MemberPresence].
@@ -84,8 +90,13 @@ class MemberPresenceService {
     final out = <String, MemberPresence>{};
     for (final member in members) {
       if (!member.isValid) continue;
+      final acp = session?.acpSeatPresence?.call(member.id);
+      if (acp != null) {
+        out[member.id] = acp;
+        continue;
+      }
       final shell = memberShells[member.id];
-      final connection = _connectionOf(shell);
+      final connection = _connectionOf(shell, bus?.memberById(member.id));
       final availability = switch (connection) {
         MemberConnection.connected => MemberCoordination.resolve(
           shell: shell!,
@@ -112,8 +123,16 @@ class MemberPresenceService {
     return out.isEmpty ? const {} : out;
   }
 
-  static MemberConnection _connectionOf(TerminalSession? shell) {
-    if (shell == null) return MemberConnection.offline;
+  static MemberConnection _connectionOf(
+    TerminalSession? shell,
+    AgentNode? busNode,
+  ) {
+    if (shell == null) {
+      if (busNode?.lifecycle == MemberLifecycle.materializing) {
+        return MemberConnection.connecting;
+      }
+      return MemberConnection.offline;
+    }
     if (shell.isConnecting) return MemberConnection.connecting;
     if (shell.isConnected) return MemberConnection.connected;
     return MemberConnection.offline;

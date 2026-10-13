@@ -14,6 +14,7 @@ import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/chat/launch/connect/chat_session_shell_factory.dart';
 import 'package:teampilot/services/chat/launch/connect/session_connect_job.dart';
 import 'package:teampilot/services/chat/launch/session/shell_launch_spec.dart';
+import 'package:teampilot/services/chat/launch/session/tab_member_materializer.dart';
 import 'package:teampilot/services/chat/launch/session_launch_service.dart';
 import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/services/chat/session/chat_tab_info.dart';
@@ -24,6 +25,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 
 import '../../../support/in_memory_filesystem.dart';
+import '../../../support/stub_tab_member_materializer.dart';
 
 void main() {
   test(
@@ -289,10 +291,13 @@ SessionConnectJob _memberJob(
 }
 
 class _Host implements SessionLaunchHost {
-  _Host(this.tabStore);
+  _Host(this.tabStore) : memberMaterializer = stubTabMemberMaterializer(tabStore);
 
   @override
   final ChatTabStore tabStore;
+
+  @override
+  final TabMemberMaterializer memberMaterializer;
 
   @override
   bool get isClosed => false;

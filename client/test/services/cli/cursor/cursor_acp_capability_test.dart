@@ -30,6 +30,7 @@ void main() {
       '/usr/bin/cursor-agent',
     );
     expect(cap.authenticateMethodId, 'cursor_login');
+    expect(cap.forwardSessionNewMcpServers, isFalse);
   });
 
   test(

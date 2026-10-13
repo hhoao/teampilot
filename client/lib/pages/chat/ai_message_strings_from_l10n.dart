@@ -3,7 +3,14 @@ import 'package:ai_message_ui/ai_message_ui.dart';
 import '../../l10n/app_localizations.dart';
 
 /// Maps app l10n into package [AiMessageStrings] (history chrome + live cards).
-AiMessageStrings aiMessageStringsFromL10n(AppLocalizations l10n) {
+///
+/// [permissionCliName] is the seat CLI label for permission-card chrome.
+/// Omit it for transcript-only scopes that never show a permission card.
+AiMessageStrings aiMessageStringsFromL10n(
+  AppLocalizations l10n, {
+  String? permissionCliName,
+}) {
+  final cliName = permissionCliName?.trim() ?? '';
   return AiMessageStrings(
     usedTool: l10n.aiMessageUsedTool,
     cancelledTool: l10n.aiMessageCancelledTool,
@@ -55,7 +62,9 @@ AiMessageStrings aiMessageStringsFromL10n(AppLocalizations l10n) {
     exitPlanApproveFailed: l10n.exitPlanModeApproveFailed,
     exitPlanRejectFailed: l10n.exitPlanModeRejectFailed,
     permissionOpenTerminal: l10n.agentPermissionOpenTerminal,
-    permissionTitle: l10n.opencodePermissionTitle,
+    permissionTitle: cliName.isEmpty
+        ? l10n.agentPermissionTitleGeneric
+        : l10n.agentPermissionTitle(cliName),
     permissionAllowOnce: l10n.opencodePermissionAllowOnce,
     permissionAllowAlways: l10n.opencodePermissionAllowAlways,
     permissionReject: l10n.opencodePermissionReject,

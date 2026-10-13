@@ -152,6 +152,26 @@ void main() {
     expect(find.byKey(AiPermissionCard.cardKey), findsOneWidget);
     expect(find.textContaining('npm install'), findsOneWidget);
     expect(find.text('Always allow Bash'), findsOneWidget);
+    expect(find.text('Gemini CLI needs your permission'), findsOneWidget);
+    expect(find.text('OpenCode needs your permission'), findsNothing);
+  });
+
+  testWidgets('permission title uses the seat CLI, not OpenCode', (
+    tester,
+  ) async {
+    await cubit.close();
+    cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: 's1',
+      tool: CliTool.cursor,
+    );
+    await holdPermission(tester);
+
+    await tester.pumpWidget(_harness(cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cursor needs your permission'), findsOneWidget);
+    expect(find.text('OpenCode needs your permission'), findsNothing);
   });
 
   testWidgets('allow once reply delegates to answerPermission', (tester) async {

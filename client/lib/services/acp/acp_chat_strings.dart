@@ -20,6 +20,7 @@ const AcpChatStrings defaultAcpChatStrings = AcpChatStrings(
   processExited: 'Agent process exited',
   notLoggedIn:
       "The agent isn't logged in. Sign in under Settings → Providers, then try again.",
+  sessionOpenFailed: 'Failed to open the agent session',
 );
 
 class AcpChatStrings {
@@ -30,6 +31,7 @@ class AcpChatStrings {
     required this.turnFailed,
     required this.processExited,
     required this.notLoggedIn,
+    this.sessionOpenFailed = 'Failed to open the agent session',
   });
 
   /// [acpLaunchFailedVersion] copy: no ACP flag candidate produced a usable
@@ -52,4 +54,8 @@ class AcpChatStrings {
 
   /// Adapter reported the agent is unauthenticated (Official login missing).
   final String notLoggedIn;
+
+  /// `session/new` failed after initialize (agent is installed, session did
+  /// not open). Distinct from [launchFailed] so missing-CLI copy is not used.
+  final String sessionOpenFailed;
 }

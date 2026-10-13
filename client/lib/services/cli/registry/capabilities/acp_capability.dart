@@ -30,6 +30,13 @@ abstract interface class AcpCapability implements CliCapability {
   Future<String?> resolveAuthenticateMethodId(Map<String, String> env) async =>
       authenticateMethodId;
 
+  /// Whether `session/new` should include TeamPilot MCP servers.
+  ///
+  /// Isolated-home `mcp.json` is still staged for every CLI. Cursor ACP
+  /// returns "Failed to initialize session services" when the same HTTP
+  /// servers are also forwarded on `session/new`.
+  bool get forwardSessionNewMcpServers => true;
+
   /// Env for the agent process: [baseEnv] preserved plus isolated config
   /// dir, injected credentials, and surface identification.
   Map<String, String> buildEnvironment({

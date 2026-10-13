@@ -722,4 +722,24 @@ void main() {
       '新建个人和混合团队 Cursor 会话走无终端 ACP（cursor-agent acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。',
     );
   });
+
+  test('ACP launch-failed copy names the CLI, not Gemini', () {
+    final en = lookupAppLocalizations(const Locale('en'));
+    final zh = lookupAppLocalizations(const Locale('zh'));
+
+    expect(
+      en.acpChatLaunchFailed('Cursor'),
+      "Couldn't start Cursor. Make sure the CLI is installed and try again.",
+    );
+    expect(
+      zh.acpChatLaunchFailed('Cursor'),
+      '无法启动 Cursor，请确认已安装对应 CLI 后重试。',
+    );
+    expect(en.acpChatProcessExited('Cursor'), 'Cursor exited unexpectedly');
+    expect(zh.acpChatProcessExited('Cursor'), 'Cursor 意外退出');
+    expect(en.acpChatLaunchFailed('Cursor'), isNot(contains('Gemini')));
+    expect(zh.acpChatLaunchFailed('Cursor'), isNot(contains('Gemini')));
+    expect(en.acpChatSessionOpenFailed('Cursor'), "Couldn't open the Cursor session.");
+    expect(zh.acpChatSessionOpenFailed('Cursor'), '无法打开 Cursor 会话。');
+  });
 }

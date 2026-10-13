@@ -152,6 +152,7 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
     if (showAskCard && questions != null) {
       return _withStrings(
         context,
+        seatCli: lockedCli,
         AiAskUserQuestionCard(
           questions: questions,
           externalError: entry.askReplyError,
@@ -205,6 +206,7 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
       ];
       return _withStrings(
         context,
+        seatCli: lockedCli,
         AiPermissionCard(
           description: permissionRequest.description,
           alwaysOptions: alwaysOptions,
@@ -270,6 +272,7 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
           (toolUseId.isNotEmpty || isHeldPermissionRequest);
       return _withStrings(
         context,
+        seatCli: lockedCli,
         AiExitPlanModeCard(
           planText: planText,
           planFilePath: planFilePath.isEmpty ? null : planFilePath,
@@ -439,9 +442,16 @@ class AgentPermissionAttentionBanner extends StatelessWidget {
     chat.setSessionWorkbenchView(sessionId, SessionWorkbenchView.terminal);
   }
 
-  Widget _withStrings(BuildContext context, Widget child) {
+  Widget _withStrings(
+    BuildContext context,
+    Widget child, {
+    required CliTool seatCli,
+  }) {
     return AiMessageStringsScope(
-      strings: aiMessageStringsFromL10n(context.l10n),
+      strings: aiMessageStringsFromL10n(
+        context.l10n,
+        permissionCliName: context.l10n.appProviderToolLabel(seatCli),
+      ),
       child: child,
     );
   }

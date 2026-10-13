@@ -1688,6 +1688,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String agentPermissionTitle(String cliName) {
+    return '$cliName needs your permission';
+  }
+
+  @override
+  String get agentPermissionTitleGeneric => 'Needs your permission';
+
+  @override
   String get opencodePermissionTitle => 'OpenCode needs your permission';
 
   @override
@@ -9254,14 +9262,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'This CLI version does not support ACP chat mode. Update the CLI and try again.';
 
   @override
-  String get acpChatLaunchFailed =>
-      'Couldn\'t start Gemini. Make sure Gemini CLI is installed and try again.';
+  String acpChatLaunchFailed(String cliName) {
+    return 'Couldn\'t start $cliName. Make sure the CLI is installed and try again.';
+  }
 
   @override
   String get acpChatTurnFailed => 'This turn failed';
 
   @override
-  String get acpChatProcessExited => 'Gemini exited unexpectedly';
+  String acpChatProcessExited(String cliName) {
+    return '$cliName exited unexpectedly';
+  }
 
   @override
   String get claudePersonalAcpDefaultLabel => 'Personal sessions use ACP chat';
@@ -9291,6 +9302,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get acpChatNotLoggedIn =>
       'The agent isn\'t logged in. Sign in under Settings → Providers, then try again.';
+
+  @override
+  String acpChatSessionOpenFailed(String cliName) {
+    return 'Couldn\'t open the $cliName session.';
+  }
 
   @override
   String get codexPersonalAcpDefaultLabel => 'Personal sessions use ACP chat';

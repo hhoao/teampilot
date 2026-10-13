@@ -21,6 +21,7 @@ import '../session/member_acp_stamp.dart';
 import '../session_launch_host.dart';
 import '../../session/chat_tab.dart';
 import 'acp_launch_environment.dart';
+import 'connect_shell_result.dart';
 import 'session_connect_executor.dart';
 import 'session_connect_job.dart';
 
@@ -29,6 +30,18 @@ typedef AcpMemberExtraMcp =
     Map<String, Map<String, Object?>> Function({
       required AppSession session,
       required TeamMemberConfig member,
+    });
+
+/// Optional mixed-seat lifecycle gate (auth sync, bus ready) before ACP spawn.
+/// Null from tests that skip [SessionLaunchService.configureLaunchComponents].
+typedef AcpMemberLifecycleGate =
+    Future<ConnectShellResult?> Function({
+      required TeamProfile team,
+      required TeamMemberConfig member,
+      required AppSession session,
+      required String sessionId,
+      required bool teamBusInstalled,
+      Map<String, Map<String, Object?>>? extraMcpServers,
     });
 
 /// Transcript file under `sessions/<id>/runtime/`.
@@ -54,6 +67,7 @@ class AcpRuntimeAttach {
     this.preparePersonalContribution,
     this.prepareTeamConnect,
     this.extraMcpForMember,
+    this.memberLifecycleGate,
   }) : _host = host,
        _storage = storage;
 
@@ -66,6 +80,9 @@ class AcpRuntimeAttach {
   final AcpContributionEnvBuilder? preparePersonalContribution;
   final AcpTeamConnectPrepare? prepareTeamConnect;
   final AcpMemberExtraMcp? extraMcpForMember;
+
+  /// Production wires [SessionLaunchService.lifecycleGateBeforeAttach] here.
+  AcpMemberLifecycleGate? memberLifecycleGate;
 
   /// Terminal-less personal ACP: attach a cubit and spawn `session.cli`.
   Future<bool> attachAcpRuntime(
@@ -171,6 +188,25 @@ class AcpRuntimeAttach {
       workingDirectory: work.workingDirectory,
       extraMcpServers: extra,
     );
+    final gate = memberLifecycleGate;
+    if (gate != null) {
+      final gated = await gate(
+        team: team,
+        member: member,
+        session: session,
+        sessionId: session.sessionId,
+        teamBusInstalled: tab.teamBus != null,
+        extraMcpServers: extra,
+      );
+      if (gated != null) {
+        throw StateError(
+          'ACP member lifecycle ${gated.name} member=${member.id}',
+        );
+      }
+      appLogger.d(
+        '[session-launch] acp member lifecycle gate done member=${member.id}',
+      );
+    }
     final cubit = _cubit(
       session: session,
       cli: cli,
@@ -181,6 +217,12 @@ class AcpRuntimeAttach {
     tab.memberAcpRuntimes[member.id] = cubit;
     _listenForMemberIdle(tab, member.id, cubit);
     _host.updateTabRunning(tab.info.id);
+    // Same moment as PTY `onProcessStarted`: unblock send()'s materialize
+    // wait and allow MailArrived doorbells. Do this before `cubit.start`
+    // (ACP session/new is often >20s) so TeamBus is not stuck in
+    // `materializing` until Cursor's 60s MCP timeout.
+    tab.teamBus?.markMemberRunning(member.id);
+    _host.memberMaterializer.markMemberReady(session.sessionId, member.id);
     await cubit.start(
       executable: _host.shellFactory.executableFor(cli),
       sessionToolDir: _memberSessionToolDir(

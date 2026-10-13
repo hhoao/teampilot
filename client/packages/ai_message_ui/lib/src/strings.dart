@@ -57,7 +57,7 @@ class AiMessageStrings {
     this.exitPlanApproveFailed = 'Couldn\'t approve the plan',
     this.exitPlanRejectFailed = 'Couldn\'t reject the plan',
     this.permissionOpenTerminal = 'Open Terminal',
-    this.permissionTitle = 'OpenCode needs your permission',
+    this.permissionTitle = 'Needs your permission',
     this.permissionAllowOnce = 'Allow once',
     this.permissionAllowAlways = 'Always allow',
     this.permissionReject = 'Reject',

@@ -10,14 +10,23 @@ typedef LandingPtySubmit =
 ///
 /// ACP [AcpChatRuntimeCubit.sendPrompt] already appends the user message.
 /// A `pending:<uuid>` overlay uses a different id, so seat adopt would paint
-/// two user bubbles for the same text.
+/// two user bubbles for the same text. Mixed ACP seats use [memberId]
+/// (`AppSession.acp` stays personal-only).
 bool shouldPersistLandingHistoryPending({
   required bool switchToTerminal,
   required AppSession session,
-}) => !switchToTerminal && !isAcpChatSession(session);
+  String memberId = '',
+}) =>
+    !switchToTerminal &&
+    !isAcpChatSession(session) &&
+    (memberId.isEmpty || !isAcpChatSeat(session, memberId));
 
-/// Landing prompt for a personal ACP session goes to
-/// [AcpChatRuntimeCubit.sendPrompt], never PTY `issueSubmit` — those sessions
+/// True when the landing prompt must go to an ACP cubit, not PTY.
+bool landingPromptUsesAcp(AppSession session, String memberId) =>
+    isAcpChatSession(session) || isAcpChatSeat(session, memberId);
+
+/// Landing prompt for a personal or mixed-seat ACP session goes to
+/// [AcpChatRuntimeCubit.sendPrompt], never PTY `issueSubmit` — those seats
 /// never spawn a shell, so prompt-delivery would throw
 /// `Cannot transition failed to submitIssued`.
 Future<bool> deliverWorkspaceLandingPrompt({
@@ -27,7 +36,7 @@ Future<bool> deliverWorkspaceLandingPrompt({
   required String message,
   required LandingPtySubmit ptySubmit,
 }) async {
-  if (isAcpChatSession(session)) {
+  if (landingPromptUsesAcp(session, memberId)) {
     if (acpRuntime == null) return false;
     return acpRuntime.sendPrompt(message);
   }

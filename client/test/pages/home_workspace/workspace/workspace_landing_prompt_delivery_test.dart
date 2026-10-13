@@ -5,6 +5,7 @@ import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/session/acp/acp_chat_runtime_cubit.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/home_workspace/workspace/workspace_landing_prompt_delivery.dart';
 import 'package:teampilot/services/acp/acp_chat_strings.dart';
@@ -167,6 +168,56 @@ void main() {
     expect(runtime.prompts, isEmpty);
   });
 
+  test('mixed ACP landing queues sendPrompt and never issues a PTY submit', () async {
+    final session = _mixedAcpSession();
+    var ptyCalls = 0;
+
+    final sent = await deliverWorkspaceLandingPrompt(
+      session: session,
+      acpRuntime: cubit,
+      memberId: 'team-lead',
+      message: 'hello from mixed landing',
+      ptySubmit: (sessionId, memberId, message) async {
+        ptyCalls++;
+        return 'pty-delivery';
+      },
+    );
+
+    expect(sent, isTrue);
+    expect(ptyCalls, 0);
+    expect(cubit.state.messages.single.role, AiRole.user);
+  });
+
+  test('mixed ACP landing without a runtime is not a PTY submit', () async {
+    final session = _mixedAcpSession();
+    var ptyCalls = 0;
+
+    final sent = await deliverWorkspaceLandingPrompt(
+      session: session,
+      acpRuntime: null,
+      memberId: 'team-lead',
+      message: 'hello',
+      ptySubmit: (sessionId, memberId, message) async {
+        ptyCalls++;
+        return 'pty-delivery';
+      },
+    );
+
+    expect(sent, isFalse);
+    expect(ptyCalls, 0);
+  });
+
+  test('mixed ACP landing does not persist a PTY pending overlay', () {
+    expect(
+      shouldPersistLandingHistoryPending(
+        switchToTerminal: false,
+        session: _mixedAcpSession(),
+        memberId: 'team-lead',
+      ),
+      isFalse,
+    );
+  });
+
   test('ACP landing queues sendPrompt before handshake finishes', () async {
     final connect = Completer<bool>();
 
@@ -190,6 +241,21 @@ void main() {
     expect(runtime.prompts, isEmpty, reason: 'handshake still in flight');
   });
 }
+
+AppSession _mixedAcpSession() => AppSession(
+  sessionId: 'sess-mixed',
+  workspaceId: 'ws',
+  sessionTeam: 'team-1',
+  members: const [
+    SessionMemberBinding(
+      rosterMemberId: 'team-lead',
+      taskId: 't1',
+      cli: CliTool.cursor,
+      acp: true,
+    ),
+  ],
+  createdAt: 1,
+);
 
 class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   final updatesController = StreamController<AcpSessionUpdate>.broadcast();

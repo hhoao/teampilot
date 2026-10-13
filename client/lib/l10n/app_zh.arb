@@ -730,6 +730,15 @@
       }
     }
   },
+  "agentPermissionTitle": "{cliName} 需要你的授权",
+  "@agentPermissionTitle": {
+    "placeholders": {
+      "cliName": {
+        "type": "String"
+      }
+    }
+  },
+  "agentPermissionTitleGeneric": "需要你的授权",
   "opencodePermissionTitle": "OpenCode 需要你的授权",
   "opencodePermissionAllowOnce": "允许一次",
   "opencodePermissionAllowAlways": "总是允许",
@@ -3943,9 +3952,23 @@
   "cloneRepositoryAddToExistingSucceeded": "已将 {repo} 加入工作区 {workspace}",
   "@cloneRepositoryAddToExistingSucceeded": { "placeholders": { "repo": {}, "workspace": {} } },
   "acpLaunchFailedVersion": "当前 CLI 版本不支持 ACP 聊天模式，请更新后再试。",
-  "acpChatLaunchFailed": "无法启动 Gemini，请确认已安装 Gemini CLI 后重试。",
+  "acpChatLaunchFailed": "无法启动 {cliName}，请确认已安装对应 CLI 后重试。",
+  "@acpChatLaunchFailed": {
+    "placeholders": {
+      "cliName": {
+        "type": "String"
+      }
+    }
+  },
   "acpChatTurnFailed": "本轮对话失败",
-  "acpChatProcessExited": "Gemini 意外退出",
+  "acpChatProcessExited": "{cliName} 意外退出",
+  "@acpChatProcessExited": {
+    "placeholders": {
+      "cliName": {
+        "type": "String"
+      }
+    }
+  },
   "claudePersonalAcpDefaultLabel": "个人会话使用 ACP 聊天",
   "claudePersonalAcpDefaultDescription": "新建个人和混合团队 Claude 会话走无终端 ACP（claude-agent-acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。",
   "cursorPersonalAcpDefaultLabel": "个人会话使用 ACP 聊天",
@@ -3954,6 +3977,14 @@
   "claudeAcpAdapterInstallButton": "安装 ACP 适配器",
   "acpLaunchFailedAdapter": "无法启动 Claude ACP 适配器（claude-agent-acp）。请安装后重试。",
   "acpChatNotLoggedIn": "代理尚未登录。请到设置 → 服务商完成登录后重试。",
+  "acpChatSessionOpenFailed": "无法打开 {cliName} 会话。",
+  "@acpChatSessionOpenFailed": {
+    "placeholders": {
+      "cliName": {
+        "type": "String"
+      }
+    }
+  },
   "codexPersonalAcpDefaultLabel": "个人会话使用 ACP 聊天",
   "codexPersonalAcpDefaultDescription": "新建个人和混合团队 Codex 会话走无终端 ACP（codex-acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。",
   "codexPersonalAcpAndroidDisabled": "在远程 SSH exec 就绪前，ACP 聊天仅限桌面。",

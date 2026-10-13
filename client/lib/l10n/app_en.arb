@@ -780,6 +780,15 @@
       }
     }
   },
+  "agentPermissionTitle": "{cliName} needs your permission",
+  "@agentPermissionTitle": {
+    "placeholders": {
+      "cliName": {
+        "type": "String"
+      }
+    }
+  },
+  "agentPermissionTitleGeneric": "Needs your permission",
   "opencodePermissionTitle": "OpenCode needs your permission",
   "opencodePermissionAllowOnce": "Allow once",
   "opencodePermissionAllowAlways": "Always allow",
@@ -4631,9 +4640,23 @@
   "cloneRepositoryAddToExistingSucceeded": "Added {repo} to workspace {workspace}",
   "@cloneRepositoryAddToExistingSucceeded": { "placeholders": { "repo": {}, "workspace": {} } },
   "acpLaunchFailedVersion": "This CLI version does not support ACP chat mode. Update the CLI and try again.",
-  "acpChatLaunchFailed": "Couldn't start Gemini. Make sure Gemini CLI is installed and try again.",
+  "acpChatLaunchFailed": "Couldn't start {cliName}. Make sure the CLI is installed and try again.",
+  "@acpChatLaunchFailed": {
+    "placeholders": {
+      "cliName": {
+        "type": "String"
+      }
+    }
+  },
   "acpChatTurnFailed": "This turn failed",
-  "acpChatProcessExited": "Gemini exited unexpectedly",
+  "acpChatProcessExited": "{cliName} exited unexpectedly",
+  "@acpChatProcessExited": {
+    "placeholders": {
+      "cliName": {
+        "type": "String"
+      }
+    }
+  },
   "claudePersonalAcpDefaultLabel": "Personal sessions use ACP chat",
   "claudePersonalAcpDefaultDescription": "Run new personal and mixed-team Claude sessions as terminal-less ACP chat via claude-agent-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.",
   "cursorPersonalAcpDefaultLabel": "Personal sessions use ACP chat",
@@ -4642,6 +4665,14 @@
   "claudeAcpAdapterInstallButton": "Install ACP adapter",
   "acpLaunchFailedAdapter": "Could not start the Claude ACP adapter (claude-agent-acp). Install it and try again.",
   "acpChatNotLoggedIn": "The agent isn't logged in. Sign in under Settings → Providers, then try again.",
+  "acpChatSessionOpenFailed": "Couldn't open the {cliName} session.",
+  "@acpChatSessionOpenFailed": {
+    "placeholders": {
+      "cliName": {
+        "type": "String"
+      }
+    }
+  },
   "codexPersonalAcpDefaultLabel": "Personal sessions use ACP chat",
   "codexPersonalAcpDefaultDescription": "Run new personal and mixed-team Codex sessions as terminal-less ACP chat via codex-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.",
   "codexPersonalAcpAndroidDisabled": "ACP chat is desktop-only until remote SSH exec is available.",

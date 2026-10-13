@@ -10,6 +10,31 @@ import '../chat/team_bus/support/fake_member_launcher.dart';
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
+  test('acpCubitMemberPresence maps launching/ready/working/ended', () {
+    expect(
+      acpCubitMemberPresence(launching: true, ended: false, inTurn: false)
+          .connection,
+      MemberConnection.connecting,
+    );
+    expect(
+      acpCubitMemberPresence(launching: false, ended: false, inTurn: false),
+      const MemberPresence(
+        connection: MemberConnection.connected,
+        availability: MemberAvailability.idle,
+      ),
+    );
+    expect(
+      acpCubitMemberPresence(launching: false, ended: false, inTurn: true)
+          .isWorking,
+      isTrue,
+    );
+    expect(
+      acpCubitMemberPresence(launching: false, ended: true, inTurn: false)
+          .isOffline,
+      isTrue,
+    );
+  });
+
   test('compute maps connection and flashskyai availability', () async {
     final service = MemberPresenceService(storage: fakeHomeStorage());
     final shell = TerminalSession(
@@ -160,6 +185,81 @@ void main() {
     expect(presence['offline']!.connection, MemberConnection.offline);
     expect(presence['offline']!.availability, isNull);
   });
+
+  test('mixed ACP seat without a PTY is connected from the ACP lookup', () async {
+    final service = MemberPresenceService(storage: fakeHomeStorage());
+    final presence = await service.compute(
+      teamCli: CliTool.cursor,
+      members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+      cliTeamName: 't-1',
+      memberToolConfigDir: '/tmp/cfg',
+      memberShells: const {},
+      session: PresenceSessionContext(
+        team: const TeamProfile(
+          id: 't',
+          name: 'T',
+          teamMode: TeamMode.mixed,
+          members: [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+        ),
+        acpSeatPresence: (id) => id == 'team-lead'
+            ? const MemberPresence(
+                connection: MemberConnection.connected,
+                availability: MemberAvailability.idle,
+              )
+            : null,
+      ),
+    );
+
+    expect(presence['team-lead']!.connection, MemberConnection.connected);
+    expect(presence['team-lead']!.availability, MemberAvailability.idle);
+  });
+
+  test('mixed ACP launching seat is connecting, not offline', () async {
+    final service = MemberPresenceService(storage: fakeHomeStorage());
+    final presence = await service.compute(
+      teamCli: CliTool.cursor,
+      members: const [TeamMemberConfig(id: 'architect', name: 'Architect')],
+      cliTeamName: 't-1',
+      memberToolConfigDir: null,
+      memberShells: const {},
+      session: PresenceSessionContext(
+        team: const TeamProfile(id: 't', name: 'T', teamMode: TeamMode.mixed),
+        acpSeatPresence: (_) =>
+            const MemberPresence(connection: MemberConnection.connecting),
+      ),
+    );
+
+    expect(presence['architect']!.connection, MemberConnection.connecting);
+    expect(presence['architect']!.availability, isNull);
+  });
+
+  test(
+    'materializing bus member without a shell is connecting',
+    () async {
+      final service = MemberPresenceService(storage: fakeHomeStorage());
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'builder-0',
+          lifecycle: MemberLifecycle.materializing,
+        ),
+      );
+
+      final presence = await service.compute(
+        teamCli: CliTool.cursor,
+        members: const [TeamMemberConfig(id: 'builder-0', name: 'Builder')],
+        cliTeamName: 't-1',
+        memberToolConfigDir: '/tmp/cfg',
+        memberShells: const {},
+        session: PresenceSessionContext(
+          team: const TeamProfile(id: 't', name: 'T', teamMode: TeamMode.mixed),
+          teamBus: bus,
+        ),
+      );
+
+      expect(presence['builder-0']!.connection, MemberConnection.connecting);
+    },
+  );
 }
 
 PresenceSessionContext _session({CliTool cli = CliTool.claude}) =>

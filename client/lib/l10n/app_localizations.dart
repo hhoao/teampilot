@@ -3110,6 +3110,18 @@ abstract class AppLocalizations {
   /// **'Q{index}'**
   String agentAskQuestionTabFallback(int index);
 
+  /// No description provided for @agentPermissionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{cliName} needs your permission'**
+  String agentPermissionTitle(String cliName);
+
+  /// No description provided for @agentPermissionTitleGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs your permission'**
+  String get agentPermissionTitleGeneric;
+
   /// No description provided for @opencodePermissionTitle.
   ///
   /// In en, this message translates to:
@@ -16439,8 +16451,8 @@ abstract class AppLocalizations {
   /// No description provided for @acpChatLaunchFailed.
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t start Gemini. Make sure Gemini CLI is installed and try again.'**
-  String get acpChatLaunchFailed;
+  /// **'Couldn\'t start {cliName}. Make sure the CLI is installed and try again.'**
+  String acpChatLaunchFailed(String cliName);
 
   /// No description provided for @acpChatTurnFailed.
   ///
@@ -16451,8 +16463,8 @@ abstract class AppLocalizations {
   /// No description provided for @acpChatProcessExited.
   ///
   /// In en, this message translates to:
-  /// **'Gemini exited unexpectedly'**
-  String get acpChatProcessExited;
+  /// **'{cliName} exited unexpectedly'**
+  String acpChatProcessExited(String cliName);
 
   /// No description provided for @claudePersonalAcpDefaultLabel.
   ///
@@ -16501,6 +16513,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The agent isn\'t logged in. Sign in under Settings → Providers, then try again.'**
   String get acpChatNotLoggedIn;
+
+  /// No description provided for @acpChatSessionOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the {cliName} session.'**
+  String acpChatSessionOpenFailed(String cliName);
 
   /// No description provided for @codexPersonalAcpDefaultLabel.
   ///

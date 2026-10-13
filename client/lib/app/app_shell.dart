@@ -146,7 +146,7 @@ import '../models/ssh_profile.dart';
 import '../models/team_config.dart';
 import '../services/app/boot_splash.dart';
 import '../utils/ui/yield_ui_frame.dart';
-import '../l10n/app_localizations.dart';
+import '../l10n/l10n_extensions.dart';
 import '../services/acp/acp_chat_strings.dart';
 import '../pages/system/app_bootstrap_loading_page.dart';
 import '../pages/system/bootstrap_startup_error_page.dart';
@@ -2280,10 +2280,15 @@ Future<AppShell> buildAppShell({
       return AcpChatStrings(
         launchFailedVersion: l10n.acpLaunchFailedVersion,
         launchFailedAdapter: adapter,
-        launchFailed: l10n.acpChatLaunchFailed,
+        launchFailed: l10n.acpChatLaunchFailed(l10n.appProviderToolLabel(tool)),
         turnFailed: l10n.acpChatTurnFailed,
-        processExited: l10n.acpChatProcessExited,
+        processExited: l10n.acpChatProcessExited(
+          l10n.appProviderToolLabel(tool),
+        ),
         notLoggedIn: notLoggedIn,
+        sessionOpenFailed: l10n.acpChatSessionOpenFailed(
+          l10n.appProviderToolLabel(tool),
+        ),
       );
     };
     final promptDeliveryStore = FilePromptDeliveryStore(

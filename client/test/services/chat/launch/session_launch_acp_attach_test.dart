@@ -14,6 +14,7 @@ import 'package:teampilot/services/acp/acp_session_runtime.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/chat/launch/connect/chat_session_shell_factory.dart';
 import 'package:teampilot/services/chat/launch/connect/session_connect_job.dart';
+import 'package:teampilot/services/chat/launch/session/tab_member_materializer.dart';
 import 'package:teampilot/services/chat/launch/session_launch_service.dart';
 import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/services/chat/session/chat_tab_info.dart';
@@ -22,6 +23,7 @@ import 'package:teampilot/services/chat/session/session_open_request.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 import '../../../support/in_memory_filesystem.dart';
+import '../../../support/stub_tab_member_materializer.dart';
 
 void main() {
   test('attachAcpRuntime requires session.cli instead of defaulting', () async {
@@ -335,10 +337,14 @@ void main() {
 }
 
 class _Host implements SessionLaunchHost {
-  _Host(this.tabStore, {this.acpStrings});
+  _Host(this.tabStore, {this.acpStrings})
+    : memberMaterializer = stubTabMemberMaterializer(tabStore);
 
   @override
   final ChatTabStore tabStore;
+
+  @override
+  final TabMemberMaterializer memberMaterializer;
 
   final AcpChatStrings? Function(CliTool)? acpStrings;
 

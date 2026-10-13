@@ -142,6 +142,8 @@ const _testStrings = AcpChatStrings(
   turnFailed: 'Turn failed',
   processExited: 'Process exited',
   notLoggedIn: 'Not logged in',
+  sessionOpenFailed: 'Failed to open the session',
+
 );
 
 void main() {
@@ -780,6 +782,41 @@ void main() {
   });
 
   test(
+    'teammate-bus MCP permission is auto-allowed without a pending card',
+    () async {
+      final attention = AgentAttentionCubit(pruneInterval: null);
+      final cubit = bootCubit(attention: attention);
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      const request = AgentPermissionRequest(
+        id: 'perm-bus',
+        description: 'teammate-bus-read_messages: read_messages',
+        always: [
+          AgentPermissionAlwaysOption(
+            label: 'Allow always',
+            payload: 'always-1',
+          ),
+        ],
+      );
+      runtime.permissionsController.add(request);
+      await pumpEventQueue();
+
+      expect(cubit.state.pendingPermission, isNull);
+      expect(
+        attention.state.attentionFor(sessionId: 's1', memberId: 'acp'),
+        isNot(AgentSeatAttention.waiting),
+      );
+      expect(runtime.lastAnswer?.kind, AgentPermissionReplyKind.always);
+      expect(runtime.lastAnswer?.always?.payload, 'always-1');
+      await cubit.close();
+      await attention.close();
+    },
+  );
+
+  test(
     'permission request → pending card + attention waiting; answer delegates',
     () async {
       final attention = AgentAttentionCubit(pruneInterval: null);
@@ -1029,6 +1066,55 @@ void main() {
       expect(
         (cubit.state.messages.single.parts.single as AiTextPart).text,
         'Not logged in',
+      );
+      await cubit.close();
+    },
+  );
+
+  test(
+    'authenticate TimeoutException → launchFailed kind + notLoggedIn copy',
+    () async {
+      runtime.startError = TimeoutException(
+        'Request "authenticate" timed out',
+        const Duration(seconds: 30),
+      );
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'cursor-agent',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+
+      expect(cubit.state.phase, AcpChatPhase.ended);
+      expect(cubit.state.error?.kind, AcpChatErrorKind.launchFailed);
+      expect(
+        (cubit.state.messages.single.parts.single as AiTextPart).text,
+        'Not logged in',
+      );
+      await cubit.close();
+    },
+  );
+
+  test(
+    'session/new RpcError → launchFailed kind + sessionOpenFailed copy',
+    () async {
+      runtime.startError = acpd.RpcError(
+        code: -32603,
+        message: 'Internal error',
+        data: {'message': 'Failed to initialize session services'},
+      );
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'cursor-agent',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+
+      expect(cubit.state.phase, AcpChatPhase.ended);
+      expect(cubit.state.error?.kind, AcpChatErrorKind.launchFailed);
+      expect(
+        (cubit.state.messages.single.parts.single as AiTextPart).text,
+        'Failed to open the session',
       );
       await cubit.close();
     },

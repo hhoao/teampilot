@@ -14,6 +14,7 @@ import '../models/workspace.dart';
 import '../models/workspace_folder.dart';
 import '../models/workspace_launch_context.dart';
 import '../models/app_session.dart';
+import '../models/member_presence.dart';
 import '../models/member_instance.dart';
 import '../services/chat/runtime/member_presence_service.dart';
 import '../models/workspace_icon_picker_result.dart';
@@ -48,6 +49,7 @@ import '../services/agent_status/ask_user_answer_pending_store.dart';
 import '../services/agent_status/general_permission_request_gate.dart';
 import '../services/chat/conversation/prompt_delivery/prompt_delivery_coordinator.dart';
 import 'agent_attention_cubit.dart';
+import 'session/acp/acp_chat_runtime_cubit.dart';
 import 'seat_lease_cubit.dart';
 import '../services/chat/launch/launch_factory.dart';
 import '../services/chat/launch/staging/session_connect_orchestrator.dart';
@@ -1685,6 +1687,16 @@ class ChatCubit extends Cubit<ChatState>
       appSession: tab.persistedSession,
       teamBus: tab.teamBus,
       globalPresets: _lifecycle.globalPresets,
+      acpSeatPresence: (memberId) {
+        final cubit = tab.memberAcpRuntimes[memberId];
+        if (cubit == null) return null;
+        final state = cubit.state;
+        return acpCubitMemberPresence(
+          launching: state.phase == AcpChatPhase.launching,
+          ended: state.phase == AcpChatPhase.ended,
+          inTurn: state.inTurn,
+        );
+      },
     );
   }
 

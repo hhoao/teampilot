@@ -43,3 +43,19 @@ class MemberPresence {
   @override
   int get hashCode => Object.hash(connection, availability);
 }
+
+/// Maps an ACP chat cubit to the members-panel presence (no PTY shell).
+MemberPresence acpCubitMemberPresence({
+  required bool launching,
+  required bool ended,
+  required bool inTurn,
+}) {
+  if (ended) return const MemberPresence.offline();
+  if (launching) {
+    return const MemberPresence(connection: MemberConnection.connecting);
+  }
+  return MemberPresence(
+    connection: MemberConnection.connected,
+    availability: inTurn ? MemberAvailability.working : MemberAvailability.idle,
+  );
+}

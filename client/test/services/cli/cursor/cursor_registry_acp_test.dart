@@ -18,5 +18,6 @@ void main() {
     ]);
     expect(cap.authenticateMethodId, 'cursor_login');
     expect(capabilityToPlan(cap)!.authenticateMethodId, 'cursor_login');
+    expect(capabilityToPlan(cap)!.forwardSessionNewMcpServers, isFalse);
   });
 }

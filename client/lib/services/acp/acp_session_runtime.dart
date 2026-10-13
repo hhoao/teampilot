@@ -52,6 +52,7 @@ class AcpLaunchPlan {
     required this.buildEnvironment,
     required this.agentExecutable,
     this.authenticateMethodId,
+    this.forwardSessionNewMcpServers = true,
   });
 
   /// Full argv candidates (executable + one ACP flag each), probe order.
@@ -73,6 +74,10 @@ class AcpLaunchPlan {
   /// Cursor sets `cursor_login`; Gemini and Claude leave this null so the
   /// handshake stays initialize-only.
   final String? authenticateMethodId;
+
+  /// When false, [AcpSessionRuntime.start] opens `session/new` with an empty
+  /// MCP list even if the caller passed servers (isolated `mcp.json` remains).
+  final bool forwardSessionNewMcpServers;
 }
 
 /// The spawner reported that the candidate flag was rejected: the agent
@@ -256,9 +261,17 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
       AcpAgentConnection? connection;
       try {
         connection = await _spawner(argv, env);
+        final sessionMcp = plan.forwardSessionNewMcpServers
+            ? mcpServers
+            : const <acpd.McpServer>[];
+        if (!plan.forwardSessionNewMcpServers && mcpServers.isNotEmpty) {
+          AppLogger.instance.d(
+            '[acp] omit session/new mcpServers count=${mcpServers.length}',
+          );
+        }
         final session = await connection.openSession(
           cwd: workingDirectory,
-          mcpServers: mcpServers,
+          mcpServers: sessionMcp,
         );
         _connection = connection;
         _session = session;

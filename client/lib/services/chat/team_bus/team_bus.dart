@@ -155,10 +155,16 @@ class TeamBus implements CoordinationView {
   }
 
   /// PTY 已 spawn → [MemberLifecycle.running] + [MemberActivity.turnDoneReady]。
+  ///
+  /// Unread mail delivered while still declared/materializing (ACP session/new
+  /// is slower than PTY spawn) does not doorbell until the seat is running.
   void markMemberRunning(String memberId) {
     final node = _members[memberId];
     if (node == null) return;
     _apply(node, const PtySpawned());
+    if (!node.inbox.isEmpty) {
+      _apply(node, const MailArrived());
+    }
   }
 
   /// 空闲回收:PTY 被丢弃 → 复位为 declared(保留 inbox),以便 materialize 漏斗按需重拉。
