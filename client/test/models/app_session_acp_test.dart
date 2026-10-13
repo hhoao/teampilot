@@ -65,4 +65,41 @@ void main() {
     );
     expect(geminiOff.acp, isFalse);
   });
+
+  test('acpPermission omits fullAccess and round-trips ask only when acp', () {
+    final off = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      createdAt: 1,
+      cli: CliTool.claude,
+      acp: true,
+    );
+    expect(off.acpPermission, LaunchSecurityPolicy.fullAccess);
+    expect(off.toJson().containsKey('acpPermission'), isFalse);
+
+    final ask = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      createdAt: 1,
+      cli: CliTool.claude,
+      acp: true,
+      acpPermission: LaunchSecurityPolicy.ask,
+    );
+    expect(ask.toJson()['acpPermission'], 'ask');
+    expect(
+      AppSession.fromJson(ask.toJson()).acpPermission,
+      LaunchSecurityPolicy.ask,
+    );
+
+    final team = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      createdAt: 1,
+      sessionTeam: 'team-1',
+      acpPermission: LaunchSecurityPolicy.ask,
+    );
+    expect(team.acp, isFalse);
+    expect(team.acpPermission, LaunchSecurityPolicy.fullAccess);
+    expect(team.toJson().containsKey('acpPermission'), isFalse);
+  });
 }

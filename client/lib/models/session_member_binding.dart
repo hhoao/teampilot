@@ -10,7 +10,9 @@ class SessionMemberBinding {
     this.cli,
     this.nativeSessionIds = const {},
     this.acp = false,
-  }) : typeId = typeId ?? rosterMemberId;
+    LaunchSecurityPolicy acpPermission = LaunchSecurityPolicy.fullAccess,
+  }) : typeId = typeId ?? rosterMemberId,
+       acpPermission = acp ? acpPermission : LaunchSecurityPolicy.fullAccess;
 
   factory SessionMemberBinding.fromJson(Map<String, Object?> json) {
     final instanceId = json['rosterMemberId'] as String? ?? '';
@@ -28,6 +30,7 @@ class SessionMemberBinding {
       cli: CliTool.tryParse(json['cli'] as String?),
       nativeSessionIds: native,
       acp: json['acp'] == true,
+      acpPermission: acpPermissionFromJson(json['acpPermission']),
     );
   }
 
@@ -49,6 +52,10 @@ class SessionMemberBinding {
 
   final bool acp;
 
+  /// Durable ACP compose permission for this mixed seat. Forced to
+  /// [LaunchSecurityPolicy.fullAccess] when [acp] is false.
+  final LaunchSecurityPolicy acpPermission;
+
   /// Returns this binding with [nativeId] recorded for [toolValue], or `this`
   /// unchanged when already equal.
   SessionMemberBinding withNativeSessionId(String toolValue, String nativeId) {
@@ -62,6 +69,7 @@ class SessionMemberBinding {
       cli: cli,
       nativeSessionIds: {...nativeSessionIds, tool: id},
       acp: acp,
+      acpPermission: acpPermission,
     );
   }
 
@@ -72,6 +80,9 @@ class SessionMemberBinding {
     if (cli != null) 'cli': cli!.value,
     if (nativeSessionIds.isNotEmpty) 'nativeSessionIds': nativeSessionIds,
     if (acp) 'acp': true,
+    if (acp)
+      if (acpPermissionToJson(acpPermission) case final id?)
+        'acpPermission': id,
   };
 
   @override
@@ -84,7 +95,8 @@ class SessionMemberBinding {
             taskId == other.taskId &&
             cli == other.cli &&
             mapEquals(nativeSessionIds, other.nativeSessionIds) &&
-            acp == other.acp;
+            acp == other.acp &&
+            acpPermission == other.acpPermission;
   }
 
   @override
@@ -97,5 +109,6 @@ class SessionMemberBinding {
       nativeSessionIds.entries.map((e) => Object.hash(e.key, e.value)),
     ),
     acp,
+    acpPermission,
   );
 }
