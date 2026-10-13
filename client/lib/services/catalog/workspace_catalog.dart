@@ -503,6 +503,7 @@ class WorkspaceCatalog {
     bool seedClaudeMemberAcp = true,
     bool seedCodexMemberAcp = false,
     bool seedCursorMemberAcp = true,
+    bool seedOpencodeMemberAcp = true,
   }) async {
     final ws = workspaceById(workspaceId);
     final result = await repo.createSession(
@@ -526,6 +527,7 @@ class WorkspaceCatalog {
       seedClaudeMemberAcp: seedClaudeMemberAcp,
       seedCodexMemberAcp: seedCodexMemberAcp,
       seedCursorMemberAcp: seedCursorMemberAcp,
+      seedOpencodeMemberAcp: seedOpencodeMemberAcp,
     );
     _sessions = [..._sessions, result.session];
     patchWorkspace(

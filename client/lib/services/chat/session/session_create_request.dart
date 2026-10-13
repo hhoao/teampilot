@@ -27,6 +27,7 @@ class SessionCreateRequest {
     this.seedClaudeMemberAcp = true,
     this.seedCodexMemberAcp = false,
     this.seedCursorMemberAcp = true,
+    this.seedOpencodeMemberAcp = true,
   });
 
   final Workspace workspace;
@@ -73,4 +74,7 @@ class SessionCreateRequest {
 
   /// Mixed-seat Cursor ACP seed (`cursorPersonalAcpDefault`, default true).
   final bool seedCursorMemberAcp;
+
+  /// Mixed-seat OpenCode ACP seed (`opencodePersonalAcpDefault`, default true).
+  final bool seedOpencodeMemberAcp;
 }

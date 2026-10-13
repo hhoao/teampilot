@@ -314,6 +314,7 @@ class _MaterializeRepo extends Fake implements SessionRepository {
     bool seedClaudeMemberAcp = true,
     bool seedCodexMemberAcp = false,
     bool seedCursorMemberAcp = true,
+    bool seedOpencodeMemberAcp = true,
   }) async {
     createCalls++;
     lastSessionTeam = sessionTeam;

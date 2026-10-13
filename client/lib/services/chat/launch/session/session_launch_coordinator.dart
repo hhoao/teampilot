@@ -193,6 +193,7 @@ class SessionLaunchCoordinator
             seedClaudeMemberAcp: request.seedClaudeMemberAcp,
             seedCodexMemberAcp: request.seedCodexMemberAcp,
             seedCursorMemberAcp: request.seedCursorMemberAcp,
+            seedOpencodeMemberAcp: request.seedOpencodeMemberAcp,
           ),
           memberTargets: plan.memberTargets,
         );

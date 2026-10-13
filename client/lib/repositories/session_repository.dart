@@ -782,6 +782,7 @@ class SessionRepository {
     bool seedClaudeMemberAcp = true,
     bool seedCodexMemberAcp = false,
     bool seedCursorMemberAcp = true,
+    bool seedOpencodeMemberAcp = true,
   }) async {
     final total = Stopwatch()..start();
     var stepAt = total.elapsedMilliseconds;
@@ -852,6 +853,7 @@ class SessionRepository {
           seedClaudeMemberAcp: seedClaudeMemberAcp,
           seedCodexMemberAcp: seedCodexMemberAcp,
           seedCursorMemberAcp: seedCursorMemberAcp,
+          seedOpencodeMemberAcp: seedOpencodeMemberAcp,
         );
         sessionTargets = plan.memberTargets;
       }
