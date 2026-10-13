@@ -43,7 +43,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.sessionSelection = const ClaudeSessionSelectionLaunch(),
     this.workspaceBaseInfo = const ClaudeWorkspaceBaseInfo(),
     this.modelLaunch = const ClaudeModelLaunch(),
-    this.launchSecurity = const FullAccessOnlyCliLaunchSecurityCapability(),
+    this.launchSecurity = const AcpAskFullAccessCliLaunchSecurityCapability(),
     this.permissionLaunch = const ClaudePermissionLaunch(),
     this.promptLaunch = const ClaudePromptLaunch(),
     this.userExtraArgs = const UserExtraArgsProvider(),

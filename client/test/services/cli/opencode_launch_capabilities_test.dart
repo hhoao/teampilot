@@ -122,26 +122,34 @@ void main() {
   });
 
   test('OpenCode assembler rejects non-full-access security policies', () {
-    expect(
-      () => _assemble(
-        team: const TeamProfile(
-          id: 'team',
-          name: 'Team',
-          cli: CliTool.opencode,
+    for (final policy in const [
+      LaunchSecurityPolicy.cliDefault,
+      LaunchSecurityPolicy.ask,
+      LaunchSecurityPolicy.askReadOnlyTrusted,
+      LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
+    ]) {
+      expect(
+        () => _assemble(
+          team: const TeamProfile(
+            id: 'team',
+            name: 'Team',
+            cli: CliTool.opencode,
+          ),
+          member: const TeamMemberConfig(id: 'member', name: 'Member'),
+          launchSecurityPolicy: policy,
         ),
-        member: const TeamMemberConfig(id: 'member', name: 'Member'),
-        launchSecurityPolicy: LaunchSecurityPolicy.askReadOnlyTrusted,
-      ),
-      throwsA(
-        isA<CliLaunchCapabilityException>()
-            .having((error) => error.cli, 'cli', CliTool.opencode)
-            .having(
-              (error) => error.contributionKey,
-              'contributionKey',
-              'launch-security-policy',
-            ),
-      ),
-    );
+        throwsA(
+          isA<CliLaunchCapabilityException>()
+              .having((error) => error.cli, 'cli', CliTool.opencode)
+              .having(
+                (error) => error.contributionKey,
+                'contributionKey',
+                'launch-security-policy',
+              ),
+        ),
+        reason: describeLaunchSecurityPolicy(policy),
+      );
+    }
   });
 
   test('OpenCode permission provider rejects non-full access directly', () {

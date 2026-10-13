@@ -42,7 +42,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.sessionSelection = const CodexSessionSelectionLaunch(),
     this.workspaceBaseInfo = const CodexWorkspaceBaseInfo(),
     this.modelLaunch = const CodexModelLaunch(),
-    this.launchSecurity = const FullAccessOnlyCliLaunchSecurityCapability(),
+    this.launchSecurity = const AcpAskFullAccessCliLaunchSecurityCapability(),
     this.permissionLaunch = const CodexPermissionLaunch(),
     this.userExtraArgs = const UserExtraArgsProvider(),
     this.session = const CodexCliSessionCapability(),
