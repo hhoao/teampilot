@@ -18,12 +18,15 @@ bool _personalAcpAllowed({
   bool? isAndroidOverride,
 }) =>
     isPersonal &&
-    (cli == CliTool.claude || cli == CliTool.cursor || cli == CliTool.codex) &&
+    (cli == CliTool.claude ||
+        cli == CliTool.cursor ||
+        cli == CliTool.codex ||
+        cli == CliTool.opencode) &&
     !_isAndroid(isAndroidOverride);
 
 /// Final ACP flag for a launch: [requested] only counts for personal Claude,
-/// Cursor, or Codex on desktop and is always false on Android. Gemini ACP is
-/// inferred by session create.
+/// Cursor, Codex, or OpenCode on desktop and is always false on Android.
+/// Gemini ACP is inferred by session create.
 bool resolveLaunchAcp({
   required bool isPersonal,
   required CliTool? cli,
@@ -44,10 +47,13 @@ bool readPersonalAcpDefault(BuildContext context, CliTool? cli) {
       CliTool.claude => prefs.claudePersonalAcpDefault,
       CliTool.cursor => prefs.cursorPersonalAcpDefault,
       CliTool.codex => prefs.codexPersonalAcpDefault,
+      CliTool.opencode => prefs.opencodePersonalAcpDefault,
       _ => false,
     };
   } on ProviderNotFoundException {
-    return cli == CliTool.claude || cli == CliTool.cursor;
+    return cli == CliTool.claude ||
+        cli == CliTool.cursor ||
+        cli == CliTool.opencode;
   }
 }
 

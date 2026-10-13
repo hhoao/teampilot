@@ -810,8 +810,8 @@ Future<bool> _ensureLandingSessionConnected({
 
 /// Builds the create request for a workspace conversation.
 ///
-/// [acp] only survives for personal Claude, Cursor, or Codex on desktop (see
-/// [resolveLaunchAcp]);
+/// [acp] only survives for personal Claude, Cursor, Codex, or OpenCode on
+/// desktop (see [resolveLaunchAcp]);
 /// team creates and Android always get false. Mixed member ACP is copied from
 /// the Claude/Codex/Cursor settings seeds. Gemini ACP is inferred by session
 /// create, so it needs no flag here.

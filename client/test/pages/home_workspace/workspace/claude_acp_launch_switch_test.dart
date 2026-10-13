@@ -44,6 +44,48 @@ void main() {
       );
     });
 
+    test('true for personal OpenCode when requested on desktop', () {
+      expect(
+        resolveLaunchAcp(
+          isPersonal: true,
+          cli: CliTool.opencode,
+          requested: true,
+          isAndroidOverride: false,
+        ),
+        isTrue,
+      );
+    });
+
+    test('false for OpenCode team, not requested, or Android', () {
+      expect(
+        resolveLaunchAcp(
+          isPersonal: false,
+          cli: CliTool.opencode,
+          requested: true,
+          isAndroidOverride: false,
+        ),
+        isFalse,
+      );
+      expect(
+        resolveLaunchAcp(
+          isPersonal: true,
+          cli: CliTool.opencode,
+          requested: false,
+          isAndroidOverride: false,
+        ),
+        isFalse,
+      );
+      expect(
+        resolveLaunchAcp(
+          isPersonal: true,
+          cli: CliTool.opencode,
+          requested: true,
+          isAndroidOverride: true,
+        ),
+        isFalse,
+      );
+    });
+
     test('false for Codex team, not requested, or Android', () {
       expect(
         resolveLaunchAcp(
@@ -103,6 +145,17 @@ void main() {
         workspace: workspace,
         isPersonal: true,
         cli: CliTool.codex,
+        acp: true,
+        isAndroidOverride: false,
+      );
+      expect(request.acp, isTrue);
+    });
+
+    test('personal OpenCode with ACP requested sets request.acp', () {
+      final request = buildWorkspaceConversationCreateRequest(
+        workspace: workspace,
+        isPersonal: true,
+        cli: CliTool.opencode,
         acp: true,
         isAndroidOverride: false,
       );

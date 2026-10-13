@@ -119,6 +119,20 @@ void main() {
       );
     });
 
+    test('opencodePersonalAcpDefault defaults true and round-trips', () {
+      expect(SessionPreferences().opencodePersonalAcpDefault, isTrue);
+      expect(
+        SessionPreferences.fromJson(const {}).opencodePersonalAcpDefault,
+        isTrue,
+      );
+      final off = SessionPreferences(opencodePersonalAcpDefault: false);
+      expect(off.toJson()['opencodePersonalAcpDefault'], isFalse);
+      expect(
+        SessionPreferences.fromJson(off.toJson()).opencodePersonalAcpDefault,
+        isFalse,
+      );
+    });
+
     test('codexPersonalAcpDefault defaults false and round-trips', () {
       expect(SessionPreferences().codexPersonalAcpDefault, isFalse);
       expect(
