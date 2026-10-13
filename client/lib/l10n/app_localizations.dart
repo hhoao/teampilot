@@ -16490,6 +16490,18 @@ abstract class AppLocalizations {
   /// **'Run new personal and mixed-team Cursor sessions as terminal-less ACP chat via cursor-agent acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.'**
   String get cursorPersonalAcpDefaultDescription;
 
+  /// No description provided for @opencodePersonalAcpDefaultLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal sessions use ACP chat'**
+  String get opencodePersonalAcpDefaultLabel;
+
+  /// No description provided for @opencodePersonalAcpDefaultDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Run new personal and mixed-team OpenCode sessions as terminal-less ACP chat via opencode acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.'**
+  String get opencodePersonalAcpDefaultDescription;
+
   /// No description provided for @claudePersonalAcpAndroidDisabled.
   ///
   /// In en, this message translates to:

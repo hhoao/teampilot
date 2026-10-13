@@ -4661,6 +4661,8 @@
   "claudePersonalAcpDefaultDescription": "Run new personal and mixed-team Claude sessions as terminal-less ACP chat via claude-agent-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.",
   "cursorPersonalAcpDefaultLabel": "Personal sessions use ACP chat",
   "cursorPersonalAcpDefaultDescription": "Run new personal and mixed-team Cursor sessions as terminal-less ACP chat via cursor-agent acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.",
+  "opencodePersonalAcpDefaultLabel": "Personal sessions use ACP chat",
+  "opencodePersonalAcpDefaultDescription": "Run new personal and mixed-team OpenCode sessions as terminal-less ACP chat via opencode acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.",
   "claudePersonalAcpAndroidDisabled": "ACP chat is desktop-only until remote SSH exec is available.",
   "claudeAcpAdapterInstallButton": "Install ACP adapter",
   "acpLaunchFailedAdapter": "Could not start the Claude ACP adapter (claude-agent-acp). Install it and try again.",

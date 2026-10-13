@@ -199,6 +199,25 @@ Widget _wrapCursorAcpRow(
   );
 }
 
+Widget _wrapOpencodeAcpRow(
+  SessionPreferencesCubit cubit, {
+  bool isAndroid = false,
+}) {
+  return BlocProvider.value(
+    value: cubit,
+    child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: OpencodePersonalAcpSettingsRow(
+          cubit: cubit,
+          isAndroidOverride: isAndroid,
+        ),
+      ),
+    ),
+  );
+}
+
 Widget _wrapAcpRow(
   SessionPreferencesCubit cubit, {
   bool isAndroid = false,
@@ -588,6 +607,75 @@ void main() {
     expect(cubit.state.preferences.cursorPersonalAcpDefault, isTrue);
   });
 
+  testWidgets('OpenCode ACP switch is shown in the OpenCode CLI section', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pump();
+
+    final tile = find.byKey(AppKeys.opencodePersonalAcpSwitch);
+    expect(tile, findsOneWidget);
+    expect(tester.widget<SwitchListTile>(tile).value, isTrue);
+    expect(
+      find.descendant(of: tile, matching: find.textContaining('mixed-team')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: tile, matching: find.textContaining('Native teams')),
+      findsOneWidget,
+    );
+
+    await tester.pumpWidget(_wrapOpencodeAcpRow(cubit));
+    await tester.pump();
+    expect(find.text('Install ACP adapter'), findsNothing);
+  });
+
+  testWidgets('OpenCode ACP switch toggles opencodePersonalAcpDefault', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrapOpencodeAcpRow(cubit));
+    await tester.pump();
+    await tester.tap(find.byKey(AppKeys.opencodePersonalAcpSwitch));
+    await tester.pump();
+
+    expect(cubit.state.preferences.opencodePersonalAcpDefault, isFalse);
+    expect(
+      tester
+          .widget<SwitchListTile>(find.byKey(AppKeys.opencodePersonalAcpSwitch))
+          .value,
+      isFalse,
+    );
+  });
+
+  testWidgets('OpenCode ACP switch is disabled with a note on Android', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrapOpencodeAcpRow(cubit, isAndroid: true));
+    await tester.pump();
+
+    final tile = tester.widget<SwitchListTile>(
+      find.byKey(AppKeys.opencodePersonalAcpSwitch),
+    );
+    expect(tile.onChanged, isNull);
+    expect(
+      find.text('ACP chat is desktop-only until remote SSH exec is available.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(AppKeys.opencodePersonalAcpSwitch));
+    await tester.pump();
+    expect(cubit.state.preferences.opencodePersonalAcpDefault, isTrue);
+  });
+
   testWidgets('Codex ACP switch is shown in the Codex CLI section', (
     tester,
   ) async {
@@ -710,6 +798,10 @@ void main() {
       'Run new personal and mixed-team Cursor sessions as terminal-less ACP chat via cursor-agent acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.',
     );
     expect(
+      en.opencodePersonalAcpDefaultDescription,
+      'Run new personal and mixed-team OpenCode sessions as terminal-less ACP chat via opencode acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.',
+    );
+    expect(
       zh.claudePersonalAcpDefaultDescription,
       '新建个人和混合团队 Claude 会话走无终端 ACP（claude-agent-acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。',
     );
@@ -720,6 +812,10 @@ void main() {
     expect(
       zh.cursorPersonalAcpDefaultDescription,
       '新建个人和混合团队 Cursor 会话走无终端 ACP（cursor-agent acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。',
+    );
+    expect(
+      zh.opencodePersonalAcpDefaultDescription,
+      '新建个人和混合团队 OpenCode 会话走无终端 ACP（opencode acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。',
     );
   });
 

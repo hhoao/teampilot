@@ -183,6 +183,15 @@ Widget _buildCliRow(
       ],
     );
   }
+  if (cli == CliTool.opencode) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        pathRow,
+        OpencodePersonalAcpSettingsRow(cubit: cubit),
+      ],
+    );
+  }
   return pathRow;
 }
 
@@ -298,6 +307,44 @@ class CursorPersonalAcpSettingsRow extends StatelessWidget {
           onChanged: isAndroid
               ? null
               : (value) => cubit.setCursorPersonalAcpDefault(value),
+        );
+      },
+    );
+  }
+}
+
+/// OpenCode: run new personal sessions as terminal-less ACP chat.
+///
+/// No adapter install button — `opencode acp` is built in.
+class OpencodePersonalAcpSettingsRow extends StatelessWidget {
+  const OpencodePersonalAcpSettingsRow({
+    required this.cubit,
+    @visibleForTesting this.isAndroidOverride,
+    super.key,
+  });
+
+  final SessionPreferencesCubit cubit;
+  final bool? isAndroidOverride;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final isAndroid = isAndroidOverride ?? Platform.isAndroid;
+    return BlocBuilder<SessionPreferencesCubit, SessionPreferencesState>(
+      bloc: cubit,
+      buildWhen: (a, b) =>
+          a.preferences.opencodePersonalAcpDefault !=
+          b.preferences.opencodePersonalAcpDefault,
+      builder: (context, state) {
+        return PersonalAcpSettingsRow(
+          switchKey: AppKeys.opencodePersonalAcpSwitch,
+          label: l10n.opencodePersonalAcpDefaultLabel,
+          description: l10n.opencodePersonalAcpDefaultDescription,
+          androidDescription: l10n.claudePersonalAcpAndroidDisabled,
+          value: !isAndroid && state.preferences.opencodePersonalAcpDefault,
+          onChanged: isAndroid
+              ? null
+              : (value) => cubit.setOpencodePersonalAcpDefault(value),
         );
       },
     );
