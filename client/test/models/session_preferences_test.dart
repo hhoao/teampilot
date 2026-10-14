@@ -134,20 +134,20 @@ void main() {
       );
     });
 
-    test('codexPersonalAcpDefault defaults false and round-trips', () {
-      expect(SessionPreferences().codexPersonalAcpDefault, isFalse);
+    test('codexPersonalAcpDefault defaults true and round-trips', () {
+      expect(SessionPreferences().codexPersonalAcpDefault, isTrue);
       expect(
         SessionPreferences.fromJson(const {}).codexPersonalAcpDefault,
-        isFalse,
-      );
-      final on = SessionPreferences(codexPersonalAcpDefault: true);
-      expect(on.toJson()['codexPersonalAcpDefault'], isTrue);
-      expect(
-        SessionPreferences.fromJson(on.toJson()).codexPersonalAcpDefault,
         isTrue,
       );
+      final off = SessionPreferences(codexPersonalAcpDefault: false);
+      expect(off.toJson()['codexPersonalAcpDefault'], isFalse);
+      expect(
+        SessionPreferences.fromJson(off.toJson()).codexPersonalAcpDefault,
+        isFalse,
+      );
       final claude = SessionPreferences(claudePersonalAcpDefault: false);
-      expect(claude.codexPersonalAcpDefault, isFalse);
+      expect(claude.codexPersonalAcpDefault, isTrue);
     });
 
     test('acpPermissionDefault defaults fullAccess and round-trips ask', () {

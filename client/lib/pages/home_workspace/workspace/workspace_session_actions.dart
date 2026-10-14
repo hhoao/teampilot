@@ -833,7 +833,7 @@ SessionCreateRequest buildWorkspaceConversationCreateRequest({
   String workflowId = '',
   bool acp = false,
   bool seedClaudeMemberAcp = true,
-  bool seedCodexMemberAcp = false,
+  bool seedCodexMemberAcp = true,
   bool seedCursorMemberAcp = true,
   bool seedOpencodeMemberAcp = true,
   LaunchSecurityPolicy acpPermission = LaunchSecurityPolicy.fullAccess,

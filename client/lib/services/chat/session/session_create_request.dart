@@ -25,7 +25,7 @@ class SessionCreateRequest {
     this.preserveWorkbenchView = false,
     this.acp = false,
     this.seedClaudeMemberAcp = true,
-    this.seedCodexMemberAcp = false,
+    this.seedCodexMemberAcp = true,
     this.seedCursorMemberAcp = true,
     this.seedOpencodeMemberAcp = true,
     this.acpPermission = LaunchSecurityPolicy.fullAccess,
@@ -70,7 +70,7 @@ class SessionCreateRequest {
   /// Mixed-seat Claude ACP seed (`claudePersonalAcpDefault`, default true).
   final bool seedClaudeMemberAcp;
 
-  /// Mixed-seat Codex ACP seed (`codexPersonalAcpDefault`, default false).
+  /// Mixed-seat Codex ACP seed (`codexPersonalAcpDefault`, default true).
   final bool seedCodexMemberAcp;
 
   /// Mixed-seat Cursor ACP seed (`cursorPersonalAcpDefault`, default true).

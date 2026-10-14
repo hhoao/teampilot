@@ -262,7 +262,7 @@ class SessionDataStore {
     Map<String, String>? memberTargets,
     TeamMode teamMode = TeamMode.native,
     bool seedClaudeMemberAcp = true,
-    bool seedCodexMemberAcp = false,
+    bool seedCodexMemberAcp = true,
     bool seedCursorMemberAcp = true,
     bool seedOpencodeMemberAcp = true,
   }) async {

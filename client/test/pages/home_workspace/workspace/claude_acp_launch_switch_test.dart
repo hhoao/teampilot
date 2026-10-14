@@ -233,7 +233,7 @@ void main() {
       );
       expect(request.acp, isFalse);
       expect(request.seedClaudeMemberAcp, isTrue);
-      expect(request.seedCodexMemberAcp, isFalse);
+      expect(request.seedCodexMemberAcp, isTrue);
       expect(request.seedCursorMemberAcp, isTrue);
       expect(request.seedOpencodeMemberAcp, isTrue);
     });

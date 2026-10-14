@@ -161,6 +161,28 @@ void main() {
     expect(off.members.single.acp, isFalse);
   });
 
+  test('mixed local Codex plan path follows seedCodexMemberAcp', () async {
+    final on = (await repo.createSession(
+      workspaceId,
+      sessionTeam: 'team-codex-on',
+      rosterMembers: const [TeamMemberConfig(id: 'lead', name: 'Lead')],
+      memberClis: const {'lead': CliTool.codex},
+      teamMode: TeamMode.mixed,
+    )).session;
+    expect(on.acp, isFalse);
+    expect(on.members.single.acp, isTrue);
+
+    final off = (await repo.createSession(
+      workspaceId,
+      sessionTeam: 'team-codex-off',
+      rosterMembers: const [TeamMemberConfig(id: 'lead', name: 'Lead')],
+      memberClis: const {'lead': CliTool.codex},
+      teamMode: TeamMode.mixed,
+      seedCodexMemberAcp: false,
+    )).session;
+    expect(off.members.single.acp, isFalse);
+  });
+
   test(
     'mixed local Claude plan path stamps binding ask and keeps session fullAccess',
     () async {

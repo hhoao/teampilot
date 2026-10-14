@@ -780,7 +780,7 @@ class SessionRepository {
     bool acp = false,
     TeamMode teamMode = TeamMode.native,
     bool seedClaudeMemberAcp = true,
-    bool seedCodexMemberAcp = false,
+    bool seedCodexMemberAcp = true,
     bool seedCursorMemberAcp = true,
     bool seedOpencodeMemberAcp = true,
     LaunchSecurityPolicy acpPermission = LaunchSecurityPolicy.fullAccess,

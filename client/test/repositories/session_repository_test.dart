@@ -1234,6 +1234,7 @@ void main() {
       ],
       memberClis: const {'lead': CliTool.claude, 'op': CliTool.opencode},
       teamMode: TeamMode.mixed,
+      seedOpencodeMemberAcp: false,
     )).session;
     expect(session.acp, isFalse);
     expect(session.acpPermission, LaunchSecurityPolicy.fullAccess);

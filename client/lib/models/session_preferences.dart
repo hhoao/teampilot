@@ -20,7 +20,7 @@ class SessionPreferences {
     this.claudePersonalAcpDefault = true,
     this.cursorPersonalAcpDefault = true,
     this.opencodePersonalAcpDefault = true,
-    this.codexPersonalAcpDefault = false,
+    this.codexPersonalAcpDefault = true,
     this.acpPermissionDefault = LaunchSecurityPolicy.fullAccess,
   }) : cliExecutablePaths = Map.unmodifiable(
          _normalizeCliExecutablePaths(cliExecutablePaths),
@@ -68,7 +68,7 @@ class SessionPreferences {
       opencodePersonalAcpDefault:
           json['opencodePersonalAcpDefault'] as bool? ?? true,
       codexPersonalAcpDefault:
-          json['codexPersonalAcpDefault'] as bool? ?? false,
+          json['codexPersonalAcpDefault'] as bool? ?? true,
       acpPermissionDefault: acpPermissionFromJson(json['acpPermissionDefault']),
     );
   }
@@ -150,8 +150,9 @@ class SessionPreferences {
   /// the runtime they were started with.
   final bool opencodePersonalAcpDefault;
 
-  /// When true, new personal Codex sessions launch as ACP chat instead of PTY.
-  /// Default false. Existing sessions keep the runtime they were started with.
+  /// When true (the default), new personal Codex sessions launch as ACP chat
+  /// instead of PTY. Controlled from CLI settings; existing sessions keep
+  /// the runtime they were started with.
   final bool codexPersonalAcpDefault;
 
   /// Default ACP compose permission for new personal ACP launches and new

@@ -53,6 +53,7 @@ bool readPersonalAcpDefault(BuildContext context, CliTool? cli) {
   } on ProviderNotFoundException {
     return cli == CliTool.claude ||
         cli == CliTool.cursor ||
+        cli == CliTool.codex ||
         cli == CliTool.opencode;
   }
 }
@@ -62,6 +63,8 @@ bool readPersonalAcpDefault(BuildContext context, CliTool? cli) {
 bool readClaudePersonalAcpDefault(BuildContext context) =>
     readPersonalAcpDefault(context, CliTool.claude);
 
+/// Current settings default for "personal Codex uses ACP"; true when the
+/// preferences cubit is not in scope (matches [SessionPreferences] default).
 bool readCodexPersonalAcpDefault(BuildContext context) =>
     readPersonalAcpDefault(context, CliTool.codex);
 

@@ -142,14 +142,14 @@ void main() {
   test('setCodexPersonalAcpDefault persists the flag', () async {
     final cubit = await makeCubit();
     await cubit.load();
-    expect(cubit.state.preferences.codexPersonalAcpDefault, false);
-
-    await cubit.setCodexPersonalAcpDefault(true);
     expect(cubit.state.preferences.codexPersonalAcpDefault, true);
+
+    await cubit.setCodexPersonalAcpDefault(false);
+    expect(cubit.state.preferences.codexPersonalAcpDefault, false);
 
     final cubit2 = await makeCubit();
     await cubit2.load();
-    expect(cubit2.state.preferences.codexPersonalAcpDefault, true);
+    expect(cubit2.state.preferences.codexPersonalAcpDefault, false);
     expect(cubit2.state.preferences.claudePersonalAcpDefault, true);
   });
 

@@ -687,7 +687,7 @@ void main() {
 
     final tile = find.byKey(AppKeys.codexPersonalAcpSwitch);
     expect(tile, findsOneWidget);
-    expect(tester.widget<SwitchListTile>(tile).value, isFalse);
+    expect(tester.widget<SwitchListTile>(tile).value, isTrue);
     expect(
       find.descendant(
         of: tile,
@@ -716,12 +716,12 @@ void main() {
     await tester.tap(find.byKey(AppKeys.codexPersonalAcpSwitch));
     await tester.pump();
 
-    expect(cubit.state.preferences.codexPersonalAcpDefault, isTrue);
+    expect(cubit.state.preferences.codexPersonalAcpDefault, isFalse);
     expect(
       tester
           .widget<SwitchListTile>(find.byKey(AppKeys.codexPersonalAcpSwitch))
           .value,
-      isTrue,
+      isFalse,
     );
   });
 
@@ -745,7 +745,7 @@ void main() {
 
     await tester.tap(find.byKey(AppKeys.codexPersonalAcpSwitch));
     await tester.pump();
-    expect(cubit.state.preferences.codexPersonalAcpDefault, isFalse);
+    expect(cubit.state.preferences.codexPersonalAcpDefault, isTrue);
   });
 
   testWidgets('Codex ACP adapter install button installs the adapter package', (
