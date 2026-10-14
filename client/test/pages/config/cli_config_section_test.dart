@@ -22,6 +22,7 @@ import 'package:teampilot/services/install/install_job_runner_registry.dart';
 import 'package:teampilot/services/install/runners/cli_install_job_runner.dart';
 import 'package:teampilot/services/notification/notification_recorder.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
@@ -141,6 +142,51 @@ Widget _wrap(
             showHeading: false,
             isAndroidOverride: isAndroidOverride,
             versionProbe: _silentProbe(),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _wrapCard(
+  SessionPreferencesCubit cubit, {
+  CliTool cli = CliTool.claude,
+  Future<String?> Function()? locateOverride,
+}) {
+  final progressCubit = ProgressActivityCubit(historyRecorder: _FakeRecorder());
+  final registry = InstallJobRegistry(
+    progressCubit: progressCubit,
+    runnerRegistry: InstallJobRunnerRegistry(
+      runners: [
+        CliInstallJobRunner(
+          installerFactory: () => _DelayedCliInstallerService(),
+        ),
+      ],
+    ),
+  );
+
+  return MultiRepositoryProvider(
+    providers: [
+      RepositoryProvider<ConnectionModeService>(
+        create: (_) => ConnectionModeService(
+          defaultTargetResolver: RuntimeTarget.local,
+          hasSshProfiles: () => false,
+        ),
+      ),
+      RepositoryProvider<InstallJobRegistry>.value(value: registry),
+    ],
+    child: BlocProvider.value(
+      value: cubit,
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: CliReadinessCard(
+            cli: cli,
+            cubit: cubit,
+            versionProbe: _silentProbe(),
+            locateOverride: locateOverride,
           ),
         ),
       ),
@@ -374,6 +420,83 @@ void main() {
     expect(find.byKey(AppKeys.cursorCliInstallButton), findsOneWidget);
     expect(find.byKey(AppKeys.claudeCliInstallButton), findsOneWidget);
     expect(find.byKey(AppKeys.codexCliInstallButton), findsOneWidget);
+  });
+
+  testWidgets('shows Locate when CLI path is empty', (tester) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pump();
+
+    final button = find.byKey(AppKeys.cursorCliExecutablePathResetButton);
+    expect(button, findsOneWidget);
+    expect(
+      find.descendant(of: button, matching: find.text('Locate')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: button, matching: find.text('Reset')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('shows Reset when CLI path is configured', (tester) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+    await cubit.setCliExecutablePathFor(CliTool.cursor, '/custom/cursor-agent');
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pump();
+
+    final button = find.byKey(AppKeys.cursorCliExecutablePathResetButton);
+    expect(
+      find.descendant(of: button, matching: find.text('Reset')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(AppKeys.cliExecutablePathFieldFor(CliTool.cursor)),
+      findsOneWidget,
+    );
+    expect(find.text('/custom/cursor-agent'), findsOneWidget);
+  });
+
+  testWidgets('Locate success writes and persists path', (tester) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+    await tester.pumpWidget(
+      _wrapCard(cubit, locateOverride: () async => '/found/claude'),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(AppKeys.claudeCliExecutablePathResetButton));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(cubit.configuredExecutablePath(CliTool.claude), '/found/claude');
+    expect(
+      find.byKey(AppKeys.claudeCliExecutablePathField),
+      findsOneWidget,
+    );
+    expect(find.text('/found/claude'), findsOneWidget);
+    expect(find.text('Reset'), findsOneWidget);
+    AppToast.dismiss();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+  });
+
+  testWidgets('install button uses registry and persists after unmount', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrapCard(cubit));
+    await tester.pump();
+    await tester.tap(find.byKey(AppKeys.claudeCliInstallButton));
+    await tester.pump();
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(cubit.configuredExecutablePath(CliTool.claude), '/installed/claude');
   });
 
   testWidgets('hides toolchain install buttons when paths are known', (

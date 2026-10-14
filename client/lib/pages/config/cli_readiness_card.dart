@@ -63,6 +63,7 @@ class CliReadinessCard extends StatefulWidget {
     required this.cubit,
     this.isAndroidOverride,
     this.versionProbe,
+    this.locateOverride,
     super.key,
   });
 
@@ -70,6 +71,9 @@ class CliReadinessCard extends StatefulWidget {
   final SessionPreferencesCubit cubit;
   final bool? isAndroidOverride;
   final CliVersionProbe? versionProbe;
+
+  /// Test seam to avoid spawning discovery subprocesses.
+  final Future<String?> Function()? locateOverride;
 
   @override
   State<CliReadinessCard> createState() => _CliReadinessCardState();
@@ -221,6 +225,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
   }
 
   Future<String?> _resolveCliLocatePath() async {
+    if (widget.locateOverride != null) return widget.locateOverride!();
     final connectionMode = context.read<ConnectionModeService>();
     if (connectionMode.isRemoteWorkPlane) {
       final profile = _remoteSshProfile(context, connectionMode);
