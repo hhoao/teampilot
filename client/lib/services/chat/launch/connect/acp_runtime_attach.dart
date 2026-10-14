@@ -293,7 +293,10 @@ class AcpRuntimeAttach {
             logger: logger,
           ),
           logger: logger,
-          launchPlanFor: acpLaunchPlanResolver(_host.cliRegistry),
+          launchPlanFor: acpLaunchPlanResolver(
+            _host.cliRegistry,
+            discoveredAdapterPath: _host.discoveredAcpAdapterPath,
+          ),
         );
     return AcpChatRuntimeCubit(
       runtime: runtime,

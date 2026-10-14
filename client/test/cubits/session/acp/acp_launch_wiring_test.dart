@@ -139,4 +139,20 @@ void main() {
       await expectLater(raced, throwsA(isA<AcpAuthenticateException>()));
     },
   );
+
+  test('capabilityToPlan prefers an absolute discovered adapter path', () {
+    final plan = capabilityToPlan(
+      _FixedAuthCapability(null),
+      discoveredAdapterPath: () => '/opt/claude-agent-acp',
+    )!;
+    expect(plan.agentExecutable('/usr/bin/claude'), '/opt/claude-agent-acp');
+  });
+
+  test('capabilityToPlan ignores a bare discovered name', () {
+    final plan = capabilityToPlan(
+      _FixedAuthCapability(null),
+      discoveredAdapterPath: () => 'claude-agent-acp',
+    )!;
+    expect(plan.agentExecutable('/usr/bin/claude'), '/usr/bin/claude');
+  });
 }
