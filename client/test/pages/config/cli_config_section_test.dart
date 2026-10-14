@@ -6,14 +6,16 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
-import 'package:teampilot/models/session_preferences.dart';
+import 'package:teampilot/models/cli_binary_kind.dart';
 import 'package:teampilot/models/runtime_target.dart';
+import 'package:teampilot/models/session_preferences.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/config/cli_config_section.dart';
-import 'package:teampilot/pages/config/cli_executable_path_settings_row.dart';
+import 'package:teampilot/pages/config/cli_readiness_card.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/cli/cli_installer_service.dart';
+import 'package:teampilot/services/cli/cli_version_probe.dart';
 import 'package:teampilot/services/cli/registry/installer/npm_installer_capability.dart';
 import 'package:teampilot/services/install/install_job_registry.dart';
 import 'package:teampilot/services/install/install_job_runner_registry.dart';
@@ -78,21 +80,80 @@ class _DelayedCliInstallerService extends CliInstallerService {
   }
 }
 
+/// Avoids real `npm view` when settings cards become visible.
+CliVersionProbe _silentProbe() => CliVersionProbe(
+  runner: (executable, arguments, {environment, stdoutEncoding, stderrEncoding}) async {
+    throw StateError('tests must not spawn $executable $arguments');
+  },
+);
+
 Future<SessionPreferencesCubit> _makeCubit({
   Map<CliTool, String> locatedExecutables = const {},
+  Map<CliTool, String> locatedAcpAdapters = const {},
   Map<String, String> locatedToolchains = const {},
 }) async {
   final prefs = await SharedPreferences.getInstance();
   final cubit = SessionPreferencesCubit(
     repository: SessionPreferencesRepository(prefs),
     locatedExecutables: locatedExecutables,
+    locatedAcpAdapters: locatedAcpAdapters,
     locatedToolchains: locatedToolchains,
   );
   await cubit.load();
   return cubit;
 }
 
-Widget _wrap(SessionPreferencesCubit cubit) {
+Widget _wrap(
+  SessionPreferencesCubit cubit, {
+  bool? isAndroidOverride,
+  List<String>? adapterInstalls,
+}) {
+  final progressCubit = ProgressActivityCubit(historyRecorder: _FakeRecorder());
+  final registry = InstallJobRegistry(
+    progressCubit: progressCubit,
+    runnerRegistry: InstallJobRunnerRegistry(
+      runners: [
+        CliInstallJobRunner(
+          installerFactory: () => adapterInstalls != null
+              ? _AdapterInstallerService(adapterInstalls)
+              : _DelayedCliInstallerService(),
+        ),
+      ],
+    ),
+  );
+
+  return MultiRepositoryProvider(
+    providers: [
+      RepositoryProvider<ConnectionModeService>(
+        create: (_) => ConnectionModeService(
+          defaultTargetResolver: RuntimeTarget.local,
+          hasSshProfiles: () => false,
+        ),
+      ),
+      RepositoryProvider<InstallJobRegistry>.value(value: registry),
+    ],
+    child: BlocProvider.value(
+      value: cubit,
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: CliConfigWorkspace(
+            showHeading: false,
+            isAndroidOverride: isAndroidOverride,
+            versionProbe: _silentProbe(),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _wrapCard(
+  SessionPreferencesCubit cubit, {
+  CliTool cli = CliTool.claude,
+  Future<String?> Function()? locateOverride,
+}) {
   final progressCubit = ProgressActivityCubit(historyRecorder: _FakeRecorder());
   final registry = InstallJobRegistry(
     progressCubit: progressCubit,
@@ -120,165 +181,12 @@ Widget _wrap(SessionPreferencesCubit cubit) {
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: const Scaffold(body: CliConfigWorkspace(showHeading: false)),
-      ),
-    ),
-  );
-}
-
-Widget _wrapRow(
-  SessionPreferencesCubit cubit, {
-  Future<String?> Function()? locateOverride,
-  InstallJobRegistry? installJobRegistry,
-}) {
-  final progressCubit = ProgressActivityCubit(historyRecorder: _FakeRecorder());
-  final registry =
-      installJobRegistry ??
-      InstallJobRegistry(
-        progressCubit: progressCubit,
-        runnerRegistry: InstallJobRunnerRegistry(
-          runners: [
-            CliInstallJobRunner(
-              installerFactory: () => _DelayedCliInstallerService(),
-            ),
-          ],
-        ),
-      );
-
-  return MultiRepositoryProvider(
-    providers: [
-      RepositoryProvider<ConnectionModeService>(
-        create: (_) => ConnectionModeService(
-          defaultTargetResolver: RuntimeTarget.local,
-          hasSshProfiles: () => false,
-        ),
-      ),
-      RepositoryProvider<InstallJobRegistry>.value(value: registry),
-    ],
-    child: BlocProvider.value(
-      value: cubit,
-      child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
-          body: CliExecutablePathSettingsRow(
+          body: CliReadinessCard(
+            cli: cli,
             cubit: cubit,
-            cli: CliTool.claude,
-            title: 'Claude Code',
-            subtitle: 'Path to the Claude Code CLI',
-            fieldKey: AppKeys.claudeCliExecutablePathField,
-            browseKey: AppKeys.claudeCliExecutablePathBrowseButton,
-            resetKey: AppKeys.claudeCliExecutablePathResetButton,
-            debouncerTag: 'claude_cli_executable_path_test',
-            installKey: AppKeys.claudeCliInstallButton,
-            showDividerBelow: false,
+            versionProbe: _silentProbe(),
             locateOverride: locateOverride,
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-Widget _wrapCursorAcpRow(
-  SessionPreferencesCubit cubit, {
-  bool isAndroid = false,
-}) {
-  return BlocProvider.value(
-    value: cubit,
-    child: MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(
-        body: CursorPersonalAcpSettingsRow(
-          cubit: cubit,
-          isAndroidOverride: isAndroid,
-        ),
-      ),
-    ),
-  );
-}
-
-Widget _wrapOpencodeAcpRow(
-  SessionPreferencesCubit cubit, {
-  bool isAndroid = false,
-}) {
-  return BlocProvider.value(
-    value: cubit,
-    child: MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(
-        body: OpencodePersonalAcpSettingsRow(
-          cubit: cubit,
-          isAndroidOverride: isAndroid,
-        ),
-      ),
-    ),
-  );
-}
-
-Widget _wrapAcpRow(
-  SessionPreferencesCubit cubit, {
-  bool isAndroid = false,
-  List<String>? adapterInstalls,
-}) {
-  final registry = InstallJobRegistry(
-    progressCubit: ProgressActivityCubit(historyRecorder: _FakeRecorder()),
-    runnerRegistry: InstallJobRunnerRegistry(
-      runners: [
-        CliInstallJobRunner(
-          installerFactory: () =>
-              _AdapterInstallerService(adapterInstalls ?? []),
-        ),
-      ],
-    ),
-  );
-  return RepositoryProvider<InstallJobRegistry>.value(
-    value: registry,
-    child: BlocProvider.value(
-      value: cubit,
-      child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: ClaudePersonalAcpSettingsRow(
-            cubit: cubit,
-            isAndroidOverride: isAndroid,
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-Widget _wrapCodexAcpRow(
-  SessionPreferencesCubit cubit, {
-  bool isAndroid = false,
-  List<String>? adapterInstalls,
-}) {
-  final registry = InstallJobRegistry(
-    progressCubit: ProgressActivityCubit(historyRecorder: _FakeRecorder()),
-    runnerRegistry: InstallJobRunnerRegistry(
-      runners: [
-        CliInstallJobRunner(
-          installerFactory: () =>
-              _AdapterInstallerService(adapterInstalls ?? []),
-        ),
-      ],
-    ),
-  );
-  return RepositoryProvider<InstallJobRegistry>.value(
-    value: registry,
-    child: BlocProvider.value(
-      value: cubit,
-      child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: CodexPersonalAcpSettingsRow(
-            cubit: cubit,
-            isAndroidOverride: isAndroid,
           ),
         ),
       ),
@@ -294,6 +202,214 @@ void main() {
 
   tearDown(tearDownTestAppStorage);
 
+  test('readinessChip is Ready when binaries are known with no updates', () {
+    expect(
+      readinessChip(
+        cliKnown: true,
+        needsAdapter: true,
+        adapterKnown: true,
+        cliUpdate: false,
+        adapterUpdate: false,
+      ),
+      CliReadinessChipKind.ready,
+    );
+  });
+
+  test('readinessChip needs setup when adapter is missing', () {
+    expect(
+      readinessChip(
+        cliKnown: true,
+        needsAdapter: true,
+        adapterKnown: false,
+        cliUpdate: false,
+        adapterUpdate: false,
+      ),
+      CliReadinessChipKind.needsSetup,
+    );
+  });
+
+  test('isNpmUpdate is string inequality, not semver', () {
+    expect(isNpmUpdate(installed: '0.42.0', latest: '0.44.1'), isTrue);
+    expect(isNpmUpdate(installed: '0.44.1', latest: '0.44.1'), isFalse);
+    expect(isNpmUpdate(installed: null, latest: '0.44.1'), isFalse);
+  });
+
+  testWidgets(
+    'Ready chip when CLI and adapter paths and versions are known',
+    (tester) async {
+      final cubit = await _makeCubit(
+        locatedExecutables: const {CliTool.claude: '/usr/local/bin/claude'},
+        locatedAcpAdapters: const {
+          CliTool.claude: '/usr/local/bin/claude-agent-acp',
+        },
+      );
+      addTearDown(cubit.close);
+      cubit.mergeBinaryVersion(
+        cli: CliTool.claude,
+        kind: CliBinaryKind.cli,
+        installed: '2.0.0',
+        latest: '2.0.0',
+      );
+      cubit.mergeBinaryVersion(
+        cli: CliTool.claude,
+        kind: CliBinaryKind.adapter,
+        installed: '1.0.0',
+        latest: '1.0.0',
+      );
+
+      await tester.pumpWidget(_wrap(cubit));
+      await tester.pump();
+
+      expect(find.text('Ready'), findsAtLeastNWidgets(1));
+      expect(find.byKey(AppKeys.claudeCliInstallButton), findsNothing);
+      expect(find.byKey(AppKeys.claudeCliUpgradeButton), findsNothing);
+      expect(find.byKey(AppKeys.claudeAcpAdapterInstallButton), findsNothing);
+      expect(find.byKey(AppKeys.claudeAcpAdapterUpgradeButton), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'Needs setup shows adapter Install and Locate and keeps the switch',
+    (tester) async {
+      final cubit = await _makeCubit(
+        locatedExecutables: const {CliTool.claude: '/usr/local/bin/claude'},
+      );
+      addTearDown(cubit.close);
+
+      await tester.pumpWidget(_wrap(cubit));
+      await tester.pump();
+
+      expect(find.byKey(AppKeys.claudeAcpAdapterInstallButton), findsOneWidget);
+      expect(find.byKey(AppKeys.claudeAcpAdapterLocateButton), findsOneWidget);
+      expect(find.byKey(AppKeys.claudePersonalAcpSwitch), findsOneWidget);
+      expect(find.text('Needs setup'), findsAtLeastNWidgets(1));
+    },
+  );
+
+  testWidgets(
+    'Update available shows Codex CLI Upgrade when npm versions differ',
+    (tester) async {
+      final cubit = await _makeCubit(
+        locatedExecutables: const {CliTool.codex: '/usr/local/bin/codex'},
+        locatedAcpAdapters: const {CliTool.codex: '/usr/local/bin/codex-acp'},
+      );
+      addTearDown(cubit.close);
+      cubit.mergeBinaryVersion(
+        cli: CliTool.codex,
+        kind: CliBinaryKind.cli,
+        installed: '0.42.0',
+        latest: '0.44.1',
+      );
+
+      await tester.pumpWidget(_wrap(cubit));
+      await tester.pump();
+
+      expect(find.byKey(AppKeys.codexCliUpgradeButton), findsOneWidget);
+      expect(find.text('Update available'), findsAtLeastNWidgets(1));
+    },
+  );
+
+  testWidgets(
+    'Cursor and OpenCode ACP rows use CLI copy with no adapter install key',
+    (tester) async {
+      final cubit = await _makeCubit(
+        locatedExecutables: const {
+          CliTool.cursor: '/usr/local/bin/cursor-agent',
+          CliTool.opencode: '/usr/local/bin/opencode',
+        },
+      );
+      addTearDown(cubit.close);
+
+      await tester.pumpWidget(_wrap(cubit));
+      await tester.pump();
+
+      final l10n = lookupAppLocalizations(const Locale('en'));
+      expect(find.textContaining(l10n.cliReadinessUsesCli), findsAtLeastNWidgets(2));
+      expect(find.byKey(AppKeys.cursorCliInstallButton), findsNothing);
+      expect(find.byKey(AppKeys.opencodeCliInstallButton), findsNothing);
+    },
+  );
+
+  testWidgets('Gemini has no personal ACP switch', (tester) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pump();
+
+    expect(find.byKey(AppKeys.personalAcpSwitchFor(CliTool.gemini)), findsNothing);
+    expect(find.byKey(AppKeys.claudePersonalAcpSwitch), findsOneWidget);
+  });
+
+  testWidgets('Cursor found has no Upgrade key', (tester) async {
+    final cubit = await _makeCubit(
+      locatedExecutables: const {CliTool.cursor: '/usr/local/bin/cursor-agent'},
+    );
+    addTearDown(cubit.close);
+    cubit.mergeBinaryVersion(
+      cli: CliTool.cursor,
+      kind: CliBinaryKind.cli,
+      installed: '1.0.0',
+      latest: '9.9.9',
+    );
+
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pump();
+
+    expect(find.byKey(AppKeys.cursorCliUpgradeButton), findsNothing);
+    expect(find.byKey(AppKeys.cursorCliInstallButton), findsNothing);
+  });
+
+  testWidgets(
+    'Android override disables the switch and hides adapter actions',
+    (tester) async {
+      final cubit = await _makeCubit(
+        locatedExecutables: const {CliTool.claude: '/usr/local/bin/claude'},
+      );
+      addTearDown(cubit.close);
+
+      await tester.pumpWidget(_wrap(cubit, isAndroidOverride: true));
+      await tester.pump();
+
+      final tile = tester.widget<SwitchListTile>(
+        find.byKey(AppKeys.claudePersonalAcpSwitch),
+      );
+      expect(tile.onChanged, isNull);
+      expect(
+        find.text(
+          'ACP chat is desktop-only until remote SSH exec is available.',
+        ),
+        findsAtLeastNWidgets(1),
+      );
+      expect(find.byKey(AppKeys.claudeAcpAdapterInstallButton), findsNothing);
+      expect(find.byKey(AppKeys.claudeAcpAdapterLocateButton), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'Codex adapter install uses the Codex l10n string and key',
+    (tester) async {
+      final cubit = await _makeCubit(
+        locatedExecutables: const {CliTool.codex: '/usr/local/bin/codex'},
+      );
+      addTearDown(cubit.close);
+      final l10n = lookupAppLocalizations(const Locale('en'));
+
+      await tester.pumpWidget(_wrap(cubit));
+      await tester.pump();
+
+      final button = find.byKey(AppKeys.codexAcpAdapterInstallButton);
+      expect(button, findsOneWidget);
+      expect(
+        find.descendant(
+          of: button,
+          matching: find.text(l10n.codexAcpAdapterInstallButton),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('shows install button when CLI path is unknown', (tester) async {
     final cubit = await _makeCubit();
     addTearDown(cubit.close);
@@ -304,47 +420,6 @@ void main() {
     expect(find.byKey(AppKeys.cursorCliInstallButton), findsOneWidget);
     expect(find.byKey(AppKeys.claudeCliInstallButton), findsOneWidget);
     expect(find.byKey(AppKeys.codexCliInstallButton), findsOneWidget);
-    expect(find.byKey(AppKeys.opencodeCliInstallButton), findsOneWidget);
-  });
-
-  testWidgets('hides install button when CLI path is already known', (
-    tester,
-  ) async {
-    final cubit = await _makeCubit(
-      locatedExecutables: const {
-        CliTool.claude: '/usr/local/bin/claude',
-        CliTool.codex: '/usr/local/bin/codex',
-        CliTool.opencode: '/usr/local/bin/opencode',
-        CliTool.cursor: '/usr/local/bin/cursor-agent',
-      },
-    );
-    addTearDown(cubit.close);
-
-    await tester.pumpWidget(_wrap(cubit));
-    await tester.pump();
-
-    expect(find.byKey(AppKeys.cursorCliInstallButton), findsNothing);
-    expect(find.byKey(AppKeys.claudeCliInstallButton), findsNothing);
-    expect(find.byKey(AppKeys.codexCliInstallButton), findsNothing);
-    expect(find.byKey(AppKeys.opencodeCliInstallButton), findsNothing);
-  });
-
-  testWidgets('hides toolchain install buttons when paths are known', (
-    tester,
-  ) async {
-    final cubit = await _makeCubit(
-      locatedToolchains: const {
-        SessionPreferences.toolchainGit: '/usr/bin/git',
-        SessionPreferences.toolchainNode: '/usr/bin/node',
-      },
-    );
-    addTearDown(cubit.close);
-
-    await tester.pumpWidget(_wrap(cubit));
-    await tester.pump();
-
-    expect(find.byKey(AppKeys.gitToolchainInstallButton), findsNothing);
-    expect(find.byKey(AppKeys.nodeToolchainInstallButton), findsNothing);
   });
 
   testWidgets('shows Locate when CLI path is empty', (tester) async {
@@ -377,38 +452,30 @@ void main() {
       find.descendant(of: button, matching: find.text('Reset')),
       findsOneWidget,
     );
+    expect(
+      find.byKey(AppKeys.cliExecutablePathFieldFor(CliTool.cursor)),
+      findsOneWidget,
+    );
+    expect(find.text('/custom/cursor-agent'), findsOneWidget);
   });
 
   testWidgets('Locate success writes and persists path', (tester) async {
     final cubit = await _makeCubit();
     addTearDown(cubit.close);
     await tester.pumpWidget(
-      _wrapRow(cubit, locateOverride: () async => '/found/claude'),
+      _wrapCard(cubit, locateOverride: () async => '/found/claude'),
     );
     await tester.pump();
     await tester.tap(find.byKey(AppKeys.claudeCliExecutablePathResetButton));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     expect(cubit.configuredExecutablePath(CliTool.claude), '/found/claude');
+    expect(
+      find.byKey(AppKeys.claudeCliExecutablePathField),
+      findsOneWidget,
+    );
+    expect(find.text('/found/claude'), findsOneWidget);
     expect(find.text('Reset'), findsOneWidget);
-    AppToast.dismiss();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 250));
-  });
-
-  testWidgets('Locate failure leaves path empty and keeps Install', (
-    tester,
-  ) async {
-    final cubit = await _makeCubit();
-    addTearDown(cubit.close);
-    await tester.pumpWidget(_wrapRow(cubit, locateOverride: () async => null));
-    await tester.pump();
-    await tester.tap(find.byKey(AppKeys.claudeCliExecutablePathResetButton));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
-    expect(cubit.configuredExecutablePath(CliTool.claude), isEmpty);
-    expect(find.text('Locate'), findsOneWidget);
-    expect(find.byKey(AppKeys.claudeCliInstallButton), findsOneWidget);
     AppToast.dismiss();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
@@ -420,7 +487,7 @@ void main() {
     final cubit = await _makeCubit();
     addTearDown(cubit.close);
 
-    await tester.pumpWidget(_wrapRow(cubit));
+    await tester.pumpWidget(_wrapCard(cubit));
     await tester.pump();
     await tester.tap(find.byKey(AppKeys.claudeCliInstallButton));
     await tester.pump();
@@ -432,410 +499,21 @@ void main() {
     expect(cubit.configuredExecutablePath(CliTool.claude), '/installed/claude');
   });
 
-  testWidgets('Claude ACP switch is shown in the Claude CLI section', (
+  testWidgets('hides toolchain install buttons when paths are known', (
     tester,
   ) async {
-    final cubit = await _makeCubit();
+    final cubit = await _makeCubit(
+      locatedToolchains: const {
+        SessionPreferences.toolchainGit: '/usr/bin/git',
+        SessionPreferences.toolchainNode: '/usr/bin/node',
+      },
+    );
     addTearDown(cubit.close);
 
     await tester.pumpWidget(_wrap(cubit));
     await tester.pump();
 
-    final tile = find.byKey(AppKeys.claudePersonalAcpSwitch);
-    expect(tile, findsOneWidget);
-    expect(tester.widget<SwitchListTile>(tile).value, isTrue);
-    expect(
-      find.descendant(
-        of: tile,
-        matching: find.text('Personal sessions use ACP chat'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: tile, matching: find.textContaining('mixed-team')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: tile, matching: find.textContaining('Native teams')),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('Claude ACP switch toggles claudePersonalAcpDefault', (
-    tester,
-  ) async {
-    final cubit = await _makeCubit();
-    addTearDown(cubit.close);
-
-    await tester.pumpWidget(_wrapAcpRow(cubit));
-    await tester.pump();
-    await tester.tap(find.byKey(AppKeys.claudePersonalAcpSwitch));
-    await tester.pump();
-
-    expect(cubit.state.preferences.claudePersonalAcpDefault, isFalse);
-    expect(
-      tester
-          .widget<SwitchListTile>(find.byKey(AppKeys.claudePersonalAcpSwitch))
-          .value,
-      isFalse,
-    );
-  });
-
-  testWidgets('Claude ACP switch is disabled with a note on Android', (
-    tester,
-  ) async {
-    final cubit = await _makeCubit();
-    addTearDown(cubit.close);
-
-    await tester.pumpWidget(_wrapAcpRow(cubit, isAndroid: true));
-    await tester.pump();
-
-    final tile = tester.widget<SwitchListTile>(
-      find.byKey(AppKeys.claudePersonalAcpSwitch),
-    );
-    expect(tile.onChanged, isNull);
-    expect(
-      find.text('ACP chat is desktop-only until remote SSH exec is available.'),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.byKey(AppKeys.claudePersonalAcpSwitch));
-    await tester.pump();
-    expect(cubit.state.preferences.claudePersonalAcpDefault, isTrue);
-  });
-
-  testWidgets(
-    'Claude ACP adapter install button installs the adapter package',
-    (tester) async {
-      final cubit = await _makeCubit();
-      addTearDown(cubit.close);
-      final installs = <String>[];
-
-      await tester.pumpWidget(_wrapAcpRow(cubit, adapterInstalls: installs));
-      await tester.pump();
-      expect(find.text('Install ACP adapter'), findsOneWidget);
-
-      await tester.tap(find.byKey(AppKeys.claudeAcpAdapterInstallButton));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 50));
-
-      expect(installs, ['@agentclientprotocol/claude-agent-acp']);
-      AppToast.dismiss();
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 250));
-    },
-  );
-
-  testWidgets('Claude ACP adapter install button is hidden on Android', (
-    tester,
-  ) async {
-    final cubit = await _makeCubit();
-    addTearDown(cubit.close);
-
-    await tester.pumpWidget(_wrapAcpRow(cubit, isAndroid: true));
-    await tester.pump();
-
-    expect(find.byKey(AppKeys.claudeAcpAdapterInstallButton), findsNothing);
-  });
-
-  testWidgets('Cursor ACP switch is shown in the Cursor CLI section', (
-    tester,
-  ) async {
-    final cubit = await _makeCubit();
-    addTearDown(cubit.close);
-
-    await tester.pumpWidget(_wrap(cubit));
-    await tester.pump();
-
-    final tile = find.byKey(AppKeys.cursorPersonalAcpSwitch);
-    expect(tile, findsOneWidget);
-    expect(tester.widget<SwitchListTile>(tile).value, isTrue);
-    expect(
-      find.descendant(of: tile, matching: find.textContaining('mixed-team')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: tile, matching: find.textContaining('Native teams')),
-      findsOneWidget,
-    );
-
-    await tester.pumpWidget(_wrapCursorAcpRow(cubit));
-    await tester.pump();
-    expect(find.text('Install ACP adapter'), findsNothing);
-  });
-
-  testWidgets('Cursor ACP switch toggles cursorPersonalAcpDefault', (
-    tester,
-  ) async {
-    final cubit = await _makeCubit();
-    addTearDown(cubit.close);
-
-    await tester.pumpWidget(_wrapCursorAcpRow(cubit));
-    await tester.pump();
-    await tester.tap(find.byKey(AppKeys.cursorPersonalAcpSwitch));
-    await tester.pump();
-
-    expect(cubit.state.preferences.cursorPersonalAcpDefault, isFalse);
-    expect(
-      tester
-          .widget<SwitchListTile>(find.byKey(AppKeys.cursorPersonalAcpSwitch))
-          .value,
-      isFalse,
-    );
-  });
-
-  testWidgets('Cursor ACP switch is disabled with a note on Android', (
-    tester,
-  ) async {
-    final cubit = await _makeCubit();
-    addTearDown(cubit.close);
-
-    await tester.pumpWidget(_wrapCursorAcpRow(cubit, isAndroid: true));
-    await tester.pump();
-
-    final tile = tester.widget<SwitchListTile>(
-      find.byKey(AppKeys.cursorPersonalAcpSwitch),
-    );
-    expect(tile.onChanged, isNull);
-    expect(
-      find.text('ACP chat is desktop-only until remote SSH exec is available.'),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.byKey(AppKeys.cursorPersonalAcpSwitch));
-    await tester.pump();
-    expect(cubit.state.preferences.cursorPersonalAcpDefault, isTrue);
-  });
-
-  testWidgets('OpenCode ACP switch is shown in the OpenCode CLI section', (
-    tester,
-  ) async {
-    final cubit = await _makeCubit();
-    addTearDown(cubit.close);
-
-    await tester.pumpWidget(_wrap(cubit));
-    await tester.pump();
-
-    final tile = find.byKey(AppKeys.opencodePersonalAcpSwitch);
-    expect(tile, findsOneWidget);
-    expect(tester.widget<SwitchListTile>(tile).value, isTrue);
-    expect(
-      find.descendant(of: tile, matching: find.textContaining('mixed-team')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: tile, matching: find.textContaining('Native teams')),
-      findsOneWidget,
-    );
-
-    await tester.pumpWidget(_wrapOpencodeAcpRow(cubit));
-    await tester.pump();
-    expect(find.text('Install ACP adapter'), findsNothing);
-  });
-
-  testWidgets('OpenCode ACP switch toggles opencodePersonalAcpDefault', (
-    tester,
-  ) async {
-    final cubit = await _makeCubit();
-    addTearDown(cubit.close);
-
-    await tester.pumpWidget(_wrapOpencodeAcpRow(cubit));
-    await tester.pump();
-    await tester.tap(find.byKey(AppKeys.opencodePersonalAcpSwitch));
-    await tester.pump();
-
-    expect(cubit.state.preferences.opencodePersonalAcpDefault, isFalse);
-    expect(
-      tester
-          .widget<SwitchListTile>(find.byKey(AppKeys.opencodePersonalAcpSwitch))
-          .value,
-      isFalse,
-    );
-  });
-
-  testWidgets('OpenCode ACP switch is disabled with a note on Android', (
-    tester,
-  ) async {
-    final cubit = await _makeCubit();
-    addTearDown(cubit.close);
-
-    await tester.pumpWidget(_wrapOpencodeAcpRow(cubit, isAndroid: true));
-    await tester.pump();
-
-    final tile = tester.widget<SwitchListTile>(
-      find.byKey(AppKeys.opencodePersonalAcpSwitch),
-    );
-    expect(tile.onChanged, isNull);
-    expect(
-      find.text('ACP chat is desktop-only until remote SSH exec is available.'),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.byKey(AppKeys.opencodePersonalAcpSwitch));
-    await tester.pump();
-    expect(cubit.state.preferences.opencodePersonalAcpDefault, isTrue);
-  });
-
-  testWidgets('Codex ACP switch is shown in the Codex CLI section', (
-    tester,
-  ) async {
-    final cubit = await _makeCubit();
-    addTearDown(cubit.close);
-
-    await tester.pumpWidget(_wrap(cubit));
-    await tester.pump();
-
-    final tile = find.byKey(AppKeys.codexPersonalAcpSwitch);
-    expect(tile, findsOneWidget);
-    expect(tester.widget<SwitchListTile>(tile).value, isTrue);
-    expect(
-      find.descendant(
-        of: tile,
-        matching: find.text('Personal sessions use ACP chat'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: tile, matching: find.textContaining('mixed-team')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: tile, matching: find.textContaining('Native teams')),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('Codex ACP switch toggles codexPersonalAcpDefault', (
-    tester,
-  ) async {
-    final cubit = await _makeCubit();
-    addTearDown(cubit.close);
-
-    await tester.pumpWidget(_wrapCodexAcpRow(cubit));
-    await tester.pump();
-    await tester.tap(find.byKey(AppKeys.codexPersonalAcpSwitch));
-    await tester.pump();
-
-    expect(cubit.state.preferences.codexPersonalAcpDefault, isFalse);
-    expect(
-      tester
-          .widget<SwitchListTile>(find.byKey(AppKeys.codexPersonalAcpSwitch))
-          .value,
-      isFalse,
-    );
-  });
-
-  testWidgets('Codex ACP switch is disabled with a note on Android', (
-    tester,
-  ) async {
-    final cubit = await _makeCubit();
-    addTearDown(cubit.close);
-
-    await tester.pumpWidget(_wrapCodexAcpRow(cubit, isAndroid: true));
-    await tester.pump();
-
-    final tile = tester.widget<SwitchListTile>(
-      find.byKey(AppKeys.codexPersonalAcpSwitch),
-    );
-    expect(tile.onChanged, isNull);
-    expect(
-      find.text('ACP chat is desktop-only until remote SSH exec is available.'),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.byKey(AppKeys.codexPersonalAcpSwitch));
-    await tester.pump();
-    expect(cubit.state.preferences.codexPersonalAcpDefault, isTrue);
-  });
-
-  testWidgets('Codex ACP adapter install button installs the adapter package', (
-    tester,
-  ) async {
-    final cubit = await _makeCubit();
-    addTearDown(cubit.close);
-    final installs = <String>[];
-
-    await tester.pumpWidget(_wrapCodexAcpRow(cubit, adapterInstalls: installs));
-    await tester.pump();
-    expect(find.text('Install ACP adapter'), findsOneWidget);
-
-    await tester.tap(find.byKey(AppKeys.codexAcpAdapterInstallButton));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
-
-    expect(installs, ['@agentclientprotocol/codex-acp']);
-    AppToast.dismiss();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 250));
-  });
-
-  testWidgets('Codex ACP adapter install button is hidden on Android', (
-    tester,
-  ) async {
-    final cubit = await _makeCubit();
-    addTearDown(cubit.close);
-
-    await tester.pumpWidget(_wrapCodexAcpRow(cubit, isAndroid: true));
-    await tester.pump();
-
-    expect(find.byKey(AppKeys.codexAcpAdapterInstallButton), findsNothing);
-  });
-
-  test('ACP settings descriptions mention mixed teams in English and Chinese', () {
-    final en = lookupAppLocalizations(const Locale('en'));
-    final zh = lookupAppLocalizations(const Locale('zh'));
-
-    expect(
-      en.claudePersonalAcpDefaultDescription,
-      'Run new personal and mixed-team Claude sessions as terminal-less ACP chat via claude-agent-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.',
-    );
-    expect(
-      en.codexPersonalAcpDefaultDescription,
-      'Run new personal and mixed-team Codex sessions as terminal-less ACP chat via codex-acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.',
-    );
-    expect(
-      en.cursorPersonalAcpDefaultDescription,
-      'Run new personal and mixed-team Cursor sessions as terminal-less ACP chat via cursor-agent acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.',
-    );
-    expect(
-      en.opencodePersonalAcpDefaultDescription,
-      'Run new personal and mixed-team OpenCode sessions as terminal-less ACP chat via opencode acp. Existing sessions stay as they were started. Native teams and remote members still use the terminal.',
-    );
-    expect(
-      zh.claudePersonalAcpDefaultDescription,
-      '新建个人和混合团队 Claude 会话走无终端 ACP（claude-agent-acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。',
-    );
-    expect(
-      zh.codexPersonalAcpDefaultDescription,
-      '新建个人和混合团队 Codex 会话走无终端 ACP（codex-acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。',
-    );
-    expect(
-      zh.cursorPersonalAcpDefaultDescription,
-      '新建个人和混合团队 Cursor 会话走无终端 ACP（cursor-agent acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。',
-    );
-    expect(
-      zh.opencodePersonalAcpDefaultDescription,
-      '新建个人和混合团队 OpenCode 会话走无终端 ACP（opencode acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。',
-    );
-  });
-
-  test('ACP launch-failed copy names the CLI, not Gemini', () {
-    final en = lookupAppLocalizations(const Locale('en'));
-    final zh = lookupAppLocalizations(const Locale('zh'));
-
-    expect(
-      en.acpChatLaunchFailed('Cursor'),
-      "Couldn't start Cursor. Make sure the CLI is installed and try again.",
-    );
-    expect(
-      zh.acpChatLaunchFailed('Cursor'),
-      '无法启动 Cursor，请确认已安装对应 CLI 后重试。',
-    );
-    expect(en.acpChatProcessExited('Cursor'), 'Cursor exited unexpectedly');
-    expect(zh.acpChatProcessExited('Cursor'), 'Cursor 意外退出');
-    expect(en.acpChatLaunchFailed('Cursor'), isNot(contains('Gemini')));
-    expect(zh.acpChatLaunchFailed('Cursor'), isNot(contains('Gemini')));
-    expect(en.acpChatSessionOpenFailed('Cursor'), "Couldn't open the Cursor session.");
-    expect(zh.acpChatSessionOpenFailed('Cursor'), '无法打开 Cursor 会话。');
+    expect(find.byKey(AppKeys.gitToolchainInstallButton), findsNothing);
+    expect(find.byKey(AppKeys.nodeToolchainInstallButton), findsNothing);
   });
 }

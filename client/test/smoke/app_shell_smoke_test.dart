@@ -213,7 +213,7 @@ void main() {
     expect(find.byType(DraggableScrollableSheet), findsNothing);
   });
 
-  testWidgets('cli settings configure Claude Code CLI path', (tester) async {
+  testWidgets('cli settings show Claude Code readiness card', (tester) async {
     final teamCubit = await createTeamCubitInTest(tester);
     final sessionCubit = await tester.runAsync(testSessionPreferencesCubit);
     expect(sessionCubit, isNotNull);
@@ -230,18 +230,9 @@ void main() {
     await tester.tap(find.byKey(AppKeys.configCliSectionButton));
     await pumpPhaseTransitions(tester);
 
-    expect(find.text('Claude Code CLI path'), findsOneWidget);
-    final claudeField = find.byWidgetPredicate(
-      (widget) =>
-          widget is TextField &&
-          widget.key == AppKeys.claudeCliExecutablePathField,
-    );
-    await tester.ensureVisible(claudeField);
-    await tester.enterText(claudeField, '/opt/bin/claude');
-    await tester.pump(const Duration(milliseconds: 500));
-
-    expect(sessionCubit.state.preferences.cliExecutablePaths, {
-      'claude': '/opt/bin/claude',
-    });
+    expect(find.text('Claude Code'), findsOneWidget);
+    expect(find.byKey(AppKeys.claudeCliExecutablePathField), findsOneWidget);
+    expect(find.byKey(AppKeys.claudeCliInstallButton), findsOneWidget);
+    expect(find.byKey(AppKeys.claudeCliExecutablePathResetButton), findsOneWidget);
   });
 }

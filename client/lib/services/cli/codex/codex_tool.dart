@@ -1,4 +1,6 @@
 import 'capabilities/acp.dart';
+import 'capabilities/acp_adapter_installer.dart';
+import '../registry/capabilities/acp_settings_capability.dart';
 import 'capabilities/provider.dart';
 import '../registry/capabilities/provider_capability.dart';
 import '../../../models/team_config.dart';
@@ -60,6 +62,11 @@ final class CodexCliTool implements CliToolDefinition {
     this.prompt = const CodexPromptCapability(),
     this.hookWriter = const CodexHookWriter(),
     this.acp = const CodexAcpCapability(),
+    this.acpSettings = const DefaultAcpSettingsCapability(
+      usesSeparateAdapter: true,
+      adapterExecutableName: CodexAcpCapability.adapterName,
+      adapterInstaller: CodexAcpAdapterInstaller(),
+    ),
     CodexProviderCapability? provider,
   }) : provider = provider ?? CodexProviderCapability();
 
@@ -88,6 +95,7 @@ final class CodexCliTool implements CliToolDefinition {
   final HookCapability hookWriter;
   final PromptCapability prompt;
   final CodexAcpCapability acp;
+  final AcpSettingsCapability acpSettings;
 
   @override
   CliTool get id => CliTool.codex;
@@ -120,5 +128,6 @@ final class CodexCliTool implements CliToolDefinition {
     prompt,
     hookWriter,
     acp,
+    acpSettings,
   ];
 }

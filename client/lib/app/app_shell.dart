@@ -199,7 +199,10 @@ import '../services/expert_hub/local_expert_store.dart';
 import '../services/expert_hub/expert_hub_favorites_store.dart';
 import '../services/expert_hub/git_registry_expert_hub_source.dart';
 import '../services/expert_hub/member_roster_service.dart';
+import '../services/cli/acp_adapter_discovery.dart';
 import '../services/cli/cli_executable_discovery.dart';
+import '../services/cli/cli_local_discovery_bootstrap.dart';
+import '../services/cli/cli_version_probe.dart';
 import '../services/cli/toolchain_executable_discovery.dart';
 import '../services/commands/command_bus.dart';
 import '../services/commands/layout_command_registrar.dart';
@@ -693,13 +696,18 @@ Future<AppShell> buildAppShell({
   if (!Platform.isAndroid) {
     boot('scheduling CLI tool discovery (background)');
     unawaited(() async {
-      final cliPaths = await cliExecutableDiscovery.locateLocal();
-      final toolchainPaths = await ToolchainExecutableDiscovery().locateLocal();
-      sessionPreferencesCubit.mergeLocatedExecutables(cliPaths);
-      sessionPreferencesCubit.mergeLocatedToolchains(toolchainPaths);
+      final counts = await runLocalCliDiscovery(
+        cubit: sessionPreferencesCubit,
+        locateCli: () => cliExecutableDiscovery.locateLocal(),
+        locateAdapters: () =>
+            AcpAdapterDiscovery(registry: cliToolRegistry).locateLocal(),
+        locateToolchains: () => ToolchainExecutableDiscovery().locateLocal(),
+        probeInstalled: CliVersionProbe().installed,
+      );
       appLogger.i(
         '[boot] CLI/toolchain discovery complete '
-        '(${cliPaths.length} CLI, ${toolchainPaths.length} toolchain, background)',
+        '(${counts.cliCount} CLI, ${counts.adapterCount} adapter, '
+        '${counts.toolchainCount} toolchain, background)',
       );
     }());
   }
@@ -2211,6 +2219,7 @@ Future<AppShell> buildAppShell({
           .state
           .preferences
           .autoLaunchAllMembersOnConnect,
+      discoveredAcpAdapterPath: sessionPreferencesCubit.discoveredAcpAdapterPath,
       reclaimIdleTerminalsEnabled: () =>
           sessionPreferencesCubit.state.preferences.reclaimIdleTerminals,
       reclaimIdleTerminalAfterSeconds: () => sessionPreferencesCubit

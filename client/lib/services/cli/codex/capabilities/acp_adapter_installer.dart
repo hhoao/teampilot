@@ -1,6 +1,4 @@
-import 'dart:io';
-
-import '../../../storage/app_paths.dart';
+import '../../acp_adapter_locator.dart';
 import '../../registry/installer/npm_installer_capability.dart';
 
 /// In-app npm installer for the Codex ACP adapter
@@ -38,23 +36,10 @@ String locateCodexAcpAdapter({
   bool Function(String path)? fileExists,
   bool? isWindows,
 }) {
-  const name = 'codex-acp';
-  if (isWindows ?? Platform.isWindows) return name;
-  final env = environment ?? Platform.environment;
-  final exists = fileExists ?? (path) => File(path).existsSync();
-
-  final pathEntries = (env['PATH'] ?? '').split(':');
-  for (final dir in pathEntries) {
-    if (dir.isEmpty) continue;
-    if (exists('$dir/$name')) return '$dir/$name';
-  }
-  final home = env['HOME'];
-  if (home != null && home.isNotEmpty) {
-    final local = '$home/.local/bin/$name';
-    if (exists(local)) return local;
-    final toolchain =
-        '$home/.local/share/${AppPaths.teampilotAppDataDirName}/toolchain/node/current/bin/$name';
-    if (exists(toolchain)) return toolchain;
-  }
-  return name;
+  return locateAcpAdapter(
+    name: 'codex-acp',
+    environment: environment,
+    fileExists: fileExists,
+    isWindows: isWindows,
+  );
 }

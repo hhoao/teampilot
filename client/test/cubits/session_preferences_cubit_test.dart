@@ -1,4 +1,5 @@
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
+import 'package:teampilot/models/cli_binary_kind.dart';
 import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:teampilot/models/session_preferences.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -392,4 +393,42 @@ void main() {
       );
     },
   );
+
+  test('mergeLocatedAcpAdapters bumps revision and ignores bare names', () async {
+    final cubit = await makeCubit();
+    await cubit.load();
+    cubit.mergeLocatedAcpAdapters(const {
+      CliTool.claude: '/opt/claude-agent-acp',
+      CliTool.codex: 'codex-acp',
+    });
+    expect(cubit.discoveredAcpAdapterPath(CliTool.claude), '/opt/claude-agent-acp');
+    expect(cubit.hasKnownAcpAdapter(CliTool.claude), isTrue);
+    expect(cubit.hasKnownAcpAdapter(CliTool.codex), isFalse);
+    final rev = cubit.state.locatedExecutablesRevision;
+    cubit.mergeLocatedAcpAdapters(const {
+      CliTool.claude: '/opt/claude-agent-acp',
+    });
+    expect(cubit.state.locatedExecutablesRevision, rev);
+  });
+
+  test('mergeBinaryVersion stores installed and latest per kind', () async {
+    final cubit = await makeCubit();
+    await cubit.load();
+    cubit.mergeBinaryVersion(
+      cli: CliTool.claude,
+      kind: CliBinaryKind.cli,
+      installed: '2.1.4',
+      latest: '2.2.0',
+    );
+    expect(cubit.installedVersion(CliTool.claude, CliBinaryKind.cli), '2.1.4');
+    expect(cubit.latestVersion(CliTool.claude, CliBinaryKind.cli), '2.2.0');
+  });
+
+  test('setPersonalAcpDefaultFor writes the matching preference', () async {
+    final cubit = await makeCubit();
+    await cubit.load();
+    await cubit.setPersonalAcpDefaultFor(CliTool.cursor, false);
+    expect(cubit.personalAcpDefaultFor(CliTool.cursor), isFalse);
+    expect(cubit.state.preferences.cursorPersonalAcpDefault, isFalse);
+  });
 }

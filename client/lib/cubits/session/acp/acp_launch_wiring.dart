@@ -32,7 +32,13 @@ Future<String?> spawnAuthenticateMethodId(
   return capability.resolveAuthenticateMethodId(env);
 }
 
-AcpLaunchPlan? capabilityToPlan(AcpCapability? capability) {
+bool _looksAbsolute(String value) =>
+    value.contains('/') || value.contains(r'\');
+
+AcpLaunchPlan? capabilityToPlan(
+  AcpCapability? capability, {
+  String? Function()? discoveredAdapterPath,
+}) {
   if (capability == null) return null;
   return AcpLaunchPlan(
     launchArgCandidates: capability.launchArgCandidates,
@@ -46,7 +52,11 @@ AcpLaunchPlan? capabilityToPlan(AcpCapability? capability) {
           workingDirectory: workingDirectory,
           baseEnv: baseEnv,
         ),
-    agentExecutable: capability.agentExecutable,
+    agentExecutable: (cliExecutable) {
+      final discovered = discoveredAdapterPath?.call()?.trim() ?? '';
+      if (_looksAbsolute(discovered)) return discovered;
+      return capability.agentExecutable(cliExecutable);
+    },
     authenticateMethodId: capability.authenticateMethodId,
     forwardSessionNewMcpServers: capability.forwardSessionNewMcpServers,
     sessionNewMeta: capability.sessionNewMeta,
@@ -54,8 +64,14 @@ AcpLaunchPlan? capabilityToPlan(AcpCapability? capability) {
 }
 
 /// Resolves the launch plan for [tool] from [registry] (runtime resolver).
-AcpLaunchPlanResolver acpLaunchPlanResolver(CliToolRegistry registry) {
-  return (tool) => capabilityToPlan(registry.capability<AcpCapability>(tool));
+AcpLaunchPlanResolver acpLaunchPlanResolver(
+  CliToolRegistry registry, {
+  String? Function(CliTool tool)? discoveredAdapterPath,
+}) {
+  return (tool) => capabilityToPlan(
+    registry.capability<AcpCapability>(tool),
+    discoveredAdapterPath: () => discoveredAdapterPath?.call(tool),
+  );
 }
 
 /// Builds the production [AcpConnectionSpawner] for one session launch.

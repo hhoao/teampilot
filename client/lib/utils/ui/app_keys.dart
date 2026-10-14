@@ -13,6 +13,26 @@ class AppKeys {
   static Key cliInstallButtonFor(CliTool cli) =>
       Key('${cli.value}-cli-install-button');
 
+  /// Upgrade button finder key for [cli] (`{value}-cli-upgrade-button`).
+  static Key cliUpgradeButtonFor(CliTool cli) =>
+      Key('${cli.value}-cli-upgrade-button');
+
+  /// Personal ACP switch finder key (`{value}-personal-acp-switch`).
+  static Key personalAcpSwitchFor(CliTool cli) =>
+      Key('${cli.value}-personal-acp-switch');
+
+  /// ACP adapter install button (`{value}-acp-adapter-install-button`).
+  static Key acpAdapterInstallButtonFor(CliTool cli) =>
+      Key('${cli.value}-acp-adapter-install-button');
+
+  /// ACP adapter locate button (`{value}-acp-adapter-locate-button`).
+  static Key acpAdapterLocateButtonFor(CliTool cli) =>
+      Key('${cli.value}-acp-adapter-locate-button');
+
+  /// ACP adapter upgrade button (`{value}-acp-adapter-upgrade-button`).
+  static Key acpAdapterUpgradeButtonFor(CliTool cli) =>
+      Key('${cli.value}-acp-adapter-upgrade-button');
+
   static const sectionBarChatChip = Key('section-bar-chat-chip');
   static const sectionBarRunsChip = Key('section-bar-runs-chip');
   static const contextSidebar = Key('context-sidebar');
@@ -182,9 +202,16 @@ class AppKeys {
     'claude-cli-executable-path-reset-button',
   );
   static const claudeCliInstallButton = Key('claude-cli-install-button');
+  static const claudeCliUpgradeButton = Key('claude-cli-upgrade-button');
   static const claudePersonalAcpSwitch = Key('claude-personal-acp-switch');
   static const claudeAcpAdapterInstallButton = Key(
     'claude-acp-adapter-install-button',
+  );
+  static const claudeAcpAdapterLocateButton = Key(
+    'claude-acp-adapter-locate-button',
+  );
+  static const claudeAcpAdapterUpgradeButton = Key(
+    'claude-acp-adapter-upgrade-button',
   );
   static const codexCliExecutablePathField = Key(
     'codex-cli-executable-path-field',
@@ -196,9 +223,16 @@ class AppKeys {
     'codex-cli-executable-path-reset-button',
   );
   static const codexCliInstallButton = Key('codex-cli-install-button');
+  static const codexCliUpgradeButton = Key('codex-cli-upgrade-button');
   static const codexPersonalAcpSwitch = Key('codex-personal-acp-switch');
   static const codexAcpAdapterInstallButton = Key(
     'codex-acp-adapter-install-button',
+  );
+  static const codexAcpAdapterLocateButton = Key(
+    'codex-acp-adapter-locate-button',
+  );
+  static const codexAcpAdapterUpgradeButton = Key(
+    'codex-acp-adapter-upgrade-button',
   );
   static const opencodeCliExecutablePathField = Key(
     'opencode-cli-executable-path-field',
@@ -210,6 +244,7 @@ class AppKeys {
     'opencode-cli-executable-path-reset-button',
   );
   static const opencodeCliInstallButton = Key('opencode-cli-install-button');
+  static const opencodeCliUpgradeButton = Key('opencode-cli-upgrade-button');
   static const opencodePersonalAcpSwitch = Key('opencode-personal-acp-switch');
   static const cursorCliExecutablePathField = Key(
     'cursor-cli-executable-path-field',
@@ -221,7 +256,9 @@ class AppKeys {
     'cursor-cli-executable-path-reset-button',
   );
   static const cursorCliInstallButton = Key('cursor-cli-install-button');
+  static const cursorCliUpgradeButton = Key('cursor-cli-upgrade-button');
   static const cursorPersonalAcpSwitch = Key('cursor-personal-acp-switch');
+  static const geminiCliUpgradeButton = Key('gemini-cli-upgrade-button');
   static const gitToolchainPathField = Key('git-toolchain-path-field');
   static const gitToolchainPathBrowseButton = Key(
     'git-toolchain-path-browse-button',

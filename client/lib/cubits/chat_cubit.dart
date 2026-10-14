@@ -121,6 +121,7 @@ class ChatCubit extends Cubit<ChatState>
         defaultTerminalSessionFactory,
     PostFrameScheduler? postFrameScheduler,
     bool Function()? autoLaunchAllMembersOnConnect,
+    String Function(CliTool tool)? discoveredAcpAdapterPath,
     bool Function()? reclaimIdleTerminalsEnabled,
     int Function()? reclaimIdleTerminalAfterSeconds,
     SessionLifecycleService? lifecycleService,
@@ -183,6 +184,7 @@ class ChatCubit extends Cubit<ChatState>
        _postFrameScheduler = postFrameScheduler ?? _defaultPostFrameScheduler,
        _awaitPublicLaunchCompletion = postFrameScheduler == null,
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
+       _discoveredAcpAdapterPath = discoveredAcpAdapterPath,
        _reclaimIdleTerminalsEnabled = reclaimIdleTerminalsEnabled,
        _reclaimIdleTerminalAfterSeconds = reclaimIdleTerminalAfterSeconds,
        _lifecycle =
@@ -534,6 +536,7 @@ class ChatCubit extends Cubit<ChatState>
   final PostFrameScheduler _postFrameScheduler;
   final bool _awaitPublicLaunchCompletion;
   final bool Function()? _autoLaunchAllMembersOnConnect;
+  final String Function(CliTool tool)? _discoveredAcpAdapterPath;
   final bool Function()? _reclaimIdleTerminalsEnabled;
   final int Function()? _reclaimIdleTerminalAfterSeconds;
   final SessionLifecycleService _lifecycle;
@@ -835,6 +838,10 @@ class ChatCubit extends Cubit<ChatState>
   @override
   bool Function()? get autoLaunchAllMembersOnConnect =>
       _autoLaunchAllMembersOnConnect;
+
+  @override
+  String Function(CliTool tool)? get discoveredAcpAdapterPath =>
+      _discoveredAcpAdapterPath;
 
   @override
   RemoteMemberBusSetupPort? get remoteBusSetup => _remoteBusSetup;

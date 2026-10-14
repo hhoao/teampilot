@@ -120,6 +120,9 @@ abstract interface class SessionLaunchHost
   /// Null in tests / before the app shell wires l10n — the launch service
   /// falls back to bare diagnostic strings.
   AcpChatStrings? Function(CliTool tool)? get acpChatStrings => null;
+
+  /// Boot-time located ACP adapter paths for spawn (null in tests).
+  String Function(CliTool tool)? get discoveredAcpAdapterPath => null;
 }
 
 /// Drop attention + seat lookup (+ pending ask answers) for every seat in

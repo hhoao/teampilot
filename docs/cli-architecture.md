@@ -261,7 +261,11 @@ tool 列表。
 | `HeadlessCapability` | 无头运行（一次性调用 + 供给） |
 | `AiHistoryCapability` | transcript 定位/解析、会话恢复、tool call 解析器 |
 | `TerminalObservationContributor` | 可选；在 `CliToolDefinition.capabilities` 上用 `is` 扫描。PTY detect/scan/listen 注册到 `TerminalObservationBus`。`TerminalLaunchController` 中禁止 `if (cli == …)` |
+| `AcpCapability` | ACP spawn argv / env / translator. Optional. Claude/Codex use a separate adapter binary; Cursor/OpenCode/Gemini pass `cli acp` / `--acp`. |
+| `AcpSettingsCapability` | Settings extras: `usesSeparateAdapter`, adapter installer, `showsPersonalAcpSwitch`. Gemini omits this (no personal switch). |
 | 团队能力细分 | `TeamBehaviorCapability.supportsNativeTeam`（仅 claude、flashskyai）、`agentPresetStyle`（agent 预设） |
+
+Boot discovery locates separate adapters via `AcpAdapterDiscovery`; Settings must not `if (cli == …)`.
 
 `CliSessionCapability.sessionConfigDir` 是所有历史定位 / 环境构造的**唯一**配置目录来源：如
 `SessionHistoryContextBuilder` 通过它解析 toolRoot 后传给
@@ -508,6 +512,8 @@ for (final def in CliToolRegistry.builtIn().launchable)
 | `HeadlessCapability` | `registry/capabilities/headless_capability.dart` | 基础设施 | - |
 | `AiHistoryCapability` | `registry/capabilities/ai_history_capability.dart` | 基础设施 | - |
 | `MemberConfigInspectionCapability` | `registry/capabilities/member_config_inspection_capability.dart` | 基础设施 | ✅ |
+| `AcpCapability` | `registry/capabilities/acp_capability.dart` | 基础设施 | - |
+| `AcpSettingsCapability` | `registry/capabilities/acp_settings_capability.dart` | 基础设施 | - |
 
 > 注：46 → 14 收敛（2026-08-14）。`ConfigProfileCapability` 已解散：其"provider 解析 +
 > home 材料化"编排归入 `ProviderCapability.materializeSessionHome`，managed hooks 归

@@ -2463,6 +2463,36 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cliInstallButton => '安装';
 
   @override
+  String get cliReadinessReady => '就绪';
+
+  @override
+  String get cliReadinessUpdateAvailable => '有更新';
+
+  @override
+  String get cliReadinessNeedsSetup => '需要安装';
+
+  @override
+  String get cliReadinessRowCli => 'CLI';
+
+  @override
+  String get cliReadinessRowAcp => 'ACP';
+
+  @override
+  String get cliReadinessUsesCli => '使用 CLI · acp';
+
+  @override
+  String get cliReadinessAdapterMissing => '未找到适配器';
+
+  @override
+  String get cliReadinessVersionUnknown => '—';
+
+  @override
+  String get cliUpgradeButton => '升级';
+
+  @override
+  String get cliInstallUpgrading => '正在升级…';
+
+  @override
   String get cliInstallInstalling => '安装中…';
 
   @override
@@ -8873,6 +8903,12 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get personalAcpSwitchLabel => '新建个人和混合会话使用 ACP';
+
+  @override
+  String get personalAcpSwitchCaption => '原生团队和远程成员仍用终端';
+
+  @override
   String get claudePersonalAcpDefaultLabel => '个人会话使用 ACP 聊天';
 
   @override
@@ -8898,6 +8934,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get claudeAcpAdapterInstallButton => '安装 ACP 适配器';
+
+  @override
+  String get codexAcpAdapterInstallButton => '安装 ACP 适配器';
 
   @override
   String get acpLaunchFailedAdapter =>

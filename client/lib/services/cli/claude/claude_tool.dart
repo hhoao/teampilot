@@ -1,4 +1,6 @@
 import 'capabilities/acp.dart';
+import 'capabilities/acp_adapter_installer.dart';
+import '../registry/capabilities/acp_settings_capability.dart';
 import 'capabilities/provider.dart';
 import '../registry/capabilities/provider_capability.dart';
 import '../../../models/team_config.dart';
@@ -66,6 +68,11 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.prompt = const ClaudePromptCapability(),
 
     this.acp = const ClaudeAcpCapability(),
+    this.acpSettings = const DefaultAcpSettingsCapability(
+      usesSeparateAdapter: true,
+      adapterExecutableName: ClaudeAcpCapability.adapterName,
+      adapterInstaller: ClaudeAcpAdapterInstaller(),
+    ),
 
     HookCapability? hookWriter,
   }) : hookWriter = hookWriter ?? const ClaudeFamilyHookWriter();
@@ -96,6 +103,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final NativeCommandCapability nativeCommands;
   final PromptCapability prompt;
   final ClaudeAcpCapability acp;
+  final AcpSettingsCapability acpSettings;
 
   @override
   CliTool get id => CliTool.claude;
@@ -129,5 +137,6 @@ final class ClaudeCliTool implements CliToolDefinition {
     prompt,
     hookWriter,
     acp,
+    acpSettings,
   ];
 }
