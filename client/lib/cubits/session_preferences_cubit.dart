@@ -269,15 +269,11 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   }
 
   Future<void> setCursorPersonalAcpDefault(bool value) {
-    return _save(
-      state.preferences.copyWith(cursorPersonalAcpDefault: value),
-    );
+    return _save(state.preferences.copyWith(cursorPersonalAcpDefault: value));
   }
 
   Future<void> setOpencodePersonalAcpDefault(bool value) {
-    return _save(
-      state.preferences.copyWith(opencodePersonalAcpDefault: value),
-    );
+    return _save(state.preferences.copyWith(opencodePersonalAcpDefault: value));
   }
 
   Future<void> setAcpPermissionDefault(LaunchSecurityPolicy value) {
@@ -321,10 +317,13 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   String configuredExecutablePath(CliTool cli) => _userExecutableFor(cli);
 
   /// True when [cli] has a configured or discovered absolute executable path.
+  ///
+  /// Launch-time well-known probes (e.g. OpenCode `~/.opencode/bin`) must
+  /// not hide the install button: those paths are not configured or
+  /// discovered, and `File.existsSync` on the host is not hermetic.
   bool hasKnownCliExecutable(CliTool cli) {
     if (configuredExecutablePath(cli).trim().isNotEmpty) return true;
-    if (discoveredExecutablePath(cli).trim().isNotEmpty) return true;
-    return _looksLikeAbsolutePath(resolveExecutable(cli));
+    return discoveredExecutablePath(cli).trim().isNotEmpty;
   }
 
   /// True when [toolId] has a configured or discovered executable path.

@@ -161,11 +161,9 @@ class ClaudeProviderCredentialsService {
     if (await _fs.createSymlink(target: global, linkPath: dest)) {
       return CredentialActionResult.success;
     }
-    return CredentialActionResult.failure(
-      const CredentialActionFailure(
-        code: CredentialActionFailureCode.verifyFailed,
-      ),
-    );
+    // Out-of-plane `~/.claude` cannot be projected as a symlink onto the
+    // work plane (SSH / ManifestFilesystem). Copy bytes instead.
+    return _importCopy(providerId, global, replace: replace);
   }
 
   Future<CredentialActionResult> _importCopy(
@@ -245,7 +243,8 @@ class ClaudeProviderCredentialsService {
         homeDirectory: home,
         replace: true,
       );
-      if (!materialize.ok) {
+      if (!materialize.ok &&
+          !(await _credentialExistsAt(globalCredentialPath(home)))) {
         return CredentialLinkResult.missing;
       }
     }

@@ -39,6 +39,11 @@ class SessionSshMcpHttpAdapter {
   final _transports = <String, StreamableHTTPServerTransport>{};
 
   Future<void> handle(HttpRequest request) async {
+    if (!_hostAllowed(request)) {
+      request.response.statusCode = HttpStatus.forbidden;
+      await request.response.close();
+      return;
+    }
     final tpSession = _header(request, teammateBusMcpSessionHeader);
     final tpMember = _header(request, teammateBusMcpMemberHeader);
     await runZoned(
@@ -272,6 +277,16 @@ class SessionSshMcpHttpAdapter {
       await request.response.close();
     } catch (_) {}
   }
+}
+
+bool _hostAllowed(HttpRequest request) {
+  final raw =
+      request.headers.value(HttpHeaders.hostHeader)?.trim() ??
+      request.headers.host?.trim() ??
+      '';
+  if (raw.isEmpty) return false;
+  final hostname = raw.split(':').first.toLowerCase();
+  return _allowedHosts.contains(hostname);
 }
 
 String _header(HttpRequest request, String name) {

@@ -45,7 +45,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.sessionSelection = const OpencodeSessionSelectionLaunch(),
     this.workspaceBaseInfo = const OpencodeWorkspaceBaseInfo(),
     this.modelLaunch = const OpencodeModelLaunch(),
-    this.launchSecurity = const FullAccessOnlyCliLaunchSecurityCapability(),
+    this.launchSecurity = const AcpAskFullAccessCliLaunchSecurityCapability(),
     this.permissionLaunch = const OpencodePermissionLaunch(),
     this.agentLaunch = const OpencodeAgentLaunch(),
     this.userExtraArgs = const OpencodeUserExtraArgsLaunch(),

@@ -950,7 +950,9 @@ final class ClaudeProviderCapability extends CatalogModelCapability
     TeamMemberConfig? launchedMember,
   ) {
     if (launchedMember != null && launchedMember.isValid) {
-      return claude?.settingsByMember[launchedMember.id] ?? claude?.settings;
+      // Mixed seats must not inherit team-level third-party env; that
+      // would skip official OAuth linking for a member on Official.
+      return claude?.settingsByMember[launchedMember.id];
     }
     return claude?.settings;
   }

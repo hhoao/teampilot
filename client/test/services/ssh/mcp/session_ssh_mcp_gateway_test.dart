@@ -24,7 +24,9 @@ void main() {
   setUp(() async {
     gateway = TeammateBusMcpGateway();
     await gateway.ensureStarted();
-    client = HttpClient();
+    // Default HttpClient honors http_proxy, which turns Host: evil.example.com
+    // into a proxy 502 before the request reaches loopback.
+    client = HttpClient()..findProxy = (_) => 'DIRECT';
     executor = _FakeExecutor();
   });
 

@@ -115,43 +115,31 @@ void main() {
       adapterId: 'opencode',
       fragments: [
         AiTranscriptFragment(
-          name: 'message/msg_asst1.json',
+          name: 'session_message/msg_asst1.json',
           bytes: utf8.encode(
             jsonEncode({
               'id': 'msg_asst1',
-              'role': 'assistant',
+              'type': 'assistant',
               'time': {'created': 1720612802000},
-            }),
-          ),
-        ),
-        AiTranscriptFragment(
-          name: 'part/msg_asst1/prt_text1.json',
-          bytes: utf8.encode(
-            jsonEncode({
-              'id': 'prt_text1',
-              'messageID': 'msg_asst1',
-              'type': 'text',
-              'text': 'done',
-            }),
-          ),
-        ),
-        AiTranscriptFragment(
-          name: 'part/msg_asst1/prt_tool1.json',
-          bytes: utf8.encode(
-            jsonEncode({
-              'id': 'prt_tool1',
-              'messageID': 'msg_asst1',
-              'type': 'tool',
-              'toolCallID': 'call_1',
-              'tool': 'edit',
-              'state': {
-                'status': 'completed',
-                'input': {
-                  'filePath': 'a.txt',
-                  'oldString': 'x',
-                  'newString': 'y',
+              'content': [
+                {'type': 'text', 'text': 'done'},
+                {
+                  'type': 'tool',
+                  'id': 'call_1',
+                  'name': 'edit',
+                  'state': {
+                    'status': 'completed',
+                    'input': {
+                      'filePath': 'a.txt',
+                      'oldString': 'x',
+                      'newString': 'y',
+                    },
+                    'content': [
+                      {'type': 'text', 'text': 'ok'},
+                    ],
+                  },
                 },
-              },
+              ],
             }),
           ),
         ),
