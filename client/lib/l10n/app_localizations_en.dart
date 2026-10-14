@@ -2586,6 +2586,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cliInstallButton => 'Install';
 
   @override
+  String get cliReadinessReady => 'Ready';
+
+  @override
+  String get cliReadinessUpdateAvailable => 'Update available';
+
+  @override
+  String get cliReadinessNeedsSetup => 'Needs setup';
+
+  @override
+  String get cliReadinessRowCli => 'CLI';
+
+  @override
+  String get cliReadinessRowAcp => 'ACP';
+
+  @override
+  String get cliReadinessUsesCli => 'uses CLI · acp';
+
+  @override
+  String get cliReadinessAdapterMissing => 'adapter not found';
+
+  @override
+  String get cliReadinessVersionUnknown => '—';
+
+  @override
+  String get cliUpgradeButton => 'Upgrade';
+
+  @override
+  String get cliInstallUpgrading => 'Upgrading…';
+
+  @override
   String get cliInstallInstalling => 'Installing…';
 
   @override
@@ -9275,6 +9305,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get personalAcpSwitchLabel => 'New personal / mixed sessions use ACP';
+
+  @override
+  String get personalAcpSwitchCaption =>
+      'Native teams and remote members still use the terminal';
+
+  @override
   String get claudePersonalAcpDefaultLabel => 'Personal sessions use ACP chat';
 
   @override
@@ -9302,6 +9339,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get claudeAcpAdapterInstallButton => 'Install ACP adapter';
+
+  @override
+  String get codexAcpAdapterInstallButton => 'Install ACP adapter';
 
   @override
   String get acpLaunchFailedAdapter =>

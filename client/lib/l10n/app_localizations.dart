@@ -4652,6 +4652,66 @@ abstract class AppLocalizations {
   /// **'Install'**
   String get cliInstallButton;
 
+  /// No description provided for @cliReadinessReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get cliReadinessReady;
+
+  /// No description provided for @cliReadinessUpdateAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Update available'**
+  String get cliReadinessUpdateAvailable;
+
+  /// No description provided for @cliReadinessNeedsSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs setup'**
+  String get cliReadinessNeedsSetup;
+
+  /// No description provided for @cliReadinessRowCli.
+  ///
+  /// In en, this message translates to:
+  /// **'CLI'**
+  String get cliReadinessRowCli;
+
+  /// No description provided for @cliReadinessRowAcp.
+  ///
+  /// In en, this message translates to:
+  /// **'ACP'**
+  String get cliReadinessRowAcp;
+
+  /// No description provided for @cliReadinessUsesCli.
+  ///
+  /// In en, this message translates to:
+  /// **'uses CLI · acp'**
+  String get cliReadinessUsesCli;
+
+  /// No description provided for @cliReadinessAdapterMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'adapter not found'**
+  String get cliReadinessAdapterMissing;
+
+  /// No description provided for @cliReadinessVersionUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'—'**
+  String get cliReadinessVersionUnknown;
+
+  /// No description provided for @cliUpgradeButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrade'**
+  String get cliUpgradeButton;
+
+  /// No description provided for @cliInstallUpgrading.
+  ///
+  /// In en, this message translates to:
+  /// **'Upgrading…'**
+  String get cliInstallUpgrading;
+
   /// No description provided for @cliInstallInstalling.
   ///
   /// In en, this message translates to:
@@ -16466,6 +16526,18 @@ abstract class AppLocalizations {
   /// **'{cliName} exited unexpectedly'**
   String acpChatProcessExited(String cliName);
 
+  /// No description provided for @personalAcpSwitchLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'New personal / mixed sessions use ACP'**
+  String get personalAcpSwitchLabel;
+
+  /// No description provided for @personalAcpSwitchCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'Native teams and remote members still use the terminal'**
+  String get personalAcpSwitchCaption;
+
   /// No description provided for @claudePersonalAcpDefaultLabel.
   ///
   /// In en, this message translates to:
@@ -16513,6 +16585,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Install ACP adapter'**
   String get claudeAcpAdapterInstallButton;
+
+  /// No description provided for @codexAcpAdapterInstallButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Install ACP adapter'**
+  String get codexAcpAdapterInstallButton;
 
   /// No description provided for @acpLaunchFailedAdapter.
   ///
