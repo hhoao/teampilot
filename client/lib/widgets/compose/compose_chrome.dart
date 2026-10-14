@@ -14,6 +14,7 @@ final class ComposePermissionControl {
     required this.defaultLabel,
     required this.fullAccessLabel,
     required this.onSelected,
+    this.askLabel,
     this.askReadOnlyLabel,
     this.autoApproveWorkspaceWriteLabel,
     this.customLabel,
@@ -25,6 +26,7 @@ final class ComposePermissionControl {
   final Set<LaunchSecurityPolicy> supportedPolicies;
   final String defaultLabel;
   final String fullAccessLabel;
+  final String? askLabel;
   final String? askReadOnlyLabel;
   final String? autoApproveWorkspaceWriteLabel;
   final String? customLabel;

@@ -68,4 +68,33 @@ void main() {
     expect(on, isNot(off));
     expect(on.hashCode, isNot(off.hashCode));
   });
+
+  test('acpPermission omits unless acp ask', () {
+    const pty = SessionMemberBinding(rosterMemberId: 'lead', taskId: 't1');
+    expect(pty.acpPermission, LaunchSecurityPolicy.fullAccess);
+    expect(pty.toJson().containsKey('acpPermission'), isFalse);
+
+    const acpFull = SessionMemberBinding(
+      rosterMemberId: 'lead',
+      taskId: 't1',
+      acp: true,
+    );
+    expect(acpFull.toJson().containsKey('acpPermission'), isFalse);
+
+    const ask = SessionMemberBinding(
+      rosterMemberId: 'lead',
+      taskId: 't1',
+      acp: true,
+      acpPermission: LaunchSecurityPolicy.ask,
+    );
+    expect(ask.toJson()['acpPermission'], 'ask');
+    expect(
+      SessionMemberBinding.fromJson(ask.toJson()).acpPermission,
+      LaunchSecurityPolicy.ask,
+    );
+    expect(
+      ask.withNativeSessionId('cursor', 'n1').acpPermission,
+      LaunchSecurityPolicy.ask,
+    );
+  });
 }

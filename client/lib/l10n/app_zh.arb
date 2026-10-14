@@ -3991,5 +3991,7 @@
   "codexPersonalAcpDefaultDescription": "新建个人和混合团队 Codex 会话走无终端 ACP（codex-acp）。已有会话保持原启动方式。原生团队和远程成员仍用终端。",
   "codexPersonalAcpAndroidDisabled": "在远程 SSH exec 就绪前，ACP 聊天仅限桌面。",
   "codexAcpLaunchFailedAdapter": "无法启动 Codex ACP 适配器（codex-acp）。请安装后重试。",
-  "codexAcpChatNotLoggedIn": "Codex 尚未登录。请到设置 → 服务商完成 ChatGPT 登录，或改用 API Key。"
+  "codexAcpChatNotLoggedIn": "Codex 尚未登录。请到设置 → 服务商完成 ChatGPT 登录，或改用 API Key。",
+  "acpPermissionAskLabel": "询问",
+  "acpPermissionFullAccessLabel": "完全访问"
 }

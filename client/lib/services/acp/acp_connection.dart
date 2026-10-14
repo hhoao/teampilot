@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:acpd/acpd.dart' as acpd;
 
+import '../../utils/logging/logger_utils.dart';
 import 'acp_agent_translator.dart';
 import 'acp_frame_logger.dart';
 import 'acp_host_mcp_permission.dart';
@@ -204,17 +205,7 @@ class AcpAgentConnection {
     // and Cursor remembers "User rejected MCP" for the whole session.
     final earlyPermissionReg = _client.connection.onRequest(
       'session/request_permission',
-      (params) {
-        final optionId = autoAllowAcpPermissionOptionId(params);
-        if (optionId != null) {
-          return translator.encodePermissionResponse(
-            acpd.PermissionSelected(optionId: optionId),
-          );
-        }
-        return translator.encodePermissionResponse(
-          const acpd.PermissionCancelled(),
-        );
-      },
+      _onHandshakePermission,
     );
     late final acpd.NewSessionResponse response;
     try {
@@ -226,6 +217,7 @@ class AcpAgentConnection {
       rethrow;
     } finally {
       earlyUpdateReg.dispose();
+      earlyPermissionReg.dispose();
     }
     final session = AcpAgentSession(
       connection: this,
@@ -248,6 +240,24 @@ class AcpAgentConnection {
   /// Releases the open-session slot; called by [AcpAgentSession.dispose].
   void sessionDisposed(AcpAgentSession session) {
     if (identical(_openSession, session)) _openSession = null;
+  }
+
+  /// Handshake `session/request_permission`: auto-allow grantable options
+  /// (including non-host tools). Reject-only cannot be auto-allowed and
+  /// there is no session yet to surface a card, so answer cancelled.
+  Object? _onHandshakePermission(Object? params) {
+    final optionId = autoAllowAcpPermissionOptionId(params, allowNonHost: true);
+    if (optionId != null) {
+      return translator.encodePermissionResponse(
+        acpd.PermissionSelected(optionId: optionId),
+      );
+    }
+    AppLogger.instance.i(
+      'ACP: handshake permission cancelled (no auto-allow option)',
+    );
+    return translator.encodePermissionResponse(
+      const acpd.PermissionCancelled(),
+    );
   }
 
   /// Runs the `initialize` handshake and caches the negotiated capabilities.

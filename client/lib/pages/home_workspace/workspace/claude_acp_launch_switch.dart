@@ -64,3 +64,26 @@ bool readClaudePersonalAcpDefault(BuildContext context) =>
 
 bool readCodexPersonalAcpDefault(BuildContext context) =>
     readPersonalAcpDefault(context, CliTool.codex);
+
+LaunchSecurityPolicy readAcpPermissionDefault(BuildContext context) {
+  try {
+    return context
+        .read<SessionPreferencesCubit>()
+        .state
+        .preferences
+        .acpPermissionDefault;
+  } on ProviderNotFoundException {
+    return LaunchSecurityPolicy.fullAccess;
+  }
+}
+
+/// Same default as [readAcpPermissionDefault], subscribed so compose rebuilds.
+LaunchSecurityPolicy watchAcpPermissionDefault(BuildContext context) {
+  try {
+    return context.select<SessionPreferencesCubit, LaunchSecurityPolicy>(
+      (cubit) => cubit.state.preferences.acpPermissionDefault,
+    );
+  } on ProviderNotFoundException {
+    return LaunchSecurityPolicy.fullAccess;
+  }
+}

@@ -64,6 +64,7 @@ import '../../expert_hub/expert_landing_picker_sheet.dart';
 import '../../expert_hub/expert_landing_preflight_feedback.dart';
 import '../../team_hub/team_landing_chip_menu.dart';
 import '../../team_hub/team_landing_picker_sheet.dart';
+import 'acp_compose_permission.dart';
 import 'claude_acp_launch_switch.dart';
 import 'config/cli_preset_edit_dialog.dart';
 import 'config/cli_presets_manage_dialog.dart';
@@ -918,7 +919,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         : null;
     return LandingLaunchContext(
       isPersonal: isSimple,
-      acp: resolveLaunchAcp(
+      acp: willLaunchPersonalAcp(
         isPersonal: isSimple,
         cli: launchCli,
         requested: readPersonalAcpDefault(context, launchCli),
@@ -1576,6 +1577,15 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           onChanged: (_) {},
           chrome: UnboundComposeChrome(
             conversationModeLabel: _conversationModeLabel(l10n),
+            permissionControl: landingAcpPermissionControl(
+              context: context,
+              isPersonal: isSimple,
+              launchCli: cli,
+              l10n: l10n,
+              selectedTeam: selectedTeam,
+              workspace: launchWorkspace,
+              presets: presets,
+            ),
             autoChipLabel: _autoChipLabel(
               context,
               l10n,

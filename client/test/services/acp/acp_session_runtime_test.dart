@@ -87,6 +87,41 @@ void main() {
     agent.connection.onRequest('session/prompt', (params) => body());
   }
 
+  acpd.RequestPermissionRequest bashPermission(String toolCallId) {
+    return acpd.RequestPermissionRequest(
+      sessionId: sessionId,
+      toolCall: acpd.ToolCallUpdate(
+        toolCallId: toolCallId,
+        title: 'Run npm install',
+      ),
+      options: const [
+        acpd.PermissionOption(
+          optionId: 'allow-1',
+          name: 'Yes',
+          kind: acpd.PermissionOptionKind.allowOnce,
+        ),
+        acpd.PermissionOption(
+          optionId: 'always-1',
+          name: 'Always allow',
+          kind: acpd.PermissionOptionKind.allowAlways,
+        ),
+      ],
+    );
+  }
+
+  Future<void> driveBashPermission(
+    AcpSessionRuntime runtime, {
+    required String toolCallId,
+    required void Function(acpd.RequestPermissionOutcome? outcome) onOutcome,
+  }) async {
+    scriptPrompt(() async {
+      onOutcome(await agentCtx.requestPermission(bashPermission(toolCallId)));
+      return acpd.PromptResponse(stopReason: acpd.StopReason.endTurn).toJson();
+    });
+    await runtime.prompt('go');
+    await pumpEventQueue();
+  }
+
   acpd.AgentMessageChunk message(String text) => acpd.AgentMessageChunk(
     chunk: acpd.ContentChunk(content: acpd.TextContentBlock(text: text)),
   );
@@ -166,38 +201,41 @@ void main() {
     await runtime.close();
   });
 
-  test('start omits mcpServers when the launch plan says not to forward', () async {
-    acpd.NewSessionRequest? seenNew;
-    agent.connection.onRequest('session/new', (params) {
-      seenNew = acpd.NewSessionRequest.fromJson(
-        (params! as Map).cast<String, Object?>(),
+  test(
+    'start omits mcpServers when the launch plan says not to forward',
+    () async {
+      acpd.NewSessionRequest? seenNew;
+      agent.connection.onRequest('session/new', (params) {
+        seenNew = acpd.NewSessionRequest.fromJson(
+          (params! as Map).cast<String, Object?>(),
+        );
+        return acpd.NewSessionResponse(sessionId: sessionId).toJson();
+      });
+
+      const capability = GeminiAcpCapability();
+      final runtime = makeRuntime(
+        (argv, env) async => conn,
+        launchPlanFor: (_) => AcpLaunchPlan(
+          launchArgCandidates: capability.launchArgCandidates,
+          buildEnvironment: capability.buildEnvironment,
+          agentExecutable: capability.agentExecutable,
+          forwardSessionNewMcpServers: false,
+        ),
       );
-      return acpd.NewSessionResponse(sessionId: sessionId).toJson();
-    });
+      await runtime.start(
+        tool: CliTool.gemini,
+        executable: 'gemini',
+        sessionToolDir: sessionToolDir,
+        workingDirectory: cwd,
+        mcpServers: const [
+          acpd.McpServerHttp(name: 'teammate-bus', url: 'http://127.0.0.1/mcp'),
+        ],
+      );
 
-    const capability = GeminiAcpCapability();
-    final runtime = makeRuntime(
-      (argv, env) async => conn,
-      launchPlanFor: (_) => AcpLaunchPlan(
-        launchArgCandidates: capability.launchArgCandidates,
-        buildEnvironment: capability.buildEnvironment,
-        agentExecutable: capability.agentExecutable,
-        forwardSessionNewMcpServers: false,
-      ),
-    );
-    await runtime.start(
-      tool: CliTool.gemini,
-      executable: 'gemini',
-      sessionToolDir: sessionToolDir,
-      workingDirectory: cwd,
-      mcpServers: const [
-        acpd.McpServerHttp(name: 'teammate-bus', url: 'http://127.0.0.1/mcp'),
-      ],
-    );
-
-    expect(seenNew!.mcpServers, isEmpty);
-    await runtime.close();
-  });
+      expect(seenNew!.mcpServers, isEmpty);
+      await runtime.close();
+    },
+  );
 
   test(
     'all candidates rejected → AcpLaunchException carrying the version key',
@@ -416,10 +454,12 @@ void main() {
           sessionId: sessionId,
           toolCall: const acpd.ToolCallUpdate(toolCallId: 'perm-1'),
           options: const [
+            // Reject-only cannot be auto-allowed under default Full access,
+            // so a card still surfaces for this runtime delegation check.
             acpd.PermissionOption(
-              optionId: 'allow-1',
-              name: 'Yes',
-              kind: acpd.PermissionOptionKind.allowOnce,
+              optionId: 'reject-1',
+              name: 'Reject',
+              kind: acpd.PermissionOptionKind.rejectOnce,
             ),
           ],
         ),
@@ -433,16 +473,218 @@ void main() {
     AgentPermissionRequest? captured;
     final permissionSub = runtime.permissionRequests.listen((request) {
       captured = request;
-      runtime.answerPermission(AgentPermissionReplyKind.allowOnce);
+      runtime.answerPermission(AgentPermissionReplyKind.reject);
     });
     await runtime.prompt('go');
     await pumpEventQueue();
     permissionSub.cancel();
 
-    expect(captured, isNull);
+    expect(captured, isNotNull);
+    expect(captured!.id, 'perm-1');
+    expect(outcome, isA<acpd.PermissionCancelled>());
+  });
+
+  test(
+    'default Full access auto-allows bash without a card and prefers allow-always',
+    () async {
+      acpd.RequestPermissionOutcome? outcome;
+      final runtime = makeRuntime((argv, env) async => conn);
+      await startRuntime(runtime);
+
+      final cards = <AgentPermissionRequest>[];
+      final permissionSub = runtime.permissionRequests.listen(cards.add);
+      await driveBashPermission(
+        runtime,
+        toolCallId: 'perm-fa',
+        onOutcome: (value) => outcome = value,
+      );
+      permissionSub.cancel();
+
+      expect(cards, isEmpty);
+      expect(outcome, isA<acpd.PermissionSelected>());
+      expect((outcome! as acpd.PermissionSelected).optionId, 'always-1');
+      await runtime.close();
+    },
+  );
+
+  test(
+    'start with permissionPolicy fullAccess auto-allows bash without a card',
+    () async {
+      acpd.RequestPermissionOutcome? outcome;
+      final runtime = makeRuntime((argv, env) async => conn);
+      await runtime.start(
+        tool: CliTool.gemini,
+        executable: 'gemini',
+        sessionToolDir: sessionToolDir,
+        workingDirectory: cwd,
+        baseEnv: const {'PATH': '/usr/bin'},
+        permissionPolicy: LaunchSecurityPolicy.fullAccess,
+      );
+
+      final cards = <AgentPermissionRequest>[];
+      final permissionSub = runtime.permissionRequests.listen(cards.add);
+      await driveBashPermission(
+        runtime,
+        toolCallId: 'perm-fa-explicit',
+        onOutcome: (value) => outcome = value,
+      );
+      permissionSub.cancel();
+
+      expect(cards, isEmpty);
+      expect(outcome, isA<acpd.PermissionSelected>());
+      expect((outcome! as acpd.PermissionSelected).optionId, 'always-1');
+      await runtime.close();
+    },
+  );
+
+  test('start with permissionPolicy Ask surfaces a bash permission card', () async {
+    acpd.RequestPermissionOutcome? outcome;
+    final runtime = makeRuntime((argv, env) async => conn);
+    await runtime.start(
+      tool: CliTool.gemini,
+      executable: 'gemini',
+      sessionToolDir: sessionToolDir,
+      workingDirectory: cwd,
+      baseEnv: const {'PATH': '/usr/bin'},
+      permissionPolicy: LaunchSecurityPolicy.ask,
+    );
+
+    final cards = <AgentPermissionRequest>[];
+    final permissionSub = runtime.permissionRequests.listen((request) {
+      cards.add(request);
+      runtime.answerPermission(AgentPermissionReplyKind.allowOnce);
+    });
+    await driveBashPermission(
+      runtime,
+      toolCallId: 'perm-ask',
+      onOutcome: (value) => outcome = value,
+    );
+    permissionSub.cancel();
+
+    expect(cards, hasLength(1));
+    expect(cards.single.id, 'perm-ask');
     expect(outcome, isA<acpd.PermissionSelected>());
     expect((outcome! as acpd.PermissionSelected).optionId, 'allow-1');
+    await runtime.close();
   });
+
+  test(
+    'setPermissionPolicy(Ask) after start surfaces the next bash request',
+    () async {
+      acpd.RequestPermissionOutcome? first;
+      acpd.RequestPermissionOutcome? second;
+      final runtime = makeRuntime((argv, env) async => conn);
+      await startRuntime(runtime);
+
+      final cards = <AgentPermissionRequest>[];
+      final permissionSub = runtime.permissionRequests.listen((request) {
+        cards.add(request);
+        runtime.answerPermission(AgentPermissionReplyKind.allowOnce);
+      });
+
+      await driveBashPermission(
+        runtime,
+        toolCallId: 'perm-before',
+        onOutcome: (value) => first = value,
+      );
+      expect(cards, isEmpty);
+      expect(first, isA<acpd.PermissionSelected>());
+      expect((first! as acpd.PermissionSelected).optionId, 'always-1');
+
+      runtime.setPermissionPolicy(LaunchSecurityPolicy.ask);
+
+      await driveBashPermission(
+        runtime,
+        toolCallId: 'perm-after',
+        onOutcome: (value) => second = value,
+      );
+      permissionSub.cancel();
+
+      expect(cards, hasLength(1));
+      expect(cards.single.id, 'perm-after');
+      expect(second, isA<acpd.PermissionSelected>());
+      expect((second! as acpd.PermissionSelected).optionId, 'allow-1');
+      await runtime.close();
+    },
+  );
+
+  test(
+    'setPermissionPolicy(Ask) during session/new surfaces a bash card',
+    () async {
+      final gate = Completer<void>();
+      agent.connection.onRequest('session/new', (params) async {
+        await gate.future;
+        return acpd.NewSessionResponse(sessionId: sessionId).toJson();
+      });
+
+      final runtime = makeRuntime((argv, env) async => conn);
+      final started = runtime.start(
+        tool: CliTool.gemini,
+        executable: 'gemini',
+        sessionToolDir: sessionToolDir,
+        workingDirectory: cwd,
+        baseEnv: const {'PATH': '/usr/bin'},
+      );
+      await pumpEventQueue();
+      runtime.setPermissionPolicy(LaunchSecurityPolicy.ask);
+      gate.complete();
+      await started;
+
+      acpd.RequestPermissionOutcome? outcome;
+      final cards = <AgentPermissionRequest>[];
+      final permissionSub = runtime.permissionRequests.listen((request) {
+        cards.add(request);
+        runtime.answerPermission(AgentPermissionReplyKind.allowOnce);
+      });
+      await driveBashPermission(
+        runtime,
+        toolCallId: 'perm-during-new',
+        onOutcome: (value) => outcome = value,
+      );
+      permissionSub.cancel();
+
+      expect(cards, hasLength(1));
+      expect(cards.single.id, 'perm-during-new');
+      expect(outcome, isA<acpd.PermissionSelected>());
+      expect((outcome! as acpd.PermissionSelected).optionId, 'allow-1');
+      await runtime.close();
+    },
+  );
+
+  test(
+    'setPermissionPolicy(Ask) before start is not clobbered by fullAccess arg',
+    () async {
+      final runtime = makeRuntime((argv, env) async => conn);
+      runtime.setPermissionPolicy(LaunchSecurityPolicy.ask);
+      await runtime.start(
+        tool: CliTool.gemini,
+        executable: 'gemini',
+        sessionToolDir: sessionToolDir,
+        workingDirectory: cwd,
+        baseEnv: const {'PATH': '/usr/bin'},
+        permissionPolicy: LaunchSecurityPolicy.fullAccess,
+      );
+
+      acpd.RequestPermissionOutcome? outcome;
+      final cards = <AgentPermissionRequest>[];
+      final permissionSub = runtime.permissionRequests.listen((request) {
+        cards.add(request);
+        runtime.answerPermission(AgentPermissionReplyKind.allowOnce);
+      });
+      await driveBashPermission(
+        runtime,
+        toolCallId: 'perm-before-start',
+        onOutcome: (value) => outcome = value,
+      );
+      permissionSub.cancel();
+
+      expect(cards, hasLength(1));
+      expect(cards.single.id, 'perm-before-start');
+      expect(outcome, isA<acpd.PermissionSelected>());
+      expect((outcome! as acpd.PermissionSelected).optionId, 'allow-1');
+      await runtime.close();
+    },
+  );
 
   test('cancel before start does not throw', () {
     final runtime = makeRuntime((argv, env) async => conn);

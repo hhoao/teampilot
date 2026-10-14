@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:teampilot/models/session_preferences.dart';
 
 void main() {
@@ -147,6 +148,29 @@ void main() {
       );
       final claude = SessionPreferences(claudePersonalAcpDefault: false);
       expect(claude.codexPersonalAcpDefault, isFalse);
+    });
+
+    test('acpPermissionDefault defaults fullAccess and round-trips ask', () {
+      expect(
+        SessionPreferences().acpPermissionDefault,
+        LaunchSecurityPolicy.fullAccess,
+      );
+      expect(
+        SessionPreferences.fromJson(const {}).acpPermissionDefault,
+        LaunchSecurityPolicy.fullAccess,
+      );
+      expect(
+        SessionPreferences().toJson().containsKey('acpPermissionDefault'),
+        isFalse,
+      );
+      final ask = SessionPreferences(
+        acpPermissionDefault: LaunchSecurityPolicy.ask,
+      );
+      expect(ask.toJson()['acpPermissionDefault'], 'ask');
+      expect(
+        SessionPreferences.fromJson(ask.toJson()).acpPermissionDefault,
+        LaunchSecurityPolicy.ask,
+      );
     });
 
     test('git auto-fetch defaults on with 5 minute interval', () {

@@ -54,6 +54,7 @@ import '../../widgets/compose/compose_model_preset_chip.dart';
 import '../../widgets/compose/simple_custom_launch_dialog.dart';
 import '../../widgets/compose/workspace_compose_card.dart';
 import '../../widgets/follow_up/follow_up_queue_strip.dart';
+import '../home_workspace/workspace/acp_compose_permission.dart';
 import '../home_workspace/workspace/config/cli_preset_edit_dialog.dart';
 import '../home_workspace/workspace/config/cli_presets_manage_dialog.dart';
 import '../home_workspace/workspace/workspace_landing_team_settings_dialog.dart';
@@ -166,6 +167,10 @@ class SessionChatComposeSection extends StatelessWidget {
     final presets = seatSelect<CliPresetsCubit, List<CliPreset>>(
       context,
       (c) => c.state.presets,
+    );
+    final liveSession = seatSelect<ChatCubit, AppSession>(
+      context,
+      (c) => _cubitSession(c, session.sessionId) ?? session,
     );
     final team = _readLiveTeam(context);
     final hubState = _readExpertHubState(context);
@@ -491,6 +496,13 @@ class SessionChatComposeSection extends StatelessWidget {
                                   selectedMemberId: selectedMemberId,
                                   value: v,
                                 ),
+                              ),
+                              permissionControl: sessionAcpPermissionControl(
+                                context: context,
+                                session: liveSession,
+                                selectedMemberId: selectedMemberId,
+                                l10n: l10n,
+                                runtime: acpRuntime,
                               ),
                               teamSettingsTooltip: showTeamSettings
                                   ? l10n.teamSettings

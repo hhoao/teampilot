@@ -268,6 +268,7 @@ class SessionLaunchService
       memberTargets: session.memberTargets,
       knownWorkspace: request.workspace,
       acp: params.acp,
+      acpPermission: params.acpPermission,
     )).session;
     appLogger.d(
       '[session-launch] createSession '

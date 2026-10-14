@@ -177,6 +177,72 @@ void main() {
     expect(selected, LaunchSecurityPolicy.fullAccess);
   });
 
+  testWidgets('ACP Ask permission control shows chip on unbound compose', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpCard(
+          chrome: UnboundComposeChrome(
+            conversationModeLabel: 'Simple',
+            autoChipLabel: 'Preset',
+            conversationModeSpecs: const [],
+            autoChipSpecs: const [],
+            onConversationModeSelected: _noop,
+            onAutoChipSelected: _noop,
+            permissionControl: ComposePermissionControl(
+              supportedPolicies: Set.unmodifiable({
+                LaunchSecurityPolicy.ask,
+                LaunchSecurityPolicy.fullAccess,
+              }),
+              launchSecurityPolicy: LaunchSecurityPolicy.ask,
+              defaultLabel: 'Ask',
+              fullAccessLabel: 'Full access',
+              askLabel: 'Ask',
+              onSelected: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ComposePermissionChip), findsOneWidget);
+    expect(find.text('Ask'), findsOneWidget);
+  });
+
+  testWidgets('ACP Ask permission control shows chip on bound compose', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpCard(
+          chrome: BoundComposeChrome(
+            identityLabel: 'Team',
+            identityIcon: Icons.groups_outlined,
+            permissionControl: ComposePermissionControl(
+              supportedPolicies: Set.unmodifiable({
+                LaunchSecurityPolicy.ask,
+                LaunchSecurityPolicy.fullAccess,
+              }),
+              launchSecurityPolicy: LaunchSecurityPolicy.fullAccess,
+              defaultLabel: 'Ask',
+              fullAccessLabel: 'Full access',
+              askLabel: 'Ask',
+              onSelected: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ComposePermissionChip), findsOneWidget);
+    expect(find.text('Full access'), findsOneWidget);
+  });
+
   testWidgets('unbound chrome shows conversation mode label and drop region', (
     tester,
   ) async {

@@ -379,6 +379,7 @@ class _RecordingAcpRuntime implements AcpSessionRuntimeApi {
   Map<String, String> baseEnv = const {};
   String workingDirectory = '';
   List<acpd.McpServer> mcpServers = const [];
+  LaunchSecurityPolicy permissionPolicy = LaunchSecurityPolicy.fullAccess;
 
   @override
   Future<void> start({
@@ -388,11 +389,18 @@ class _RecordingAcpRuntime implements AcpSessionRuntimeApi {
     required String workingDirectory,
     Map<String, String> baseEnv = const {},
     List<acpd.McpServer> mcpServers = const [],
+    LaunchSecurityPolicy permissionPolicy = LaunchSecurityPolicy.fullAccess,
   }) async {
     started = true;
     this.baseEnv = baseEnv;
     this.workingDirectory = workingDirectory;
     this.mcpServers = mcpServers;
+    this.permissionPolicy = permissionPolicy;
+  }
+
+  @override
+  void setPermissionPolicy(LaunchSecurityPolicy policy) {
+    permissionPolicy = policy;
   }
 
   @override

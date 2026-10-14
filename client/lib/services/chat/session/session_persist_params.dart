@@ -16,6 +16,7 @@ class SessionPersistParams {
     this.expertKey,
     this.continueOverrides,
     this.acp = false,
+    this.acpPermission = LaunchSecurityPolicy.fullAccess,
   });
 
   final String sessionTeamId;
@@ -36,4 +37,7 @@ class SessionPersistParams {
 
   /// Requested ACP chat runtime; resolved against team/Gemini rules on persist.
   final bool acp;
+
+  /// ACP compose permission seed for personal sessions and mixed ACP seats.
+  final LaunchSecurityPolicy acpPermission;
 }

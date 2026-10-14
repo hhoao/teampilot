@@ -28,6 +28,7 @@ class SessionCreateRequest {
     this.seedCodexMemberAcp = false,
     this.seedCursorMemberAcp = true,
     this.seedOpencodeMemberAcp = true,
+    this.acpPermission = LaunchSecurityPolicy.fullAccess,
   });
 
   final Workspace workspace;
@@ -77,4 +78,7 @@ class SessionCreateRequest {
 
   /// Mixed-seat OpenCode ACP seed (`opencodePersonalAcpDefault`, default true).
   final bool seedOpencodeMemberAcp;
+
+  /// ACP compose permission seed for personal sessions and mixed ACP seats.
+  final LaunchSecurityPolicy acpPermission;
 }

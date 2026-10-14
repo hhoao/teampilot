@@ -372,6 +372,7 @@ class WorkspaceComposeCard extends StatelessWidget {
           launchSecurityPolicy: control.launchSecurityPolicy,
           defaultLabel: control.defaultLabel,
           fullAccessLabel: control.fullAccessLabel,
+          askLabel: control.askLabel,
           askReadOnlyLabel: control.askReadOnlyLabel,
           autoApproveWorkspaceWriteLabel:
               control.autoApproveWorkspaceWriteLabel,
@@ -418,6 +419,7 @@ class WorkspaceComposeCard extends StatelessWidget {
           launchSecurityPolicy: control.launchSecurityPolicy,
           defaultLabel: control.defaultLabel,
           fullAccessLabel: control.fullAccessLabel,
+          askLabel: control.askLabel,
           askReadOnlyLabel: control.askReadOnlyLabel,
           autoApproveWorkspaceWriteLabel:
               control.autoApproveWorkspaceWriteLabel,

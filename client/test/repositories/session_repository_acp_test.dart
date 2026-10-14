@@ -33,12 +33,39 @@ void main() {
     expect(session.acp, isTrue);
   });
 
+  test('personal Claude acp true persists ask permission', () async {
+    final session = (await repo.createSession(
+      workspaceId,
+      cli: CliTool.claude,
+      acp: true,
+      acpPermission: LaunchSecurityPolicy.ask,
+    )).session;
+    expect(session.acpPermission, LaunchSecurityPolicy.ask);
+
+    final loaded = await repo.loadSessionsForWorkspace(workspaceId);
+    final reloaded = loaded.singleWhere(
+      (s) => s.sessionId == session.sessionId,
+    );
+    expect(reloaded.acpPermission, LaunchSecurityPolicy.ask);
+  });
+
   test('personal Claude default persists false', () async {
     final session = (await repo.createSession(
       workspaceId,
       cli: CliTool.claude,
     )).session;
     expect(session.acp, isFalse);
+  });
+
+  test('personal Claude acp false persists fullAccess permission', () async {
+    final session = (await repo.createSession(
+      workspaceId,
+      cli: CliTool.claude,
+      acp: false,
+      acpPermission: LaunchSecurityPolicy.ask,
+    )).session;
+    expect(session.acp, isFalse);
+    expect(session.acpPermission, LaunchSecurityPolicy.fullAccess);
   });
 
   test('personal Gemini persists true even when acp is false', () async {
@@ -49,6 +76,27 @@ void main() {
     )).session;
     expect(session.acp, isTrue);
   });
+
+  test(
+    'personal Gemini acp false + acpPermission ask persists ask',
+    () async {
+      final session = (await repo.createSession(
+        workspaceId,
+        cli: CliTool.gemini,
+        acp: false,
+        acpPermission: LaunchSecurityPolicy.ask,
+      )).session;
+      expect(session.acp, isTrue);
+      expect(session.acpPermission, LaunchSecurityPolicy.ask);
+
+      final loaded = await repo.loadSessionsForWorkspace(workspaceId);
+      final reloaded = loaded.singleWhere(
+        (s) => s.sessionId == session.sessionId,
+      );
+      expect(reloaded.acp, isTrue);
+      expect(reloaded.acpPermission, LaunchSecurityPolicy.ask);
+    },
+  );
 
   test('team session persists false even when acp is true', () async {
     final session = (await repo.createSession(
@@ -112,6 +160,35 @@ void main() {
     )).session;
     expect(off.members.single.acp, isFalse);
   });
+
+  test(
+    'mixed local Claude plan path stamps binding ask and keeps session fullAccess',
+    () async {
+      final created = await repo.createSession(
+        workspaceId,
+        sessionTeam: 'team-claude-ask',
+        rosterMembers: const [TeamMemberConfig(id: 'lead', name: 'Lead')],
+        memberClis: const {'lead': CliTool.claude},
+        teamMode: TeamMode.mixed,
+        acpPermission: LaunchSecurityPolicy.ask,
+      );
+      expect(created.session.acp, isFalse);
+      expect(created.session.acpPermission, LaunchSecurityPolicy.fullAccess);
+      expect(created.session.members.single.acp, isTrue);
+      expect(
+        created.session.members.single.acpPermission,
+        LaunchSecurityPolicy.ask,
+      );
+
+      final loaded = await repo.loadSessionsForWorkspace(workspaceId);
+      final session = loaded.singleWhere(
+        (s) => s.sessionId == created.session.sessionId,
+      );
+      expect(session.acp, isFalse);
+      expect(session.acpPermission, LaunchSecurityPolicy.fullAccess);
+      expect(session.members.single.acpPermission, LaunchSecurityPolicy.ask);
+    },
+  );
 
   test('native Gemini plan path keeps binding acp false', () async {
     final session = (await repo.createSession(

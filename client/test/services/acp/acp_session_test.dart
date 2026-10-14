@@ -6,6 +6,7 @@ import 'package:acpd/acpd.dart' as acpd;
 import 'package:acpd_test/acpd_test.dart' as acpd_test;
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:teampilot/services/acp/acp_agent_translator.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_connection.dart';
@@ -217,6 +218,7 @@ void main() {
       });
 
       await openSession();
+      session.setPermissionPolicy(LaunchSecurityPolicy.ask);
 
       // Disposing mid-hold (card dismissed / teardown racing the request)
       // must answer the agent with the cancelled default, not throw on the
@@ -654,6 +656,7 @@ void main() {
       });
 
       await openSession();
+      session.setPermissionPolicy(LaunchSecurityPolicy.ask);
 
       AgentPermissionRequest? captured;
       final permissionSub = session.permissionRequests.listen((request) {
@@ -734,6 +737,7 @@ void main() {
       });
 
       await openSession();
+      session.setPermissionPolicy(LaunchSecurityPolicy.ask);
 
       final answers = <AgentPermissionRequest>[];
       final permissionSub = session.permissionRequests.listen((request) {
@@ -832,6 +836,7 @@ void main() {
       });
 
       await openSession(permissionTimeout: const Duration(milliseconds: 50));
+      session.setPermissionPolicy(LaunchSecurityPolicy.ask);
 
       final events = <AcpSessionUpdate>[];
       final sub = session.updates.listen(events.add);
@@ -850,6 +855,409 @@ void main() {
       expect(late, isNull);
     },
   );
+
+  test(
+    'handshake bash permission is auto-allowed even if later policy is Ask',
+    () async {
+      acpd.RequestPermissionOutcome? handshakeOutcome;
+      agent.connection.onRequest('session/new', (params) async {
+        handshakeOutcome = await agentCtx.requestPermission(
+          acpd.RequestPermissionRequest(
+            sessionId: sessionId,
+            toolCall: const acpd.ToolCallUpdate(
+              toolCallId: 'perm-hs',
+              title: 'Run npm install',
+            ),
+            options: const [
+              acpd.PermissionOption(
+                optionId: 'always-hs',
+                name: 'Always allow',
+                kind: acpd.PermissionOptionKind.allowAlways,
+              ),
+            ],
+          ),
+        );
+        return acpd.NewSessionResponse(sessionId: sessionId).toJson();
+      });
+
+      await openSession();
+      session.setPermissionPolicy(LaunchSecurityPolicy.ask);
+
+      expect(handshakeOutcome, isA<acpd.PermissionSelected>());
+      expect(
+        (handshakeOutcome! as acpd.PermissionSelected).optionId,
+        'always-hs',
+      );
+
+      acpd.RequestPermissionOutcome? afterOutcome;
+      AgentPermissionRequest? captured;
+      scriptPrompt(() async {
+        afterOutcome = await agentCtx.requestPermission(
+          acpd.RequestPermissionRequest(
+            sessionId: sessionId,
+            toolCall: const acpd.ToolCallUpdate(
+              toolCallId: 'perm-bash',
+              title: 'Run npm install',
+            ),
+            options: const [
+              acpd.PermissionOption(
+                optionId: 'allow-1',
+                name: 'Yes',
+                kind: acpd.PermissionOptionKind.allowOnce,
+              ),
+            ],
+          ),
+        );
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+      final permissionSub = session.permissionRequests.listen((request) {
+        captured = request;
+        session.answerPermission(AgentPermissionReplyKind.allowOnce);
+      });
+      await session.prompt('go');
+      await pumpEventQueue();
+      permissionSub.cancel();
+
+      expect(captured, isNotNull);
+      expect(captured!.description, 'Run npm install');
+      expect(afterOutcome, isA<acpd.PermissionSelected>());
+      expect((afterOutcome! as acpd.PermissionSelected).optionId, 'allow-1');
+    },
+  );
+
+  test(
+    'handshake reject-only is cancelled; after open it surfaces a card',
+    () async {
+      acpd.RequestPermissionOutcome? handshakeOutcome;
+      agent.connection.onRequest('session/new', (params) async {
+        handshakeOutcome = await agentCtx.requestPermission(
+          acpd.RequestPermissionRequest(
+            sessionId: sessionId,
+            toolCall: const acpd.ToolCallUpdate(toolCallId: 'hs-rej'),
+            options: const [
+              acpd.PermissionOption(
+                optionId: 'reject-1',
+                name: 'Reject',
+                kind: acpd.PermissionOptionKind.rejectOnce,
+              ),
+            ],
+          ),
+        );
+        return acpd.NewSessionResponse(sessionId: sessionId).toJson();
+      });
+
+      await openSession();
+      expect(handshakeOutcome, isA<acpd.PermissionCancelled>());
+
+      acpd.RequestPermissionOutcome? afterOutcome;
+      AgentPermissionRequest? captured;
+      scriptPrompt(() async {
+        afterOutcome = await agentCtx.requestPermission(
+          acpd.RequestPermissionRequest(
+            sessionId: sessionId,
+            toolCall: const acpd.ToolCallUpdate(
+              toolCallId: 'perm-rej',
+              title: 'Run npm install',
+            ),
+            options: const [
+              acpd.PermissionOption(
+                optionId: 'reject-1',
+                name: 'Reject',
+                kind: acpd.PermissionOptionKind.rejectOnce,
+              ),
+            ],
+          ),
+        );
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+      final permissionSub = session.permissionRequests.listen((request) {
+        captured = request;
+        session.answerPermission(AgentPermissionReplyKind.reject);
+      });
+      await session.prompt('go');
+      await pumpEventQueue();
+      permissionSub.cancel();
+
+      expect(captured, isNotNull);
+      expect(afterOutcome, isA<acpd.PermissionCancelled>());
+    },
+  );
+
+  test(
+    'Full access auto-allows bash without a card and prefers allow-always',
+    () async {
+      acpd.RequestPermissionOutcome? outcome;
+      scriptPrompt(() async {
+        outcome = await agentCtx.requestPermission(
+          acpd.RequestPermissionRequest(
+            sessionId: sessionId,
+            toolCall: const acpd.ToolCallUpdate(
+              toolCallId: 'perm-fa',
+              title: 'Run npm install',
+            ),
+            options: const [
+              acpd.PermissionOption(
+                optionId: 'allow-1',
+                name: 'Yes',
+                kind: acpd.PermissionOptionKind.allowOnce,
+              ),
+              acpd.PermissionOption(
+                optionId: 'always-1',
+                name: 'Always allow',
+                kind: acpd.PermissionOptionKind.allowAlways,
+              ),
+            ],
+          ),
+        );
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+
+      await openSession();
+
+      final cards = <AgentPermissionRequest>[];
+      final permissionSub = session.permissionRequests.listen(cards.add);
+      await session.prompt('go');
+      await pumpEventQueue();
+      permissionSub.cancel();
+
+      expect(cards, isEmpty);
+      expect(outcome, isA<acpd.PermissionSelected>());
+      expect((outcome! as acpd.PermissionSelected).optionId, 'always-1');
+    },
+  );
+
+  test('Ask surfaces bash cards but auto-allows teammate-bus titles', () async {
+    acpd.RequestPermissionOutcome? busOutcome;
+    acpd.RequestPermissionOutcome? bashOutcome;
+    scriptPrompt(() async {
+      busOutcome = await agentCtx.requestPermission(
+        acpd.RequestPermissionRequest(
+          sessionId: sessionId,
+          toolCall: const acpd.ToolCallUpdate(
+            toolCallId: 'perm-bus',
+            title: 'teammate-bus-read_messages: read_messages',
+          ),
+          options: const [
+            acpd.PermissionOption(
+              optionId: 'always-bus',
+              name: 'Always allow',
+              kind: acpd.PermissionOptionKind.allowAlways,
+            ),
+          ],
+        ),
+      );
+      bashOutcome = await agentCtx.requestPermission(
+        acpd.RequestPermissionRequest(
+          sessionId: sessionId,
+          toolCall: const acpd.ToolCallUpdate(
+            toolCallId: 'perm-bash',
+            title: 'Run npm install',
+          ),
+          options: const [
+            acpd.PermissionOption(
+              optionId: 'allow-1',
+              name: 'Yes',
+              kind: acpd.PermissionOptionKind.allowOnce,
+            ),
+          ],
+        ),
+      );
+      return acpd.PromptResponse(stopReason: acpd.StopReason.endTurn).toJson();
+    });
+
+    await openSession();
+    session.setPermissionPolicy(LaunchSecurityPolicy.ask);
+
+    final cards = <AgentPermissionRequest>[];
+    final permissionSub = session.permissionRequests.listen((request) {
+      cards.add(request);
+      session.answerPermission(AgentPermissionReplyKind.allowOnce);
+    });
+    await session.prompt('go');
+    await pumpEventQueue();
+    permissionSub.cancel();
+
+    expect(busOutcome, isA<acpd.PermissionSelected>());
+    expect((busOutcome! as acpd.PermissionSelected).optionId, 'always-bus');
+    expect(cards, hasLength(1));
+    expect(cards.single.description, 'Run npm install');
+    expect(bashOutcome, isA<acpd.PermissionSelected>());
+    expect((bashOutcome! as acpd.PermissionSelected).optionId, 'allow-1');
+  });
+
+  test(
+    'setPermissionPolicy(fullAccess) while bash card is held still waits for user',
+    () async {
+      acpd.RequestPermissionOutcome? outcome;
+      scriptPrompt(() async {
+        outcome = await agentCtx.requestPermission(
+          acpd.RequestPermissionRequest(
+            sessionId: sessionId,
+            toolCall: const acpd.ToolCallUpdate(
+              toolCallId: 'perm-held',
+              title: 'Run npm install',
+            ),
+            options: const [
+              acpd.PermissionOption(
+                optionId: 'allow-1',
+                name: 'Yes',
+                kind: acpd.PermissionOptionKind.allowOnce,
+              ),
+              acpd.PermissionOption(
+                optionId: 'always-1',
+                name: 'Always allow',
+                kind: acpd.PermissionOptionKind.allowAlways,
+              ),
+            ],
+          ),
+        );
+        return acpd.PromptResponse(
+          stopReason: acpd.StopReason.endTurn,
+        ).toJson();
+      });
+
+      await openSession();
+      session.setPermissionPolicy(LaunchSecurityPolicy.ask);
+
+      final held = Completer<void>();
+      AgentPermissionRequest? captured;
+      final permissionSub = session.permissionRequests.listen((request) {
+        captured = request;
+        held.complete();
+      });
+      final promptDone = session.prompt('go');
+      await held.future;
+      await pumpEventQueue();
+
+      expect(outcome, isNull);
+      session.setPermissionPolicy(LaunchSecurityPolicy.fullAccess);
+      await pumpEventQueue();
+      expect(outcome, isNull);
+
+      session.answerPermission(AgentPermissionReplyKind.allowOnce);
+      await promptDone;
+      permissionSub.cancel();
+
+      expect(captured, isNotNull);
+      expect(captured!.id, 'perm-held');
+      expect(outcome, isA<acpd.PermissionSelected>());
+      expect((outcome! as acpd.PermissionSelected).optionId, 'allow-1');
+    },
+  );
+
+  test('reject-only still surfaces a card under Full access', () async {
+    acpd.RequestPermissionOutcome? outcome;
+    scriptPrompt(() async {
+      outcome = await agentCtx.requestPermission(
+        acpd.RequestPermissionRequest(
+          sessionId: sessionId,
+          toolCall: const acpd.ToolCallUpdate(
+            toolCallId: 'perm-rej',
+            title: 'Run npm install',
+          ),
+          options: const [
+            acpd.PermissionOption(
+              optionId: 'reject-1',
+              name: 'Reject',
+              kind: acpd.PermissionOptionKind.rejectOnce,
+            ),
+          ],
+        ),
+      );
+      return acpd.PromptResponse(stopReason: acpd.StopReason.endTurn).toJson();
+    });
+
+    await openSession();
+
+    AgentPermissionRequest? captured;
+    final permissionSub = session.permissionRequests.listen((request) {
+      captured = request;
+      session.answerPermission(AgentPermissionReplyKind.reject);
+    });
+    await session.prompt('go');
+    await pumpEventQueue();
+    permissionSub.cancel();
+
+    expect(captured, isNotNull);
+    expect(outcome, isA<acpd.PermissionCancelled>());
+  });
+
+  test('Cursor hyphen allow-always auto-allows without typed parse', () async {
+    Object? result;
+    scriptPrompt(() async {
+      result = await agent.connection.sendRequest(
+        'session/request_permission',
+        params: {
+          'sessionId': sessionId,
+          'toolCall': {'toolCallId': 'perm-h', 'title': 'Run npm install'},
+          'options': [
+            {'optionId': 'always-1', 'name': 'Always', 'kind': 'allow-always'},
+          ],
+        },
+        mapResult: (r) => r,
+      );
+      return acpd.PromptResponse(stopReason: acpd.StopReason.endTurn).toJson();
+    });
+
+    await openSession();
+
+    final cards = <AgentPermissionRequest>[];
+    final permissionSub = session.permissionRequests.listen(cards.add);
+    await session.prompt('go');
+    await pumpEventQueue();
+    permissionSub.cancel();
+
+    expect(cards, isEmpty);
+    expect(result, {'outcome': 'selected', 'optionId': 'always-1'});
+  });
+
+  test('Ask surfaces a card for Cursor hyphen option kinds', () async {
+    Object? result;
+    scriptPrompt(() async {
+      result = await agent.connection.sendRequest(
+        'session/request_permission',
+        params: {
+          'sessionId': sessionId,
+          'toolCall': {
+            'toolCallId': 'perm-hyphen-ask',
+            'title': 'Run npm install',
+          },
+          'options': [
+            {'optionId': 'allow-1', 'name': 'Yes', 'kind': 'allow-once'},
+            {'optionId': 'always-1', 'name': 'Always', 'kind': 'allow-always'},
+          ],
+        },
+        mapResult: (r) => r,
+      );
+      return acpd.PromptResponse(stopReason: acpd.StopReason.endTurn).toJson();
+    });
+
+    await openSession();
+    session.setPermissionPolicy(LaunchSecurityPolicy.ask);
+
+    AgentPermissionRequest? captured;
+    final permissionSub = session.permissionRequests.listen((request) {
+      captured = request;
+      session.answerPermission(AgentPermissionReplyKind.allowOnce);
+    });
+    await session.prompt('go');
+    await pumpEventQueue();
+    permissionSub.cancel();
+
+    expect(captured, isNotNull);
+    expect(captured!.id, 'perm-hyphen-ask');
+    expect(captured!.description, 'Run npm install');
+    expect(captured!.always, [
+      const AgentPermissionAlwaysOption(label: 'Always', payload: 'always-1'),
+    ]);
+    expect(result, {'outcome': 'selected', 'optionId': 'allow-1'});
+  });
 
   test('abort-shaped error after cancel becomes a cancelled stop', () async {
     scriptPrompt(() async {

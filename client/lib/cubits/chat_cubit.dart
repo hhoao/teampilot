@@ -2570,6 +2570,20 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
+  Future<void> setAcpPermission(
+    SessionRepository repo,
+    String sessionId, {
+    String? memberId,
+    required LaunchSecurityPolicy policy,
+  }) async {
+    final updated = await repo.updateAcpPermission(
+      sessionId,
+      memberId: memberId,
+      policy: policy,
+    );
+    if (updated != null) replaceSessionSnapshot(updated);
+  }
+
   /// Duplicates a Simple session (launch identity + CLI history fork).
   ///
   /// [newDisplayTitle] is resolved by the caller so l10n stays out of the

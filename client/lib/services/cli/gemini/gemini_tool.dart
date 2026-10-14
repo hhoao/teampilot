@@ -58,7 +58,7 @@ final class GeminiCliTool implements CliToolDefinition {
     this.mcp = const GeminiMcpCapability(),
     this.hookWriter = const GeminiHookWriter(),
     this.workspaceBaseInfo = const GeminiWorkspaceBaseInfo(),
-    this.launchSecurity = const FullAccessOnlyCliLaunchSecurityCapability(),
+    this.launchSecurity = const AcpAskFullAccessCliLaunchSecurityCapability(),
     this.acp = const GeminiAcpCapability(),
   });
 

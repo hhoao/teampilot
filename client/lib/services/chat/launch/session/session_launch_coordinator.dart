@@ -194,6 +194,7 @@ class SessionLaunchCoordinator
             seedCodexMemberAcp: request.seedCodexMemberAcp,
             seedCursorMemberAcp: request.seedCursorMemberAcp,
             seedOpencodeMemberAcp: request.seedOpencodeMemberAcp,
+            acpPermission: request.acpPermission,
           ),
           memberTargets: plan.memberTargets,
         );
@@ -234,6 +235,7 @@ class SessionLaunchCoordinator
           expertKey: request.expertKey,
           continueOverrides: request.continueOverrides,
           acp: request.acp,
+          acpPermission: request.acpPermission,
         ),
       ),
       reason: LaunchReason.create,

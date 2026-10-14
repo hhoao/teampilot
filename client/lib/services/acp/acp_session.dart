@@ -2,9 +2,10 @@ import 'dart:async';
 
 import 'package:acpd/acpd.dart' as acpd;
 
+import '../../models/launch_security_policy.dart';
+import '../../utils/logging/logger_utils.dart';
 import '../agent_status/agent_permission_request.dart';
 import '../agent_status/seat_hold_gate.dart';
-import '../../utils/logging/logger_utils.dart';
 import 'acp_agent_translator.dart';
 import 'acp_client_extensions.dart';
 import 'acp_connection.dart';
@@ -246,6 +247,7 @@ class AcpAgentSession {
     required AcpAgentConnection connection,
     required this.sessionId,
     this.permissionTimeout = defaultPermissionTimeout,
+    this.permissionPolicy = LaunchSecurityPolicy.fullAccess,
   }) : _connection = connection,
        _client = connection.acpdClient {
     _updateRegistration = _client.connection.onNotification(
@@ -290,6 +292,19 @@ class AcpAgentSession {
   /// How long the permission hold waits before answering the agent with the
   /// cancelled default outcome.
   final Duration permissionTimeout;
+
+  /// Client-side ACP permission policy for this session.
+  ///
+  /// [LaunchSecurityPolicy.fullAccess] auto-allows grantable options.
+  /// [LaunchSecurityPolicy.ask] auto-allows only teammate-bus (host MCP)
+  /// and surfaces a card for everything else.
+  LaunchSecurityPolicy permissionPolicy;
+
+  /// Assigns [policy] for subsequent permission requests. Does not rewrite
+  /// an in-flight card.
+  void setPermissionPolicy(LaunchSecurityPolicy policy) {
+    permissionPolicy = policy;
+  }
 
   final _updates = StreamController<AcpSessionUpdate>.broadcast();
   final _permissionRequests =
@@ -475,17 +490,20 @@ class AcpAgentSession {
     if (_rawSessionIdMismatch(params)) {
       return _encodePermission(const acpd.PermissionCancelled());
     }
-    final optionId = autoAllowAcpPermissionOptionId(params);
-    if (optionId != null) {
-      return _encodePermission(acpd.PermissionSelected(optionId: optionId));
-    }
     if (params is! Map) {
       return _encodePermission(const acpd.PermissionCancelled());
+    }
+    final autoOptionId = autoAllowAcpPermissionOptionId(
+      params,
+      allowNonHost: permissionPolicy != LaunchSecurityPolicy.ask,
+    );
+    if (autoOptionId != null) {
+      return _encodePermission(acpd.PermissionSelected(optionId: autoOptionId));
     }
     final acpd.RequestPermissionRequest request;
     try {
       request = acpd.RequestPermissionRequest.fromJson(
-        Map<String, Object?>.from(params),
+        normalizeAcpPermissionOptionKinds(Map<String, Object?>.from(params)),
       );
     } on Object catch (error, stackTrace) {
       AppLogger.instance.w(

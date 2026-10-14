@@ -149,6 +149,7 @@ class AppSession {
     this.purpose = SessionPurpose.normal,
     String workflowId = '',
     this.acp = false,
+    this.acpPermission = LaunchSecurityPolicy.fullAccess,
   }) : workflowId = purpose == SessionPurpose.teamGeneration ? workflowId : '';
 
   factory AppSession({
@@ -179,10 +180,10 @@ class AppSession {
     SessionPurpose purpose = SessionPurpose.normal,
     String workflowId = '',
     bool? acp,
+    LaunchSecurityPolicy acpPermission = LaunchSecurityPolicy.fullAccess,
   }) {
     final trimmedTeam = sessionTeam.trim();
-    final resolvedAcp =
-        acp ?? (trimmedTeam.isEmpty && cli == CliTool.gemini);
+    final resolvedAcp = acp ?? (trimmedTeam.isEmpty && cli == CliTool.gemini);
     return AppSession._(
       sessionId: sessionId,
       workspaceId: workspaceId,
@@ -214,6 +215,9 @@ class AppSession {
       purpose: purpose,
       workflowId: workflowId,
       acp: resolvedAcp,
+      acpPermission: resolvedAcp
+          ? acpPermission
+          : LaunchSecurityPolicy.fullAccess,
     );
   }
 
@@ -280,6 +284,7 @@ class AppSession {
       purpose: SessionPurpose.decode(json['purpose']),
       workflowId: json['workflowId'] as String? ?? '',
       acp: json.containsKey('acp') ? json['acp'] == true : null,
+      acpPermission: acpPermissionFromJson(json['acpPermission']),
     );
   }
 
@@ -370,6 +375,10 @@ class AppSession {
   /// True when this session uses terminal-less ACP chat (Gemini simple default).
   final bool acp;
 
+  /// Durable ACP compose permission. Forced to [LaunchSecurityPolicy.fullAccess]
+  /// when [acp] is false. Missing JSON key → fullAccess.
+  final LaunchSecurityPolicy acpPermission;
+
   /// True when this session has no team roster (Simple / unteamed).
   bool get isSimple => sessionTeam.trim().isEmpty;
 
@@ -433,6 +442,7 @@ class AppSession {
     SessionPurpose? purpose,
     String? workflowId,
     bool? acp,
+    LaunchSecurityPolicy? acpPermission,
   }) {
     final nextPurpose = purpose ?? this.purpose;
     return AppSession(
@@ -464,6 +474,7 @@ class AppSession {
           ? (workflowId ?? this.workflowId).trim()
           : '',
       acp: acp ?? this.acp,
+      acpPermission: acpPermission ?? this.acpPermission,
     );
   }
 
@@ -498,6 +509,9 @@ class AppSession {
       if (purpose != SessionPurpose.normal) 'purpose': purpose.value,
       if (workflowId.isNotEmpty) 'workflowId': workflowId,
       if (acp) 'acp': acp,
+      if (acp)
+        if (acpPermissionToJson(acpPermission) case final id?)
+          'acpPermission': id,
     };
   }
 
@@ -531,7 +545,8 @@ class AppSession {
             archived == other.archived &&
             purpose == other.purpose &&
             workflowId == other.workflowId &&
-            acp == other.acp;
+            acp == other.acp &&
+            acpPermission == other.acpPermission;
   }
 
   @override
@@ -564,5 +579,6 @@ class AppSession {
     purpose,
     workflowId,
     acp,
+    acpPermission,
   ]);
 }

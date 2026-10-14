@@ -141,7 +141,11 @@ abstract interface class AcpSessionRuntimeApi {
     required String workingDirectory,
     Map<String, String> baseEnv = const {},
     List<acpd.McpServer> mcpServers = const [],
+    LaunchSecurityPolicy permissionPolicy = LaunchSecurityPolicy.fullAccess,
   });
+
+  /// Assigns [policy] for subsequent permission requests on the open session.
+  void setPermissionPolicy(LaunchSecurityPolicy policy);
 
   /// Sends one prompt turn; resolves once the turn's stop event is emitted.
   Future<void> prompt(String text);
@@ -211,6 +215,11 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
   AcpAgentConnection? _connection;
   AcpAgentSession? _session;
 
+  /// Chip change while [start] is still in `session/new` (or hydrating
+  /// before [start] is entered). Applied after [openSession] in preference
+  /// to the [start] argument. Not cleared at the start of [start].
+  LaunchSecurityPolicy? _overridePolicy;
+
   static AcpLaunchPlan? _unsupportedLaunchPlan(CliTool tool) => null;
 
   /// `Process.start` executable-not-found (ENOENT / ERROR_FILE_NOT_FOUND)
@@ -240,6 +249,7 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
     required String workingDirectory,
     Map<String, String> baseEnv = const {},
     List<acpd.McpServer> mcpServers = const [],
+    LaunchSecurityPolicy permissionPolicy = LaunchSecurityPolicy.fullAccess,
   }) async {
     if (_session != null) {
       throw StateError(
@@ -275,6 +285,7 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
         );
         _connection = connection;
         _session = session;
+        session.setPermissionPolicy(_overridePolicy ?? permissionPolicy);
         return;
       } on AcpFlagRejected catch (error) {
         AppLogger.instance.w(
@@ -356,6 +367,16 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
   @override
   Future<void> answerPlan(AcpPlanHoldReply reply) =>
       _session!.answerPlan(reply);
+
+  /// Assigns [policy] for subsequent permission requests.
+  ///
+  /// Stashes the value so a chip change during [start]'s `session/new`
+  /// still wins over the [start] argument after [openSession] returns.
+  @override
+  void setPermissionPolicy(LaunchSecurityPolicy policy) {
+    _overridePolicy = policy;
+    _session?.setPermissionPolicy(policy);
+  }
 
   /// Cancels the current prompt turn.
   ///

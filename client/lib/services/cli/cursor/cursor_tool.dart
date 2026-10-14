@@ -44,7 +44,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.sessionSelection = const CursorSessionSelectionLaunch(),
     this.workspaceBaseInfo = const CursorWorkspaceBaseInfo(),
     this.modelLaunch = const CursorModelLaunch(),
-    this.launchSecurity = const FullAccessOnlyCliLaunchSecurityCapability(),
+    this.launchSecurity = const AcpAskFullAccessCliLaunchSecurityCapability(),
     this.permissionLaunch = const CursorPermissionLaunch(),
     this.userExtraArgs = const UserExtraArgsProvider(),
     this.session = const CursorSessionLifecycleCapability(),

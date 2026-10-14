@@ -1,6 +1,5 @@
 import '../../agent_status/agent_permission_request.dart';
 import 'mcp/teammate_bus_mcp_config.dart';
-import 'mcp/toolkit/teammate_bus_tool_name.dart';
 
 /// Whether an ACP/chat permission card is for TeamPilot's own teammate-bus MCP.
 ///
@@ -8,37 +7,38 @@ import 'mcp/toolkit/teammate_bus_tool_name.dart';
 /// `teammate-bus-read_messages: read_messages`). The bus is host-installed
 /// infrastructure, not a user-facing tool to approve.
 bool isTeammateBusPermissionRequest(AgentPermissionRequest request) {
-  return isTeammateBusPermissionText(
-    '${request.description} ${request.patterns.join(' ')}',
-  );
+  return isTeammateBusPermissionText(request.description) ||
+      request.patterns.any(isTeammateBusPermissionText);
 }
 
-/// Same host-MCP check from a raw ACP tool-call title / input / meta haystack.
-bool isTeammateBusToolCall({
-  String? title,
-  Object? rawInput,
-  Map<String, Object?>? meta,
-}) {
-  return isTeammateBusPermissionText(
-    [
-      title ?? '',
-      _stringify(rawInput),
-      if (meta != null) _stringify(meta),
-    ].join(' '),
-  );
-}
-
+/// Whether [text] names TeamPilot's teammate-bus MCP server.
 bool isTeammateBusPermissionText(String text) {
-  final haystack = text.toLowerCase();
-  if (haystack.contains(teammateBusMcpServerName)) return true;
-  for (final tool in TeammateBusToolName.values) {
-    if (haystack.contains(tool.value)) return true;
-  }
-  return false;
+  return text.toLowerCase().contains(teammateBusMcpServerName);
 }
 
-String _stringify(Object? value) {
-  if (value == null) return '';
-  if (value is String) return value;
-  return value.toString();
+/// Whether an ACP tool-call payload is for the host teammate-bus MCP.
+///
+/// Matches [title], [rawInput], and [meta] against the bus server name
+/// (`teammate-bus`). Bare tool names such as `read_messages` do not match.
+bool isTeammateBusToolCall({String? title, Object? rawInput, Object? meta}) {
+  return _mentionsBusValue(title) ||
+      _mentionsBusValue(rawInput) ||
+      _mentionsBusValue(meta);
+}
+
+bool _mentionsBusValue(Object? value) {
+  if (value == null) return false;
+  if (value is String) return isTeammateBusPermissionText(value);
+  if (value is Map) {
+    for (final entry in value.entries) {
+      if (_mentionsBusValue(entry.key) || _mentionsBusValue(entry.value)) {
+        return true;
+      }
+    }
+    return false;
+  }
+  if (value is Iterable) {
+    return value.any(_mentionsBusValue);
+  }
+  return isTeammateBusPermissionText(value.toString());
 }

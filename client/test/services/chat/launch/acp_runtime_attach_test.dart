@@ -231,6 +231,47 @@ void main() {
       expect(harness.runtime.started, isFalse);
     },
   );
+
+  test(
+    'attachAcpRuntime forwards session.acpPermission to cubit.start',
+    () async {
+      final harness = _Harness();
+      final session = _personalSession(acpPermission: LaunchSecurityPolicy.ask);
+
+      final handled = await harness.service.attachAcpRuntime(
+        _personalJob(session),
+        session,
+      );
+
+      expect(handled, isTrue);
+      expect(harness.runtime.started, isTrue);
+      expect(harness.runtime.permissionPolicy, LaunchSecurityPolicy.ask);
+      expect(harness.tab.acpRuntime, isNotNull);
+    },
+  );
+
+  test(
+    'attachMemberAcpRuntime forwards the binding acpPermission to cubit.start',
+    () async {
+      final harness = _Harness();
+      final session = _mixedSession(
+        acp: true,
+        acpPermission: LaunchSecurityPolicy.ask,
+      );
+      final team = _mixedTeam();
+      final member = _lead();
+
+      final handled = await harness.service.attachMemberAcpRuntime(
+        _job(session, team, member),
+        session,
+        (team: team, member: member, cli: CliTool.claude),
+      );
+
+      expect(handled, isTrue);
+      expect(harness.runtime.started, isTrue);
+      expect(harness.runtime.permissionPolicy, LaunchSecurityPolicy.ask);
+    },
+  );
 }
 
 class _Harness {
@@ -247,6 +288,7 @@ class _Harness {
       _Host(tabStore, materializer),
       storage: fakeHomeStorage(),
       acpRuntimeFactory: ({required logger, required tool}) => runtime,
+      prepareAcpContribution: (session, workspace) async => const {},
       prepareAcpTeamConnect:
           ({
             required session,
@@ -304,7 +346,10 @@ TeamProfile _mixedTeam() => const TeamProfile(
 TeamMemberConfig _lead() =>
     const TeamMemberConfig(id: 'lead', name: 'Lead', cli: CliTool.claude);
 
-AppSession _mixedSession({required bool acp}) => AppSession(
+AppSession _mixedSession({
+  required bool acp,
+  LaunchSecurityPolicy acpPermission = LaunchSecurityPolicy.fullAccess,
+}) => AppSession(
   sessionId: 's1',
   workspaceId: 'w1',
   sessionTeam: 'team-1',
@@ -314,11 +359,34 @@ AppSession _mixedSession({required bool acp}) => AppSession(
       taskId: 'task-lead',
       cli: CliTool.claude,
       acp: acp,
+      acpPermission: acpPermission,
     ),
   ],
   memberTargets: const {'lead': 'local'},
   createdAt: 1,
 );
+
+AppSession _personalSession({
+  LaunchSecurityPolicy acpPermission = LaunchSecurityPolicy.fullAccess,
+}) => AppSession(
+  sessionId: 's1',
+  workspaceId: 'w1',
+  cli: CliTool.claude,
+  acp: true,
+  acpPermission: acpPermission,
+  createdAt: 1,
+);
+
+SessionConnectJob _personalJob(AppSession session) {
+  final workspace = Workspace(workspaceId: 'w1', createdAt: 1);
+  return SessionConnectJob(
+    session: session,
+    request: SessionOpenRequest(session: session, workspace: workspace),
+    generation: 1,
+    workspace: workspace,
+    reason: LaunchReason.create,
+  );
+}
 
 SessionConnectJob _job(
   AppSession session,
@@ -416,6 +484,7 @@ class _RecordingMaterializer extends TabMemberMaterializer {
 class _RecordingAcpRuntime implements AcpSessionRuntimeApi {
   var started = false;
   List<acpd.McpServer> mcpServers = const [];
+  LaunchSecurityPolicy permissionPolicy = LaunchSecurityPolicy.fullAccess;
   void Function()? onStart;
   Completer<void>? startHold;
 
@@ -427,12 +496,19 @@ class _RecordingAcpRuntime implements AcpSessionRuntimeApi {
     required String workingDirectory,
     Map<String, String> baseEnv = const {},
     List<acpd.McpServer> mcpServers = const [],
+    LaunchSecurityPolicy permissionPolicy = LaunchSecurityPolicy.fullAccess,
   }) async {
     onStart?.call();
     final hold = startHold;
     if (hold != null) await hold.future;
     started = true;
     this.mcpServers = mcpServers;
+    this.permissionPolicy = permissionPolicy;
+  }
+
+  @override
+  void setPermissionPolicy(LaunchSecurityPolicy policy) {
+    permissionPolicy = policy;
   }
 
   @override

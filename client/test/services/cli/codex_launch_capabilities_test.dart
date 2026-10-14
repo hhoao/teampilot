@@ -125,6 +125,7 @@ void main() {
   test('Codex assembler rejects every non-full-access policy', () {
     for (final policy in const [
       LaunchSecurityPolicy.cliDefault,
+      LaunchSecurityPolicy.ask,
       LaunchSecurityPolicy.askReadOnlyTrusted,
       LaunchSecurityPolicy.autoApproveWorkspaceWriteTrusted,
     ]) {

@@ -1149,4 +1149,134 @@ void main() {
     expect(restored!.archived, isFalse);
     await tmp.delete(recursive: true);
   });
+
+  test(
+    'updateAcpPermission personal Claude acp true round-trips ask',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('repo_acp_perm_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(
+        rootDir: tmp.path,
+        storage: _repoStorage(tmp),
+      );
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/repo/main'),
+      ]);
+      final session = (await repo.createSession(
+        workspace.workspaceId,
+        cli: CliTool.claude,
+        acp: true,
+      )).session;
+      expect(session.acp, isTrue);
+      expect(session.acpPermission, LaunchSecurityPolicy.fullAccess);
+
+      final updated = await repo.updateAcpPermission(
+        session.sessionId,
+        policy: LaunchSecurityPolicy.ask,
+      );
+      expect(updated, isNotNull);
+      expect(updated!.acpPermission, LaunchSecurityPolicy.ask);
+
+      final reloaded = (await repo.loadSessions()).singleWhere(
+        (s) => s.sessionId == session.sessionId,
+      );
+      expect(reloaded.acpPermission, LaunchSecurityPolicy.ask);
+    },
+  );
+
+  test('updateAcpPermission personal PTY stays fullAccess', () async {
+    final tmp = await Directory.systemTemp.createTemp('repo_acp_pty_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
+    final workspace = await repo.createWorkspace([
+      WorkspaceFolder(path: '/repo/main'),
+    ]);
+    final session = (await repo.createSession(
+      workspace.workspaceId,
+      cli: CliTool.claude,
+    )).session;
+    expect(session.acp, isFalse);
+    expect(session.acpPermission, LaunchSecurityPolicy.fullAccess);
+
+    final updated = await repo.updateAcpPermission(
+      session.sessionId,
+      policy: LaunchSecurityPolicy.ask,
+    );
+    expect(updated, isNotNull);
+    expect(updated!.acpPermission, LaunchSecurityPolicy.fullAccess);
+    expect(updated.sessionId, session.sessionId);
+
+    final reloaded = (await repo.loadSessions()).singleWhere(
+      (s) => s.sessionId == session.sessionId,
+    );
+    expect(reloaded.acpPermission, LaunchSecurityPolicy.fullAccess);
+  });
+
+  test('updateAcpPermission mixed only changes the ACP binding', () async {
+    final tmp = await Directory.systemTemp.createTemp('repo_acp_mixed_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
+    final workspace = await repo.createWorkspace([
+      WorkspaceFolder(path: '/repo/main'),
+    ]);
+    final session = (await repo.createSession(
+      workspace.workspaceId,
+      sessionTeam: 'team-mixed',
+      rosterMembers: const [
+        TeamMemberConfig(id: 'lead', name: 'Lead', cli: CliTool.claude),
+        TeamMemberConfig(id: 'op', name: 'Op', cli: CliTool.opencode),
+      ],
+      memberClis: const {'lead': CliTool.claude, 'op': CliTool.opencode},
+      teamMode: TeamMode.mixed,
+    )).session;
+    expect(session.acp, isFalse);
+    expect(session.acpPermission, LaunchSecurityPolicy.fullAccess);
+    expect(session.bindingFor('lead')!.acp, isTrue);
+    expect(session.bindingFor('op')!.acp, isFalse);
+
+    final updated = await repo.updateAcpPermission(
+      session.sessionId,
+      memberId: 'lead',
+      policy: LaunchSecurityPolicy.ask,
+    );
+    expect(updated, isNotNull);
+    expect(updated!.acpPermission, LaunchSecurityPolicy.fullAccess);
+    expect(updated.bindingFor('lead')!.acpPermission, LaunchSecurityPolicy.ask);
+    expect(
+      updated.bindingFor('op')!.acpPermission,
+      LaunchSecurityPolicy.fullAccess,
+    );
+
+    final ptyNoop = await repo.updateAcpPermission(
+      session.sessionId,
+      memberId: 'op',
+      policy: LaunchSecurityPolicy.ask,
+    );
+    expect(
+      ptyNoop!.bindingFor('op')!.acpPermission,
+      LaunchSecurityPolicy.fullAccess,
+    );
+    expect(ptyNoop.bindingFor('lead')!.acpPermission, LaunchSecurityPolicy.ask);
+  });
+
+  test('updateAcpPermission unknown session returns null', () async {
+    final tmp = await Directory.systemTemp.createTemp('repo_acp_missing_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: _repoStorage(tmp),
+    );
+    await repo.createWorkspace([WorkspaceFolder(path: '/repo/main')]);
+    final updated = await repo.updateAcpPermission(
+      'missing-session',
+      policy: LaunchSecurityPolicy.ask,
+    );
+    expect(updated, isNull);
+  });
 }

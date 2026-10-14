@@ -70,6 +70,7 @@ class CapturingSessionRepository extends Fake implements SessionRepository {
     bool seedCodexMemberAcp = false,
     bool seedCursorMemberAcp = true,
     bool seedOpencodeMemberAcp = true,
+    LaunchSecurityPolicy acpPermission = LaunchSecurityPolicy.fullAccess,
   }) async {
     createCalls.add(
       _CreateSessionCall(
