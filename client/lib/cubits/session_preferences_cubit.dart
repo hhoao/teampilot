@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../models/cli_binary_kind.dart';
 import '../models/session_preferences.dart';
 import '../services/cli/cli_tool_locator.dart';
 import '../services/cli/registry/capabilities/cli_executable_capability.dart';
@@ -47,10 +48,12 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   SessionPreferencesCubit({
     required SessionPreferencesRepository repository,
     Map<CliTool, String> locatedExecutables = const {},
+    Map<CliTool, String> locatedAcpAdapters = const {},
     Map<String, String> locatedToolchains = const {},
     CliToolRegistry? cliToolRegistry,
   }) : _repository = repository,
        _locatedExecutables = _normalizeLocatedExecutables(locatedExecutables),
+       _locatedAcpAdapters = _normalizeLocatedAcpAdapters(locatedAcpAdapters),
        _locatedToolchains = _normalizeLocatedToolchains(locatedToolchains),
        _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry,
        super(SessionPreferencesState());
@@ -62,8 +65,11 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
 
   final SessionPreferencesRepository _repository;
   final Map<CliTool, String> _locatedExecutables;
+  final Map<CliTool, String> _locatedAcpAdapters;
   final Map<String, String> _locatedToolchains;
   final CliToolRegistry _cliToolRegistry;
+  final Map<(CliTool, CliBinaryKind), String> _installedVersions = {};
+  final Map<(CliTool, CliBinaryKind), String> _latestVersions = {};
 
   /// Merges startup PATH discovery; user-configured paths always win.
   void mergeLocatedExecutables(Map<CliTool, String> discovered) {
@@ -87,6 +93,82 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   /// Absolute path found at startup for [cli], if any (ignores bare command names).
   String discoveredExecutablePath(CliTool cli) =>
       _locatedExecutables[cli]?.trim() ?? '';
+
+  /// Merges startup ACP adapter discovery (absolute paths only).
+  void mergeLocatedAcpAdapters(Map<CliTool, String> discovered) {
+    var changed = false;
+    for (final entry in discovered.entries) {
+      final path = entry.value.trim();
+      if (path.isEmpty || !_looksLikeAbsolutePath(path)) continue;
+      if (_locatedAcpAdapters[entry.key] == path) continue;
+      _locatedAcpAdapters[entry.key] = path;
+      changed = true;
+    }
+    if (changed) {
+      emit(
+        state.copyWith(
+          locatedExecutablesRevision: state.locatedExecutablesRevision + 1,
+        ),
+      );
+    }
+  }
+
+  /// Absolute path found at startup for the ACP adapter of [cli], if any.
+  String discoveredAcpAdapterPath(CliTool cli) =>
+      _locatedAcpAdapters[cli]?.trim() ?? '';
+
+  /// True when [cli] has a discovered absolute ACP adapter path.
+  bool hasKnownAcpAdapter(CliTool cli) {
+    return _looksLikeAbsolutePath(discoveredAcpAdapterPath(cli));
+  }
+
+  void mergeBinaryVersion({
+    required CliTool cli,
+    required CliBinaryKind kind,
+    String? installed,
+    String? latest,
+  }) {
+    final key = (cli, kind);
+    var changed = false;
+    if (installed != null && _installedVersions[key] != installed) {
+      _installedVersions[key] = installed;
+      changed = true;
+    }
+    if (latest != null && _latestVersions[key] != latest) {
+      _latestVersions[key] = latest;
+      changed = true;
+    }
+    if (changed) {
+      emit(
+        state.copyWith(
+          locatedExecutablesRevision: state.locatedExecutablesRevision + 1,
+        ),
+      );
+    }
+  }
+
+  String? installedVersion(CliTool cli, CliBinaryKind kind) =>
+      _installedVersions[(cli, kind)];
+
+  String? latestVersion(CliTool cli, CliBinaryKind kind) =>
+      _latestVersions[(cli, kind)];
+
+  bool personalAcpDefaultFor(CliTool cli) => switch (cli) {
+    CliTool.claude => state.preferences.claudePersonalAcpDefault,
+    CliTool.cursor => state.preferences.cursorPersonalAcpDefault,
+    CliTool.codex => state.preferences.codexPersonalAcpDefault,
+    CliTool.opencode => state.preferences.opencodePersonalAcpDefault,
+    _ => false,
+  };
+
+  Future<void> setPersonalAcpDefaultFor(CliTool cli, bool value) =>
+      switch (cli) {
+        CliTool.claude => setClaudePersonalAcpDefault(value),
+        CliTool.cursor => setCursorPersonalAcpDefault(value),
+        CliTool.codex => setCodexPersonalAcpDefault(value),
+        CliTool.opencode => setOpencodePersonalAcpDefault(value),
+        _ => Future.value(),
+      };
 
   /// Merges startup PATH discovery for toolchain tools; user paths always win.
   void mergeLocatedToolchains(Map<String, String> discovered) {
@@ -345,6 +427,19 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     for (final entry in locatedExecutables.entries) {
       final value = entry.value.trim();
       if (value.isNotEmpty) normalized[entry.key] = value;
+    }
+    return normalized;
+  }
+
+  static Map<CliTool, String> _normalizeLocatedAcpAdapters(
+    Map<CliTool, String> locatedAcpAdapters,
+  ) {
+    final normalized = <CliTool, String>{};
+    for (final entry in locatedAcpAdapters.entries) {
+      final value = entry.value.trim();
+      if (value.isNotEmpty && _looksLikeAbsolutePath(value)) {
+        normalized[entry.key] = value;
+      }
     }
     return normalized;
   }

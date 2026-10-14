@@ -1,0 +1,1 @@
+enum CliBinaryKind { cli, adapter }
