@@ -37,6 +37,10 @@ abstract interface class AcpCapability implements CliCapability {
   /// servers are also forwarded on `session/new`.
   bool get forwardSessionNewMcpServers => true;
 
+  /// Extra `session/new` `_meta` (for example Claude mixed-seat
+  /// `disallowedTools` / `allowedTools`). Default empty.
+  Map<String, Object?> sessionNewMeta(Map<String, String> env) => const {};
+
   /// Env for the agent process: [baseEnv] preserved plus isolated config
   /// dir, injected credentials, and surface identification.
   Map<String, String> buildEnvironment({

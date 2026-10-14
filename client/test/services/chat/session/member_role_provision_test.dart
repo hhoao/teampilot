@@ -184,11 +184,45 @@ void main() {
     },
   );
 
+  test('mixedClaudeDisallowedTools blocks ListAgents', () {
+    expect(
+      MemberRoleProvision.mixedClaudeDisallowedTools,
+      contains('ListAgents'),
+    );
+  });
+
+  test('mixedAcpAllowedTools pre-allows the teammate-bus MCP wildcard', () {
+    expect(
+      MemberRoleProvision.mixedAcpAllowedTools,
+      containsAll(['mcp__teammate-bus', 'mcp__teammate-bus__*']),
+    );
+  });
+
+  test('mixed role addenda ban native ListAgents and other Claude sessions', () {
+    expect(
+      MemberRoleProvision.mixedNativeSwarmBan,
+      contains('ListAgents'),
+    );
+    expect(
+      MemberRoleProvision.mixedTeamLeadRoleAddendum,
+      contains(MemberRoleProvision.mixedNativeSwarmBan.trim()),
+    );
+    expect(
+      MemberRoleProvision.mixedTeammateRoleAddendum,
+      contains(MemberRoleProvision.mixedNativeSwarmBan.trim()),
+    );
+    expect(
+      MemberRoleProvision.mixedTeammatePushRoleAddendum,
+      contains(MemberRoleProvision.mixedNativeSwarmBan.trim()),
+    );
+  });
+
   test('disallowedToolsForMixedClaude worker omits Agent', () {
     final tools = MemberRoleProvision.disallowedToolsForMixedClaude(
       isLead: false,
     );
     expect(tools, containsAll(MemberRoleProvision.mixedClaudeDisallowedTools));
+    expect(tools, contains('ListAgents'));
     expect(tools, isNot(contains('Agent')));
     expect(tools, isNot(contains('Bash')));
   });

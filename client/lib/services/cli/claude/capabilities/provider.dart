@@ -661,6 +661,11 @@ final class ClaudeProviderCapability extends CatalogModelCapability
           memberId: scope.memberId,
         ),
       if (!mixed && !simple) 'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
+      if (mixed && member != null && member.isValid)
+        MemberRoleProvision.mixedAcpDisallowedToolsEnvKey:
+            MemberRoleProvision.disallowedToolsForMixedClaude(
+              isLead: TeamMemberNaming.isTeamLead(member),
+            ).join(','),
       'CLAUDE_CODE_NO_FLICKER': '1',
       'MCP_TOOL_TIMEOUT': '$busToolTimeoutMs',
     };

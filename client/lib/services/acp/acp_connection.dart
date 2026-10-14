@@ -183,6 +183,7 @@ class AcpAgentConnection {
   Future<AcpAgentSession> openSession({
     required String cwd,
     List<acpd.McpServer> mcpServers = const [],
+    Map<String, Object?> meta = const {},
     Duration permissionTimeout = AcpAgentSession.defaultPermissionTimeout,
   }) async {
     final existing = _openSession;
@@ -210,21 +211,22 @@ class AcpAgentConnection {
     late final acpd.NewSessionResponse response;
     try {
       response = await _client.client.newSession(
-        acpd.NewSessionRequest(cwd: cwd, mcpServers: mcpServers),
+        acpd.NewSessionRequest(cwd: cwd, mcpServers: mcpServers, meta: meta),
       );
     } catch (_) {
       earlyPermissionReg.dispose();
       rethrow;
     } finally {
       earlyUpdateReg.dispose();
-      earlyPermissionReg.dispose();
     }
     final session = AcpAgentSession(
       connection: this,
       sessionId: response.sessionId,
       permissionTimeout: permissionTimeout,
     );
-    // Session replaced the handshake handler; this dispose is then a no-op.
+    // Session replaced the handshake handler; dispose after that so a
+    // request_permission in the session/new completion gap is not
+    // method-not-found (Claude remembers "User rejected MCP").
     earlyPermissionReg.dispose();
     _openSession = session;
     for (final params in earlyUpdates) {

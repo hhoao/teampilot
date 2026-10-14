@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:acpd/acpd.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/claude/capabilities/acp.dart';
+import 'package:teampilot/services/cli/registry/member_role_provision.dart';
 
 Map<String, String> _env(
   ClaudeAcpCapability cap, {
@@ -14,6 +15,39 @@ Map<String, String> _env(
 );
 
 void main() {
+  test('mixed ACP session/new meta forwards disallowed tools from env', () {
+    const cap = ClaudeAcpCapability();
+    expect(cap.sessionNewMeta(const {}), isEmpty);
+    final meta = cap.sessionNewMeta(const {
+      MemberRoleProvision.mixedAcpDisallowedToolsEnvKey:
+          'SendMessage,ListAgents,Agent',
+    });
+    expect(
+      meta['claudeCode'],
+      {
+        'options': {
+          'disallowedTools': ['SendMessage', 'ListAgents', 'Agent'],
+          'allowedTools': MemberRoleProvision.mixedAcpAllowedTools,
+        },
+      },
+    );
+  });
+
+  test('mixed ACP session/new meta pre-allows teammate-bus MCP tools', () {
+    const cap = ClaudeAcpCapability();
+    final options =
+        (cap.sessionNewMeta(const {
+                  MemberRoleProvision.mixedAcpDisallowedToolsEnvKey:
+                      'ListAgents',
+                })['claudeCode']!
+                as Map)['options']!
+            as Map;
+    expect(
+      options['allowedTools'],
+      containsAll(['mcp__teammate-bus', 'mcp__teammate-bus__*']),
+    );
+  });
+
   test('launch argv is the adapter alone, not claude --acp', () {
     const cap = ClaudeAcpCapability();
     final exe = cap.agentExecutable('/usr/bin/claude');

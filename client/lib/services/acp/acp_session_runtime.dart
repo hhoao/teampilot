@@ -53,6 +53,7 @@ class AcpLaunchPlan {
     required this.agentExecutable,
     this.authenticateMethodId,
     this.forwardSessionNewMcpServers = true,
+    this.sessionNewMeta,
   });
 
   /// Full argv candidates (executable + one ACP flag each), probe order.
@@ -78,6 +79,10 @@ class AcpLaunchPlan {
   /// When false, [AcpSessionRuntime.start] opens `session/new` with an empty
   /// MCP list even if the caller passed servers (isolated `mcp.json` remains).
   final bool forwardSessionNewMcpServers;
+
+  /// Extra `session/new` `_meta` derived from the process env (mixed Claude
+  /// `disallowedTools` / `allowedTools`). Null or empty is omitted on the wire.
+  final Map<String, Object?> Function(Map<String, String> env)? sessionNewMeta;
 }
 
 /// The spawner reported that the candidate flag was rejected: the agent
@@ -282,6 +287,7 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
         final session = await connection.openSession(
           cwd: workingDirectory,
           mcpServers: sessionMcp,
+          meta: plan.sessionNewMeta?.call(env) ?? const {},
         );
         _connection = connection;
         _session = session;

@@ -50,6 +50,18 @@ void main() {
     );
   });
 
+  test('generic allow kind is auto-allowed', () {
+    expect(
+      autoAllowAcpPermissionOptionId({
+        'options': [
+          {'optionId': 'allow', 'kind': 'allow'},
+          {'optionId': 'reject-1', 'kind': 'reject-once'},
+        ],
+      }),
+      'allow',
+    );
+  });
+
   test('accepts hyphen and underscore kinds from raw JSON', () {
     expect(
       autoAllowAcpPermissionOptionId({
@@ -85,6 +97,42 @@ void main() {
         ],
       }),
       'short',
+    );
+  });
+
+  test('teammate-bus last-resort allows first non-reject option', () {
+    expect(
+      autoAllowAcpPermissionOptionId({
+        'sessionId': 's',
+        'toolCall': {
+          'toolCallId': 't',
+          'title': 'Use MCP tool',
+          '_meta': {
+            'claudeCode': {
+              'mcpServer': {'name': 'teammate-bus'},
+              'toolName': 'mcp__teammate-bus__list_teammates',
+            },
+          },
+        },
+        'options': [
+          {'optionId': 'reject-1', 'name': 'Reject', 'kind': 'reject_once'},
+          {'optionId': 'yes-1', 'name': 'Yes', 'kind': 'selected'},
+        ],
+      }),
+      'yes-1',
+    );
+  });
+
+  test('non-host last-resort does not apply to bash', () {
+    expect(
+      autoAllowAcpPermissionOptionId({
+        'sessionId': 's',
+        'toolCall': {'toolCallId': 't', 'title': 'bash'},
+        'options': [
+          {'optionId': 'yes-1', 'name': 'Yes', 'kind': 'selected'},
+        ],
+      }),
+      isNull,
     );
   });
 

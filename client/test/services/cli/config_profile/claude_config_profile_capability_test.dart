@@ -256,6 +256,10 @@ void main() {
       isNot(contains('CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS')),
     );
     expect(contribution.environment['CLAUDE_CODE_NO_FLICKER'], '1');
+    expect(
+      contribution.environment[MemberRoleProvision.mixedAcpDisallowedToolsEnvKey],
+      contains('ListAgents'),
+    );
 
     // The member settings file must not re-enable agent-teams either: a
     // mixed member is a standalone process driven by the teammate-bus Stop

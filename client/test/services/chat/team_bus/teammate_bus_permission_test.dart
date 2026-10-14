@@ -27,6 +27,21 @@ void main() {
     );
   });
 
+  test('Claude ACP mcpServer meta is host-owned', () {
+    expect(
+      isTeammateBusToolCall(
+        title: 'Use MCP tool',
+        meta: const {
+          'claudeCode': {
+            'mcpServer': {'name': 'teammate-bus', 'source': 'sdk'},
+            'toolName': 'mcp__teammate-bus__list_teammates',
+          },
+        },
+      ),
+      isTrue,
+    );
+  });
+
   test('isTeammateBusPermissionText matches the bus server name', () {
     expect(
       isTeammateBusPermissionText('teammate-bus-read_messages: read_messages'),

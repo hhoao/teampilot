@@ -2,6 +2,7 @@ import 'package:acpd/acpd.dart';
 
 import '../../../acp/acp_agent_translator.dart';
 import '../../registry/capabilities/acp_capability.dart';
+import '../../registry/member_role_provision.dart';
 
 /// Claude absorption of ACP protocol quirks. The adapter
 /// (`claude-agent-acp`) takes no ACP flag, and no abort workaround is needed.
@@ -84,6 +85,28 @@ final class ClaudeAcpCapability implements AcpCapability {
 
   @override
   bool get forwardSessionNewMcpServers => true;
+
+  @override
+  Map<String, Object?> sessionNewMeta(Map<String, String> env) {
+    final raw =
+        env[MemberRoleProvision.mixedAcpDisallowedToolsEnvKey]?.trim() ?? '';
+    if (raw.isEmpty) return const {};
+    final denied = [
+      for (final part in raw.split(','))
+        if (part.trim().isNotEmpty) part.trim(),
+    ];
+    if (denied.isEmpty) return const {};
+    return {
+      'claudeCode': {
+        'options': {
+          'disallowedTools': denied,
+          'allowedTools': List<String>.from(
+            MemberRoleProvision.mixedAcpAllowedTools,
+          ),
+        },
+      },
+    };
+  }
 
   @override
   Future<String?> resolveAuthenticateMethodId(Map<String, String> env) async =>

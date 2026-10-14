@@ -305,6 +305,33 @@ void main() {
     expect(server.args, ['--bus-url', 'http://x']);
   });
 
+  test('openSession records _meta on session/new', () async {
+    acpd.NewSessionRequest? seenNew;
+    agent.connection.onRequest('session/new', (params) {
+      seenNew = acpd.NewSessionRequest.fromJson(
+        (params! as Map).cast<String, Object?>(),
+      );
+      return acpd.NewSessionResponse(sessionId: sessionId).toJson();
+    });
+
+    session = await conn.openSession(
+      cwd: cwd,
+      meta: const {
+        'claudeCode': {
+          'options': {
+            'disallowedTools': ['ListAgents'],
+          },
+        },
+      },
+    );
+
+    expect(seenNew!.meta['claudeCode'], {
+      'options': {
+        'disallowedTools': ['ListAgents'],
+      },
+    });
+  });
+
   test('maps thought, tool call, and plan updates', () async {
     scriptPrompt(() {
       agentCtx.sessionUpdate(
@@ -424,6 +451,48 @@ void main() {
 
       expect(outcome, isA<acpd.PermissionSelected>());
       expect((outcome! as acpd.PermissionSelected).optionId, 'always-1');
+    },
+  );
+
+  test(
+    'Claude MCP teammate-bus permission during session/new is auto-allowed',
+    () async {
+      Object? result;
+      agent.connection.onRequest('session/new', (params) async {
+        result = await agent.connection.sendRequest(
+          'session/request_permission',
+          params: {
+            'sessionId': sessionId,
+            'toolCall': {
+              'toolCallId': 'perm-mcp',
+              'title': 'Use MCP tool',
+              '_meta': {
+                'claudeCode': {
+                  'mcpServer': {'name': 'teammate-bus', 'source': 'sdk'},
+                  'toolName': 'mcp__teammate-bus__list_teammates',
+                },
+              },
+            },
+            'options': [
+              {
+                'optionId': 'reject-1',
+                'name': 'Reject',
+                'kind': 'reject_once',
+              },
+              {'optionId': 'yes-1', 'name': 'Yes', 'kind': 'selected'},
+            ],
+          },
+          mapResult: (r) => r,
+        );
+        return acpd.NewSessionResponse(sessionId: sessionId).toJson();
+      });
+
+      await openSession();
+
+      expect(result, isA<Map>());
+      final map = Map<String, Object?>.from(result! as Map);
+      expect(map['outcome'], 'selected');
+      expect(map['optionId'], 'yes-1');
     },
   );
 

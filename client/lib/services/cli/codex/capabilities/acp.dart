@@ -68,6 +68,9 @@ final class CodexAcpCapability implements AcpCapability {
   bool get forwardSessionNewMcpServers => true;
 
   @override
+  Map<String, Object?> sessionNewMeta(Map<String, String> env) => const {};
+
+  @override
   Future<String?> resolveAuthenticateMethodId(Map<String, String> env) async =>
       authenticateMethodId;
 

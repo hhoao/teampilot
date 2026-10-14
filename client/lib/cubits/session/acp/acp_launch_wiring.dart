@@ -49,6 +49,7 @@ AcpLaunchPlan? capabilityToPlan(AcpCapability? capability) {
     agentExecutable: capability.agentExecutable,
     authenticateMethodId: capability.authenticateMethodId,
     forwardSessionNewMcpServers: capability.forwardSessionNewMcpServers,
+    sessionNewMeta: capability.sessionNewMeta,
   );
 }
 

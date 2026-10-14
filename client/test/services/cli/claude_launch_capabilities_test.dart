@@ -102,6 +102,7 @@ void main() {
     expect(mixedArgs, isNot(contains('--team-name')));
     expect(mixedArgs, isNot(contains('--agent-name')));
     expect(mixedArgs, contains('--disallowedTools'));
+    expect(mixedArgs, contains('ListAgents'));
     expect(simpleArgs, isNot(contains('--team-name')));
     expect(simpleArgs, containsAllInOrder(['--disallowedTools', 'Agent']));
   });

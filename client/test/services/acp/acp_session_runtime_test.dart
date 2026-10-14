@@ -15,6 +15,7 @@ import 'package:teampilot/services/acp/acp_session.dart';
 import 'package:teampilot/services/acp/acp_session_runtime.dart';
 import 'package:teampilot/services/acp/acp_transport.dart';
 import 'package:teampilot/services/cli/gemini/capabilities/acp.dart';
+import 'package:teampilot/services/cli/registry/member_role_provision.dart';
 
 void main() {
   const sessionId = 'sess-1';
@@ -198,6 +199,51 @@ void main() {
     expect(server.name, 'teammate-bus');
     expect(server.command, '/bin/bridge');
     expect(server.args, ['--bus-url', 'http://x']);
+    await runtime.close();
+  });
+
+  test('start forwards sessionNewMeta to session/new', () async {
+    acpd.NewSessionRequest? seenNew;
+    agent.connection.onRequest('session/new', (params) {
+      seenNew = acpd.NewSessionRequest.fromJson(
+        (params! as Map).cast<String, Object?>(),
+      );
+      return acpd.NewSessionResponse(sessionId: sessionId).toJson();
+    });
+
+    const capability = GeminiAcpCapability();
+    final runtime = makeRuntime(
+      (argv, env) async => conn,
+      launchPlanFor: (_) => AcpLaunchPlan(
+        launchArgCandidates: capability.launchArgCandidates,
+        buildEnvironment: capability.buildEnvironment,
+        agentExecutable: capability.agentExecutable,
+        sessionNewMeta: (env) => {
+          'claudeCode': {
+            'options': {
+              'disallowedTools': [
+                env[MemberRoleProvision.mixedAcpDisallowedToolsEnvKey]!,
+              ],
+            },
+          },
+        },
+      ),
+    );
+    await runtime.start(
+      tool: CliTool.gemini,
+      executable: 'gemini',
+      sessionToolDir: sessionToolDir,
+      workingDirectory: cwd,
+      baseEnv: const {
+        MemberRoleProvision.mixedAcpDisallowedToolsEnvKey: 'ListAgents',
+      },
+    );
+
+    expect(seenNew!.meta['claudeCode'], {
+      'options': {
+        'disallowedTools': ['ListAgents'],
+      },
+    });
     await runtime.close();
   });
 

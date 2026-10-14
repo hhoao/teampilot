@@ -49,6 +49,9 @@ final class OpencodeAcpCapability implements AcpCapability {
   bool get forwardSessionNewMcpServers => false;
 
   @override
+  Map<String, Object?> sessionNewMeta(Map<String, String> env) => const {};
+
+  @override
   AcpAgentTranslator get translator => const OpencodeAcpTranslator();
 
   @override

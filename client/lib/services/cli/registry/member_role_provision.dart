@@ -27,9 +27,25 @@ abstract final class MemberRoleProvision {
   /// Server name must match `teammateBusMcpServerName` in TeamBus MCP config.
   static const mixedTeamSessionAllowTools = <String>['mcp__teammate-bus'];
 
+  /// Claude ACP `session/new` `_meta.claudeCode.options.allowedTools`.
+  ///
+  /// ACP owns `permissionMode` / `canUseTool`; MCP tools stay bypass-immune
+  /// unless the SDK allow-list names them. Settings `permissions.allow` is
+  /// the PTY path. Include both the server prefix and the SDK wildcard.
+  static const mixedAcpAllowedTools = <String>[
+    'mcp__teammate-bus',
+    'mcp__teammate-bus__*',
+  ];
+
+  /// Staged into mixed Claude ACP env so `session/new` `_meta` can forward
+  /// [mixedClaudeDisallowedTools] (ACP spawn does not take `--disallowedTools`).
+  static const mixedAcpDisallowedToolsEnvKey =
+      'TEAMPILOT_ACP_DISALLOWED_TOOLS';
+
   /// Native Claude swarm / task tools denied via CLI `--disallowedTools` in
   /// mixed mode (settings `permissions.deny` is omitted there — see
-  /// [teamSessionDenyTools]).
+  /// [teamSessionDenyTools]). ACP mixed seats pass the same list through
+  /// `session/new` `_meta.claudeCode.options.disallowedTools`.
   static const mixedClaudeDisallowedTools = <String>[
     'SendMessage',
     'TaskCreate',
@@ -38,7 +54,14 @@ abstract final class MemberRoleProvision {
     'TaskGet',
     'TaskStop',
     'TaskOutput',
+    'ListAgents',
   ];
+
+  /// Mixed-mode ban: Claude-native swarm/cross-session tools are not the
+  /// TeamPilot roster. Inserted into every mixed role addendum.
+  static const mixedNativeSwarmBan = '''
+**Native Claude swarm is not this team.** Do not call `ListAgents`, `SendMessage`, `TaskCreate`, `TaskList`, or other Claude-native team/cross-session tools. Other Claude sessions on this machine are not your teammates. Roster and mail live only on teammate-bus (`list_teammates`, `send_message`, `wait_for_message` / `read_messages`). Host MCP tools are auto-allowed — never stop to ask the human for `list_teammates` permission.
+''';
 
   /// Extra CLI deny for mixed team-lead only (workers keep Agent for subagents).
   static const mixedClaudeLeadExtraDisallowedTools = <String>['Agent'];
@@ -78,7 +101,7 @@ You are the **team lead** (display name: `team-lead`). You run in the leader ses
 # Team leader (mixed cross-CLI bus)
 You orchestrate teammates via teammate-bus MCP. **Never stand down** — there is no `finish_task` or `leave`; the session ends only when the human closes it.
 <teambus type="...">...</teambus>
-
+$mixedNativeSwarmBan
 ## Execution model
 Every teammate is a **separate live agent with its own terminal**, already running and idling in `wait_for_message` until you hand it work. You drive all execution by routing tasks to them — `send_message` for targeted work, `add_tasks` for the shared pull queue — then synthesize what they return. Your own tools are for **reading and coordinating**: use `Read`/`Glob`/`Grep` to inspect the repo, and the bus tools to assign and collect. The hands-on Bash/Edit/Write runs in the teammates' terminals, so a brief handed to the right teammate is how anything gets done.
 
@@ -105,6 +128,7 @@ While you are inside `wait_for_message`, the human types in TeamPilot — that t
 # Multi-agent teammate (cross-CLI bus)
 You coordinate with teammates ONLY through the teammate-bus MCP tools:
 <teambus type="...">...</teambus>
+$mixedNativeSwarmBan
 - `list_teammates()` — roster + per-member `status` (`idle` | `busy`) and `unread`
 - `read_messages(...)` — page unread/history mail without blocking
 - `send_message(to, content)` — message a teammate by member id (or `"*"` broadcast)
@@ -127,6 +151,7 @@ Either way, call `wait_for_message()` again afterwards. You never poll or claim 
 # Multi-agent teammate (cross-CLI bus, push delivery)
 You coordinate with teammates through the teammate-bus MCP tools:
 <teambus type="...">...</teambus>
+$mixedNativeSwarmBan
 - `list_teammates()` — roster + per-member `status` (`idle` | `busy`) and `unread`
 - `read_messages(mark_read: true)` — read AND consume your unread mail (returns immediately)
 - `send_message(to, content)` — message a teammate by member id (or `"*"` broadcast)
