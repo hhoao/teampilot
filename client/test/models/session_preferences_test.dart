@@ -75,6 +75,23 @@ void main() {
       expect(next.openExistingSessionStartsTerminal, true);
     });
 
+    test('acpAdapterPaths round-trip and omit empties', () {
+      final prefs = SessionPreferences(
+        acpAdapterPaths: const {
+          'claude': '/opt/claude-agent-acp',
+          'codex': '',
+        },
+      );
+      expect(prefs.acpAdapterPathFor('claude'), '/opt/claude-agent-acp');
+      expect(prefs.acpAdapterPathFor('codex'), '');
+      final restored = SessionPreferences.fromJson(prefs.toJson());
+      expect(restored.acpAdapterPaths, {'claude': '/opt/claude-agent-acp'});
+      expect(
+        SessionPreferences.fromJson(const {}).acpAdapterPaths,
+        isEmpty,
+      );
+    });
+
     test('chatSubmitSwitchesToTerminal defaults false', () {
       expect(SessionPreferences().chatSubmitSwitchesToTerminal, isFalse);
     });

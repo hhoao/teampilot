@@ -4,6 +4,7 @@ class SessionPreferences {
   SessionPreferences({
     Map<String, String> cliExecutablePaths = const {},
     Map<String, String> toolchainPaths = const {},
+    Map<String, String> acpAdapterPaths = const {},
     this.defaultSshWorkingDirectory = '',
     this.sshUseLoginShell = false,
     this.autoLaunchAllMembersOnConnect = false,
@@ -27,6 +28,9 @@ class SessionPreferences {
        ),
        toolchainPaths = Map.unmodifiable(
          _normalizeCliExecutablePaths(toolchainPaths),
+       ),
+       acpAdapterPaths = Map.unmodifiable(
+         _normalizeCliExecutablePaths(acpAdapterPaths),
        );
 
   /// Well-known keys for [toolchainPaths].
@@ -38,6 +42,7 @@ class SessionPreferences {
       cliExecutablePaths: _cliExecutablePathsFromJson(
         json['cliExecutablePaths'],
       ),
+      acpAdapterPaths: _cliExecutablePathsFromJson(json['acpAdapterPaths']),
       toolchainPaths: _cliExecutablePathsFromJson(json['toolchainPaths']),
       defaultSshWorkingDirectory:
           json['defaultSshWorkingDirectory'] as String? ?? '',
@@ -76,6 +81,10 @@ class SessionPreferences {
   /// CLI executable paths keyed by [CliTool.value]. Empty value means fall
   /// back to startup discovery, then the tool name on PATH.
   final Map<String, String> cliExecutablePaths;
+
+  /// ACP adapter executable paths keyed by [CliTool.value]. Empty value means
+  /// fall back to startup discovery.
+  final Map<String, String> acpAdapterPaths;
 
   /// Toolchain executable paths keyed by toolchain constant (e.g.
   /// [toolchainGit], [toolchainNode]). Empty value means the tool is not
@@ -162,8 +171,12 @@ class SessionPreferences {
   String cliExecutablePathFor(String toolId) =>
       cliExecutablePaths[toolId]?.trim() ?? '';
 
+  String acpAdapterPathFor(String toolId) =>
+      acpAdapterPaths[toolId]?.trim() ?? '';
+
   SessionPreferences copyWith({
     Map<String, String>? cliExecutablePaths,
+    Map<String, String>? acpAdapterPaths,
     Map<String, String>? toolchainPaths,
     String? defaultSshWorkingDirectory,
     bool? sshUseLoginShell,
@@ -186,6 +199,7 @@ class SessionPreferences {
   }) {
     return SessionPreferences(
       cliExecutablePaths: cliExecutablePaths ?? this.cliExecutablePaths,
+      acpAdapterPaths: acpAdapterPaths ?? this.acpAdapterPaths,
       toolchainPaths: toolchainPaths ?? this.toolchainPaths,
       defaultSshWorkingDirectory:
           defaultSshWorkingDirectory ?? this.defaultSshWorkingDirectory,
@@ -226,6 +240,7 @@ class SessionPreferences {
   Map<String, Object?> toJson() {
     return <String, Object?>{
       'cliExecutablePaths': cliExecutablePaths,
+      'acpAdapterPaths': acpAdapterPaths,
       'toolchainPaths': toolchainPaths,
       'defaultSshWorkingDirectory': defaultSshWorkingDirectory,
       'sshUseLoginShell': sshUseLoginShell,
