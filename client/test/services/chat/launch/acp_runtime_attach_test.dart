@@ -2,14 +2,20 @@ import 'dart:async';
 
 import 'package:acpd/acpd.dart' as acpd;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/session/acp/acp_transport_wiring.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/session_member_binding.dart';
+import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
 import 'package:teampilot/services/acp/acp_session_runtime.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
+import 'package:teampilot/services/catalog/chat_data_snapshot.dart';
+import 'package:teampilot/services/chat/launch/connect/acp_launch_environment.dart';
 import 'package:teampilot/services/chat/launch/connect/acp_runtime_attach.dart';
 import 'package:teampilot/services/chat/launch/connect/chat_session_shell_factory.dart';
 import 'package:teampilot/services/chat/launch/connect/connect_shell_result.dart';
@@ -22,6 +28,8 @@ import 'package:teampilot/services/chat/runtime/tab_session_runtime_coordinator.
 import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/services/chat/session/chat_tab_info.dart';
 import 'package:teampilot/services/chat/session/chat_tab_store.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart'
+    show SessionLifecycleService;
 import 'package:teampilot/services/chat/session/session_open_request.dart';
 import 'package:teampilot/services/chat/team_bus/agent_node.dart';
 import 'package:teampilot/services/chat/team_bus/team_bus.dart';
@@ -272,6 +280,99 @@ void main() {
       expect(harness.runtime.permissionPolicy, LaunchSecurityPolicy.ask);
     },
   );
+
+  test(
+    'attachAcpRuntime routes a remote (ssh) personal session to remote staging values',
+    () async {
+      final harness = _Harness(
+        launchTarget: RuntimeTarget.ssh('p1', label: 'host'),
+        remoteStaging:
+            ({
+              required session,
+              required workspace,
+              required launchTarget,
+            }) async => (
+              shellLaunch: ShellLaunchSpec(
+                plan: LaunchPlan(
+                  env: const {
+                    'PATH': '/remote/bin',
+                    'CLAUDE_CONFIG_DIR': '/remote/cfg/s1',
+                  },
+                  resume: false,
+                  taskId: 's1',
+                  cliTeamName: '',
+                  memberConfigDir: '/remote/cfg/s1',
+                  resolvedRoots: const [],
+                ),
+                launchContext: CliLaunchContext(
+                  team: const TeamProfile(id: 't', name: 't'),
+                  member: const TeamMemberConfig(id: 's1', name: 's1'),
+                ),
+              ),
+              warnings: const <String>[],
+              remoteCliPath: '/remote/bin/claude',
+            ),
+        sshLaunchFactory:
+            ({required session, required launchTarget}) => (
+              profile: const SshProfile(
+                id: 'p1',
+                name: 'host',
+                host: 'host',
+                username: 'u',
+                authType: SshAuthType.password,
+              ),
+              // The injected `acpRuntimeFactory` replaces the production
+              // spawner, so this opener is never invoked.
+              openChannel: (_) async => throw UnimplementedError(),
+            ),
+      );
+      final session = _personalSession();
+
+      final handled = await harness.service.attachAcpRuntime(
+        _personalJob(session),
+        session,
+      );
+
+      expect(handled, isTrue);
+      expect(harness.runtime.started, isTrue);
+      expect(harness.runtime.executable, '/remote/bin/claude');
+      expect(harness.runtime.sessionToolDir, '/remote/cfg/s1');
+      expect(harness.runtime.baseEnv['PATH'], '/remote/bin');
+      expect(harness.runtime.baseEnv['CLAUDE_CONFIG_DIR'], '/remote/cfg/s1');
+    },
+  );
+
+  test('attachMemberAcpRuntime keeps a remote (ssh) member on the terminal',
+      () async {
+    final harness = _Harness();
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      sessionTeam: 'team-1',
+      members: [
+        SessionMemberBinding(
+          rosterMemberId: 'lead',
+          taskId: 'task-lead',
+          cli: CliTool.claude,
+          acp: true,
+        ),
+      ],
+      memberTargets: const {'lead': 'ssh:p1'},
+      createdAt: 1,
+    );
+    final team = _mixedTeam();
+    final member = _lead();
+
+    final handled = await harness.service.attachMemberAcpRuntime(
+      _job(session, team, member),
+      session,
+      (team: team, member: member, cli: CliTool.claude),
+    );
+
+    expect(handled, isFalse);
+    expect(harness.tab.memberAcpRuntimes, isEmpty);
+    expect(harness.runtime.started, isFalse);
+  });
 }
 
 class _Harness {
@@ -280,12 +381,15 @@ class _Harness {
       'teammate-bus': {'type': 'http', 'url': 'http://127.0.0.1:9/mcp'},
     },
     this.gate,
-  }) {
+    RuntimeTarget? launchTarget,
+    this.remoteStaging,
+    this.sshLaunchFactory,
+  }) : launchTarget = launchTarget ?? RuntimeTarget.local() {
     tabStore.setActiveWorkspaceId('w1');
     tabStore.registerSession(tab);
     materializer = _RecordingMaterializer(tabStore: tabStore);
     service = SessionLaunchService(
-      _Host(tabStore, materializer),
+      _Host(tabStore, materializer, this.launchTarget),
       storage: fakeHomeStorage(),
       acpRuntimeFactory: ({required logger, required tool}) => runtime,
       prepareAcpContribution: (session, workspace) async => const {},
@@ -321,11 +425,16 @@ class _Harness {
           },
       acpMemberExtraMcp: ({required session, required member}) => extra,
       acpMemberLifecycleGate: gate,
+      prepareAcpRemoteStaging: remoteStaging,
+      prepareAcpSshLaunch: sshLaunchFactory,
     );
   }
 
   final Map<String, Map<String, Object?>> extra;
   final AcpMemberLifecycleGate? gate;
+  final RuntimeTarget launchTarget;
+  final AcpRemoteStagingBuilder? remoteStaging;
+  final AcpSshLaunchFactory? sshLaunchFactory;
   final runtime = _RecordingAcpRuntime();
   late final _RecordingMaterializer materializer;
   final tabStore = ChatTabStore(storage: fakeHomeStorage());
@@ -410,14 +519,34 @@ SessionConnectJob _job(
   );
 }
 
+class _FakeLifecycle implements SessionLifecycleService {
+  _FakeLifecycle(this._target);
+
+  final RuntimeTarget _target;
+
+  @override
+  RuntimeTarget launchWorkTarget(
+    WorkspaceLaunchContext ctx, {
+    String? memberId,
+  }) => _target;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _Host implements SessionLaunchHost {
-  _Host(this.tabStore, this.memberMaterializer);
+  _Host(this.tabStore, this.memberMaterializer, this._launchTarget);
 
   @override
   final ChatTabStore tabStore;
 
   @override
   final TabMemberMaterializer memberMaterializer;
+
+  final RuntimeTarget _launchTarget;
+
+  @override
+  SessionLifecycleService get lifecycle => _FakeLifecycle(_launchTarget);
 
   @override
   bool get isClosed => false;
@@ -428,6 +557,14 @@ class _Host implements SessionLaunchHost {
 
   @override
   CliToolRegistry get cliRegistry => CliToolRegistry.builtIn();
+
+  @override
+  ChatDataSnapshot stateSnapshot() => const ChatDataSnapshot(
+    workspaces: [],
+    sessions: [],
+    visibleWorkspaces: [],
+    visibleSessions: [],
+  );
 
   @override
   void updateTabRunning(String tabId) {}
@@ -483,6 +620,9 @@ class _RecordingMaterializer extends TabMemberMaterializer {
 
 class _RecordingAcpRuntime implements AcpSessionRuntimeApi {
   var started = false;
+  String? executable;
+  String? sessionToolDir;
+  Map<String, String> baseEnv = const {};
   List<acpd.McpServer> mcpServers = const [];
   LaunchSecurityPolicy permissionPolicy = LaunchSecurityPolicy.fullAccess;
   void Function()? onStart;
@@ -502,6 +642,9 @@ class _RecordingAcpRuntime implements AcpSessionRuntimeApi {
     final hold = startHold;
     if (hold != null) await hold.future;
     started = true;
+    this.executable = executable;
+    this.sessionToolDir = sessionToolDir;
+    this.baseEnv = baseEnv;
     this.mcpServers = mcpServers;
     this.permissionPolicy = permissionPolicy;
   }
