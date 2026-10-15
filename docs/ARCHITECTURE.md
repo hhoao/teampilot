@@ -196,6 +196,25 @@ Callers of launch import `launch/session_launch_host.dart` (or `session_launch_s
 - Putting a port next to an unrelated stage because a caller happens to import it.
 - Using `launch/session/` and `chat/session/` interchangeably.
 
+### ACP remote transport
+
+`services/acp/` keeps a byte-pipe seam (`AcpTransport`). Two implementations
+exist: `AcpProcessTransport` (local `dart:io` process) and `AcpSshTransport`
+(non-PTY SSH exec channel, `dartssh2`). `productionAcpSpawner`
+(`cubits/session/acp/acp_launch_wiring.dart`) picks one through the
+`AcpTransportStarter` seam; `acpStarterForTarget` chooses the SSH starter when
+the launch target uses SSH transport. Remote executable / env / config-dir
+values come from the PTY staging path
+(`SessionConnectOrchestrator.prepareSimpleConnect`), selected by
+`selectAcpRemoteLaunch`.
+
+Phase 1 covers **personal (simple) ACP sessions on desktop SSH targets**.
+Mixed-team remote seats (`member_acp_stamp.dart` `_memberAcpGates`), remote MCP
+reachability, remote adapter install, and SSH reconnect for an in-flight ACP
+seat are not implemented. The personal-remote attach is unit-tested (injected
+staging / SSH-launch seams plus the `_Host` / `_FakeLifecycle` harness); the
+only gap is that no test opens a real channel against a real sshd.
+
 ## Member placement machines
 
 Always resolve runtime members with `sessionRosterMembers(session, team)` (`client/lib/models/app_session.dart`).
