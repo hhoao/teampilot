@@ -181,4 +181,70 @@ void main() {
       ),
     );
   });
+
+  test('selectAcpRemoteLaunch keeps the work-plane env and remote paths', () {
+    final prepared = (
+      shellLaunch: ShellLaunchSpec(
+        plan: LaunchPlan(
+          env: const {
+            'PATH': '/remote/bin',
+            'CLAUDE_CONFIG_DIR': '/remote/cfg/s1',
+          },
+          resume: false,
+          taskId: 's1',
+          cliTeamName: '',
+          memberConfigDir: '/remote/cfg/s1',
+          resolvedRoots: const [],
+        ),
+        launchContext: const CliLaunchContext(
+          team: TeamProfile(id: 't', name: 't'),
+          member: TeamMemberConfig(id: 's1', name: 's1'),
+        ),
+      ),
+      warnings: const <String>[],
+      remoteCliPath: '/remote/bin/opencode',
+    );
+
+    final selected = selectAcpRemoteLaunch(
+      prepared: prepared,
+      localExecutable: '/usr/bin/opencode',
+      localSessionToolDir: '/home/u/.local/share/tp/s1/opencode',
+    );
+
+    expect(selected.executable, '/remote/bin/opencode');
+    expect(selected.sessionToolDir, '/remote/cfg/s1');
+    expect(selected.env['PATH'], '/remote/bin');
+    expect(selected.env['CLAUDE_CONFIG_DIR'], '/remote/cfg/s1');
+  });
+
+  test('selectAcpRemoteLaunch falls back to local values when remote is empty',
+      () {
+    final prepared = (
+      shellLaunch: ShellLaunchSpec(
+        plan: LaunchPlan(
+          env: const {'PATH': '/remote/bin'},
+          resume: false,
+          taskId: 's1',
+          cliTeamName: '',
+          memberConfigDir: '',
+          resolvedRoots: const [],
+        ),
+        launchContext: const CliLaunchContext(
+          team: TeamProfile(id: 't', name: 't'),
+          member: TeamMemberConfig(id: 's1', name: 's1'),
+        ),
+      ),
+      warnings: const <String>[],
+      remoteCliPath: '',
+    );
+
+    final selected = selectAcpRemoteLaunch(
+      prepared: prepared,
+      localExecutable: '/usr/bin/opencode',
+      localSessionToolDir: '/home/u/.local/share/tp/s1/opencode',
+    );
+
+    expect(selected.executable, '/usr/bin/opencode');
+    expect(selected.sessionToolDir, '/home/u/.local/share/tp/s1/opencode');
+  });
 }

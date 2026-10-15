@@ -137,3 +137,40 @@ Future<AcpTeamLaunchStaging> prepareAcpTeamLaunchEnvironment({
     memberConfigDir: prepared.shellLaunch.plan.memberConfigDir,
   );
 }
+
+/// Result shape of `prepareSimpleConnect` / `prepareTeamConnect`.
+typedef AcpPreparedSimpleConnect = ({
+  ShellLaunchSpec shellLaunch,
+  List<String> warnings,
+  String remoteCliPath,
+});
+
+/// Values the personal ACP cubit starts with.
+typedef AcpPersonalLaunch = ({
+  Map<String, String> env,
+  String executable,
+  String sessionToolDir,
+});
+
+/// Selects remote personal ACP launch values from the staging result.
+///
+/// The staged work-plane env already carries the remote `PATH` and config
+/// dirs, so it is used verbatim — never overwritten with the local `PATH`.
+/// Empty remote values fall back to the local CLI path / home-plane session
+/// tool dir so a partially populated stager cannot start a session with an
+/// empty executable.
+AcpPersonalLaunch selectAcpRemoteLaunch({
+  required AcpPreparedSimpleConnect prepared,
+  required String localExecutable,
+  required String localSessionToolDir,
+}) {
+  final remoteCli = prepared.remoteCliPath.trim();
+  final memberConfigDir = prepared.shellLaunch.plan.memberConfigDir.trim();
+  return (
+    env: Map<String, String>.of(prepared.shellLaunch.plan.env),
+    executable: remoteCli.isEmpty ? localExecutable : remoteCli,
+    sessionToolDir: memberConfigDir.isEmpty
+        ? localSessionToolDir
+        : memberConfigDir,
+  );
+}
