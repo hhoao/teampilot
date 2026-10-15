@@ -194,6 +194,12 @@ AcpChatRuntimeCubit _launchingCubit() => AcpChatRuntimeCubit(
   tool: CliTool.gemini,
 );
 
+Future<AcpChatRuntimeCubit> _endedCubit() async {
+  final cubit = await _readyCubit();
+  cubit.handleProcessExited(1);
+  return cubit;
+}
+
 void main() {
   test('reclaims an idle worker after threshold, never the lead', () {
     final store = ChatTabStore(storage: fakeHomeStorage());
@@ -485,7 +491,8 @@ void main() {
       );
       selected.memberAcpRuntimes['worker-1'] = await _readyCubit();
 
-      // Personal ACP tab: skipped entirely (D1).
+      // Personal ACP tab: skipped entirely (D1). selectedMemberId stays the
+      // default '' so isDisplayed cannot shield it — only the D1 skip can.
       final personal = _tabWithBus(id: 'sess-personal');
       personal.persistedSession = AppSession(
         sessionId: 'sess-personal',
@@ -494,7 +501,6 @@ void main() {
         sessionTeam: '',
         acp: true,
       );
-      personal.selectedMemberId = 'sess-personal';
       store.registerSession(personal);
       personal.memberAcpRuntimes['sess-personal'] = await _readyCubit();
 
@@ -524,6 +530,63 @@ void main() {
       expect(discarded, isEmpty);
     },
   );
+
+  test('a null acpPolicy skips the ACP pass (backward compat)', () async {
+    final store = ChatTabStore(storage: fakeHomeStorage());
+    final tab = _tabWithBus();
+    tab.persistedSession = AppSession(
+      sessionId: 'sess',
+      workspaceId: 'ws',
+      createdAt: 1,
+      sessionTeam: 't',
+    );
+    store.registerSession(tab);
+    tab.memberAcpRuntimes['worker-1'] = await _readyCubit();
+
+    final discarded = <(String, String)>[];
+    var now = DateTime(2026, 8, 9, 12, 0, 0);
+    final watch = TabMemberReclaimWatch(
+      tabStore: store,
+      reclaimEnabled: () => true,
+      activeTeam: () => _team,
+      policy: () =>
+          const TerminalReclaimPolicy(idleAfter: Duration(seconds: 2)),
+      onDiscardMember: (_, __) {},
+      now: () => now,
+      acpPolicy: null,
+      onDiscardAcpSeat: (s, m) => discarded.add((s, m)),
+    );
+    watch.tick();
+    now = now.add(const Duration(seconds: 3));
+    watch.tick();
+    expect(discarded, isEmpty);
+  });
+
+  test('never reclaims an ACP seat in ended phase', () async {
+    final store = ChatTabStore(storage: fakeHomeStorage());
+    final tab = _tabWithBus();
+    tab.persistedSession = AppSession(
+      sessionId: 'sess',
+      workspaceId: 'ws',
+      createdAt: 1,
+      sessionTeam: 't',
+    );
+    store.registerSession(tab);
+    tab.memberAcpRuntimes['worker-1'] = await _endedCubit();
+
+    final discarded = <(String, String)>[];
+    var now = DateTime(2026, 8, 9, 12, 0, 0);
+    final watch = _watch(
+      store,
+      onDiscard: (_, __) {},
+      now: () => now,
+      onDiscardAcpSeat: (s, m) => discarded.add((s, m)),
+    );
+    watch.tick();
+    now = now.add(const Duration(seconds: 3));
+    watch.tick();
+    expect(discarded, isEmpty);
+  });
 }
 
 FakeTerminalSession _runningShell() {
