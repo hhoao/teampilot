@@ -6,6 +6,7 @@ import '../../../../models/app_session.dart';
 import '../../../../models/runtime_target.dart';
 import '../../../../models/team_config.dart';
 import '../../../../models/workspace.dart';
+import '../../../../utils/logging/logger.dart';
 import '../../../acp/acp_frame_logger.dart';
 import '../../../acp/acp_mcp_servers.dart';
 import '../../../acp/acp_session_runtime.dart';
@@ -173,6 +174,18 @@ AcpPersonalLaunch selectAcpRemoteLaunch({
 }) {
   final remoteCli = prepared.remoteCliPath.trim();
   final memberConfigDir = prepared.shellLaunch.plan.memberConfigDir.trim();
+  if (remoteCli.isEmpty) {
+    appLogger.w(
+      '[acp-remote] empty remote CLI path; falling back to the local '
+      'executable for a remote launch',
+    );
+  }
+  if (memberConfigDir.isEmpty) {
+    appLogger.w(
+      '[acp-remote] empty remote member config dir; falling back to the '
+      'session tool dir for a remote launch',
+    );
+  }
   return (
     env: Map<String, String>.of(prepared.shellLaunch.plan.env),
     executable: remoteCli.isEmpty ? localExecutable : remoteCli,

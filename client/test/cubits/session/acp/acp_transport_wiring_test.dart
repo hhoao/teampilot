@@ -50,6 +50,28 @@ void main() {
     expect(command, contains('HOME'));
   });
 
+  test('buildAcpRemoteCommand encodes the non-login legacy string exactly', () {
+    final command = buildAcpRemoteCommand(
+      profile: _profile,
+      argv: const ['opencode', 'acp'],
+      workingDirectory: '/work/proj',
+      env: const {
+        'HOME': '/home/u',
+        'ANTHROPIC_API_KEY': '',
+      },
+    );
+    expect(
+      command,
+      r"cd '/work/proj' && export 'HOME'='/home/u' && "
+      r'export PATH="$HOME/.local/share/com.hhoa.teampilot/toolchain/node/current/bin:$HOME/.local/bin:$PATH" && '
+      r"exec 'opencode' 'acp'",
+    );
+    // Empty-valued env dropped; no login shell (`bash -lc` banner would
+    // corrupt the NDJSON stdout channel).
+    expect(command, isNot(contains('ANTHROPIC_API_KEY')));
+    expect(command, isNot(contains('bash -lc')));
+  });
+
   test('sshAcpTransportStarter opens a channel for the built command', () async {
     String? seenCommand;
     final channel = _FakeChannel();
@@ -105,11 +127,39 @@ void main() {
     );
   });
 
-  test('acpStarterForTarget returns an SSH starter for a remote target', () {
+  test('acpStarterForTarget builds a non-login remote command for a remote '
+      'target', () async {
+    String? seenCommand;
     final starter = acpStarterForTarget(
       launchTarget: RuntimeTarget.ssh('p1', label: 'host'),
-      sshLaunch: (profile: _profile, openChannel: (_) async => _FakeChannel()),
+      sshLaunch: (
+        profile: _profile,
+        openChannel: (command) async {
+          seenCommand = command;
+          return _FakeChannel();
+        },
+      ),
     );
     expect(starter, isNotNull);
+
+    await starter!(
+      argv: const ['opencode', 'acp'],
+      env: const {
+        'HOME': '/home/u',
+        'ANTHROPIC_API_KEY': '',
+      },
+      workingDirectory: '/work/proj',
+      onStderr: null,
+    );
+
+    expect(seenCommand, isNotNull);
+    // Executable plus a `cd` to the working directory.
+    expect(seenCommand, contains('opencode'));
+    expect(seenCommand, contains("cd '/work/proj'"));
+    // Empty-valued env entry dropped; the non-empty one is exported.
+    expect(seenCommand, isNot(contains('ANTHROPIC_API_KEY')));
+    expect(seenCommand, contains("export 'HOME'='/home/u'"));
+    // Non-login-shell encoding (no `bash -lc` wrapper).
+    expect(seenCommand, isNot(contains('bash -lc')));
   });
 }

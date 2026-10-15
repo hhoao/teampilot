@@ -246,5 +246,6 @@ void main() {
 
     expect(selected.executable, '/usr/bin/opencode');
     expect(selected.sessionToolDir, '/home/u/.local/share/tp/s1/opencode');
+    expect(selected.env['PATH'], '/remote/bin');
   });
 }

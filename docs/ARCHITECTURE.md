@@ -215,6 +215,12 @@ seat are not implemented. The personal-remote attach is unit-tested (injected
 staging / SSH-launch seams plus the `_Host` / `_FakeLifecycle` harness); the
 only gap is that no test opens a real channel against a real sshd.
 
+The personal remote ACP working directory is the session folder's target-owned
+path (`session.folders.first.path`) — the same value the personal PTY path
+derives via `personalWorkDirsForPrimaryPath`. `termux` targets also satisfy
+`usesSshTransport` (`models/runtime_target.dart`), though Android ACP is gated
+off in the launch switch (`resolveLaunchAcp`).
+
 ## Member placement machines
 
 Always resolve runtime members with `sessionRosterMembers(session, team)` (`client/lib/models/app_session.dart`).

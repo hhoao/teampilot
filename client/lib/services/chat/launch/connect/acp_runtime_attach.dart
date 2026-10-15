@@ -141,7 +141,12 @@ class AcpRuntimeAttach {
     } else {
       executable = _host.shellFactory.executableFor(cli);
       sessionToolDir = _sessionToolDir(session, cli);
-      baseEnv = await _personalLaunchEnv(session, job, workspace);
+      baseEnv = await _personalLaunchEnv(
+        session,
+        job,
+        workspace,
+        launchTarget,
+      );
     }
 
     final sshLaunch = remote
@@ -449,6 +454,7 @@ class AcpRuntimeAttach {
     AppSession session,
     SessionConnectJob job,
     Workspace? workspace,
+    RuntimeTarget launchTarget,
   ) async {
     final resolved = workspace ?? job.workspace;
     if (resolved == null) {
@@ -471,7 +477,7 @@ class AcpRuntimeAttach {
               ),
       session: session,
       workspace: resolved,
-      launchTarget: launchWorkTarget(session),
+      launchTarget: launchTarget,
     );
   }
 

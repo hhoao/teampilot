@@ -49,7 +49,12 @@ final class DartSsh2AcpChannel implements AcpSshChannel {
   Stream<Uint8List> get stderr => _session.stderr;
 
   @override
-  Future<int> get exitCode => _session.done.then((_) => _session.exitCode ?? 0);
+  Future<int> get exitCode =>
+      // The vendored dartssh2 completes the exit future with `null` when the
+      // remote process is terminated by a signal (no exit-status request). Map
+      // that to a nonzero sentinel so the spawner's handshake race classifies
+      // it as a failed candidate rather than a clean `code 0` exit.
+      _session.done.then((_) => _session.exitCode ?? -1);
 
   @override
   void write(Uint8List data) => _session.write(data);

@@ -284,6 +284,7 @@ void main() {
   test(
     'attachAcpRuntime routes a remote (ssh) personal session to remote staging values',
     () async {
+      var sshLaunchBuilt = false;
       final harness = _Harness(
         launchTarget: RuntimeTarget.ssh('p1', label: 'host'),
         remoteStaging:
@@ -313,18 +314,21 @@ void main() {
               remoteCliPath: '/remote/bin/claude',
             ),
         sshLaunchFactory:
-            ({required session, required launchTarget}) => (
-              profile: const SshProfile(
-                id: 'p1',
-                name: 'host',
-                host: 'host',
-                username: 'u',
-                authType: SshAuthType.password,
-              ),
-              // The injected `acpRuntimeFactory` replaces the production
-              // spawner, so this opener is never invoked.
-              openChannel: (_) async => throw UnimplementedError(),
-            ),
+            ({required session, required launchTarget}) {
+              sshLaunchBuilt = true;
+              return (
+                profile: const SshProfile(
+                  id: 'p1',
+                  name: 'host',
+                  host: 'host',
+                  username: 'u',
+                  authType: SshAuthType.password,
+                ),
+                // The injected `acpRuntimeFactory` replaces the production
+                // spawner, so this opener is never invoked.
+                openChannel: (_) async => throw UnimplementedError(),
+              );
+            },
       );
       final session = _personalSession();
 
@@ -334,6 +338,7 @@ void main() {
       );
 
       expect(handled, isTrue);
+      expect(sshLaunchBuilt, isTrue);
       expect(harness.runtime.started, isTrue);
       expect(harness.runtime.executable, '/remote/bin/claude');
       expect(harness.runtime.sessionToolDir, '/remote/cfg/s1');
