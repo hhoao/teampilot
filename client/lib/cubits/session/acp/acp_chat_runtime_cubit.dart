@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../models/team_config.dart';
+import '../../../services/acp/acp_agent_session_store.dart';
 import '../../../services/acp/acp_agent_translator.dart';
 import '../../../services/acp/acp_chat_extension_fold.dart';
 import '../../../services/acp/acp_chat_strings.dart';
@@ -152,9 +153,11 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     this.seatMemberId = acpMemberId,
     AgentAttentionPort? attention,
     AcpChatTranscriptWriter? transcript,
+    AcpAgentSessionStore? agentSession,
   }) : _runtime = runtime,
        _attention = attention,
        _transcript = transcript,
+       _agentSession = agentSession,
        super(const AcpChatRuntimeState());
 
   /// Synthetic seat member id — an ACP session has exactly one member, the
@@ -169,6 +172,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   final String seatMemberId;
   final AgentAttentionPort? _attention;
   final AcpChatTranscriptWriter? _transcript;
+  final AcpAgentSessionStore? _agentSession;
 
   AcpChatStrings? _strings;
   StreamSubscription<AcpSessionUpdate>? _updatesSub;
@@ -230,6 +234,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     _hydrateInFlight ??= _hydrateTranscript();
     await _hydrateInFlight;
     if (_closing || isClosed) return;
+    final resumeId = await _agentSession?.read();
+    if (_closing || isClosed) return;
     try {
       await _runtime.start(
         tool: tool,
@@ -239,6 +245,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         baseEnv: baseEnv,
         mcpServers: mcpServers,
         permissionPolicy: permissionPolicy,
+        resumeSessionId: resumeId,
       );
     } on AcpLaunchException catch (error) {
       if (error.reason == acpLaunchFailedAdapter) {
@@ -334,6 +341,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       unawaited(agentExitCode.then(handleProcessExited));
     }
     _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
+    final liveId = _runtime.sessionId;
+    if (liveId.isNotEmpty && liveId != resumeId) {
+      unawaited(_agentSession?.write(liveId));
+    }
     emit(state.copyWith(phase: AcpChatPhase.ready));
     final queued = _queuedPrompt;
     _queuedPrompt = null;

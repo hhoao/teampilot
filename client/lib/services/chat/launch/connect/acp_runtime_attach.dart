@@ -7,6 +7,7 @@ import '../../../../models/workspace.dart';
 import '../../../../models/workspace_launch_context.dart';
 import '../../../acp/acp_chat_strings.dart';
 import '../../../acp/acp_chat_transcript.dart';
+import '../../../acp/acp_agent_session_store.dart';
 import '../../../acp/acp_frame_logger.dart';
 import '../../../acp/acp_session_runtime.dart';
 import '../../../acp/acp_ssh_transport.dart';
@@ -56,6 +57,17 @@ String acpTranscriptFileName({String? memberId, required bool personal}) {
   final id = memberId?.trim() ?? '';
   if (id.isEmpty) return 'acp-transcript.jsonl';
   return 'acp-transcript-$id.jsonl';
+}
+
+/// Agent-session sidecar under `sessions/<id>/runtime/`.
+///
+/// Personal stays `acp-session.json`. Mixed seats use
+/// `acp-session-<rosterMemberId>.json`.
+String acpAgentSessionFileName({String? memberId, required bool personal}) {
+  if (personal) return 'acp-session.json';
+  final id = memberId?.trim() ?? '';
+  if (id.isEmpty) return 'acp-session.json';
+  return 'acp-session-$id.json';
 }
 
 /// Personal and mixed-seat ACP attach. [SessionLaunchService] delegates here
@@ -419,6 +431,7 @@ class AcpRuntimeAttach {
       seatMemberId: personal ? AcpChatRuntimeCubit.acpMemberId : memberId!,
       attention: _host.agentAttentionCubit,
       transcript: _transcript(session, memberId: memberId, personal: personal),
+      agentSession: _agentSessionStore(session, memberId: memberId, personal: personal),
     )..ensureStrings(_host.acpChatStrings?.call(cli) ?? defaultAcpChatStrings);
   }
 
@@ -577,6 +590,23 @@ class AcpRuntimeAttach {
           session.sessionId,
         ),
         acpTranscriptFileName(memberId: memberId, personal: personal),
+      ),
+    );
+  }
+
+  AcpAgentSessionStore _agentSessionStore(
+    AppSession session, {
+    required String? memberId,
+    required bool personal,
+  }) {
+    return AcpAgentSessionStore(
+      fs: _storage.fs,
+      path: _storage.context.layout.pathContext.join(
+        _storage.context.layout.workspace.sessionRuntimeDir(
+          session.workspaceId,
+          session.sessionId,
+        ),
+        acpAgentSessionFileName(memberId: memberId, personal: personal),
       ),
     );
   }

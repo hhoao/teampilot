@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/agent_attention_cubit.dart';
 import 'package:teampilot/cubits/session/acp/acp_chat_runtime_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/acp/acp_agent_session_store.dart';
 import 'package:teampilot/services/acp/acp_agent_translator.dart';
 import 'package:teampilot/services/acp/acp_chat_strings.dart';
 import 'package:teampilot/services/acp/acp_chat_transcript.dart';
@@ -174,6 +175,7 @@ void main() {
   AcpChatRuntimeCubit bootCubit({
     AgentAttentionCubit? attention,
     AcpChatTranscriptWriter? transcript,
+    AcpAgentSessionStore? agentSession,
   }) {
     final cubit = AcpChatRuntimeCubit(
       runtime: runtime,
@@ -181,9 +183,26 @@ void main() {
       tool: CliTool.gemini,
       attention: attention,
       transcript: transcript,
+      agentSession: agentSession,
     )..ensureStrings(_testStrings);
     return cubit;
   }
+
+  test('start resumes a stored agent session id and persists a fresh one', () async {
+    final fs = InMemoryFilesystem();
+    final store = AcpAgentSessionStore(fs: fs, path: '/tp/acp-session.json');
+    await store.write('agent-9');
+    final cubit = bootCubit(agentSession: store);
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/t',
+      workingDirectory: '/w',
+    );
+    expect(runtime.resumeSessionId, 'agent-9');
+    await cubit.close();
+    // The fake mints 'acp-session-1' → the stale id is overwritten.
+    expect(await store.read(), 'acp-session-1');
+  });
 
   test('attention events use seatMemberId', () async {
     final attention = _RecordingAttention();
