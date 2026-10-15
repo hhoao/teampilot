@@ -63,6 +63,11 @@ class SshMemberSession {
         : client.execute(command, pty: pty, environment: environment);
   }
 
+  /// Opens a non-PTY exec channel: separated stdout/stderr and a writable
+  /// stdin. Used by the remote ACP transport, which must NOT use a PTY (a PTY
+  /// merges stderr into stdout and echoes, both of which corrupt NDJSON).
+  Future<SSHSession> openExec(String command) => client.execute(command);
+
   void close() {
     if (!client.isClosed) {
       _factory?.prepareClientClose(
