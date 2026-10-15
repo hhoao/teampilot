@@ -33,6 +33,18 @@ class AppKeys {
   static Key acpAdapterUpgradeButtonFor(CliTool cli) =>
       Key('${cli.value}-acp-adapter-upgrade-button');
 
+  /// ACP adapter path field (`{value}-acp-adapter-path-field`).
+  static Key acpAdapterPathFieldFor(CliTool cli) =>
+      Key('${cli.value}-acp-adapter-path-field');
+
+  /// ACP adapter browse button (`{value}-acp-adapter-browse-button`).
+  static Key acpAdapterBrowseButtonFor(CliTool cli) =>
+      Key('${cli.value}-acp-adapter-browse-button');
+
+  /// ACP adapter reset button (`{value}-acp-adapter-path-reset-button`).
+  static Key acpAdapterResetButtonFor(CliTool cli) =>
+      Key('${cli.value}-acp-adapter-path-reset-button');
+
   static const sectionBarChatChip = Key('section-bar-chat-chip');
   static const sectionBarRunsChip = Key('section-bar-runs-chip');
   static const contextSidebar = Key('context-sidebar');

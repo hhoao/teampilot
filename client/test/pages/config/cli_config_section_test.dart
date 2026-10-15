@@ -82,9 +82,16 @@ class _DelayedCliInstallerService extends CliInstallerService {
 
 /// Avoids real `npm view` when settings cards become visible.
 CliVersionProbe _silentProbe() => CliVersionProbe(
-  runner: (executable, arguments, {environment, stdoutEncoding, stderrEncoding}) async {
-    throw StateError('tests must not spawn $executable $arguments');
-  },
+  runner:
+      (
+        executable,
+        arguments, {
+        environment,
+        stdoutEncoding,
+        stderrEncoding,
+      }) async {
+        throw StateError('tests must not spawn $executable $arguments');
+      },
 );
 
 Future<SessionPreferencesCubit> _makeCubit({
@@ -234,39 +241,40 @@ void main() {
     expect(isNpmUpdate(installed: null, latest: '0.44.1'), isFalse);
   });
 
-  testWidgets(
-    'Ready chip when CLI and adapter paths and versions are known',
-    (tester) async {
-      final cubit = await _makeCubit(
-        locatedExecutables: const {CliTool.claude: '/usr/local/bin/claude'},
-        locatedAcpAdapters: const {
-          CliTool.claude: '/usr/local/bin/claude-agent-acp',
-        },
-      );
-      addTearDown(cubit.close);
-      cubit.mergeBinaryVersion(
-        cli: CliTool.claude,
-        kind: CliBinaryKind.cli,
-        installed: '2.0.0',
-        latest: '2.0.0',
-      );
-      cubit.mergeBinaryVersion(
-        cli: CliTool.claude,
-        kind: CliBinaryKind.adapter,
-        installed: '1.0.0',
-        latest: '1.0.0',
-      );
+  testWidgets('Ready chip when CLI and adapter paths and versions are known', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit(
+      locatedExecutables: const {CliTool.claude: '/usr/local/bin/claude'},
+      locatedAcpAdapters: const {
+        CliTool.claude: '/usr/local/bin/claude-agent-acp',
+      },
+    );
+    addTearDown(cubit.close);
+    cubit.mergeBinaryVersion(
+      cli: CliTool.claude,
+      kind: CliBinaryKind.cli,
+      installed: '2.0.0',
+      latest: '2.0.0',
+    );
+    cubit.mergeBinaryVersion(
+      cli: CliTool.claude,
+      kind: CliBinaryKind.adapter,
+      installed: '1.0.0',
+      latest: '1.0.0',
+    );
 
-      await tester.pumpWidget(_wrap(cubit));
-      await tester.pump();
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pump();
 
-      expect(find.text('Ready'), findsAtLeastNWidgets(1));
-      expect(find.byKey(AppKeys.claudeCliInstallButton), findsNothing);
-      expect(find.byKey(AppKeys.claudeCliUpgradeButton), findsNothing);
-      expect(find.byKey(AppKeys.claudeAcpAdapterInstallButton), findsNothing);
-      expect(find.byKey(AppKeys.claudeAcpAdapterUpgradeButton), findsNothing);
-    },
-  );
+    expect(find.text('Ready'), findsAtLeastNWidgets(1));
+    expect(find.byKey(AppKeys.claudeCliExecutablePathField), findsOneWidget);
+    expect(find.text('2.0.0'), findsWidgets);
+    expect(find.byKey(AppKeys.claudeCliInstallButton), findsNothing);
+    expect(find.byKey(AppKeys.claudeCliUpgradeButton), findsNothing);
+    expect(find.byKey(AppKeys.claudeAcpAdapterInstallButton), findsNothing);
+    expect(find.byKey(AppKeys.claudeAcpAdapterUpgradeButton), findsNothing);
+  });
 
   testWidgets(
     'Needs setup shows adapter Install and Locate and keeps the switch',
@@ -309,26 +317,50 @@ void main() {
     },
   );
 
-  testWidgets(
-    'Cursor and OpenCode ACP rows use CLI copy with no adapter install key',
-    (tester) async {
-      final cubit = await _makeCubit(
-        locatedExecutables: const {
-          CliTool.cursor: '/usr/local/bin/cursor-agent',
-          CliTool.opencode: '/usr/local/bin/opencode',
-        },
-      );
-      addTearDown(cubit.close);
+  testWidgets('Cursor and OpenCode have no ACP path field', (tester) async {
+    final cubit = await _makeCubit(
+      locatedExecutables: const {
+        CliTool.cursor: '/usr/local/bin/cursor-agent',
+        CliTool.opencode: '/usr/local/bin/opencode',
+      },
+    );
+    addTearDown(cubit.close);
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pump();
+    expect(
+      find.byKey(AppKeys.acpAdapterPathFieldFor(CliTool.cursor)),
+      findsNothing,
+    );
+    expect(
+      find.byKey(AppKeys.acpAdapterPathFieldFor(CliTool.opencode)),
+      findsNothing,
+    );
+    expect(find.byKey(AppKeys.cursorPersonalAcpSwitch), findsOneWidget);
+    expect(find.byKey(AppKeys.opencodePersonalAcpSwitch), findsOneWidget);
+    expect(find.byKey(AppKeys.cursorCliUpgradeButton), findsNothing);
+  });
 
-      await tester.pumpWidget(_wrap(cubit));
-      await tester.pump();
+  testWidgets('editing ACP field persists; blur of discovered path does not', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit(
+      locatedExecutables: const {CliTool.claude: '/usr/local/bin/claude'},
+      locatedAcpAdapters: const {
+        CliTool.claude: '/usr/local/bin/claude-agent-acp',
+      },
+    );
+    addTearDown(cubit.close);
+    await tester.pumpWidget(_wrapCard(cubit));
+    await tester.pump();
+    expect(cubit.configuredAcpAdapterPath(CliTool.claude), '');
 
-      final l10n = lookupAppLocalizations(const Locale('en'));
-      expect(find.textContaining(l10n.cliReadinessUsesCli), findsAtLeastNWidgets(2));
-      expect(find.byKey(AppKeys.cursorCliInstallButton), findsNothing);
-      expect(find.byKey(AppKeys.opencodeCliInstallButton), findsNothing);
-    },
-  );
+    final acpField = find.byKey(AppKeys.acpAdapterPathFieldFor(CliTool.claude));
+    await tester.tap(acpField);
+    await tester.pump();
+    await tester.enterText(acpField, '/opt/custom-acp');
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(cubit.configuredAcpAdapterPath(CliTool.claude), '/opt/custom-acp');
+  });
 
   testWidgets('Gemini has no personal ACP switch', (tester) async {
     final cubit = await _makeCubit();
@@ -337,7 +369,10 @@ void main() {
     await tester.pumpWidget(_wrap(cubit));
     await tester.pump();
 
-    expect(find.byKey(AppKeys.personalAcpSwitchFor(CliTool.gemini)), findsNothing);
+    expect(
+      find.byKey(AppKeys.personalAcpSwitchFor(CliTool.gemini)),
+      findsNothing,
+    );
     expect(find.byKey(AppKeys.claudePersonalAcpSwitch), findsOneWidget);
   });
 
@@ -386,29 +421,28 @@ void main() {
     },
   );
 
-  testWidgets(
-    'Codex adapter install uses the Codex l10n string and key',
-    (tester) async {
-      final cubit = await _makeCubit(
-        locatedExecutables: const {CliTool.codex: '/usr/local/bin/codex'},
-      );
-      addTearDown(cubit.close);
-      final l10n = lookupAppLocalizations(const Locale('en'));
+  testWidgets('Codex adapter install uses the Codex l10n string and key', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit(
+      locatedExecutables: const {CliTool.codex: '/usr/local/bin/codex'},
+    );
+    addTearDown(cubit.close);
+    final l10n = lookupAppLocalizations(const Locale('en'));
 
-      await tester.pumpWidget(_wrap(cubit));
-      await tester.pump();
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pump();
 
-      final button = find.byKey(AppKeys.codexAcpAdapterInstallButton);
-      expect(button, findsOneWidget);
-      expect(
-        find.descendant(
-          of: button,
-          matching: find.text(l10n.codexAcpAdapterInstallButton),
-        ),
-        findsOneWidget,
-      );
-    },
-  );
+    final button = find.byKey(AppKeys.codexAcpAdapterInstallButton);
+    expect(button, findsOneWidget);
+    expect(
+      find.descendant(
+        of: button,
+        matching: find.text(l10n.codexAcpAdapterInstallButton),
+      ),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('shows install button when CLI path is unknown', (tester) async {
     final cubit = await _makeCubit();
@@ -470,10 +504,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     expect(cubit.configuredExecutablePath(CliTool.claude), '/found/claude');
-    expect(
-      find.byKey(AppKeys.claudeCliExecutablePathField),
-      findsOneWidget,
-    );
+    expect(find.byKey(AppKeys.claudeCliExecutablePathField), findsOneWidget);
     expect(find.text('/found/claude'), findsOneWidget);
     expect(find.text('Reset'), findsOneWidget);
     AppToast.dismiss();

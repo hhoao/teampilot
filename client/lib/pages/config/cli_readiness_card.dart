@@ -21,7 +21,6 @@ import '../../services/cli/cli_executable_discovery.dart';
 import '../../services/cli/cli_version_probe.dart';
 import '../../services/cli/codex/capabilities/acp_adapter_installer.dart';
 import '../../services/cli/remote_cli_locator.dart';
-import '../../services/cli/registry/capabilities/acp_capability.dart';
 import '../../services/cli/registry/capabilities/acp_settings_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/installer/npm_installer_capability.dart';
@@ -31,10 +30,10 @@ import '../../services/install/install_job_registry.dart';
 import '../../services/install/install_job_scope_resolver.dart';
 import '../../services/ssh/ssh_client_factory.dart';
 import '../../services/termux/termux_transport_profile.dart';
-import '../../theme/app_fonts.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
+import 'cli_readiness_path_row.dart';
 
 enum CliReadinessChipKind { ready, updateAvailable, needsSetup }
 
@@ -93,10 +92,6 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
 
   AcpSettingsCapability? get _settings =>
       _registry.capability<AcpSettingsCapability>(widget.cli);
-
-  bool get _hasAcp =>
-      _registry.capability<AcpCapability>(widget.cli) != null ||
-      _settings != null;
 
   bool get _separateAdapter => _settings?.usesSeparateAdapter == true;
 
@@ -181,8 +176,20 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     await _probeInstalled(CliBinaryKind.cli, picked);
   }
 
+  Future<void> _pickAdapterFile() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.any);
+    final picked = result?.files.single.path;
+    if (picked == null || !mounted) return;
+    await widget.cubit.setAcpAdapterPathFor(widget.cli, picked);
+    await _probeInstalled(CliBinaryKind.adapter, picked);
+  }
+
   Future<void> _resetCliPath() async {
     await widget.cubit.setCliExecutablePathFor(widget.cli, '');
+  }
+
+  Future<void> _resetAdapterPath() async {
+    await widget.cubit.setAcpAdapterPathFor(widget.cli, '');
   }
 
   Future<void> _locateCli() async {
@@ -285,7 +292,9 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     if (_locatingAdapter) return;
     setState(() => _locatingAdapter = true);
     try {
-      final found = await AcpAdapterDiscovery(registry: _registry).locateLocal();
+      final found = await AcpAdapterDiscovery(
+        registry: _registry,
+      ).locateLocal();
       final path = found[widget.cli]?.trim() ?? '';
       if (!mounted) return;
       if (!_looksAbsolute(path)) {
@@ -297,6 +306,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
         return;
       }
       widget.cubit.mergeLocatedAcpAdapters({widget.cli: path});
+      await widget.cubit.setAcpAdapterPathFor(widget.cli, path);
       await _probeInstalled(CliBinaryKind.adapter, path);
     } finally {
       if (mounted) setState(() => _locatingAdapter = false);
@@ -315,6 +325,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
         final path = installResult.executablePath?.trim() ?? '';
         if (path.isEmpty || !_looksAbsolute(path)) return;
         widget.cubit.mergeLocatedAcpAdapters({widget.cli: path});
+        await widget.cubit.setAcpAdapterPathFor(widget.cli, path);
         await _probeInstalled(CliBinaryKind.adapter, path);
       }
 
@@ -396,9 +407,6 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       CliReadinessChipKind.needsSetup => l10n.cliReadinessNeedsSetup,
     };
     final userPath = cubit.configuredExecutablePath(widget.cli).trim();
-    final cliPath = userPath.isNotEmpty
-        ? userPath
-        : cubit.resolveExecutable(widget.cli);
     final cliVersion =
         cubit.installedVersion(widget.cli, CliBinaryKind.cli) ??
         l10n.cliReadinessVersionUnknown;
@@ -409,6 +417,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       (service) => service.isRemoteWorkPlane,
     );
     final busyCli = _locatingCli || installingCli;
+    final showCliInstall = !cliKnown && exec.supportsInstaller;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -424,9 +433,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
                 borderRadius: 7,
               ),
               const SizedBox(width: 10),
-              Expanded(
-                child: Text(exec.label(l10n), style: styles.mdSemibold),
-              ),
+              Expanded(child: Text(exec.label(l10n), style: styles.mdSemibold)),
               TpStatusBadge(
                 label: chipLabel,
                 tone: kind == CliReadinessChipKind.ready
@@ -436,74 +443,37 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
             ],
           ),
           const SizedBox(height: 12),
-          _ResourceRow(
+          CliReadinessPathRow(
             label: l10n.cliReadinessRowCli,
-            pathKey: Key(spec.fieldKey),
-            path: cliPath,
+            fieldKey: Key(spec.fieldKey),
+            storedPath: userPath,
+            discoveredPath: cubit.discoveredExecutablePath(widget.cli),
             version: cliVersion,
+            onPersist: (value) =>
+                cubit.setCliExecutablePathFor(widget.cli, value),
+            browseKey: Key(spec.browseKey),
+            onBrowse: (isRemote || busyCli) ? null : _pickFile,
+            locateOrResetKey: Key(spec.resetKey),
+            locateLabel: l10n.cliExecutablePathLocate,
+            resetLabel: l10n.cliExecutablePathReset,
+            onLocateOrReset: busyCli
+                ? null
+                : (userPath.isEmpty ? _locateCli : _resetCliPath),
+            installKey: showCliInstall ? Key(spec.installKey) : null,
+            onInstall: showCliInstall
+                ? () => _installOrUpgradeCli(upgrading: false)
+                : null,
+            installing: installingCli,
+            upgradeKey: cliUpdate
+                ? AppKeys.cliUpgradeButtonFor(widget.cli)
+                : null,
+            onUpgrade: cliUpdate
+                ? () => _installOrUpgradeCli(upgrading: true)
+                : null,
+            locating: _locatingCli,
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              if (!cliKnown && exec.supportsInstaller)
-                _ActionButton(
-                  buttonKey: Key(spec.installKey),
-                  icon: installingCli
-                      ? _spinner
-                      : Icon(
-                          Icons.download_outlined,
-                          size: context.tpIconSizes.md,
-                        ),
-                  label: installingCli
-                      ? l10n.cliInstallInstalling
-                      : l10n.cliInstallButton,
-                  onPressed: busyCli
-                      ? null
-                      : () => _installOrUpgradeCli(upgrading: false),
-                ),
-              if (cliUpdate)
-                _ActionButton(
-                  buttonKey: AppKeys.cliUpgradeButtonFor(widget.cli),
-                  icon: installingCli
-                      ? _spinner
-                      : Icon(
-                          Icons.upgrade_outlined,
-                          size: context.tpIconSizes.md,
-                        ),
-                  label: installingCli
-                      ? l10n.cliInstallUpgrading
-                      : l10n.cliUpgradeButton,
-                  onPressed: busyCli
-                      ? null
-                      : () => _installOrUpgradeCli(upgrading: true),
-                ),
-              _ActionButton(
-                buttonKey: Key(spec.browseKey),
-                icon: Icon(
-                  Icons.folder_open_outlined,
-                  size: context.tpIconSizes.md,
-                ),
-                label: l10n.cliExecutablePathBrowse,
-                onPressed: (isRemote || busyCli) ? null : _pickFile,
-              ),
-              TextButton(
-                key: Key(spec.resetKey),
-                onPressed: busyCli
-                    ? null
-                    : (userPath.isEmpty ? _locateCli : _resetCliPath),
-                child: _locatingCli
-                    ? _spinner
-                    : Text(
-                        userPath.isEmpty
-                            ? l10n.cliExecutablePathLocate
-                            : l10n.cliExecutablePathReset,
-                      ),
-              ),
-            ],
-          ),
-          if (_hasAcp) ...[
+          if (_separateAdapter ||
+              _settings?.showsPersonalAcpSwitch == true) ...[
             const SizedBox(height: 12),
             _buildAcpBlock(
               context,
@@ -511,6 +481,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
               adapterKnown: adapterKnown,
               adapterUpdate: adapterUpdate,
               installingAdapter: installingAdapter,
+              isRemote: isRemote,
             ),
           ],
         ],
@@ -524,82 +495,57 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     required bool adapterKnown,
     required bool adapterUpdate,
     required bool installingAdapter,
+    required bool isRemote,
   }) {
     final cubit = widget.cubit;
-    final adapterPath = cubit.discoveredAcpAdapterPath(widget.cli);
+    final adapterStored = cubit.configuredAcpAdapterPath(widget.cli);
     final adapterVersion =
         cubit.installedVersion(widget.cli, CliBinaryKind.adapter) ??
         l10n.cliReadinessVersionUnknown;
     final showSwitch = _settings?.showsPersonalAcpSwitch == true;
-    final hideAdapterActions = _isAndroid;
+    final busyAdapter = _locatingAdapter || installingAdapter;
+    final showAdapterInstall =
+        !adapterKnown && _settings?.adapterInstaller != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_separateAdapter) ...[
-          _ResourceRow(
+        if (_separateAdapter)
+          CliReadinessPathRow(
             label: l10n.cliReadinessRowAcp,
-            path: adapterKnown ? adapterPath : l10n.cliReadinessAdapterMissing,
-            version: adapterKnown
-                ? adapterVersion
-                : l10n.cliReadinessVersionUnknown,
-          ),
-          if (!hideAdapterActions) ...[
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                if (!adapterKnown && _settings?.adapterInstaller != null)
-                  _ActionButton(
-                    buttonKey: AppKeys.acpAdapterInstallButtonFor(widget.cli),
-                    icon: installingAdapter
-                        ? _spinner
-                        : Icon(
-                            Icons.download_outlined,
-                            size: context.tpIconSizes.md,
-                          ),
-                    label: installingAdapter
-                        ? l10n.cliInstallInstalling
-                        : _adapterInstallLabel(l10n),
-                    onPressed: (_locatingAdapter || installingAdapter)
-                        ? null
-                        : () => _installOrUpgradeAdapter(upgrading: false),
-                  ),
-                _ActionButton(
-                  buttonKey: AppKeys.acpAdapterLocateButtonFor(widget.cli),
-                  icon: _locatingAdapter
-                      ? _spinner
-                      : Icon(Icons.search, size: context.tpIconSizes.md),
-                  label: l10n.cliExecutablePathLocate,
-                  onPressed: (_locatingAdapter || installingAdapter)
-                      ? null
-                      : _locateAdapter,
-                ),
-                if (adapterUpdate)
-                  _ActionButton(
-                    buttonKey: AppKeys.acpAdapterUpgradeButtonFor(widget.cli),
-                    icon: installingAdapter
-                        ? _spinner
-                        : Icon(
-                            Icons.upgrade_outlined,
-                            size: context.tpIconSizes.md,
-                          ),
-                    label: installingAdapter
-                        ? l10n.cliInstallUpgrading
-                        : l10n.cliUpgradeButton,
-                    onPressed: (_locatingAdapter || installingAdapter)
-                        ? null
-                        : () => _installOrUpgradeAdapter(upgrading: true),
-                  ),
-              ],
-            ),
-          ],
-        ] else
-          _ResourceRow(
-            label: l10n.cliReadinessRowAcp,
-            path: l10n.cliReadinessUsesCli,
-            version: l10n.cliReadinessVersionUnknown,
+            fieldKey: AppKeys.acpAdapterPathFieldFor(widget.cli),
+            storedPath: adapterStored,
+            discoveredPath: cubit.discoveredAcpAdapterPath(widget.cli),
+            version: adapterVersion,
+            onPersist: (value) => cubit.setAcpAdapterPathFor(widget.cli, value),
+            browseKey: AppKeys.acpAdapterBrowseButtonFor(widget.cli),
+            onBrowse: (isRemote || busyAdapter) ? null : _pickAdapterFile,
+            locateOrResetKey: adapterStored.trim().isEmpty
+                ? AppKeys.acpAdapterLocateButtonFor(widget.cli)
+                : AppKeys.acpAdapterResetButtonFor(widget.cli),
+            locateLabel: l10n.cliExecutablePathLocate,
+            resetLabel: l10n.cliExecutablePathReset,
+            onLocateOrReset: busyAdapter
+                ? null
+                : (adapterStored.trim().isEmpty
+                      ? _locateAdapter
+                      : _resetAdapterPath),
+            installKey: showAdapterInstall
+                ? AppKeys.acpAdapterInstallButtonFor(widget.cli)
+                : null,
+            onInstall: showAdapterInstall
+                ? () => _installOrUpgradeAdapter(upgrading: false)
+                : null,
+            installLabel: _adapterInstallLabel(l10n),
+            installing: installingAdapter,
+            upgradeKey: adapterUpdate
+                ? AppKeys.acpAdapterUpgradeButtonFor(widget.cli)
+                : null,
+            onUpgrade: adapterUpdate
+                ? () => _installOrUpgradeAdapter(upgrading: true)
+                : null,
+            locating: _locatingAdapter,
+            enabled: !_isAndroid,
           ),
         if (showSwitch)
           SwitchListTile(
@@ -610,9 +556,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
                   ? l10n.claudePersonalAcpAndroidDisabled
                   : l10n.personalAcpSwitchLabel,
             ),
-            subtitle: _isAndroid
-                ? null
-                : Text(l10n.personalAcpSwitchCaption),
+            subtitle: _isAndroid ? null : Text(l10n.personalAcpSwitchCaption),
             value: !_isAndroid && cubit.personalAcpDefaultFor(widget.cli),
             onChanged: _isAndroid
                 ? null
@@ -622,72 +566,6 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     );
   }
 }
-
-class _ResourceRow extends StatelessWidget {
-  const _ResourceRow({
-    required this.label,
-    required this.path,
-    required this.version,
-    this.pathKey,
-  });
-
-  final String label;
-  final String path;
-  final String version;
-  final Key? pathKey;
-
-  @override
-  Widget build(BuildContext context) {
-    final styles = TpTextStyles.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 40,
-          child: Text(label, style: styles.mutedSm),
-        ),
-        Expanded(
-          child: Text(
-            path,
-            key: pathKey,
-            style: appMonoTextStyle(context),
-          ),
-        ),
-        Text(version, style: styles.mutedSm),
-      ],
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
-    required this.buttonKey,
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-  });
-
-  final Key buttonKey;
-  final Widget icon;
-  final String label;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      key: buttonKey,
-      onPressed: onPressed,
-      icon: icon,
-      label: Text(label),
-    );
-  }
-}
-
-const _spinner = SizedBox(
-  width: 16,
-  height: 16,
-  child: CircularProgressIndicator(strokeWidth: 2),
-);
 
 SshProfile? _remoteSshProfile(
   BuildContext context,
