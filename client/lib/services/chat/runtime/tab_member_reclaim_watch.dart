@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../../cubits/session/acp/acp_chat_runtime_cubit.dart';
 import '../../../models/team_config.dart';
 import 'pty/terminal_reclaim_policy.dart';
 import '../../terminal/terminal_session.dart';
@@ -26,6 +27,8 @@ class TabMemberReclaimWatch {
     bool Function(String sessionId)? isSessionPinned,
     bool Function(String sessionId, String memberId)? seatHasActiveLeases,
     DateTime Function()? now,
+    TerminalReclaimPolicy Function()? acpPolicy,
+    void Function(String sessionId, String memberId)? onDiscardAcpSeat,
   }) : _tabStore = tabStore,
        _reclaimEnabled = reclaimEnabled,
        _activeTeam = activeTeam,
@@ -35,6 +38,8 @@ class TabMemberReclaimWatch {
        _sessionBusyFromDeliveryInFlight = sessionBusyFromDeliveryInFlight,
        _isSessionPinned = isSessionPinned,
        _seatHasActiveLeases = seatHasActiveLeases,
+       _acpPolicy = acpPolicy,
+       _onDiscardAcpSeat = onDiscardAcpSeat,
        _now = now ?? DateTime.now;
 
   final ChatTabStore _tabStore;
@@ -46,6 +51,8 @@ class TabMemberReclaimWatch {
   final bool Function(String sessionId)? _sessionBusyFromDeliveryInFlight;
   final bool Function(String sessionId)? _isSessionPinned;
   final bool Function(String sessionId, String memberId)? _seatHasActiveLeases;
+  final TerminalReclaimPolicy Function()? _acpPolicy;
+  final void Function(String sessionId, String memberId)? _onDiscardAcpSeat;
   final DateTime Function() _now;
 
   Timer? _timer;
@@ -103,6 +110,58 @@ class TabMemberReclaimWatch {
         }
       }
     }
+
+    final acpPolicy = _acpPolicy?.call();
+    if (acpPolicy != null) {
+      for (final tab in _tabStore.openTabs) {
+        final session = tab.persistedSession;
+        if (session != null && isAcpChatSession(session)) continue; // D1
+        for (final entry in tab.memberAcpRuntimes.entries.toList()) {
+          final memberId = entry.key;
+          final snapshot = _acpSnapshotFor(tab, memberId, entry.value, team);
+          final key = (tab.info.id, memberId);
+          if (acpPolicy.isProtected(snapshot)) {
+            _idleSince.remove(key);
+            continue;
+          }
+          final idleSince = _idleSince[key] ?? now;
+          _idleSince[key] = idleSince;
+          if (acpPolicy.shouldReclaim(snapshot, idleSince, now)) {
+            appLogger.d(
+              '[reclaim-watch] discard acp member=$memberId session=${tab.info.id} '
+              'idle=${now.difference(idleSince).inSeconds}s',
+            );
+            _idleSince.remove(key);
+            _onDiscardAcpSeat?.call(tab.info.id, memberId);
+          }
+        }
+      }
+    }
+  }
+
+  TerminalReclaimSnapshot _acpSnapshotFor(
+    ChatTab tab,
+    String memberId,
+    AcpChatRuntimeCubit cubit,
+    TeamProfile? team,
+  ) {
+    final phase = cubit.state.phase;
+    return TerminalReclaimSnapshot(
+      sessionId: tab.info.id,
+      memberId: memberId,
+      shellRunning: phase != AcpChatPhase.ended,
+      shellConnecting: phase == AcpChatPhase.launching,
+      isTeamLead: _isTeamLead(team, memberId),
+      isDisplayed: tab.selectedMemberId == memberId,
+      inTurn: cubit.state.inTurn || cubit.state.pendingClient != null,
+      hasUnread:
+          (tab.teamBus?.memberById(memberId)?.inbox.unreadCount ?? 0) > 0,
+      isSessionPinned:
+          _isSessionPinned?.call(tab.info.id) ??
+          (tab.persistedSession?.pinned ?? false),
+      hasActiveLeases:
+          _seatHasActiveLeases?.call(tab.info.id, memberId) ?? false,
+    );
   }
 
   TerminalReclaimSnapshot _snapshotFor(

@@ -1,4 +1,8 @@
+import 'dart:async';
+
+import 'package:acpd/acpd.dart' as acpd;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/session/acp/acp_chat_runtime_cubit.dart';
 import 'package:teampilot/services/chat/session/chat_tab_store.dart';
 import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/services/chat/session/chat_tab_info.dart';
@@ -9,6 +13,10 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/chat/team_bus/agent_node.dart';
 import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 import 'package:teampilot/services/chat/runtime/pty/terminal_reclaim_policy.dart';
+import 'package:teampilot/services/acp/acp_client_extensions.dart';
+import 'package:teampilot/services/acp/acp_session.dart';
+import 'package:teampilot/services/acp/acp_session_runtime.dart';
+import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 
 import '../../support/fake_terminal_session.dart';
 import '../../support/in_memory_filesystem.dart';
@@ -23,9 +31,9 @@ const _team = TeamProfile(
   members: [_lead, _worker],
 );
 
-ChatTab _tabWithBus() {
+ChatTab _tabWithBus({String id = 'sess'}) {
   final tab = ChatTab(
-    info: ChatTabInfo(id: 'sess', title: 't', subtitle: 's'),
+    info: ChatTabInfo(id: id, title: 't', subtitle: 's'),
     cliTeamName: 'ct',
   );
   tab.workbenchView = SessionWorkbenchView.chat; // nothing displayed
@@ -73,6 +81,8 @@ TabMemberReclaimWatch _watch(
   bool Function(String sessionId)? sessionBusyFromDeliveryInFlight,
   bool Function(String sessionId, String memberId)? seatHasActiveLeases,
   TeamProfile? Function()? team,
+  TerminalReclaimPolicy? acpPolicy,
+  void Function(String, String)? onDiscardAcpSeat,
 }) => TabMemberReclaimWatch(
   tabStore: store,
   reclaimEnabled: () => true,
@@ -83,6 +93,105 @@ TabMemberReclaimWatch _watch(
   sessionBusyFromDeliveryInFlight: sessionBusyFromDeliveryInFlight,
   seatHasActiveLeases: seatHasActiveLeases,
   now: now,
+  acpPolicy: () =>
+      acpPolicy ?? const TerminalReclaimPolicy(idleAfter: Duration(seconds: 2)),
+  onDiscardAcpSeat: onDiscardAcpSeat,
+);
+
+/// Minimal all-stub [AcpSessionRuntimeApi] so the reclaim watch tests can build
+/// an [AcpChatRuntimeCubit] in a known phase.
+class _FakeAcpRuntime implements AcpSessionRuntimeApi {
+  final updatesController = StreamController<AcpSessionUpdate>.broadcast();
+  final permissionsController =
+      StreamController<AgentPermissionRequest>.broadcast();
+  final clientRequestsController =
+      StreamController<AcpPendingClientRequest>.broadcast();
+
+  bool started = false;
+  bool closed = false;
+
+  @override
+  Future<void> start({
+    required CliTool tool,
+    required String executable,
+    required String sessionToolDir,
+    required String workingDirectory,
+    Map<String, String> baseEnv = const {},
+    List<acpd.McpServer> mcpServers = const [],
+    LaunchSecurityPolicy permissionPolicy = LaunchSecurityPolicy.fullAccess,
+    String? resumeSessionId,
+  }) async {
+    started = true;
+  }
+
+  @override
+  void setPermissionPolicy(LaunchSecurityPolicy policy) {}
+
+  @override
+  bool get isStarted => started;
+
+  @override
+  String get sessionId => 'acp-session-1';
+
+  @override
+  Future<void> prompt(String text) async {}
+
+  @override
+  Stream<AcpSessionUpdate> get updates => updatesController.stream;
+
+  @override
+  Stream<AgentPermissionRequest> get permissionRequests =>
+      permissionsController.stream;
+
+  @override
+  Stream<AcpPendingClientRequest> get clientRequests =>
+      clientRequestsController.stream;
+
+  @override
+  AcpAuthNotice? get lastAuthNotice => null;
+
+  @override
+  Future<int>? get agentProcessExitCode => null;
+
+  @override
+  Future<AgentPermissionReplyKind?> answerPermission(
+    AgentPermissionReplyKind reply, {
+    AgentPermissionAlwaysOption? always,
+  }) async => reply;
+
+  @override
+  Future<void> answerAsk(AcpAskHoldReply reply) async {}
+
+  @override
+  Future<void> answerPlan(AcpPlanHoldReply reply) async {}
+
+  @override
+  void cancel() {}
+
+  @override
+  Future<void> close() async {
+    closed = true;
+  }
+}
+
+Future<AcpChatRuntimeCubit> _readyCubit() async {
+  final cubit = AcpChatRuntimeCubit(
+    runtime: _FakeAcpRuntime(),
+    sessionId: 'sess',
+    tool: CliTool.gemini,
+  );
+  await cubit.start(
+    executable: 'gemini',
+    sessionToolDir: '/tmp/tool',
+    workingDirectory: '/w',
+  );
+  return cubit;
+}
+
+AcpChatRuntimeCubit _launchingCubit() => AcpChatRuntimeCubit(
+  runtime: _FakeAcpRuntime(),
+  sessionId: 'sess',
+  tool: CliTool.gemini,
 );
 
 void main() {
@@ -321,6 +430,100 @@ void main() {
     watch.tick();
     expect(discarded, contains(('sess', 'sess')));
   });
+
+  test('reclaims an idle hidden ACP seat', () async {
+    final store = ChatTabStore(storage: fakeHomeStorage());
+    final tab = _tabWithBus();
+    tab.persistedSession = AppSession(
+      sessionId: 'sess',
+      workspaceId: 'ws',
+      createdAt: 1,
+      sessionTeam: 't',
+    );
+    store.registerSession(tab);
+    final bus = _busWith(
+      'worker-1',
+      MemberLifecycle.running,
+      MemberActivity.turnDoneBusWait,
+    );
+    tab.teamBus = bus;
+    tab.memberAcpRuntimes['worker-1'] = await _readyCubit();
+
+    final discarded = <(String, String)>[];
+    var now = DateTime(2026, 8, 9, 12, 0, 0);
+    final watch = _watch(
+      store,
+      onDiscard: (_, __) {},
+      now: () => now,
+      onDiscardAcpSeat: (s, m) => discarded.add((s, m)),
+    );
+    watch.tick();
+    now = now.add(const Duration(seconds: 3));
+    watch.tick();
+    expect(discarded, contains(('sess', 'worker-1')));
+  });
+
+  test(
+    'never reclaims the selected, personal, or launching ACP seat',
+    () async {
+      final store = ChatTabStore(storage: fakeHomeStorage());
+
+      // Selected seat: protected via isDisplayed.
+      final selected = _tabWithBus(id: 'sess-selected');
+      selected.persistedSession = AppSession(
+        sessionId: 'sess-selected',
+        workspaceId: 'ws',
+        createdAt: 1,
+        sessionTeam: 't',
+      );
+      selected.selectedMemberId = 'worker-1';
+      store.registerSession(selected);
+      selected.teamBus = _busWith(
+        'worker-1',
+        MemberLifecycle.running,
+        MemberActivity.turnDoneBusWait,
+      );
+      selected.memberAcpRuntimes['worker-1'] = await _readyCubit();
+
+      // Personal ACP tab: skipped entirely (D1).
+      final personal = _tabWithBus(id: 'sess-personal');
+      personal.persistedSession = AppSession(
+        sessionId: 'sess-personal',
+        workspaceId: 'ws',
+        createdAt: 1,
+        sessionTeam: '',
+        acp: true,
+      );
+      personal.selectedMemberId = 'sess-personal';
+      store.registerSession(personal);
+      personal.memberAcpRuntimes['sess-personal'] = await _readyCubit();
+
+      // Launching seat: protected via shellConnecting.
+      final launching = _tabWithBus(id: 'sess-launching');
+      launching.persistedSession = AppSession(
+        sessionId: 'sess-launching',
+        workspaceId: 'ws',
+        createdAt: 1,
+        sessionTeam: 't',
+      );
+      store.registerSession(launching);
+      launching.memberAcpRuntimes['worker-1'] = _launchingCubit();
+
+      final discarded = <(String, String)>[];
+      var now = DateTime(2026, 8, 9, 12, 0, 0);
+      final watch = _watch(
+        store,
+        onDiscard: (_, __) {},
+        now: () => now,
+        onDiscardAcpSeat: (s, m) => discarded.add((s, m)),
+      );
+      watch.tick();
+      now = now.add(const Duration(seconds: 3));
+      watch.tick();
+
+      expect(discarded, isEmpty);
+    },
+  );
 }
 
 FakeTerminalSession _runningShell() {

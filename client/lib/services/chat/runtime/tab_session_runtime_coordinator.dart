@@ -38,6 +38,8 @@ class TabSessionRuntimeCoordinator {
     bool Function()? reclaimEnabled,
     int Function()? reclaimIdleAfterSeconds,
     void Function(String sessionId, String memberId)? onReclaimMember,
+    void Function(String sessionId, String memberId)? onReclaimAcpSeat,
+    int Function()? acpIdleAfterSeconds,
     bool Function(String sessionId)? isSessionPinned,
     SessionActivityAggregator? activityAggregator,
     VoidCallback? onAfterIdleWatchTick,
@@ -126,6 +128,12 @@ class TabSessionRuntimeCoordinator {
                     sessionBusyFromDeliveryInFlight,
                 isSessionPinned: isSessionPinned,
                 seatHasActiveLeases: seatHasActiveLeases,
+                acpPolicy: acpIdleAfterSeconds == null
+                    ? null
+                    : () => TerminalReclaimPolicy(
+                        idleAfter: Duration(seconds: acpIdleAfterSeconds()),
+                      ),
+                onDiscardAcpSeat: onReclaimAcpSeat,
               ));
     final aggregator =
         activityAggregator ??
