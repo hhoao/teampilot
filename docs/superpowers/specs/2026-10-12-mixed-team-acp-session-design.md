@@ -227,6 +227,27 @@ ACP mixed seats have no `memberShells` entry. Add a coordination path
 that reads cubit `inTurn` / `activity` / `idle` / `ended` and never
 touches `shell.activityTracker`. PTY mixed coordination is unchanged.
 
+## Idle reclaim and session resume
+
+Hidden mixed ACP seats now participate in the Chrome-style idle reclaim
+watch. When a background mixed seat is prompt-idle past the ACP threshold
+(PTY threshold ×2), the watch discards it via `discardAcpSeat`: the cubit
+is closed (persisting the transcript and the agent session id) and the
+seat is recorded in `ChatTab.reclaimedMemberIds`. Personal ACP is excluded
+(D1 skip); the selected seat, a launching seat, and a seat in `ended`
+phase are protected, mirroring the PTY protection set. Restoration is lazy
+and unchanged: the member-connect funnel re-attaches the seat
+(`attachMemberAcpRuntime` re-creates the cubit because the discarded seat
+was removed from `memberAcpRuntimes`), and `onConnectResult(attached)`
+clears `reclaimedMemberIds`.
+
+The agent session id (the ACP `session/new` response id) is persisted in a
+per-seat sidecar (`acp-session-<rosterMemberId>.json`, or `acp-session.json`
+for personal). On the next start the id is read back and reopened via
+`session/load`; if the agent does not negotiate `session/load`, it falls
+back to `session/resume`, then to a fresh `session/new`. Any load/resume
+failure also falls back to `session/new` so a stale id never blocks launch.
+
 ## UI
 
 - Settings: keep the Claude / Codex switches. Update label/description
@@ -258,7 +279,6 @@ across members only.
 - Cursor ACP (unshipped; later rides `AcpCapability` + binding)
 - OpenCode / FlashskyAI ACP
 - Replacing PTY mixed teams
-- `session/load`
 - Per-member ACP toggle on team compose
 - Rewriting existing team sessions when the preference changes
 - Advertising `fs/*` / `terminal/*` client capabilities (stay false)
