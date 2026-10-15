@@ -100,6 +100,7 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     for (final entry in discovered.entries) {
       final path = entry.value.trim();
       if (path.isEmpty || !_looksLikeAbsolutePath(path)) continue;
+      if (configuredAcpAdapterPath(entry.key).isNotEmpty) continue;
       if (_locatedAcpAdapters[entry.key] == path) continue;
       _locatedAcpAdapters[entry.key] = path;
       changed = true;
@@ -117,8 +118,30 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   String discoveredAcpAdapterPath(CliTool cli) =>
       _locatedAcpAdapters[cli]?.trim() ?? '';
 
-  /// True when [cli] has a discovered absolute ACP adapter path.
+  /// User-stored ACP adapter path for [cli], or empty.
+  String configuredAcpAdapterPath(CliTool cli) =>
+      state.preferences.acpAdapterPathFor(cli.value);
+
+  Future<void> setAcpAdapterPathFor(CliTool cli, String value) {
+    final next = Map<String, String>.of(state.preferences.acpAdapterPaths);
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      next.remove(cli.value);
+    } else {
+      next[cli.value] = trimmed;
+    }
+    return _save(state.preferences.copyWith(acpAdapterPaths: next));
+  }
+
+  String resolveAcpAdapterPath(CliTool cli) {
+    final stored = configuredAcpAdapterPath(cli);
+    if (stored.isNotEmpty) return stored;
+    return discoveredAcpAdapterPath(cli);
+  }
+
+  /// True when [cli] has a stored or discovered absolute ACP adapter path.
   bool hasKnownAcpAdapter(CliTool cli) {
+    if (_looksLikeAbsolutePath(configuredAcpAdapterPath(cli))) return true;
     return _looksLikeAbsolutePath(discoveredAcpAdapterPath(cli));
   }
 

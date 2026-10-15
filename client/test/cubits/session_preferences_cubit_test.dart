@@ -14,12 +14,14 @@ void main() {
 
   Future<SessionPreferencesCubit> makeCubit({
     Map<CliTool, String> locatedExecutables = const {},
+    Map<CliTool, String> locatedAcpAdapters = const {},
     Map<String, String> locatedToolchains = const {},
   }) async {
     final prefs = await SharedPreferences.getInstance();
     return SessionPreferencesCubit(
       repository: SessionPreferencesRepository(prefs),
       locatedExecutables: locatedExecutables,
+      locatedAcpAdapters: locatedAcpAdapters,
       locatedToolchains: locatedToolchains,
     );
   }
@@ -394,22 +396,74 @@ void main() {
     },
   );
 
-  test('mergeLocatedAcpAdapters bumps revision and ignores bare names', () async {
+  test(
+    'mergeLocatedAcpAdapters bumps revision and ignores bare names',
+    () async {
+      final cubit = await makeCubit();
+      await cubit.load();
+      cubit.mergeLocatedAcpAdapters(const {
+        CliTool.claude: '/opt/claude-agent-acp',
+        CliTool.codex: 'codex-acp',
+      });
+      expect(
+        cubit.discoveredAcpAdapterPath(CliTool.claude),
+        '/opt/claude-agent-acp',
+      );
+      expect(cubit.hasKnownAcpAdapter(CliTool.claude), isTrue);
+      expect(cubit.hasKnownAcpAdapter(CliTool.codex), isFalse);
+      final rev = cubit.state.locatedExecutablesRevision;
+      cubit.mergeLocatedAcpAdapters(const {
+        CliTool.claude: '/opt/claude-agent-acp',
+      });
+      expect(cubit.state.locatedExecutablesRevision, rev);
+    },
+  );
+
+  test('setAcpAdapterPathFor persists and beats discovery', () async {
     final cubit = await makeCubit();
     await cubit.load();
-    cubit.mergeLocatedAcpAdapters(const {
-      CliTool.claude: '/opt/claude-agent-acp',
-      CliTool.codex: 'codex-acp',
+    cubit.mergeLocatedAcpAdapters({
+      CliTool.claude: '/discovered/claude-agent-acp',
     });
-    expect(cubit.discoveredAcpAdapterPath(CliTool.claude), '/opt/claude-agent-acp');
+    await cubit.setAcpAdapterPathFor(CliTool.claude, '/opt/claude-agent-acp');
+    expect(
+      cubit.configuredAcpAdapterPath(CliTool.claude),
+      '/opt/claude-agent-acp',
+    );
+    expect(
+      cubit.resolveAcpAdapterPath(CliTool.claude),
+      '/opt/claude-agent-acp',
+    );
     expect(cubit.hasKnownAcpAdapter(CliTool.claude), isTrue);
-    expect(cubit.hasKnownAcpAdapter(CliTool.codex), isFalse);
-    final rev = cubit.state.locatedExecutablesRevision;
-    cubit.mergeLocatedAcpAdapters(const {
-      CliTool.claude: '/opt/claude-agent-acp',
-    });
-    expect(cubit.state.locatedExecutablesRevision, rev);
+
+    cubit.mergeLocatedAcpAdapters({CliTool.claude: '/other/claude-agent-acp'});
+    expect(
+      cubit.resolveAcpAdapterPath(CliTool.claude),
+      '/opt/claude-agent-acp',
+    );
+    expect(
+      cubit.state.preferences.acpAdapterPaths['claude'],
+      '/opt/claude-agent-acp',
+    );
   });
+
+  test(
+    'resolveAcpAdapterPath falls back to discovery when stored empty',
+    () async {
+      final cubit = SessionPreferencesCubit(
+        repository: SessionPreferencesRepository(
+          await SharedPreferences.getInstance(),
+        ),
+        locatedAcpAdapters: const {CliTool.claude: '/usr/bin/claude-agent-acp'},
+      );
+      await cubit.load();
+      expect(cubit.configuredAcpAdapterPath(CliTool.claude), '');
+      expect(
+        cubit.resolveAcpAdapterPath(CliTool.claude),
+        '/usr/bin/claude-agent-acp',
+      );
+    },
+  );
 
   test('mergeBinaryVersion stores installed and latest per kind', () async {
     final cubit = await makeCubit();
