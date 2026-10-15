@@ -924,6 +924,30 @@ class SessionLaunchService
     _h.updateTabRunning(tab.info.id);
   }
 
+  /// Reclaims an idle ACP seat (Chrome-style discard).
+  ///
+  /// Marks the seat discarded on the bus before tearing the runtime down, then
+  /// removes the cubit and records it as reclaimed. Closing the cubit persists
+  /// the transcript and the agent session id and kills the agent process; the
+  /// member-connect funnel re-attaches it on demand (resume).
+  void discardAcpSeat(String sessionId, String memberId) {
+    final id = sessionId.trim();
+    final mid = memberId.trim();
+    if (id.isEmpty || mid.isEmpty) return;
+    final tab = _tabStore.getOpenTabBySessionId(id);
+    if (tab == null) return;
+    final cubit = tab.memberAcpRuntimes[mid];
+    if (cubit == null) return;
+    tab.teamBus?.markMemberDiscarded(mid);
+    tab.membersPendingConnect.remove(mid);
+    tab.memberAcpRuntimes.remove(mid);
+    tab.reclaimedMemberIds.add(mid);
+    unawaited(cubit.close());
+    _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: mid);
+    _h.clearLaunchError(tab.info.id);
+    _h.updateTabRunning(tab.info.id);
+  }
+
   /// Lazy-spawn / restore entry for "member selected + terminal view visible".
   ///
   /// No-op when the shell is already up, connecting, or a connect is pending.

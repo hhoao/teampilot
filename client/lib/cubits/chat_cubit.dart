@@ -427,6 +427,9 @@ class ChatCubit extends Cubit<ChatState>
         reclaimIdleAfterSeconds: () =>
             _reclaimIdleTerminalAfterSeconds?.call() ?? 180,
         onReclaimMember: _launchService.discardMemberTerminal,
+        onReclaimAcpSeat: _launchService.discardAcpSeat,
+        acpIdleAfterSeconds: () =>
+            (_reclaimIdleTerminalAfterSeconds?.call() ?? 180) * 2,
         isSessionPinned: (sessionId) {
           for (final s in state.sessions) {
             if (s.sessionId == sessionId) return s.pinned;
