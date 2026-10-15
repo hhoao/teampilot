@@ -369,6 +369,7 @@ class _ControllableAcpRuntime implements AcpSessionRuntimeApi {
     Map<String, String> baseEnv = const {},
     List<acpd.McpServer> mcpServers = const [],
     LaunchSecurityPolicy permissionPolicy = LaunchSecurityPolicy.fullAccess,
+    String? resumeSessionId,
   }) async {
     started = true;
   }

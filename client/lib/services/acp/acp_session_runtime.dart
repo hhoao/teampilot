@@ -147,6 +147,7 @@ abstract interface class AcpSessionRuntimeApi {
     Map<String, String> baseEnv = const {},
     List<acpd.McpServer> mcpServers = const [],
     LaunchSecurityPolicy permissionPolicy = LaunchSecurityPolicy.fullAccess,
+    String? resumeSessionId,
   });
 
   /// Assigns [policy] for subsequent permission requests on the open session.
@@ -255,6 +256,7 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
     Map<String, String> baseEnv = const {},
     List<acpd.McpServer> mcpServers = const [],
     LaunchSecurityPolicy permissionPolicy = LaunchSecurityPolicy.fullAccess,
+    String? resumeSessionId,
   }) async {
     if (_session != null) {
       throw StateError(
@@ -284,7 +286,9 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
             '[acp] omit session/new mcpServers count=${mcpServers.length}',
           );
         }
-        final session = await connection.openSession(
+        final session = await _openSession(
+          connection: connection,
+          resumeSessionId: resumeSessionId,
           cwd: workingDirectory,
           mcpServers: sessionMcp,
           meta: plan.sessionNewMeta?.call(env) ?? const {},
@@ -312,6 +316,50 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
       }
     }
     throw AcpLaunchException(reason: acpLaunchFailedVersion);
+  }
+
+  /// Opens the session, resuming [resumeSessionId] when the agent negotiated
+  /// support. Any load/resume failure falls back to a fresh `session/new` — a
+  /// stale id must never block the user.
+  Future<AcpAgentSession> _openSession({
+    required AcpAgentConnection connection,
+    required String? resumeSessionId,
+    required String cwd,
+    required List<acpd.McpServer> mcpServers,
+    required Map<String, Object?> meta,
+  }) async {
+    final resumeId = resumeSessionId?.trim() ?? '';
+    if (resumeId.isEmpty) {
+      return connection.openSession(
+        cwd: cwd,
+        mcpServers: mcpServers,
+        meta: meta,
+      );
+    }
+    final caps = connection.negotiatedCapabilities;
+    try {
+      if (caps?.loadSession ?? false) {
+        return await connection.loadSession(
+          sessionId: resumeId,
+          cwd: cwd,
+          mcpServers: mcpServers,
+          meta: meta,
+        );
+      }
+      if (caps?.sessionResume ?? false) {
+        return await connection.resumeSession(
+          sessionId: resumeId,
+          cwd: cwd,
+          mcpServers: mcpServers,
+          meta: meta,
+        );
+      }
+    } on Object catch (error) {
+      AppLogger.instance.w(
+        'ACP: resume of $resumeId failed ($error); opening a new session',
+      );
+    }
+    return connection.openSession(cwd: cwd, mcpServers: mcpServers, meta: meta);
   }
 
   /// The id of the open ACP session (throws [StateError] before [start]).

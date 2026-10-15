@@ -52,6 +52,7 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   bool cancelled = false;
   LaunchSecurityPolicy startPermissionPolicy = LaunchSecurityPolicy.fullAccess;
   LaunchSecurityPolicy? lastSetPermissionPolicy;
+  String? resumeSessionId;
   final List<String> prompts = [];
   ({AgentPermissionReplyKind kind, AgentPermissionAlwaysOption? always})?
   lastAnswer;
@@ -72,10 +73,12 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
     Map<String, String> baseEnv = const {},
     List<acpd.McpServer> mcpServers = const [],
     LaunchSecurityPolicy permissionPolicy = LaunchSecurityPolicy.fullAccess,
+    String? resumeSessionId,
   }) async {
     if (startError != null) throw startError!;
     started = true;
     startPermissionPolicy = permissionPolicy;
+    this.resumeSessionId = resumeSessionId;
   }
 
   @override

@@ -83,6 +83,20 @@ void main() {
     );
   }
 
+  /// Re-negotiates the connection with [agentCapabilities], so resume-capable
+  /// tests can flip the agent's advertised support after the setUp handshake.
+  Future<void> stubInitialize({
+    acpd.AgentCapabilities agentCapabilities = const acpd.AgentCapabilities(),
+  }) async {
+    agent.connection.onRequest('initialize', (params) {
+      return acpd.InitializeResponse(
+        protocolVersion: acpd.ProtocolVersion.v1,
+        agentCapabilities: agentCapabilities,
+      ).toJson();
+    });
+    await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
+  }
+
   /// Scripts the agent's `session/prompt` handler.
   void scriptPrompt(FutureOr<Object?> Function() body) {
     agent.connection.onRequest('session/prompt', (params) => body());
@@ -765,6 +779,98 @@ void main() {
 
     await runtime.close();
     expect(conn.isAlive, isFalse);
+  });
+
+  test('start loads the stored session when loadSession is negotiated',
+      () async {
+    await stubInitialize(
+      agentCapabilities: const acpd.AgentCapabilities(loadSession: true),
+    );
+    agent.connection.onRequest('session/load', (params) {
+      return acpd.LoadSessionResponse().toJson();
+    });
+
+    final runtime = makeRuntime((argv, env) async => conn);
+    await runtime.start(
+      tool: CliTool.gemini,
+      executable: 'gemini',
+      sessionToolDir: sessionToolDir,
+      workingDirectory: cwd,
+      resumeSessionId: 'agent-9',
+    );
+
+    expect(runtime.sessionId, 'agent-9');
+    await runtime.close();
+  });
+
+  test('start resumes via session/resume when loadSession is unsupported',
+      () async {
+    await stubInitialize(
+      agentCapabilities: const acpd.AgentCapabilities(
+        sessionCapabilities: acpd.SessionCapabilities(
+          resume: acpd.CapabilityFlag(),
+        ),
+      ),
+    );
+    agent.connection.onRequest('session/resume', (params) {
+      return acpd.ResumeSessionResponse().toJson();
+    });
+
+    final runtime = makeRuntime((argv, env) async => conn);
+    await runtime.start(
+      tool: CliTool.gemini,
+      executable: 'gemini',
+      sessionToolDir: sessionToolDir,
+      workingDirectory: cwd,
+      resumeSessionId: 'agent-9',
+    );
+
+    expect(runtime.sessionId, 'agent-9');
+    await runtime.close();
+  });
+
+  test('start falls back to session/new when loading fails', () async {
+    await stubInitialize(
+      agentCapabilities: const acpd.AgentCapabilities(loadSession: true),
+    );
+    agent.connection.onRequest('session/load', (params) {
+      throw acpd.RpcError(
+        code: acpd.ErrorCode.internalError.code,
+        message: 'stale session',
+      );
+    });
+    agent.connection.onRequest('session/new', (params) {
+      return acpd.NewSessionResponse(sessionId: 'fresh-1').toJson();
+    });
+
+    final runtime = makeRuntime((argv, env) async => conn);
+    await runtime.start(
+      tool: CliTool.gemini,
+      executable: 'gemini',
+      sessionToolDir: sessionToolDir,
+      workingDirectory: cwd,
+      resumeSessionId: 'stale',
+    );
+
+    expect(runtime.sessionId, 'fresh-1');
+    await runtime.close();
+  });
+
+  test('start uses session/new when no resume id is given', () async {
+    agent.connection.onRequest('session/new', (params) {
+      return acpd.NewSessionResponse(sessionId: 'fresh-1').toJson();
+    });
+
+    final runtime = makeRuntime((argv, env) async => conn);
+    await runtime.start(
+      tool: CliTool.gemini,
+      executable: 'gemini',
+      sessionToolDir: sessionToolDir,
+      workingDirectory: cwd,
+    );
+
+    expect(runtime.sessionId, 'fresh-1');
+    await runtime.close();
   });
 }
 

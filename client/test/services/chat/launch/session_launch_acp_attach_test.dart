@@ -416,6 +416,7 @@ class _RecordingAcpRuntime implements AcpSessionRuntimeApi {
     Map<String, String> baseEnv = const {},
     List<acpd.McpServer> mcpServers = const [],
     LaunchSecurityPolicy permissionPolicy = LaunchSecurityPolicy.fullAccess,
+    String? resumeSessionId,
   }) async {
     started = true;
     this.baseEnv = baseEnv;
