@@ -248,8 +248,10 @@ class AcpAgentSession {
     required this.sessionId,
     this.permissionTimeout = defaultPermissionTimeout,
     this.permissionPolicy = LaunchSecurityPolicy.fullAccess,
+    bool suppressBootstrapUpdates = false,
   }) : _connection = connection,
-       _client = connection.acpdClient {
+       _client = connection.acpdClient,
+       _suppressBootstrap = suppressBootstrapUpdates {
     _updateRegistration = _client.connection.onNotification(
       'session/update',
       _onSessionUpdate,
@@ -325,6 +327,11 @@ class AcpAgentSession {
   /// Whether a prompt turn is currently in flight (sequential-turns guard).
   bool _promptInFlight = false;
 
+  /// When true, `session/update` notifications are dropped until the first
+  /// [prompt]. Set for load/resume sessions: the agent replays its whole
+  /// history, but the app transcript is the UI source of truth.
+  bool _suppressBootstrap;
+
   bool _disposed = false;
 
   /// Turn events in arrival order; each turn ends with exactly one [AcpStop].
@@ -348,6 +355,7 @@ class AcpAgentSession {
   /// carrying the translated message. Abort suppression (set by [cancel])
   /// stays on for the whole turn and is cleared when the turn ends.
   Future<void> prompt(String text) async {
+    _suppressBootstrap = false;
     if (_promptInFlight) {
       throw StateError('A prompt turn is already in flight for this session.');
     }
@@ -460,6 +468,7 @@ class AcpAgentSession {
 
   void _onSessionUpdate(Object? params) {
     if (_disposed) return;
+    if (_suppressBootstrap) return;
     if (params is! Map) return;
     final raw = Map<String, Object?>.from(params);
     final acpd.SessionUpdateNotification notification;

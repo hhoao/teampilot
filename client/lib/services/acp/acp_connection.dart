@@ -77,6 +77,9 @@ class AcpNegotiatedCapabilities {
   final bool promptStreaming;
 }
 
+/// Which session method to open on a new ACP connection.
+enum AcpSessionOpenKind { create, load, resume }
+
 /// A client-side connection to one running ACP agent process.
 ///
 /// Mounts acpd's [acpd.ClientRole] on an [AcpTransport] byte pipe: outgoing
@@ -143,6 +146,9 @@ class AcpAgentConnection {
     return cached;
   }
 
+  /// Negotiated capabilities, or null before [initialize] completes.
+  AcpNegotiatedCapabilities? get negotiatedCapabilities => _capabilities;
+
   /// Whether the connection is still usable.
   bool get isAlive =>
       !_disposed && !_transport.isClosed && !_client.connection.isClosed;
@@ -185,6 +191,60 @@ class AcpAgentConnection {
     List<acpd.McpServer> mcpServers = const [],
     Map<String, Object?> meta = const {},
     Duration permissionTimeout = AcpAgentSession.defaultPermissionTimeout,
+  }) => _establish(
+    kind: AcpSessionOpenKind.create,
+    cwd: cwd,
+    mcpServers: mcpServers,
+    meta: meta,
+    permissionTimeout: permissionTimeout,
+  );
+
+  /// Opens an existing ACP session via `session/load` for [sessionId].
+  ///
+  /// The agent replays its recorded history; the app transcript is the UI
+  /// source of truth, so bootstrap `session/update` notifications are dropped
+  /// (see [AcpAgentSession.suppressBootstrapUpdates]).
+  Future<AcpAgentSession> loadSession({
+    required String sessionId,
+    required String cwd,
+    List<acpd.McpServer> mcpServers = const [],
+    Map<String, Object?> meta = const {},
+    Duration permissionTimeout = AcpAgentSession.defaultPermissionTimeout,
+  }) => _establish(
+    kind: AcpSessionOpenKind.load,
+    sessionId: sessionId,
+    cwd: cwd,
+    mcpServers: mcpServers,
+    meta: meta,
+    permissionTimeout: permissionTimeout,
+  );
+
+  /// Resumes a paused ACP session via `session/resume` for [sessionId].
+  ///
+  /// Mirrors [loadSession]: the replayed history is dropped in favour of the
+  /// app transcript.
+  Future<AcpAgentSession> resumeSession({
+    required String sessionId,
+    required String cwd,
+    List<acpd.McpServer> mcpServers = const [],
+    Map<String, Object?> meta = const {},
+    Duration permissionTimeout = AcpAgentSession.defaultPermissionTimeout,
+  }) => _establish(
+    kind: AcpSessionOpenKind.resume,
+    sessionId: sessionId,
+    cwd: cwd,
+    mcpServers: mcpServers,
+    meta: meta,
+    permissionTimeout: permissionTimeout,
+  );
+
+  Future<AcpAgentSession> _establish({
+    required AcpSessionOpenKind kind,
+    String? sessionId,
+    required String cwd,
+    required List<acpd.McpServer> mcpServers,
+    required Map<String, Object?> meta,
+    required Duration permissionTimeout,
   }) async {
     final existing = _openSession;
     if (existing != null) {
@@ -193,39 +253,76 @@ class AcpAgentConnection {
         '(${existing.sessionId}); dispose it before opening another.',
       );
     }
+    final resuming = kind != AcpSessionOpenKind.create;
+    // Only session/new replays agent updates during setup; load/resume replay
+    // the whole conversation, which the app transcript already owns — do not
+    // buffer it (see AcpAgentSession.suppressBootstrapUpdates).
     final earlyUpdates = <Map<String, Object?>>[];
-    final earlyUpdateReg = _client.connection.onNotification('session/update', (
-      params,
-    ) {
-      if (params is Map) {
-        earlyUpdates.add(Map<String, Object?>.from(params));
-      }
-    });
-    // Agents ask `session/request_permission` during `session/new` (MCP init).
+    acpd.HandlerRegistration? earlyUpdateReg;
+    if (!resuming) {
+      earlyUpdateReg = _client.connection.onNotification('session/update', (
+        params,
+      ) {
+        if (params is Map) {
+          earlyUpdates.add(Map<String, Object?>.from(params));
+        }
+      });
+    }
+    // Agents ask `session/request_permission` during session setup (MCP init).
     // No [AcpAgentSession] exists yet; an unhandled request is method-not-found
     // and Cursor remembers "User rejected MCP" for the whole session.
     final earlyPermissionReg = _client.connection.onRequest(
       'session/request_permission',
       _onHandshakePermission,
     );
-    late final acpd.NewSessionResponse response;
+    late final AcpAgentSession session;
     try {
-      response = await _client.client.newSession(
-        acpd.NewSessionRequest(cwd: cwd, mcpServers: mcpServers, meta: meta),
+      final String resolvedId;
+      switch (kind) {
+        case AcpSessionOpenKind.create:
+          final response = await _client.client.newSession(
+            acpd.NewSessionRequest(
+              cwd: cwd,
+              mcpServers: mcpServers,
+              meta: meta,
+            ),
+          );
+          resolvedId = response.sessionId;
+        case AcpSessionOpenKind.load:
+          await _client.client.loadSession(
+            acpd.LoadSessionRequest(
+              sessionId: sessionId!,
+              cwd: cwd,
+              mcpServers: mcpServers,
+              meta: meta,
+            ),
+          );
+          resolvedId = sessionId;
+        case AcpSessionOpenKind.resume:
+          await _client.client.resumeSession(
+            acpd.ResumeSessionRequest(
+              sessionId: sessionId!,
+              cwd: cwd,
+              mcpServers: mcpServers,
+              meta: meta,
+            ),
+          );
+          resolvedId = sessionId;
+      }
+      session = AcpAgentSession(
+        connection: this,
+        sessionId: resolvedId,
+        permissionTimeout: permissionTimeout,
+        suppressBootstrapUpdates: resuming,
       );
     } catch (_) {
       earlyPermissionReg.dispose();
       rethrow;
     } finally {
-      earlyUpdateReg.dispose();
+      earlyUpdateReg?.dispose();
     }
-    final session = AcpAgentSession(
-      connection: this,
-      sessionId: response.sessionId,
-      permissionTimeout: permissionTimeout,
-    );
     // Session replaced the handshake handler; dispose after that so a
-    // request_permission in the session/new completion gap is not
+    // request_permission in the session setup completion gap is not
     // method-not-found (Claude remembers "User rejected MCP").
     earlyPermissionReg.dispose();
     _openSession = session;

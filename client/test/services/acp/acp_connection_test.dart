@@ -207,6 +207,47 @@ void main() {
       throwsA(isA<TimeoutException>()),
     );
   });
+
+  test('negotiatedCapabilities is null before initialize and non-null after',
+      () async {
+    expect(conn.negotiatedCapabilities, isNull);
+    stubInitialize();
+    await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
+    expect(conn.negotiatedCapabilities, isNotNull);
+    expect(conn.negotiatedCapabilities!.loadSession, isFalse);
+  });
+
+  test('loadSession sends session/load with the stored id and returns it',
+      () async {
+    stubInitialize();
+    Map<String, Object?>? seen;
+    agent.connection.onRequest('session/load', (params) {
+      seen = (params! as Map).cast<String, Object?>();
+      return acpd.LoadSessionResponse().toJson();
+    });
+    await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
+
+    final session = await conn.loadSession(sessionId: 'agent-9', cwd: '/w');
+
+    expect(seen!['sessionId'], 'agent-9');
+    expect(seen!['cwd'], '/w');
+    expect(session.sessionId, 'agent-9');
+  });
+
+  test('resumeSession sends session/resume', () async {
+    stubInitialize();
+    Map<String, Object?>? seen;
+    agent.connection.onRequest('session/resume', (params) {
+      seen = (params! as Map).cast<String, Object?>();
+      return acpd.ResumeSessionResponse().toJson();
+    });
+    await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
+
+    final session = await conn.resumeSession(sessionId: 'agent-9', cwd: '/w');
+
+    expect(seen!['sessionId'], 'agent-9');
+    expect(session.sessionId, 'agent-9');
+  });
 }
 
 /// Bridges an acpd_test in-memory transport into our byte-pipe [AcpTransport].
