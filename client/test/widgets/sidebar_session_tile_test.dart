@@ -671,36 +671,42 @@ void main() {
     },
   );
 
-  testWidgets('pinned session shows trailing push_pin when idle', (
-    tester,
-  ) async {
-    final chatCubit = testChatCubit(executableResolver: () => 'claude');
-    final (attention, automationCubit) = _tileCubits();
-    addTearDown(chatCubit.close);
-    addTearDown(automationCubit.close);
-    addTearDown(attention.close);
+  testWidgets(
+    'pin mark follows ChatCubit SessionRowContent even if widget.session is stale',
+    (tester) async {
+      final chatCubit = testChatCubit(executableResolver: () => 'claude');
+      final (attention, automationCubit) = _tileCubits();
+      addTearDown(chatCubit.close);
+      addTearDown(automationCubit.close);
+      addTearDown(attention.close);
 
-    final pinned = AppSession(
-      sessionId: 'sess-pinned',
-      workspaceId: 'ws1',
-      createdAt: 1,
-      updatedAt: 1,
-      pinned: true,
-    );
+      // The live session is pinned; the snapshot handed to the tile is not.
+      chatCubit.applyState(
+        chatCubit.state.copyWith(sessions: [_session.copyWith(pinned: true)]),
+      );
 
-    await tester.pumpWidget(
-      _host(
-        chatCubit: chatCubit,
-        automationCubit: automationCubit,
-        attentionCubit: attention,
-        sessionRepository: SessionRepository(storage: testHomeStorage),
-        child: SidebarSessionTile(session: pinned, onTap: () {}),
-      ),
-    );
-    await tester.pump();
+      await tester.pumpWidget(
+        _host(
+          chatCubit: chatCubit,
+          automationCubit: automationCubit,
+          attentionCubit: attention,
+          sessionRepository: SessionRepository(storage: testHomeStorage),
+          child: SidebarSessionTile(session: _session, onTap: () {}),
+        ),
+      );
+      await tester.pump();
 
-    expect(find.byIcon(Icons.push_pin), findsOneWidget);
-  });
+      expect(find.byIcon(Icons.push_pin), findsOneWidget);
+
+      chatCubit.applyState(
+        chatCubit.state.copyWith(sessions: [_session.copyWith(pinned: false)]),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.byIcon(Icons.push_pin), findsNothing);
+    },
+  );
 
   testWidgets('unpinned session does not show trailing push_pin when idle', (
     tester,
@@ -710,6 +716,10 @@ void main() {
     addTearDown(chatCubit.close);
     addTearDown(automationCubit.close);
     addTearDown(attention.close);
+
+    chatCubit.applyState(
+      chatCubit.state.copyWith(sessions: [_session.copyWith(pinned: false)]),
+    );
 
     await tester.pumpWidget(
       _host(

@@ -174,6 +174,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     AppLocalizations l10n,
     AppSession session, {
     required bool hasOpenTab,
+    required bool pinned,
   }) {
     final items = <TpActionMenuPopupItem<String>>[
       if (!widget.archiveMode)
@@ -208,8 +209,8 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         ),
       TpActionMenuPopupItem(
         value: 'pin',
-        icon: session.pinned ? Icons.push_pin : Icons.push_pin_outlined,
-        label: session.pinned ? l10n.unpinConversation : l10n.pinConversation,
+        icon: pinned ? Icons.push_pin : Icons.push_pin_outlined,
+        label: pinned ? l10n.unpinConversation : l10n.pinConversation,
       ),
       TpActionMenuPopupItem(
         value: 'reference',
@@ -439,7 +440,12 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       context.read<ChatCubit>(),
       session.sessionId,
     );
-    final menuItems = _contextMenuItems(l10n, session, hasOpenTab: hasOpenTab);
+    final menuItems = _contextMenuItems(
+      l10n,
+      session,
+      hasOpenTab: hasOpenTab,
+      pinned: _livePinned,
+    );
     setState(() => _menuOpen = true);
     final selected = await showTpActionMenuAtTap<String>(
       context: context,
@@ -466,7 +472,12 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       context.read<ChatCubit>(),
       session.sessionId,
     );
-    final menuItems = _contextMenuItems(l10n, session, hasOpenTab: hasOpenTab);
+    final menuItems = _contextMenuItems(
+      l10n,
+      session,
+      hasOpenTab: hasOpenTab,
+      pinned: _livePinned,
+    );
     setState(() => _menuOpen = true);
     final selected = await showTpActionMenu<String>(
       context: context,
@@ -509,6 +520,17 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   }
 
   bool get _showSessionActions => _hovered || _menuOpen || Platform.isAndroid;
+
+  /// Live pin flag for the pin/unpin menu entry.
+  ///
+  /// [widget.session] is the snapshot captured when this row was last built;
+  /// the sidebar's open-session strip is deliberately not rebuilt on a pin
+  /// toggle, so reading its snapshot would label the entry with the state from
+  /// before the last toggle.
+  bool get _livePinned => SessionRowContent.fromChatState(
+    context.read<ChatCubit>().state,
+    widget.session.sessionId,
+  ).pinned;
 
   /// Activates the session via [SidebarSessionTile.onTap]; when needs-you,
   /// awaits open first so [ChatCubit.selectMember] targets the opened tab and
@@ -618,9 +640,10 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     }
 
     // Trailing: coarse relative time + pin mark (idle), or actions (hover).
+    final pinned = rowContent.pinned;
     final int activityMs = rowContent.timestampMsForPaint;
     final Widget? idleTrailing =
-        (!_showSessionActions && (activityMs > 0 || session.pinned))
+        (!_showSessionActions && (activityMs > 0 || pinned))
         ? Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -629,7 +652,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                   timestampMs: activityMs,
                   selected: selected,
                 ),
-              if (session.pinned) const _SessionPinnedMark(),
+              if (pinned) const _SessionPinnedMark(),
             ],
           )
         : null;
@@ -742,10 +765,8 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                         ),
                       ),
                     TpActionMenuItem(
-                      icon: session.pinned
-                          ? Icons.push_pin
-                          : Icons.push_pin_outlined,
-                      label: session.pinned
+                      icon: pinned ? Icons.push_pin : Icons.push_pin_outlined,
+                      label: pinned
                           ? l10n.unpinConversation
                           : l10n.pinConversation,
                       menuController: controller,
