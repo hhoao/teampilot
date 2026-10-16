@@ -75,6 +75,12 @@ void main() {
     );
   });
 
+  test('SessionRowContent changes when the session pin flips', () {
+    final off = SessionRowContent.fromSession(_s(id: 'a', pinned: false));
+    final on = SessionRowContent.fromSession(_s(id: 'a', pinned: true));
+    expect(off, isNot(on));
+  });
+
   test('RunningSessionIds order-sensitive equality', () {
     final a = RunningSessionIds.fromWorkspace(
       sessions: [

@@ -168,6 +168,39 @@ void main() {
     expect(footer.bottom, closeTo(sidebar.bottom - 18, 0.1));
   });
 
+  testWidgets('split open strip repaints a session pin change', (tester) async {
+    workbenchCubit
+      ..openSession('ws-1', 'a')
+      ..openSession('ws-1', 'b')
+      ..splitTab(
+        'ws-1',
+        WorkbenchTabId.session('b'),
+        axis: Axis.horizontal,
+        before: false,
+      );
+    await pumpSidebar(tester);
+
+    Finder pinMark(String id) => find.descendant(
+      of: find.byKey(ValueKey('workspace-running-session-$id')),
+      matching: find.byIcon(Icons.push_pin),
+    );
+    expect(pinMark('a'), findsNothing);
+
+    chatCubit.emit(
+      chatCubit.state.copyWith(
+        sessions: [_session('a').copyWith(pinned: true), _session('b')],
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 120));
+
+    expect(
+      pinMark('a'),
+      findsOneWidget,
+      reason: 'split-strip tile must mirror the live pin state',
+    );
+  });
+
   testWidgets('running session strip stays bounded in a short sidebar', (
     tester,
   ) async {

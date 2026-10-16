@@ -5,7 +5,8 @@ import '../../l10n/app_localizations.dart';
 import '../../models/app_session.dart';
 import 'session_display_title.dart';
 
-/// Painted sidebar / tab-chip title + relative-time inputs for one session.
+/// Painted sidebar / tab-chip title + relative-time inputs + pin mark for one
+/// session.
 @immutable
 class SessionRowContent {
   const SessionRowContent({
@@ -14,6 +15,7 @@ class SessionRowContent {
     required this.purpose,
     required this.updatedAt,
     required this.createdAt,
+    required this.pinned,
   });
 
   final String sessionId;
@@ -21,6 +23,11 @@ class SessionRowContent {
   final SessionPurpose purpose;
   final int updatedAt;
   final int createdAt;
+
+  /// Pinned conversation — drives the pin mark and the pin/unpin menu entry.
+  /// Read live so surfaces that are not rebuilt on a pin toggle (the sidebar
+  /// open-session strip) still paint the current state.
+  final bool pinned;
 
   /// Locale-aware title for [Text] — never paint from a stale widget field.
   String titleForPaint(AppLocalizations l10n) =>
@@ -36,6 +43,7 @@ class SessionRowContent {
       purpose: session.purpose,
       updatedAt: session.updatedAt,
       createdAt: session.createdAt,
+      pinned: session.pinned,
     );
   }
 
@@ -49,6 +57,7 @@ class SessionRowContent {
       purpose: SessionPurpose.normal,
       updatedAt: 0,
       createdAt: 0,
+      pinned: false,
     );
   }
 
@@ -59,10 +68,11 @@ class SessionRowContent {
         display == other.display &&
         purpose == other.purpose &&
         updatedAt == other.updatedAt &&
-        createdAt == other.createdAt;
+        createdAt == other.createdAt &&
+        pinned == other.pinned;
   }
 
   @override
   int get hashCode =>
-      Object.hash(sessionId, display, purpose, updatedAt, createdAt);
+      Object.hash(sessionId, display, purpose, updatedAt, createdAt, pinned);
 }
