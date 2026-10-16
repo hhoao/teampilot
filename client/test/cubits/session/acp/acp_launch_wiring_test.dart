@@ -1,10 +1,16 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/session/acp/acp_launch_wiring.dart';
+import 'package:teampilot/cubits/session/acp/acp_transport_wiring.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/acp/acp_agent_translator.dart';
+import 'package:teampilot/services/acp/acp_frame_logger.dart';
 import 'package:teampilot/services/acp/acp_session_runtime.dart';
+import 'package:teampilot/services/acp/acp_transport.dart';
 import 'package:teampilot/services/cli/registry/capabilities/acp_capability.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 class _FixedAuthCapability implements AcpCapability {
   _FixedAuthCapability(this.authenticateMethodId, {this.resolved});
@@ -55,6 +61,23 @@ class _NoopTranslator extends AcpAgentTranslator {
   @override
   String translateStopError(Object error, {required bool suppressAbort}) =>
       error.toString();
+}
+
+class _SilentTransport implements AcpTransport {
+  final _input = StreamController<Uint8List>.broadcast();
+  @override
+  Stream<Uint8List> get input => _input.stream;
+  @override
+  void write(String frame) {}
+  @override
+  Stream<List<int>> get stderr => const Stream.empty();
+  @override
+  Future<void> close() async {
+    if (!_input.isClosed) await _input.close();
+  }
+
+  @override
+  bool get isClosed => _input.isClosed;
 }
 
 void main() {
@@ -155,4 +178,38 @@ void main() {
     )!;
     expect(plan.agentExecutable('/usr/bin/claude'), '/usr/bin/claude');
   });
+
+  test(
+    'productionAcpSpawner uses the injected starter and classifies its exit',
+    () async {
+      List<String>? seenArgv;
+      String? seenWorkingDirectory;
+      final exit = Completer<int>();
+      Future<AcpStartedTransport> starter({
+        required List<String> argv,
+        required Map<String, String> env,
+        required String workingDirectory,
+        void Function(List<int>)? onStderr,
+      }) async {
+        seenArgv = argv;
+        seenWorkingDirectory = workingDirectory;
+        return (transport: _SilentTransport(), processExitCode: exit.future);
+      }
+
+      final spawner = productionAcpSpawner(
+        registry: CliToolRegistry.builtIn(),
+        tool: CliTool.opencode,
+        workingDirectory: '/remote/work',
+        logger: AcpFrameLogger(),
+        transportStarter: starter,
+        handshakeTimeout: const Duration(milliseconds: 200),
+      );
+
+      final launched = spawner(['opencode', 'acp'], const {});
+      exit.complete(127);
+      await expectLater(launched, throwsA(isA<AcpFlagRejected>()));
+      expect(seenArgv, ['opencode', 'acp']);
+      expect(seenWorkingDirectory, '/remote/work');
+    },
+  );
 }

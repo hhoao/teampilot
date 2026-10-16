@@ -4,13 +4,16 @@ import 'package:acpd/acpd.dart' as acpd;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/session/acp/acp_chat_runtime_cubit.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
 import 'package:teampilot/services/acp/acp_session_runtime.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
+import 'package:teampilot/services/catalog/chat_data_snapshot.dart';
 import 'package:teampilot/services/chat/launch/connect/chat_session_shell_factory.dart';
 import 'package:teampilot/services/chat/launch/connect/session_connect_job.dart';
 import 'package:teampilot/services/chat/launch/session/shell_launch_spec.dart';
@@ -19,6 +22,8 @@ import 'package:teampilot/services/chat/launch/session_launch_service.dart';
 import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/services/chat/session/chat_tab_info.dart';
 import 'package:teampilot/services/chat/session/chat_tab_store.dart';
+import 'package:teampilot/services/chat/session/session_lifecycle_service.dart'
+    show SessionLifecycleService;
 import 'package:teampilot/services/chat/session/session_open_request.dart';
 import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -290,6 +295,17 @@ SessionConnectJob _memberJob(
   );
 }
 
+class _FakeLifecycle implements SessionLifecycleService {
+  @override
+  RuntimeTarget launchWorkTarget(
+    WorkspaceLaunchContext ctx, {
+    String? memberId,
+  }) => RuntimeTarget.local();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _Host implements SessionLaunchHost {
   _Host(this.tabStore) : memberMaterializer = stubTabMemberMaterializer(tabStore);
 
@@ -300,6 +316,9 @@ class _Host implements SessionLaunchHost {
   final TabMemberMaterializer memberMaterializer;
 
   @override
+  SessionLifecycleService get lifecycle => _FakeLifecycle();
+
+  @override
   bool get isClosed => false;
 
   @override
@@ -308,6 +327,14 @@ class _Host implements SessionLaunchHost {
 
   @override
   CliToolRegistry get cliRegistry => CliToolRegistry.builtIn();
+
+  @override
+  ChatDataSnapshot stateSnapshot() => const ChatDataSnapshot(
+    workspaces: [],
+    sessions: [],
+    visibleWorkspaces: [],
+    visibleSessions: [],
+  );
 
   @override
   void updateTabRunning(String tabId) {}

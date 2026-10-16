@@ -5,11 +5,11 @@ import '../../../models/team_config.dart';
 import '../../../services/acp/acp_agent_translator.dart';
 import '../../../services/acp/acp_connection.dart';
 import '../../../services/acp/acp_frame_logger.dart';
-import '../../../services/acp/acp_process_transport.dart';
 import '../../../services/acp/acp_session_runtime.dart';
 import '../../../services/cli/registry/capabilities/acp_capability.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../utils/logging/logger_utils.dart';
+import 'acp_transport_wiring.dart';
 
 /// Composition root for the production ACP launch path: adapter + spawner.
 ///
@@ -92,18 +92,19 @@ AcpConnectionSpawner productionAcpSpawner({
   required CliTool tool,
   required String workingDirectory,
   required AcpFrameLogger logger,
+  AcpTransportStarter? transportStarter,
   String clientName = 'teampilot',
   String clientVersion = '1.0.0',
   Duration handshakeTimeout = const Duration(seconds: 30),
 }) {
+  final starter = transportStarter ?? localAcpTransportStarter();
   final translator =
       registry.capability<AcpCapability>(tool)?.translator ??
       const _NoopAcpTranslator();
   return (argv, env) async {
-    final transport = await AcpProcessTransport.start(
-      executable: argv.first,
-      args: argv.skip(1).toList(),
-      environment: env,
+    final started = await starter(
+      argv: argv,
+      env: env,
       workingDirectory: workingDirectory,
       onStderr: (chunk) {
         if (chunk.isEmpty) return;
@@ -115,9 +116,9 @@ AcpConnectionSpawner productionAcpSpawner({
     // Observed by the runtime's agent-exit watcher after a successful start
     // (mid-session crash → inline system message). Futures are multicast, so
     // sharing this with the handshake race below is safe.
-    final processExitCode = transport.processExitCode;
+    final processExitCode = started.processExitCode ?? Completer<int>().future;
     final connection = AcpAgentConnection(
-      transport: transport,
+      transport: started.transport,
       logger: logger,
       translator: translator,
       processExitCode: processExitCode,

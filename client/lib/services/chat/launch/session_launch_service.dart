@@ -19,6 +19,7 @@ import 'connect/session_connect_job.dart';
 import 'connect/session_connect_scheduler.dart';
 import 'connect/acp_launch_environment.dart';
 import 'connect/acp_runtime_attach.dart';
+import '../../../cubits/session/acp/acp_transport_wiring.dart';
 import 'connect/launch_generation_store.dart';
 import 'connect/session_personal_shell.dart';
 import 'connect/session_ssh_profile_reconnect.dart';
@@ -65,6 +66,8 @@ class SessionLaunchService
     this.prepareAcpTeamConnect,
     this.acpMemberExtraMcp,
     this.acpMemberLifecycleGate,
+    this.prepareAcpRemoteStaging,
+    this.prepareAcpSshLaunch,
   }) : _storage = storage,
        _generations = generations ?? LaunchGenerationStore();
 
@@ -99,6 +102,12 @@ class SessionLaunchService
   /// [lifecycleGateBeforeAttach] in [configureLaunchComponents].
   final AcpMemberLifecycleGate? acpMemberLifecycleGate;
 
+  /// Test seam: skip the production remote ACP staging.
+  final AcpRemoteStagingBuilder? prepareAcpRemoteStaging;
+
+  /// Test seam: skip opening a real member SSH session for remote ACP.
+  final AcpSshLaunchFactory? prepareAcpSshLaunch;
+
   late final AcpRuntimeAttach _acpAttach = AcpRuntimeAttach(
     host: _h,
     storage: _storage,
@@ -109,6 +118,8 @@ class SessionLaunchService
     prepareTeamConnect: prepareAcpTeamConnect,
     extraMcpForMember: acpMemberExtraMcp,
     memberLifecycleGate: acpMemberLifecycleGate,
+    prepareRemoteStaging: prepareAcpRemoteStaging,
+    sshLaunchFactory: prepareAcpSshLaunch,
   );
 
   static const _uuid = Uuid();

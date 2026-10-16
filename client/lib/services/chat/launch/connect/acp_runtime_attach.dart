@@ -9,6 +9,8 @@ import '../../../acp/acp_chat_strings.dart';
 import '../../../acp/acp_chat_transcript.dart';
 import '../../../acp/acp_frame_logger.dart';
 import '../../../acp/acp_session_runtime.dart';
+import '../../../acp/acp_ssh_transport.dart';
+import '../../../ssh/ssh_member_session.dart';
 import '../../../storage/home_storage.dart';
 import '../../../storage/runtime_context.dart';
 import '../../team_bus/mcp/member_bus_mcp_transport_resolver.dart';
@@ -16,6 +18,7 @@ import '../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../runtime/runtime_extra_mcp_servers.dart';
 import '../../../../cubits/session/acp/acp_chat_runtime_cubit.dart';
 import '../../../../cubits/session/acp/acp_launch_wiring.dart';
+import '../../../../cubits/session/acp/acp_transport_wiring.dart';
 import '../../../../utils/logging/logger.dart';
 import '../session/member_acp_stamp.dart';
 import '../session_launch_host.dart';
@@ -68,6 +71,8 @@ class AcpRuntimeAttach {
     this.prepareTeamConnect,
     this.extraMcpForMember,
     this.memberLifecycleGate,
+    this.prepareRemoteStaging,
+    this.sshLaunchFactory,
   }) : _host = host,
        _storage = storage;
 
@@ -84,7 +89,14 @@ class AcpRuntimeAttach {
   /// Production wires [SessionLaunchService.lifecycleGateBeforeAttach] here.
   AcpMemberLifecycleGate? memberLifecycleGate;
 
-  /// Terminal-less personal ACP: attach a cubit and spawn `session.cli`.
+  /// Test seam: skip the production remote staging.
+  final AcpRemoteStagingBuilder? prepareRemoteStaging;
+
+  /// Test seam: skip opening a real member SSH session.
+  final AcpSshLaunchFactory? sshLaunchFactory;
+
+  /// Terminal-less personal ACP: attach a cubit and spawn `session.cli`
+  /// locally, or on the remote host when the launch target uses SSH.
   Future<bool> attachAcpRuntime(
     SessionConnectJob job,
     AppSession session,
@@ -101,27 +113,118 @@ class AcpRuntimeAttach {
       throw StateError('ACP session requires session.cli');
     }
     final workspace = job.workspace ?? workspaceById(session.workspaceId);
+    final launchTarget = launchWorkTarget(session);
+    final remote = usesSshTransport(launchTarget.kind);
     final workingDirectory = _personalWorkingDirectory(session, job.workspace);
+
+    late final String executable;
+    late final String sessionToolDir;
+    late final Map<String, String> baseEnv;
+    if (remote) {
+      if (workspace == null) {
+        throw StateError('Simple session requires workspace');
+      }
+      final build = prepareRemoteStaging ?? _productionRemoteStaging;
+      final prepared = await build(
+        session: session,
+        workspace: workspace,
+        launchTarget: launchTarget,
+      );
+      final selected = selectAcpRemoteLaunch(
+        prepared: prepared,
+        localExecutable: _host.shellFactory.executableFor(cli),
+        localSessionToolDir: _sessionToolDir(session, cli),
+      );
+      executable = selected.executable;
+      sessionToolDir = selected.sessionToolDir;
+      baseEnv = selected.env;
+    } else {
+      executable = _host.shellFactory.executableFor(cli);
+      sessionToolDir = _sessionToolDir(session, cli);
+      baseEnv = await _personalLaunchEnv(
+        session,
+        job,
+        workspace,
+        launchTarget,
+      );
+    }
+
+    final sshLaunch = remote
+        ? (sshLaunchFactory ?? _productionSshLaunch)(
+            session: session,
+            launchTarget: launchTarget,
+          )
+        : null;
+
     final cubit = _cubit(
       session: session,
       cli: cli,
       personal: true,
       memberId: null,
+      launchTarget: launchTarget,
+      sshLaunch: sshLaunch,
       processWorkingDirectory: workingDirectory,
     );
     tab.acpRuntime = cubit;
     _host.updateTabRunning(tab.info.id);
     await cubit.start(
-      executable: _host.shellFactory.executableFor(cli),
-      sessionToolDir: _sessionToolDir(session, cli),
+      executable: executable,
+      sessionToolDir: sessionToolDir,
       workingDirectory: workingDirectory,
-      baseEnv: await _personalLaunchEnv(session, job, workspace),
+      baseEnv: baseEnv,
       permissionPolicy: session.acpPermission,
     );
     if (_host.isClosed) return true;
     _host.finishSessionConnect(session.sessionId);
     _host.updateTabRunning(tab.info.id);
     return true;
+  }
+
+  /// Production remote staging: the same orchestration the PTY path uses, so
+  /// the remote workspace is provisioned and `remoteCliPath` /
+  /// `plan.memberConfigDir` / `plan.env` are the remote values.
+  Future<AcpPreparedSimpleConnect> _productionRemoteStaging({
+    required AppSession session,
+    required Workspace workspace,
+    required RuntimeTarget launchTarget,
+  }) {
+    return _host.sessionConnect.prepareSimpleConnect(
+      session: session,
+      workspace: workspace,
+      launchTarget: launchTarget,
+    );
+  }
+
+  /// Production SSH launch: opens (and stores on the tab) one member SSH
+  /// session, then hands out exec channels over it. Stored under
+  /// `session.sessionId` so [ChatTab.disposeBus] tears it down.
+  AcpSshLaunch _productionSshLaunch({
+    required AppSession session,
+    required RuntimeTarget launchTarget,
+  }) {
+    final factory = _host.shellFactory.sshClientFactory;
+    final profile = _host.shellFactory.profileFor(launchTarget);
+    if (factory == null || profile == null) {
+      throw StateError(
+        'ACP remote session requires an SSH profile and client factory',
+      );
+    }
+    return (
+      profile: profile,
+      openChannel: (command) async {
+        final tab = _host.tabStore.getOpenTabBySessionId(session.sessionId);
+        if (tab == null) {
+          throw StateError(
+            'ACP remote session tab missing session=${session.sessionId}',
+          );
+        }
+        final memberSession =
+            tab.memberSshSessions[session.sessionId] ??
+            await SshMemberSession.open(factory, profile);
+        tab.memberSshSessions[session.sessionId] = memberSession;
+        return DartSsh2AcpChannel(await memberSession.openExec(command));
+      },
+    );
   }
 
   /// Mixed-seat ACP. False lets the caller fall through to PTY.
@@ -213,6 +316,8 @@ class AcpRuntimeAttach {
       cli: cli,
       personal: false,
       memberId: member.id,
+      launchTarget: launchTarget,
+      sshLaunch: null,
       processWorkingDirectory: staged.workingDirectory,
     );
     tab.memberAcpRuntimes[member.id] = cubit;
@@ -280,8 +385,11 @@ class AcpRuntimeAttach {
     required CliTool cli,
     required bool personal,
     required String? memberId,
+    required RuntimeTarget launchTarget,
     required String processWorkingDirectory,
+    AcpSshLaunch? sshLaunch,
   }) {
+    final remote = usesSshTransport(launchTarget.kind);
     final logger = AcpFrameLogger();
     final runtime =
         runtimeFactory?.call(logger: logger, tool: cli) ??
@@ -291,11 +399,17 @@ class AcpRuntimeAttach {
             tool: cli,
             workingDirectory: processWorkingDirectory,
             logger: logger,
+            transportStarter: acpStarterForTarget(
+              launchTarget: launchTarget,
+              sshLaunch: sshLaunch,
+            ),
           ),
           logger: logger,
           launchPlanFor: acpLaunchPlanResolver(
             _host.cliRegistry,
-            discoveredAdapterPath: _host.discoveredAcpAdapterPath,
+            // A local boot-time adapter path is meaningless on a remote host;
+            // the remote PATH resolves the bare adapter name instead.
+            discoveredAdapterPath: remote ? null : _host.discoveredAcpAdapterPath,
           ),
         );
     return AcpChatRuntimeCubit(
@@ -340,6 +454,7 @@ class AcpRuntimeAttach {
     AppSession session,
     SessionConnectJob job,
     Workspace? workspace,
+    RuntimeTarget launchTarget,
   ) async {
     final resolved = workspace ?? job.workspace;
     if (resolved == null) {
@@ -362,7 +477,7 @@ class AcpRuntimeAttach {
               ),
       session: session,
       workspace: resolved,
-      launchTarget: launchWorkTarget(session),
+      launchTarget: launchTarget,
     );
   }
 
