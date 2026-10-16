@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 
+import '../../models/cli_binary_kind.dart';
 import '../../models/cli_preset.dart';
 import '../../models/runtime_target.dart';
 import '../../models/team_config.dart';
@@ -8,21 +9,33 @@ import '../../models/workspace_folder.dart';
 import '../../models/workspace_topology.dart';
 import '../../utils/workspace/workspace_path_utils.dart';
 import '../cli/preset_resolver.dart';
+import '../cli/registry/capabilities/acp_settings_capability.dart';
+import '../cli/registry/cli_tool_registry.dart';
 import '../storage/work_target_canonicalizer.dart';
 
-/// One required remote CLI for an SSH machine used by the current placement.
+/// One required remote binary (a CLI, or a separate ACP adapter) for an SSH
+/// machine used by the current placement.
 class RemoteCliRequirement {
   const RemoteCliRequirement({
     required this.target,
     required this.cli,
     required this.hostLabel,
+    this.kind = CliBinaryKind.cli,
   });
 
   final RuntimeTarget target;
   final CliTool cli;
   final String hostLabel;
+  final CliBinaryKind kind;
 
-  String get cacheKey => '${target.id}|${cli.value}';
+  String get cacheKey => '${target.id}|${kind.name}|${cli.value}';
+}
+
+/// True when [cli]'s ACP mode needs a separate adapter binary.
+bool _cliUsesSeparateAcpAdapter(CliTool cli) {
+  final settings = CliToolRegistry.builtIn()
+      .capability<AcpSettingsCapability>(cli);
+  return settings?.usesSeparateAdapter == true;
 }
 
 /// Collects distinct (SSH target × CLI) pairs required by [placement].
@@ -101,7 +114,10 @@ RuntimeTarget? sshTargetForProjectFolder({
       resolved;
 }
 
-/// Required remote CLI for Simple (personal) launch on an SSH project folder.
+/// Required remote binaries for a Simple (personal) launch on an SSH folder.
+///
+/// When [requestedAcp] is true and the CLI needs a separate ACP adapter
+/// (Claude / Codex), a second `kind: adapter` requirement is appended.
 List<RemoteCliRequirement> remoteCliRequirementsForSimpleLaunch({
   required Workspace workspace,
   required String projectFolderPath,
@@ -109,6 +125,7 @@ List<RemoteCliRequirement> remoteCliRequirementsForSimpleLaunch({
   required List<RuntimeTarget> selectableTargets,
   required RuntimeTarget home,
   required bool usesPosixPaths,
+  bool requestedAcp = false,
 }) {
   final target = sshTargetForProjectFolder(
     workspace: workspace,
@@ -119,11 +136,15 @@ List<RemoteCliRequirement> remoteCliRequirementsForSimpleLaunch({
   );
   if (target == null) return const [];
 
+  final hostLabel = target.label.trim().isNotEmpty ? target.label : target.id;
   return [
-    RemoteCliRequirement(
-      target: target,
-      cli: cli,
-      hostLabel: target.label.trim().isNotEmpty ? target.label : target.id,
-    ),
+    RemoteCliRequirement(target: target, cli: cli, hostLabel: hostLabel),
+    if (requestedAcp && _cliUsesSeparateAcpAdapter(cli))
+      RemoteCliRequirement(
+        target: target,
+        cli: cli,
+        hostLabel: hostLabel,
+        kind: CliBinaryKind.adapter,
+      ),
   ];
 }

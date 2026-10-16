@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/cli_binary_kind.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
@@ -128,6 +129,42 @@ void main() {
       );
 
       expect(requirements, isEmpty);
+    });
+
+    test('appends an adapter requirement when ACP is requested', () {
+      final requirements = remoteCliRequirementsForSimpleLaunch(
+        workspace: workspace,
+        projectFolderPath: '/remote',
+        cli: CliTool.claude,
+        requestedAcp: true,
+        selectableTargets: [localTarget, sshTarget],
+        home: localHome,
+        usesPosixPaths: false,
+      );
+
+      expect(requirements, hasLength(2));
+      expect(requirements[0].kind, CliBinaryKind.cli);
+      expect(requirements[1].kind, CliBinaryKind.adapter);
+      expect(requirements[1].cli, CliTool.claude);
+      expect(
+        requirements.map((r) => r.cacheKey).toSet(),
+        hasLength(2),
+      );
+    });
+
+    test('omits the adapter requirement for a CLI without one', () {
+      final requirements = remoteCliRequirementsForSimpleLaunch(
+        workspace: workspace,
+        projectFolderPath: '/remote',
+        cli: CliTool.cursor,
+        requestedAcp: true,
+        selectableTargets: [localTarget, sshTarget],
+        home: localHome,
+        usesPosixPaths: false,
+      );
+
+      expect(requirements, hasLength(1));
+      expect(requirements.single.kind, CliBinaryKind.cli);
     });
   });
 }
