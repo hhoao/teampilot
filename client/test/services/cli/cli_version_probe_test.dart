@@ -12,7 +12,25 @@ void main() {
         return ProcessResult(0, 0, '2.1.4 (Claude Code)\nextra\n', '');
       },
     );
-    expect(await probe.installed('/usr/bin/claude'), '2.1.4 (Claude Code)');
+    expect(await probe.installed('/usr/bin/claude'), '2.1.4');
+  });
+
+  test('installed extracts version from npm-style --version banners', () async {
+    final probe = CliVersionProbe(
+      runner: (exe, args, {environment, stdoutEncoding, stderrEncoding}) async {
+        expect(exe, '/usr/bin/codex-acp');
+        return ProcessResult(0, 0, 'agentclientprotocol/codex-acp 2.2.2\n', '');
+      },
+    );
+    expect(await probe.installed('/usr/bin/codex-acp'), '2.2.2');
+  });
+
+  test('cliVersionToken strips banners and leading v', () {
+    expect(cliVersionToken('2.1.4 (Claude Code)'), '2.1.4');
+    expect(cliVersionToken('agentclientprotocol/codex-acp 2.2.2'), '2.2.2');
+    expect(cliVersionToken('v0.44.1'), '0.44.1');
+    expect(cliVersionToken('2.2.2'), '2.2.2');
+    expect(cliVersionToken('not a version'), isNull);
   });
 
   test('installed returns null when --version fails', () async {
@@ -30,10 +48,7 @@ void main() {
         throw Exception('offline');
       },
     );
-    expect(
-      await probe.latestNpm('@anthropic-ai/claude-code'),
-      isNull,
-    );
+    expect(await probe.latestNpm('@anthropic-ai/claude-code'), isNull);
   });
 
   test('latestNpm reads npm view stdout', () async {

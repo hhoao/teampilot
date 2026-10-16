@@ -186,65 +186,53 @@ class _CliReadinessPathRowState extends State<CliReadinessPathRow> {
           ),
         ),
         if (widget.enabled) ...[
-          const SizedBox(width: 6),
-          Flexible(
-            child: Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              alignment: WrapAlignment.end,
-              children: [
-                if (showInstall)
-                  OutlinedButton.icon(
-                    key: widget.installKey,
-                    onPressed: actionsEnabled ? widget.onInstall : null,
-                    icon: widget.installing
-                        ? _spinner
-                        : Icon(
-                            Icons.download_outlined,
-                            size: context.tpIconSizes.md,
-                          ),
-                    label: Text(
-                      widget.installing
-                          ? l10n.cliInstallInstalling
-                          : (widget.installLabel ?? l10n.cliInstallButton),
-                    ),
-                  ),
-                if (showUpgrade)
-                  OutlinedButton.icon(
-                    key: widget.upgradeKey,
-                    onPressed: actionsEnabled ? widget.onUpgrade : null,
-                    icon: widget.installing
-                        ? _spinner
-                        : Icon(
-                            Icons.upgrade_outlined,
-                            size: context.tpIconSizes.md,
-                          ),
-                    label: Text(
-                      widget.installing
-                          ? l10n.cliInstallUpgrading
-                          : l10n.cliUpgradeButton,
-                    ),
-                  ),
-                OutlinedButton.icon(
-                  key: widget.browseKey,
-                  onPressed: actionsEnabled ? widget.onBrowse : null,
-                  icon: Icon(
-                    Icons.folder_open_outlined,
-                    size: context.tpIconSizes.md,
-                  ),
-                  label: Text(l10n.cliExecutablePathBrowse),
-                ),
-                TextButton(
-                  key: widget.locateOrResetKey,
-                  onPressed: actionsEnabled ? widget.onLocateOrReset : null,
-                  child: widget.locating
-                      ? _spinner
-                      : Text(
-                          _storedEmpty ? widget.locateLabel : widget.resetLabel,
-                        ),
-                ),
-              ],
+          if (showInstall) ...[
+            const SizedBox(width: 6),
+            OutlinedButton.icon(
+              key: widget.installKey,
+              onPressed: actionsEnabled ? widget.onInstall : null,
+              icon: widget.installing
+                  ? _spinner
+                  : Icon(Icons.download_outlined, size: context.tpIconSizes.md),
+              label: Text(
+                widget.installing
+                    ? l10n.cliInstallInstalling
+                    : (widget.installLabel ?? l10n.cliInstallButton),
+              ),
             ),
+          ],
+          if (showUpgrade) ...[
+            const SizedBox(width: 6),
+            OutlinedButton.icon(
+              key: widget.upgradeKey,
+              onPressed: actionsEnabled ? widget.onUpgrade : null,
+              icon: widget.installing
+                  ? _spinner
+                  : Icon(Icons.upgrade_outlined, size: context.tpIconSizes.md),
+              label: Text(
+                widget.installing
+                    ? l10n.cliInstallUpgrading
+                    : l10n.cliUpgradeButton,
+              ),
+            ),
+          ],
+          const SizedBox(width: 6),
+          OutlinedButton.icon(
+            key: widget.browseKey,
+            onPressed: actionsEnabled ? widget.onBrowse : null,
+            icon: Icon(
+              Icons.folder_open_outlined,
+              size: context.tpIconSizes.md,
+            ),
+            label: Text(l10n.cliExecutablePathBrowse),
+          ),
+          const SizedBox(width: 6),
+          TextButton(
+            key: widget.locateOrResetKey,
+            onPressed: actionsEnabled ? widget.onLocateOrReset : null,
+            child: widget.locating
+                ? _spinner
+                : Text(_storedEmpty ? widget.locateLabel : widget.resetLabel),
           ),
         ],
       ],

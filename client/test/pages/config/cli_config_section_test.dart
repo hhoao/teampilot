@@ -12,6 +12,8 @@ import 'package:teampilot/models/session_preferences.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/config/cli_config_section.dart';
 import 'package:teampilot/pages/config/cli_readiness_card.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_executable_capability.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/cli/cli_installer_service.dart';
@@ -239,6 +241,22 @@ void main() {
     expect(isNpmUpdate(installed: '0.42.0', latest: '0.44.1'), isTrue);
     expect(isNpmUpdate(installed: '0.44.1', latest: '0.44.1'), isFalse);
     expect(isNpmUpdate(installed: null, latest: '0.44.1'), isFalse);
+    expect(
+      isNpmUpdate(installed: '2.1.4 (Claude Code)', latest: '2.1.4'),
+      isFalse,
+    );
+    expect(
+      isNpmUpdate(installed: '2.1.4 (Claude Code)', latest: '2.2.0'),
+      isTrue,
+    );
+    expect(isNpmUpdate(installed: 'v0.44.1', latest: '0.44.1'), isFalse);
+    expect(
+      isNpmUpdate(
+        installed: 'agentclientprotocol/codex-acp 2.2.2',
+        latest: '2.2.2',
+      ),
+      isFalse,
+    );
   });
 
   testWidgets('Ready chip when CLI and adapter paths and versions are known', (
@@ -316,6 +334,52 @@ void main() {
       expect(find.text('Update available'), findsAtLeastNWidgets(1));
     },
   );
+
+  testWidgets(
+    'ACP version suffix is the version token not the package banner',
+    (tester) async {
+      final cubit = await _makeCubit(
+        locatedExecutables: const {CliTool.codex: '/usr/local/bin/codex'},
+        locatedAcpAdapters: const {CliTool.codex: '/usr/local/bin/codex-acp'},
+      );
+      addTearDown(cubit.close);
+      cubit.mergeBinaryVersion(
+        cli: CliTool.codex,
+        kind: CliBinaryKind.adapter,
+        installed: 'agentclientprotocol/codex-acp 2.2.2',
+      );
+
+      await tester.pumpWidget(_wrap(cubit));
+      await tester.pump();
+
+      expect(find.text('2.2.2'), findsOneWidget);
+      expect(
+        find.textContaining('agentclientprotocol/codex-acp'),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets('Upgrade is hidden when --version suffix matches npm latest', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit(
+      locatedExecutables: const {CliTool.codex: '/usr/local/bin/codex'},
+      locatedAcpAdapters: const {CliTool.codex: '/usr/local/bin/codex-acp'},
+    );
+    addTearDown(cubit.close);
+    cubit.mergeBinaryVersion(
+      cli: CliTool.codex,
+      kind: CliBinaryKind.cli,
+      installed: '0.44.1 (Codex)',
+      latest: '0.44.1',
+    );
+
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pump();
+
+    expect(find.byKey(AppKeys.codexCliUpgradeButton), findsNothing);
+  });
 
   testWidgets('Cursor and OpenCode have no ACP path field', (tester) async {
     final cubit = await _makeCubit(
@@ -406,10 +470,11 @@ void main() {
       await tester.pumpWidget(_wrap(cubit, isAndroidOverride: true));
       await tester.pump();
 
-      final tile = tester.widget<SwitchListTile>(
+      expect(find.byType(SwitchListTile), findsNothing);
+      final sw = tester.widget<Switch>(
         find.byKey(AppKeys.claudePersonalAcpSwitch),
       );
-      expect(tile.onChanged, isNull);
+      expect(sw.onChanged, isNull);
       expect(
         find.text(
           'ACP chat is desktop-only until remote SSH exec is available.',
@@ -528,6 +593,51 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(cubit.configuredExecutablePath(CliTool.claude), '/installed/claude');
+  });
+
+  testWidgets('each launchable CLI is in its own outlined card', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pump();
+
+    final registry = CliToolRegistry.builtIn();
+    final clis = registry.launchable
+        .where(
+          (def) => registry.capability<CliExecutableCapability>(def.id) != null,
+        )
+        .toList();
+    expect(find.byType(CliReadinessCard), findsNWidgets(clis.length));
+
+    final cardIdentities = <int>{};
+    for (var i = 0; i < clis.length; i++) {
+      final enclosing = find.ancestor(
+        of: find.byType(CliReadinessCard).at(i),
+        matching: find.byType(TpCard),
+      );
+      expect(enclosing, findsOneWidget);
+      cardIdentities.add(identityHashCode(tester.widget<TpCard>(enclosing)));
+    }
+    expect(cardIdentities, hasLength(clis.length));
+  });
+
+  testWidgets('CLI path actions sit beside the field without a Flexible gap', (
+    tester,
+  ) async {
+    final cubit = await _makeCubit();
+    addTearDown(cubit.close);
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pump();
+
+    expect(
+      find.ancestor(
+        of: find.byKey(AppKeys.claudeCliExecutablePathBrowseButton),
+        matching: find.byType(Flexible),
+      ),
+      findsNothing,
+    );
   });
 
   testWidgets('hides toolchain install buttons when paths are known', (

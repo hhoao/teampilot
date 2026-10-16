@@ -94,22 +94,19 @@ class _CliControls extends StatelessWidget {
         children: [
           TpSectionHeader(title: l10n.cliConfigAiCliGroup),
           const SizedBox(height: 8),
-          TpCard.outlined(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final def in registry.launchable)
-                  if (registry.capability<CliExecutableCapability>(def.id) !=
-                      null)
-                    CliReadinessCard(
-                      cli: def.id,
-                      cubit: cubit,
-                      isAndroidOverride: isAndroidOverride,
-                      versionProbe: versionProbe,
-                    ),
-              ],
-            ),
-          ),
+          for (final def in registry.launchable)
+            if (registry.capability<CliExecutableCapability>(def.id) != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: TpCard.outlined(
+                  child: CliReadinessCard(
+                    cli: def.id,
+                    cubit: cubit,
+                    isAndroidOverride: isAndroidOverride,
+                    versionProbe: versionProbe,
+                  ),
+                ),
+              ),
           const SizedBox(height: 24),
           TpSectionHeader(title: l10n.cliConfigToolchainGroup),
           const SizedBox(height: 8),

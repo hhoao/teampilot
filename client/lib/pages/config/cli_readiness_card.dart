@@ -53,7 +53,14 @@ CliReadinessChipKind readinessChip({
 
 bool isNpmUpdate({required String? installed, required String? latest}) {
   if (installed == null || latest == null) return false;
-  return installed.trim() != latest.trim();
+  final installedToken = cliVersionToken(installed) ?? installed.trim();
+  final latestToken = cliVersionToken(latest) ?? latest.trim();
+  return installedToken != latestToken;
+}
+
+String displayCliVersion(String? installed, String unknown) {
+  if (installed == null || installed.trim().isEmpty) return unknown;
+  return cliVersionToken(installed) ?? installed;
 }
 
 class CliReadinessCard extends StatefulWidget {
@@ -407,9 +414,10 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       CliReadinessChipKind.needsSetup => l10n.cliReadinessNeedsSetup,
     };
     final userPath = cubit.configuredExecutablePath(widget.cli).trim();
-    final cliVersion =
-        cubit.installedVersion(widget.cli, CliBinaryKind.cli) ??
-        l10n.cliReadinessVersionUnknown;
+    final cliVersion = displayCliVersion(
+      cubit.installedVersion(widget.cli, CliBinaryKind.cli),
+      l10n.cliReadinessVersionUnknown,
+    );
     final jobs = context.read<InstallJobRegistry>();
     final installingCli = jobs.isRunning(_cliJobKey(context));
     final installingAdapter = jobs.isRunning(_adapterJobKey());
@@ -499,9 +507,10 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
   }) {
     final cubit = widget.cubit;
     final adapterStored = cubit.configuredAcpAdapterPath(widget.cli);
-    final adapterVersion =
-        cubit.installedVersion(widget.cli, CliBinaryKind.adapter) ??
-        l10n.cliReadinessVersionUnknown;
+    final adapterVersion = displayCliVersion(
+      cubit.installedVersion(widget.cli, CliBinaryKind.adapter),
+      l10n.cliReadinessVersionUnknown,
+    );
     final showSwitch = _settings?.showsPersonalAcpSwitch == true;
     final busyAdapter = _locatingAdapter || installingAdapter;
     final showAdapterInstall =
@@ -548,19 +557,21 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
             enabled: !_isAndroid,
           ),
         if (showSwitch)
-          SwitchListTile(
-            key: AppKeys.personalAcpSwitchFor(widget.cli),
-            contentPadding: EdgeInsets.zero,
-            title: Text(
-              _isAndroid
-                  ? l10n.claudePersonalAcpAndroidDisabled
-                  : l10n.personalAcpSwitchLabel,
+          TpPreferenceRow(
+            title: _isAndroid
+                ? l10n.claudePersonalAcpAndroidDisabled
+                : l10n.personalAcpSwitchLabel,
+            subtitle: _isAndroid ? null : l10n.personalAcpSwitchCaption,
+            padding: EdgeInsets.zero,
+            showDividerBelow: false,
+            trailing: Switch(
+              key: AppKeys.personalAcpSwitchFor(widget.cli),
+              value: !_isAndroid && cubit.personalAcpDefaultFor(widget.cli),
+              onChanged: _isAndroid
+                  ? null
+                  : (value) =>
+                        cubit.setPersonalAcpDefaultFor(widget.cli, value),
             ),
-            subtitle: _isAndroid ? null : Text(l10n.personalAcpSwitchCaption),
-            value: !_isAndroid && cubit.personalAcpDefaultFor(widget.cli),
-            onChanged: _isAndroid
-                ? null
-                : (value) => cubit.setPersonalAcpDefaultFor(widget.cli, value),
           ),
       ],
     );
