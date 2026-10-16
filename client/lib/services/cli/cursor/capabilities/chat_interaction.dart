@@ -29,11 +29,21 @@ final class CursorChatInteraction
       'tool_use_id',
       'toolUseId',
     ]);
+    // Subagent lifecycle carries its own id key (`subagent_id`, with
+    // `subagent_type` as the fallback discriminant) — the attention cubit
+    // counts concurrent children so a child stop never completes the parent.
+    final subagentId = readPayloadString(body, const [
+      'subagent_id',
+      'subagentId',
+      'subagent_type',
+      'subagentType',
+    ]);
     AgentStatusEvent build(AgentSeatAttention state) => AgentStatusEvent(
       state: state,
       toolName: toolName,
       hookEventName: eventName,
       toolUseId: toolUseId,
+      toolAgentId: subagentId,
       prompt: prompt,
     );
     return switch (eventName) {
@@ -44,6 +54,9 @@ final class CursorChatInteraction
       'afterAgentResponse' ||
       'beforeShellExecution' ||
       'beforeMCPExecution' => build(AgentSeatAttention.working),
+      // Child lifecycle stays working; the cubit interprets the event name
+      // and child id — a child stop must not read as parent completion.
+      'subagentStart' || 'subagentStop' => build(AgentSeatAttention.working),
       'stop' => build(AgentSeatAttention.done),
       _ => null,
     };

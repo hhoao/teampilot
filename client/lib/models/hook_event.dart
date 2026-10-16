@@ -226,6 +226,9 @@ abstract final class HookEventCapability {
     // - flashskyai: has `SubagentStart` (and `SubagentStop`) but no
     //   `background_tasks` — without the start half its `SubagentStop` is a
     //   no-op and a background subagent leaves the seat looking idle.
+    // - cursor: has `subagentStart` / `subagentStop` (id in `subagent_id`);
+    //   `subagentStop` was already registered but normalize dropped it, so the
+    //   count never existed.
     // - claude: deliberately absent. Its `Stop` / `SubagentStop` payload
     //   carries an authoritative `background_tasks[]` snapshot that already
     //   covers background subagents, and reporting them through the
@@ -239,6 +242,10 @@ abstract final class HookEventCapability {
       CliTool.flashskyai: HookCliSupport(
         supported: true,
         nativeEvent: 'SubagentStart',
+      ),
+      CliTool.cursor: HookCliSupport(
+        supported: true,
+        nativeEvent: 'subagentStart',
       ),
     },
     HookEvent.subagentStop: {

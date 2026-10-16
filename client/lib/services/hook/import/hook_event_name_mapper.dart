@@ -55,6 +55,7 @@ abstract final class HookEventNameMapper {
       'postToolUse': HookEvent.postToolUse,
       'postToolUseFailure': HookEvent.postToolUseFailure,
       'stop': HookEvent.stop,
+      'subagentStart': HookEvent.subagentStart,
       'subagentStop': HookEvent.subagentStop,
       'preCompact': HookEvent.preCompact,
       'beforeShellExecution': HookEvent.shellCommandRequest,

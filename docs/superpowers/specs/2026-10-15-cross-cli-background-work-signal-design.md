@@ -204,7 +204,6 @@ subagent / monitor / workflow。
   - 备选（未采用）：把 `isBackgroundTaskStart` 从只认 `Bash` 放宽到
     `PreToolUse` + `tool_name ∈ {Agent, Task}` + `tool_input.run_in_background == true`，
     让后台子 agent 进**后台租约桶**。两条路线语义不同，本设计选了「注意力轴」。
-- **阶段 4：待做。**
 
 ## 已知限制（ACP 会话）
 
@@ -219,7 +218,21 @@ subagent / monitor / workflow。
 要让 ACP 会话也有后台信号，只有三条路：等 ACP v2 落地并实现 `state_update`；或让 agent
 把它自己的后台任务通过 ACP 扩展（`_meta` / 自定义 notification）上报；或改走 PTY + plugin。
 
-- **阶段 4：待做。**
+- **阶段 4：cursor 已完成，gemini 待做**
+  - **cursor：已做**。实测 `cursor-agent` 2026.10.14 的 hook 表含
+    `subagentStart` / `subagentStop`，载荷带 `subagent_id` / `subagent_type`。此前
+    `subagentStop` 虽已注册进矩阵，但 `CursorChatInteraction.normalize` 未处理（返回 null）
+    → 是死代码。改动：矩阵加 `subagentStart`（`nativeEvent: 'subagentStart'`）+ 名字映射 +
+    `normalize` 处理两者（`toolAgentId` 取 `subagent_id`，回退 `subagent_type`）。
+    未做：`beforeShellExecution` 的 `is_background`——实测载荷里没有该字段，不做猜测。
+  - **gemini：待做**。它的 hook writer 目前是 no-op，需要先建整条 hook 通道，单独立项。
+- **侧栏指示器：已完成**。`SessionWorkingIndicator` 增加 `backgroundRunning`
+  （静态沙漏，优先级 `waiting > working > background > idle`），`SidebarSessionTile`
+  经 `ChatCubit.seatLeaseCubit` 读取租约（不需要新 provider）；顺带修掉 `SeatLeaseCubit`
+  在 `pruneInterval: null` 时仍启用 prune 定时器的真 bug（会污染 `testWidgets`）。
+- **端到端集成测试：已完成**。`test/integration/background_work_live_chrome_integration_test.dart`
+  串起 `seatLeaseProjection` → `SeatLeaseCubit` → `SessionHistoryLiveChrome.resolve`，
+  覆盖 claude 与 opencode 两种线格式（含 `<task-id>` 释放路径）。
 
 ## 证据来源（本机）
 

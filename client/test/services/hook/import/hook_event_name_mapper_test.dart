@@ -51,6 +51,10 @@ void main() {
         HookEvent.shellCommandRequest,
       );
       expect(
+        HookEventNameMapper.map(CliTool.cursor, 'subagentStart'),
+        HookEvent.subagentStart,
+      );
+      expect(
         HookEventNameMapper.map(CliTool.cursor, 'afterAgentResponse'),
         isNull,
       );

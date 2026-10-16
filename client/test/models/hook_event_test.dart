@@ -65,6 +65,21 @@ void main() {
       );
     });
 
+    test('cursor maps subagentStart to its camelCase native name', () {
+      expect(
+        HookEventCapability.supports(HookEvent.subagentStart, CliTool.cursor),
+        isTrue,
+      );
+      expect(
+        HookEventCapability.nativeEvent(HookEvent.subagentStart, CliTool.cursor),
+        'subagentStart',
+      );
+      expect(
+        HookEventCapability.nativeEvent(HookEvent.subagentStop, CliTool.cursor),
+        'subagentStop',
+      );
+    });
+
     test('cursor events are lowercase with beforeSubmitPrompt', () {
       expect(
         HookEventCapability.nativeEvent(

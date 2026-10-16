@@ -436,6 +436,31 @@ void main() {
       expect(e?.state, AgentSeatAttention.done);
     });
 
+    test('Cursor subagent lifecycle retains the child id', () {
+      // `subagent_id` is the payload's own key (snake_case), not a tool_use_id.
+      for (final name in ['subagentStart', 'subagentStop']) {
+        final e = normalize(
+          cli: CliTool.cursor,
+          body: {
+            'hook_event_name': name,
+            'subagent_id': 'sa-1',
+            'subagent_type': 'verification',
+          },
+        );
+        expect(e?.hookEventName, name);
+        expect(e?.toolAgentId, 'sa-1', reason: name);
+        expect(e?.state, AgentSeatAttention.working, reason: name);
+      }
+    });
+
+    test('Cursor subagent lifecycle falls back to subagent_type', () {
+      final e = normalize(
+        cli: CliTool.cursor,
+        body: {'hook_event_name': 'subagentStart', 'subagent_type': 'search'},
+      );
+      expect(e?.toolAgentId, 'search');
+    });
+
     test('Cursor unknown / empty → null', () {
       expect(
         normalize(cli: CliTool.cursor, body: {'hook_event_name': 'weird'}),
