@@ -117,6 +117,49 @@ void main() {
     });
   });
 
+  group('WorkbenchChatBridge.promoteSessionTab', () {
+    test('drops the tab out of the replaceable-preview slot', () {
+      bridge.onSessionTabOpened(_ws, 's1', preview: true);
+      expect(cubit.centerFocusedStrip(_ws).previewIds, {_s1});
+
+      bridge.promoteSessionTab(_ws, 's1');
+
+      final center = cubit.centerFocusedStrip(_ws);
+      expect(center.order, [_s1]);
+      expect(center.previewIds, isEmpty);
+    });
+
+    test('a promoted session survives the next preview open', () async {
+      chat.tabStore.setActiveWorkspaceId('ws-1');
+      chat.tabStore.registerSession(
+        ChatTab(
+          info: ChatTabInfo(id: 'A', title: 'a', subtitle: ''),
+          cliTeamName: '',
+          workspaceId: 'ws-1',
+        ),
+      );
+      chat.tabStore.registerSession(
+        ChatTab(
+          info: ChatTabInfo(id: 'B', title: 'b', subtitle: ''),
+          cliTeamName: '',
+          workspaceId: 'ws-1',
+        ),
+      );
+
+      bridge.onSessionTabOpened('ws-1', 'A', preview: true);
+      // The operator sent a message in A — commit it out of the preview slot.
+      bridge.promoteSessionTab('ws-1', 'A');
+      bridge.onSessionTabOpened('ws-1', 'B', preview: true);
+      await pumpEventQueue();
+
+      expect(
+        cubit.centerFocusedStrip('ws-1').contains(WorkbenchTabId.session('A')),
+        isTrue,
+      );
+      expect(chat.tabStore.getOpenTabBySessionId('A'), isNotNull);
+    });
+  });
+
   group('WorkbenchChatBridge.replacedPreviewTeardown', () {
     test('fires for a replaced non-session preview', () {
       final teardowns = <(String, WorkbenchTabId)>[];

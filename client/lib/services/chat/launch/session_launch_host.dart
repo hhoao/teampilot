@@ -215,6 +215,12 @@ abstract class ChatWorkbenchPort {
   /// Close every center tab for [workspaceId] (each removal tears down).
   void closeAll(String workspaceId);
 
+  /// When the domain stages a session tab, the bar opens it as a *replaceable
+  /// preview* unless the caller pinned it. Once the operator commits to that
+  /// session (a message send), promote its tab out of the preview slot so a
+  /// later preview open cannot displace a session that is in use.
+  void promoteSessionTab(String workspaceId, String sessionId);
+
   /// Bar center-active tab for [workspaceId]. Lets the domain derive "the
   /// active session" from the bar — the single source of truth.
   CenterActiveScope centerActiveForScope(String workspaceId);

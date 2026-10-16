@@ -165,5 +165,19 @@ class ChatTab {
     yield* memberShells.values;
   }
 
-  bool get isRunning => sessions.any((session) => session.isRunning);
+  /// Member ACP seats that are still live (not yet ended, not closed).
+  ///
+  /// Terminal-less: they never appear in [sessions], so callers asking "is this
+  /// tab doing work" must consult both.
+  Iterable<AcpChatRuntimeCubit> get liveAcpRuntimes sync* {
+    for (final cubit in memberAcpRuntimes.values) {
+      if (!cubit.isClosed && cubit.state.phase != AcpChatPhase.ended) {
+        yield cubit;
+      }
+    }
+  }
+
+  bool get isRunning =>
+      sessions.any((session) => session.isRunning) ||
+      liveAcpRuntimes.isNotEmpty;
 }

@@ -72,6 +72,11 @@ class WorkbenchChatBridge implements WorkbenchDomainPort, ChatWorkbenchPort {
   }
 
   @override
+  void promoteSessionTab(String workspaceId, String sessionId) {
+    _workbench.promote(workspaceId, WorkbenchTabId.session(sessionId));
+  }
+
+  @override
   void enterLanding(
     String workspaceId, {
     String? initialText,

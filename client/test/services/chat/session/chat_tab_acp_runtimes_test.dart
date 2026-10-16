@@ -171,4 +171,35 @@ void main() {
     expect(tab.memberAcpRuntimes, isEmpty);
     expect(tab.acpRuntime, isNull);
   });
+
+  group('ChatTab.isRunning', () {
+    test('counts a live ACP runtime as running', () {
+      final tab = ChatTab(
+        info: const ChatTabInfo(id: 's1', title: 't', subtitle: ''),
+        cliTeamName: '',
+      );
+      expect(tab.isRunning, isFalse);
+
+      tab.acpRuntime = _cubitFor(_FakeAcpRuntime());
+
+      // ACP seats are terminal-less: nothing ever lands in memberShells, so a
+      // PTY-only predicate reports a live agent as idle. `WorkbenchChatBridge`
+      // reads this to decide whether a preview-displaced session is re-pinned
+      // or torn down, so an ACP session used to be destroyed on displace.
+      expect(tab.isRunning, isTrue);
+    });
+
+    test('does not count a closed ACP runtime as running', () async {
+      final tab = ChatTab(
+        info: const ChatTabInfo(id: 's1', title: 't', subtitle: ''),
+        cliTeamName: '',
+      );
+      final cubit = _cubitFor(_FakeAcpRuntime());
+      tab.acpRuntime = cubit;
+
+      await cubit.close();
+
+      expect(tab.isRunning, isFalse);
+    });
+  });
 }

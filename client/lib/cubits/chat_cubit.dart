@@ -1027,7 +1027,7 @@ class ChatCubit extends Cubit<ChatState>
   }) async {
     final tab = _tabStore.getOpenTabBySessionId(sessionId);
     final session = tab?.persistedSession;
-    if (session == null) {
+    if (tab == null || session == null) {
       return const HistoryContinueSubmitResult.failed();
     }
 
@@ -1052,6 +1052,12 @@ class ChatCubit extends Cubit<ChatState>
     if (message.trim().isEmpty) {
       return const HistoryContinueSubmitResult.failed();
     }
+
+    // The operator is committing to this session. Its tab may have been opened
+    // as a replaceable preview (sidebar click), which the next preview open
+    // would displace — and a displaced non-running tab is torn down. A send is
+    // the commit point, so pin it out of the preview slot first.
+    _workbenchPort?.promoteSessionTab(tab.workspaceId, sessionId);
 
     return withCancellableOperatorDelivery(
       sessionId,
