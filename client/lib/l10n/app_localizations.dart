@@ -14480,6 +14480,18 @@ abstract class AppLocalizations {
   /// **'Balance API preset; add a secret.'**
   String get managedProvidersQuickPresetDeepSeekHint;
 
+  /// No description provided for @managedProvidersQuickPresetOpencodeGo.
+  ///
+  /// In en, this message translates to:
+  /// **'OpenCode Go'**
+  String get managedProvidersQuickPresetOpencodeGo;
+
+  /// No description provided for @managedProvidersQuickPresetOpencodeGoHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Zen Go subscription quota preset; add your API key.'**
+  String get managedProvidersQuickPresetOpencodeGoHint;
+
   /// No description provided for @managedProvidersQuickPresetCustom.
   ///
   /// In en, this message translates to:

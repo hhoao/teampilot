@@ -3491,6 +3491,8 @@
   "managedProvidersQuickPresetCursorHint": "登录或导入，或手填相同字段。",
   "managedProvidersQuickPresetDeepSeek": "DeepSeek",
   "managedProvidersQuickPresetDeepSeekHint": "已配余额接口，需填密钥。",
+  "managedProvidersQuickPresetOpencodeGo": "OpenCode Go",
+  "managedProvidersQuickPresetOpencodeGoHint": "Zen Go 订阅用量预设，需填 API 密钥。",
   "managedProvidersQuickPresetCustom": "自定义",
   "managedProvidersQuickPresetCustomHint": "从零配置接口、凭据与显示格式。",
   "managedProvidersBasicsSectionTitle": "基本信息",

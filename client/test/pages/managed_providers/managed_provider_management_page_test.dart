@@ -470,6 +470,55 @@ void main() {
     },
   );
 
+  testWidgets(
+    'new editor applies the OpenCode Go preset without inventing credentials',
+    (tester) async {
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      await pumpPage(tester);
+
+      await openNewEditor(tester);
+      await applyPreset(tester, 'OpenCode Go');
+
+      final nameInput = tester.widget<TpInputFormField>(
+        find.byKey(const Key('managed-provider-name')),
+      );
+      expect(nameInput.controller!.text, 'OpenCode Go');
+      expect(
+        find.byKey(const Key('managed-provider-credential-secret')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('managed-provider-section-advanced')),
+        findsNothing,
+      );
+
+      await tester.tap(find.byKey(const Key('managed-provider-section-query')));
+      await tester.pumpAndSettle();
+      final endpointInput = tester.widget<TpInputFormField>(
+        find.byKey(const Key('managed-provider-endpoint')),
+      );
+      expect(
+        endpointInput.controller!.text,
+        'https://opencode.ai/zen/go/v1/usage',
+      );
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('managed-provider-windows')),
+        500,
+        scrollable: _verticalScrollable(),
+      );
+      final windows = tester.widget<TpTextareaFormField>(
+        find.byKey(const Key('managed-provider-windows'), skipOffstage: false),
+      );
+      expect(windows.controller!.text, contains(r'$.usage.rolling.percent'));
+      expect(windows.controller!.text, contains(r'$.usage.monthly.percent'));
+    },
+  );
+
   testWidgets('preset schema controls visible editor sections', (tester) async {
     providerCubit.emit(
       ManagedProviderState(status: ManagedProviderLoadStatus.ready),

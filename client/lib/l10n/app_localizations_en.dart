@@ -8128,6 +8128,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Balance API preset; add a secret.';
 
   @override
+  String get managedProvidersQuickPresetOpencodeGo => 'OpenCode Go';
+
+  @override
+  String get managedProvidersQuickPresetOpencodeGoHint =>
+      'Zen Go subscription quota preset; add your API key.';
+
+  @override
   String get managedProvidersQuickPresetCustom => 'Custom';
 
   @override

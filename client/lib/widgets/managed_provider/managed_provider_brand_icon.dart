@@ -75,6 +75,9 @@ ManagedProviderBrandIconSpec resolveManagedProviderBrandIcon(
   if (host == 'api.deepseek.com' || name == 'deepseek') {
     return const ManagedProviderBrandIconSpec.bundled('deepseek');
   }
+  if (host == 'opencode.ai' || name == 'opencode' || name == 'opencode go') {
+    return const ManagedProviderBrandIconSpec.bundled('opencode');
+  }
   final iconUrl = provider.brand.iconUrl?.trim() ?? '';
   if (iconUrl.startsWith('https://')) {
     return ManagedProviderBrandIconSpec.remote(iconUrl);

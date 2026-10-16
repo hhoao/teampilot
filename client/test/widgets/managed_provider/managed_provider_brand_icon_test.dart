@@ -64,6 +64,18 @@ void main() {
     );
   });
 
+  test('OpenCode host uses bundled opencode', () {
+    expect(
+      resolveManagedProviderBrandIcon(
+        _provider(
+          name: 'OpenCode Go',
+          url: 'https://opencode.ai/zen/go/v1/usage',
+        ).copyWith(kind: ManagedProviderKind.subscriptionQuota),
+      ),
+      const ManagedProviderBrandIconSpec.bundled('opencode'),
+    );
+  });
+
   test('https brand.iconUrl wins after host maps', () {
     expect(
       resolveManagedProviderBrandIcon(

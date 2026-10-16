@@ -10,6 +10,7 @@ void main() {
       'claude-code',
       'cursor',
       'deepseek',
+      'opencode-go',
     ]);
 
     final codex = managedProviderPresetById('codex')!;
@@ -67,12 +68,50 @@ void main() {
     expect(managedProviderPresetById('not-a-preset'), isNull);
   });
 
+  test('OpenCode Go preset maps the Zen Go usage API without a key', () {
+    final preset = managedProviderPresetById('opencode-go')!;
+    final endpoint = preset.template.endpointConfig;
+
+    expect(preset.template.name, 'OpenCode Go');
+    expect(preset.template.kind, ManagedProviderKind.subscriptionQuota);
+    expect(preset.template.adapterId, 'http-json');
+    expect(endpoint.url, 'https://opencode.ai/zen/go/v1/usage');
+    expect(endpoint.method, 'GET');
+    expect(endpoint.credentialSource, 'secret');
+    expect(endpoint.credentialName, 'Authorization');
+    expect(endpoint.credentialField, 'apiKey');
+    expect(endpoint.credentialPlacement, 'header');
+    expect(endpoint.credentialPrefix, 'Bearer ');
+    expect(preset.template.credentialRef, isNull);
+    expect(endpoint.windows, const [
+      ManagedProviderUsageWindow(
+        label: '5h',
+        used: r'$.usage.rolling.percent',
+        resetsAt: r'$.usage.rolling.resetsAt',
+        unit: '%',
+      ),
+      ManagedProviderUsageWindow(
+        label: 'Weekly',
+        used: r'$.usage.weekly.percent',
+        resetsAt: r'$.usage.weekly.resetsAt',
+        unit: '%',
+      ),
+      ManagedProviderUsageWindow(
+        label: 'Monthly',
+        used: r'$.usage.monthly.percent',
+        resetsAt: r'$.usage.monthly.resetsAt',
+        unit: '%',
+      ),
+    ]);
+  });
+
   test('quick preset options include built-ins and custom', () {
     expect(managedProviderQuickPresetOptionIds, [
       'codex',
       'claude-code',
       'cursor',
       'deepseek',
+      'opencode-go',
       kManagedProviderQuickPresetCustomId,
     ]);
   });

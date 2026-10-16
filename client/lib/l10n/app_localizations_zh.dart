@@ -7808,6 +7808,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersQuickPresetDeepSeekHint => '已配余额接口，需填密钥。';
 
   @override
+  String get managedProvidersQuickPresetOpencodeGo => 'OpenCode Go';
+
+  @override
+  String get managedProvidersQuickPresetOpencodeGoHint =>
+      'Zen Go 订阅用量预设，需填 API 密钥。';
+
+  @override
   String get managedProvidersQuickPresetCustom => '自定义';
 
   @override

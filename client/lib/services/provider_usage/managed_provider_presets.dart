@@ -330,6 +330,45 @@ final List<ManagedProviderPreset> builtInManagedProviderPresets =
         ),
         schema: _deepSeekEditorSchema,
       ),
+      ManagedProviderPreset(
+        id: 'opencode-go',
+        labelId: 'opencode-go',
+        hintId: 'opencode-go',
+        template: ManagedProvider(
+          id: '',
+          name: 'OpenCode Go',
+          kind: ManagedProviderKind.subscriptionQuota,
+          adapterId: 'http-json',
+          endpointConfig: ManagedProviderEndpointConfig(
+            url: 'https://opencode.ai/zen/go/v1/usage',
+            method: 'GET',
+            credentialName: 'Authorization',
+            credentialField: 'apiKey',
+            credentialPlacement: 'header',
+            credentialPrefix: 'Bearer ',
+            windows: const [
+              ManagedProviderUsageWindow(
+                label: '5h',
+                used: r'$.usage.rolling.percent',
+                resetsAt: r'$.usage.rolling.resetsAt',
+                unit: '%',
+              ),
+              ManagedProviderUsageWindow(
+                label: 'Weekly',
+                used: r'$.usage.weekly.percent',
+                resetsAt: r'$.usage.weekly.resetsAt',
+                unit: '%',
+              ),
+              ManagedProviderUsageWindow(
+                label: 'Monthly',
+                used: r'$.usage.monthly.percent',
+                resetsAt: r'$.usage.monthly.resetsAt',
+                unit: '%',
+              ),
+            ],
+          ),
+        ),
+      ),
     ]);
 
 final List<String> managedProviderQuickPresetOptionIds = List.unmodifiable([

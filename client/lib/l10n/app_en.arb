@@ -4179,6 +4179,8 @@
   "managedProvidersQuickPresetCursorHint": "Sign in or import credentials below, or fill the same fields manually.",
   "managedProvidersQuickPresetDeepSeek": "DeepSeek",
   "managedProvidersQuickPresetDeepSeekHint": "Balance API preset; add a secret.",
+  "managedProvidersQuickPresetOpencodeGo": "OpenCode Go",
+  "managedProvidersQuickPresetOpencodeGoHint": "Zen Go subscription quota preset; add your API key.",
   "managedProvidersQuickPresetCustom": "Custom",
   "managedProvidersQuickPresetCustomHint": "Configure endpoint, credentials, and display from scratch.",
   "managedProvidersBasicsSectionTitle": "Basics",
