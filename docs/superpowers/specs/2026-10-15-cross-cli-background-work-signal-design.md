@@ -33,6 +33,9 @@ seat 已经 `done`，界面显示"会话结束"，用户以为没在跑。已有
 
 判定：先看在途回合；没有在途回合但有 lease → 后台任务。二者都不满足 → 无 footer。
 
+> 传输依赖：后台轴只在 **PTY** 会话成立（claude hook / opencode plugin 都跑在 CLI 进程侧）。
+> **ACP 会话看不到后台轴**——见文末「已知限制（ACP 会话）」。
+
 ## 各 CLI 信号矩阵（本机反编译/实测证据）
 
 ### 后台 shell / 长任务
@@ -186,19 +189,36 @@ subagent / monitor / workflow。
     卡住的租约由 60 分钟 TTL 兜底）。
   - **待实测**：以上基于二进制/SDK 静态证据，尚未在真实 opencode 会话中跑通端到端
     （需要给工作区 agent 会话也装状态 plugin，见下方"非目标/待定"）。
-- **阶段 3（claude/flashskyai `SubagentStart` 注册）：拆分结论**
+- **阶段 3（claude/flashskyai `SubagentStart` 注册）：flashskyai 已完成，claude 明确不做**
   - **claude：不做**。`background_tasks` 已覆盖后台子 agent；注册 `SubagentStart` 反而会让
     「后台任务运行中」变回「运行中」（父 Stop 等到子结束才 done），与阶段 1 语义冲突，
     且丢失快照的对账自愈性（漏事件时靠快照复正，而不是靠计数）。
-  - **flashskyai：应当做**。实测确认它**有** `SubagentStart`（含 schema），但**没有**
-    `background_tasks` → 它的后台子 agent 目前两条通道都没有信号。注册 `SubagentStart`
-    后，已注册的 `SubagentStop` 才真正生效，子 agent 计数能工作：父 Stop 在子未结束时保持
-    「运行中」。注意这是**刻意的**语义选择——对 flashskyai 而言子 agent 归「运行中」而非
-    「后台任务」；若要把它显示为「后台任务」，则需要改用 latch 路线（见下）。
-  - 备选（不改注意力）：把 `isBackgroundTaskStart` 从只认 `Bash` 放宽到
+  - **flashskyai：已做**。实测确认它**有** `SubagentStart`（含 schema），但**没有**
+    `background_tasks` → 它的后台子 agent 之前两条通道都无信号。改动：
+    `hook_event.dart` 的 `HookEvent.subagentStart` 支持矩阵加入 flashskyai（并补
+    `hook_event_name_mapper` 映射）——它本来就在 `managedRuntimeEventHookEntries` 的事件集里，
+    只是被支持矩阵过滤掉了。效果：已注册的 `SubagentStop` 才真正生效，子 agent 计数能工作，
+    父 Stop 在子未结束时保持「运行中」。
+  - 语义注意：对 flashskyai 而言子 agent 归**「运行中」**（注意力轴），不是「后台任务」——
+    这是刻意的选择（它没有快照，无法在回合外单独跟踪）。claude 则相反，归「后台任务」。
+  - 备选（未采用）：把 `isBackgroundTaskStart` 从只认 `Bash` 放宽到
     `PreToolUse` + `tool_name ∈ {Agent, Task}` + `tool_input.run_in_background == true`，
-    这样 claude/flashskyai 的后台子 agent 直接进**后台租约桶**，与阶段 1/2 同路径。
-    两者语义不同，需择一。
+    让后台子 agent 进**后台租约桶**。两条路线语义不同，本设计选了「注意力轴」。
+- **阶段 4：待做。**
+
+## 已知限制（ACP 会话）
+
+工作区 agent 会话走 ACP（终端无关），**不装** `teampilot-agent-status.js` plugin
+（`RuntimeEventHookContributionProvider` 只在有 agentStatus 的团队成员 seat 上写），
+且 **ACP v1 没有任何后台工作信号**（`state_update` 是 v2 draft 的东西，尚未稳定、
+零 agent 实现）。因此在 ACP 会话下：
+
+- 只能看到**在途回合**的活动（thinking / generating / toolRunning，来自 ACP 的流式更新）；
+- **看不到**后台工作（后台 shell / 子 agent）——这不是实现缺陷，是 ACP v1 的协议缺口。
+
+要让 ACP 会话也有后台信号，只有三条路：等 ACP v2 落地并实现 `state_update`；或让 agent
+把它自己的后台任务通过 ACP 扩展（`_meta` / 自定义 notification）上报；或改走 PTY + plugin。
+
 - **阶段 4：待做。**
 
 ## 证据来源（本机）

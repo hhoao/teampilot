@@ -31,6 +31,7 @@ abstract final class HookEventNameMapper {
       'PermissionRequest': HookEvent.permissionRequest,
       'Stop': HookEvent.stop,
       'StopFailure': HookEvent.stopFailure,
+      'SubagentStart': HookEvent.subagentStart,
       'SubagentStop': HookEvent.subagentStop,
       'PreCompact': HookEvent.preCompact,
       'Notification': HookEvent.notification,

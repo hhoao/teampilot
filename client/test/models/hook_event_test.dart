@@ -42,6 +42,29 @@ void main() {
       );
     });
 
+    test('subagentStart is codex + flashskyai, deliberately not claude', () {
+      // flashskyai has the native start hook but no `background_tasks`
+      // snapshot, so registering it is the only way its background subagents
+      // get counted (its `SubagentStop` is otherwise a no-op).
+      expect(
+        HookEventCapability.supports(HookEvent.subagentStart, CliTool.codex),
+        isTrue,
+      );
+      expect(
+        HookEventCapability.supports(
+          HookEvent.subagentStart,
+          CliTool.flashskyai,
+        ),
+        isTrue,
+      );
+      // claude's Stop/SubagentStop carries an authoritative background_tasks
+      // snapshot; counting children would drag post-turn work back to running.
+      expect(
+        HookEventCapability.supports(HookEvent.subagentStart, CliTool.claude),
+        isFalse,
+      );
+    });
+
     test('cursor events are lowercase with beforeSubmitPrompt', () {
       expect(
         HookEventCapability.nativeEvent(

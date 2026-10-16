@@ -217,11 +217,26 @@ abstract final class HookEventCapability {
         nativeEvent: 'StopFailure',
       ),
     },
-    // Why codex-only for SubagentStart: only codex exposes a native start
-    // lifecycle hook; agent-status assembly registers it so the attention
-    // cubit can count concurrent children (parent Stop must wait for them).
+    // SubagentStart is registered where the CLI exposes a native start hook
+    // AND has no authoritative in-flight snapshot to reconcile against:
+    // agent-status assembly registers it so the attention cubit can count
+    // concurrent children (parent Stop must wait for them).
+    //
+    // - codex: native start hook, no background snapshot.
+    // - flashskyai: has `SubagentStart` (and `SubagentStop`) but no
+    //   `background_tasks` — without the start half its `SubagentStop` is a
+    //   no-op and a background subagent leaves the seat looking idle.
+    // - claude: deliberately absent. Its `Stop` / `SubagentStop` payload
+    //   carries an authoritative `background_tasks[]` snapshot that already
+    //   covers background subagents, and reporting them through the
+    //   attention axis would drag post-turn work back into "running" (see
+    //   docs/superpowers/specs/2026-10-15-cross-cli-background-work-signal-design.md).
     HookEvent.subagentStart: {
       CliTool.codex: HookCliSupport(
+        supported: true,
+        nativeEvent: 'SubagentStart',
+      ),
+      CliTool.flashskyai: HookCliSupport(
         supported: true,
         nativeEvent: 'SubagentStart',
       ),

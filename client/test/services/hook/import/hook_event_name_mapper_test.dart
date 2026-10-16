@@ -61,4 +61,17 @@ void main() {
     expect(HookEventNameMapper.map(CliTool.flashskyai, 'Stop'), HookEvent.stop);
     expect(HookEventNameMapper.map(CliTool.opencode, 'PreToolUse'), isNull);
   });
+
+  test('flashskyai maps SubagentStart; claude does not', () {
+    expect(
+      HookEventNameMapper.map(CliTool.flashskyai, 'SubagentStart'),
+      HookEvent.subagentStart,
+    );
+    expect(
+      HookEventNameMapper.map(CliTool.flashskyai, 'SubagentStop'),
+      HookEvent.subagentStop,
+    );
+    // claude never registers the start half (background_tasks covers it).
+    expect(HookEventNameMapper.map(CliTool.claude, 'SubagentStart'), isNull);
+  });
 }
