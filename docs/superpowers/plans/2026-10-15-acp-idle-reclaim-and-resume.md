@@ -10,6 +10,11 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-15-acp-idle-reclaim-and-resume-design.md` — read it first (decisions D1–D7, snapshot mapping table).
 
+**Status: COMPLETE** — all 6 tasks landed on branch `acp-idle-reclaim` via subagent-driven development (ledger: `.superpowers/sdd/2026-10-15-acp-idle-reclaim-and-resume/progress.md`). Two deferred guards from the ledger were closed after the fact:
+
+- `AcpAgentSession` suppression guard — `acp_session_test.dart: 'a load session drops replayed updates until the first prompt'`.
+- Resume-id boundaries — `acp_session_runtime_test.dart: 'start ignores a whitespace-only resume id'` and `'…when the agent negotiates no resume'`.
+
 ## Global Constraints
 
 - Tests ONLY through the wrapper: `cd client && dart run tool/run_tests.dart <paths>` — never raw `flutter test`.
@@ -36,7 +41,7 @@
   - `Future<AcpAgentSession> loadSession({required String sessionId, required String cwd, List<acpd.McpServer> mcpServers = const [], Map<String, Object?> meta = const {}, Duration permissionTimeout = AcpAgentSession.defaultPermissionTimeout})`
   - `Future<AcpAgentSession> resumeSession({...same...})`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `acp_connection_test.dart` (reuse `agent`, `conn`, `stubInitialize`; that file already imports `dart:async`, `acpd`, `acpd_test`):
 
@@ -81,12 +86,12 @@ test('resumeSession sends session/resume', () async {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd client && dart run tool/run_tests.dart test/services/acp/acp_connection_test.dart`
 Expected: FAIL — `negotiatedCapabilities` / `loadSession` / `resumeSession` undefined.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 In `acp_connection.dart`:
 
@@ -242,7 +247,7 @@ Future<AcpAgentSession> _establish({
 
 5. Delete the old `openSession` body (now replaced by `_establish`). Keep `sessionDisposed`, `_onHandshakePermission`, etc. unchanged.
 
-- [ ] **Step 4: Update `AcpAgentSession` constructor for `suppressBootstrapUpdates`**
+- [x] **Step 4: Update `AcpAgentSession` constructor for `suppressBootstrapUpdates`**
 
 Modify `acp_session.dart`:
 
@@ -281,12 +286,12 @@ At the very start of `prompt(String text)` (before the in-flight guard):
 _suppressBootstrap = false;
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `cd client && dart run tool/run_tests.dart test/services/acp/acp_connection_test.dart test/services/acp/acp_session_test.dart`
 Expected: PASS (existing session tests unaffected — default false).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add client/lib/services/acp/acp_connection.dart client/lib/services/acp/acp_session.dart client/test/services/acp/acp_connection_test.dart
@@ -312,7 +317,7 @@ git commit -m "feat(acp): load/resume session support on the connection"
 - Consumes: `AcpAgentConnection.negotiatedCapabilities` / `loadSession` / `resumeSession` (Task 1).
 - Produces: `AcpSessionRuntimeApi.start({..., String? resumeSessionId})`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `acp_session_runtime_test.dart` (reuse its existing spawner/`AcpLaunchPlan` harness; the fake spawner returns an `AcpAgentConnection` built on an `acpd_test.MockAgent`, or a stub that records which acpd method was called). Cover:
 
@@ -347,12 +352,12 @@ test('start uses session/new when no resume id is given', () async {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd client && dart run tool/run_tests.dart test/services/acp/acp_session_runtime_test.dart`
 Expected: FAIL — `resumeSessionId` is not a parameter.
 
-- [ ] **Step 3: Implement — interface + impl**
+- [x] **Step 3: Implement — interface + impl**
 
 In `acp_session_runtime.dart`, add the parameter to `AcpSessionRuntimeApi.start` and the impl:
 
@@ -419,16 +424,16 @@ Future<AcpAgentSession> _openSession({
 }
 ```
 
-- [ ] **Step 4: Update the interface fakes**
+- [x] **Step 4: Update the interface fakes**
 
 In each listed fake's `start`, add `String? resumeSessionId,` to the named parameters (default null). Mirrors the interface; no behavior change. `_FakeAcpRuntime` in the cubit test may additionally record `resumeSessionId` for Task 3.
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `cd client && dart run tool/run_tests.dart test/services/acp/acp_session_runtime_test.dart test/cubits/chat/acp/acp_chat_runtime_cubit_test.dart test/pages/chat/acp_runtime_for_view_test.dart test/pages/chat/acp_ask_card_test.dart test/pages/chat/acp_permission_card_test.dart test/pages/chat/acp_plan_card_test.dart`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add client/lib/services/acp/acp_session_runtime.dart client/test
@@ -452,7 +457,7 @@ git commit -m "feat(acp): resume the agent session on start when supported"
   - `AcpAgentSessionStore({required Filesystem fs, required String path})` with `read()/write()/clear()`
   - `AcpChatRuntimeCubit({..., AcpAgentSessionStore? agentSession})`
 
-- [ ] **Step 1: Write the failing store test**
+- [x] **Step 1: Write the failing store test**
 
 ```dart
 // acp_agent_session_store_test.dart
@@ -481,12 +486,12 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd client && dart run tool/run_tests.dart test/services/acp/acp_agent_session_store_test.dart`
 Expected: FAIL — file not found.
 
-- [ ] **Step 3: Implement the store**
+- [x] **Step 3: Implement the store**
 
 ```dart
 // acp_agent_session_store.dart
@@ -524,7 +529,7 @@ class AcpAgentSessionStore {
 }
 ```
 
-- [ ] **Step 4: Wire the cubit**
+- [x] **Step 4: Wire the cubit**
 
 In `AcpChatRuntimeCubit`: add `AcpAgentSessionStore? agentSession` to the constructor and store it in `_agentSession`. In `start()`, before `_runtime.start(...)`:
 
@@ -542,7 +547,7 @@ if (liveId.isNotEmpty && liveId != resumeId) {
 }
 ```
 
-- [ ] **Step 5: Write the failing cubit tests**
+- [x] **Step 5: Write the failing cubit tests**
 
 Append to `acp_chat_runtime_cubit_test.dart`. Extend `_FakeAcpRuntime` with `String? lastResumeSessionId;` recorded in `start`, and extend the file's `bootCubit(...)` helper with an `AcpAgentSessionStore? agentSession` parameter forwarded to the cubit constructor:
 
@@ -562,12 +567,12 @@ test('start resumes a stored agent session id and persists a fresh one', () asyn
 });
 ```
 
-- [ ] **Step 6: Run tests to verify they pass**
+- [x] **Step 6: Run tests to verify they pass**
 
 Run: `cd client && dart run tool/run_tests.dart test/services/acp/acp_agent_session_store_test.dart test/cubits/chat/acp/acp_chat_runtime_cubit_test.dart`
 Expected: PASS.
 
-- [ ] **Step 7: Wire the attach path**
+- [x] **Step 7: Wire the attach path**
 
 In `acp_runtime_attach.dart`, mirror `_transcript(...)` with a `_agentSessionStore(session, memberId:, personal:)` that returns an `AcpAgentSessionStore` at the same directory, file name `acp-session.json` / `acp-session-<memberId>.json`. Pass it into the `AcpChatRuntimeCubit(...)` construction in `_cubit(...)`:
 
@@ -583,12 +588,12 @@ return AcpChatRuntimeCubit(
 )..ensureStrings(...);
 ```
 
-- [ ] **Step 8: Run the attach tests**
+- [x] **Step 8: Run the attach tests**
 
 Run: `cd client && dart run tool/run_tests.dart test/services/chat/launch/acp_runtime_attach_test.dart test/services/chat/launch/session_launch_acp_attach_test.dart`
 Expected: PASS.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add client/lib/services/acp/acp_agent_session_store.dart client/lib/cubits/session/acp/acp_chat_runtime_cubit.dart client/lib/services/chat/launch/connect/acp_runtime_attach.dart client/test
@@ -608,7 +613,7 @@ git commit -m "feat(acp): persist the agent session id and resume it"
 - Consumes: `AcpChatRuntimeCubit` state (`phase`, `inTurn`, `pendingClient`), `isAcpChatSession`.
 - Produces: `TabMemberReclaimWatch({..., TerminalReclaimPolicy Function()? acpPolicy, void Function(String sessionId, String memberId)? onDiscardAcpSeat})`; coordinator factory gains `onReclaimAcpSeat` + `acpIdleAfterSeconds`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `tab_member_reclaim_watch_test.dart`, extend `_watch` with `TerminalReclaimPolicy? acpPolicy` (a 2-second policy in tests) and `void Function(String, String)? onDiscardAcpSeat`, then add:
 
@@ -683,12 +688,12 @@ test('never reclaims the selected ACP seat or a personal ACP session', () async 
 
 `_readyCubit()` builds `AcpChatRuntimeCubit(runtime: _FakeAcpRuntime(), sessionId: 'sess', tool: CliTool.gemini)` and `await`s `start(...)` so `phase == AcpChatPhase.ready`; `_launchingCubit()` builds the same cubit **without** calling `start` so `phase == AcpChatPhase.launching`. (Reuse the `_FakeAcpRuntime` shape; if it is private to the cubit test, copy the minimal stub into this file.)
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd client && dart run tool/run_tests.dart test/cubits/chat/tab_member_reclaim_watch_test.dart`
 Expected: FAIL — `onDiscardAcpSeat` / `acpPolicy` are not parameters.
 
-- [ ] **Step 3: Implement the watch**
+- [x] **Step 3: Implement the watch**
 
 In `tab_member_reclaim_watch.dart`:
 
@@ -765,12 +770,12 @@ onDiscardAcpSeat: onReclaimAcpSeat,
 
 When `acpPolicy` is null the ACP loop is skipped (unchanged behavior for callers that do not pass an ACP threshold).
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cd client && dart run tool/run_tests.dart test/cubits/chat/tab_member_reclaim_watch_test.dart`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add client/lib/services/chat/runtime/tab_member_reclaim_watch.dart client/lib/services/chat/runtime/tab_session_runtime_coordinator.dart client/test/cubits/chat/tab_member_reclaim_watch_test.dart
@@ -790,7 +795,7 @@ git commit -m "feat(reclaim): idle-discard hidden ACP seats"
 - Consumes: `ChatTab.memberAcpRuntimes`, `ChatTab.reclaimedMemberIds`, `SessionLaunchHost.clearAgentStatusSeat`.
 - Produces: `SessionLaunchService.discardAcpSeat(String sessionId, String memberId)`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Assert: discarding removes the cubit, adds the member to `reclaimedMemberIds`, and closes the cubit. Use the existing launch-service harness (a tab with a `memberAcpRuntimes` cubit built from the cubit-test stub):
 
@@ -805,12 +810,12 @@ test('discardAcpSeat closes the cubit and marks it reclaimed', () async {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd client && dart run tool/run_tests.dart test/services/chat/launch/session_launch_acp_discard_test.dart`
 Expected: FAIL — `discardAcpSeat` undefined.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 In `session_launch_service.dart`, beside `discardMemberTerminal`:
 
@@ -840,7 +845,7 @@ void discardAcpSeat(String sessionId, String memberId) {
 }
 ```
 
-- [ ] **Step 4: Wire ChatCubit**
+- [x] **Step 4: Wire ChatCubit**
 
 In `chat_cubit.dart` where `TabSessionRuntimeCoordinator` is built (the `reclaimEnabled` / `onReclaimMember` block ~line 426):
 
@@ -851,12 +856,12 @@ acpIdleAfterSeconds: () =>
     (_reclaimIdleTerminalAfterSeconds?.call() ?? 180) * 2,
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `cd client && dart run tool/run_tests.dart test/services/chat/launch/session_launch_acp_discard_test.dart test/integration/member_terminal_reclaim_integration_test.dart`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add client/lib/services/chat/launch/session_launch_service.dart client/lib/cubits/chat_cubit.dart client/test
@@ -872,16 +877,16 @@ git commit -m "feat(reclaim): discard idle ACP seats and restore on demand"
 - Modify: `docs/superpowers/specs/2026-10-12-mixed-team-acp-session-design.md`
 - Modify: `docs/ARCHITECTURE.md` (only if its reclaim row enumerates the protection set)
 
-- [ ] **Step 1: Write the failing integration test**
+- [x] **Step 1: Write the failing integration test**
 
 With a mixed team whose `worker-1` binding is ACP: run a turn, let the seat go idle, tick the reclaim watch, assert the cubit is gone and `isMemberTerminalReclaimed` is true; then call `ensureMemberTerminalForView('sess','worker-1')` and assert a fresh cubit is re-attached (the connect executor routes the ACP seat) and `reclaimedMemberIds` no longer contains it. Tag it `@Tags(['integration'])`.
 
-- [ ] **Step 2: Run test to verify it fails (before any rest of Task 6)**
+- [x] **Step 2: Run test to verify it fails (before any rest of Task 6)**
 
 Run: `cd client && dart run tool/run_tests.dart --tags integration test/integration/mixed_team_acp_reclaim_integration_test.dart`
 Expected: FAIL if restore does not re-attach. If it already passes, keep it as the regression guard and note it.
 
-- [ ] **Step 3: Confirm the restore path**
+- [x] **Step 3: Confirm the restore path**
 
 `ensureMemberTerminalForView` already schedules a member connect for team sessions; `attachMemberAcpRuntime` re-creates the cubit because the reclaimed seat was removed from `memberAcpRuntimes` (`existing == null`), and `onConnectResult` clears `reclaimedMemberIds` on `ConnectShellResult.attached`. The whole point of Step 2 is to prove this. If Step 2 failed, the gap is one of exactly two things:
 
@@ -890,16 +895,16 @@ Expected: FAIL if restore does not re-attach. If it already passes, keep it as t
 
 Do not introduce a new restore mechanism.
 
-- [ ] **Step 4: Update docs**
+- [x] **Step 4: Update docs**
 
 Add a short paragraph to the mixed-team ACP spec noting: idle reclaim now covers hidden ACP seats (threshold = PTY ×2); the agent session id is persisted and resumed via `session/load`.
 
-- [ ] **Step 5: Full verification**
+- [x] **Step 5: Full verification**
 
 Run: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && dart run tool/run_tests.dart`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add client/test docs

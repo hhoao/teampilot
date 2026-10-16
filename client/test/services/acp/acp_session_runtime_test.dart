@@ -872,6 +872,60 @@ void main() {
     expect(runtime.sessionId, 'fresh-1');
     await runtime.close();
   });
+
+  test('start ignores a whitespace-only resume id', () async {
+    await stubInitialize(
+      agentCapabilities: const acpd.AgentCapabilities(loadSession: true),
+    );
+    var loadCalls = 0;
+    agent.connection.onRequest('session/load', (params) {
+      loadCalls++;
+      return acpd.LoadSessionResponse().toJson();
+    });
+
+    final runtime = makeRuntime((argv, env) async => conn);
+    await runtime.start(
+      tool: CliTool.gemini,
+      executable: 'gemini',
+      sessionToolDir: sessionToolDir,
+      workingDirectory: cwd,
+      resumeSessionId: '   ',
+    );
+
+    expect(runtime.sessionId, sessionId);
+    expect(loadCalls, 0);
+    await runtime.close();
+  });
+
+  test('start ignores the resume id when the agent negotiates no resume',
+      () async {
+    // setUp initializes with bare AgentCapabilities: neither loadSession nor
+    // sessionResume is advertised, so the stored id is unusable.
+    var loadCalls = 0;
+    var resumeCalls = 0;
+    agent.connection.onRequest('session/load', (params) {
+      loadCalls++;
+      return acpd.LoadSessionResponse().toJson();
+    });
+    agent.connection.onRequest('session/resume', (params) {
+      resumeCalls++;
+      return acpd.ResumeSessionResponse().toJson();
+    });
+
+    final runtime = makeRuntime((argv, env) async => conn);
+    await runtime.start(
+      tool: CliTool.gemini,
+      executable: 'gemini',
+      sessionToolDir: sessionToolDir,
+      workingDirectory: cwd,
+      resumeSessionId: 'agent-9',
+    );
+
+    expect(runtime.sessionId, sessionId);
+    expect(loadCalls, 0);
+    expect(resumeCalls, 0);
+    await runtime.close();
+  });
 }
 
 /// Bridges an acpd_test in-memory transport into our byte-pipe [AcpTransport].

@@ -278,6 +278,42 @@ void main() {
     ]);
   });
 
+  test('a load session drops replayed updates until the first prompt',
+      () async {
+    agent.connection.onRequest('session/load', (params) {
+      return acpd.LoadSessionResponse().toJson();
+    });
+    session = await conn.loadSession(sessionId: 'agent-9', cwd: cwd);
+
+    final events = <AcpSessionUpdate>[];
+    final sub = session.updates.listen(events.add);
+
+    // session/load makes the agent replay its whole history; the app
+    // transcript is the UI source of truth, so none of it may reach the
+    // stream (this is the whole point of suppressBootstrapUpdates).
+    agentCtx.sessionUpdate(sessionId: 'agent-9', update: message('replayed'));
+    await pumpEventQueue();
+    expect(events, isEmpty);
+
+    // The first prompt releases the hold.
+    scriptPrompt(() {
+      agentCtx.sessionUpdate(sessionId: 'agent-9', update: message('fresh'));
+      return acpd.PromptResponse(stopReason: acpd.StopReason.endTurn).toJson();
+    });
+    await session.prompt('hi');
+    await pumpEventQueue();
+    sub.cancel();
+
+    expect(events, [
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'fresh',
+        isThought: false,
+      ),
+      const AcpStop(kind: AcpStopKind.endTurn),
+    ]);
+  });
+
   test('openSession records mcpServers on session/new', () async {
     acpd.NewSessionRequest? seenNew;
     agent.connection.onRequest('session/new', (params) {
