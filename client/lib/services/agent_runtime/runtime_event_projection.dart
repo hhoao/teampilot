@@ -51,6 +51,9 @@ class RuntimeEventProjection {
             .capability<ChatInteractionCapability>(event.cli)
             ?.normalize(raw);
         if (status == null) return;
+        // Lease-only signals (opencode background shell / subagent reports)
+        // must not move the attention state machine.
+        if (status.attentionNeutral) return;
         attention.applyEvent(
           sessionId: event.seat.sessionId,
           memberId: event.seat.memberId,

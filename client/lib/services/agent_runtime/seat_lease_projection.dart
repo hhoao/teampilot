@@ -9,6 +9,8 @@ import 'runtime_event_projection.dart';
 ///   (id = `tool_use_id`, `acquiredAt` = the envelope time).
 /// - `taskNotificationToolUseId` → release that lease (any `<status>`; a
 ///   failed task is as finished as a completed one).
+/// - `inFlightTaskIds` → replace the seat's `inFlightTask` leases with the
+///   CLI's authoritative snapshot (claude `Stop` / `SubagentStop`).
 ///
 /// `seatIdle` envelopes are deliberately ignored: a member reporting idle
 /// at turn end is exactly when a background task is still running. Leases
@@ -26,6 +28,18 @@ RuntimeEventProjection seatLeaseProjection({
           .capability<ChatInteractionCapability>(event.cli)
           ?.normalize(raw);
       if (status == null) return;
+
+      final inFlightIds = status.inFlightTaskIds;
+      if (inFlightIds != null) {
+        leases.replaceKind(
+          sessionId: event.seat.sessionId,
+          memberId: event.seat.memberId,
+          kind: SeatLeaseKind.inFlightTask,
+          ids: inFlightIds,
+          acquiredAt: event.occurredAt,
+        );
+      }
+
       final startId = status.backgroundTaskStarted
           ? status.toolUseId?.trim() ?? ''
           : '';

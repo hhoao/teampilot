@@ -735,8 +735,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
 
   Widget _buildRunningInMessage(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isBackground =
+        widget.liveChrome == SessionHistoryLiveChrome.background;
     final label = switch (widget.liveChrome) {
       SessionHistoryLiveChrome.starting => context.l10n.sessionHistoryStarting,
+      SessionHistoryLiveChrome.background =>
+        context.l10n.sessionHistoryBackgroundRunning,
       SessionHistoryLiveChrome.running ||
       SessionHistoryLiveChrome.none => context.l10n.sessionHistoryRunning,
     };
@@ -750,11 +754,20 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TpIndeterminateSpinner(
-              size: 14,
-              strokeWidth: 2,
-              color: scheme.onSurfaceVariant,
-            ),
+            // Background work is not a turn: show a static marker instead of
+            // the running spinner so the two states stay distinguishable.
+            if (isBackground)
+              Icon(
+                Icons.hourglass_bottom_rounded,
+                size: 14,
+                color: scheme.onSurfaceVariant,
+              )
+            else
+              TpIndeterminateSpinner(
+                size: 14,
+                strokeWidth: 2,
+                color: scheme.onSurfaceVariant,
+              ),
             const SizedBox(width: 10),
             Text(
               label,

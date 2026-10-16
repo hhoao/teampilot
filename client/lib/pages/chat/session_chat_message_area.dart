@@ -12,6 +12,7 @@ import '../../cubits/ai_history_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/layout_cubit.dart';
+import '../../cubits/seat_lease_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
@@ -298,42 +299,69 @@ class SessionChatMessageArea extends StatelessWidget {
                                             memberId: shellMemberId,
                                           ),
                                         );
-                                    final liveChrome =
-                                        SessionHistoryLiveChromeX.resolve(
-                                          turnInFlight: historyTurnInFlight(
-                                            isSubmitting: isSubmitting,
-                                            awaitingAssistant:
-                                                state.awaitingAssistant,
-                                            sessionBusy: activity.isBusy,
-                                            userStoppedTurn: userStoppedTurn,
-                                          ),
-                                          memberRunning: memberRunning,
-                                          sessionConnecting: sessionConnecting,
-                                          isDelivering: activity.isDelivering,
-                                          isInTurn: activity.isInTurn,
-                                          isAttention: activity.isAttention,
-                                        );
-                                    return MarkdownDisplayModeScope(
-                                      userMessageMode: prefs.userMessageMode,
-                                      codeBlockMode: prefs.chatCodeBlockMode,
-                                      child: SessionHistoryReviewMessages(
-                                        state: state,
-                                        runtime: historySeat.runtime,
-                                        onRetry: onRetry,
-                                        onLoadOlder: historySeat.loadOlder,
-                                        liveChrome: liveChrome,
-                                        pendingDeliveryStatuses:
-                                            historySeat.pendingDeliveryStatuses,
-                                        onRetryFailedMessage:
-                                            onRetryFailedMessage,
-                                        highlightMessageId: highlightMessageId,
-                                        revealRequest: revealController,
-                                        visibleOwnerId: visibleOwnerId,
-                                        scrollAnchorKey: session.sessionId,
-                                        scrollAnchors: context
-                                            .read<ChatCubit>()
-                                            .sessionScrollAnchors,
-                                      ),
+                                    Widget buildChrome(bool sessionHasLeases) {
+                                      final liveChrome =
+                                          SessionHistoryLiveChromeX.resolve(
+                                            turnInFlight: historyTurnInFlight(
+                                              isSubmitting: isSubmitting,
+                                              awaitingAssistant:
+                                                  state.awaitingAssistant,
+                                              sessionBusy: activity.isBusy,
+                                              userStoppedTurn: userStoppedTurn,
+                                            ),
+                                            memberRunning: memberRunning,
+                                            sessionConnecting:
+                                                sessionConnecting,
+                                            isDelivering: activity.isDelivering,
+                                            isInTurn: activity.isInTurn,
+                                            isAttention: activity.isAttention,
+                                            sessionHasLeases: sessionHasLeases,
+                                          );
+                                      return MarkdownDisplayModeScope(
+                                        userMessageMode: prefs.userMessageMode,
+                                        codeBlockMode: prefs.chatCodeBlockMode,
+                                        child: SessionHistoryReviewMessages(
+                                          state: state,
+                                          runtime: historySeat.runtime,
+                                          onRetry: onRetry,
+                                          onLoadOlder: historySeat.loadOlder,
+                                          liveChrome: liveChrome,
+                                          pendingDeliveryStatuses: historySeat
+                                              .pendingDeliveryStatuses,
+                                          onRetryFailedMessage:
+                                              onRetryFailedMessage,
+                                          highlightMessageId:
+                                              highlightMessageId,
+                                          revealRequest: revealController,
+                                          visibleOwnerId: visibleOwnerId,
+                                          scrollAnchorKey: session.sessionId,
+                                          scrollAnchors: context
+                                              .read<ChatCubit>()
+                                              .sessionScrollAnchors,
+                                        ),
+                                      );
+                                    }
+
+                                    // Leases mean the seat's CLI is still
+                                    // working on something that outlived the
+                                    // turn (background shell task / subagent).
+                                    // Read through [ChatCubit] so the view
+                                    // works without a SeatLeaseCubit provider.
+                                    final leaseCubit = context
+                                        .read<ChatCubit>()
+                                        .seatLeaseCubit;
+                                    if (leaseCubit == null) {
+                                      return buildChrome(false);
+                                    }
+                                    return BlocSelector<
+                                      SeatLeaseCubit,
+                                      SeatLeaseState,
+                                      bool
+                                    >(
+                                      bloc: leaseCubit,
+                                      selector: (s) => s.sessionHasLeases(sid),
+                                      builder: (context, hasLeases) =>
+                                          buildChrome(hasLeases),
                                     );
                                   },
                                 ),

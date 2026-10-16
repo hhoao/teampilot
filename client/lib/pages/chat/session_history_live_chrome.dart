@@ -9,6 +9,11 @@ enum SessionHistoryLiveChrome {
 
   /// Seat is up / working; waiting on the assistant turn. Label: running.
   running,
+
+  /// No turn in flight, but the seat still holds keep-alive leases — a
+  /// background shell task / background subagent outlived the turn.
+  /// Label: background work running.
+  background,
 }
 
 /// Whether History tip chrome should treat a turn as in flight.
@@ -35,6 +40,10 @@ extension SessionHistoryLiveChromeX on SessionHistoryLiveChrome {
   /// Prefer [starting] until connect finishes and the member PTY is up —
   /// Chat suppresses the full-screen session-starting overlay, so this footer
   /// is the only connect feedback after an optimistic bubble.
+  ///
+  /// When no turn is in flight, [sessionHasLeases] promotes the footer to
+  /// [background]: the seat's CLI is still working on something that outlived
+  /// the turn (background shell task / background subagent).
   static SessionHistoryLiveChrome resolve({
     required bool turnInFlight,
     required bool memberRunning,
@@ -42,8 +51,13 @@ extension SessionHistoryLiveChromeX on SessionHistoryLiveChrome {
     bool isDelivering = false,
     bool isInTurn = false,
     bool isAttention = false,
+    bool sessionHasLeases = false,
   }) {
-    if (!turnInFlight) return SessionHistoryLiveChrome.none;
+    if (!turnInFlight) {
+      return sessionHasLeases
+          ? SessionHistoryLiveChrome.background
+          : SessionHistoryLiveChrome.none;
+    }
     if (isInTurn || isAttention) return SessionHistoryLiveChrome.running;
     if (isDelivering || sessionConnecting || !memberRunning) {
       return SessionHistoryLiveChrome.starting;

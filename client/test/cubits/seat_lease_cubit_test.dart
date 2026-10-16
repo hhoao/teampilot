@@ -106,5 +106,107 @@ void main() {
         const Duration(minutes: 60),
       );
     });
+
+    test('seatLeaseTtl — inFlightTask keeps a 60-minute safety net', () {
+      expect(
+        seatLeaseTtl(SeatLeaseKind.inFlightTask),
+        const Duration(minutes: 60),
+      );
+    });
+
+    group('replaceKind', () {
+      test('acquires the snapshot ids and drops ones that vanished', () {
+        final cubit = SeatLeaseCubit(pruneInterval: null);
+        addTearDown(cubit.close);
+        final at = DateTime(2026, 1, 1);
+        cubit.replaceKind(
+          sessionId: 's',
+          memberId: 'm',
+          kind: SeatLeaseKind.inFlightTask,
+          ids: ['a', 'b'],
+          acquiredAt: at,
+        );
+        expect(
+          cubit.state.leases[agentSeatKey(sessionId: 's', memberId: 'm')]?.keys,
+          unorderedEquals(['a', 'b']),
+        );
+
+        cubit.replaceKind(
+          sessionId: 's',
+          memberId: 'm',
+          kind: SeatLeaseKind.inFlightTask,
+          ids: ['b', 'c'],
+          acquiredAt: at,
+        );
+        expect(
+          cubit.state.leases[agentSeatKey(sessionId: 's', memberId: 'm')]?.keys,
+          unorderedEquals(['b', 'c']),
+        );
+      });
+
+      test('an empty snapshot clears the seat', () {
+        final cubit = SeatLeaseCubit(pruneInterval: null);
+        addTearDown(cubit.close);
+        cubit.replaceKind(
+          sessionId: 's',
+          memberId: 'm',
+          kind: SeatLeaseKind.inFlightTask,
+          ids: ['a'],
+          acquiredAt: DateTime(2026, 1, 1),
+        );
+        cubit.replaceKind(
+          sessionId: 's',
+          memberId: 'm',
+          kind: SeatLeaseKind.inFlightTask,
+          ids: const [],
+          acquiredAt: DateTime(2026, 1, 1),
+        );
+        expect(cubit.state.leases, isEmpty);
+      });
+
+      test('keeps the original acquiredAt for retained ids', () {
+        final cubit = SeatLeaseCubit(pruneInterval: null);
+        addTearDown(cubit.close);
+        final first = DateTime(2026, 1, 1);
+        cubit.replaceKind(
+          sessionId: 's',
+          memberId: 'm',
+          kind: SeatLeaseKind.inFlightTask,
+          ids: ['a'],
+          acquiredAt: first,
+        );
+        cubit.replaceKind(
+          sessionId: 's',
+          memberId: 'm',
+          kind: SeatLeaseKind.inFlightTask,
+          ids: ['a'],
+          acquiredAt: DateTime(2026, 1, 1, 5),
+        );
+        expect(
+          cubit
+              .state
+              .leases[agentSeatKey(sessionId: 's', memberId: 'm')]!['a']
+              ?.acquiredAt,
+          first,
+        );
+      });
+
+      test('leaves other kinds alone', () {
+        final cubit = SeatLeaseCubit(pruneInterval: null);
+        addTearDown(cubit.close);
+        cubit.acquire(sessionId: 's', memberId: 'm', lease: _lease('call_1'));
+        cubit.replaceKind(
+          sessionId: 's',
+          memberId: 'm',
+          kind: SeatLeaseKind.inFlightTask,
+          ids: const [],
+          acquiredAt: DateTime(2026, 1, 1),
+        );
+        expect(
+          cubit.state.leases[agentSeatKey(sessionId: 's', memberId: 'm')]?.keys,
+          ['call_1'],
+        );
+      });
+    });
   });
 }

@@ -147,5 +147,40 @@ void main() {
         SessionHistoryLiveChrome.running,
       );
     });
+
+    test('background when no turn in flight but the seat holds leases', () {
+      expect(
+        SessionHistoryLiveChromeX.resolve(
+          turnInFlight: false,
+          memberRunning: true,
+          sessionConnecting: false,
+          sessionHasLeases: true,
+        ),
+        SessionHistoryLiveChrome.background,
+      );
+    });
+
+    test('none when no turn in flight and no leases', () {
+      expect(
+        SessionHistoryLiveChromeX.resolve(
+          turnInFlight: false,
+          memberRunning: true,
+          sessionConnecting: false,
+        ),
+        SessionHistoryLiveChrome.none,
+      );
+    });
+
+    test('an in-flight turn wins over background leases', () {
+      expect(
+        SessionHistoryLiveChromeX.resolve(
+          turnInFlight: true,
+          memberRunning: true,
+          sessionConnecting: false,
+          sessionHasLeases: true,
+        ),
+        SessionHistoryLiveChrome.running,
+      );
+    });
   });
 }

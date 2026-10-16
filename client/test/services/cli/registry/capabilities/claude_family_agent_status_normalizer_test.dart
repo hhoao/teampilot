@@ -125,5 +125,60 @@ void main() {
       });
       expect(status!.taskNotificationToolUseId, isNull);
     });
+
+    test('task notification without a tool-use-id falls back to task-id', () {
+      // `background_tasks[].id` is a task id, not a tool_use_id — releasing a
+      // snapshot lease needs the `<task-id>` when no `<tool-use-id>` is sent.
+      final status = const ClaudeFamilyAgentStatusNormalizer().normalize({
+        'hook_event_name': 'UserPromptSubmit',
+        'prompt':
+            '<task-notification>\n'
+            '<task-id>bi6wlgsf3</task-id>\n'
+            '<status>completed</status>\n'
+            '</task-notification>',
+      });
+      expect(status!.taskNotificationToolUseId, 'bi6wlgsf3');
+    });
+  });
+
+  group('background_tasks snapshot (Stop / SubagentStop)', () {
+    test('Stop with in-flight tasks carries their ids', () {
+      final status = const ClaudeFamilyAgentStatusNormalizer().normalize({
+        'hook_event_name': 'Stop',
+        'background_tasks': [
+          {'id': 't1', 'type': 'shell', 'status': 'running'},
+          {'id': 't2', 'type': 'subagent', 'status': 'running'},
+        ],
+      });
+      expect(status, isNotNull);
+      expect(status!.state, AgentSeatAttention.done);
+      expect(status.inFlightTaskIds, ['t1', 't2']);
+    });
+
+    test('Stop with an empty snapshot carries an empty list', () {
+      final status = const ClaudeFamilyAgentStatusNormalizer().normalize({
+        'hook_event_name': 'Stop',
+        'background_tasks': <Object?>[],
+      });
+      expect(status!.inFlightTaskIds, isEmpty);
+    });
+
+    test('Stop without the field carries null (unknown)', () {
+      final status = const ClaudeFamilyAgentStatusNormalizer().normalize({
+        'hook_event_name': 'Stop',
+      });
+      expect(status!.inFlightTaskIds, isNull);
+    });
+
+    test('non-Stop events never carry the snapshot', () {
+      final status = const ClaudeFamilyAgentStatusNormalizer().normalize({
+        'hook_event_name': 'PreToolUse',
+        'tool_name': 'Read',
+        'background_tasks': [
+          {'id': 't1', 'type': 'shell'},
+        ],
+      });
+      expect(status!.inFlightTaskIds, isNull);
+    });
   });
 }

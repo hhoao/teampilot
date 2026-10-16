@@ -23,6 +23,62 @@ bool isBackgroundTaskStart(Map<String, Object?> body) {
   return (body['tool_use_id']?.toString() ?? '').trim().isNotEmpty;
 }
 
+/// One entry of Claude's authoritative `background_tasks[]` snapshot.
+///
+/// `type` is a friendly label — `shell`, `subagent`, `monitor`, `workflow`
+/// (falls back to the raw discriminant for unknown types).
+class BackgroundTaskRef {
+  const BackgroundTaskRef({required this.id, required this.type});
+
+  final String id;
+  final String type;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BackgroundTaskRef && id == other.id && type == other.type;
+
+  @override
+  int get hashCode => Object.hash(id, type);
+
+  @override
+  String toString() => 'BackgroundTaskRef($id, $type)';
+}
+
+/// Claude's `Stop` / `SubagentStop` `background_tasks[]` snapshot: the
+/// in-flight background work registered in the session at the moment the turn
+/// paused ("lets hooks distinguish *session is done* from *session is paused
+/// waiting for background work to wake it*").
+///
+/// Returns `null` when the payload carries no `background_tasks` key at all —
+/// older claude builds and flashskyai do not send it, and callers must treat
+/// "absent" as "unknown, leave existing state alone" rather than "empty".
+/// An empty list is authoritative: nothing is in flight.
+List<BackgroundTaskRef>? parseBackgroundTasks(Map<String, Object?> body) {
+  final raw = body['background_tasks'];
+  if (raw is! List) return null;
+  final refs = <BackgroundTaskRef>[];
+  for (final item in raw) {
+    if (item is! Map) continue;
+    final id = (item['id']?.toString() ?? '').trim();
+    if (id.isEmpty) continue;
+    refs.add(
+      BackgroundTaskRef(id: id, type: (item['type']?.toString() ?? '').trim()),
+    );
+  }
+  return refs;
+}
+
+/// The `<task-id>` inside a `<task-notification>` [prompt], or null when
+/// the prompt is anything else (real user input).
+String? taskNotificationTaskId(String? prompt) {
+  if (prompt == null) return null;
+  final trimmed = prompt.trim();
+  if (!trimmed.startsWith('<task-notification>')) return null;
+  final match = RegExp(r'<task-id>\s*([^<]+?)\s*</task-id>').firstMatch(trimmed);
+  return match?.group(1);
+}
+
 /// The `<tool-use-id>` inside a `<task-notification>` [prompt], or null when
 /// the prompt is anything else (real user input).
 String? taskNotificationToolUseId(String? prompt) {

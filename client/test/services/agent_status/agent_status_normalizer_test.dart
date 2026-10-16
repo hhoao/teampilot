@@ -355,6 +355,39 @@ void main() {
       expect(e?.state, AgentSeatAttention.done);
     });
 
+    test('OpenCode background shell / subagent events are lease-only', () {
+      // shell.started with a background shell → acquire lease, no attention.
+      final started = normalize(
+        cli: CliTool.opencode,
+        body: {'event': 'shell.started', 'shell_id': 'sh_1'},
+      );
+      expect(started?.backgroundTaskStarted, isTrue);
+      expect(started?.toolUseId, 'sh_1');
+      expect(started?.attentionNeutral, isTrue);
+
+      final ended = normalize(
+        cli: CliTool.opencode,
+        body: {'event': 'shell.ended', 'shell_id': 'sh_1'},
+      );
+      expect(ended?.taskNotificationToolUseId, 'sh_1');
+      expect(ended?.attentionNeutral, isTrue);
+
+      final childStarted = normalize(
+        cli: CliTool.opencode,
+        body: {'event': 'subagent.started', 'subagent_id': 'ses_child'},
+      );
+      expect(childStarted?.backgroundTaskStarted, isTrue);
+      expect(childStarted?.toolUseId, 'ses_child');
+      expect(childStarted?.attentionNeutral, isTrue);
+
+      final childStopped = normalize(
+        cli: CliTool.opencode,
+        body: {'event': 'subagent.stopped', 'subagent_id': 'ses_child'},
+      );
+      expect(childStopped?.taskNotificationToolUseId, 'ses_child');
+      expect(childStopped?.attentionNeutral, isTrue);
+    });
+
     test('opencode userMessageSubmitted → working + prompt', () {
       final e = normalize(
         cli: CliTool.opencode,

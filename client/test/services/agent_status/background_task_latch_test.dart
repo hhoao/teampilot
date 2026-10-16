@@ -125,4 +125,63 @@ void main() {
       );
     });
   });
+
+  group('taskNotificationTaskId', () {
+    const notification =
+        '<task-notification>\n'
+        '<task-id>bi6wlgsf3</task-id>\n'
+        '<tool-use-id>call_f766b261fd9f4358a902b8d1</tool-use-id>\n'
+        '<status>completed</status>\n'
+        '</task-notification>';
+
+    test('extracts the task-id from a task notification', () {
+      expect(taskNotificationTaskId(notification), 'bi6wlgsf3');
+    });
+
+    test('null for a real user prompt', () {
+      expect(taskNotificationTaskId('bi6wlgsf3'), isNull);
+      expect(taskNotificationTaskId(null), isNull);
+    });
+  });
+
+  group('parseBackgroundTasks', () {
+    test('null when the payload has no background_tasks key', () {
+      // Older claude builds and flashskyai never send the snapshot — absent
+      // must NOT read as "nothing in flight".
+      expect(parseBackgroundTasks({'hook_event_name': 'Stop'}), isNull);
+      expect(
+        parseBackgroundTasks({'hook_event_name': 'Stop', 'background_tasks': 3}),
+        isNull,
+      );
+    });
+
+    test('empty list is authoritative', () {
+      expect(
+        parseBackgroundTasks({
+          'hook_event_name': 'Stop',
+          'background_tasks': <Object?>[],
+        }),
+        isEmpty,
+      );
+    });
+
+    test('parses id + type and skips malformed entries', () {
+      final refs = parseBackgroundTasks({
+        'hook_event_name': 'Stop',
+        'background_tasks': [
+          {'id': 't1', 'type': 'shell', 'status': 'running'},
+          {'id': 't2', 'type': 'subagent'},
+          {'id': '  t3  ', 'type': 'monitor'},
+          {'id': '', 'type': 'shell'},
+          {'type': 'shell'},
+          'nonsense',
+        ],
+      });
+      expect(refs, [
+        const BackgroundTaskRef(id: 't1', type: 'shell'),
+        const BackgroundTaskRef(id: 't2', type: 'subagent'),
+        const BackgroundTaskRef(id: 't3', type: 'monitor'),
+      ]);
+    });
+  });
 }

@@ -1760,6 +1760,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionHistoryRunning => 'Running…';
 
   @override
+  String get sessionHistoryBackgroundRunning => 'Background work running…';
+
+  @override
   String sessionHistoryMailboxQueued(int count) {
     return '$count Queued';
   }

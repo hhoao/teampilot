@@ -84,6 +84,43 @@ final class OpencodeChatInteraction
         state: AgentSeatAttention.done,
         hookEventName: eventName,
       ),
+      // Lease-only signals (see [AgentStatusEvent.attentionNeutral]): the seat
+      // keeps its turn state, the lease makes the chat show
+      // "background work running" once the turn ends.
+      //
+      // Background shell task (`session.shell.started` with
+      // `shell.metadata.background` in the plugin).
+      'shell.started' => AgentStatusEvent(
+        state: AgentSeatAttention.working,
+        hookEventName: eventName,
+        toolUseId: readPayloadString(body, const ['shell_id']),
+        backgroundTaskStarted: true,
+        attentionNeutral: true,
+      ),
+      'shell.ended' => AgentStatusEvent(
+        state: AgentSeatAttention.working,
+        hookEventName: eventName,
+        taskNotificationToolUseId: readPayloadString(body, const ['shell_id']),
+        attentionNeutral: true,
+      ),
+      // Subagent running in a child session (opencode's `task` tool). Held as
+      // a lease so a child session going idle never reads as the parent session
+      // finishing.
+      'subagent.started' => AgentStatusEvent(
+        state: AgentSeatAttention.working,
+        hookEventName: eventName,
+        toolUseId: readPayloadString(body, const ['subagent_id']),
+        backgroundTaskStarted: true,
+        attentionNeutral: true,
+      ),
+      'subagent.stopped' => AgentStatusEvent(
+        state: AgentSeatAttention.working,
+        hookEventName: eventName,
+        taskNotificationToolUseId: readPayloadString(body, const [
+          'subagent_id',
+        ]),
+        attentionNeutral: true,
+      ),
       _ => null,
     };
   }

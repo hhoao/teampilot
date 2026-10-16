@@ -3242,6 +3242,12 @@ abstract class AppLocalizations {
   /// **'Running…'**
   String get sessionHistoryRunning;
 
+  /// No description provided for @sessionHistoryBackgroundRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Background work running…'**
+  String get sessionHistoryBackgroundRunning;
+
   /// No description provided for @sessionHistoryMailboxQueued.
   ///
   /// In en, this message translates to:

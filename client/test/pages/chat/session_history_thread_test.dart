@@ -627,6 +627,29 @@ void main() {
     );
   });
 
+  testWidgets('background footer visible when liveChrome is background', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages(_soloUserMessages(5));
+
+    await tester.pumpWidget(
+      _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.background),
+    );
+    await tester.pump();
+
+    expect(find.byKey(kSessionHistoryRunningFooterKey), findsOneWidget);
+    expect(find.text('Background work running…'), findsOneWidget);
+    // Background work is not a turn: no animated spinner.
+    expect(
+      find.descendant(
+        of: find.byKey(kSessionHistoryRunningFooterKey),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsNothing,
+    );
+  });
+
   testWidgets('starting footer visible when liveChrome is starting', (
     tester,
   ) async {

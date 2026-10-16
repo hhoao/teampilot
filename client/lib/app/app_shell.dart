@@ -425,6 +425,7 @@ class AppShell {
     this.teamGenerationGraph,
     required this.memberPresenceCubit,
     required this.agentAttentionCubit,
+    required this.seatLeaseCubit,
     required this.agentStatusSeatLookup,
     required this.agentRuntime,
     required this.mailboxCubit,
@@ -532,6 +533,7 @@ class AppShell {
   final TeamGenerationGraph? teamGenerationGraph;
   final MemberPresenceCubit memberPresenceCubit;
   final AgentAttentionCubit agentAttentionCubit;
+  final SeatLeaseCubit seatLeaseCubit;
   final AgentStatusSeatLookup agentStatusSeatLookup;
   final AgentRuntime agentRuntime;
   final MailboxCubit mailboxCubit;
@@ -3083,6 +3085,7 @@ Future<AppShell> buildAppShell({
       teamGenerationGraph: teamGenerationGraph,
       memberPresenceCubit: memberPresenceCubit,
       agentAttentionCubit: agentAttentionCubit,
+      seatLeaseCubit: seatLeaseCubit,
       agentStatusSeatLookup: agentStatusSeatLookup,
       agentRuntime: agentRuntime,
       mailboxCubit: mailboxCubit,

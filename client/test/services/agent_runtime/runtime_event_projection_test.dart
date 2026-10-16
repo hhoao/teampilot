@@ -426,6 +426,49 @@ void main() {
       expect(projection.responseFor(event), isNull);
     },
   );
+
+  test('attention projection ignores lease-only opencode signals', () async {
+    final stream = SeatEventStream();
+    final attention = AgentAttentionCubit(pruneInterval: null);
+    addTearDown(attention.close);
+    const seat = RuntimeSeatKey(sessionId: 'session', memberId: 'member');
+    final projection = AgentAttentionRuntimeEventProjection(
+      attention: attention,
+      resolveSkipPermissions: (_, _) => false,
+    );
+    final subscription = projection.attach(stream, seat);
+    addTearDown(subscription.cancel);
+    addTearDown(stream.close);
+    final key = agentSeatKey(sessionId: 'session', memberId: 'member');
+
+    // Baseline: a normal opencode signal does move attention.
+    stream.publish(
+      RuntimeEventEnvelope(
+        seat: seat,
+        cli: CliTool.opencode,
+        kind: RuntimeEventKind.statusReported,
+        occurredAt: DateTime.utc(2026, 10, 15),
+        raw: const {'event': 'userMessageSubmitted', 'prompt': 'hi'},
+        sequence: 1,
+      ),
+    );
+    await pumpEventQueue();
+    expect(attention.state.seats[key]?.attention, AgentSeatAttention.working);
+
+    // Background shell / subagent reports are lease-only.
+    stream.publish(
+      RuntimeEventEnvelope(
+        seat: seat,
+        cli: CliTool.opencode,
+        kind: RuntimeEventKind.statusReported,
+        occurredAt: DateTime.utc(2026, 10, 15),
+        raw: const {'event': 'shell.started', 'shell_id': 'sh_1'},
+        sequence: 2,
+      ),
+    );
+    await pumpEventQueue();
+    expect(attention.state.seats[key]?.attention, AgentSeatAttention.working);
+  });
 }
 
 RuntimeEventEnvelope _event(RuntimeSeatKey seat, int sequence) =>

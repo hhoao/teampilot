@@ -759,6 +759,7 @@
   "sessionHistoryNewMessages": "新消息",
   "sessionHistoryStarting": "启动中…",
   "sessionHistoryRunning": "运行中…",
+  "sessionHistoryBackgroundRunning": "后台任务运行中…",
   "sessionHistoryMailboxQueued": "{count} 已排队",
   "@sessionHistoryMailboxQueued": {
     "placeholders": {

@@ -24,6 +24,8 @@ class AgentStatusEvent {
     this.permissionRequest,
     this.backgroundTaskStarted = false,
     this.taskNotificationToolUseId,
+    this.inFlightTaskIds,
+    this.attentionNeutral = false,
   });
 
   final AgentSeatAttention state;
@@ -87,6 +89,21 @@ class AgentStatusEvent {
   /// release). Null for real user prompts.
   final String? taskNotificationToolUseId;
 
+  /// Claude `Stop` / `SubagentStop` `background_tasks[]` snapshot — the ids of
+  /// every background task still in flight when the turn paused.
+  ///
+  /// Null means the payload carried no snapshot at all (older claude /
+  /// flashskyai): leave existing state untouched. An empty list is
+  /// authoritative and clears the seat's in-flight set.
+  final List<String>? inFlightTaskIds;
+
+  /// Carries runtime signals only (leases) and must not move attention.
+  ///
+  /// Used by opencode's background shell / subagent reports: they arrive while
+  /// the seat's turn state is unrelated, and flipping attention to `working`
+  /// would leave the seat stuck "running" after the turn ended.
+  final bool attentionNeutral;
+
   AgentStatusEvent copyWith({
     AgentSeatAttention? state,
     String? toolName,
@@ -107,6 +124,8 @@ class AgentStatusEvent {
     AgentPermissionRequest? permissionRequest,
     bool? backgroundTaskStarted,
     String? taskNotificationToolUseId,
+    List<String>? inFlightTaskIds,
+    bool? attentionNeutral,
   }) => AgentStatusEvent(
     state: state ?? this.state,
     toolName: toolName ?? this.toolName,
@@ -128,6 +147,8 @@ class AgentStatusEvent {
     backgroundTaskStarted: backgroundTaskStarted ?? this.backgroundTaskStarted,
     taskNotificationToolUseId:
         taskNotificationToolUseId ?? this.taskNotificationToolUseId,
+    inFlightTaskIds: inFlightTaskIds ?? this.inFlightTaskIds,
+    attentionNeutral: attentionNeutral ?? this.attentionNeutral,
   );
 
   @override
@@ -152,7 +173,9 @@ class AgentStatusEvent {
           planFilePath == other.planFilePath &&
           permissionRequest == other.permissionRequest &&
           backgroundTaskStarted == other.backgroundTaskStarted &&
-          taskNotificationToolUseId == other.taskNotificationToolUseId;
+          taskNotificationToolUseId == other.taskNotificationToolUseId &&
+          _sameIds(inFlightTaskIds, other.inFlightTaskIds) &&
+          attentionNeutral == other.attentionNeutral;
 
   @override
   int get hashCode => Object.hash(
@@ -165,7 +188,7 @@ class AgentStatusEvent {
     toolAgentType,
     hasExplicitPrompt,
     prompt,
-    Object.hashAll(askUserQuestions ?? const []),
+    Object.hashAll([...?askUserQuestions, ...?inFlightTaskIds]),
     askRequestId,
     nativeSessionId,
     message,
@@ -175,7 +198,17 @@ class AgentStatusEvent {
     permissionRequest,
     backgroundTaskStarted,
     taskNotificationToolUseId,
+    attentionNeutral,
   );
+}
+
+bool _sameIds(List<String>? a, List<String>? b) {
+  if (identical(a, b)) return true;
+  if (a == null || b == null || a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }
 
 bool _sameQuestions(

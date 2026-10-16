@@ -68,10 +68,21 @@ final class ClaudeFamilyAgentStatusNormalizer {
         : null;
 
     // Background shell task lease signals (see background_task_latch.dart).
+    // The notification's `<tool-use-id>` releases the PreToolUse latch lease;
+    // its `<task-id>` releases the same task's snapshot lease when the CLI
+    // reported it through `background_tasks[]` (different id space).
     final backgroundTaskStarted = isBackgroundTaskStart(body);
     final taskNotification = backgroundTaskStarted
         ? null
-        : taskNotificationToolUseId(prompt);
+        : taskNotificationToolUseId(prompt) ?? taskNotificationTaskId(prompt);
+
+    // Authoritative in-flight background-work snapshot: claude 2.1.211+
+    // reports every still-running background task on Stop / SubagentStop.
+    // Null (key absent) on older claude builds and flashskyai.
+    final inFlightTaskIds =
+        (eventName == 'Stop' || eventName == 'SubagentStop')
+        ? parseBackgroundTasks(body)?.map((t) => t.id).toList(growable: false)
+        : null;
 
     AgentStatusEvent build(AgentSeatAttention state, {bool explicit = false}) =>
         AgentStatusEvent(
@@ -91,6 +102,7 @@ final class ClaudeFamilyAgentStatusNormalizer {
           permissionRequest: permissionRequest,
           backgroundTaskStarted: backgroundTaskStarted,
           taskNotificationToolUseId: taskNotification,
+          inFlightTaskIds: inFlightTaskIds,
         );
 
     return switch (eventName) {

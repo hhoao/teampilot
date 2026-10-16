@@ -5,6 +5,7 @@ import 'package:teampilot/services/agent_runtime/runtime_event.dart';
 import 'package:teampilot/services/agent_runtime/seat_lease_projection.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart'
     show agentSeatKey;
+import 'package:teampilot/services/agent_status/seat_lease.dart';
 
 RuntimeEventEnvelope _envelope(
   Map<String, Object?> raw, {
@@ -151,6 +152,156 @@ void main() {
         cubit.state.seatHasLeases(sessionId: 's1', memberId: 'm1'),
         isTrue,
       );
+    });
+
+    group('background_tasks snapshot', () {
+      Map<String, Object?> stopWith(List<Map<String, Object?>> tasks) => {
+        'hook_event_name': 'Stop',
+        'background_tasks': tasks,
+      };
+
+      test('Stop with in-flight tasks acquires inFlightTask leases', () {
+        final cubit = SeatLeaseCubit(pruneInterval: null);
+        addTearDown(cubit.close);
+        final projection = seatLeaseProjection(leases: cubit);
+
+        projection.apply(
+          _envelope(
+            stopWith([
+              {'id': 't1', 'type': 'shell'},
+              {'id': 't2', 'type': 'subagent'},
+            ]),
+          ),
+        );
+
+        final seatKey = agentSeatKey(sessionId: 's1', memberId: 'm1');
+        expect(
+          cubit.state.leases[seatKey]?.keys,
+          unorderedEquals(['t1', 't2']),
+        );
+        expect(cubit.state.leases[seatKey]?.values.map((l) => l.kind).toSet(), {
+          SeatLeaseKind.inFlightTask,
+        });
+        expect(cubit.state.sessionHasLeases('s1'), isTrue);
+      });
+
+      test('a later empty snapshot clears the in-flight set', () {
+        final cubit = SeatLeaseCubit(pruneInterval: null);
+        addTearDown(cubit.close);
+        final projection = seatLeaseProjection(leases: cubit);
+        projection.apply(
+          _envelope(
+            stopWith([
+              {'id': 't1', 'type': 'shell'},
+            ]),
+            sequence: 1,
+          ),
+        );
+        projection.apply(_envelope(stopWith([]), sequence: 2));
+        expect(cubit.state.leases, isEmpty);
+      });
+
+      test('a Stop without the snapshot leaves leases untouched', () {
+        final cubit = SeatLeaseCubit(pruneInterval: null);
+        addTearDown(cubit.close);
+        final projection = seatLeaseProjection(leases: cubit);
+        projection.apply(
+          _envelope({
+            'hook_event_name': 'PreToolUse',
+            'tool_name': 'Bash',
+            'tool_input': {'command': 'x', 'run_in_background': true},
+            'tool_use_id': 'call_1',
+          }, sequence: 1),
+        );
+        projection.apply(_envelope({'hook_event_name': 'Stop'}, sequence: 2));
+        expect(
+          cubit.state.seatHasLeases(sessionId: 's1', memberId: 'm1'),
+          isTrue,
+        );
+      });
+
+      test('snapshot reconcile keeps the latch lease alongside', () {
+        final cubit = SeatLeaseCubit(pruneInterval: null);
+        addTearDown(cubit.close);
+        final projection = seatLeaseProjection(leases: cubit);
+        projection.apply(
+          _envelope({
+            'hook_event_name': 'PreToolUse',
+            'tool_name': 'Bash',
+            'tool_input': {'command': 'x', 'run_in_background': true},
+            'tool_use_id': 'call_1',
+          }, sequence: 1),
+        );
+        projection.apply(
+          _envelope(
+            stopWith([
+              {'id': 't1', 'type': 'shell'},
+            ]),
+            sequence: 2,
+          ),
+        );
+        expect(
+          cubit
+              .state
+              .leases[agentSeatKey(sessionId: 's1', memberId: 'm1')]
+              ?.keys,
+          unorderedEquals(['call_1', 't1']),
+        );
+      });
+    });
+
+    group('opencode lease-only signals', () {
+      RuntimeEventEnvelope opencode(Map<String, Object?> raw, int sequence) =>
+          RuntimeEventEnvelope(
+            seat: const RuntimeSeatKey(sessionId: 's1', memberId: 'm1'),
+            cli: CliTool.opencode,
+            kind: RuntimeEventKind.statusReported,
+            occurredAt: DateTime(2026, 1, 1),
+            sequence: sequence,
+            raw: raw,
+          );
+
+      test('a background shell acquires then releases a lease', () {
+        final cubit = SeatLeaseCubit(pruneInterval: null);
+        addTearDown(cubit.close);
+        final projection = seatLeaseProjection(leases: cubit);
+
+        projection.apply(
+          opencode({'event': 'shell.started', 'shell_id': 'sh_1'}, 1),
+        );
+        expect(
+          cubit.state.sessionHasLeases('s1'),
+          isTrue,
+          reason: 'background shell keeps the seat protected',
+        );
+
+        projection.apply(
+          opencode({'event': 'shell.ended', 'shell_id': 'sh_1'}, 2),
+        );
+        expect(cubit.state.sessionHasLeases('s1'), isFalse);
+      });
+
+      test('a child (subagent) session acquires then releases a lease', () {
+        final cubit = SeatLeaseCubit(pruneInterval: null);
+        addTearDown(cubit.close);
+        final projection = seatLeaseProjection(leases: cubit);
+
+        projection.apply(
+          opencode({'event': 'subagent.started', 'subagent_id': 'ses_c'}, 1),
+        );
+        expect(
+          cubit
+              .state
+              .leases[agentSeatKey(sessionId: 's1', memberId: 'm1')]
+              ?.keys,
+          ['ses_c'],
+        );
+
+        projection.apply(
+          opencode({'event': 'subagent.stopped', 'subagent_id': 'ses_c'}, 2),
+        );
+        expect(cubit.state.sessionHasLeases('s1'), isFalse);
+      });
     });
   });
 }

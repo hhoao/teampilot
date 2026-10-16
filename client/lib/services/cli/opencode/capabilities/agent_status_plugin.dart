@@ -58,6 +58,9 @@ export default Plugin.define({
 
     const userMessageIds = new Set();
     const forwardedUserParts = new Set();
+    // Background work tracking (see the shell / subagent branches below).
+    const backgroundShellIds = new Set();
+    const childSessionIds = new Set();
 
     const ASK_POLL_TTL_MS = 30 * 60 * 1000;
     const ASK_POLL_INTERVAL_MS = 400;
@@ -262,10 +265,95 @@ export default Plugin.define({
         await pollAndReply(requestId, "question", sessionID);
         return;
       }
+      // Background shell tasks. OpenCode runs them under the CLI process and
+      // they outlive the turn, so mirror them as leases
+      // (backgroundTaskStarted / taskNotificationToolUseId in the Dart
+      // normalizer). `shell.metadata.background` is only set for detached
+      // shells; foreground steps are ignored.
+      //
+      // Both the `session.shell.*` and `session.next.shell.*` spellings are
+      // accepted: the installed binary emits the former, while the generated
+      // SDK types name the latter. The payload is likewise read from either
+      // shape — a nested `properties.shell`, or the flattened event
+      // properties (`callID` / `command` at the top level).
+      if (
+        event.type === "session.shell.started" ||
+        event.type === "session.shell.ended" ||
+        event.type === "session.next.shell.started" ||
+        event.type === "session.next.shell.ended"
+      ) {
+        const props = event.properties ?? event.data ?? {};
+        const shell = props.shell ?? {};
+        const started = event.type.endsWith("shell.started");
+        const shellId =
+          shell.id != null
+            ? String(shell.id)
+            : props.callID != null
+              ? String(props.callID)
+              : props.shellID != null
+                ? String(props.shellID)
+                : null;
+        if (!shellId) return;
+        if (started) {
+          const background =
+            shell.metadata && shell.metadata.background
+              ? true
+              : props.background === true;
+          if (!background) return;
+          backgroundShellIds.add(shellId);
+          await post("shell.started", {
+            shell_id: shellId,
+            command: shell.command ?? props.command ?? null,
+          });
+          return;
+        }
+        if (backgroundShellIds.delete(shellId)) {
+          await post("shell.ended", { shell_id: shellId });
+        }
+        return;
+      }
+
+      // Subagent sessions. OpenCode runs each subagent in a child session
+      // (`info.parentID`); track them as leases so a child going idle is never
+      // mistaken for the parent session finishing.
+      if (
+        event.type === "session.created" ||
+        event.type === "session.updated" ||
+        event.type === "session.deleted"
+      ) {
+        const props = event.properties ?? event.data ?? {};
+        const info = props.info ?? {};
+        const sessionId = props.sessionID ?? event.sessionID ?? info.id ?? null;
+        if (!sessionId) return;
+        const id = String(sessionId);
+        const parentId = info.parentID ?? info.parent_id ?? null;
+        if (!parentId) return;
+        if (event.type === "session.deleted") {
+          if (childSessionIds.delete(id)) {
+            await post("subagent.stopped", { subagent_id: id });
+          }
+          return;
+        }
+        if (!childSessionIds.has(id)) {
+          childSessionIds.add(id);
+          await post("subagent.started", { subagent_id: id });
+        }
+        return;
+      }
+
       if (
         event.type === "session.next.step.ended" ||
         event.type === "session.idle"
       ) {
+        const props = event.properties ?? event.data ?? {};
+        const sessionId = props.sessionID ?? event.sessionID ?? null;
+        const id = sessionId ? String(sessionId) : null;
+        if (id && childSessionIds.delete(id)) {
+          // A child session (subagent) going idle is not the parent turn
+          // ending.
+          await post("subagent.stopped", { subagent_id: id });
+          return;
+        }
         await post("session.idle");
       }
       if (event.type === "message.updated") {

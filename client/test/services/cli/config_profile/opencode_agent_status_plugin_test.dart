@@ -119,6 +119,31 @@ void main() {
     expect(source, contains('isResolved(requestId)'));
   });
 
+  test(
+    'opencodeAgentStatusPluginSource reports background shell + subagents',
+    () {
+      final source = opencodeAgentStatusPluginSource;
+      // Background shell tasks → lease (backgroundTaskStarted).
+      expect(source, contains('session.shell.started'));
+      expect(source, contains('session.shell.ended'));
+      // The SDK types spell these `session.next.shell.*`; accept both.
+      expect(source, contains('session.next.shell.started'));
+      expect(source, contains('session.next.shell.ended'));
+      expect(source, contains('shell.metadata.background'));
+      // Payload shape varies: nested `properties.shell` or flattened callID.
+      expect(source, contains('props.callID'));
+      expect(source, contains('"shell.started"'));
+      expect(source, contains('"shell.ended"'));
+      expect(source, contains('backgroundShellIds'));
+      // Subagent child sessions → lease, and a child idle is never the parent
+      // session finishing.
+      expect(source, contains('info.parentID'));
+      expect(source, contains('childSessionIds'));
+      expect(source, contains('"subagent.started"'));
+      expect(source, contains('"subagent.stopped"'));
+    },
+  );
+
   test('mergeRuntimePlugin adds plugin entry with url', () {
     final merged = mergeRuntimePlugin(
       const {},

@@ -1676,6 +1676,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionHistoryRunning => '运行中…';
 
   @override
+  String get sessionHistoryBackgroundRunning => '后台任务运行中…';
+
+  @override
   String sessionHistoryMailboxQueued(int count) {
     return '$count 已排队';
   }

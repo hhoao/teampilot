@@ -105,6 +105,49 @@ class SeatLeaseCubit extends Cubit<SeatLeaseState> implements SeatLeasePort {
     emit(SeatLeaseState(leases: seats));
   }
 
+  /// Replace every lease of [kind] on a seat with exactly the CLI's
+  /// authoritative snapshot ([SeatLeaseKind.inFlightTask]).
+  ///
+  /// Ids already held keep their original `acquiredAt`; newly seen ids are
+  /// acquired at [acquiredAt]. A no-op when already in sync — including the
+  /// empty-on-empty case (a seat with no leases stays untouched).
+  void replaceKind({
+    required String sessionId,
+    required String memberId,
+    required SeatLeaseKind kind,
+    required List<String> ids,
+    required DateTime acquiredAt,
+  }) {
+    final key = agentSeatKey(sessionId: sessionId, memberId: memberId);
+    final existing = state.leases[key] ?? const <String, SeatLease>{};
+    final wanted = ids
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toSet();
+    final kept = <String, SeatLease>{};
+    var changed = false;
+    for (final entry in existing.entries) {
+      if (entry.value.kind == kind && !wanted.contains(entry.key)) {
+        changed = true; // the snapshot says this task is gone
+        continue;
+      }
+      kept[entry.key] = entry.value;
+    }
+    for (final id in wanted) {
+      if (existing[id]?.kind == kind) continue;
+      kept[id] = SeatLease(kind: kind, id: id, acquiredAt: acquiredAt);
+      changed = true;
+    }
+    if (!changed) return;
+    final seats = Map<String, Map<String, SeatLease>>.of(state.leases);
+    if (kept.isEmpty) {
+      seats.remove(key);
+    } else {
+      seats[key] = kept;
+    }
+    emit(SeatLeaseState(leases: seats));
+  }
+
   /// Drop one seat (PTY exit, disconnect, reclaim-discard).
   void clearSeat({required String sessionId, required String memberId}) {
     final key = agentSeatKey(sessionId: sessionId, memberId: memberId);
