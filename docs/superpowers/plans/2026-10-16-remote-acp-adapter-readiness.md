@@ -1076,6 +1076,13 @@ Expected: FAIL — `kind` is not a parameter of `probe`; `locate`/adapter branch
 
 - [ ] **Step 3: Write minimal implementation**
 
+> **Keep the tree compiling:** changing `probe`'s signature breaks the existing
+> `@override probe({required target, required cli})` in
+> `client/test/services/chat/launch/workspace_landing_launch_gate_test.dart`
+> (line ~297). Add `CliBinaryKind kind = CliBinaryKind.cli` to that override
+> (the parameter is ignored) in this task so `flutter analyze` stays clean.
+> Task 2 later extends the same fake; do not otherwise change that file here.
+
 Replace `client/lib/services/remote/remote_cli_readiness.dart` with:
 
 ```dart
@@ -1732,7 +1739,6 @@ import 'package:teampilot/models/cli_binary_kind.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/home_workspace/workspace/remote_cli_machine_readiness_panel.dart';
-import 'package:teampilot/services/cli/registry/capabilities/cli_executable_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/remote/remote_cli_readiness.dart';
@@ -1768,7 +1774,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Claude ACP adapter'), findsOneWidget);
+    expect(find.text('Claude Code ACP adapter'), findsOneWidget);
   });
 }
 
@@ -1819,7 +1825,7 @@ already imported above).
 - [ ] **Step 3: Run test to verify it fails**
 
 Run: `cd client && dart run tool/run_tests.dart test/pages/home_workspace/workspace/remote_cli_machine_readiness_panel_test.dart`
-Expected: FAIL — the row renders `Claude`, not `Claude ACP adapter` (the panel ignores `requirement.kind`).
+Expected: FAIL — the row renders `Claude Code`, not `Claude Code ACP adapter` (the panel ignores `requirement.kind`).
 
 - [ ] **Step 4: Write minimal implementation**
 
@@ -2632,7 +2638,8 @@ Run with a host reachable over SSH from the app (`ssh:<profile>` target).
    - Remote host has `claude` but not `claude-agent-acp`.
    - Compose a personal Claude launch on the remote project with ACP enabled.
    - Expect: the "Required CLIs on this machine" panel appears below the compose
-     card with a "Claude ACP adapter" row marked not found and an Install button.
+     card with a "Claude Code ACP adapter" row marked not found and an Install
+     button.
 
 2. **Install lands on the host**
    - Press Install. Expect: progress phases (Checking npm / Bootstrapping Node /
