@@ -148,6 +148,12 @@ class AppKeys {
   static const sidebarSessionWaitingMarker = Key(
     'sidebar-session-waiting-marker',
   );
+
+  /// Static hourglass shown while a session has out-of-turn background work
+  /// (background shell task / subagent) — distinct from the working spinner.
+  static const sessionBackgroundWorkMarker = Key(
+    'session-background-work-marker',
+  );
   static const scopeSessionsToSelectedTeamSwitch = Key(
     'scope-sessions-to-selected-team-switch',
   );

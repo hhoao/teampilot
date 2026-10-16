@@ -9,6 +9,27 @@ Finder _spinnerPaint() {
   );
 }
 
+Future<void> _pumpIndicator(
+  WidgetTester tester, {
+  required bool working,
+  bool waiting = false,
+  bool backgroundRunning = false,
+}) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: SessionWorkingIndicator(
+            working: working,
+            waiting: waiting,
+            backgroundRunning: backgroundRunning,
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 void main() {
   testWidgets(
     'working spinner animation ticks paint without rebuilding widgets',
@@ -45,4 +66,47 @@ void main() {
       );
     },
   );
+
+  group('SessionWorkingIndicator precedence', () {
+    testWidgets('waiting outranks working and background', (tester) async {
+      await _pumpIndicator(
+        tester,
+        working: true,
+        waiting: true,
+        backgroundRunning: true,
+      );
+      expect(find.byType(SessionWaitingMarker), findsOneWidget);
+      expect(find.byType(SessionWorkingSpinner), findsNothing);
+      expect(find.byType(SessionBackgroundWorkMarker), findsNothing);
+    });
+
+    testWidgets('working outranks background', (tester) async {
+      await _pumpIndicator(
+        tester,
+        working: true,
+        backgroundRunning: true,
+      );
+      expect(find.byType(SessionWorkingSpinner), findsOneWidget);
+      expect(find.byType(SessionBackgroundWorkMarker), findsNothing);
+    });
+
+    testWidgets('background alone shows a static hourglass, not a spinner', (
+      tester,
+    ) async {
+      await _pumpIndicator(
+        tester,
+        working: false,
+        backgroundRunning: true,
+      );
+      expect(find.byType(SessionBackgroundWorkMarker), findsOneWidget);
+      expect(find.byType(SessionWorkingSpinner), findsNothing);
+    });
+
+    testWidgets('nothing active falls back to the idle dot', (tester) async {
+      await _pumpIndicator(tester, working: false);
+      expect(find.byType(SessionBackgroundWorkMarker), findsNothing);
+      expect(find.byType(SessionWorkingSpinner), findsNothing);
+      expect(find.byType(SessionWaitingMarker), findsNothing);
+    });
+  });
 }

@@ -10,6 +10,7 @@ import '../cubits/agent_attention_cubit.dart';
 import '../cubits/automation_cubit.dart';
 import '../cubits/automation_state.dart';
 import '../cubits/chat_cubit.dart';
+import '../cubits/seat_lease_cubit.dart';
 import '../cubits/session_groups_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
@@ -569,7 +570,6 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final hasOpenTab = context.select<ChatCubit, bool>(
       (cubit) => _sessionHasOpenTab(cubit, sessionId),
     );
-    final pod = context.read<ChatCubit>().ensurePodRuntime(sessionId);
     final waiting = context.select<AgentAttentionCubit, bool>(
       (cubit) => cubit.state.sessionHasWaiting(sessionId),
     );
@@ -578,25 +578,39 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final paintedTitle = rowContent.titleForPaint(l10n);
 
     // Leading area: shared 24×24 slot — indicator (idle) ↔ drag handle (hover).
-    // Waiting (needs-you) wins over working spinner — distinct tertiary hand icon.
-    // Listens to the pod ChangeNotifier so the connecting→running transition
-    // updates the spinner without a global ChatCubit emit.
-    final Widget indicator = ListenableBuilder(
-      listenable: pod,
-      builder: (context, _) {
-        final currentWorking = workingFromState || pod.state.phase.isLaunching;
-        return SessionWorkingIndicator(
-          working: currentWorking,
-          waiting: waiting,
-          size: 13,
-          color: cs.primary,
-          waitingColor: cs.tertiary,
-          idleColor: (selected ? cs.primary : cs.onSurfaceVariant).withValues(
-            alpha: 0.5,
-          ),
-        );
-      },
+    // Waiting (needs-you) wins over working, which wins over background work.
+    // The pod ChangeNotifier flips `phase` connecting→running mid-call; select
+    // it so the indicator rebuilds on that transition without a global emit.
+    final connecting = context.select<ChatCubit, bool>(
+      (cubit) => cubit.ensurePodRuntime(sessionId).state.phase.isLaunching,
     );
+    final working = workingFromState || connecting;
+    final leaseCubit = context.read<ChatCubit>().seatLeaseCubit;
+    final Widget indicator = leaseCubit == null
+        ? _sessionIndicator(
+            working: working,
+            waiting: waiting,
+            backgroundRunning: false,
+            selected: selected,
+            l10n: l10n,
+            cs: cs,
+          )
+        : BlocBuilder<SeatLeaseCubit, SeatLeaseState>(
+            bloc: leaseCubit,
+            builder: (context, leaseState) => _sessionIndicator(
+              working: working,
+              waiting: waiting,
+              // Only once the turn is over does a held lease mean background
+              // work; waiting wins anyway.
+              backgroundRunning:
+                  !working &&
+                  !waiting &&
+                  leaseState.sessionHasLeases(sessionId),
+              selected: selected,
+              l10n: l10n,
+              cs: cs,
+            ),
+          );
     final Widget leadingWidget;
     if (widget.index >= 0) {
       leadingWidget = ReorderableDragStartListener(
@@ -925,6 +939,35 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     );
     if (name == null || name.trim().isEmpty || !context.mounted) return;
     await chatCubit.renameSession(repo, session.sessionId, name.trim());
+  }
+
+  /// Leading status slot for the row. Waiting (needs-you) wins over working,
+  /// which wins over background work — a completed turn whose CLI is still
+  /// busy gets a static hourglass, not the turn spinner.
+  Widget _sessionIndicator({
+    required bool working,
+    required bool waiting,
+    required bool backgroundRunning,
+    required bool selected,
+    required AppLocalizations l10n,
+    required ColorScheme cs,
+  }) {
+    final indicator = SessionWorkingIndicator(
+      working: working,
+      waiting: waiting,
+      backgroundRunning: backgroundRunning,
+      size: 13,
+      color: cs.primary,
+      waitingColor: cs.tertiary,
+      idleColor: (selected ? cs.primary : cs.onSurfaceVariant).withValues(
+        alpha: 0.5,
+      ),
+    );
+    if (!backgroundRunning) return indicator;
+    return Tooltip(
+      message: l10n.sessionHistoryBackgroundRunning,
+      child: indicator,
+    );
   }
 }
 

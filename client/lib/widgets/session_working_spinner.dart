@@ -10,27 +10,38 @@ import '../utils/ui/app_keys.dart';
 /// and signals an open-but-idle session). Pass colors so callers can adapt to
 /// the row background (e.g. a selected sidebar tile sits on primaryContainer).
 ///
-/// [waiting] (permission / needs-you) takes precedence over [working] and uses a
-/// distinct static affordance — never the working spinner animation.
+/// Precedence: [waiting] (permission / needs-you) wins over [working], which
+/// wins over [backgroundRunning]. The last two are deliberately different
+/// affordances — a background shell task / subagent outlived the turn, so it
+/// gets a static hourglass rather than the turn's spinner.
 class SessionWorkingIndicator extends StatelessWidget {
   const SessionWorkingIndicator({
     super.key,
     required this.working,
     this.waiting = false,
+    this.backgroundRunning = false,
     this.size = 13,
     this.color,
     this.idleColor,
     this.waitingColor,
+    this.backgroundWorkColor,
   });
 
   final bool working;
   final bool waiting;
+
+  /// No turn in flight, but the seat still holds keep-alive leases.
+  final bool backgroundRunning;
+
   final double size;
   final Color? color;
   final Color? idleColor;
 
   /// Attention / needs-you color; defaults to [ColorScheme.tertiary].
   final Color? waitingColor;
+
+  /// Background-work color; defaults to [ColorScheme.onSurfaceVariant].
+  final Color? backgroundWorkColor;
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +50,9 @@ class SessionWorkingIndicator extends StatelessWidget {
     }
     if (working) {
       return SessionWorkingSpinner(size: size, color: color);
+    }
+    if (backgroundRunning) {
+      return SessionBackgroundWorkMarker(size: size, color: backgroundWorkColor);
     }
     final cs = Theme.of(context).colorScheme;
     final dot = size * 0.42;
@@ -75,6 +89,28 @@ class SessionWaitingMarker extends StatelessWidget {
       width: size,
       height: size,
       child: Icon(Icons.front_hand_rounded, size: size, color: accent),
+    );
+  }
+}
+
+/// Static hourglass for sidebar / tab leading slots while a session has
+/// out-of-turn background work. Not a spinner: the turn is over, the CLI is
+/// just still busy, so it must not read as "running".
+class SessionBackgroundWorkMarker extends StatelessWidget {
+  const SessionBackgroundWorkMarker({super.key, this.size = 13, this.color});
+
+  final double size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final accent = color ?? cs.onSurfaceVariant;
+    return SizedBox(
+      key: AppKeys.sessionBackgroundWorkMarker,
+      width: size,
+      height: size,
+      child: Icon(Icons.hourglass_bottom_rounded, size: size, color: accent),
     );
   }
 }

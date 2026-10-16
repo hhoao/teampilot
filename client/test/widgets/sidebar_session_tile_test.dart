@@ -11,6 +11,7 @@ import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/automation_state.dart';
 import 'package:teampilot/services/chat/session/chat_tab.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/seat_lease_cubit.dart';
 import 'package:teampilot/cubits/session/session_phase.dart';
 import 'package:teampilot/cubits/session_groups_cubit.dart';
 import 'package:teampilot/cubits/workbench/workbench_cubit.dart';
@@ -23,6 +24,7 @@ import 'package:teampilot/models/session_group.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_status/agent_status_event.dart';
+import 'package:teampilot/services/agent_status/seat_lease.dart';
 import 'package:teampilot/services/workbench/workbench_chat_bridge.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 import 'package:teampilot/widgets/session_working_spinner.dart';
@@ -56,7 +58,7 @@ Automation _sessionAutomation() {
 }
 
 class _RecordingChatCubit extends ChatCubit {
-  _RecordingChatCubit()
+  _RecordingChatCubit({super.seatLeaseCubit})
     : super(
         executableResolver: () => 'true',
         automationRepository: testAutomationRepository(),
@@ -528,6 +530,50 @@ void main() {
     );
     expect(find.text(l10n.closeConversation), findsNothing);
     await _dismissContextMenu(tester);
+  });
+
+  testWidgets('background lease shows the hourglass marker', (tester) async {
+    final leases = SeatLeaseCubit(pruneInterval: null);
+    final chatCubit = _RecordingChatCubit(seatLeaseCubit: leases);
+    final (attention, automationCubit) = _tileCubits();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+    addTearDown(leases.close);
+
+    leases.acquire(
+      sessionId: _session.sessionId,
+      memberId: 'm1',
+      lease: SeatLease(
+        kind: SeatLeaseKind.inFlightTask,
+        id: 't1',
+        acquiredAt: DateTime.utc(2026, 10, 15),
+      ),
+    );
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: SessionRepository(storage: testHomeStorage),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(AppKeys.sessionBackgroundWorkMarker), findsOneWidget);
+
+    // Releasing the lease drops the marker back to the idle dot. The cubit
+    // delivers the state change on a microtask, so give it a frame to land
+    // before the selector rebuilds.
+    leases.release(
+      sessionId: _session.sessionId,
+      memberId: 'm1',
+      leaseId: 't1',
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(AppKeys.sessionBackgroundWorkMarker), findsNothing);
   });
 
   testWidgets('active mode archives on action tap', (tester) async {

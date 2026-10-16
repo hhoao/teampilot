@@ -62,11 +62,19 @@ class SeatLeaseState extends Equatable {
 /// Driven by `seatLeaseProjection` from the runtime-event gateway; consumed
 /// by the idle terminal reclaim. Independent of attention semantics.
 class SeatLeaseCubit extends Cubit<SeatLeaseState> implements SeatLeasePort {
-  SeatLeaseCubit({DateTime Function()? clock, Duration? pruneInterval})
-    : _clock = clock ?? DateTime.now,
-      super(const SeatLeaseState()) {
-    final interval = pruneInterval ?? seatLeasePruneInterval;
-    _pruneTimer = Timer.periodic(interval, (_) => pruneStale());
+  /// [pruneInterval] defaults to [seatLeasePruneInterval]; pass `null` to
+  /// disable pruning entirely (tests / embedders), matching
+  /// [AgentAttentionCubit]'s contract. Note that a non-null interval always
+  /// arms a periodic timer, so `testWidgets` bodies that pass `null` get no
+  /// pending-timer leak at teardown.
+  SeatLeaseCubit({
+    DateTime Function()? clock,
+    Duration? pruneInterval = seatLeasePruneInterval,
+  }) : _clock = clock ?? DateTime.now,
+       super(const SeatLeaseState()) {
+    if (pruneInterval != null) {
+      _pruneTimer = Timer.periodic(pruneInterval, (_) => pruneStale());
+    }
   }
 
   final DateTime Function() _clock;

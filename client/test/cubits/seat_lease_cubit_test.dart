@@ -1,3 +1,4 @@
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/seat_lease_cubit.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart'
@@ -206,6 +207,41 @@ void main() {
           cubit.state.leases[agentSeatKey(sessionId: 's', memberId: 'm')]?.keys,
           ['call_1'],
         );
+      });
+    });
+
+    group('prune interval', () {
+      test('null disables pruning entirely', () {
+        fakeAsync((async) {
+          final cubit = SeatLeaseCubit(
+            pruneInterval: null,
+            clock: () => DateTime(2026, 1, 1),
+          );
+          cubit.acquire(sessionId: 's', memberId: 'm', lease: _lease('a'));
+          // Well past the 60-minute TTL: no timer may fire and drop it.
+          async.elapse(const Duration(hours: 3));
+          expect(
+            cubit.state.seatHasLeases(sessionId: 's', memberId: 'm'),
+            isTrue,
+          );
+          cubit.close();
+        });
+      });
+
+      test('a non-null interval prunes without a manual pruneStale', () {
+        fakeAsync((async) {
+          final cubit = SeatLeaseCubit(
+            pruneInterval: const Duration(minutes: 1),
+            clock: () => DateTime(2026, 1, 1).add(async.elapsed),
+          );
+          cubit.acquire(sessionId: 's', memberId: 'm', lease: _lease('a'));
+          async.elapse(const Duration(hours: 2));
+          expect(
+            cubit.state.seatHasLeases(sessionId: 's', memberId: 'm'),
+            isFalse,
+          );
+          cubit.close();
+        });
       });
     });
   });
