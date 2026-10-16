@@ -927,12 +927,13 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                     widget.onRetryFailedMessage != null
                                 ? () => widget.onRetryFailedMessage!(ai.id)
                                 : null,
-                            // Keep the tip "thinking" expanded while it streams;
-                            // collapse once a non-thinking part appears or the
-                            // message is no longer the last real message.
+                            // Keep the tip thinking process expanded (even when
+                            // the turn contains tool calls) while the
+                            // "expand latest" preference is on; collapse once
+                            // the message is no longer the last real message.
                             chainOfThoughtAutoExpand:
                                 ai.id == realTipId &&
-                                aiMessageIsThinkingOnly(ai),
+                                aiTheme.cotExpandLatestOnOpen,
                           );
                           var result = tightenForRunning
                               ? Theme(

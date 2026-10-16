@@ -740,6 +740,18 @@ abstract class AppLocalizations {
   /// **'Thinking process'**
   String get thinkingProcessSectionTitle;
 
+  /// No description provided for @cotExpandLatestOnOpenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand latest thinking process'**
+  String get cotExpandLatestOnOpenTitle;
+
+  /// No description provided for @cotExpandLatestOnOpenDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-expand the thinking process of the latest message in the chat.'**
+  String get cotExpandLatestOnOpenDescription;
+
   /// No description provided for @cotExpandReasoningOnOpenTitle.
   ///
   /// In en, this message translates to:

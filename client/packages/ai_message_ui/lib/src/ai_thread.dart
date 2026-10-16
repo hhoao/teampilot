@@ -404,7 +404,7 @@ class _AiThreadState extends State<AiThread> {
       registry: widget.registry,
       actionBarReveal:
           isLast ? AiActionBarReveal.always : AiActionBarReveal.hover,
-      chainOfThoughtAutoExpand: isLast && aiMessageIsThinkingOnly(message),
+      chainOfThoughtAutoExpand: isLast,
     );
   }
 

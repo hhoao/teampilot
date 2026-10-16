@@ -218,22 +218,30 @@ void main() {
     expect(roundTrip.homeSidebarWidth, 500);
   });
 
-  test('cot expand prefs default false and round-trip', () {
+  test('cot expand prefs defaults and round-trip', () {
     expect(const LayoutPreferences().cotExpandReasoningOnOpen, isFalse);
     expect(const LayoutPreferences().cotExpandToolsOnOpen, isFalse);
+    expect(const LayoutPreferences().cotExpandLatestOnOpen, isTrue);
     expect(
       LayoutPreferences.fromJson(const {}).cotExpandReasoningOnOpen,
       isFalse,
+    );
+    expect(
+      LayoutPreferences.fromJson(const {}).cotExpandLatestOnOpen,
+      isTrue,
     );
 
     final parsed = LayoutPreferences.fromJson(const {
       'cotExpandReasoningOnOpen': true,
       'cotExpandToolsOnOpen': true,
+      'cotExpandLatestOnOpen': false,
     });
     expect(parsed.cotExpandReasoningOnOpen, isTrue);
     expect(parsed.cotExpandToolsOnOpen, isTrue);
+    expect(parsed.cotExpandLatestOnOpen, isFalse);
     expect(parsed.toJson()['cotExpandReasoningOnOpen'], isTrue);
     expect(parsed.toJson()['cotExpandToolsOnOpen'], isTrue);
+    expect(parsed.toJson()['cotExpandLatestOnOpen'], isFalse);
   });
 
   test('floating workspace geometry defaults null and round-trips', () {

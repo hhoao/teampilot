@@ -52,6 +52,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     this.userMessageTopInset = 8,
     this.cotExpandReasoningOnOpen = false,
     this.cotExpandToolsOnOpen = false,
+    this.cotExpandLatestOnOpen = true,
   });
 
   /// Product / test fixture with [MarkdownTokens.test] typography.
@@ -76,6 +77,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     double userMessageTopInset = 8,
     bool cotExpandReasoningOnOpen = false,
     bool cotExpandToolsOnOpen = false,
+    bool cotExpandLatestOnOpen = true,
   }) {
     return AiMessageTheme(
       markdown: MarkdownTokens.test(
@@ -101,6 +103,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
       userMessageTopInset: userMessageTopInset,
       cotExpandReasoningOnOpen: cotExpandReasoningOnOpen,
       cotExpandToolsOnOpen: cotExpandToolsOnOpen,
+      cotExpandLatestOnOpen: cotExpandLatestOnOpen,
     );
   }
 
@@ -127,6 +130,10 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
   final double userMessageTopInset;
   final bool cotExpandReasoningOnOpen;
   final bool cotExpandToolsOnOpen;
+
+  /// Auto-expand the latest message's chain-of-thought (see
+  /// [AiMessageParts.chainOfThoughtAutoExpand]).
+  final bool cotExpandLatestOnOpen;
 
   static AiMessageTheme of(BuildContext context) {
     return Theme.of(context).extension<AiMessageTheme>() ??
@@ -173,6 +180,7 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
     double? userMessageTopInset,
     bool? cotExpandReasoningOnOpen,
     bool? cotExpandToolsOnOpen,
+    bool? cotExpandLatestOnOpen,
   }) {
     return AiMessageTheme(
       markdown: markdown ?? this.markdown,
@@ -197,6 +205,8 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
       cotExpandReasoningOnOpen:
           cotExpandReasoningOnOpen ?? this.cotExpandReasoningOnOpen,
       cotExpandToolsOnOpen: cotExpandToolsOnOpen ?? this.cotExpandToolsOnOpen,
+      cotExpandLatestOnOpen:
+          cotExpandLatestOnOpen ?? this.cotExpandLatestOnOpen,
     );
   }
 
@@ -249,6 +259,9 @@ class AiMessageTheme extends ThemeExtension<AiMessageTheme> {
       cotExpandToolsOnOpen: t < 0.5
           ? cotExpandToolsOnOpen
           : other.cotExpandToolsOnOpen,
+      cotExpandLatestOnOpen: t < 0.5
+          ? cotExpandLatestOnOpen
+          : other.cotExpandLatestOnOpen,
     );
   }
 }

@@ -41,6 +41,17 @@ chainOfThoughtAutoExpand: ai.id == realTipId && aiMessageIsThinkingOnly(ai),
 - 相关 doc 注释同步更新（`AiMessageView` / `AiMessageParts` / `AiChainOfThoughtView`）；
   `aiMessageIsThinkingOnly` 不再是该机制的判据。
 
+## 设置开关（后续追加）
+
+该行为做成用户可关闭的设置项：
+
+- `LayoutPreferences.cotExpandLatestOnOpen`（默认 `true`）；设置 UI 在「布局外观 → 思考过程」区顶部新增一行
+  `cotExpandLatestOnOpenTitle/Description`。
+- 传递路径：`session_chat_view.dart` 选择该 pref → `PinnedSessionHistoryColumnWidth.expandLatest` →
+  `AiMessageTheme.cotExpandLatestOnOpen`。
+- `session_history_thread.dart`：`chainOfThoughtAutoExpand: ai.id == realTipId && aiTheme.cotExpandLatestOnOpen`。
+- 关闭后，最新消息的思考过程恢复默认折叠；内部推理/工具展开仍由既有两项 pref 控制。
+
 ## 测试
 
 - 最新消息含「推理 + 工具调用」时，思考过程块展开（回归点）。

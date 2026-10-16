@@ -14,6 +14,7 @@ class PinnedSessionHistoryColumnWidth extends StatefulWidget {
     required this.availableWidth,
     required this.expandReasoning,
     required this.expandTools,
+    required this.expandLatest,
     required this.child,
     super.key,
   });
@@ -21,6 +22,7 @@ class PinnedSessionHistoryColumnWidth extends StatefulWidget {
   final double availableWidth;
   final bool expandReasoning;
   final bool expandTools;
+  final bool expandLatest;
   final Widget child;
 
   @override
@@ -33,6 +35,7 @@ class _PinnedSessionHistoryColumnWidthState
   double? _columnWidth;
   bool? _expandReasoning;
   bool? _expandTools;
+  bool? _expandLatest;
   Brightness? _brightness;
   Color? _surfaceContainerHighest;
   Color? _onSurface;
@@ -50,6 +53,7 @@ class _PinnedSessionHistoryColumnWidthState
         _columnWidth != next ||
         _expandReasoning != widget.expandReasoning ||
         _expandTools != widget.expandTools ||
+        _expandLatest != widget.expandLatest ||
         _brightness != theme.brightness ||
         _surfaceContainerHighest != cs.surfaceContainerHighest ||
         _onSurface != cs.onSurface ||
@@ -59,6 +63,7 @@ class _PinnedSessionHistoryColumnWidthState
       _columnWidth = next;
       _expandReasoning = widget.expandReasoning;
       _expandTools = widget.expandTools;
+      _expandLatest = widget.expandLatest;
       _brightness = theme.brightness;
       _surfaceContainerHighest = cs.surfaceContainerHighest;
       _onSurface = cs.onSurface;
@@ -83,6 +88,7 @@ class _PinnedSessionHistoryColumnWidthState
             threadHorizontalPadding: spacing.md,
             cotExpandReasoningOnOpen: widget.expandReasoning,
             cotExpandToolsOnOpen: widget.expandTools,
+            cotExpandLatestOnOpen: widget.expandLatest,
           ),
         ],
       );

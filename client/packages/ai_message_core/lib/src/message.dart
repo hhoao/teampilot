@@ -94,8 +94,7 @@ class AiReasoningPart implements AiMessagePart {
 enum AiMessageStatus { complete, incomplete, cancelled }
 
 /// True when an assistant message consists entirely of reasoning ("thinking")
-/// content with at least one part. Used to keep the tip thinking expanded while
-/// it is streaming and collapse it once non-thinking content arrives.
+/// content with at least one part.
 bool aiMessageIsThinkingOnly(AiMessage message) =>
     message.role == AiRole.assistant &&
     message.parts.isNotEmpty &&

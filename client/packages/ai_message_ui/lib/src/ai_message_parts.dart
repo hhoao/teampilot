@@ -20,8 +20,9 @@ class AiMessageParts extends StatelessWidget {
   final List<AiMessagePart> parts;
   final AiPartRegistry registry;
 
-  /// Auto-expand the chain-of-thought while it is the tip thinking message
-  /// (see [AiChainOfThoughtView.autoExpand]).
+  /// Auto-expand the *last* chain-of-thought of this message while the message
+  /// is the tip (see [AiChainOfThoughtView.autoExpand]). Every other
+  /// chain-of-thought stays collapsed.
   final bool chainOfThoughtAutoExpand;
 
   @override
@@ -30,6 +31,7 @@ class AiMessageParts extends StatelessWidget {
     final gap = AiMessageTheme.of(context).partSpacing;
     final shouldFold = AiToolCallFoldScope.maybeOf(context)?.shouldFold;
     final nodes = groupMessageParts(parts, shouldFold: shouldFold);
+    final lastChainIndex = _lastChainOfThoughtIndex(nodes);
     // User bubbles size to content (capped upstream). Assistant tool cards need
     // the full thread width.
     final crossAxisAlignment = AiMessageRoleScope.of(context) == AiRole.user
@@ -41,19 +43,29 @@ class AiMessageParts extends StatelessWidget {
       children: [
         for (var i = 0; i < nodes.length; i++) ...[
           if (i > 0) SizedBox(height: gap),
-          _buildNode(context, nodes[i]),
+          _buildNode(context, nodes[i], autoExpand: i == lastChainIndex),
         ],
       ],
     );
   }
 
-  Widget _buildNode(BuildContext context, AiRenderNode node) {
+  /// Index of the last chain-of-thought node, or -1 when auto-expand is off.
+  int _lastChainOfThoughtIndex(List<AiRenderNode> nodes) {
+    if (!chainOfThoughtAutoExpand) return -1;
+    for (var i = nodes.length - 1; i >= 0; i--) {
+      if (nodes[i] is AiRenderChainOfThought) return i;
+    }
+    return -1;
+  }
+
+  Widget _buildNode(
+    BuildContext context,
+    AiRenderNode node, {
+    required bool autoExpand,
+  }) {
     if (node is AiRenderChainOfThought &&
         registry.chainOfThoughtBuilder == null) {
-      return AiChainOfThoughtView(
-        parts: node.parts,
-        autoExpand: chainOfThoughtAutoExpand,
-      );
+      return AiChainOfThoughtView(parts: node.parts, autoExpand: autoExpand);
     }
     return registry.buildNode(context, node);
   }

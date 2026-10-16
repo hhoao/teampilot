@@ -73,16 +73,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Fold into thinking process'), findsOneWidget);
-    // 12 categories + the existing 2 cot expand switches + the auto-open
-    // subagent preview switch + the floating preview tab switch = 16
-    // Switch widgets.
-    expect(find.byType(Switch), findsNWidgets(16));
+    // 12 categories + the 3 cot expand switches + the auto-open subagent
+    // preview switch + the floating preview tab switch = 17 Switch widgets.
+    expect(find.byType(Switch), findsNWidgets(17));
     final switches = tester.widgetList<Switch>(find.byType(Switch)).toList();
     // 7 workhorse categories default to folded (on); interaction categories
-    // (subagent / ask user / plan / tasks & todos) and the two cot switches
-    // plus auto-open subagent preview default off. The floating preview
-    // tab switch defaults on (8).
+    // (subagent / ask user / plan / tasks & todos) and the two inner cot
+    // switches plus auto-open subagent preview default off. The
+    // latest-message cot switch and the floating preview tab switch default
+    // on (9).
     final onCount = switches.where((s) => s.value).length;
-    expect(onCount, 8);
+    expect(onCount, 9);
   });
 }

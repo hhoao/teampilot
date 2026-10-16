@@ -1592,6 +1592,7 @@ class _SessionChatViewState extends State<SessionChatView> {
                     ({
                       bool expandReasoning,
                       bool expandTools,
+                      bool expandLatest,
                       bool autoOpenSubagentPreview,
                       ContentDisplayMode userMessageMode,
                       ContentDisplayMode chatCodeBlockMode,
@@ -1600,6 +1601,7 @@ class _SessionChatViewState extends State<SessionChatView> {
                     selector: (s) => (
                       expandReasoning: s.preferences.cotExpandReasoningOnOpen,
                       expandTools: s.preferences.cotExpandToolsOnOpen,
+                      expandLatest: s.preferences.cotExpandLatestOnOpen,
                       autoOpenSubagentPreview:
                           s.preferences.autoOpenSubagentPreview,
                       userMessageMode: s.preferences.chatUserMessageMode,
@@ -1614,6 +1616,7 @@ class _SessionChatViewState extends State<SessionChatView> {
                             availableWidth: constraints.maxWidth,
                             expandReasoning: expandReasoning,
                             expandTools: expandTools,
+                            expandLatest: prefs.expandLatest,
                             child: BlocBuilder<AiHistorySeat, AiHistoryState>(
                               bloc: _seat,
                               // Skip totalMessageCount-only tip growth — thread listens to

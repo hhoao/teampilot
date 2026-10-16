@@ -362,6 +362,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get thinkingProcessSectionTitle => 'Thinking process';
 
   @override
+  String get cotExpandLatestOnOpenTitle => 'Expand latest thinking process';
+
+  @override
+  String get cotExpandLatestOnOpenDescription =>
+      'Auto-expand the thinking process of the latest message in the chat.';
+
+  @override
   String get cotExpandReasoningOnOpenTitle => 'Expand reasoning when opening';
 
   @override

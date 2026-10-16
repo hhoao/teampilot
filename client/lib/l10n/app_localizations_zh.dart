@@ -343,6 +343,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get thinkingProcessSectionTitle => '思考过程';
 
   @override
+  String get cotExpandLatestOnOpenTitle => '自动展开最新消息的思考过程';
+
+  @override
+  String get cotExpandLatestOnOpenDescription =>
+      '自动展开聊天中最新一条消息的思考过程（含推理与工具调用）。';
+
+  @override
   String get cotExpandReasoningOnOpenTitle => '打开时展开推理';
 
   @override

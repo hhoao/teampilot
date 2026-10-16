@@ -34,12 +34,15 @@ Widget _harness({
   Future<void> Function()? onLoadOlder,
   ValueNotifier<String?>? visibleOwnerId,
   bool? mobilePerformanceMode,
+  bool expandLatest = true,
 }) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     locale: const Locale('en'),
-    theme: ThemeData(extensions: [AiMessageTheme.test()]),
+    theme: ThemeData(
+      extensions: [AiMessageTheme.test(cotExpandLatestOnOpen: expandLatest)],
+    ),
     home: Scaffold(
       body: SizedBox(
         width: 600,
@@ -108,6 +111,58 @@ void main() {
     );
     expect(viewport.fillDataWindow, isTrue);
     expect(viewport.retainMountedTurns, isTrue);
+  });
+
+  testWidgets('tip thinking process auto-expands even with tool calls', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages([
+        AiMessage(
+          id: 'a1',
+          role: AiRole.assistant,
+          parts: const [
+            AiReasoningPart(text: 'old thinking'),
+            AiToolCallPart(toolCallId: 'c1', toolName: 'Read'),
+          ],
+        ),
+        AiMessage(
+          id: 'a2',
+          role: AiRole.assistant,
+          parts: const [
+            AiReasoningPart(text: 'tip thinking'),
+            AiToolCallPart(toolCallId: 'c2', toolName: 'Read'),
+          ],
+        ),
+      ]);
+
+    await tester.pumpWidget(_harness(runtime: store));
+    await pumpUntilSettled(tester);
+
+    expect(find.textContaining('tip thinking'), findsOneWidget);
+    expect(find.textContaining('old thinking'), findsNothing);
+  });
+
+  testWidgets('tip thinking process stays collapsed when the pref is off', (
+    tester,
+  ) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages([
+        AiMessage(
+          id: 'a1',
+          role: AiRole.assistant,
+          parts: const [
+            AiReasoningPart(text: 'tip thinking'),
+            AiToolCallPart(toolCallId: 'c1', toolName: 'Read'),
+          ],
+        ),
+      ]);
+
+    await tester.pumpWidget(_harness(runtime: store, expandLatest: false));
+    await pumpUntilSettled(tester);
+
+    expect(find.textContaining('Thinking process'), findsOneWidget);
+    expect(find.textContaining('tip thinking'), findsNothing);
   });
 
   // SelectionArea must sit *inside* the scroll content. As a scroll

@@ -26,6 +26,7 @@ void main() {
                 availableWidth: 1480,
                 expandReasoning: false,
                 expandTools: false,
+                expandLatest: false,
                 child: Text(label),
               );
             },
@@ -58,6 +59,7 @@ void main() {
                 availableWidth: available,
                 expandReasoning: false,
                 expandTools: false,
+                expandLatest: false,
                 child: Builder(
                   builder: (context) {
                     final width = AiMessageTheme.of(context).threadMaxWidth;
@@ -81,5 +83,31 @@ void main() {
     await tester.pump();
     // 1680 resolves to 1480 before the 1460 ceiling clamps it.
     expect(find.text('w=1460.0'), findsOneWidget);
+  });
+
+  testWidgets('expandLatest flows into the message theme', (tester) async {
+    late bool expandLatest;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: appTheme(),
+        home: TpTheme(
+          data: TpThemeData.fromColorScheme(appTheme().colorScheme, scale: 1),
+          child: PinnedSessionHistoryColumnWidth(
+            availableWidth: 1480,
+            expandReasoning: false,
+            expandTools: false,
+            expandLatest: true,
+            child: Builder(
+              builder: (context) {
+                expandLatest = AiMessageTheme.of(context).cotExpandLatestOnOpen;
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(expandLatest, isTrue);
   });
 }

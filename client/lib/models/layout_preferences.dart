@@ -178,6 +178,7 @@ class LayoutPreferences {
     this.markdownOpenMode = MarkdownOpenMode.preview,
     this.cotExpandReasoningOnOpen = false,
     this.cotExpandToolsOnOpen = false,
+    this.cotExpandLatestOnOpen = true,
     this.autoOpenSubagentPreview = false,
     this.chatUserMessageMode = ContentDisplayMode.foldFixedHeight,
     this.chatCodeBlockMode = ContentDisplayMode.foldFixedHeight,
@@ -283,6 +284,7 @@ class LayoutPreferences {
       cotExpandReasoningOnOpen:
           json['cotExpandReasoningOnOpen'] as bool? ?? false,
       cotExpandToolsOnOpen: json['cotExpandToolsOnOpen'] as bool? ?? false,
+      cotExpandLatestOnOpen: json['cotExpandLatestOnOpen'] as bool? ?? true,
       autoOpenSubagentPreview:
           json['autoOpenSubagentPreview'] as bool? ?? false,
       chatUserMessageMode:
@@ -412,6 +414,7 @@ class LayoutPreferences {
   final MarkdownOpenMode markdownOpenMode;
   final bool cotExpandReasoningOnOpen;
   final bool cotExpandToolsOnOpen;
+  final bool cotExpandLatestOnOpen;
   final bool autoOpenSubagentPreview;
   final ContentDisplayMode chatUserMessageMode;
   final ContentDisplayMode chatCodeBlockMode;
@@ -472,6 +475,7 @@ class LayoutPreferences {
     MarkdownOpenMode? markdownOpenMode,
     bool? cotExpandReasoningOnOpen,
     bool? cotExpandToolsOnOpen,
+    bool? cotExpandLatestOnOpen,
     bool? autoOpenSubagentPreview,
     ContentDisplayMode? chatUserMessageMode,
     ContentDisplayMode? chatCodeBlockMode,
@@ -561,6 +565,8 @@ class LayoutPreferences {
       cotExpandReasoningOnOpen:
           cotExpandReasoningOnOpen ?? this.cotExpandReasoningOnOpen,
       cotExpandToolsOnOpen: cotExpandToolsOnOpen ?? this.cotExpandToolsOnOpen,
+      cotExpandLatestOnOpen:
+          cotExpandLatestOnOpen ?? this.cotExpandLatestOnOpen,
       autoOpenSubagentPreview:
           autoOpenSubagentPreview ?? this.autoOpenSubagentPreview,
       chatUserMessageMode: chatUserMessageMode ?? this.chatUserMessageMode,
@@ -629,6 +635,7 @@ class LayoutPreferences {
       markdownOpenMode: markdownOpenMode,
       cotExpandReasoningOnOpen: cotExpandReasoningOnOpen,
       cotExpandToolsOnOpen: cotExpandToolsOnOpen,
+      cotExpandLatestOnOpen: cotExpandLatestOnOpen,
       autoOpenSubagentPreview: autoOpenSubagentPreview,
       chatUserMessageMode: chatUserMessageMode,
       chatCodeBlockMode: chatCodeBlockMode,
@@ -686,6 +693,7 @@ class LayoutPreferences {
       'markdownOpenMode': markdownOpenMode.name,
       'cotExpandReasoningOnOpen': cotExpandReasoningOnOpen,
       'cotExpandToolsOnOpen': cotExpandToolsOnOpen,
+      'cotExpandLatestOnOpen': cotExpandLatestOnOpen,
       'autoOpenSubagentPreview': autoOpenSubagentPreview,
       'chatUserMessageMode': chatUserMessageMode.name,
       'chatCodeBlockMode': chatCodeBlockMode.name,

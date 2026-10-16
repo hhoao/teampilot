@@ -142,6 +142,8 @@
   "markdownOpenModeSource": "Source",
   "markdownOpenModeRemember": "Remember last",
   "thinkingProcessSectionTitle": "Thinking process",
+  "cotExpandLatestOnOpenTitle": "Expand latest thinking process",
+  "cotExpandLatestOnOpenDescription": "Auto-expand the thinking process of the latest message in the chat.",
   "cotExpandReasoningOnOpenTitle": "Expand reasoning when opening",
   "cotExpandReasoningOnOpenDescription": "When you open a thinking-process block, expand nested reasoning steps automatically.",
   "cotExpandToolsOnOpenTitle": "Expand tools when opening",

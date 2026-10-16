@@ -22,9 +22,9 @@ class AiChainOfThoughtView extends StatefulWidget {
   final List<AiMessagePart> parts;
 
   /// While true, the chain stays expanded (including inner reasoning steps) so
-  /// live "thinking" content remains visible. The host flips this off once a
-  /// non-thinking part arrives or the message is no longer the tip, collapsing
-  /// the reasoning back to its default collapsed chrome.
+  /// the tip message's "thinking" content remains visible. The host flips this
+  /// off once the message is no longer the latest one, collapsing the reasoning
+  /// back to its default collapsed chrome.
   final bool autoExpand;
 
   @override

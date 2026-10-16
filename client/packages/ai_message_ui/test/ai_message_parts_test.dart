@@ -435,6 +435,66 @@ void main() {
     expect(find.textContaining('second step'), findsOneWidget);
   });
 
+  testWidgets('tip message with tool calls auto-expands the thinking process', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiMessageView(
+            chainOfThoughtAutoExpand: true,
+            message: AiMessage(
+              id: 'a1',
+              role: AiRole.assistant,
+              parts: const [
+                AiReasoningPart(text: 'plan the work'),
+                AiToolCallPart(
+                  toolCallId: 'c1',
+                  toolName: 'shell_command',
+                  result: 'tool output',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // Regression: a tool call no longer blocks the tip's thinking process.
+    expect(find.textContaining('Thinking process'), findsOneWidget);
+    expect(find.textContaining('plan the work'), findsOneWidget);
+    // Inner tool payloads still need an explicit tap.
+    expect(find.textContaining('tool output'), findsNothing);
+  });
+
+  testWidgets('only the last thinking process block auto-expands', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AiMessageView(
+            chainOfThoughtAutoExpand: true,
+            message: AiMessage(
+              id: 'a1',
+              role: AiRole.assistant,
+              parts: const [
+                AiReasoningPart(text: 'early reasoning'),
+                AiToolCallPart(toolCallId: 'c1', toolName: 'Read'),
+                AiTextPart(text: 'mid answer'),
+                AiReasoningPart(text: 'late reasoning'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('late reasoning'), findsOneWidget);
+    expect(find.textContaining('early reasoning'), findsNothing);
+    expect(find.text('mid answer'), findsOneWidget);
+  });
+
   testWidgets('non-tip thinking stays collapsed by default', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -454,7 +514,7 @@ void main() {
     expect(find.textContaining('hidden thinking'), findsNothing);
   });
 
-  testWidgets('auto-expanded thinking collapses once non-thinking arrives', (
+  testWidgets('auto-expanded thinking collapses when autoExpand turns off', (
     tester,
   ) async {
     Future<void> pump({
@@ -496,7 +556,7 @@ void main() {
     expect(find.textContaining('live thinking'), findsNothing);
   });
 
-  testWidgets('AiThread auto-expands only the last all-thinking message', (
+  testWidgets('AiThread auto-expands only the last message thinking process', (
     tester,
   ) async {
     final store = ExternalStoreAiThreadRuntime()
@@ -509,7 +569,10 @@ void main() {
         AiMessage(
           id: '2',
           role: AiRole.assistant,
-          parts: const [AiReasoningPart(text: 'tip reasoning')],
+          parts: const [
+            AiReasoningPart(text: 'tip reasoning'),
+            AiToolCallPart(toolCallId: 'c1', toolName: 'Read'),
+          ],
         ),
       ]);
 
