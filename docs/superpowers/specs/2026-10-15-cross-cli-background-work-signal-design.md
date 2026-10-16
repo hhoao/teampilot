@@ -186,16 +186,25 @@ subagent / monitor / workflow。
     卡住的租约由 60 分钟 TTL 兜底）。
   - **待实测**：以上基于二进制/SDK 静态证据，尚未在真实 opencode 会话中跑通端到端
     （需要给工作区 agent 会话也装状态 plugin，见下方"非目标/待定"）。
-- **阶段 3（claude/flashskyai `SubagentStart` 注册）：暂缓**
-  - claude 的 `background_tasks` 已经覆盖后台子 agent；注册 `SubagentStart` 反而会让
-    「后台任务运行中」变回「运行中」（父 Stop 等到子结束才 done），与阶段 1 语义冲突。
-  - flashskyai 缺 `background_tasks`，但其 Agent 是否默认后台运行未验证；确认后再决定。
+- **阶段 3（claude/flashskyai `SubagentStart` 注册）：拆分结论**
+  - **claude：不做**。`background_tasks` 已覆盖后台子 agent；注册 `SubagentStart` 反而会让
+    「后台任务运行中」变回「运行中」（父 Stop 等到子结束才 done），与阶段 1 语义冲突，
+    且丢失快照的对账自愈性（漏事件时靠快照复正，而不是靠计数）。
+  - **flashskyai：应当做**。实测确认它**有** `SubagentStart`（含 schema），但**没有**
+    `background_tasks` → 它的后台子 agent 目前两条通道都没有信号。注册 `SubagentStart`
+    后，已注册的 `SubagentStop` 才真正生效，子 agent 计数能工作：父 Stop 在子未结束时保持
+    「运行中」。注意这是**刻意的**语义选择——对 flashskyai 而言子 agent 归「运行中」而非
+    「后台任务」；若要把它显示为「后台任务」，则需要改用 latch 路线（见下）。
+  - 备选（不改注意力）：把 `isBackgroundTaskStart` 从只认 `Bash` 放宽到
+    `PreToolUse` + `tool_name ∈ {Agent, Task}` + `tool_input.run_in_background == true`，
+    这样 claude/flashskyai 的后台子 agent 直接进**后台租约桶**，与阶段 1/2 同路径。
+    两者语义不同，需择一。
 - **阶段 4：待做。**
 
 ## 证据来源（本机）
 
 - claude `2.1.211`：`~/.nvm/.../claude-code/bin/claude.exe`（hook 事件表、`Stop`/`SubagentStop` 输入 schema、`background_tasks`、`AgentInput.run_in_background` 默认 true）。
-- flashskyai：`~/Downloads/DingDing/flashshkyai/dist/flashskyai`（`SubagentStart`×24、`run_in_background`×30、`background_tasks`×0）。
+- flashskyai：`~/Downloads/DingDing/flashshkyai/dist/flashskyai`（`SubagentStart`×24 — **有**该 hook，含 `SubagentStartHookInputSchema`；`SubagentStop`×28；`run_in_background`×30；`background_tasks`×0）。
 - codex：`~/.nvm/.../@openai/codex/.../vendor/x86_64-unknown-linux-musl/bin/codex`（`SubagentStart`×32、无后台字段）。
 - cursor：`~/.local/share/cursor-agent/versions/2026.10.14-0f9edde/`（`subagentStart`、`beforeShellExecution`、`is_background`）。
 - opencode `2.0.24`：`~/.opencode/bin/opencode`（`session.shell.started/ended` 带 `shell.metadata.background`；`session.created` 带 `info.parentID`）。
