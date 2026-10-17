@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/cli/claude/capabilities/acp_adapter_installer.dart';
 import 'package:teampilot/services/cli/installer_types.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_executable_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -130,6 +131,84 @@ void main() {
       );
     },
   );
+
+  test(
+    'adapter preflight installs the npm package and returns the path',
+    () async {
+      final calls = <String>[];
+      final install = buildRemotePreflightAdapterInstall(
+        installer: const ClaudeAcpAdapterInstaller(),
+        profile: profile,
+      );
+
+      final path = await install(
+        run: (command) async {
+          calls.add(command);
+          if (_isTermuxProbe(command)) {
+            return const SshCommandResult(exitCode: 0, stdout: 'TERMUX=0\n');
+          }
+          if (_isNodeBootstrap(command)) {
+            return const SshCommandResult(exitCode: 0, stdout: '10.0.0\n');
+          }
+          if (_isBareNpmLocate(command)) {
+            return const SshCommandResult(exitCode: 1, stdout: '');
+          }
+          if (command.contains('npm install -g --prefix') &&
+              command.contains('@agentclientprotocol/claude-agent-acp')) {
+            return const SshCommandResult(exitCode: 0, stdout: '');
+          }
+          if (command.startsWith('sh -c') &&
+              command.contains('command -v claude-agent-acp')) {
+            return const SshCommandResult(
+              exitCode: 0,
+              stdout: '/home/dev/.local/bin/claude-agent-acp\n',
+            );
+          }
+          return const SshCommandResult(exitCode: 1, stdout: '');
+        },
+        onProgress: (_) {},
+      );
+
+      expect(path, '/home/dev/.local/bin/claude-agent-acp');
+      expect(
+        calls.any(
+          (c) =>
+              c.contains('npm install -g --prefix') &&
+              c.contains('@agentclientprotocol/claude-agent-acp'),
+        ),
+        isTrue,
+      );
+    },
+  );
+
+  test('adapter preflight reports a missing executable path', () async {
+    final install = buildRemotePreflightAdapterInstall(
+      installer: const ClaudeAcpAdapterInstaller(),
+      profile: profile,
+    );
+
+    await expectLater(
+      () => install(
+        run: (command) async {
+          if (_isTermuxProbe(command)) {
+            return const SshCommandResult(exitCode: 0, stdout: 'TERMUX=0\n');
+          }
+          if (_isNodeBootstrap(command)) {
+            return const SshCommandResult(exitCode: 0, stdout: '10.0.0\n');
+          }
+          if (_isBareNpmLocate(command)) {
+            return const SshCommandResult(exitCode: 1, stdout: '');
+          }
+          if (command.contains('npm install -g --prefix')) {
+            return const SshCommandResult(exitCode: 0, stdout: '');
+          }
+          return const SshCommandResult(exitCode: 1, stdout: '');
+        },
+        onProgress: (_) {},
+      ),
+      throwsA(isA<StateError>()),
+    );
+  });
 
   test(
     'preflightSshInstallRunner forwards stderr into command result',

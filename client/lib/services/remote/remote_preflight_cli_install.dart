@@ -4,6 +4,7 @@ import '../cli/cli_installer_service.dart';
 import '../cli/remote_cli_installer.dart';
 import '../cli/registry/capabilities/cli_executable_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
+import '../cli/registry/installer/npm_installer_capability.dart';
 import '../host/host_execution_environment.dart';
 
 /// Runs the full remote CLI install path (npm locate → Node bootstrap →
@@ -41,6 +42,44 @@ RemoteInstallAction buildRemotePreflightCliInstall({
     if (path.isEmpty) {
       throw StateError(
         '${cli.value} install finished but did not report an executable path.',
+      );
+    }
+    return path;
+  };
+}
+
+/// Remote install of a separate ACP adapter npm package (Claude / Codex) over
+/// an existing preflight [SshCommandRunner]. Twin of
+/// [buildRemotePreflightCliInstall] for `CliInstallerService.installAdapter`.
+RemoteInstallAction buildRemotePreflightAdapterInstall({
+  required NpmInstallerCapability installer,
+  required SshProfile profile,
+  String? Function()? preferredNodePath,
+}) {
+  return ({required run, required onProgress}) async {
+    final service = CliInstallerService(
+      hostEnvironment: HostExecutionEnvironment.resolve(
+        isWindowsHost: false,
+        forceRemoteUnix: true,
+      ),
+      sshRunner: preflightSshInstallRunner(profile, run),
+      sshClientFactory: null,
+      preferredNodePath: preferredNodePath,
+    );
+    final result = await service.installAdapter(
+      installer: installer,
+      mode: CliInstallMode.ssh,
+      sshProfile: profile,
+      onProgress: onProgress,
+    );
+    if (!result.success) {
+      throw StateError(result.message);
+    }
+    final path = result.executablePath?.trim() ?? '';
+    if (path.isEmpty) {
+      throw StateError(
+        '${installer.displayName} install finished but did not report an '
+        'executable path.',
       );
     }
     return path;
