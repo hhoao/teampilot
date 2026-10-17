@@ -40,4 +40,32 @@ void main() {
     );
     expect(writeCount, 0);
   });
+
+  test('persists a resolved ACP adapter path', () async {
+    final writes = <(String, String, String)>[];
+    await rememberRemoteAcpAdapterPathIfNeeded(
+      targetId: 'ssh:work',
+      cli: CliTool.claude,
+      resolvedPath: '/home/dev/.local/bin/claude-agent-acp',
+      readAcpAdapterPathOverride: (_, __) async => null,
+      writeAcpAdapterPathOverride: (targetId, cliValue, path) async {
+        writes.add((targetId, cliValue, path));
+      },
+    );
+    expect(writes, [
+      ('ssh:work', 'claude', '/home/dev/.local/bin/claude-agent-acp'),
+    ]);
+  });
+
+  test('skips a resolved ACP adapter path that is empty', () async {
+    var writeCount = 0;
+    await rememberRemoteAcpAdapterPathIfNeeded(
+      targetId: 'ssh:work',
+      cli: CliTool.claude,
+      resolvedPath: '  ',
+      readAcpAdapterPathOverride: (_, __) async => null,
+      writeAcpAdapterPathOverride: (_, __, ___) async => writeCount++,
+    );
+    expect(writeCount, 0);
+  });
 }

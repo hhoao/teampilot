@@ -64,4 +64,33 @@ void main() {
     expect(reloaded.credentialOptIn, ['ssh:p1']);
     expect(reloaded.toJson().containsKey('cliPathOverrides'), isFalse);
   });
+
+  test('acp adapter path override round-trips per target+cli and clears',
+      () async {
+    expect(await repo.acpAdapterPathOverride('ssh:p1', 'claude'), isNull);
+
+    await repo.setAcpAdapterPathOverride(
+      'ssh:p1',
+      'claude',
+      '/opt/claude-agent-acp',
+    );
+    await repo.setAcpAdapterPathOverride('ssh:p1', 'codex', '/opt/codex-acp');
+    expect(
+      await repo.acpAdapterPathOverride('ssh:p1', 'claude'),
+      '/opt/claude-agent-acp',
+    );
+    expect(await repo.acpAdapterPathOverride('ssh:p2', 'claude'), isNull);
+
+    await repo.setAcpAdapterPathOverride('ssh:p1', 'claude', '');
+    expect(await repo.acpAdapterPathOverride('ssh:p1', 'claude'), isNull);
+    expect(
+      await repo.acpAdapterPathOverride('ssh:p1', 'codex'),
+      '/opt/codex-acp',
+    );
+  });
+
+  test('omits empty acpAdapterPathOverrides from json', () async {
+    final reloaded = await repo.load();
+    expect(reloaded.toJson().containsKey('acpAdapterPathOverrides'), isFalse);
+  });
 }
