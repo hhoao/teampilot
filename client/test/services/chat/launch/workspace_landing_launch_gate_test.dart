@@ -1,4 +1,5 @@
 import 'package:teampilot/models/cli_preset.dart';
+import 'package:teampilot/models/cli_binary_kind.dart';
 import 'package:teampilot/models/landing_launch_context.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -297,6 +298,7 @@ class _FakeRemoteCliReadiness extends RemoteCliReadinessService {
   Future<RemoteCliReadiness> probe({
     required RuntimeTarget target,
     required CliTool cli,
+    CliBinaryKind kind = CliBinaryKind.cli,
   }) async {
     if (alwaysReady) {
       return RemoteCliReady(
