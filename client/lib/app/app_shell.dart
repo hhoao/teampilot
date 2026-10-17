@@ -2222,6 +2222,7 @@ Future<AppShell> buildAppShell({
           .preferences
           .autoLaunchAllMembersOnConnect,
       discoveredAcpAdapterPath: sessionPreferencesCubit.resolveAcpAdapterPath,
+      acpAdapterPathOverride: targetsRepo.acpAdapterPathOverride,
       reclaimIdleTerminalsEnabled: () =>
           sessionPreferencesCubit.state.preferences.reclaimIdleTerminals,
       reclaimIdleTerminalAfterSeconds: () => sessionPreferencesCubit

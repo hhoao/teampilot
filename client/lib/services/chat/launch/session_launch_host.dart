@@ -123,6 +123,11 @@ abstract interface class SessionLaunchHost
 
   /// Boot-time located ACP adapter paths for spawn (null in tests).
   String Function(CliTool tool)? get discoveredAcpAdapterPath => null;
+
+  /// Per-target ACP adapter path override (`targets.json`), used to spawn a
+  /// remote adapter by absolute path. Null in tests / when not wired.
+  Future<String?> Function(String targetId, String cliValue)?
+  get acpAdapterPathOverride => null;
 }
 
 /// Drop attention + seat lookup (+ pending ask answers) for every seat in
