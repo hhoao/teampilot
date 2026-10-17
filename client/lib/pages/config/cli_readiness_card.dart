@@ -178,7 +178,9 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     if (profile == null) return null;
     final readiness = context.read<RemoteCliReadinessService>();
     return (
-      target: RuntimeTarget.ssh(profile.id, label: profile.name),
+      target: mode.isTermuxMode
+          ? RuntimeTarget.termux()
+          : RuntimeTarget.ssh(profile.id, label: profile.name),
       readiness: readiness,
     );
   }
