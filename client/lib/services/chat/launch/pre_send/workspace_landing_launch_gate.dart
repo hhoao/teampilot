@@ -179,6 +179,7 @@ class WorkspaceLandingLaunchGate {
       workspace: workspace,
       projectFolderPath: projectFolderPath,
       cli: identity.cli,
+      requestedAcp: draft.acp,
       selectableTargets: selectableTargets,
       home: home,
       usesPosixPaths: _storage.usesPosixPaths,
@@ -197,6 +198,7 @@ class WorkspaceLandingLaunchGate {
       final result = await readiness.probe(
         target: requirement.target,
         cli: requirement.cli,
+        kind: requirement.kind,
       );
       if (result is RemoteCliMissing || result is RemoteCliFailed) {
         missing.add(requirement);

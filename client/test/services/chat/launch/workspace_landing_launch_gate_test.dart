@@ -228,6 +228,53 @@ void main() {
 
       expect(block, isNull);
     });
+
+    test('probes an adapter requirement when the draft requested ACP', () async {
+      final probed = <(String, CliBinaryKind)>[];
+      final workspace = Workspace(
+        workspaceId: 'ws-1',
+        folders: [
+          const WorkspaceFolder(path: '/remote', targetId: 'ssh:host-a'),
+        ],
+        createdAt: 1,
+      );
+
+      final block = await gate.asyncRemoteCliBlockForSimple(
+        workspace: workspace,
+        draft: const LandingLaunchContext(
+          isPersonal: true,
+          acp: true,
+          cli: CliTool.claude,
+        ),
+        projectFolderPath: '/remote',
+        globalPresets: const [],
+        selectableTargets: const [sshTarget],
+        readiness: _FakeRemoteCliReadiness(
+          onProbe: (target, cli, kind) async {
+            probed.add((cli.value, kind));
+            if (kind == CliBinaryKind.adapter) {
+              return RemoteCliMissing(targetId: target.id, cli: cli);
+            }
+            return RemoteCliReady(
+              targetId: target.id,
+              cli: cli,
+              path: '/home/u/.local/bin/claude',
+            );
+          },
+        ),
+        home: localHome,
+      );
+
+      expect(probed, [
+        ('claude', CliBinaryKind.cli),
+        ('claude', CliBinaryKind.adapter),
+      ]);
+      expect(block, isA<RemoteCliMissingLaunchBlock>());
+      expect(
+        (block! as RemoteCliMissingLaunchBlock).missing.single.kind,
+        CliBinaryKind.adapter,
+      );
+    });
   });
 }
 
@@ -283,7 +330,7 @@ class _AlwaysValidTeamConfigValidator extends TeamConfigLaunchValidator {
 }
 
 class _FakeRemoteCliReadiness extends RemoteCliReadinessService {
-  _FakeRemoteCliReadiness({required this.alwaysReady})
+  _FakeRemoteCliReadiness({this.alwaysReady = false, this.onProbe})
     : super(
         registry: CliToolRegistry.builtIn(),
         sshClientFactory: _ThrowingSshClientFactory(),
@@ -293,6 +340,12 @@ class _FakeRemoteCliReadiness extends RemoteCliReadinessService {
       );
 
   final bool alwaysReady;
+  final Future<RemoteCliReadiness> Function(
+    RuntimeTarget target,
+    CliTool cli,
+    CliBinaryKind kind,
+  )?
+  onProbe;
 
   @override
   Future<RemoteCliReadiness> probe({
@@ -300,6 +353,8 @@ class _FakeRemoteCliReadiness extends RemoteCliReadinessService {
     required CliTool cli,
     CliBinaryKind kind = CliBinaryKind.cli,
   }) async {
+    final custom = onProbe;
+    if (custom != null) return custom(target, cli, kind);
     if (alwaysReady) {
       return RemoteCliReady(
         targetId: target.id,

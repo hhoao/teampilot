@@ -6,7 +6,6 @@ import '../../utils/logging/logger.dart';
 import '../cli/acp_adapter_discovery.dart';
 import '../cli/installer_types.dart';
 import '../cli/registry/capabilities/acp_settings_capability.dart';
-import '../cli/registry/capabilities/cli_executable_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/installer/npm_installer_capability.dart';
 import '../cli/remote_cli_installer.dart';

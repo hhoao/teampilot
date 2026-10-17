@@ -3,7 +3,6 @@ import 'package:teampilot/models/cli_binary_kind.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/installer_types.dart';
 import 'package:teampilot/services/cli/remote_cli_installer.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_executable_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
