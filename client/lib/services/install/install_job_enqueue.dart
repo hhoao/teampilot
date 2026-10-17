@@ -44,10 +44,11 @@ extension InstallJobEnqueue on InstallJobRegistry {
     return enqueue(spec);
   }
 
-  /// Installs the Claude ACP adapter (local desktop only).
+  /// Installs the Claude ACP adapter (local or over SSH when scoped).
   Future<CliInstallResult> installClaudeAcpAdapter({
     required String title,
     String? subtitle,
+    InstallJobScope scope = const InstallJobScopeLocal(),
     FutureOr<void> Function(CliInstallResult result)? onSucceeded,
     FutureOr<void> Function(Object error)? onFailed,
   }) {
@@ -55,7 +56,7 @@ extension InstallJobEnqueue on InstallJobRegistry {
     if (runnerRegistry == null) {
       throw StateError('InstallJobRegistry has no runner registry');
     }
-    final key = InstallJobKeys.claudeAcpAdapter();
+    final key = InstallJobKeys.claudeAcpAdapter(scope: scope);
     final runner = runnerRegistry.resolve(key);
     if (runner == null) {
       throw StateError('No InstallJobRunner for ${key.kind}');
@@ -73,10 +74,11 @@ extension InstallJobEnqueue on InstallJobRegistry {
     return enqueue(spec);
   }
 
-  /// Installs the Codex ACP adapter (local desktop only).
+  /// Installs the Codex ACP adapter (local or over SSH when scoped).
   Future<CliInstallResult> installCodexAcpAdapter({
     required String title,
     String? subtitle,
+    InstallJobScope scope = const InstallJobScopeLocal(),
     FutureOr<void> Function(CliInstallResult result)? onSucceeded,
     FutureOr<void> Function(Object error)? onFailed,
   }) {
@@ -84,7 +86,7 @@ extension InstallJobEnqueue on InstallJobRegistry {
     if (runnerRegistry == null) {
       throw StateError('InstallJobRegistry has no runner registry');
     }
-    final key = InstallJobKeys.codexAcpAdapter();
+    final key = InstallJobKeys.codexAcpAdapter(scope: scope);
     final runner = runnerRegistry.resolve(key);
     if (runner == null) {
       throw StateError('No InstallJobRunner for ${key.kind}');

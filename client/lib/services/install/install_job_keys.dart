@@ -11,16 +11,22 @@ abstract final class InstallJobKeys {
         scope: scope,
       );
 
-  /// Claude ACP adapter npm install (desktop-local; not a [CliTool]).
-  static InstallJobKey claudeAcpAdapter() => const InstallJobKey(
+  /// Claude ACP adapter npm install (not a [CliTool]).
+  static InstallJobKey claudeAcpAdapter({
+    InstallJobScope scope = const InstallJobScopeLocal(),
+  }) => InstallJobKey(
     kind: InstallJobKind.cliExecutable,
     target: ClaudeAcpAdapterInstaller.jobTarget,
+    scope: scope,
   );
 
-  /// Codex ACP adapter npm install (desktop-local; not a [CliTool]).
-  static InstallJobKey codexAcpAdapter() => const InstallJobKey(
+  /// Codex ACP adapter npm install (not a [CliTool]).
+  static InstallJobKey codexAcpAdapter({
+    InstallJobScope scope = const InstallJobScopeLocal(),
+  }) => InstallJobKey(
     kind: InstallJobKind.cliExecutable,
     target: CodexAcpAdapterInstaller.jobTarget,
+    scope: scope,
   );
 
   static InstallJobKey toolchain(
