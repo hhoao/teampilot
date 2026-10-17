@@ -69,6 +69,7 @@ import 'services/storage/home_storage.dart';
 import 'services/storage/home_storage_invalidator.dart';
 import 'services/storage/home_target_controller.dart';
 import 'services/storage/workspace_directory_picker.dart';
+import 'services/remote/remote_cli_readiness.dart';
 import 'services/ssh/ssh_client_factory.dart';
 import 'services/ssh/ssh_profile_connection_coordinator.dart';
 import 'services/terminal/terminal_transport_factory.dart';
@@ -616,6 +617,9 @@ void main() async {
                   ),
                   RepositoryProvider<HomeStorage>.value(
                     value: shell.homeStorage,
+                  ),
+                  RepositoryProvider<RemoteCliReadinessService>.value(
+                    value: shell.remoteCliReadiness,
                   ),
                   RepositoryProvider<WorkspaceDirectoryPicker>.value(
                     value: shell.directoryPicker,

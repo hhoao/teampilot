@@ -11,7 +11,10 @@ import '../../cubits/ssh_profile_cubit.dart';
 import '../../cubits/termux_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/cli_binary_kind.dart';
+import '../../models/install_job/install_cancel_policy.dart';
 import '../../models/install_job/install_job_key.dart';
+import '../../models/install_job/install_job_spec.dart';
+import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import '../../services/app/connection_mode_service.dart';
@@ -28,6 +31,7 @@ import '../../services/install/install_job_enqueue.dart';
 import '../../services/install/install_job_keys.dart';
 import '../../services/install/install_job_registry.dart';
 import '../../services/install/install_job_scope_resolver.dart';
+import '../../services/remote/remote_cli_readiness.dart';
 import '../../services/ssh/ssh_client_factory.dart';
 import '../../services/termux/termux_transport_profile.dart';
 import '../../utils/ui/app_keys.dart';
@@ -89,6 +93,8 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
   late final CliVersionProbe _probe;
   bool _locatingCli = false;
   bool _locatingAdapter = false;
+  bool? _remoteAdapterKnown;
+  bool _installingRemoteAdapter = false;
 
   CliToolRegistry get _registry => CliToolRegistry.builtIn();
 
@@ -109,6 +115,9 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     if (!_isAndroid) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(_refreshLatest());
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_refreshRemoteAdapter());
       });
     }
   }
@@ -160,6 +169,33 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
   static bool _looksAbsolute(String value) =>
       value.contains('/') || value.contains(r'\');
 
+  /// Remote work plane target + readiness service, or null when not remote.
+  ({RuntimeTarget target, RemoteCliReadinessService readiness})?
+  _remoteAdapterScope() {
+    final mode = context.read<ConnectionModeService>();
+    if (!mode.isRemoteWorkPlane) return null;
+    final profile = _remoteSshProfile(context, mode);
+    if (profile == null) return null;
+    final readiness = context.read<RemoteCliReadinessService>();
+    return (
+      target: RuntimeTarget.ssh(profile.id, label: profile.name),
+      readiness: readiness,
+    );
+  }
+
+  Future<void> _refreshRemoteAdapter() async {
+    if (!_separateAdapter) return;
+    final scope = _remoteAdapterScope();
+    if (scope == null) return;
+    final result = await scope.readiness.probe(
+      target: scope.target,
+      cli: widget.cli,
+      kind: CliBinaryKind.adapter,
+    );
+    if (!mounted) return;
+    setState(() => _remoteAdapterKnown = result is RemoteCliReady);
+  }
+
   InstallJobKey _cliJobKey(BuildContext context) {
     return InstallJobKeys.cli(
       widget.cli.value,
@@ -167,12 +203,13 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     );
   }
 
-  InstallJobKey _adapterJobKey() {
+  InstallJobKey _adapterJobKey(BuildContext context) {
+    final scope = installJobScopeForContext(context);
     final installer = _settings?.adapterInstaller;
     if (installer is CodexAcpAdapterInstaller) {
-      return InstallJobKeys.codexAcpAdapter();
+      return InstallJobKeys.codexAcpAdapter(scope: scope);
     }
-    return InstallJobKeys.claudeAcpAdapter();
+    return InstallJobKeys.claudeAcpAdapter(scope: scope);
   }
 
   Future<void> _pickFile() async {
@@ -299,6 +336,28 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     if (_locatingAdapter) return;
     setState(() => _locatingAdapter = true);
     try {
+      final scope = _remoteAdapterScope();
+      if (scope != null) {
+        final result = await scope.readiness.locate(
+          target: scope.target,
+          cli: widget.cli,
+          kind: CliBinaryKind.adapter,
+        );
+        if (!mounted) return;
+        final ready = result is RemoteCliReady;
+        setState(() => _remoteAdapterKnown = ready);
+        AppToast.show(
+          context,
+          message: ready
+              ? context.l10n.cliExecutablePathLocateSuccess(
+                  widget.cli.value,
+                  result.path,
+                )
+              : context.l10n.cliReadinessAdapterMissing,
+          variant: ready ? TpToastVariant.success : TpToastVariant.error,
+        );
+        return;
+      }
       final found = await AcpAdapterDiscovery(
         registry: _registry,
       ).locateLocal();
@@ -322,6 +381,45 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
 
   Future<void> _installOrUpgradeAdapter({required bool upgrading}) async {
     final jobs = context.read<InstallJobRegistry>();
+    final scope = _remoteAdapterScope();
+    if (scope != null) {
+      if (_installingRemoteAdapter) return;
+      setState(() => _installingRemoteAdapter = true);
+      try {
+        final result = await jobs.enqueue(
+          InstallJobSpec<RemoteCliReadiness>(
+            key: _adapterJobKey(context),
+            title: _adapterInstallLabel(context.l10n),
+            cancelPolicy: InstallCancelPolicy.cooperative,
+            run: (ctx) async {
+              final readiness = await scope.readiness.install(
+                target: scope.target,
+                cli: widget.cli,
+                kind: CliBinaryKind.adapter,
+              );
+              if (readiness is RemoteCliFailed) {
+                throw StateError(readiness.message);
+              }
+              return readiness;
+            },
+          ),
+        );
+        if (!mounted) return;
+        setState(() => _remoteAdapterKnown = result is RemoteCliReady);
+        AppToast.show(
+          context,
+          message: result is RemoteCliReady
+              ? context.l10n.cliReadinessReady
+              : context.l10n.cliReadinessAdapterMissing,
+          variant: result is RemoteCliReady
+              ? TpToastVariant.success
+              : TpToastVariant.error,
+        );
+      } finally {
+        if (mounted) setState(() => _installingRemoteAdapter = false);
+      }
+      return;
+    }
     final title = upgrading
         ? context.l10n.cliInstallUpgrading
         : context.l10n.cliInstallInstalling;
@@ -388,7 +486,13 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     final spec = exec.executablePathRowSpec;
     final cubit = widget.cubit;
     final cliKnown = cubit.hasKnownCliExecutable(widget.cli);
-    final adapterKnown = cubit.hasKnownAcpAdapter(widget.cli);
+    final isRemote = context.select<ConnectionModeService, bool>(
+      (service) => service.isRemoteWorkPlane,
+    );
+    final adapterKnown = isRemote
+        ? (_remoteAdapterKnown ??
+            _looksAbsolute(cubit.configuredAcpAdapterPath(widget.cli)))
+        : cubit.hasKnownAcpAdapter(widget.cli);
     final cliUpdate =
         _npmInstaller(exec) != null &&
         isNpmUpdate(
@@ -420,10 +524,8 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     );
     final jobs = context.read<InstallJobRegistry>();
     final installingCli = jobs.isRunning(_cliJobKey(context));
-    final installingAdapter = jobs.isRunning(_adapterJobKey());
-    final isRemote = context.select<ConnectionModeService, bool>(
-      (service) => service.isRemoteWorkPlane,
-    );
+    final installingAdapter =
+        _installingRemoteAdapter || jobs.isRunning(_adapterJobKey(context));
     final busyCli = _locatingCli || installingCli;
     final showCliInstall = !cliKnown && exec.supportsInstaller;
 
