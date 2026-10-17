@@ -295,7 +295,22 @@ live-terminal toggle), gated by `isAcpChatSession`. Mixed ACP seats use
 the existing per-seat ACP runtime map (`ChatTab.memberAcpRuntimes`).
 
 Permissions use the existing `AcpPermissionCard`. OpenCode has no
-blocking client extensions, so ask/plan cards stay Cursor-only.
+blocking client extensions, so plan cards stay Cursor-only.
+
+**Questions (2026-10-16).** `opencode acp` sets `OPENCODE_CLIENT=acp`,
+which is outside the registry allowlist for the built-in `question` tool.
+Terminal-less ACP seats therefore stage the agent-status plugin with
+`questionsOnly: true` and, only when that responder is actually staged,
+`AcpRuntimeAttach` adds `OPENCODE_ENABLE_QUESTION_TOOL=true` to the spawn
+env. The plugin then bridges **only** `question.*`: permission cards ride
+the ACP protocol and idle rides the ACP cubit / TeamBus, so re-reporting
+them would double-card or leave stale attention. Local seats resolve the
+endpoint in `AcpRuntimeAttach._resolveAcpAgentStatus` (app-host gateway URL,
+gateway session registration, seat-lookup write) and thread it through
+`prepareAcpLaunchEnvironment` / `prepareAcpTeamLaunchEnvironment`. Remote
+(SSH) ACP seats, and any seat whose endpoint resolution fails, skip the
+bridge and leave the tool **off** — enabling it without a responder would
+hang `Question.ask` until the session is finalized.
 
 ## File size / placement
 

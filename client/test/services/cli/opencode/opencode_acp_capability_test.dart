@@ -47,6 +47,30 @@ void main() {
     );
   });
 
+  test('buildEnvironment does not force the question tool on', () {
+    const cap = OpencodeAcpCapability();
+    final env = cap.buildEnvironment(
+      sessionToolDir: '/runtime/opencode',
+      workingDirectory: '/work',
+      baseEnv: const {'PATH': '/bin'},
+    );
+    // `opencode acp` sets OPENCODE_CLIENT=acp, which is outside the registry
+    // allowlist for the `question` tool. The ACP attach path enables it only
+    // when the agent-status plugin (the responder) is staged; enabling it
+    // without a responder would hang `Question.ask`.
+    expect(env.containsKey('OPENCODE_ENABLE_QUESTION_TOOL'), isFalse);
+  });
+
+  test('buildEnvironment keeps an explicit question-tool flag', () {
+    const cap = OpencodeAcpCapability();
+    final env = cap.buildEnvironment(
+      sessionToolDir: '/runtime/opencode',
+      workingDirectory: '/work',
+      baseEnv: const {'OPENCODE_ENABLE_QUESTION_TOOL': 'true'},
+    );
+    expect(env['OPENCODE_ENABLE_QUESTION_TOOL'], 'true');
+  });
+
   test('buildEnvironment does not invent HOME from sessionToolDir', () {
     const cap = OpencodeAcpCapability();
     final env = cap.buildEnvironment(

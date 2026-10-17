@@ -14,6 +14,7 @@ class MemberAgentStatusEndpoint {
     required this.url,
     this.token,
     this.sessionId,
+    this.questionsOnly = false,
   });
 
   final String url;
@@ -23,6 +24,12 @@ class MemberAgentStatusEndpoint {
 
   /// Local gateway routing header value.
   final String? sessionId;
+
+  /// When true, the staged opencode plugin bridges **only** the `question.*`
+  /// events. Terminal-less ACP seats handle permissions over the ACP protocol
+  /// and idle via the ACP cubit / TeamBus, so the plugin must not report those
+  /// (avoids duplicate cards and stale attention).
+  final bool questionsOnly;
 
   bool get isRemote => token != null && token!.isNotEmpty;
 
@@ -35,9 +42,11 @@ class MemberAgentStatusEndpoint {
   factory MemberAgentStatusEndpoint.local(
     TeammateBusMcpGatewayPort gateway, {
     required String sessionId,
+    bool questionsOnly = false,
   }) => MemberAgentStatusEndpoint(
     url: gateway.agentStatusEndpoint.toString(),
     sessionId: sessionId,
+    questionsOnly: questionsOnly,
   );
 
   /// Remote binding: reverse-tunnel loopback URL + bus token.

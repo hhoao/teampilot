@@ -19,6 +19,11 @@ export default Plugin.define({
   id: "teampilot.agent-status",
   setup(ctx) {
     const options = ctx.options ?? {};
+    // ACP seats set this so the plugin bridges only question.* events:
+    // permissions ride the ACP protocol and idle rides the ACP cubit /
+    // TeamBus, so re-reporting them would double-card or leave stale
+    // attention.
+    const questionsOnly = options.questionsOnly === true;
     const member = options.member ?? process.env.TEAMPILOT_MEMBER;
     const url =
       options.url ??
@@ -167,6 +172,7 @@ export default Plugin.define({
 
     const handleEvent = async (event) => {
       if (!event || !event.type) return;
+      if (questionsOnly && !event.type.startsWith("question.")) return;
       if (
         event.type === "question.replied" ||
         event.type === "question.v2.replied" ||

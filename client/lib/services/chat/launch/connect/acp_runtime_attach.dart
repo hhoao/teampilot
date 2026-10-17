@@ -11,11 +11,15 @@ import '../../../acp/acp_agent_session_store.dart';
 import '../../../acp/acp_frame_logger.dart';
 import '../../../acp/acp_session_runtime.dart';
 import '../../../acp/acp_ssh_transport.dart';
+import '../../../agent_status/member_agent_status_endpoint.dart';
+import '../../../cli/opencode/capabilities/acp.dart'
+    show opencodeEnableQuestionToolEnvKey;
 import '../../../ssh/ssh_member_session.dart';
 import '../../../storage/home_storage.dart';
 import '../../../storage/runtime_context.dart';
 import '../../team_bus/mcp/member_bus_mcp_transport_resolver.dart';
 import '../../team_bus/mcp/teammate_bus_mcp_config.dart';
+import '../../team_bus/mcp/teammate_bus_mcp_gateway_port.dart';
 import '../../runtime/runtime_extra_mcp_servers.dart';
 import '../../../../cubits/session/acp/acp_chat_runtime_cubit.dart';
 import '../../../../cubits/session/acp/acp_launch_wiring.dart';
@@ -153,12 +157,24 @@ class AcpRuntimeAttach {
     } else {
       executable = _host.shellFactory.executableFor(cli);
       sessionToolDir = _sessionToolDir(session, cli);
-      baseEnv = await _personalLaunchEnv(
+      final agentStatus = await _resolveAcpAgentStatus(
+        session: session,
+        launchTarget: launchTarget,
+        memberId: session.sessionId,
+        cli: cli,
+        skipPermissions: session.acpPermission.requiresDangerousExecution,
+      );
+      var env = await _personalLaunchEnv(
         session,
         job,
         workspace,
         launchTarget,
+        agentStatus: agentStatus,
       );
+      if (agentStatus != null && cli == CliTool.opencode) {
+        env = {...env, opencodeEnableQuestionToolEnvKey: 'true'};
+      }
+      baseEnv = env;
     }
 
     final sshLaunch = remote
@@ -293,6 +309,16 @@ class AcpRuntimeAttach {
       ).folderCatalog,
       usesPosixPaths: _storage.usesPosixPaths,
     );
+    final permissionPolicy =
+        session.bindingFor(member.id)?.acpPermission ??
+        LaunchSecurityPolicy.fullAccess;
+    final agentStatus = await _resolveAcpAgentStatus(
+      session: session,
+      launchTarget: launchTarget,
+      memberId: member.id,
+      cli: cli,
+      skipPermissions: permissionPolicy.requiresDangerousExecution,
+    );
     final staged = await prepareAcpTeamLaunchEnvironment(
       prepareTeamConnect:
           prepareTeamConnect ?? _productionTeamPrepare(work.addDirs),
@@ -303,6 +329,7 @@ class AcpRuntimeAttach {
       launchTarget: launchTarget,
       workingDirectory: work.workingDirectory,
       extraMcpServers: extra,
+      agentStatus: agentStatus,
     );
     final gate = memberLifecycleGate;
     if (gate != null) {
@@ -349,7 +376,12 @@ class AcpRuntimeAttach {
         staged.memberConfigDir,
       ),
       workingDirectory: staged.workingDirectory,
-      baseEnv: staged.env,
+      baseEnv: agentStatus != null && cli == CliTool.opencode
+          ? {
+              ...staged.env,
+              opencodeEnableQuestionToolEnvKey: 'true',
+            }
+          : staged.env,
       mcpServers: staged.mcpServers,
       permissionPolicy:
           session.bindingFor(member.id)?.acpPermission ??
@@ -467,8 +499,9 @@ class AcpRuntimeAttach {
     AppSession session,
     SessionConnectJob job,
     Workspace? workspace,
-    RuntimeTarget launchTarget,
-  ) async {
+    RuntimeTarget launchTarget, {
+    MemberAgentStatusEndpoint? agentStatus,
+  }) async {
     final resolved = workspace ?? job.workspace;
     if (resolved == null) {
       throw StateError('Simple session requires workspace');
@@ -482,16 +515,76 @@ class AcpRuntimeAttach {
     }
     return prepareAcpLaunchEnvironment(
       prepareSimpleConnect:
-          ({required session, required workspace, required launchTarget}) =>
-              _host.sessionConnect.prepareSimpleConnect(
-                session: session,
-                workspace: workspace,
-                launchTarget: launchTarget,
-              ),
+          ({
+            required session,
+            required workspace,
+            required launchTarget,
+            agentStatus,
+          }) => _host.sessionConnect.prepareSimpleConnect(
+            session: session,
+            workspace: workspace,
+            launchTarget: launchTarget,
+            agentStatus: agentStatus,
+          ),
       session: session,
       workspace: resolved,
       launchTarget: launchTarget,
+      agentStatus: agentStatus,
     );
+  }
+
+  /// Resolve the opencode agent-status plugin endpoint for a terminal-less ACP
+  /// seat, or null when the question bridge is unavailable.
+  ///
+  /// Local targets stamp the app-host gateway URL. Remote (SSH) targets would
+  /// need a status-only reverse tunnel, which is not wired for ACP yet, so they
+  /// skip the bridge (HTTP-only `question.*` events would never reach the app).
+  Future<MemberAgentStatusEndpoint?> _resolveAcpAgentStatus({
+    required AppSession session,
+    required RuntimeTarget launchTarget,
+    required String memberId,
+    required CliTool cli,
+    required bool skipPermissions,
+  }) async {
+    if (usesSshTransport(launchTarget.kind)) {
+      appLogger.w(
+        '[acp-agent-status] skip question bridge for remote seat '
+        'session=${session.sessionId} member=$memberId',
+      );
+      return null;
+    }
+    TeammateBusMcpGatewayPort? gateway;
+    try {
+      gateway = _host.teammateBusMcpGateway;
+    } on Object {
+      // Test hosts / unwired app shells answer via noSuchMethod.
+      gateway = null;
+    }
+    if (gateway == null) return null;
+    try {
+      await gateway.ensureStarted();
+      gateway.registerAgentStatusSession(sessionId: session.sessionId);
+      _host.agentStatusSeatLookup?.registerSeat(
+        sessionId: session.sessionId,
+        memberId: memberId,
+        cli: cli,
+        skipPermissions: skipPermissions,
+      );
+      return MemberAgentStatusEndpoint.local(
+        gateway,
+        sessionId: session.sessionId,
+        questionsOnly: true,
+      );
+    } on Object catch (e, st) {
+      // No responder → the caller must also keep the question tool off.
+      appLogger.w(
+        '[acp-agent-status] question bridge unavailable '
+        'session=${session.sessionId} member=$memberId: $e',
+        error: e,
+        stackTrace: st,
+      );
+      return null;
+    }
   }
 
   AcpTeamConnectPrepare _productionTeamPrepare(
@@ -505,6 +598,7 @@ class AcpRuntimeAttach {
       required launchTarget,
       required workingDirectory,
       extraMcpServers,
+      agentStatus,
     }) {
       return _host.sessionConnect.prepareTeamConnect(
         session: session,
@@ -516,6 +610,7 @@ class AcpRuntimeAttach {
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,
         extraMcpServers: extraMcpServers,
+        agentStatus: agentStatus,
       );
     };
   }

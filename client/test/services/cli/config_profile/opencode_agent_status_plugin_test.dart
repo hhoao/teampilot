@@ -40,6 +40,7 @@ void main() {
     String url, {
     String? token,
     String? sessionId,
+    bool questionsOnly = false,
   }) {
     final entries =
         RuntimeEventHookContributionProvider(
@@ -47,6 +48,7 @@ void main() {
                 url: url,
                 token: token,
                 sessionId: sessionId,
+                questionsOnly: questionsOnly,
               ),
               memberId: memberId,
             )
@@ -119,6 +121,19 @@ void main() {
     expect(source, contains('isResolved(requestId)'));
   });
 
+  test('opencodeAgentStatusPluginSource supports a question-only channel', () {
+    final source = opencodeAgentStatusPluginSource;
+    // ACP seats pass questionsOnly so the plugin bridges only question.* —
+    // permissions ride the ACP protocol and idle rides the ACP cubit/TeamBus,
+    // so re-reporting them would double-card or leave stale attention.
+    expect(source, contains('options.questionsOnly'));
+    expect(source, contains('questionsOnly'));
+    expect(
+      source,
+      contains('if (questionsOnly && !event.type.startsWith("question."))'),
+    );
+  });
+
   test(
     'opencodeAgentStatusPluginSource reports background shell + subagents',
     () {
@@ -159,6 +174,27 @@ void main() {
     expect(opts['member'], 'm1');
     expect(opts['url'], 'http://127.0.0.1:12345/agent-status');
     expect(opts['session'], 'session-1');
+  });
+
+  test('mergeRuntimePlugin forwards the ACP question-only channel', () {
+    final merged = mergeRuntimePlugin(
+      const {},
+      'm1',
+      'http://127.0.0.1:12345/agent-status',
+      questionsOnly: true,
+    );
+    final opts = (merged['plugins'] as List).first as Map;
+    expect((opts['options'] as Map)['questionsOnly'], isTrue);
+  });
+
+  test('mergeRuntimePlugin omits the question-only flag by default', () {
+    final merged = mergeRuntimePlugin(
+      const {},
+      'm1',
+      'http://127.0.0.1:12345/agent-status',
+    );
+    final opts = (merged['plugins'] as List).first as Map;
+    expect((opts['options'] as Map).containsKey('questionsOnly'), isFalse);
   });
 
   test('mergeRuntimePlugin is idempotent for same url', () {

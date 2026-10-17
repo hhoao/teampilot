@@ -163,6 +163,7 @@ final class OpencodeChatInteraction
           if (context.endpoint.sessionId case final sessionId?)
             'session': sessionId,
           if (context.endpoint.token case final token?) 'token': token,
+          if (context.endpoint.questionsOnly) 'questionsOnly': true,
         },
       ),
     ),

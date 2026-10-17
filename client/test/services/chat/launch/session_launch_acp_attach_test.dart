@@ -261,6 +261,7 @@ void main() {
             required launchTarget,
             required workingDirectory,
             extraMcpServers,
+            agentStatus,
           }) async {
             seenExtra = extraMcpServers;
             expect(launchTarget.kind, RuntimeKind.local);

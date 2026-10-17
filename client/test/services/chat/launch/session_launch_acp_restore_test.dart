@@ -131,6 +131,7 @@ class _Harness {
             required launchTarget,
             required workingDirectory,
             extraMcpServers,
+            agentStatus,
           }) async {
             return (
               shellLaunch: ShellLaunchSpec(

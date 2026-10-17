@@ -10,6 +10,7 @@ import '../../../../utils/logging/logger.dart';
 import '../../../acp/acp_frame_logger.dart';
 import '../../../acp/acp_mcp_servers.dart';
 import '../../../acp/acp_session_runtime.dart';
+import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../session/shell_launch_spec.dart';
 
@@ -41,6 +42,7 @@ typedef AcpSimpleConnectPrepare =
       required AppSession session,
       required Workspace workspace,
       required RuntimeTarget launchTarget,
+      MemberAgentStatusEndpoint? agentStatus,
     });
 
 /// Tear-off shape for mixed-seat [SessionConnectOrchestrator.prepareTeamConnect].
@@ -63,6 +65,7 @@ typedef AcpTeamConnectPrepare =
       required RuntimeTarget launchTarget,
       required String workingDirectory,
       Map<String, Map<String, Object?>>? extraMcpServers,
+      MemberAgentStatusEndpoint? agentStatus,
     });
 
 /// Team staging result member attach passes into the ACP runtime start.
@@ -83,12 +86,14 @@ Future<Map<String, String>> prepareAcpLaunchEnvironment({
   required AppSession session,
   required Workspace workspace,
   required RuntimeTarget launchTarget,
+  MemberAgentStatusEndpoint? agentStatus,
   String? path,
 }) async {
   final prepared = await prepareSimpleConnect(
     session: session,
     workspace: workspace,
     launchTarget: launchTarget,
+    agentStatus: agentStatus,
   );
   return {
     'PATH': path ?? Platform.environment['PATH'] ?? '',
@@ -110,6 +115,7 @@ Future<AcpTeamLaunchStaging> prepareAcpTeamLaunchEnvironment({
   required RuntimeTarget launchTarget,
   required String workingDirectory,
   Map<String, Map<String, Object?>> extraMcpServers = const {},
+  MemberAgentStatusEndpoint? agentStatus,
   String? path,
 }) async {
   final mcpServers = acpMcpServersFromExtra(extraMcpServers);
@@ -125,6 +131,7 @@ Future<AcpTeamLaunchStaging> prepareAcpTeamLaunchEnvironment({
     launchTarget: launchTarget,
     workingDirectory: workingDirectory,
     extraMcpServers: extraMcpServers,
+    agentStatus: agentStatus,
   );
   final stagedCwd =
       prepared.shellLaunch.launchContext.workingDirectory?.trim() ?? '';

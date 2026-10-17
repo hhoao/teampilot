@@ -14,6 +14,8 @@ import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
 import 'package:teampilot/services/acp/acp_session_runtime.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
+import 'package:teampilot/services/agent_status/agent_status_seat_lookup_port.dart';
+import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/catalog/chat_data_snapshot.dart';
 import 'package:teampilot/services/chat/launch/connect/acp_launch_environment.dart';
 import 'package:teampilot/services/chat/launch/connect/acp_runtime_attach.dart';
@@ -32,8 +34,11 @@ import 'package:teampilot/services/chat/session/session_lifecycle_service.dart'
     show SessionLifecycleService;
 import 'package:teampilot/services/chat/session/session_open_request.dart';
 import 'package:teampilot/services/chat/team_bus/agent_node.dart';
+import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_gateway_port.dart';
 import 'package:teampilot/services/chat/team_bus/team_bus.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/cli/opencode/capabilities/acp.dart'
+    show opencodeEnableQuestionToolEnvKey;
 import 'package:teampilot/services/cli/registry/launch/cli_launch_context.dart';
 
 import '../../chat/team_bus/support/fake_member_launcher.dart';
@@ -378,6 +383,196 @@ void main() {
     expect(harness.tab.memberAcpRuntimes, isEmpty);
     expect(harness.runtime.started, isFalse);
   });
+
+  test(
+    'attachAcpRuntime wires the question bridge for a local personal seat',
+    () async {
+      final gateway = _FakeAgentStatusGateway();
+      final lookup = _FakeSeatLookup();
+      final harness = _Harness(gateway: gateway, seatLookup: lookup);
+      final session = _personalSession(cli: CliTool.opencode);
+
+      final handled = await harness.service.attachAcpRuntime(
+        _personalJob(session),
+        session,
+      );
+
+      expect(handled, isTrue);
+      expect(gateway.ensureStartedCalls, 1);
+      expect(gateway.registeredSessions, ['s1']);
+      expect(lookup.registeredSeats.single.sessionId, 's1');
+      expect(lookup.registeredSeats.single.memberId, 's1');
+      expect(lookup.registeredSeats.single.cli, CliTool.opencode);
+      expect(
+        harness.runtime.baseEnv[opencodeEnableQuestionToolEnvKey],
+        'true',
+      );
+    },
+  );
+
+  test(
+    'attachAcpRuntime keeps the question tool off when no responder is wired',
+    () async {
+      final harness = _Harness();
+      final session = _personalSession(cli: CliTool.opencode);
+
+      await harness.service.attachAcpRuntime(_personalJob(session), session);
+
+      expect(
+        harness.runtime.baseEnv.containsKey(opencodeEnableQuestionToolEnvKey),
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'attachAcpRuntime skips the question bridge for a remote seat',
+    () async {
+      final gateway = _FakeAgentStatusGateway();
+      final harness = _Harness(
+        gateway: gateway,
+        launchTarget: RuntimeTarget.ssh('p1', label: 'host'),
+        remoteStaging:
+            ({
+              required session,
+              required workspace,
+              required launchTarget,
+            }) async => (
+              shellLaunch: ShellLaunchSpec(
+                plan: LaunchPlan(
+                  env: const {'PATH': '/remote/bin'},
+                  resume: false,
+                  taskId: 's1',
+                  cliTeamName: '',
+                  memberConfigDir: '/remote/cfg/s1',
+                  resolvedRoots: const [],
+                ),
+                launchContext: const CliLaunchContext(
+                  team: TeamProfile(id: 't', name: 't'),
+                  member: TeamMemberConfig(id: 's1', name: 's1'),
+                ),
+              ),
+              warnings: const <String>[],
+              remoteCliPath: '/remote/bin/claude',
+            ),
+        sshLaunchFactory: ({required session, required launchTarget}) => (
+          profile: const SshProfile(
+            id: 'p1',
+            name: 'host',
+            host: 'host',
+            username: 'u',
+            authType: SshAuthType.password,
+          ),
+          openChannel: (_) async => throw UnimplementedError(),
+        ),
+      );
+      final session = _personalSession(cli: CliTool.opencode);
+
+      await harness.service.attachAcpRuntime(_personalJob(session), session);
+
+      expect(gateway.ensureStartedCalls, 0);
+      expect(gateway.registeredSessions, isEmpty);
+      expect(
+        harness.runtime.baseEnv.containsKey(opencodeEnableQuestionToolEnvKey),
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'attachMemberAcpRuntime forwards a question-only endpoint to staging',
+    () async {
+      final gateway = _FakeAgentStatusGateway();
+      final lookup = _FakeSeatLookup();
+      MemberAgentStatusEndpoint? seen;
+      final harness = _Harness(
+        gateway: gateway,
+        seatLookup: lookup,
+        onTeamAgentStatus: (endpoint) => seen = endpoint,
+      );
+      final session = _mixedSession(acp: true);
+      final team = _mixedTeam();
+      final member = _lead();
+
+      final handled = await harness.service.attachMemberAcpRuntime(
+        _job(session, team, member),
+        session,
+        (team: team, member: member, cli: CliTool.opencode),
+      );
+
+      expect(handled, isTrue);
+      expect(gateway.ensureStartedCalls, 1);
+      expect(gateway.registeredSessions, ['s1']);
+      expect(lookup.registeredSeats.single.sessionId, 's1');
+      expect(lookup.registeredSeats.single.memberId, 'lead');
+      expect(lookup.registeredSeats.single.cli, CliTool.opencode);
+      expect(seen, isNotNull);
+      expect(seen!.questionsOnly, isTrue);
+      expect(seen!.sessionId, 's1');
+      expect(
+        harness.runtime.baseEnv[opencodeEnableQuestionToolEnvKey],
+        'true',
+      );
+    },
+  );
+}
+
+class _FakeAgentStatusGateway implements TeammateBusMcpGatewayPort {
+  int ensureStartedCalls = 0;
+  final registeredSessions = <String>[];
+
+  @override
+  Future<void> ensureStarted() async {
+    ensureStartedCalls++;
+  }
+
+  @override
+  Uri get agentStatusEndpoint => Uri.parse('http://127.0.0.1:9/agent-status');
+
+  @override
+  String registerAgentStatusSession({
+    required String sessionId,
+    String? token,
+  }) {
+    registeredSessions.add(sessionId);
+    return 'status-token-$sessionId';
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeSeatLookup implements AgentStatusSeatLookupPort {
+  final registeredSeats =
+      <
+        ({
+          String sessionId,
+          String memberId,
+          CliTool cli,
+          bool skipPermissions,
+        })
+      >[];
+
+  @override
+  void registerSeat({
+    required String sessionId,
+    required String memberId,
+    required CliTool cli,
+    required bool skipPermissions,
+  }) {
+    registeredSeats.add((
+      sessionId: sessionId,
+      memberId: memberId,
+      cli: cli,
+      skipPermissions: skipPermissions,
+    ));
+  }
+
+  @override
+  void unregisterSeat({required String sessionId, required String memberId}) {}
+
+  @override
+  void clearSession(String sessionId) {}
 }
 
 class _Harness {
@@ -389,12 +584,21 @@ class _Harness {
     RuntimeTarget? launchTarget,
     this.remoteStaging,
     this.sshLaunchFactory,
+    this.gateway,
+    this.seatLookup,
+    this.onTeamAgentStatus,
   }) : launchTarget = launchTarget ?? RuntimeTarget.local() {
     tabStore.setActiveWorkspaceId('w1');
     tabStore.registerSession(tab);
     materializer = _RecordingMaterializer(tabStore: tabStore);
     service = SessionLaunchService(
-      _Host(tabStore, materializer, this.launchTarget),
+      _Host(
+        tabStore,
+        materializer,
+        this.launchTarget,
+        gateway: gateway,
+        seatLookup: seatLookup,
+      ),
       storage: fakeHomeStorage(),
       acpRuntimeFactory: ({required logger, required tool}) => runtime,
       prepareAcpContribution: (session, workspace) async => const {},
@@ -407,7 +611,9 @@ class _Harness {
             required launchTarget,
             required workingDirectory,
             extraMcpServers,
+            agentStatus,
           }) async {
+            onTeamAgentStatus?.call(agentStatus);
             return (
               shellLaunch: ShellLaunchSpec(
                 plan: LaunchPlan(
@@ -440,6 +646,9 @@ class _Harness {
   final RuntimeTarget launchTarget;
   final AcpRemoteStagingBuilder? remoteStaging;
   final AcpSshLaunchFactory? sshLaunchFactory;
+  final TeammateBusMcpGatewayPort? gateway;
+  final AgentStatusSeatLookupPort? seatLookup;
+  final void Function(MemberAgentStatusEndpoint? endpoint)? onTeamAgentStatus;
   final runtime = _RecordingAcpRuntime();
   late final _RecordingMaterializer materializer;
   final tabStore = ChatTabStore(storage: fakeHomeStorage());
@@ -482,10 +691,11 @@ AppSession _mixedSession({
 
 AppSession _personalSession({
   LaunchSecurityPolicy acpPermission = LaunchSecurityPolicy.fullAccess,
+  CliTool cli = CliTool.claude,
 }) => AppSession(
   sessionId: 's1',
   workspaceId: 'w1',
-  cli: CliTool.claude,
+  cli: cli,
   acp: true,
   acpPermission: acpPermission,
   createdAt: 1,
@@ -540,7 +750,13 @@ class _FakeLifecycle implements SessionLifecycleService {
 }
 
 class _Host implements SessionLaunchHost {
-  _Host(this.tabStore, this.memberMaterializer, this._launchTarget);
+  _Host(
+    this.tabStore,
+    this.memberMaterializer,
+    this._launchTarget, {
+    this.gateway,
+    this.seatLookup,
+  });
 
   @override
   final ChatTabStore tabStore;
@@ -549,6 +765,18 @@ class _Host implements SessionLaunchHost {
   final TabMemberMaterializer memberMaterializer;
 
   final RuntimeTarget _launchTarget;
+
+  final TeammateBusMcpGatewayPort? gateway;
+
+  @override
+  TeammateBusMcpGatewayPort get teammateBusMcpGateway =>
+      gateway ??
+      (throw UnsupportedError('teammateBusMcpGateway not configured in test'));
+
+  @override
+  AgentStatusSeatLookupPort? get agentStatusSeatLookup => seatLookup;
+
+  final AgentStatusSeatLookupPort? seatLookup;
 
   @override
   SessionLifecycleService get lifecycle => _FakeLifecycle(_launchTarget);

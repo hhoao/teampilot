@@ -4,6 +4,7 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/services/agent_status/member_agent_status_endpoint.dart';
 import 'package:teampilot/services/chat/launch/connect/acp_launch_environment.dart';
 import 'package:teampilot/services/chat/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:teampilot/services/chat/launch/session/shell_launch_spec.dart';
@@ -28,6 +29,7 @@ void main() {
             required session,
             required workspace,
             required launchTarget,
+            agentStatus,
           }) async {
             seenSession = session;
             seenWorkspace = workspace;
@@ -66,6 +68,58 @@ void main() {
     expect(env['CLAUDE_CODE_NO_FLICKER'], '1');
   });
 
+  test('forwards the ACP agent-status endpoint to simple connect', () async {
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      cli: CliTool.claude,
+      acp: true,
+      createdAt: 1,
+    );
+    const endpoint = MemberAgentStatusEndpoint(
+      url: 'http://127.0.0.1:9/agent-status',
+      sessionId: 's1',
+      questionsOnly: true,
+    );
+    MemberAgentStatusEndpoint? seen;
+
+    await prepareAcpLaunchEnvironment(
+      prepareSimpleConnect:
+          ({
+            required session,
+            required workspace,
+            required launchTarget,
+            agentStatus,
+          }) async {
+            seen = agentStatus;
+            return (
+              shellLaunch: ShellLaunchSpec(
+                plan: LaunchPlan(
+                  env: const {},
+                  resume: false,
+                  taskId: 's1',
+                  cliTeamName: '',
+                  memberConfigDir: '/runtime/s1/claude',
+                  resolvedRoots: const [],
+                ),
+                launchContext: const CliLaunchContext(
+                  team: TeamProfile(id: 't', name: 't'),
+                  member: TeamMemberConfig(id: 's1', name: 's1'),
+                ),
+              ),
+              warnings: const <String>[],
+              remoteCliPath: '',
+            );
+          },
+      session: session,
+      workspace: Workspace(workspaceId: 'w1', createdAt: 1),
+      launchTarget: RuntimeTarget.local(),
+      agentStatus: endpoint,
+    );
+
+    expect(seen, same(endpoint));
+  });
+
   test('team prepare merges PATH with team connect env and maps MCP', () async {
     final session = AppSession(
       sessionId: 's1',
@@ -92,6 +146,7 @@ void main() {
             required launchTarget,
             required workingDirectory,
             extraMcpServers,
+            agentStatus,
           }) async {
             seenExtra = extraMcpServers;
             return (
@@ -160,9 +215,9 @@ void main() {
               required launchTarget,
               required workingDirectory,
               extraMcpServers,
+              agentStatus,
             }) async =>
-                throw StateError('prepare should not run'),
-        session: session,
+                throw StateError('prepare should not run'),        session: session,
         team: team,
         member: member,
         workspace: Workspace(workspaceId: 'w1', createdAt: 1),
