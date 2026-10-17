@@ -55,7 +55,8 @@ class AcpChatStrings {
   /// Adapter reported the agent is unauthenticated (Official login missing).
   final String notLoggedIn;
 
-  /// `session/new` failed after initialize (agent is installed, session did
-  /// not open). Distinct from [launchFailed] so missing-CLI copy is not used.
+  /// `session/new` or `session/load` failed after initialize (agent is
+  /// installed, session did not open). Distinct from [launchFailed] so
+  /// missing-CLI copy is not used.
   final String sessionOpenFailed;
 }

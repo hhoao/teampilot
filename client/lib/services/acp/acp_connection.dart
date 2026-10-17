@@ -238,6 +238,21 @@ class AcpAgentConnection {
     permissionTimeout: permissionTimeout,
   );
 
+  /// Lists the agent's sessions via `session/list`.
+  ///
+  /// Used before a resume to recover the session's *current* directory: a
+  /// session can move after creation (OpenCode's worktree tool relocates it),
+  /// and `session/load` / `session/resume` reject a directory that does not
+  /// match the session's recorded one.
+  Future<acpd.ListSessionsResponse> listSessions({
+    String? cwd,
+    String? cursor,
+    Duration timeout = const Duration(seconds: 15),
+  }) => _client.client.listSessions(
+    acpd.ListSessionsRequest(cwd: cwd, cursor: cursor),
+    timeout: timeout,
+  );
+
   Future<AcpAgentSession> _establish({
     required AcpSessionOpenKind kind,
     String? sessionId,

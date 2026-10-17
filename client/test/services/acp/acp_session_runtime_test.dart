@@ -803,6 +803,47 @@ void main() {
     await runtime.close();
   });
 
+  test('start resumes in the cwd discovered via session/list', () async {
+    await stubInitialize(
+      agentCapabilities: const acpd.AgentCapabilities(
+        loadSession: true,
+        sessionCapabilities: acpd.SessionCapabilities(
+          list: acpd.CapabilityFlag(),
+        ),
+      ),
+    );
+    agent.connection.onRequest('session/list', (params) {
+      return acpd.ListSessionsResponse(
+        sessions: const [
+          acpd.SessionInfo(sessionId: 'other', cwd: '/elsewhere'),
+          // The session moved after creation; the launch cwd is stale.
+          acpd.SessionInfo(
+            sessionId: 'agent-9',
+            cwd: '/repo/.worktrees/feature',
+          ),
+        ],
+      ).toJson();
+    });
+    String? loadCwd;
+    agent.connection.onRequest('session/load', (params) {
+      loadCwd = (params as Map)['cwd'] as String?;
+      return acpd.LoadSessionResponse().toJson();
+    });
+
+    final runtime = makeRuntime((argv, env) async => conn);
+    await runtime.start(
+      tool: CliTool.gemini,
+      executable: 'gemini',
+      sessionToolDir: sessionToolDir,
+      workingDirectory: cwd,
+      resumeSessionId: 'agent-9',
+    );
+
+    expect(loadCwd, '/repo/.worktrees/feature');
+    expect(runtime.sessionId, 'agent-9');
+    await runtime.close();
+  });
+
   test('start resumes via session/resume when loadSession is unsupported',
       () async {
     await stubInitialize(
@@ -829,31 +870,44 @@ void main() {
     await runtime.close();
   });
 
-  test('start falls back to session/new when loading fails', () async {
+  test('start surfaces a load failure instead of opening a new session',
+      () async {
     await stubInitialize(
       agentCapabilities: const acpd.AgentCapabilities(loadSession: true),
     );
     agent.connection.onRequest('session/load', (params) {
       throw acpd.RpcError(
-        code: acpd.ErrorCode.internalError.code,
-        message: 'stale session',
+        code: acpd.ErrorCode.invalidParams.code,
+        message: 'session agent-9 does not belong to cwd: $cwd',
       );
     });
+    var newCalls = 0;
     agent.connection.onRequest('session/new', (params) {
+      newCalls++;
       return acpd.NewSessionResponse(sessionId: 'fresh-1').toJson();
     });
 
     final runtime = makeRuntime((argv, env) async => conn);
-    await runtime.start(
-      tool: CliTool.gemini,
-      executable: 'gemini',
-      sessionToolDir: sessionToolDir,
-      workingDirectory: cwd,
-      resumeSessionId: 'stale',
+    await expectLater(
+      runtime.start(
+        tool: CliTool.gemini,
+        executable: 'gemini',
+        sessionToolDir: sessionToolDir,
+        workingDirectory: cwd,
+        resumeSessionId: 'stale',
+      ),
+      throwsA(
+        isA<acpd.RpcError>().having(
+          (error) => error.code,
+          'code',
+          acpd.ErrorCode.invalidParams.code,
+        ),
+      ),
     );
 
-    expect(runtime.sessionId, 'fresh-1');
-    await runtime.close();
+    // A failed resume must not silently replace the conversation.
+    expect(newCalls, 0);
+    expect(runtime.isStarted, isFalse);
   });
 
   test('start uses session/new when no resume id is given', () async {

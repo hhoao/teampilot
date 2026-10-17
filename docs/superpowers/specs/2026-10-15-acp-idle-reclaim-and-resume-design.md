@@ -45,7 +45,7 @@ Two related gaps in the ACP (terminal-less chat) stack:
 | D2 | ACP idle threshold = `reclaimIdleTerminalAfterSeconds * 2` (no new setting). | A restart costs a fresh handshake + `session/load` + replay, higher than PTY `--resume`; doubling is a safe default without expanding the settings surface. |
 | D3 | B attempts resume on **every** ACP start (reclaim, manual reopen, app restart), capability-gated per connection. | One code path; also fixes the amnesia that already exists for manual reopen. No per-CLI branching — the negotiated capability decides. |
 | D4 | The agent session id is persisted in a sidecar JSON next to the transcript (`acp-session.json` / `acp-session-<memberId>.json`). | Colocated with the transcript it belongs to; no cross-layer coupling to the session repository. |
-| D5 | Resume preference order: `loadSession` → `session/load`; else `sessionResume` → `session/resume`; else `session/new`. | `session/load` is the ACP v1 standard (replays history); `resume` is the newer capability. |
+| D5 | Resume preference order: recover cwd via `session/list` when available; then `loadSession` → `session/load`; else `sessionResume` → `session/resume`; else `session/new`. | `session/load` is the ACP v1 standard (replays history); `resume` is the newer capability; `session/list` reports the session's current directory after a move. |
 | D6 | A reclaim = close the cubit (persists transcript + agent id, kills the process), remove it from `memberAcpRuntimes`, and mark `reclaimedMemberIds`. Restore = the existing member-connect path re-attaching a fresh cubit. | Reuses the PTY reclaim shape and the existing connect/materialize funnel. No new restore machinery. |
 | D7 | On resume, the agent's replayed history (`session/update` notifications emitted by `session/load`) is **suppressed** until the first prompt. | The app transcript is the UI source of truth; replaying it would double every message. |
 
@@ -58,20 +58,31 @@ The `initialize` handshake already caches `AcpNegotiatedCapabilities`
 The spawner runs `initialize` before returning the connection, so by the time
 `AcpSessionRuntime.start` opens a session the capabilities are known.
 
-Selection (D5), all on the same live connection, all falling back to
-`session/new` on any failure:
+Selection (D5), all on the same live connection:
 
 ```
-resumeId = stored agent session id (may be null/empty)
+resumeId  = stored agent session id (may be null/empty)
+resumeCwd = recorded sidecar cwd, else the session folder's launch cwd
 if resumeId != null:
-    if capabilities.loadSession:    try session/load    → session
-    else if capabilities.sessionResume: try session/resume → session
-on load/resume failure (any error):
-    log warning, open session/new
+    if capabilities.sessionList:
+        resumeCwd = session/list[resumeId].cwd ?? resumeCwd
+    if capabilities.loadSession:        session/load   with resumeCwd
+    else if capabilities.sessionResume: session/resume with resumeCwd
+    else:                               session/new
 ```
 
-A stale/unloadable id must never block the user — fall back silently and let
-`session/new` mint a fresh id that gets overwritten on disk.
+A load/resume failure is **surfaced** (the cubit shows `sessionOpenFailed`
+with the agent's reason). It must never be swallowed into `session/new`:
+that silently replaces the user's conversation (the agent loses all context)
+while the UI keeps showing the old transcript.
+
+Why `session/list`: a session's directory can change after creation.
+OpenCode's worktree tool relocates the session (`location-switched`), and both
+`session/load` and `session/resume` reject any directory other than the
+session's current one (`ACPSessionDirectoryMismatchError`). The launch cwd
+(`session.folders.first`) can therefore be stale. When the agent advertises
+`sessionCapabilities.list`, TeamPilot walks `session/list` first and resumes in
+the directory the agent reports for that id.
 
 ### Suppressing replayed history (D7)
 
@@ -88,21 +99,24 @@ New `AcpAgentSessionStore`:
 ```dart
 class AcpAgentSessionStore {
   AcpAgentSessionStore({required Filesystem fs, required this.path});
+  Future<AcpAgentSessionRecord?> readRecord();
   Future<String?> read();
-  Future<void> write(String sessionId);
+  Future<void> write(String sessionId, {String? cwd});
   Future<void> clear();
 }
 ```
 
-File content: `{"v":1,"sessionId":"<id>"}`. Same directory as the transcript;
-file name mirrors `acpTranscriptFileName` (`acp-session.json` personal,
-`acp-session-<memberId>.json` seat). `AcpChatRuntimeCubit` owns it:
+File content: `{"v":1,"sessionId":"<id>","cwd":"<directory>"}`. `cwd` is optional
+on read for sidecars written before it existed. Same directory as the
+transcript; file name mirrors `acpTranscriptFileName` (`acp-session.json`
+personal, `acp-session-<memberId>.json` seat). `AcpChatRuntimeCubit` owns it:
 
-- `start()` reads the stored id and passes it to `_runtime.start(resumeSessionId: id)`.
-- After a successful start, if `_runtime.sessionId` differs from the stored id,
-  persist the live id.
-- `close()` does **not** clear the id (reopen must find it). A load failure that
-  mints a new session overwrites it.
+- `start()` reads the record, resumes in the recorded `cwd` when present, and
+  passes the id to `_runtime.start(resumeSessionId: id)`.
+- After a successful start, persist the live id and the directory it was opened
+  with.
+- `close()` does **not** clear the id (reopen must find it). A failed resume is
+  surfaced to the user instead of overwriting the id with a fresh session.
 
 ## A — Idle reclaim for ACP seats
 

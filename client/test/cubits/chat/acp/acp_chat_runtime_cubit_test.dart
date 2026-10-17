@@ -54,6 +54,7 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   LaunchSecurityPolicy startPermissionPolicy = LaunchSecurityPolicy.fullAccess;
   LaunchSecurityPolicy? lastSetPermissionPolicy;
   String? resumeSessionId;
+  String? workingDirectory;
   final List<String> prompts = [];
   ({AgentPermissionReplyKind kind, AgentPermissionAlwaysOption? always})?
   lastAnswer;
@@ -80,6 +81,7 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
     started = true;
     startPermissionPolicy = permissionPolicy;
     this.resumeSessionId = resumeSessionId;
+    this.workingDirectory = workingDirectory;
   }
 
   @override
@@ -188,20 +190,60 @@ void main() {
     return cubit;
   }
 
-  test('start resumes a stored agent session id and persists a fresh one', () async {
+  test('start resumes in the stored cwd and persists it', () async {
     final fs = InMemoryFilesystem();
     final store = AcpAgentSessionStore(fs: fs, path: '/tp/acp-session.json');
-    await store.write('agent-9');
+    await store.write('agent-9', cwd: '/repo/.worktrees/feature');
     final cubit = bootCubit(agentSession: store);
     await cubit.start(
       executable: 'gemini',
       sessionToolDir: '/t',
-      workingDirectory: '/w',
+      workingDirectory: '/repo',
     );
+    // Resume must use the directory the agent session actually lives in, not
+    // the launch cwd (OpenCode rejects a mismatch instead of loading).
     expect(runtime.resumeSessionId, 'agent-9');
+    expect(runtime.workingDirectory, '/repo/.worktrees/feature');
     await cubit.close();
-    // The fake mints 'acp-session-1' → the stale id is overwritten.
-    expect(await store.read(), 'acp-session-1');
+    // The fake mints 'acp-session-1' → the id is overwritten, cwd is kept.
+    final record = await store.readRecord();
+    expect(record?.sessionId, 'acp-session-1');
+    expect(record?.cwd, '/repo/.worktrees/feature');
+  });
+
+  test('start persists the launch cwd for a fresh agent session', () async {
+    final fs = InMemoryFilesystem();
+    final store = AcpAgentSessionStore(fs: fs, path: '/tp/acp-session.json');
+    final cubit = bootCubit(agentSession: store);
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/t',
+      workingDirectory: '/repo',
+    );
+    await cubit.close();
+
+    final record = await store.readRecord();
+    expect(record?.sessionId, 'acp-session-1');
+    expect(record?.cwd, '/repo');
+  });
+
+  test('start uses the launch cwd for a legacy sidecar without cwd', () async {
+    final fs = InMemoryFilesystem();
+    final store = AcpAgentSessionStore(fs: fs, path: '/tp/acp-session.json');
+    await fs.atomicWrite(
+      '/tp/acp-session.json',
+      '{"v":1,"sessionId":"agent-9"}',
+    );
+    final cubit = bootCubit(agentSession: store);
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/t',
+      workingDirectory: '/repo',
+    );
+
+    expect(runtime.resumeSessionId, 'agent-9');
+    expect(runtime.workingDirectory, '/repo');
+    await cubit.close();
   });
 
   test('attention events use seatMemberId', () async {

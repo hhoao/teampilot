@@ -318,9 +318,17 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
     throw AcpLaunchException(reason: acpLaunchFailedVersion);
   }
 
+  /// Upper bound on `session/list` pages walked while recovering a resume cwd.
+  static const int _maxSessionListPages = 20;
+
   /// Opens the session, resuming [resumeSessionId] when the agent negotiated
-  /// support. Any load/resume failure falls back to a fresh `session/new` — a
-  /// stale id must never block the user.
+  /// support.
+  ///
+  /// A load/resume failure is surfaced to the caller. It must never be
+  /// swallowed into a fresh `session/new`: that silently replaces the user's
+  /// conversation (the agent loses all context) while the UI keeps showing the
+  /// old transcript. Only an agent that negotiates neither load nor resume
+  /// opens a new session, because it has no way to restore one.
   Future<AcpAgentSession> _openSession({
     required AcpAgentConnection connection,
     required String? resumeSessionId,
@@ -337,29 +345,75 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
       );
     }
     final caps = connection.negotiatedCapabilities;
+    final supportsLoad = caps?.loadSession ?? false;
+    final supportsResume = caps?.sessionResume ?? false;
+    if (!supportsLoad && !supportsResume) {
+      AppLogger.instance.w(
+        'ACP: agent does not negotiate load/resume; opening a new session '
+        'instead of $resumeId',
+      );
+      return connection.openSession(
+        cwd: cwd,
+        mcpServers: mcpServers,
+        meta: meta,
+      );
+    }
+    // The launch cwd is not authoritative: the session can move after it was
+    // created (OpenCode's worktree tool relocates it), and both `session/load`
+    // and `session/resume` reject a directory that does not match the
+    // session's recorded one. Ask the agent for the session's current cwd
+    // before resuming; fall back to the launch cwd when it cannot list.
+    final resumeCwd = (caps?.sessionList ?? false)
+        ? await _discoverSessionCwd(connection, resumeId) ?? cwd
+        : cwd;
+    if (resumeCwd != cwd) {
+      AppLogger.instance.d(
+        'ACP: resume $resumeId in $resumeCwd (launch cwd was $cwd)',
+      );
+    }
+    if (supportsLoad) {
+      return connection.loadSession(
+        sessionId: resumeId,
+        cwd: resumeCwd,
+        mcpServers: mcpServers,
+        meta: meta,
+      );
+    }
+    return connection.resumeSession(
+      sessionId: resumeId,
+      cwd: resumeCwd,
+      mcpServers: mcpServers,
+      meta: meta,
+    );
+  }
+
+  /// Walks `session/list` until [sessionId] is found and returns its cwd.
+  ///
+  /// Returns null when the agent cannot list, the id is absent, or the call
+  /// fails; the caller then resumes with the known cwd and surfaces any agent
+  /// error instead of silently starting a new session.
+  Future<String?> _discoverSessionCwd(
+    AcpAgentConnection connection,
+    String sessionId,
+  ) async {
     try {
-      if (caps?.loadSession ?? false) {
-        return await connection.loadSession(
-          sessionId: resumeId,
-          cwd: cwd,
-          mcpServers: mcpServers,
-          meta: meta,
-        );
-      }
-      if (caps?.sessionResume ?? false) {
-        return await connection.resumeSession(
-          sessionId: resumeId,
-          cwd: cwd,
-          mcpServers: mcpServers,
-          meta: meta,
-        );
+      String? cursor;
+      for (var page = 0; page < _maxSessionListPages; page++) {
+        final response = await connection.listSessions(cursor: cursor);
+        for (final session in response.sessions) {
+          if (session.sessionId != sessionId) continue;
+          final sessionCwd = session.cwd.trim();
+          return sessionCwd.isEmpty ? null : sessionCwd;
+        }
+        cursor = response.nextCursor;
+        if (cursor == null || cursor.isEmpty) return null;
       }
     } on Object catch (error) {
       AppLogger.instance.w(
-        'ACP: resume of $resumeId failed ($error); opening a new session',
+        'ACP: session/list failed while resolving $sessionId: $error',
       );
     }
-    return connection.openSession(cwd: cwd, mcpServers: mcpServers, meta: meta);
+    return null;
   }
 
   /// The id of the open ACP session (throws [StateError] before [start]).

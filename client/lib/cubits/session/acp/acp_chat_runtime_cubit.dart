@@ -234,14 +234,23 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     _hydrateInFlight ??= _hydrateTranscript();
     await _hydrateInFlight;
     if (_closing || isClosed) return;
-    final resumeId = await _agentSession?.read();
+    final resume = await _agentSession?.readRecord();
     if (_closing || isClosed) return;
+    final resumeId = resume?.sessionId;
+    // Resume in the directory the agent session actually lives in. ACP
+    // `session/load` requires an exact directory match (OpenCode answers a
+    // mismatch with `ACPSessionDirectoryMismatchError`), and the session may
+    // have moved since TeamPilot last opened it — e.g. into a git worktree.
+    final storedCwd = resume?.cwd?.trim() ?? '';
+    final effectiveWorkingDirectory = storedCwd.isNotEmpty
+        ? storedCwd
+        : workingDirectory;
     try {
       await _runtime.start(
         tool: tool,
         executable: executable,
         sessionToolDir: sessionToolDir,
-        workingDirectory: workingDirectory,
+        workingDirectory: effectiveWorkingDirectory,
         baseEnv: baseEnv,
         mcpServers: mcpServers,
         permissionPolicy: permissionPolicy,
@@ -342,8 +351,11 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     }
     _applyAttention(const AgentStatusEvent(state: AgentSeatAttention.done));
     final liveId = _runtime.sessionId;
-    if (liveId.isNotEmpty && liveId != resumeId) {
-      unawaited(_agentSession?.write(liveId));
+    if (liveId.isNotEmpty) {
+      // Persist the id and the directory we asked for. Agents that can list
+      // their sessions re-discover the current cwd on every resume (a session
+      // can move), so this is the fallback for agents without `session/list`.
+      unawaited(_agentSession?.write(liveId, cwd: effectiveWorkingDirectory));
     }
     emit(state.copyWith(phase: AcpChatPhase.ready));
     final queued = _queuedPrompt;
