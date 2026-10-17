@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../l10n/l10n_extensions.dart';
+import '../../../models/cli_binary_kind.dart';
 import '../../../models/cli_preset.dart';
 import '../../../models/install_job/install_cancel_policy.dart';
 import '../../../models/install_job/install_job_scope.dart';
@@ -14,7 +15,9 @@ import '../../../models/runtime_target.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../models/workspace_topology.dart';
+import '../../../services/cli/codex/capabilities/acp_adapter_installer.dart';
 import '../../../services/cli/installer_types.dart';
+import '../../../services/cli/registry/capabilities/acp_settings_capability.dart';
 import '../../../services/cli/registry/capabilities/cli_executable_capability.dart';
 import '../../../services/cli/registry/cli_display_name.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -143,6 +146,7 @@ class _RemoteCliMachineReadinessPanelState
       final result = await widget.readiness.probe(
         target: requirement.target,
         cli: requirement.cli,
+        kind: requirement.kind,
       );
       if (!mounted || generation != _probeGeneration) return;
       next[requirement.cacheKey] = result;
@@ -168,22 +172,34 @@ class _RemoteCliMachineReadinessPanelState
       final scope = profileId.isEmpty
           ? const InstallJobScopeLocal()
           : InstallJobScopeSsh(profileId);
-      final key = InstallJobKeys.cli(requirement.cli.value, scope: scope);
+      final isAdapter = requirement.kind == CliBinaryKind.adapter;
+      final adapterLabel = isAdapter
+          ? l10n.remoteCliMachineReadinessAdapterLabel(cliLabel)
+          : cliLabel;
+      final installer = cliRegistry
+          .capability<AcpSettingsCapability>(requirement.cli)
+          ?.adapterInstaller;
+      final key = isAdapter
+          ? (installer is CodexAcpAdapterInstaller
+                ? InstallJobKeys.codexAcpAdapter(scope: scope)
+                : InstallJobKeys.claudeAcpAdapter(scope: scope))
+          : InstallJobKeys.cli(requirement.cli.value, scope: scope);
 
       final result = await registry.enqueue(
         InstallJobSpec<RemoteCliReadiness>(
           key: key,
-          title: 'Install $cliLabel on $hostLabel',
+          title: 'Install $adapterLabel on $hostLabel',
           workspaceId: widget.workspace?.workspaceId,
           cancelPolicy: InstallCancelPolicy.cooperative,
           historyMessageFor: (readiness) => switch (readiness) {
-            RemoteCliReady() => '$cliLabel ready on $hostLabel',
+            RemoteCliReady() => '$adapterLabel ready on $hostLabel',
             _ => null,
           },
           run: (ctx) async {
             final readiness = await widget.readiness.install(
               target: requirement.target,
               cli: requirement.cli,
+              kind: requirement.kind,
               onProgress: (progress) {
                 final phaseLabel = switch (progress.phase) {
                   CliInstallPhase.checkingNpm => 'Checking npm',
@@ -291,11 +307,19 @@ class _CliReadinessRow extends StatelessWidget {
     final cliLabel = def != null
         ? cliDisplayName(def, l10n, registry: registry)
         : requirement.cli.value;
-    final supportsInstaller =
-        registry
-            .capability<CliExecutableCapability>(requirement.cli)
-            ?.supportsInstaller ??
-        false;
+    final isAdapter = requirement.kind == CliBinaryKind.adapter;
+    final displayLabel = isAdapter
+        ? l10n.remoteCliMachineReadinessAdapterLabel(cliLabel)
+        : cliLabel;
+    final supportsInstaller = isAdapter
+        ? registry
+                  .capability<AcpSettingsCapability>(requirement.cli)
+                  ?.adapterInstaller !=
+              null
+        : registry
+                  .capability<CliExecutableCapability>(requirement.cli)
+                  ?.supportsInstaller ??
+              false;
 
     final (icon, color, subtitle) = switch (readiness) {
       null || RemoteCliProbing() => (
@@ -306,17 +330,17 @@ class _CliReadinessRow extends StatelessWidget {
       RemoteCliReady(:final path) => (
         Icons.check_circle_outline,
         cs.primary,
-        l10n.remoteCliMachineReadinessReady(cliLabel, path),
+        l10n.remoteCliMachineReadinessReady(displayLabel, path),
       ),
       RemoteCliMissing() => (
         Icons.error_outline,
         cs.error,
-        l10n.remoteCliMachineReadinessMissing(cliLabel),
+        l10n.remoteCliMachineReadinessMissing(displayLabel),
       ),
       RemoteCliFailed(:final message) => (
         Icons.error_outline,
         cs.error,
-        l10n.remoteCliMachineReadinessFailed(cliLabel, message),
+        l10n.remoteCliMachineReadinessFailed(displayLabel, message),
       ),
       RemoteCliInstalling() => (
         Icons.download_outlined,
@@ -336,7 +360,7 @@ class _CliReadinessRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(cliLabel, style: TpTextStyles.of(context).md),
+                Text(displayLabel, style: TpTextStyles.of(context).md),
                 Text(
                   subtitle,
                   style: TpTextStyles.of(context).smColored(color),

@@ -913,6 +913,7 @@
       }
     }
   },
+  "remoteCliMachineReadinessAdapterLabel": "{cli} ACP 适配器",
   "remoteCliMachineReadinessFailed": "{cli}：{message}",
   "@remoteCliMachineReadinessFailed": {
     "placeholders": {

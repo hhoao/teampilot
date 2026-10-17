@@ -991,6 +991,15 @@
       }
     }
   },
+  "remoteCliMachineReadinessAdapterLabel": "{cli} ACP adapter",
+  "@remoteCliMachineReadinessAdapterLabel": {
+    "description": "Landing readiness row label for a separate ACP adapter binary.",
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
   "remoteCliMachineReadinessFailed": "{cli}: {message}",
   "@remoteCliMachineReadinessFailed": {
     "placeholders": {

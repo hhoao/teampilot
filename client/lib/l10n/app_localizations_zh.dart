@@ -1962,6 +1962,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String remoteCliMachineReadinessAdapterLabel(String cli) {
+    return '$cli ACP 适配器';
+  }
+
+  @override
   String remoteCliMachineReadinessFailed(String cli, String message) {
     return '$cli：$message';
   }

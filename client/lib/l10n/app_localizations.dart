@@ -3710,6 +3710,12 @@ abstract class AppLocalizations {
   /// **'{cli} not found — install or set a manual path'**
   String remoteCliMachineReadinessMissing(String cli);
 
+  /// Landing readiness row label for a separate ACP adapter binary.
+  ///
+  /// In en, this message translates to:
+  /// **'{cli} ACP adapter'**
+  String remoteCliMachineReadinessAdapterLabel(String cli);
+
   /// No description provided for @remoteCliMachineReadinessFailed.
   ///
   /// In en, this message translates to:
