@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/progress_activity_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
+import 'package:teampilot/cubits/ssh_profile_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/cli_binary_kind.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/session_preferences.dart';
+import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/config/cli_config_section.dart';
 import 'package:teampilot/pages/config/cli_readiness_card.dart';
@@ -23,6 +26,8 @@ import 'package:teampilot/services/install/install_job_registry.dart';
 import 'package:teampilot/services/install/install_job_runner_registry.dart';
 import 'package:teampilot/services/install/runners/cli_install_job_runner.dart';
 import 'package:teampilot/services/notification/notification_recorder.dart';
+import 'package:teampilot/services/remote/remote_cli_readiness.dart';
+import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
@@ -203,6 +208,62 @@ Widget _wrapCard(
   );
 }
 
+Widget _wrapCardRemote(
+  SessionPreferencesCubit cubit, {
+  required SshProfileCubit sshProfileCubit,
+  required RemoteCliReadinessService readiness,
+}) {
+  final progressCubit = ProgressActivityCubit(historyRecorder: _FakeRecorder());
+  final registry = InstallJobRegistry(
+    progressCubit: progressCubit,
+    runnerRegistry: InstallJobRunnerRegistry(
+      runners: [
+        CliInstallJobRunner(
+          installerFactory: () => _DelayedCliInstallerService(),
+        ),
+      ],
+    ),
+  );
+
+  return MultiRepositoryProvider(
+    providers: [
+      RepositoryProvider<ConnectionModeService>(
+        create: (_) => ConnectionModeService(
+          defaultTargetResolver: () => const RuntimeTarget(
+            id: 'ssh:host-a',
+            label: 'host',
+            kind: RuntimeKind.ssh,
+            sshProfileId: 'host-a',
+          ),
+          hasSshProfiles: () => true,
+        ),
+      ),
+      RepositoryProvider<InstallJobRegistry>.value(value: registry),
+      RepositoryProvider<RemoteCliReadinessService>.value(value: readiness),
+      RepositoryProvider<SshClientFactory>.value(
+        value: _ThrowingSshClientFactory(),
+      ),
+    ],
+    child: BlocProvider<SshProfileCubit>.value(
+      value: sshProfileCubit,
+      child: BlocProvider.value(
+        value: cubit,
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: CliReadinessCard(
+              cli: CliTool.claude,
+              cubit: cubit,
+              versionProbe: _silentProbe(),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 void main() {
   setUp(() {
     setUpTestAppStorage();
@@ -309,6 +370,43 @@ void main() {
       expect(find.byKey(AppKeys.claudeAcpAdapterLocateButton), findsOneWidget);
       expect(find.byKey(AppKeys.claudePersonalAcpSwitch), findsOneWidget);
       expect(find.text('Needs setup'), findsAtLeastNWidgets(1));
+    },
+  );
+
+  testWidgets(
+    'remote: probes the ACP adapter on the host instead of local discovery',
+    (tester) async {
+      final cubit = await _makeCubit(
+        locatedExecutables: const {CliTool.claude: '/usr/local/bin/claude'},
+      );
+      addTearDown(cubit.close);
+
+      const profile = SshProfile(
+        id: 'host-a',
+        name: 'host',
+        host: 'host',
+        username: 'u',
+      );
+      final sshProfileCubit = _MockSshProfileCubit();
+      when(() => sshProfileCubit.state).thenReturn(
+        const SshProfileState(profiles: [profile], selectedProfileId: 'host-a'),
+      );
+      when(
+        () => sshProfileCubit.stream,
+      ).thenAnswer((_) => const Stream.empty());
+
+      final readiness = _FakeRemoteReadiness();
+
+      await tester.pumpWidget(
+        _wrapCardRemote(
+          cubit,
+          sshProfileCubit: sshProfileCubit,
+          readiness: readiness,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(readiness.probedKinds, contains(CliBinaryKind.adapter));
     },
   );
 
@@ -657,4 +755,39 @@ void main() {
     expect(find.byKey(AppKeys.gitToolchainInstallButton), findsNothing);
     expect(find.byKey(AppKeys.nodeToolchainInstallButton), findsNothing);
   });
+}
+
+class _MockSshProfileCubit extends Mock implements SshProfileCubit {}
+
+/// Records the `kind` each remote probe was asked for; always reports ready.
+class _FakeRemoteReadiness extends RemoteCliReadinessService {
+  _FakeRemoteReadiness()
+    : super(
+        registry: CliToolRegistry.builtIn(),
+        sshClientFactory: _ThrowingSshClientFactory(),
+        profileById: (_) => null,
+        cliPathOverride: (_, __) async => null,
+        setCliPathOverride: (_, __, ___) async {},
+      );
+
+  final probedKinds = <CliBinaryKind>[];
+
+  @override
+  Future<RemoteCliReadiness> probe({
+    required RuntimeTarget target,
+    required CliTool cli,
+    CliBinaryKind kind = CliBinaryKind.cli,
+  }) async {
+    probedKinds.add(kind);
+    return RemoteCliReady(
+      targetId: target.id,
+      cli: cli,
+      path: '/home/u/.local/bin/claude-agent-acp',
+    );
+  }
+}
+
+class _ThrowingSshClientFactory implements SshClientFactory {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }

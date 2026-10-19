@@ -17,3 +17,22 @@ Future<void> rememberRemoteCliPathIfNeeded({
   if (trimmed == stored) return;
   await writeCliPathOverride(targetId, cli.value, trimmed);
 }
+
+/// Caches a resolved remote ACP adapter path into `targets.json` when it
+/// differs from the stored per-target override.
+Future<void> rememberRemoteAcpAdapterPathIfNeeded({
+  required String targetId,
+  required CliTool cli,
+  required String resolvedPath,
+  required Future<String?> Function(String targetId, String cliValue)
+  readAcpAdapterPathOverride,
+  required Future<void> Function(String targetId, String cliValue, String path)
+  writeAcpAdapterPathOverride,
+}) async {
+  final trimmed = resolvedPath.trim();
+  if (trimmed.isEmpty) return;
+  final stored =
+      (await readAcpAdapterPathOverride(targetId, cli.value) ?? '').trim();
+  if (trimmed == stored) return;
+  await writeAcpAdapterPathOverride(targetId, cli.value, trimmed);
+}

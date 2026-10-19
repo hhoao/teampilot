@@ -122,6 +122,8 @@ class ChatCubit extends Cubit<ChatState>
     PostFrameScheduler? postFrameScheduler,
     bool Function()? autoLaunchAllMembersOnConnect,
     String Function(CliTool tool)? discoveredAcpAdapterPath,
+    Future<String?> Function(String targetId, String cliValue)?
+    acpAdapterPathOverride,
     bool Function()? reclaimIdleTerminalsEnabled,
     int Function()? reclaimIdleTerminalAfterSeconds,
     SessionLifecycleService? lifecycleService,
@@ -185,6 +187,7 @@ class ChatCubit extends Cubit<ChatState>
        _awaitPublicLaunchCompletion = postFrameScheduler == null,
        _autoLaunchAllMembersOnConnect = autoLaunchAllMembersOnConnect,
        _discoveredAcpAdapterPath = discoveredAcpAdapterPath,
+       _acpAdapterPathOverride = acpAdapterPathOverride,
        _reclaimIdleTerminalsEnabled = reclaimIdleTerminalsEnabled,
        _reclaimIdleTerminalAfterSeconds = reclaimIdleTerminalAfterSeconds,
        _lifecycle =
@@ -540,6 +543,8 @@ class ChatCubit extends Cubit<ChatState>
   final bool _awaitPublicLaunchCompletion;
   final bool Function()? _autoLaunchAllMembersOnConnect;
   final String Function(CliTool tool)? _discoveredAcpAdapterPath;
+  final Future<String?> Function(String targetId, String cliValue)?
+  _acpAdapterPathOverride;
   final bool Function()? _reclaimIdleTerminalsEnabled;
   final int Function()? _reclaimIdleTerminalAfterSeconds;
   final SessionLifecycleService _lifecycle;
@@ -845,6 +850,10 @@ class ChatCubit extends Cubit<ChatState>
   @override
   String Function(CliTool tool)? get discoveredAcpAdapterPath =>
       _discoveredAcpAdapterPath;
+
+  @override
+  Future<String?> Function(String targetId, String cliValue)?
+  get acpAdapterPathOverride => _acpAdapterPathOverride;
 
   @override
   RemoteMemberBusSetupPort? get remoteBusSetup => _remoteBusSetup;

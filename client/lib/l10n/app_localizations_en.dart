@@ -2063,6 +2063,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String remoteCliMachineReadinessAdapterLabel(String cli) {
+    return '$cli ACP adapter';
+  }
+
+  @override
   String remoteCliMachineReadinessFailed(String cli, String message) {
     return '$cli: $message';
   }

@@ -63,6 +63,20 @@ String acpTranscriptFileName({String? memberId, required bool personal}) {
   return 'acp-transcript-$id.jsonl';
 }
 
+/// Adapter-path resolver for one ACP launch plan.
+///
+/// Remote launches use the per-target absolute override (or `null` → the plain
+/// adapter name via PATH). Local launches use the boot-discovered map.
+String? Function(CliTool tool) acpAdapterPathResolverFor({
+  required bool remote,
+  required String? remoteAdapterPath,
+  String Function(CliTool tool)? localResolver,
+}) {
+  if (remote) return (_) => remoteAdapterPath;
+  final resolve = localResolver;
+  return resolve == null ? (_) => null : (tool) => resolve(tool);
+}
+
 /// Agent-session sidecar under `sessions/<id>/runtime/`.
 ///
 /// Personal stays `acp-session.json`. Mixed seats use
@@ -184,6 +198,9 @@ class AcpRuntimeAttach {
           )
         : null;
 
+    final remoteAdapterPath = remote
+        ? await _resolveRemoteAdapterPath(cli, launchTarget)
+        : null;
     final cubit = _cubit(
       session: session,
       cli: cli,
@@ -191,6 +208,7 @@ class AcpRuntimeAttach {
       memberId: null,
       launchTarget: launchTarget,
       sshLaunch: sshLaunch,
+      remoteAdapterPath: remoteAdapterPath,
       processWorkingDirectory: workingDirectory,
     );
     tab.acpRuntime = cubit;
@@ -221,6 +239,28 @@ class AcpRuntimeAttach {
       workspace: workspace,
       launchTarget: launchTarget,
     );
+  }
+
+  /// Reads the per-target ACP adapter override for a remote launch. `null`
+  /// keeps today's behavior (resolve the bare adapter name via remote PATH).
+  Future<String?> _resolveRemoteAdapterPath(
+    CliTool cli,
+    RuntimeTarget launchTarget,
+  ) async {
+    final resolver = _host.acpAdapterPathOverride;
+    if (resolver == null) return null;
+    try {
+      final path = (await resolver(launchTarget.id, cli.value))?.trim() ?? '';
+      return path.isEmpty ? null : path;
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[acp-remote] adapter override lookup failed target=${launchTarget.id} '
+        'cli=${cli.value}',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
   }
 
   /// Production SSH launch: opens (and stores on the tab) one member SSH
@@ -432,6 +472,7 @@ class AcpRuntimeAttach {
     required RuntimeTarget launchTarget,
     required String processWorkingDirectory,
     AcpSshLaunch? sshLaunch,
+    String? remoteAdapterPath,
   }) {
     final remote = usesSshTransport(launchTarget.kind);
     final logger = AcpFrameLogger();
@@ -451,9 +492,11 @@ class AcpRuntimeAttach {
           logger: logger,
           launchPlanFor: acpLaunchPlanResolver(
             _host.cliRegistry,
-            // A local boot-time adapter path is meaningless on a remote host;
-            // the remote PATH resolves the bare adapter name instead.
-            discoveredAdapterPath: remote ? null : _host.discoveredAcpAdapterPath,
+            discoveredAdapterPath: acpAdapterPathResolverFor(
+              remote: remote,
+              remoteAdapterPath: remoteAdapterPath,
+              localResolver: _host.discoveredAcpAdapterPath,
+            ),
           ),
         );
     return AcpChatRuntimeCubit(

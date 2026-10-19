@@ -13,6 +13,7 @@ class TargetsRegistryFile {
     this.credentialOptIn = const [],
     this.installOptOut = const [],
     this.cliPathOverrides = const {},
+    this.acpAdapterPathOverrides = const {},
   });
 
   final int schemaVersion;
@@ -31,11 +32,17 @@ class TargetsRegistryFile {
   /// (manual bottom-fill when remote locate/install can't resolve a CLI).
   final Map<String, Map<String, String>> cliPathOverrides;
 
+  /// Per-target manual ACP adapter path overrides —
+  /// `targetId → {cliValue → absolute path}` (the separate ACP adapter binary
+  /// located/installed on that host).
+  final Map<String, Map<String, String>> acpAdapterPathOverrides;
+
   factory TargetsRegistryFile.fromJson(Map<String, Object?> json) {
     final raw = json['targets'];
     final optIn = json['credentialOptIn'];
     final installOptOut = json['installOptOut'];
     final overrides = json['cliPathOverrides'];
+    final adapterOverrides = json['acpAdapterPathOverrides'];
     return TargetsRegistryFile(
       schemaVersion: (json['schemaVersion'] as num?)?.toInt() ?? 1,
       targets: raw is List
@@ -62,6 +69,16 @@ class TargetsRegistryFile {
                   },
             }
           : const {},
+      acpAdapterPathOverrides: adapterOverrides is Map<String, Object?>
+          ? {
+              for (final e in adapterOverrides.entries)
+                if (e.value is Map<String, Object?>)
+                  e.key: {
+                    for (final c in (e.value as Map<String, Object?>).entries)
+                      c.key: '${c.value}',
+                  },
+            }
+          : const {},
     );
   }
 
@@ -71,6 +88,8 @@ class TargetsRegistryFile {
     if (credentialOptIn.isNotEmpty) 'credentialOptIn': credentialOptIn,
     if (installOptOut.isNotEmpty) 'installOptOut': installOptOut,
     if (cliPathOverrides.isNotEmpty) 'cliPathOverrides': cliPathOverrides,
+    if (acpAdapterPathOverrides.isNotEmpty)
+      'acpAdapterPathOverrides': acpAdapterPathOverrides,
   };
 
   TargetsRegistryFile copyWith({
@@ -78,12 +97,15 @@ class TargetsRegistryFile {
     List<String>? credentialOptIn,
     List<String>? installOptOut,
     Map<String, Map<String, String>>? cliPathOverrides,
+    Map<String, Map<String, String>>? acpAdapterPathOverrides,
   }) => TargetsRegistryFile(
     schemaVersion: schemaVersion,
     targets: targets ?? this.targets,
     credentialOptIn: credentialOptIn ?? this.credentialOptIn,
     installOptOut: installOptOut ?? this.installOptOut,
     cliPathOverrides: cliPathOverrides ?? this.cliPathOverrides,
+    acpAdapterPathOverrides:
+        acpAdapterPathOverrides ?? this.acpAdapterPathOverrides,
   );
 }
 
@@ -191,5 +213,33 @@ class TargetsRepository {
       forTarget[cliValue] = trimmed;
     }
     await save(file.copyWith(cliPathOverrides: overrides));
+  }
+
+  // ── P3c: per-target manual ACP adapter path override ───────────────────────
+
+  Future<String?> acpAdapterPathOverride(
+    String targetId,
+    String cliValue,
+  ) async => (await load()).acpAdapterPathOverrides[targetId]?[cliValue];
+
+  Future<void> setAcpAdapterPathOverride(
+    String targetId,
+    String cliValue,
+    String path,
+  ) async {
+    final file = await load();
+    final overrides = {
+      for (final e in file.acpAdapterPathOverrides.entries)
+        e.key: {...e.value},
+    };
+    final forTarget = overrides.putIfAbsent(targetId, () => {});
+    final trimmed = path.trim();
+    if (trimmed.isEmpty) {
+      forTarget.remove(cliValue);
+      if (forTarget.isEmpty) overrides.remove(targetId);
+    } else {
+      forTarget[cliValue] = trimmed;
+    }
+    await save(file.copyWith(acpAdapterPathOverrides: overrides));
   }
 }

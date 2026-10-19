@@ -422,6 +422,7 @@ class AppShell {
     required this.homeTargetController,
     required this.directoryPicker,
     required this.chatCubit,
+    required this.remoteCliReadiness,
     this.teamGenerationGraph,
     required this.memberPresenceCubit,
     required this.agentAttentionCubit,
@@ -530,6 +531,7 @@ class AppShell {
   final HomeTargetController homeTargetController;
   final WorkspaceDirectoryPicker directoryPicker;
   final ChatCubit chatCubit;
+  final RemoteCliReadinessService remoteCliReadiness;
   final TeamGenerationGraph? teamGenerationGraph;
   final MemberPresenceCubit memberPresenceCubit;
   final AgentAttentionCubit agentAttentionCubit;
@@ -918,6 +920,8 @@ Future<AppShell> buildAppShell({
     profileById: sshProfileById,
     cliPathOverride: targetsRepo.cliPathOverride,
     setCliPathOverride: targetsRepo.setCliPathOverride,
+    acpAdapterPathOverride: targetsRepo.acpAdapterPathOverride,
+    setAcpAdapterPathOverride: targetsRepo.setAcpAdapterPathOverride,
   );
   final runtimeTargetRegistry = RuntimeTargetRegistry(
     repo: targetsRepo,
@@ -2222,6 +2226,7 @@ Future<AppShell> buildAppShell({
           .preferences
           .autoLaunchAllMembersOnConnect,
       discoveredAcpAdapterPath: sessionPreferencesCubit.resolveAcpAdapterPath,
+      acpAdapterPathOverride: targetsRepo.acpAdapterPathOverride,
       reclaimIdleTerminalsEnabled: () =>
           sessionPreferencesCubit.state.preferences.reclaimIdleTerminals,
       reclaimIdleTerminalAfterSeconds: () => sessionPreferencesCubit
@@ -3082,6 +3087,7 @@ Future<AppShell> buildAppShell({
       homeTargetController: homeTargetController,
       directoryPicker: directoryPicker,
       chatCubit: chatCubit,
+      remoteCliReadiness: remoteCliReadiness,
       teamGenerationGraph: teamGenerationGraph,
       memberPresenceCubit: memberPresenceCubit,
       agentAttentionCubit: agentAttentionCubit,
