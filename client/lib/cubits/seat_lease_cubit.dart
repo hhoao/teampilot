@@ -61,7 +61,8 @@ class SeatLeaseState extends Equatable {
 /// Holds per-seat keep-alive leases ("the CLI process must survive").
 /// Driven by `seatLeaseProjection` from the runtime-event gateway; consumed
 /// by the idle terminal reclaim. Independent of attention semantics.
-class SeatLeaseCubit extends Cubit<SeatLeaseState> implements SeatLeasePort {
+class SeatLeaseCubit extends Cubit<SeatLeaseState>
+    implements SeatLeasePort, SeatBackgroundLeasePort {
   /// [pruneInterval] defaults to [seatLeasePruneInterval]; pass `null` to
   /// disable pruning entirely (tests / embedders), matching
   /// [AgentAttentionCubit]'s contract. Note that a non-null interval always
@@ -111,6 +112,36 @@ class SeatLeaseCubit extends Cubit<SeatLeaseState> implements SeatLeasePort {
       seats[key] = remaining;
     }
     emit(SeatLeaseState(leases: seats));
+  }
+
+  /// Aggregate background-task keep-alive for a runtime that observes its own
+  /// out-of-turn work (see [SeatBackgroundLeasePort]). Idempotent per
+  /// `(seat, leaseId)`.
+  @override
+  void acquireBackgroundTask({
+    required String sessionId,
+    required String memberId,
+    required String leaseId,
+    required DateTime acquiredAt,
+  }) {
+    acquire(
+      sessionId: sessionId,
+      memberId: memberId,
+      lease: SeatLease(
+        kind: SeatLeaseKind.backgroundTask,
+        id: leaseId,
+        acquiredAt: acquiredAt,
+      ),
+    );
+  }
+
+  @override
+  void releaseBackgroundTask({
+    required String sessionId,
+    required String memberId,
+    required String leaseId,
+  }) {
+    release(sessionId: sessionId, memberId: memberId, leaseId: leaseId);
   }
 
   /// Replace every lease of [kind] on a seat with exactly the CLI's

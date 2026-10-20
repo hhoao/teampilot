@@ -327,6 +327,9 @@ class AcpAgentConnection {
       session = AcpAgentSession(
         connection: this,
         sessionId: resolvedId,
+        cwd: cwd,
+        mcpServers: mcpServers,
+        meta: meta,
         permissionTimeout: permissionTimeout,
         suppressBootstrapUpdates: resuming,
       );

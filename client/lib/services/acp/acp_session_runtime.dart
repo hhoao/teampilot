@@ -194,6 +194,19 @@ abstract interface class AcpSessionRuntimeApi {
   Future<void> close();
 }
 
+/// Optional ACP capability: replay the agent's own session history.
+///
+/// Separate from [AcpSessionRuntimeApi] so existing all-stub fakes stay valid;
+/// the chat layer checks the runtime against this interface before reconciling
+/// out-of-turn work (ACP v1 has no live update for it).
+abstract interface class AcpHistorySyncApi {
+  /// Replays the open session and returns its mapped updates without emitting
+  /// them on [AcpSessionRuntimeApi.updates].
+  ///
+  /// Returns an empty list when no session is open.
+  Future<List<AcpSessionUpdate>> loadHistory();
+}
+
 /// Owns one ACP agent session for the chat layer: spawn + flag probe +
 /// session lifecycle.
 ///
@@ -204,7 +217,7 @@ abstract interface class AcpSessionRuntimeApi {
 /// single open session and delegates [prompt]/[updates]/
 /// [permissionRequests]/[answerPermission]/[cancel] to it; [close] disposes
 /// both the session and the connection.
-class AcpSessionRuntime implements AcpSessionRuntimeApi {
+class AcpSessionRuntime implements AcpSessionRuntimeApi, AcpHistorySyncApi {
   AcpSessionRuntime({
     required AcpConnectionSpawner spawner,
     required this.logger,
@@ -423,6 +436,14 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi {
   /// Sends one prompt turn; resolves once the turn's stop event is emitted.
   @override
   Future<void> prompt(String text) => _session!.prompt(text);
+
+  /// Replays the open session's history without emitting it on [updates].
+  @override
+  Future<List<AcpSessionUpdate>> loadHistory() async {
+    final session = _session;
+    if (session == null) return const [];
+    return session.loadHistory();
+  }
 
   /// Turn events for the open session.
   @override

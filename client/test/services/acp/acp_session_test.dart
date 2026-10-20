@@ -39,6 +39,9 @@ void main() {
     agent.connection.onRequest('initialize', (params) {
       return acpd.InitializeResponse(
         protocolVersion: acpd.ProtocolVersion.v1,
+        // History reconciliation replays via `session/load`; advertise it so
+        // the capability guard in loadHistory passes.
+        agentCapabilities: const acpd.AgentCapabilities(loadSession: true),
       ).toJson();
     });
     await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
@@ -82,6 +85,9 @@ void main() {
     agent.connection.onRequest('initialize', (params) {
       return acpd.InitializeResponse(
         protocolVersion: acpd.ProtocolVersion.v1,
+        // History reconciliation replays via `session/load`; advertise it so
+        // the capability guard in loadHistory passes.
+        agentCapabilities: const acpd.AgentCapabilities(loadSession: true),
       ).toJson();
     });
     await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
@@ -192,6 +198,149 @@ void main() {
 
     resume.complete();
     await first;
+  });
+
+  test('tool_call background flag is mapped from rawInput', () async {
+    session = await openSession();
+    final update = session.updates.first;
+    agent.connection.notify(
+      'session/update',
+      params: {
+        'sessionId': sessionId,
+        'update': {
+          'sessionUpdate': 'tool_call',
+          'toolCallId': 'call-bg',
+          'title': 'dart run tool/run_tests.dart',
+          'kind': 'execute',
+          'status': 'pending',
+          'rawInput': {
+            'command': 'dart run tool/run_tests.dart',
+            'background': true,
+          },
+        },
+      },
+    );
+
+    expect(
+      await update,
+      const AcpToolCallUpdate(
+        toolCallId: 'call-bg',
+        title: 'dart run tool/run_tests.dart',
+        status: AcpToolCallStatus.pending,
+        background: true,
+      ),
+    );
+  });
+
+  test('loadHistory replays the session without emitting live updates', () async {
+    session = await openSession();
+    final emitted = <AcpSessionUpdate>[];
+    final sub = session.updates.listen(emitted.add);
+    agent.connection.onRequest('session/load', (params) {
+      agent.connection.notify(
+        'session/update',
+        params: {
+          'sessionId': sessionId,
+          'update': {
+            'sessionUpdate': 'agent_message_chunk',
+            'content': {'type': 'text', 'text': 'replayed'},
+          },
+        },
+      );
+      return acpd.LoadSessionResponse().toJson();
+    });
+
+    final history = await session.loadHistory();
+
+    expect(history, const [
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'replayed',
+        isThought: false,
+      ),
+    ]);
+    await pumpEventQueue();
+    expect(emitted, isEmpty);
+    await sub.cancel();
+  });
+
+  test(
+    'loadHistory collects past bootstrap suppression on a loaded session',
+    () async {
+      agent.connection.onRequest(
+        'session/load',
+        (params) => acpd.LoadSessionResponse().toJson(),
+      );
+      session = await conn.loadSession(sessionId: sessionId, cwd: cwd);
+
+      final emitted = <AcpSessionUpdate>[];
+      final sub = session.updates.listen(emitted.add);
+      agent.connection.notify(
+        'session/update',
+        params: {
+          'sessionId': sessionId,
+          'update': {
+            'sessionUpdate': 'agent_message_chunk',
+            'content': {'type': 'text', 'text': 'bootstrap'},
+          },
+        },
+      );
+      await pumpEventQueue();
+      expect(emitted, isEmpty, reason: 'load/resume replay stays suppressed');
+
+      agent.connection.onRequest('session/load', (params) {
+        agent.connection.notify(
+          'session/update',
+          params: {
+            'sessionId': sessionId,
+            'update': {
+              'sessionUpdate': 'agent_message_chunk',
+              'content': {'type': 'text', 'text': 'reconciled'},
+            },
+          },
+        );
+        return acpd.LoadSessionResponse().toJson();
+      });
+      final history = await session.loadHistory();
+      expect(
+        history,
+        const [
+          AcpMessageChunk(
+            role: AcpRole.assistant,
+            content: 'reconciled',
+            isThought: false,
+          ),
+        ],
+      );
+      expect(emitted, isEmpty, reason: 'reconciliation never leaks live');
+      await sub.cancel();
+    },
+  );
+
+  test('loadHistory is empty when the agent does not negotiate load', () async {
+    // Rebuild a connection whose initialize omits `loadSession`.
+    await conn.dispose();
+    await agent.close();
+    agent = acpd_test.MockAgent();
+    agentCtx = acpd.AgentContext(agent.connection);
+    transport = _PairAcpTransport(agent.clientTransport);
+    conn = AcpAgentConnection(
+      transport: transport,
+      logger: AcpFrameLogger(enableDiskLog: false),
+      translator: const GeminiAcpTranslator(),
+    );
+    agent.connection.onRequest('initialize', (params) {
+      return acpd.InitializeResponse(
+        protocolVersion: acpd.ProtocolVersion.v1,
+      ).toJson();
+    });
+    await conn.initialize(clientName: 'teampilot', clientVersion: '1.0.0');
+    agent.connection.onRequest('session/new', (params) {
+      return acpd.NewSessionResponse(sessionId: sessionId).toJson();
+    });
+    session = await openSession();
+
+    expect(await session.loadHistory(), isEmpty);
   });
 
   test(

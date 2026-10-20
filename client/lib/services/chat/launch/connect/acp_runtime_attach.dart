@@ -12,6 +12,7 @@ import '../../../acp/acp_frame_logger.dart';
 import '../../../acp/acp_session_runtime.dart';
 import '../../../acp/acp_ssh_transport.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
+import '../../../agent_status/seat_lease_port.dart';
 import '../../../cli/opencode/capabilities/acp.dart'
     show opencodeEnableQuestionToolEnvKey;
 import '../../../ssh/ssh_member_session.dart';
@@ -505,6 +506,10 @@ class AcpRuntimeAttach {
       tool: cli,
       seatMemberId: personal ? AcpChatRuntimeCubit.acpMemberId : memberId!,
       attention: _host.agentAttentionCubit,
+      seatLeases: switch (_host.seatLeaseCubit) {
+        final SeatBackgroundLeasePort port => port,
+        _ => null,
+      },
       transcript: _transcript(session, memberId: memberId, personal: personal),
       agentSession: _agentSessionStore(session, memberId: memberId, personal: personal),
     )..ensureStrings(_host.acpChatStrings?.call(cli) ?? defaultAcpChatStrings);

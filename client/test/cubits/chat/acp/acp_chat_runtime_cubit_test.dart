@@ -17,6 +17,7 @@ import 'package:teampilot/services/agent_status/agent_attention_port.dart';
 import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/agent_status/agent_status_event.dart';
+import 'package:teampilot/services/agent_status/seat_lease_port.dart';
 import '../../../support/in_memory_filesystem.dart';
 
 class _RecordingAttention implements AgentAttentionPort {
@@ -39,8 +40,34 @@ class _RecordingAttention implements AgentAttentionPort {
   void clearSession(String sessionId) {}
 }
 
+/// Records the background keep-alive lease the ACP cubit holds while it polls
+/// an out-of-turn shell task.
+class _RecordingSeatLeases implements SeatBackgroundLeasePort {
+  final acquires = <({String sessionId, String memberId, String leaseId})>[];
+  final releases = <({String sessionId, String memberId, String leaseId})>[];
+
+  @override
+  void acquireBackgroundTask({
+    required String sessionId,
+    required String memberId,
+    required String leaseId,
+    required DateTime acquiredAt,
+  }) {
+    acquires.add((sessionId: sessionId, memberId: memberId, leaseId: leaseId));
+  }
+
+  @override
+  void releaseBackgroundTask({
+    required String sessionId,
+    required String memberId,
+    required String leaseId,
+  }) {
+    releases.add((sessionId: sessionId, memberId: memberId, leaseId: leaseId));
+  }
+}
+
 /// All-stub [AcpSessionRuntimeApi] for cubit tests.
-class _FakeAcpRuntime implements AcpSessionRuntimeApi {
+class _FakeAcpRuntime implements AcpSessionRuntimeApi, AcpHistorySyncApi {
   final updatesController = StreamController<AcpSessionUpdate>.broadcast();
   final permissionsController =
       StreamController<AgentPermissionRequest>.broadcast();
@@ -61,10 +88,26 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   AcpAskHoldReply? lastAskReply;
   AcpPlanHoldReply? lastPlanReply;
 
+  /// Replay returned by [loadHistory]; set by history-sync tests.
+  List<AcpSessionUpdate> historyUpdates = const [];
+  int loadHistoryCalls = 0;
+  Object? loadHistoryError;
+  Completer<void>? loadHistoryGate;
+
   /// Exit-code future the cubit's exit watcher observes (null = never).
   Completer<int>? agentExit;
 
   void emit(AcpSessionUpdate update) => updatesController.add(update);
+
+  @override
+  Future<List<AcpSessionUpdate>> loadHistory() async {
+    loadHistoryCalls++;
+    final gate = loadHistoryGate;
+    if (gate != null) await gate.future;
+    final error = loadHistoryError;
+    if (error != null) throw error;
+    return historyUpdates;
+  }
 
   @override
   Future<void> start({
@@ -178,6 +221,8 @@ void main() {
     AgentAttentionCubit? attention,
     AcpChatTranscriptWriter? transcript,
     AcpAgentSessionStore? agentSession,
+    SeatBackgroundLeasePort? seatLeases,
+    Duration? backgroundSyncInterval,
   }) {
     final cubit = AcpChatRuntimeCubit(
       runtime: runtime,
@@ -186,6 +231,8 @@ void main() {
       attention: attention,
       transcript: transcript,
       agentSession: agentSession,
+      seatLeases: seatLeases,
+      backgroundSyncInterval: backgroundSyncInterval,
     )..ensureStrings(_testStrings);
     return cubit;
   }
@@ -1729,6 +1776,625 @@ void main() {
     await pumpEventQueue();
     expect(cubit.state.phase, AcpChatPhase.ready);
   });
+
+  test('syncHistory merges out-of-turn messages into the live transcript', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+    cubit.sendPrompt('run the suite');
+    await pumpEventQueue();
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'Started',
+        isThought: false,
+      ),
+    );
+    runtime.emit(const AcpStop(kind: AcpStopKind.endTurn));
+    await pumpEventQueue();
+    expect(cubit.state.messages, hasLength(2));
+
+    runtime.historyUpdates = const [
+      AcpMessageChunk(role: AcpRole.user, content: 'run the suite', isThought: false),
+      AcpMessageChunk(role: AcpRole.assistant, content: 'Started', isThought: false),
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: '\n\nAll tests passed',
+        isThought: false,
+      ),
+    ];
+    await cubit.syncHistory();
+
+    // Contiguous out-of-turn assistant chunks merge into the live bubble, so
+    // the missed summary lands without opening a duplicate message.
+    expect(cubit.state.messages, hasLength(2));
+    expect(_textOf(cubit.state.messages.last), 'Started\n\nAll tests passed');
+    final mergedId = cubit.state.messages.last.id;
+
+    // Idempotent: a second reconcile keeps the local id and content.
+    await cubit.syncHistory();
+    expect(cubit.state.messages, hasLength(2));
+    expect(cubit.state.messages.last.id, mergedId);
+    expect(_textOf(cubit.state.messages.last), 'Started\n\nAll tests passed');
+    await cubit.close();
+  });
+
+  test('syncHistory is a no-op while a turn is in flight', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+    final callsBefore = runtime.loadHistoryCalls;
+    runtime.historyUpdates = const [
+      AcpMessageChunk(role: AcpRole.assistant, content: 'missed', isThought: false),
+    ];
+    cubit.sendPrompt('keep working');
+    await pumpEventQueue();
+    await cubit.syncHistory();
+    expect(runtime.loadHistoryCalls, callsBefore);
+    expect(cubit.state.inTurn, isTrue);
+    runtime.emit(const AcpStop(kind: AcpStopKind.endTurn));
+    await pumpEventQueue();
+    await cubit.close();
+  });
+
+  test('background tool call polls until the out-of-turn summary lands', () async {
+    final cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: 's1',
+      tool: CliTool.gemini,
+      backgroundSyncInterval: const Duration(milliseconds: 10),
+      backgroundSyncWindow: const Duration(minutes: 1),
+    )..ensureStrings(_testStrings);
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+
+    const running = <AcpSessionUpdate>[
+      AcpMessageChunk(role: AcpRole.user, content: 'run', isThought: false),
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'Started',
+        isThought: false,
+      ),
+      AcpToolCallUpdate(
+        toolCallId: 'bg-1',
+        title: 'run_tests',
+        status: AcpToolCallStatus.pending,
+        background: true,
+      ),
+    ];
+    runtime.historyUpdates = running;
+
+    cubit.sendPrompt('run');
+    await pumpEventQueue();
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'Started',
+        isThought: false,
+      ),
+    );
+    runtime.emit(
+      const AcpToolCallUpdate(
+        toolCallId: 'bg-1',
+        title: 'run_tests',
+        status: AcpToolCallStatus.pending,
+        background: true,
+      ),
+    );
+    await pumpEventQueue();
+    runtime.emit(const AcpStop(kind: AcpStopKind.endTurn));
+    await pumpEventQueue();
+
+    // The shell is still running: polling continues with no change.
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    await pumpEventQueue();
+    final callsWhileRunning = runtime.loadHistoryCalls;
+    expect(callsWhileRunning, greaterThan(1));
+    expect(
+      _textOf(cubit.state.messages.last),
+      isNot(contains('All tests passed')),
+    );
+
+    // The shell finished: the next poll picks the summary up.
+    runtime.historyUpdates = const [
+      ...running,
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: '\n\nAll tests passed',
+        isThought: false,
+      ),
+    ];
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    await pumpEventQueue();
+
+    expect(runtime.loadHistoryCalls, greaterThan(callsWhileRunning));
+    expect(_textOf(cubit.state.messages.last), contains('All tests passed'));
+    await cubit.close();
+  });
+
+  test('start reconciles a stale transcript against the agent history', () async {
+    final fs = InMemoryFilesystem();
+    final transcript = AcpChatTranscriptWriter(fs: fs, path: '/tp/acp.jsonl');
+    await transcript.saveMessages([
+      AiMessage(
+        id: 'acp-u-live',
+        role: AiRole.user,
+        parts: const [AiTextPart(text: 'run')],
+      ),
+      AiMessage(
+        id: 'acp-a-live',
+        role: AiRole.assistant,
+        parts: const [AiTextPart(text: 'Started')],
+      ),
+    ]);
+    runtime.historyUpdates = const [
+      AcpMessageChunk(role: AcpRole.user, content: 'run', isThought: false),
+      AcpMessageChunk(role: AcpRole.assistant, content: 'Started', isThought: false),
+      AcpMessageChunk(role: AcpRole.assistant, content: '\n\nDone', isThought: false),
+    ];
+
+    final cubit = bootCubit(transcript: transcript);
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+
+    expect(runtime.loadHistoryCalls, 1);
+    expect(cubit.state.messages, hasLength(2));
+    expect(_textOf(cubit.state.messages.last), 'Started\n\nDone');
+    expect(cubit.state.messages.last.id, 'acp-a-live');
+    await cubit.close();
+  });
+
+  test('a prompt sent during history sync queues until the sync finishes', () async {
+    final gate = Completer<void>();
+    runtime.loadHistoryGate = gate;
+
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+
+    // The initial reconcile is blocked on the gate; the prompt must not race
+    // the replay buffer's collection window at the session level.
+    expect(runtime.loadHistoryCalls, 1);
+    expect(cubit.sendPrompt('run the suite'), isTrue);
+    await pumpEventQueue();
+    expect(runtime.prompts, isEmpty);
+    expect(cubit.state.inTurn, isTrue);
+    expect(cubit.state.messages.last.role, AiRole.user);
+
+    gate.complete();
+    await pumpEventQueue();
+
+    expect(runtime.prompts, ['run the suite']);
+    await cubit.close();
+  });
+
+  /// Arms the watch for a live turn that opens background task [toolCallId].
+  Future<void> sendBackgroundTurn(
+    AcpChatRuntimeCubit cubit, {
+    String toolCallId = 'bg-1',
+  }) async {
+    cubit.sendPrompt('run');
+    await pumpEventQueue();
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'Started',
+        isThought: false,
+      ),
+    );
+    runtime.emit(
+      AcpToolCallUpdate(
+        toolCallId: toolCallId,
+        title: 'run_tests',
+        status: AcpToolCallStatus.pending,
+        background: true,
+      ),
+    );
+    await pumpEventQueue();
+    runtime.emit(const AcpStop(kind: AcpStopKind.endTurn));
+    await pumpEventQueue();
+  }
+
+  /// Polls [condition] in real time (up to [timeout]) so the background-watch
+  /// tests do not hinge on a fixed delay surviving full-suite load.
+  Future<void> waitFor(
+    bool Function() condition, {
+    Duration timeout = const Duration(seconds: 10),
+    String? reason,
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (!condition()) {
+      if (DateTime.now().isAfter(deadline)) {
+        fail(reason ?? 'condition not met within $timeout');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await pumpEventQueue();
+    }
+  }
+
+  test(
+    'background watch holds the seat lease then releases it on completion',
+    () async {
+      final leases = _RecordingSeatLeases();
+      final cubit = AcpChatRuntimeCubit(
+        runtime: runtime,
+        sessionId: 's1',
+        tool: CliTool.gemini,
+        seatLeases: leases,
+        backgroundSyncInterval: const Duration(milliseconds: 10),
+        backgroundSyncWindow: const Duration(minutes: 1),
+      )..ensureStrings(_testStrings);
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      await pumpEventQueue();
+
+      const started = <AcpSessionUpdate>[
+        AcpMessageChunk(role: AcpRole.user, content: 'run', isThought: false),
+        AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: 'Started',
+          isThought: false,
+        ),
+        AcpToolCallUpdate(
+          toolCallId: 'bg-1',
+          title: 'run_tests',
+          status: AcpToolCallStatus.pending,
+          background: true,
+        ),
+      ];
+      runtime.historyUpdates = started;
+
+      await sendBackgroundTurn(cubit);
+      // The seat lease is what makes the surfaces show "background work
+      // running" instead of `done` for the whole silent wait.
+      await waitFor(() => leases.acquires.isNotEmpty);
+      expect(leases.acquires, hasLength(1));
+      expect(leases.acquires.single.memberId, 'acp');
+      expect(
+        leases.acquires.single.leaseId,
+        AcpChatRuntimeCubit.backgroundLeaseId,
+      );
+      expect(leases.releases, isEmpty);
+
+      // First tick only establishes the arm baseline (the launch ack) — the
+      // still-running replay must not look like a completion.
+      final callsBeforeRunningPoll = runtime.loadHistoryCalls;
+      await waitFor(() => runtime.loadHistoryCalls > callsBeforeRunningPoll);
+      expect(leases.releases, isEmpty);
+
+      // The shell finished: the replay now carries the out-of-turn summary.
+      runtime.historyUpdates = const [
+        ...started,
+        AcpMessageChunk(
+          role: AcpRole.assistant,
+          content: '\n\nAll done',
+          isThought: false,
+        ),
+      ];
+      await waitFor(() => leases.releases.isNotEmpty);
+
+      expect(leases.releases, hasLength(1));
+      expect(
+        leases.releases.single.leaseId,
+        AcpChatRuntimeCubit.backgroundLeaseId,
+      );
+      expect(_textOf(cubit.state.messages.last), contains('All done'));
+      await cubit.close();
+    },
+  );
+
+  test('background watch survives a replay that launches another task', () async {
+    final leases = _RecordingSeatLeases();
+    final cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: 's1',
+      tool: CliTool.gemini,
+      seatLeases: leases,
+      backgroundSyncInterval: const Duration(milliseconds: 10),
+      backgroundSyncWindow: const Duration(minutes: 1),
+    )..ensureStrings(_testStrings);
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+
+    const first = <AcpSessionUpdate>[
+      AcpMessageChunk(role: AcpRole.user, content: 'run', isThought: false),
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'Started',
+        isThought: false,
+      ),
+      AcpToolCallUpdate(
+        toolCallId: 'bg-1',
+        title: 'run_tests',
+        status: AcpToolCallStatus.pending,
+        background: true,
+      ),
+    ];
+    runtime.historyUpdates = first;
+    await sendBackgroundTurn(cubit);
+    await waitFor(() => leases.acquires.isNotEmpty);
+    expect(leases.acquires, hasLength(1));
+
+    final callsBeforeFirstPoll = runtime.loadHistoryCalls;
+    await waitFor(() => runtime.loadHistoryCalls > callsBeforeFirstPoll);
+
+    // First task done, but the agent immediately launches a second one.
+    runtime.historyUpdates = const [
+      ...first,
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: '\n\nfirst pass done',
+        isThought: false,
+      ),
+      AcpToolCallUpdate(
+        toolCallId: 'bg-2',
+        title: 'run_tests',
+        status: AcpToolCallStatus.pending,
+        background: true,
+      ),
+    ];
+    final callsBeforeSecondPoll = runtime.loadHistoryCalls;
+    await waitFor(() => runtime.loadHistoryCalls > callsBeforeSecondPoll);
+    expect(
+      leases.releases,
+      isEmpty,
+      reason: 'a new background tool call keeps the watch alive',
+    );
+
+    // Second task done, no further launch.
+    runtime.historyUpdates = const [
+      ...first,
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: '\n\nfirst pass done',
+        isThought: false,
+      ),
+      AcpToolCallUpdate(
+        toolCallId: 'bg-2',
+        title: 'run_tests',
+        status: AcpToolCallStatus.pending,
+        background: true,
+      ),
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: '\n\nsecond pass done',
+        isThought: false,
+      ),
+    ];
+    await waitFor(() => leases.releases.isNotEmpty);
+    expect(leases.releases, hasLength(1));
+    await cubit.close();
+  });
+
+  test('closing the session releases a live background lease', () async {
+    final leases = _RecordingSeatLeases();
+    final cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: 's1',
+      tool: CliTool.gemini,
+      seatLeases: leases,
+      backgroundSyncInterval: const Duration(milliseconds: 10),
+      backgroundSyncWindow: const Duration(minutes: 1),
+    )..ensureStrings(_testStrings);
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+    runtime.historyUpdates = const [
+      AcpMessageChunk(role: AcpRole.user, content: 'run', isThought: false),
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'Started',
+        isThought: false,
+      ),
+      AcpToolCallUpdate(
+        toolCallId: 'bg-1',
+        title: 'run_tests',
+        status: AcpToolCallStatus.pending,
+        background: true,
+      ),
+    ];
+    await sendBackgroundTurn(cubit);
+    await waitFor(() => leases.acquires.isNotEmpty);
+    expect(leases.acquires, hasLength(1));
+
+    await cubit.close();
+    expect(leases.releases, hasLength(1));
+  });
+
+  test('a foreground turn holds no background lease', () async {
+    final leases = _RecordingSeatLeases();
+    final cubit = bootCubit(seatLeases: leases);
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+
+    cubit.sendPrompt('hi');
+    await pumpEventQueue();
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'hello',
+        isThought: false,
+      ),
+    );
+    await pumpEventQueue();
+    runtime.emit(const AcpStop(kind: AcpStopKind.endTurn));
+    await pumpEventQueue();
+
+    expect(leases.acquires, isEmpty);
+    await cubit.close();
+  });
+
+  test('a fast background task releases the lease on the first poll', () async {
+    final leases = _RecordingSeatLeases();
+    final cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: 's1',
+      tool: CliTool.gemini,
+      seatLeases: leases,
+      backgroundSyncInterval: const Duration(milliseconds: 10),
+      backgroundSyncWindow: const Duration(minutes: 1),
+    )..ensureStrings(_testStrings);
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+
+    // The task is already finished by the time the first poll runs.
+    runtime.historyUpdates = const [
+      AcpMessageChunk(role: AcpRole.user, content: 'run', isThought: false),
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'Started',
+        isThought: false,
+      ),
+      AcpToolCallUpdate(
+        toolCallId: 'bg-1',
+        title: 'run_tests',
+        status: AcpToolCallStatus.pending,
+        background: true,
+      ),
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: '\n\nquick result',
+        isThought: false,
+      ),
+    ];
+    await sendBackgroundTurn(cubit);
+    await waitFor(() => leases.acquires.isNotEmpty);
+    expect(leases.acquires, hasLength(1));
+
+    await waitFor(() => leases.releases.isNotEmpty);
+    expect(leases.releases, hasLength(1));
+    expect(_textOf(cubit.state.messages.last), contains('quick result'));
+    await cubit.close();
+  });
+
+  test('a follow-up turn does not end a live background watch', () async {
+    final leases = _RecordingSeatLeases();
+    final cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: 's1',
+      tool: CliTool.gemini,
+      seatLeases: leases,
+      backgroundSyncInterval: const Duration(milliseconds: 10),
+      backgroundSyncWindow: const Duration(minutes: 1),
+    )..ensureStrings(_testStrings);
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+
+    const started = <AcpSessionUpdate>[
+      AcpMessageChunk(role: AcpRole.user, content: 'run', isThought: false),
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'Started',
+        isThought: false,
+      ),
+      AcpToolCallUpdate(
+        toolCallId: 'bg-1',
+        title: 'run_tests',
+        status: AcpToolCallStatus.pending,
+        background: true,
+      ),
+    ];
+    runtime.historyUpdates = started;
+    await sendBackgroundTurn(cubit);
+    await waitFor(() => leases.acquires.isNotEmpty);
+    expect(leases.acquires, hasLength(1));
+
+    final callsBeforeArmPoll = runtime.loadHistoryCalls;
+    await waitFor(() => runtime.loadHistoryCalls > callsBeforeArmPoll);
+    expect(leases.releases, isEmpty);
+
+    // A second (foreground) turn arrives while the shell is still running.
+    runtime.historyUpdates = const [
+      ...started,
+      AcpMessageChunk(role: AcpRole.user, content: 'status?', isThought: false),
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'still working',
+        isThought: false,
+      ),
+    ];
+    cubit.sendPrompt('status?');
+    await pumpEventQueue();
+    runtime.emit(
+      const AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'still working',
+        isThought: false,
+      ),
+    );
+    await pumpEventQueue();
+    runtime.emit(const AcpStop(kind: AcpStopKind.endTurn));
+    await pumpEventQueue();
+
+    final callsBeforeFollowUpPoll = runtime.loadHistoryCalls;
+    await waitFor(() => runtime.loadHistoryCalls > callsBeforeFollowUpPoll);
+    expect(
+      leases.releases,
+      isEmpty,
+      reason: 'the follow-up turn must not release the background lease',
+    );
+
+    // The shell finally finishes.
+    runtime.historyUpdates = const [
+      ...started,
+      AcpMessageChunk(role: AcpRole.user, content: 'status?', isThought: false),
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'still working',
+        isThought: false,
+      ),
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: '\n\nshell done',
+        isThought: false,
+      ),
+    ];
+    await waitFor(() => leases.releases.isNotEmpty);
+    expect(leases.releases, hasLength(1));
+    expect(_textOf(cubit.state.messages.last), contains('shell done'));
+    await cubit.close();
+  });
 }
 
 /// Throws on [readString] for [throwPath] so hydrate fails without touching disk.
@@ -1771,3 +2437,8 @@ List<String> _messageShape(List<AiMessage> messages) {
         }].join('|')}',
   ];
 }
+
+String _textOf(AiMessage message) => [
+  for (final part in message.parts)
+    if (part is AiTextPart) part.text,
+].join();

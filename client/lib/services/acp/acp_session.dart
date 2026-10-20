@@ -103,7 +103,12 @@ final class AcpMessageChunk extends AcpSessionUpdate {
 
 /// A tool call initiation or status/content update.
 final class AcpToolCallUpdate extends AcpSessionUpdate {
-  const AcpToolCallUpdate({required this.toolCallId, this.title, this.status});
+  const AcpToolCallUpdate({
+    required this.toolCallId,
+    this.title,
+    this.status,
+    this.background = false,
+  });
 
   final String toolCallId;
 
@@ -113,16 +118,24 @@ final class AcpToolCallUpdate extends AcpSessionUpdate {
   /// The reported status (omitted fields keep the previous status).
   final AcpToolCallStatus? status;
 
+  /// Whether the agent launched this shell/tool call in the background.
+  ///
+  /// ACP v1 has no out-of-turn update stream, so background work started here
+  /// can outlive the prompt turn without any further `session/update` frames.
+  /// The chat layer uses this flag to start history reconciliation.
+  final bool background;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is AcpToolCallUpdate &&
           toolCallId == other.toolCallId &&
           title == other.title &&
-          status == other.status;
+          status == other.status &&
+          background == other.background;
 
   @override
-  int get hashCode => Object.hash(toolCallId, title, status);
+  int get hashCode => Object.hash(toolCallId, title, status, background);
 }
 
 /// The agent's execution plan (each update replaces the previous plan).
@@ -246,6 +259,9 @@ class AcpAgentSession {
   AcpAgentSession({
     required AcpAgentConnection connection,
     required this.sessionId,
+    required this.cwd,
+    this.mcpServers = const [],
+    this.meta = const {},
     this.permissionTimeout = defaultPermissionTimeout,
     this.permissionPolicy = LaunchSecurityPolicy.fullAccess,
     bool suppressBootstrapUpdates = false,
@@ -291,6 +307,17 @@ class AcpAgentSession {
   /// The ACP session identifier from `session/new`.
   final String sessionId;
 
+  /// Directory the session was opened with; `session/load` requires it again
+  /// when history reconciliation replays the session.
+  final String cwd;
+
+  /// MCP servers the session was opened with; `session/load` requires them
+  /// again so a replay re-attaches the same servers.
+  final List<acpd.McpServer> mcpServers;
+
+  /// Protocol metadata the session was opened with.
+  final Map<String, Object?> meta;
+
   /// How long the permission hold waits before answering the agent with the
   /// cancelled default outcome.
   final Duration permissionTimeout;
@@ -331,6 +358,11 @@ class AcpAgentSession {
   /// [prompt]. Set for load/resume sessions: the agent replays its whole
   /// history, but the app transcript is the UI source of truth.
   bool _suppressBootstrap;
+
+  /// True while [loadHistory] is collecting a replay. Bootstrap suppression
+  /// does not apply to an explicit reconciliation request.
+  bool _collectingHistory = false;
+  List<AcpSessionUpdate>? _historyBuffer;
 
   bool _disposed = false;
 
@@ -378,6 +410,47 @@ class AcpAgentSession {
     } finally {
       _promptInFlight = false;
       _suppressAbort = false;
+    }
+  }
+
+  /// Replays the whole session through `session/load` and returns the mapped
+  /// history without emitting it on [updates].
+  ///
+  /// ACP v1 has no out-of-turn update stream: after `end_turn` the agent can
+  /// keep working on background tasks and only records the resulting messages
+  /// in its own history. The chat layer calls this to reconcile that history
+  /// with the app transcript (see `AcpChatRuntimeCubit.syncHistory`).
+  ///
+  /// Returns an empty list when the session is disposed. Throws [StateError]
+  /// while a prompt is in flight — callers must wait for the stop event.
+  Future<List<AcpSessionUpdate>> loadHistory({
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    if (_disposed) return const [];
+    if (_connection.negotiatedCapabilities?.loadSession != true) return const [];
+    if (_promptInFlight) {
+      throw StateError(
+        'Cannot load ACP history while a prompt turn is in flight.',
+      );
+    }
+    if (_collectingHistory) return const [];
+    _collectingHistory = true;
+    final buffer = <AcpSessionUpdate>[];
+    _historyBuffer = buffer;
+    try {
+      await _client.client.loadSession(
+        acpd.LoadSessionRequest(
+          sessionId: sessionId,
+          cwd: cwd,
+          mcpServers: mcpServers,
+          meta: meta,
+        ),
+        timeout: timeout,
+      );
+      return List<AcpSessionUpdate>.unmodifiable(buffer);
+    } finally {
+      _collectingHistory = false;
+      _historyBuffer = null;
     }
   }
 
@@ -468,7 +541,10 @@ class AcpAgentSession {
 
   void _onSessionUpdate(Object? params) {
     if (_disposed) return;
-    if (_suppressBootstrap) return;
+    // Bootstrap suppression hides the load/resume replay from [updates], but
+    // an explicit [loadHistory] reconciliation must still observe it.
+    final collecting = _collectingHistory;
+    if (_suppressBootstrap && !collecting) return;
     if (params is! Map) return;
     final raw = Map<String, Object?>.from(params);
     final acpd.SessionUpdateNotification notification;
@@ -477,6 +553,7 @@ class AcpAgentSession {
     } on Object catch (error, stackTrace) {
       final notice = parseAcpAuthNotice(raw);
       if (notice != null) {
+        if (collecting) return;
         _connection.lastAuthNotice = notice;
         _emit(notice);
         return;
@@ -489,7 +566,12 @@ class AcpAgentSession {
     }
     if (notification.sessionId != sessionId) return;
     final mapped = _mapUpdate(notification.update);
-    if (mapped != null) _emit(mapped);
+    if (mapped == null) return;
+    if (collecting) {
+      _historyBuffer?.add(mapped);
+      return;
+    }
+    _emit(mapped);
   }
 
   Future<Object?> _onRequestPermission(Object? params) async {
@@ -669,12 +751,14 @@ class AcpAgentSession {
           toolCallId: toolCall.toolCallId,
           title: toolCall.title,
           status: _mapToolCallStatus(toolCall.status),
+          background: _isBackgroundToolCall(toolCall.rawInput),
         );
       case acpd.ToolCallStatusUpdate(:final update):
         return AcpToolCallUpdate(
           toolCallId: update.toolCallId,
           title: update.title,
           status: _mapToolCallStatus(update.status),
+          background: _isBackgroundToolCall(update.rawInput),
         );
       case acpd.PlanUpdate(:final plan):
         return AcpPlan(
@@ -702,6 +786,13 @@ class AcpAgentSession {
     final content = chunk.content;
     if (content is acpd.TextContentBlock) return content.text;
     return '';
+  }
+
+  /// OpenCode's shell tool marks out-of-turn command launches in `rawInput`.
+  bool _isBackgroundToolCall(Object? rawInput) {
+    if (rawInput is! Map) return false;
+    return rawInput['background'] == true ||
+        rawInput['run_in_background'] == true;
   }
 
   AcpToolCallStatus? _mapToolCallStatus(acpd.ToolCallStatus? status) {

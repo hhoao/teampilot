@@ -46,6 +46,48 @@ void main() {
       expect(cubit.state.leases, isEmpty);
     });
 
+    group('SeatBackgroundLeasePort', () {
+      test('acquire holds a backgroundTask lease on the seat', () {
+        final cubit = SeatLeaseCubit(pruneInterval: null);
+        addTearDown(cubit.close);
+        cubit.acquireBackgroundTask(
+          sessionId: 's',
+          memberId: 'm',
+          leaseId: 'acp-background-task',
+          acquiredAt: DateTime(2026, 1, 1),
+        );
+        expect(cubit.state.seatHasLeases(sessionId: 's', memberId: 'm'), isTrue);
+        expect(
+          cubit
+              .state
+              .leases[agentSeatKey(sessionId: 's', memberId: 'm')]!['acp-background-task']
+              ?.kind,
+          SeatLeaseKind.backgroundTask,
+        );
+      });
+
+      test('release drops the backgroundTask lease, keeping others', () {
+        final cubit = SeatLeaseCubit(pruneInterval: null);
+        addTearDown(cubit.close);
+        cubit.acquire(sessionId: 's', memberId: 'm', lease: _lease('call_1'));
+        cubit.acquireBackgroundTask(
+          sessionId: 's',
+          memberId: 'm',
+          leaseId: 'acp-background-task',
+          acquiredAt: DateTime(2026, 1, 1),
+        );
+        cubit.releaseBackgroundTask(
+          sessionId: 's',
+          memberId: 'm',
+          leaseId: 'acp-background-task',
+        );
+        expect(
+          cubit.state.leases[agentSeatKey(sessionId: 's', memberId: 'm')]?.keys,
+          ['call_1'],
+        );
+      });
+    });
+
     test('leases are per-seat, not session-wide', () {
       final cubit = SeatLeaseCubit(pruneInterval: null);
       addTearDown(cubit.close);
