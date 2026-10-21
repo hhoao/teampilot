@@ -29,6 +29,7 @@ void main() {
             required session,
             required workspace,
             required launchTarget,
+            extraMcpServers,
             agentStatus,
           }) async {
             seenSession = session;
@@ -89,6 +90,7 @@ void main() {
             required session,
             required workspace,
             required launchTarget,
+            extraMcpServers,
             agentStatus,
           }) async {
             seen = agentStatus;
@@ -118,6 +120,56 @@ void main() {
     );
 
     expect(seen, same(endpoint));
+  });
+
+  test('forwards extra MCP servers to simple connect', () async {
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      cli: CliTool.opencode,
+      acp: true,
+      createdAt: 1,
+    );
+    Map<String, Map<String, Object?>>? seenExtra;
+
+    await prepareAcpLaunchEnvironment(
+      prepareSimpleConnect:
+          ({
+            required session,
+            required workspace,
+            required launchTarget,
+            extraMcpServers,
+            agentStatus,
+          }) async {
+            seenExtra = extraMcpServers;
+            return (
+              shellLaunch: ShellLaunchSpec(
+                plan: LaunchPlan(
+                  env: const {'OPENCODE_CONFIG_DIR': '/runtime/s1/opencode'},
+                  resume: false,
+                  taskId: 's1',
+                  cliTeamName: '',
+                  memberConfigDir: '/runtime/s1/opencode',
+                  resolvedRoots: const [],
+                ),
+                launchContext: const CliLaunchContext(
+                  team: TeamProfile(id: 't', name: 't'),
+                  member: TeamMemberConfig(id: 's1', name: 's1'),
+                ),
+              ),
+              warnings: const <String>[],
+              remoteCliPath: '',
+            );
+          },
+      session: session,
+      workspace: Workspace(workspaceId: 'w1', createdAt: 1),
+      launchTarget: RuntimeTarget.local(),
+      extraMcpServers: const {
+        'ssh': {'type': 'http', 'url': 'http://127.0.0.1:9/ssh/mcp'},
+      },
+    );
+
+    expect(seenExtra?.containsKey('ssh'), isTrue);
   });
 
   test('team prepare merges PATH with team connect env and maps MCP', () async {

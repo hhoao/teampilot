@@ -298,7 +298,7 @@ invoke `flutter test` directly.
 | Seat resolver (create stamp) | new mixed Claude/Codex follow preference; Gemini local mixed → true; native / Android / WSL / SSH / OpenCode → not stamped. |
 | Connect-time defense | binding true + SSH target still opens PTY, does not rewrite the binding. |
 | Executor | mixed ACP seat installs TeamBus, attaches ACP, does not open PTY, calls `onResult` so a second member fans out; mixed PTY sibling still shells; personal ACP shortcut unchanged. |
-| `openSession` | personal `mcpServers` empty; mixed list contains teammate-bus. |
+| `openSession` | personal `mcpServers` carries the app-owned servers (catalog / session SSH) composed for the seat; mixed list contains teammate-bus. Config-reading CLIs still get them from the staged config file. |
 | Transcript | personal path unchanged; two mixed ACP members write two files. |
 | Cubit | team `seatMemberId` is roster id; attention events use that id. |
 | Launcher | ACP `wake` → `sendPrompt`; PTY `wake` → stdin. |

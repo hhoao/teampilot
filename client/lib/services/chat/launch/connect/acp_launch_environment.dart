@@ -28,8 +28,13 @@ typedef AcpContributionEnvBuilder =
       Workspace workspace,
     );
 
-/// Tear-off of [SessionConnectOrchestrator.prepareSimpleConnect] without
-/// optional MCP / agent-status args (ACP personal launch does not need them).
+/// Tear-off of [SessionConnectOrchestrator.prepareSimpleConnect] for a personal
+/// ACP launch.
+///
+/// [extraMcpServers] carries the app-owned servers (catalog, team-composer,
+/// session SSH) exactly like the PTY simple-connect path, so config-reading
+/// CLIs (opencode/cursor) materialize them even though `session/new` MCP is
+/// not forwarded. [agentStatus] drives the question bridge.
 typedef AcpSimpleConnectPrepare =
     Future<
       ({
@@ -42,6 +47,7 @@ typedef AcpSimpleConnectPrepare =
       required AppSession session,
       required Workspace workspace,
       required RuntimeTarget launchTarget,
+      Map<String, Map<String, Object?>>? extraMcpServers,
       MemberAgentStatusEndpoint? agentStatus,
     });
 
@@ -81,11 +87,17 @@ const String acpTeammateBusUnmappedMessage =
     'ACP teammate-bus MCP did not map to a session server';
 
 /// PATH plus the env from PTY `contributeLaunch` / `stageSimpleSessionLaunch`.
+///
+/// [extraMcpServers] is forwarded to the staging so the seat's config files
+/// (`.claude.json`, `opencode.json`, `.cursor/mcp.json`, …) get the app-owned
+/// MCP servers. Personal ACP `session/new` MCP forwarding is separate and
+/// governed by the CLI's `forwardSessionNewMcpServers`.
 Future<Map<String, String>> prepareAcpLaunchEnvironment({
   required AcpSimpleConnectPrepare prepareSimpleConnect,
   required AppSession session,
   required Workspace workspace,
   required RuntimeTarget launchTarget,
+  Map<String, Map<String, Object?>> extraMcpServers = const {},
   MemberAgentStatusEndpoint? agentStatus,
   String? path,
 }) async {
@@ -93,6 +105,7 @@ Future<Map<String, String>> prepareAcpLaunchEnvironment({
     session: session,
     workspace: workspace,
     launchTarget: launchTarget,
+    extraMcpServers: extraMcpServers,
     agentStatus: agentStatus,
   );
   return {

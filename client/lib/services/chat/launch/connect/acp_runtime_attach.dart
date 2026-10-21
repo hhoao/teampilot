@@ -9,6 +9,7 @@ import '../../../acp/acp_chat_strings.dart';
 import '../../../acp/acp_chat_transcript.dart';
 import '../../../acp/acp_agent_session_store.dart';
 import '../../../acp/acp_frame_logger.dart';
+import '../../../acp/acp_mcp_servers.dart';
 import '../../../acp/acp_session_runtime.dart';
 import '../../../acp/acp_ssh_transport.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
@@ -151,6 +152,7 @@ class AcpRuntimeAttach {
     late final String executable;
     late final String sessionToolDir;
     late final Map<String, String> baseEnv;
+    var extraMcpServers = const <String, Map<String, Object?>>{};
     if (remote) {
       if (workspace == null) {
         throw StateError('Simple session requires workspace');
@@ -179,12 +181,26 @@ class AcpRuntimeAttach {
         cli: cli,
         skipPermissions: session.acpPermission.requiresDangerousExecution,
       );
+      // App-owned MCP (catalog / team-composer / session SSH) stages into the
+      // seat config files, matching the PTY simple-connect path. Personal ACP
+      // previously dropped these, so config-reading CLIs (opencode/cursor)
+      // never saw e.g. the session SSH server.
+      if (workspace != null) {
+        extraMcpServers = _personalExtraMcp(
+          session: session,
+          workspace: workspace,
+          cli: cli,
+          launchTarget: launchTarget,
+          agentStatus: agentStatus,
+        );
+      }
       var env = await _personalLaunchEnv(
         session,
         job,
         workspace,
         launchTarget,
         agentStatus: agentStatus,
+        extraMcpServers: extraMcpServers,
       );
       if (agentStatus != null && cli == CliTool.opencode) {
         env = {...env, opencodeEnableQuestionToolEnvKey: 'true'};
@@ -219,6 +235,7 @@ class AcpRuntimeAttach {
       sessionToolDir: sessionToolDir,
       workingDirectory: workingDirectory,
       baseEnv: baseEnv,
+      mcpServers: acpMcpServersFromExtra(extraMcpServers),
       permissionPolicy: session.acpPermission,
     );
     if (_host.isClosed) return true;
@@ -549,6 +566,7 @@ class AcpRuntimeAttach {
     Workspace? workspace,
     RuntimeTarget launchTarget, {
     MemberAgentStatusEndpoint? agentStatus,
+    Map<String, Map<String, Object?>> extraMcpServers = const {},
   }) async {
     final resolved = workspace ?? job.workspace;
     if (resolved == null) {
@@ -567,18 +585,66 @@ class AcpRuntimeAttach {
             required session,
             required workspace,
             required launchTarget,
+            extraMcpServers,
             agentStatus,
           }) => _host.sessionConnect.prepareSimpleConnect(
             session: session,
             workspace: workspace,
             launchTarget: launchTarget,
+            extraMcpServers: extraMcpServers,
             agentStatus: agentStatus,
           ),
       session: session,
       workspace: resolved,
       launchTarget: launchTarget,
+      extraMcpServers: extraMcpServers,
       agentStatus: agentStatus,
     );
+  }
+
+  /// App-owned extra MCP for a personal ACP seat: catalog, team-composer, and
+  /// session SSH, composed exactly like the PTY simple-connect path.
+  ///
+  /// Returns empty when the loopback gateway is unavailable (unwired shells or
+  /// tests), so attach never fails on a missing gateway.
+  Map<String, Map<String, Object?>> _personalExtraMcp({
+    required AppSession session,
+    required Workspace workspace,
+    required CliTool cli,
+    required RuntimeTarget launchTarget,
+    required MemberAgentStatusEndpoint? agentStatus,
+  }) {
+    final TeammateBusMcpGatewayPort gateway;
+    try {
+      gateway = _host.teammateBusMcpGateway;
+    } on Object {
+      return const {};
+    }
+    try {
+      return composeRuntimeExtraMcpServers(
+        extra: const {},
+        session: session,
+        memberId: session.sessionId,
+        cli: cli,
+        launchKind: launchTarget.kind,
+        cliRegistry: _host.cliRegistry,
+        catalogEndpoint: gateway.catalogMcpEndpoint,
+        composerEndpoint: gateway.teamComposerMcpEndpoint,
+        isLocalNative: _storage.context.mode == StorageBackendMode.native,
+        teamGenerationTokenIssuer: _host.teamGenerationTokenIssuer,
+        agentStatus: agentStatus,
+        workspace: workspace,
+        sessionSshMcpEndpoint: gateway.sessionSshMcpEndpoint,
+      );
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[acp-personal] extra MCP compose failed '
+        'session=${session.sessionId}: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return const {};
+    }
   }
 
   /// Resolve the opencode agent-status plugin endpoint for a terminal-less ACP

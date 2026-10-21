@@ -9,6 +9,7 @@ import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
@@ -411,6 +412,37 @@ void main() {
   );
 
   test(
+    'attachAcpRuntime stages app-owned MCP (catalog + session SSH) for a '
+    'personal seat',
+    () async {
+      final gateway = _FakeAgentStatusGateway();
+      final harness = _Harness(gateway: gateway);
+      final session = _personalSession(cli: CliTool.opencode);
+      final workspace = Workspace(
+        workspaceId: 'w1',
+        createdAt: 1,
+        folders: const [
+          WorkspaceFolder(
+            path: '/local',
+            targetId: WorkspaceFolder.localTargetId,
+          ),
+          WorkspaceFolder(path: '/home', targetId: 'ssh:home'),
+        ],
+      );
+
+      final handled = await harness.service.attachAcpRuntime(
+        _personalJob(session, workspace: workspace),
+        session,
+      );
+
+      expect(handled, isTrue);
+      final names = harness.runtime.mcpServers.map((s) => s.name).toSet();
+      expect(names, contains('teampilot'));
+      expect(names, contains('ssh'));
+    },
+  );
+
+  test(
     'attachAcpRuntime keeps the question tool off when no responder is wired',
     () async {
       final harness = _Harness();
@@ -528,6 +560,28 @@ class _FakeAgentStatusGateway implements TeammateBusMcpGatewayPort {
 
   @override
   Uri get agentStatusEndpoint => Uri.parse('http://127.0.0.1:9/agent-status');
+
+  @override
+  Uri get mcpEndpoint => Uri.parse('http://127.0.0.1:9/mcp');
+
+  @override
+  Uri get catalogMcpEndpoint => Uri.parse('http://127.0.0.1:9/catalog/mcp');
+
+  @override
+  Uri get teamComposerMcpEndpoint =>
+      Uri.parse('http://127.0.0.1:9/team-composer/mcp');
+
+  @override
+  Uri get sessionSshMcpEndpoint => Uri.parse('http://127.0.0.1:9/ssh/mcp');
+
+  @override
+  Uri get idleEndpoint => Uri.parse('http://127.0.0.1:9/idle');
+
+  @override
+  int get httpPort => 9;
+
+  @override
+  int get rawSocketPort => 10;
 
   @override
   String registerAgentStatusSession({
@@ -701,13 +755,13 @@ AppSession _personalSession({
   createdAt: 1,
 );
 
-SessionConnectJob _personalJob(AppSession session) {
-  final workspace = Workspace(workspaceId: 'w1', createdAt: 1);
+SessionConnectJob _personalJob(AppSession session, {Workspace? workspace}) {
+  final resolved = workspace ?? Workspace(workspaceId: 'w1', createdAt: 1);
   return SessionConnectJob(
     session: session,
-    request: SessionOpenRequest(session: session, workspace: workspace),
+    request: SessionOpenRequest(session: session, workspace: resolved),
     generation: 1,
-    workspace: workspace,
+    workspace: resolved,
     reason: LaunchReason.create,
   );
 }
