@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'app_session.dart';
+import 'team_config.dart';
 import 'workspace_folder.dart';
 
 /// Sidebar-row snapshot of an [AppSession].
@@ -9,6 +10,10 @@ import 'workspace_folder.dart';
 /// conversation list from one `sessions-index.json` instead of N
 /// `session.json` files. Folder metadata stays in the index for sidebar
 /// project/worktree grouping.
+///
+/// [acp]/[cli] stay in the index because they decide which runtime the row
+/// gets ([AppSession.acp] gates the terminal-less ACP chat), so a row must not
+/// be read as PTY while the full document is still unhydrated.
 @immutable
 class SessionListEntry {
   const SessionListEntry._({
@@ -23,6 +28,8 @@ class SessionListEntry {
     required this.pinned,
     required this.sortOrder,
     required this.folders,
+    required this.cli,
+    required this.acp,
   });
 
   factory SessionListEntry({
@@ -37,6 +44,8 @@ class SessionListEntry {
     bool pinned = false,
     int sortOrder = 0,
     List<WorkspaceFolder> folders = const [],
+    CliTool? cli,
+    bool acp = false,
   }) {
     return SessionListEntry._(
       sessionId: sessionId,
@@ -50,6 +59,8 @@ class SessionListEntry {
       pinned: pinned,
       sortOrder: sortOrder,
       folders: List<WorkspaceFolder>.unmodifiable(folders),
+      cli: cli,
+      acp: acp,
     );
   }
 
@@ -66,6 +77,8 @@ class SessionListEntry {
       pinned: json['pinned'] as bool? ?? false,
       sortOrder: json['sortOrder'] as int? ?? 0,
       folders: foldersFromJson(json['folders']),
+      cli: CliTool.tryParse(json['cli'] as String?),
+      acp: json['acp'] == true,
     );
   }
 
@@ -82,6 +95,8 @@ class SessionListEntry {
       pinned: session.pinned,
       sortOrder: session.sortOrder,
       folders: session.folders,
+      cli: session.cli,
+      acp: session.acp,
     );
   }
 
@@ -96,6 +111,12 @@ class SessionListEntry {
   final bool pinned;
   final int sortOrder;
   final List<WorkspaceFolder> folders;
+
+  /// Denormalized Simple launch CLI; null for team rows and legacy indexes.
+  final CliTool? cli;
+
+  /// Denormalized [AppSession.acp]; false for team rows and legacy indexes.
+  final bool acp;
 
   /// List-row [AppSession]: row fields plus folder metadata; members stay
   /// empty.
@@ -113,6 +134,8 @@ class SessionListEntry {
       pinned: pinned,
       sortOrder: sortOrder,
       folders: folders,
+      cli: cli,
+      acp: acp,
     );
   }
 
@@ -130,6 +153,8 @@ class SessionListEntry {
         'folders': [for (final folder in folders) folder.toJson()],
       if (purpose != SessionPurpose.normal) 'purpose': purpose.value,
       if (workflowId.isNotEmpty) 'workflowId': workflowId,
+      if (cli != null) 'cli': cli!.value,
+      'acp': acp,
     };
   }
 }

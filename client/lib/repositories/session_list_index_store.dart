@@ -20,7 +20,10 @@ class SessionListIndexStore {
   /// Serializes read-modify-write so concurrent upserts do not drop entries.
   static final _mutationLocks = <String, Lock>{};
 
-  static const indexVersion = 1;
+  /// Bumped when the entry shape changes so a stale file (e.g. rows written
+  /// before `acp`/`cli` were indexed) is rebuilt from the session documents
+  /// instead of leaving rows that read as PTY.
+  static const indexVersion = 2;
 
   String get _indexFile => _fs.layout.sessionsIndexFile(_workspaceId);
 

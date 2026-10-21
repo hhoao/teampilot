@@ -79,7 +79,9 @@ class SessionMemberBinding {
     'taskId': taskId,
     if (cli != null) 'cli': cli!.value,
     if (nativeSessionIds.isNotEmpty) 'nativeSessionIds': nativeSessionIds,
-    if (acp) 'acp': true,
+    // Always persisted (true or false), so a seat's mode never depends on a
+    // missing key being interpreted by a future default.
+    'acp': acp,
     if (acp)
       if (acpPermissionToJson(acpPermission) case final id?)
         'acpPermission': id,

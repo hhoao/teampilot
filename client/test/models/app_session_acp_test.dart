@@ -3,7 +3,7 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 
 void main() {
-  test('claude simple defaults acp false', () {
+  test('claude simple defaults acp false and persists it explicitly', () {
     final s = AppSession(
       sessionId: 's1',
       workspaceId: 'w1',
@@ -11,7 +11,10 @@ void main() {
       cli: CliTool.claude,
     );
     expect(s.acp, isFalse);
-    expect(s.toJson().containsKey('acp'), isFalse);
+    // Explicit false, so a later default/inference change cannot flip a
+    // persisted PTY session to ACP.
+    expect(s.toJson()['acp'], isFalse);
+    expect(AppSession.fromJson(s.toJson()).acp, isFalse);
   });
 
   test('gemini simple infers acp true when omitted', () {
@@ -64,6 +67,8 @@ void main() {
       acp: false,
     );
     expect(geminiOff.acp, isFalse);
+    expect(geminiOff.toJson()['acp'], isFalse);
+    expect(AppSession.fromJson(geminiOff.toJson()).acp, isFalse);
   });
 
   test('acpPermission omits fullAccess and round-trips ask only when acp', () {

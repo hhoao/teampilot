@@ -43,10 +43,12 @@ void main() {
     expect(kept.nativeSessionIds['cursor'], 'native-1');
   });
 
-  test('acp defaults false, omits JSON, round-trips true', () {
+  test('acp defaults false, persists explicitly, round-trips true', () {
     const off = SessionMemberBinding(rosterMemberId: 'lead', taskId: 't1');
     expect(off.acp, isFalse);
-    expect(off.toJson().containsKey('acp'), isFalse);
+    // Explicit false: a seat's mode must not depend on a missing key.
+    expect(off.toJson()['acp'], isFalse);
+    expect(SessionMemberBinding.fromJson(off.toJson()).acp, isFalse);
     expect(
       SessionMemberBinding.fromJson({
         'rosterMemberId': 'lead',

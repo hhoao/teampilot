@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -12,10 +13,15 @@ void main() {
   late Directory tmp;
   late SessionRepository repo;
   late String workspaceId;
+  late InMemoryFilesystem fs;
 
   setUp(() async {
     tmp = await Directory.systemTemp.createTemp('fs_session_repo_acp_');
-    repo = SessionRepository(rootDir: tmp.path, storage: fakeHomeStorage());
+    fs = InMemoryFilesystem();
+    repo = SessionRepository(
+      rootDir: tmp.path,
+      storage: fakeHomeStorage(filesystem: fs),
+    );
     final ws = await repo.createWorkspace([
       WorkspaceFolder(path: '/repo/main'),
     ]);
@@ -56,6 +62,50 @@ void main() {
     )).session;
     expect(session.acp, isFalse);
   });
+
+  test(
+    'session.json records acp explicitly so the mode is never inferred',
+    () async {
+      Map<String, dynamic> sessionJson(String sessionId) {
+        final key = fs.files.keys.singleWhere(
+          (k) => k.endsWith('/sessions/$sessionId/session.json'),
+        );
+        return jsonDecode(fs.files[key]!) as Map<String, dynamic>;
+      }
+
+      final pty = (await repo.createSession(
+        workspaceId,
+        cli: CliTool.claude,
+      )).session;
+      final ptyRaw = sessionJson(pty.sessionId);
+      expect(ptyRaw.containsKey('acp'), isTrue);
+      expect(ptyRaw['acp'], isFalse);
+      expect(ptyRaw.containsKey('acpPermission'), isFalse);
+
+      final acp = (await repo.createSession(
+        workspaceId,
+        cli: CliTool.claude,
+        acp: true,
+      )).session;
+      expect(sessionJson(acp.sessionId)['acp'], isTrue);
+
+      final mixed = (await repo.createSession(
+        workspaceId,
+        sessionTeam: 'team-explicit-acp',
+        rosterMembers: const [TeamMemberConfig(id: 'lead', name: 'Lead')],
+        memberClis: const {'lead': CliTool.claude},
+        teamMode: TeamMode.mixed,
+        seedClaudeMemberAcp: false,
+      )).session;
+      final mixedRaw = sessionJson(mixed.sessionId);
+      expect(mixedRaw['acp'], isFalse);
+      final binding = (mixedRaw['members'] as List)
+          .cast<Map<String, dynamic>>()
+          .single;
+      expect(binding.containsKey('acp'), isTrue);
+      expect(binding['acp'], isFalse);
+    },
+  );
 
   test('personal Claude acp false persists fullAccess permission', () async {
     final session = (await repo.createSession(

@@ -508,7 +508,10 @@ class AppSession {
       if (archived) 'archived': archived,
       if (purpose != SessionPurpose.normal) 'purpose': purpose.value,
       if (workflowId.isNotEmpty) 'workflowId': workflowId,
-      if (acp) 'acp': acp,
+      // Always persisted (true or false). An absent key is still read back as
+      // "infer from the CLI" for legacy files, so leaving false implicit would
+      // let a later default change flip a session that was created as PTY.
+      'acp': acp,
       if (acp)
         if (acpPermissionToJson(acpPermission) case final id?)
           'acpPermission': id,

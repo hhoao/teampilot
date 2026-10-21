@@ -205,6 +205,10 @@ Simple launch with expert:
 
 No persisted overlay blob — persona + pack deps are live-resolved from catalog at connect (same as team roster slots).
 
+`acp` is always written (`true`/`false`) for a Simple session, and per member on
+each `members[]` binding for a team session. Absence only happens on files
+written before the flag existed; those fall back to the Gemini inference.
+
 ## Related docs
 
 - [Expert capability pack design](superpowers/specs/2026-07-10-expert-capability-pack-design.md) — Simple = unteamed + expert pack; merge `team > expert > workspace`

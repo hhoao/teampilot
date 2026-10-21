@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/session_list_entry.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_list_index_store.dart';
 import 'package:teampilot/repositories/session_repository_fs.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -57,5 +58,35 @@ void main() {
       fs.layout.sessionsIndexFile('ws-1'),
     ).writeAsString('{"version": 99, "sessions": []}');
     expect(await s.tryRead(), isNull);
+  });
+
+  test('version 1 indexes are rebuilt so rows carry acp/cli', () async {
+    final s = store();
+    // Create the parent directory the way the store does.
+    await s.writeAll(const []);
+    final fs = SessionRepositoryFs(
+      teampilotRoot: tmp.path,
+      fs: LocalFilesystem(),
+    );
+    await File(fs.layout.sessionsIndexFile('ws-1')).writeAsString(
+      '{"version": 1, "sessions": [{"sessionId": "a", "display": "a", '
+      '"createdAt": 1}]}',
+    );
+    // Stale shape: no acp/cli fields, so it must not be trusted.
+    expect(await s.tryRead(), isNull);
+
+    await s.writeAll([
+      SessionListEntry(
+        sessionId: 'a',
+        display: 'a',
+        createdAt: 1,
+        cli: CliTool.claude,
+        acp: true,
+      ),
+    ]);
+    final read = await s.tryRead();
+    expect(read, isNotNull);
+    expect(read!.single.acp, isTrue);
+    expect(read.single.cli, CliTool.claude);
   });
 }
