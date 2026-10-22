@@ -6,6 +6,7 @@ import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/models/provider_usage_snapshot.dart';
 import 'package:teampilot/repositories/managed_provider_repository.dart';
 import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
+import 'package:teampilot/services/provider_usage/managed_provider_secret_store.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_adapter.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_coordinator.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_usage_registry.dart';
@@ -59,6 +60,31 @@ class _QueuedAdapter implements ManagedProviderUsageAdapter {
   }) {
     final result = results[calls];
     calls++;
+    return result;
+  }
+}
+
+/// Records the credential scope the coordinator hands to the adapter so a
+/// test can assert which secret a transient query actually used.
+class _CredentialRecordingAdapter implements ManagedProviderUsageAdapter {
+  _CredentialRecordingAdapter(this.result);
+
+  final Future<ProviderUsageSnapshot> result;
+  ProviderCredentialScope? resolved;
+  int calls = 0;
+
+  @override
+  String get id => 'fake';
+
+  @override
+  Future<ProviderUsageSnapshot> fetch(
+    ManagedProvider provider, {
+    required ProviderCredentialResolver credentials,
+    required ProviderUsageHttpClient http,
+    required DateTime now,
+  }) async {
+    calls++;
+    resolved = await credentials.resolve(provider);
     return result;
   }
 }
@@ -147,6 +173,77 @@ void main() {
     expect(result.measures.single.remaining, '3.25');
     expect((await usage.load()).single.measures.single.remaining, '12.50');
     expect(coordinator.snapshotFor('p1')!.measures.single.remaining, '12.50');
+  });
+
+  test(
+    'a query override supplies the credential instead of the store',
+    () async {
+      final adapter = _CredentialRecordingAdapter(Future.value(_ready()));
+      final coordinator = ManagedProviderUsageCoordinator(
+        providerRepository: providers,
+        usageRepository: usage,
+        registry: ManagedProviderUsageRegistry([adapter]),
+        credentials: _NoCredentials(),
+        http: _UnusedHttpClient(),
+      );
+
+      await coordinator.queryProvider(
+        _provider(),
+        credentialOverride: ManagedProviderCredentialScope(const {
+          'apiKey': 'typed-in-form',
+        }),
+      );
+
+      expect(adapter.resolved?.valueFor('apiKey'), 'typed-in-form');
+    },
+  );
+
+  test('an empty query override falls back to the stored resolver', () async {
+    final adapter = _CredentialRecordingAdapter(Future.value(_ready()));
+    final coordinator = ManagedProviderUsageCoordinator(
+      providerRepository: providers,
+      usageRepository: usage,
+      registry: ManagedProviderUsageRegistry([adapter]),
+      credentials: _NoCredentials(),
+      http: _UnusedHttpClient(),
+    );
+
+    await coordinator.queryProvider(
+      _provider(),
+      credentialOverride: ManagedProviderCredentialScope(const {}),
+    );
+
+    expect(adapter.resolved, isNull);
+  });
+
+  test('a query override does not reuse a coalesced in-flight query', () async {
+    final gate = Completer<ProviderUsageSnapshot>();
+    final adapter = _CredentialRecordingAdapter(gate.future);
+    final coordinator = ManagedProviderUsageCoordinator(
+      providerRepository: providers,
+      usageRepository: usage,
+      registry: ManagedProviderUsageRegistry([adapter]),
+      credentials: _NoCredentials(),
+      http: _UnusedHttpClient(),
+    );
+
+    final first = coordinator.queryProvider(
+      _provider(),
+      credentialOverride: ManagedProviderCredentialScope(const {
+        'apiKey': 'one',
+      }),
+    );
+    final second = coordinator.queryProvider(
+      _provider(),
+      credentialOverride: ManagedProviderCredentialScope(const {
+        'apiKey': 'two',
+      }),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(adapter.calls, 2);
+    gate.complete(_ready());
+    await Future.wait([first, second]);
   });
 
   test(

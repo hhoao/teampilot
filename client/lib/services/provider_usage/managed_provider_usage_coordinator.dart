@@ -222,7 +222,16 @@ class ManagedProviderUsageCoordinator {
   /// Queries an in-memory Provider draft without reading or writing the
   /// persisted catalog/cache. Calls for the same Provider are coalesced and
   /// serialized with ordinary refresh work.
-  Future<ProviderUsageSnapshot> queryProvider(ManagedProvider provider) {
+  ///
+  /// [credentialOverride] supplies a one-shot credential scope for this query
+  /// only (for example a secret typed into the editor form but not saved yet).
+  /// When it is null or empty the persisted resolver is used. An override
+  /// bypasses transient single-flight coalescing because two overrides for the
+  /// same Provider may carry different secrets.
+  Future<ProviderUsageSnapshot> queryProvider(
+    ManagedProvider provider, {
+    ProviderCredentialScope? credentialOverride,
+  }) {
     final id = provider.id.trim();
     if (_closed) {
       return Future<ProviderUsageSnapshot>.value(
@@ -233,40 +242,54 @@ class ManagedProviderUsageCoordinator {
         ),
       );
     }
-    final existing = _transientQueries[id];
-    if (existing != null) return existing;
+    if (credentialOverride == null) {
+      final existing = _transientQueries[id];
+      if (existing != null) return existing;
+    }
     final pendingRefresh = _pending[id];
     if (pendingRefresh != null) {
       return pendingRefresh.future.then(
-        (_) => queryProvider(provider),
-        onError: (Object _, StackTrace __) => queryProvider(provider),
+        (_) => queryProvider(provider, credentialOverride: credentialOverride),
+        onError: (Object _, StackTrace __) =>
+            queryProvider(provider, credentialOverride: credentialOverride),
       );
     }
     final contextGeneration = _storageContextGeneration;
-    final future = _queryProviderInternal(provider, contextGeneration);
-    _transientQueries[id] = future;
-    future.then<void>(
-      (_) {
-        if (identical(_transientQueries[id], future)) {
-          _transientQueries.remove(id);
-        }
-      },
-      onError: (Object _, StackTrace __) {
-        if (identical(_transientQueries[id], future)) {
-          _transientQueries.remove(id);
-        }
-      },
+    final future = _queryProviderInternal(
+      provider,
+      contextGeneration,
+      credentialOverride: credentialOverride,
     );
+    if (credentialOverride == null) {
+      _transientQueries[id] = future;
+      future.then<void>(
+        (_) {
+          if (identical(_transientQueries[id], future)) {
+            _transientQueries.remove(id);
+          }
+        },
+        onError: (Object _, StackTrace __) {
+          if (identical(_transientQueries[id], future)) {
+            _transientQueries.remove(id);
+          }
+        },
+      );
+    }
     return future;
   }
 
   Future<ProviderUsageSnapshot> _queryProviderInternal(
     ManagedProvider provider,
-    int storageContextGeneration,
-  ) async {
+    int storageContextGeneration, {
+    ProviderCredentialScope? credentialOverride,
+  }) async {
     final id = provider.id.trim();
     final previous = _snapshots[id];
     if (!provider.enabled) return _unsupportedSnapshot(id, previous);
+
+    final credentials = credentialOverride == null
+        ? _credentials
+        : _CredentialOverrideResolver(credentialOverride, _credentials);
 
     try {
       final adapter = _registry.adapterFor(provider.adapterId);
@@ -276,7 +299,7 @@ class ManagedProviderUsageCoordinator {
         );
       }
       final result = await adapter
-          .fetch(provider, credentials: _credentials, http: _http, now: _now())
+          .fetch(provider, credentials: credentials, http: _http, now: _now())
           .timeout(queryTimeout);
       _ensureStorageContextCurrent(storageContextGeneration, providerId: id);
       return result.copyWith(providerId: id, status: ProviderUsageStatus.ready);
@@ -867,5 +890,20 @@ class _ProviderCommitGate {
       if (!release.isCompleted) release.complete();
       if (identical(_tail, queued)) _tail = Future<void>.value();
     }
+  }
+}
+
+/// Prefers a one-shot credential scope (for example a draft's not-yet-saved
+/// secret) and falls back to the persisted resolver when it is empty.
+class _CredentialOverrideResolver implements ProviderCredentialResolver {
+  const _CredentialOverrideResolver(this._override, this._fallback);
+
+  final ProviderCredentialScope _override;
+  final ProviderCredentialResolver _fallback;
+
+  @override
+  Future<ProviderCredentialScope?> resolve(ManagedProvider provider) async {
+    if (!_override.isEmpty) return _override;
+    return _fallback.resolve(provider);
   }
 }

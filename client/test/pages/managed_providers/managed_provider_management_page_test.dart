@@ -66,6 +66,7 @@ class _Adapter implements ManagedProviderUsageAdapter {
   final String adapterId;
   Object? error;
   int calls = 0;
+  ProviderCredentialScope? resolvedCredentials;
 
   @override
   String get id => adapterId;
@@ -78,6 +79,7 @@ class _Adapter implements ManagedProviderUsageAdapter {
     required DateTime now,
   }) async {
     calls++;
+    resolvedCredentials = await credentials.resolve(provider);
     final error = this.error;
     if (error != null) throw error;
     return result;
@@ -516,6 +518,48 @@ void main() {
       );
       expect(windows.controller!.text, contains(r'$.usage.rolling.percent'));
       expect(windows.controller!.text, contains(r'$.usage.monthly.percent'));
+    },
+  );
+
+  testWidgets(
+    'editor test query uses the credential typed in the form before saving',
+    (tester) async {
+      providerCubit.emit(
+        ManagedProviderState(status: ManagedProviderLoadStatus.ready),
+      );
+      usageCubit.emit(
+        ManagedProviderUsageState(status: ManagedProviderUsageLoadStatus.ready),
+      );
+      await pumpPage(tester);
+
+      await openNewEditor(tester);
+      await applyPreset(tester, 'OpenCode Go');
+      await tester.enterText(
+        find.byKey(const Key('managed-provider-credential-secret')),
+        'oc_sk_typed_in_form',
+      );
+      await tester.pump();
+
+      httpJsonAdapter.resolvedCredentials = null;
+      await _scrollToEditorBottom(tester);
+      await tester.runAsync(() async {
+        tester
+            .widget<TpButton>(
+              find.byKey(const Key('managed-provider-test-query')),
+            )
+            .onPressed!
+            .call();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      });
+      await tester.pumpAndSettle();
+
+      expect(httpJsonAdapter.calls, 1);
+      expect(
+        httpJsonAdapter.resolvedCredentials?.valueFor('apiKey'),
+        'oc_sk_typed_in_form',
+      );
+      // Testing a draft must never persist the typed secret.
+      expect(secureStore.values, isEmpty);
     },
   );
 

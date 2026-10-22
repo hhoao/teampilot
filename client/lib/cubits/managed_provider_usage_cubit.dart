@@ -212,11 +212,21 @@ class ManagedProviderUsageCubit extends Cubit<ManagedProviderUsageState> {
   }
 
   /// Queries an in-memory Provider draft without persisting the usage cache.
-  Future<ProviderUsageSnapshot?> queryProvider(ManagedProvider provider) async {
+  ///
+  /// [credentialOverride] carries a credential that is not persisted yet (for
+  /// example a secret typed into the editor form); when null or empty the
+  /// coordinator falls back to the stored credential reference.
+  Future<ProviderUsageSnapshot?> queryProvider(
+    ManagedProvider provider, {
+    ProviderCredentialScope? credentialOverride,
+  }) async {
     await load();
     if (isClosed) return state.snapshotFor(provider.id);
     try {
-      final result = await _coordinator.queryProvider(provider);
+      final result = await _coordinator.queryProvider(
+        provider,
+        credentialOverride: credentialOverride,
+      );
       if (isClosed) return result;
       _emitQueryResult(provider.id, result);
       return result;

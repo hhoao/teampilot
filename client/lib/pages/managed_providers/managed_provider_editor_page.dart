@@ -901,10 +901,11 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
   Future<void> _testQuery() async {
     final draft = _draftProviderForQuery();
     if (draft == null) return;
+    final credentialOverride = _credentialOverrideForQuery();
     setState(() => _saving = true);
     final snapshot = await context
         .read<ManagedProviderUsageCubit>()
-        .queryProvider(draft);
+        .queryProvider(draft, credentialOverride: credentialOverride);
     if (!mounted) return;
     setState(() => _saving = false);
     final failed =
@@ -948,7 +949,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       return null;
     }
     return ManagedProvider(
-      id: current?.id ?? 'managed-query',
+      id: _entryId,
       name: name,
       kind: _kind,
       adapterId: adapter,
@@ -984,6 +985,17 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
       displayConfig: current?.displayConfig,
       enabled: _enabled,
     );
+  }
+
+  /// The secret currently typed into the form, handed to a one-shot test query
+  /// without persisting it. Linked provider rows resolve their key live from
+  /// the referenced row, so they never supply an override.
+  ProviderCredentialScope? _credentialOverrideForQuery() {
+    if (_isLinkedProviderSource) return null;
+    final field = _credentialField.text.trim();
+    final secret = _credentialSecret.text.trim();
+    if (field.isEmpty || secret.isEmpty) return null;
+    return ManagedProviderCredentialScope({field: secret});
   }
 
   Future<void> _setEnabled(bool value) async {
