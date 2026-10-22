@@ -352,6 +352,137 @@ void main() {
     expect(bindings.map((b) => b.key).toSet(), {'chat:s1:m1', 'shell:ws1:e1'});
   });
 
+  test('acp keys follow acp:{sessionId}:{memberId} scheme', () {
+    final bindings = collectResourceBindings(
+      workspaceId: 'ws1',
+      chatShells: const [],
+      workspaceShells: const [],
+      acpSeats: const [
+        AcpSeatRef(
+          workspaceId: 'ws1',
+          sessionId: 's1',
+          memberId: 'm1',
+          sessionTitle: 'ACP chat',
+          memberName: 'Alice',
+          sessionPrimaryPath: '/repo/lib',
+          livePid: 77,
+        ),
+      ],
+      worktrees: worktrees,
+      usesPosixPaths: false,
+    );
+
+    expect(bindings, hasLength(1));
+    expect(bindings.single.key, 'acp:s1:m1');
+    expect(bindings.single.kind, ResourceBindingKind.acpMember);
+    expect(bindings.single.sessionId, 's1');
+    expect(bindings.single.memberId, 'm1');
+    expect(bindings.single.livePid, 77);
+    expect(bindings.single.connected, isTrue);
+  });
+
+  test('acp title prefers sessionTitle · memberName like chat', () {
+    final bindings = collectResourceBindings(
+      workspaceId: 'ws1',
+      chatShells: const [],
+      workspaceShells: const [],
+      acpSeats: const [
+        AcpSeatRef(
+          workspaceId: 'ws1',
+          sessionId: 's1',
+          memberId: 'lead',
+          sessionTitle: 'Team run',
+          memberName: 'Lead',
+          sessionPrimaryPath: '/repo',
+        ),
+        AcpSeatRef(
+          workspaceId: 'ws1',
+          sessionId: 's2',
+          memberId: 's2',
+          sessionTitle: 'Solo acp',
+          memberName: '',
+          sessionPrimaryPath: '/repo',
+        ),
+      ],
+      worktrees: worktrees,
+      usesPosixPaths: false,
+    );
+
+    final bySession = {for (final b in bindings) b.sessionId!: b};
+    expect(bySession['s1']!.title, 'Team run · Lead');
+    expect(bySession['s2']!.title, 'Solo acp');
+  });
+
+  test('acp rows group by session primary path worktree match', () {
+    final bindings = collectResourceBindings(
+      workspaceId: 'ws1',
+      chatShells: const [],
+      workspaceShells: const [],
+      acpSeats: const [
+        AcpSeatRef(
+          workspaceId: 'ws1',
+          sessionId: 's1',
+          memberId: 'm1',
+          sessionTitle: 'On feat',
+          memberName: '',
+          sessionPrimaryPath: '/wt/feat/lib',
+        ),
+      ],
+      worktrees: worktrees,
+      usesPosixPaths: false,
+    );
+
+    expect(bindings.single.groupKey, '/wt/feat');
+    expect(bindings.single.groupLabel, 'feat/x');
+  });
+
+  test('acp refs skip foreign workspaces', () {
+    final bindings = collectResourceBindings(
+      workspaceId: 'ws1',
+      chatShells: const [],
+      workspaceShells: const [],
+      acpSeats: const [
+        AcpSeatRef(
+          workspaceId: 'ws2',
+          sessionId: 's2',
+          memberId: 'm1',
+          sessionTitle: 'Other workspace',
+          memberName: '',
+          sessionPrimaryPath: '/repo',
+        ),
+      ],
+      worktrees: worktrees,
+      usesPosixPaths: false,
+    );
+
+    expect(bindings, isEmpty);
+  });
+
+  test('acp rows use workspaceGroupLabel when app-global', () {
+    final bindings = collectResourceBindings(
+      workspaceId: 'ws1',
+      workspaceGroupLabel: 'My Project',
+      chatShells: const [],
+      workspaceShells: const [],
+      acpSeats: const [
+        AcpSeatRef(
+          workspaceId: 'ws1',
+          sessionId: 's1',
+          memberId: 'm1',
+          sessionTitle: 'A',
+          memberName: '',
+          sessionPrimaryPath: '/wt/feat',
+        ),
+      ],
+      worktrees: worktrees,
+      usesPosixPaths: false,
+    );
+
+    expect(bindings.single.groupKey, 'ws1');
+    expect(bindings.single.groupLabel, 'My Project');
+    expect(bindings.single.workspaceId, 'ws1');
+  });
+
   test('copies livePid onto ResourceBinding when present', () {
     final bindings = collectResourceBindings(
       workspaceId: 'ws1',

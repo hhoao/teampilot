@@ -193,7 +193,11 @@ void main() {
       }) async {
         seenArgv = argv;
         seenWorkingDirectory = workingDirectory;
-        return (transport: _SilentTransport(), processExitCode: exit.future);
+        return (
+          transport: _SilentTransport(),
+          processExitCode: exit.future,
+          pid: null,
+        );
       }
 
       final spawner = productionAcpSpawner(

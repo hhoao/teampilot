@@ -122,6 +122,7 @@ AcpConnectionSpawner productionAcpSpawner({
       logger: logger,
       translator: translator,
       processExitCode: processExitCode,
+      agentPid: started.pid,
     );
     try {
       final authenticateMethodId = await spawnAuthenticateMethodId(

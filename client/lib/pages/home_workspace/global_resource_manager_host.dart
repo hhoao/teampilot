@@ -9,6 +9,7 @@ import '../../cubits/chat_cubit.dart';
 import '../../cubits/floating_workspace/floating_workspace_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/resource_manager_cubit.dart';
+import '../../cubits/session/acp/acp_chat_runtime_cubit.dart';
 import '../../widgets/home_storage_scope.dart';
 import '../../cubits/workbench/workbench_cubit.dart';
 import '../../cubits/workbench/workbench_tab.dart';
@@ -120,6 +121,19 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
         buf.write(e.value.pid ?? 0);
         buf.write(e.value.isConnected || e.value.isRunning ? '1' : '0');
       }
+      // Terminal-less ACP seats never land in memberShells; fingerprint their
+      // inventory + pid + liveness so a start/reclaim refreshes the bindings.
+      for (final e in tab.memberAcpRuntimes.entries) {
+        buf.write('\x1facp:');
+        buf.write(e.key);
+        buf.write(':');
+        buf.write(e.value.agentPid ?? 0);
+        buf.write(
+          !e.value.isClosed && e.value.state.phase != AcpChatPhase.ended
+              ? '1'
+              : '0',
+        );
+      }
       buf.write('\n');
     }
     return buf.toString();
@@ -218,6 +232,9 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
             ),
           );
         },
+        closeAcpSeat: (sessionId, memberId) async {
+          context.read<ChatCubit>().discardAcpSeat(sessionId, memberId);
+        },
       );
       _refreshBindings();
     } catch (e) {
@@ -243,6 +260,7 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
 
     switch (leaf.kind) {
       case ResourceBindingKind.chatMember:
+      case ResourceBindingKind.acpMember:
         final sessionId = leaf.sessionId?.trim() ?? '';
         final memberId = leaf.memberId?.trim() ?? '';
         if (sessionId.isEmpty) return;

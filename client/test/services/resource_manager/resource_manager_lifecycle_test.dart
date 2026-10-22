@@ -37,6 +37,35 @@ void main() {
     expect(calls, ['shell:ws-1:entry-9']);
   });
 
+  test('acp kill uses closeAcpSeat with sessionId+memberId', () async {
+    final calls = <String>[];
+
+    await killResourceManagerBinding(
+      bindingKey: 'acp:sess-a:lead',
+      disconnectMemberShell: (sessionId, memberId) async {
+        calls.add('member:$sessionId:$memberId');
+      },
+      killWorkspaceShell: (workspaceId, entryId) async {
+        calls.add('shell:$workspaceId:$entryId');
+      },
+      closeAcpSeat: (sessionId, memberId) async {
+        calls.add('acp:$sessionId:$memberId');
+      },
+    );
+
+    expect(calls, ['acp:sess-a:lead']);
+  });
+
+  test('acp kill without a closeAcpSeat callback is a no-op', () async {
+    var called = false;
+    await killResourceManagerBinding(
+      bindingKey: 'acp:sess-a:lead',
+      disconnectMemberShell: (_, __) async => called = true,
+      killWorkspaceShell: (_, __) async => called = true,
+    );
+    expect(called, isFalse);
+  });
+
   test('unknown key is a no-op', () async {
     var called = false;
     await killResourceManagerBinding(

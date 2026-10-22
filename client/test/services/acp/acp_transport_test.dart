@@ -81,6 +81,12 @@ void main() {
       expect(utf8.decode(callbackChunks.single), 'boom');
       expect(utf8.decode(streamChunks.single), 'boom');
     });
+
+    test('exposes the wrapped process pid for Resource Manager metrics', () {
+      final process = _FakeProcess();
+      final transport = AcpProcessTransport(process: process, onStderr: (_) {});
+      expect(transport.pid, process.pid);
+    });
   });
 
   group('AcpProcessTransport.close', () {

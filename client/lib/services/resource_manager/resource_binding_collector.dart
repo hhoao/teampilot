@@ -44,11 +44,38 @@ class WorkspaceShellRef {
   final int? livePid;
 }
 
+/// Thin input for one live ACP seat row.
+///
+/// ACP seats are terminal-less: they are only collected while the runtime is
+/// live, so no [connected] flag is carried (a ref always means "running").
+class AcpSeatRef {
+  const AcpSeatRef({
+    required this.workspaceId,
+    required this.sessionId,
+    required this.memberId,
+    required this.sessionTitle,
+    required this.memberName,
+    required this.sessionPrimaryPath,
+    this.livePid,
+  });
+
+  final String workspaceId;
+  final String sessionId;
+  final String memberId;
+  final String sessionTitle;
+  final String memberName;
+  final String sessionPrimaryPath;
+
+  /// Local agent OS pid when process-backed; null for SSH/test transports.
+  final int? livePid;
+}
+
 /// Collects Resource Manager leaf bindings for [workspaceId] from plain refs.
 ///
 /// Only **running** shells (`connected == true`) are included — idle /
 /// disconnected member shells and bottom terminals are omitted from both the
-/// closed pill count and the open tree.
+/// closed pill count and the open tree. [acpSeats] are already live-only refs
+/// (the adapter filters out closed/ended runtimes).
 ///
 /// When [workspaceGroupLabel] is set, rows group under that workspace
 /// ([groupKey] = [workspaceId]) instead of git worktree buckets — used by the
@@ -59,6 +86,7 @@ List<ResourceBinding> collectResourceBindings({
   required List<WorkspaceShellRef> workspaceShells,
   required List<GitWorktree> worktrees,
   required bool usesPosixPaths,
+  List<AcpSeatRef> acpSeats = const [],
   String? workspaceGroupLabel,
 }) {
   final bindings = <ResourceBinding>[];
@@ -122,6 +150,39 @@ List<ResourceBinding> collectResourceBindings({
         workspaceId: shell.workspaceId,
         shellEntryId: shell.entryId,
         livePid: shell.livePid,
+      ),
+    );
+  }
+
+  for (final seat in acpSeats) {
+    if (seat.workspaceId != workspaceId) continue;
+    final workspaceLabel = workspaceGroupLabel;
+    final group = workspaceLabel != null
+        ? (key: workspaceId, label: workspaceLabel)
+        : _groupFor(
+            _matchWorktree(
+              seat.sessionPrimaryPath,
+              worktrees,
+              usesPosixPaths: usesPosixPaths,
+            ),
+            worktrees,
+          );
+    final member = seat.memberName.trim();
+    final title = member.isEmpty
+        ? seat.sessionTitle
+        : '${seat.sessionTitle} · $member';
+    bindings.add(
+      ResourceBinding(
+        key: 'acp:${seat.sessionId}:${seat.memberId}',
+        kind: ResourceBindingKind.acpMember,
+        groupKey: group.key,
+        groupLabel: group.label,
+        title: title,
+        connected: true,
+        sessionId: seat.sessionId,
+        memberId: seat.memberId,
+        workspaceId: seat.workspaceId,
+        livePid: seat.livePid,
       ),
     );
   }

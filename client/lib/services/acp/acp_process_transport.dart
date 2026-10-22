@@ -106,6 +106,9 @@ class AcpProcessTransport implements AcpTransport {
   /// exit during the ACP handshake as a rejected flag candidate.
   Future<int> get processExitCode => _process.exitCode;
 
+  /// The wrapped local OS process id (Resource Manager metrics only).
+  int get pid => _process.pid;
+
   @override
   bool get isClosed => _closed;
 

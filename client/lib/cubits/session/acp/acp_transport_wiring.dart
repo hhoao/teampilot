@@ -9,9 +9,12 @@ import '../../../services/chat/launch/connect/chat_session_shell_factory.dart';
 /// One started ACP transport plus the exit future the handshake race needs.
 ///
 /// [processExitCode] is null for transports with no process-like exit status.
+/// [pid] is the local agent OS pid for process-backed transports, null for SSH
+/// / in-memory ones; it feeds the Resource Manager metrics registry.
 typedef AcpStartedTransport = ({
   AcpTransport transport,
   Future<int>? processExitCode,
+  int? pid,
 });
 
 /// Starts one ACP agent transport for an argv + env candidate.
@@ -45,6 +48,7 @@ AcpTransportStarter localAcpTransportStarter() =>
       return (
         transport: transport,
         processExitCode: transport.processExitCode,
+        pid: transport.pid,
       );
     };
 
@@ -104,6 +108,7 @@ AcpTransportStarter sshAcpTransportStarter({
       return (
         transport: transport,
         processExitCode: transport.processExitCode,
+        pid: null,
       );
     };
 

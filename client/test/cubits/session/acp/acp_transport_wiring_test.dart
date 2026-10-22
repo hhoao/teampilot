@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/session/acp/acp_transport_wiring.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
+import 'package:teampilot/services/acp/acp_process_transport.dart';
 import 'package:teampilot/services/acp/acp_ssh_transport.dart';
 
 class _FakeChannel implements AcpSshChannel {
@@ -93,6 +95,8 @@ void main() {
     expect(seenCommand, isNotNull);
     expect(seenCommand, contains('opencode'));
     expect(started.transport, isA<AcpSshTransport>());
+    // Remote ACP has no local OS process to measure.
+    expect(started.pid, isNull);
     // The exit future is wired to the channel, not completed yet.
     // (`AcpStartedTransport.processExitCode` is nullable, hence the `!`.)
     expect(started.processExitCode, isNotNull);
@@ -116,6 +120,26 @@ void main() {
       isNull,
     );
   });
+
+  test(
+    'localAcpTransportStarter forwards the spawned process pid',
+    () async {
+      final starter = localAcpTransportStarter();
+      final started = await starter(
+        argv: const ['cat'],
+        env: Platform.environment,
+        workingDirectory: Directory.systemTemp.path,
+        onStderr: null,
+      );
+
+      expect(started.pid, isNotNull);
+      expect(started.pid, (started.transport as AcpProcessTransport).pid);
+
+      await started.transport.close();
+    },
+    skip: Platform.isWindows ? 'spawns POSIX cat' : false,
+    timeout: const Timeout(Duration(seconds: 15)),
+  );
 
   test('acpStarterForTarget throws when a remote target has no SSH launch', () {
     expect(

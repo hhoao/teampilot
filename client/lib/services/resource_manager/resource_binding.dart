@@ -1,10 +1,11 @@
 /// Stable binding identity for a workspace terminal row in Resource Manager.
-enum ResourceBindingKind { chatMember, workspaceShell }
+enum ResourceBindingKind { chatMember, acpMember, workspaceShell }
 
-/// In-memory binding for one chat member shell or workspace shell tab.
+/// In-memory binding for one chat member shell, ACP seat, or workspace shell tab.
 ///
 /// Keys follow:
-/// - Chat: `chat:{sessionId}:{memberId}`
+/// - Chat (PTY): `chat:{sessionId}:{memberId}`
+/// - ACP (terminal-less): `acp:{sessionId}:{memberId}`
 /// - Shell: `shell:{workspaceId}:{entryId}`
 class ResourceBinding {
   const ResourceBinding({

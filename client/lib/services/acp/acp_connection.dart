@@ -92,6 +92,7 @@ class AcpAgentConnection {
     required AcpFrameLogger logger,
     required this.translator,
     Future<int>? processExitCode,
+    this.agentPid,
   }) : _transport = transport,
        _processExitCode = processExitCode {
     _client = acpd.ClientRole().connect(
@@ -123,6 +124,12 @@ class AcpAgentConnection {
   }
 
   final AcpTransport _transport;
+
+  /// Local agent OS pid when the spawner started a process-backed transport.
+  ///
+  /// Null for SSH / in-memory transports. Consumed by the Resource Manager to
+  /// register a metrics pid; it does not drive protocol behavior.
+  final int? agentPid;
 
   /// Per-agent quirk absorption; consumed by the session layer on stop errors.
   final AcpAgentTranslator translator;

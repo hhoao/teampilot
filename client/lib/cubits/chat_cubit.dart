@@ -2555,6 +2555,12 @@ class ChatCubit extends Cubit<ChatState>
   void discardMemberTerminal(String sessionId, String memberId) =>
       _launchService.discardMemberTerminal(sessionId, memberId);
 
+  /// Reclaims an ACP seat (any open tab) for [sessionId]: closes the runtime
+  /// cubit, which persists the transcript/agent session and kills the agent
+  /// process. Used by Resource Manager kill for `acp:` bindings.
+  void discardAcpSeat(String sessionId, String memberId) =>
+      _launchService.discardAcpSeat(sessionId, memberId);
+
   Future<void> ensureMemberTerminalForView(String sessionId, String memberId) =>
       _launchService.ensureMemberTerminalForView(sessionId, memberId);
 

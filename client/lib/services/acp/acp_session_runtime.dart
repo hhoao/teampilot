@@ -207,6 +207,17 @@ abstract interface class AcpHistorySyncApi {
   Future<List<AcpSessionUpdate>> loadHistory();
 }
 
+/// Optional ACP capability: the local agent OS pid, when process-backed.
+///
+/// Separate from [AcpSessionRuntimeApi] so existing all-stub fakes stay valid;
+/// the Resource Manager checks the runtime against this interface before
+/// registering a metrics pid. SSH / in-memory runtimes simply do not implement
+/// it, or report null.
+abstract interface class AcpAgentProcessPidApi {
+  /// The agent process id, or null when there is no local process to measure.
+  int? get agentPid;
+}
+
 /// Owns one ACP agent session for the chat layer: spawn + flag probe +
 /// session lifecycle.
 ///
@@ -217,7 +228,8 @@ abstract interface class AcpHistorySyncApi {
 /// single open session and delegates [prompt]/[updates]/
 /// [permissionRequests]/[answerPermission]/[cancel] to it; [close] disposes
 /// both the session and the connection.
-class AcpSessionRuntime implements AcpSessionRuntimeApi, AcpHistorySyncApi {
+class AcpSessionRuntime
+    implements AcpSessionRuntimeApi, AcpHistorySyncApi, AcpAgentProcessPidApi {
   AcpSessionRuntime({
     required AcpConnectionSpawner spawner,
     required this.logger,
@@ -482,6 +494,11 @@ class AcpSessionRuntime implements AcpSessionRuntimeApi, AcpHistorySyncApi {
   @override
   Future<int>? get agentProcessExitCode =>
       _session?.connection.agentProcessExitCode;
+
+  /// The local agent OS pid, or null before a process-backed start / after
+  /// close.
+  @override
+  int? get agentPid => _connection?.agentPid;
 
   /// Answers the currently held permission request (if any).
   @override

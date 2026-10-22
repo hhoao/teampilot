@@ -276,6 +276,14 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// Injects localized copy; must run before [start].
   void ensureStrings(AcpChatStrings strings) => _strings ??= strings;
 
+  /// The local agent OS pid, or null when the runtime has no process to
+  /// measure (SSH / tests). Consumed by the Resource Manager metrics registry.
+  int? get agentPid {
+    final runtime = _runtime;
+    if (runtime is! AcpAgentProcessPidApi) return null;
+    return (runtime as AcpAgentProcessPidApi).agentPid;
+  }
+
   /// Spawns the agent and opens the ACP session.
   ///
   /// On success: subscribes to updates + permissions (before any prompt),

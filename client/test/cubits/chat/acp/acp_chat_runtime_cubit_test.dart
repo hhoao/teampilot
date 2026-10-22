@@ -194,6 +194,16 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi, AcpHistorySyncApi {
   }
 }
 
+/// [_FakeAcpRuntime] that also advertises the local process pid capability, as
+/// the production [AcpSessionRuntime] does for process-backed transports.
+class _PidAcpRuntime extends _FakeAcpRuntime
+    implements AcpAgentProcessPidApi {
+  _PidAcpRuntime(this.agentPid);
+
+  @override
+  final int? agentPid;
+}
+
 const _testStrings = AcpChatStrings(
   launchFailedVersion: 'Gemini ACP unsupported',
   launchFailedAdapter: 'Adapter missing',
@@ -2394,6 +2404,28 @@ void main() {
     expect(leases.releases, hasLength(1));
     expect(_textOf(cubit.state.messages.last), contains('shell done'));
     await cubit.close();
+  });
+
+  test('agentPid delegates to a process-backed runtime capability', () async {
+    final pidCubit = AcpChatRuntimeCubit(
+      runtime: _PidAcpRuntime(4242),
+      sessionId: 's1',
+      tool: CliTool.gemini,
+    );
+
+    expect(pidCubit.agentPid, 4242);
+
+    await pidCubit.close();
+  });
+
+  test('agentPid is null when the runtime has no pid capability', () {
+    final cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: 's1',
+      tool: CliTool.gemini,
+    );
+
+    expect(cubit.agentPid, isNull);
   });
 }
 

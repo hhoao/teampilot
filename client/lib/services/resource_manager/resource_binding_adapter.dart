@@ -1,4 +1,5 @@
 import '../chat/session/chat_tab.dart';
+import '../../cubits/session/acp/acp_chat_runtime_cubit.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/git_worktree.dart';
 import '../../models/team_config.dart';
@@ -61,6 +62,46 @@ List<WorkspaceShellRef> workspaceShellRefsForWorkspace({
   ];
 }
 
+/// Builds [AcpSeatRef] rows for live ACP seats in [workspaceId].
+///
+/// ACP seats are terminal-less, so they never appear in
+/// [ChatTab.memberShells]; the runtime lives in [ChatTab.memberAcpRuntimes]
+/// keyed by roster member id (or the session id for a personal seat). Only
+/// live runtimes (not closed, phase != ended) become refs.
+List<AcpSeatRef> acpSeatRefsForWorkspace({
+  required String workspaceId,
+  required Iterable<ChatTab> tabs,
+  required String Function(ChatTab tab) sessionTitle,
+  required String Function(ChatTab tab, String memberId) memberName,
+}) {
+  final refs = <AcpSeatRef>[];
+  for (final tab in tabs) {
+    if (tab.workspaceId != workspaceId &&
+        tab.persistedSession?.workspaceId != workspaceId) {
+      continue;
+    }
+    final session = tab.persistedSession;
+    final title = sessionTitle(tab);
+    final primaryPath = session?.firstFolderPath ?? '';
+    for (final entry in tab.memberAcpRuntimes.entries) {
+      final cubit = entry.value;
+      if (cubit.isClosed || cubit.state.phase == AcpChatPhase.ended) continue;
+      refs.add(
+        AcpSeatRef(
+          workspaceId: workspaceId,
+          sessionId: tab.info.id,
+          memberId: entry.key,
+          sessionTitle: title,
+          memberName: memberName(tab, entry.key),
+          sessionPrimaryPath: primaryPath,
+          livePid: cubit.agentPid,
+        ),
+      );
+    }
+  }
+  return refs;
+}
+
 /// Collects live Resource Manager bindings for [workspaceId].
 List<ResourceBinding> collectLiveResourceBindings({
   required String workspaceId,
@@ -75,6 +116,12 @@ List<ResourceBinding> collectLiveResourceBindings({
   return collectResourceBindings(
     workspaceId: workspaceId,
     chatShells: chatMemberShellRefsForWorkspace(
+      workspaceId: workspaceId,
+      tabs: tabs,
+      sessionTitle: sessionTitle,
+      memberName: memberName,
+    ),
+    acpSeats: acpSeatRefsForWorkspace(
       workspaceId: workspaceId,
       tabs: tabs,
       sessionTitle: sessionTitle,
