@@ -726,7 +726,13 @@ Future<AppShell> buildAppShell({
     sessionPreferencesCubit.load(),
     documentsFuture,
   ]);
-  final defaultWorkspaceDirectory = parallel[1]! as String;
+  // Native cwd must be TeamPilot's own subtree, never the OS documents root —
+  // otherwise terminals/agents spill files directly into the user's Documents.
+  final defaultWorkspaceDirectory =
+      DefaultWorkspaceDirectory.teamPilotDirFromDocuments(
+        parallel[1]! as String,
+      );
+  await Directory(defaultWorkspaceDirectory).create(recursive: true);
   boot('session preferences and workspace directory ready');
 
   configuredGitExecutable = () {

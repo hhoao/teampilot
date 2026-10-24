@@ -363,7 +363,10 @@ class AppPaths {
 class DefaultWorkspaceDirectory {
   DefaultWorkspaceDirectory._();
 
-  static const _prefsKey = 'teampilot.default_documents_directory_path';
+  // Versioned so the v1 cache (hard-coded `~/Documents` on Linux, which ignored
+  // the XDG user-dirs config) is dropped and re-resolved against the real
+  // documents dir. This key is only an auto-cache; no settings UI writes it.
+  static const _prefsKey = 'teampilot.default_documents_directory_path.v2';
 
   static String? _cachedPath;
 
@@ -415,13 +418,7 @@ class DefaultWorkspaceDirectory {
       _platformDocumentsFastPath();
 
   static String? _platformDocumentsFastPath() {
-    if (Platform.isLinux) {
-      final xdg = Platform.environment['XDG_DOCUMENTS_DIR']?.trim();
-      if (xdg != null && xdg.isNotEmpty) return xdg;
-      final home = Platform.environment['HOME']?.trim();
-      if (home != null && home.isNotEmpty) return p.join(home, 'Documents');
-      return null;
-    }
+    if (Platform.isLinux) return _linuxDocumentsFastPath();
     if (Platform.isMacOS) {
       final home = Platform.environment['HOME']?.trim();
       if (home != null && home.isNotEmpty) return p.join(home, 'Documents');
@@ -436,19 +433,73 @@ class DefaultWorkspaceDirectory {
     return null;
   }
 
+  /// Linux documents dir without touching the ~1–2s portal/DBus path.
+  ///
+  /// Prefers the exported [XDG_DOCUMENTS_DIR], then the persisted
+  /// `~/.config/user-dirs.dirs` entry, and only then falls back to the English
+  /// `~/Documents` default. Hardcoding `~/Documents` ignored the common case
+  /// where xdg-user-dirs is configured to a different name (e.g. `~/Document`).
+  static String? _linuxDocumentsFastPath() {
+    final env = Platform.environment['XDG_DOCUMENTS_DIR']?.trim();
+    if (env != null && env.isNotEmpty) return env;
+
+    final home = Platform.environment['HOME']?.trim();
+    if (home == null || home.isEmpty) return null;
+
+    final configured = _readXdgDocumentsDir(home);
+    if (configured != null && configured.isNotEmpty) return configured;
+
+    return p.join(home, 'Documents');
+  }
+
+  static String? _readXdgDocumentsDir(String home) {
+    try {
+      final file = File(p.join(home, '.config', 'user-dirs.dirs'));
+      if (!file.existsSync()) return null;
+      return parseXdgDocumentsDir(file.readAsStringSync(), home: home);
+    } on Object {
+      return null;
+    }
+  }
+
+  /// Parses `XDG_DOCUMENTS_DIR=...` out of a `user-dirs.dirs` body.
+  ///
+  /// Values are shell-escaped (`"$HOME/Document"` or `"/data/docs"`); only
+  /// `$HOME` is expanded, matching the xdg-user-dirs format.
+  @visibleForTesting
+  static String? parseXdgDocumentsDir(String contents, {required String home}) {
+    const key = 'XDG_DOCUMENTS_DIR=';
+    for (final rawLine in contents.split('\n')) {
+      final line = rawLine.trim();
+      if (!line.startsWith(key)) continue;
+      var value = line.substring(key.length).trim();
+      if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+        value = value.substring(1, value.length - 1);
+      }
+      value = value.replaceAll(r'$HOME', home).trim();
+      return value.isEmpty ? null : value;
+    }
+    return null;
+  }
+
+  /// `<Documents>/TeamPilot`: the single TeamPilot-owned subtree under the OS
+  /// documents folder (never the documents root itself).
+  static String teamPilotDirFromDocuments(String documentsDir) {
+    final ctx = AppPaths.pathContextForDataRoot(documentsDir);
+    return ctx.join(documentsDir, 'TeamPilot');
+  }
+
   /// Working directory of the built-in personal workspace: `<Documents>/TeamPilot`.
   /// Created on first access so the seeded default workspace always has a real dir.
   static Future<String> resolveDefaultWorkspacePath() async {
-    final docs = await resolve();
-    final path = p.join(docs, 'TeamPilot');
+    final path = teamPilotDirFromDocuments(await resolve());
     await Directory(path).create(recursive: true);
     return path;
   }
 
   /// Shared landing compose import folder: `<Documents>/TeamPilot/Attachments`.
   static Future<String> resolveTeamPilotAttachmentsPath() async {
-    final docs = await resolve();
-    final path = p.join(docs, 'TeamPilot', 'Attachments');
+    final path = p.join(await resolveDefaultWorkspacePath(), 'Attachments');
     await Directory(path).create(recursive: true);
     return path;
   }
