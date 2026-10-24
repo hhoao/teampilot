@@ -33,7 +33,7 @@ void main() {
     transport = _PairAcpTransport(agent.clientTransport);
     conn = AcpAgentConnection(
       transport: transport,
-      logger: AcpFrameLogger(enableDiskLog: false),
+      logger: AcpFrameLogger(mirrorToLog: false),
       translator: const GeminiAcpTranslator(),
     );
     agent.connection.onRequest('initialize', (params) {
@@ -79,7 +79,7 @@ void main() {
     transport = _PairAcpTransport(agent.clientTransport);
     conn = AcpAgentConnection(
       transport: transport,
-      logger: AcpFrameLogger(enableDiskLog: false),
+      logger: AcpFrameLogger(mirrorToLog: false),
       translator: translator,
     );
     agent.connection.onRequest('initialize', (params) {
@@ -326,7 +326,7 @@ void main() {
     transport = _PairAcpTransport(agent.clientTransport);
     conn = AcpAgentConnection(
       transport: transport,
-      logger: AcpFrameLogger(enableDiskLog: false),
+      logger: AcpFrameLogger(mirrorToLog: false),
       translator: const GeminiAcpTranslator(),
     );
     agent.connection.onRequest('initialize', (params) {

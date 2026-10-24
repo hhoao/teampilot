@@ -53,6 +53,10 @@ See [PERFORMANCE_ANALYSIS.md](PERFORMANCE_ANALYSIS.md) for CLI options, JSON out
 
 Once the root cause is fixed, remove any intermediate defensive changes so future readers aren't confused.
 
+### 7. ACP protocol frames
+
+ACP frame logs (`ACP →` / `ACP ←` / `ACP !`, from `AcpFrameLogger`) are **off by default** because high-volume protocol frames (`session/update`, `available_commands_update`, …) drown out app logs. To turn them on, open **Settings → About → View logs** and use the ACP toggle in the log viewer toolbar (persisted across restarts). For builds where the toggle is not reachable (or for CI runs), `--dart-define=ACP_FRAME_LOG=true` also enables mirroring into the console and `{appDataRoot}/logs/`.
+
 ## Common pitfalls
 
 - **`TextInput.attach` on Windows:** requires `viewId` in `TextInputConfiguration` (Flutter 3.x multi-view). Get it from `PlatformDispatcher.instance.views.firstOrNull?.viewId`.

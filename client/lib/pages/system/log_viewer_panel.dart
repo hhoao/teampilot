@@ -3,10 +3,13 @@ import 'package:shared_ui/shared_ui.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 import '../../widgets/app_toast/app_toast.dart';
 
 import '../../l10n/l10n_extensions.dart';
+import '../../repositories/app_settings_repository.dart';
+import '../../services/acp/acp_frame_logger.dart';
 import '../../services/storage/app_paths.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/logging/logger_utils.dart';
@@ -37,6 +40,7 @@ class LogViewerPanelState extends State<LogViewerPanel> {
   bool _wrapLines = true;
   bool _reverseOrder = true;
   bool _compactView = true;
+  bool _acpFramesEnabled = AcpFrameLogger.mirrorEnabled;
   String _searchText = '';
   String _selectedLevel = 'ALL';
   int _filteredLineCount = 0;
@@ -60,7 +64,34 @@ class LogViewerPanelState extends State<LogViewerPanel> {
       // Still try listing any files already on disk.
     }
     if (!mounted) return;
+    await _syncAcpFrameLogSetting();
+    if (!mounted) return;
     await _loadLogFiles();
+  }
+
+  /// Reflects the persisted ACP frame-log setting in this panel and in the
+  /// process-wide [AcpFrameLogger.mirrorEnabled] switch.
+  ///
+  /// The repository is optional: the fatal-startup log viewer renders this
+  /// panel without the app's provider tree.
+  Future<void> _syncAcpFrameLogSetting() async {
+    final repository = context.read<AppSettingsRepository?>();
+    if (repository != null) {
+      AcpFrameLogger.mirrorEnabled = AcpFrameLogger.resolveEnabled(
+        await repository.loadAcpFrameLogEnabled(),
+      );
+    }
+    if (!mounted) return;
+    setState(() => _acpFramesEnabled = AcpFrameLogger.mirrorEnabled);
+  }
+
+  Future<void> _onAcpFramesChanged(bool enabled) async {
+    final resolved = AcpFrameLogger.resolveEnabled(enabled);
+    setState(() => _acpFramesEnabled = resolved);
+    AcpFrameLogger.mirrorEnabled = resolved;
+    await context.read<AppSettingsRepository?>()?.saveAcpFrameLogEnabled(
+      enabled,
+    );
   }
 
   @override
@@ -255,6 +286,7 @@ class LogViewerPanelState extends State<LogViewerPanel> {
             compactView: _compactView,
             wrapLines: _wrapLines,
             reverseOrder: _reverseOrder,
+            acpFramesEnabled: _acpFramesEnabled,
             lineCount: _filteredLineCount,
             onFileSelected: (path) => unawaited(_loadLogContent(path)),
             onSearchChanged: _onSearchChanged,
@@ -267,6 +299,8 @@ class LogViewerPanelState extends State<LogViewerPanel> {
               _applyFilters();
             },
             onWrapLinesChanged: (value) => setState(() => _wrapLines = value),
+            onAcpFramesChanged: (value) =>
+                unawaited(_onAcpFramesChanged(value)),
             onRefresh: _loadLogFiles,
             onCopyPath: _copyLogPath,
             onCopyAll: _copyAllLogs,

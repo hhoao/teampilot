@@ -33,7 +33,7 @@ void main() {
     transport = _PairAcpTransport(agent.clientTransport);
     conn = AcpAgentConnection(
       transport: transport,
-      logger: AcpFrameLogger(enableDiskLog: false),
+      logger: AcpFrameLogger(mirrorToLog: false),
       translator: const GeminiAcpTranslator(),
     );
     agent.connection.onRequest('initialize', (params) {
@@ -68,7 +68,7 @@ void main() {
   }) {
     return AcpSessionRuntime(
       spawner: spawner,
-      logger: AcpFrameLogger(enableDiskLog: false),
+      logger: AcpFrameLogger(mirrorToLog: false),
       launchPlanFor: launchPlanFor ?? (_) => geminiPlan(),
     );
   }

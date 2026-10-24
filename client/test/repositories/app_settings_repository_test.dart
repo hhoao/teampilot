@@ -187,4 +187,34 @@ void main() {
     );
     expect(await seeded.loadDiscoveryAutoRefreshEnabled(), isTrue);
   });
+
+  group('AppSettingsRepository.acpFrameLog', () {
+    test('defaults to disabled (opt-in) when nothing stored', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      expect(await repo.loadAcpFrameLogEnabled(), isFalse);
+    });
+
+    test('round-trips enabled flag', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      await repo.saveAcpFrameLogEnabled(true);
+      expect(await repo.loadAcpFrameLogEnabled(), isTrue);
+
+      await repo.saveAcpFrameLogEnabled(false);
+      expect(await repo.loadAcpFrameLogEnabled(), isFalse);
+    });
+  });
+
+  test('InMemory acpFrameLog round trip and seed', () async {
+    final repo = InMemoryAppSettingsRepository();
+    expect(await repo.loadAcpFrameLogEnabled(), isFalse);
+    await repo.saveAcpFrameLogEnabled(true);
+    expect(await repo.loadAcpFrameLogEnabled(), isTrue);
+
+    final seeded = InMemoryAppSettingsRepository(acpFrameLogEnabled: true);
+    expect(await seeded.loadAcpFrameLogEnabled(), isTrue);
+  });
 }

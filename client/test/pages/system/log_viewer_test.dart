@@ -17,6 +17,8 @@ Widget _host(Widget child) {
 LogViewerToolbar _toolbar({
   required Future<void> Function() onCopyAll,
   required Future<void> Function() onCopyPath,
+  bool acpFramesEnabled = false,
+  ValueChanged<bool>? onAcpFramesChanged,
 }) {
   return LogViewerToolbar(
     logFiles: const ['/logs/app.log'],
@@ -26,12 +28,14 @@ LogViewerToolbar _toolbar({
     compactView: true,
     wrapLines: true,
     reverseOrder: false,
+    acpFramesEnabled: acpFramesEnabled,
     lineCount: 2,
     onFileSelected: (_) {},
     onSearchChanged: (_) {},
     onLevelChanged: (_) {},
     onCompactViewChanged: (_) {},
     onWrapLinesChanged: (_) {},
+    onAcpFramesChanged: onAcpFramesChanged ?? (_) {},
     onRefresh: () async {},
     onCopyPath: onCopyPath,
     onCopyAll: onCopyAll,
@@ -93,6 +97,28 @@ void main() {
     await tester.pump();
 
     expect(copyPathCalls, 1);
+  });
+
+  testWidgets('ACP frame toggle reflects state and reports changes', (
+    tester,
+  ) async {
+    final changes = <bool>[];
+    await tester.pumpWidget(
+      _host(
+        _toolbar(
+          onCopyAll: () async {},
+          onCopyPath: () async {},
+          acpFramesEnabled: false,
+          onAcpFramesChanged: changes.add,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('ACP protocol frames (off by default)'));
+    await tester.pump();
+
+    expect(changes, [true]);
   });
 
   testWidgets('file log list is wrapped in a SelectionArea', (tester) async {

@@ -29,6 +29,12 @@ abstract class AppSettingsRepository {
   Future<bool> loadDiscoveryAutoRefreshEnabled();
   Future<void> saveDiscoveryAutoRefreshEnabled(bool value);
 
+  /// Whether ACP protocol frames are mirrored into the app log (console and
+  /// `{appDataRoot}/logs/`). Defaults to `false`: the frames are high-volume
+  /// and drown out app logs, so they are opt-in for debugging the ACP channel.
+  Future<bool> loadAcpFrameLogEnabled();
+  Future<void> saveAcpFrameLogEnabled(bool value);
+
   /// Legacy SkillsMP API key, kept for one-time migration to skills
   /// registry sources. Read-only: the write path was removed.
   Future<String?> loadSkillsMpApiKey();
@@ -45,6 +51,7 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
   static const _skillsMpApiKey = 'skillsMpApiKey';
   static const _aiFeaturesKey = 'aiFeatures';
   static const _discoveryAutoRefreshKey = 'discoveryAutoRefresh';
+  static const _acpFrameLogKey = 'acpFrameLog';
 
   final SharedPreferences _preferences;
 
@@ -168,6 +175,20 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
   }
 
   @override
+  Future<bool> loadAcpFrameLogEnabled() async {
+    final value = _readMap()[_acpFrameLogKey];
+    // Opt-in: disabled unless explicitly turned on.
+    return value == true;
+  }
+
+  @override
+  Future<void> saveAcpFrameLogEnabled(bool value) async {
+    final current = _readMap();
+    current[_acpFrameLogKey] = value;
+    await _writeMap(current);
+  }
+
+  @override
   Future<String?> loadSkillsMpApiKey() async {
     final value = _readMap()[_skillsMpApiKey];
     if (value is String && value.isNotEmpty) return value;
@@ -204,12 +225,14 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
     String? skippedUpdateVersion,
     String? skillsMpApiKey,
     bool discoveryAutoRefreshEnabled = false,
+    bool acpFrameLogEnabled = false,
   }) : _llmConfigPathOverride = llmConfigPathOverride,
        _hasCompletedOnboarding = hasCompletedOnboarding,
        _autoCheckUpdatesEnabled = autoCheckUpdatesEnabled,
        _skippedUpdateVersion = skippedUpdateVersion,
        _skillsMpApiKey = skillsMpApiKey,
-       _discoveryAutoRefreshEnabled = discoveryAutoRefreshEnabled;
+       _discoveryAutoRefreshEnabled = discoveryAutoRefreshEnabled,
+       _acpFrameLogEnabled = acpFrameLogEnabled;
 
   String? _llmConfigPathOverride;
   bool _hasCompletedOnboarding;
@@ -217,6 +240,7 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
   String? _skippedUpdateVersion;
   final String? _skillsMpApiKey;
   bool _discoveryAutoRefreshEnabled;
+  bool _acpFrameLogEnabled;
 
   @override
   Future<String?> loadLlmConfigPathOverride() async => _llmConfigPathOverride;
@@ -266,6 +290,14 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
   @override
   Future<void> saveDiscoveryAutoRefreshEnabled(bool value) async {
     _discoveryAutoRefreshEnabled = value;
+  }
+
+  @override
+  Future<bool> loadAcpFrameLogEnabled() async => _acpFrameLogEnabled;
+
+  @override
+  Future<void> saveAcpFrameLogEnabled(bool value) async {
+    _acpFrameLogEnabled = value;
   }
 
   final Map<AiFeatureId, AiFeatureSetting> _aiFeatures = {};

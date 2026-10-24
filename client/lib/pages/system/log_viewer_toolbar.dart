@@ -15,12 +15,14 @@ class LogViewerToolbar extends StatelessWidget {
     required this.compactView,
     required this.wrapLines,
     required this.reverseOrder,
+    required this.acpFramesEnabled,
     required this.lineCount,
     required this.onFileSelected,
     required this.onSearchChanged,
     required this.onLevelChanged,
     required this.onCompactViewChanged,
     required this.onWrapLinesChanged,
+    required this.onAcpFramesChanged,
     required this.onRefresh,
     required this.onCopyPath,
     required this.onCopyAll,
@@ -36,12 +38,14 @@ class LogViewerToolbar extends StatelessWidget {
   final bool compactView;
   final bool wrapLines;
   final bool reverseOrder;
+  final bool acpFramesEnabled;
   final int lineCount;
   final ValueChanged<String> onFileSelected;
   final ValueChanged<String> onSearchChanged;
   final ValueChanged<String> onLevelChanged;
   final ValueChanged<bool> onCompactViewChanged;
   final ValueChanged<bool> onWrapLinesChanged;
+  final ValueChanged<bool> onAcpFramesChanged;
   final Future<void> Function() onRefresh;
   final Future<void> Function() onCopyPath;
   final Future<void> Function() onCopyAll;
@@ -143,6 +147,14 @@ class LogViewerToolbar extends StatelessWidget {
                       offIcon: Icons.wrap_text_outlined,
                       value: wrapLines,
                       onPressed: () => onWrapLinesChanged(!wrapLines),
+                    ),
+                    _iconToggle(
+                      context: context,
+                      tooltip: l10n.logViewerAcpFrames,
+                      onIcon: Icons.forum,
+                      offIcon: Icons.forum_outlined,
+                      value: acpFramesEnabled,
+                      onPressed: () => onAcpFramesChanged(!acpFramesEnabled),
                     ),
                     TpActionMenuButton(
                       tooltip: l10n.logViewerActionsMenu,

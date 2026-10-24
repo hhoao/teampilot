@@ -6264,6 +6264,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get logViewerWrapLines => 'Wrap lines';
 
   @override
+  String get logViewerAcpFrames => 'ACP protocol frames (off by default)';
+
+  @override
   String get logViewerReverseOrder => 'Newest first';
 
   @override

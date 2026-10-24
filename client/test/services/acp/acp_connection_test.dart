@@ -20,7 +20,7 @@ void main() {
   setUp(() {
     agent = acpd_test.MockAgent();
     transport = _PairAcpTransport(agent.clientTransport);
-    logger = AcpFrameLogger(enableDiskLog: false);
+    logger = AcpFrameLogger(mirrorToLog: false);
     conn = AcpAgentConnection(
       transport: transport,
       logger: logger,

@@ -6004,6 +6004,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get logViewerWrapLines => '自动换行';
 
   @override
+  String get logViewerAcpFrames => 'ACP 协议帧日志（默认关闭）';
+
+  @override
   String get logViewerReverseOrder => '从最新内容开始';
 
   @override

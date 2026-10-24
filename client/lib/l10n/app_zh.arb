@@ -2723,6 +2723,7 @@
   "logViewerFilterTitle": "过滤",
   "logViewerFilterLevel": "级别",
   "logViewerWrapLines": "自动换行",
+  "logViewerAcpFrames": "ACP 协议帧日志（默认关闭）",
   "logViewerReverseOrder": "从最新内容开始",
   "logViewerCompactView": "简洁视图",
   "logViewerLineCount": "{count} 行",

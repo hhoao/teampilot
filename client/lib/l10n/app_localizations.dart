@@ -11174,6 +11174,12 @@ abstract class AppLocalizations {
   /// **'Wrap lines'**
   String get logViewerWrapLines;
 
+  /// No description provided for @logViewerAcpFrames.
+  ///
+  /// In en, this message translates to:
+  /// **'ACP protocol frames (off by default)'**
+  String get logViewerAcpFrames;
+
   /// No description provided for @logViewerReverseOrder.
   ///
   /// In en, this message translates to:

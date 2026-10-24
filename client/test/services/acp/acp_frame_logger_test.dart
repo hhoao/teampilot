@@ -140,9 +140,26 @@ OPENCODE_AUTH_CONTENT={
     expect(text, contains('[REDACTED]'));
   });
 
-  test('can disable disk log mirroring', () {
-    final logger = AcpFrameLogger(enableDiskLog: false);
+  test('does not mirror to the app log by default', () {
+    expect(AcpFrameLogger().mirrorToLog, isFalse);
+  });
+
+  test('can enable and disable log mirroring explicitly', () {
+    expect(AcpFrameLogger(mirrorToLog: true).mirrorToLog, isTrue);
+    final logger = AcpFrameLogger(mirrorToLog: false);
     logger.logOutgoing('{"ok":true}');
     expect(logger.snapshot(), isNotEmpty);
+  });
+
+  test('follows the process-wide switch unless overridden', () {
+    addTearDown(() => AcpFrameLogger.mirrorEnabled = false);
+
+    AcpFrameLogger.mirrorEnabled = true;
+    expect(AcpFrameLogger().mirrorToLog, isTrue);
+    expect(AcpFrameLogger(mirrorToLog: false).mirrorToLog, isFalse);
+
+    AcpFrameLogger.mirrorEnabled = false;
+    expect(AcpFrameLogger().mirrorToLog, isFalse);
+    expect(AcpFrameLogger(mirrorToLog: true).mirrorToLog, isTrue);
   });
 }

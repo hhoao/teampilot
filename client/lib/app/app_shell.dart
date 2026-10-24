@@ -148,6 +148,7 @@ import '../services/app/boot_splash.dart';
 import '../utils/ui/yield_ui_frame.dart';
 import '../l10n/l10n_extensions.dart';
 import '../services/acp/acp_chat_strings.dart';
+import '../services/acp/acp_frame_logger.dart';
 import '../pages/system/app_bootstrap_loading_page.dart';
 import '../pages/system/bootstrap_startup_error_page.dart';
 import '../repositories/app_settings_repository.dart';
@@ -687,6 +688,11 @@ Future<AppShell> buildAppShell({
   );
 
   final appSettings = SharedPrefsAppSettingsRepository(preferences);
+  // Apply the persisted ACP frame-log choice before any ACP session starts so
+  // the log viewer toggle keeps working across restarts.
+  AcpFrameLogger.mirrorEnabled = AcpFrameLogger.resolveEnabled(
+    await appSettings.loadAcpFrameLogEnabled(),
+  );
   final aiFeatureSettingsCubit = AiFeatureSettingsCubit(
     repository: appSettings,
   );

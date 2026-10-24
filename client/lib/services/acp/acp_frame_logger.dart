@@ -9,12 +9,32 @@ enum AcpFrameDirection { outgoing, incoming, stderr }
 ///
 /// Keeps the last [_maxEntries] frames per direction for diagnostics
 /// (secrets redacted before storing) and mirrors each entry to [AppLogger]
-/// debug output when [enableDiskLog] is true.
+/// debug output when [mirrorToLog] is true.
+///
+/// Mirroring is off by default: protocol frames (`session/update`,
+/// `available_commands_update`, …) are high-volume and drown out app logs.
+/// Turn it on at runtime with the log viewer's ACP toggle (persisted), or
+/// compile it in with `--dart-define=ACP_FRAME_LOG=true`.
 class AcpFrameLogger {
-  AcpFrameLogger({this.enableDiskLog = true});
+  /// Compile-time opt-in (`--dart-define=ACP_FRAME_LOG=true`). When true,
+  /// mirroring stays on regardless of the persisted toggle (CI / headless).
+  static const bool compileTimeEnabled = bool.fromEnvironment('ACP_FRAME_LOG');
 
-  /// Whether frames are mirrored to [AppLogger] (disk/console log).
-  final bool enableDiskLog;
+  /// Process-wide mirror switch, driven by the persisted user setting (log
+  /// viewer toggle) and [compileTimeEnabled]. Read at log time so a toggle
+  /// also affects already-running ACP sessions.
+  static bool mirrorEnabled = compileTimeEnabled;
+
+  /// Whether mirroring should be on for a persisted [setting].
+  static bool resolveEnabled(bool setting) => compileTimeEnabled || setting;
+
+  AcpFrameLogger({bool? mirrorToLog}) : _mirrorOverride = mirrorToLog;
+
+  final bool? _mirrorOverride;
+
+  /// Whether this logger mirrors frames to [AppLogger] (console + disk log).
+  /// Defaults to the process-wide [mirrorEnabled]; tests can override.
+  bool get mirrorToLog => _mirrorOverride ?? mirrorEnabled;
 
   static const int _maxEntries = 200;
 
@@ -83,7 +103,7 @@ class AcpFrameLogger {
     while (buffer.length > _maxEntries) {
       buffer.removeFirst();
     }
-    if (enableDiskLog) {
+    if (mirrorToLog) {
       AppLogger.instance.d('[$tag] $text');
     }
   }

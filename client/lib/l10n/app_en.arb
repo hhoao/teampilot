@@ -3113,6 +3113,7 @@
   "logViewerFilterTitle": "Filters",
   "logViewerFilterLevel": "Level",
   "logViewerWrapLines": "Wrap lines",
+  "logViewerAcpFrames": "ACP protocol frames (off by default)",
   "logViewerReverseOrder": "Newest first",
   "logViewerCompactView": "Compact view",
   "logViewerLineCount": "{count} lines",
