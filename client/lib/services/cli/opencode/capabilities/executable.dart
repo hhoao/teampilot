@@ -19,7 +19,8 @@ final class OpencodeExecutableCapability
     implements
         CliExecutableCapability,
         CliLocalExecutableLocator,
-        CliPreferredLaunchExecutable {
+        CliPreferredLaunchExecutable,
+        CliRemoteOverrideGuard {
   const OpencodeExecutableCapability();
 
   static const installUrl = 'https://opencode.ai/v2/install';
@@ -99,6 +100,10 @@ final class OpencodeExecutableCapability
           isStaleOpencodeNpmInstall(path, linkTarget: _linkTarget(path)),
     );
   }
+
+  @override
+  bool acceptRemoteOverride(String overridePath) =>
+      !isStaleOpencodeNpmInstall(overridePath);
 
   @override
   CliExecutablePathRowSpec get executablePathRowSpec =>

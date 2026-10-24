@@ -28,7 +28,10 @@ class RemoteCliLocator {
     String manualPathOverride = '',
   }) async {
     final manual = manualPathOverride.trim();
-    if (manual.isNotEmpty) return manual;
+    if (manual.isNotEmpty) {
+      final guard = _registry.capability<CliRemoteOverrideGuard>(cli);
+      if (guard?.acceptRemoteOverride(manual) ?? true) return manual;
+    }
     final capability = _registry.capability<CliExecutableCapability>(cli);
     if (capability == null) return null;
     return capability.locateRemote(run);

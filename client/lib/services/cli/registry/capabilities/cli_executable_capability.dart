@@ -107,3 +107,15 @@ abstract interface class CliPreferredLaunchExecutable implements CliCapability {
     required String? discoveredPath,
   });
 }
+
+/// Optional guard for a per-target remote path override.
+///
+/// `RemoteCliLocator` normally honours a manual override verbatim. When the
+/// override is known to be a stale/incorrect binary (e.g. a leftover npm shim)
+/// the CLI can reject it so remote discovery runs and its well-known probes
+/// (official install dirs first) win — mirroring [CliPreferredLaunchExecutable]
+/// on the local side.
+abstract interface class CliRemoteOverrideGuard implements CliCapability {
+  /// True to honour [overridePath]; false to ignore it and run discovery.
+  bool acceptRemoteOverride(String overridePath);
+}
