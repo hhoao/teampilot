@@ -49,6 +49,22 @@ void main() {
     return agent;
   }
 
+  test('exposes the agent process pid wired by the spawner', () async {
+    final localAgent = acpd_test.MockAgent();
+    final localTransport = _PairAcpTransport(localAgent.clientTransport);
+    final pidConn = AcpAgentConnection(
+      transport: localTransport,
+      logger: AcpFrameLogger(mirrorToLog: false),
+      translator: const GeminiAcpTranslator(),
+      agentPid: 4242,
+    );
+
+    expect(pidConn.agentPid, 4242);
+
+    await pidConn.dispose();
+    await localAgent.close();
+  });
+
   test('initialize handshake caches agent capabilities', () async {
     stubInitialize(
       agentCapabilities: const acpd.AgentCapabilities(
