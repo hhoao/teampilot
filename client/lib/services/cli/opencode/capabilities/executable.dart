@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import '../../../../l10n/app_localizations.dart';
+import '../../../../utils/logging/logger.dart';
 import '../../cli_tool_locator.dart';
 import '../../installer_types.dart';
 import '../../remote_cli_locator.dart';
@@ -50,11 +51,38 @@ final class OpencodeExecutableCapability
   String get preferencesPathKey => 'opencode';
 
   @override
-  Future<String?> locateRemote(SshCommandRunner run) =>
-      const DefaultRemoteCliLocator(
-        executableName,
-        extraWellKnownProbes: [opencodeOfficialRemoteBinProbe],
-      ).locate(run);
+  Future<String?> locateRemote(SshCommandRunner run) async {
+    final path = await const DefaultRemoteCliLocator(
+      executableName,
+      extraWellKnownProbes: [opencodeOfficialRemoteBinProbe],
+    ).locate(run);
+    final resolved = path?.trim() ?? '';
+    if (resolved.isEmpty) return null;
+    if (await _remoteIsPreV2(run, resolved)) {
+      appLogger.w(
+        '[opencode] remote $resolved is older than '
+        'v$opencodeMinimumRemoteMajorVersion; TeamPilot writes v2 opencode.json '
+        'so it is reported as not ready',
+      );
+      return null;
+    }
+    return resolved;
+  }
+
+  /// True when the remote binary at [path] answers `--version` with a major
+  /// below [opencodeMinimumRemoteMajorVersion]. Unreadable banners fail open
+  /// (keep the path) so a probe hiccup never hides an existing install.
+  static Future<bool> _remoteIsPreV2(SshCommandRunner run, String path) async {
+    try {
+      final result = await run(opencodeRemoteVersionProbeCommand(path));
+      if (result.exitCode != 0) return false;
+      final major = opencodeMajorVersionFromBanner(result.stdout);
+      if (major == null) return false;
+      return major < opencodeMinimumRemoteMajorVersion;
+    } on Object {
+      return false;
+    }
+  }
 
   @override
   Future<String?> locateLocal({

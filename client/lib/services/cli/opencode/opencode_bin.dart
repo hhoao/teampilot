@@ -1,5 +1,7 @@
 import 'package:path/path.dart' as p;
 
+import '../cli_version_probe.dart';
+
 /// Official OpenCode v2 binary path from https://opencode.ai/v2/install.
 String? opencodeOfficialExecutablePath({
   required String? homeDirectory,
@@ -52,6 +54,24 @@ String? preferOpencodeLaunchExecutable({
 const opencodeOfficialRemoteBinProbe =
     'sh -c \'test -x "\$HOME/.opencode/bin/opencode" && '
     'printf "%s\\n" "\$HOME/.opencode/bin/opencode"\'';
+
+/// Minimum OpenCode major version TeamPilot's generated `opencode.json` can run
+/// on: it writes v2-only keys (`permissions`, `providers`, …) that v1 rejects.
+const opencodeMinimumRemoteMajorVersion = 2;
+
+/// Remote probe reading the version of the binary at [path]
+/// (`<path> --version`).
+String opencodeRemoteVersionProbeCommand(String path) {
+  final quoted = path.replaceAll("'", r"'\''");
+  return 'sh -c \'test -x "$quoted" && "$quoted" --version\'';
+}
+
+/// Major version from an OpenCode `--version` banner, or null when unreadable.
+int? opencodeMajorVersionFromBanner(String banner) {
+  final token = cliVersionToken(banner);
+  if (token == null) return null;
+  return int.tryParse(token.split('.').first);
+}
 
 String opencodePostInstallLocateScript({required String fallbackScript}) =>
     '''
