@@ -431,6 +431,7 @@ class ChatCubit extends Cubit<ChatState>
             _reclaimIdleTerminalAfterSeconds?.call() ?? 180,
         onReclaimMember: _launchService.discardMemberTerminal,
         onReclaimAcpSeat: _launchService.discardAcpSeat,
+        onReclaimPersonalAcp: _launchService.discardPersonalAcpRuntime,
         acpIdleAfterSeconds: () =>
             (_reclaimIdleTerminalAfterSeconds?.call() ?? 180) * 2,
         isSessionPinned: (sessionId) {
@@ -951,6 +952,10 @@ class ChatCubit extends Cubit<ChatState>
   Future<void> _onIdleWatchTick() async {
     await _presenceCubit?.tickFromIdleWatch();
     if (isClosed) return;
+    // A reclaimed personal ACP runtime is NOT re-attached here: like a simple
+    // PTY session, activation happens on the next send (see the workbench
+    // composer's connect-then-send), not by merely viewing the tab — so reading
+    // history costs no agent process.
     _updateSessionActivities();
   }
 

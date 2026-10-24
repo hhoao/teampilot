@@ -157,6 +157,12 @@ class ChatTab {
   /// re-materialized. The UI shows a "reclaimed" placeholder for these.
   final Set<String> reclaimedMemberIds = {};
 
+  /// Personal ACP only: the terminal-less runtime ([acpRuntime]) was reclaimed
+  /// for idle and is awaiting lazy re-attach. Set by
+  /// `SessionLaunchService.discardPersonalAcpRuntime`, cleared when the attach
+  /// funnel brings a fresh cubit back.
+  bool reclaimedAcpRuntime = false;
+
   /// Per-member remote workspace/CLI provision UI (SSH off-home connect).
   final Map<String, MemberRemoteProvisionProgress> memberRemoteProvision = {};
 

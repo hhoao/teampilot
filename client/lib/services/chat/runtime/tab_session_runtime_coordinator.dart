@@ -39,6 +39,7 @@ class TabSessionRuntimeCoordinator {
     int Function()? reclaimIdleAfterSeconds,
     void Function(String sessionId, String memberId)? onReclaimMember,
     void Function(String sessionId, String memberId)? onReclaimAcpSeat,
+    void Function(String sessionId)? onReclaimPersonalAcp,
     int Function()? acpIdleAfterSeconds,
     bool Function(String sessionId)? isSessionPinned,
     SessionActivityAggregator? activityAggregator,
@@ -134,6 +135,8 @@ class TabSessionRuntimeCoordinator {
                         idleAfter: Duration(seconds: acpIdleAfterSeconds()),
                       ),
                 onDiscardAcpSeat: onReclaimAcpSeat,
+                activeSessionId: activeSessionId,
+                onDiscardPersonalAcp: onReclaimPersonalAcp,
               ));
     final aggregator =
         activityAggregator ??

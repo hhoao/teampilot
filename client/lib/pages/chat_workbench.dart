@@ -901,11 +901,24 @@ class _ChatWorkbenchBody extends StatelessWidget {
         // Never fall through to PTY connect/inject when the seat is ACP but
         // the cubit is not attached yet — that path waits for a shell these
         // seats never spawn.
-        final acpRuntime = _acpRuntimeForSelectedSeat(
+        var acpRuntime = _acpRuntimeForSelectedSeat(
           chatCubit: chatCubit,
           session: appSession,
           selectedMemberId: historyMemberId,
         );
+        // A reclaimed personal ACP runtime activates on demand — same as a
+        // simple PTY session: viewing the tab shows the stored transcript
+        // without spawning the agent, and the connect happens here on send.
+        // `retrySessionLaunch` resolves after the attach settles, so the prompt
+        // is delivered to a live cubit.
+        if (acpRuntime == null && isAcpChatSession(appSession)) {
+          await chatCubit.retrySessionLaunch(appSession.sessionId);
+          acpRuntime = _acpRuntimeForSelectedSeat(
+            chatCubit: chatCubit,
+            session: appSession,
+            selectedMemberId: historyMemberId,
+          );
+        }
         if (acpRuntime != null) {
           final sent = acpRuntime.sendPrompt(message);
           return HistoryContinueSubmitResult(
@@ -917,6 +930,11 @@ class _ChatWorkbenchBody extends StatelessWidget {
           session: appSession,
           selectedMemberId: historyMemberId,
         )) {
+          return const HistoryContinueSubmitResult.failed();
+        }
+        // The ACP reconnect above may have awaited; re-check before touching
+        // the widget tree's context on the PTY path.
+        if (!context.mounted) {
           return const HistoryContinueSubmitResult.failed();
         }
         final switchToTerminal = shouldSwitchToTerminalAfterChatSubmit(

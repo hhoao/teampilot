@@ -57,6 +57,25 @@ ChatTab _simpleTab({required SessionWorkbenchView view}) {
   return tab;
 }
 
+/// Personal terminal-less ACP session tab: runtime aliased into
+/// [ChatTab.memberAcpRuntimes] under the session id.
+ChatTab _personalAcpTab({String id = 'sess', bool pinned = false}) {
+  final tab = ChatTab(
+    info: ChatTabInfo(id: id, title: 't', subtitle: 's'),
+    cliTeamName: 'ct',
+  );
+  tab.persistedSession = AppSession(
+    sessionId: id,
+    workspaceId: 'ws',
+    createdAt: 1,
+    sessionTeam: '',
+    acp: true,
+    pinned: pinned,
+  );
+  tab.workbenchView = SessionWorkbenchView.chat;
+  return tab;
+}
+
 TeamBus _busWith(
   String memberId,
   MemberLifecycle lifecycle,
@@ -79,10 +98,13 @@ TabMemberReclaimWatch _watch(
   required DateTime Function() now,
   bool Function(String sessionId)? isSessionPinned,
   bool Function(String sessionId)? sessionBusyFromDeliveryInFlight,
+  bool Function(String sessionId)? sessionBusyFromAttention,
   bool Function(String sessionId, String memberId)? seatHasActiveLeases,
   TeamProfile? Function()? team,
   TerminalReclaimPolicy? acpPolicy,
   void Function(String, String)? onDiscardAcpSeat,
+  String? Function()? activeSessionId,
+  void Function(String)? onDiscardPersonalAcp,
 }) => TabMemberReclaimWatch(
   tabStore: store,
   reclaimEnabled: () => true,
@@ -91,11 +113,14 @@ TabMemberReclaimWatch _watch(
   onDiscardMember: onDiscard,
   isSessionPinned: isSessionPinned,
   sessionBusyFromDeliveryInFlight: sessionBusyFromDeliveryInFlight,
+  sessionBusyFromAttention: sessionBusyFromAttention,
   seatHasActiveLeases: seatHasActiveLeases,
   now: now,
   acpPolicy: () =>
       acpPolicy ?? const TerminalReclaimPolicy(idleAfter: Duration(seconds: 2)),
   onDiscardAcpSeat: onDiscardAcpSeat,
+  activeSessionId: activeSessionId,
+  onDiscardPersonalAcp: onDiscardPersonalAcp,
 );
 
 /// Minimal all-stub [AcpSessionRuntimeApi] so the reclaim watch tests can build
@@ -470,7 +495,7 @@ void main() {
   });
 
   test(
-    'never reclaims the selected, personal, or launching ACP seat',
+    'reclaims a hidden personal ACP runtime, never the selected/launching seat',
     () async {
       final store = ChatTabStore(storage: fakeHomeStorage());
 
@@ -491,18 +516,11 @@ void main() {
       );
       selected.memberAcpRuntimes['worker-1'] = await _readyCubit();
 
-      // Personal ACP tab: skipped entirely (D1). selectedMemberId stays the
-      // default '' so isDisplayed cannot shield it — only the D1 skip can.
-      final personal = _tabWithBus(id: 'sess-personal');
-      personal.persistedSession = AppSession(
-        sessionId: 'sess-personal',
-        workspaceId: 'ws',
-        createdAt: 1,
-        sessionTeam: '',
-        acp: true,
-      );
+      // Personal ACP tab: visibility is tab-level (centre-active). Hidden here,
+      // so it is reclaimed.
+      final personal = _personalAcpTab(id: 'sess-personal');
       store.registerSession(personal);
-      personal.memberAcpRuntimes['sess-personal'] = await _readyCubit();
+      personal.acpRuntime = await _readyCubit();
 
       // Launching seat: protected via shellConnecting.
       final launching = _tabWithBus(id: 'sess-launching');
@@ -515,21 +533,110 @@ void main() {
       store.registerSession(launching);
       launching.memberAcpRuntimes['worker-1'] = _launchingCubit();
 
-      final discarded = <(String, String)>[];
+      final acpDiscarded = <(String, String)>[];
+      final personalDiscarded = <String>[];
       var now = DateTime(2026, 8, 9, 12, 0, 0);
       final watch = _watch(
         store,
         onDiscard: (_, __) {},
         now: () => now,
-        onDiscardAcpSeat: (s, m) => discarded.add((s, m)),
+        activeSessionId: () => 'sess-selected',
+        onDiscardAcpSeat: (s, m) => acpDiscarded.add((s, m)),
+        onDiscardPersonalAcp: personalDiscarded.add,
       );
       watch.tick();
       now = now.add(const Duration(seconds: 3));
       watch.tick();
 
-      expect(discarded, isEmpty);
+      expect(acpDiscarded, isEmpty);
+      expect(personalDiscarded, ['sess-personal']);
     },
   );
+
+  test('never reclaims a centre-active personal ACP runtime', () async {
+    final store = ChatTabStore(storage: fakeHomeStorage());
+    final tab = _personalAcpTab();
+    store.registerSession(tab);
+    tab.acpRuntime = await _readyCubit();
+
+    final discarded = <String>[];
+    var now = DateTime(2026, 8, 9, 12, 0, 0);
+    final watch = _watch(
+      store,
+      onDiscard: (_, __) {},
+      now: () => now,
+      activeSessionId: () => 'sess',
+      onDiscardPersonalAcp: discarded.add,
+    );
+    watch.tick();
+    now = now.add(const Duration(seconds: 3));
+    watch.tick();
+
+    expect(discarded, isEmpty, reason: 'the operator is looking at it');
+  });
+
+  test('a live seat lease or in-flight delivery protects personal ACP', () async {
+    final store = ChatTabStore(storage: fakeHomeStorage());
+    final tab = _personalAcpTab();
+    store.registerSession(tab);
+    tab.acpRuntime = await _readyCubit();
+
+    final discarded = <String>[];
+    var now = DateTime(2026, 8, 9, 12, 0, 0);
+    var leased = true;
+    var delivering = false;
+    final watch = _watch(
+      store,
+      onDiscard: (_, __) {},
+      now: () => now,
+      activeSessionId: () => 'other',
+      seatHasActiveLeases: (sessionId, memberId) =>
+          sessionId == 'sess' && memberId == 'acp' && leased,
+      sessionBusyFromDeliveryInFlight: (id) => delivering && id == 'sess',
+      onDiscardPersonalAcp: discarded.add,
+    );
+    watch.tick();
+    now = now.add(const Duration(seconds: 3));
+    watch.tick();
+    expect(discarded, isEmpty, reason: 'seat lease holds the runtime');
+
+    // In-flight delivery also holds it.
+    leased = false;
+    delivering = true;
+    watch.tick();
+    now = now.add(const Duration(seconds: 3));
+    watch.tick();
+    expect(discarded, isEmpty, reason: 'delivery in flight holds the runtime');
+
+    // Nothing holds it now.
+    delivering = false;
+    watch.tick();
+    now = now.add(const Duration(seconds: 3));
+    watch.tick();
+    expect(discarded, ['sess']);
+  });
+
+  test('a pinned personal ACP session is never reclaimed', () async {
+    final store = ChatTabStore(storage: fakeHomeStorage());
+    final tab = _personalAcpTab(pinned: true);
+    store.registerSession(tab);
+    tab.acpRuntime = await _readyCubit();
+
+    final discarded = <String>[];
+    var now = DateTime(2026, 8, 9, 12, 0, 0);
+    final watch = _watch(
+      store,
+      onDiscard: (_, __) {},
+      now: () => now,
+      activeSessionId: () => 'other',
+      onDiscardPersonalAcp: discarded.add,
+    );
+    watch.tick();
+    now = now.add(const Duration(seconds: 3));
+    watch.tick();
+
+    expect(discarded, isEmpty);
+  });
 
   test('a null acpPolicy skips the ACP pass (backward compat)', () async {
     final store = ChatTabStore(storage: fakeHomeStorage());

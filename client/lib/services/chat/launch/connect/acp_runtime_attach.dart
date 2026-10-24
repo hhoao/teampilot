@@ -137,6 +137,7 @@ class AcpRuntimeAttach {
     if (tab == null) return false;
     final existing = tab.acpRuntime;
     if (existing != null) {
+      tab.reclaimedAcpRuntime = false;
       _host.updateTabRunning(tab.info.id);
       return true;
     }
@@ -229,6 +230,7 @@ class AcpRuntimeAttach {
       processWorkingDirectory: workingDirectory,
     );
     tab.acpRuntime = cubit;
+    tab.reclaimedAcpRuntime = false;
     _host.updateTabRunning(tab.info.id);
     await cubit.start(
       executable: executable,

@@ -233,8 +233,11 @@ Hidden mixed ACP seats now participate in the Chrome-style idle reclaim
 watch. When a background mixed seat is prompt-idle past the ACP threshold
 (PTY threshold ×2), the watch discards it via `discardAcpSeat`: the cubit
 is closed (persisting the transcript and the agent session id) and the
-seat is recorded in `ChatTab.reclaimedMemberIds`. Personal ACP is excluded
-(D1 skip); the selected seat, a launching seat, and a seat in `ended`
+seat is recorded in `ChatTab.reclaimedMemberIds`. Personal ACP is reclaimed
+too once its tab is not centre-active — see
+[2026-10-22-personal-acp-idle-reclaim](../plans/2026-10-22-personal-acp-idle-reclaim.md);
+it re-attaches on the next send, not on view (simple-PTY parity);
+the selected seat, a launching seat, and a seat in `ended`
 phase are protected, mirroring the PTY protection set. Restoration is lazy
 and unchanged: the member-connect funnel re-attaches the seat
 (`attachMemberAcpRuntime` re-creates the cubit because the discarded seat

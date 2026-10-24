@@ -19,6 +19,7 @@ import 'connect/session_connect_job.dart';
 import 'connect/session_connect_scheduler.dart';
 import 'connect/acp_launch_environment.dart';
 import 'connect/acp_runtime_attach.dart';
+import '../../../cubits/session/acp/acp_chat_runtime_cubit.dart';
 import '../../../cubits/session/acp/acp_transport_wiring.dart';
 import 'connect/launch_generation_store.dart';
 import 'connect/session_personal_shell.dart';
@@ -944,6 +945,35 @@ class SessionLaunchService
     tab.reclaimedMemberIds.add(mid);
     unawaited(cubit.close());
     _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: mid);
+    _h.clearLaunchError(tab.info.id);
+    _h.updateTabRunning(tab.info.id);
+  }
+
+  /// Reclaims the personal ACP runtime (`isAcpChatSession`) for idle.
+  ///
+  /// Personal ACP has a single seat keyed by the session id; its attention and
+  /// seat leases use the seat id ([AcpChatRuntimeCubit.acpMemberId]), while the
+  /// agent-status lookup seat uses the session id, so both are cleared. The tab
+  /// stays open with its app-side transcript; closing the cubit persists the
+  /// transcript + agent session id and kills the process, and the connect
+  /// funnel re-attaches a fresh cubit on demand (resume).
+  void discardPersonalAcpRuntime(String sessionId) {
+    final id = sessionId.trim();
+    if (id.isEmpty) return;
+    final tab = _tabStore.getOpenTabBySessionId(id);
+    if (tab == null) return;
+    final session = tab.persistedSession;
+    if (session == null || !isAcpChatSession(session)) return;
+    final cubit = tab.acpRuntime;
+    if (cubit == null) return;
+    tab.acpRuntime = null;
+    tab.reclaimedAcpRuntime = true;
+    unawaited(cubit.close());
+    _h.clearAgentStatusSeat(
+      sessionId: tab.info.id,
+      memberId: AcpChatRuntimeCubit.acpMemberId,
+    );
+    _h.clearAgentStatusSeat(sessionId: tab.info.id, memberId: id);
     _h.clearLaunchError(tab.info.id);
     _h.updateTabRunning(tab.info.id);
   }

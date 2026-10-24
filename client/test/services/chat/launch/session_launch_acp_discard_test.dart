@@ -1,6 +1,7 @@
 import 'package:acpd/acpd.dart' as acpd;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/session/acp/acp_chat_runtime_cubit.dart';
+import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
@@ -43,6 +44,71 @@ void main() {
 
     await pumpEventQueue();
     expect(readyCubit.isClosed, isTrue);
+  });
+
+  test('discardPersonalAcpRuntime closes the personal cubit and marks it reclaimed',
+      () async {
+    final tabStore = ChatTabStore(storage: fakeHomeStorage())
+      ..setActiveWorkspaceId('w1');
+    final tab = ChatTab(
+      info: ChatTabInfo(id: 'sess', title: 'S', subtitle: ''),
+      cliTeamName: '',
+    );
+    tab.persistedSession = AppSession(
+      sessionId: 'sess',
+      workspaceId: 'w1',
+      createdAt: 1,
+      sessionTeam: '',
+      acp: true,
+    );
+    tabStore.registerSession(tab);
+    final host = _Host(tabStore);
+    final service = SessionLaunchService(host, storage: fakeHomeStorage());
+
+    final cubit = await _readyCubit();
+    tab.acpRuntime = cubit;
+
+    service.discardPersonalAcpRuntime('sess');
+
+    expect(tab.acpRuntime, isNull);
+    expect(tab.reclaimedAcpRuntime, isTrue);
+    expect(host.clearedLaunchError, contains('sess'));
+    expect(host.updatedTabRunning, contains('sess'));
+
+    await pumpEventQueue();
+    expect(cubit.isClosed, isTrue);
+  });
+
+  test('discardPersonalAcpRuntime is a no-op for non-ACP / missing tabs',
+      () async {
+    final tabStore = ChatTabStore(storage: fakeHomeStorage())
+      ..setActiveWorkspaceId('w1');
+    final service = SessionLaunchService(
+      _Host(tabStore),
+      storage: fakeHomeStorage(),
+    );
+
+    service.discardPersonalAcpRuntime('');
+    service.discardPersonalAcpRuntime('missing');
+
+    // Team tab (not personal ACP) is never touched by this path.
+    final team = ChatTab(
+      info: ChatTabInfo(id: 'sess', title: 'S', subtitle: ''),
+      cliTeamName: '',
+    );
+    team.persistedSession = AppSession(
+      sessionId: 'sess',
+      workspaceId: 'w1',
+      createdAt: 1,
+      sessionTeam: 't',
+    );
+    tabStore.registerSession(team);
+    team.acpRuntime = await _readyCubit();
+
+    service.discardPersonalAcpRuntime('sess');
+
+    expect(team.acpRuntime, isNotNull);
+    expect(team.reclaimedAcpRuntime, isFalse);
   });
 
   test('discardAcpSeat is a no-op for blank ids / missing tab / missing cubit',

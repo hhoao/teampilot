@@ -31,7 +31,9 @@ Two related gaps in the ACP (terminal-less chat) stack:
 
 ## Non-goals
 
-- Reclaiming `personal`/`simple` ACP sessions (see D1).
+- Reclaiming `personal`/`simple` ACP sessions — lifted by the follow-up plan
+  [2026-10-22-personal-acp-idle-reclaim](../plans/2026-10-22-personal-acp-idle-reclaim.md)
+  (see D1).
 - A new settings knob for the ACP threshold (see D2).
 - `session/fork`, `session/delete`.
 - Remote/SSH ACP (no ACP over SSH transport exists today).
@@ -41,7 +43,7 @@ Two related gaps in the ACP (terminal-less chat) stack:
 
 | # | Decision | Rationale |
 |---|----------|-----------|
-| D1 | Reclaim scope = **mixed ACP seats only**. `personal`/`simple` ACP (`isAcpChatSession`) is never reclaimed. | A personal ACP session has exactly one seat which **is** the visible surface; reclaiming it is thrash (close then immediately restore) and tears down the only agent. Only mixed sessions have "background seats". |
+| D1 | Reclaim scope = **mixed ACP seats only**. `personal`/`simple` ACP (`isAcpChatSession`) is never reclaimed. **Lifted (2026-10-22):** personal ACP is now reclaimed when its tab is *not* centre-active — see [personal ACP idle reclaim](../plans/2026-10-22-personal-acp-idle-reclaim.md). | A personal ACP session has exactly one seat which **is** the visible surface; reclaiming an *active* tab is thrash (close then immediately restore) and tears down the only agent. Only mixed sessions have "background seats"; a backgrounded personal tab does not, so discarding it is safe (visibility is the gate). |
 | D2 | ACP idle threshold = `reclaimIdleTerminalAfterSeconds * 2` (no new setting). | A restart costs a fresh handshake + `session/load` + replay, higher than PTY `--resume`; doubling is a safe default without expanding the settings surface. |
 | D3 | B attempts resume on **every** ACP start (reclaim, manual reopen, app restart), capability-gated per connection. | One code path; also fixes the amnesia that already exists for manual reopen. No per-CLI branching — the negotiated capability decides. |
 | D4 | The agent session id is persisted in a sidecar JSON next to the transcript (`acp-session.json` / `acp-session-<memberId>.json`). | Colocated with the transcript it belongs to; no cross-layer coupling to the session repository. |

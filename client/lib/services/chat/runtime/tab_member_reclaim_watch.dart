@@ -29,6 +29,8 @@ class TabMemberReclaimWatch {
     DateTime Function()? now,
     TerminalReclaimPolicy Function()? acpPolicy,
     void Function(String sessionId, String memberId)? onDiscardAcpSeat,
+    String? Function()? activeSessionId,
+    void Function(String sessionId)? onDiscardPersonalAcp,
   }) : _tabStore = tabStore,
        _reclaimEnabled = reclaimEnabled,
        _activeTeam = activeTeam,
@@ -40,6 +42,8 @@ class TabMemberReclaimWatch {
        _seatHasActiveLeases = seatHasActiveLeases,
        _acpPolicy = acpPolicy,
        _onDiscardAcpSeat = onDiscardAcpSeat,
+       _activeSessionId = activeSessionId,
+       _onDiscardPersonalAcp = onDiscardPersonalAcp,
        _now = now ?? DateTime.now;
 
   final ChatTabStore _tabStore;
@@ -53,6 +57,13 @@ class TabMemberReclaimWatch {
   final bool Function(String sessionId, String memberId)? _seatHasActiveLeases;
   final TerminalReclaimPolicy Function()? _acpPolicy;
   final void Function(String sessionId, String memberId)? _onDiscardAcpSeat;
+
+  /// Bar-derived centre-active session (null when nothing is centre-active).
+  /// Personal ACP has no per-member selection, so this is its "displayed" gate.
+  final String? Function()? _activeSessionId;
+
+  /// Personal ACP (`isAcpChatSession`) discard; the seat key is the session id.
+  final void Function(String sessionId)? _onDiscardPersonalAcp;
   final DateTime Function() _now;
 
   Timer? _timer;
@@ -115,10 +126,18 @@ class TabMemberReclaimWatch {
     if (acpPolicy != null) {
       for (final tab in _tabStore.openTabs) {
         final session = tab.persistedSession;
-        if (session != null && isAcpChatSession(session)) continue; // D1
+        // Personal ACP lives in the same map (keyed by the session id) but its
+        // visibility is tab-level: the chat surface has no member selection.
+        final personal = session != null && isAcpChatSession(session);
         for (final entry in tab.memberAcpRuntimes.entries.toList()) {
           final memberId = entry.key;
-          final snapshot = _acpSnapshotFor(tab, memberId, entry.value, team);
+          final snapshot = _acpSnapshotFor(
+            tab,
+            memberId,
+            entry.value,
+            team,
+            personal: personal,
+          );
           final key = (tab.info.id, memberId);
           if (acpPolicy.isProtected(snapshot)) {
             _idleSince.remove(key);
@@ -129,10 +148,14 @@ class TabMemberReclaimWatch {
           if (acpPolicy.shouldReclaim(snapshot, idleSince, now)) {
             appLogger.d(
               '[reclaim-watch] discard acp member=$memberId session=${tab.info.id} '
-              'idle=${now.difference(idleSince).inSeconds}s',
+              'personal=$personal idle=${now.difference(idleSince).inSeconds}s',
             );
             _idleSince.remove(key);
-            _onDiscardAcpSeat?.call(tab.info.id, memberId);
+            if (personal) {
+              _onDiscardPersonalAcp?.call(tab.info.id);
+            } else {
+              _onDiscardAcpSeat?.call(tab.info.id, memberId);
+            }
           }
         }
       }
@@ -143,24 +166,37 @@ class TabMemberReclaimWatch {
     ChatTab tab,
     String memberId,
     AcpChatRuntimeCubit cubit,
-    TeamProfile? team,
-  ) {
+    TeamProfile? team, {
+    required bool personal,
+  }) {
     final phase = cubit.state.phase;
+    final sessionId = tab.info.id;
     return TerminalReclaimSnapshot(
-      sessionId: tab.info.id,
+      sessionId: sessionId,
       memberId: memberId,
       shellRunning: phase != AcpChatPhase.ended,
       shellConnecting: phase == AcpChatPhase.launching,
-      isTeamLead: _isTeamLead(team, memberId),
-      isDisplayed: tab.selectedMemberId == memberId,
-      inTurn: cubit.state.inTurn || cubit.state.pendingClient != null,
+      isTeamLead: personal ? false : _isTeamLead(team, memberId),
+      isDisplayed: personal
+          ? _activeSessionId?.call() == sessionId
+          : tab.selectedMemberId == memberId,
+      inTurn:
+          cubit.state.inTurn ||
+          cubit.state.pendingClient != null ||
+          (personal &&
+              ((_sessionBusyFromAttention?.call(sessionId) ?? false) ||
+                  (_sessionBusyFromDeliveryInFlight?.call(sessionId) ?? false))),
       hasUnread:
           (tab.teamBus?.memberById(memberId)?.inbox.unreadCount ?? 0) > 0,
       isSessionPinned:
-          _isSessionPinned?.call(tab.info.id) ??
+          _isSessionPinned?.call(sessionId) ??
           (tab.persistedSession?.pinned ?? false),
       hasActiveLeases:
-          _seatHasActiveLeases?.call(tab.info.id, memberId) ?? false,
+          _seatHasActiveLeases?.call(
+            sessionId,
+            personal ? AcpChatRuntimeCubit.acpMemberId : memberId,
+          ) ??
+          false,
     );
   }
 
