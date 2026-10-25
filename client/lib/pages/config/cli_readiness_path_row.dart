@@ -24,7 +24,6 @@ class CliReadinessPathRow extends StatefulWidget {
     required this.onLocateOrReset,
     this.installKey,
     this.onInstall,
-    this.installLabel,
     this.installing = false,
     this.upgradeKey,
     this.onUpgrade,
@@ -47,7 +46,6 @@ class CliReadinessPathRow extends StatefulWidget {
   final VoidCallback? onLocateOrReset;
   final Key? installKey;
   final VoidCallback? onInstall;
-  final String? installLabel;
   final bool installing;
   final Key? upgradeKey;
   final VoidCallback? onUpgrade;
@@ -197,7 +195,7 @@ class _CliReadinessPathRowState extends State<CliReadinessPathRow> {
               label: Text(
                 widget.installing
                     ? l10n.cliInstallInstalling
-                    : (widget.installLabel ?? l10n.cliInstallButton),
+                    : l10n.cliInstallButton,
               ),
             ),
           ],

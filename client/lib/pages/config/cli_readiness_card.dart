@@ -391,7 +391,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
         final result = await jobs.enqueue(
           InstallJobSpec<RemoteCliReadiness>(
             key: _adapterJobKey(context),
-            title: _adapterInstallLabel(context.l10n),
+            title: _adapterJobTitle(context.l10n),
             cancelPolicy: InstallCancelPolicy.cooperative,
             run: (ctx) async {
               final readiness = await scope.readiness.install(
@@ -463,13 +463,12 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
     }
   }
 
-  String _adapterInstallLabel(AppLocalizations l10n) {
-    final installer = _settings?.adapterInstaller;
-    if (installer is CodexAcpAdapterInstaller) {
-      return l10n.codexAcpAdapterInstallButton;
-    }
-    return l10n.claudeAcpAdapterInstallButton;
-  }
+  /// Descriptive title for the remote adapter install job (the visible button
+  /// label itself is the generic "install"; the row label carries the noun).
+  String _adapterJobTitle(AppLocalizations l10n) =>
+      l10n.remoteCliMachineReadinessAdapterLabel(
+        _executable?.label(l10n) ?? widget.cli.value,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -649,7 +648,6 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
             onInstall: showAdapterInstall
                 ? () => _installOrUpgradeAdapter(upgrading: false)
                 : null,
-            installLabel: _adapterInstallLabel(l10n),
             installing: installingAdapter,
             upgradeKey: adapterUpdate
                 ? AppKeys.acpAdapterUpgradeButtonFor(widget.cli)

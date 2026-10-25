@@ -584,7 +584,7 @@ void main() {
     },
   );
 
-  testWidgets('Codex adapter install uses the Codex l10n string and key', (
+  testWidgets('Codex adapter install uses the shared install label and key', (
     tester,
   ) async {
     final cubit = await _makeCubit(
@@ -599,10 +599,7 @@ void main() {
     final button = find.byKey(AppKeys.codexAcpAdapterInstallButton);
     expect(button, findsOneWidget);
     expect(
-      find.descendant(
-        of: button,
-        matching: find.text(l10n.codexAcpAdapterInstallButton),
-      ),
+      find.descendant(of: button, matching: find.text(l10n.cliInstallButton)),
       findsOneWidget,
     );
   });
