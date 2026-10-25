@@ -39,6 +39,11 @@ class KeepAliveSessionStack extends StatelessWidget {
       children: [
         for (var i = 0; i < hosts.length; i++)
           TpKeepAliveLayer(
+            // Keyed by session id: without it, closing an earlier session
+            // shifts every later layer onto a different host child, so Flutter
+            // remounts those hosts (history/terminal/scroll State lost) even
+            // though the sessions themselves are untouched.
+            key: ValueKey('keep-alive-${sessionIds[i]}'),
             active: i == activeIndex,
             child: TickerMode(enabled: i == activeIndex, child: hosts[i]),
           ),

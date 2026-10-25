@@ -42,10 +42,45 @@ void main() {
     await tester.pump();
     expect(find.text('a-count-1'), findsOneWidget);
   });
+
+  testWidgets('closing an earlier session keeps the other hosts mounted', (
+    tester,
+  ) async {
+    var ids = ['a', 'b'];
+    late StateSetter setIds;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            setIds = setState;
+            return KeepAliveSessionStack(
+              sessionIds: ids,
+              activeSessionId: ids.last,
+              hosts: [
+                for (final id in ids) _ProbeHost(key: ValueKey(id), id: id),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+
+    // Bump B's counter (B is active), then close A, which sits before B.
+    await tester.tap(find.byKey(const Key('probe-b')));
+    await tester.pump();
+    expect(find.text('b-count-1'), findsOneWidget);
+
+    setIds(() => ids = ['b']);
+    await tester.pump();
+
+    // B's State must survive the positional shift caused by A's removal.
+    expect(find.text('b-count-1'), findsOneWidget);
+  });
 }
 
 class _ProbeHost extends StatefulWidget {
-  const _ProbeHost({required this.id});
+  const _ProbeHost({required this.id, super.key});
 
   final String id;
 
