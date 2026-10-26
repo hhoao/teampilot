@@ -113,6 +113,7 @@ class UsageTrendChart extends StatelessWidget {
                               for (final cli in legendClis)
                                 if ((day.tokensByCli[cli] ?? 0) > 0)
                                   Container(
+                                    width: double.infinity,
                                     height:
                                         132 *
                                         (day.tokensByCli[cli]! / maxTotal),

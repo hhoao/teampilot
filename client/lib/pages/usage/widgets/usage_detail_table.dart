@@ -165,7 +165,7 @@ class _HeaderRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 9),
       child: Row(
         children: [
-          SizedBox(width: 300, child: Text(groupLabel, style: style)),
+          Expanded(child: Text(groupLabel, style: style)),
           _headerCell(l10n.sessionUsageTotalShort, 90, style),
           _headerCell(l10n.sessionUsageInputShort, 80, style),
           _headerCell(l10n.sessionUsageOutputShort, 80, style),
@@ -220,8 +220,7 @@ class _UsageRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          SizedBox(
-            width: 300,
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

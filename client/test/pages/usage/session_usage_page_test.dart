@@ -304,4 +304,52 @@ void main() {
     expect(loadCount, 1);
     expect(syncCount, 0);
   });
+
+  testWidgets('wide layout renders chart row without overflow', (tester) async {
+    tester.view.physicalSize = const Size(1400, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [
+        _event(),
+        _event(id: 'r2', sessionId: 's2', cli: CliTool.codex, input: 20),
+      ],
+      syncAll: () async => const UsageSyncResult(),
+      loadSessions: () async => [
+        _session('s1', 'Alpha'),
+        _session('s2', 'Beta'),
+      ],
+      loadTeams: () async => const <TeamProfile>[],
+    );
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(AppKeys.sessionUsagePage), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('narrow layout keeps the table scrollable', (tester) async {
+    tester.view.physicalSize = const Size(420, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [_event()],
+      syncAll: () async => const UsageSyncResult(),
+      loadSessions: () async => [_session('s1', 'Alpha')],
+      loadTeams: () async => const <TeamProfile>[],
+    );
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(AppKeys.sessionUsageTable), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

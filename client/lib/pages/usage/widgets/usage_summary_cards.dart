@@ -189,6 +189,7 @@ class UsageSparkline extends StatelessWidget {
                 child: Align(
                   alignment: Alignment.bottomCenter,
                   child: Container(
+                    width: 6,
                     height: maxTotal == 0
                         ? 3
                         : 4 + 22 * (day.totalTokens / maxTotal),

@@ -164,6 +164,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       final events = await _loadEvents();
       final sessions = await _loadSessions();
       final teams = await _loadTeams();
+      if (isClosed) return;
       _events = events;
       _attribution = UsageAttribution.fromSessionsAndTeams(
         sessions: sessions,
@@ -182,6 +183,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
         error: error,
         stackTrace: stackTrace,
       );
+      if (isClosed) return;
       emit(
         state.copyWith(
           status: state.hasData
@@ -205,6 +207,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   }
 
   Future<void> _syncInternal() async {
+    if (isClosed) return;
     emit(
       state.copyWith(
         isSyncing: true,
@@ -219,6 +222,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       final events = await _loadEvents();
       final sessions = await _loadSessions();
       final teams = await _loadTeams();
+      if (isClosed) return;
       _events = events;
       _attribution = UsageAttribution.fromSessionsAndTeams(
         sessions: sessions,
@@ -242,6 +246,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
         error: error,
         stackTrace: stackTrace,
       );
+      if (isClosed) return;
       emit(
         state.copyWith(
           isSyncing: false,

@@ -46,7 +46,14 @@ final class UsageAttribution extends Equatable {
           teamsById[session.profileId] ?? teamsById[session.sessionTeam];
       if (team == null) continue;
       teamNames[team.id] = team.name;
-      for (final member in sessionRosterMembers(session, team)) {
+      List<TeamMemberConfig> roster;
+      try {
+        roster = sessionRosterMembers(session, team);
+      } on Object {
+        // A malformed binding should not hide every other session's usage.
+        roster = const [];
+      }
+      for (final member in roster) {
         final memberId = member.id.trim();
         if (memberId.isEmpty) continue;
         final name = member.name.trim().isEmpty ? memberId : member.name;
