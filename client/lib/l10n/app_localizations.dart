@@ -3686,6 +3686,42 @@ abstract class AppLocalizations {
   /// **'{cli} on {host}'**
   String landingLaunchRemoteCliMissingDetail(String cli, String host);
 
+  /// No description provided for @landingLaunchLocalCliMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Install the required AI CLIs on this device before starting.'**
+  String get landingLaunchLocalCliMissing;
+
+  /// No description provided for @landingLaunchLocalCliMissingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Required AI CLIs on this device'**
+  String get landingLaunchLocalCliMissingTitle;
+
+  /// No description provided for @landingLaunchLocalCliMissingDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'{cli} not found'**
+  String landingLaunchLocalCliMissingDetail(String cli);
+
+  /// No description provided for @landingLaunchLocalAdapterMissingDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'{cli} ACP adapter not found'**
+  String landingLaunchLocalAdapterMissingDetail(String cli);
+
+  /// No description provided for @landingLaunchLocalCliMissingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Install it here, or set its executable path in Settings → CLI.'**
+  String get landingLaunchLocalCliMissingHint;
+
+  /// No description provided for @landingLaunchLocalCliOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open settings'**
+  String get landingLaunchLocalCliOpenSettings;
+
   /// No description provided for @remoteCliMachineReadinessTitle.
   ///
   /// In en, this message translates to:

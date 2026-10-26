@@ -6,6 +6,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/chat/launch/pre_send/local_binary_requirements.dart';
 import 'package:teampilot/services/chat/launch/pre_send/workspace_landing_launch_gate.dart';
 import 'package:teampilot/services/remote/remote_cli_readiness.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
@@ -274,6 +275,217 @@ void main() {
         (block! as RemoteCliMissingLaunchBlock).missing.single.kind,
         CliBinaryKind.adapter,
       );
+    });
+  });
+
+  group('WorkspaceLandingLaunchGate.localBlock', () {
+    WorkspaceLandingLaunchGate gateWithKnown(
+      Set<String> known, {
+      MemberAcpSeed? acpSeed,
+    }) {
+      return WorkspaceLandingLaunchGate(
+        storage: HomeStorage.forTesting(
+          filesystem: InMemoryFilesystem(),
+          paths: AppPaths('/test-home'),
+        ),
+        teamConfigValidator: _AlwaysValidTeamConfigValidator(),
+        homeTargetResolver: RuntimeTarget.local,
+        localBinaryKnown: (cli, kind) =>
+            known.contains('${kind.name}|${cli.value}'),
+        localMemberAcpSeed: acpSeed,
+      );
+    }
+
+    Workspace localWorkspace() => Workspace(
+      workspaceId: 'ws-1',
+      folders: const [WorkspaceFolder(path: '/local', targetId: 'local')],
+      createdAt: 1,
+    );
+
+    test('blocks a personal draft when the local CLI is unknown', () {
+      final block = gateWithKnown({}).localBlock(
+        workspace: localWorkspace(),
+        draft: const LandingLaunchContext(
+          isPersonal: true,
+          cli: CliTool.codex,
+          projectFolderPath: '/local',
+        ),
+      );
+
+      expect(block, isA<LocalCliMissingLaunchBlock>());
+      expect(block!.missing.single.cli, CliTool.codex);
+      expect(block.missing.single.kind, CliBinaryKind.cli);
+    });
+
+    test('allows when the local CLI is known', () {
+      final block = gateWithKnown({'cli|codex'}).localBlock(
+        workspace: localWorkspace(),
+        draft: const LandingLaunchContext(
+          isPersonal: true,
+          cli: CliTool.codex,
+          projectFolderPath: '/local',
+        ),
+      );
+
+      expect(block, isNull);
+    });
+
+    test('requires the ACP adapter for a personal ACP launch', () {
+      final block = gateWithKnown({'cli|claude'}).localBlock(
+        workspace: localWorkspace(),
+        draft: const LandingLaunchContext(
+          isPersonal: true,
+          cli: CliTool.claude,
+          projectFolderPath: '/local',
+          acp: true,
+        ),
+      );
+
+      expect(block, isA<LocalCliMissingLaunchBlock>());
+      expect(block!.missing.single.cli, CliTool.claude);
+      expect(block.missing.single.kind, CliBinaryKind.adapter);
+    });
+
+    test('ignores folders that live on an SSH host', () {
+      final block = gateWithKnown({}).localBlock(
+        workspace: Workspace(
+          workspaceId: 'ws-1',
+          folders: [
+            const WorkspaceFolder(path: '/remote', targetId: 'ssh:host-a'),
+          ],
+          createdAt: 1,
+        ),
+        draft: const LandingLaunchContext(
+          isPersonal: true,
+          cli: CliTool.codex,
+          projectFolderPath: '/remote',
+        ),
+      );
+
+      expect(block, isNull);
+    });
+
+    test('blocks team members placed on the local host', () {
+      final team = TeamProfile(
+        id: 'team-1',
+        name: 'Team',
+        cli: CliTool.codex,
+        members: const [TeamMemberConfig(id: 'dev', name: 'Dev')],
+        createdAt: 1,
+      );
+      final workspace = Workspace(
+        workspaceId: 'ws-1',
+        folders: [
+          const WorkspaceFolder(path: '/local', targetId: 'local'),
+        ],
+        createdAt: 1,
+        memberTargetsByTeam: {
+          team.id: {'dev': 'local'},
+        },
+        memberPlacementInitializedByTeam: {team.id: true},
+      );
+
+      final block = gateWithKnown({}).localBlock(
+        workspace: workspace,
+        draft: LandingLaunchContext(isPersonal: false, teamId: team.id),
+        team: team,
+      );
+
+      expect(block, isA<LocalCliMissingLaunchBlock>());
+      expect(block!.missing.single.cli, CliTool.codex);
+    });
+
+    test('adds the ACP adapter for a mixed-team local member', () {
+      final team = TeamProfile(
+        id: 'team-1',
+        name: 'Team',
+        cli: CliTool.claude,
+        teamMode: TeamMode.mixed,
+        members: const [TeamMemberConfig(id: 'dev', name: 'Dev')],
+        createdAt: 1,
+      );
+      final workspace = Workspace(
+        workspaceId: 'ws-1',
+        folders: [
+          const WorkspaceFolder(path: '/local', targetId: 'local'),
+        ],
+        createdAt: 1,
+        memberTargetsByTeam: {
+          team.id: {'dev': 'local'},
+        },
+        memberPlacementInitializedByTeam: {team.id: true},
+      );
+
+      final block = gateWithKnown(
+        {'cli|claude'},
+        acpSeed: (_) => true,
+      ).localBlock(
+        workspace: workspace,
+        draft: LandingLaunchContext(isPersonal: false, teamId: team.id),
+        team: team,
+      );
+
+      expect(block, isA<LocalCliMissingLaunchBlock>());
+      expect(block!.missing.single.cli, CliTool.claude);
+      expect(block.missing.single.kind, CliBinaryKind.adapter);
+    });
+
+    test('native teams never require the ACP adapter', () {
+      final team = TeamProfile(
+        id: 'team-1',
+        name: 'Team',
+        cli: CliTool.claude,
+        members: const [TeamMemberConfig(id: 'dev', name: 'Dev')],
+        createdAt: 1,
+      );
+      final workspace = Workspace(
+        workspaceId: 'ws-1',
+        folders: [
+          const WorkspaceFolder(path: '/local', targetId: 'local'),
+        ],
+        createdAt: 1,
+        memberTargetsByTeam: {
+          team.id: {'dev': 'local'},
+        },
+        memberPlacementInitializedByTeam: {team.id: true},
+      );
+
+      final block = gateWithKnown(
+        {'cli|claude'},
+        acpSeed: (_) => true,
+      ).localBlock(
+        workspace: workspace,
+        draft: LandingLaunchContext(isPersonal: false, teamId: team.id),
+        team: team,
+      );
+
+      expect(block, isNull);
+    });
+
+    test('syncBlock surfaces the local block for personal drafts', () {
+      final block = gateWithKnown({}).syncBlock(
+        workspace: localWorkspace(),
+        draft: const LandingLaunchContext(
+          isPersonal: true,
+          cli: CliTool.codex,
+          projectFolderPath: '/local',
+        ),
+      );
+
+      expect(block, isA<LocalCliMissingLaunchBlock>());
+    });
+
+    test('stays disabled when no local probe is injected', () {
+      final block = gate.syncBlock(
+        workspace: localWorkspace(),
+        draft: const LandingLaunchContext(
+          isPersonal: true,
+          cli: CliTool.codex,
+          projectFolderPath: '/local',
+        ),
+      );
+
+      expect(block, isNull);
     });
   });
 }

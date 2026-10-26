@@ -32,7 +32,7 @@ class RemoteCliRequirement {
 }
 
 /// True when [cli]'s ACP mode needs a separate adapter binary.
-bool _cliUsesSeparateAcpAdapter(CliTool cli) {
+bool cliUsesSeparateAcpAdapter(CliTool cli) {
   final settings = CliToolRegistry.builtIn()
       .capability<AcpSettingsCapability>(cli);
   return settings?.usesSeparateAdapter == true;
@@ -79,11 +79,12 @@ List<RemoteCliRequirement> remoteCliRequirementsForPlacement({
   return out.values.toList();
 }
 
-/// SSH target for [projectFolderPath] when that folder is on a remote machine.
-RuntimeTarget? sshTargetForProjectFolder({
+/// Target that owns [projectFolderPath] (falls back to the first folder).
+///
+/// Null when the workspace has no folder at all.
+RuntimeTarget? projectFolderTarget({
   required Workspace workspace,
   required String projectFolderPath,
-  required List<RuntimeTarget> selectableTargets,
   required RuntimeTarget home,
   required bool usesPosixPaths,
 }) {
@@ -105,8 +106,24 @@ RuntimeTarget? sshTargetForProjectFolder({
   folder ??= workspace.folders.firstOrNull;
   if (folder == null) return null;
 
-  final resolved = WorkTargetCanonicalizer.resolve(folder.targetId, home: home);
-  if (!usesSshTransport(resolved.kind)) return null;
+  return WorkTargetCanonicalizer.resolve(folder.targetId, home: home);
+}
+
+/// SSH target for [projectFolderPath] when that folder is on a remote machine.
+RuntimeTarget? sshTargetForProjectFolder({
+  required Workspace workspace,
+  required String projectFolderPath,
+  required List<RuntimeTarget> selectableTargets,
+  required RuntimeTarget home,
+  required bool usesPosixPaths,
+}) {
+  final resolved = projectFolderTarget(
+    workspace: workspace,
+    projectFolderPath: projectFolderPath,
+    home: home,
+    usesPosixPaths: usesPosixPaths,
+  );
+  if (resolved == null || !usesSshTransport(resolved.kind)) return null;
 
   return selectableTargets
           .where((t) => t.id == resolved.id && usesSshTransport(t.kind))
@@ -139,7 +156,7 @@ List<RemoteCliRequirement> remoteCliRequirementsForSimpleLaunch({
   final hostLabel = target.label.trim().isNotEmpty ? target.label : target.id;
   return [
     RemoteCliRequirement(target: target, cli: cli, hostLabel: hostLabel),
-    if (requestedAcp && _cliUsesSeparateAcpAdapter(cli))
+    if (requestedAcp && cliUsesSeparateAcpAdapter(cli))
       RemoteCliRequirement(
         target: target,
         cli: cli,

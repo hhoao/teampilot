@@ -892,6 +892,26 @@
       }
     }
   },
+  "landingLaunchLocalCliMissing": "启动前请先在本机安装所需的 AI CLI。",
+  "landingLaunchLocalCliMissingTitle": "本机需要的 AI CLI",
+  "landingLaunchLocalCliMissingDetail": "未找到 {cli}",
+  "@landingLaunchLocalCliMissingDetail": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
+  "landingLaunchLocalAdapterMissingDetail": "未找到 {cli} ACP 适配器",
+  "@landingLaunchLocalAdapterMissingDetail": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
+  "landingLaunchLocalCliMissingHint": "可直接在此安装，或在设置 → CLI 中指定可执行文件路径。",
+  "landingLaunchLocalCliOpenSettings": "打开设置",
   "remoteCliMachineReadinessTitle": "此机器上需要的 CLI",
   "remoteCliMachineReadinessProbing": "正在检测…",
   "remoteCliMachineReadinessReady": "{cli} 已就绪：{path}",

@@ -970,6 +970,26 @@
       }
     }
   },
+  "landingLaunchLocalCliMissing": "Install the required AI CLIs on this device before starting.",
+  "landingLaunchLocalCliMissingTitle": "Required AI CLIs on this device",
+  "landingLaunchLocalCliMissingDetail": "{cli} not found",
+  "@landingLaunchLocalCliMissingDetail": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
+  "landingLaunchLocalAdapterMissingDetail": "{cli} ACP adapter not found",
+  "@landingLaunchLocalAdapterMissingDetail": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
+  "landingLaunchLocalCliMissingHint": "Install it here, or set its executable path in Settings → CLI.",
+  "landingLaunchLocalCliOpenSettings": "Open settings",
   "remoteCliMachineReadinessTitle": "Required CLIs on this machine",
   "remoteCliMachineReadinessProbing": "Checking…",
   "remoteCliMachineReadinessReady": "{cli} ready at {path}",

@@ -2047,6 +2047,31 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get landingLaunchLocalCliMissing =>
+      'Install the required AI CLIs on this device before starting.';
+
+  @override
+  String get landingLaunchLocalCliMissingTitle =>
+      'Required AI CLIs on this device';
+
+  @override
+  String landingLaunchLocalCliMissingDetail(String cli) {
+    return '$cli not found';
+  }
+
+  @override
+  String landingLaunchLocalAdapterMissingDetail(String cli) {
+    return '$cli ACP adapter not found';
+  }
+
+  @override
+  String get landingLaunchLocalCliMissingHint =>
+      'Install it here, or set its executable path in Settings → CLI.';
+
+  @override
+  String get landingLaunchLocalCliOpenSettings => 'Open settings';
+
+  @override
   String get remoteCliMachineReadinessTitle => 'Required CLIs on this machine';
 
   @override

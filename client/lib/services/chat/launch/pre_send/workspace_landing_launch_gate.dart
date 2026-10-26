@@ -1,3 +1,4 @@
+import '../../../../models/cli_binary_kind.dart';
 import '../../../../models/cli_preset.dart';
 import '../../../../models/landing_launch_context.dart';
 import '../../../../models/runtime_target.dart';
@@ -9,6 +10,10 @@ import '../../../remote/remote_cli_readiness.dart';
 import '../../../remote/remote_cli_requirements.dart';
 import '../../../storage/home_storage.dart';
 import '../session/team_config_launch_validator.dart';
+import 'local_binary_requirements.dart';
+
+/// Answers whether a local binary is known (configured path or discovery).
+typedef LocalBinaryKnown = bool Function(CliTool cli, CliBinaryKind kind);
 
 /// Why compose landing cannot start a team session yet.
 sealed class WorkspaceLandingLaunchBlock {
@@ -47,6 +52,13 @@ final class RemoteCliMissingLaunchBlock extends WorkspaceLandingLaunchBlock {
   final List<RemoteCliRequirement> missing;
 }
 
+/// Local launches need CLIs (or ACP adapters) this device has not located.
+final class LocalCliMissingLaunchBlock extends WorkspaceLandingLaunchBlock {
+  const LocalCliMissingLaunchBlock(this.missing);
+
+  final List<LocalBinaryRequirement> missing;
+}
+
 /// Placement used by the landing gate (saved pins or in-memory defaults).
 MemberPlacementByTarget memberPlacementForLaunch({
   required Workspace workspace,
@@ -74,15 +86,105 @@ class WorkspaceLandingLaunchGate {
   WorkspaceLandingLaunchGate({
     TeamConfigLaunchValidator? teamConfigValidator,
     required HomeStorage storage,
+    LocalBinaryKnown? localBinaryKnown,
+    MemberAcpSeed? localMemberAcpSeed,
+    RuntimeTarget Function()? homeTargetResolver,
   }) : _storage = storage,
+       _localBinaryKnown = localBinaryKnown,
+       _localMemberAcpSeed = localMemberAcpSeed,
+       _homeTargetResolver = homeTargetResolver,
        _teamConfigValidator =
            teamConfigValidator ?? TeamConfigLaunchValidator(storage: storage);
 
   final HomeStorage _storage;
+  final LocalBinaryKnown? _localBinaryKnown;
+  final MemberAcpSeed? _localMemberAcpSeed;
+  final RuntimeTarget Function()? _homeTargetResolver;
   final TeamConfigLaunchValidator _teamConfigValidator;
 
+  RuntimeTarget get _home =>
+      _homeTargetResolver?.call() ?? RuntimeTarget.local();
+
   /// Fast checks that do not need provider catalog IO.
+  ///
+  /// Includes the local binary check: user-configured paths and startup
+  /// discovery are already in memory, so it never blocks on IO.
   WorkspaceLandingLaunchBlock? syncBlock({
+    required Workspace workspace,
+    required LandingLaunchContext draft,
+    TeamProfile? team,
+    List<CliPreset> globalPresets = const [],
+  }) {
+    final placementBlock = _placementBlock(
+      workspace: workspace,
+      draft: draft,
+      team: team,
+    );
+    if (placementBlock != null) return placementBlock;
+    return localBlock(
+      workspace: workspace,
+      draft: draft,
+      team: team,
+      globalPresets: globalPresets,
+    );
+  }
+
+  /// Blocks when a CLI (or ACP adapter) the draft will spawn locally is unknown.
+  ///
+  /// Personal drafts check the launch CLI plus its separate ACP adapter; team
+  /// drafts check every member placed on a local host, plus the adapter for
+  /// mixed-team members whose CLI settings default enables ACP chat.
+  ///
+  /// Disabled when no [LocalBinaryKnown] probe was injected (tests, Android
+  /// where local CLI discovery never runs).
+  LocalCliMissingLaunchBlock? localBlock({
+    required Workspace workspace,
+    required LandingLaunchContext draft,
+    TeamProfile? team,
+    List<CliPreset> globalPresets = const [],
+  }) {
+    final known = _localBinaryKnown;
+    if (known == null) return null;
+
+    final requirements = draft.isPersonal
+        ? localBinaryRequirementsForSimpleLaunch(
+            workspace: workspace,
+            projectFolderPath: draft.projectFolderPath ?? '',
+            cli: resolveLandingSimpleLaunchIdentity(
+              presets: globalPresets,
+              presetId: draft.presetId,
+              cli: draft.cli,
+              provider: draft.provider,
+              model: draft.model,
+              effort: draft.effort,
+              expertKey: draft.expertKey,
+            ).cli,
+            requestedAcp: draft.acp,
+            home: _home,
+            usesPosixPaths: _storage.usesPosixPaths,
+          )
+        : team == null
+        ? const <LocalBinaryRequirement>[]
+        : localBinaryRequirementsForPlacement(
+            team: team,
+            placement: memberPlacementForLaunch(
+              workspace: workspace,
+              team: team,
+            ),
+            globalPresets: globalPresets,
+            home: _home,
+            acpSeed: _localMemberAcpSeed,
+          );
+
+    final missing = [
+      for (final requirement in requirements)
+        if (!known(requirement.cli, requirement.kind)) requirement,
+    ];
+    if (missing.isEmpty) return null;
+    return LocalCliMissingLaunchBlock(missing);
+  }
+
+  WorkspaceLandingLaunchBlock? _placementBlock({
     required Workspace workspace,
     required LandingLaunchContext draft,
     TeamProfile? team,
@@ -217,7 +319,12 @@ class WorkspaceLandingLaunchGate {
     List<RuntimeTarget> selectableTargets = const [],
     RemoteCliReadinessService? remoteCliReadiness,
   }) async {
-    final sync = syncBlock(workspace: workspace, draft: draft, team: team);
+    final sync = syncBlock(
+      workspace: workspace,
+      draft: draft,
+      team: team,
+      globalPresets: globalPresets,
+    );
     if (sync != null) return sync;
     if (draft.isPersonal || team == null) return null;
     final configBlock = await asyncBlock(

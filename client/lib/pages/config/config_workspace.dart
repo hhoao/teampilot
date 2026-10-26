@@ -54,6 +54,16 @@ void openSshProfilesManagement(BuildContext context) {
   );
 }
 
+/// Opens CLI readiness / executable paths without leaving the workspace.
+void openCliConfigManagement(BuildContext context) {
+  if (useAndroidHubNavigation(context)) {
+    context.read<ConfigCubit>().selectSection(ConfigSection.cli);
+    context.push('/config/${ConfigSection.cli.routeSegment}');
+    return;
+  }
+  showWorkspaceSettingsDialog(context, initialSection: ConfigSection.cli);
+}
+
 /// Opens the workspace quick-settings modal from anywhere (e.g. the title bar).
 Future<void> showWorkspaceSettingsDialog(
   BuildContext context, {

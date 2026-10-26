@@ -17,6 +17,9 @@ runLocalCliDiscovery({
   cubit.mergeLocatedExecutables(cliPaths);
   cubit.mergeLocatedAcpAdapters(acpPaths);
   cubit.mergeLocatedToolchains(toolchainPaths);
+  // Unblock the landing local-binary gate as soon as paths are known; version
+  // probing below is cosmetic and must not delay first submit.
+  cubit.markLocalDiscoveryCompleted();
 
   Future<void> probe(CliTool cli, CliBinaryKind kind, String path) async {
     final version = await probeInstalled(path);

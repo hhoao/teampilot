@@ -15,12 +15,14 @@ import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/expert_hub_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/plugin_cubit.dart';
+import '../../../cubits/session_preferences_cubit.dart';
 import '../../../cubits/skill_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../models/config_bundle.dart';
 import '../../../models/landing_launch_context.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/ai_feature_setting.dart';
+import '../../../models/cli_binary_kind.dart';
 import '../../../models/cli_preset.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
@@ -72,6 +74,7 @@ import 'workspace_landing_generate_settings_dialog.dart';
 import 'workspace_landing_launch_feedback.dart';
 import 'workspace_landing_selectors.dart';
 import 'workspace_landing_team_settings_dialog.dart';
+import 'local_cli_readiness_banner.dart';
 import 'remote_cli_machine_readiness_panel.dart';
 
 enum _LandingConversationMode { team, simple }
@@ -144,6 +147,28 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
   Future<void>? _runtimeTargetsLoad;
   late final _launchGate = WorkspaceLandingLaunchGate(
     storage: homeStorageOf(context),
+    homeTargetResolver: _homeTargetForLaunch,
+    localBinaryKnown: (cli, kind) {
+      // Mocks / non-app shells may not expose local readiness; treat a probe
+      // failure as "unknown" so the gate never blocks on infrastructure.
+      try {
+        final prefs = context.read<SessionPreferencesCubit>();
+        // Discovery not finished yet (or Android, where it never runs): treat
+        // binaries as unknown rather than missing.
+        if (!prefs.localDiscoveryCompleted) return true;
+        return switch (kind) {
+          CliBinaryKind.cli => prefs.hasKnownCliExecutable(cli),
+          CliBinaryKind.adapter =>
+            prefs.hasKnownAcpAdapter(cli) ||
+                prefs.configuredAcpAdapterPath(cli).trim().isNotEmpty,
+        };
+      } on Object {
+        return true;
+      }
+    },
+    // Mixed-team local members run ACP chat when the CLI settings default says
+    // so; the adapter must exist on this device too.
+    localMemberAcpSeed: (cli) => readPersonalAcpDefault(context, cli),
   );
   WorkspaceLandingLaunchBlock? _launchWarningBlock;
   int _teamLaunchReadinessGeneration = 0;
@@ -968,6 +993,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
             workspace: _workspaceForLaunch(),
             draft: _currentDraft(),
             team: team,
+            globalPresets: context.read<CliPresetsCubit>().state.presets,
           ) !=
           null) {
         return false;
@@ -995,16 +1021,32 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       return;
     }
 
-    if (_conversationMode == _LandingConversationMode.team) {
-      final teams = context.read<LaunchProfileCubit>().state.teams;
-      final team = _selectedTeamProfile(teams);
-      final draft = _currentDraft();
-      final workspace = _workspaceForLaunch();
+    final presets = context.read<CliPresetsCubit>().state.presets;
+    final draft = _currentDraft();
+    final workspace = _workspaceForLaunch();
+    final team = _conversationMode == _LandingConversationMode.team
+        ? _selectedTeamProfile(context.read<LaunchProfileCubit>().state.teams)
+        : null;
 
+    // Local host binaries (CLI / ACP adapter) are checked before any IO-backed
+    // gate: a missing local binary fails at PTY spawn otherwise.
+    final localBlock = _launchGate.localBlock(
+      workspace: workspace,
+      draft: draft,
+      team: team,
+      globalPresets: presets,
+    );
+    if (localBlock != null) {
+      showWorkspaceLandingLaunchBlock(context, localBlock);
+      return;
+    }
+
+    if (_conversationMode == _LandingConversationMode.team) {
       final sync = _launchGate.syncBlock(
         workspace: workspace,
         draft: draft,
         team: team,
+        globalPresets: presets,
       );
       if (!mounted) return;
       if (sync != null) {
@@ -1026,7 +1068,6 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       }
 
       if (team != null) {
-        final presets = context.read<CliPresetsCubit>().state.presets;
         final configBlock = await _launchGate.asyncBlock(
           team: team,
           globalPresets: presets,
@@ -1066,11 +1107,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     } else {
       final readiness = context.read<ChatCubit>().remoteCliReadiness;
       if (readiness != null && _runtimeTargets.isNotEmpty) {
-        final presets = context.read<CliPresetsCubit>().state.presets;
         final projectPath = _projectResolver().resolveSelectedProjectPath();
         final remoteBlock = await _launchGate.asyncRemoteCliBlockForSimple(
-          workspace: _workspaceForLaunch(),
-          draft: _currentDraft(),
+          workspace: workspace,
+          draft: draft,
           projectFolderPath: projectPath,
           globalPresets: presets,
           selectableTargets: _runtimeTargets,
@@ -1531,6 +1571,31 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       ),
     );
     final presets = context.select((CliPresetsCubit c) => c.state.presets);
+    // Local CLI/ACP knowledge lives in SessionPreferencesCubit (user paths +
+    // startup discovery + ACP defaults). Rebuild when any of it changes so the
+    // local launch gate reflects settings/installs without a restart.
+    context.select<
+      SessionPreferencesCubit,
+      (
+        int,
+        Map<String, String>,
+        Map<String, String>,
+        bool,
+        bool,
+        bool,
+        bool,
+      )
+    >(
+      (c) => (
+        c.state.locatedExecutablesRevision,
+        c.state.preferences.cliExecutablePaths,
+        c.state.preferences.acpAdapterPaths,
+        c.state.preferences.claudePersonalAcpDefault,
+        c.state.preferences.codexPersonalAcpDefault,
+        c.state.preferences.cursorPersonalAcpDefault,
+        c.state.preferences.opencodePersonalAcpDefault,
+      ),
+    );
     final identities = context.select(
       (LaunchProfileCubit c) => c.state.identities,
     );
@@ -1560,6 +1625,17 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         : registry.capability<NativeCommandCapability>(cli)?.commands ??
               const <NativeCommand>[];
     final launchWarningBlock = _resolveLaunchWarningBlock(selectedTeam);
+    // Local binaries are in-memory knowledge, so evaluate them every build
+    // instead of caching in [_launchWarningBlock] (which is IO-backed/async).
+    final localCliBlock = _generateLaunch
+        ? null
+        : _launchGate.localBlock(
+            workspace: launchWorkspace,
+            draft: _currentDraft(),
+            team: selectedTeam,
+            globalPresets: presets,
+          );
+    final effectiveWarningBlock = localCliBlock ?? launchWarningBlock;
     final remoteCliReadiness = context.read<ChatCubit>().remoteCliReadiness;
     final remoteCliMissing = launchWarningBlock is RemoteCliMissingLaunchBlock
         ? launchWarningBlock.missing
@@ -1572,7 +1648,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           focusNode: _focusNode,
           hint: l10n.workspaceChatLandingInputHint,
           isSubmitting: widget.isSubmitting,
-          canSubmit: _canSubmit,
+          canSubmit: _canSubmit && localCliBlock == null,
           onSubmit: _submit,
           onChanged: (_) {},
           chrome: UnboundComposeChrome(
@@ -1680,10 +1756,11 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           },
           deferFieldMount: widget.deferFieldMount,
           submitBlockedTooltip:
-              launchWarningBlock != null && _controller.text.trim().isNotEmpty
+              effectiveWarningBlock != null &&
+                  _controller.text.trim().isNotEmpty
               ? landingLaunchBlockMessage(
                   l10n,
-                  launchWarningBlock,
+                  effectiveWarningBlock,
                   registry: registry,
                 )
               : null,
@@ -1705,18 +1782,21 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         remoteCliReadiness != null;
 
     Widget composeSection = composeCard;
-    if (showRemotePanel) {
+    if (showRemotePanel || localCliBlock != null) {
       composeSection = Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           composeCard,
-          RemoteCliMachineReadinessPanel(
-            fixedRequirements: remoteCliMissing,
-            selectableTargets: _runtimeTargets,
-            readiness: remoteCliReadiness,
-            onReadinessChanged: _scheduleTeamLaunchReadinessCheck,
-          ),
+          if (showRemotePanel)
+            RemoteCliMachineReadinessPanel(
+              fixedRequirements: remoteCliMissing,
+              selectableTargets: _runtimeTargets,
+              readiness: remoteCliReadiness,
+              onReadinessChanged: _scheduleTeamLaunchReadinessCheck,
+            ),
+          if (localCliBlock != null)
+            LocalCliReadinessBanner(missing: localCliBlock.missing),
         ],
       );
     }

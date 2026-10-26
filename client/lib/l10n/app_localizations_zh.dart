@@ -1946,6 +1946,29 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get landingLaunchLocalCliMissing => '启动前请先在本机安装所需的 AI CLI。';
+
+  @override
+  String get landingLaunchLocalCliMissingTitle => '本机需要的 AI CLI';
+
+  @override
+  String landingLaunchLocalCliMissingDetail(String cli) {
+    return '未找到 $cli';
+  }
+
+  @override
+  String landingLaunchLocalAdapterMissingDetail(String cli) {
+    return '未找到 $cli ACP 适配器';
+  }
+
+  @override
+  String get landingLaunchLocalCliMissingHint =>
+      '可直接在此安装，或在设置 → CLI 中指定可执行文件路径。';
+
+  @override
+  String get landingLaunchLocalCliOpenSettings => '打开设置';
+
+  @override
   String get remoteCliMachineReadinessTitle => '此机器上需要的 CLI';
 
   @override

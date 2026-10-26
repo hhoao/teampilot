@@ -26,6 +26,19 @@ void main() {
     );
   }
 
+  test('local discovery starts incomplete and completes once', () async {
+    final cubit = await makeCubit();
+    expect(cubit.localDiscoveryCompleted, isFalse);
+
+    final revision = cubit.state.locatedExecutablesRevision;
+    cubit.markLocalDiscoveryCompleted();
+    expect(cubit.localDiscoveryCompleted, isTrue);
+    expect(cubit.state.locatedExecutablesRevision, revision + 1);
+
+    cubit.markLocalDiscoveryCompleted();
+    expect(cubit.state.locatedExecutablesRevision, revision + 1);
+  });
+
   test('resolveExecutable prefers user path over located path', () async {
     final cubit = await makeCubit(
       locatedExecutables: const {

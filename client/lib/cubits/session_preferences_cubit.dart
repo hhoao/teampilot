@@ -70,6 +70,25 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   final CliToolRegistry _cliToolRegistry;
   final Map<(CliTool, CliBinaryKind), String> _installedVersions = {};
   final Map<(CliTool, CliBinaryKind), String> _latestVersions = {};
+  var _localDiscoveryCompleted = false;
+
+  /// True once startup local CLI / adapter discovery has finished.
+  ///
+  /// Before this flips, an empty discovery result means "not looked yet", not
+  /// "missing", so the landing launch gate must not block on it. Android never
+  /// runs local discovery, so the gate stays disabled there.
+  bool get localDiscoveryCompleted => _localDiscoveryCompleted;
+
+  /// Marks startup local discovery as finished (bumps the revision once).
+  void markLocalDiscoveryCompleted() {
+    if (_localDiscoveryCompleted) return;
+    _localDiscoveryCompleted = true;
+    emit(
+      state.copyWith(
+        locatedExecutablesRevision: state.locatedExecutablesRevision + 1,
+      ),
+    );
+  }
 
   /// Merges startup PATH discovery; user-configured paths always win.
   void mergeLocatedExecutables(Map<CliTool, String> discovered) {
