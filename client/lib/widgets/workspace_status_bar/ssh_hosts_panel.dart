@@ -10,10 +10,14 @@ import '../../services/ssh/ssh_connection_failure.dart';
 
 /// Open Remote Hosts popover body (header, host rows, Manage).
 class SshHostsPanel extends StatelessWidget {
-  const SshHostsPanel({this.onManage, super.key});
+  const SshHostsPanel({this.onManage, this.onOpenTerminal, super.key});
 
   /// Jump to SSH profile management (caller closes the popover).
   final VoidCallback? onManage;
+
+  /// Open a floating shell for the host's SSH profile (caller closes the
+  /// popover).
+  final ValueChanged<String>? onOpenTerminal;
 
   static const double panelWidth = 320;
 
@@ -52,6 +56,9 @@ class SshHostsPanel extends StatelessWidget {
                   onConnect: () => unawaited(cubit.connect(host.profileId)),
                   onDisconnect: () =>
                       unawaited(cubit.disconnect(host.profileId)),
+                  onOpenTerminal: onOpenTerminal == null
+                      ? null
+                      : () => onOpenTerminal!(host.profileId),
                 ),
               for (final host in inactive)
                 _HostRow(
@@ -59,6 +66,9 @@ class SshHostsPanel extends StatelessWidget {
                   onConnect: () => unawaited(cubit.connect(host.profileId)),
                   onDisconnect: () =>
                       unawaited(cubit.disconnect(host.profileId)),
+                  onOpenTerminal: onOpenTerminal == null
+                      ? null
+                      : () => onOpenTerminal!(host.profileId),
                 ),
               const TpActionMenuDivider(),
               _ManageRow(onTap: onManage),
@@ -75,11 +85,13 @@ class _HostRow extends StatelessWidget {
     required this.host,
     required this.onConnect,
     required this.onDisconnect,
+    this.onOpenTerminal,
   });
 
   final SshHostConnectionVm host;
   final VoidCallback onConnect;
   final VoidCallback onDisconnect;
+  final VoidCallback? onOpenTerminal;
 
   Color _dotColor(ColorScheme cs) => switch (host.status) {
     SshHostUiStatus.connected => const Color(0xFF10B981),
@@ -174,7 +186,46 @@ class _HostRow extends StatelessWidget {
                 muted: true,
               ),
           ],
+          if (onOpenTerminal != null) ...[
+            const SizedBox(width: 4),
+            _TerminalButton(
+              key: Key('ssh-host-terminal-${host.profileId}'),
+              tooltip: l10n.sshHostsOpenTerminal,
+              onTap: onOpenTerminal!,
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _TerminalButton extends StatelessWidget {
+  const _TerminalButton({
+    required this.tooltip,
+    required this.onTap,
+    super.key,
+  });
+
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hoverFill = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.05);
+
+    return Tooltip(
+      message: tooltip,
+      child: TpHover(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(4),
+        hoverColor: hoverFill,
+        padding: const EdgeInsets.all(4),
+        child: Icon(Icons.terminal, size: 14, color: cs.onSurfaceVariant),
       ),
     );
   }

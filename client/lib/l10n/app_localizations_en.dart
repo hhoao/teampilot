@@ -2408,6 +2408,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sshHostsManage => 'Manage Remote Hosts…';
 
   @override
+  String get sshHostsOpenTerminal => 'Open Terminal';
+
+  @override
+  String get sshHostsOpenTerminalNoWorkspace =>
+      'Open a workspace first to start a terminal.';
+
+  @override
   String get sshProfileTest => 'Test';
 
   @override

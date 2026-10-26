@@ -9,25 +9,37 @@ import 'workspace_status_bar.dart';
 
 /// Closed status-bar pill + Remote Hosts popover (`ssh-hosts`).
 class SshHostsStatusItem implements WorkspaceStatusBarItem {
-  SshHostsStatusItem({this.onManage});
+  SshHostsStatusItem({this.onManage, this.onOpenTerminal});
 
   /// Navigate to SSH profile management (Task 6 wires GoRouter).
   final VoidCallback? onManage;
+
+  /// Open a floating terminal for the given SSH profile id.
+  final ValueChanged<String>? onOpenTerminal;
 
   @override
   String get id => 'ssh-hosts';
 
   @override
   Widget buildSegment(BuildContext context, {required bool compact}) {
-    return _SshHostsStatusSegment(compact: compact, onManage: onManage);
+    return _SshHostsStatusSegment(
+      compact: compact,
+      onManage: onManage,
+      onOpenTerminal: onOpenTerminal,
+    );
   }
 }
 
 class _SshHostsStatusSegment extends StatefulWidget {
-  const _SshHostsStatusSegment({required this.compact, this.onManage});
+  const _SshHostsStatusSegment({
+    required this.compact,
+    this.onManage,
+    this.onOpenTerminal,
+  });
 
   final bool compact;
   final VoidCallback? onManage;
+  final ValueChanged<String>? onOpenTerminal;
 
   @override
   State<_SshHostsStatusSegment> createState() => _SshHostsStatusSegmentState();
@@ -75,6 +87,12 @@ class _SshHostsStatusSegmentState extends State<_SshHostsStatusSegment> {
               menu.close();
               widget.onManage?.call();
             },
+            onOpenTerminal: widget.onOpenTerminal == null
+                ? null
+                : (profileId) {
+                    menu.close();
+                    widget.onOpenTerminal?.call(profileId);
+                  },
           ),
           child: Tooltip(
             message: l10n.sshHostsPanelTitle,

@@ -244,6 +244,45 @@ void main() {
     expect(cubit.connectCalls, ['p-inactive']);
   });
 
+  testWidgets('tap terminal on host row → onOpenTerminal invoked', (
+    tester,
+  ) async {
+    final harness = _Harness();
+    addTearDown(harness.dispose);
+    final cubit = harness.createCubit();
+    addTearDown(cubit.close);
+    cubit.seed(
+      _stateWithHosts(
+        hosts: const [
+          SshHostConnectionVm(
+            profileId: 'p-inactive',
+            label: 'dev',
+            host: 'example.com',
+            status: SshHostUiStatus.disconnected,
+          ),
+        ],
+      ),
+    );
+
+    final opened = <String>[];
+    await tester.pumpWidget(
+      _host(
+        cubit: cubit,
+        child: WorkspaceStatusBar(
+          items: [SshHostsStatusItem(onOpenTerminal: opened.add)],
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('ssh-hosts-pill')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('ssh-host-terminal-p-inactive')));
+    await tester.pump();
+
+    expect(opened, ['p-inactive']);
+  });
+
   testWidgets('tap Manage → onManage callback invoked', (tester) async {
     final harness = _Harness();
     addTearDown(harness.dispose);

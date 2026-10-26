@@ -1054,6 +1054,8 @@
   "sshHostsPanelTitle": "远程主机",
   "sshHostsRowKind": "SSH 主机",
   "sshHostsManage": "管理远程主机",
+  "sshHostsOpenTerminal": "打开终端",
+  "sshHostsOpenTerminalNoWorkspace": "请先打开一个工作区再启动终端。",
   "sshProfileTest": "测试",
   "sshProfileConnect": "连接",
   "sshProfileDisconnect": "断开",

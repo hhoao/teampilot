@@ -4328,6 +4328,18 @@ abstract class AppLocalizations {
   /// **'Manage Remote Hosts…'**
   String get sshHostsManage;
 
+  /// No description provided for @sshHostsOpenTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Terminal'**
+  String get sshHostsOpenTerminal;
+
+  /// No description provided for @sshHostsOpenTerminalNoWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a workspace first to start a terminal.'**
+  String get sshHostsOpenTerminalNoWorkspace;
+
   /// No description provided for @sshProfileTest.
   ///
   /// In en, this message translates to:

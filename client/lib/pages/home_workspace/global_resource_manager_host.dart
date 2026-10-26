@@ -24,6 +24,7 @@ import '../../services/resource_manager/resource_tree_merge.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../services/terminal/workspace_terminal_run_service.dart';
 import '../../services/workbench/workbench_shell_actions.dart';
+import '../../services/workbench/workbench_shell_launcher.dart';
 
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/managed_provider/managed_provider_usage_status_item.dart';
@@ -249,6 +250,30 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
     }
   }
 
+  /// Floating terminal for one saved SSH host (status-bar Remote Hosts panel).
+  void _openSshHostTerminal(String profileId, String routeWorkspaceId) {
+    final chat = context.read<ChatCubit>();
+    final workspaceId = routeWorkspaceId.trim().isNotEmpty
+        ? routeWorkspaceId.trim()
+        : chat.tabStore.activeWorkspaceId.trim();
+    if (workspaceId.isEmpty) {
+      AppToast.show(
+        context,
+        message: context.l10n.sshHostsOpenTerminalNoWorkspace,
+        variant: TpToastVariant.warning,
+      );
+      return;
+    }
+    unawaited(
+      context.read<WorkbenchShellLauncher>().openSshProfileTerminal(
+        workspaceId: workspaceId,
+        profileId: profileId,
+        sshConnectFailedMessage: context.l10n.workspaceTerminalSshConnectFailed,
+        mounted: () => mounted,
+      ),
+    );
+  }
+
   void _navigateLeaf(ResourceTreeLeafVm leaf) {
     final workspaceId = leaf.workspaceId?.trim() ?? '';
     if (workspaceId.isEmpty) return;
@@ -320,6 +345,8 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
                   ResourceUsageStatusItem(),
                   SshHostsStatusItem(
                     onManage: () => openSshProfilesManagement(context),
+                    onOpenTerminal: (profileId) =>
+                        _openSshHostTerminal(profileId, workspaceId ?? ''),
                   ),
                 ],
               ),

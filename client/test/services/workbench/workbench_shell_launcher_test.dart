@@ -269,6 +269,26 @@ void main() {
       expect(entry.followWorkspace, isFalse);
     });
 
+    test('openSshProfileTerminal allows an empty remote cwd', () async {
+      final launcher = _launcher(
+        chat: chat,
+        workbench: workbench,
+        floating: floating,
+        registry: registry,
+      );
+
+      final entry = await launcher.openSshProfileTerminal(
+        workspaceId: 'ws',
+        profileId: 'profile-1',
+      );
+
+      expect(entry, isNotNull);
+      expect(entry!.cwd, isEmpty);
+      expect(entry.spec, const WorkspaceTerminalSshProfileSpec('profile-1'));
+      expect(floating.state.visibility, FloatingPanelVisibility.open);
+      expect(floating.state.activeWorkspaceId, 'ws');
+    });
+
     test(
       'folder-pinned local spec launches at that folder, not primary',
       () async {

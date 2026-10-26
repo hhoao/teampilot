@@ -1154,6 +1154,8 @@
   "sshHostsPanelTitle": "Remote Hosts",
   "sshHostsRowKind": "SSH Host",
   "sshHostsManage": "Manage Remote Hosts…",
+  "sshHostsOpenTerminal": "Open Terminal",
+  "sshHostsOpenTerminalNoWorkspace": "Open a workspace first to start a terminal.",
   "sshProfileTest": "Test",
   "sshProfileConnect": "Connect",
   "sshProfileDisconnect": "Disconnect",

@@ -258,6 +258,36 @@ class WorkbenchShellLauncher {
     );
   }
 
+  /// Opens a floating terminal for the saved SSH [profileId] in [workspaceId].
+  ///
+  /// The entry lands in a workspace folder on that host when one exists, else
+  /// the SSH default working directory, else the remote home. Independent of
+  /// the durable storage-pool connection shown by the status bar.
+  Future<WorkspaceTerminalEntry?> openSshProfileTerminal({
+    required String workspaceId,
+    required String profileId,
+    String? sshConnectFailedMessage,
+    bool Function()? mounted,
+  }) async {
+    final trimmedWorkspaceId = workspaceId.trim();
+    final trimmedProfileId = profileId.trim();
+    if (trimmedWorkspaceId.isEmpty || trimmedProfileId.isEmpty) return null;
+
+    final workspace = _chat.state.workspaces
+        .where((w) => w.workspaceId == trimmedWorkspaceId)
+        .firstOrNull;
+    return openAndSelect(
+      workspaceId: trimmedWorkspaceId,
+      tabScopeId: trimmedWorkspaceId,
+      cwd: workspace?.firstFolderPath.trim() ?? '',
+      spec: WorkspaceTerminalSshProfileSpec(trimmedProfileId),
+      folders: workspace?.folders ?? const [],
+      sshConnectFailedMessage: sshConnectFailedMessage,
+      followWorkspace: false,
+      mounted: mounted,
+    );
+  }
+
   /// Creates the registry entry, shows the floating tab immediately, then
   /// connects the transport on the next frame (snappy UX ahead of sync).
   Future<WorkspaceTerminalEntry?> openAndSelect({
@@ -273,7 +303,12 @@ class WorkbenchShellLauncher {
     bool Function()? mounted,
   }) async {
     final trimmedCwd = cwd.trim();
-    if (trimmedCwd.isEmpty) return null;
+    final home = _homeTarget();
+    // SSH terminals may deliberately start in the remote home (empty cwd).
+    final remote = usesSshTransport(
+      runtimeTargetForWorkspaceShellSpec(spec, home: home).kind,
+    );
+    if (trimmedCwd.isEmpty && !remote) return null;
 
     final resolvedFolders = folders.isNotEmpty
         ? folders
@@ -282,7 +317,6 @@ class WorkbenchShellLauncher {
                   .firstOrNull
                   ?.folders ??
               const []);
-    final home = _homeTarget();
     final launchCwd = workspaceShellLaunchWorkingDirectory(
       spec: spec,
       folders: resolvedFolders,
@@ -290,9 +324,6 @@ class WorkbenchShellLauncher {
       home: home,
       usesPosixPaths: _usesPosixPaths,
       sshDefaultWorkingDirectory: _sshDefaultWorkingDirectory(),
-    );
-    final remote = usesSshTransport(
-      runtimeTargetForWorkspaceShellSpec(spec, home: home).kind,
     );
 
     final group = _registry.groupFor(tabScopeId);

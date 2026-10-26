@@ -2289,6 +2289,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sshHostsManage => '管理远程主机';
 
   @override
+  String get sshHostsOpenTerminal => '打开终端';
+
+  @override
+  String get sshHostsOpenTerminalNoWorkspace => '请先打开一个工作区再启动终端。';
+
+  @override
   String get sshProfileTest => '测试';
 
   @override
