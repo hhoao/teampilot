@@ -249,6 +249,11 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
   int centerLandingInitialTextRevision(String workspaceId) =>
       centerFocusedStrip(workspaceId).landingInitialTextRevision;
 
+  /// Advances on every explicit Landing entry; the landing compose focuses
+  /// itself when this changes.
+  int centerLandingFocusRevision(String workspaceId) =>
+      centerFocusedStrip(workspaceId).landingFocusRevision;
+
   String? centerLandingReferenceSessionId(String workspaceId) =>
       centerFocusedStrip(workspaceId).landingReferenceSessionId;
 
@@ -639,7 +644,11 @@ class WorkbenchCubit extends Cubit<WorkbenchState> {
         if (strip.landingActive &&
             initialText == null &&
             referencedSessionId == null) {
-          return strip;
+          // Keep the current prefill but still record the explicit entry so an
+          // already-visible Landing re-focuses its compose.
+          return strip.copyWith(
+            landingFocusRevision: strip.landingFocusRevision + 1,
+          );
         }
         return _r.enterLanding(
           strip,

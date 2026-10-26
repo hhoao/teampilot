@@ -91,6 +91,20 @@ void main() {
     });
   });
 
+  group('landing focus', () {
+    test('each explicit entry bumps the focus revision', () {
+      expect(cubit.centerLandingFocusRevision(_ws), 0);
+
+      cubit.enterLanding(_ws);
+      expect(cubit.centerLandingFocusRevision(_ws), 1);
+
+      // Re-entry while the Landing is already visible still re-focuses the
+      // compose (e.g. the sidebar New Conversation button on the start page).
+      cubit.enterLanding(_ws);
+      expect(cubit.centerLandingFocusRevision(_ws), 2);
+    });
+  });
+
   group('reorder', () {
     test('moves a tab within bounds', () {
       cubit.openSession(_ws, 's1');

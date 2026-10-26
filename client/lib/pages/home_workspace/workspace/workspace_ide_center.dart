@@ -14,6 +14,7 @@ Widget buildWorkspaceIdeCenter({
   String? initialText,
   int initialTextRevision = 0,
   String? referencedSessionId,
+  int landingFocusRevision = 0,
 }) {
   if (newChat) {
     return WorkspaceChatPane(
@@ -21,6 +22,7 @@ Widget buildWorkspaceIdeCenter({
       initialText: initialText,
       initialTextRevision: initialTextRevision,
       referencedSessionId: referencedSessionId,
+      landingFocusRevision: landingFocusRevision,
     );
   }
   return chatPage;

@@ -31,6 +31,7 @@ class WorkspaceChatLanding extends StatelessWidget {
     this.initialText,
     this.initialTextRevision = 0,
     this.referencedSessionId,
+    this.landingFocusRevision = 0,
     this.showBackButton = false,
     this.onBack,
     super.key,
@@ -43,6 +44,10 @@ class WorkspaceChatLanding extends StatelessWidget {
   final String? initialText;
   final int initialTextRevision;
   final String? referencedSessionId;
+
+  /// Advances on explicit Landing entry; the compose focuses itself when this
+  /// changes.
+  final int landingFocusRevision;
 
   /// Whether the back control is mounted — true only when the landing was
   /// entered over an open workbench tab that can be restored.
@@ -89,6 +94,7 @@ class WorkspaceChatLanding extends StatelessWidget {
                       initialText: initialText,
                       initialTextRevision: initialTextRevision,
                       referencedSessionId: referencedSessionId,
+                      landingFocusRevision: landingFocusRevision,
                       deferFieldMount: true,
                       showLocationHeader: true,
                     ),

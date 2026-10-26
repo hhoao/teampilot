@@ -56,6 +56,7 @@ void main() {
   Future<List<int>> pumpLanding(
     WidgetTester tester, {
     bool showBackButton = true,
+    int landingFocusRevision = 0,
   }) async {
     final workspace = Workspace(workspaceId: 'workspace-1', createdAt: 1);
     final chatCubit = _MockChatCubit();
@@ -111,6 +112,7 @@ void main() {
                   body: WorkspaceChatLanding(
                     workspace: workspace,
                     showBackButton: showBackButton,
+                    landingFocusRevision: landingFocusRevision,
                     onBack: () => backTaps.add(1),
                     onSubmit: (_, _) {},
                   ),
@@ -176,6 +178,32 @@ void main() {
       tester.getRect(back).left,
       greaterThanOrEqualTo(TpMobileChrome.leadingInset),
     );
+  });
+
+  testWidgets('explicit landing entry focuses the compose field', (
+    tester,
+  ) async {
+    await pumpLanding(tester, landingFocusRevision: 1);
+    await tester.pump();
+
+    final editable = tester.widget<EditableText>(
+      find.byType(EditableText).first,
+    );
+    expect(
+      editable.focusNode.hasFocus,
+      isTrue,
+      reason: 'New Conversation should leave the caret in the composer',
+    );
+  });
+
+  testWidgets('workspace start page does not steal focus', (tester) async {
+    await pumpLanding(tester);
+    await tester.pump();
+
+    final editable = tester.widget<EditableText>(
+      find.byType(EditableText).first,
+    );
+    expect(editable.focusNode.hasFocus, isFalse);
   });
 
   testWidgets('landing compose typing does not rebuild UnboundComposeBody', (

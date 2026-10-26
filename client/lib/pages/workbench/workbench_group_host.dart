@@ -406,6 +406,7 @@ class WorkbenchGroupHost extends StatelessWidget {
         initialText: strip.landingInitialText,
         initialTextRevision: strip.landingInitialTextRevision,
         referencedSessionId: strip.landingReferenceSessionId,
+        landingFocusRevision: strip.landingFocusRevision,
         // The landing back control is scoped to THIS group: it shows when the
         // group's strip remembers a returnable tab and re-activates it (which
         // also focuses the group).

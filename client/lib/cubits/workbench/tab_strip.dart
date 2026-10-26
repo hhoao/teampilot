@@ -22,6 +22,7 @@ class TabStrip extends Equatable {
     this.landingInitialTextRevision = 0,
     this.landingReferenceSessionId,
     this.landingReturnTabId,
+    this.landingFocusRevision = 0,
   });
 
   final List<WorkbenchTabId> order;
@@ -53,6 +54,12 @@ class TabStrip extends Equatable {
   /// whenever a tab is activated or the remembered tab itself is removed.
   final WorkbenchTabId? landingReturnTabId;
 
+  /// Monotonically advances on every explicit Landing entry, including a
+  /// re-entry while Landing is already visible. The landing compose focuses
+  /// itself when this changes; the initial value (0) leaves the workspace
+  /// start page unfocused.
+  final int landingFocusRevision;
+
   /// Landing / welcome shows when nothing is selected. Tabs may remain in the
   /// bar (open sessions) while the landing is displayed.
   bool get landingActive => activeId == null;
@@ -70,6 +77,7 @@ class TabStrip extends Equatable {
     int? landingInitialTextRevision,
     Object? landingReferenceSessionId = _unset,
     Object? landingReturnTabId = _unset,
+    int? landingFocusRevision,
   }) => TabStrip(
     order: order ?? this.order,
     activeId: activeId == _unset ? this.activeId : activeId as WorkbenchTabId?,
@@ -86,6 +94,7 @@ class TabStrip extends Equatable {
     landingReturnTabId: landingReturnTabId == _unset
         ? this.landingReturnTabId
         : landingReturnTabId as WorkbenchTabId?,
+    landingFocusRevision: landingFocusRevision ?? this.landingFocusRevision,
   );
 
   @override
@@ -98,6 +107,7 @@ class TabStrip extends Equatable {
     landingInitialTextRevision,
     landingReferenceSessionId,
     landingReturnTabId,
+    landingFocusRevision,
   ];
 }
 
@@ -316,5 +326,6 @@ class TabStripReducer {
         ? null
         : referencedSessionId!.trim(),
     landingReturnTabId: strip.activeId ?? strip.landingReturnTabId,
+    landingFocusRevision: strip.landingFocusRevision + 1,
   );
 }

@@ -56,6 +56,7 @@ class WorkspaceChatPane extends StatefulWidget {
     this.initialText,
     this.initialTextRevision = 0,
     this.referencedSessionId,
+    this.landingFocusRevision = 0,
     this.canExitLanding,
     this.onBack,
     this.submitter = submitWorkspaceLandingMessage,
@@ -68,6 +69,10 @@ class WorkspaceChatPane extends StatefulWidget {
   final String? initialText;
   final int initialTextRevision;
   final String? referencedSessionId;
+
+  /// Advances on explicit Landing entry; the landing compose focuses itself
+  /// when this changes.
+  final int landingFocusRevision;
 
   /// Whether the landing back control is shown. When null, resolved from the
   /// workbench cubit's focused center group (the workspace-level landing).
@@ -228,6 +233,7 @@ class _WorkspaceChatPaneState extends State<WorkspaceChatPane> {
             initialText: widget.initialText,
             initialTextRevision: widget.initialTextRevision,
             referencedSessionId: widget.referencedSessionId,
+            landingFocusRevision: widget.landingFocusRevision,
             isSubmitting: launching,
             showBackButton: canExitLanding,
             onBack: onBack,

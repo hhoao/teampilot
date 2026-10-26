@@ -96,6 +96,7 @@ class UnboundComposeBody extends StatefulWidget {
     this.initialText,
     this.initialTextRevision = 0,
     this.referencedSessionId,
+    this.landingFocusRevision = 0,
     this.deferFieldMount = false,
     this.showLocationHeader = false,
     super.key,
@@ -108,6 +109,11 @@ class UnboundComposeBody extends StatefulWidget {
   final String? initialText;
   final int initialTextRevision;
   final String? referencedSessionId;
+
+  /// Advances on explicit Landing entry (workbench New Conversation / new
+  /// chat). Every change (including the first non-zero value) focuses the
+  /// compose field; 0 leaves the workspace start page untouched.
+  final int landingFocusRevision;
   final bool deferFieldMount;
 
   /// When true, renders [WorkspaceLandingHeaderRow] above the compose card
@@ -251,6 +257,18 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     unawaited(_loadWorkspaceProjectBundle());
     unawaited(_loadRecentExperts());
     unawaited(_loadRecentTeams());
+    if (widget.landingFocusRevision > 0) {
+      _requestComposeFocus();
+    }
+  }
+
+  /// Focuses the compose field after an explicit Landing entry. The field is
+  /// deferred-mounted (`TpDeferredMountShell`), so this may run before the
+  /// [FocusNode] is attached — Flutter remembers the request and applies it
+  /// when the node is reparented into the field.
+  void _requestComposeFocus() {
+    if (!mounted) return;
+    _focusNode.requestFocus();
   }
 
   /// Keeps [composeDraftCache] in sync with the compose field on every change
@@ -367,6 +385,9 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
           _controller.text == oldWidget.initialText) {
         _setComposeText('');
       }
+    }
+    if (oldWidget.landingFocusRevision != widget.landingFocusRevision) {
+      _requestComposeFocus();
     }
     if (!mapEquals(
           oldWidget.workspace.memberTargetsByTeam,
