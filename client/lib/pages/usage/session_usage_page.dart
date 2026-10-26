@@ -133,6 +133,7 @@ class _SessionUsagePageState extends State<SessionUsagePage> {
               final breakdown = UsageCliBreakdown(
                 slices: dashboard.cliSlices,
                 summary: dashboard.summary,
+                selectedCli: state.cli,
               );
               if (constraints.maxWidth < 900) {
                 return Column(

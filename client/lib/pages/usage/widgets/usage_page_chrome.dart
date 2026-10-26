@@ -108,10 +108,6 @@ class UsageToolbar extends StatelessWidget {
             onSelected: (_) => cubit.setRange(range),
           ),
         const SizedBox(width: 8),
-        Text(
-          l10n.sessionUsageCliAll,
-          style: styles.xs.copyWith(color: cs.onSurface.withValues(alpha: 0.5)),
-        ),
         ChoiceChip(
           label: Text(l10n.sessionUsageCliAll),
           selected: state.cli == null,

@@ -64,7 +64,7 @@ class UsageDetailTable extends StatelessWidget {
                 ],
               ),
               SizedBox(
-                width: 260,
+                width: 240,
                 child: TextField(
                   key: AppKeys.sessionUsageSearchField,
                   controller: searchController,
