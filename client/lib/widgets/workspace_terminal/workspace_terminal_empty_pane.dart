@@ -32,11 +32,11 @@ class WorkspaceTerminalEmptyPane extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.terminal_outlined, size: 20, color: foreground),
+              Icon(Icons.terminal_outlined, size: 22, color: foreground),
               const SizedBox(width: 12),
               Text(
                 l10n.workspaceTerminalNewSession,
-                style: styles.smMediumColored(foreground),
+                style: styles.mdMediumColored(foreground),
               ),
             ],
           ),
