@@ -274,6 +274,8 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     emit(state.copyWith(syncErrors: const [], syncFailed: false));
   }
 
+  void clearLoadError() => emit(state.copyWith(clearError: true));
+
   void _updateFilter({
     UsageRange? range,
     CliTool? cli,

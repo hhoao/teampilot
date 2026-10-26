@@ -325,6 +325,12 @@ class AppKeys {
   static const teamConfigHub = Key('team-config-hub');
   static const teamConfigWorkspace = Key('team-config-workspace');
   static const skillsWorkspace = Key('skills-workspace');
+  static const sessionUsagePage = Key('session-usage-page');
+  static const sessionUsageSyncButton = Key('session-usage-sync-button');
+  static const sessionUsageSearchField = Key('session-usage-search-field');
+  static const sessionUsageErrorBanner = Key('session-usage-error-banner');
+  static const sessionUsageEmptyState = Key('session-usage-empty-state');
+  static const sessionUsageTable = Key('session-usage-table');
   static const pluginsWorkspace = Key('plugins-workspace');
   static const mcpWorkspace = Key('mcp-workspace');
   static const mcpFormDetail = Key('mcp-form-detail');

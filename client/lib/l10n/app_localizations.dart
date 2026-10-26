@@ -16729,6 +16729,408 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Full access'**
   String get acpPermissionFullAccessLabel;
+
+  /// No description provided for @sessionUsageNav.
+  ///
+  /// In en, this message translates to:
+  /// **'Token usage'**
+  String get sessionUsageNav;
+
+  /// No description provided for @sessionUsageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Token usage'**
+  String get sessionUsageTitle;
+
+  /// No description provided for @sessionUsageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage attributed to TeamPilot sessions on local and SSH home planes.'**
+  String get sessionUsageSubtitle;
+
+  /// No description provided for @sessionUsageScopeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Local + SSH · attributed by TeamPilot session'**
+  String get sessionUsageScopeHint;
+
+  /// No description provided for @sessionUsageSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync'**
+  String get sessionUsageSync;
+
+  /// No description provided for @sessionUsageSyncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing'**
+  String get sessionUsageSyncing;
+
+  /// No description provided for @sessionUsageSyncTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan CLI transcripts for new usage'**
+  String get sessionUsageSyncTooltip;
+
+  /// No description provided for @sessionUsageNeverSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Not synced yet'**
+  String get sessionUsageNeverSynced;
+
+  /// No description provided for @sessionUsageLastSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Last sync {time}'**
+  String sessionUsageLastSync(String time);
+
+  /// No description provided for @sessionUsageRangeToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get sessionUsageRangeToday;
+
+  /// No description provided for @sessionUsageRangeSevenDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 7 days'**
+  String get sessionUsageRangeSevenDays;
+
+  /// No description provided for @sessionUsageRangeThirtyDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 30 days'**
+  String get sessionUsageRangeThirtyDays;
+
+  /// No description provided for @sessionUsageRangeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All time'**
+  String get sessionUsageRangeAll;
+
+  /// No description provided for @sessionUsageCliAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get sessionUsageCliAll;
+
+  /// No description provided for @sessionUsageGroupBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Group by'**
+  String get sessionUsageGroupBy;
+
+  /// No description provided for @sessionUsageGroupSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Session'**
+  String get sessionUsageGroupSession;
+
+  /// No description provided for @sessionUsageGroupMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Member'**
+  String get sessionUsageGroupMember;
+
+  /// No description provided for @sessionUsageGroupModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get sessionUsageGroupModel;
+
+  /// No description provided for @sessionUsageGroupCli.
+  ///
+  /// In en, this message translates to:
+  /// **'CLI'**
+  String get sessionUsageGroupCli;
+
+  /// No description provided for @sessionUsageTotalTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'Total tokens'**
+  String get sessionUsageTotalTokens;
+
+  /// No description provided for @sessionUsageInputTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'Input'**
+  String get sessionUsageInputTokens;
+
+  /// No description provided for @sessionUsageOutputTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'Output'**
+  String get sessionUsageOutputTokens;
+
+  /// No description provided for @sessionUsageCacheRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache read'**
+  String get sessionUsageCacheRead;
+
+  /// No description provided for @sessionUsageCacheWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Write {tokens}'**
+  String sessionUsageCacheWrite(String tokens);
+
+  /// No description provided for @sessionUsageCacheHit.
+  ///
+  /// In en, this message translates to:
+  /// **'Hit {percent}'**
+  String sessionUsageCacheHit(String percent);
+
+  /// No description provided for @sessionUsageRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'Requests'**
+  String get sessionUsageRequests;
+
+  /// No description provided for @sessionUsageSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions'**
+  String get sessionUsageSessions;
+
+  /// No description provided for @sessionUsageRequestsSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'{requests} requests · {sessions} sessions'**
+  String sessionUsageRequestsSessions(int requests, int sessions);
+
+  /// No description provided for @sessionUsageShare.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent} of total'**
+  String sessionUsageShare(String percent);
+
+  /// No description provided for @sessionUsageChartTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 7 days'**
+  String get sessionUsageChartTitle;
+
+  /// No description provided for @sessionUsageChartSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stacked by CLI'**
+  String get sessionUsageChartSubtitle;
+
+  /// No description provided for @sessionUsageChartTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'{tokens} total'**
+  String sessionUsageChartTotal(String tokens);
+
+  /// No description provided for @sessionUsageChartAverage.
+  ///
+  /// In en, this message translates to:
+  /// **'{tokens} / day'**
+  String sessionUsageChartAverage(String tokens);
+
+  /// No description provided for @sessionUsageCliBreakdown.
+  ///
+  /// In en, this message translates to:
+  /// **'CLI distribution'**
+  String get sessionUsageCliBreakdown;
+
+  /// No description provided for @sessionUsageCacheReadShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache read share {percent}'**
+  String sessionUsageCacheReadShare(String percent);
+
+  /// No description provided for @sessionUsageSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search sessions, members, models'**
+  String get sessionUsageSearchHint;
+
+  /// No description provided for @sessionUsageTableEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching rows'**
+  String get sessionUsageTableEmpty;
+
+  /// No description provided for @sessionUsageTableEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a different search or reset the filters.'**
+  String get sessionUsageTableEmptyHint;
+
+  /// No description provided for @sessionUsageEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No token usage yet'**
+  String get sessionUsageEmptyTitle;
+
+  /// No description provided for @sessionUsageEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Run a Claude, Codex, or OpenCode session, then sync. You can also reset filters.'**
+  String get sessionUsageEmptyBody;
+
+  /// No description provided for @sessionUsageResetFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset filters'**
+  String get sessionUsageResetFilters;
+
+  /// No description provided for @sessionUsageSyncPartial.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} sources failed to sync. Showing cached data.'**
+  String sessionUsageSyncPartial(int count);
+
+  /// No description provided for @sessionUsageSyncFatal.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync failed. Showing cached data.'**
+  String get sessionUsageSyncFatal;
+
+  /// No description provided for @sessionUsageLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load usage data.'**
+  String get sessionUsageLoadFailed;
+
+  /// No description provided for @sessionUsageRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get sessionUsageRetry;
+
+  /// No description provided for @sessionUsageDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get sessionUsageDismiss;
+
+  /// No description provided for @sessionUsageNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No data'**
+  String get sessionUsageNoData;
+
+  /// No description provided for @sessionUsageToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get sessionUsageToday;
+
+  /// No description provided for @sessionUsageUnknownModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown model'**
+  String get sessionUsageUnknownModel;
+
+  /// No description provided for @sessionUsageUnknownSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown session'**
+  String get sessionUsageUnknownSession;
+
+  /// No description provided for @sessionUsageUnknownTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Unassigned team'**
+  String get sessionUsageUnknownTeam;
+
+  /// No description provided for @sessionUsageSimpleSeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Simple session'**
+  String get sessionUsageSimpleSeat;
+
+  /// No description provided for @sessionUsageShowing.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing {shown} / {total} rows'**
+  String sessionUsageShowing(int shown, int total);
+
+  /// No description provided for @sessionUsageGroupCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} groups'**
+  String sessionUsageGroupCount(int count);
+
+  /// No description provided for @sessionUsageFooterJsonl.
+  ///
+  /// In en, this message translates to:
+  /// **'JSONL read-only'**
+  String get sessionUsageFooterJsonl;
+
+  /// No description provided for @sessionUsageFooterManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual sync'**
+  String get sessionUsageFooterManual;
+
+  /// No description provided for @sessionUsageSyncedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage synced'**
+  String get sessionUsageSyncedToast;
+
+  /// No description provided for @sessionUsageLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading usage…'**
+  String get sessionUsageLoading;
+
+  /// No description provided for @sessionUsageTotalShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get sessionUsageTotalShort;
+
+  /// No description provided for @sessionUsageInputShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Input'**
+  String get sessionUsageInputShort;
+
+  /// No description provided for @sessionUsageOutputShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Output'**
+  String get sessionUsageOutputShort;
+
+  /// No description provided for @sessionUsageCacheShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache'**
+  String get sessionUsageCacheShort;
+
+  /// No description provided for @sessionUsageRequestsShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Req.'**
+  String get sessionUsageRequestsShort;
+
+  /// No description provided for @sessionUsageSessionsShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Sess.'**
+  String get sessionUsageSessionsShort;
+
+  /// No description provided for @sessionUsageShareShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get sessionUsageShareShort;
+
+  /// No description provided for @sessionUsageMixedCli.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed'**
+  String get sessionUsageMixedCli;
+
+  /// No description provided for @sessionUsageGroupName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get sessionUsageGroupName;
 }
 
 class _AppLocalizationsDelegate

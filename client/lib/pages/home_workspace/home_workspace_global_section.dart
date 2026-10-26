@@ -22,6 +22,7 @@ import '../managed_providers/managed_provider_management_page.dart';
 import '../my_experts/my_experts_page.dart';
 import '../my_teams/my_teams_page.dart';
 import '../team_hub/team_hub_page.dart';
+import '../usage/session_usage_page.dart';
 
 /// Which global management view is shown in the workspace-home right pane.
 enum HomeGlobalView {
@@ -36,6 +37,7 @@ enum HomeGlobalView {
   expertHub,
   providers,
   managedProviders,
+  usage,
   automations;
 
   /// Query key on `/home-v2` for deep-linking a global management pane.
@@ -122,6 +124,7 @@ class _HomeGlobalSectionState extends State<HomeGlobalSection> {
       HomeGlobalView.managedProviders => const ManagedProviderManagementPage(
         embedded: true,
       ),
+      HomeGlobalView.usage => const SessionUsagePage(embedded: true),
       HomeGlobalView.automations => const AutomationManagementPage(),
     };
     if (MediaQuery.disableAnimationsOf(context)) return content;

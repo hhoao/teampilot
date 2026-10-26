@@ -4729,5 +4729,155 @@
   "codexAcpLaunchFailedAdapter": "Could not start the Codex ACP adapter (codex-acp). Install it and try again.",
   "codexAcpChatNotLoggedIn": "Codex isn't logged in. Sign in with ChatGPT under Settings → Providers, or switch to an API key.",
   "acpPermissionAskLabel": "Ask",
-  "acpPermissionFullAccessLabel": "Full access"
+  "acpPermissionFullAccessLabel": "Full access",
+  "sessionUsageNav": "Token usage",
+  "sessionUsageTitle": "Token usage",
+  "sessionUsageSubtitle": "Usage attributed to TeamPilot sessions on local and SSH home planes.",
+  "sessionUsageScopeHint": "Local + SSH · attributed by TeamPilot session",
+  "sessionUsageSync": "Sync",
+  "sessionUsageSyncing": "Syncing",
+  "sessionUsageSyncTooltip": "Scan CLI transcripts for new usage",
+  "sessionUsageNeverSynced": "Not synced yet",
+  "sessionUsageLastSync": "Last sync {time}",
+  "@sessionUsageLastSync": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageRangeToday": "Today",
+  "sessionUsageRangeSevenDays": "Last 7 days",
+  "sessionUsageRangeThirtyDays": "Last 30 days",
+  "sessionUsageRangeAll": "All time",
+  "sessionUsageCliAll": "All",
+  "sessionUsageGroupBy": "Group by",
+  "sessionUsageGroupSession": "Session",
+  "sessionUsageGroupMember": "Member",
+  "sessionUsageGroupModel": "Model",
+  "sessionUsageGroupCli": "CLI",
+  "sessionUsageTotalTokens": "Total tokens",
+  "sessionUsageInputTokens": "Input",
+  "sessionUsageOutputTokens": "Output",
+  "sessionUsageCacheRead": "Cache read",
+  "sessionUsageCacheWrite": "Write {tokens}",
+  "@sessionUsageCacheWrite": {
+    "placeholders": {
+      "tokens": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageCacheHit": "Hit {percent}",
+  "@sessionUsageCacheHit": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageRequests": "Requests",
+  "sessionUsageSessions": "Sessions",
+  "sessionUsageRequestsSessions": "{requests} requests · {sessions} sessions",
+  "@sessionUsageRequestsSessions": {
+    "placeholders": {
+      "requests": {
+        "type": "int"
+      },
+      "sessions": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageShare": "{percent} of total",
+  "@sessionUsageShare": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageChartTitle": "Last 7 days",
+  "sessionUsageChartSubtitle": "Stacked by CLI",
+  "sessionUsageChartTotal": "{tokens} total",
+  "@sessionUsageChartTotal": {
+    "placeholders": {
+      "tokens": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageChartAverage": "{tokens} / day",
+  "@sessionUsageChartAverage": {
+    "placeholders": {
+      "tokens": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageCliBreakdown": "CLI distribution",
+  "sessionUsageCacheReadShare": "Cache read share {percent}",
+  "@sessionUsageCacheReadShare": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageSearchHint": "Search sessions, members, models",
+  "sessionUsageTableEmpty": "No matching rows",
+  "sessionUsageTableEmptyHint": "Try a different search or reset the filters.",
+  "sessionUsageEmptyTitle": "No token usage yet",
+  "sessionUsageEmptyBody": "Run a Claude, Codex, or OpenCode session, then sync. You can also reset filters.",
+  "sessionUsageResetFilters": "Reset filters",
+  "sessionUsageSyncPartial": "{count} sources failed to sync. Showing cached data.",
+  "@sessionUsageSyncPartial": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageSyncFatal": "Sync failed. Showing cached data.",
+  "sessionUsageLoadFailed": "Could not load usage data.",
+  "sessionUsageRetry": "Retry",
+  "sessionUsageDismiss": "Dismiss",
+  "sessionUsageNoData": "No data",
+  "sessionUsageToday": "Today",
+  "sessionUsageUnknownModel": "Unknown model",
+  "sessionUsageUnknownSession": "Unknown session",
+  "sessionUsageUnknownTeam": "Unassigned team",
+  "sessionUsageSimpleSeat": "Simple session",
+  "sessionUsageShowing": "Showing {shown} / {total} rows",
+  "@sessionUsageShowing": {
+    "placeholders": {
+      "shown": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageGroupCount": "{count} groups",
+  "@sessionUsageGroupCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageFooterJsonl": "JSONL read-only",
+  "sessionUsageFooterManual": "Manual sync",
+  "sessionUsageSyncedToast": "Usage synced",
+  "sessionUsageLoading": "Loading usage…",
+  "sessionUsageTotalShort": "Total",
+  "sessionUsageInputShort": "Input",
+  "sessionUsageOutputShort": "Output",
+  "sessionUsageCacheShort": "Cache",
+  "sessionUsageRequestsShort": "Req.",
+  "sessionUsageSessionsShort": "Sess.",
+  "sessionUsageShareShort": "Share",
+  "sessionUsageMixedCli": "Mixed",
+  "sessionUsageGroupName": "Name"
 }

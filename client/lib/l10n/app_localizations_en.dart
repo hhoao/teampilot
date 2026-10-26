@@ -9431,4 +9431,231 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get acpPermissionFullAccessLabel => 'Full access';
+
+  @override
+  String get sessionUsageNav => 'Token usage';
+
+  @override
+  String get sessionUsageTitle => 'Token usage';
+
+  @override
+  String get sessionUsageSubtitle =>
+      'Usage attributed to TeamPilot sessions on local and SSH home planes.';
+
+  @override
+  String get sessionUsageScopeHint =>
+      'Local + SSH · attributed by TeamPilot session';
+
+  @override
+  String get sessionUsageSync => 'Sync';
+
+  @override
+  String get sessionUsageSyncing => 'Syncing';
+
+  @override
+  String get sessionUsageSyncTooltip => 'Scan CLI transcripts for new usage';
+
+  @override
+  String get sessionUsageNeverSynced => 'Not synced yet';
+
+  @override
+  String sessionUsageLastSync(String time) {
+    return 'Last sync $time';
+  }
+
+  @override
+  String get sessionUsageRangeToday => 'Today';
+
+  @override
+  String get sessionUsageRangeSevenDays => 'Last 7 days';
+
+  @override
+  String get sessionUsageRangeThirtyDays => 'Last 30 days';
+
+  @override
+  String get sessionUsageRangeAll => 'All time';
+
+  @override
+  String get sessionUsageCliAll => 'All';
+
+  @override
+  String get sessionUsageGroupBy => 'Group by';
+
+  @override
+  String get sessionUsageGroupSession => 'Session';
+
+  @override
+  String get sessionUsageGroupMember => 'Member';
+
+  @override
+  String get sessionUsageGroupModel => 'Model';
+
+  @override
+  String get sessionUsageGroupCli => 'CLI';
+
+  @override
+  String get sessionUsageTotalTokens => 'Total tokens';
+
+  @override
+  String get sessionUsageInputTokens => 'Input';
+
+  @override
+  String get sessionUsageOutputTokens => 'Output';
+
+  @override
+  String get sessionUsageCacheRead => 'Cache read';
+
+  @override
+  String sessionUsageCacheWrite(String tokens) {
+    return 'Write $tokens';
+  }
+
+  @override
+  String sessionUsageCacheHit(String percent) {
+    return 'Hit $percent';
+  }
+
+  @override
+  String get sessionUsageRequests => 'Requests';
+
+  @override
+  String get sessionUsageSessions => 'Sessions';
+
+  @override
+  String sessionUsageRequestsSessions(int requests, int sessions) {
+    return '$requests requests · $sessions sessions';
+  }
+
+  @override
+  String sessionUsageShare(String percent) {
+    return '$percent of total';
+  }
+
+  @override
+  String get sessionUsageChartTitle => 'Last 7 days';
+
+  @override
+  String get sessionUsageChartSubtitle => 'Stacked by CLI';
+
+  @override
+  String sessionUsageChartTotal(String tokens) {
+    return '$tokens total';
+  }
+
+  @override
+  String sessionUsageChartAverage(String tokens) {
+    return '$tokens / day';
+  }
+
+  @override
+  String get sessionUsageCliBreakdown => 'CLI distribution';
+
+  @override
+  String sessionUsageCacheReadShare(String percent) {
+    return 'Cache read share $percent';
+  }
+
+  @override
+  String get sessionUsageSearchHint => 'Search sessions, members, models';
+
+  @override
+  String get sessionUsageTableEmpty => 'No matching rows';
+
+  @override
+  String get sessionUsageTableEmptyHint =>
+      'Try a different search or reset the filters.';
+
+  @override
+  String get sessionUsageEmptyTitle => 'No token usage yet';
+
+  @override
+  String get sessionUsageEmptyBody =>
+      'Run a Claude, Codex, or OpenCode session, then sync. You can also reset filters.';
+
+  @override
+  String get sessionUsageResetFilters => 'Reset filters';
+
+  @override
+  String sessionUsageSyncPartial(int count) {
+    return '$count sources failed to sync. Showing cached data.';
+  }
+
+  @override
+  String get sessionUsageSyncFatal => 'Sync failed. Showing cached data.';
+
+  @override
+  String get sessionUsageLoadFailed => 'Could not load usage data.';
+
+  @override
+  String get sessionUsageRetry => 'Retry';
+
+  @override
+  String get sessionUsageDismiss => 'Dismiss';
+
+  @override
+  String get sessionUsageNoData => 'No data';
+
+  @override
+  String get sessionUsageToday => 'Today';
+
+  @override
+  String get sessionUsageUnknownModel => 'Unknown model';
+
+  @override
+  String get sessionUsageUnknownSession => 'Unknown session';
+
+  @override
+  String get sessionUsageUnknownTeam => 'Unassigned team';
+
+  @override
+  String get sessionUsageSimpleSeat => 'Simple session';
+
+  @override
+  String sessionUsageShowing(int shown, int total) {
+    return 'Showing $shown / $total rows';
+  }
+
+  @override
+  String sessionUsageGroupCount(int count) {
+    return '$count groups';
+  }
+
+  @override
+  String get sessionUsageFooterJsonl => 'JSONL read-only';
+
+  @override
+  String get sessionUsageFooterManual => 'Manual sync';
+
+  @override
+  String get sessionUsageSyncedToast => 'Usage synced';
+
+  @override
+  String get sessionUsageLoading => 'Loading usage…';
+
+  @override
+  String get sessionUsageTotalShort => 'Total';
+
+  @override
+  String get sessionUsageInputShort => 'Input';
+
+  @override
+  String get sessionUsageOutputShort => 'Output';
+
+  @override
+  String get sessionUsageCacheShort => 'Cache';
+
+  @override
+  String get sessionUsageRequestsShort => 'Req.';
+
+  @override
+  String get sessionUsageSessionsShort => 'Sess.';
+
+  @override
+  String get sessionUsageShareShort => 'Share';
+
+  @override
+  String get sessionUsageMixedCli => 'Mixed';
+
+  @override
+  String get sessionUsageGroupName => 'Name';
 }

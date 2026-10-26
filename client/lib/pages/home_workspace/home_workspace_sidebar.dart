@@ -207,6 +207,13 @@ class _HomeSidebarNavScroll extends StatelessWidget {
               onShowManagedProviderUsage ??
               () => onGlobal?.call(HomeGlobalView.managedProviders),
         ),
+        const SizedBox(height: 4),
+        _ShortcutRow(
+          icon: Icons.insights_outlined,
+          label: l10n.sessionUsageNav,
+          active: activeGlobalView == HomeGlobalView.usage,
+          onTap: () => onGlobal?.call(HomeGlobalView.usage),
+        ),
       ],
     );
   }

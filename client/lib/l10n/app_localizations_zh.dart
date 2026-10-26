@@ -9021,4 +9021,228 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get acpPermissionFullAccessLabel => '完全访问';
+
+  @override
+  String get sessionUsageNav => 'Token 用量';
+
+  @override
+  String get sessionUsageTitle => 'Token 用量';
+
+  @override
+  String get sessionUsageSubtitle => '按 TeamPilot 会话归属统计，本地与 SSH 主页面共用。';
+
+  @override
+  String get sessionUsageScopeHint => '本地 + SSH · 按 TeamPilot 会话归属';
+
+  @override
+  String get sessionUsageSync => '同步';
+
+  @override
+  String get sessionUsageSyncing => '同步中';
+
+  @override
+  String get sessionUsageSyncTooltip => '扫描 CLI 记录以获取新用量';
+
+  @override
+  String get sessionUsageNeverSynced => '尚未同步';
+
+  @override
+  String sessionUsageLastSync(String time) {
+    return '上次同步 $time';
+  }
+
+  @override
+  String get sessionUsageRangeToday => '今天';
+
+  @override
+  String get sessionUsageRangeSevenDays => '近 7 天';
+
+  @override
+  String get sessionUsageRangeThirtyDays => '近 30 天';
+
+  @override
+  String get sessionUsageRangeAll => '全部';
+
+  @override
+  String get sessionUsageCliAll => '全部';
+
+  @override
+  String get sessionUsageGroupBy => '分组';
+
+  @override
+  String get sessionUsageGroupSession => '会话';
+
+  @override
+  String get sessionUsageGroupMember => '成员';
+
+  @override
+  String get sessionUsageGroupModel => '模型';
+
+  @override
+  String get sessionUsageGroupCli => 'CLI';
+
+  @override
+  String get sessionUsageTotalTokens => '总 Token';
+
+  @override
+  String get sessionUsageInputTokens => '输入';
+
+  @override
+  String get sessionUsageOutputTokens => '输出';
+
+  @override
+  String get sessionUsageCacheRead => '缓存读取';
+
+  @override
+  String sessionUsageCacheWrite(String tokens) {
+    return '写入 $tokens';
+  }
+
+  @override
+  String sessionUsageCacheHit(String percent) {
+    return '命中率 $percent';
+  }
+
+  @override
+  String get sessionUsageRequests => '请求';
+
+  @override
+  String get sessionUsageSessions => '会话';
+
+  @override
+  String sessionUsageRequestsSessions(int requests, int sessions) {
+    return '$requests 请求 · $sessions 会话';
+  }
+
+  @override
+  String sessionUsageShare(String percent) {
+    return '占总用量 $percent';
+  }
+
+  @override
+  String get sessionUsageChartTitle => '近 7 天消耗';
+
+  @override
+  String get sessionUsageChartSubtitle => '按 CLI 堆叠';
+
+  @override
+  String sessionUsageChartTotal(String tokens) {
+    return '合计 $tokens';
+  }
+
+  @override
+  String sessionUsageChartAverage(String tokens) {
+    return '日均 $tokens';
+  }
+
+  @override
+  String get sessionUsageCliBreakdown => 'CLI 分布';
+
+  @override
+  String sessionUsageCacheReadShare(String percent) {
+    return '缓存读占比 $percent';
+  }
+
+  @override
+  String get sessionUsageSearchHint => '搜索会话、成员或模型';
+
+  @override
+  String get sessionUsageTableEmpty => '没有匹配的记录';
+
+  @override
+  String get sessionUsageTableEmptyHint => '换个搜索词，或清除筛选条件。';
+
+  @override
+  String get sessionUsageEmptyTitle => '还没有 Token 用量';
+
+  @override
+  String get sessionUsageEmptyBody =>
+      '运行一次 Claude、Codex 或 OpenCode 会话后点击同步。也可以先清除筛选条件。';
+
+  @override
+  String get sessionUsageResetFilters => '清除筛选';
+
+  @override
+  String sessionUsageSyncPartial(int count) {
+    return '$count 个来源同步失败，当前显示缓存数据。';
+  }
+
+  @override
+  String get sessionUsageSyncFatal => '同步失败，当前显示缓存数据。';
+
+  @override
+  String get sessionUsageLoadFailed => '无法加载用量数据。';
+
+  @override
+  String get sessionUsageRetry => '重试';
+
+  @override
+  String get sessionUsageDismiss => '关闭';
+
+  @override
+  String get sessionUsageNoData => '暂无数据';
+
+  @override
+  String get sessionUsageToday => '今天';
+
+  @override
+  String get sessionUsageUnknownModel => '未知模型';
+
+  @override
+  String get sessionUsageUnknownSession => '未知会话';
+
+  @override
+  String get sessionUsageUnknownTeam => '未归属团队';
+
+  @override
+  String get sessionUsageSimpleSeat => '简单会话';
+
+  @override
+  String sessionUsageShowing(int shown, int total) {
+    return '显示 $shown / $total 条记录';
+  }
+
+  @override
+  String sessionUsageGroupCount(int count) {
+    return '$count 组';
+  }
+
+  @override
+  String get sessionUsageFooterJsonl => 'JSONL 只读';
+
+  @override
+  String get sessionUsageFooterManual => '手动同步';
+
+  @override
+  String get sessionUsageSyncedToast => '用量同步完成';
+
+  @override
+  String get sessionUsageLoading => '正在加载用量…';
+
+  @override
+  String get sessionUsageTotalShort => '总计';
+
+  @override
+  String get sessionUsageInputShort => '输入';
+
+  @override
+  String get sessionUsageOutputShort => '输出';
+
+  @override
+  String get sessionUsageCacheShort => '缓存';
+
+  @override
+  String get sessionUsageRequestsShort => '请求';
+
+  @override
+  String get sessionUsageSessionsShort => '会话';
+
+  @override
+  String get sessionUsageShareShort => '占比';
+
+  @override
+  String get sessionUsageMixedCli => '混合';
+
+  @override
+  String get sessionUsageGroupName => '名称';
 }

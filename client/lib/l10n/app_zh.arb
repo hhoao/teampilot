@@ -4033,5 +4033,155 @@
   "codexAcpLaunchFailedAdapter": "无法启动 Codex ACP 适配器（codex-acp）。请安装后重试。",
   "codexAcpChatNotLoggedIn": "Codex 尚未登录。请到设置 → 服务商完成 ChatGPT 登录，或改用 API Key。",
   "acpPermissionAskLabel": "询问",
-  "acpPermissionFullAccessLabel": "完全访问"
+  "acpPermissionFullAccessLabel": "完全访问",
+  "sessionUsageNav": "Token 用量",
+  "sessionUsageTitle": "Token 用量",
+  "sessionUsageSubtitle": "按 TeamPilot 会话归属统计，本地与 SSH 主页面共用。",
+  "sessionUsageScopeHint": "本地 + SSH · 按 TeamPilot 会话归属",
+  "sessionUsageSync": "同步",
+  "sessionUsageSyncing": "同步中",
+  "sessionUsageSyncTooltip": "扫描 CLI 记录以获取新用量",
+  "sessionUsageNeverSynced": "尚未同步",
+  "sessionUsageLastSync": "上次同步 {time}",
+  "@sessionUsageLastSync": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageRangeToday": "今天",
+  "sessionUsageRangeSevenDays": "近 7 天",
+  "sessionUsageRangeThirtyDays": "近 30 天",
+  "sessionUsageRangeAll": "全部",
+  "sessionUsageCliAll": "全部",
+  "sessionUsageGroupBy": "分组",
+  "sessionUsageGroupSession": "会话",
+  "sessionUsageGroupMember": "成员",
+  "sessionUsageGroupModel": "模型",
+  "sessionUsageGroupCli": "CLI",
+  "sessionUsageTotalTokens": "总 Token",
+  "sessionUsageInputTokens": "输入",
+  "sessionUsageOutputTokens": "输出",
+  "sessionUsageCacheRead": "缓存读取",
+  "sessionUsageCacheWrite": "写入 {tokens}",
+  "@sessionUsageCacheWrite": {
+    "placeholders": {
+      "tokens": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageCacheHit": "命中率 {percent}",
+  "@sessionUsageCacheHit": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageRequests": "请求",
+  "sessionUsageSessions": "会话",
+  "sessionUsageRequestsSessions": "{requests} 请求 · {sessions} 会话",
+  "@sessionUsageRequestsSessions": {
+    "placeholders": {
+      "requests": {
+        "type": "int"
+      },
+      "sessions": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageShare": "占总用量 {percent}",
+  "@sessionUsageShare": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageChartTitle": "近 7 天消耗",
+  "sessionUsageChartSubtitle": "按 CLI 堆叠",
+  "sessionUsageChartTotal": "合计 {tokens}",
+  "@sessionUsageChartTotal": {
+    "placeholders": {
+      "tokens": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageChartAverage": "日均 {tokens}",
+  "@sessionUsageChartAverage": {
+    "placeholders": {
+      "tokens": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageCliBreakdown": "CLI 分布",
+  "sessionUsageCacheReadShare": "缓存读占比 {percent}",
+  "@sessionUsageCacheReadShare": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionUsageSearchHint": "搜索会话、成员或模型",
+  "sessionUsageTableEmpty": "没有匹配的记录",
+  "sessionUsageTableEmptyHint": "换个搜索词，或清除筛选条件。",
+  "sessionUsageEmptyTitle": "还没有 Token 用量",
+  "sessionUsageEmptyBody": "运行一次 Claude、Codex 或 OpenCode 会话后点击同步。也可以先清除筛选条件。",
+  "sessionUsageResetFilters": "清除筛选",
+  "sessionUsageSyncPartial": "{count} 个来源同步失败，当前显示缓存数据。",
+  "@sessionUsageSyncPartial": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageSyncFatal": "同步失败，当前显示缓存数据。",
+  "sessionUsageLoadFailed": "无法加载用量数据。",
+  "sessionUsageRetry": "重试",
+  "sessionUsageDismiss": "关闭",
+  "sessionUsageNoData": "暂无数据",
+  "sessionUsageToday": "今天",
+  "sessionUsageUnknownModel": "未知模型",
+  "sessionUsageUnknownSession": "未知会话",
+  "sessionUsageUnknownTeam": "未归属团队",
+  "sessionUsageSimpleSeat": "简单会话",
+  "sessionUsageShowing": "显示 {shown} / {total} 条记录",
+  "@sessionUsageShowing": {
+    "placeholders": {
+      "shown": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageGroupCount": "{count} 组",
+  "@sessionUsageGroupCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageFooterJsonl": "JSONL 只读",
+  "sessionUsageFooterManual": "手动同步",
+  "sessionUsageSyncedToast": "用量同步完成",
+  "sessionUsageLoading": "正在加载用量…",
+  "sessionUsageTotalShort": "总计",
+  "sessionUsageInputShort": "输入",
+  "sessionUsageOutputShort": "输出",
+  "sessionUsageCacheShort": "缓存",
+  "sessionUsageRequestsShort": "请求",
+  "sessionUsageSessionsShort": "会话",
+  "sessionUsageShareShort": "占比",
+  "sessionUsageMixedCli": "混合",
+  "sessionUsageGroupName": "名称"
 }
