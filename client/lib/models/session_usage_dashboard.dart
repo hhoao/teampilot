@@ -2,7 +2,6 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 
 import 'app_session.dart';
-import 'session_usage.dart';
 import 'team_config.dart';
 
 /// Sentinels used by the pure aggregator when attribution cannot resolve a

@@ -21,6 +21,8 @@ import '../cubits/agent_attention_cubit.dart';
 import '../cubits/seat_lease_cubit.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/session_groups_cubit.dart';
+import '../cubits/session_usage_cubit.dart';
+import 'session_usage_services.dart';
 import '../services/agent_runtime/agent_event_gateway.dart';
 import '../services/agent_runtime/agent_runtime.dart';
 import '../services/agent_runtime/runtime_event_journal.dart';
@@ -467,6 +469,7 @@ class AppShell {
     required this.connectionModeService,
     required this.identityRepository,
     required this.teamCubit,
+    required this.sessionUsageCubit,
     required this.configCubit,
     required this.connectCubit,
     required this.embeddedSshServer,
@@ -576,6 +579,7 @@ class AppShell {
   final ConnectionModeService connectionModeService;
   final LaunchProfileRepository identityRepository;
   final LaunchProfileCubit teamCubit;
+  final SessionUsageCubit sessionUsageCubit;
   final ConfigCubit configCubit;
   final ConnectCubit? connectCubit;
 
@@ -1578,6 +1582,21 @@ Future<AppShell> buildAppShell({
         return provisioner.collectMcpContributions();
       },
     );
+
+    final sessionUsageServices = SessionUsageServices.forStorage(
+      storage: homeStorage,
+      registry: cliToolRegistry,
+      sessions: sessionRepo,
+      teams: identityRepository,
+    );
+    final sessionUsageCubit = SessionUsageCubit(
+      loadEvents: sessionUsageServices.loadEvents,
+      syncAll: sessionUsageServices.syncAll,
+      loadSessions: sessionUsageServices.loadSessions,
+      loadTeams: sessionUsageServices.loadTeams,
+      storageChanges: homeStorage.changes.map<void>((_) {}),
+    );
+    unawaited(sessionUsageCubit.ensureLoaded());
 
     final notificationCubit = NotificationCubit(storage: homeStorage);
     final notificationBootstrap = notificationCubit.load();
@@ -3143,6 +3162,7 @@ Future<AppShell> buildAppShell({
       connectionModeService: connectionModeService,
       identityRepository: identityRepository,
       teamCubit: teamCubit,
+      sessionUsageCubit: sessionUsageCubit,
       configCubit: configCubit,
       connectCubit: connectCubit,
       embeddedSshServer: embeddedSshServer,
@@ -3474,6 +3494,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       shell.homeInvalidationService.stop();
       unawaited(_teardownConnect(shell));
       unawaited(shell.managedProviderControlPlane.close());
+      unawaited(shell.sessionUsageCubit.close());
     }
     // Drain queued events; dispose() is synchronous, so stop() is
     // fire-and-forget like the cubit closes above.
@@ -3526,6 +3547,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       providers: [
         BlocProvider.value(value: shell.managedProviderCubit),
         BlocProvider.value(value: shell.managedProviderUsageCubit),
+        BlocProvider.value(value: shell.sessionUsageCubit),
         if (shell.connectCubit != null)
           BlocProvider<ConnectCubit>.value(value: shell.connectCubit!),
       ],
