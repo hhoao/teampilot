@@ -1,7 +1,7 @@
 # Agent CLI Usage UI Implementation Plan
 
 > **For agentic workers:** Use `superpowers:subagent-driven-development`
-> (recommended) or `superpowers:executing-plans`. Steps use `- [ ]`.
+> (recommended) or `superpowers:executing-plans`. Steps use `- [x]`.
 > This plan starts after the foundation plan
 > (`2026-10-26-agent-cli-usage-tracking.md`) is implemented.
 

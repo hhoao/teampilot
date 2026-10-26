@@ -1,6 +1,6 @@
 # Agent CLI Usage Tracking (Foundation) Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Record per-request token usage for TeamPilot-launched Claude, Codex, and OpenCode sessions on local and SSH home planes, using per-session transcript scanning, a JSONL usage store, and incremental cursors. No UI, scheduler, pricing, or proxy in this slice.
 
@@ -70,7 +70,7 @@ All new hand-written files stay well under the repo's size limits. If a file gro
 - Modify: `client/lib/services/storage/app_paths.dart`
 - Create: `client/test/models/session_usage_test.dart`
 
-- [ ] **Step 1: Write the failing model test**
+- [x] **Step 1: Write the failing model test**
 
 Create `client/test/models/session_usage_test.dart`:
 
@@ -144,7 +144,7 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run it and confirm it fails**
+- [x] **Step 2: Run it and confirm it fails**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client
@@ -153,7 +153,7 @@ dart run tool/run_tests.dart test/models/session_usage_test.dart
 
 Expected: compile failure, `session_usage.dart` not found.
 
-- [ ] **Step 3: Implement the model**
+- [x] **Step 3: Implement the model**
 
 Create `client/lib/models/session_usage.dart`:
 
@@ -307,7 +307,7 @@ class SessionUsageEvent extends Equatable {
 }
 ```
 
-- [ ] **Step 4: Implement the capability port**
+- [x] **Step 4: Implement the capability port**
 
 Create `client/lib/services/cli/registry/capabilities/session_usage_capability.dart`:
 
@@ -490,7 +490,7 @@ abstract interface class SessionUsageCapability implements CliCapability {
 }
 ```
 
-- [ ] **Step 5: Add usage paths**
+- [x] **Step 5: Add usage paths**
 
 In `client/lib/services/storage/app_paths.dart`, add these getters next to the provider paths (after `managedProviderUsageCacheFile`):
 
@@ -503,7 +503,7 @@ In `client/lib/services/storage/app_paths.dart`, add these getters next to the p
   String get usageCursorsFile => _ctx.join(usageDir, 'cursors.json');
 ```
 
-- [ ] **Step 6: Run the test and the analyzer**
+- [x] **Step 6: Run the test and the analyzer**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client
@@ -513,7 +513,7 @@ flutter analyze --no-fatal-infos --no-fatal-warnings
 
 Expected: 3 tests pass; analyzer clean for the new files.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot
@@ -536,7 +536,7 @@ git commit -m "feat(usage): add usage event model and capability port" -- \
 - Create: `client/lib/services/usage/jsonl_usage_cursor_reader.dart`
 - Create: `client/test/services/usage/jsonl_usage_cursor_reader_test.dart`
 
-- [ ] **Step 1: Write the failing reader tests**
+- [x] **Step 1: Write the failing reader tests**
 
 Create `client/test/services/usage/jsonl_usage_cursor_reader_test.dart`:
 
@@ -647,7 +647,7 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run it and confirm it fails**
+- [x] **Step 2: Run it and confirm it fails**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client
@@ -656,7 +656,7 @@ dart run tool/run_tests.dart test/services/usage/jsonl_usage_cursor_reader_test.
 
 Expected: compile failure, `jsonl_usage_cursor_reader.dart` not found.
 
-- [ ] **Step 3: Implement the reader**
+- [x] **Step 3: Implement the reader**
 
 Create `client/lib/services/usage/jsonl_usage_cursor_reader.dart`:
 
@@ -810,7 +810,7 @@ int _fnv1a32(List<int> bytes) {
 }
 ```
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client
@@ -820,7 +820,7 @@ flutter analyze --no-fatal-infos --no-fatal-warnings
 
 Expected: all 4 tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot
@@ -843,7 +843,7 @@ git commit -m "feat(usage): add incremental jsonl cursor reader" -- \
 - Create: `client/test/services/usage/json_usage_store_test.dart`
 - Create: `client/test/services/usage/json_usage_cursor_store_test.dart`
 
-- [ ] **Step 1: Write the failing store tests**
+- [x] **Step 1: Write the failing store tests**
 
 Create `client/test/services/usage/json_usage_store_test.dart`:
 
@@ -1003,7 +1003,7 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run them and confirm they fail**
+- [x] **Step 2: Run them and confirm they fail**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client
@@ -1013,7 +1013,7 @@ dart run tool/run_tests.dart test/services/usage/json_usage_cursor_store_test.da
 
 Expected: compile failures, the two implementation files are missing.
 
-- [ ] **Step 3: Implement the store ports**
+- [x] **Step 3: Implement the store ports**
 
 Create `client/lib/services/usage/usage_store.dart`:
 
@@ -1057,7 +1057,7 @@ abstract interface class UsageCursorStore {
 }
 ```
 
-- [ ] **Step 4: Implement the JSONL store**
+- [x] **Step 4: Implement the JSONL store**
 
 Create `client/lib/services/usage/json_usage_store.dart`:
 
@@ -1203,7 +1203,7 @@ class JsonUsageStore implements UsageStore {
 }
 ```
 
-- [ ] **Step 5: Implement the cursor store**
+- [x] **Step 5: Implement the cursor store**
 
 Create `client/lib/services/usage/json_usage_cursor_store.dart`:
 
@@ -1287,7 +1287,7 @@ class JsonUsageCursorStore implements UsageCursorStore {
 }
 ```
 
-- [ ] **Step 6: Run the tests and analyzer**
+- [x] **Step 6: Run the tests and analyzer**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client
@@ -1297,7 +1297,7 @@ flutter analyze --no-fatal-infos --no-fatal-warnings
 
 Expected: 8 tests pass (6 store + 2 cursor).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot
@@ -1327,7 +1327,7 @@ git commit -m "feat(usage): add jsonl usage and cursor stores" -- \
 - Create: `client/test/services/usage/session_usage_sync_service_test.dart`
 - Create: `client/test/services/usage/team_pilot_usage_scan_target_provider_test.dart`
 
-- [ ] **Step 1: Write the failing sync-service test**
+- [x] **Step 1: Write the failing sync-service test**
 
 Create `client/test/services/usage/session_usage_sync_service_test.dart`:
 
@@ -1531,7 +1531,7 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Write the failing target-provider test**
+- [x] **Step 2: Write the failing target-provider test**
 
 Create `client/test/services/usage/team_pilot_usage_scan_target_provider_test.dart`:
 
@@ -1640,7 +1640,7 @@ void main() {
 }
 ```
 
-- [ ] **Step 3: Run both and confirm they fail**
+- [x] **Step 3: Run both and confirm they fail**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client
@@ -1650,7 +1650,7 @@ dart run tool/run_tests.dart test/services/usage/team_pilot_usage_scan_target_pr
 
 Expected: compile failures, the three implementation files are missing.
 
-- [ ] **Step 4: Implement the target port**
+- [x] **Step 4: Implement the target port**
 
 Create `client/lib/services/usage/usage_scan_target_provider.dart`:
 
@@ -1663,7 +1663,7 @@ abstract interface class UsageScanTargetProvider {
 }
 ```
 
-- [ ] **Step 5: Implement the production target provider**
+- [x] **Step 5: Implement the production target provider**
 
 Create `client/lib/services/usage/team_pilot_usage_scan_target_provider.dart`:
 
@@ -1792,7 +1792,7 @@ class TeamPilotUsageScanTargetProvider implements UsageScanTargetProvider {
 }
 ```
 
-- [ ] **Step 6: Implement the sync service**
+- [x] **Step 6: Implement the sync service**
 
 Create `client/lib/services/usage/session_usage_sync_service.dart`:
 
@@ -1926,7 +1926,7 @@ class SessionUsageSyncService {
 }
 ```
 
-- [ ] **Step 7: Run the tests and analyzer**
+- [x] **Step 7: Run the tests and analyzer**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client
@@ -1936,7 +1936,7 @@ flutter analyze --no-fatal-infos --no-fatal-warnings
 
 Expected: 6 tests pass (3 sync + 3 target).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot
@@ -1961,7 +1961,7 @@ git commit -m "feat(usage): add sync service and target enumeration" -- \
 - Create: `client/lib/services/cli/claude/capabilities/usage/session_usage.dart`
 - Create: `client/test/services/cli/registry/capabilities/usage/claude_session_usage_test.dart`
 
-- [ ] **Step 1: Write the failing Claude test**
+- [x] **Step 1: Write the failing Claude test**
 
 Create the test file:
 
@@ -2156,7 +2156,7 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run it and confirm it fails**
+- [x] **Step 2: Run it and confirm it fails**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client
@@ -2165,7 +2165,7 @@ dart run tool/run_tests.dart test/services/cli/registry/capabilities/usage/claud
 
 Expected: compile failure, implementation missing.
 
-- [ ] **Step 3: Implement the Claude capability**
+- [x] **Step 3: Implement the Claude capability**
 
 Create `client/lib/services/cli/claude/capabilities/usage/session_usage.dart`:
 
@@ -2312,7 +2312,7 @@ int _timestampMs(Object? raw) {
 }
 ```
 
-- [ ] **Step 4: Run the test and analyzer**
+- [x] **Step 4: Run the test and analyzer**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client
@@ -2322,7 +2322,7 @@ flutter analyze --no-fatal-infos --no-fatal-warnings
 
 Expected: 4 tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot
@@ -2341,7 +2341,7 @@ git commit -m "feat(usage): add claude transcript extraction" -- \
 - Create: `client/lib/services/cli/codex/capabilities/usage/session_usage.dart`
 - Create: `client/test/services/cli/registry/capabilities/usage/codex_session_usage_test.dart`
 
-- [ ] **Step 1: Write the failing Codex test**
+- [x] **Step 1: Write the failing Codex test**
 
 Create the test file:
 
@@ -2536,14 +2536,14 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run it and confirm it fails**
+- [x] **Step 2: Run it and confirm it fails**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client
 dart run tool/run_tests.dart test/services/cli/registry/capabilities/usage/codex_session_usage_test.dart
 ```
 
-- [ ] **Step 3: Implement the Codex capability**
+- [x] **Step 3: Implement the Codex capability**
 
 Create `client/lib/services/cli/codex/capabilities/usage/session_usage.dart`:
 
@@ -2779,7 +2779,7 @@ int _timestampMs(Object? raw) {
 }
 ```
 
-- [ ] **Step 4: Run the test and analyzer**
+- [x] **Step 4: Run the test and analyzer**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client
@@ -2789,7 +2789,7 @@ flutter analyze --no-fatal-infos --no-fatal-warnings
 
 Expected: 4 tests pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot
@@ -2808,7 +2808,7 @@ git commit -m "feat(usage): add codex rollout extraction" -- \
 - Create: `client/lib/services/cli/opencode/capabilities/usage/session_usage.dart`
 - Create: `client/test/services/cli/registry/capabilities/usage/opencode_session_usage_test.dart`
 
-- [ ] **Step 1: Write the failing OpenCode test**
+- [x] **Step 1: Write the failing OpenCode test**
 
 Create the test file:
 
@@ -3016,14 +3016,14 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run it and confirm it fails**
+- [x] **Step 2: Run it and confirm it fails**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client
 dart run tool/run_tests.dart test/services/cli/registry/capabilities/usage/opencode_session_usage_test.dart
 ```
 
-- [ ] **Step 3: Implement the OpenCode capability**
+- [x] **Step 3: Implement the OpenCode capability**
 
 Create `client/lib/services/cli/opencode/capabilities/usage/session_usage.dart`:
 
@@ -3262,7 +3262,7 @@ int _timestampMs(Map<String, Object?> data, Map<String, Object?> row) {
 }
 ```
 
-- [ ] **Step 4: Run the test and analyzer**
+- [x] **Step 4: Run the test and analyzer**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client
@@ -3272,7 +3272,7 @@ flutter analyze --no-fatal-infos --no-fatal-warnings
 
 Expected: 4 tests pass. If the worker returns `null` on the first test, check that the query function is top-level and that `sqlite3` is initialized for the test host (existing OpenCode tests already do this).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot
@@ -3295,7 +3295,7 @@ git commit -m "feat(usage): add opencode sqlite extraction" -- \
 - Create: `client/test/app/session_usage_services_test.dart`
 - Create: `client/test/services/cli/registry/session_usage_registration_test.dart`
 
-- [ ] **Step 1: Write the failing registration test**
+- [x] **Step 1: Write the failing registration test**
 
 Create `client/test/services/cli/registry/session_usage_registration_test.dart`:
 
@@ -3338,7 +3338,7 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Run it and confirm it fails**
+- [x] **Step 2: Run it and confirm it fails**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client
@@ -3347,7 +3347,7 @@ dart run tool/run_tests.dart test/services/cli/registry/session_usage_registrati
 
 Expected: `claude` capability is null.
 
-- [ ] **Step 3: Register Claude**
+- [x] **Step 3: Register Claude**
 
 In `client/lib/services/cli/claude/claude_tool.dart`:
 
@@ -3377,7 +3377,7 @@ import '../registry/capabilities/session_usage_capability.dart';
 
 Add `sessionUsage,` to `capabilities` after `aiHistory,`.
 
-- [ ] **Step 4: Register Codex**
+- [x] **Step 4: Register Codex**
 
 In `client/lib/services/cli/codex/codex_tool.dart`:
 
@@ -3404,7 +3404,7 @@ List after `aiHistory,`:
     sessionUsage,
 ```
 
-- [ ] **Step 5: Register OpenCode**
+- [x] **Step 5: Register OpenCode**
 
 In `client/lib/services/cli/opencode/opencode_tool.dart`:
 
@@ -3431,7 +3431,7 @@ List after `aiHistory,`:
     sessionUsage,
 ```
 
-- [ ] **Step 6: Add the composition factory**
+- [x] **Step 6: Add the composition factory**
 
 Create `client/lib/app/session_usage_services.dart` (app layer: it may import repositories):
 
@@ -3499,7 +3499,7 @@ final class SessionUsageServices {
 }
 ```
 
-- [ ] **Step 7: Write the factory smoke test**
+- [x] **Step 7: Write the factory smoke test**
 
 Create `client/test/app/session_usage_services_test.dart`:
 
@@ -3532,7 +3532,7 @@ void main() {
 }
 ```
 
-- [ ] **Step 8: Run the factory test, registration test, usage suite, and analyzer**
+- [x] **Step 8: Run the factory test, registration test, usage suite, and analyzer**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client
@@ -3543,7 +3543,7 @@ flutter analyze --no-fatal-infos --no-fatal-warnings
 
 Expected: all usage tests pass; analyzer clean.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot
@@ -3566,7 +3566,7 @@ git commit -m "feat(usage): register cli usage capabilities and wiring" -- \
 
 ## Task 9: Final verification
 
-- [ ] **Step 1: Run the complete usage-focused suite**
+- [x] **Step 1: Run the complete usage-focused suite**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client
@@ -3579,7 +3579,7 @@ dart run tool/run_tests.dart \
 
 Expected: every test passes.
 
-- [ ] **Step 2: Run the full analyzer**
+- [x] **Step 2: Run the full analyzer**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot/client
@@ -3588,7 +3588,7 @@ flutter analyze --no-fatal-infos --no-fatal-warnings
 
 Expected: no issues.
 
-- [ ] **Step 3: Run the full suite in the background**
+- [x] **Step 3: Run the full suite in the background**
 
 Per `docs/DEVELOPMENT.md`, run the full suite once before claiming done, in the background, and do not start a second concurrent run:
 
@@ -3599,7 +3599,7 @@ dart run tool/run_tests.dart
 
 If anything fails in an unrelated area, report it as pre-existing and do not touch user changes.
 
-- [ ] **Step 4: Update the plan checkboxes and report**
+- [x] **Step 4: Update the plan checkboxes and report**
 
 Mark every completed checkbox in this plan. Report:
 - files added/changed,
@@ -3607,7 +3607,7 @@ Mark every completed checkbox in this plan. Report:
 - any remaining risk (OpenCode full-DB re-read, Claude rewrite pinning, Codex baseline decode),
 - that UI/scheduling/pricing/proxy remain out of scope.
 
-- [ ] **Step 5: Commit the updated plan**
+- [x] **Step 5: Commit the updated plan**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot
