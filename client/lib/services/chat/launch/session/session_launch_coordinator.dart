@@ -297,6 +297,10 @@ class SessionLaunchCoordinator
         waitForCompletion: shouldWait,
       );
     } else if (!request.isPersonal || shouldWait) {
+      // Deferred tab: stage the shell / team runtime, but never attach a
+      // transport. This job must not drive the connect UI (`showsConnectUi` is
+      // false for `connectShell: false`), otherwise a history-only open flashes
+      // the sidebar "running" spinner without any user turn.
       await _scheduler.enqueue(
         _jobFor(
           surfaced: surfaced,

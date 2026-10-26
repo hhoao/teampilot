@@ -86,4 +86,38 @@ void main() {
     expect(begun, <String>['session-1']);
     expect(pendingBySession, isEmpty);
   });
+
+  test('deferred queued tracks the member but does not begin connect', () {
+    pendingBySession['session-1'] = <String>{};
+
+    adapter.onLaunchFlow(
+      const LaunchFlowEvent(
+        sessionId: 'session-1',
+        memberId: '',
+        phase: LaunchFlowPhase.queued,
+        showsConnectUi: false,
+      ),
+    );
+
+    expect(pendingBySession['session-1'], <String>{''});
+    expect(begun, isEmpty);
+  });
+
+  test('deferred settled does not finish a connecting session', () {
+    pendingBySession['session-1'] = <String>{''};
+    connecting.add('session-1');
+
+    adapter.onLaunchFlow(
+      const LaunchFlowEvent(
+        sessionId: 'session-1',
+        memberId: '',
+        phase: LaunchFlowPhase.settled,
+        showsConnectUi: false,
+      ),
+    );
+
+    expect(pendingBySession['session-1'], isEmpty);
+    expect(finished, isEmpty);
+    expect(connecting, contains('session-1'));
+  });
 }

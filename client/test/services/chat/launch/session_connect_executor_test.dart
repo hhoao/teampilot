@@ -206,6 +206,24 @@ void main() {
     },
   );
 
+  test('deferred simple ACP job never attaches the adapter', () async {
+    // Opening an ACP session with "start terminal on open" off must not spawn
+    // the agent: staging is enough, the runtime attaches on the first send.
+    job = _job(
+      cli: CliTool.claude,
+      acp: true,
+      simple: true,
+      connectShell: false,
+    );
+
+    await executor.execute(job);
+
+    expect(events, <String>['persist', 'ensure-ready']);
+    expect(events, isNot(contains('attach-acp')));
+    expect(events, isNot(contains('acquire-shell')));
+    expect(shellConnector.connectCalls, 0);
+  });
+
   test(
     'executor stops without attachment when the job becomes stale',
     () async {

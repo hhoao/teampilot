@@ -48,6 +48,7 @@ class SessionConnectScheduler implements SessionConnectSchedulerPort {
       job.sessionId,
       job.memberId,
       reportErrors: waitForCompletion,
+      showsConnectUi: job.connectShell,
     );
     _pending[id] = token;
     listener.onLaunchFlow(
@@ -55,6 +56,7 @@ class SessionConnectScheduler implements SessionConnectSchedulerPort {
         sessionId: job.sessionId,
         memberId: job.memberId,
         phase: LaunchFlowPhase.queued,
+        showsConnectUi: job.connectShell,
       ),
     );
     if (waitForCompletion) {
@@ -104,6 +106,7 @@ class SessionConnectScheduler implements SessionConnectSchedulerPort {
             sessionId: job.sessionId,
             memberId: job.memberId,
             phase: LaunchFlowPhase.settled,
+            showsConnectUi: job.connectShell,
           ),
         );
       }
@@ -128,6 +131,7 @@ class SessionConnectScheduler implements SessionConnectSchedulerPort {
             sessionId: entry.value.sessionId,
             memberId: entry.value.memberId,
             phase: LaunchFlowPhase.settled,
+            showsConnectUi: entry.value.showsConnectUi,
           ),
         );
         if (!entry.value.done.isCompleted) {
@@ -143,11 +147,16 @@ final class _SessionConnectToken {
     this.sessionId,
     this.memberId, {
     required this.reportErrors,
+    this.showsConnectUi = true,
   });
 
   final String sessionId;
   final String memberId;
   bool reportErrors;
+
+  /// Mirrors `job.connectShell`; deferred preparation jobs never drive the
+  /// connect UI.
+  final bool showsConnectUi;
   final Completer<void> done = Completer<void>();
   bool cancelled = false;
 }

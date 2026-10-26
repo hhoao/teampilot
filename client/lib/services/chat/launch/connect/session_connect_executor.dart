@@ -98,6 +98,11 @@ class SessionConnectExecutor implements SessionConnectExecutorPort {
       activeSession =
           await preparation.ensureReady(job, activeSession) ?? activeSession;
       if (!preparation.isValid(job)) return;
+      // Deferred terminal-less ACP tab (open-existing with "start terminal on
+      // open" off): staging above is enough. The ACP attach below spawns the
+      // adapter process and replays `session/load`, so it must wait for the
+      // first send — opening a tab to read history costs no agent process.
+      if (!job.connectShell && isAcpChatSession(activeSession)) return;
       // Terminal-less ACP chat session: attach the ACP runtime (which runs
       // the same simple contributeLaunch as PTY) and skip the PTY shell.
       if (isAcpChatSession(activeSession)) {

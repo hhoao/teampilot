@@ -142,6 +142,33 @@ void main() {
     });
 
     test(
+      'completion-aware personal deferred open materializes without connect',
+      () async {
+        // A history-only open still materializes the shell object so the tab is
+        // warm for the first send — but the job must be connect-shell:false so
+        // it never flips the pod to `connecting` (sidebar spinner) and, for ACP,
+        // never spawns the adapter.
+        final session = _session('session-history-wait', workspace);
+
+        final status = await coordinator.open(
+          SessionOpenRequest(
+            session: session,
+            workspace: workspace,
+            connectImmediately: false,
+            waitForCompletion: true,
+          ),
+        );
+
+        expect(status, SessionOpenStatus.opened);
+        expect(openedSessionIds, contains(session.sessionId));
+        expect(scheduler.jobs, hasLength(1));
+        expect(scheduler.jobs.single.connectShell, isFalse);
+        expect(scheduler.jobs.single.materializeShell, isTrue);
+        expect(scheduler.waitForCompletionValues.single, isTrue);
+      },
+    );
+
+    test(
       'deferred team open enqueues preparation without shell connect',
       () async {
         const member = TeamMemberConfig(id: 'team-lead', name: 'Lead');

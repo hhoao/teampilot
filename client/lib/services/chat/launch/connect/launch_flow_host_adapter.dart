@@ -22,10 +22,13 @@ final class LaunchFlowHostAdapter implements LaunchFlowListener {
     switch (event.phase) {
       case LaunchFlowPhase.queued:
         pendingMembersForSession(event.sessionId)?.add(event.memberId);
-        beginSessionConnect(event.sessionId);
+        // Deferred preparation (connectShell: false) is not a connect: it must
+        // not flip the pod phase, or a history-only open shows the sidebar
+        // "running" spinner and can suppress a real connect's own state.
+        if (event.showsConnectUi) beginSessionConnect(event.sessionId);
       case LaunchFlowPhase.settled:
         pendingMembersForSession(event.sessionId)?.remove(event.memberId);
-        if (isSessionConnecting(event.sessionId)) {
+        if (event.showsConnectUi && isSessionConnecting(event.sessionId)) {
           finishSessionConnect(event.sessionId);
         }
     }

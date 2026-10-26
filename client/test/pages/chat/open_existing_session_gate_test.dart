@@ -251,6 +251,12 @@ void main() {
             emptyDisplayTitleFallback: 'New Chat',
           ),
         );
+        // No deferred preparation job is enqueued, so the pod never flips to
+        // `connecting` — the sidebar must not flash a "running" spinner for a
+        // history-only open. Asserted before draining so a queued job cannot
+        // settle (and hide itself) in between.
+        expect(chatCubit.hasConnectingSession, isFalse);
+        expect(chatCubit.isSessionConnecting(session.sessionId), isFalse);
         await drainPendingAsyncWork();
         await postFrame.flush();
         await drainPendingAsyncWork();

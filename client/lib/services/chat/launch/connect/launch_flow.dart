@@ -8,21 +8,31 @@ final class LaunchFlowEvent {
     required this.sessionId,
     required this.memberId,
     required this.phase,
+    this.showsConnectUi = true,
   });
 
   final String sessionId;
   final String memberId;
   final LaunchFlowPhase phase;
 
+  /// Whether this job actually attaches a transport, so the UI may treat the
+  /// session as "connecting".
+  ///
+  /// Deferred preparation jobs (`connectShell: false`) still stage a shell /
+  /// runtime, but nothing is launched: they must not flip the pod phase or the
+  /// sidebar spinner (a history-only open would flash "running").
+  final bool showsConnectUi;
+
   @override
   bool operator ==(Object other) =>
       other is LaunchFlowEvent &&
       other.sessionId == sessionId &&
       other.memberId == memberId &&
-      other.phase == phase;
+      other.phase == phase &&
+      other.showsConnectUi == showsConnectUi;
 
   @override
-  int get hashCode => Object.hash(sessionId, memberId, phase);
+  int get hashCode => Object.hash(sessionId, memberId, phase, showsConnectUi);
 }
 
 /// Notified when a connect identity is queued or leaves the scheduler.
