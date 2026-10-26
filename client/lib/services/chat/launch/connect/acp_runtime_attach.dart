@@ -10,6 +10,7 @@ import '../../../acp/acp_chat_transcript.dart';
 import '../../../acp/acp_agent_session_store.dart';
 import '../../../acp/acp_frame_logger.dart';
 import '../../../acp/acp_mcp_servers.dart';
+import '../../../acp/acp_session_files.dart';
 import '../../../acp/acp_session_runtime.dart';
 import '../../../acp/acp_ssh_transport.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
@@ -54,17 +55,6 @@ typedef AcpMemberLifecycleGate =
       Map<String, Map<String, Object?>>? extraMcpServers,
     });
 
-/// Transcript file under `sessions/<id>/runtime/`.
-///
-/// Personal stays `acp-transcript.jsonl`. Mixed seats use
-/// `acp-transcript-<rosterMemberId>.jsonl`.
-String acpTranscriptFileName({String? memberId, required bool personal}) {
-  if (personal) return 'acp-transcript.jsonl';
-  final id = memberId?.trim() ?? '';
-  if (id.isEmpty) return 'acp-transcript.jsonl';
-  return 'acp-transcript-$id.jsonl';
-}
-
 /// Adapter-path resolver for one ACP launch plan.
 ///
 /// Remote launches use the per-target absolute override (or `null` → the plain
@@ -77,17 +67,6 @@ String? Function(CliTool tool) acpAdapterPathResolverFor({
   if (remote) return (_) => remoteAdapterPath;
   final resolve = localResolver;
   return resolve == null ? (_) => null : (tool) => resolve(tool);
-}
-
-/// Agent-session sidecar under `sessions/<id>/runtime/`.
-///
-/// Personal stays `acp-session.json`. Mixed seats use
-/// `acp-session-<rosterMemberId>.json`.
-String acpAgentSessionFileName({String? memberId, required bool personal}) {
-  if (personal) return 'acp-session.json';
-  final id = memberId?.trim() ?? '';
-  if (id.isEmpty) return 'acp-session.json';
-  return 'acp-session-$id.json';
 }
 
 /// Personal and mixed-seat ACP attach. [SessionLaunchService] delegates here

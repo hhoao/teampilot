@@ -13,6 +13,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
+import 'package:teampilot/services/acp/acp_session_files.dart';
 import 'package:teampilot/services/acp/acp_session_runtime.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/agent_status/agent_status_seat_lookup_port.dart';

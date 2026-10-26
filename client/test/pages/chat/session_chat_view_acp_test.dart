@@ -6,6 +6,8 @@ import 'package:ai_message_core/ai_message_core.dart'
         AiAskUserOption,
         AiAskUserQuestion,
         AiMessage,
+        AiRole,
+        AiTextPart,
         ExternalStoreAiThreadRuntime;
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
@@ -45,6 +47,7 @@ import 'package:teampilot/pages/chat/history_continue_delivery.dart';
 import 'package:teampilot/pages/chat/operator_history_send.dart'
     show OperatorMailboxQueuedEvent;
 import 'package:teampilot/pages/chat/session_chat_view.dart';
+import 'package:teampilot/services/acp/acp_chat_transcript_replay.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
 import 'package:teampilot/services/acp/acp_session_runtime.dart';
@@ -208,6 +211,7 @@ void _stubCubit<TState>(Cubit<TState> cubit, TState state) {
 /// round-1 card tests (which pumped `AcpPermissionCard` directly) missed.
 void main() {
   late _MockAiHistorySeat seat;
+  late InMemoryFilesystem memoryFs;
 
   setUpAll(() {
     final fbWorkspace = Workspace(workspaceId: 'ws-fb', createdAt: 0);
@@ -246,8 +250,9 @@ void main() {
 
   setUp(() {
     setUpTestAppStorage();
+    memoryFs = InMemoryFilesystem();
     installTestHomeStorage(
-      filesystem: InMemoryFilesystem(),
+      filesystem: memoryFs,
       paths: const AppPaths('/acp-chat-view-test'),
       home: '/acp-chat-view-test',
       cwd: '/acp-chat-view-test',
@@ -631,6 +636,96 @@ void main() {
     },
   );
 
+  testWidgets(
+    'cold ACP session without a runtime paints the app transcript snapshot',
+    (tester) async {
+      final loads = <int>[];
+      countPtyHistoryLoads(loads);
+      final path = testHomeStorage.context.layout.pathContext.join(
+        testHomeStorage.context.layout.workspace.sessionRuntimeDir(
+          'ws-1',
+          's-acp',
+        ),
+        'acp-transcript.jsonl',
+      );
+      await memoryFs.atomicWrite(
+        path,
+        encodeAcpChatTranscript([
+          AiMessage(
+            id: 'u1',
+            role: AiRole.user,
+            parts: [AiTextPart(text: 'hello from disk')],
+            createdAt: DateTime.utc(2020),
+          ),
+        ]),
+      );
+
+      await pumpSession(tester, session: session('s-acp', acp: true));
+
+      expect(tester.takeException(), isNull);
+      expect(
+        loads,
+        isEmpty,
+        reason: 'ACP must never use the PTY transcript loader',
+      );
+      final adopted = verify(
+        () => seat.adoptExternalMessages(captureAny()),
+      ).captured;
+      expect(adopted, isNotEmpty);
+      final messages = adopted.last as List<AiMessage>;
+      expect(messages.map((m) => m.id), contains('u1'));
+    },
+  );
+
+  testWidgets(
+    'ACP session with an empty snapshot settles on the empty pane, not loading',
+    (tester) async {
+      await pumpSession(tester, session: session('s-empty', acp: true));
+
+      expect(tester.takeException(), isNull);
+      final adopted = verify(
+        () => seat.adoptExternalMessages(captureAny()),
+      ).captured;
+      expect(adopted, isNotEmpty, reason: 'the loading state must be released');
+      expect(adopted.last as List<AiMessage>, isEmpty);
+    },
+  );
+
+  testWidgets(
+    'ACP compose without an attached runtime delegates to the host submit hook',
+    (tester) async {
+      String? submitted;
+      var hostSubmissions = 0;
+      await pumpSession(
+        tester,
+        session: session('s-acp', acp: true),
+        onSubmit: (message) async {
+          hostSubmissions++;
+          submitted = message;
+          return const HistoryContinueSubmitResult(
+            ok: true,
+            channel: HistoryContinueChannel.pty,
+          );
+        },
+      );
+
+      await enterCompose(tester, 'continue please');
+      await submitCompose(tester);
+
+      expect(hostSubmissions, 1);
+      expect(submitted, 'continue please');
+      // Terminal-less seats never write PTY pending records.
+      verifyNever(
+        () => seat.persistPendingUser(
+          store: any(named: 'store'),
+          workspaceId: any(named: 'workspaceId'),
+          sessionId: any(named: 'sessionId'),
+          text: any(named: 'text'),
+        ),
+      );
+    },
+  );
+
   testWidgets('ACP compose Stop cancels the in-flight turn via the runtime', (
     tester,
   ) async {
@@ -816,8 +911,8 @@ void main() {
     );
     expect(tester.takeException(), isNull);
 
-      await enterCompose(tester, 'ship the seat');
-      await submitCompose(tester);
+    await enterCompose(tester, 'ship the seat');
+    await submitCompose(tester);
 
     expect(ptySubmits, isEmpty);
     expect(cubit.state.inTurn, isTrue);

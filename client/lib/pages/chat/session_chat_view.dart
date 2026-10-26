@@ -41,6 +41,7 @@ import '../../services/chat/conversation/compose/compose_file_attach.dart';
 import 'acp_seat_message_sync.dart';
 import 'session_chat_voice_controller.dart';
 import '../../services/chat/conversation/follow_up/follow_up_queue.dart';
+import '../../services/chat/conversation/history/acp_seat_transcript_reader.dart';
 import '../../services/chat/conversation/history/ai_history_live_refresh_controller.dart';
 import '../../services/chat/conversation/history/failed_message_store.dart';
 import '../../services/chat/conversation/history/chat_transcript_find_controller.dart';
@@ -171,6 +172,11 @@ class _SessionChatViewState extends State<SessionChatView> {
 
   /// Streams [AcpChatRuntimeCubit] state into the history seat (ACP sessions).
   StreamSubscription<AcpChatRuntimeState>? _acpRuntimeSub;
+
+  /// Seat key whose app-owned ACP transcript snapshot was already read. Guards
+  /// against re-reading the file on every refresh/rebuild for an unattached
+  /// runtime (history-only open, reclaimed runtime).
+  String? _acpSnapshotSeatKey;
 
   /// True from optimistic enqueue through connect/boot/inject settle so idle
   /// grace cannot blank tip chrome while History continue is still in flight.
@@ -317,6 +323,49 @@ class _SessionChatViewState extends State<SessionChatView> {
     }
   }
 
+  /// Cold ACP seat with no attached runtime (history-only open, or a runtime
+  /// reclaimed before the app restarted): paint the app-owned transcript
+  /// snapshot instead of leaving the seat on the full-pane loading state.
+  ///
+  /// Opening a session to read its history must never spawn the agent — the
+  /// runtime attaches lazily on the first send (see [_deliverComposeMessage]).
+  Future<void> _loadAcpTranscriptSnapshot() async {
+    final seat = _seat;
+    if (seat == null || seat.isClosed) return;
+    final key = historySeatKey(
+      sessionId: widget.session.sessionId,
+      selectedMemberId: widget.selectedMemberId,
+    );
+    if (_acpSnapshotSeatKey == key) return;
+    _acpSnapshotSeatKey = key;
+    // A reclaimed runtime leaves its transcript on the seat; re-reading the
+    // file would only replace identical content and drop pendings.
+    if (seat.loadedMessages.isNotEmpty) return;
+    seat.markExternalLoading();
+    List<AiMessage> messages;
+    try {
+      messages = await AcpSeatTranscriptReader(storage: homeStorageOf(context))
+          .load(
+            session: widget.session,
+            memberId: widget.selectedMemberId,
+            personal: isAcpChatSession(widget.session),
+          );
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[acp-history] transcript snapshot read failed '
+        'session=${widget.session.sessionId} '
+        'member=${widget.selectedMemberId}',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      messages = const <AiMessage>[];
+    }
+    // The runtime may have attached while the read was in flight — it owns the
+    // transcript from then on (and may already have newer live turns).
+    if (!mounted || _seat != seat || widget.acpRuntime != null) return;
+    seat.adoptExternalMessages(messages);
+  }
+
   Future<void> _loadWorkspaceProjectBundle() async {
     final generation = ++_workspaceBundleGeneration;
     try {
@@ -372,6 +421,7 @@ class _SessionChatViewState extends State<SessionChatView> {
     }
     if (seatChanged) {
       _userStoppedTurn.value = false;
+      _acpSnapshotSeatKey = null;
       _locator.cancel();
       _visibleOwnerId.value = null;
       _locateHighlightId = null;
@@ -426,7 +476,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       await _stopLiveRefreshForAcp();
       final acpRuntime = widget.acpRuntime;
       if (acpRuntime == null) {
-        seat.markExternalLoading();
+        await _loadAcpTranscriptSnapshot();
       } else {
         _syncAcpMessages(acpRuntime);
       }
@@ -634,7 +684,7 @@ class _SessionChatViewState extends State<SessionChatView> {
       await _stopLiveRefreshForAcp();
       final acpRuntime = widget.acpRuntime;
       if (acpRuntime == null) {
-        seat.markExternalLoading();
+        await _loadAcpTranscriptSnapshot();
       } else {
         _syncAcpMessages(acpRuntime);
       }
@@ -1192,7 +1242,18 @@ class _SessionChatViewState extends State<SessionChatView> {
     if (_usesAcpTranscript) {
       final acpRuntime = widget.acpRuntime;
       if (acpRuntime == null) {
-        return const HistoryContinueSubmitResult.failed();
+        // Personal ACP seat with no runtime yet (history-only open / idle
+        // reclaim). The host submit hook owns the lazy attach-then-send
+        // funnel; falling through to the PTY path would wait for a shell
+        // these seats never spawn. A mixed ACP seat has no such funnel, so it
+        // must fail instead of leaking into the host's PTY delivery.
+        if (!isAcpChatSession(widget.session)) {
+          return const HistoryContinueSubmitResult.failed();
+        }
+        if (clearCompose) {
+          await _discardComposeDraftForSubmit();
+        }
+        return widget.onSubmit(text);
       }
       if (clearCompose) {
         await _discardComposeDraftForSubmit();
