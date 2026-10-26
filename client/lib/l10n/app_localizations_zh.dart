@@ -347,7 +347,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cotExpandLatestOnOpenDescription =>
-      '自动展开聊天中最新一条消息的思考过程（含推理与工具调用）。';
+      '自动展开最新消息的思考过程（含推理与工具调用），思考输出结束后自动收起。';
 
   @override
   String get cotExpandReasoningOnOpenTitle => '打开时展开推理';

@@ -207,9 +207,12 @@ void main() {
     // Task (subagent, not folded) stays standalone and visible.
     expect(find.textContaining('Task'), findsWidgets);
 
-    // The tip message's chain auto-expands, so the folded Read row is visible —
-    // assert it lives *inside* the chain (folded), while the unfolded Task does
-    // not.
+    // History review opens with the tip chain folded; expanding it must show
+    // the folded Read row *inside* the chain, while the unfolded Task stays
+    // outside.
+    await tester.tap(find.textContaining('Explored 1 file'));
+    await tester.pumpAndSettle();
+
     final chain = find.byType(AiChainOfThoughtView);
     expect(
       find.descendant(of: chain, matching: find.textContaining('Read')),

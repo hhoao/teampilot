@@ -366,7 +366,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cotExpandLatestOnOpenDescription =>
-      'Auto-expand the thinking process of the latest message in the chat.';
+      'Auto-expand the thinking process of the latest message while the agent is still thinking, then fold it once that output ends.';
 
   @override
   String get cotExpandReasoningOnOpenTitle => 'Expand reasoning when opening';

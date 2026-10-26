@@ -61,6 +61,14 @@ Widget _harness({
   );
 }
 
+/// Pump a thread whose live chrome renders an endless spinner, so
+/// `pumpUntilSettled` would never complete.
+Future<void> _pumpLive(WidgetTester tester) async {
+  for (var i = 0; i < 20; i++) {
+    await tester.pump(const Duration(milliseconds: 16));
+  }
+}
+
 void main() {
   testWidgets(
     'SessionHistoryThread builds SelectionArea and VirtualThreadViewport',
@@ -113,7 +121,7 @@ void main() {
     expect(viewport.retainMountedTurns, isTrue);
   });
 
-  testWidgets('tip thinking process auto-expands even with tool calls', (
+  testWidgets('live tip thinking process auto-expands even with tool calls', (
     tester,
   ) async {
     final store = ExternalStoreAiThreadRuntime()
@@ -136,11 +144,68 @@ void main() {
         ),
       ]);
 
-    await tester.pumpWidget(_harness(runtime: store));
-    await pumpUntilSettled(tester);
+    await tester.pumpWidget(
+      _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.running),
+    );
+    await _pumpLive(tester);
 
     expect(find.textContaining('tip thinking'), findsOneWidget);
     expect(find.textContaining('old thinking'), findsNothing);
+  });
+
+  testWidgets('tip thinking process folds once the turn ends', (tester) async {
+    final store = ExternalStoreAiThreadRuntime()
+      ..setMessages([
+        AiMessage(
+          id: 'a1',
+          role: AiRole.assistant,
+          parts: const [
+            AiReasoningPart(text: 'tip thinking'),
+            AiToolCallPart(toolCallId: 'c1', toolName: 'Read'),
+          ],
+        ),
+      ]);
+
+    await tester.pumpWidget(
+      _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.running),
+    );
+    await _pumpLive(tester);
+    expect(find.textContaining('tip thinking'), findsOneWidget);
+
+    await tester.pumpWidget(_harness(runtime: store));
+    await pumpUntilSettled(tester);
+
+    expect(find.textContaining('Thinking process'), findsOneWidget);
+    expect(find.textContaining('tip thinking'), findsNothing);
+  });
+
+  testWidgets('tip thinking process folds when answer prose starts', (
+    tester,
+  ) async {
+    List<AiMessage> messages(String tail) => [
+      AiMessage(
+        id: 'a1',
+        role: AiRole.assistant,
+        parts: [
+          const AiReasoningPart(text: 'tip thinking'),
+          const AiToolCallPart(toolCallId: 'c1', toolName: 'Read'),
+          if (tail.isNotEmpty) AiTextPart(text: tail),
+        ],
+      ),
+    ];
+    final store = ExternalStoreAiThreadRuntime()..setMessages(messages(''));
+
+    await tester.pumpWidget(
+      _harness(runtime: store, liveChrome: SessionHistoryLiveChrome.running),
+    );
+    await _pumpLive(tester);
+    expect(find.textContaining('tip thinking'), findsOneWidget);
+
+    store.setMessages(messages('final answer'));
+    await _pumpLive(tester);
+
+    expect(find.text('final answer'), findsOneWidget);
+    expect(find.textContaining('tip thinking'), findsNothing);
   });
 
   testWidgets('tip thinking process stays collapsed when the pref is off', (
@@ -158,8 +223,14 @@ void main() {
         ),
       ]);
 
-    await tester.pumpWidget(_harness(runtime: store, expandLatest: false));
-    await pumpUntilSettled(tester);
+    await tester.pumpWidget(
+      _harness(
+        runtime: store,
+        liveChrome: SessionHistoryLiveChrome.running,
+        expandLatest: false,
+      ),
+    );
+    await _pumpLive(tester);
 
     expect(find.textContaining('Thinking process'), findsOneWidget);
     expect(find.textContaining('tip thinking'), findsNothing);
@@ -970,44 +1041,43 @@ void main() {
     },
   );
 
-  testWidgets(
-    'scrolling up while the tip streams keeps the reading position',
-    (tester) async {
-      var tip = List.filled(20, 'line').join('\n');
-      List<AiMessage> messages() => [
-        ..._soloUserMessages(20),
-        AiMessage(
-          id: 'tip',
-          role: AiRole.assistant,
-          parts: [AiTextPart(text: tip)],
-        ),
-      ];
-      final store = ExternalStoreAiThreadRuntime()..setMessages(messages());
+  testWidgets('scrolling up while the tip streams keeps the reading position', (
+    tester,
+  ) async {
+    var tip = List.filled(20, 'line').join('\n');
+    List<AiMessage> messages() => [
+      ..._soloUserMessages(20),
+      AiMessage(
+        id: 'tip',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: tip)],
+      ),
+    ];
+    final store = ExternalStoreAiThreadRuntime()..setMessages(messages());
 
-      await tester.pumpWidget(_harness(runtime: store));
-      await pumpUntilSettled(tester);
+    await tester.pumpWidget(_harness(runtime: store));
+    await pumpUntilSettled(tester);
 
-      final scrollable = find.byType(Scrollable).first;
-      var position = tester.state<ScrollableState>(scrollable).position;
-      expect(position.pixels, closeTo(position.maxScrollExtent, 2.0));
+    final scrollable = find.byType(Scrollable).first;
+    var position = tester.state<ScrollableState>(scrollable).position;
+    expect(position.pixels, closeTo(position.maxScrollExtent, 2.0));
 
-      // Stream the tip while the user drags up: every update re-arms the
-      // stick frames. They must release the offset instead of jumping to the
-      // tip (jumpTo → goIdle cancels the in-flight drag, so the thread could
-      // never be scrolled while a turn is streaming).
-      final gesture = await tester.startGesture(tester.getCenter(scrollable));
-      await tester.pump();
-      for (var i = 0; i < 6; i++) {
-        tip = '$tip\nline $i';
-        store.setMessages(messages());
-        await gesture.moveBy(const Offset(0, 30));
-        await tester.pump(const Duration(milliseconds: 16));
-      }
-      await gesture.up();
+    // Stream the tip while the user drags up: every update re-arms the
+    // stick frames. They must release the offset instead of jumping to the
+    // tip (jumpTo → goIdle cancels the in-flight drag, so the thread could
+    // never be scrolled while a turn is streaming).
+    final gesture = await tester.startGesture(tester.getCenter(scrollable));
+    await tester.pump();
+    for (var i = 0; i < 6; i++) {
+      tip = '$tip\nline $i';
+      store.setMessages(messages());
+      await gesture.moveBy(const Offset(0, 30));
       await tester.pump(const Duration(milliseconds: 16));
+    }
+    await gesture.up();
+    await tester.pump(const Duration(milliseconds: 16));
 
-      position = tester.state<ScrollableState>(scrollable).position;
-      expect(position.maxScrollExtent - position.pixels, greaterThan(30.0));
-    },
-  );
+    position = tester.state<ScrollableState>(scrollable).position;
+    expect(position.maxScrollExtent - position.pixels, greaterThan(30.0));
+  });
 }

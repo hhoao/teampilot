@@ -749,7 +749,7 @@ abstract class AppLocalizations {
   /// No description provided for @cotExpandLatestOnOpenDescription.
   ///
   /// In en, this message translates to:
-  /// **'Auto-expand the thinking process of the latest message in the chat.'**
+  /// **'Auto-expand the thinking process of the latest message while the agent is still thinking, then fold it once that output ends.'**
   String get cotExpandLatestOnOpenDescription;
 
   /// No description provided for @cotExpandReasoningOnOpenTitle.

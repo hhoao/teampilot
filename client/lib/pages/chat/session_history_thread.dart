@@ -33,6 +33,21 @@ const AiMessage kSessionHistoryRunningPlaceholder = AiMessage(
   parts: [],
 );
 
+/// Whether [chrome] means a turn is actively producing output (as opposed to
+/// idle history review or a background task that outlived the turn).
+bool _liveTurnActive(SessionHistoryLiveChrome chrome) =>
+    chrome == SessionHistoryLiveChrome.starting ||
+    chrome == SessionHistoryLiveChrome.running;
+
+/// True when the message still ends inside a thinking chain — reasoning or a
+/// tool call. Once assistant prose follows, the chain is finished output and
+/// folds back to its summary row.
+bool _endsWithThinking(AiMessage message) {
+  if (message.parts.isEmpty) return false;
+  final last = message.parts.last;
+  return last is AiReasoningPart || last is AiToolCallPart;
+}
+
 /// History message list for session review.
 ///
 /// Owns scroll chrome (stick-to-end, load-older anchoring, hover-effects
@@ -938,6 +953,15 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                               widget.pendingDeliveryStatuses[ai.id];
                           final deliveryFailed =
                               deliveryStatus == FailedMessageStatus.failed;
+                          // Keep the live thinking tail expanded (reasoning
+                          // followed by tool calls) while the turn streams, so
+                          // the newest reasoning line stays visible. Once
+                          // assistant prose starts, the turn ends, or history
+                          // is opened cold, fold back to the summary row.
+                          final liveThinkingTail =
+                              ai.id == realTipId &&
+                              _liveTurnActive(widget.liveChrome) &&
+                              _endsWithThinking(ai);
                           final messageChild = AiMessageView(
                             key: ValueKey(ai.id),
                             message: ai,
@@ -950,12 +974,8 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                                     widget.onRetryFailedMessage != null
                                 ? () => widget.onRetryFailedMessage!(ai.id)
                                 : null,
-                            // Keep the tip thinking process expanded (even when
-                            // the turn contains tool calls) while the
-                            // "expand latest" preference is on; collapse once
-                            // the message is no longer the last real message.
                             chainOfThoughtAutoExpand:
-                                ai.id == realTipId &&
+                                liveThinkingTail &&
                                 aiTheme.cotExpandLatestOnOpen,
                           );
                           var result = tightenForRunning

@@ -122,7 +122,7 @@
   "markdownOpenModeRemember": "记住上次",
   "thinkingProcessSectionTitle": "思考过程",
   "cotExpandLatestOnOpenTitle": "自动展开最新消息的思考过程",
-  "cotExpandLatestOnOpenDescription": "自动展开聊天中最新一条消息的思考过程（含推理与工具调用）。",
+  "cotExpandLatestOnOpenDescription": "自动展开最新消息的思考过程（含推理与工具调用），思考输出结束后自动收起。",
   "cotExpandReasoningOnOpenTitle": "打开时展开推理",
   "cotExpandReasoningOnOpenDescription": "展开「思考过程」时，自动展开内部推理步骤。",
   "cotExpandToolsOnOpenTitle": "打开时展开工具",

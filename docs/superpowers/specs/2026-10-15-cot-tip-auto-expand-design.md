@@ -58,3 +58,18 @@ chainOfThoughtAutoExpand: ai.id == realTipId && aiMessageIsThinkingOnly(ai),
 - 非最新消息保持折叠。
 - 一条消息含两个思考过程块时，只有最后一个展开。
 - `AiThread` 默认构建器只展开最新消息。
+
+## 后续调整（2026-10-26）：流式跟随 + 输出完自动收起
+
+原行为在回合结束后仍保持展开，且内层推理的固定高度滚动区不会跟随新内容，长推理只能看到最早几行。
+现调整为：
+
+- 展开条件加上「本轮仍在跑」与「消息末尾仍在思考链内」：`liveChrome` 为
+  `starting/running` 且最后一个 part 是 `AiReasoningPart` / `AiToolCallPart`，
+  并且 `cotExpandLatestOnOpen` 开启。
+- 内层推理（`AiReasoningPartView`）新增 `autoFollow`：展开时监听
+  `ScrollMetricsNotification`，内容增长就把内部滚动区钉到底部；用户手动向上滚动后
+  暂停跟随，回到底部再恢复。
+- 一旦正文开始输出、回合结束或打开历史回放，`autoFollow` 变回 false：
+  外层思考链与内层推理一起收起为摘要行。
+- 同步更新 `cotExpandLatestOnOpenDescription` 文案。

@@ -285,6 +285,66 @@ void main() {
       expect(find.textContaining('secret plan'), findsNothing);
     },
   );
+
+  testWidgets('live reasoning follows streamed text to the bottom', (
+    tester,
+  ) async {
+    final lines = [for (var i = 0; i < 80; i++) 'reasoning line $i'].join('\n');
+
+    Widget build(String text) {
+      return MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 400,
+            height: 400,
+            child: AiReasoningPartView(
+              part: AiReasoningPart(text: text),
+              initiallyExpanded: true,
+              autoFollow: true,
+            ),
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(build(lines));
+    await tester.pumpAndSettle();
+
+    final position = tester
+        .state<ScrollableState>(find.byType(Scrollable))
+        .position;
+    expect(position.maxScrollExtent, greaterThan(0));
+
+    await tester.pumpWidget(build('$lines\nnewest reasoning line'));
+    await tester.pumpAndSettle();
+
+    expect(position.pixels, greaterThan(0));
+    expect(position.pixels, closeTo(position.maxScrollExtent, 1));
+  });
+
+  testWidgets('reasoning body folds when streaming stops', (tester) async {
+    Widget build({required bool live}) {
+      return MaterialApp(
+        home: Scaffold(
+          body: AiReasoningPartView(
+            part: const AiReasoningPart(text: 'live thought'),
+            initiallyExpanded: live,
+            autoFollow: live,
+          ),
+        ),
+      );
+    }
+
+    await tester.pumpWidget(build(live: true));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('live thought'), findsOneWidget);
+
+    await tester.pumpWidget(build(live: false));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Reasoning'), findsOneWidget);
+    expect(find.textContaining('live thought'), findsNothing);
+  });
 }
 
 class _SummaryFileResolver implements AiToolFileTargetResolver {

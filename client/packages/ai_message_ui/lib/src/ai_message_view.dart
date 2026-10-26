@@ -38,8 +38,8 @@ class AiMessageView extends StatefulWidget {
   /// Defaults to always enabled when null.
   final ValueListenable<bool>? actionBarHoverEnabled;
 
-  /// Auto-expand this message's last chain-of-thought while it is the tip
-  /// (see [AiMessageParts.chainOfThoughtAutoExpand]).
+  /// Auto-expand this message's last chain-of-thought while it is the live
+  /// thinking tail (see [AiMessageParts.chainOfThoughtAutoExpand]).
   final bool chainOfThoughtAutoExpand;
 
   @override

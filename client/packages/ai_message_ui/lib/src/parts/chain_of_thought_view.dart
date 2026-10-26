@@ -22,9 +22,10 @@ class AiChainOfThoughtView extends StatefulWidget {
   final List<AiMessagePart> parts;
 
   /// While true, the chain stays expanded (including inner reasoning steps) so
-  /// the tip message's "thinking" content remains visible. The host flips this
-  /// off once the message is no longer the latest one, collapsing the reasoning
-  /// back to its default collapsed chrome.
+  /// the live "thinking" content remains visible. The host turns this off once
+  /// the reasoning tail is finished (answer starts streaming / turn ends),
+  /// collapsing the reasoning back to its default collapsed chrome; open inner
+  /// reasoning bodies also follow the newest line while this is true.
   final bool autoExpand;
 
   @override
@@ -153,6 +154,7 @@ class _AiChainOfThoughtViewState extends State<AiChainOfThoughtView> {
         part: part,
         initiallyExpanded:
             widget.autoExpand || aiTheme.cotExpandReasoningOnOpen,
+        autoFollow: widget.autoExpand,
       ),
       AiToolCallPart() => AiToolCallPartView(
         part: part,

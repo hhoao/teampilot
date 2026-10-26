@@ -20,8 +20,8 @@ class AiMessageParts extends StatelessWidget {
   final List<AiMessagePart> parts;
   final AiPartRegistry registry;
 
-  /// Auto-expand the *last* chain-of-thought of this message while the message
-  /// is the tip (see [AiChainOfThoughtView.autoExpand]). Every other
+  /// Auto-expand the *last* chain-of-thought of this message while it is the
+  /// live thinking tail (see [AiChainOfThoughtView.autoExpand]). Every other
   /// chain-of-thought stays collapsed.
   final bool chainOfThoughtAutoExpand;
 
