@@ -20,6 +20,8 @@ import '../registry/capabilities/cli_session_capability.dart';
 import '../registry/capabilities/team_behavior_capability.dart';
 import '../registry/capabilities/headless_capability.dart';
 import 'capabilities/history/ai_history_capability.dart';
+import 'capabilities/usage/session_usage.dart';
+import '../registry/capabilities/session_usage_capability.dart';
 import 'capabilities/headless.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/skill_capability.dart';
@@ -57,6 +59,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.chatInteraction = const CodexChatInteraction(),
     this.runtimeEvents = const CodexChatInteraction(),
     this.aiHistory = const CodexAiHistoryCapability(),
+    this.sessionUsage = const CodexSessionUsageCapability(),
     this.skill = const CodexSkillCapability(),
     this.nativeCommands = const CodexNativeCommands(),
     this.prompt = const CodexPromptCapability(),
@@ -90,6 +93,7 @@ final class CodexCliTool implements CliToolDefinition {
   final ChatInteractionCapability chatInteraction;
   final RuntimeEventCapability runtimeEvents;
   final CodexAiHistoryCapability aiHistory;
+  final SessionUsageCapability sessionUsage;
   final SkillCapability skill;
   final NativeCommandCapability nativeCommands;
   final HookCapability hookWriter;
@@ -123,6 +127,7 @@ final class CodexCliTool implements CliToolDefinition {
     chatInteraction,
     runtimeEvents,
     aiHistory,
+    sessionUsage,
     skill,
     nativeCommands,
     prompt,
