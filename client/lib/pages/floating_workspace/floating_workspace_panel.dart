@@ -735,18 +735,6 @@ class _PanelChromeFrameState extends State<_PanelChromeFrame> {
         if (barId == null) return;
         workbench.unpin(workspaceId, barId);
       },
-      onDoubleTap: (tabId) {
-        final barId = widget.barIdByTabId[tabId];
-        if (barId == null) return;
-        final strip = workbench.mergedFloatingStrip(workspaceId);
-        if (strip.previewIds.contains(barId)) {
-          workbench.promote(workspaceId, barId);
-        } else if (strip.pinnedIds.contains(barId)) {
-          workbench.unpin(workspaceId, barId);
-        } else {
-          workbench.pin(workspaceId, barId);
-        }
-      },
       onSelect: (id) {
         final tab = tabs.firstWhereOrNull((t) => t.id == id);
         if (tab == null) return;

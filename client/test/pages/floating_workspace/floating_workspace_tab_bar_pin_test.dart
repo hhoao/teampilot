@@ -15,14 +15,14 @@ FloatingWorkspaceTabBar _bar({
   Set<String>? pinnedTabIds,
   ValueChanged<String>? onPin,
   ValueChanged<String>? onUnpin,
-  void Function(String tabId)? onDoubleTap,
+  ValueChanged<String>? onSelect,
 }) {
   return FloatingWorkspaceTabBar(
     tabs: const [
       FloatingTab(id: 'terminal:e1', surfaceId: 'terminal', title: 'Shell 1'),
     ],
     activeTabId: 'terminal:e1',
-    onSelect: (_) {},
+    onSelect: onSelect ?? (_) {},
     onClose: (_) {},
     onCloseOthers: (_) {},
     onCloseRight: (_) {},
@@ -30,7 +30,6 @@ FloatingWorkspaceTabBar _bar({
     pinnedTabIds: pinnedTabIds ?? const {},
     onPin: onPin,
     onUnpin: onUnpin,
-    onDoubleTap: onDoubleTap,
   );
 }
 
@@ -51,27 +50,24 @@ void main() {
     expect(unpinned, isTrue);
   });
 
-  testWidgets('preview tab renders italic title and double-tap fires', (
-    tester,
-  ) async {
-    final doubleTapped = <String>[];
-    await tester.pumpWidget(
-      _host(
-        _bar(previewTabIds: {'terminal:e1'}, onDoubleTap: doubleTapped.add),
-      ),
-    );
+  testWidgets('preview tab renders italic title', (tester) async {
+    await tester.pumpWidget(_host(_bar(previewTabIds: {'terminal:e1'})));
 
     expect(find.byIcon(Icons.close), findsOneWidget);
     final text = tester.widget<Text>(find.text('Shell 1'));
     expect(text.style?.fontStyle, FontStyle.italic);
+  });
+
+  testWidgets('single tap selects immediately (no double-tap window)', (
+    tester,
+  ) async {
+    final selected = <String>[];
+    await tester.pumpWidget(_host(_bar(onSelect: selected.add)));
 
     await tester.tap(find.text('Shell 1'));
-    await tester.pump(const Duration(milliseconds: 50));
-    await tester.tap(find.text('Shell 1'));
     await tester.pump();
-    expect(doubleTapped, ['terminal:e1']);
-    // Flush the Tooltip wait timer so no pending timer trips the binding.
-    await tester.pump(const Duration(milliseconds: 600));
+    // A chip with onDoubleTap would leave this empty until kDoubleTapTimeout.
+    expect(selected, ['terminal:e1']);
   });
 
   testWidgets('normal tab is not italic and pin callback not called', (

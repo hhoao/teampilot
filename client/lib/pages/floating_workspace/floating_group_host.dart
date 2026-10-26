@@ -282,17 +282,6 @@ class _FloatingGroupHeaderStrip extends StatelessWidget {
                     if (barId == null) return;
                     workbench.unpin(workspaceId, barId);
                   },
-                  onDoubleTap: (tabId) {
-                    final barId = projection.barIdByTabId[tabId];
-                    if (barId == null) return;
-                    if (strip.previewIds.contains(barId)) {
-                      workbench.promote(workspaceId, barId);
-                    } else if (strip.pinnedIds.contains(barId)) {
-                      workbench.unpin(workspaceId, barId);
-                    } else {
-                      workbench.pin(workspaceId, barId);
-                    }
-                  },
                   onSplitRight: canSplit
                       ? (tabId) => _split(context, tabId, Axis.horizontal)
                       : null,

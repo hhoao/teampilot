@@ -96,7 +96,6 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
     this.pinnedTabIds = const {},
     this.onPin,
     this.onUnpin,
-    this.onDoubleTap,
     this.onSplitRight,
     this.onSplitDown,
     this.tabDrag,
@@ -126,9 +125,6 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
   /// [WorkbenchTabId] and picks the right call (see panel wiring).
   final ValueChanged<String>? onPin;
   final ValueChanged<String>? onUnpin;
-
-  /// Double-tap: promote a preview tab, toggle pin otherwise.
-  final void Function(String tabId)? onDoubleTap;
 
   /// Context-menu "Split Right" for a tab id (new floating sibling group to
   /// the right). Entries are omitted when null (narrow panel / sole tab).
@@ -203,7 +199,9 @@ class FloatingWorkspaceTabBar extends StatelessWidget {
                     : null
               : null,
           onUnpin: pinned ? () => onUnpin?.call(tab.id) : null,
-          onDoubleTap: onDoubleTap != null ? () => onDoubleTap!(tab.id) : null,
+          // No onDoubleTap here: chips with both tap handlers make every
+          // single click wait out kDoubleTapTimeout (~300ms) in the gesture
+          // arena. Pin/unpin via the chip icon or the context menu instead.
           onSplitRight: onSplitRight != null
               ? () => onSplitRight!(tab.id)
               : null,

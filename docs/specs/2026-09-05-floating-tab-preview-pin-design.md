@@ -26,15 +26,20 @@ strip (center or floating) is in exactly one of three states:
 |----------|-------------------------------|------------------|------------|
 | preview  | yes (in-place slot swap)      | none             | opening a file/diff preview while `floatingPreviewTabs` is on |
 | normal   | no                            | none             | preview promoted (dirty edit / re-open / explicit); preview opened while config off |
-| pinned   | no                            | full             | context-menu "pin" / double-tap on a normal tab |
+| pinned   | no                            | full             | context-menu "pin" on a normal tab |
 
 Transitions:
 
 ```
-preview ──(dirty edit | re-open same tab | double-tap)──▶ normal
-normal  ──(context-menu pin | double-tap)───────────────▶ pinned
-pinned  ──(pin icon tap | context-menu unpin | double-tap)─▶ normal
+preview ──(dirty edit | re-open same tab)──▶ normal
+normal  ──(context-menu pin)──────────────▶ pinned
+pinned  ──(pin icon tap | context-menu unpin)─▶ normal
 ```
+
+> Tab chips deliberately do **not** wire `onDoubleTap`: a chip with both tap
+> handlers makes every single click wait out `kDoubleTapTimeout` (~300ms) in
+> the gesture arena, which reads as lag on tab switches. Pin/unpin lives on
+> the chip icon and the context menu instead.
 
 - **Dirty edit promotes, not pins** (VSCode behavior): the listener in
   `file_editor_surface.dart` that currently calls `WorkbenchCubit.pin`
@@ -153,5 +158,5 @@ restart by design.
 - `client/test/services/workbench/` opener tests: dirty-promotes-not-
   replaces, config on/off branches, replaced-tab teardown.
 - Floating close pipeline tests: pinned survives closeAll.
-- Widget tests: pin icon tap unpin, double-tap toggles state, preview
-  italic styling.
+- Widget tests: pin icon tap unpin, single tap selects without the
+  double-tap window, preview italic styling.
