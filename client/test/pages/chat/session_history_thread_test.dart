@@ -969,4 +969,45 @@ void main() {
       expect(owner.value, isNotNull);
     },
   );
+
+  testWidgets(
+    'scrolling up while the tip streams keeps the reading position',
+    (tester) async {
+      var tip = List.filled(20, 'line').join('\n');
+      List<AiMessage> messages() => [
+        ..._soloUserMessages(20),
+        AiMessage(
+          id: 'tip',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: tip)],
+        ),
+      ];
+      final store = ExternalStoreAiThreadRuntime()..setMessages(messages());
+
+      await tester.pumpWidget(_harness(runtime: store));
+      await pumpUntilSettled(tester);
+
+      final scrollable = find.byType(Scrollable).first;
+      var position = tester.state<ScrollableState>(scrollable).position;
+      expect(position.pixels, closeTo(position.maxScrollExtent, 2.0));
+
+      // Stream the tip while the user drags up: every update re-arms the
+      // stick frames. They must release the offset instead of jumping to the
+      // tip (jumpTo → goIdle cancels the in-flight drag, so the thread could
+      // never be scrolled while a turn is streaming).
+      final gesture = await tester.startGesture(tester.getCenter(scrollable));
+      await tester.pump();
+      for (var i = 0; i < 6; i++) {
+        tip = '$tip\nline $i';
+        store.setMessages(messages());
+        await gesture.moveBy(const Offset(0, 30));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await gesture.up();
+      await tester.pump(const Duration(milliseconds: 16));
+
+      position = tester.state<ScrollableState>(scrollable).position;
+      expect(position.maxScrollExtent - position.pixels, greaterThan(30.0));
+    },
+  );
 }

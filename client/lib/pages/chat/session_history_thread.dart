@@ -141,7 +141,6 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   var _showNewMessagesChip = false;
 
   double _lastPixels = 0;
-  double _lastMaxExtent = 0;
 
   var _loadOlderInFlight = false;
   var _paginationArmed = true;
@@ -376,7 +375,6 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     _scrollController.jumpTo(offset);
     if (_scrollController.hasClients) {
       _lastPixels = _scrollController.position.pixels;
-      _lastMaxExtent = _scrollController.position.maxScrollExtent;
     }
   }
 
@@ -409,7 +407,6 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
             _revealAnimating = false;
             if (!_scrollController.hasClients) return;
             _lastPixels = _scrollController.position.pixels;
-            _lastMaxExtent = _scrollController.position.maxScrollExtent;
           }),
     );
   }
@@ -443,9 +440,15 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     final pixels = position.pixels;
     final max = position.maxScrollExtent;
 
+    // Release when the offset moved up and we are no longer pinned to the tip.
+    // The extent is *not* required to be stable: while a turn streams the tip
+    // grows every frame, and requiring `maxScrollExtent` to be unchanged (the
+    // previous rule) disabled this release for the whole streaming window. A
+    // drop that lands exactly on the tip is a layout clamp after the content
+    // shrank — not a user scroll — so it must not release.
     if (_stickToEnd &&
         pixels < _lastPixels - _bottomEpsilon &&
-        (max - _lastMaxExtent).abs() <= _bottomEpsilon) {
+        max - pixels > _bottomEpsilon) {
       _setStickToEnd(false);
     } else if (!_stickToEnd && max - pixels <= _bottomEpsilon) {
       // Manual scroll back to tip — same as tapping the new-messages chip.
@@ -453,7 +456,6 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     }
 
     _lastPixels = pixels;
-    _lastMaxExtent = max;
     _captureOlderExtentIfWaiting();
   }
 
@@ -553,6 +555,15 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
         if (_scrollController.hasClients) {
           final max = _scrollController.position.maxScrollExtent;
           final pixels = _scrollController.position.pixels;
+          // The user moved up since the last tick: `jumpTo` below would call
+          // `goIdle()`, cancel the in-flight drag and yank the thread back to
+          // the tip (each streaming update re-arms this chain, so the drag
+          // could never scroll). Hand the offset back to the user instead.
+          if (pixels < _lastPixels - _bottomEpsilon &&
+              max - pixels > _bottomEpsilon) {
+            _setStickToEnd(false);
+            return;
+          }
           if (max > 0 && max - pixels > _bottomEpsilon) {
             _jumpTo(max);
           }
@@ -670,7 +681,6 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       }
       if (!_scrollController.hasClients) return;
       _lastPixels = _scrollController.position.pixels;
-      _lastMaxExtent = _scrollController.position.maxScrollExtent;
     } finally {
       _loadOlderInFlight = false;
       _olderCaptureCount = null;
