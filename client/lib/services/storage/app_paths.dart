@@ -346,6 +346,13 @@ class AppPaths {
   String get managedProviderUsageCacheFile =>
       managedProviderUsageCacheFileForTeampilotRoot(basePath);
 
+  /// Agent CLI token usage, stored on the current home plane.
+  String get usageDir => _ctx.join(basePath, 'usage');
+
+  String get usageEventsFile => _ctx.join(usageDir, 'events.jsonl');
+
+  String get usageCursorsFile => _ctx.join(usageDir, 'cursors.json');
+
   String get sshProfilesDir => _ctx.join(basePath, 'ssh_profiles');
 
   /// Control-plane runtime targets registry (`targets.json`). Holds the
