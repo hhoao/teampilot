@@ -190,8 +190,9 @@ only return files that belong to the current seat:
   `taskId` otherwise. Probe the same roots history uses.
 - Codex: every rollout under the seat's `CODEX_HOME` belongs to that seat,
   including subagent rollouts; the home itself is session-isolated.
-- OpenCode: query only the seat's `ses_*` id when the schema exposes a session
-  column; otherwise the per-seat `OPENCODE_DB` is the only scope.
+- OpenCode: read all assistant rows in the per-seat `OPENCODE_DB`; subagent
+  sessions share that DB and their tokens belong to the seat. Do not filter by
+  `ses_*` when the DB is already seat-scoped.
 
 Attribution fields (`sessionId`, `memberId`, `teamId`) come from
 `UsageScanContext`, never from the file path.
@@ -216,7 +217,8 @@ Production implementation:
 4. Team session: resolve `TeamProfile` through the injected
    `Future<TeamProfile?> Function(String teamId)`; expand
    `sessionRosterMembers(session, team)` and read each binding's `cli`.
-   Skip a member with no CLI binding (legacy rows).
+   Fallback order for legacy rows: binding `cli` → roster member `cli` →
+   `session.cli`; skip only when all are null.
 5. Build the context with `SessionHistoryContextBuilder` (which already
    resolves `taskId`, persisted native id, env, and roots) and add
    `appDataRoot`.
@@ -256,11 +258,13 @@ store and parsers stay session-agnostic.
   `cache_read_input_tokens`), `cache_write_input_tokens`, `output_tokens`.
 - `inputSemantics = total`; clamp `cached <= input` and
   `cacheWrite <= input - cached`.
-- `requestId = codex:{threadId}:{deltaIndex}`; `deltaIndex` is the ordinal of
-  emitted deltas for that thread, stable across re-parses.
+- `requestId = codex:{threadId}:{lineOffset}`; the absolute offset of the
+  `token_count` line is stable in an append-only rollout.
 - `isFinal = true` (a cumulative snapshot is the settled value at that point).
-- Cursor: byte offset + mtime + size. Codex appends; re-parsing from the
-  cursor is enough. Duplicate deltas are harmless because the request ids are
+- Cursor: byte offset + mtime + size + the last cumulative counters in
+  `storeToken`. Codex appends; re-parsing from the cursor is enough. The
+  baseline lets a scan that only sees `total_token_usage` emit the correct
+  delta across runs. Duplicate deltas are harmless because the request ids are
   stable and upsert is idempotent.
 
 ### OpenCode
