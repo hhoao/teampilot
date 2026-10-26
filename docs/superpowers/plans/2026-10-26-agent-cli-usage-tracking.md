@@ -3437,6 +3437,7 @@ Create `client/lib/app/session_usage_services.dart` (app layer: it may import re
 
 ```dart
 import '../models/app_session.dart';
+import '../models/session_usage.dart';
 import '../models/team_config.dart';
 import '../repositories/launch_profile_repository.dart';
 import '../repositories/session_repository.dart';
@@ -3452,9 +3453,10 @@ import '../services/usage/team_pilot_usage_scan_target_provider.dart';
 /// Construct once per [HomeStorage] plane (or rebuild after a plane swap). No
 /// timer or widget owns this yet; callers invoke [syncAll] explicitly.
 final class SessionUsageServices {
-  SessionUsageServices._({required this.syncAll});
+  SessionUsageServices._({required this.syncAll, required this.loadEvents});
 
   final Future<UsageSyncResult> Function() syncAll;
+  final Future<List<SessionUsageEvent>> Function() loadEvents;
 
   factory SessionUsageServices.forStorage({
     required HomeStorage storage,
@@ -3472,23 +3474,27 @@ final class SessionUsageServices {
     final loadTeamsFn =
         loadTeams ??
         (teams ?? LaunchProfileRepository(storage: storage)).loadTeamProfiles;
+    final store = JsonUsageStore(
+      fs: storage.fs,
+      filePath: storage.paths.usageEventsFile,
+    );
     final sync = SessionUsageSyncService(
       targets: TeamPilotUsageScanTargetProvider(
         storage: storage,
         loadSessions: loadSessionsFn,
         loadTeams: loadTeamsFn,
       ),
-      store: JsonUsageStore(
-        fs: storage.fs,
-        filePath: storage.paths.usageEventsFile,
-      ),
+      store: store,
       cursors: JsonUsageCursorStore(
         fs: storage.fs,
         filePath: storage.paths.usageCursorsFile,
       ),
       registry: registry ?? CliToolRegistry.builtIn(),
     );
-    return SessionUsageServices._(syncAll: sync.syncAll);
+    return SessionUsageServices._(
+      syncAll: sync.syncAll,
+      loadEvents: store.readLatest,
+    );
   }
 }
 ```

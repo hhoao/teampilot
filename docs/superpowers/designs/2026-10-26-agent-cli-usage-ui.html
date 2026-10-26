@@ -1,0 +1,1634 @@
+<!doctype html>
+<!--
+  TeamPilot · Token 用量 HTML 设计稿
+  预览状态（可组合）：
+    ?group=session|member|model|cli
+    ?cli=all|claude|codex|opencode
+    ?range=today|7d|30d|all
+    ?theme=dark
+    ?sync=error
+  例：?group=member&cli=claude&range=30d&theme=dark
+-->
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TeamPilot · Token 用量</title>
+<style>
+  :root {
+    --font-ui: "Inter", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+    --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    --bg: #eae6df;
+    --shell: #f6f4f0;
+    --sidebar: #f1eee8;
+    --surface: #ffffff;
+    --surface-2: #faf8f5;
+    --surface-3: #f2efe9;
+    --text: #282520;
+    --text-2: #6f6a62;
+    --text-3: #9b958c;
+    --line: #e6e1d8;
+    --line-strong: #d8d2c7;
+    --primary: #b57f45;
+    --primary-strong: #8d5c2e;
+    --primary-soft: #f2e4d4;
+    --primary-softer: #fbf6ef;
+    --green: #2f9e77;
+    --green-soft: #e3f4ed;
+    --blue: #6278d8;
+    --blue-soft: #e9ecfb;
+    --claude: #d97757;
+    --claude-soft: #fbece7;
+    --codex: #1a9b7a;
+    --codex-soft: #e4f5ef;
+    --opencode: #6b7fd7;
+    --opencode-soft: #eceffb;
+    --danger: #c65f52;
+    --danger-soft: #fbeceb;
+    --shadow: 0 20px 54px rgba(75, 62, 45, .13), 0 2px 8px rgba(75, 62, 45, .06);
+    --radius: 14px;
+  }
+
+  [data-theme="dark"] {
+    --bg: #151412;
+    --shell: #1c1a17;
+    --sidebar: #1f1d1a;
+    --surface: #26231f;
+    --surface-2: #2b2823;
+    --surface-3: #332f29;
+    --text: #f0ebe3;
+    --text-2: #b5aea3;
+    --text-3: #837c71;
+    --line: #38332c;
+    --line-strong: #4a4339;
+    --primary: #d4a06a;
+    --primary-strong: #e6bc87;
+    --primary-soft: #3b2e20;
+    --primary-softer: #30271c;
+    --green: #63c9a4;
+    --green-soft: #1f3a30;
+    --blue: #9aa9f2;
+    --blue-soft: #2a2e4a;
+    --claude: #e28a6d;
+    --claude-soft: #3d2a24;
+    --codex: #3fc4a1;
+    --codex-soft: #1d3a32;
+    --opencode: #8fa0ef;
+    --opencode-soft: #292d4a;
+    --danger: #e58b7e;
+    --danger-soft: #3b2522;
+    --shadow: 0 20px 54px rgba(0, 0, 0, .48), 0 2px 8px rgba(0, 0, 0, .3);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, input:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+  ::selection { background: var(--primary-soft); color: var(--primary-strong); }
+
+  .icon { width: 18px; height: 18px; flex: none; display: block; }
+  .icon-sm { width: 14px; height: 14px; }
+
+  .app {
+    height: calc(100vh - 40px);
+    min-height: 640px;
+    margin: 20px;
+    display: flex;
+    overflow: hidden;
+    border-radius: 18px;
+    background: var(--shell);
+    box-shadow: var(--shadow);
+  }
+
+  /* ── Sidebar ─────────────────────────────────────────── */
+  .sidebar {
+    width: 252px;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    background: var(--sidebar);
+    border-right: 1px solid var(--line);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 24px 22px 18px;
+  }
+  .logo {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(135deg, #d9a66e, #b77a3d);
+    color: #fff;
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: -.4px;
+    box-shadow: 0 3px 8px rgba(160, 105, 51, .24);
+  }
+  .brand-name { font-size: 14px; font-weight: 650; letter-spacing: -.15px; line-height: 1.1; }
+  .brand-sub {
+    margin-top: 3px;
+    font-size: 8.5px;
+    letter-spacing: 1.5px;
+    color: var(--text-3);
+    font-weight: 650;
+  }
+  .side-scroll { flex: 1; overflow-y: auto; padding: 0 12px 10px; }
+  .side-scroll::-webkit-scrollbar { width: 8px; }
+  .side-scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 99px; border: 2px solid var(--sidebar); }
+  .nav-label {
+    padding: 14px 10px 6px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    color: var(--text-3);
+    text-transform: uppercase;
+  }
+  .nav-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 34px;
+    padding: 7px 10px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--text-2);
+    font-size: 12.5px;
+    text-align: left;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .nav-item:hover { background: var(--surface-3); color: var(--text); }
+  .nav-item .icon { color: var(--text-3); transition: color .15s ease; }
+  .nav-item:hover .icon { color: var(--text-2); }
+  .nav-item.active {
+    background: var(--primary-soft);
+    border-color: color-mix(in srgb, var(--primary) 26%, transparent);
+    color: var(--primary-strong);
+    font-weight: 650;
+  }
+  .nav-item.active .icon { color: var(--primary-strong); }
+  .nav-badge {
+    margin-left: auto;
+    min-width: 18px;
+    padding: 1px 6px;
+    border-radius: 99px;
+    background: var(--surface-3);
+    color: var(--text-3);
+    font-size: 9.5px;
+    font-weight: 650;
+    text-align: center;
+  }
+  .nav-item.active .nav-badge { background: color-mix(in srgb, var(--primary) 18%, transparent); color: var(--primary-strong); }
+  .nav-dot { margin-left: auto; width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+  .sidebar-foot {
+    padding: 15px 18px 18px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-3);
+    font-size: 10.5px;
+  }
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 3px var(--green-soft);
+  }
+  .sidebar-foot .spacer { flex: 1; }
+  .sidebar-foot .mini { font-size: 9.5px; color: var(--text-3); }
+
+  /* ── Main / topbar ───────────────────────────────────── */
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--shell); }
+  .topbar {
+    height: 56px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 26px;
+    border-bottom: 1px solid var(--line);
+    background: var(--shell);
+  }
+  .crumbs { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
+  .crumbs .current { color: var(--text); font-weight: 600; }
+  .crumbs .sep { color: var(--line-strong); }
+  .env-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 21px;
+    padding: 0 8px;
+    border: 1px solid var(--line);
+    border-radius: 99px;
+    color: var(--text-2);
+    background: var(--surface-2);
+    font-size: 9.5px;
+    font-weight: 600;
+  }
+  .env-chip .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+  .top-search {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: 220px;
+    height: 30px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-2);
+    color: var(--text-3);
+    font-size: 11px;
+  }
+  .top-search .icon { width: 14px; height: 14px; }
+  .top-search kbd {
+    margin-left: auto;
+    font-family: var(--font-ui);
+    font-size: 9px;
+    color: var(--text-3);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1px 4px;
+    background: var(--surface);
+  }
+  .top-actions { display: flex; align-items: center; gap: 3px; }
+  .icon-btn {
+    width: 31px;
+    height: 31px;
+    display: grid;
+    place-items: center;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-2);
+    transition: background .15s ease, color .15s ease;
+  }
+  .icon-btn:hover { background: var(--surface-3); color: var(--text); }
+  .icon-btn .icon { width: 17px; height: 17px; }
+  .avatar {
+    width: 28px;
+    height: 28px;
+    margin-left: 5px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(135deg, #c79563, #9e6b36);
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 700;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18);
+  }
+  .bell-wrap { position: relative; }
+  .bell-dot {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 1.5px solid var(--shell);
+  }
+
+  /* ── Content ─────────────────────────────────────────── */
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 32px 34px;
+  }
+  .content::-webkit-scrollbar { width: 10px; }
+  .content::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 99px; border: 3px solid var(--shell); }
+  .page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 18px;
+  }
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--primary-strong);
+    font-size: 9.5px;
+    font-weight: 750;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--primary);
+  }
+  h1 {
+    margin: 7px 0 7px;
+    font-size: 29px;
+    line-height: 1.18;
+    letter-spacing: -.7px;
+    font-weight: 700;
+  }
+  .subtitle { margin: 0; color: var(--text-2); font-size: 12.5px; line-height: 1.5; }
+  .hint {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 8px;
+    color: var(--text-3);
+    font-size: 10.5px;
+  }
+  .hint .icon { width: 12px; height: 12px; }
+  .notice {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: -6px 0 14px;
+    padding: 9px 11px;
+    border: 1px solid color-mix(in srgb, var(--danger) 28%, var(--line));
+    border-radius: 9px;
+    background: var(--danger-soft);
+    color: var(--text-2);
+    font-size: 10.5px;
+    line-height: 1.4;
+  }
+  .notice[hidden] { display: none; }
+  .notice > .icon { width: 14px; height: 14px; color: var(--danger); flex: none; }
+  .notice b { color: var(--text); font-weight: 650; }
+  .notice .notice-link {
+    margin-left: auto;
+    border: 0;
+    background: none;
+    padding: 0;
+    color: var(--danger);
+    font-size: 10.5px;
+    font-weight: 650;
+    white-space: nowrap;
+  }
+  .notice .notice-link:hover { text-decoration: underline; }
+  .notice .notice-close {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-3);
+    font-size: 14px;
+    line-height: 1;
+  }
+  .notice .notice-close:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+  .sync-box { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; padding-top: 2px; }
+  .sync-meta { display: flex; align-items: center; gap: 5px; color: var(--text-3); font-size: 10.5px; }
+  .sync-meta .icon { width: 12px; height: 12px; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 11.5px;
+    font-weight: 600;
+    transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+  }
+  .btn:hover { background: var(--surface-2); border-color: var(--line-strong); }
+  .btn .icon { width: 14px; height: 14px; }
+  .btn-primary {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 1px 2px rgba(120, 78, 34, .18);
+  }
+  .btn-primary:hover { background: var(--primary-strong); border-color: var(--primary-strong); }
+  .btn-primary:disabled { opacity: .72; cursor: default; }
+  .btn-primary.syncing .icon { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .btn-ghost { border-color: transparent; background: transparent; color: var(--text-2); }
+  .btn-ghost:hover { background: var(--surface-3); border-color: transparent; color: var(--text); }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .segmented {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-3);
+  }
+  .segmented button {
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-2);
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 550;
+    white-space: nowrap;
+    transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+  }
+  .segmented button:hover { color: var(--text); }
+  .segmented button.active {
+    background: var(--surface);
+    color: var(--text);
+    font-weight: 650;
+    box-shadow: 0 1px 2px rgba(60, 50, 38, .08);
+  }
+  .chips { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 9px;
+    border: 1px solid var(--line);
+    border-radius: 99px;
+    background: var(--surface);
+    color: var(--text-2);
+    font-size: 10.5px;
+    font-weight: 550;
+    transition: background .15s ease, border-color .15s ease, color .15s ease;
+  }
+  .chip:hover { border-color: var(--line-strong); color: var(--text); }
+  .chip.active {
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--line));
+    background: var(--primary-soft);
+    color: var(--primary-strong);
+    font-weight: 650;
+  }
+  .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); }
+  .chip .dot.claude { background: var(--claude); }
+  .chip .dot.codex { background: var(--codex); }
+  .chip .dot.opencode { background: var(--opencode); }
+  .chip .n { color: var(--text-3); font-size: 9.5px; font-variant-numeric: tabular-nums; }
+  .chip.active .n { color: color-mix(in srgb, var(--primary-strong) 65%, transparent); }
+
+  /* ── Stats ───────────────────────────────────────────── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .stat-card {
+    position: relative;
+    min-height: 116px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 14px 16px 13px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(60, 50, 38, .035);
+    overflow: hidden;
+  }
+  .stat-card.accent::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 2px;
+    background: linear-gradient(90deg, var(--primary), color-mix(in srgb, var(--primary) 38%, transparent));
+  }
+  .stat-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .stat-label { color: var(--text-2); font-size: 11px; font-weight: 550; }
+  .stat-icon {
+    width: 25px;
+    height: 25px;
+    display: grid;
+    place-items: center;
+    border-radius: 7px;
+    background: var(--surface-3);
+    color: var(--text-2);
+  }
+  .stat-icon .icon { width: 14px; height: 14px; }
+  .stat-value {
+    margin-top: 9px;
+    font-size: 25px;
+    font-weight: 680;
+    letter-spacing: -.7px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-value .unit { margin-left: 2px; font-size: 13px; font-weight: 600; color: var(--text-2); letter-spacing: 0; }
+  .stat-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin-top: 9px; }
+  .stat-meta { color: var(--text-3); font-size: 10px; line-height: 1.4; }
+  .delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 5px;
+    border-radius: 99px;
+    background: var(--green-soft);
+    color: var(--green);
+    font-size: 9px;
+    font-weight: 650;
+    white-space: nowrap;
+  }
+  .delta .icon { width: 9px; height: 9px; }
+  .delta.neutral { background: var(--surface-3); color: var(--text-2); }
+  .spark { display: flex; align-items: flex-end; gap: 2px; height: 20px; width: 48px; flex: none; }
+  .spark i { width: 4px; border-radius: 1.5px; background: color-mix(in srgb, var(--primary) 28%, var(--surface-3)); }
+  .spark i:nth-child(4) { background: color-mix(in srgb, var(--primary) 55%, var(--surface-3)); }
+  .spark i:nth-child(5) { background: color-mix(in srgb, var(--primary) 75%, var(--surface-3)); }
+  .spark i:nth-child(6) { background: var(--primary); }
+
+  /* ── Overview cards ──────────────────────────────────── */
+  .overview {
+    display: grid;
+    grid-template-columns: minmax(0, 1.62fr) minmax(280px, 1fr);
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(60, 50, 38, .035);
+  }
+  .card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px 0;
+  }
+  .card-title { font-size: 12.5px; font-weight: 650; letter-spacing: -.1px; }
+  .card-sub { margin-top: 3px; color: var(--text-3); font-size: 10px; }
+  .chart-total { text-align: right; }
+  .chart-total strong { display: block; font-size: 18px; font-weight: 680; letter-spacing: -.4px; font-variant-numeric: tabular-nums; }
+  .chart-total span { display: block; margin-top: 1px; color: var(--text-3); font-size: 9.5px; }
+  .chart-legend { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 2px 16px 0; }
+  .legend-item { display: inline-flex; align-items: center; gap: 5px; color: var(--text-3); font-size: 9.5px; }
+  .legend-item .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .legend-item .dot.claude { background: var(--claude); }
+  .legend-item .dot.codex { background: var(--codex); }
+  .legend-item .dot.opencode { background: var(--opencode); }
+  .chart-wrap { display: flex; gap: 8px; height: 208px; padding: 6px 16px 12px; }
+  .y-axis {
+    width: 28px;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 2px 0 22px;
+    color: var(--text-3);
+    font-size: 8.5px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .chart-area { position: relative; flex: 1; min-width: 0; padding: 2px 2px 22px; }
+  .grid-lines { position: absolute; inset: 2px 0 22px; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+  .grid-lines i { display: block; height: 1px; background: var(--line); opacity: .72; }
+  .bars { position: relative; z-index: 1; height: 100%; display: flex; align-items: flex-end; justify-content: space-around; gap: 10px; }
+  .bar-col { height: 100%; flex: 1; max-width: 54px; display: flex; align-items: flex-end; justify-content: center; position: relative; }
+  .bar {
+    width: 100%;
+    max-width: 32px;
+    display: flex;
+    flex-direction: column-reverse;
+    border-radius: 6px 6px 3px 3px;
+    overflow: hidden;
+    background: var(--surface-3);
+    transition: height .45s cubic-bezier(.2, .8, .2, 1), filter .15s ease;
+    box-shadow: 0 2px 5px rgba(60, 50, 38, .06);
+  }
+  .bar-col:hover .bar { filter: brightness(1.05) saturate(1.05); }
+  .seg { width: 100%; flex: none; transition: height .45s cubic-bezier(.2, .8, .2, 1), opacity .2s ease; }
+  .seg.claude { background: var(--claude); }
+  .seg.codex { background: var(--codex); }
+  .seg.opencode { background: var(--opencode); }
+  .seg.dim { opacity: .17; }
+  .bar-label {
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--text-3);
+    font-size: 8.5px;
+    white-space: nowrap;
+  }
+  .bar-col.today .bar-label { color: var(--text-2); font-weight: 650; }
+  .bar-col.today .bar { box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent), 0 3px 8px rgba(60, 50, 38, .08); }
+
+  .cli-list { display: flex; flex-direction: column; gap: 15px; padding: 15px 16px 16px; }
+  .cli-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 12px; align-items: center; transition: opacity .2s ease; }
+  .cli-row.dim { opacity: .38; }
+  .cli-name { display: flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; min-width: 0; }
+  .cli-mark { width: 19px; height: 19px; flex: none; display: grid; place-items: center; border-radius: 5px; font-size: 8.5px; font-weight: 800; }
+  .cli-mark.claude { background: var(--claude-soft); color: var(--claude); }
+  .cli-mark.codex { background: var(--codex-soft); color: var(--codex); }
+  .cli-mark.opencode { background: var(--opencode-soft); color: var(--opencode); }
+  .cli-amount { text-align: right; font-size: 10.5px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+  .cli-amount b { color: var(--text); font-weight: 650; }
+  .cli-bar { grid-column: 1 / -1; height: 5px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
+  .cli-bar i { display: block; height: 100%; border-radius: 99px; }
+  .cli-bar i.claude { background: var(--claude); }
+  .cli-bar i.codex { background: var(--codex); }
+  .cli-bar i.opencode { background: var(--opencode); }
+  .cli-foot { margin-top: 2px; padding-top: 12px; border-top: 1px dashed var(--line); color: var(--text-3); font-size: 9.5px; display: flex; justify-content: space-between; gap: 10px; }
+
+  /* ── Table ───────────────────────────────────────────── */
+  .table-card { overflow: hidden; }
+  .table-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .table-title { display: flex; align-items: baseline; gap: 7px; font-size: 12.5px; font-weight: 650; }
+  .count-pill {
+    padding: 1px 6px;
+    border-radius: 99px;
+    background: var(--surface-3);
+    color: var(--text-3);
+    font-size: 9px;
+    font-weight: 600;
+  }
+  .table-tools { margin-left: auto; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .search {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 206px;
+    height: 29px;
+    padding: 0 9px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-2);
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .search:focus-within { border-color: color-mix(in srgb, var(--primary) 55%, var(--line)); background: var(--surface); }
+  .search .icon { width: 13px; height: 13px; color: var(--text-3); }
+  .search input { width: 100%; border: 0; outline: none; background: transparent; color: var(--text); font-size: 10.5px; }
+  .search input::placeholder { color: var(--text-3); }
+  .table-scroll { overflow-x: auto; }
+  .table-scroll::-webkit-scrollbar { height: 8px; }
+  .table-scroll::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 99px; }
+  table { width: 100%; min-width: 860px; border-collapse: collapse; }
+  thead th {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--text-3);
+    font-size: 8.8px;
+    font-weight: 650;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    text-align: left;
+    white-space: nowrap;
+  }
+  thead th.num { text-align: right; }
+  tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    color: var(--text-2);
+    font-size: 10.8px;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr { transition: background .12s ease; }
+  tbody tr:hover { background: var(--surface-2); }
+  .row-main { display: flex; align-items: center; gap: 9px; min-width: 220px; }
+  .row-avatar {
+    width: 29px;
+    height: 29px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 750;
+    color: var(--text-2);
+    background: var(--surface-3);
+  }
+  .row-avatar.claude { background: var(--claude-soft); color: var(--claude); }
+  .row-avatar.codex { background: var(--codex-soft); color: var(--codex); }
+  .row-avatar.opencode { background: var(--opencode-soft); color: var(--opencode); }
+  .row-avatar.mixed { background: var(--surface-3); color: var(--text-2); }
+  .row-title { color: var(--text); font-size: 11.5px; font-weight: 620; line-height: 1.3; }
+  .row-sub { margin-top: 2px; color: var(--text-3); font-size: 9.3px; line-height: 1.3; }
+  .cli-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-size: 9.2px;
+    font-weight: 650;
+    white-space: nowrap;
+  }
+  .cli-badge .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+  .cli-badge.claude { background: var(--claude-soft); color: var(--claude); }
+  .cli-badge.codex { background: var(--codex-soft); color: var(--codex); }
+  .cli-badge.opencode { background: var(--opencode-soft); color: var(--opencode); }
+  .cli-badge.mixed { background: var(--surface-3); color: var(--text-2); }
+  .mixed-dots { display: inline-flex; gap: 2px; }
+  .mixed-dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--claude); }
+  .mixed-dots i:nth-child(2) { background: var(--codex); }
+  .mixed-dots i:nth-child(3) { background: var(--opencode); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.total { font-weight: 680; color: var(--text); }
+  .share-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; min-width: 82px; }
+  .share-bar { display: block; width: 82px; height: 3px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .share-bar i { display: block; height: 100%; border-radius: 99px; background: var(--primary); }
+  .table-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--text-3);
+    font-size: 9.5px;
+  }
+  .table-foot .link-btn {
+    border: 0;
+    background: none;
+    padding: 0;
+    color: var(--primary-strong);
+    font-size: 9.5px;
+    font-weight: 650;
+  }
+  .table-foot .link-btn:hover { text-decoration: underline; }
+  .empty { display: none; padding: 44px 20px 48px; text-align: center; }
+  .empty.show { display: block; }
+  .empty .empty-icon {
+    width: 38px;
+    height: 38px;
+    margin: 0 auto 10px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: var(--surface-3);
+    color: var(--text-3);
+  }
+  .empty .empty-icon .icon { width: 18px; height: 18px; }
+  .empty h3 { margin: 0 0 4px; font-size: 12.5px; font-weight: 650; }
+  .empty p { margin: 0 0 12px; color: var(--text-3); font-size: 10.5px; }
+
+  .page-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding-top: 12px;
+    color: var(--text-3);
+    font-size: 9.5px;
+  }
+  .page-foot .left { display: flex; align-items: center; gap: 7px; }
+  .page-foot .icon { width: 12px; height: 12px; }
+  .foot-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    border: 1px solid var(--line);
+    border-radius: 99px;
+    background: var(--surface-2);
+    font-size: 8.5px;
+    color: var(--text-2);
+  }
+
+  /* ── Toast ───────────────────────────────────────────── */
+  .toast {
+    position: fixed;
+    right: 28px;
+    bottom: 28px;
+    z-index: 50;
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    max-width: 340px;
+    padding: 11px 12px;
+    border-radius: 10px;
+    background: #2c2822;
+    color: #fff;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, .26);
+    opacity: 0;
+    transform: translateY(14px);
+    pointer-events: none;
+    transition: opacity .2s ease, transform .2s ease;
+  }
+  .toast.show { opacity: 1; transform: none; pointer-events: auto; }
+  .toast .toast-icon {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 6px;
+    background: rgba(127, 214, 176, .16);
+    color: #7fd6b0;
+  }
+  .toast .toast-icon .icon { width: 12px; height: 12px; }
+  .toast strong { display: block; font-size: 11.5px; font-weight: 650; }
+  .toast span { display: block; margin-top: 2px; color: rgba(255, 255, 255, .62); font-size: 9.8px; line-height: 1.45; }
+  .toast button {
+    margin-left: auto;
+    border: 0;
+    background: none;
+    color: rgba(255, 255, 255, .5);
+    padding: 0 0 0 6px;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .toast button:hover { color: #fff; }
+
+  @media (max-width: 1120px) {
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .overview { grid-template-columns: 1fr; }
+    .top-search { display: none; }
+  }
+  @media (max-width: 860px) {
+    .app { margin: 0; height: 100vh; border-radius: 0; }
+    .sidebar { width: 76px; }
+    .brand { justify-content: center; padding: 20px 8px 14px; }
+    .brand-text, .nav-label, .nav-item span:not(.nav-badge):not(.nav-dot), .nav-badge, .sidebar-foot span, .sidebar-foot .mini { display: none; }
+    .nav-item { justify-content: center; padding: 8px; }
+    .sidebar-foot { justify-content: center; }
+    .sidebar-foot .spacer { display: none; }
+    .content { padding: 22px 18px 28px; }
+    .page-head { flex-direction: column; gap: 14px; }
+    .sync-box { flex-direction: row; align-items: center; }
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .table-head { align-items: flex-start; }
+    .table-tools { margin-left: 0; width: 100%; }
+    .search { width: 100%; }
+  }
+  @media (max-width: 560px) {
+    .stats { grid-template-columns: 1fr; }
+    .topbar { padding: 0 14px; }
+    .crumbs .sep, .crumbs .current { display: none; }
+    .toolbar { align-items: flex-start; flex-direction: column; }
+    .chart-wrap { padding-left: 10px; padding-right: 10px; }
+    .bar-col:nth-child(odd) .bar { max-width: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">TP</div>
+      <div class="brand-text">
+        <div class="brand-name">TeamPilot</div>
+        <div class="brand-sub">WORKSPACE</div>
+      </div>
+    </div>
+    <div class="side-scroll">
+      <div class="nav-label">快捷</div>
+      <button class="nav-item" type="button"><svg class="icon"><use href="#i-spark"/></svg><span>自动化</span></button>
+      <button class="nav-item" type="button"><svg class="icon"><use href="#i-star"/></svg><span>收藏</span></button>
+      <button class="nav-item" type="button"><svg class="icon"><use href="#i-history"/></svg><span>最近访问</span></button>
+      <div class="nav-label">工作区</div>
+      <button class="nav-item" type="button"><svg class="icon"><use href="#i-folder"/></svg><span>全部工作区</span><span class="nav-badge">12</span></button>
+      <div class="nav-label">团队</div>
+      <button class="nav-item" type="button"><svg class="icon"><use href="#i-users"/></svg><span>我的团队</span></button>
+      <button class="nav-item" type="button"><svg class="icon"><use href="#i-badge"/></svg><span>我的专家</span></button>
+      <button class="nav-item" type="button"><svg class="icon"><use href="#i-compass"/></svg><span>团队广场</span></button>
+      <button class="nav-item" type="button"><svg class="icon"><use href="#i-spark"/></svg><span>专家广场</span></button>
+      <div class="nav-label">资源</div>
+      <button class="nav-item" type="button"><svg class="icon"><use href="#i-layers"/></svg><span>技能</span><span class="nav-badge">18</span></button>
+      <button class="nav-item" type="button"><svg class="icon"><use href="#i-puzzle"/></svg><span>插件</span></button>
+      <button class="nav-item" type="button"><svg class="icon"><use href="#i-hub"/></svg><span>MCP</span></button>
+      <button class="nav-item" type="button"><svg class="icon"><use href="#i-power"/></svg><span>扩展</span></button>
+      <button class="nav-item" type="button"><svg class="icon"><use href="#i-bolt"/></svg><span>Hooks</span></button>
+      <button class="nav-item active" type="button" aria-current="page"><svg class="icon"><use href="#i-chart"/></svg><span>Token 用量</span><span class="nav-dot"></span></button>
+      <button class="nav-item" type="button"><svg class="icon"><use href="#i-wallet"/></svg><span>余额与用量</span></button>
+    </div>
+    <div class="sidebar-foot">
+      <span class="status-dot"></span>
+      <span>本地工作区</span>
+      <span class="spacer"></span>
+      <span class="mini">v0.9.4</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="crumbs">
+        <span>工作区</span>
+        <span class="sep">/</span>
+        <span class="current">Token 用量</span>
+        <span class="env-chip"><span class="dot"></span>本地 + SSH</span>
+      </div>
+      <div class="top-search">
+        <svg class="icon"><use href="#i-search"/></svg>
+        <span>搜索或跳转</span>
+        <kbd>⌘ K</kbd>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" type="button" id="theme-btn" title="切换主题" aria-label="切换主题">
+          <svg class="icon"><use href="#i-moon"/></svg>
+        </button>
+        <button class="icon-btn bell-wrap" type="button" title="通知" aria-label="通知">
+          <svg class="icon"><use href="#i-bell"/></svg>
+          <span class="bell-dot"></span>
+        </button>
+        <div class="avatar" title="hhoa">H</div>
+      </div>
+    </header>
+
+    <div class="content">
+      <section class="page-head">
+        <div>
+          <div class="eyebrow">Usage · Token accounting</div>
+          <h1>Token 用量</h1>
+          <p class="subtitle">按会话统计 Claude Code、Codex、OpenCode 的 token 消耗</p>
+          <div class="hint">
+            <svg class="icon"><use href="#i-info"/></svg>
+            仅统计 TeamPilot 启动的会话；手动终端启动的 CLI 暂不包含
+          </div>
+        </div>
+        <div class="sync-box">
+          <div class="sync-meta">
+            <svg class="icon"><use href="#i-history"/></svg>
+            上次同步 <span id="last-sync">2 分钟前</span>
+          </div>
+          <button class="btn btn-primary" id="sync-btn" type="button">
+            <svg class="icon"><use href="#i-refresh"/></svg>
+            <span id="sync-label">同步</span>
+          </button>
+        </div>
+      </section>
+
+      <div class="notice" id="sync-notice" hidden>
+        <svg class="icon"><use href="#i-alert"/></svg>
+        <span><b>1 个来源同步失败</b> · SSH buildbox 连接超时，其他来源已更新</span>
+        <button class="notice-link" id="notice-retry" type="button">重试</button>
+        <button class="notice-close" id="notice-close" type="button" aria-label="关闭">×</button>
+      </div>
+
+      <div class="toolbar">
+        <div class="segmented" role="group" aria-label="时间范围">
+          <button type="button" data-range="today">今天</button>
+          <button type="button" class="active" data-range="7d">近 7 天</button>
+          <button type="button" data-range="30d">近 30 天</button>
+          <button type="button" data-range="all">全部</button>
+        </div>
+        <div class="chips" role="group" aria-label="CLI 筛选">
+          <button type="button" class="chip active" data-cli="all">全部 <span class="n">8</span></button>
+          <button type="button" class="chip" data-cli="claude"><span class="dot claude"></span>Claude <span class="n">3</span></button>
+          <button type="button" class="chip" data-cli="codex"><span class="dot codex"></span>Codex <span class="n">3</span></button>
+          <button type="button" class="chip" data-cli="opencode"><span class="dot opencode"></span>OpenCode <span class="n">2</span></button>
+        </div>
+      </div>
+
+      <section class="stats">
+        <article class="stat-card accent">
+          <div class="stat-top">
+            <span class="stat-label">总 Token</span>
+            <span class="stat-icon"><svg class="icon"><use href="#i-sum"/></svg></span>
+          </div>
+          <div class="stat-value" id="stat-total">12.84<span class="unit">M</span></div>
+          <div class="stat-bottom">
+            <div class="stat-meta">
+              <span class="delta" id="stat-delta"><svg class="icon"><use href="#i-arrow-up"/></svg>12.6%</span>
+              <span class="range-compare">较上周</span>
+              <br>
+              <span id="stat-req-sess">4,856 请求 · 8 会话</span>
+            </div>
+            <div class="spark" aria-hidden="true">
+              <i style="height:7px"></i><i style="height:9px"></i><i style="height:8px"></i>
+              <i style="height:12px"></i><i style="height:14px"></i><i style="height:20px"></i>
+            </div>
+          </div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <span class="stat-label">输入 Token</span>
+            <span class="stat-icon"><svg class="icon"><use href="#i-arrow-down"/></svg></span>
+          </div>
+          <div class="stat-value" id="stat-input">8.92<span class="unit">M</span></div>
+          <div class="stat-bottom">
+            <div class="stat-meta">
+              <span class="delta neutral" id="stat-input-pct">69.5%</span>
+              <span>占总用量</span>
+              <br>
+              <span>fresh input</span>
+            </div>
+            <div class="spark" aria-hidden="true">
+              <i style="height:5px"></i><i style="height:8px"></i><i style="height:7px"></i>
+              <i style="height:11px"></i><i style="height:13px"></i><i style="height:17px"></i>
+            </div>
+          </div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <span class="stat-label">输出 Token</span>
+            <span class="stat-icon"><svg class="icon"><use href="#i-arrow-up"/></svg></span>
+          </div>
+          <div class="stat-value" id="stat-output">1.37<span class="unit">M</span></div>
+          <div class="stat-bottom">
+            <div class="stat-meta">
+              <span class="delta neutral" id="stat-output-pct">10.7%</span>
+              <span>占总用量</span>
+              <br>
+              <span>含 reasoning</span>
+            </div>
+            <div class="spark" aria-hidden="true">
+              <i style="height:4px"></i><i style="height:6px"></i><i style="height:5px"></i>
+              <i style="height:9px"></i><i style="height:11px"></i><i style="height:14px"></i>
+            </div>
+          </div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <span class="stat-label">缓存读取</span>
+            <span class="stat-icon"><svg class="icon"><use href="#i-database"/></svg></span>
+          </div>
+          <div class="stat-value" id="stat-cache">2.55<span class="unit">M</span></div>
+          <div class="stat-bottom">
+            <div class="stat-meta">
+              <span class="delta neutral" id="stat-cache-pct">19.9%</span>
+              <span>占总用量</span>
+              <br>
+              <span><span id="cache-hit">命中率 22.2%</span> · 写 260K</span>
+            </div>
+            <div class="spark" aria-hidden="true">
+              <i style="height:6px"></i><i style="height:7px"></i><i style="height:10px"></i>
+              <i style="height:9px"></i><i style="height:15px"></i><i style="height:18px"></i>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="overview">
+        <article class="card chart-card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">近 7 天消耗</div>
+              <div class="card-sub" id="chart-sub">按 CLI 堆叠 · 10/20 – 10/26</div>
+            </div>
+            <div class="chart-total">
+              <strong id="chart-total">12.84M</strong>
+              <span id="chart-avg">日均 1.83M</span>
+            </div>
+          </div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="dot claude"></span>Claude Code</span>
+            <span class="legend-item"><span class="dot codex"></span>Codex</span>
+            <span class="legend-item"><span class="dot opencode"></span>OpenCode</span>
+          </div>
+          <div class="chart-wrap">
+            <div class="y-axis"><span>3.3M</span><span>2.2M</span><span>1.1M</span><span>0</span></div>
+            <div class="chart-area">
+              <div class="grid-lines" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+              <div class="bars" id="bars"></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">CLI 分布</div>
+              <div class="card-sub">近 7 天 · 按总 Token</div>
+            </div>
+            <span class="count-pill">3 个 CLI</span>
+          </div>
+          <div class="cli-list">
+            <div class="cli-row" data-cli-row="claude">
+              <div class="cli-name"><span class="cli-mark claude">C</span>Claude Code</div>
+              <div class="cli-amount"><b>6.19M</b> · 48.2%</div>
+              <div class="cli-bar"><i class="claude" style="width:48.2%"></i></div>
+            </div>
+            <div class="cli-row" data-cli-row="codex">
+              <div class="cli-name"><span class="cli-mark codex">X</span>Codex</div>
+              <div class="cli-amount"><b>4.36M</b> · 34.0%</div>
+              <div class="cli-bar"><i class="codex" style="width:34%"></i></div>
+            </div>
+            <div class="cli-row" data-cli-row="opencode">
+              <div class="cli-name"><span class="cli-mark opencode">O</span>OpenCode</div>
+              <div class="cli-amount"><b>2.29M</b> · 17.8%</div>
+              <div class="cli-bar"><i class="opencode" style="width:17.8%"></i></div>
+            </div>
+            <div class="cli-foot">
+              <span>缓存读占比 19.9%</span>
+              <span>峰值 10/26</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="card table-card">
+        <div class="table-head">
+          <div class="table-title">明细 <span class="count-pill" id="table-count">8 个会话</span></div>
+          <div class="table-tools">
+            <div class="segmented" role="group" aria-label="聚合方式">
+              <button type="button" class="active" data-group="session">会话</button>
+              <button type="button" data-group="member">成员</button>
+              <button type="button" data-group="model">模型</button>
+              <button type="button" data-group="cli">CLI</button>
+            </div>
+            <label class="search">
+              <svg class="icon"><use href="#i-search"/></svg>
+              <input id="search" type="search" placeholder="搜索会话或成员" autocomplete="off">
+            </label>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table id="usage-table">
+            <thead>
+              <tr>
+                <th id="group-col">会话 / 团队</th>
+                <th>CLI</th>
+                <th class="num">请求</th>
+                <th class="num">输入</th>
+                <th class="num">输出</th>
+                <th class="num">缓存读</th>
+                <th class="num">总计</th>
+              </tr>
+            </thead>
+            <tbody id="usage-rows"></tbody>
+          </table>
+        </div>
+        <div class="empty" id="empty">
+          <div class="empty-icon"><svg class="icon"><use href="#i-chart"/></svg></div>
+          <h3>没有匹配的用量记录</h3>
+          <p>调整时间范围、CLI 或搜索词后再试</p>
+          <button class="btn btn-ghost" id="clear-filters" type="button">清除筛选</button>
+        </div>
+        <div class="table-foot">
+          <span id="table-foot-count">显示 8 条记录</span>
+          <button class="link-btn" type="button">查看同步日志 <svg class="icon icon-sm" style="display:inline;vertical-align:-2px"><use href="#i-chevron"/></svg></button>
+        </div>
+      </section>
+
+      <footer class="page-foot">
+        <div class="left">
+          <svg class="icon"><use href="#i-info"/></svg>
+          数据来自当前主机的 <code style="font-family:var(--font-mono);font-size:9px">usage/events.jsonl</code>，SSH 会话通过 SFTP 读取
+        </div>
+        <div>
+          <span class="foot-tag">JSONL</span>
+          <span class="foot-tag">只读</span>
+          <span class="foot-tag">手动同步</span>
+        </div>
+      </footer>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <div class="toast-icon"><svg class="icon"><use href="#i-check"/></svg></div>
+  <div>
+    <strong id="toast-title">同步完成</strong>
+    <span id="toast-body">扫描 8 个会话，新增 24 条用量记录</span>
+  </div>
+  <button type="button" id="toast-close" aria-label="关闭">×</button>
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/><path d="M18.5 15.5l.7 2.3 2.3.7-2.3.7-.7 2.3-.7-2.3-2.3-.7 2.3-.7z"/>
+  </symbol>
+  <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 2.6-6.4"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3.5 6.5h6l2 2h9v11h-17z"/><path d="M3.5 6.5v-2h6l2 2"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 20c0-3.2 2.6-5.2 5.5-5.2s5.5 2 5.5 5.2"/><circle cx="17" cy="9" r="2.3"/><path d="M15.6 20c0-2.2 1.6-3.8 4-3.8"/></symbol>
+  <symbol id="i-badge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a4 4 0 0 1 4 4v1a4 4 0 0 1-8 0V7a4 4 0 0 1 4-4z"/><path d="M5 21c0-4 3-6 7-6s7 2 7 6"/><path d="M18.5 3.8l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z"/></symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 16l9 5 9-5"/></symbol>
+  <symbol id="i-puzzle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M10 4h4v3a3 3 0 1 0 3 3h3v4h-3a3 3 0 1 0-3 3v3h-4v-3a3 3 0 1 1-3-3H4v-4h3a3 3 0 1 1 3-3z"/></symbol>
+  <symbol id="i-hub" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.5"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="18" r="2"/><path d="M6.7 7.4l3.5 3M17.3 7.4l-3.5 3M6.7 16.6l3.5-3M17.3 16.6l-3.5-3"/></symbol>
+  <symbol id="i-power" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9"/><path d="M6.2 6.2a8 8 0 1 0 11.6 0"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M13 2.5L5.5 13H11l-1 8.5L18.5 10H13z"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M3 20h18"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M16 14.5h2"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 10a5.5 5.5 0 0 1 11 0c0 6 2 6.5 2 6.5H4.5s2-.5 2-6.5z"/><path d="M10 20h4"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.7-4L3 10"/><path d="M3 4v6h6"/><path d="M4 13a8 8 0 0 0 14.7 4L21 14"/><path d="M21 20v-6h-6"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M18.7 5.3l-1.4 1.4M6.7 17.3l-1.4 1.4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-11"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5L21 20H3z"/><path d="M12 9v5"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M6 13l6 6 6-6"/></symbol>
+  <symbol id="i-database" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="7" ry="3"/><path d="M5 5.5v13c0 1.7 3.1 3 7 3s7-1.3 7-3v-13"/><path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></symbol>
+  <symbol id="i-sum" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 4H7l6 8-6 8h10"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></symbol>
+</svg>
+
+<script>
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+  const CLI_META = {
+    claude: { label: 'Claude', full: 'Claude Code' },
+    codex: { label: 'Codex', full: 'Codex' },
+    opencode: { label: 'OpenCode', full: 'OpenCode' },
+  };
+
+  const RANGE = {
+    today: { factor: 0.18, compare: '较昨日' },
+    '7d': { factor: 1, compare: '较上周' },
+    '30d': { factor: 3.6, compare: '较上月' },
+    all: { factor: 6.8, compare: '较上期' },
+  };
+
+  const GROUP_META = {
+    session: { label: '会话 / 团队', unit: '个会话', placeholder: '搜索会话或团队' },
+    member: { label: '成员 / 团队', unit: '位成员', placeholder: '搜索成员或团队' },
+    model: { label: '模型 / 提供方', unit: '个模型', placeholder: '搜索模型或提供方' },
+    cli: { label: 'CLI / 会话', unit: '个 CLI', placeholder: '搜索 CLI' },
+  };
+
+  const CLI_SESSIONS = { claude: 3, codex: 3, opencode: 2 };
+
+  // Base data is "last 7 days". Other ranges scale the same shape so the
+  // prototype can demonstrate filtering without inventing a second dataset.
+  const rowsByGroup = {
+    session: [
+      { name: '重构支付网关', subtitle: 'Platform · payments-service', cli: 'claude', requests: 1204, input: 2300000, output: 320000, cache: 620000, initial: '支' },
+      { name: '修复登录超时', subtitle: 'Core · auth-service', cli: 'codex', requests: 902, input: 1690000, output: 260000, cache: 470000, initial: '登' },
+      { name: '生成 API 文档', subtitle: 'Docs · api-docs', cli: 'claude', requests: 741, input: 1340000, output: 210000, cache: 380000, initial: '文' },
+      { name: '迁移数据库 Schema', subtitle: 'Platform · infra', cli: 'opencode', requests: 512, input: 1000000, output: 170000, cache: 310000, initial: '迁' },
+      { name: '优化首页加载', subtitle: 'Web · web-app', cli: 'codex', requests: 488, input: 880000, output: 140000, cache: 240000, initial: '首' },
+      { name: '实现通知中心', subtitle: 'Product · notifications', cli: 'claude', requests: 401, input: 710000, output: 110000, cache: 200000, initial: '通' },
+      { name: 'Agent 回归测试', subtitle: 'QA · e2e', cli: 'opencode', requests: 322, input: 560000, output: 90000, cache: 160000, initial: '测' },
+      { name: '升级依赖与清理', subtitle: 'Platform · shared', cli: 'codex', requests: 286, input: 440000, output: 70000, cache: 170000, initial: '依' },
+    ],
+    member: [
+      { name: '林可', subtitle: 'Platform · 技术负责人', clis: ['claude', 'codex'], requests: 1642, input: 2860000, output: 440000, cache: 820000, initial: '林' },
+      { name: '陈默', subtitle: 'Core · 后端工程师', clis: ['codex', 'opencode'], requests: 1207, input: 2250000, output: 350000, cache: 640000, initial: '陈' },
+      { name: '苏晴', subtitle: 'Docs · 文档工程师', clis: ['claude'], requests: 830, input: 1520000, output: 230000, cache: 430000, initial: '苏' },
+      { name: '周野', subtitle: 'Web · 前端工程师', clis: ['codex'], requests: 690, input: 1290000, output: 200000, cache: 370000, initial: '周' },
+      { name: '顾言', subtitle: 'QA · 测试工程师', clis: ['claude', 'opencode'], requests: 487, input: 1000000, output: 150000, cache: 290000, initial: '顾' },
+    ],
+    model: [
+      { name: 'claude-sonnet-4.5', subtitle: 'Anthropic · 200k context', cli: 'claude', requests: 2120, input: 3760000, output: 580000, cache: 1080000, initial: 'S' },
+      { name: 'gpt-5', subtitle: 'OpenAI · 400k context', cli: 'codex', requests: 1604, input: 3030000, output: 460000, cache: 870000, initial: 'G' },
+      { name: 'claude-opus-4.1', subtitle: 'Anthropic · 200k context', cli: 'claude', requests: 604, input: 1190000, output: 180000, cache: 350000, initial: 'O' },
+      { name: 'kimi-k2', subtitle: 'Moonshot · 256k context', cli: 'opencode', requests: 314, input: 600000, output: 90000, cache: 170000, initial: 'K' },
+      { name: 'qwen3-coder', subtitle: 'Alibaba · 256k context', cli: 'opencode', requests: 214, input: 340000, output: 60000, cache: 80000, initial: 'Q' },
+    ],
+    cli: [
+      { name: 'Claude Code', subtitle: '3 个会话 · Sonnet 4.5 / Opus 4.1', cli: 'claude', requests: 2346, input: 4300000, output: 620000, cache: 1270000, initial: 'C' },
+      { name: 'Codex', subtitle: '3 个会话 · GPT-5', cli: 'codex', requests: 1676, input: 3030000, output: 460000, cache: 870000, initial: 'X' },
+      { name: 'OpenCode', subtitle: '2 个会话 · Kimi K2 / Qwen3 Coder', cli: 'opencode', requests: 834, input: 1590000, output: 290000, cache: 410000, initial: 'O' },
+    ],
+  };
+
+  const CHART = [
+    { day: '10/20', claude: 0.55, codex: 0.38, opencode: 0.18 },
+    { day: '10/21', claude: 0.68, codex: 0.42, opencode: 0.22 },
+    { day: '10/22', claude: 0.62, codex: 0.51, opencode: 0.19 },
+    { day: '10/23', claude: 0.84, codex: 0.58, opencode: 0.26 },
+    { day: '10/24', claude: 0.98, codex: 0.63, opencode: 0.31 },
+    { day: '10/25', claude: 1.10, codex: 0.74, opencode: 0.38 },
+    { day: '10/26', claude: 1.42, codex: 1.10, opencode: 0.75 },
+  ];
+  const CHART_MAX = 3.3;
+
+  const state = { range: '7d', cli: 'all', group: 'session', query: '' };
+
+  function rowClis(row) { return row.clis ?? [row.cli]; }
+  function rowTotal(row) { return row.input + row.output + row.cache; }
+
+  function formatTokens(n) {
+    if (n >= 1e6) return (n / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M';
+    if (n >= 1e3) return Math.round(n / 1e3).toLocaleString('en-US') + 'K';
+    return Math.round(n).toString();
+  }
+
+  function statHTML(n) {
+    const text = formatTokens(n);
+    const match = text.match(/^([\d,.]+)([MK]?)$/);
+    return match ? `${match[1]}<span class="unit">${match[2]}</span>` : text;
+  }
+
+  function formatInt(n) { return Math.round(n).toLocaleString('en-US'); }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, (char) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[char]));
+  }
+
+  function rowsFor(includeQuery) {
+    const factor = RANGE[state.range].factor;
+    const query = state.query.trim().toLowerCase();
+    return rowsByGroup[state.group]
+      .filter((row) => state.cli === 'all' || rowClis(row).includes(state.cli))
+      .filter((row) => !includeQuery || !query || `${row.name} ${row.subtitle}`.toLowerCase().includes(query))
+      .map((row) => ({
+        ...row,
+        requests: Math.round(row.requests * factor),
+        input: row.input * factor,
+        output: row.output * factor,
+        cache: row.cache * factor,
+        total: rowTotal(row) * factor,
+      }));
+  }
+
+  function totalsOf(rows) {
+    return rows.reduce((acc, row) => ({
+      total: acc.total + row.total,
+      input: acc.input + row.input,
+      output: acc.output + row.output,
+      cache: acc.cache + row.cache,
+      requests: acc.requests + row.requests,
+    }), { total: 0, input: 0, output: 0, cache: 0, requests: 0 });
+  }
+
+  function sessionCount(rows) {
+    if (state.cli !== 'all') return CLI_SESSIONS[state.cli];
+    return 8;
+  }
+
+  function renderStats(rows) {
+    const totals = totalsOf(rows);
+    const total = totals.total;
+    $('#stat-total').innerHTML = statHTML(totals.total);
+    $('#stat-input').innerHTML = statHTML(totals.input);
+    $('#stat-output').innerHTML = statHTML(totals.output);
+    $('#stat-cache').innerHTML = statHTML(totals.cache);
+    $('#stat-input-pct').textContent = total ? `${(totals.input / total * 100).toFixed(1)}%` : '0.0%';
+    $('#stat-output-pct').textContent = total ? `${(totals.output / total * 100).toFixed(1)}%` : '0.0%';
+    $('#stat-cache-pct').textContent = total ? `${(totals.cache / total * 100).toFixed(1)}%` : '0.0%';
+    $('#stat-req-sess').textContent = `${formatInt(totals.requests)} 请求 · ${sessionCount(rows)} 会话`;
+    const hit = totals.input + totals.cache > 0
+      ? totals.cache / (totals.input + totals.cache) * 100
+      : 0;
+    $('#cache-hit').textContent = total ? `命中率 ${hit.toFixed(1)}%` : '命中率 —';
+    const delta = $('#stat-delta');
+    if (total) {
+      delta.classList.remove('neutral');
+      delta.innerHTML = '<svg class="icon"><use href="#i-arrow-up"/></svg>12.6%';
+    } else {
+      delta.classList.add('neutral');
+      delta.textContent = '—';
+    }
+    $$('.spark').forEach((el) => { el.style.opacity = total ? '1' : '.3'; });
+    $$('.range-compare').forEach((el) => { el.textContent = RANGE[state.range].compare; });
+  }
+
+  function cliBadge(clis) {
+    if (clis.length === 1) {
+      const key = clis[0];
+      return `<span class="cli-badge ${key}"><span class="dot"></span>${CLI_META[key].label}</span>`;
+    }
+    return `<span class="cli-badge mixed"><span class="mixed-dots"><i></i><i></i><i></i></span>混合</span>`;
+  }
+
+  function renderTable(rows) {
+    const meta = GROUP_META[state.group];
+    const base = rowsByGroup[state.group];
+    const totals = totalsOf(rows);
+    const tbody = $('#usage-rows');
+    $('#group-col').textContent = meta.label;
+    $('#table-count').textContent = state.query.trim()
+      ? `${rows.length} 个匹配`
+      : `${rows.length} ${meta.unit}`;
+    $('#search').placeholder = meta.placeholder;
+    $('#table-foot-count').textContent = rows.length
+      ? `显示 ${rows.length} / ${base.length} 条记录`
+      : '没有记录';
+
+    tbody.innerHTML = rows.map((row) => {
+      const clis = rowClis(row);
+      const avatarClass = clis.length === 1 ? clis[0] : 'mixed';
+      const share = totals.total ? (row.total / totals.total * 100) : 0;
+      return `<tr>
+        <td>
+          <div class="row-main">
+            <div class="row-avatar ${avatarClass}">${escapeHtml(row.initial)}</div>
+            <div>
+              <div class="row-title">${escapeHtml(row.name)}</div>
+              <div class="row-sub">${escapeHtml(row.subtitle)}</div>
+            </div>
+          </div>
+        </td>
+        <td>${cliBadge(clis)}</td>
+        <td class="num">${formatInt(row.requests)}</td>
+        <td class="num">${formatTokens(row.input)}</td>
+        <td class="num">${formatTokens(row.output)}</td>
+        <td class="num">${formatTokens(row.cache)}</td>
+        <td class="num total">
+          <div class="share-wrap">
+            <span>${formatTokens(row.total)}</span>
+            <span class="share-bar"><i style="width:${Math.max(1, share).toFixed(1)}%"></i></span>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+    const empty = rows.length === 0;
+    $('#empty').classList.toggle('show', empty);
+    $('#usage-table').style.display = empty ? 'none' : 'table';
+  }
+
+  function renderChart() {
+    const bars = $('#bars');
+    const height = 168;
+    bars.innerHTML = CHART.map((day, index) => {
+      const total = day.claude + day.codex + day.opencode;
+      const barHeight = Math.max(4, total / CHART_MAX * height);
+      const segments = ['opencode', 'codex', 'claude'].map((key) => {
+        const segmentHeight = day[key] / CHART_MAX * height;
+        const dim = state.cli !== 'all' && state.cli !== key ? ' dim' : '';
+        return `<span class="seg ${key}${dim}" style="height:${segmentHeight.toFixed(1)}px"></span>`;
+      }).join('');
+      const label = index === CHART.length - 1 ? '今天' : day.day;
+      const title = `${day.day} · Claude ${day.claude.toFixed(2)}M · Codex ${day.codex.toFixed(2)}M · OpenCode ${day.opencode.toFixed(2)}M`;
+      return `<div class="bar-col${index === CHART.length - 1 ? ' today' : ''}" title="${title}">
+        <div class="bar" style="height:${barHeight.toFixed(1)}px">${segments}</div>
+        <span class="bar-label">${label}</span>
+      </div>`;
+    }).join('');
+
+    // The chart stays a stable 7-day overview; the CLI filter highlights a
+    // series instead of rescaling the axis. This keeps trend cards comparable.
+    const overviewTotal = CHART.reduce((sum, day) => sum + day.claude + day.codex + day.opencode, 0);
+    $('#chart-total').textContent = overviewTotal.toFixed(2) + 'M';
+    $('#chart-avg').textContent = `日均 ${(overviewTotal / CHART.length).toFixed(2)}M`;
+    $('#chart-sub').textContent = state.cli === 'all'
+      ? '按 CLI 堆叠 · 10/20 – 10/26'
+      : `高亮 ${CLI_META[state.cli].full} · 10/20 – 10/26`;
+    $$('[data-cli-row]').forEach((el) => {
+      el.classList.toggle('dim', state.cli !== 'all' && el.dataset.cliRow !== state.cli);
+    });
+  }
+
+  function renderControls() {
+    $$('[data-range]').forEach((el) => {
+      el.classList.toggle('active', el.dataset.range === state.range);
+    });
+    $$('[data-cli]').forEach((el) => {
+      el.classList.toggle('active', el.dataset.cli === state.cli);
+    });
+    $$('[data-group]').forEach((el) => {
+      el.classList.toggle('active', el.dataset.group === state.group);
+    });
+  }
+
+  function renderAll() {
+    // Search is a table-local filter; the summary cards and chart keep the
+    // range + CLI scope so a search never zeroes the dashboard.
+    renderStats(rowsFor(false));
+    renderTable(rowsFor(true));
+    renderChart();
+    renderControls();
+  }
+
+  $$('[data-range]').forEach((el) => {
+    el.addEventListener('click', () => {
+      state.range = el.dataset.range;
+      renderAll();
+    });
+  });
+
+  $$('[data-cli]').forEach((el) => {
+    el.addEventListener('click', () => {
+      state.cli = el.dataset.cli;
+      renderAll();
+    });
+  });
+
+  $$('[data-group]').forEach((el) => {
+    el.addEventListener('click', () => {
+      state.group = el.dataset.group;
+      renderAll();
+    });
+  });
+
+  $('#search').addEventListener('input', (event) => {
+    state.query = event.target.value;
+    renderAll();
+  });
+
+  $('#clear-filters').addEventListener('click', () => {
+    state.range = '7d';
+    state.cli = 'all';
+    state.group = 'session';
+    state.query = '';
+    $('#search').value = '';
+    renderAll();
+  });
+
+  let syncing = false;
+  $('#sync-btn').addEventListener('click', () => {
+    if (syncing) return;
+    syncing = true;
+    const button = $('#sync-btn');
+    button.classList.add('syncing');
+    button.disabled = true;
+    $('#sync-label').textContent = '同步中';
+    window.setTimeout(() => {
+      syncing = false;
+      button.classList.remove('syncing');
+      button.disabled = false;
+      $('#sync-label').textContent = '同步';
+      $('#last-sync').textContent = '刚刚';
+      showToast('同步完成', '扫描 8 个会话，新增 24 条用量记录');
+    }, 1400);
+  });
+
+  let toastTimer;
+  function showToast(title, body) {
+    $('#toast-title').textContent = title;
+    $('#toast-body').textContent = body;
+    $('#toast').classList.add('show');
+    window.clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => {
+      $('#toast').classList.remove('show');
+    }, 4200);
+  }
+
+  $('#toast-close').addEventListener('click', () => {
+    $('#toast').classList.remove('show');
+  });
+
+  $('#notice-close').addEventListener('click', () => {
+    $('#sync-notice').hidden = true;
+  });
+
+  $('#notice-retry').addEventListener('click', () => {
+    $('#sync-notice').hidden = true;
+    showToast('同步完成', 'SSH buildbox 已恢复，新增 3 条用量记录');
+  });
+
+  $('#theme-btn').addEventListener('click', () => {
+    const nowDark = document.documentElement.dataset.theme !== 'dark';
+    document.documentElement.dataset.theme = nowDark ? 'dark' : 'light';
+    const button = $('#theme-btn');
+    button.querySelector('use').setAttribute('href', nowDark ? '#i-sun' : '#i-moon');
+    button.title = nowDark ? '切换到浅色' : '切换到深色';
+  });
+
+  renderAll();
+
+  // Preview states are addressable for design review, e.g.
+  // ?group=member&cli=claude&range=30d
+  const params = new URLSearchParams(window.location.search);
+  if (Object.prototype.hasOwnProperty.call(rowsByGroup, params.get('group'))) {
+    state.group = params.get('group');
+  }
+  if (Object.prototype.hasOwnProperty.call(RANGE, params.get('range'))) {
+    state.range = params.get('range');
+  }
+  if (['all', 'claude', 'codex', 'opencode'].includes(params.get('cli'))) {
+    state.cli = params.get('cli');
+  }
+  if (params.get('q')) {
+    state.query = params.get('q');
+    $('#search').value = state.query;
+  }
+  if (params.get('theme') === 'dark') {
+    document.documentElement.dataset.theme = 'dark';
+    $('#theme-btn').querySelector('use').setAttribute('href', '#i-sun');
+    $('#theme-btn').title = '切换到浅色';
+  }
+  if (params.get('sync') === 'error') {
+    $('#sync-notice').hidden = false;
+  }
+  if (params.toString()) renderAll();
+</script>
+</body>
+</html>

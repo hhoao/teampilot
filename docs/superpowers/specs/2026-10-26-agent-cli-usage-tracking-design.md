@@ -1,13 +1,19 @@
-# Agent CLI Usage Tracking (Foundation) Design
+# Agent CLI Usage Tracking Design
 
 ## Goal
 
 Record per-request token usage for agent CLIs launched by TeamPilot, on both
-local and remote (SSH) home planes, without depending on a local proxy.
+local and remote (SSH) home planes, without depending on a local proxy, and
+show it in a dedicated usage page inside the workspace home.
 
-This spec covers the **foundation only**: a per-CLI extraction capability, a
-home-plane usage store, incremental cursors, and a sync service. It does not
-add UI, scheduling, pricing, or proxy interception.
+The implementation has two slices:
+
+1. **Foundation**: per-CLI extraction capability, home-plane usage store,
+   incremental cursors, sync service.
+2. **UI**: a workspace-home "Token 用量" pane with summary cards, filters,
+   grouping, and a manual sync action.
+
+Scheduling, pricing, and proxy interception remain out of scope.
 
 Decisions locked with the user (2026-10-26):
 
@@ -16,10 +22,14 @@ Decisions locked with the user (2026-10-26):
 - First CLIs: **Claude Code, Codex, OpenCode**.
 - Store usage on the **current home plane** through `Filesystem` (JSONL), not
   SQLite. Remote app data cannot open a SQLite file over SFTP.
-- Foundation only. No page, cubit, timer, cost engine, proxy parser, or ACP
-  live meter in this slice.
+- The UI is a **standalone left-sidebar entry** (`Token 用量`), next to the
+  existing provider `余额与用量` entry, not a settings dialog section.
+- Sync is manual in this slice; no startup or periodic full scan.
 - No changes to chat/history behavior. Usage extraction is additive and reads
   the same transcripts the history loader already reads.
+
+HTML design reference:
+`docs/superpowers/designs/2026-10-26-agent-cli-usage-ui.html`.
 
 ## Why this shape
 
@@ -47,9 +57,9 @@ history loader uses. One locator, two consumers.
 
 ## Non-goals
 
-- Usage page, trend charts, provider/model tables, session header meter.
+- Session header meter and per-message inline usage.
 - Cost calculation and model pricing. `costMicroUsd` is stored only when a CLI
-  reports it; no pricing table is consulted.
+  reports it; no pricing table is consulted and the first UI does not show it.
 - Periodic background scan. The sync service is callable; scheduling is a
   follow-up.
 - Local proxy request logging. TeamPilot has no owned HTTP proxy.
@@ -70,6 +80,11 @@ history loader uses. One locator, two consumers.
 | Store ports | `services/usage/usage_store.dart`, `usage_cursor_store.dart` | Persistence seams |
 | JSON store | `services/usage/json_usage_store.dart`, `json_usage_cursor_store.dart` | Home-plane implementation |
 | Sync service | `services/usage/session_usage_sync_service.dart` | Lock, iterate, upsert, advance cursors |
+| Aggregation | `services/usage/usage_aggregator.dart` | Pure summary/filter/group functions |
+| UI state | `cubits/session_usage_cubit.dart` | Load cached events, manual sync, filters |
+| UI page | `pages/usage/session_usage_page.dart` | Sidebar pane, cards, chart, table |
+| UI wiring | `pages/home_workspace/home_workspace_global_section.dart`, `home_workspace_sidebar.dart` | `HomeGlobalView.usage` entry + pane |
+| Attribution | `services/usage/usage_attribution_provider.dart` | Session/team/member display names |
 | Paths | `services/storage/app_paths.dart` | `usage/` files under app data |
 
 Registration follows the CLI rule: each `CliToolDefinition` adds a
@@ -388,7 +403,98 @@ final class UsageSyncResult {
 5. Upsert, save cursor, accumulate counts.
 6. Catch per-source errors into `errors`; never abort the whole run.
 
-No timer, no cubit, no UI in this slice.
+No timer in this slice. The UI calls `syncAll()` only from the manual sync
+button; app startup reads cached events without scanning.
+
+## UI
+
+### Entry and navigation
+
+- `HomeGlobalView.usage` is a first-class workspace-home view, rendered by
+  `home_workspace_global_section.dart`.
+- The sidebar row is added in `home_workspace_sidebar.dart` next to the
+  provider `余额与用量` row, labeled `sessionUsageNav` ("Token 用量").
+- `homeLocation` builds `/home-v2?global=usage`; `app_router.dart` restores it
+  like the other global views. No new route.
+- The page is embedded (`WorkspacePane`), not a dialog and not a settings
+  section.
+
+### Page
+
+```text
+header:  Token 用量 / 按 TeamPilot 会话归属统计  ·  last sync · 同步
+notice:  per-source sync failures (dismissible, data stays visible)
+toolbar: 今天 | 近 7 天 | 近 30 天 | 全部    CLI: 全部 | Claude | Codex | OpenCode
+cards:   总 Token | 输入 Token | 输出 Token | 缓存读取
+         subtexts: requests/sessions, share, cache hit rate/write, sparkline
+chart:   近 7 天按 CLI 堆叠 (fixed 7-day context; selected CLI highlighted)
+side:    CLI 分布 (share bars, cache-read share)
+table:   group by 会话 / 成员 / 模型 / CLI, table-local search, share bar
+footer:  showing N / total · JSONL 只读 · 手动同步
+```
+
+States: `initial`, `loading`, `ready`, `empty`, `error`. A failed sync keeps
+the previously loaded events visible and shows a localized banner; a single
+source failure does not blank the page. The sync button is disabled while a
+sync is in flight.
+
+Responsive behavior follows the existing workspace shell: the sidebar
+collapses to icons/drawer on narrow widths, stats go 2x2 then 1 column, and the
+detail table scrolls horizontally.
+
+### Data flow
+
+```dart
+final class SessionUsageServices {
+  Future<UsageSyncResult> syncAll();
+  Future<List<SessionUsageEvent>> loadEvents();
+  UsageAttribution loadAttribution(List<AppSession> sessions,
+      List<TeamProfile> teams);
+}
+```
+
+- `client/lib/app/session_usage_services.dart` is the app-layer composition
+  factory. It builds `JsonUsageStore`, `JsonUsageCursorStore`,
+  `TeamPilotUsageScanTargetProvider`, and `SessionUsageSyncService` from
+  `HomeStorage`, `SessionRepository`, `LaunchProfileRepository`, and
+  `CliToolRegistry`, and exposes `syncAll`/`loadEvents`.
+- `SessionUsageCubit` is app-scoped and constructed with the home plane (same
+  lifetime as `ManagedProviderUsageCubit`). It loads cached events on creation
+  and exposes filters (`range`, `cli`, `groupBy`, `query`), summary, groups,
+  sync state, and sync errors.
+- `load()` only reads JSONL. It never scans CLI transcripts.
+- `sync()` calls `SessionUsageSyncService.syncAll()` then reloads. The sync
+  result's errors are retained; a failed source does not clear data.
+- Attribution is resolved in the UI layer from `SessionRepository` and
+  `LaunchProfileRepository` (team/member names via
+  `sessionRosterMembers`); missing names fall back to ids. This does not
+  change the foundation event model.
+
+### Aggregation
+
+Pure functions in `services/usage/usage_aggregator.dart`:
+
+- `freshInput = inputSemantics == fresh
+    ? inputTokens
+    : max(0, inputTokens - cacheReadTokens - cacheCreationTokens)`.
+- `total = freshInput + outputTokens + cacheReadTokens +
+  cacheCreationTokens`; cache is never double-counted.
+- `requests` = latest events in range; `sessions` = distinct `sessionId`.
+- Range uses `timestampMs`; CLI filter uses `cli`; grouping is
+  session/member/model/CLI. Search applies to table rows only, not to summary
+  cards.
+- Partial (`isFinal == false`) events participate only until a final
+  correction supersedes them; the store already returns one latest event per
+  `requestId`.
+- No cost/pricing is computed. `costMicroUsd` is not displayed in this slice.
+
+### L10n and errors
+
+- Add keys only to `client/lib/l10n/app_en.arb` and `app_zh.arb`.
+- User-visible strings go through l10n; diagnostics go through `AppLogger`.
+- Sync errors show the affected CLI/source count and a retry action; details
+  stay in the cubit state for diagnostics.
+- The empty state offers a manual sync and a filter reset.
 
 ## Error handling
 
@@ -425,6 +531,14 @@ possible.
    isolation.
 8. **Target provider**: Simple session, mixed seat, member without CLI,
    missing team profile (skip, no throw).
+9. **Aggregator**: fresh/total normalization, no double-counted cache, range
+   and CLI filters, group-by session/member/model/CLI, table-local search,
+   empty rows.
+10. **Cubit**: cached load, manual sync/reload, sync errors retained, filter
+    changes without rescanning.
+11. **Page/widget**: empty state, summary cards, group tabs, CLI/range filters,
+    sync button disabled while running, error banner.
+12. **Navigation**: sidebar row and `/home-v2?global=usage` deep link.
 
 Run via `cd client && dart run tool/run_tests.dart <paths>`, never
 `flutter test` directly.
@@ -444,12 +558,19 @@ Run via `cd client && dart run tool/run_tests.dart <paths>`, never
   detect columns, do not assume one layout.
 - **Claude non-final snapshots**: the upsert policy intentionally keeps a
   settled `isFinal` record over a larger partial one, matching cc-switch.
+- **UI attribution drift**: sessions/teams can be deleted while cached usage
+  remains. The aggregator must fall back to ids rather than throw; cached
+  events survive attribution changes.
+- **Remote JSONL reads**: the page loads the cached JSONL only; manual sync
+  may still incur SFTP latency. Keep the sync button cancellable by timeout at
+  the source level and never block the initial paint.
 
 ## Follow-ups
 
 1. Periodic sync + manual refresh trigger.
 2. Cost engine and pricing table.
 3. Global-roots mode for CLI sessions started outside TeamPilot.
-4. Usage page, per-session header meter, team/member rollups.
+4. Per-session header meter and per-message inline usage.
 5. ACP `usage_update` live context window and cost.
 6. Optional local SQLite store behind the same port.
+7. Cache-write column and model/provider cost breakdown in the UI.
