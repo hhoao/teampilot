@@ -26,6 +26,14 @@ abstract class AcpAgentTranslator {
   /// ([acpStopCancelled] / [acpStopAuthRequired]).
   String translateStopError(Object error, {required bool suppressAbort});
 
+  /// Map a non-error stop carrying agent-private `_meta` to a display string
+  /// / sentinel, or null to keep the plain stop reason.
+  ///
+  /// CodeBuddy reports authentication failures as `stopReason: refusal` with
+  /// `_meta["codebuddy.ai/errorMessage"]` instead of a JSON-RPC error.
+  String? translateStopMeta(StopReason reason, Map<String, Object?> meta) =>
+      null;
+
   /// Wire JSON for `session/request_permission`.
   ///
   /// ACP nests the outcome: `{outcome: {outcome, optionId}}` (see

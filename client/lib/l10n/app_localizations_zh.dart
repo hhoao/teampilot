@@ -5735,17 +5735,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appProviderToolGemini => 'Gemini CLI';
 
   @override
-  String get appProviderToolCodebuddy => 'CodeBuddy / WorkBuddy';
+  String get appProviderToolCodebuddy => 'CodeBuddy';
 
   @override
   String get codebuddyCredentialsLogin => '登录';
 
   @override
-  String get codebuddyCredentialsLoginTitle => '登录 CodeBuddy / WorkBuddy';
+  String get codebuddyCredentialsLoginTitle => '登录 CodeBuddy';
 
   @override
   String get codebuddyCredentialsLoginIntro =>
-      '在下方终端完成登录。CLI 可能会打开浏览器；如果没有打开，请手动访问它输出的链接。也可以在这里切换账号。';
+      '在下方终端完成登录。如果出现登录方式选择，请先选择（如微信 / 企业域名）。CLI 可能会打开浏览器；如果没有打开，请手动访问它输出的链接。也可以在这里切换账号。';
 
   @override
   String get codebuddyCredentialsLoginStarting => '正在启动 CodeBuddy…';
@@ -5771,7 +5771,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get codebuddyCredentialsSendLogin => '发送 /login';
 
   @override
-  String get codebuddyCredentialsSignedIn => '已登录 CodeBuddy / WorkBuddy。';
+  String get codebuddyCredentialsSignedIn => '已登录 CodeBuddy。';
 
   @override
   String get codebuddyCredentialsActionFailed => 'CodeBuddy 登录失败。';

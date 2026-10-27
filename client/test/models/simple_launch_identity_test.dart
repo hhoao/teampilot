@@ -60,6 +60,7 @@ void main() {
       CliTool.opencode => 'opencode',
       CliTool.flashskyai => null,
       CliTool.gemini => 'google',
+      CliTool.codebuddy => 'codebuddy',
     };
     expect(
       SimpleLaunchIdentity.resolve(

@@ -576,7 +576,15 @@ class AcpAgentSession {
       final response = await _client.client.prompt(
         acpd.PromptRequest.text(sessionId, text),
       );
-      _emit(AcpStop(kind: _mapStopReason(response.stopReason)));
+      final metaError = _connection.translator.translateStopMeta(
+        response.stopReason,
+        response.meta,
+      );
+      _emit(
+        metaError != null
+            ? AcpStop(kind: AcpStopKind.error, message: metaError)
+            : AcpStop(kind: _mapStopReason(response.stopReason)),
+      );
     } on Object catch (error) {
       final translated = _connection.translator.translateStopError(
         error,

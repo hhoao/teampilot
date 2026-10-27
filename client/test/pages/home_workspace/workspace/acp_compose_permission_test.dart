@@ -29,6 +29,24 @@ void main() {
       expect(
         willLaunchPersonalAcp(
           isPersonal: true,
+          cli: CliTool.codebuddy,
+          requested: false,
+        ),
+        isTrue,
+        reason: 'CodeBuddy is ACP-only on desktop',
+      );
+      expect(
+        willLaunchPersonalAcp(
+          isPersonal: true,
+          cli: CliTool.codebuddy,
+          requested: true,
+          isAndroidOverride: true,
+        ),
+        isFalse,
+      );
+      expect(
+        willLaunchPersonalAcp(
+          isPersonal: true,
           cli: CliTool.claude,
           requested: true,
         ),

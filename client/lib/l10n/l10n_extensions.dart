@@ -43,6 +43,7 @@ extension AppLocalizationsX on AppLocalizations {
       CliTool.opencode => appProviderToolOpencode,
       CliTool.cursor => appProviderToolCursor,
       CliTool.gemini => appProviderToolGemini,
+      CliTool.codebuddy => appProviderToolCodebuddy,
     };
   }
 

@@ -61,6 +61,10 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'SessionStart',
       ),
+      CliTool.codebuddy: HookCliSupport(
+        supported: true,
+        nativeEvent: 'SessionStart',
+      ),
       CliTool.flashskyai: HookCliSupport(
         supported: true,
         nativeEvent: 'SessionStart',
@@ -79,6 +83,10 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'SessionEnd',
       ),
+      CliTool.codebuddy: HookCliSupport(
+        supported: true,
+        nativeEvent: 'SessionEnd',
+      ),
       CliTool.flashskyai: HookCliSupport(
         supported: true,
         nativeEvent: 'SessionEnd',
@@ -91,6 +99,10 @@ abstract final class HookEventCapability {
     },
     HookEvent.userPromptSubmit: {
       CliTool.claude: HookCliSupport(
+        supported: true,
+        nativeEvent: 'UserPromptSubmit',
+      ),
+      CliTool.codebuddy: HookCliSupport(
         supported: true,
         nativeEvent: 'UserPromptSubmit',
       ),
@@ -117,6 +129,10 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'PreToolUse',
       ),
+      CliTool.codebuddy: HookCliSupport(
+        supported: true,
+        nativeEvent: 'PreToolUse',
+      ),
       CliTool.flashskyai: HookCliSupport(
         supported: true,
         nativeEvent: 'PreToolUse',
@@ -134,6 +150,10 @@ abstract final class HookEventCapability {
     },
     HookEvent.postToolUse: {
       CliTool.claude: HookCliSupport(
+        supported: true,
+        nativeEvent: 'PostToolUse',
+      ),
+      CliTool.codebuddy: HookCliSupport(
         supported: true,
         nativeEvent: 'PostToolUse',
       ),
@@ -160,6 +180,10 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'PostToolUseFailure',
       ),
+      CliTool.codebuddy: HookCliSupport(
+        supported: true,
+        nativeEvent: 'PostToolUseFailure',
+      ),
       CliTool.flashskyai: HookCliSupport(
         supported: true,
         nativeEvent: 'PostToolUseFailure',
@@ -175,6 +199,10 @@ abstract final class HookEventCapability {
     },
     HookEvent.permissionRequest: {
       CliTool.claude: HookCliSupport(
+        supported: true,
+        nativeEvent: 'PermissionRequest',
+      ),
+      CliTool.codebuddy: HookCliSupport(
         supported: true,
         nativeEvent: 'PermissionRequest',
       ),
@@ -194,6 +222,7 @@ abstract final class HookEventCapability {
     },
     HookEvent.stop: {
       CliTool.claude: HookCliSupport(supported: true, nativeEvent: 'Stop'),
+      CliTool.codebuddy: HookCliSupport(supported: true, nativeEvent: 'Stop'),
       CliTool.flashskyai: HookCliSupport(supported: true, nativeEvent: 'Stop'),
       CliTool.codex: HookCliSupport(supported: true, nativeEvent: 'Stop'),
       CliTool.cursor: HookCliSupport(supported: true, nativeEvent: 'stop'),
@@ -205,6 +234,10 @@ abstract final class HookEventCapability {
     },
     HookEvent.stopFailure: {
       CliTool.claude: HookCliSupport(
+        supported: true,
+        nativeEvent: 'StopFailure',
+      ),
+      CliTool.codebuddy: HookCliSupport(
         supported: true,
         nativeEvent: 'StopFailure',
       ),
@@ -253,6 +286,10 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'SubagentStop',
       ),
+      CliTool.codebuddy: HookCliSupport(
+        supported: true,
+        nativeEvent: 'SubagentStop',
+      ),
       CliTool.flashskyai: HookCliSupport(
         supported: true,
         nativeEvent: 'SubagentStop',
@@ -271,6 +308,10 @@ abstract final class HookEventCapability {
         supported: true,
         nativeEvent: 'PreCompact',
       ),
+      CliTool.codebuddy: HookCliSupport(
+        supported: true,
+        nativeEvent: 'PreCompact',
+      ),
       CliTool.flashskyai: HookCliSupport(
         supported: true,
         nativeEvent: 'PreCompact',
@@ -283,6 +324,10 @@ abstract final class HookEventCapability {
     },
     HookEvent.notification: {
       CliTool.claude: HookCliSupport(
+        supported: true,
+        nativeEvent: 'Notification',
+      ),
+      CliTool.codebuddy: HookCliSupport(
         supported: true,
         nativeEvent: 'Notification',
       ),

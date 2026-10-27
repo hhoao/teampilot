@@ -25,14 +25,17 @@ import 'claude_acp_launch_switch.dart';
 bool _isAndroid(bool? isAndroidOverride) =>
     isAndroidOverride ?? Platform.isAndroid;
 
-/// Gemini personal desktop always launches ACP; otherwise [resolveLaunchAcp].
+/// ACP-only personal desktop CLIs (Gemini, CodeBuddy) always launch
+/// ACP; otherwise [resolveLaunchAcp].
 bool willLaunchPersonalAcp({
   required bool isPersonal,
   required CliTool? cli,
   required bool requested,
   bool? isAndroidOverride,
 }) {
-  if (isPersonal && cli == CliTool.gemini && !_isAndroid(isAndroidOverride)) {
+  if (isPersonal &&
+      (cli == CliTool.gemini || cli == CliTool.codebuddy) &&
+      !_isAndroid(isAndroidOverride)) {
     return true;
   }
   return resolveLaunchAcp(

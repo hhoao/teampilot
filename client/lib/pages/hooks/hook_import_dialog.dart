@@ -151,6 +151,7 @@ class _HookImportDialogState extends State<HookImportDialog> {
             key: const Key('hook-import-cli'),
             items: const [
               CliTool.claude,
+              CliTool.codebuddy,
               CliTool.flashskyai,
               CliTool.codex,
               CliTool.cursor,

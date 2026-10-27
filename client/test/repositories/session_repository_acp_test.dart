@@ -127,6 +127,15 @@ void main() {
     expect(session.acp, isTrue);
   });
 
+  test('personal CodeBuddy persists true even when acp is false', () async {
+    final session = (await repo.createSession(
+      workspaceId,
+      cli: CliTool.codebuddy,
+      acp: false,
+    )).session;
+    expect(session.acp, isTrue);
+  });
+
   test(
     'personal Gemini acp false + acpPermission ask persists ask',
     () async {

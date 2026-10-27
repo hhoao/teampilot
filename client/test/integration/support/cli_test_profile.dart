@@ -145,7 +145,7 @@ final class CliTestProfile {
       haystack.contains(marker);
 }
 
-/// Factory for the five launch-supported CLIs.
+/// Factory for the launch-supported CLIs.
 abstract final class CliTestProfiles {
   CliTestProfiles._();
 
@@ -157,6 +157,7 @@ abstract final class CliTestProfiles {
       CliTool.opencode => _opencode,
       CliTool.cursor => _cursor,
       CliTool.gemini => _gemini,
+      CliTool.codebuddy => _codebuddy,
     };
   }
 
@@ -285,6 +286,22 @@ abstract final class CliTestProfiles {
     gatewayRedirectNotes:
         'N/A: gemini targets ACP (tasks 4-9), not the mock-gateway matrix. '
         'L2 cells skip until an ACP harness lands.',
+  );
+
+  /// CodeBuddy is ACP-only (no PTY), so like Gemini it is outside
+  /// the mock-gateway matrix until an ACP harness lands.
+  static final CliTestProfile _codebuddy = CliTestProfile(
+    tool: CliTool.codebuddy,
+    wire: CliTestWire.openaiChat,
+    binaryName: 'codebuddy',
+    resolveBinary: () => whichOnPath('codebuddy'),
+    toolName: mapShortMcpToolRef,
+    assistantVisibleMarkers: const [markA1, markA2, markA3],
+    bootToPrompt: bootToPromptStub,
+    dismissBootGates: dismissBootGatesStub,
+    gatewayRedirectNotes:
+        'N/A: codebuddy targets ACP (`codebuddy --acp`), not the '
+        'mock-gateway matrix.',
   );
 }
 

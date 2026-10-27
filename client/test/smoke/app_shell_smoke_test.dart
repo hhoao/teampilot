@@ -208,7 +208,32 @@ void main() {
 
     expect(find.byKey(AppKeys.llmProviderList), findsOneWidget);
     expect(find.text('Add Provider'), findsWidgets);
-    expect(find.text('Provider name'), findsOneWidget);
+    expect(find.text('Display name'), findsOneWidget);
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.byType(DraggableScrollableSheet), findsNothing);
+  });
+
+  testWidgets('desktop add codebuddy provider opens form in detail area', (
+    tester,
+  ) async {
+    final teamCubit = await createTeamCubitInTest(tester);
+    await pumpDesktopApp(tester, teamCubit);
+
+    appRouter.go('/providers/codebuddy');
+    await pumpPhaseTransitions(tester);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(AppKeys.llmProviderList),
+        matching: find.byIcon(Icons.add),
+      ),
+    );
+    await pumpPhaseTransitions(tester);
+    await tester.tap(find.text('Add Provider').last);
+    await pumpPhaseTransitions(tester);
+
+    expect(find.byKey(AppKeys.llmProviderList), findsOneWidget);
+    expect(find.text('Display name'), findsOneWidget);
     expect(find.byType(BottomSheet), findsNothing);
     expect(find.byType(DraggableScrollableSheet), findsNothing);
   });

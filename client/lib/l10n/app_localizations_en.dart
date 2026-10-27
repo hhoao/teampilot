@@ -5980,18 +5980,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appProviderToolGemini => 'Gemini CLI';
 
   @override
-  String get appProviderToolCodebuddy => 'CodeBuddy / WorkBuddy';
+  String get appProviderToolCodebuddy => 'CodeBuddy';
 
   @override
   String get codebuddyCredentialsLogin => 'Sign in';
 
   @override
-  String get codebuddyCredentialsLoginTitle =>
-      'Sign in to CodeBuddy / WorkBuddy';
+  String get codebuddyCredentialsLoginTitle => 'Sign in to CodeBuddy';
 
   @override
   String get codebuddyCredentialsLoginIntro =>
-      'Complete the sign-in in the terminal below. The CLI may open a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.';
+      'Complete the sign-in in the terminal below. If a login-method list appears, choose one first (e.g. WeChat / enterprise domain). The CLI may open a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.';
 
   @override
   String get codebuddyCredentialsLoginStarting => 'Starting CodeBuddy…';
@@ -6018,8 +6017,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get codebuddyCredentialsSendLogin => 'Send /login';
 
   @override
-  String get codebuddyCredentialsSignedIn =>
-      'Signed in to CodeBuddy / WorkBuddy.';
+  String get codebuddyCredentialsSignedIn => 'Signed in to CodeBuddy.';
 
   @override
   String get codebuddyCredentialsActionFailed => 'CodeBuddy sign-in failed.';

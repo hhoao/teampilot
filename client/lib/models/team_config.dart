@@ -22,7 +22,8 @@ enum CliTool {
   flashskyai('flashskyai'),
   opencode('opencode'),
   cursor('cursor'),
-  gemini('gemini');
+  gemini('gemini'),
+  codebuddy('codebuddy');
 
   const CliTool(this.value);
 

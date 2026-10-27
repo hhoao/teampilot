@@ -10649,7 +10649,7 @@ abstract class AppLocalizations {
   /// No description provided for @appProviderToolCodebuddy.
   ///
   /// In en, this message translates to:
-  /// **'CodeBuddy / WorkBuddy'**
+  /// **'CodeBuddy'**
   String get appProviderToolCodebuddy;
 
   /// No description provided for @codebuddyCredentialsLogin.
@@ -10661,13 +10661,13 @@ abstract class AppLocalizations {
   /// No description provided for @codebuddyCredentialsLoginTitle.
   ///
   /// In en, this message translates to:
-  /// **'Sign in to CodeBuddy / WorkBuddy'**
+  /// **'Sign in to CodeBuddy'**
   String get codebuddyCredentialsLoginTitle;
 
   /// No description provided for @codebuddyCredentialsLoginIntro.
   ///
   /// In en, this message translates to:
-  /// **'Complete the sign-in in the terminal below. The CLI may open a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.'**
+  /// **'Complete the sign-in in the terminal below. If a login-method list appears, choose one first (e.g. WeChat / enterprise domain). The CLI may open a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.'**
   String get codebuddyCredentialsLoginIntro;
 
   /// No description provided for @codebuddyCredentialsLoginStarting.
@@ -10715,7 +10715,7 @@ abstract class AppLocalizations {
   /// No description provided for @codebuddyCredentialsSignedIn.
   ///
   /// In en, this message translates to:
-  /// **'Signed in to CodeBuddy / WorkBuddy.'**
+  /// **'Signed in to CodeBuddy.'**
   String get codebuddyCredentialsSignedIn;
 
   /// No description provided for @codebuddyCredentialsActionFailed.

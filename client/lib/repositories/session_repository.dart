@@ -899,7 +899,9 @@ class SessionRepository {
                 )
               : workflowId.trim())
         : '';
-    final resolvedAcp = trimmedTeam.isEmpty && (acp || cli == CliTool.gemini);
+    final resolvedAcp =
+        trimmedTeam.isEmpty &&
+        (acp || cli == CliTool.gemini || cli == CliTool.codebuddy);
     final session = AppSession(
       sessionId: sessionId,
       workspaceId: workspaceId,

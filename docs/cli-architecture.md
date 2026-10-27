@@ -1,6 +1,6 @@
 # CLI Architecture
 
-TeamPilot 支持多个 CLI 工具（Claude Code、Cursor、Codex、OpenCode、FlashskyAI）。本文档定义 CLI 代码的组织规范、能力接口模式、以及新增 CLI 的完整流程。
+TeamPilot 支持多个 CLI 工具（Claude Code、Cursor、Codex、OpenCode、FlashskyAI、Gemini、CodeBuddy）。本文档定义 CLI 代码的组织规范、能力接口模式、以及新增 CLI 的完整流程。
 
 ## 目录结构
 
@@ -261,7 +261,8 @@ tool 列表。
 | `HeadlessCapability` | 无头运行（一次性调用 + 供给） |
 | `AiHistoryCapability` | transcript 定位/解析、会话恢复、tool call 解析器 |
 | `TerminalObservationContributor` | 可选；在 `CliToolDefinition.capabilities` 上用 `is` 扫描。PTY detect/scan/listen 注册到 `TerminalObservationBus`。`TerminalLaunchController` 中禁止 `if (cli == …)` |
-| `AcpCapability` | ACP spawn argv / env / translator. Optional. Claude/Codex use a separate adapter binary; Cursor/OpenCode/Gemini pass `cli acp` / `--acp`. |
+| `AcpCapability` | ACP spawn argv / env / translator. Optional. Claude/Codex use a separate adapter binary; Cursor/OpenCode/Gemini/CodeBuddy pass `cli acp` / `--acp`. |
+| `InteractiveCliLoginCapability` | Provider sign-in that only exists in the CLI's TUI (CodeBuddy `/login`): the credential bar opens the capability-built terminal dialog, then records completion. |
 | `AcpSettingsCapability` | Settings extras: `usesSeparateAdapter`, adapter installer, `showsPersonalAcpSwitch`. Gemini omits this (no personal switch). |
 | 团队能力细分 | `TeamBehaviorCapability.supportsNativeTeam`（仅 claude、flashskyai）、`agentPresetStyle`（agent 预设） |
 

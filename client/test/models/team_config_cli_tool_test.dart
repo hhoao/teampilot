@@ -10,7 +10,13 @@ void main() {
     expect(CliTool.tryParse('not-a-cli'), isNull);
   });
 
-  test('CliTool.values length is 6 after adding gemini', () {
-    expect(CliTool.values.length, 6);
+  test('CliTool has a codebuddy value that parses round-trip', () {
+    expect(CliTool.codebuddy.value, 'codebuddy');
+    expect(CliTool.tryParse('codebuddy'), CliTool.codebuddy);
+    expect(CliTool.tryParse('CodeBuddy'), CliTool.codebuddy);
+  });
+
+  test('CliTool.values length is 7 after adding codebuddy', () {
+    expect(CliTool.values.length, 7);
   });
 }

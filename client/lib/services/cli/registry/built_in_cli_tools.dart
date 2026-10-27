@@ -33,6 +33,8 @@ import 'cli_bootstrap.dart';
 import 'cli_capability.dart';
 import 'cli_tool_registry.dart';
 import '../claude/claude_tool.dart';
+import '../codebuddy/codebuddy_tool.dart';
+import '../codebuddy/capabilities/provider.dart';
 import '../codex/codex_tool.dart';
 import '../cursor/cursor_tool.dart';
 import '../flashskyai/flashskyai_tool.dart';
@@ -116,6 +118,14 @@ void registerBuiltInCliTools(
       // Non-const when a bootstrap entry supplies the credential source;
       // the pre-configure default omits GEMINI_API_KEY from the agent env.
       acp: GeminiAcpCapability(credentialSource: geminiEntry?.credentialSource),
+    ),
+  );
+
+  registry.register(
+    CodebuddyCliTool(
+      // Provider catalog access needs home storage at launch time; the
+      // pre-configure registry (tests / arg assembly) keeps the const default.
+      provider: CodebuddyProviderCapability(storage: storage),
     ),
   );
 

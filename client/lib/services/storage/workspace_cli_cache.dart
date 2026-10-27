@@ -88,6 +88,9 @@ final class WorkspaceCliCache {
     ],
     // gemini needs no shared-cache mirror: its ACP sessions run terminal-less
     // with an isolated sessionToolDir and read no global cache dir.
-    CliTool.claude || CliTool.flashskyai || CliTool.gemini => const [],
+    CliTool.claude ||
+    CliTool.flashskyai ||
+    CliTool.gemini ||
+    CliTool.codebuddy => const [],
   };
 }

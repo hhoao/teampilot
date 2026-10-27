@@ -45,7 +45,9 @@ AppSession buildProvisionalSession({
   final resolvedAcp =
       trimmedTeam.isEmpty &&
       isPersonal &&
-      ((acp ?? false) || (identity?.cli ?? cli) == CliTool.gemini);
+      ((acp ?? false) ||
+          (identity?.cli ?? cli) == CliTool.gemini ||
+          (identity?.cli ?? cli) == CliTool.codebuddy);
 
   return AppSession(
     sessionId: sessionId,

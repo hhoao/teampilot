@@ -183,7 +183,10 @@ class AppSession {
     LaunchSecurityPolicy acpPermission = LaunchSecurityPolicy.fullAccess,
   }) {
     final trimmedTeam = sessionTeam.trim();
-    final resolvedAcp = acp ?? (trimmedTeam.isEmpty && cli == CliTool.gemini);
+    final resolvedAcp =
+        acp ??
+        (trimmedTeam.isEmpty &&
+            (cli == CliTool.gemini || cli == CliTool.codebuddy));
     return AppSession._(
       sessionId: sessionId,
       workspaceId: workspaceId,

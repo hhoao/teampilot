@@ -8,9 +8,12 @@ import 'package:shared_ui/shared_ui.dart';
 import '../app_toast/app_toast.dart';
 
 import '../../cubits/app_provider_cubit.dart';
+import '../../cubits/session_preferences_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/credential_action_result.dart';
+import '../../services/cli/registry/capabilities/cli_executable_capability.dart';
+import '../../services/cli/registry/capabilities/interactive_login_capability.dart';
 import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../home_storage_scope.dart';
@@ -205,6 +208,15 @@ class _ProviderCredentialActionBarState
         return;
       }
 
+      if (kind == ProviderCredentialActionKind.login &&
+          capability is InteractiveCliLoginCapability) {
+        final completed = await _runInteractiveLogin(
+          capability as InteractiveCliLoginCapability,
+          provider,
+        );
+        if (completed != true || !mounted) return;
+      }
+
       final cubit = context.read<AppProviderCubit>();
       final actionResult = await cubit.runProviderCredentialAction(
         provider: provider,
@@ -217,6 +229,44 @@ class _ProviderCredentialActionBarState
     } finally {
       if (mounted) setState(() => _running = false);
     }
+  }
+
+  /// Shows the CLI's own login terminal (no non-interactive login command).
+  Future<bool?> _runInteractiveLogin(
+    InteractiveCliLoginCapability capability,
+    AppProviderConfig provider,
+  ) {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => capability.buildLoginDialog(
+        context,
+        provider: provider,
+        executable: _loginExecutable(capability),
+      ),
+    );
+  }
+
+  /// Configured executable path wins over the bare CLI name.
+  String _loginExecutable(InteractiveCliLoginCapability capability) {
+    final executable = CliToolRegistryScope.of(
+      context,
+    ).capability<CliExecutableCapability>(widget.provider.cli);
+    final key = executable?.preferencesPathKey ?? widget.provider.cli.value;
+    try {
+      final stored =
+          context
+              .read<SessionPreferencesCubit>()
+              .state
+              .preferences
+              .cliExecutablePaths[key]
+              ?.trim() ??
+          '';
+      if (stored.isNotEmpty) return stored;
+    } on ProviderNotFoundException {
+      // Preferences are not in scope (tests / standalone form) — PATH lookup.
+    }
+    return capability.loginExecutableName;
   }
 
   Future<void> _importFile(AppProviderConfig provider) async {
@@ -418,6 +468,7 @@ String _sectionTitle(AppLocalizations l10n, CliTool cli) {
     CliTool.opencode => l10n.appProviderToolOpencode,
     CliTool.flashskyai => l10n.appProviderToolFlashskyai,
     CliTool.gemini => l10n.appProviderToolGemini,
+    CliTool.codebuddy => l10n.appProviderToolCodebuddy,
   };
 }
 
@@ -434,6 +485,7 @@ String _actionLabel(
       CliTool.opencode => l10n.opencodeCredentialsLogin,
       CliTool.flashskyai => l10n.appProviderToolFlashskyai,
       CliTool.gemini => l10n.appProviderToolGemini,
+      CliTool.codebuddy => l10n.codebuddyCredentialsLogin,
     },
     ProviderCredentialActionKind.importGlobal => switch (cli) {
       CliTool.claude => l10n.claudeOfficialCredentialsImportGlobal,
@@ -442,6 +494,7 @@ String _actionLabel(
       CliTool.opencode => l10n.opencodeCredentialsImportGlobal,
       CliTool.flashskyai => l10n.appProviderToolFlashskyai,
       CliTool.gemini => l10n.appProviderToolGemini,
+      CliTool.codebuddy => l10n.appProviderToolCodebuddy,
     },
     ProviderCredentialActionKind.importFile => switch (cli) {
       CliTool.claude => l10n.claudeOfficialCredentialsImportFile,
@@ -450,6 +503,7 @@ String _actionLabel(
       CliTool.opencode => l10n.opencodeCredentialsImportFile,
       CliTool.flashskyai => l10n.appProviderToolFlashskyai,
       CliTool.gemini => l10n.appProviderToolGemini,
+      CliTool.codebuddy => l10n.appProviderToolCodebuddy,
     },
     ProviderCredentialActionKind.importDirectory =>
       l10n.cursorCredentialsImportFile,
@@ -460,6 +514,7 @@ String _actionLabel(
       CliTool.opencode => l10n.opencodeCredentialsRevoke,
       CliTool.flashskyai => l10n.appProviderToolFlashskyai,
       CliTool.gemini => l10n.appProviderToolGemini,
+      CliTool.codebuddy => l10n.appProviderToolCodebuddy,
     },
   };
 }
@@ -485,6 +540,7 @@ String _revokeConfirmMessage(
     CliTool.opencode => l10n.opencodeCredentialsRevokeConfirm(provider.name),
     CliTool.flashskyai => l10n.appProviderToolFlashskyai,
     CliTool.gemini => l10n.appProviderToolGemini,
+    CliTool.codebuddy => l10n.appProviderToolCodebuddy,
   };
 }
 
