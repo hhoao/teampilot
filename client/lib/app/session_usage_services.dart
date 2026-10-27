@@ -65,33 +65,33 @@ final class SessionUsageServices {
     final loadSessionsFn = loadSessions ?? defaultLoadSessions;
     final loadTeamsFn = loadTeams ?? defaultLoadTeams;
 
-    final store = JsonUsageStore(
-      fs: storage.fs,
-      filePath: storage.paths.usageEventsFile,
-    );
-    final cursors = JsonUsageCursorStore(
-      fs: storage.fs,
-      filePath: storage.paths.usageCursorsFile,
-    );
-    final pricingStore = JsonUsagePricingStore(
-      fs: storage.fs,
-      filePath: storage.paths.usagePricingFile,
-    );
+    String? planeKey;
+    _PlaneUsageStores? planeStores;
 
-    SessionUsageSyncService newSync() => SessionUsageSyncService(
-      targets: TeamPilotUsageScanTargetProvider(
-        storage: storage,
-        loadSessions: loadSessionsFn,
-        loadTeams: loadTeamsFn,
-      ),
-      store: store,
-      cursors: cursors,
-      registry: registryForPlane,
-    );
+    _PlaneUsageStores currentStores() {
+      final key = '${storage.generation}:${storage.paths.usageEventsFile}';
+      if (planeStores == null || planeKey != key) {
+        planeKey = key;
+        planeStores = _PlaneUsageStores(storage);
+      }
+      return planeStores!;
+    }
 
-    Future<void> maybeCompact() async {
+    SessionUsageSyncService newSync(_PlaneUsageStores stores) =>
+        SessionUsageSyncService(
+          targets: TeamPilotUsageScanTargetProvider(
+            storage: storage,
+            loadSessions: loadSessionsFn,
+            loadTeams: loadTeamsFn,
+          ),
+          store: stores.store,
+          cursors: stores.cursors,
+          registry: registryForPlane,
+        );
+
+    Future<void> maybeCompact(_PlaneUsageStores stores) async {
       try {
-        await store.maybeCompact();
+        await stores.store.maybeCompact();
       } on Object {
         // Maintenance is best-effort; the sync result remains authoritative.
       }
@@ -102,14 +102,15 @@ final class SessionUsageServices {
       final progress = StreamController<UsageSyncProgress>.broadcast(
         sync: true,
       );
-      final service = newSync();
+      final stores = currentStores();
+      final service = newSync(stores);
       final done =
           Future.microtask(
                 () =>
                     service.syncAll(control: control, onProgress: progress.add),
               )
               .then((result) async {
-                await maybeCompact();
+                await maybeCompact(stores);
                 return result;
               })
               .whenComplete(progress.close);
@@ -121,22 +122,43 @@ final class SessionUsageServices {
     }
 
     Future<UsageSyncResult> syncAll() async {
-      final result = await newSync().syncAll();
-      await maybeCompact();
+      final stores = currentStores();
+      final result = await newSync(stores).syncAll();
+      await maybeCompact(stores);
       return result;
     }
 
     return SessionUsageServices._(
       syncAll: syncAll,
       startSync: startSync,
-      loadEvents: store.readLatest,
-      loadPricing: pricingStore.load,
-      savePricing: pricingStore.save,
-      loadUsageStats: store.stats,
+      loadEvents: () => currentStores().store.readLatest(),
+      loadPricing: () => currentStores().pricing.load(),
+      savePricing: (rules) => currentStores().pricing.save(rules),
+      loadUsageStats: () => currentStores().store.stats(),
       compactUsage: ({int? retainAfterMs}) =>
-          store.compact(retainAfterMs: retainAfterMs),
+          currentStores().store.compact(retainAfterMs: retainAfterMs),
       loadSessions: loadSessionsFn,
       loadTeams: loadTeamsFn,
     );
   }
+}
+
+final class _PlaneUsageStores {
+  _PlaneUsageStores(HomeStorage storage)
+    : store = JsonUsageStore(
+        fs: storage.fs,
+        filePath: storage.paths.usageEventsFile,
+      ),
+      cursors = JsonUsageCursorStore(
+        fs: storage.fs,
+        filePath: storage.paths.usageCursorsFile,
+      ),
+      pricing = JsonUsagePricingStore(
+        fs: storage.fs,
+        filePath: storage.paths.usagePricingFile,
+      );
+
+  final JsonUsageStore store;
+  final JsonUsageCursorStore cursors;
+  final JsonUsagePricingStore pricing;
 }
