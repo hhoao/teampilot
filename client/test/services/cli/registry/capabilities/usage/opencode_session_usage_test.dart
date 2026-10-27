@@ -48,6 +48,7 @@ void main() {
     required Map<String, Object?> tokens,
     String model = 'claude-sonnet-4',
     int timeCreated = 1000,
+    int? timeUpdated,
     double? cost,
   }) {
     final db = sqlite3.open(dbPath);
@@ -69,7 +70,7 @@ void main() {
           'assistant',
           seq,
           timeCreated,
-          timeCreated,
+          timeUpdated ?? timeCreated,
           jsonEncode({
             'role': 'assistant',
             'model': {'id': model},
@@ -194,5 +195,51 @@ void main() {
     expect(first.events, hasLength(1));
     expect(second.events, isEmpty);
     expect(second.nextCursor.storeToken, first.nextCursor.storeToken);
+  });
+
+  test('reads only new and updated messages after the snapshot', () async {
+    writeAssistant(id: 'msg_1', seq: 1, tokens: {'input': 10, 'output': 2});
+    final source =
+        (await const OpencodeSessionUsageCapability().discoverUsageSources(
+          ctx(),
+        )).single;
+    final first = await const OpencodeSessionUsageCapability().scanUsageSource(
+      ctx: ctx(),
+      source: source,
+      cursor: null,
+    );
+
+    writeAssistant(
+      id: 'msg_2',
+      seq: 2,
+      timeCreated: 2000,
+      tokens: {'input': 20, 'output': 3},
+    );
+    final second = await const OpencodeSessionUsageCapability().scanUsageSource(
+      ctx: ctx(),
+      source: source,
+      cursor: first.nextCursor,
+    );
+
+    expect(second.events, hasLength(1));
+    expect(second.events.single.requestId, 'opencode:msg_2');
+
+    writeAssistant(
+      id: 'msg_1',
+      seq: 1,
+      timeCreated: 1000,
+      timeUpdated: 3000,
+      tokens: {'input': 10, 'output': 4},
+      cost: 0.5,
+    );
+    final third = await const OpencodeSessionUsageCapability().scanUsageSource(
+      ctx: ctx(),
+      source: source,
+      cursor: second.nextCursor,
+    );
+
+    expect(third.events, hasLength(1));
+    expect(third.events.single.requestId, 'opencode:msg_1');
+    expect(third.events.single.costMicroUsd, 500000);
   });
 }

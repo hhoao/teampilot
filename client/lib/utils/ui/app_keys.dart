@@ -347,6 +347,15 @@ class AppKeys {
   static const sessionUsagePricingResetButton = Key(
     'session-usage-pricing-reset',
   );
+  static const sessionUsageMaintenanceButton = Key(
+    'session-usage-maintenance',
+  );
+  static const sessionUsageMaintenanceDialog = Key(
+    'session-usage-maintenance-dialog',
+  );
+  static const sessionUsageCompactButton = Key(
+    'session-usage-compact',
+  );
   static const pluginsWorkspace = Key('plugins-workspace');
   static const mcpWorkspace = Key('mcp-workspace');
   static const mcpFormDetail = Key('mcp-form-detail');

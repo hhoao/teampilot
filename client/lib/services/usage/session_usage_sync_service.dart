@@ -29,6 +29,7 @@ class UsageSyncResult {
     this.skipped = 0,
     this.errors = const [],
     this.cancelled = false,
+    this.prunedCursors = 0,
   });
 
   final int targetsScanned;
@@ -38,6 +39,7 @@ class UsageSyncResult {
   final int skipped;
   final List<UsageSyncError> errors;
   final bool cancelled;
+  final int prunedCursors;
 }
 
 final class UsageSyncHandle {
@@ -217,6 +219,18 @@ class SessionUsageSyncService {
     }
 
     await Future.wait([for (var i = 0; i < workerCount; i++) worker()]);
+
+    var prunedCursors = 0;
+    if (!control.isCancelled && errors.isEmpty && targets.isNotEmpty) {
+      try {
+        prunedCursors = await _cursors.prune(seenSources);
+      } on Object catch (error) {
+        errors.add(
+          UsageSyncError(sourceId: '*', message: 'prune failed: $error'),
+        );
+      }
+    }
+
     report();
 
     return UsageSyncResult(
@@ -227,6 +241,7 @@ class SessionUsageSyncService {
       skipped: skipped,
       errors: List.unmodifiable(errors),
       cancelled: control.isCancelled,
+      prunedCursors: prunedCursors,
     );
   }
 }

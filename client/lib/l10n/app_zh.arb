@@ -1586,7 +1586,6 @@
   "addProvider": "添加提供商",
   "providerName": "提供商名称",
   "appProviderDisplayName": "显示名称",
-  "appProviderDisplayNameHint": "在列表和预设中展示，用于区分账户；不会改变内部 id。",
   "appProviderInternalIdPreview": "内部 id：{id}",
   "@appProviderInternalIdPreview": {
     "placeholders": {
@@ -1595,8 +1594,7 @@
       }
     }
   },
-  "appProviderOpencodeSubscription": "OpenCode 线路键",
-  "appProviderOpencodeSubscriptionHint": "写入 opencode.json 的 provider 命名空间（如 opencode-go）。多个 TeamPilot 账户可共用同一键。",
+  "appProviderOpencodeSubscription": "订阅",
   "renameProviderName": "修改名称",
   "renameProviderTitle": "修改提供商名称",
   "deleteProvider": "删除提供商",
@@ -4242,6 +4240,25 @@
   "sessionUsagePricingCorrupt": "定价文件无法读取，已使用内置价格。",
   "sessionUsagePricingEmpty": "没有自定义规则，当前使用内置价格。",
   "sessionUsagePricingDelete": "删除",
+  "sessionUsageStorage": "存储",
+  "sessionUsageMaintenanceTitle": "用量存储",
+  "sessionUsageMaintenanceLines": "{lines} 行 · {events} 条事件",
+  "@sessionUsageMaintenanceLines": {
+    "placeholders": {
+      "lines": { "type": "int" },
+      "events": { "type": "int" }
+    }
+  },
+  "sessionUsageMaintenanceSize": "{size} KB",
+  "@sessionUsageMaintenanceSize": {
+    "placeholders": {
+      "size": { "type": "String" }
+    }
+  },
+  "sessionUsageMaintenanceCompact": "压缩事件",
+  "sessionUsageMaintenanceCompactHint": "合并被覆盖的历史修订，保留当前事件。",
+  "sessionUsageMaintenanceCompacted": "用量存储已压缩。",
+  "sessionUsageMaintenanceFailed": "用量存储压缩失败。",
   "sessionUsageFooterJsonl": "JSONL 只读",
   "sessionUsageFooterManual": "自动 + 手动同步",
   "sessionUsageSyncedToast": "用量同步完成",

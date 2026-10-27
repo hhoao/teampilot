@@ -6356,12 +6356,6 @@ abstract class AppLocalizations {
   /// **'Display name'**
   String get appProviderDisplayName;
 
-  /// No description provided for @appProviderDisplayNameHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Label for this account in lists and presets. Does not change the internal id.'**
-  String get appProviderDisplayNameHint;
-
   /// No description provided for @appProviderInternalIdPreview.
   ///
   /// In en, this message translates to:
@@ -6371,14 +6365,8 @@ abstract class AppLocalizations {
   /// No description provided for @appProviderOpencodeSubscription.
   ///
   /// In en, this message translates to:
-  /// **'OpenCode provider key'**
+  /// **'Subscription'**
   String get appProviderOpencodeSubscription;
-
-  /// No description provided for @appProviderOpencodeSubscriptionHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Namespace in opencode.json (e.g. opencode-go). Multiple TeamPilot accounts can share the same key.'**
-  String get appProviderOpencodeSubscriptionHint;
 
   /// No description provided for @renameProviderName.
   ///
@@ -17293,6 +17281,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete'**
   String get sessionUsagePricingDelete;
+
+  /// No description provided for @sessionUsageStorage.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage'**
+  String get sessionUsageStorage;
+
+  /// No description provided for @sessionUsageMaintenanceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage storage'**
+  String get sessionUsageMaintenanceTitle;
+
+  /// No description provided for @sessionUsageMaintenanceLines.
+  ///
+  /// In en, this message translates to:
+  /// **'{lines} lines · {events} events'**
+  String sessionUsageMaintenanceLines(int lines, int events);
+
+  /// No description provided for @sessionUsageMaintenanceSize.
+  ///
+  /// In en, this message translates to:
+  /// **'{size} KB'**
+  String sessionUsageMaintenanceSize(String size);
+
+  /// No description provided for @sessionUsageMaintenanceCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact events'**
+  String get sessionUsageMaintenanceCompact;
+
+  /// No description provided for @sessionUsageMaintenanceCompactHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge superseded revisions. Current events are kept.'**
+  String get sessionUsageMaintenanceCompactHint;
+
+  /// No description provided for @sessionUsageMaintenanceCompacted.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage storage compacted.'**
+  String get sessionUsageMaintenanceCompacted;
+
+  /// No description provided for @sessionUsageMaintenanceFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t compact usage storage.'**
+  String get sessionUsageMaintenanceFailed;
 
   /// No description provided for @sessionUsageFooterJsonl.
   ///

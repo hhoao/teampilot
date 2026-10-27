@@ -3560,20 +3560,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appProviderDisplayName => 'Display name';
 
   @override
-  String get appProviderDisplayNameHint =>
-      'Label for this account in lists and presets. Does not change the internal id.';
-
-  @override
   String appProviderInternalIdPreview(String id) {
     return 'Internal id: $id';
   }
 
   @override
-  String get appProviderOpencodeSubscription => 'OpenCode provider key';
-
-  @override
-  String get appProviderOpencodeSubscriptionHint =>
-      'Namespace in opencode.json (e.g. opencode-go). Multiple TeamPilot accounts can share the same key.';
+  String get appProviderOpencodeSubscription => 'Subscription';
 
   @override
   String get renameProviderName => 'Rename';
@@ -9754,6 +9746,36 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionUsagePricingDelete => 'Delete';
+
+  @override
+  String get sessionUsageStorage => 'Storage';
+
+  @override
+  String get sessionUsageMaintenanceTitle => 'Usage storage';
+
+  @override
+  String sessionUsageMaintenanceLines(int lines, int events) {
+    return '$lines lines · $events events';
+  }
+
+  @override
+  String sessionUsageMaintenanceSize(String size) {
+    return '$size KB';
+  }
+
+  @override
+  String get sessionUsageMaintenanceCompact => 'Compact events';
+
+  @override
+  String get sessionUsageMaintenanceCompactHint =>
+      'Merge superseded revisions. Current events are kept.';
+
+  @override
+  String get sessionUsageMaintenanceCompacted => 'Usage storage compacted.';
+
+  @override
+  String get sessionUsageMaintenanceFailed =>
+      'Couldn\'t compact usage storage.';
 
   @override
   String get sessionUsageFooterJsonl => 'JSONL read-only';

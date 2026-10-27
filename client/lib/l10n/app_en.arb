@@ -1724,7 +1724,6 @@
   "addProvider": "Add Provider",
   "providerName": "Provider name",
   "appProviderDisplayName": "Display name",
-  "appProviderDisplayNameHint": "Label for this account in lists and presets. Does not change the internal id.",
   "appProviderInternalIdPreview": "Internal id: {id}",
   "@appProviderInternalIdPreview": {
     "placeholders": {
@@ -1733,8 +1732,7 @@
       }
     }
   },
-  "appProviderOpencodeSubscription": "OpenCode provider key",
-  "appProviderOpencodeSubscriptionHint": "Namespace in opencode.json (e.g. opencode-go). Multiple TeamPilot accounts can share the same key.",
+  "appProviderOpencodeSubscription": "Subscription",
   "renameProviderName": "Rename",
   "renameProviderTitle": "Rename provider",
   "deleteProvider": "Delete Provider",
@@ -4938,6 +4936,25 @@
   "sessionUsagePricingCorrupt": "Pricing file was unreadable. Using built-in prices.",
   "sessionUsagePricingEmpty": "No custom rules. Built-in prices are active.",
   "sessionUsagePricingDelete": "Delete",
+  "sessionUsageStorage": "Storage",
+  "sessionUsageMaintenanceTitle": "Usage storage",
+  "sessionUsageMaintenanceLines": "{lines} lines · {events} events",
+  "@sessionUsageMaintenanceLines": {
+    "placeholders": {
+      "lines": { "type": "int" },
+      "events": { "type": "int" }
+    }
+  },
+  "sessionUsageMaintenanceSize": "{size} KB",
+  "@sessionUsageMaintenanceSize": {
+    "placeholders": {
+      "size": { "type": "String" }
+    }
+  },
+  "sessionUsageMaintenanceCompact": "Compact events",
+  "sessionUsageMaintenanceCompactHint": "Merge superseded revisions. Current events are kept.",
+  "sessionUsageMaintenanceCompacted": "Usage storage compacted.",
+  "sessionUsageMaintenanceFailed": "Couldn't compact usage storage.",
   "sessionUsageFooterJsonl": "JSONL read-only",
   "sessionUsageFooterManual": "Auto + manual sync",
   "sessionUsageSyncedToast": "Usage synced",

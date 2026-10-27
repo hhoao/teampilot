@@ -28,17 +28,29 @@ class JsonUsageStore implements UsageStore {
   final LockPool _locks = LockPool();
 
   Map<String, _UsageRecord>? _index;
+  String? _fingerprint;
+  var _lineCount = 0;
+  var _sizeBytes = 0;
   bool _needsLeadingNewline = false;
 
+  Future<String> _fileFingerprint() async {
+    final stat = await _fs.stat(_path);
+    _sizeBytes = stat.size ?? 0;
+    return '${stat.size ?? -1}:${stat.mtime?.millisecondsSinceEpoch ?? -1}';
+  }
+
   Future<Map<String, _UsageRecord>> _load() async {
+    final fingerprint = await _fileFingerprint();
     final cached = _index;
-    if (cached != null) return cached;
+    if (cached != null && _fingerprint == fingerprint) return cached;
 
     final raw = await _fs.readString(_path);
     final index = <String, _UsageRecord>{};
+    var lineCount = 0;
     _needsLeadingNewline = raw != null && raw.isNotEmpty && !raw.endsWith('\n');
     if (raw != null) {
       for (final line in const LineSplitter().convert(raw)) {
+        lineCount++;
         if (line.trim().isEmpty) continue;
         try {
           final decoded = jsonDecode(line);
@@ -60,6 +72,8 @@ class JsonUsageStore implements UsageStore {
       }
     }
     _index = index;
+    _lineCount = lineCount;
+    _fingerprint = fingerprint;
     return index;
   }
 
@@ -100,15 +114,20 @@ class JsonUsageStore implements UsageStore {
       }
 
       if (buffer.isNotEmpty) {
+        final text = buffer.toString();
         try {
-          await _fs.appendString(_path, buffer.toString());
+          await _fs.appendString(_path, text);
         } on Object {
           // The in-memory index may no longer match a partially appended file.
           _index = null;
+          _fingerprint = null;
+          _lineCount = 0;
           rethrow;
         }
         _index = next;
+        _lineCount += '\n'.allMatches(text).length;
         _needsLeadingNewline = false;
+        _fingerprint = await _fileFingerprint();
       }
       return UsageAppendResult(
         inserted: inserted,
@@ -124,7 +143,66 @@ class JsonUsageStore implements UsageStore {
   ) {
     if (incoming.isFinal && !previous.isFinal) return true;
     if (!incoming.isFinal && previous.isFinal) return false;
+    if (incoming.costMicroUsd != null &&
+        incoming.costMicroUsd != previous.costMicroUsd) {
+      return true;
+    }
+    if (incoming.model.isNotEmpty && incoming.model != previous.model) {
+      return true;
+    }
     return incoming.outputTokens > previous.outputTokens;
+  }
+
+  Future<UsageStoreStats> stats() async {
+    final index = await _load();
+    return UsageStoreStats(
+      lineCount: _lineCount,
+      eventCount: index.length,
+      sizeBytes: _sizeBytes,
+    );
+  }
+
+  /// Rewrites the file with the latest revision per request id.
+  ///
+  /// When [retainAfterMs] is set, events older than that timestamp are dropped.
+  /// The rewrite is atomic; failures leave the old file intact.
+  Future<UsageCompactResult> compact({int? retainAfterMs}) {
+    return _locks.synchronized(_path, () async {
+      final current = await _load();
+      final beforeLines = _lineCount;
+      final next = <String, _UsageRecord>{};
+      for (final entry in current.entries) {
+        final event = entry.value.event;
+        if (retainAfterMs != null && event.timestampMs < retainAfterMs) {
+          continue;
+        }
+        next[entry.key] = _UsageRecord(event, 0);
+      }
+      final buffer = StringBuffer();
+      for (final record in next.values) {
+        buffer.writeln(jsonEncode({'rev': 0, 'event': record.event.toJson()}));
+      }
+      await _fs.atomicWrite(_path, buffer.toString());
+      _index = next;
+      _lineCount = next.length;
+      _needsLeadingNewline = false;
+      _fingerprint = await _fileFingerprint();
+      return UsageCompactResult(
+        beforeLines: beforeLines,
+        afterEvents: next.length,
+        removedLines: beforeLines - next.length,
+        removedEvents: current.length - next.length,
+      );
+    });
+  }
+
+  Future<UsageCompactResult?> maybeCompact({
+    int threshold = 20000,
+    int? retainAfterMs,
+  }) async {
+    await _load();
+    if (_lineCount < threshold) return null;
+    return compact(retainAfterMs: retainAfterMs);
   }
 
   @override

@@ -59,6 +59,28 @@ class JsonUsageCursorStore implements UsageCursorStore {
     return _mutate((map) => map.remove(sourceId));
   }
 
+  @override
+  Future<int> prune(Set<String> activeSourceIds) {
+    return _locks.synchronized(_path, () async {
+      final current = await _load();
+      final removed = current.keys
+          .where((sourceId) => !activeSourceIds.contains(sourceId))
+          .toList(growable: false);
+      if (removed.isEmpty) return 0;
+      final next = Map<String, UsageCursor>.of(current)
+        ..removeWhere((sourceId, _) => !activeSourceIds.contains(sourceId));
+      final encoded = {
+        for (final entry in next.entries) entry.key: entry.value.toJson(),
+      };
+      await _fs.atomicWrite(
+        _path,
+        const JsonEncoder.withIndent('  ').convert(encoded),
+      );
+      _cache = next;
+      return removed.length;
+    });
+  }
+
   Future<void> _mutate(void Function(Map<String, UsageCursor>) change) {
     return _locks.synchronized(_path, () async {
       final current = await _load();

@@ -14,14 +14,15 @@ import '../services/usage/json_usage_store.dart';
 import '../services/usage/session_usage_sync_service.dart';
 import '../services/usage/team_pilot_usage_scan_target_provider.dart';
 import '../services/usage/usage_pricing_store.dart';
+import '../services/usage/usage_store.dart';
 import '../services/usage/usage_sync_control.dart';
 
 /// App-level wiring for agent CLI usage tracking.
 ///
-/// Stores, loaders, and the sync service are constructed per call from the
-/// current [HomeStorage] context, so a home-plane swap is picked up without
-/// rebuilding this object. The page owns foreground scheduling; this object
-/// only builds one-shot scans and handles.
+/// Stores are reused for the current home plane; `JsonUsageStore` detects
+/// external file changes by fingerprint. A home-plane swap rebuilds this
+/// object. The page owns foreground scheduling; this object builds sync
+/// handles and storage-maintenance operations.
 final class SessionUsageServices {
   SessionUsageServices._({
     required this.syncAll,
@@ -29,6 +30,8 @@ final class SessionUsageServices {
     required this.loadEvents,
     required this.loadPricing,
     required this.savePricing,
+    required this.loadUsageStats,
+    required this.compactUsage,
     required this.loadSessions,
     required this.loadTeams,
   });
@@ -38,6 +41,8 @@ final class SessionUsageServices {
   final Future<List<SessionUsageEvent>> Function() loadEvents;
   final Future<UsagePricingLoad> Function() loadPricing;
   final Future<void> Function(List<UsagePriceRule> rules) savePricing;
+  final Future<UsageStoreStats> Function() loadUsageStats;
+  final Future<UsageCompactResult> Function({int? retainAfterMs}) compactUsage;
   final Future<List<AppSession>> Function() loadSessions;
   final Future<List<TeamProfile>> Function() loadTeams;
 
@@ -60,10 +65,15 @@ final class SessionUsageServices {
     final loadSessionsFn = loadSessions ?? defaultLoadSessions;
     final loadTeamsFn = loadTeams ?? defaultLoadTeams;
 
-    JsonUsageStore newStore() =>
-        JsonUsageStore(fs: storage.fs, filePath: storage.paths.usageEventsFile);
-
-    JsonUsagePricingStore newPricingStore() => JsonUsagePricingStore(
+    final store = JsonUsageStore(
+      fs: storage.fs,
+      filePath: storage.paths.usageEventsFile,
+    );
+    final cursors = JsonUsageCursorStore(
+      fs: storage.fs,
+      filePath: storage.paths.usageCursorsFile,
+    );
+    final pricingStore = JsonUsagePricingStore(
       fs: storage.fs,
       filePath: storage.paths.usagePricingFile,
     );
@@ -74,13 +84,18 @@ final class SessionUsageServices {
         loadSessions: loadSessionsFn,
         loadTeams: loadTeamsFn,
       ),
-      store: newStore(),
-      cursors: JsonUsageCursorStore(
-        fs: storage.fs,
-        filePath: storage.paths.usageCursorsFile,
-      ),
+      store: store,
+      cursors: cursors,
       registry: registryForPlane,
     );
+
+    Future<void> maybeCompact() async {
+      try {
+        await store.maybeCompact();
+      } on Object {
+        // Maintenance is best-effort; the sync result remains authoritative.
+      }
+    }
 
     UsageSyncHandle startSync() {
       final control = UsageSyncControl();
@@ -88,9 +103,16 @@ final class SessionUsageServices {
         sync: true,
       );
       final service = newSync();
-      final done = Future.microtask(
-        () => service.syncAll(control: control, onProgress: progress.add),
-      ).whenComplete(progress.close);
+      final done =
+          Future.microtask(
+                () =>
+                    service.syncAll(control: control, onProgress: progress.add),
+              )
+              .then((result) async {
+                await maybeCompact();
+                return result;
+              })
+              .whenComplete(progress.close);
       return UsageSyncHandle(
         done: done,
         progress: progress.stream,
@@ -98,12 +120,21 @@ final class SessionUsageServices {
       );
     }
 
+    Future<UsageSyncResult> syncAll() async {
+      final result = await newSync().syncAll();
+      await maybeCompact();
+      return result;
+    }
+
     return SessionUsageServices._(
-      syncAll: () => newSync().syncAll(),
+      syncAll: syncAll,
       startSync: startSync,
-      loadEvents: () => newStore().readLatest(),
-      loadPricing: () => newPricingStore().load(),
-      savePricing: (rules) => newPricingStore().save(rules),
+      loadEvents: store.readLatest,
+      loadPricing: pricingStore.load,
+      savePricing: pricingStore.save,
+      loadUsageStats: store.stats,
+      compactUsage: ({int? retainAfterMs}) =>
+          store.compact(retainAfterMs: retainAfterMs),
       loadSessions: loadSessionsFn,
       loadTeams: loadTeamsFn,
     );

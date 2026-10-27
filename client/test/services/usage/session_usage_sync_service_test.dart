@@ -90,6 +90,17 @@ final class _FakeCursors implements UsageCursorStore {
   Future<void> remove(String sourceId) async {
     saved.remove(sourceId);
   }
+
+  @override
+  Future<int> prune(Set<String> activeSourceIds) async {
+    final removed = saved.keys
+        .where((sourceId) => !activeSourceIds.contains(sourceId))
+        .toList(growable: false);
+    for (final sourceId in removed) {
+      saved.remove(sourceId);
+    }
+    return removed.length;
+  }
 }
 
 final class _DelayedCapability implements SessionUsageCapability {
@@ -368,5 +379,24 @@ void main() {
 
     expect(result.errors, hasLength(1));
     expect(cursors.saved, isEmpty);
+  });
+
+  test('prunes cursors for sources that disappeared', () async {
+    final capability = _FakeCapability(sources: [_source('a')]);
+    final registry = CliToolRegistry()
+      ..register(_FakeTool(CliTool.claude, [capability]));
+    final cursors = _FakeCursors()
+      ..saved['stale'] = const UsageCursor(byteOffset: 9);
+
+    final result = await SessionUsageSyncService(
+      targets: _FakeTargets([_ctx()]),
+      store: _FakeStore(),
+      cursors: cursors,
+      registry: registry,
+    ).syncAll();
+
+    expect(result.prunedCursors, 1);
+    expect(cursors.saved.keys, contains('a'));
+    expect(cursors.saved.keys, isNot(contains('stale')));
   });
 }

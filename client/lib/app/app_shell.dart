@@ -1595,6 +1595,8 @@ Future<AppShell> buildAppShell({
       startSync: sessionUsageServices.startSync,
       loadPricing: sessionUsageServices.loadPricing,
       savePricing: sessionUsageServices.savePricing,
+      loadUsageStats: sessionUsageServices.loadUsageStats,
+      compactUsage: sessionUsageServices.compactUsage,
       loadSessions: sessionUsageServices.loadSessions,
       loadTeams: sessionUsageServices.loadTeams,
       storageChanges: homeStorage.changes.map<void>((_) {}),

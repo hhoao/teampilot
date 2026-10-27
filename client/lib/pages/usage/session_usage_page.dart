@@ -9,6 +9,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/settings/workspace_pane_insets.dart';
+import 'usage_maintenance_dialog.dart';
 import 'usage_pricing_dialog.dart';
 import 'widgets/usage_cli_breakdown.dart';
 import 'widgets/usage_cost_card.dart';
@@ -150,6 +151,29 @@ class _SessionUsagePageState extends State<SessionUsagePage>
     return Padding(padding: WorkspacePaneInsets.page, child: content);
   }
 
+  Future<void> _openMaintenance(SessionUsageCubit cubit) async {
+    await cubit.loadMaintenanceStats();
+    if (!mounted) return;
+    final compactedMessage = context.l10n.sessionUsageMaintenanceCompacted;
+    await showDialog<void>(
+      context: context,
+      builder: (context) => UsageMaintenanceDialog(
+        stats: cubit.state.usageStats,
+        error: cubit.state.maintenanceError,
+        onCompact: () async {
+          final ok = await cubit.compactUsage();
+          if (ok) {
+            AppToast.showGlobal(
+              message: compactedMessage,
+              variant: TpToastVariant.success,
+            );
+          }
+          return ok;
+        },
+      ),
+    );
+  }
+
   Future<void> _openPricing(SessionUsageCubit cubit) async {
     await showDialog<void>(
       context: context,
@@ -257,7 +281,10 @@ class _SessionUsagePageState extends State<SessionUsagePage>
             onResetFilters: () => _resetFilters(cubit),
           ),
           const SizedBox(height: 10),
-          UsageFooter(state: state),
+          UsageFooter(
+            state: state,
+            onMaintenance: () => _openMaintenance(cubit),
+          ),
         ],
       ),
     );

@@ -44,4 +44,17 @@ void main() {
     expect(await store.read('a'), isNull);
     expect((await store.read('b'))?.byteOffset, 2);
   });
+
+  test('prunes cursors that are no longer active', () async {
+    await store.save('a', const UsageCursor(byteOffset: 1));
+    await store.save('b', const UsageCursor(byteOffset: 2));
+    await store.save('c', const UsageCursor(byteOffset: 3));
+
+    final removed = await store.prune({'a', 'c'});
+
+    expect(removed, 1);
+    expect(await store.read('a'), isNotNull);
+    expect(await store.read('b'), isNull);
+    expect(await store.read('c'), isNotNull);
+  });
 }

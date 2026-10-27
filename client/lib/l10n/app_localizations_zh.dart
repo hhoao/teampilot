@@ -3402,19 +3402,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appProviderDisplayName => '显示名称';
 
   @override
-  String get appProviderDisplayNameHint => '在列表和预设中展示，用于区分账户；不会改变内部 id。';
-
-  @override
   String appProviderInternalIdPreview(String id) {
     return '内部 id：$id';
   }
 
   @override
-  String get appProviderOpencodeSubscription => 'OpenCode 线路键';
-
-  @override
-  String get appProviderOpencodeSubscriptionHint =>
-      '写入 opencode.json 的 provider 命名空间（如 opencode-go）。多个 TeamPilot 账户可共用同一键。';
+  String get appProviderOpencodeSubscription => '订阅';
 
   @override
   String get renameProviderName => '修改名称';
@@ -9335,6 +9328,34 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sessionUsagePricingDelete => '删除';
+
+  @override
+  String get sessionUsageStorage => '存储';
+
+  @override
+  String get sessionUsageMaintenanceTitle => '用量存储';
+
+  @override
+  String sessionUsageMaintenanceLines(int lines, int events) {
+    return '$lines 行 · $events 条事件';
+  }
+
+  @override
+  String sessionUsageMaintenanceSize(String size) {
+    return '$size KB';
+  }
+
+  @override
+  String get sessionUsageMaintenanceCompact => '压缩事件';
+
+  @override
+  String get sessionUsageMaintenanceCompactHint => '合并被覆盖的历史修订，保留当前事件。';
+
+  @override
+  String get sessionUsageMaintenanceCompacted => '用量存储已压缩。';
+
+  @override
+  String get sessionUsageMaintenanceFailed => '用量存储压缩失败。';
 
   @override
   String get sessionUsageFooterJsonl => 'JSONL 只读';

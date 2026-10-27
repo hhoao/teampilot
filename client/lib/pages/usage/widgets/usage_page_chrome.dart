@@ -194,9 +194,14 @@ class UsageToolbar extends StatelessWidget {
 }
 
 class UsageFooter extends StatelessWidget {
-  const UsageFooter({required this.state, super.key});
+  const UsageFooter({
+    required this.state,
+    required this.onMaintenance,
+    super.key,
+  });
 
   final SessionUsageState state;
+  final VoidCallback onMaintenance;
 
   @override
   Widget build(BuildContext context) {
@@ -229,6 +234,16 @@ class UsageFooter extends StatelessWidget {
               l10n.sessionUsageFooterManual,
               style: styles.xs.copyWith(
                 color: cs.onSurface.withValues(alpha: 0.42),
+              ),
+            ),
+            TextButton.icon(
+              key: AppKeys.sessionUsageMaintenanceButton,
+              onPressed: onMaintenance,
+              icon: const Icon(Icons.storage_outlined, size: 15),
+              label: Text(l10n.sessionUsageStorage, style: styles.xs),
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
               ),
             ),
           ],

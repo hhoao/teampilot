@@ -11,6 +11,7 @@ import '../models/team_config.dart';
 import '../services/usage/session_usage_sync_service.dart';
 import '../services/usage/usage_aggregator.dart';
 import '../services/usage/usage_pricing_store.dart';
+import '../services/usage/usage_store.dart';
 import '../services/usage/usage_sync_control.dart';
 import '../utils/logging/logger.dart';
 
@@ -37,6 +38,9 @@ final class SessionUsageState extends Equatable {
     this.pricingSaving = false,
     this.pricingCorrupted = false,
     this.pricingError,
+    this.usageStats,
+    this.maintenanceBusy = false,
+    this.maintenanceError,
     this.errorMessage,
   }) : syncErrors = List.unmodifiable(syncErrors);
 
@@ -59,6 +63,9 @@ final class SessionUsageState extends Equatable {
   final bool pricingSaving;
   final bool pricingCorrupted;
   final String? pricingError;
+  final UsageStoreStats? usageStats;
+  final bool maintenanceBusy;
+  final String? maintenanceError;
   final String? errorMessage;
 
   bool get hasData => dashboard.totalEventCount > 0;
@@ -88,6 +95,10 @@ final class SessionUsageState extends Equatable {
     bool? pricingCorrupted,
     String? pricingError,
     bool clearPricingError = false,
+    UsageStoreStats? usageStats,
+    bool? maintenanceBusy,
+    String? maintenanceError,
+    bool clearMaintenanceError = false,
     String? errorMessage,
     bool clearError = false,
   }) {
@@ -117,6 +128,11 @@ final class SessionUsageState extends Equatable {
       pricingError: clearPricingError
           ? null
           : (pricingError ?? this.pricingError),
+      usageStats: usageStats ?? this.usageStats,
+      maintenanceBusy: maintenanceBusy ?? this.maintenanceBusy,
+      maintenanceError: clearMaintenanceError
+          ? null
+          : (maintenanceError ?? this.maintenanceError),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -142,6 +158,9 @@ final class SessionUsageState extends Equatable {
     pricingSaving,
     pricingCorrupted,
     pricingError,
+    usageStats,
+    maintenanceBusy,
+    maintenanceError,
     errorMessage,
   ];
 }
@@ -157,6 +176,8 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     UsageSyncHandle Function()? startSync,
     Future<UsagePricingLoad> Function()? loadPricing,
     Future<void> Function(List<UsagePriceRule> rules)? savePricing,
+    Future<UsageStoreStats> Function()? loadUsageStats,
+    Future<UsageCompactResult> Function({int? retainAfterMs})? compactUsage,
     required Future<List<AppSession>> Function() loadSessions,
     required Future<List<TeamProfile>> Function() loadTeams,
     Stream<void>? storageChanges,
@@ -166,6 +187,8 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
        _startSync = startSync,
        _loadPricing = loadPricing,
        _savePricing = savePricing,
+       _loadUsageStats = loadUsageStats,
+       _compactUsage = compactUsage,
        _loadSessions = loadSessions,
        _loadTeams = loadTeams,
        _now = now ?? DateTime.now,
@@ -180,6 +203,9 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   final UsageSyncHandle Function()? _startSync;
   final Future<UsagePricingLoad> Function()? _loadPricing;
   final Future<void> Function(List<UsagePriceRule> rules)? _savePricing;
+  final Future<UsageStoreStats> Function()? _loadUsageStats;
+  final Future<UsageCompactResult> Function({int? retainAfterMs})?
+  _compactUsage;
   final Future<List<AppSession>> Function() _loadSessions;
   final Future<List<TeamProfile>> Function() _loadTeams;
   final DateTime Function() _now;
@@ -436,6 +462,46 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   }
 
   Future<void> resetPricing() => savePricing(const []);
+
+  Future<void> loadMaintenanceStats() async {
+    final loader = _loadUsageStats;
+    if (loader == null || state.maintenanceBusy) return;
+    emit(state.copyWith(maintenanceBusy: true, clearMaintenanceError: true));
+    try {
+      final stats = await loader();
+      if (isClosed) return;
+      emit(state.copyWith(usageStats: stats, maintenanceBusy: false));
+    } on Object catch (error) {
+      if (isClosed) return;
+      emit(state.copyWith(maintenanceBusy: false, maintenanceError: '$error'));
+    }
+  }
+
+  Future<bool> compactUsage({int? retainAfterMs}) async {
+    final compactor = _compactUsage;
+    if (compactor == null || state.maintenanceBusy || state.isSyncing) {
+      return false;
+    }
+    emit(state.copyWith(maintenanceBusy: true, clearMaintenanceError: true));
+    try {
+      await compactor(retainAfterMs: retainAfterMs);
+      await reload();
+      final stats = await _loadUsageStats?.call();
+      if (isClosed) return false;
+      emit(
+        state.copyWith(
+          usageStats: stats,
+          maintenanceBusy: false,
+          clearMaintenanceError: true,
+        ),
+      );
+      return true;
+    } on Object catch (error) {
+      if (isClosed) return false;
+      emit(state.copyWith(maintenanceBusy: false, maintenanceError: '$error'));
+      return false;
+    }
+  }
 
   void _updateFilter({
     UsageRange? range,

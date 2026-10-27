@@ -47,8 +47,16 @@ final class OpencodeSessionUsageCapability implements SessionUsageCapability {
       );
     }
 
+    final snapshot = _parseSnapshotToken(cursor?.storeToken);
     final result = await OpencodeSqliteWorkerPool.instance
-        .run<Map<String, Object?>>(dbPath: handle.path, query: _readUsageRows);
+        .run<Map<String, Object?>>(
+          dbPath: handle.path,
+          query: _readUsageRows,
+          args: {
+            'sinceTime': snapshot?.time ?? 0,
+            'sinceSeq': snapshot?.seq ?? -1,
+          },
+        );
     if (result == null) {
       throw StateError('opencode usage query failed: ${source.path}');
     }
@@ -133,6 +141,12 @@ final class OpencodeSessionUsageCapability implements SessionUsageCapability {
 ///
 /// Top-level function: runs in the OpenCode SQLite worker isolate.
 Map<String, Object?>? _readUsageRows(Database db, Object? args) {
+  final argMap = args is Map
+      ? Map<String, Object?>.from(args)
+      : const <String, Object?>{};
+  final sinceTime = (argMap['sinceTime'] as num?)?.toInt() ?? 0;
+  final sinceSeq = (argMap['sinceSeq'] as num?)?.toInt() ?? -1;
+
   final v2 = db.select(
     "SELECT 1 FROM sqlite_master WHERE type = 'table' "
     "AND name = 'session_message' LIMIT 1",
@@ -142,19 +156,33 @@ Map<String, Object?>? _readUsageRows(Database db, Object? args) {
     final hasSeq = columns.any((row) => row['name'] == 'seq');
     final hasUpdated = columns.any((row) => row['name'] == 'time_updated');
     final timeColumn = hasUpdated ? 'time_updated' : 'time_created';
+    final maxRow = db
+        .select(
+          'SELECT MAX($timeColumn) AS max_time'
+          '${hasSeq ? ', MAX(seq) AS max_seq' : ''} '
+          'FROM session_message',
+        )
+        .first;
+    final maxTime = (maxRow['max_time'] as num?)?.toInt() ?? 0;
+    final maxSeq = hasSeq ? (maxRow['max_seq'] as num?)?.toInt() ?? -1 : -1;
+
+    final where = hasSeq
+        ? 'WHERE seq > ? OR $timeColumn > ?'
+        : 'WHERE $timeColumn > ?';
+    final params = hasSeq
+        ? <Object?>[sinceSeq, sinceTime]
+        : <Object?>[sinceTime];
     final rows = db.select(
       'SELECT id, type, data, time_created'
       '${hasUpdated ? ', time_updated' : ''}'
       '${hasSeq ? ', seq' : ''} '
       'FROM session_message '
+      '$where '
       'ORDER BY ${hasSeq ? 'seq ASC, id ASC' : 'time_created ASC, id ASC'}',
+      params,
     );
     return {
-      'token': _snapshotToken(
-        rows,
-        timeColumn: timeColumn,
-        countColumn: hasSeq ? 'seq' : null,
-      ),
+      'token': 'oc|2|$maxTime|$maxSeq',
       'rows': [
         for (final row in rows)
           {
@@ -178,12 +206,12 @@ Map<String, Object?>? _readUsageRows(Database db, Object? args) {
     'SELECT id, data, time_created FROM message '
     'ORDER BY time_created ASC, id ASC',
   );
+  final maxTime = rows.fold<int>(0, (max, row) {
+    final time = row['time_created'];
+    return time is num && time.toInt() > max ? time.toInt() : max;
+  });
   return {
-    'token': _snapshotToken(
-      rows,
-      timeColumn: 'time_created',
-      countColumn: null,
-    ),
+    'token': 'oc|1|$maxTime|-1',
     'rows': [
       for (final row in rows)
         {
@@ -196,22 +224,21 @@ Map<String, Object?>? _readUsageRows(Database db, Object? args) {
   };
 }
 
-String _snapshotToken(
-  ResultSet rows, {
-  required String timeColumn,
-  required String? countColumn,
-}) {
-  var maxTime = 0;
-  var maxSeq = 0;
-  for (final row in rows) {
-    final time = row[timeColumn];
-    if (time is num && time.toInt() > maxTime) maxTime = time.toInt();
-    if (countColumn != null) {
-      final seq = row[countColumn];
-      if (seq is num && seq.toInt() > maxSeq) maxSeq = seq.toInt();
-    }
-  }
-  return 'oc|${rows.length}|$maxTime|$maxSeq';
+final class _SnapshotToken {
+  const _SnapshotToken(this.time, this.seq);
+
+  final int time;
+  final int seq;
+}
+
+_SnapshotToken? _parseSnapshotToken(String? raw) {
+  if (raw == null || raw.isEmpty) return null;
+  final parts = raw.split('|');
+  if (parts.length != 4 || parts.first != 'oc') return null;
+  final time = int.tryParse(parts[2]);
+  final seq = int.tryParse(parts[3]);
+  if (time == null || seq == null) return null;
+  return _SnapshotToken(time, seq);
 }
 
 int _int(Object? raw) => raw is num ? raw.toInt() : 0;
