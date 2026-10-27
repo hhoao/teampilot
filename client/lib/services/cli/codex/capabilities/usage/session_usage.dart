@@ -65,6 +65,7 @@ final class CodexSessionUsageCapability implements SessionUsageCapability {
     var skipFirstTotal = resetAfterPin;
     final events = <SessionUsageEvent>[];
     var skipped = 0;
+    var currentModel = '';
 
     for (var i = 0; i < window.lines.length; i++) {
       final line = window.lines[i].trim();
@@ -79,6 +80,15 @@ final class CodexSessionUsageCapability implements SessionUsageCapability {
       }
       if (obj == null) {
         skipped++;
+        continue;
+      }
+      if (obj['type'] == 'turn_context') {
+        final payloadRaw = obj['payload'];
+        if (payloadRaw is Map) {
+          final payload = Map<String, Object?>.from(payloadRaw);
+          final model = '${payload['model'] ?? ''}'.trim();
+          if (model.isNotEmpty) currentModel = model;
+        }
         continue;
       }
       if (obj['type'] != 'event_msg') continue;
@@ -116,7 +126,7 @@ final class CodexSessionUsageCapability implements SessionUsageCapability {
         SessionUsageEvent(
           requestId: 'codex:$threadId:${window.lineOffsets[i]}',
           cli: CliTool.codex,
-          model: '',
+          model: currentModel,
           inputTokens: counters.input,
           outputTokens: counters.output,
           cacheReadTokens: counters.cacheRead,

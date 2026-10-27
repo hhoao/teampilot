@@ -26,10 +26,7 @@ UsageScanContext _ctx() => UsageScanContext(
   appDataRoot: '/tp',
 );
 
-String _tokenCount({
-  Map<String, Object?>? last,
-  Map<String, Object?>? total,
-}) {
+String _tokenCount({Map<String, Object?>? last, Map<String, Object?>? total}) {
   return jsonEncode({
     'type': 'event_msg',
     'timestamp': '2026-10-26T10:00:00.000Z',
@@ -87,9 +84,10 @@ void main() {
       path,
       '${_tokenCount(last: _usage(input: 100, cached: 40, output: 10), total: _usage(input: 100, cached: 40, output: 10))}\n',
     );
-    final source = (await const CodexSessionUsageCapability()
-        .discoverUsageSources(ctx))
-        .single;
+    final source =
+        (await const CodexSessionUsageCapability().discoverUsageSources(
+          ctx,
+        )).single;
     final first = await const CodexSessionUsageCapability().scanUsageSource(
       ctx: ctx,
       source: source,
@@ -135,9 +133,10 @@ void main() {
       path,
       '${_tokenCount(total: _usage(input: 100, cached: 40, output: 10))}\n',
     );
-    final source = (await const CodexSessionUsageCapability()
-        .discoverUsageSources(ctx))
-        .single;
+    final source =
+        (await const CodexSessionUsageCapability().discoverUsageSources(
+          ctx,
+        )).single;
     final first = await const CodexSessionUsageCapability().scanUsageSource(
       ctx: ctx,
       source: source,
@@ -173,9 +172,10 @@ void main() {
       path,
       '${_tokenCount(last: {'input_tokens': 10, 'cached_input_tokens': 99, 'cache_write_input_tokens': 99, 'output_tokens': 1})}\n',
     );
-    final source = (await const CodexSessionUsageCapability()
-        .discoverUsageSources(ctx))
-        .single;
+    final source =
+        (await const CodexSessionUsageCapability().discoverUsageSources(
+          ctx,
+        )).single;
     final scan = await const CodexSessionUsageCapability().scanUsageSource(
       ctx: ctx,
       source: source,
@@ -184,5 +184,37 @@ void main() {
 
     expect(scan.events.single.cacheReadTokens, 10);
     expect(scan.events.single.cacheCreationTokens, 0);
+  });
+
+  test('reads the model from turn_context for later token events', () async {
+    final ctx = _ctx();
+    final path = p.join(
+      _home,
+      'sessions',
+      '2026',
+      '10',
+      '26',
+      'rollout-2026-10-26T10-00-00-$_thread.jsonl',
+    );
+    await ctx.fs.writeString(
+      path,
+      '${jsonEncode({
+        'type': 'turn_context',
+        'timestamp': '2026-10-26T10:00:00.000Z',
+        'payload': {'turn_id': 't1', 'model': 'gpt-5.4'},
+      })}\n'
+      '${_tokenCount(last: _usage(input: 10, cached: 2, output: 1))}\n',
+    );
+    final source =
+        (await const CodexSessionUsageCapability().discoverUsageSources(
+          ctx,
+        )).single;
+    final scan = await const CodexSessionUsageCapability().scanUsageSource(
+      ctx: ctx,
+      source: source,
+      cursor: null,
+    );
+
+    expect(scan.events.single.model, 'gpt-5.4');
   });
 }
