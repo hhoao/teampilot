@@ -263,15 +263,16 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     final handle = starter();
     _activeHandle = handle;
     _syncProgressSub = handle.progress.listen((progress) {
-      if (isClosed) return;
+      if (isClosed || !state.isSyncing) return;
       emit(state.copyWith(syncProgress: progress));
     });
     try {
       return await handle.done;
     } finally {
-      await _syncProgressSub?.cancel();
+      final sub = _syncProgressSub;
       _syncProgressSub = null;
       _activeHandle = null;
+      if (sub != null) unawaited(sub.cancel());
     }
   }
 
@@ -396,8 +397,9 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   Future<void> close() async {
     _activeHandle?.cancel();
     _activeHandle = null;
-    await _syncProgressSub?.cancel();
+    final progressSub = _syncProgressSub;
     _syncProgressSub = null;
+    if (progressSub != null) unawaited(progressSub.cancel());
     await _storageSub?.cancel();
     _storageSub = null;
     return super.close();

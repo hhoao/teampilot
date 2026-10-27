@@ -12,6 +12,7 @@ import 'package:teampilot/models/session_usage_dashboard.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/usage/session_usage_page.dart';
 import 'package:teampilot/services/usage/session_usage_sync_service.dart';
+import 'package:teampilot/services/usage/usage_sync_control.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 
 final _nowMs = DateTime.now().millisecondsSinceEpoch;
@@ -47,6 +48,7 @@ AppSession _session(String id, String display) => AppSession(
 Widget _wrap(
   SessionUsageCubit cubit, {
   Brightness brightness = Brightness.light,
+  bool autoSync = false,
 }) {
   return MaterialApp(
     locale: const Locale('en'),
@@ -59,7 +61,9 @@ Widget _wrap(
       ),
       child: BlocProvider.value(
         value: cubit,
-        child: const Scaffold(body: SessionUsagePage(embedded: true)),
+        child: Scaffold(
+          body: SessionUsagePage(embedded: true, autoSync: autoSync),
+        ),
       ),
     ),
   );
@@ -245,40 +249,54 @@ void main() {
     expect(cubit.state.groupBy, UsageGroupBy.model);
   });
 
-  testWidgets('sync button is disabled while syncing', (tester) async {
-    final syncCompleter = Completer<UsageSyncResult>();
+  testWidgets('sync shows progress and cancels the active handle', (
+    tester,
+  ) async {
+    final progress = StreamController<UsageSyncProgress>(sync: true);
+    final done = Completer<UsageSyncResult>();
+    var cancelCalls = 0;
+    final handle = UsageSyncHandle(
+      done: done.future,
+      progress: progress.stream,
+      cancel: () => cancelCalls++,
+    );
     final cubit = SessionUsageCubit(
       loadEvents: () async => [_event()],
-      syncAll: () => syncCompleter.future,
+      syncAll: () async => const UsageSyncResult(),
+      startSync: () => handle,
       loadSessions: () async => [_session('s1', 'Alpha')],
       loadTeams: () async => const <TeamProfile>[],
     );
-    addTearDown(cubit.close);
+    addTearDown(() async {
+      await progress.close();
+      await cubit.close();
+    });
 
     await tester.pumpWidget(_wrap(cubit));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(AppKeys.sessionUsageSyncButton));
     await tester.pump();
-    expect(
-      tester
-          .widget<FilledButton>(find.byKey(AppKeys.sessionUsageSyncButton))
-          .onPressed,
-      isNull,
-    );
+    expect(find.byKey(AppKeys.sessionUsageCancelSyncButton), findsOneWidget);
 
-    syncCompleter.complete(
-      const UsageSyncResult(
-        errors: [UsageSyncError(sourceId: 'src', message: 'bad')],
-      ),
+    progress.add(
+      const UsageSyncProgress(targetsTotal: 2, targetsDone: 1, inserted: 3),
     );
+    await tester.pump();
+    expect(find.byKey(AppKeys.sessionUsageSyncProgress), findsOneWidget);
+    expect(find.textContaining('Scanning 1/2'), findsOneWidget);
+
+    await tester.tap(find.byKey(AppKeys.sessionUsageCancelSyncButton));
+    expect(cancelCalls, 1);
+    expect(cubit.state.isCancelling, isTrue);
+
+    done.complete(const UsageSyncResult(cancelled: true));
     await tester.pumpAndSettle();
-    expect(
-      tester
-          .widget<FilledButton>(find.byKey(AppKeys.sessionUsageSyncButton))
-          .onPressed,
-      isNotNull,
-    );
+    expect(cubit.state.syncCancelled, isTrue);
+    expect(find.byKey(AppKeys.sessionUsageSyncButton), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('load reads cache once and never scans on open', (tester) async {
@@ -351,5 +369,82 @@ void main() {
 
     expect(find.byKey(AppKeys.sessionUsageTable), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('auto sync scans once on open when stale', (tester) async {
+    var syncCount = 0;
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [_event()],
+      syncAll: () async {
+        syncCount++;
+        return const UsageSyncResult();
+      },
+      loadSessions: () async => [_session('s1', 'Alpha')],
+      loadTeams: () async => const <TeamProfile>[],
+    );
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrap(cubit, autoSync: true));
+    await tester.pumpAndSettle();
+
+    expect(syncCount, 1);
+  });
+
+  testWidgets('auto sync timer rechecks stale data while visible', (
+    tester,
+  ) async {
+    var now = DateTime(2026, 10, 26, 18);
+    var syncCount = 0;
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [_event()],
+      syncAll: () async {
+        syncCount++;
+        return const UsageSyncResult();
+      },
+      loadSessions: () async => [_session('s1', 'Alpha')],
+      loadTeams: () async => const <TeamProfile>[],
+      now: () => now,
+    );
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrap(cubit, autoSync: true));
+    await tester.pumpAndSettle();
+    expect(syncCount, 1);
+
+    now = now.add(const Duration(minutes: 11));
+    await tester.pump(const Duration(minutes: 10));
+    await tester.pumpAndSettle();
+    expect(syncCount, 2);
+  });
+
+  testWidgets('auto sync rechecks stale data on app resume', (tester) async {
+    var now = DateTime(2026, 10, 26, 18);
+    var syncCount = 0;
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [_event()],
+      syncAll: () async {
+        syncCount++;
+        return const UsageSyncResult();
+      },
+      loadSessions: () async => [_session('s1', 'Alpha')],
+      loadTeams: () async => const <TeamProfile>[],
+      now: () => now,
+    );
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrap(cubit, autoSync: true));
+    await tester.pumpAndSettle();
+    expect(syncCount, 1);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump();
+    now = now.add(const Duration(minutes: 11));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(syncCount, 2);
   });
 }

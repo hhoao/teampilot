@@ -5,14 +5,21 @@ import '../../../cubits/session_usage_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/session_usage_dashboard.dart';
 import '../../../models/team_config.dart';
+import '../../../services/usage/usage_sync_control.dart';
 import '../../../utils/ui/app_keys.dart';
 import '../usage_format.dart';
 
 class UsagePageHeader extends StatelessWidget {
-  const UsagePageHeader({required this.state, required this.onSync, super.key});
+  const UsagePageHeader({
+    required this.state,
+    required this.onSync,
+    required this.onCancel,
+    super.key,
+  });
 
   final SessionUsageState state;
   final Future<void> Function() onSync;
+  final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +60,15 @@ class UsagePageHeader extends StatelessWidget {
                       color: cs.onSurface.withValues(alpha: 0.42),
                     ),
                   ),
+                  if (state.isSyncing)
+                    Text(
+                      key: AppKeys.sessionUsageSyncProgress,
+                      _progressLabel(context, state.syncProgress),
+                      style: styles.xs.copyWith(
+                        color: cs.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                 ],
               ),
             ],
@@ -60,20 +76,30 @@ class UsagePageHeader extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Tooltip(
-          message: l10n.sessionUsageSyncTooltip,
+          message: state.isSyncing
+              ? l10n.sessionUsageCancelSyncTooltip
+              : l10n.sessionUsageSyncTooltip,
           child: FilledButton.icon(
-            key: AppKeys.sessionUsageSyncButton,
-            onPressed: state.isSyncing ? null : onSync,
+            key: state.isSyncing
+                ? AppKeys.sessionUsageCancelSyncButton
+                : AppKeys.sessionUsageSyncButton,
+            onPressed: state.isSyncing
+                ? (state.isCancelling ? null : onCancel)
+                : () => onSync(),
             icon: state.isSyncing
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                ? (state.isCancelling
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.close, size: 18))
                 : const Icon(Icons.sync, size: 18),
             label: Text(
               state.isSyncing
-                  ? l10n.sessionUsageSyncing
+                  ? (state.isCancelling
+                        ? l10n.sessionUsageCancelling
+                        : l10n.sessionUsageCancelSync)
                   : l10n.sessionUsageSync,
             ),
           ),
@@ -81,6 +107,18 @@ class UsagePageHeader extends StatelessWidget {
       ],
     );
   }
+}
+
+String _progressLabel(BuildContext context, UsageSyncProgress? progress) {
+  final l10n = context.l10n;
+  if (progress == null || progress.targetsTotal == 0) {
+    return l10n.sessionUsageSyncPreparing;
+  }
+  return l10n.sessionUsageSyncProgress(
+    progress.targetsDone,
+    progress.targetsTotal,
+    progress.inserted,
+  );
 }
 
 class UsageToolbar extends StatelessWidget {

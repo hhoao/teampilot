@@ -9460,6 +9460,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionUsageSyncTooltip => 'Scan CLI transcripts for new usage';
 
   @override
+  String get sessionUsageCancelSync => 'Cancel';
+
+  @override
+  String get sessionUsageCancelling => 'Cancelling…';
+
+  @override
+  String get sessionUsageCancelSyncTooltip => 'Cancel usage sync';
+
+  @override
+  String get sessionUsageSyncCancelled => 'Usage sync cancelled.';
+
+  @override
+  String get sessionUsageSyncPreparing => 'Preparing scan…';
+
+  @override
+  String sessionUsageSyncProgress(int done, int total, int inserted) {
+    return 'Scanning $done/$total sessions · $inserted new events';
+  }
+
+  @override
   String get sessionUsageNeverSynced => 'Not synced yet';
 
   @override
@@ -9628,7 +9648,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionUsageFooterJsonl => 'JSONL read-only';
 
   @override
-  String get sessionUsageFooterManual => 'Manual sync';
+  String get sessionUsageFooterManual => 'Auto + manual sync';
 
   @override
   String get sessionUsageSyncedToast => 'Usage synced';

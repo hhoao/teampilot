@@ -327,6 +327,10 @@ class AppKeys {
   static const skillsWorkspace = Key('skills-workspace');
   static const sessionUsagePage = Key('session-usage-page');
   static const sessionUsageSyncButton = Key('session-usage-sync-button');
+  static const sessionUsageCancelSyncButton = Key(
+    'session-usage-cancel-sync-button',
+  );
+  static const sessionUsageSyncProgress = Key('session-usage-sync-progress');
   static const sessionUsageSearchField = Key('session-usage-search-field');
   static const sessionUsageErrorBanner = Key('session-usage-error-banner');
   static const sessionUsageEmptyState = Key('session-usage-empty-state');

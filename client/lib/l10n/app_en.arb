@@ -4738,6 +4738,25 @@
   "sessionUsageSync": "Sync",
   "sessionUsageSyncing": "Syncing",
   "sessionUsageSyncTooltip": "Scan CLI transcripts for new usage",
+  "sessionUsageCancelSync": "Cancel",
+  "sessionUsageCancelling": "Cancelling…",
+  "sessionUsageCancelSyncTooltip": "Cancel usage sync",
+  "sessionUsageSyncCancelled": "Usage sync cancelled.",
+  "sessionUsageSyncPreparing": "Preparing scan…",
+  "sessionUsageSyncProgress": "Scanning {done}/{total} sessions · {inserted} new events",
+  "@sessionUsageSyncProgress": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "inserted": {
+        "type": "int"
+      }
+    }
+  },
   "sessionUsageNeverSynced": "Not synced yet",
   "sessionUsageLastSync": "Last sync {time}",
   "@sessionUsageLastSync": {
@@ -4869,7 +4888,7 @@
     }
   },
   "sessionUsageFooterJsonl": "JSONL read-only",
-  "sessionUsageFooterManual": "Manual sync",
+  "sessionUsageFooterManual": "Auto + manual sync",
   "sessionUsageSyncedToast": "Usage synced",
   "sessionUsageLoading": "Loading usage…",
   "sessionUsageTotalShort": "Total",

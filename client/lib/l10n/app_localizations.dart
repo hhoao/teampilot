@@ -16778,6 +16778,42 @@ abstract class AppLocalizations {
   /// **'Scan CLI transcripts for new usage'**
   String get sessionUsageSyncTooltip;
 
+  /// No description provided for @sessionUsageCancelSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get sessionUsageCancelSync;
+
+  /// No description provided for @sessionUsageCancelling.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelling…'**
+  String get sessionUsageCancelling;
+
+  /// No description provided for @sessionUsageCancelSyncTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel usage sync'**
+  String get sessionUsageCancelSyncTooltip;
+
+  /// No description provided for @sessionUsageSyncCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage sync cancelled.'**
+  String get sessionUsageSyncCancelled;
+
+  /// No description provided for @sessionUsageSyncPreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing scan…'**
+  String get sessionUsageSyncPreparing;
+
+  /// No description provided for @sessionUsageSyncProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning {done}/{total} sessions · {inserted} new events'**
+  String sessionUsageSyncProgress(int done, int total, int inserted);
+
   /// No description provided for @sessionUsageNeverSynced.
   ///
   /// In en, this message translates to:
@@ -17069,7 +17105,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionUsageFooterManual.
   ///
   /// In en, this message translates to:
-  /// **'Manual sync'**
+  /// **'Auto + manual sync'**
   String get sessionUsageFooterManual;
 
   /// No description provided for @sessionUsageSyncedToast.

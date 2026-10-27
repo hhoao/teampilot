@@ -17,29 +17,71 @@ import 'widgets/usage_summary_cards.dart';
 import 'widgets/usage_trend_chart.dart';
 
 class SessionUsagePage extends StatefulWidget {
-  const SessionUsagePage({this.embedded = false, super.key});
+  const SessionUsagePage({
+    this.embedded = false,
+    this.autoSync = true,
+    super.key,
+  });
 
   /// When true, the workspace-home shell already applied pane padding.
   final bool embedded;
+
+  /// Runs stale checks on open, on app resume, and every 10 minutes.
+  final bool autoSync;
 
   @override
   State<SessionUsagePage> createState() => _SessionUsagePageState();
 }
 
-class _SessionUsagePageState extends State<SessionUsagePage> {
+const Duration _autoSyncTtl = Duration(minutes: 5);
+const Duration _autoSyncInterval = Duration(minutes: 10);
+
+class _SessionUsagePageState extends State<SessionUsagePage>
+    with WidgetsBindingObserver {
   final _searchController = TextEditingController();
+  Timer? _autoSyncTimer;
+  bool _appActive = true;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addObserver(this);
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    _appActive = lifecycle == null || lifecycle == AppLifecycleState.resumed;
+
+    if (widget.autoSync) {
+      _autoSyncTimer = Timer.periodic(_autoSyncInterval, (_) {
+        if (!mounted || !_appActive) return;
+        unawaited(
+          context.read<SessionUsageCubit>().syncIfStale(ttl: _autoSyncTtl),
+        );
+      });
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      unawaited(context.read<SessionUsageCubit>().ensureLoaded());
+      final cubit = context.read<SessionUsageCubit>();
+      await cubit.ensureLoaded();
+      if (!mounted || !widget.autoSync || !_appActive) return;
+      await cubit.syncIfStale(ttl: _autoSyncTtl);
     });
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appActive = state == AppLifecycleState.resumed;
+    if (_appActive && widget.autoSync) {
+      unawaited(
+        context.read<SessionUsageCubit>().syncIfStale(ttl: _autoSyncTtl),
+      );
+    }
+  }
+
+  @override
   void dispose() {
+    _autoSyncTimer?.cancel();
+    _autoSyncTimer = null;
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     super.dispose();
   }
@@ -53,17 +95,26 @@ class _SessionUsagePageState extends State<SessionUsagePage> {
   Widget build(BuildContext context) {
     final content = BlocListener<SessionUsageCubit, SessionUsageState>(
       listenWhen: (previous, current) =>
-          previous.isSyncing &&
-          !current.isSyncing &&
-          !current.syncFailed &&
-          current.syncErrors.isEmpty &&
-          current.lastSyncResult != null,
+          previous.isSyncing && !current.isSyncing,
       listener: (context, state) {
-        AppToast.show(
-          context,
-          message: context.l10n.sessionUsageSyncedToast,
-          variant: TpToastVariant.success,
-        );
+        if (state.syncCancelled) {
+          AppToast.show(
+            context,
+            message: context.l10n.sessionUsageSyncCancelled,
+            variant: TpToastVariant.info,
+          );
+          return;
+        }
+        if (state.lastSyncManual &&
+            !state.syncFailed &&
+            state.syncErrors.isEmpty &&
+            state.lastSyncResult != null) {
+          AppToast.show(
+            context,
+            message: context.l10n.sessionUsageSyncedToast,
+            variant: TpToastVariant.success,
+          );
+        }
       },
       child: BlocBuilder<SessionUsageCubit, SessionUsageState>(
         builder: (context, state) {
@@ -75,7 +126,11 @@ class _SessionUsagePageState extends State<SessionUsagePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                UsagePageHeader(state: state, onSync: cubit.sync),
+                UsagePageHeader(
+                  state: state,
+                  onSync: () => cubit.sync(),
+                  onCancel: cubit.cancelSync,
+                ),
                 if (_errorBanner(context, cubit, state) case final banner?) ...[
                   const SizedBox(height: 12),
                   banner,

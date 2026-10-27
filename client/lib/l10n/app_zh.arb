@@ -4042,6 +4042,25 @@
   "sessionUsageSync": "同步",
   "sessionUsageSyncing": "同步中",
   "sessionUsageSyncTooltip": "扫描 CLI 记录以获取新用量",
+  "sessionUsageCancelSync": "取消",
+  "sessionUsageCancelling": "正在取消…",
+  "sessionUsageCancelSyncTooltip": "取消用量同步",
+  "sessionUsageSyncCancelled": "已取消用量同步。",
+  "sessionUsageSyncPreparing": "正在准备扫描…",
+  "sessionUsageSyncProgress": "正在扫描 {done}/{total} 个会话 · 新增 {inserted} 条",
+  "@sessionUsageSyncProgress": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "inserted": {
+        "type": "int"
+      }
+    }
+  },
   "sessionUsageNeverSynced": "尚未同步",
   "sessionUsageLastSync": "上次同步 {time}",
   "@sessionUsageLastSync": {
@@ -4173,7 +4192,7 @@
     }
   },
   "sessionUsageFooterJsonl": "JSONL 只读",
-  "sessionUsageFooterManual": "手动同步",
+  "sessionUsageFooterManual": "自动 + 手动同步",
   "sessionUsageSyncedToast": "用量同步完成",
   "sessionUsageLoading": "正在加载用量…",
   "sessionUsageTotalShort": "总计",

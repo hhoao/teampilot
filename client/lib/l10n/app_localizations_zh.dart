@@ -9047,6 +9047,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionUsageSyncTooltip => '扫描 CLI 记录以获取新用量';
 
   @override
+  String get sessionUsageCancelSync => '取消';
+
+  @override
+  String get sessionUsageCancelling => '正在取消…';
+
+  @override
+  String get sessionUsageCancelSyncTooltip => '取消用量同步';
+
+  @override
+  String get sessionUsageSyncCancelled => '已取消用量同步。';
+
+  @override
+  String get sessionUsageSyncPreparing => '正在准备扫描…';
+
+  @override
+  String sessionUsageSyncProgress(int done, int total, int inserted) {
+    return '正在扫描 $done/$total 个会话 · 新增 $inserted 条';
+  }
+
+  @override
   String get sessionUsageNeverSynced => '尚未同步';
 
   @override
@@ -9214,7 +9234,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionUsageFooterJsonl => 'JSONL 只读';
 
   @override
-  String get sessionUsageFooterManual => '手动同步';
+  String get sessionUsageFooterManual => '自动 + 手动同步';
 
   @override
   String get sessionUsageSyncedToast => '用量同步完成';
