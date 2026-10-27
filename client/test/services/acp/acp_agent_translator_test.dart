@@ -39,20 +39,24 @@ void main() {
     expect(out, contains('boom'));
   });
 
-  test('Gemini permission response is flat ACP', () {
+  test('permission response nests the ACP outcome envelope', () {
     expect(
       translator.encodePermissionResponse(
         const PermissionSelected(optionId: 'always-1'),
       ),
-      {'outcome': 'selected', 'optionId': 'always-1'},
+      {
+        'outcome': {'outcome': 'selected', 'optionId': 'always-1'},
+      },
     );
     expect(
       translator.encodePermissionResponse(const PermissionCancelled()),
-      {'outcome': 'cancelled'},
+      {
+        'outcome': {'outcome': 'cancelled'},
+      },
     );
   });
 
-  test('Cursor permission response nests outcome', () {
+  test('Cursor shares the nested outcome envelope', () {
     const cursor = CursorAcpTranslator();
     expect(
       cursor.encodePermissionResponse(

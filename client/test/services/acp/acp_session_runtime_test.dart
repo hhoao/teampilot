@@ -102,6 +102,30 @@ void main() {
     agent.connection.onRequest('session/prompt', (params) => body());
   }
 
+  /// Asks the client to approve [request] and decodes the reply.
+  ///
+  /// Stands in for `AgentContext.requestPermission`, which parses acpd's flat
+  /// response shape. ACP actually nests the outcome
+  /// (`{outcome: {outcome, optionId}}`), and that is the only shape a real
+  /// agent (`claude-agent-acp`, Gemini, Cursor) accepts.
+  Future<acpd.RequestPermissionOutcome> requestPermission(
+    acpd.RequestPermissionRequest request,
+  ) async {
+    final raw = await agent.connection.sendRequest(
+      'session/request_permission',
+      params: request.toJson(),
+      mapResult: (r) => r,
+    );
+    final response = Map<String, Object?>.from(raw! as Map);
+    final outcome = response['outcome'];
+    if (outcome is! Map) {
+      fail('permission outcome is not nested: $response');
+    }
+    return acpd.RequestPermissionOutcome.fromJson(
+      Map<String, Object?>.from(outcome),
+    );
+  }
+
   acpd.RequestPermissionRequest bashPermission(String toolCallId) {
     return acpd.RequestPermissionRequest(
       sessionId: sessionId,
@@ -130,7 +154,7 @@ void main() {
     required void Function(acpd.RequestPermissionOutcome? outcome) onOutcome,
   }) async {
     scriptPrompt(() async {
-      onOutcome(await agentCtx.requestPermission(bashPermission(toolCallId)));
+      onOutcome(await requestPermission(bashPermission(toolCallId)));
       return acpd.PromptResponse(stopReason: acpd.StopReason.endTurn).toJson();
     });
     await runtime.prompt('go');
@@ -509,7 +533,7 @@ void main() {
   test('delegates permission requests and answers to the session', () async {
     acpd.RequestPermissionOutcome? outcome;
     scriptPrompt(() async {
-      outcome = await agentCtx.requestPermission(
+      outcome = await requestPermission(
         acpd.RequestPermissionRequest(
           sessionId: sessionId,
           toolCall: const acpd.ToolCallUpdate(toolCallId: 'perm-1'),

@@ -33,13 +33,6 @@ final class CursorAcpTranslator extends AcpAgentTranslator {
     }
     return error.toString();
   }
-
-  @override
-  Map<String, Object?> encodePermissionResponse(
-    RequestPermissionOutcome outcome,
-  ) {
-    return {'outcome': RequestPermissionResponse(outcome: outcome).toJson()};
-  }
 }
 
 final class CursorAcpCapability implements AcpCapability {

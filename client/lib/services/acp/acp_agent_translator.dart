@@ -28,12 +28,15 @@ abstract class AcpAgentTranslator {
 
   /// Wire JSON for `session/request_permission`.
   ///
-  /// ACP v1 (Gemini / acpd) is flat `{outcome, optionId}`. Cursor's client
-  /// expects the nested `{outcome: {outcome, optionId}}` envelope used by
-  /// `cursor/ask_question` and `cursor/create_plan`.
+  /// ACP nests the outcome: `{outcome: {outcome, optionId}}` (see
+  /// `RequestPermissionResponse` in the ACP schema). Agents read the inner
+  /// discriminator (`response.outcome.outcome`); a flat `{outcome, optionId}`
+  /// reply decodes as "not selected", so the agent aborts the tool call with
+  /// "Tool use aborted". acpd's `RequestPermissionResponse.toJson` flattens,
+  /// hence the explicit wrap here.
   Map<String, Object?> encodePermissionResponse(
     RequestPermissionOutcome outcome,
   ) {
-    return RequestPermissionResponse(outcome: outcome).toJson();
+    return {'outcome': RequestPermissionResponse(outcome: outcome).toJson()};
   }
 }

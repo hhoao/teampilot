@@ -101,6 +101,30 @@ void main() {
     agent.connection.onRequest('session/prompt', (params) => body());
   }
 
+  /// Asks the client to approve [request] and decodes the reply.
+  ///
+  /// Stands in for `AgentContext.requestPermission`, which parses acpd's flat
+  /// response shape. ACP actually nests the outcome
+  /// (`{outcome: {outcome, optionId}}`), and that is the only shape a real
+  /// agent (`claude-agent-acp`, Gemini, Cursor) accepts.
+  Future<acpd.RequestPermissionOutcome> requestPermission(
+    acpd.RequestPermissionRequest request,
+  ) async {
+    final raw = await agent.connection.sendRequest(
+      'session/request_permission',
+      params: request.toJson(),
+      mapResult: (r) => r,
+    );
+    final response = Map<String, Object?>.from(raw! as Map);
+    final outcome = response['outcome'];
+    if (outcome is! Map) {
+      fail('permission outcome is not nested: $response');
+    }
+    return acpd.RequestPermissionOutcome.fromJson(
+      Map<String, Object?>.from(outcome),
+    );
+  }
+
   acpd.AgentMessageChunk message(String text) => acpd.AgentMessageChunk(
     chunk: acpd.ContentChunk(content: acpd.TextContentBlock(text: text)),
   );
@@ -348,7 +372,7 @@ void main() {
     () async {
       acpd.RequestPermissionOutcome? outcome;
       scriptPrompt(() async {
-        outcome = await agentCtx.requestPermission(
+        outcome = await requestPermission(
           acpd.RequestPermissionRequest(
             sessionId: sessionId,
             toolCall: const acpd.ToolCallUpdate(toolCallId: 'perm-d'),
@@ -689,7 +713,7 @@ void main() {
     () async {
       acpd.RequestPermissionOutcome? outcome;
       agent.connection.onRequest('session/new', (params) async {
-        outcome = await agentCtx.requestPermission(
+        outcome = await requestPermission(
           acpd.RequestPermissionRequest(
             sessionId: sessionId,
             toolCall: const acpd.ToolCallUpdate(
@@ -762,8 +786,7 @@ void main() {
 
       expect(result, isA<Map>());
       final map = Map<String, Object?>.from(result! as Map);
-      expect(map['outcome'], 'selected');
-      expect(map['optionId'], 'yes-1');
+      expect(map['outcome'], {'outcome': 'selected', 'optionId': 'yes-1'});
     },
   );
 
@@ -772,7 +795,7 @@ void main() {
     () async {
       acpd.RequestPermissionOutcome? outcome;
       scriptPrompt(() async {
-        outcome = await agentCtx.requestPermission(
+        outcome = await requestPermission(
           acpd.RequestPermissionRequest(
             sessionId: sessionId,
             toolCall: const acpd.ToolCallUpdate(
@@ -817,7 +840,7 @@ void main() {
     () async {
       acpd.RequestPermissionOutcome? outcome;
       scriptPrompt(() async {
-        outcome = await agentCtx.requestPermission(
+        outcome = await requestPermission(
           acpd.RequestPermissionRequest(
             sessionId: sessionId,
             toolCall: const acpd.ToolCallUpdate(
@@ -907,8 +930,7 @@ void main() {
 
       expect(captured, isNull);
       expect(result, {
-        'outcome': 'selected',
-        'optionId': 'allow-always',
+        'outcome': {'outcome': 'selected', 'optionId': 'allow-always'},
       });
     },
   );
@@ -973,7 +995,7 @@ void main() {
     () async {
       acpd.RequestPermissionOutcome? outcome;
       scriptPrompt(() async {
-        outcome = await agentCtx.requestPermission(
+        outcome = await requestPermission(
           acpd.RequestPermissionRequest(
             sessionId: sessionId,
             toolCall: const acpd.ToolCallUpdate(
@@ -1038,7 +1060,7 @@ void main() {
       var promptCount = 0;
       agent.connection.onRequest('session/prompt', (params) async {
         if (promptCount++ == 0) {
-          firstOutcome = await agentCtx.requestPermission(
+          firstOutcome = await requestPermission(
             acpd.RequestPermissionRequest(
               sessionId: sessionId,
               toolCall: const acpd.ToolCallUpdate(toolCallId: 'perm-a'),
@@ -1057,7 +1079,7 @@ void main() {
             ),
           );
         } else {
-          secondOutcome = await agentCtx.requestPermission(
+          secondOutcome = await requestPermission(
             acpd.RequestPermissionRequest(
               sessionId: sessionId,
               toolCall: const acpd.ToolCallUpdate(toolCallId: 'perm-b'),
@@ -1157,7 +1179,7 @@ void main() {
     () async {
       acpd.RequestPermissionOutcome? outcome;
       scriptPrompt(() async {
-        outcome = await agentCtx.requestPermission(
+        outcome = await requestPermission(
           acpd.RequestPermissionRequest(
             sessionId: sessionId,
             toolCall: const acpd.ToolCallUpdate(toolCallId: 'perm-t'),
@@ -1201,7 +1223,7 @@ void main() {
     () async {
       acpd.RequestPermissionOutcome? handshakeOutcome;
       agent.connection.onRequest('session/new', (params) async {
-        handshakeOutcome = await agentCtx.requestPermission(
+        handshakeOutcome = await requestPermission(
           acpd.RequestPermissionRequest(
             sessionId: sessionId,
             toolCall: const acpd.ToolCallUpdate(
@@ -1232,7 +1254,7 @@ void main() {
       acpd.RequestPermissionOutcome? afterOutcome;
       AgentPermissionRequest? captured;
       scriptPrompt(() async {
-        afterOutcome = await agentCtx.requestPermission(
+        afterOutcome = await requestPermission(
           acpd.RequestPermissionRequest(
             sessionId: sessionId,
             toolCall: const acpd.ToolCallUpdate(
@@ -1272,7 +1294,7 @@ void main() {
     () async {
       acpd.RequestPermissionOutcome? handshakeOutcome;
       agent.connection.onRequest('session/new', (params) async {
-        handshakeOutcome = await agentCtx.requestPermission(
+        handshakeOutcome = await requestPermission(
           acpd.RequestPermissionRequest(
             sessionId: sessionId,
             toolCall: const acpd.ToolCallUpdate(toolCallId: 'hs-rej'),
@@ -1294,7 +1316,7 @@ void main() {
       acpd.RequestPermissionOutcome? afterOutcome;
       AgentPermissionRequest? captured;
       scriptPrompt(() async {
-        afterOutcome = await agentCtx.requestPermission(
+        afterOutcome = await requestPermission(
           acpd.RequestPermissionRequest(
             sessionId: sessionId,
             toolCall: const acpd.ToolCallUpdate(
@@ -1332,7 +1354,7 @@ void main() {
     () async {
       acpd.RequestPermissionOutcome? outcome;
       scriptPrompt(() async {
-        outcome = await agentCtx.requestPermission(
+        outcome = await requestPermission(
           acpd.RequestPermissionRequest(
             sessionId: sessionId,
             toolCall: const acpd.ToolCallUpdate(
@@ -1376,7 +1398,7 @@ void main() {
     acpd.RequestPermissionOutcome? busOutcome;
     acpd.RequestPermissionOutcome? bashOutcome;
     scriptPrompt(() async {
-      busOutcome = await agentCtx.requestPermission(
+      busOutcome = await requestPermission(
         acpd.RequestPermissionRequest(
           sessionId: sessionId,
           toolCall: const acpd.ToolCallUpdate(
@@ -1392,7 +1414,7 @@ void main() {
           ],
         ),
       );
-      bashOutcome = await agentCtx.requestPermission(
+      bashOutcome = await requestPermission(
         acpd.RequestPermissionRequest(
           sessionId: sessionId,
           toolCall: const acpd.ToolCallUpdate(
@@ -1436,7 +1458,7 @@ void main() {
     () async {
       acpd.RequestPermissionOutcome? outcome;
       scriptPrompt(() async {
-        outcome = await agentCtx.requestPermission(
+        outcome = await requestPermission(
           acpd.RequestPermissionRequest(
             sessionId: sessionId,
             toolCall: const acpd.ToolCallUpdate(
@@ -1494,7 +1516,7 @@ void main() {
   test('reject-only still surfaces a card under Full access', () async {
     acpd.RequestPermissionOutcome? outcome;
     scriptPrompt(() async {
-      outcome = await agentCtx.requestPermission(
+      outcome = await requestPermission(
         acpd.RequestPermissionRequest(
           sessionId: sessionId,
           toolCall: const acpd.ToolCallUpdate(
@@ -1554,7 +1576,9 @@ void main() {
     permissionSub.cancel();
 
     expect(cards, isEmpty);
-    expect(result, {'outcome': 'selected', 'optionId': 'always-1'});
+    expect(result, {
+      'outcome': {'outcome': 'selected', 'optionId': 'always-1'},
+    });
   });
 
   test('Ask surfaces a card for Cursor hyphen option kinds', () async {
@@ -1596,7 +1620,9 @@ void main() {
     expect(captured!.always, [
       const AgentPermissionAlwaysOption(label: 'Always', payload: 'always-1'),
     ]);
-    expect(result, {'outcome': 'selected', 'optionId': 'allow-1'});
+    expect(result, {
+      'outcome': {'outcome': 'selected', 'optionId': 'allow-1'},
+    });
   });
 
   test('abort-shaped error after cancel becomes a cancelled stop', () async {
