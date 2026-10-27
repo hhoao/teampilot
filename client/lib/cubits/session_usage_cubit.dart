@@ -6,9 +6,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/app_session.dart';
 import '../models/session_usage.dart';
 import '../models/session_usage_dashboard.dart';
+import '../models/session_usage_pricing.dart';
 import '../models/team_config.dart';
 import '../services/usage/session_usage_sync_service.dart';
 import '../services/usage/usage_aggregator.dart';
+import '../services/usage/usage_pricing_store.dart';
 import '../services/usage/usage_sync_control.dart';
 import '../utils/logging/logger.dart';
 
@@ -31,6 +33,10 @@ final class SessionUsageState extends Equatable {
     this.isCancelling = false,
     this.syncCancelled = false,
     this.lastSyncManual = true,
+    this.pricing = const UsagePricingCatalog(),
+    this.pricingSaving = false,
+    this.pricingCorrupted = false,
+    this.pricingError,
     this.errorMessage,
   }) : syncErrors = List.unmodifiable(syncErrors);
 
@@ -49,6 +55,10 @@ final class SessionUsageState extends Equatable {
   final bool isCancelling;
   final bool syncCancelled;
   final bool lastSyncManual;
+  final UsagePricingCatalog pricing;
+  final bool pricingSaving;
+  final bool pricingCorrupted;
+  final String? pricingError;
   final String? errorMessage;
 
   bool get hasData => dashboard.totalEventCount > 0;
@@ -73,6 +83,11 @@ final class SessionUsageState extends Equatable {
     bool? isCancelling,
     bool? syncCancelled,
     bool? lastSyncManual,
+    UsagePricingCatalog? pricing,
+    bool? pricingSaving,
+    bool? pricingCorrupted,
+    String? pricingError,
+    bool clearPricingError = false,
     String? errorMessage,
     bool clearError = false,
   }) {
@@ -96,6 +111,12 @@ final class SessionUsageState extends Equatable {
       isCancelling: isCancelling ?? this.isCancelling,
       syncCancelled: syncCancelled ?? this.syncCancelled,
       lastSyncManual: lastSyncManual ?? this.lastSyncManual,
+      pricing: pricing ?? this.pricing,
+      pricingSaving: pricingSaving ?? this.pricingSaving,
+      pricingCorrupted: pricingCorrupted ?? this.pricingCorrupted,
+      pricingError: clearPricingError
+          ? null
+          : (pricingError ?? this.pricingError),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -117,6 +138,10 @@ final class SessionUsageState extends Equatable {
     isCancelling,
     syncCancelled,
     lastSyncManual,
+    pricing,
+    pricingSaving,
+    pricingCorrupted,
+    pricingError,
     errorMessage,
   ];
 }
@@ -130,6 +155,8 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     required Future<List<SessionUsageEvent>> Function() loadEvents,
     required Future<UsageSyncResult> Function() syncAll,
     UsageSyncHandle Function()? startSync,
+    Future<UsagePricingLoad> Function()? loadPricing,
+    Future<void> Function(List<UsagePriceRule> rules)? savePricing,
     required Future<List<AppSession>> Function() loadSessions,
     required Future<List<TeamProfile>> Function() loadTeams,
     Stream<void>? storageChanges,
@@ -137,6 +164,8 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   }) : _loadEvents = loadEvents,
        _syncAll = syncAll,
        _startSync = startSync,
+       _loadPricing = loadPricing,
+       _savePricing = savePricing,
        _loadSessions = loadSessions,
        _loadTeams = loadTeams,
        _now = now ?? DateTime.now,
@@ -149,6 +178,8 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   final Future<List<SessionUsageEvent>> Function() _loadEvents;
   final Future<UsageSyncResult> Function() _syncAll;
   final UsageSyncHandle Function()? _startSync;
+  final Future<UsagePricingLoad> Function()? _loadPricing;
+  final Future<void> Function(List<UsagePriceRule> rules)? _savePricing;
   final Future<List<AppSession>> Function() _loadSessions;
   final Future<List<TeamProfile>> Function() _loadTeams;
   final DateTime Function() _now;
@@ -159,6 +190,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   Future<void>? _loadFlight;
   Future<void>? _syncFlight;
   bool _syncManual = true;
+  UsagePricingCatalog _pricing = const UsagePricingCatalog();
   List<SessionUsageEvent> _events = const [];
   UsageAttribution _attribution = const UsageAttribution();
 
@@ -194,8 +226,24 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       final events = await _loadEvents();
       final sessions = await _loadSessions();
       final teams = await _loadTeams();
+      var pricingCorrupted = false;
+      UsagePricingCatalog pricing;
+      final loadPricing = _loadPricing;
+      if (loadPricing == null) {
+        pricing = UsagePricingCatalog.builtIn();
+      } else {
+        try {
+          final loaded = await loadPricing();
+          pricing = UsagePricingCatalog(userRules: loaded.rules);
+          pricingCorrupted = loaded.corrupted;
+        } on Object {
+          pricing = UsagePricingCatalog.builtIn();
+          pricingCorrupted = true;
+        }
+      }
       if (isClosed) return;
       _events = events;
+      _pricing = pricing;
       _attribution = UsageAttribution.fromSessionsAndTeams(
         sessions: sessions,
         teams: teams,
@@ -204,6 +252,8 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
         state.copyWith(
           status: SessionUsageStatus.ready,
           dashboard: _computeDashboard(),
+          pricing: pricing,
+          pricingCorrupted: pricingCorrupted,
           clearError: true,
         ),
       );
@@ -361,6 +411,32 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
 
   void clearLoadError() => emit(state.copyWith(clearError: true));
 
+  Future<void> savePricing(List<UsagePriceRule> rules) async {
+    final saver = _savePricing;
+    if (saver == null || state.pricingSaving) return;
+
+    emit(state.copyWith(pricingSaving: true, clearPricingError: true));
+    try {
+      await saver(rules);
+      if (isClosed) return;
+      _pricing = UsagePricingCatalog(userRules: rules);
+      emit(
+        state.copyWith(
+          pricing: _pricing,
+          pricingSaving: false,
+          pricingCorrupted: false,
+          dashboard: _computeDashboard(),
+          clearPricingError: true,
+        ),
+      );
+    } on Object catch (error) {
+      if (isClosed) return;
+      emit(state.copyWith(pricingSaving: false, pricingError: '$error'));
+    }
+  }
+
+  Future<void> resetPricing() => savePricing(const []);
+
   void _updateFilter({
     UsageRange? range,
     CliTool? cli,
@@ -390,6 +466,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
         query: current.query,
       ),
       nowMs: _now().millisecondsSinceEpoch,
+      pricing: _pricing,
     );
   }
 

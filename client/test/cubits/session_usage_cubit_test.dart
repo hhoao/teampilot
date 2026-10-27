@@ -5,8 +5,10 @@ import 'package:teampilot/cubits/session_usage_cubit.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_usage.dart';
 import 'package:teampilot/models/session_usage_dashboard.dart';
+import 'package:teampilot/models/session_usage_pricing.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/usage/session_usage_sync_service.dart';
+import 'package:teampilot/services/usage/usage_pricing_store.dart';
 import 'package:teampilot/services/usage/usage_sync_control.dart';
 
 final _now = DateTime(2026, 10, 26, 18);
@@ -14,6 +16,7 @@ final _now = DateTime(2026, 10, 26, 18);
 SessionUsageEvent _event({
   String id = 'r1',
   String sessionId = 's1',
+  String model = 'claude-sonnet-4',
   int input = 10,
   int output = 2,
   int? timestampMs,
@@ -21,7 +24,7 @@ SessionUsageEvent _event({
   return SessionUsageEvent(
     requestId: id,
     cli: CliTool.claude,
-    model: 'claude-sonnet-4',
+    model: model,
     inputTokens: input,
     outputTokens: output,
     cacheReadTokens: 0,
@@ -354,5 +357,114 @@ void main() {
 
     await cubit.sync();
     expect(cubit.state.lastSyncManual, isTrue);
+  });
+
+  test('loads user pricing and computes cost', () async {
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [
+        _event(model: 'custom', input: 1000000, output: 0),
+      ],
+      syncAll: () async => const UsageSyncResult(),
+      loadPricing: () async => const UsagePricingLoad(
+        rules: [
+          UsagePriceRule(
+            model: 'custom',
+            inputPerMillion: 2,
+            outputPerMillion: 0,
+          ),
+        ],
+      ),
+      loadSessions: () async => const <AppSession>[],
+      loadTeams: () async => const <TeamProfile>[],
+      now: () => _now,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.ensureLoaded();
+
+    expect(cubit.state.pricing.userRules, hasLength(1));
+    expect(cubit.state.dashboard.summary.costMicroUsd, 2000000);
+    expect(cubit.state.dashboard.summary.pricedEvents, 1);
+    expect(cubit.state.dashboard.summary.unpricedEvents, 0);
+  });
+
+  test('saving pricing recomputes cached events without reloading', () async {
+    var loadCount = 0;
+    var saved = const <UsagePriceRule>[];
+    final cubit = SessionUsageCubit(
+      loadEvents: () async {
+        loadCount++;
+        return [_event(model: 'custom', input: 1000000, output: 0)];
+      },
+      syncAll: () async => const UsageSyncResult(),
+      loadPricing: () async => const UsagePricingLoad(rules: []),
+      savePricing: (rules) async => saved = rules,
+      loadSessions: () async => const <AppSession>[],
+      loadTeams: () async => const <TeamProfile>[],
+      now: () => _now,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.ensureLoaded();
+    expect(cubit.state.dashboard.summary.unpricedEvents, 1);
+
+    await cubit.savePricing(const [
+      UsagePriceRule(model: 'custom', inputPerMillion: 2, outputPerMillion: 0),
+    ]);
+
+    expect(loadCount, 1);
+    expect(saved, hasLength(1));
+    expect(cubit.state.pricingSaving, isFalse);
+    expect(cubit.state.dashboard.summary.costMicroUsd, 2000000);
+  });
+
+  test('pricing save failure keeps the old catalog', () async {
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [_event(model: 'custom')],
+      syncAll: () async => const UsageSyncResult(),
+      loadPricing: () async => const UsagePricingLoad(rules: []),
+      savePricing: (_) async => throw StateError('read-only'),
+      loadSessions: () async => const <AppSession>[],
+      loadTeams: () async => const <TeamProfile>[],
+      now: () => _now,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.ensureLoaded();
+    await cubit.savePricing(const [
+      UsagePriceRule(model: 'custom', inputPerMillion: 2, outputPerMillion: 0),
+    ]);
+
+    expect(cubit.state.pricing.userRules, isEmpty);
+    expect(cubit.state.pricingError, contains('read-only'));
+    expect(cubit.state.pricingSaving, isFalse);
+  });
+
+  test('reset pricing removes user rules', () async {
+    var saved = const <UsagePriceRule>[
+      UsagePriceRule(model: 'old', inputPerMillion: 1, outputPerMillion: 1),
+    ];
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [_event()],
+      syncAll: () async => const UsageSyncResult(),
+      loadPricing: () async => UsagePricingLoad(
+        rules: const [
+          UsagePriceRule(model: 'old', inputPerMillion: 1, outputPerMillion: 1),
+        ],
+      ),
+      savePricing: (rules) async => saved = rules,
+      loadSessions: () async => const <AppSession>[],
+      loadTeams: () async => const <TeamProfile>[],
+      now: () => _now,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.ensureLoaded();
+    expect(cubit.state.pricing.userRules, hasLength(1));
+
+    await cubit.resetPricing();
+
+    expect(saved, isEmpty);
+    expect(cubit.state.pricing.userRules, isEmpty);
   });
 }

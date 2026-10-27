@@ -353,6 +353,8 @@ class AppPaths {
 
   String get usageCursorsFile => _ctx.join(usageDir, 'cursors.json');
 
+  String get usagePricingFile => _ctx.join(usageDir, 'pricing.json');
+
   String get sshProfilesDir => _ctx.join(basePath, 'ssh_profiles');
 
   /// Control-plane runtime targets registry (`targets.json`). Holds the
