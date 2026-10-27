@@ -15,6 +15,7 @@ import 'package:teampilot/pages/workspace_shell/workspace_shell_tabs.dart';
 import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 import 'package:teampilot/widgets/notification/notification_bell_button.dart';
+import 'package:teampilot/widgets/window_drag_area.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
@@ -91,6 +92,50 @@ void main() {
     expect(find.byKey(AppKeys.sidebarVisibilityButton), findsOneWidget);
     expect(find.byKey(AppKeys.rightToolsVisibilityButton), findsOneWidget);
   });
+
+  testWidgets(
+    'full tab strip keeps a window drag area for the frameless window',
+    (tester) async {
+      tester.view.physicalSize = const Size(900, 700);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: _wrapTitleBar(
+            chatCubit: chatCubit,
+            child: HomeTitleBar(
+              tabs: [
+                for (var i = 0; i < 12; i++)
+                  HomeWorkspaceTab(
+                    id: 'ws-$i',
+                    name: 'Workspace number $i with a long name',
+                  ),
+              ],
+              activeTabKey: 'ws-0',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      final dragArea = find.byType(WindowDragArea);
+      expect(dragArea, findsOneWidget);
+      final dragWidth = tester.getSize(dragArea).width;
+      // Absolute floor first: referencing the constant alone would also pass a
+      // regression that drops the constant to zero.
+      expect(
+        dragWidth,
+        greaterThan(0),
+        reason: 'window-move strip vanished under a full tab row',
+      );
+      expect(dragWidth, greaterThanOrEqualTo(kHomeTitleBarMinWindowDragWidth));
+    },
+  );
 
   testWidgets('pane visibility toggles hidden on home view', (tester) async {
     await tester.pumpWidget(

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -39,6 +40,13 @@ bool homeSidebarTriggerVisible({
 
 /// Height of the Apifox-style workspace title bar.
 const double kHomeTitleBarHeight = 58;
+
+/// Width the workspace tab strip always leaves for the window-move area.
+///
+/// The frameless desktop window is moved by dragging that spacer; without a
+/// floor a full row of open workspace tabs squeezes it to zero and the window
+/// can no longer be dragged. Capping the tab strip keeps a grab handle.
+const double kHomeTitleBarMinWindowDragWidth = 24;
 
 /// Vertical padding inside home / workspace tab chips.
 const double kHomeTitleBarChipVerticalPadding =
@@ -377,14 +385,26 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
                 // capped at the available width so they scroll only when they
                 // would overflow), which leaves the spacer as the *sole* flex
                 // child: it absorbs all leftover width and remains draggable.
+                // The cap reserves [kHomeTitleBarMinWindowDragWidth] so a full
+                // row of tabs can never collapse that drag area to zero.
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
+                      final dragReserve =
+                          showWindowControls &&
+                              constraints.maxWidth >
+                                  kHomeTitleBarMinWindowDragWidth
+                          ? kHomeTitleBarMinWindowDragWidth
+                          : 0.0;
+                      final tabStripMaxWidth = math.max(
+                        0.0,
+                        constraints.maxWidth - dragReserve,
+                      );
                       return Row(
                         children: [
                           ConstrainedBox(
                             constraints: BoxConstraints(
-                              maxWidth: constraints.maxWidth,
+                              maxWidth: tabStripMaxWidth,
                             ),
                             child: ListView(
                               shrinkWrap: true,
