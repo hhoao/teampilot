@@ -220,6 +220,45 @@ void main() {
     );
   });
 
+  test('opencodeStagingProviderKey prefers subscription over catalog id', () {
+    const row = AppProviderConfig(
+      id: 'opencode-go-2',
+      cli: CliTool.opencode,
+      name: 'Go work',
+      config: {OpencodeProviderConfigKeys.subscription: 'opencode-go'},
+    );
+    expect(opencodeStagingProviderKey(row), 'opencode-go');
+  });
+
+  test('mergeOpencodeProvider uses subscription namespace', () {
+    final merged = mergeOpencodeProvider(
+      const <String, Object?>{},
+      const AppProviderConfig(
+        id: 'tp-go-home',
+        cli: CliTool.opencode,
+        name: 'Go home',
+        apiKey: 'sk-test',
+        baseUrl: 'https://opencode.ai/zen/go/v1',
+        config: {OpencodeProviderConfigKeys.subscription: 'opencode-go'},
+      ),
+    );
+    final providers = merged['providers'] as Map;
+    expect(providers.keys, contains('opencode-go'));
+    expect(providers.keys, isNot(contains('tp-go-home')));
+  });
+
+  test('mergeOpencodeDefaultModel registers model under provider key', () {
+    final merged = mergeOpencodeDefaultModel(
+      const <String, Object?>{},
+      providerId: 'opencode-go',
+      modelId: 'deepseek-v4.1-flash',
+    );
+    expect(merged['model'], 'opencode-go/deepseek-v4.1-flash');
+    final models =
+        ((merged['providers'] as Map)['opencode-go'] as Map)['models'] as Map;
+    expect(models.keys, contains('deepseek-v4.1-flash'));
+  });
+
   test('mergeOpencodeProvider writes apiKey/baseURL into provider options', () {
     final merged = mergeOpencodeProvider(
       <String, Object?>{

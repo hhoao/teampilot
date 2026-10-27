@@ -3399,6 +3399,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get providerName => '提供商名称';
 
   @override
+  String get appProviderDisplayName => '显示名称';
+
+  @override
+  String get appProviderDisplayNameHint => '在列表和预设中展示，用于区分账户；不会改变内部 id。';
+
+  @override
+  String appProviderInternalIdPreview(String id) {
+    return '内部 id：$id';
+  }
+
+  @override
+  String get appProviderOpencodeSubscription => 'OpenCode 线路键';
+
+  @override
+  String get appProviderOpencodeSubscriptionHint =>
+      '写入 opencode.json 的 provider 命名空间（如 opencode-go）。多个 TeamPilot 账户可共用同一键。';
+
+  @override
   String get renameProviderName => '修改名称';
 
   @override

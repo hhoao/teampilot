@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/credential_action_result.dart';
@@ -42,11 +42,13 @@ import '../../../resource/providers/runtime_event_hook_contribution_provider.dar
 import 'awareness_plugin.dart';
 import 'idle_plugin.dart';
 import 'opencode_hook_writer.dart';
+import '../provider/opencode_provider_form_section.dart';
 
 export '../opencode_config.dart';
 
 abstract final class OpencodeFormExtraKeys {
   static const effort = 'effort';
+  static const subscription = 'subscription';
 }
 
 /// OpenCode model catalog from the live models.dev fetch, falling back to the
@@ -61,10 +63,13 @@ final class OpencodeCatalogSource implements ModelCatalogSource {
     required AppProviderConfig? provider,
     required String providerId,
   }) {
-    final id = provider?.id ?? providerId;
-    final live = _modelsService?.modelIdsFor(providerId: id) ?? const [];
+    final catalogKey = provider != null
+        ? opencodeStagingProviderKey(provider)
+        : providerId;
+    final live =
+        _modelsService?.modelIdsFor(providerId: catalogKey) ?? const [];
     if (live.isNotEmpty) return live;
-    return OpencodeModelCatalog.knownModelsForProvider(id);
+    return OpencodeModelCatalog.knownModelsForProvider(catalogKey);
   }
 }
 
@@ -124,6 +129,8 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     final config = existing?.config ?? defaultConfig();
     return {
       OpencodeFormExtraKeys.effort: config['reasoningEffort']?.toString() ?? '',
+      OpencodeFormExtraKeys.subscription:
+          config[OpencodeProviderConfigKeys.subscription]?.toString() ?? '',
     };
   }
 
@@ -131,6 +138,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
   Map<String, Object?> extraFromPreset(AppProviderPreset preset) => {
     OpencodeFormExtraKeys.effort:
         preset.template.config['reasoningEffort']?.toString() ?? '',
+    OpencodeFormExtraKeys.subscription: preset.id,
   };
 
   @override
@@ -143,7 +151,32 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     } else {
       config['reasoningEffort'] = effort;
     }
+    final subscription =
+        input.extra[OpencodeFormExtraKeys.subscription]?.toString().trim() ??
+        '';
+    if (subscription.isEmpty) {
+      config.remove(OpencodeProviderConfigKeys.subscription);
+    } else {
+      config[OpencodeProviderConfigKeys.subscription] = subscription;
+    }
     return config;
+  }
+
+  @override
+  Widget buildExtraSection(
+    BuildContext context,
+    ProviderFormSectionProps props,
+  ) {
+    return OpencodeProviderFormSection(
+      subscription:
+          props.extra[OpencodeFormExtraKeys.subscription]?.toString() ?? '',
+      onSubscriptionChanged: (value) {
+        props.onExtraChanged({
+          ...props.extra,
+          OpencodeFormExtraKeys.subscription: value,
+        });
+      },
+    );
   }
 
   // ---- ProviderModelCapability (live models.dev) ----
@@ -403,9 +436,12 @@ final class OpencodeProviderCapability extends CatalogModelCapability
     }
 
     if (member != null) {
+      final modelNamespace = launchProvider != null
+          ? opencodeStagingProviderKey(launchProvider)
+          : member.provider.trim();
       final withModel = mergeOpencodeDefaultModel(
         config,
-        providerId: member.provider,
+        providerId: modelNamespace,
         modelId: member.model,
       );
       if (!identical(withModel, config)) {

@@ -6350,6 +6350,36 @@ abstract class AppLocalizations {
   /// **'Provider name'**
   String get providerName;
 
+  /// No description provided for @appProviderDisplayName.
+  ///
+  /// In en, this message translates to:
+  /// **'Display name'**
+  String get appProviderDisplayName;
+
+  /// No description provided for @appProviderDisplayNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Label for this account in lists and presets. Does not change the internal id.'**
+  String get appProviderDisplayNameHint;
+
+  /// No description provided for @appProviderInternalIdPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Internal id: {id}'**
+  String appProviderInternalIdPreview(String id);
+
+  /// No description provided for @appProviderOpencodeSubscription.
+  ///
+  /// In en, this message translates to:
+  /// **'OpenCode provider key'**
+  String get appProviderOpencodeSubscription;
+
+  /// No description provided for @appProviderOpencodeSubscriptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Namespace in opencode.json (e.g. opencode-go). Multiple TeamPilot accounts can share the same key.'**
+  String get appProviderOpencodeSubscriptionHint;
+
   /// No description provided for @renameProviderName.
   ///
   /// In en, this message translates to:

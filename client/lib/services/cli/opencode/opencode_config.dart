@@ -18,6 +18,26 @@ const opencodeMcpServersKey = 'servers';
 const opencodeModelKey = 'model';
 const opencodeDefaultAgentKey = 'default_agent';
 
+/// Stored on [AppProviderConfig.config] for OpenCode-only staging namespace.
+abstract final class OpencodeProviderConfigKeys {
+  OpencodeProviderConfigKeys._();
+
+  static const subscription = 'opencodeSubscription';
+}
+
+/// OpenCode `opencode.json` provider key and `model` prefix (e.g. `opencode-go`).
+///
+/// When [OpencodeProviderConfigKeys.subscription] is set, it wins over [AppProviderConfig.id]
+/// so TeamPilot can keep stable catalog ids (`opencode-go-2`) while reusing one
+/// OpenCode provider namespace.
+String opencodeStagingProviderKey(AppProviderConfig provider) {
+  final subscription =
+      provider.config[OpencodeProviderConfigKeys.subscription]?.toString().trim() ??
+      '';
+  if (subscription.isNotEmpty) return subscription;
+  return provider.id.trim();
+}
+
 /// v2 TUI has no `--model`; the default is `opencode.json` `"model"`.
 Map<String, Object?> mergeOpencodeDefaultModel(
   Map<String, Object?> config, {
@@ -29,7 +49,41 @@ Map<String, Object?> mergeOpencodeDefaultModel(
   if (model.isEmpty) return config;
   final selector = provider.isEmpty ? model : '$provider/$model';
   if (config[opencodeModelKey] == selector) return config;
-  return {...config, opencodeModelKey: selector};
+  var next = {...config, opencodeModelKey: selector};
+  if (provider.isNotEmpty) {
+    next = mergeOpencodeEnsureModelInProvider(
+      next,
+      providerKey: provider,
+      modelId: model,
+    );
+  }
+  return next;
+}
+
+Map<String, Object?> mergeOpencodeEnsureModelInProvider(
+  Map<String, Object?> config, {
+  required String providerKey,
+  required String modelId,
+}) {
+  final provider = providerKey.trim();
+  final model = modelId.trim();
+  if (provider.isEmpty || model.isEmpty) return config;
+
+  final providers = <String, Object?>{
+    ...((config[opencodeProvidersKey] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  final existing =
+      (providers[provider] as Map?)?.cast<String, Object?>() ??
+      <String, Object?>{};
+  final models = <String, Object?>{
+    ...((existing['models'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  if (models.containsKey(model)) return config;
+  models[model] = <String, Object?>{'name': model};
+  providers[provider] = {...existing, 'models': models};
+  return {...config, opencodeProvidersKey: providers};
 }
 
 /// v2 TUI has no `--agent`; the default is `opencode.json` `"default_agent"`.
@@ -214,7 +268,7 @@ Map<String, Object?> mergeOpencodeProvider(
   Map<String, Object?> config,
   AppProviderConfig provider,
 ) {
-  final id = provider.id.trim();
+  final id = opencodeStagingProviderKey(provider);
   if (id.isEmpty) return config;
 
   final providers = <String, Object?>{
@@ -270,7 +324,7 @@ Map<String, Object?> mergeOpencodeReasoningEffort(
   final effort = reasoningEffort.trim();
   if (effort.isEmpty) return config;
 
-  final providerId = provider.id.trim();
+  final providerId = opencodeStagingProviderKey(provider);
   final modelId = (memberModel?.trim().isNotEmpty ?? false)
       ? memberModel!.trim()
       : provider.defaultModel.trim();

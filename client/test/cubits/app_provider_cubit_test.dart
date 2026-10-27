@@ -9,6 +9,7 @@ import 'package:teampilot/repositories/managed_provider_repository.dart';
 import 'package:teampilot/services/provider_usage/managed_provider_link_binding.dart';
 import 'package:teampilot/services/provider/credential_login_progress.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
+import 'package:teampilot/services/cli/registry/capabilities/provider_capability.dart';
 import '../support/in_memory_filesystem.dart';
 
 class _SpyProviderImportService extends ProviderImportService {
@@ -306,4 +307,27 @@ void main() {
       expect(cubit.state.credentialLoginProviderId, isNull);
     },
   );
+
+  test('prospectiveIdForNewProvider uses preset id not display name', () {
+    const presets = [
+      AppProviderPreset(
+        id: 'opencode-go',
+        label: 'OpenCode Go',
+        template: AppProviderConfig(
+          id: 'opencode-go',
+          cli: CliTool.opencode,
+          name: 'OpenCode Go',
+        ),
+      ),
+    ];
+    expect(
+      AppProviderCubit.prospectiveIdForNewProvider(
+        presetId: 'opencode-go',
+        presets: presets,
+        displayName: 'Opencode Go Google',
+        existingIds: const ['opencode-go'],
+      ),
+      'opencode-go-2',
+    );
+  });
 }

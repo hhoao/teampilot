@@ -722,6 +722,30 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     return slug.isEmpty ? 'provider' : slug;
   }
 
+  /// Stable catalog id for a new provider row (display [name] does not drive id).
+  static String prospectiveIdForNewProvider({
+    required String presetId,
+    required Iterable<AppProviderPreset> presets,
+    required String displayName,
+    required Iterable<String> existingIds,
+  }) {
+    if (presetId.trim().isNotEmpty && presetId != 'custom') {
+      AppProviderPreset? preset;
+      for (final candidate in presets) {
+        if (candidate.id == presetId) {
+          preset = candidate;
+          break;
+        }
+      }
+      final base = preset?.id.trim().isNotEmpty == true
+          ? preset!.id.trim()
+          : 'provider';
+      return uniqueId(base, existingIds);
+    }
+    final fromName = slugifyId(displayName);
+    return uniqueId(fromName.isEmpty ? 'provider' : fromName, existingIds);
+  }
+
   static String uniqueId(String base, Iterable<String> existing) {
     var candidate = base;
     var i = 2;

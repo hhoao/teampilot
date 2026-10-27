@@ -71,6 +71,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   late bool _showAdvancedJson;
   String? _prospectiveId;
   String? _prospectiveIdName;
+  String? _prospectivePresetId;
 
   bool get _isEditing => widget.existing != null;
 
@@ -138,6 +139,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     _extra = const {};
     _prospectiveId = null;
     _prospectiveIdName = null;
+    _prospectivePresetId = null;
     _credentialLink = '';
   }
 
@@ -164,6 +166,8 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     final t = preset.template;
     setState(() {
       _presetId = presetId;
+      _prospectiveId = null;
+      _prospectivePresetId = null;
       _category = t.category;
       _apiKeyField = t.apiKeyField;
       _apiKeyUrl = t.apiKeyUrl;
@@ -199,24 +203,31 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   /// login inside the add form targets this row — never an existing row that
   /// already owns the base slug (e.g. a second official preset row must get
   /// `openai-official-2`, not clobber `openai-official`).
-  String _prospectiveIdForCurrentName() {
+  String _prospectiveIdForNewRow() {
     final name = _nameCtl.text.trim();
-    if (_prospectiveId == null || _prospectiveIdName != name) {
+    if (_prospectiveId == null ||
+        _prospectiveIdName != name ||
+        _prospectivePresetId != _presetId) {
       final cubit = context.read<AppProviderCubit>();
-      final base = AppProviderCubit.slugifyId(name);
       final existing = cubit.state
           .providersFor(widget.cli)
           .map((p) => p.id)
           .toList(growable: false);
-      _prospectiveId = AppProviderCubit.uniqueId(base, existing);
+      _prospectiveId = AppProviderCubit.prospectiveIdForNewProvider(
+        presetId: _presetId,
+        presets: _formCap(context).presets,
+        displayName: name,
+        existingIds: existing,
+      );
       _prospectiveIdName = name;
+      _prospectivePresetId = _presetId;
     }
     return _prospectiveId!;
   }
 
   AppProviderConfig _buildNormalDraft() {
     final name = _nameCtl.text.trim();
-    final baseId = widget.existing?.id ?? _prospectiveIdForCurrentName();
+    final baseId = widget.existing?.id ?? _prospectiveIdForNewRow();
     final now = DateTime.now().toUtc().millisecondsSinceEpoch;
     final config = _formCap().buildConfig(_formInput());
     final draft = AppProviderConfig(
@@ -447,12 +458,31 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                     },
                   )
                 else ...[
-                  TextField(
+                  TpInput(
                     controller: _nameCtl,
-                    decoration: InputDecoration(labelText: l10n.providerName),
+                    onChanged: (_) => setState(() {
+                      _prospectiveId = null;
+                    }),
+                    decoration: InputDecoration(
+                      labelText: l10n.appProviderDisplayName,
+                    ),
                   ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.appProviderDisplayNameHint,
+                    style: TpTextStyles.of(context).mutedSm,
+                  ),
+                  if (!_isEditing) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      l10n.appProviderInternalIdPreview(
+                        _prospectiveIdForNewRow(),
+                      ),
+                      style: TpTextStyles.of(context).mutedSm,
+                    ),
+                  ],
                   const SizedBox(height: 12),
-                  TextField(
+                  TpInput(
                     controller: _websiteCtl,
                     decoration: InputDecoration(
                       labelText: l10n.appProviderWebsite,
@@ -485,7 +515,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                         entryName: _linkedEntryName(context),
                       )
                     else
-                      TextField(
+                      TpInput(
                         controller: _apiKeyCtl,
                         obscureText: true,
                         decoration: InputDecoration(
@@ -498,11 +528,25 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   ],
                   if (!_hidesApiKeyFields(context)) ...[
                     const SizedBox(height: 12),
-                    TextField(
+                    TpInput(
                       controller: _baseUrlCtl,
                       decoration: InputDecoration(labelText: l10n.baseUrl),
                     ),
                   ],
+                  const SizedBox(height: 12),
+                  formCap.buildExtraSection(
+                    context,
+                    ProviderFormSectionProps(
+                      config: _config,
+                      apiKeyField: _apiKeyField,
+                      baseUrl: _baseUrlCtl.text,
+                      defaultModel: _defaultModelCtl.text,
+                      extra: _extra,
+                      onExtraChanged: (next) => setState(() => _extra = next),
+                      onApiKeyFieldChanged: (value) =>
+                          setState(() => _apiKeyField = value),
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   _DefaultModelField(
                     cli: widget.cli,
@@ -545,19 +589,6 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                       }),
                     ),
                   ],
-                  formCap.buildExtraSection(
-                    context,
-                    ProviderFormSectionProps(
-                      config: _config,
-                      apiKeyField: _apiKeyField,
-                      baseUrl: _baseUrlCtl.text,
-                      defaultModel: _defaultModelCtl.text,
-                      extra: _extra,
-                      onExtraChanged: (next) => setState(() => _extra = next),
-                      onApiKeyFieldChanged: (value) =>
-                          setState(() => _apiKeyField = value),
-                    ),
-                  ),
                 ],
               ],
             ),
@@ -830,7 +861,7 @@ class _DefaultModelField extends StatelessWidget {
       );
     }
 
-    return TextField(
+    return TpInput(
       controller: controller,
       decoration: InputDecoration(labelText: label),
       onChanged: (_) => onChanged(),

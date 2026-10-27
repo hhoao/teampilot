@@ -1723,6 +1723,18 @@
   "rawJsonTab": "Raw JSON",
   "addProvider": "Add Provider",
   "providerName": "Provider name",
+  "appProviderDisplayName": "Display name",
+  "appProviderDisplayNameHint": "Label for this account in lists and presets. Does not change the internal id.",
+  "appProviderInternalIdPreview": "Internal id: {id}",
+  "@appProviderInternalIdPreview": {
+    "placeholders": {
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "appProviderOpencodeSubscription": "OpenCode provider key",
+  "appProviderOpencodeSubscriptionHint": "Namespace in opencode.json (e.g. opencode-go). Multiple TeamPilot accounts can share the same key.",
   "renameProviderName": "Rename",
   "renameProviderTitle": "Rename provider",
   "deleteProvider": "Delete Provider",

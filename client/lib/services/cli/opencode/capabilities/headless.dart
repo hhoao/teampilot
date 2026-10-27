@@ -107,7 +107,7 @@ final class OpencodeHeadlessCapability
     config = mergeOpencodeProvider(config, resolved);
     config = mergeOpencodeDefaultModel(
       config,
-      providerId: resolved.id,
+      providerId: opencodeStagingProviderKey(resolved),
       modelId: ctx.model,
     );
     config = mergeOpencodeSecurityPolicy(config, ctx.securityPolicy);

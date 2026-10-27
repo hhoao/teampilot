@@ -3557,6 +3557,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get providerName => 'Provider name';
 
   @override
+  String get appProviderDisplayName => 'Display name';
+
+  @override
+  String get appProviderDisplayNameHint =>
+      'Label for this account in lists and presets. Does not change the internal id.';
+
+  @override
+  String appProviderInternalIdPreview(String id) {
+    return 'Internal id: $id';
+  }
+
+  @override
+  String get appProviderOpencodeSubscription => 'OpenCode provider key';
+
+  @override
+  String get appProviderOpencodeSubscriptionHint =>
+      'Namespace in opencode.json (e.g. opencode-go). Multiple TeamPilot accounts can share the same key.';
+
+  @override
   String get renameProviderName => 'Rename';
 
   @override
