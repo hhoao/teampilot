@@ -79,12 +79,36 @@ class UsageSummaryCards extends StatelessWidget {
         final cardWidth = columns == 1
             ? width
             : (width - gap * (columns - 1)) / columns;
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
+        // Cards grow with their content (typography is scaled through the
+        // theme, not MediaQuery.textScaler, so a fixed height overflows) while
+        // every card in a run keeps the height of the tallest one.
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final card in cards)
-              SizedBox(width: cardWidth, height: 148, child: card),
+            for (var start = 0; start < cards.length; start += columns) ...[
+              if (start > 0) const SizedBox(height: gap),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (
+                      var index = start;
+                      index < start + columns && index < cards.length;
+                      index++
+                    ) ...[
+                      if (index > start) const SizedBox(width: gap),
+                      SizedBox(
+                        width: cardWidth,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 148),
+                          child: cards[index],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ],
         );
       },
