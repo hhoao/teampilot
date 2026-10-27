@@ -27,6 +27,15 @@ String formatUsagePercent(double value) {
 String formatUsageShare(int part, int total) =>
     formatUsagePercent(total == 0 ? 0 : part / total);
 
+String formatUsageCost(int? microUsd) {
+  if (microUsd == null) return '—';
+  if (microUsd == 0) return r'$0.00';
+  if (microUsd < 10000) return r'<$0.01';
+  final dollars = microUsd / 1000000;
+  if (dollars < 1) return '\$${dollars.toStringAsFixed(4)}';
+  return '\$${dollars.toStringAsFixed(2)}';
+}
+
 String formatUsageLastSync(BuildContext context, int? timestampMs) {
   if (timestampMs == null) return context.l10n.sessionUsageNeverSynced;
   final date = DateTime.fromMillisecondsSinceEpoch(timestampMs).toLocal();

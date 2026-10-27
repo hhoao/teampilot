@@ -21,13 +21,14 @@ SessionUsageEvent _event({
   String id = 'r1',
   String sessionId = 's1',
   CliTool cli = CliTool.claude,
+  String model = 'claude-sonnet-4',
   int input = 10,
   int output = 2,
 }) {
   return SessionUsageEvent(
     requestId: id,
     cli: cli,
-    model: 'claude-sonnet-4',
+    model: model,
     inputTokens: input,
     outputTokens: output,
     cacheReadTokens: 0,
@@ -446,5 +447,42 @@ void main() {
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpAndSettle();
     expect(syncCount, 2);
+  });
+
+  testWidgets('shows cost and unpriced rows', (tester) async {
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [
+        _event(
+          id: 'priced',
+          sessionId: 's1',
+          model: 'claude-sonnet-4-5',
+          input: 1000000,
+          output: 1000000,
+        ),
+        _event(
+          id: 'unpriced',
+          sessionId: 's2',
+          model: 'unknown-model',
+          input: 1000000,
+          output: 0,
+        ),
+      ],
+      syncAll: () async => const UsageSyncResult(),
+      loadSessions: () async => [
+        _session('s1', 'Alpha'),
+        _session('s2', 'Beta'),
+      ],
+      loadTeams: () async => const <TeamProfile>[],
+    );
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(AppKeys.sessionUsageCostCard), findsOneWidget);
+    expect(find.textContaining(r'$18.00'), findsWidgets);
+    expect(find.textContaining('1 priced · 1 unpriced'), findsOneWidget);
+    expect(find.text('Unpriced'), findsOneWidget);
+    expect(find.text('Cost'), findsWidgets);
   });
 }

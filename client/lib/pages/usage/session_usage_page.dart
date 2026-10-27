@@ -9,7 +9,9 @@ import '../../l10n/l10n_extensions.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/settings/workspace_pane_insets.dart';
+import 'usage_pricing_dialog.dart';
 import 'widgets/usage_cli_breakdown.dart';
+import 'widgets/usage_cost_card.dart';
 import 'widgets/usage_detail_table.dart';
 import 'widgets/usage_page_chrome.dart';
 import 'widgets/usage_page_states.dart';
@@ -148,6 +150,39 @@ class _SessionUsagePageState extends State<SessionUsagePage>
     return Padding(padding: WorkspacePaneInsets.page, child: content);
   }
 
+  Future<void> _openPricing(SessionUsageCubit cubit) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => UsagePricingDialog(
+        initialRules: cubit.state.pricing.userRules,
+        onSave: (rules) async {
+          await cubit.savePricing(rules);
+          final ok = cubit.state.pricingError == null;
+          if (ok && context.mounted) {
+            AppToast.show(
+              context,
+              message: context.l10n.sessionUsagePricingSaved,
+              variant: TpToastVariant.success,
+            );
+          }
+          return ok;
+        },
+        onReset: () async {
+          await cubit.resetPricing();
+          final ok = cubit.state.pricingError == null;
+          if (ok && context.mounted) {
+            AppToast.show(
+              context,
+              message: context.l10n.sessionUsagePricingSaved,
+              variant: TpToastVariant.success,
+            );
+          }
+          return ok;
+        },
+      ),
+    );
+  }
+
   Widget _buildBody(
     BuildContext context,
     SessionUsageCubit cubit,
@@ -177,6 +212,12 @@ class _SessionUsagePageState extends State<SessionUsagePage>
           UsageToolbar(state: state, cubit: cubit),
           const SizedBox(height: 14),
           UsageSummaryCards(dashboard: dashboard, nowMs: nowMs),
+          const SizedBox(height: 12),
+          UsageCostCard(
+            summary: dashboard.summary,
+            corrupted: state.pricingCorrupted,
+            onManagePricing: () => _openPricing(cubit),
+          ),
           const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {

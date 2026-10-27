@@ -4887,6 +4887,43 @@
       }
     }
   },
+  "sessionUsageCost": "Cost",
+  "sessionUsageCostShort": "Cost",
+  "sessionUsageCostPricedUnpriced": "{priced} priced · {unpriced} unpriced",
+  "@sessionUsageCostPricedUnpriced": {
+    "placeholders": {
+      "priced": { "type": "int" },
+      "unpriced": { "type": "int" }
+    }
+  },
+  "sessionUsageCostPartial": "Partial: {count} events unpriced",
+  "@sessionUsageCostPartial": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "sessionUsageCostUnpriced": "Unpriced",
+  "sessionUsageManagePricing": "Manage pricing",
+  "sessionUsagePricingTitle": "Model pricing",
+  "sessionUsagePricingHint": "USD per 1M tokens. User rules override built-in reference prices.",
+  "sessionUsagePricingModel": "Model",
+  "sessionUsagePricingInput": "Input",
+  "sessionUsagePricingOutput": "Output",
+  "sessionUsagePricingCacheRead": "Cache read",
+  "sessionUsagePricingCacheWrite": "Cache write",
+  "sessionUsagePricingCacheWrite1h": "1h cache write",
+  "sessionUsagePricingEffectiveDate": "Effective date",
+  "sessionUsagePricingEffectiveHint": "YYYY-MM-DD",
+  "sessionUsagePricingAdd": "Add rule",
+  "sessionUsagePricingSave": "Save",
+  "sessionUsagePricingReset": "Reset defaults",
+  "sessionUsagePricingResetConfirm": "Remove all custom pricing rules?",
+  "sessionUsagePricingInvalid": "Check model and price values.",
+  "sessionUsagePricingSaved": "Pricing saved",
+  "sessionUsagePricingFailed": "Couldn't save pricing.",
+  "sessionUsagePricingCorrupt": "Pricing file was unreadable. Using built-in prices.",
+  "sessionUsagePricingEmpty": "No custom rules. Built-in prices are active.",
+  "sessionUsagePricingDelete": "Delete",
   "sessionUsageFooterJsonl": "JSONL read-only",
   "sessionUsageFooterManual": "Auto + manual sync",
   "sessionUsageSyncedToast": "Usage synced",

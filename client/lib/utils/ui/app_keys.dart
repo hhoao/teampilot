@@ -335,6 +335,18 @@ class AppKeys {
   static const sessionUsageErrorBanner = Key('session-usage-error-banner');
   static const sessionUsageEmptyState = Key('session-usage-empty-state');
   static const sessionUsageTable = Key('session-usage-table');
+  static const sessionUsageCostCard = Key('session-usage-cost-card');
+  static const sessionUsageManagePricingButton = Key(
+    'session-usage-manage-pricing',
+  );
+  static const sessionUsagePricingDialog = Key('session-usage-pricing-dialog');
+  static const sessionUsagePricingSaveButton = Key(
+    'session-usage-pricing-save',
+  );
+  static const sessionUsagePricingAddButton = Key('session-usage-pricing-add');
+  static const sessionUsagePricingResetButton = Key(
+    'session-usage-pricing-reset',
+  );
   static const pluginsWorkspace = Key('plugins-workspace');
   static const mcpWorkspace = Key('mcp-workspace');
   static const mcpFormDetail = Key('mcp-form-detail');

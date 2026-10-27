@@ -9645,6 +9645,92 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get sessionUsageCost => 'Cost';
+
+  @override
+  String get sessionUsageCostShort => 'Cost';
+
+  @override
+  String sessionUsageCostPricedUnpriced(int priced, int unpriced) {
+    return '$priced priced · $unpriced unpriced';
+  }
+
+  @override
+  String sessionUsageCostPartial(int count) {
+    return 'Partial: $count events unpriced';
+  }
+
+  @override
+  String get sessionUsageCostUnpriced => 'Unpriced';
+
+  @override
+  String get sessionUsageManagePricing => 'Manage pricing';
+
+  @override
+  String get sessionUsagePricingTitle => 'Model pricing';
+
+  @override
+  String get sessionUsagePricingHint =>
+      'USD per 1M tokens. User rules override built-in reference prices.';
+
+  @override
+  String get sessionUsagePricingModel => 'Model';
+
+  @override
+  String get sessionUsagePricingInput => 'Input';
+
+  @override
+  String get sessionUsagePricingOutput => 'Output';
+
+  @override
+  String get sessionUsagePricingCacheRead => 'Cache read';
+
+  @override
+  String get sessionUsagePricingCacheWrite => 'Cache write';
+
+  @override
+  String get sessionUsagePricingCacheWrite1h => '1h cache write';
+
+  @override
+  String get sessionUsagePricingEffectiveDate => 'Effective date';
+
+  @override
+  String get sessionUsagePricingEffectiveHint => 'YYYY-MM-DD';
+
+  @override
+  String get sessionUsagePricingAdd => 'Add rule';
+
+  @override
+  String get sessionUsagePricingSave => 'Save';
+
+  @override
+  String get sessionUsagePricingReset => 'Reset defaults';
+
+  @override
+  String get sessionUsagePricingResetConfirm =>
+      'Remove all custom pricing rules?';
+
+  @override
+  String get sessionUsagePricingInvalid => 'Check model and price values.';
+
+  @override
+  String get sessionUsagePricingSaved => 'Pricing saved';
+
+  @override
+  String get sessionUsagePricingFailed => 'Couldn\'t save pricing.';
+
+  @override
+  String get sessionUsagePricingCorrupt =>
+      'Pricing file was unreadable. Using built-in prices.';
+
+  @override
+  String get sessionUsagePricingEmpty =>
+      'No custom rules. Built-in prices are active.';
+
+  @override
+  String get sessionUsagePricingDelete => 'Delete';
+
+  @override
   String get sessionUsageFooterJsonl => 'JSONL read-only';
 
   @override

@@ -17096,6 +17096,162 @@ abstract class AppLocalizations {
   /// **'{count} groups'**
   String sessionUsageGroupCount(int count);
 
+  /// No description provided for @sessionUsageCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost'**
+  String get sessionUsageCost;
+
+  /// No description provided for @sessionUsageCostShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost'**
+  String get sessionUsageCostShort;
+
+  /// No description provided for @sessionUsageCostPricedUnpriced.
+  ///
+  /// In en, this message translates to:
+  /// **'{priced} priced · {unpriced} unpriced'**
+  String sessionUsageCostPricedUnpriced(int priced, int unpriced);
+
+  /// No description provided for @sessionUsageCostPartial.
+  ///
+  /// In en, this message translates to:
+  /// **'Partial: {count} events unpriced'**
+  String sessionUsageCostPartial(int count);
+
+  /// No description provided for @sessionUsageCostUnpriced.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpriced'**
+  String get sessionUsageCostUnpriced;
+
+  /// No description provided for @sessionUsageManagePricing.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage pricing'**
+  String get sessionUsageManagePricing;
+
+  /// No description provided for @sessionUsagePricingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Model pricing'**
+  String get sessionUsagePricingTitle;
+
+  /// No description provided for @sessionUsagePricingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'USD per 1M tokens. User rules override built-in reference prices.'**
+  String get sessionUsagePricingHint;
+
+  /// No description provided for @sessionUsagePricingModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get sessionUsagePricingModel;
+
+  /// No description provided for @sessionUsagePricingInput.
+  ///
+  /// In en, this message translates to:
+  /// **'Input'**
+  String get sessionUsagePricingInput;
+
+  /// No description provided for @sessionUsagePricingOutput.
+  ///
+  /// In en, this message translates to:
+  /// **'Output'**
+  String get sessionUsagePricingOutput;
+
+  /// No description provided for @sessionUsagePricingCacheRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache read'**
+  String get sessionUsagePricingCacheRead;
+
+  /// No description provided for @sessionUsagePricingCacheWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache write'**
+  String get sessionUsagePricingCacheWrite;
+
+  /// No description provided for @sessionUsagePricingCacheWrite1h.
+  ///
+  /// In en, this message translates to:
+  /// **'1h cache write'**
+  String get sessionUsagePricingCacheWrite1h;
+
+  /// No description provided for @sessionUsagePricingEffectiveDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Effective date'**
+  String get sessionUsagePricingEffectiveDate;
+
+  /// No description provided for @sessionUsagePricingEffectiveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'YYYY-MM-DD'**
+  String get sessionUsagePricingEffectiveHint;
+
+  /// No description provided for @sessionUsagePricingAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add rule'**
+  String get sessionUsagePricingAdd;
+
+  /// No description provided for @sessionUsagePricingSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get sessionUsagePricingSave;
+
+  /// No description provided for @sessionUsagePricingReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset defaults'**
+  String get sessionUsagePricingReset;
+
+  /// No description provided for @sessionUsagePricingResetConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove all custom pricing rules?'**
+  String get sessionUsagePricingResetConfirm;
+
+  /// No description provided for @sessionUsagePricingInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Check model and price values.'**
+  String get sessionUsagePricingInvalid;
+
+  /// No description provided for @sessionUsagePricingSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Pricing saved'**
+  String get sessionUsagePricingSaved;
+
+  /// No description provided for @sessionUsagePricingFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save pricing.'**
+  String get sessionUsagePricingFailed;
+
+  /// No description provided for @sessionUsagePricingCorrupt.
+  ///
+  /// In en, this message translates to:
+  /// **'Pricing file was unreadable. Using built-in prices.'**
+  String get sessionUsagePricingCorrupt;
+
+  /// No description provided for @sessionUsagePricingEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No custom rules. Built-in prices are active.'**
+  String get sessionUsagePricingEmpty;
+
+  /// No description provided for @sessionUsagePricingDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get sessionUsagePricingDelete;
+
   /// No description provided for @sessionUsageFooterJsonl.
   ///
   /// In en, this message translates to:

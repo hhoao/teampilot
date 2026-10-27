@@ -4191,6 +4191,43 @@
       }
     }
   },
+  "sessionUsageCost": "成本",
+  "sessionUsageCostShort": "成本",
+  "sessionUsageCostPricedUnpriced": "已定价 {priced} 条 · 未定价 {unpriced} 条",
+  "@sessionUsageCostPricedUnpriced": {
+    "placeholders": {
+      "priced": { "type": "int" },
+      "unpriced": { "type": "int" }
+    }
+  },
+  "sessionUsageCostPartial": "部分成本：{count} 条未定价",
+  "@sessionUsageCostPartial": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "sessionUsageCostUnpriced": "未定价",
+  "sessionUsageManagePricing": "管理定价",
+  "sessionUsagePricingTitle": "模型定价",
+  "sessionUsagePricingHint": "每百万 token 的美元价格；自定义规则优先于内置参考价。",
+  "sessionUsagePricingModel": "模型",
+  "sessionUsagePricingInput": "输入",
+  "sessionUsagePricingOutput": "输出",
+  "sessionUsagePricingCacheRead": "缓存读",
+  "sessionUsagePricingCacheWrite": "缓存写",
+  "sessionUsagePricingCacheWrite1h": "1 小时缓存写",
+  "sessionUsagePricingEffectiveDate": "生效日期",
+  "sessionUsagePricingEffectiveHint": "YYYY-MM-DD",
+  "sessionUsagePricingAdd": "新增规则",
+  "sessionUsagePricingSave": "保存",
+  "sessionUsagePricingReset": "恢复默认",
+  "sessionUsagePricingResetConfirm": "移除所有自定义定价规则？",
+  "sessionUsagePricingInvalid": "请检查模型和价格输入。",
+  "sessionUsagePricingSaved": "定价已保存",
+  "sessionUsagePricingFailed": "定价保存失败。",
+  "sessionUsagePricingCorrupt": "定价文件无法读取，已使用内置价格。",
+  "sessionUsagePricingEmpty": "没有自定义规则，当前使用内置价格。",
+  "sessionUsagePricingDelete": "删除",
   "sessionUsageFooterJsonl": "JSONL 只读",
   "sessionUsageFooterManual": "自动 + 手动同步",
   "sessionUsageSyncedToast": "用量同步完成",

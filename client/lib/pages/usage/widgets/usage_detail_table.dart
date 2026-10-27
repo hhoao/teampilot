@@ -119,8 +119,8 @@ class UsageDetailTable extends StatelessWidget {
           else
             LayoutBuilder(
               builder: (context, constraints) {
-                final width = constraints.maxWidth < 900
-                    ? 900.0
+                final width = constraints.maxWidth < 1000
+                    ? 1000.0
                     : constraints.maxWidth;
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -170,6 +170,7 @@ class _HeaderRow extends StatelessWidget {
           _headerCell(l10n.sessionUsageInputShort, 80, style),
           _headerCell(l10n.sessionUsageOutputShort, 80, style),
           _headerCell(l10n.sessionUsageCacheShort, 90, style),
+          _headerCell(l10n.sessionUsageCostShort, 100, style),
           _headerCell(l10n.sessionUsageRequestsShort, 70, style),
           _headerCell(l10n.sessionUsageSessionsShort, 70, style),
           _headerCell(l10n.sessionUsageShareShort, 120, style),
@@ -259,6 +260,7 @@ class _UsageRow extends StatelessWidget {
           _numberCell(formatUsageTokens(row.freshInputTokens), 80, styles),
           _numberCell(formatUsageTokens(row.outputTokens), 80, styles),
           _numberCell(formatUsageTokens(row.cacheReadTokens), 90, styles),
+          _costCell(context, row, styles),
           _numberCell('${row.requests}', 70, styles),
           _numberCell('${row.sessions}', 70, styles),
           SizedBox(
@@ -288,6 +290,17 @@ class _UsageRow extends StatelessWidget {
   Widget _numberCell(String text, double width, TpTextStyles styles) {
     return SizedBox(
       width: width,
+      child: Text(text, textAlign: TextAlign.end, style: styles.sm),
+    );
+  }
+
+  Widget _costCell(BuildContext context, UsageGroup row, TpTextStyles styles) {
+    final l10n = context.l10n;
+    final text = row.pricedEvents == 0
+        ? l10n.sessionUsageCostUnpriced
+        : '${formatUsageCost(row.costMicroUsd)}${row.unpricedEvents > 0 ? '*' : ''}';
+    return SizedBox(
+      width: 100,
       child: Text(text, textAlign: TextAlign.end, style: styles.sm),
     );
   }

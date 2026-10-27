@@ -9231,6 +9231,88 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get sessionUsageCost => '成本';
+
+  @override
+  String get sessionUsageCostShort => '成本';
+
+  @override
+  String sessionUsageCostPricedUnpriced(int priced, int unpriced) {
+    return '已定价 $priced 条 · 未定价 $unpriced 条';
+  }
+
+  @override
+  String sessionUsageCostPartial(int count) {
+    return '部分成本：$count 条未定价';
+  }
+
+  @override
+  String get sessionUsageCostUnpriced => '未定价';
+
+  @override
+  String get sessionUsageManagePricing => '管理定价';
+
+  @override
+  String get sessionUsagePricingTitle => '模型定价';
+
+  @override
+  String get sessionUsagePricingHint => '每百万 token 的美元价格；自定义规则优先于内置参考价。';
+
+  @override
+  String get sessionUsagePricingModel => '模型';
+
+  @override
+  String get sessionUsagePricingInput => '输入';
+
+  @override
+  String get sessionUsagePricingOutput => '输出';
+
+  @override
+  String get sessionUsagePricingCacheRead => '缓存读';
+
+  @override
+  String get sessionUsagePricingCacheWrite => '缓存写';
+
+  @override
+  String get sessionUsagePricingCacheWrite1h => '1 小时缓存写';
+
+  @override
+  String get sessionUsagePricingEffectiveDate => '生效日期';
+
+  @override
+  String get sessionUsagePricingEffectiveHint => 'YYYY-MM-DD';
+
+  @override
+  String get sessionUsagePricingAdd => '新增规则';
+
+  @override
+  String get sessionUsagePricingSave => '保存';
+
+  @override
+  String get sessionUsagePricingReset => '恢复默认';
+
+  @override
+  String get sessionUsagePricingResetConfirm => '移除所有自定义定价规则？';
+
+  @override
+  String get sessionUsagePricingInvalid => '请检查模型和价格输入。';
+
+  @override
+  String get sessionUsagePricingSaved => '定价已保存';
+
+  @override
+  String get sessionUsagePricingFailed => '定价保存失败。';
+
+  @override
+  String get sessionUsagePricingCorrupt => '定价文件无法读取，已使用内置价格。';
+
+  @override
+  String get sessionUsagePricingEmpty => '没有自定义规则，当前使用内置价格。';
+
+  @override
+  String get sessionUsagePricingDelete => '删除';
+
+  @override
   String get sessionUsageFooterJsonl => 'JSONL 只读';
 
   @override
