@@ -1,6 +1,6 @@
 # Session Usage Cost Engine Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Calculate and display USD cost for cached token usage using a versioned built-in price catalog plus per-home-plane user overrides.
 
@@ -61,7 +61,7 @@
 - Produces: `UsagePriceSource`, `UsageCostKind`, `UsagePriceRule`, `UsageCost`, `UsagePricingCatalog`, `usageNormalizeModelId`
 - Produces: `usageBuiltInPricingRules`, `calculateUsageCost`
 
-- [ ] **Step 1: Write failing model tests**
+- [x] **Step 1: Write failing model tests**
 
 Create `client/test/models/session_usage_pricing_test.dart`:
 
@@ -129,7 +129,7 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Write failing calculator tests**
+- [x] **Step 2: Write failing calculator tests**
 
 Create `client/test/services/usage/usage_cost_calculator_test.dart`:
 
@@ -225,7 +225,7 @@ void main() {
 }
 ```
 
-- [ ] **Step 3: Run tests to verify they fail**
+- [x] **Step 3: Run tests to verify they fail**
 
 ```bash
 cd client
@@ -236,7 +236,7 @@ dart run tool/run_tests.dart \
 
 Expected: compile errors for missing pricing types and calculator.
 
-- [ ] **Step 4: Implement the pricing model**
+- [x] **Step 4: Implement the pricing model**
 
 Create `client/lib/models/session_usage_pricing.dart`:
 
@@ -399,7 +399,7 @@ final class UsagePricingCatalog extends Equatable {
 `models/session_usage_pricing_defaults.dart`, so the model layer stays free of
 service dependencies.
 
-- [ ] **Step 5: Implement built-in defaults**
+- [x] **Step 5: Implement built-in defaults**
 
 Create `client/lib/models/session_usage_pricing_defaults.dart`:
 
@@ -464,7 +464,7 @@ const usageBuiltInPricingRules = <UsagePriceRule>[
 ];
 ```
 
-- [ ] **Step 6: Implement the calculator**
+- [x] **Step 6: Implement the calculator**
 
 Create `client/lib/services/usage/usage_cost_calculator.dart`:
 
@@ -508,7 +508,7 @@ UsageCost calculateUsageCost(
 }
 ```
 
-- [ ] **Step 7: Run tests and commit**
+- [x] **Step 7: Run tests and commit**
 
 ```bash
 cd client
@@ -543,7 +543,7 @@ git commit -m "feat(usage): add pricing catalog and cost calculator" -- \
 - Modify: `client/lib/services/cli/codex/capabilities/usage/session_usage.dart`
 - Test: `client/test/services/cli/registry/capabilities/usage/codex_session_usage_test.dart`
 
-- [ ] **Step 1: Add the failing test**
+- [x] **Step 1: Add the failing test**
 
 ```dart
   test('reads the model from turn_context for later token events', () async {
@@ -578,7 +578,7 @@ git commit -m "feat(usage): add pricing catalog and cost calculator" -- \
   });
 ```
 
-- [ ] **Step 2: Run it to verify failure**
+- [x] **Step 2: Run it to verify failure**
 
 ```bash
 cd client
@@ -588,7 +588,7 @@ dart run tool/run_tests.dart \
 
 Expected: `model` is empty.
 
-- [ ] **Step 3: Implement model tracking**
+- [x] **Step 3: Implement model tracking**
 
 In `scanUsageSource`, before the line loop:
 
@@ -612,7 +612,7 @@ At the start of the line loop after decoding `obj`:
 
 Use `model: currentModel` in the `SessionUsageEvent` instead of `model: ''`.
 
-- [ ] **Step 4: Run tests and commit**
+- [x] **Step 4: Run tests and commit**
 
 ```bash
 cd client
@@ -647,7 +647,7 @@ git commit -m "feat(usage): capture codex model for pricing" -- \
 - Produces: `SessionUsageServices.loadPricing`, `savePricing`
 - Produces: `SessionUsageCubit.pricing`, `pricingSaving`, `pricingCorrupted`, `pricingError`, `savePricing`, `resetPricing`
 
-- [ ] **Step 1: Write store tests**
+- [x] **Step 1: Write store tests**
 
 Use `InMemoryFilesystem` and a temp path. Cover:
 - save then load returns user rules and `corrupted == false`;
@@ -703,7 +703,7 @@ void main() {
 }
 ```
 
-- [ ] **Step 2: Implement the store port and JSON store**
+- [x] **Step 2: Implement the store port and JSON store**
 
 `usage_pricing_store.dart`:
 
@@ -788,7 +788,7 @@ final class JsonUsagePricingStore implements UsagePricingStore {
 }
 ```
 
-- [ ] **Step 3: Wire services**
+- [x] **Step 3: Wire services**
 
 `SessionUsageServices` add:
 
@@ -819,7 +819,7 @@ Return:
       savePricing: (rules) => newPricingStore().save(rules),
 ```
 
-- [ ] **Step 4: Wire cubit state**
+- [x] **Step 4: Wire cubit state**
 
 Add to `SessionUsageState`:
 
@@ -899,7 +899,7 @@ Add:
 
 `copyWith` needs `clearPricingError`.
 
-- [ ] **Step 5: Wire app shell**
+- [x] **Step 5: Wire app shell**
 
 ```dart
     final sessionUsageCubit = SessionUsageCubit(
@@ -914,7 +914,7 @@ Add:
     );
 ```
 
-- [ ] **Step 6: Add cubit tests and commit**
+- [x] **Step 6: Add cubit tests and commit**
 
 Add tests:
 - load pricing merges user rules into dashboard cost;
@@ -942,7 +942,7 @@ Commit all Task 3 paths explicitly.
 - Modify: `client/lib/services/usage/usage_aggregator.dart`
 - Test: `client/test/services/usage/usage_aggregator_test.dart`
 
-- [ ] **Step 1: Add failing aggregator assertions**
+- [x] **Step 1: Add failing aggregator assertions**
 
 Extend the existing aggregator test with:
 
@@ -971,7 +971,7 @@ Extend the existing aggregator test with:
 
 `_event` must accept `model` (add a parameter if it does not already).
 
-- [ ] **Step 2: Add cost fields**
+- [x] **Step 2: Add cost fields**
 
 `UsageSummary` add:
 
@@ -983,7 +983,7 @@ Extend the existing aggregator test with:
 
 `UsageGroup` add the same. `UsageCliSlice` may stay token-only.
 
-- [ ] **Step 3: Update aggregator**
+- [x] **Step 3: Update aggregator**
 
 `buildUsageDashboard` gains:
 
@@ -1023,7 +1023,7 @@ group.add(event, cost);
 
 Update `_GroupAccumulator.add` signature and `build`.
 
-- [ ] **Step 4: Run tests and commit**
+- [x] **Step 4: Run tests and commit**
 
 ```bash
 cd client
@@ -1047,7 +1047,7 @@ Commit model/aggregator/test paths explicitly.
 - Test: `client/test/pages/usage/session_usage_page_test.dart`
 - Test: `client/test/pages/usage/usage_pricing_dialog_test.dart`
 
-- [ ] **Step 1: Add formatters and l10n**
+- [x] **Step 1: Add formatters and l10n**
 
 `formatUsageCost(int? microUsd)`:
 
@@ -1067,7 +1067,7 @@ Add l10n keys for:
 - Pricing dialog title/hint/model/input/output/cache read/cache write/1h/effective date
 - Add rule, save, reset, invalid price, pricing saved/failed, reset confirmation
 
-- [ ] **Step 2: Cost card**
+- [x] **Step 2: Cost card**
 
 Create `UsageCostCard` with a card-like container showing:
 - `formatUsageCost(summary.pricedEvents == 0 ? null : summary.costMicroUsd)`
@@ -1077,14 +1077,14 @@ Create `UsageCostCard` with a card-like container showing:
 
 Do not edit `usage_summary_cards.dart`.
 
-- [ ] **Step 3: Add cost to detail table**
+- [x] **Step 3: Add cost to detail table**
 
 Add a `Cost` header and row cell. Width layout: increase table min width by
 100 and add a `_costCell` helper. For rows with `pricedEvents == 0`, show
 `Unpriced`. For partial rows, show `≥ $x`? Use `formatUsageCost` plus an
 asterisk/marker if `unpricedEvents > 0`.
 
-- [ ] **Step 4: Pricing dialog**
+- [x] **Step 4: Pricing dialog**
 
 Implement a `StatefulWidget` that:
 - copies `state.pricing.userRules` into editable drafts;
@@ -1095,14 +1095,14 @@ Implement a `StatefulWidget` that:
 
 Keep the dialog as a page-level helper method that closes on success.
 
-- [ ] **Step 5: Wire page**
+- [x] **Step 5: Wire page**
 
 - Add `UsageCostCard` after `UsageSummaryCards`.
 - Add a `Pricing` action that opens `UsagePricingDialog`.
 - Pass `cubit.savePricing` and `cubit.resetPricing`.
 - Show a dismissible warning when `state.pricingCorrupted`.
 
-- [ ] **Step 6: Tests and commit**
+- [x] **Step 6: Tests and commit**
 
 Add:
 - cost card renders total and unpriced count;
@@ -1140,6 +1140,14 @@ dart run tool/run_tests.dart
 ```
 
 Mark this plan complete and commit the checkbox changes.
+
+## Verification Note
+
+Focused cost/usage suite: 60 tests passed. Full suite: 10,751 passed, 2
+skipped. Two loading failures were environmental: one test-runner shell
+segmentation fault and one compile against a concurrently edited title-bar
+file. Both affected files passed when rerun individually. No usage/cost test
+failed.
 
 ## Self-Review
 

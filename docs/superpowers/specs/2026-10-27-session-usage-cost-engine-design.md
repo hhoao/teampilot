@@ -1,7 +1,7 @@
 # Session Usage Cost Engine
 
 **Date:** 2026-10-27
-**Status:** Approved design, implementation pending
+**Status:** Implemented
 **Parent feature:** `docs/superpowers/specs/2026-10-26-agent-cli-usage-tracking-design.md`
 
 ## Goal
