@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:synchronized/synchronized.dart';
 
@@ -6,6 +9,7 @@ import '../cli/registry/cli_tool_registry.dart';
 import 'usage_cursor_store.dart';
 import 'usage_scan_target_provider.dart';
 import 'usage_store.dart';
+import 'usage_sync_control.dart';
 
 @immutable
 class UsageSyncError {
@@ -24,6 +28,7 @@ class UsageSyncResult {
     this.updated = 0,
     this.skipped = 0,
     this.errors = const [],
+    this.cancelled = false,
   });
 
   final int targetsScanned;
@@ -32,15 +37,33 @@ class UsageSyncResult {
   final int updated;
   final int skipped;
   final List<UsageSyncError> errors;
+  final bool cancelled;
 }
 
-/// One-shot scanner. No timer and no cubit in this slice.
+final class UsageSyncHandle {
+  UsageSyncHandle({
+    required this.done,
+    required this.progress,
+    required void Function() cancel,
+  }) : _cancel = cancel;
+
+  final Future<UsageSyncResult> done;
+  final Stream<UsageSyncProgress> progress;
+  final void Function() _cancel;
+
+  void cancel() => _cancel();
+}
+
+/// One-shot scanner with optional progress, cancellation, timeout, and
+/// bounded target concurrency.
 class SessionUsageSyncService {
   SessionUsageSyncService({
     required UsageScanTargetProvider targets,
     required UsageStore store,
     required UsageCursorStore cursors,
     required CliToolRegistry registry,
+    this.sourceTimeout = const Duration(seconds: 30),
+    this.maxConcurrentTargets = 4,
   }) : _targets = targets,
        _store = store,
        _cursors = cursors,
@@ -50,78 +73,160 @@ class SessionUsageSyncService {
   final UsageStore _store;
   final UsageCursorStore _cursors;
   final CliToolRegistry _registry;
+  final Duration sourceTimeout;
+  final int maxConcurrentTargets;
 
   /// Process-wide: a plane swap can briefly keep an old service alive.
   static final Lock _syncLock = Lock();
 
-  Future<UsageSyncResult> syncAll() => _syncLock.synchronized(_syncAll);
+  Future<UsageSyncResult> syncAll({
+    UsageSyncControl? control,
+    void Function(UsageSyncProgress)? onProgress,
+  }) {
+    final token = control ?? UsageSyncControl();
+    return _syncLock.synchronized(
+      () => _syncAll(control: token, onProgress: onProgress),
+    );
+  }
 
-  Future<UsageSyncResult> _syncAll() async {
-    late final List<UsageScanContext> targets;
-    try {
-      targets = await _targets.targets();
-    } on Object catch (error) {
-      return UsageSyncResult(
-        errors: [
-          UsageSyncError(sourceId: '*', message: '$error'),
-        ],
-      );
-    }
-
+  Future<UsageSyncResult> _syncAll({
+    required UsageSyncControl control,
+    void Function(UsageSyncProgress)? onProgress,
+  }) async {
     final errors = <UsageSyncError>[];
     final seenSources = <String>{};
-    var sourcesScanned = 0;
+    var targetsTotal = 0;
+    var targetsDone = 0;
+    var sourcesDone = 0;
     var inserted = 0;
     var updated = 0;
     var skipped = 0;
 
-    for (final ctx in targets) {
-      final capability = _registry.capability<SessionUsageCapability>(ctx.cli);
-      if (capability == null) continue;
+    void report({String? currentSourceId}) {
+      onProgress?.call(
+        UsageSyncProgress(
+          targetsTotal: targetsTotal,
+          targetsDone: targetsDone,
+          sourcesDone: sourcesDone,
+          inserted: inserted,
+          updated: updated,
+          skipped: skipped,
+          errors: errors.length,
+          currentSourceId: currentSourceId,
+          isCancelled: control.isCancelled,
+        ),
+      );
+    }
 
-      late final List<SessionUsageSource> sources;
-      try {
-        sources = await capability.discoverUsageSources(ctx);
-      } on Object catch (error) {
-        errors.add(
-          UsageSyncError(
-            sourceId: '${ctx.sessionId}/${ctx.memberId}',
-            message: '$error',
-          ),
-        );
-        continue;
-      }
+    report();
 
-      for (final source in sources) {
-        if (!seenSources.add(source.id)) continue;
-        sourcesScanned++;
+    late final List<UsageScanContext> targets;
+    try {
+      control.throwIfCancelled();
+      targets = await _targets.targets();
+    } on UsageSyncCancelled {
+      return const UsageSyncResult(cancelled: true);
+    } on Object catch (error) {
+      return UsageSyncResult(
+        errors: [UsageSyncError(sourceId: '*', message: '$error')],
+      );
+    }
+
+    targetsTotal = targets.length;
+    report();
+
+    final workerCount = math.min(
+      math.max(1, maxConcurrentTargets),
+      math.max(1, targets.length),
+    );
+    var nextTarget = 0;
+
+    Future<void> worker() async {
+      while (true) {
+        if (control.isCancelled) return;
+        final index = nextTarget++;
+        if (index >= targets.length) return;
+        final ctx = targets[index];
         try {
-          final cursor = await _cursors.read(source.id);
-          final scan = await capability.scanUsageSource(
-            ctx: ctx,
-            source: source,
-            cursor: cursor,
+          control.throwIfCancelled();
+          final capability = _registry.capability<SessionUsageCapability>(
+            ctx.cli,
           );
-          final appended = await _store.upsert(scan.events);
-          await _cursors.save(source.id, scan.nextCursor);
-          inserted += appended.inserted;
-          updated += appended.updated;
-          skipped += appended.skipped;
-        } on Object catch (error) {
-          errors.add(
-            UsageSyncError(sourceId: source.id, message: '$error'),
-          );
+          if (capability == null) continue;
+
+          late final List<SessionUsageSource> sources;
+          try {
+            sources = await capability.discoverUsageSources(ctx);
+          } on Object catch (error) {
+            errors.add(
+              UsageSyncError(
+                sourceId: '${ctx.sessionId}/${ctx.memberId}',
+                message: '$error',
+              ),
+            );
+            continue;
+          }
+
+          for (final source in sources) {
+            if (control.isCancelled) return;
+            if (!seenSources.add(source.id)) continue;
+            sourcesDone++;
+            try {
+              final cursor = await _cursors
+                  .read(source.id)
+                  .timeout(sourceTimeout);
+              control.throwIfCancelled();
+              final scan = await capability
+                  .scanUsageSource(ctx: ctx, source: source, cursor: cursor)
+                  .timeout(sourceTimeout);
+              control.throwIfCancelled();
+              final appended = await _store
+                  .upsert(scan.events)
+                  .timeout(sourceTimeout);
+              control.throwIfCancelled();
+              await _cursors
+                  .save(source.id, scan.nextCursor)
+                  .timeout(sourceTimeout);
+              inserted += appended.inserted;
+              updated += appended.updated;
+              skipped += appended.skipped;
+            } on UsageSyncCancelled {
+              report(currentSourceId: source.id);
+              return;
+            } on TimeoutException {
+              errors.add(
+                UsageSyncError(
+                  sourceId: source.id,
+                  message: 'timed out after ${sourceTimeout.inMilliseconds}ms',
+                ),
+              );
+            } on Object catch (error) {
+              errors.add(
+                UsageSyncError(sourceId: source.id, message: '$error'),
+              );
+            }
+            report(currentSourceId: source.id);
+          }
+        } on UsageSyncCancelled {
+          return;
+        } finally {
+          targetsDone++;
+          report();
         }
       }
     }
 
+    await Future.wait([for (var i = 0; i < workerCount; i++) worker()]);
+    report();
+
     return UsageSyncResult(
-      targetsScanned: targets.length,
-      sourcesScanned: sourcesScanned,
+      targetsScanned: targetsDone,
+      sourcesScanned: sourcesDone,
       inserted: inserted,
       updated: updated,
       skipped: skipped,
-      errors: errors,
+      errors: List.unmodifiable(errors),
+      cancelled: control.isCancelled,
     );
   }
 }
