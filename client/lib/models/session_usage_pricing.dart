@@ -117,7 +117,7 @@ final class UsageCost extends Equatable {
 @immutable
 final class UsagePricingCatalog extends Equatable {
   const UsagePricingCatalog({
-    this.builtInRules = const [],
+    this.builtInRules = usageBuiltInPricingRules,
     this.userRules = const [],
   });
 

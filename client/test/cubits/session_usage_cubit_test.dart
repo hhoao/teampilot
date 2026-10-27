@@ -388,6 +388,26 @@ void main() {
     expect(cubit.state.dashboard.summary.unpricedEvents, 0);
   });
 
+  test('empty user pricing still uses built-in reference prices', () async {
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [
+        _event(model: 'claude-sonnet-4-5', input: 1000000, output: 1000000),
+      ],
+      syncAll: () async => const UsageSyncResult(),
+      loadPricing: () async => const UsagePricingLoad(rules: []),
+      loadSessions: () async => const <AppSession>[],
+      loadTeams: () async => const <TeamProfile>[],
+      now: () => _now,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.ensureLoaded();
+
+    expect(cubit.state.pricing.userRules, isEmpty);
+    expect(cubit.state.pricing.builtInRules, isNotEmpty);
+    expect(cubit.state.dashboard.summary.costMicroUsd, 18000000);
+  });
+
   test('saving pricing recomputes cached events without reloading', () async {
     var loadCount = 0;
     var saved = const <UsagePriceRule>[];
