@@ -66,6 +66,7 @@ final class ClaudeSessionUsageCapability implements SessionUsageCapability {
     final events = <SessionUsageEvent>[];
     var skipped = 0;
     for (var i = 0; i < window.lines.length; i++) {
+      if (i % 500 == 0) await Future<void>.delayed(Duration.zero);
       final line = window.lines[i].trim();
       if (line.isEmpty) continue;
       Map<String, Object?>? obj;

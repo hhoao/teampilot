@@ -17,6 +17,8 @@ class TeamPilotUsageScanTargetProvider implements UsageScanTargetProvider {
     required Future<List<AppSession>> Function() loadSessions,
     required Future<List<TeamProfile>> Function() loadTeams,
     SessionHistoryContextBuilder builder = const SessionHistoryContextBuilder(),
+    this.scanAll = true,
+    this.sinceMs,
   }) : _storage = storage,
        _loadSessions = loadSessions,
        _loadTeams = loadTeams,
@@ -27,6 +29,10 @@ class TeamPilotUsageScanTargetProvider implements UsageScanTargetProvider {
   final Future<List<TeamProfile>> Function() _loadTeams;
   final SessionHistoryContextBuilder _builder;
 
+  /// When false, sessions older than [sinceMs] are skipped.
+  final bool scanAll;
+  final int? sinceMs;
+
   @override
   Future<List<UsageScanContext>> targets() async {
     final sessions = await _loadSessions();
@@ -34,6 +40,12 @@ class TeamPilotUsageScanTargetProvider implements UsageScanTargetProvider {
     final teamsById = {for (final team in teams) team.id: team};
     final out = <UsageScanContext>[];
     for (final session in sessions) {
+      if (!scanAll) {
+        final stamp = session.updatedAt != 0
+            ? session.updatedAt
+            : session.createdAt;
+        if (sinceMs != null && stamp < sinceMs!) continue;
+      }
       try {
         out.addAll(_targetsFor(session, teamsById[session.sessionTeam]));
       } on Object catch (error, stackTrace) {
@@ -65,11 +77,7 @@ class TeamPilotUsageScanTargetProvider implements UsageScanTargetProvider {
       if (memberId.isEmpty) continue;
       final cli = binding.cli ?? rosterById[memberId]?.cli ?? session.cli;
       if (cli == null) continue;
-      final context = _build(
-        session: session,
-        cli: cli,
-        memberId: memberId,
-      );
+      final context = _build(session: session, cli: cli, memberId: memberId);
       if (context != null) out.add(context);
     }
     return out;

@@ -99,4 +99,36 @@ void main() {
     expect(targets.single.cli, CliTool.claude);
     expect(targets.single.memberId, '');
   });
+
+  test('incremental mode skips sessions older than the cutoff', () async {
+    final storage = fakeHomeStorage(filesystem: _fs());
+    final old = AppSession(
+      sessionId: 'old',
+      workspaceId: 'w1',
+      folders: const [WorkspaceFolder(path: '/home/me/proj')],
+      cli: CliTool.claude,
+      createdAt: 100,
+      updatedAt: 200,
+    );
+    final recent = AppSession(
+      sessionId: 'recent',
+      workspaceId: 'w1',
+      folders: const [WorkspaceFolder(path: '/home/me/proj')],
+      cli: CliTool.claude,
+      createdAt: 100,
+      updatedAt: 900,
+    );
+    final provider = TeamPilotUsageScanTargetProvider(
+      storage: storage,
+      loadSessions: () async => [old, recent],
+      loadTeams: () async => const [],
+      scanAll: false,
+      sinceMs: 500,
+    );
+
+    final targets = await provider.targets();
+
+    expect(targets, hasLength(1));
+    expect(targets.single.sessionId, 'recent');
+  });
 }

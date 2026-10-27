@@ -68,7 +68,11 @@ final class OpencodeSessionUsageCapability implements SessionUsageCapability {
     final rows = (result['rows'] as List?) ?? const [];
     final events = <SessionUsageEvent>[];
     var skipped = 0;
+    var rowIndex = 0;
     for (final raw in rows) {
+      if (rowIndex++ % 500 == 0) {
+        await Future<void>.delayed(Duration.zero);
+      }
       if (raw is! Map) continue;
       final row = Map<String, Object?>.from(raw);
       final dataRaw = row['data'];

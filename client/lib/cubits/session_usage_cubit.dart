@@ -338,8 +338,16 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
 
     final handle = starter();
     _activeHandle = handle;
+    var lastProgressEmitMs = 0;
     _syncProgressSub = handle.progress.listen((progress) {
       if (isClosed || !state.isSyncing) return;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final isFinal =
+          progress.targetsTotal > 0 &&
+          progress.targetsDone >= progress.targetsTotal;
+      if (!isFinal && now - lastProgressEmitMs < 120) return;
+      lastProgressEmitMs = now;
+      if (state.syncProgress == progress) return;
       emit(state.copyWith(syncProgress: progress));
     });
     try {

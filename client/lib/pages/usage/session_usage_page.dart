@@ -122,8 +122,19 @@ class _SessionUsagePageState extends State<SessionUsagePage>
       child: BlocBuilder<SessionUsageCubit, SessionUsageState>(
         builder: (context, state) {
           final cubit = context.read<SessionUsageCubit>();
-          final nowMs = DateTime.now().millisecondsSinceEpoch;
-          final body = _buildBody(context, cubit, state, nowMs);
+          final body = BlocBuilder<SessionUsageCubit, SessionUsageState>(
+            buildWhen: (previous, current) =>
+                previous.status != current.status ||
+                previous.dashboard != current.dashboard ||
+                previous.errorMessage != current.errorMessage ||
+                previous.pricingCorrupted != current.pricingCorrupted,
+            builder: (context, bodyState) => _buildBody(
+              context,
+              cubit,
+              bodyState,
+              DateTime.now().millisecondsSinceEpoch,
+            ),
+          );
           return KeyedSubtree(
             key: AppKeys.sessionUsagePage,
             child: Column(
