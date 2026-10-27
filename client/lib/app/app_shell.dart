@@ -1592,6 +1592,7 @@ Future<AppShell> buildAppShell({
     final sessionUsageCubit = SessionUsageCubit(
       loadEvents: sessionUsageServices.loadEvents,
       syncAll: sessionUsageServices.syncAll,
+      startSync: sessionUsageServices.startSync,
       loadSessions: sessionUsageServices.loadSessions,
       loadTeams: sessionUsageServices.loadTeams,
       storageChanges: homeStorage.changes.map<void>((_) {}),

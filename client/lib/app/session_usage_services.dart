@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../models/app_session.dart';
 import '../models/session_usage.dart';
 import '../models/team_config.dart';
@@ -9,22 +11,25 @@ import '../services/usage/json_usage_cursor_store.dart';
 import '../services/usage/json_usage_store.dart';
 import '../services/usage/session_usage_sync_service.dart';
 import '../services/usage/team_pilot_usage_scan_target_provider.dart';
+import '../services/usage/usage_sync_control.dart';
 
 /// App-level wiring for agent CLI usage tracking.
 ///
 /// Stores, loaders, and the sync service are constructed per call from the
 /// current [HomeStorage] context, so a home-plane swap is picked up without
-/// rebuilding this object. No timer or widget owns this yet; callers invoke
-/// [syncAll] explicitly.
+/// rebuilding this object. The page owns foreground scheduling; this object
+/// only builds one-shot scans and handles.
 final class SessionUsageServices {
   SessionUsageServices._({
     required this.syncAll,
+    required this.startSync,
     required this.loadEvents,
     required this.loadSessions,
     required this.loadTeams,
   });
 
   final Future<UsageSyncResult> Function() syncAll;
+  final UsageSyncHandle Function() startSync;
   final Future<List<SessionUsageEvent>> Function() loadEvents;
   final Future<List<AppSession>> Function() loadSessions;
   final Future<List<TeamProfile>> Function() loadTeams;
@@ -65,8 +70,25 @@ final class SessionUsageServices {
       registry: registryForPlane,
     );
 
+    UsageSyncHandle startSync() {
+      final control = UsageSyncControl();
+      final progress = StreamController<UsageSyncProgress>.broadcast(
+        sync: true,
+      );
+      final service = newSync();
+      final done = Future.microtask(
+        () => service.syncAll(control: control, onProgress: progress.add),
+      ).whenComplete(progress.close);
+      return UsageSyncHandle(
+        done: done,
+        progress: progress.stream,
+        cancel: control.cancel,
+      );
+    }
+
     return SessionUsageServices._(
       syncAll: () => newSync().syncAll(),
+      startSync: startSync,
       loadEvents: () => newStore().readLatest(),
       loadSessions: loadSessionsFn,
       loadTeams: loadTeamsFn,
