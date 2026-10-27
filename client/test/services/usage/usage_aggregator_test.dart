@@ -3,6 +3,7 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/session_usage.dart';
 import 'package:teampilot/models/session_usage_dashboard.dart';
+import 'package:teampilot/models/session_usage_pricing.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/usage/usage_aggregator.dart';
 
@@ -42,12 +43,14 @@ UsageDashboard _build(
   List<SessionUsageEvent> events, {
   UsageFilter filter = const UsageFilter(),
   UsageAttribution attribution = const UsageAttribution(),
+  UsagePricingCatalog pricing = const UsagePricingCatalog(),
 }) {
   return buildUsageDashboard(
     events: events,
     attribution: attribution,
     filter: filter,
     nowMs: _now,
+    pricing: pricing,
   );
 }
 
@@ -327,5 +330,24 @@ void main() {
     expect(empty.rows, isEmpty);
     expect(empty.chart, hasLength(7));
     expect(empty.cliSlices, isEmpty);
+  });
+
+  test('calculates priced cost and counts unpriced events', () {
+    final dashboard = _build([
+      _event(
+        id: 'priced',
+        model: 'claude-sonnet-4-5',
+        input: 1000000,
+        output: 1000000,
+      ),
+      _event(id: 'unpriced', model: 'unknown-model', input: 1000000, output: 0),
+    ], pricing: UsagePricingCatalog.builtIn());
+
+    expect(dashboard.summary.pricedEvents, 1);
+    expect(dashboard.summary.unpricedEvents, 1);
+    expect(dashboard.summary.costMicroUsd, 18000000);
+    expect(dashboard.rows.single.pricedEvents, 1);
+    expect(dashboard.rows.single.unpricedEvents, 1);
+    expect(dashboard.rows.single.costMicroUsd, 18000000);
   });
 }

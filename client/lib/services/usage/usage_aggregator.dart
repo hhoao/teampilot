@@ -1,6 +1,8 @@
 import '../../models/session_usage.dart';
 import '../../models/session_usage_dashboard.dart';
+import '../../models/session_usage_pricing.dart';
 import '../../models/team_config.dart';
+import 'usage_cost_calculator.dart';
 
 /// Input tokens excluding cache, for both wire semantics.
 int usageFreshInputTokens(SessionUsageEvent event) => event.freshInputTokens;
@@ -38,6 +40,7 @@ UsageDashboard buildUsageDashboard({
   required UsageAttribution attribution,
   required UsageFilter filter,
   required int nowMs,
+  UsagePricingCatalog pricing = const UsagePricingCatalog(),
 }) {
   final rangeStart = usageRangeStartMs(filter.range, nowMs);
   final scoped = events
@@ -48,9 +51,9 @@ UsageDashboard buildUsageDashboard({
       })
       .toList(growable: false);
 
-  final summary = _summarize(scoped);
+  final summary = _summarize(scoped, pricing);
   final query = filter.query.trim().toLowerCase();
-  var rows = _group(scoped, filter.groupBy, attribution);
+  var rows = _group(scoped, filter.groupBy, attribution, pricing);
   if (query.isNotEmpty) {
     rows = rows
         .where((row) {
@@ -76,11 +79,17 @@ UsageDashboard buildUsageDashboard({
   );
 }
 
-UsageSummary _summarize(List<SessionUsageEvent> events) {
+UsageSummary _summarize(
+  List<SessionUsageEvent> events,
+  UsagePricingCatalog pricing,
+) {
   var fresh = 0;
   var output = 0;
   var cacheRead = 0;
   var cacheCreation = 0;
+  var cost = 0;
+  var priced = 0;
+  var unpriced = 0;
   final sessions = <String>{};
 
   for (final event in events) {
@@ -88,6 +97,13 @@ UsageSummary _summarize(List<SessionUsageEvent> events) {
     output += event.outputTokens;
     cacheRead += event.cacheReadTokens;
     cacheCreation += event.cacheCreationTokens;
+    final unit = calculateUsageCost(event, pricing);
+    if (unit.microUsd != null) {
+      cost += unit.microUsd!;
+      priced++;
+    } else {
+      unpriced++;
+    }
     if (event.sessionId.trim().isNotEmpty) sessions.add(event.sessionId);
   }
 
@@ -101,6 +117,9 @@ UsageSummary _summarize(List<SessionUsageEvent> events) {
     requests: events.length,
     sessions: sessions.length,
     cacheHitRate: cacheBase == 0 ? 0 : (cacheRead / cacheBase).clamp(0, 1),
+    costMicroUsd: cost,
+    pricedEvents: priced,
+    unpricedEvents: unpriced,
   );
 }
 
@@ -108,6 +127,7 @@ List<UsageGroup> _group(
   List<SessionUsageEvent> events,
   UsageGroupBy groupBy,
   UsageAttribution attribution,
+  UsagePricingCatalog pricing,
 ) {
   final groups = <String, _GroupAccumulator>{};
 
@@ -146,7 +166,7 @@ List<UsageGroup> _group(
       key,
       () => _GroupAccumulator(key, label, subtitle),
     );
-    group.add(event);
+    group.add(event, calculateUsageCost(event, pricing));
   }
 
   final rows = groups.values.map((group) => group.build()).toList();
@@ -226,8 +246,11 @@ final class _GroupAccumulator {
   var cacheCreationTokens = 0;
   var requests = 0;
   var lastUsedMs = 0;
+  var costMicroUsd = 0;
+  var pricedEvents = 0;
+  var unpricedEvents = 0;
 
-  void add(SessionUsageEvent event) {
+  void add(SessionUsageEvent event, UsageCost cost) {
     totalTokens += usageTotalTokens(event);
     freshInputTokens += event.freshInputTokens;
     outputTokens += event.outputTokens;
@@ -237,6 +260,12 @@ final class _GroupAccumulator {
     clis.add(event.cli);
     if (event.sessionId.trim().isNotEmpty) sessions.add(event.sessionId);
     if (event.timestampMs > lastUsedMs) lastUsedMs = event.timestampMs;
+    if (cost.microUsd != null) {
+      costMicroUsd += cost.microUsd!;
+      pricedEvents++;
+    } else {
+      unpricedEvents++;
+    }
   }
 
   UsageGroup build() {
@@ -255,6 +284,9 @@ final class _GroupAccumulator {
       requests: requests,
       sessions: sessions.length,
       lastUsedMs: lastUsedMs,
+      costMicroUsd: costMicroUsd,
+      pricedEvents: pricedEvents,
+      unpricedEvents: unpricedEvents,
     );
   }
 }

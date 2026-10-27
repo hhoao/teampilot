@@ -147,6 +147,9 @@ final class UsageSummary extends Equatable {
     this.requests = 0,
     this.sessions = 0,
     this.cacheHitRate = 0,
+    this.costMicroUsd = 0,
+    this.pricedEvents = 0,
+    this.unpricedEvents = 0,
   });
 
   final int totalTokens;
@@ -160,6 +163,10 @@ final class UsageSummary extends Equatable {
   /// `cacheRead / (freshInput + cacheRead)`, clamped to 0..1.
   final double cacheHitRate;
 
+  final int costMicroUsd;
+  final int pricedEvents;
+  final int unpricedEvents;
+
   @override
   List<Object?> get props => [
     totalTokens,
@@ -170,6 +177,9 @@ final class UsageSummary extends Equatable {
     requests,
     sessions,
     cacheHitRate,
+    costMicroUsd,
+    pricedEvents,
+    unpricedEvents,
   ];
 }
 
@@ -188,6 +198,9 @@ final class UsageGroup extends Equatable {
     this.requests = 0,
     this.sessions = 0,
     this.lastUsedMs = 0,
+    this.costMicroUsd = 0,
+    this.pricedEvents = 0,
+    this.unpricedEvents = 0,
   });
 
   /// Stable grouping key, e.g. `session:s1`, `member:team/dev`.
@@ -206,6 +219,9 @@ final class UsageGroup extends Equatable {
   final int requests;
   final int sessions;
   final int lastUsedMs;
+  final int costMicroUsd;
+  final int pricedEvents;
+  final int unpricedEvents;
 
   @override
   List<Object?> get props => [
@@ -221,6 +237,9 @@ final class UsageGroup extends Equatable {
     requests,
     sessions,
     lastUsedMs,
+    costMicroUsd,
+    pricedEvents,
+    unpricedEvents,
   ];
 }
 
