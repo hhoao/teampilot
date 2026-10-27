@@ -67,7 +67,8 @@ class _RecordingSeatLeases implements SeatBackgroundLeasePort {
 }
 
 /// All-stub [AcpSessionRuntimeApi] for cubit tests.
-class _FakeAcpRuntime implements AcpSessionRuntimeApi, AcpHistorySyncApi {
+class _FakeAcpRuntime
+    implements AcpSessionRuntimeApi, AcpHistorySyncApi, AcpModelSwitchApi {
   final updatesController = StreamController<AcpSessionUpdate>.broadcast();
   final permissionsController =
       StreamController<AgentPermissionRequest>.broadcast();
@@ -93,6 +94,27 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi, AcpHistorySyncApi {
   int loadHistoryCalls = 0;
   Object? loadHistoryError;
   Completer<void>? loadHistoryGate;
+
+  /// Model selector exposed through [AcpModelSwitchApi].
+  @override
+  AcpModelState? modelState;
+  final List<String> setModels = [];
+  Object? setModelError;
+
+  @override
+  Future<void> setModel(String modelId) async {
+    final error = setModelError;
+    if (error != null) throw error;
+    setModels.add(modelId);
+    final current = modelState;
+    if (current != null) {
+      modelState = AcpModelState(
+        configId: current.configId,
+        currentId: modelId,
+        options: current.options,
+      );
+    }
+  }
 
   /// Exit-code future the cubit's exit watcher observes (null = never).
   Completer<int>? agentExit;
@@ -332,6 +354,99 @@ void main() {
     expect(cubit.state.phase, AcpChatPhase.ready);
     expect(cubit.state.inTurn, isFalse);
     expect(cubit.state.historyHydrated, isTrue);
+    await cubit.close();
+  });
+
+  test('start lifts the agent model selector into chat state', () async {
+    runtime.modelState = const AcpModelState(
+      configId: 'model',
+      currentId: 'sonnet',
+      options: [
+        AcpModelOption(id: 'sonnet', name: 'Sonnet'),
+        AcpModelOption(id: 'opus', name: 'Opus'),
+      ],
+    );
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+
+    expect(cubit.state.modelState, runtime.modelState);
+    await cubit.close();
+  });
+
+  test('setModel delegates to the runtime and adopts its current value',
+      () async {
+    runtime.modelState = const AcpModelState(
+      configId: 'model',
+      currentId: 'sonnet',
+      options: [
+        AcpModelOption(id: 'sonnet', name: 'Sonnet'),
+        AcpModelOption(id: 'opus', name: 'Opus'),
+      ],
+    );
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+
+    expect(await cubit.setModel('opus'), isTrue);
+    expect(runtime.setModels, ['opus']);
+    expect(cubit.state.modelState!.currentId, 'opus');
+    await cubit.close();
+  });
+
+  test('setModel failure keeps the old model and returns false', () async {
+    runtime.modelState = const AcpModelState(
+      configId: 'model',
+      currentId: 'sonnet',
+      options: [
+        AcpModelOption(id: 'sonnet', name: 'Sonnet'),
+        AcpModelOption(id: 'opus', name: 'Opus'),
+      ],
+    );
+    runtime.setModelError = StateError('agent rejected');
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+
+    expect(await cubit.setModel('opus'), isFalse);
+    expect(cubit.state.modelState!.currentId, 'sonnet');
+    await cubit.close();
+  });
+
+  test('config option update refreshes chat model state', () async {
+    runtime.modelState = const AcpModelState(
+      configId: 'model',
+      currentId: 'sonnet',
+      options: [AcpModelOption(id: 'sonnet', name: 'Sonnet')],
+    );
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+
+    runtime.emit(
+      const AcpModelStateUpdate(
+        state: AcpModelState(
+          configId: 'model',
+          currentId: 'opus',
+          options: [AcpModelOption(id: 'opus', name: 'Opus')],
+        ),
+      ),
+    );
+    await pumpEventQueue();
+
+    expect(cubit.state.modelState!.currentId, 'opus');
     await cubit.close();
   });
 

@@ -412,6 +412,19 @@ class WorkspaceComposeCard extends StatelessWidget {
         ),
         SizedBox(width: spacing.sm),
       ],
+      if (chrome.onAgentModelSelected != null &&
+          chrome.agentModelSpecs != null &&
+          (chrome.agentModelLabel?.trim().isNotEmpty ?? false)) ...[
+        ComposeMenuChip(
+          palette: palette,
+          icon: Icons.memory,
+          label: chrome.agentModelLabel!,
+          minWidth: 160,
+          specs: chrome.agentModelSpecs!,
+          onSelected: chrome.onAgentModelSelected!,
+        ),
+        SizedBox(width: spacing.sm),
+      ],
       if (chrome.permissionControl case final control?) ...[
         ComposePermissionChip(
           palette: palette,
@@ -489,6 +502,7 @@ class WorkspaceComposeCard extends StatelessWidget {
   bool _hasBoundToolbar(BoundComposeChrome chrome) =>
       chrome.identityLabel != null ||
       chrome.onModelCascadeSelected != null ||
+      chrome.onAgentModelSelected != null ||
       chrome.permissionControl != null ||
       chrome.onTeamSettings != null;
 

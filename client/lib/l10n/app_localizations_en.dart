@@ -9433,6 +9433,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get acpPermissionFullAccessLabel => 'Full access';
 
   @override
+  String get acpModelSwitchFailed =>
+      'Couldn\'t switch the ACP model. Try again.';
+
+  @override
   String get sessionUsageNav => 'Token usage';
 
   @override

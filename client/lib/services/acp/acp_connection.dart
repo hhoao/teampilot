@@ -300,6 +300,7 @@ class AcpAgentConnection {
     late final AcpAgentSession session;
     try {
       final String resolvedId;
+      final List<acpd.SessionConfigOption> configOptions;
       switch (kind) {
         case AcpSessionOpenKind.create:
           final response = await _client.client.newSession(
@@ -310,8 +311,9 @@ class AcpAgentConnection {
             ),
           );
           resolvedId = response.sessionId;
+          configOptions = response.configOptions;
         case AcpSessionOpenKind.load:
-          await _client.client.loadSession(
+          final response = await _client.client.loadSession(
             acpd.LoadSessionRequest(
               sessionId: sessionId!,
               cwd: cwd,
@@ -320,8 +322,9 @@ class AcpAgentConnection {
             ),
           );
           resolvedId = sessionId;
+          configOptions = response.configOptions;
         case AcpSessionOpenKind.resume:
-          await _client.client.resumeSession(
+          final response = await _client.client.resumeSession(
             acpd.ResumeSessionRequest(
               sessionId: sessionId!,
               cwd: cwd,
@@ -330,6 +333,7 @@ class AcpAgentConnection {
             ),
           );
           resolvedId = sessionId;
+          configOptions = response.configOptions;
       }
       session = AcpAgentSession(
         connection: this,
@@ -338,6 +342,7 @@ class AcpAgentConnection {
         mcpServers: mcpServers,
         meta: meta,
         permissionTimeout: permissionTimeout,
+        configOptions: configOptions,
         suppressBootstrapUpdates: resuming,
       );
     } catch (_) {

@@ -2566,6 +2566,12 @@ class ChatCubit extends Cubit<ChatState>
   void discardAcpSeat(String sessionId, String memberId) =>
       _launchService.discardAcpSeat(sessionId, memberId);
 
+  /// Closes the personal ACP runtime for [sessionId] and marks it reclaimed so
+  /// the next attach spawns a fresh agent (used when a model/provider switch
+  /// must restart the seat).
+  void discardPersonalAcpRuntime(String sessionId) =>
+      _launchService.discardPersonalAcpRuntime(sessionId);
+
   Future<void> ensureMemberTerminalForView(String sessionId, String memberId) =>
       _launchService.ensureMemberTerminalForView(sessionId, memberId);
 

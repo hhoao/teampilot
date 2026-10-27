@@ -200,6 +200,96 @@ final class AcpAuthNotice extends AcpSessionUpdate {
   int get hashCode => Object.hash(loggedIn, message);
 }
 
+/// One model the agent advertises for the open session.
+///
+/// ACP exposes model selection as a `session/set_config_option` entry whose
+/// category is `model`; [id] is the wire value, [name] is the agent's label.
+class AcpModelOption {
+  const AcpModelOption({
+    required this.id,
+    required this.name,
+    this.description,
+  });
+
+  final String id;
+  final String name;
+  final String? description;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AcpModelOption &&
+          id == other.id &&
+          name == other.name &&
+          description == other.description;
+
+  @override
+  int get hashCode => Object.hash(id, name, description);
+}
+
+/// The agent-advertised model selector for the open ACP session.
+///
+/// Null when the agent does not negotiate a `model` config option (many
+/// agents still only accept the launch-time provider/model configuration).
+class AcpModelState {
+  const AcpModelState({
+    required this.configId,
+    required this.currentId,
+    required this.options,
+  });
+
+  /// Config option id used by `session/set_config_option`.
+  final String configId;
+
+  /// Currently selected option value.
+  final String currentId;
+
+  /// Selectable models, in the agent's order.
+  final List<AcpModelOption> options;
+
+  AcpModelOption? get currentOption {
+    for (final option in options) {
+      if (option.id == currentId) return option;
+    }
+    return null;
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AcpModelState &&
+          configId == other.configId &&
+          currentId == other.currentId &&
+          _sameOptions(options, other.options);
+
+  @override
+  int get hashCode => Object.hash(configId, currentId, Object.hashAll(options));
+
+  static bool _sameOptions(List<AcpModelOption> a, List<AcpModelOption> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+}
+
+/// The agent changed its config options (including the model selector).
+final class AcpModelStateUpdate extends AcpSessionUpdate {
+  const AcpModelStateUpdate({required this.state});
+
+  /// The new model state, or null when the agent no longer advertises one.
+  final AcpModelState? state;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AcpModelStateUpdate && state == other.state;
+
+  @override
+  int get hashCode => state?.hashCode ?? 0;
+}
+
 /// Parses Claude-adapter auth notices from a JSON-RPC params map.
 ///
 /// Wire shapes observed:
@@ -264,9 +354,11 @@ class AcpAgentSession {
     this.meta = const {},
     this.permissionTimeout = defaultPermissionTimeout,
     this.permissionPolicy = LaunchSecurityPolicy.fullAccess,
+    List<acpd.SessionConfigOption> configOptions = const [],
     bool suppressBootstrapUpdates = false,
   }) : _connection = connection,
        _client = connection.acpdClient,
+       _configOptions = List.unmodifiable(configOptions),
        _suppressBootstrap = suppressBootstrapUpdates {
     _updateRegistration = _client.connection.onNotification(
       'session/update',
@@ -333,6 +425,94 @@ class AcpAgentSession {
   /// an in-flight card.
   void setPermissionPolicy(LaunchSecurityPolicy policy) {
     permissionPolicy = policy;
+  }
+
+  /// Session configuration options reported by `session/new`, `session/load`,
+  /// or `session/resume`, kept current by [AcpModelStateUpdate] notifications.
+  List<acpd.SessionConfigOption> _configOptions;
+
+  /// The agent's model selector, or null when it does not advertise one.
+  AcpModelState? get modelState => _modelStateFrom(_configOptions);
+
+  /// Switches the open session to [modelId] via `session/set_config_option`.
+  ///
+  /// The agent's response is authoritative for the new option list (it may
+  /// also narrow the available models). Throws [ArgumentError] when [modelId]
+  /// is not currently advertised and [StateError] when no model option exists.
+  Future<void> setModel(
+    String modelId, {
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    if (_disposed) {
+      throw StateError('Cannot switch model on a disposed ACP session.');
+    }
+    final state = modelState;
+    if (state == null) {
+      throw StateError('The ACP agent does not advertise a model option.');
+    }
+    if (!state.options.any((option) => option.id == modelId)) {
+      throw ArgumentError.value(
+        modelId,
+        'modelId',
+        'is not an advertised model for this session',
+      );
+    }
+    final response = await _client.client.setSessionConfigOption(
+      acpd.SetValueIdConfigOption(
+        sessionId: sessionId,
+        configId: state.configId,
+        value: modelId,
+      ),
+      timeout: timeout,
+    );
+    _applyConfigOptions(response.configOptions);
+  }
+
+  void _applyConfigOptions(List<acpd.SessionConfigOption> configOptions) {
+    final previous = _modelStateFrom(_configOptions);
+    _configOptions = List.unmodifiable(configOptions);
+    final next = _modelStateFrom(_configOptions);
+    if (previous != next) _emit(AcpModelStateUpdate(state: next));
+  }
+
+  static AcpModelState? _modelStateFrom(
+    List<acpd.SessionConfigOption> configOptions,
+  ) {
+    for (final option in configOptions) {
+      if (option is! acpd.SessionConfigSelectOptionValue) continue;
+      final category = option.category?.toJson();
+      if (category != 'model' && option.id.toLowerCase() != 'model') {
+        continue;
+      }
+      final choices = _flattenSelectOptions(option.options)
+          .map(
+            (choice) => AcpModelOption(
+              id: choice.value,
+              name: choice.name,
+              description: choice.description,
+            ),
+          )
+          .toList(growable: false);
+      if (choices.isEmpty) return null;
+      return AcpModelState(
+        configId: option.id,
+        currentId: option.currentValue,
+        options: choices,
+      );
+    }
+    return null;
+  }
+
+  static List<acpd.SessionConfigSelectOption> _flattenSelectOptions(
+    acpd.SessionConfigSelectOptions? options,
+  ) {
+    return switch (options) {
+      acpd.SessionConfigUngroupedOptions(:final options) => options,
+      acpd.SessionConfigGroupedOptions(:final groups) => [
+        for (final group in groups) ...group.options,
+      ],
+      null => const [],
+    };
   }
 
   final _updates = StreamController<AcpSessionUpdate>.broadcast();
@@ -438,7 +618,7 @@ class AcpAgentSession {
     final buffer = <AcpSessionUpdate>[];
     _historyBuffer = buffer;
     try {
-      await _client.client.loadSession(
+      final response = await _client.client.loadSession(
         acpd.LoadSessionRequest(
           sessionId: sessionId,
           cwd: cwd,
@@ -447,6 +627,9 @@ class AcpAgentSession {
         ),
         timeout: timeout,
       );
+      if (!_disposed) {
+        _applyConfigOptions(response.configOptions);
+      }
       return List<AcpSessionUpdate>.unmodifiable(buffer);
     } finally {
       _collectingHistory = false;
@@ -565,7 +748,12 @@ class AcpAgentSession {
       return;
     }
     if (notification.sessionId != sessionId) return;
-    final mapped = _mapUpdate(notification.update);
+    final update = notification.update;
+    if (update is acpd.ConfigOptionSessionUpdate) {
+      _applyConfigOptions(update.configOptions);
+      return;
+    }
+    final mapped = _mapUpdate(update);
     if (mapped == null) return;
     if (collecting) {
       _historyBuffer?.add(mapped);
@@ -772,8 +960,9 @@ class AcpAgentSession {
               )
               .toList(),
         );
-      // Available-commands, mode, config, session-info, and usage updates
-      // have no chat-layer representation yet.
+      // Available-commands, mode, session-info, and usage updates have no
+      // chat-layer representation yet. Config options are handled before
+      // mapping (they update the model selector).
       default:
         return null;
     }

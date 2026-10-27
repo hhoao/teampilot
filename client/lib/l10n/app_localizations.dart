@@ -16730,6 +16730,12 @@ abstract class AppLocalizations {
   /// **'Full access'**
   String get acpPermissionFullAccessLabel;
 
+  /// No description provided for @acpModelSwitchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t switch the ACP model. Try again.'**
+  String get acpModelSwitchFailed;
+
   /// No description provided for @sessionUsageNav.
   ///
   /// In en, this message translates to:

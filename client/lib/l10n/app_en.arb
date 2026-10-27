@@ -4730,6 +4730,7 @@
   "codexAcpChatNotLoggedIn": "Codex isn't logged in. Sign in with ChatGPT under Settings → Providers, or switch to an API key.",
   "acpPermissionAskLabel": "Ask",
   "acpPermissionFullAccessLabel": "Full access",
+  "acpModelSwitchFailed": "Couldn't switch the ACP model. Try again.",
   "sessionUsageNav": "Token usage",
   "sessionUsageTitle": "Token usage",
   "sessionUsageSubtitle": "Usage attributed to TeamPilot sessions on local and SSH home planes.",

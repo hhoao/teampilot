@@ -517,6 +517,92 @@ void main() {
     });
   });
 
+  test('exposes the agent model config option from session/new', () async {
+    agent.connection.onRequest('session/new', (params) {
+      return acpd.NewSessionResponse(
+        sessionId: sessionId,
+        configOptions: [_modelOption('sonnet')],
+      ).toJson();
+    });
+
+    await openSession();
+
+    final state = session.modelState;
+    expect(state, isNotNull);
+    expect(state!.configId, 'model');
+    expect(state.currentId, 'sonnet');
+    expect(state.options.map((option) => option.id), ['sonnet', 'opus']);
+  });
+
+  test('setModel sends session/set_config_option and adopts the response',
+      () async {
+    agent.connection.onRequest('session/new', (params) {
+      return acpd.NewSessionResponse(
+        sessionId: sessionId,
+        configOptions: [_modelOption('sonnet')],
+      ).toJson();
+    });
+    acpd.SetSessionConfigOptionRequest? seen;
+    agent.connection.onRequest('session/set_config_option', (params) {
+      seen = acpd.SetSessionConfigOptionRequest.fromJson(
+        (params! as Map).cast<String, Object?>(),
+      );
+      return acpd.SetSessionConfigOptionResponse(
+        configOptions: [_modelOption('opus')],
+      ).toJson();
+    });
+
+    await openSession();
+    await session.setModel('opus');
+
+    expect(seen, isA<acpd.SetValueIdConfigOption>());
+    expect(seen!.sessionId, sessionId);
+    expect(seen!.configId, 'model');
+    expect((seen! as acpd.SetValueIdConfigOption).value, 'opus');
+    expect(session.modelState!.currentId, 'opus');
+  });
+
+  test('rejects a model the agent did not advertise', () async {
+    agent.connection.onRequest('session/new', (params) {
+      return acpd.NewSessionResponse(
+        sessionId: sessionId,
+        configOptions: [_modelOption('sonnet')],
+      ).toJson();
+    });
+    await openSession();
+
+    await expectLater(session.setModel('unknown'), throwsArgumentError);
+  });
+
+  test('config option updates refresh modelState and emit an update', () async {
+    agent.connection.onRequest('session/new', (params) {
+      return acpd.NewSessionResponse(
+        sessionId: sessionId,
+        configOptions: [_modelOption('sonnet')],
+      ).toJson();
+    });
+    await openSession();
+    final events = <AcpSessionUpdate>[];
+    final sub = session.updates.listen(events.add);
+
+    agentCtx.sessionUpdate(
+      sessionId: sessionId,
+      update: acpd.ConfigOptionSessionUpdate(
+        configOptions: [_modelOption('opus')],
+      ),
+    );
+    await pumpEventQueue();
+    sub.cancel();
+
+    expect(session.modelState!.currentId, 'opus');
+    final update = events.whereType<AcpModelStateUpdate>().single;
+    expect(update.state!.currentId, 'opus');
+    expect(
+      update.state!.options.map((option) => option.id),
+      ['sonnet', 'opus'],
+    );
+  });
+
   test('maps thought, tool call, and plan updates', () async {
     scriptPrompt(() {
       agentCtx.sessionUpdate(
@@ -1822,6 +1908,19 @@ const _planParams = {
   'name': 'Ship',
   'overview': 'Do the thing',
 };
+
+acpd.SessionConfigOption _modelOption(String current) {
+  return acpd.SessionConfigSelectOptionValue(
+    id: 'model',
+    name: 'Model',
+    currentValue: current,
+    category: acpd.SessionConfigOptionCategory.model,
+    options: acpd.SessionConfigUngroupedOptions([
+      const acpd.SessionConfigSelectOption(value: 'sonnet', name: 'Sonnet'),
+      const acpd.SessionConfigSelectOption(value: 'opus', name: 'Opus'),
+    ]),
+  );
+}
 
 final class _UnknownBlockingTranslator extends AcpAgentTranslator {
   const _UnknownBlockingTranslator();

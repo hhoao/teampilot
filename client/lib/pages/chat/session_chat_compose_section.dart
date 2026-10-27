@@ -26,6 +26,7 @@ import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/acp/acp_client_extensions.dart';
+import '../../services/acp/acp_session.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/native_command_capability.dart';
 import '../../services/cli/registry/capabilities/skill_capability.dart';
@@ -44,6 +45,7 @@ import '../../services/chat/conversation/follow_up/follow_up_queue.dart';
 import '../../services/chat/conversation/history/history_seat_key.dart';
 import '../../services/chat/conversation/history/session_history_pagination.dart';
 import '../../services/chat/runtime/pty/pending_user_message.dart';
+import '../../services/chat/session/chat_tab.dart';
 import '../../services/chat/session/session_member_cli_resolver.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../utils/team/team_member_naming.dart';
@@ -198,6 +200,12 @@ class SessionChatComposeSection extends StatelessWidget {
     final acpTurnInFlight = acpRuntime == null
         ? false
         : seatSelect<AcpChatRuntimeCubit, bool>(context, (c) => c.state.inTurn);
+    final acpModelState = acpRuntime == null
+        ? null
+        : seatSelect<AcpChatRuntimeCubit, AcpModelState?>(
+            context,
+            (c) => c.state.modelState,
+          );
 
     final registry =
         CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
@@ -254,6 +262,25 @@ class SessionChatComposeSection extends StatelessWidget {
         : (selectedPreset?.name.trim().isNotEmpty == true
               ? selectedPreset!.name.trim()
               : l10n.workspaceChatLandingUsePreset);
+    final acpModelLabel = acpModelState == null
+        ? null
+        : (acpModelState.currentOption?.name ??
+              (acpModelState.options.isNotEmpty
+                  ? acpModelState.options.first.name
+                  : acpModelState.currentId));
+    final acpModelSpecs = acpModelState == null
+        ? null
+        : [
+            for (final option in acpModelState.options)
+              TpActionMenuSpec.item(
+                value: option.id,
+                label: option.name,
+                subtitle: option.description == null
+                    ? null
+                    : Text(option.description!),
+                selected: option.id == acpModelState.currentId,
+              ),
+          ];
     final identityLabel = _identityLabel(
       session: session,
       team: team,
@@ -497,6 +524,18 @@ class SessionChatComposeSection extends StatelessWidget {
                                   value: v,
                                 ),
                               ),
+                              agentModelLabel: acpModelLabel,
+                              agentModelSpecs: acpModelSpecs,
+                              onAgentModelSelected:
+                                  acpRuntime == null || acpModelSpecs == null
+                                  ? null
+                                  : (v) => unawaited(
+                                      _switchAcpModel(
+                                        context: context,
+                                        runtime: acpRuntime!,
+                                        value: v,
+                                      ),
+                                    ),
                               permissionControl: sessionAcpPermissionControl(
                                 context: context,
                                 session: liveSession,
@@ -954,6 +993,21 @@ class SessionChatComposeSection extends StatelessWidget {
     }
   }
 
+  static Future<void> _switchAcpModel({
+    required BuildContext context,
+    required AcpChatRuntimeCubit runtime,
+    required Object? value,
+  }) async {
+    if (value is! String || value.isEmpty) return;
+    final ok = await runtime.setModel(value);
+    if (ok || !context.mounted) return;
+    AppToast.show(
+      context,
+      message: context.l10n.acpModelSwitchFailed,
+      variant: TpToastVariant.warning,
+    );
+  }
+
   static Future<void> _applyContinueCustom(
     BuildContext context, {
     required AppSession session,
@@ -1044,6 +1098,12 @@ class SessionChatComposeSection extends StatelessWidget {
         false;
     if (!restartNow || !context.mounted) return;
     if (session.isSimple) {
+      // Terminal-less ACP seats are not `memberShells`, so the PTY disconnect
+      // below cannot tear them down. Close the runtime first or attach reuses
+      // the old process/config and the switch never lands.
+      if (isAcpChatSession(session)) {
+        chatCubit.discardPersonalAcpRuntime(sessionId);
+      }
       final repo = context.read<SessionRepository>();
       await chatCubit.restartWorkspaceSession(
         PersonalSessionConnect(workspaceId: session.workspaceId),
@@ -1052,7 +1112,11 @@ class SessionChatComposeSection extends StatelessWidget {
       return;
     }
     if (memberId == null || memberId.isEmpty) return;
-    chatCubit.discardMemberTerminal(sessionId, memberId);
+    if (isAcpChatSeat(session, memberId)) {
+      chatCubit.discardAcpSeat(sessionId, memberId);
+    } else {
+      chatCubit.discardMemberTerminal(sessionId, memberId);
+    }
     await chatCubit.ensureMemberTerminalForView(sessionId, memberId);
   }
 

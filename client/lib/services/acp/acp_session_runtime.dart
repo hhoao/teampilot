@@ -218,6 +218,20 @@ abstract interface class AcpAgentProcessPidApi {
   int? get agentPid;
 }
 
+/// Optional ACP capability: model selection on an open session.
+///
+/// Separate from [AcpSessionRuntimeApi] so existing all-stub fakes stay valid;
+/// the chat layer checks the runtime against this interface before showing a
+/// model picker or calling [setModel]. Agents that do not advertise a `model`
+/// config option report a null [modelState] through this interface.
+abstract interface class AcpModelSwitchApi {
+  /// The agent's current model selector, or null when it advertises none.
+  AcpModelState? get modelState;
+
+  /// Switches the open session to [modelId] via `session/set_config_option`.
+  Future<void> setModel(String modelId);
+}
+
 /// Owns one ACP agent session for the chat layer: spawn + flag probe +
 /// session lifecycle.
 ///
@@ -229,7 +243,11 @@ abstract interface class AcpAgentProcessPidApi {
 /// [permissionRequests]/[answerPermission]/[cancel] to it; [close] disposes
 /// both the session and the connection.
 class AcpSessionRuntime
-    implements AcpSessionRuntimeApi, AcpHistorySyncApi, AcpAgentProcessPidApi {
+    implements
+        AcpSessionRuntimeApi,
+        AcpHistorySyncApi,
+        AcpAgentProcessPidApi,
+        AcpModelSwitchApi {
   AcpSessionRuntime({
     required AcpConnectionSpawner spawner,
     required this.logger,
@@ -522,6 +540,20 @@ class AcpSessionRuntime
   void setPermissionPolicy(LaunchSecurityPolicy policy) {
     _overridePolicy = policy;
     _session?.setPermissionPolicy(policy);
+  }
+
+  /// The open agent's model selector, or null when it advertises none.
+  @override
+  AcpModelState? get modelState => _session?.modelState;
+
+  /// Switches the open agent session's model via `session/set_config_option`.
+  @override
+  Future<void> setModel(String modelId) async {
+    final session = _session;
+    if (session == null) {
+      throw StateError('Cannot switch model before the ACP session is open.');
+    }
+    await session.setModel(modelId);
   }
 
   /// Cancels the current prompt turn.

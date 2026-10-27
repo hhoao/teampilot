@@ -83,6 +83,7 @@ class AcpChatRuntimeState {
     this.error,
     this.activity = AcpChatActivity.none,
     this.historyHydrated = false,
+    this.modelState,
   });
 
   final AcpChatPhase phase;
@@ -111,6 +112,9 @@ class AcpChatRuntimeState {
   /// The loading pane may clear; this is not permission to rewrite the file.
   final bool historyHydrated;
 
+  /// The agent's model selector, when it advertises one.
+  final AcpModelState? modelState;
+
   AcpChatRuntimeState copyWith({
     AcpChatPhase? phase,
     List<AiMessage>? messages,
@@ -120,6 +124,7 @@ class AcpChatRuntimeState {
     bool clearError = false,
     AcpChatActivity? activity,
     bool? historyHydrated,
+    Object? modelState = _unset,
   }) => AcpChatRuntimeState(
     phase: phase ?? this.phase,
     messages: messages ?? this.messages,
@@ -130,6 +135,9 @@ class AcpChatRuntimeState {
     error: clearError ? null : (error ?? this.error),
     activity: activity ?? this.activity,
     historyHydrated: historyHydrated ?? this.historyHydrated,
+    modelState: identical(modelState, _unset)
+        ? this.modelState
+        : modelState as AcpModelState?,
   );
 
   static const _unset = Object();
@@ -284,6 +292,41 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     return (runtime as AcpAgentProcessPidApi).agentPid;
   }
 
+  /// Reads the runtime's model selector through the optional ACP capability.
+  AcpModelState? _readModelState() {
+    final runtime = _runtime;
+    if (runtime is! AcpModelSwitchApi) return null;
+    return (runtime as AcpModelSwitchApi).modelState;
+  }
+
+  /// Whether this runtime can switch models without restarting the agent.
+  bool get supportsModelSwitch => _runtime is AcpModelSwitchApi;
+
+  /// Switches the open session's model via the agent's `model` config option.
+  ///
+  /// Returns false when the runtime does not support model switching, the
+  /// session has ended, or the agent rejects the request. A successful call
+  /// updates [AcpChatRuntimeState.modelState] from the agent's response.
+  Future<bool> setModel(String modelId) async {
+    final modelRuntime = _runtime is AcpModelSwitchApi
+        ? _runtime as AcpModelSwitchApi
+        : null;
+    if (modelRuntime == null) return false;
+    if (_closing || isClosed || state.phase == AcpChatPhase.ended) return false;
+    try {
+      await modelRuntime.setModel(modelId);
+      if (!isClosed) emit(state.copyWith(modelState: modelRuntime.modelState));
+      return true;
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[acp-chat] session $sessionId model switch failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+  }
+
   /// Spawns the agent and opens the ACP session.
   ///
   /// On success: subscribes to updates + permissions (before any prompt),
@@ -428,7 +471,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       // can move), so this is the fallback for agents without `session/list`.
       unawaited(_agentSession?.write(liveId, cwd: effectiveWorkingDirectory));
     }
-    emit(state.copyWith(phase: AcpChatPhase.ready));
+    emit(
+      state.copyWith(phase: AcpChatPhase.ready, modelState: _readModelState()),
+    );
     final queued = _queuedPrompt;
     _queuedPrompt = null;
     if (queued != null && queued.serial == _turnSerial) {
@@ -728,6 +773,9 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         if (update.loggedIn) {
           _removeAuthNoticeMessage();
         }
+      case AcpModelStateUpdate():
+        if (isClosed) return;
+        emit(state.copyWith(modelState: update.state));
       case AcpTodoListUpdate() || AcpTaskUpdate() || AcpGeneratedImageUpdate():
         if (isClosed) return;
         final folded = foldAcpExtensionNotification(
@@ -1421,6 +1469,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         pendingClient: null,
         error: AcpChatError(kind: kind, message: message),
         activity: AcpChatActivity.none,
+        modelState: null,
       ),
     );
     if (kind != AcpChatErrorKind.processExited) {

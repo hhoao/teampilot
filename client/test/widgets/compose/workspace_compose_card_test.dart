@@ -144,6 +144,35 @@ void main() {
     expect(find.byIcon(Icons.add), findsOneWidget);
   });
 
+  testWidgets('bound compose shows and selects an agent ACP model', (
+    tester,
+  ) async {
+    Object? selected;
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: pumpCard(
+          chrome: BoundComposeChrome(
+            agentModelLabel: 'Sonnet',
+            agentModelSpecs: const [
+              TpActionMenuSpec.item(value: 'sonnet', label: 'Sonnet'),
+              TpActionMenuSpec.item(value: 'opus', label: 'Opus'),
+            ],
+            onAgentModelSelected: (value) => selected = value,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sonnet'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.memory));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Opus'));
+    await tester.pumpAndSettle();
+    expect(selected, 'opus');
+  });
+
   testWidgets('explicit permission control remains reusable in bound compose', (
     tester,
   ) async {

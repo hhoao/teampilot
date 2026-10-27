@@ -9023,6 +9023,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get acpPermissionFullAccessLabel => '完全访问';
 
   @override
+  String get acpModelSwitchFailed => '无法切换 ACP 模型，请重试。';
+
+  @override
   String get sessionUsageNav => 'Token 用量';
 
   @override
