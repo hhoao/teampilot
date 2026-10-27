@@ -4743,6 +4743,8 @@
   "acpPermissionAskLabel": "Ask",
   "acpPermissionFullAccessLabel": "Full access",
   "acpModelSwitchFailed": "Couldn't switch the ACP model. Try again.",
+  "acpModelSectionAgent": "Agent model (applies immediately)",
+  "acpModelSectionLaunch": "Launch config (restart to apply)",
   "sessionUsageNav": "Token usage",
   "sessionUsageTitle": "Token usage",
   "sessionUsageSubtitle": "Usage attributed to TeamPilot sessions on local and SSH home planes.",

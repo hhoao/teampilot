@@ -4,6 +4,8 @@ import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:teampilot/models/config_bundle.dart';
+import 'package:teampilot/pages/chat/session_model_menu.dart';
+import 'package:teampilot/services/acp/acp_session.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_clip.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_file_drop_ingestor.dart';
 import 'package:teampilot/widgets/compose/compose_at_file_chip_row.dart';
@@ -144,21 +146,33 @@ void main() {
     expect(find.byIcon(Icons.add), findsOneWidget);
   });
 
-  testWidgets('bound compose shows and selects an agent ACP model', (
+  testWidgets('bound compose merges ACP agent models with launch config', (
     tester,
   ) async {
     Object? selected;
+    final specs = buildSessionModelMenuSpecs(
+      launchSpecs: const [
+        TpActionMenuSpec.item(value: 'preset-x', label: 'Launch X'),
+      ],
+      modelState: const AcpModelState(
+        configId: 'model',
+        currentId: 'sonnet',
+        options: [
+          AcpModelOption(id: 'sonnet', name: 'Sonnet'),
+          AcpModelOption(id: 'opus', name: 'Opus'),
+        ],
+      ),
+      agentSectionLabel: 'Agent model',
+      launchSectionLabel: 'Launch config',
+    );
     await tester.pumpWidget(
       RepositoryProvider<HomeStorage>.value(
         value: testHomeStorage,
         child: pumpCard(
           chrome: BoundComposeChrome(
-            agentModelLabel: 'Sonnet',
-            agentModelSpecs: const [
-              TpActionMenuSpec.item(value: 'sonnet', label: 'Sonnet'),
-              TpActionMenuSpec.item(value: 'opus', label: 'Opus'),
-            ],
-            onAgentModelSelected: (value) => selected = value,
+            modelPresetLabel: 'Sonnet',
+            modelCascadeSpecs: specs,
+            onModelCascadeSelected: (value) => selected = value,
           ),
         ),
       ),
@@ -166,11 +180,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Sonnet'), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.memory));
+    await tester.tap(find.byIcon(Icons.terminal_outlined));
     await tester.pumpAndSettle();
+    expect(find.text('Agent model'), findsOneWidget);
     await tester.tap(find.text('Opus'));
     await tester.pumpAndSettle();
-    expect(selected, 'opus');
+    expect(selected, const AcpModelPick('opus'));
   });
 
   testWidgets('explicit permission control remains reusable in bound compose', (

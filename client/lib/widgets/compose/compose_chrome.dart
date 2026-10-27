@@ -83,9 +83,6 @@ final class BoundComposeChrome extends ComposeChrome {
     this.modelChipLeading,
     this.modelCascadeSpecs,
     this.onModelCascadeSelected,
-    this.agentModelLabel,
-    this.agentModelSpecs,
-    this.onAgentModelSelected,
     this.permissionControl,
     this.teamSettingsTooltip,
     this.onTeamSettings,
@@ -110,15 +107,6 @@ final class BoundComposeChrome extends ComposeChrome {
   final Widget? modelChipLeading;
   final List<TpActionMenuSpec>? modelCascadeSpecs;
   final ValueChanged<Object?>? onModelCascadeSelected;
-
-  /// Agent-advertised model selector for a terminal-less ACP session.
-  ///
-  /// Separate from [modelPresetLabel]: that chip changes TeamPilot's launch
-  /// identity (provider/model, requires restart), while this one switches the
-  /// running ACP agent through `session/set_config_option`.
-  final String? agentModelLabel;
-  final List<TpActionMenuSpec>? agentModelSpecs;
-  final ValueChanged<Object?>? onAgentModelSelected;
 
   final ComposePermissionControl? permissionControl;
 

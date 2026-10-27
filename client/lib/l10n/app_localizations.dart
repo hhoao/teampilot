@@ -16766,6 +16766,18 @@ abstract class AppLocalizations {
   /// **'Couldn\'t switch the ACP model. Try again.'**
   String get acpModelSwitchFailed;
 
+  /// No description provided for @acpModelSectionAgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent model (applies immediately)'**
+  String get acpModelSectionAgent;
+
+  /// No description provided for @acpModelSectionLaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch config (restart to apply)'**
+  String get acpModelSectionLaunch;
+
   /// No description provided for @sessionUsageNav.
   ///
   /// In en, this message translates to:

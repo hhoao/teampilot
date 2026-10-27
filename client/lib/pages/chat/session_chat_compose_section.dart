@@ -68,6 +68,7 @@ import 'compose_stop_visibility.dart';
 import 'session_seat_working.dart';
 import 'history_continue_delivery.dart';
 import 'history_mailbox_queued_strip.dart';
+import 'session_model_menu.dart';
 import 'session_chat_voice_controller.dart';
 import 'session_launch_error_banner.dart';
 import 'session_launch_error_visibility.dart';
@@ -268,19 +269,7 @@ class SessionChatComposeSection extends StatelessWidget {
               (acpModelState.options.isNotEmpty
                   ? acpModelState.options.first.name
                   : acpModelState.currentId));
-    final acpModelSpecs = acpModelState == null
-        ? null
-        : [
-            for (final option in acpModelState.options)
-              TpActionMenuSpec.item(
-                value: option.id,
-                label: option.name,
-                subtitle: option.description == null
-                    ? null
-                    : Text(option.description!),
-                selected: option.id == acpModelState.currentId,
-              ),
-          ];
+    final modelChipLabel = acpModelLabel ?? modelLabel;
     final identityLabel = _identityLabel(
       session: session,
       team: team,
@@ -410,7 +399,7 @@ class SessionChatComposeSection extends StatelessWidget {
                               cliItems: [lockedCli],
                             )
                           : const <ComposeCascadeCliGroup>[];
-                      final cascadeSpecs = session.isSimple
+                      final launchSpecs = session.isSimple
                           ? buildComposeModelCascadeMenuSpecs(
                               presets: sameCliPresets,
                               selectedPresetId: selectedPresetId,
@@ -442,6 +431,14 @@ class SessionChatComposeSection extends StatelessWidget {
                               presets: sameCliPresets,
                               selectedPresetId: selectedPresetId,
                               emptyHintLabel: l10n.workspaceCliPresetsEmptyHint,
+                            );
+                      final cascadeSpecs = acpModelState == null
+                          ? launchSpecs
+                          : buildSessionModelMenuSpecs(
+                              launchSpecs: launchSpecs,
+                              modelState: acpModelState,
+                              agentSectionLabel: l10n.acpModelSectionAgent,
+                              launchSectionLabel: l10n.acpModelSectionLaunch,
                             );
                       return ListenableBuilder(
                         listenable: Listenable.merge([
@@ -505,7 +502,7 @@ class SessionChatComposeSection extends StatelessWidget {
                               identityIcon: session.isSimple
                                   ? Icons.psychology_outlined
                                   : Icons.groups_outlined,
-                              modelPresetLabel: modelLabel,
+                              modelPresetLabel: modelChipLabel,
                               modelChipLeading: CliBrandIcon(
                                 cli: lockedCli,
                                 size: context.tpIconSizes.sm,
@@ -521,21 +518,10 @@ class SessionChatComposeSection extends StatelessWidget {
                                   sameCliPresets: sameCliPresets,
                                   lockedCli: lockedCli,
                                   selectedMemberId: selectedMemberId,
+                                  acpRuntime: acpRuntime,
                                   value: v,
                                 ),
                               ),
-                              agentModelLabel: acpModelLabel,
-                              agentModelSpecs: acpModelSpecs,
-                              onAgentModelSelected:
-                                  acpRuntime == null || acpModelSpecs == null
-                                  ? null
-                                  : (v) => unawaited(
-                                      _switchAcpModel(
-                                        context: context,
-                                        runtime: acpRuntime!,
-                                        value: v,
-                                      ),
-                                    ),
                               permissionControl: sessionAcpPermissionControl(
                                 context: context,
                                 session: liveSession,
@@ -924,8 +910,19 @@ class SessionChatComposeSection extends StatelessWidget {
     required List<CliPreset> sameCliPresets,
     required CliTool lockedCli,
     required String selectedMemberId,
+    required AcpChatRuntimeCubit? acpRuntime,
     required Object? value,
   }) async {
+    if (value is AcpModelPick) {
+      final runtime = acpRuntime;
+      if (runtime == null) return;
+      await _switchAcpModel(
+        context: context,
+        runtime: runtime,
+        modelId: value.modelId,
+      );
+      return;
+    }
     if (value is String && value.isNotEmpty) {
       await _onPresetSelected(
         context: context,
@@ -996,10 +993,10 @@ class SessionChatComposeSection extends StatelessWidget {
   static Future<void> _switchAcpModel({
     required BuildContext context,
     required AcpChatRuntimeCubit runtime,
-    required Object? value,
+    required String modelId,
   }) async {
-    if (value is! String || value.isEmpty) return;
-    final ok = await runtime.setModel(value);
+    if (modelId.isEmpty) return;
+    final ok = await runtime.setModel(modelId);
     if (ok || !context.mounted) return;
     AppToast.show(
       context,
