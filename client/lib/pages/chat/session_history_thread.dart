@@ -148,6 +148,14 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
   var _stickToEnd = true;
   var _stickGeneration = 0;
 
+  /// Whether this transcript's host is foreground. Keep-alive tabs wrap
+  /// inactive hosts in `TickerMode(enabled: false)`; a background transcript
+  /// keeps building (and the runtime keeps growing its tip), but unmounted
+  /// turns are only estimated, so the viewport extent churns. Tracked via
+  /// [TickerMode.valuesOf] (dependency registered in [didChangeDependencies])
+  /// so returning to the tab can re-anchor to the tip.
+  var _foreground = true;
+
   /// Delay message mounts until after the first jump-to-end so open does not
   /// build the top of the thread under a scroll offset of 0.
   var _mountTurns = false;
@@ -208,6 +216,34 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
       _anchorRestoreActive = true;
     }
     _scheduleOpenAtEnd();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final enabled = TickerMode.valuesOf(context).enabled;
+    final becameForeground = enabled && !_foreground;
+    _foreground = enabled;
+    if (becameForeground) {
+      _restickAfterForeground();
+    }
+  }
+
+  /// Returning to a kept-alive tab. Background hosts are wrapped in
+  /// `TickerMode(enabled: false)`, and their transcript keeps growing while
+  /// away: estimates for unmounted turns make the extent churn and the last
+  /// observed offset no longer describes what the user will see. If the thread
+  /// was following the tip when it left, rebase the offset bookkeeping and
+  /// jump to the real tip (post-frame: this frame's layout has applied the
+  /// new extent), then keep following.
+  void _restickAfterForeground() {
+    if (!mounted) return;
+    if (_anchorRestoreActive || _pendingRestoreAnchor != null) return;
+    if (_scrollController.hasClients) {
+      _lastPixels = _scrollController.position.pixels;
+    }
+    if (!_stickToEnd) return;
+    _scheduleStickFrames();
   }
 
   @override
@@ -347,7 +383,10 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
         _showNewMessagesChip = true;
       }
     });
-    if (_stickToEnd && !wasPrepend) {
+    if (_stickToEnd && !wasPrepend && _foreground) {
+      // Background hosts only estimate unmounted turns, so the extent churns;
+      // chasing it there jitters the offset and can trip the release
+      // heuristic. The foreground handoff re-anchors to the real tip instead.
       _scheduleStickFrames();
     }
   }
@@ -461,13 +500,21 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     // previous rule) disabled this release for the whole streaming window. A
     // drop that lands exactly on the tip is a layout clamp after the content
     // shrank — not a user scroll — so it must not release.
-    if (_stickToEnd &&
-        pixels < _lastPixels - _bottomEpsilon &&
-        max - pixels > _bottomEpsilon) {
-      _setStickToEnd(false);
-    } else if (!_stickToEnd && max - pixels <= _bottomEpsilon) {
-      // Manual scroll back to tip — same as tapping the new-messages chip.
-      _resumeStickToTip();
+    //
+    // Background hosts are skipped: the thread keeps building there, but
+    // unmounted-turn estimates churn the extent, so an offset drop is layout
+    // noise, not a drag. Releasing on it would silently stop the follow for
+    // good (the user is not there to scroll back down). [_restickAfterForeground]
+    // re-anchors on return instead.
+    if (_foreground) {
+      if (_stickToEnd &&
+          pixels < _lastPixels - _bottomEpsilon &&
+          max - pixels > _bottomEpsilon) {
+        _setStickToEnd(false);
+      } else if (!_stickToEnd && max - pixels <= _bottomEpsilon) {
+        // Manual scroll back to tip — same as tapping the new-messages chip.
+        _resumeStickToTip();
+      }
     }
 
     _lastPixels = pixels;
@@ -567,6 +614,10 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
     void tick(int left) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || generation != _stickGeneration || !_stickToEnd) return;
+        // A background host's extent churns with unmounted-turn estimates;
+        // chasing it there jitters the offset and can trip the release below.
+        // [_restickAfterForeground] picks the tip up again on return.
+        if (!_foreground) return;
         if (_scrollController.hasClients) {
           final max = _scrollController.position.maxScrollExtent;
           final pixels = _scrollController.position.pixels;
@@ -919,6 +970,12 @@ class _SessionHistoryThreadState extends State<SessionHistoryThread> {
                             _stickToEnd || _anchoringOlder,
                         onMeasureScrollCorrection: (delta) {
                           if (_revealAnimating) return;
+                          // A background host lays out only through estimates for
+                          // unmounted turns; correcting the offset there walks
+                          // the reading position toward the tip behind the
+                          // user's back. The visible range is append-only, so
+                          // there is nothing to compensate on return either.
+                          if (!_foreground) return;
                           // The anchor-restore regime owns the offset; see
                           // [_anchorRestoreActive].
                           if (_anchorRestoreActive) return;
