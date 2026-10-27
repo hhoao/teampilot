@@ -43,7 +43,7 @@ aggregation contracts.
 |---|---|
 | Auto-sync stale threshold | 5 minutes since the last completed sync |
 | Auto-sync interval while visible | 10 minutes |
-| Per-source timeout | 30 seconds, injectable for tests |
+| Per-source I/O step timeout | 30 seconds per read/scan/upsert/cursor save, injectable for tests |
 | Target concurrency | 4 workers, injectable for tests |
 | Auto-sync default | On for the production page; tests pass `autoSync: false` |
 | Startup scan | Never; only cache load |

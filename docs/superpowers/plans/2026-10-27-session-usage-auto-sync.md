@@ -1,6 +1,6 @@
 # Session Usage Auto Sync and Sync Reliability Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Make the `Token 用量` page sync itself while it is visible, and make scans cancellable, observable, time-bounded, and concurrency-bounded without changing extraction or storage semantics.
 
@@ -18,7 +18,7 @@
   - `client/test/pages/usage/usage_summary_cards_test.dart`
 - Do not change the extraction capabilities, JSONL event schema, pricing, or UI layout in this plan.
 - Auto sync only while the usage page is mounted and the app is active. No OS background task.
-- Source timeout default: 30 seconds. Target concurrency default: 4. Stale threshold: 5 minutes. Visible interval: 10 minutes.
+- Per-source I/O step timeout default: 30 seconds. Target concurrency default: 4. Stale threshold: 5 minutes. Visible interval: 10 minutes.
 - Cursor advances only after `UsageStore.upsert` succeeds.
 - Existing `SessionUsageSyncService.syncAll()` and `SessionUsageCubit.sync()` call sites must keep working.
 
@@ -57,7 +57,7 @@
 - Produces: `SessionUsageSyncService.sourceTimeout`, `maxConcurrentTargets`
 - Extends: `UsageSyncResult.cancelled`
 
-- [ ] **Step 1: Write the failing service tests**
+- [x] **Step 1: Write the failing service tests**
 
 Add these tests to `client/test/services/usage/session_usage_sync_service_test.dart`. Keep the existing tests.
 
@@ -264,7 +264,7 @@ UsageScanContext _ctx({String sessionId = 's1'}) => UsageScanContext(
 );
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 ```bash
 cd client
@@ -273,7 +273,7 @@ dart run tool/run_tests.dart test/services/usage/session_usage_sync_service_test
 
 Expected: compilation fails because `UsageSyncControl`, `UsageSyncProgress`, `cancelled`, `sourceTimeout`, and `maxConcurrentTargets` do not exist.
 
-- [ ] **Step 3: Create the control and progress types**
+- [x] **Step 3: Create the control and progress types**
 
 Create `client/lib/services/usage/usage_sync_control.dart`:
 
@@ -339,7 +339,7 @@ final class UsageSyncProgress extends Equatable {
 }
 ```
 
-- [ ] **Step 4: Rewrite the sync service**
+- [x] **Step 4: Rewrite the sync service**
 
 Replace `client/lib/services/usage/session_usage_sync_service.dart` with the implementation below. It preserves the existing `UsageSyncError`/`UsageSyncResult` shape, adds `cancelled`, and adds the handle.
 
@@ -584,7 +584,7 @@ class SessionUsageSyncService {
 }
 ```
 
-- [ ] **Step 5: Run the service tests**
+- [x] **Step 5: Run the service tests**
 
 ```bash
 cd client
@@ -593,7 +593,7 @@ dart run tool/run_tests.dart test/services/usage/session_usage_sync_service_test
 
 Expected: all tests pass. If the concurrency test is flaky due to the 20 ms delay, keep the delay but assert `maxActive <= 2` and `maxActive >= 2`, not an exact second count.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot
@@ -620,7 +620,7 @@ git commit -m "feat(usage): add cancellable bounded sync" -- \
 - Consumes: `SessionUsageSyncService`, `UsageSyncHandle`, `UsageSyncControl`, `UsageSyncProgress`
 - Produces: `SessionUsageServices.startSync`
 
-- [ ] **Step 1: Write the failing service factory test**
+- [x] **Step 1: Write the failing service factory test**
 
 Create `client/test/services/usage/session_usage_services_test.dart`:
 
@@ -629,13 +629,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/app/session_usage_services.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/storage/home_storage.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
 void main() {
   setUpTestAppStorage();
-  tearDownTestAppStorage();
+  tearDown(tearDownTestAppStorage);
 
   test('startSync returns a handle for the current home plane', () async {
     final services = SessionUsageServices.forStorage(
@@ -655,7 +654,7 @@ void main() {
 
 If `testHomeStorage` is not exported by `post_frame_test_harness.dart`, use the existing `setUpTestAppStorage()` helper pattern from `client/test/pages/usage/session_usage_page_test.dart` and the shared `testHomeStorage` symbol. Check the harness imports before running; do not introduce a second home storage.
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 ```bash
 cd client
@@ -664,7 +663,7 @@ dart run tool/run_tests.dart test/services/usage/session_usage_services_test.dar
 
 Expected: compile error, `startSync` is not defined.
 
-- [ ] **Step 3: Add `startSync` to `SessionUsageServices`**
+- [x] **Step 3: Add `startSync` to `SessionUsageServices`**
 
 Modify `client/lib/app/session_usage_services.dart`:
 
@@ -735,7 +734,9 @@ final class SessionUsageServices {
 
     UsageSyncHandle startSync() {
       final control = UsageSyncControl();
-      final progress = StreamController<UsageSyncProgress>(sync: true);
+      final progress = StreamController<UsageSyncProgress>.broadcast(
+        sync: true,
+      );
       final service = newSync();
       final done = Future.microtask(
         () => service.syncAll(control: control, onProgress: progress.add),
@@ -758,7 +759,7 @@ final class SessionUsageServices {
 }
 ```
 
-- [ ] **Step 4: Pass `startSync` into the app cubit**
+- [x] **Step 4: Pass `startSync` into the app cubit**
 
 In `client/lib/app/app_shell.dart`, find the `SessionUsageCubit` construction and add the field:
 
@@ -775,7 +776,7 @@ In `client/lib/app/app_shell.dart`, find the `SessionUsageCubit` construction an
 
 Keep the existing `unawaited(sessionUsageCubit.ensureLoaded());`.
 
-- [ ] **Step 5: Run the factory test and analyzer**
+- [x] **Step 5: Run the factory test and analyzer**
 
 ```bash
 cd client
@@ -785,7 +786,7 @@ flutter analyze --no-fatal-infos --no-fatal-warnings
 
 Expected: the test passes and analyzer has no new usage errors.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot
@@ -812,7 +813,7 @@ git commit -m "feat(usage): expose startSync handle" -- \
 - Produces: `SessionUsageState.syncProgress`, `isCancelling`, `syncCancelled`, `lastSyncManual`
 - Produces: `SessionUsageCubit.sync({manual})`, `cancelSync()`, `syncIfStale({ttl})`
 
-- [ ] **Step 1: Write the failing cubit tests**
+- [x] **Step 1: Write the failing cubit tests**
 
 Add these tests to `client/test/cubits/session_usage_cubit_test.dart`. Add the `usage_sync_control.dart` import.
 
@@ -931,7 +932,7 @@ Add these tests to `client/test/cubits/session_usage_cubit_test.dart`. Add the `
   });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 ```bash
 cd client
@@ -940,7 +941,7 @@ dart run tool/run_tests.dart test/cubits/session_usage_cubit_test.dart
 
 Expected: compile errors for `syncIfStale`, `startSync`, `syncProgress`, `cancelSync`, `lastSyncManual`.
 
-- [ ] **Step 3: Add state fields and copyWith**
+- [x] **Step 3: Add state fields and copyWith**
 
 In `client/lib/cubits/session_usage_cubit.dart`, import:
 
@@ -989,7 +990,7 @@ Add to the returned state:
 
 Add the new fields to `props` in declaration order.
 
-- [ ] **Step 4: Add handle support to the cubit**
+- [x] **Step 4: Add handle support to the cubit**
 
 In the constructor add:
 
@@ -1055,15 +1056,16 @@ Replace `sync()` with:
     final handle = starter();
     _activeHandle = handle;
     _syncProgressSub = handle.progress.listen((progress) {
-      if (isClosed) return;
+      if (isClosed || !state.isSyncing) return;
       emit(state.copyWith(syncProgress: progress));
     });
     try {
       return await handle.done;
     } finally {
-      await _syncProgressSub?.cancel();
+      final sub = _syncProgressSub;
       _syncProgressSub = null;
       _activeHandle = null;
+      if (sub != null) unawaited(sub.cancel());
     }
   }
 ```
@@ -1121,15 +1123,16 @@ In `close()`, cancel the active handle and progress subscription before closing:
   Future<void> close() async {
     _activeHandle?.cancel();
     _activeHandle = null;
-    await _syncProgressSub?.cancel();
+    final progressSub = _syncProgressSub;
     _syncProgressSub = null;
+    if (progressSub != null) unawaited(progressSub.cancel());
     await _storageSub?.cancel();
     _storageSub = null;
     return super.close();
   }
 ```
 
-- [ ] **Step 5: Run the cubit tests**
+- [x] **Step 5: Run the cubit tests**
 
 ```bash
 cd client
@@ -1138,7 +1141,7 @@ dart run tool/run_tests.dart test/cubits/session_usage_cubit_test.dart
 
 Expected: all tests pass. If `close()` is called while `done` is pending, ensure the test completes the completer before closing; do not emit after `super.close()`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot
@@ -1167,7 +1170,7 @@ git commit -m "feat(usage): add sync progress and cancellation state" -- \
 - Consumes: `SessionUsageCubit.syncIfStale`, `cancelSync`, `SessionUsageState.syncProgress`, `isCancelling`, `syncCancelled`, `lastSyncManual`
 - Produces: `SessionUsagePage(autoSync:)`, cancel button, progress line
 
-- [ ] **Step 1: Add l10n keys and AppKeys**
+- [x] **Step 1: Add l10n keys and AppKeys**
 
 In `client/lib/l10n/app_en.arb`, add near the existing `sessionUsageSync` entries:
 
@@ -1228,7 +1231,7 @@ In `client/lib/utils/ui/app_keys.dart`, add:
   );
 ```
 
-- [ ] **Step 2: Update the header for progress and cancel**
+- [x] **Step 2: Update the header for progress and cancel**
 
 In `client/lib/pages/usage/widgets/usage_page_chrome.dart`, import the progress type:
 
@@ -1315,7 +1318,7 @@ String _progressLabel(BuildContext context, UsageSyncProgress? progress) {
 }
 ```
 
-- [ ] **Step 3: Add page auto sync**
+- [x] **Step 3: Add page auto sync**
 
 In `client/lib/pages/usage/session_usage_page.dart`, add top-level constants:
 
@@ -1399,7 +1402,7 @@ Replace `initState` with:
   }
 ```
 
-- [ ] **Step 4: Update the page listener and header call**
+- [x] **Step 4: Update the page listener and header call**
 
 Replace the `BlocListener` with:
 
@@ -1438,7 +1441,7 @@ Pass the cancel callback to the header:
                 ),
 ```
 
-- [ ] **Step 5: Regenerate l10n**
+- [x] **Step 5: Regenerate l10n**
 
 ```bash
 cd client
@@ -1447,7 +1450,7 @@ flutter gen-l10n
 
 Expected: generated `app_localizations*.dart` include the new keys. Keep them staged in the commit.
 
-- [ ] **Step 6: Update page tests**
+- [x] **Step 6: Update page tests**
 
 In `client/test/pages/usage/session_usage_page_test.dart`, add the progress type import:
 
@@ -1609,9 +1612,13 @@ Add auto sync tests at the end:
     await tester.pumpAndSettle();
     expect(syncCount, 1);
 
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     await tester.pump();
     now = now.add(const Duration(minutes: 11));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pumpAndSettle();
     expect(syncCount, 2);
@@ -1620,7 +1627,7 @@ Add auto sync tests at the end:
 
 Ensure the existing `load reads cache once and never scans on open` test still passes because `_wrap` defaults to `autoSync: false`.
 
-- [ ] **Step 7: Run the page and navigation tests**
+- [x] **Step 7: Run the page and navigation tests**
 
 ```bash
 cd client
@@ -1631,7 +1638,7 @@ dart run tool/run_tests.dart \
 
 Expected: all tests pass. If the cancel toast leaves a pending timer, pump 3 seconds before the test ends.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot
@@ -1665,7 +1672,7 @@ git commit -m "feat(usage): add foreground auto sync and cancel UI" -- \
 - Modify: `docs/superpowers/plans/2026-10-27-session-usage-auto-sync.md`
 - Modify (checkbox updates only): this plan
 
-- [ ] **Step 1: Run the focused suite**
+- [x] **Step 1: Run the focused suite**
 
 ```bash
 cd client
@@ -1679,7 +1686,7 @@ dart run tool/run_tests.dart \
 
 Expected: every test passes.
 
-- [ ] **Step 2: Run the analyzer**
+- [x] **Step 2: Run the analyzer**
 
 ```bash
 cd client
@@ -1688,7 +1695,7 @@ flutter analyze --no-fatal-infos --no-fatal-warnings
 
 Expected: exit code 0. Pre-existing repo diagnostics may still be printed; no new diagnostics in the files touched by this plan.
 
-- [ ] **Step 3: Run the full suite once in the background**
+- [x] **Step 3: Run the full suite once in the background**
 
 ```bash
 cd client
@@ -1697,7 +1704,7 @@ dart run tool/run_tests.dart
 
 Expected: all tests pass. Do not run a second concurrent test command while this is running.
 
-- [ ] **Step 4: Mark plan checkboxes and commit**
+- [x] **Step 4: Mark plan checkboxes and commit**
 
 ```bash
 cd /home/hhoa/git/hhoa/teampilot
