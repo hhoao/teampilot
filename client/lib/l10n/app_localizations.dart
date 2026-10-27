@@ -16757,13 +16757,13 @@ abstract class AppLocalizations {
   /// No description provided for @acpModelSectionAgent.
   ///
   /// In en, this message translates to:
-  /// **'Agent model (applies immediately)'**
+  /// **'Agent model'**
   String get acpModelSectionAgent;
 
   /// No description provided for @acpModelSectionLaunch.
   ///
   /// In en, this message translates to:
-  /// **'Launch config (restart to apply)'**
+  /// **'Launch config'**
   String get acpModelSectionLaunch;
 
   /// No description provided for @sessionUsageNav.

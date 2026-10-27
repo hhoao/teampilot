@@ -9037,10 +9037,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get acpModelSwitchFailed => '无法切换 ACP 模型，请重试。';
 
   @override
-  String get acpModelSectionAgent => 'Agent 模型（立即切换）';
+  String get acpModelSectionAgent => 'Agent 模型';
 
   @override
-  String get acpModelSectionLaunch => '启动配置（重启后生效）';
+  String get acpModelSectionLaunch => '启动配置';
 
   @override
   String get sessionUsageNav => 'Token 用量';

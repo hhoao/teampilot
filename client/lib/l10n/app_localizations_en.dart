@@ -9448,10 +9448,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t switch the ACP model. Try again.';
 
   @override
-  String get acpModelSectionAgent => 'Agent model (applies immediately)';
+  String get acpModelSectionAgent => 'Agent model';
 
   @override
-  String get acpModelSectionLaunch => 'Launch config (restart to apply)';
+  String get acpModelSectionLaunch => 'Launch config';
 
   @override
   String get sessionUsageNav => 'Token usage';
