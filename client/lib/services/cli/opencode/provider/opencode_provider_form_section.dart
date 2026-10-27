@@ -46,22 +46,13 @@ class _OpencodeProviderFormSectionState extends State<OpencodeProviderFormSectio
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final styles = TpTextStyles.of(context);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        TpInput(
-          key: const ValueKey('opencode-provider-subscription'),
-          controller: _ctl,
-          onChanged: widget.onSubscriptionChanged,
-          decoration: InputDecoration(
-            labelText: l10n.appProviderOpencodeSubscription,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(l10n.appProviderOpencodeSubscriptionHint, style: styles.mutedSm),
-      ],
+    return TpInput(
+      key: const ValueKey('opencode-provider-subscription'),
+      controller: _ctl,
+      onChanged: widget.onSubscriptionChanged,
+      decoration: InputDecoration(
+        labelText: l10n.appProviderOpencodeSubscription,
+      ),
     );
   }
 }

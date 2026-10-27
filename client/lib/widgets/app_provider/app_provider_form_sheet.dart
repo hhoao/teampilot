@@ -467,11 +467,6 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                       labelText: l10n.appProviderDisplayName,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.appProviderDisplayNameHint,
-                    style: TpTextStyles.of(context).mutedSm,
-                  ),
                   if (!_isEditing) ...[
                     const SizedBox(height: 8),
                     Text(
