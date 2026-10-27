@@ -10646,6 +10646,84 @@ abstract class AppLocalizations {
   /// **'Gemini CLI'**
   String get appProviderToolGemini;
 
+  /// No description provided for @appProviderToolCodebuddy.
+  ///
+  /// In en, this message translates to:
+  /// **'CodeBuddy / WorkBuddy'**
+  String get appProviderToolCodebuddy;
+
+  /// No description provided for @codebuddyCredentialsLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get codebuddyCredentialsLogin;
+
+  /// No description provided for @codebuddyCredentialsLoginTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to CodeBuddy / WorkBuddy'**
+  String get codebuddyCredentialsLoginTitle;
+
+  /// No description provided for @codebuddyCredentialsLoginIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete the sign-in in the terminal below. The CLI may open a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.'**
+  String get codebuddyCredentialsLoginIntro;
+
+  /// No description provided for @codebuddyCredentialsLoginStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting CodeBuddy…'**
+  String get codebuddyCredentialsLoginStarting;
+
+  /// No description provided for @codebuddyCredentialsLoginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the login terminal: {error}'**
+  String codebuddyCredentialsLoginFailed(String error);
+
+  /// No description provided for @codebuddyCredentialsLoginExited.
+  ///
+  /// In en, this message translates to:
+  /// **'CodeBuddy exited. Close this dialog and start the sign-in again.'**
+  String get codebuddyCredentialsLoginExited;
+
+  /// No description provided for @codebuddyCredentialsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get codebuddyCredentialsDone;
+
+  /// No description provided for @codebuddyCredentialsCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get codebuddyCredentialsCancel;
+
+  /// No description provided for @codebuddyCredentialsRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get codebuddyCredentialsRetry;
+
+  /// No description provided for @codebuddyCredentialsSendLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Send /login'**
+  String get codebuddyCredentialsSendLogin;
+
+  /// No description provided for @codebuddyCredentialsSignedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in to CodeBuddy / WorkBuddy.'**
+  String get codebuddyCredentialsSignedIn;
+
+  /// No description provided for @codebuddyCredentialsActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'CodeBuddy sign-in failed.'**
+  String get codebuddyCredentialsActionFailed;
+
   /// No description provided for @appProviderTeamToolSection.
   ///
   /// In en, this message translates to:
@@ -17317,6 +17395,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Merge superseded revisions. Current events are kept.'**
   String get sessionUsageMaintenanceCompactHint;
+
+  /// No description provided for @sessionUsageMaintenanceFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Full rescan'**
+  String get sessionUsageMaintenanceFull;
+
+  /// No description provided for @sessionUsageMaintenanceFullDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Full usage rescan complete.'**
+  String get sessionUsageMaintenanceFullDone;
+
+  /// No description provided for @sessionUsageMaintenanceFullHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Rebuild all sources and scan every session. Use this if history is missing.'**
+  String get sessionUsageMaintenanceFullHint;
 
   /// No description provided for @sessionUsageMaintenanceCompacted.
   ///

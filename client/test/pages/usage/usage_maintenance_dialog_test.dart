@@ -8,6 +8,7 @@ import 'package:teampilot/utils/ui/app_keys.dart';
 Widget _host({
   UsageStoreStats? stats,
   required Future<bool> Function() onCompact,
+  Future<bool> Function()? onFullSync,
 }) {
   return MaterialApp(
     locale: const Locale('en'),
@@ -18,8 +19,11 @@ Widget _host({
         builder: (context) => TextButton(
           onPressed: () => showDialog<void>(
             context: context,
-            builder: (_) =>
-                UsageMaintenanceDialog(stats: stats, onCompact: onCompact),
+            builder: (_) => UsageMaintenanceDialog(
+              stats: stats,
+              onCompact: onCompact,
+              onFullSync: onFullSync ?? () async => true,
+            ),
           ),
           child: const Text('open'),
         ),
@@ -53,6 +57,32 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(compacted, 1);
+    expect(find.byKey(AppKeys.sessionUsageMaintenanceDialog), findsNothing);
+  });
+
+  testWidgets('runs a manual full rescan', (tester) async {
+    var fullSyncs = 0;
+    await tester.pumpWidget(
+      _host(
+        stats: const UsageStoreStats(
+          lineCount: 10,
+          eventCount: 5,
+          sizeBytes: 2048,
+        ),
+        onCompact: () async => true,
+        onFullSync: () async {
+          fullSyncs++;
+          return true;
+        },
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(AppKeys.sessionUsageFullSyncButton));
+    await tester.pumpAndSettle();
+
+    expect(fullSyncs, 1);
     expect(find.byKey(AppKeys.sessionUsageMaintenanceDialog), findsNothing);
   });
 

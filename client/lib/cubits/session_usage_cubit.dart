@@ -174,6 +174,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     required Future<List<SessionUsageEvent>> Function() loadEvents,
     required Future<UsageSyncResult> Function() syncAll,
     UsageSyncHandle Function()? startSync,
+    UsageSyncHandle Function()? startFullSync,
     Future<UsagePricingLoad> Function()? loadPricing,
     Future<void> Function(List<UsagePriceRule> rules)? savePricing,
     Future<UsageStoreStats> Function()? loadUsageStats,
@@ -185,6 +186,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   }) : _loadEvents = loadEvents,
        _syncAll = syncAll,
        _startSync = startSync,
+       _startFullSync = startFullSync,
        _loadPricing = loadPricing,
        _savePricing = savePricing,
        _loadUsageStats = loadUsageStats,
@@ -201,6 +203,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   final Future<List<SessionUsageEvent>> Function() _loadEvents;
   final Future<UsageSyncResult> Function() _syncAll;
   final UsageSyncHandle Function()? _startSync;
+  final UsageSyncHandle Function()? _startFullSync;
   final Future<UsagePricingLoad> Function()? _loadPricing;
   final Future<void> Function(List<UsagePriceRule> rules)? _savePricing;
   final Future<UsageStoreStats> Function()? _loadUsageStats;
@@ -216,6 +219,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   Future<void>? _loadFlight;
   Future<void>? _syncFlight;
   bool _syncManual = true;
+  bool _syncFull = false;
   UsagePricingCatalog _pricing = const UsagePricingCatalog();
   List<SessionUsageEvent> _events = const [];
   UsageAttribution _attribution = const UsageAttribution();
@@ -301,11 +305,12 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     }
   }
 
-  Future<void> sync({bool manual = true}) {
+  Future<void> sync({bool manual = true, bool full = false}) {
     final inFlight = _syncFlight;
     if (inFlight != null) return inFlight;
 
     _syncManual = manual;
+    _syncFull = full;
     final future = _syncInternal();
     _syncFlight = future;
     return future.whenComplete(() {
@@ -325,6 +330,8 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     return sync(manual: false);
   }
 
+  Future<void> fullSync() => sync(manual: true, full: true);
+
   void cancelSync() {
     final handle = _activeHandle;
     if (handle == null || state.isCancelling) return;
@@ -333,7 +340,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   }
 
   Future<UsageSyncResult> _runSync() async {
-    final starter = _startSync;
+    final starter = _syncFull ? (_startFullSync ?? _startSync) : _startSync;
     if (starter == null) return _syncAll();
 
     final handle = starter();

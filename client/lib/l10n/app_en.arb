@@ -3008,6 +3008,26 @@
   "appProviderToolOpencode": "OpenCode",
   "appProviderToolCursor": "Cursor",
   "appProviderToolGemini": "Gemini CLI",
+  "appProviderToolCodebuddy": "CodeBuddy / WorkBuddy",
+  "codebuddyCredentialsLogin": "Sign in",
+  "codebuddyCredentialsLoginTitle": "Sign in to CodeBuddy / WorkBuddy",
+  "codebuddyCredentialsLoginIntro": "Complete the sign-in in the terminal below. The CLI may open a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.",
+  "codebuddyCredentialsLoginStarting": "Starting CodeBuddy…",
+  "codebuddyCredentialsLoginFailed": "Could not start the login terminal: {error}",
+  "@codebuddyCredentialsLoginFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "codebuddyCredentialsLoginExited": "CodeBuddy exited. Close this dialog and start the sign-in again.",
+  "codebuddyCredentialsDone": "Done",
+  "codebuddyCredentialsCancel": "Cancel",
+  "codebuddyCredentialsRetry": "Retry",
+  "codebuddyCredentialsSendLogin": "Send /login",
+  "codebuddyCredentialsSignedIn": "Signed in to CodeBuddy / WorkBuddy.",
+  "codebuddyCredentialsActionFailed": "CodeBuddy sign-in failed.",
   "appProviderTeamToolSection": "Tool providers for this team",
   "appProviderTeamToolSubtitle": "Select which unified provider each tool uses when this team starts.",
   "appProviderTeamNone": "None",
@@ -4953,6 +4973,9 @@
   },
   "sessionUsageMaintenanceCompact": "Compact events",
   "sessionUsageMaintenanceCompactHint": "Merge superseded revisions. Current events are kept.",
+  "sessionUsageMaintenanceFull": "Full rescan",
+  "sessionUsageMaintenanceFullDone": "Full usage rescan complete.",
+  "sessionUsageMaintenanceFullHint": "Rebuild all sources and scan every session. Use this if history is missing.",
   "sessionUsageMaintenanceCompacted": "Usage storage compacted.",
   "sessionUsageMaintenanceFailed": "Couldn't compact usage storage.",
   "sessionUsageFooterJsonl": "JSONL read-only",

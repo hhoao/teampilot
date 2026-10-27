@@ -8,12 +8,14 @@ class UsageMaintenanceDialog extends StatefulWidget {
   const UsageMaintenanceDialog({
     required this.stats,
     required this.onCompact,
+    required this.onFullSync,
     this.error,
     super.key,
   });
 
   final UsageStoreStats? stats;
   final Future<bool> Function() onCompact;
+  final Future<bool> Function() onFullSync;
   final String? error;
 
   @override
@@ -24,12 +26,16 @@ class _UsageMaintenanceDialogState extends State<UsageMaintenanceDialog> {
   bool _busy = false;
   String? _error;
 
-  Future<void> _compact() async {
+  Future<void> _compact() => _run(widget.onCompact);
+
+  Future<void> _fullSync() => _run(widget.onFullSync);
+
+  Future<void> _run(Future<bool> Function() action) async {
     setState(() {
       _busy = true;
       _error = null;
     });
-    final ok = await widget.onCompact();
+    final ok = await action();
     if (!mounted) return;
     if (ok) {
       Navigator.of(context).pop();
@@ -75,6 +81,11 @@ class _UsageMaintenanceDialogState extends State<UsageMaintenanceDialog> {
                 l10n.sessionUsageMaintenanceCompactHint,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
+              const SizedBox(height: 8),
+              Text(
+                l10n.sessionUsageMaintenanceFullHint,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ],
             if (error != null) ...[
               const SizedBox(height: 10),
@@ -90,6 +101,11 @@ class _UsageMaintenanceDialogState extends State<UsageMaintenanceDialog> {
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
           child: Text(l10n.cancel),
+        ),
+        OutlinedButton(
+          key: AppKeys.sessionUsageFullSyncButton,
+          onPressed: _busy ? null : _fullSync,
+          child: Text(l10n.sessionUsageMaintenanceFull),
         ),
         FilledButton(
           key: AppKeys.sessionUsageCompactButton,

@@ -5735,6 +5735,48 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appProviderToolGemini => 'Gemini CLI';
 
   @override
+  String get appProviderToolCodebuddy => 'CodeBuddy / WorkBuddy';
+
+  @override
+  String get codebuddyCredentialsLogin => '登录';
+
+  @override
+  String get codebuddyCredentialsLoginTitle => '登录 CodeBuddy / WorkBuddy';
+
+  @override
+  String get codebuddyCredentialsLoginIntro =>
+      '在下方终端完成登录。CLI 可能会打开浏览器；如果没有打开，请手动访问它输出的链接。也可以在这里切换账号。';
+
+  @override
+  String get codebuddyCredentialsLoginStarting => '正在启动 CodeBuddy…';
+
+  @override
+  String codebuddyCredentialsLoginFailed(String error) {
+    return '无法启动登录终端：$error';
+  }
+
+  @override
+  String get codebuddyCredentialsLoginExited => 'CodeBuddy 已退出。请关闭此对话框后重新登录。';
+
+  @override
+  String get codebuddyCredentialsDone => '完成';
+
+  @override
+  String get codebuddyCredentialsCancel => '取消';
+
+  @override
+  String get codebuddyCredentialsRetry => '重试';
+
+  @override
+  String get codebuddyCredentialsSendLogin => '发送 /login';
+
+  @override
+  String get codebuddyCredentialsSignedIn => '已登录 CodeBuddy / WorkBuddy。';
+
+  @override
+  String get codebuddyCredentialsActionFailed => 'CodeBuddy 登录失败。';
+
+  @override
   String get appProviderTeamToolSection => '团队默认服务商';
 
   @override
@@ -9350,6 +9392,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sessionUsageMaintenanceCompactHint => '合并被覆盖的历史修订，保留当前事件。';
+
+  @override
+  String get sessionUsageMaintenanceFull => '全量重扫';
+
+  @override
+  String get sessionUsageMaintenanceFullDone => '全量用量重扫完成。';
+
+  @override
+  String get sessionUsageMaintenanceFullHint => '重建全部数据源并扫描所有会话；历史缺失时使用。';
 
   @override
   String get sessionUsageMaintenanceCompacted => '用量存储已压缩。';

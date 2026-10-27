@@ -3,6 +3,7 @@ import 'dart:async';
 import '../models/app_session.dart';
 import '../models/session_usage.dart';
 import '../models/session_usage_pricing.dart';
+import '../models/session_usage_sync_state.dart';
 import '../models/team_config.dart';
 import '../repositories/launch_profile_repository.dart';
 import '../repositories/session_repository.dart';
@@ -11,6 +12,7 @@ import '../services/storage/home_storage.dart';
 import '../services/usage/json_usage_cursor_store.dart';
 import '../services/usage/json_usage_pricing_store.dart';
 import '../services/usage/json_usage_store.dart';
+import '../services/usage/json_usage_sync_state_store.dart';
 import '../services/usage/session_usage_sync_service.dart';
 import '../services/usage/team_pilot_usage_scan_target_provider.dart';
 import '../services/usage/usage_pricing_store.dart';
@@ -27,6 +29,7 @@ final class SessionUsageServices {
   SessionUsageServices._({
     required this.syncAll,
     required this.startSync,
+    required this.startFullSync,
     required this.loadEvents,
     required this.loadPricing,
     required this.savePricing,
@@ -38,6 +41,7 @@ final class SessionUsageServices {
 
   final Future<UsageSyncResult> Function() syncAll;
   final UsageSyncHandle Function() startSync;
+  final UsageSyncHandle Function() startFullSync;
   final Future<List<SessionUsageEvent>> Function() loadEvents;
   final Future<UsagePricingLoad> Function() loadPricing;
   final Future<void> Function(List<UsagePriceRule> rules) savePricing;
@@ -66,21 +70,6 @@ final class SessionUsageServices {
     final loadTeamsFn = loadTeams ?? defaultLoadTeams;
 
     const syncOverlapMs = 15 * 60 * 1000;
-    const fullScanIntervalMs = 6 * 60 * 60 * 1000;
-    int? lastSyncAtMs;
-    int? lastFullScanAtMs;
-
-    bool scanAllNow() {
-      final lastFull = lastFullScanAtMs;
-      return lastFull == null ||
-          DateTime.now().millisecondsSinceEpoch - lastFull >=
-              fullScanIntervalMs;
-    }
-
-    int? sinceNow() {
-      final lastSync = lastSyncAtMs;
-      return lastSync == null ? null : lastSync - syncOverlapMs;
-    }
 
     String? planeKey;
     _PlaneUsageStores? planeStores;
@@ -111,11 +100,22 @@ final class SessionUsageServices {
       registry: registryForPlane,
     );
 
-    void noteSync(UsageSyncResult result, {required bool wasFullScan}) {
+    Future<void> noteSync(
+      _PlaneUsageStores stores,
+      UsageSyncResult result, {
+      required bool wasFullScan,
+      required UsageSyncState previous,
+    }) async {
       if (result.cancelled) return;
       final now = DateTime.now().millisecondsSinceEpoch;
-      lastSyncAtMs = now;
-      if (wasFullScan && result.errors.isEmpty) lastFullScanAtMs = now;
+      await stores.syncState.save(
+        UsageSyncState(
+          lastFullScanAtMs: wasFullScan && result.errors.isEmpty
+              ? now
+              : previous.lastFullScanAtMs,
+          lastSyncAtMs: now,
+        ),
+      );
     }
 
     Future<void> maybeCompact(_PlaneUsageStores stores) async {
@@ -126,29 +126,40 @@ final class SessionUsageServices {
       }
     }
 
-    UsageSyncHandle startSync() {
+    Future<UsageSyncResult> runSync({
+      required bool full,
+      UsageSyncControl? control,
+      void Function(UsageSyncProgress)? onProgress,
+    }) async {
+      final stores = currentStores();
+      final previous = await stores.syncState.load();
+      final wasFullScan = full || !previous.hasBaseline;
+      final sinceMs = previous.lastSyncAtMs == null
+          ? null
+          : previous.lastSyncAtMs! - syncOverlapMs;
+      final result = await newSync(
+        stores,
+        scanAll: wasFullScan,
+        sinceMs: sinceMs,
+      ).syncAll(control: control, onProgress: onProgress);
+      await noteSync(
+        stores,
+        result,
+        wasFullScan: wasFullScan,
+        previous: previous,
+      );
+      await maybeCompact(stores);
+      return result;
+    }
+
+    UsageSyncHandle startHandle({required bool full}) {
       final control = UsageSyncControl();
       final progress = StreamController<UsageSyncProgress>.broadcast(
         sync: true,
       );
-      final stores = currentStores();
-      final wasFullScan = scanAllNow();
-      final service = newSync(
-        stores,
-        scanAll: wasFullScan,
-        sinceMs: sinceNow(),
-      );
-      final done =
-          Future.microtask(
-                () =>
-                    service.syncAll(control: control, onProgress: progress.add),
-              )
-              .then((result) async {
-                noteSync(result, wasFullScan: wasFullScan);
-                await maybeCompact(stores);
-                return result;
-              })
-              .whenComplete(progress.close);
+      final done = Future.microtask(
+        () => runSync(full: full, control: control, onProgress: progress.add),
+      ).whenComplete(progress.close);
       return UsageSyncHandle(
         done: done,
         progress: progress.stream,
@@ -156,22 +167,16 @@ final class SessionUsageServices {
       );
     }
 
-    Future<UsageSyncResult> syncAll() async {
-      final stores = currentStores();
-      final wasFullScan = scanAllNow();
-      final result = await newSync(
-        stores,
-        scanAll: wasFullScan,
-        sinceMs: sinceNow(),
-      ).syncAll();
-      noteSync(result, wasFullScan: wasFullScan);
-      await maybeCompact(stores);
-      return result;
-    }
+    UsageSyncHandle startSync() => startHandle(full: false);
+
+    UsageSyncHandle startFullSync() => startHandle(full: true);
+
+    Future<UsageSyncResult> syncAll() => runSync(full: false);
 
     return SessionUsageServices._(
       syncAll: syncAll,
       startSync: startSync,
+      startFullSync: startFullSync,
       loadEvents: () => currentStores().store.readLatest(),
       loadPricing: () => currentStores().pricing.load(),
       savePricing: (rules) => currentStores().pricing.save(rules),
@@ -197,9 +202,14 @@ final class _PlaneUsageStores {
       pricing = JsonUsagePricingStore(
         fs: storage.fs,
         filePath: storage.paths.usagePricingFile,
+      ),
+      syncState = JsonUsageSyncStateStore(
+        fs: storage.fs,
+        filePath: storage.paths.usageSyncStateFile,
       );
 
   final JsonUsageStore store;
   final JsonUsageCursorStore cursors;
   final JsonUsagePricingStore pricing;
+  final JsonUsageSyncStateStore syncState;
 }

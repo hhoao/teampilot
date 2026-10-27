@@ -166,6 +166,7 @@ class _SessionUsagePageState extends State<SessionUsagePage>
     await cubit.loadMaintenanceStats();
     if (!mounted) return;
     final compactedMessage = context.l10n.sessionUsageMaintenanceCompacted;
+    final fullDoneMessage = context.l10n.sessionUsageMaintenanceFullDone;
     await showDialog<void>(
       context: context,
       builder: (context) => UsageMaintenanceDialog(
@@ -176,6 +177,20 @@ class _SessionUsagePageState extends State<SessionUsagePage>
           if (ok) {
             AppToast.showGlobal(
               message: compactedMessage,
+              variant: TpToastVariant.success,
+            );
+          }
+          return ok;
+        },
+        onFullSync: () async {
+          await cubit.fullSync();
+          final ok =
+              !cubit.state.syncFailed &&
+              cubit.state.syncErrors.isEmpty &&
+              !cubit.state.syncCancelled;
+          if (ok) {
+            AppToast.showGlobal(
+              message: fullDoneMessage,
               variant: TpToastVariant.success,
             );
           }

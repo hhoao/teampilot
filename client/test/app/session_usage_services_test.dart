@@ -1,8 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/app/session_usage_services.dart';
+import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_usage.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/usage/json_usage_store.dart';
 
 import '../support/in_memory_filesystem.dart';
@@ -73,5 +75,53 @@ void main() {
     final events = await services.loadEvents();
     expect(events, hasLength(1));
     expect(events.single.requestId, 'claude:1');
+  });
+
+  test('first sync is full, later syncs only scan recent sessions', () async {
+    final storage = fakeHomeStorage(
+      appDataRoot: '/tp-baseline-${DateTime.now().microsecondsSinceEpoch}',
+      filesystem: _fs(),
+    );
+    final old = AppSession(
+      sessionId: 'old',
+      workspaceId: 'w1',
+      folders: const [WorkspaceFolder(path: '/home/me/proj')],
+      cli: CliTool.claude,
+      createdAt: 1,
+      updatedAt: 1,
+    );
+    final recent = AppSession(
+      sessionId: 'recent',
+      workspaceId: 'w1',
+      folders: const [WorkspaceFolder(path: '/home/me/proj')],
+      cli: CliTool.claude,
+      createdAt: 1,
+      updatedAt: DateTime.now().millisecondsSinceEpoch,
+    );
+    Future<List<AppSession>> sessions() async => [old, recent];
+    Future<List<TeamProfile>> teams() async => const [];
+
+    final services = SessionUsageServices.forStorage(
+      storage: storage,
+      loadSessions: sessions,
+      loadTeams: teams,
+    );
+
+    final first = await services.syncAll();
+    expect(first.targetsScanned, 2);
+
+    final second = await services.syncAll();
+    expect(second.targetsScanned, 1);
+
+    final restarted = SessionUsageServices.forStorage(
+      storage: storage,
+      loadSessions: sessions,
+      loadTeams: teams,
+    );
+    final afterRestart = await restarted.syncAll();
+    expect(afterRestart.targetsScanned, 1);
+
+    final full = await restarted.startFullSync().done;
+    expect(full.targetsScanned, 2);
   });
 }

@@ -1593,6 +1593,7 @@ Future<AppShell> buildAppShell({
       loadEvents: sessionUsageServices.loadEvents,
       syncAll: sessionUsageServices.syncAll,
       startSync: sessionUsageServices.startSync,
+      startFullSync: sessionUsageServices.startFullSync,
       loadPricing: sessionUsageServices.loadPricing,
       savePricing: sessionUsageServices.savePricing,
       loadUsageStats: sessionUsageServices.loadUsageStats,

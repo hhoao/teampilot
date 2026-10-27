@@ -356,6 +356,9 @@ class AppKeys {
   static const sessionUsageCompactButton = Key(
     'session-usage-compact',
   );
+  static const sessionUsageFullSyncButton = Key(
+    'session-usage-full-sync',
+  );
   static const pluginsWorkspace = Key('plugins-workspace');
   static const mcpWorkspace = Key('mcp-workspace');
   static const mcpFormDetail = Key('mcp-form-detail');

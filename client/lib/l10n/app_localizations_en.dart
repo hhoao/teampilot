@@ -5980,6 +5980,51 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appProviderToolGemini => 'Gemini CLI';
 
   @override
+  String get appProviderToolCodebuddy => 'CodeBuddy / WorkBuddy';
+
+  @override
+  String get codebuddyCredentialsLogin => 'Sign in';
+
+  @override
+  String get codebuddyCredentialsLoginTitle =>
+      'Sign in to CodeBuddy / WorkBuddy';
+
+  @override
+  String get codebuddyCredentialsLoginIntro =>
+      'Complete the sign-in in the terminal below. The CLI may open a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.';
+
+  @override
+  String get codebuddyCredentialsLoginStarting => 'Starting CodeBuddy…';
+
+  @override
+  String codebuddyCredentialsLoginFailed(String error) {
+    return 'Could not start the login terminal: $error';
+  }
+
+  @override
+  String get codebuddyCredentialsLoginExited =>
+      'CodeBuddy exited. Close this dialog and start the sign-in again.';
+
+  @override
+  String get codebuddyCredentialsDone => 'Done';
+
+  @override
+  String get codebuddyCredentialsCancel => 'Cancel';
+
+  @override
+  String get codebuddyCredentialsRetry => 'Retry';
+
+  @override
+  String get codebuddyCredentialsSendLogin => 'Send /login';
+
+  @override
+  String get codebuddyCredentialsSignedIn =>
+      'Signed in to CodeBuddy / WorkBuddy.';
+
+  @override
+  String get codebuddyCredentialsActionFailed => 'CodeBuddy sign-in failed.';
+
+  @override
   String get appProviderTeamToolSection => 'Tool providers for this team';
 
   @override
@@ -9769,6 +9814,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sessionUsageMaintenanceCompactHint =>
       'Merge superseded revisions. Current events are kept.';
+
+  @override
+  String get sessionUsageMaintenanceFull => 'Full rescan';
+
+  @override
+  String get sessionUsageMaintenanceFullDone => 'Full usage rescan complete.';
+
+  @override
+  String get sessionUsageMaintenanceFullHint =>
+      'Rebuild all sources and scan every session. Use this if history is missing.';
 
   @override
   String get sessionUsageMaintenanceCompacted => 'Usage storage compacted.';
