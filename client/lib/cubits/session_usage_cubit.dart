@@ -9,6 +9,7 @@ import '../models/session_usage_dashboard.dart';
 import '../models/team_config.dart';
 import '../services/usage/session_usage_sync_service.dart';
 import '../services/usage/usage_aggregator.dart';
+import '../services/usage/usage_sync_control.dart';
 import '../utils/logging/logger.dart';
 
 enum SessionUsageStatus { initial, loading, ready, error }
@@ -26,6 +27,10 @@ final class SessionUsageState extends Equatable {
     this.lastSyncResult,
     List<UsageSyncError> syncErrors = const [],
     this.syncFailed = false,
+    this.syncProgress,
+    this.isCancelling = false,
+    this.syncCancelled = false,
+    this.lastSyncManual = true,
     this.errorMessage,
   }) : syncErrors = List.unmodifiable(syncErrors);
 
@@ -40,6 +45,10 @@ final class SessionUsageState extends Equatable {
   final UsageSyncResult? lastSyncResult;
   final List<UsageSyncError> syncErrors;
   final bool syncFailed;
+  final UsageSyncProgress? syncProgress;
+  final bool isCancelling;
+  final bool syncCancelled;
+  final bool lastSyncManual;
   final String? errorMessage;
 
   bool get hasData => dashboard.totalEventCount > 0;
@@ -59,6 +68,11 @@ final class SessionUsageState extends Equatable {
     bool clearLastSyncResult = false,
     List<UsageSyncError>? syncErrors,
     bool? syncFailed,
+    UsageSyncProgress? syncProgress,
+    bool clearSyncProgress = false,
+    bool? isCancelling,
+    bool? syncCancelled,
+    bool? lastSyncManual,
     String? errorMessage,
     bool clearError = false,
   }) {
@@ -76,6 +90,12 @@ final class SessionUsageState extends Equatable {
           : (lastSyncResult ?? this.lastSyncResult),
       syncErrors: syncErrors ?? this.syncErrors,
       syncFailed: syncFailed ?? this.syncFailed,
+      syncProgress: clearSyncProgress
+          ? null
+          : (syncProgress ?? this.syncProgress),
+      isCancelling: isCancelling ?? this.isCancelling,
+      syncCancelled: syncCancelled ?? this.syncCancelled,
+      lastSyncManual: lastSyncManual ?? this.lastSyncManual,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -93,6 +113,10 @@ final class SessionUsageState extends Equatable {
     lastSyncResult,
     syncErrors,
     syncFailed,
+    syncProgress,
+    isCancelling,
+    syncCancelled,
+    lastSyncManual,
     errorMessage,
   ];
 }
@@ -105,12 +129,14 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   SessionUsageCubit({
     required Future<List<SessionUsageEvent>> Function() loadEvents,
     required Future<UsageSyncResult> Function() syncAll,
+    UsageSyncHandle Function()? startSync,
     required Future<List<AppSession>> Function() loadSessions,
     required Future<List<TeamProfile>> Function() loadTeams,
     Stream<void>? storageChanges,
     DateTime Function()? now,
   }) : _loadEvents = loadEvents,
        _syncAll = syncAll,
+       _startSync = startSync,
        _loadSessions = loadSessions,
        _loadTeams = loadTeams,
        _now = now ?? DateTime.now,
@@ -122,13 +148,17 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
 
   final Future<List<SessionUsageEvent>> Function() _loadEvents;
   final Future<UsageSyncResult> Function() _syncAll;
+  final UsageSyncHandle Function()? _startSync;
   final Future<List<AppSession>> Function() _loadSessions;
   final Future<List<TeamProfile>> Function() _loadTeams;
   final DateTime Function() _now;
 
   StreamSubscription<void>? _storageSub;
+  StreamSubscription<UsageSyncProgress>? _syncProgressSub;
+  UsageSyncHandle? _activeHandle;
   Future<void>? _loadFlight;
   Future<void>? _syncFlight;
+  bool _syncManual = true;
   List<SessionUsageEvent> _events = const [];
   UsageAttribution _attribution = const UsageAttribution();
 
@@ -195,10 +225,11 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     }
   }
 
-  Future<void> sync() {
+  Future<void> sync({bool manual = true}) {
     final inFlight = _syncFlight;
     if (inFlight != null) return inFlight;
 
+    _syncManual = manual;
     final future = _syncInternal();
     _syncFlight = future;
     return future.whenComplete(() {
@@ -206,11 +237,52 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     });
   }
 
+  Future<void> syncIfStale({Duration ttl = const Duration(minutes: 5)}) {
+    final inFlight = _syncFlight;
+    if (inFlight != null) return inFlight;
+
+    final last = state.lastSyncAtMs;
+    if (last != null &&
+        _now().millisecondsSinceEpoch - last < ttl.inMilliseconds) {
+      return Future<void>.value();
+    }
+    return sync(manual: false);
+  }
+
+  void cancelSync() {
+    final handle = _activeHandle;
+    if (handle == null || state.isCancelling) return;
+    emit(state.copyWith(isCancelling: true));
+    handle.cancel();
+  }
+
+  Future<UsageSyncResult> _runSync() async {
+    final starter = _startSync;
+    if (starter == null) return _syncAll();
+
+    final handle = starter();
+    _activeHandle = handle;
+    _syncProgressSub = handle.progress.listen((progress) {
+      if (isClosed) return;
+      emit(state.copyWith(syncProgress: progress));
+    });
+    try {
+      return await handle.done;
+    } finally {
+      await _syncProgressSub?.cancel();
+      _syncProgressSub = null;
+      _activeHandle = null;
+    }
+  }
+
   Future<void> _syncInternal() async {
     if (isClosed) return;
     emit(
       state.copyWith(
         isSyncing: true,
+        isCancelling: false,
+        syncCancelled: false,
+        clearSyncProgress: true,
         syncFailed: false,
         syncErrors: const [],
         clearError: true,
@@ -218,7 +290,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     );
 
     try {
-      final result = await _syncAll();
+      final result = await _runSync();
       final events = await _loadEvents();
       final sessions = await _loadSessions();
       final teams = await _loadTeams();
@@ -233,10 +305,14 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
           status: SessionUsageStatus.ready,
           dashboard: _computeDashboard(),
           isSyncing: false,
+          isCancelling: false,
+          clearSyncProgress: true,
           lastSyncAtMs: _now().millisecondsSinceEpoch,
           lastSyncResult: result,
           syncErrors: result.errors,
           syncFailed: false,
+          syncCancelled: result.cancelled,
+          lastSyncManual: _syncManual,
           clearError: true,
         ),
       );
@@ -250,7 +326,10 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       emit(
         state.copyWith(
           isSyncing: false,
+          isCancelling: false,
+          clearSyncProgress: true,
           syncFailed: true,
+          syncCancelled: false,
           clearLastSyncResult: true,
         ),
       );
@@ -315,6 +394,10 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
 
   @override
   Future<void> close() async {
+    _activeHandle?.cancel();
+    _activeHandle = null;
+    await _syncProgressSub?.cancel();
+    _syncProgressSub = null;
     await _storageSub?.cancel();
     _storageSub = null;
     return super.close();

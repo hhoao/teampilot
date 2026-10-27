@@ -7,6 +7,7 @@ import 'package:teampilot/models/session_usage.dart';
 import 'package:teampilot/models/session_usage_dashboard.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/usage/session_usage_sync_service.dart';
+import 'package:teampilot/services/usage/usage_sync_control.dart';
 
 final _now = DateTime(2026, 10, 26, 18);
 
@@ -244,5 +245,114 @@ void main() {
     syncCompleter.complete(const UsageSyncResult());
     await Future.wait([first, second]);
     expect(cubit.state.isSyncing, isFalse);
+  });
+
+  test('syncIfStale only scans when never synced or stale', () async {
+    var now = DateTime(2026, 10, 26, 18);
+    var syncCount = 0;
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [_event()],
+      syncAll: () async {
+        syncCount++;
+        return const UsageSyncResult();
+      },
+      loadSessions: () async => const <AppSession>[],
+      loadTeams: () async => const <TeamProfile>[],
+      now: () => now,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.ensureLoaded();
+    await cubit.syncIfStale();
+    expect(syncCount, 1);
+
+    await cubit.syncIfStale();
+    expect(syncCount, 1);
+
+    now = now.add(const Duration(minutes: 6));
+    await cubit.syncIfStale();
+    expect(syncCount, 2);
+  });
+
+  test('syncIfStale reuses an in-flight sync', () async {
+    final syncCompleter = Completer<UsageSyncResult>();
+    var syncCount = 0;
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => const <SessionUsageEvent>[],
+      syncAll: () {
+        syncCount++;
+        return syncCompleter.future;
+      },
+      loadSessions: () async => const <AppSession>[],
+      loadTeams: () async => const <TeamProfile>[],
+      now: () => _now,
+    );
+    addTearDown(cubit.close);
+
+    final first = cubit.syncIfStale();
+    final second = cubit.syncIfStale();
+    expect(syncCount, 1);
+    syncCompleter.complete(const UsageSyncResult());
+    await Future.wait([first, second]);
+  });
+
+  test('consumes progress and cancels the active handle', () async {
+    final progress = StreamController<UsageSyncProgress>(sync: true);
+    final done = Completer<UsageSyncResult>();
+    var cancelCalls = 0;
+    final handle = UsageSyncHandle(
+      done: done.future,
+      progress: progress.stream,
+      cancel: () => cancelCalls++,
+    );
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [_event()],
+      syncAll: () async => const UsageSyncResult(),
+      startSync: () => handle,
+      loadSessions: () async => const <AppSession>[],
+      loadTeams: () async => const <TeamProfile>[],
+      now: () => _now,
+    );
+    addTearDown(() async {
+      await progress.close();
+      await cubit.close();
+    });
+
+    final future = cubit.sync();
+    progress.add(
+      const UsageSyncProgress(targetsTotal: 2, targetsDone: 1, inserted: 3),
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state.syncProgress?.targetsDone, 1);
+
+    cubit.cancelSync();
+    expect(cubit.state.isCancelling, isTrue);
+    expect(cancelCalls, 1);
+
+    done.complete(const UsageSyncResult(cancelled: true));
+    await future;
+
+    expect(cubit.state.isSyncing, isFalse);
+    expect(cubit.state.isCancelling, isFalse);
+    expect(cubit.state.syncCancelled, isTrue);
+    expect(cubit.state.lastSyncAtMs, _now.millisecondsSinceEpoch);
+    expect(cubit.state.syncProgress, isNull);
+  });
+
+  test('tracks whether the completed sync was manual', () async {
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [_event()],
+      syncAll: () async => const UsageSyncResult(),
+      loadSessions: () async => const <AppSession>[],
+      loadTeams: () async => const <TeamProfile>[],
+      now: () => _now,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.sync(manual: false);
+    expect(cubit.state.lastSyncManual, isFalse);
+
+    await cubit.sync();
+    expect(cubit.state.lastSyncManual, isTrue);
   });
 }
