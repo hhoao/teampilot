@@ -4437,3 +4437,17 @@ git commit -m "docs(vault): document vault storage and service boundary"
 - `EncryptedVaultBackend.save` 依赖内存中的主密码；这是有意的权衡（避免每次保存重新弹窗），`lock()` / `clear()` 时清空。
 - 所有涉及 `firstOrNull` 的文件需 `import 'package:collection/collection.dart';`。
 - `main.dart` / `app_shell.dart` 新增 import 时，注意 `Provider` 列表分属 `MultiRepositoryProvider` 与 `MultiBlocProvider`。
+
+---
+
+## 实施顺序修正（执行期发现）
+
+`VaultCubit.referencesFor` 读取 `SshProfile.vaultEntryId`，而该字段原计划在 Task 10 才加入，
+导致 Task 6 无法编译。执行时把「`SshProfile.vaultEntryId` 字段 + 序列化」提前到 Task 6 一并完成：
+
+- Task 6 额外修改 `client/lib/models/ssh_profile.dart`（构造参数、字段、`fromJson`、`toJson`、`copyWith`）
+  并新增 `client/test/models/ssh_profile_vault_test.dart`（原 Task 10 的两个用例）。
+- Task 10 跳过模型改动与 `ssh_profile_vault_test.dart`，只新增
+  `ssh_credentials_resolver.dart`、`VaultCredentialReader` 注入、工厂接入及其测试。
+
+设计语义不变，仅调整任务边界。
