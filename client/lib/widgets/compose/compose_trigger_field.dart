@@ -114,6 +114,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   List<ComposeTriggerSuggestion> _suggestions = const [];
   var _selectedIndex = 0;
   var _searchGeneration = 0;
+  var _lastTokenSignature = '';
   Timer? _searchDebounce;
   Timer? _focusClearTimer;
   Offset _menuAnchor = Offset.zero;
@@ -124,6 +125,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   void initState() {
     super.initState();
     _lastLineCount = ComposeClip.countLines(widget.controller.text);
+    _lastTokenSignature = _tokenSignature();
     widget.controller.addListener(_handleControllerChanged);
     widget.focusNode.addListener(_handleFocusChanged);
     if (widget.focusNode.hasFocus) {
@@ -138,6 +140,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
       oldWidget.controller.removeListener(_handleControllerChanged);
       widget.controller.addListener(_handleControllerChanged);
       _lastLineCount = ComposeClip.countLines(widget.controller.text);
+      _lastTokenSignature = _tokenSignature();
     }
     if (oldWidget.focusNode != widget.focusNode) {
       oldWidget.focusNode.removeListener(_handleFocusChanged);
@@ -226,6 +229,20 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     _maybeCollapseOversizedPaste();
     _refreshSuggestions();
     _scheduleMenuAnchorUpdate();
+    // Ranges are owned by the controller, but the mirror receives a snapshot
+    // through this widget. Rebuild when they move (typing before a token)
+    // without rebuilding on every caret move.
+    final signature = _tokenSignature();
+    if (signature != _lastTokenSignature) {
+      _lastTokenSignature = signature;
+      setState(() {});
+    }
+  }
+
+  String _tokenSignature() {
+    final ranges = widget.controller.tokenRanges;
+    if (ranges.isEmpty) return '';
+    return [for (final range in ranges) '${range.start}:${range.end}'].join();
   }
 
   /// Collapses a single oversized insert (a paste) into the clip. Typing adds

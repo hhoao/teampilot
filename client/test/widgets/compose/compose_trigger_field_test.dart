@@ -12,6 +12,7 @@ import 'package:teampilot/services/commands/shortcut_dispatcher.dart';
 import 'package:teampilot/services/cli/registry/capabilities/native_command_capability.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_clip.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_text_controller.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_token_document.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_text_edit.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/widgets/compose/compose_trigger_field.dart';
@@ -704,5 +705,43 @@ void main() {
 
     expect(controller.text, ' ');
     expect(controller.tokenRanges, isEmpty);
+  });
+
+  testWidgets('token ranges follow text inserted before the token', (
+    tester,
+  ) async {
+    final bus = CommandBus();
+    final controller = ComposeTextController();
+    final focusNode = FocusNode();
+    addTearDown(() {
+      controller.dispose();
+      focusNode.dispose();
+    });
+
+    await pumpField(
+      tester,
+      bus: bus,
+      controller: controller,
+      focusNode: focusNode,
+      onSubmit: () {},
+    );
+
+    controller.insertToken(
+      start: 0,
+      end: 0,
+      tokenText: '/plan',
+      suffix: ' ',
+      kind: ComposeTokenKind.skill,
+      payload: '/plan',
+    );
+    await tester.pump();
+
+    controller.text = 'x ${controller.text}';
+    await tester.pump();
+
+    final field = tester.widget<TpTokenTextField>(
+      find.byType(TpTokenTextField),
+    );
+    expect(field.tokenRanges, [const TpTokenRange(start: 2, end: 7)]);
   });
 }
