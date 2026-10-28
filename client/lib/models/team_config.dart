@@ -23,7 +23,8 @@ enum CliTool {
   opencode('opencode'),
   cursor('cursor'),
   gemini('gemini'),
-  codebuddy('codebuddy');
+  codebuddy('codebuddy'),
+  antigravity('antigravity');
 
   const CliTool(this.value);
 

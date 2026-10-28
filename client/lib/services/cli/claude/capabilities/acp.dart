@@ -86,6 +86,9 @@ final class ClaudeAcpCapability
   AcpAgentTranslator get translator => const ClaudeAcpTranslator();
 
   @override
+  Duration get startupTimeout => const Duration(seconds: 30);
+
+  @override
   String? get authenticateMethodId => null;
 
   @override

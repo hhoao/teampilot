@@ -45,6 +45,9 @@ final class OpencodeAcpCapability implements AcpCapability {
   ];
 
   @override
+  Duration get startupTimeout => const Duration(seconds: 30);
+
+  @override
   String? get authenticateMethodId => null;
 
   @override

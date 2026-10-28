@@ -6,12 +6,20 @@ import '../cli_capability.dart';
 /// the ACP env simply omits it.
 typedef AcpCredentialSource = String? Function();
 
+/// Marks a CLI whose only launch mode is ACP.
+abstract interface class AcpOnlyCapability implements CliCapability {
+  bool get acpOnly;
+}
+
 /// Declares how a CLI is launched as an ACP agent.
 ///
 /// Each ACP-capable CLI exposes: the argv candidates to probe (preference
 /// order — the runtime tries the first, falls back on failure), its
 /// per-agent translator, and the isolated environment for the agent process.
 abstract interface class AcpCapability implements CliCapability {
+  /// Maximum time allowed for the ACP startup handshake.
+  Duration get startupTimeout => const Duration(seconds: 30);
+
   /// Binary that speaks ACP on stdio. Gemini returns [cliExecutable].
   String agentExecutable(String cliExecutable);
 

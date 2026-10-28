@@ -6024,6 +6024,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appProviderToolCodebuddy => 'CodeBuddy';
 
   @override
+  String get appProviderToolAntigravity => 'Antigravity';
+
+  @override
   String get codebuddyCredentialsLogin => 'Sign in';
 
   @override

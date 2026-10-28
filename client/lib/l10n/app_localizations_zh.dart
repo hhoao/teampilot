@@ -5779,6 +5779,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appProviderToolCodebuddy => 'CodeBuddy';
 
   @override
+  String get appProviderToolAntigravity => 'Antigravity';
+
+  @override
   String get codebuddyCredentialsLogin => '登录';
 
   @override

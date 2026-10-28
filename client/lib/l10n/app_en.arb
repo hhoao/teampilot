@@ -3022,6 +3022,7 @@
   "appProviderToolCursor": "Cursor",
   "appProviderToolGemini": "Gemini CLI",
   "appProviderToolCodebuddy": "CodeBuddy",
+  "appProviderToolAntigravity": "Antigravity",
   "codebuddyCredentialsLogin": "Sign in",
   "codebuddyCredentialsLoginTitle": "Sign in to CodeBuddy",
   "codebuddyCredentialsLoginIntro": "Complete the sign-in in the terminal below. If a login-method list appears, choose one first (e.g. WeChat / enterprise domain). The CLI may open a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.",

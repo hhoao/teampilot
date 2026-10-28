@@ -95,12 +95,15 @@ AcpConnectionSpawner productionAcpSpawner({
   AcpTransportStarter? transportStarter,
   String clientName = 'teampilot',
   String clientVersion = '1.0.0',
-  Duration handshakeTimeout = const Duration(seconds: 30),
+  Duration? handshakeTimeout,
 }) {
   final starter = transportStarter ?? localAcpTransportStarter();
-  final translator =
-      registry.capability<AcpCapability>(tool)?.translator ??
-      const _NoopAcpTranslator();
+  final capability = registry.capability<AcpCapability>(tool);
+  final translator = capability?.translator ?? const _NoopAcpTranslator();
+  final timeout =
+      handshakeTimeout ??
+      capability?.startupTimeout ??
+      const Duration(seconds: 30);
   return (argv, env) async {
     final started = await starter(
       argv: argv,
@@ -135,7 +138,7 @@ AcpConnectionSpawner productionAcpSpawner({
         connection.initialize(
           clientName: clientName,
           clientVersion: clientVersion,
-          timeout: handshakeTimeout,
+          timeout: timeout,
         ),
         processExitCode,
         authenticating: false,
@@ -144,10 +147,7 @@ AcpConnectionSpawner productionAcpSpawner({
         // Authenticate race uses authenticating: true — exit after
         // initialize succeeded is not-logged-in, not a bad flag.
         await raceHandshake(
-          connection.authenticate(
-            authenticateMethodId,
-            timeout: handshakeTimeout,
-          ),
+          connection.authenticate(authenticateMethodId, timeout: timeout),
           processExitCode,
           authenticating: true,
         );

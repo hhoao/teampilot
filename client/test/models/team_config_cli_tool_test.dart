@@ -16,7 +16,13 @@ void main() {
     expect(CliTool.tryParse('CodeBuddy'), CliTool.codebuddy);
   });
 
-  test('CliTool.values length is 7 after adding codebuddy', () {
-    expect(CliTool.values.length, 7);
+  test('CliTool has an antigravity value that parses round-trip', () {
+    expect(CliTool.antigravity.value, 'antigravity');
+    expect(CliTool.tryParse('antigravity'), CliTool.antigravity);
+    expect(CliTool.tryParse('Antigravity'), CliTool.antigravity);
+  });
+
+  test('CliTool.values length is 8 after adding antigravity', () {
+    expect(CliTool.values.length, 8);
   });
 }

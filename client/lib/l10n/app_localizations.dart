@@ -10730,6 +10730,12 @@ abstract class AppLocalizations {
   /// **'CodeBuddy'**
   String get appProviderToolCodebuddy;
 
+  /// No description provided for @appProviderToolAntigravity.
+  ///
+  /// In en, this message translates to:
+  /// **'Antigravity'**
+  String get appProviderToolAntigravity;
+
   /// No description provided for @codebuddyCredentialsLogin.
   ///
   /// In en, this message translates to:

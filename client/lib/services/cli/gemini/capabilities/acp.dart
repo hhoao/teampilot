@@ -75,6 +75,9 @@ final class GeminiAcpCapability implements AcpCapability {
   AcpAgentTranslator get translator => const GeminiAcpTranslator();
 
   @override
+  Duration get startupTimeout => const Duration(seconds: 30);
+
+  @override
   String? get authenticateMethodId => null;
 
   @override

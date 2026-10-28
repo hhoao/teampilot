@@ -20,6 +20,9 @@ class _FixedAuthCapability implements AcpCapability {
   final String? resolved;
 
   @override
+  Duration get startupTimeout => const Duration(seconds: 30);
+
+  @override
   bool get forwardSessionNewMcpServers => true;
 
   @override

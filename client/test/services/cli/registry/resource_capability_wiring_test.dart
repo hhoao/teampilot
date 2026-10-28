@@ -10,6 +10,15 @@ import 'package:teampilot/services/resource/providers/hook_contribution_provider
 import 'package:teampilot/services/resource/providers/mcp_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/skill_contribution_provider.dart';
 import 'package:teampilot/services/resource/resource_provider_set.dart';
+import 'package:teampilot/services/cli/registry/capabilities/acp_capability.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
+
+/// ACP-only CLIs have no PTY resource surface (prompt/MCP/hook/skill targets).
+Iterable<CliToolDefinition> _ptyLaunchable(CliToolRegistry registry) =>
+    registry.launchable.where(
+      (definition) =>
+          registry.capability<AcpOnlyCapability>(definition.id) == null,
+    );
 
 Set<String> _expectedPromptProviderIds(CliTool cli) {
   return {cli.value, workspaceBaseInfoProviderId};
@@ -19,7 +28,7 @@ void main() {
   test('every launchable CLI wires all resource target capabilities', () {
     final registry = CliToolRegistry.builtIn();
 
-    for (final definition in registry.launchable) {
+    for (final definition in _ptyLaunchable(registry)) {
       final cli = definition.id;
       expect(
         registry.capability<PromptCapability>(cli),
@@ -49,7 +58,7 @@ void main() {
     () {
       final registry = CliToolRegistry.builtIn();
 
-      for (final definition in registry.launchable) {
+      for (final definition in _ptyLaunchable(registry)) {
         final providers = registry
             .providersOf<PromptContributionProvider>(definition.id)
             .toList();
@@ -78,7 +87,7 @@ void main() {
     () {
       final registry = CliToolRegistry.builtIn();
 
-      for (final definition in registry.launchable) {
+      for (final definition in _ptyLaunchable(registry)) {
         final set = ResourceProviderSet.fromRegistryAndInjected(
           cli: definition.id,
           registry: registry,

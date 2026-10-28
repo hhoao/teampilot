@@ -62,6 +62,9 @@ final class CodexAcpCapability implements AcpCapability {
   AcpAgentTranslator get translator => const CodexAcpTranslator();
 
   @override
+  Duration get startupTimeout => const Duration(seconds: 30);
+
+  @override
   String? get authenticateMethodId => null;
 
   @override

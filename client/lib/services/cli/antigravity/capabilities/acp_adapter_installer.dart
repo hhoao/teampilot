@@ -122,7 +122,7 @@ final class AntigravityAcpAdapterInstaller implements AcpAdapterInstaller {
           : (Platform.isMacOS ? 'darwin' : 'linux'),
       arch: Platform.version.contains('arm64') ? 'arm64' : 'x64',
     );
-    context.host.report(CliInstallPhase.installingCli);
+    context.host.report(CliInstallPhase.downloading);
     final path = await installer.install(
       archiveUri: Uri.parse(antigravityAcpArchiveUrl(asset)),
       sha256: antigravityAcpSha256[asset]!,
@@ -131,7 +131,7 @@ final class AntigravityAcpAdapterInstaller implements AcpAdapterInstaller {
       // Probe 1.4.3: every platform needs the sidecar next to the .par.
       extraExecutables: [_sidecarName()],
       onProgress: (received, total) => context.host.report(
-        CliInstallPhase.installingCli,
+        CliInstallPhase.downloading,
         detail: total == null ? '$received bytes' : '$received/$total',
       ),
       isCancelled: () => context.host.isCancelled,

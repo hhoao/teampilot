@@ -219,7 +219,8 @@ void main() {
       'agy-acp-server-$antigravityAcpVersion-$expectedKey.zip',
     );
     expect(shas.single, antigravityAcpSha256[expectedKey]);
-    expect(host.reported, contains(CliInstallPhase.installingCli));
+    expect(host.reported, contains(CliInstallPhase.downloading));
+    expect(host.reported, isNot(contains(CliInstallPhase.installingCli)));
   });
 }
 

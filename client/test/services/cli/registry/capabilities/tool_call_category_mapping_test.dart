@@ -4,10 +4,15 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/ai_history/tool_call_categories.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/cli/registry/capabilities/acp_capability.dart';
 
 void main() {
   final registry = CliToolRegistry.builtIn();
-  final clis = CliTool.values.where((c) => registry.tryGet(c) != null);
+  final clis = CliTool.values.where(
+    (c) =>
+        registry.tryGet(c) != null &&
+        registry.capability<AcpOnlyCapability>(c) == null,
+  );
 
   AiToolCallPart tool(String name) =>
       AiToolCallPart(toolCallId: '1', toolName: name);

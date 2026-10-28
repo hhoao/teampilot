@@ -34,6 +34,7 @@ import 'capabilities/workspace_base_info_capability.dart';
 import 'cli_bootstrap.dart';
 import 'cli_capability.dart';
 import 'cli_tool_registry.dart';
+import '../antigravity/antigravity_tool.dart';
 import '../claude/claude_tool.dart';
 import '../codebuddy/codebuddy_tool.dart';
 import '../codebuddy/capabilities/provider.dart';
@@ -130,6 +131,8 @@ void registerBuiltInCliTools(
       provider: CodebuddyProviderCapability(storage: storage),
     ),
   );
+
+  registry.register(const AntigravityCliTool());
 
   assert(
     CliTool.values.every((cli) => registry.tryGet(cli) != null),
