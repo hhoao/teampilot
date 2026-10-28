@@ -60,20 +60,30 @@ final class CursorUsageAuthResolver {
   final CursorHomeLayout _layout;
   final DateTime Function() _now;
 
-  Future<CursorUsageAuth?> resolve() async {
+  /// Every unexpired token, newest first, one entry per account.
+  Future<List<CursorUsageAuth>> resolveAll() async {
     final candidates = await _candidatePaths();
-    CursorUsageAuth? best;
+    final byAccount = <String, CursorUsageAuth>{};
     for (final path in candidates) {
       final auth = await _readAuth(path);
       if (auth == null) continue;
-      if (best == null ||
-          auth.modifiedAtMs > best.modifiedAtMs ||
-          (auth.modifiedAtMs == best.modifiedAtMs &&
-              auth.expiresAtMs > best.expiresAtMs)) {
-        best = auth;
+      final existing = byAccount[auth.account];
+      if (existing == null ||
+          auth.modifiedAtMs > existing.modifiedAtMs ||
+          (auth.modifiedAtMs == existing.modifiedAtMs &&
+              auth.expiresAtMs > existing.expiresAtMs)) {
+        byAccount[auth.account] = auth;
       }
     }
-    return best;
+    final values = byAccount.values.toList()
+      ..sort((a, b) => b.modifiedAtMs.compareTo(a.modifiedAtMs));
+    return values;
+  }
+
+  /// The newest unexpired token, kept for the session usage page.
+  Future<CursorUsageAuth?> resolve() async {
+    final all = await resolveAll();
+    return all.isEmpty ? null : all.first;
   }
 
   Future<List<String>> _candidatePaths() async {
