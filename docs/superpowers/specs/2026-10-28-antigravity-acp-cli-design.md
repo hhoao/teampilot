@@ -233,7 +233,9 @@ sites resolve capabilities through `CliToolRegistry`.
 - Add an optional `Duration get startupTimeout => const Duration(seconds: 30)`
   getter to `AcpCapability` (default preserves existing CLIs); Antigravity
   overrides it to **120 s** to cover PyInstaller unpack + `session/new`.
-  Apply it to the process handshake and `session/new`, not to every prompt.
+  `AcpConnection.initialize` (currently 15 s) and `AcpConnection.newSession`
+  (currently 30 s) already accept a named `timeout`; `AcpSessionRuntime.start`
+  passes `cap.startupTimeout` to both. Prompts keep their existing timeout.
 
 ## Adapter acquisition and readiness
 
@@ -243,6 +245,9 @@ Replace the npm-only field:
 
 ```dart
 abstract interface class AcpAdapterInstaller {
+  /// Stable install-job target id. Claude/Codex keep their static
+  /// `jobTarget`; this getter avoids the static/instance name collision.
+  String get adapterJobTarget;
   String get executableName;
   String get displayName;
   bool get supportsInstaller;
