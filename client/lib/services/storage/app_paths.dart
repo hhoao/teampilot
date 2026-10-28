@@ -361,6 +361,18 @@ class AppPaths {
   /// scanner so a later sync can replace its own window.
   String get usageCursorImportFile => _ctx.join(usageDir, 'cursor_import.json');
 
+  /// Account-level Cursor usage: account catalog, UI state, per-account cache.
+  String get cursorUsageDir => _ctx.join(basePath, 'cursor_usage');
+
+  String get cursorUsageAccountsFile =>
+      _ctx.join(cursorUsageDir, 'accounts.json');
+
+  String get cursorUsageUiStateFile =>
+      _ctx.join(cursorUsageDir, 'ui_state.json');
+
+  String cursorUsageCacheFile(String accountId) =>
+      _ctx.join(cursorUsageDir, 'cache', '$accountId.json');
+
   String get sshProfilesDir => _ctx.join(basePath, 'ssh_profiles');
 
   /// Control-plane runtime targets registry (`targets.json`). Holds the
