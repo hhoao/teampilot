@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:meta/meta.dart';
 
 import '../models/git_graph.dart';
+import '../models/git_operation.dart';
 import '../services/git/git_history_actions.dart';
 import '../services/git/git_history_service.dart';
 import '../services/git/git_service.dart' show GitException, GitService;
@@ -17,6 +18,7 @@ class GitGraphState extends Equatable {
     this.hasMore = false,
     this.isLoadingMore = false,
     this.isRefreshing = false,
+    this.operation,
     this.selectedHash,
     this.commitDetail,
     this.detailLoading = false,
@@ -43,6 +45,13 @@ class GitGraphState extends Equatable {
   final bool hasMore;
   final bool isLoadingMore;
   final bool isRefreshing;
+
+  /// 工具栏写操作（fetch/pull/push）进行中的那条；null = 空闲。
+  final GitOperation? operation;
+
+  /// 是否有写操作在进行（按钮禁用 / 独占判断）。
+  bool get busy => operation != null;
+
   final String? selectedHash;
   final GitCommitDetail? commitDetail;
   final bool detailLoading;
@@ -76,6 +85,7 @@ class GitGraphState extends Equatable {
     bool? hasMore,
     bool? isLoadingMore,
     bool? isRefreshing,
+    Object? operation = _unset,
     Object? selectedHash = _unset,
     bool clearSelection = false,
     Object? commitDetail = _unset,
@@ -107,6 +117,9 @@ class GitGraphState extends Equatable {
       hasMore: hasMore ?? this.hasMore,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       isRefreshing: isRefreshing ?? this.isRefreshing,
+      operation: isUnset(operation)
+          ? this.operation
+          : operation as GitOperation?,
       selectedHash: clearSelection
           ? null
           : isUnset(selectedHash)
@@ -167,6 +180,7 @@ class GitGraphState extends Equatable {
     hasMore,
     isLoadingMore,
     isRefreshing,
+    operation,
     selectedHash,
     commitDetail,
     detailLoading,
@@ -196,6 +210,7 @@ class GitGraphCubit extends Cubit<GitGraphState> {
     GitHistoryActions? actions,
     DateTime Function()? clock,
     this.onHeadChanged,
+    this.minOperationVisible = const Duration(milliseconds: 300),
   }) : _history = history,
        _git = git,
        _actions = actions ?? GitHistoryActions(),
@@ -208,6 +223,29 @@ class GitGraphCubit extends Cubit<GitGraphState> {
 
   /// Fired after any graph write action succeeds; `repoRoot` is the graph repo.
   final void Function(String repoRoot)? onHeadChanged;
+
+  /// 用户主动触发的操作最短可见时长（转圈不闪一下就消失）。
+  final Duration minOperationVisible;
+
+  Future<void> _holdMinVisible(DateTime started) async {
+    if (minOperationVisible <= Duration.zero) return;
+    final elapsed = DateTime.now().difference(started);
+    if (elapsed >= minOperationVisible) return;
+    await Future<void>.delayed(minOperationVisible - elapsed);
+  }
+
+  /// 写操作开始：工具栏该按钮转圈、其余按钮禁用。
+  void beginOperation(GitOperation operation) {
+    if (isClosed || state.operation == operation) return;
+    emit(state.copyWith(operation: operation));
+  }
+
+  /// 写操作结束：至少保持 [minOperationVisible] 再清空。
+  Future<void> endOperation(DateTime started) async {
+    await _holdMinVisible(started);
+    if (isClosed || state.operation == null) return;
+    emit(state.copyWith(operation: null));
+  }
 
   /// 时钟注入缝（TTL 判定用）；默认墙钟。
   final DateTime Function() _now;
@@ -278,16 +316,24 @@ class GitGraphCubit extends Cubit<GitGraphState> {
     await refresh();
   }
 
-  Future<void> refresh() async {
+  Future<void> refresh({bool manual = false}) async {
     if (_refreshInFlight) {
       _refreshQueued = true;
       return;
     }
     _refreshInFlight = true;
+    final started = DateTime.now();
     try {
       await _runRefresh();
     } finally {
       _refreshInFlight = false;
+      // 手动刷新：git 再快也让刷新按钮转满最短时长（_runRefresh 已清掉
+      // isRefreshing，这里按需补一段保持）。
+      if (manual) {
+        if (!isClosed) emit(state.copyWith(isRefreshing: true));
+        await _holdMinVisible(started);
+        if (!isClosed) emit(state.copyWith(isRefreshing: false));
+      }
       if (_refreshQueued && !isClosed) {
         _refreshQueued = false;
         await refresh();

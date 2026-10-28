@@ -16,6 +16,7 @@ import '../../pages/git_graph/open_git_graph.dart';
 import '../../services/ai_generation/ai_feature_setting_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/git_operation.dart';
 import '../../models/git_status.dart';
 import '../../services/git/git_repo_store.dart';
 import '../../services/storage/app_paths.dart';
@@ -23,6 +24,7 @@ import '../../services/storage/runtime_context.dart';
 import '../../services/workbench/workbench_editor_opener.dart';
 import '../../widgets/right_tools/right_tools_lifecycle.dart';
 import 'git_changes_tree_list.dart';
+import 'git_operation_activity.dart';
 
 /// VSCode-style "Source Control" panel for the editor workbench left rail.
 ///
@@ -140,7 +142,7 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
           selected: active,
           onSelect: (root) {
             setState(() => _selectedRoot = root);
-            _cubitFor(root).refresh();
+            unawaited(_cubitFor(root).refresh(manual: true));
             _reportActiveRoot();
           },
         ),
@@ -551,7 +553,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
             prev.gitAvailable != next.gitAvailable ||
             prev.isRepository != next.isRepository ||
             prev.isLoading != next.isLoading ||
-            prev.busy != next.busy,
+            prev.operation != next.operation,
         builder: (context, state) => _buildShell(context, state),
       ),
     );
@@ -577,7 +579,13 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
           onPressed: state.busy
               ? null
               : () => unawaited(_cubit.initializeRepository()),
-          icon: const Icon(Icons.create_new_folder_outlined),
+          icon: state.operation == GitOperation.init
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.create_new_folder_outlined),
           label: Text(l10n.gitInitializeRepository),
         ),
       );
@@ -591,13 +599,25 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
           BlocSelector<
             GitCubit,
             GitState,
-            (String, int, int, bool, bool, bool, bool, bool, bool)
+            (
+              String,
+              int,
+              int,
+              GitOperation?,
+              bool,
+              bool,
+              bool,
+              bool,
+              bool,
+              bool,
+            )
           >(
             selector: (state) => (
               state.status.branch ?? 'HEAD',
               state.status.ahead,
               state.status.behind,
-              state.busy || state.isLoading,
+              state.operation,
+              state.isLoading,
               state.allChangeFoldersExpanded,
               state.generatingCommitMessage,
               state.selectedPaths.isNotEmpty,
@@ -609,21 +629,24 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                 branch,
                 ahead,
                 behind,
-                busy,
+                operation,
+                loading,
                 allExpanded,
                 generating,
                 hasSelection,
                 amend,
                 hasCommits,
               ) = header;
+              final busy = operation != null || loading;
               return _Header(
                 branch: branch,
                 ahead: ahead,
                 behind: behind,
-                busy: busy,
+                operation: operation,
+                loading: loading,
                 allFoldersExpanded: allExpanded,
                 amend: amend,
-                canAmend: hasCommits,
+                canAmend: hasCommits && !busy,
                 onAmend: _cubit.setAmend,
                 generating: generating,
                 canGenerate: hasSelection && !busy && !generating,
@@ -654,12 +677,63 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                     registry: registry,
                     globalPresets: presets,
                   );
-                  await _cubit.generateCommitMessage(setting);
+                  await runGitOperation(
+                    context,
+                    workspaceId: widget.workspaceId,
+                    repoRoot: _cubit.state.repoRoot,
+                    title: l10n.gitGeneratingCommitMessage,
+                    doneMessage: l10n.gitGeneratingCommitMessage,
+                    showSuccessToast: false,
+                    body: () async {
+                      await _cubit.generateCommitMessage(setting);
+                      return true;
+                    },
+                  );
                 },
-                onRefresh: () => unawaited(_cubit.refresh()),
-                onFetch: () => unawaited(_cubit.fetchAll()),
-                onPush: () => unawaited(_cubit.push()),
-                onPull: () => unawaited(_cubit.pull()),
+                onRefresh: () => unawaited(
+                  runGitOperation(
+                    context,
+                    workspaceId: widget.workspaceId,
+                    repoRoot: _cubit.state.repoRoot,
+                    title: l10n.gitRefreshing,
+                    doneMessage: l10n.gitRefreshing,
+                    showSuccessToast: false,
+                    body: () async {
+                      await _cubit.refresh(manual: true);
+                      return true;
+                    },
+                  ),
+                ),
+                onFetch: () => unawaited(
+                  runGitOperation(
+                    context,
+                    workspaceId: widget.workspaceId,
+                    repoRoot: _cubit.state.repoRoot,
+                    title: l10n.gitFetching,
+                    doneMessage: l10n.gitFetchDone,
+                    body: _cubit.fetchAll,
+                  ),
+                ),
+                onPush: () => unawaited(
+                  runGitOperation(
+                    context,
+                    workspaceId: widget.workspaceId,
+                    repoRoot: _cubit.state.repoRoot,
+                    title: l10n.gitPushing,
+                    doneMessage: l10n.gitPushDone,
+                    body: _cubit.push,
+                  ),
+                ),
+                onPull: () => unawaited(
+                  runGitOperation(
+                    context,
+                    workspaceId: widget.workspaceId,
+                    repoRoot: _cubit.state.repoRoot,
+                    title: l10n.gitPulling,
+                    doneMessage: l10n.gitPullDone,
+                    body: _cubit.pull,
+                  ),
+                ),
                 onToggleExpandAll: _cubit.toggleExpandAllFolders,
                 onOpenGraph: () => openGitGraphTab(
                   context,
@@ -677,11 +751,11 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
           BlocSelector<
             GitCubit,
             GitState,
-            (bool, bool, bool, String, bool, bool)
+            (bool, GitOperation?, bool, String, bool, bool)
           >(
             selector: (state) => (
               state.selectedPaths.isNotEmpty,
-              state.busy,
+              state.operation,
               state.generatingCommitMessage,
               state.status.branch ?? 'HEAD',
               state.status.hasCommits,
@@ -690,26 +764,38 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
             builder: (context, commit) {
               final (
                 hasSelection,
-                busy,
+                operation,
                 generating,
                 branch,
                 hasCommits,
                 amend,
               ) = commit;
+              final busy = operation != null;
               return _CommitBox(
                 controller: _commitController,
                 hint: l10n.gitCommitMessageHint(branch),
-                canCommit: amend
-                    ? (hasCommits && !busy)
-                    : (hasSelection && !busy),
+                canCommit:
+                    (amend ? (hasCommits && !busy) : (hasSelection && !busy)) &&
+                    !generating,
                 amend: amend,
+                committing: operation == GitOperation.commit,
                 generating: generating,
+                generatingHint: l10n.gitGeneratingCommitMessage,
                 onChanged: _cubit.setCommitMessage,
                 onCommit: () async {
                   if (_cubit.state.amend) {
                     if (!await _confirmAmend()) return;
                   }
-                  final ok = await _cubit.commit();
+                  if (!context.mounted) return;
+                  final ok = await runGitOperation(
+                    context,
+                    workspaceId: widget.workspaceId,
+                    repoRoot: _cubit.state.repoRoot,
+                    title: l10n.gitCommitting,
+                    doneMessage: l10n.gitCommitting,
+                    showSuccessToast: false,
+                    body: _cubit.commit,
+                  );
                   if (ok) _commitController.clear();
                 },
               );
@@ -802,18 +888,29 @@ class _GitCenteredHint extends StatelessWidget {
   }
 }
 
+/// 14 px in-button spinner for the operation that owns the click.
+Widget? _spinnerFor(GitOperation? current, GitOperation target) {
+  if (current != target) return null;
+  return const SizedBox(
+    width: 14,
+    height: 14,
+    child: CircularProgressIndicator(strokeWidth: 2),
+  );
+}
+
 class _Header extends StatefulWidget {
   const _Header({
     required this.branch,
     required this.ahead,
     required this.behind,
-    required this.busy,
     required this.allFoldersExpanded,
     required this.amend,
     required this.canAmend,
     required this.onAmend,
     required this.generating,
     required this.canGenerate,
+    required this.operation,
+    required this.loading,
     required this.onGenerate,
     required this.onRefresh,
     required this.onFetch,
@@ -828,7 +925,12 @@ class _Header extends StatefulWidget {
   final String branch;
   final int ahead;
   final int behind;
-  final bool busy;
+
+  /// Active operation, if any; drives the per-button spinner.
+  final GitOperation? operation;
+
+  /// First-load spinner for the current root.
+  final bool loading;
   final bool allFoldersExpanded;
   final bool amend;
   final bool canAmend;
@@ -864,6 +966,11 @@ class _HeaderState extends State<_Header> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
+    final operation = widget.operation;
+    final busy = operation != null || widget.loading;
+    final branchBusy =
+        operation == GitOperation.checkout ||
+        operation == GitOperation.branchCreate;
 
     return Row(
       children: [
@@ -882,11 +989,18 @@ class _HeaderState extends State<_Header> {
                         constraints.maxWidth >= _branchRowCounterMinWidth;
                     return Row(
                       children: [
-                        Icon(
-                          Icons.account_tree_outlined,
-                          size: 16,
-                          color: cs.primary,
-                        ),
+                        if (branchBusy)
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        else
+                          Icon(
+                            Icons.account_tree_outlined,
+                            size: 16,
+                            color: cs.primary,
+                          ),
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
@@ -948,7 +1062,7 @@ class _HeaderState extends State<_Header> {
                             ),
                           ),
                         ),
-                        if (widget.busy)
+                        if (widget.loading)
                           const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 8),
                             child: SizedBox(
@@ -992,20 +1106,24 @@ class _HeaderState extends State<_Header> {
                         ),
                         TpActionMenuButton(
                           tooltip: l10n.gitDiscard,
-                          icon: const Icon(Icons.undo, size: 18),
+                          icon:
+                              _spinnerFor(operation, GitOperation.discard) ??
+                              const Icon(Icons.undo, size: 18),
                           size: TpIconButton.kCompactSize,
                           specs: [
                             TpActionMenuSpec.item(
                               value: 'selected',
                               label: l10n.gitDiscardSelected,
                               icon: Icons.delete_outline,
-                              enabled: widget.onDiscardSelected != null,
+                              enabled:
+                                  !busy && widget.onDiscardSelected != null,
                             ),
                             TpActionMenuSpec.item(
                               value: 'all',
                               label: l10n.gitDiscardAllUnstaged,
                               icon: Icons.undo,
                               destructive: true,
+                              enabled: !busy,
                             ),
                           ],
                           onSelected: (value) {
@@ -1034,31 +1152,57 @@ class _HeaderState extends State<_Header> {
                           onTap: widget.onGenerate,
                         ),
                         TpIconButton(
+                          key: const ValueKey('git-fetch-button'),
                           icon: Icons.cloud_download_outlined,
+                          iconWidget: _spinnerFor(
+                            operation,
+                            GitOperation.fetch,
+                          ),
                           compact: true,
                           size: TpIconButton.kCompactSize,
-                          tooltip: l10n.gitFetch,
+                          tooltip: operation == GitOperation.fetch
+                              ? l10n.gitFetching
+                              : l10n.gitFetch,
+                          enabled: !busy,
                           onTap: widget.onFetch,
                         ),
                         TpIconButton(
+                          key: const ValueKey('git-pull-button'),
                           icon: Icons.download_outlined,
+                          iconWidget: _spinnerFor(operation, GitOperation.pull),
                           compact: true,
                           size: TpIconButton.kCompactSize,
-                          tooltip: l10n.gitPull,
+                          tooltip: operation == GitOperation.pull
+                              ? l10n.gitPulling
+                              : l10n.gitPull,
+                          enabled: !busy,
                           onTap: widget.onPull,
                         ),
                         TpIconButton(
+                          key: const ValueKey('git-push-button'),
                           icon: Icons.upload_outlined,
+                          iconWidget: _spinnerFor(operation, GitOperation.push),
                           compact: true,
                           size: TpIconButton.kCompactSize,
-                          tooltip: l10n.gitPush,
+                          tooltip: operation == GitOperation.push
+                              ? l10n.gitPushing
+                              : l10n.gitPush,
+                          enabled: !busy,
                           onTap: widget.onPush,
                         ),
                         TpIconButton(
+                          key: const ValueKey('git-refresh-button'),
                           icon: Icons.refresh,
+                          iconWidget: _spinnerFor(
+                            operation,
+                            GitOperation.refresh,
+                          ),
                           compact: true,
                           size: TpIconButton.kCompactSize,
-                          tooltip: l10n.gitRefresh,
+                          tooltip: operation == GitOperation.refresh
+                              ? l10n.gitRefreshing
+                              : l10n.gitRefresh,
+                          enabled: !busy,
                           onTap: widget.onRefresh,
                         ),
                       ],
@@ -1080,7 +1224,9 @@ class _CommitBox extends StatelessWidget {
     required this.hint,
     required this.canCommit,
     required this.amend,
+    required this.committing,
     required this.generating,
+    required this.generatingHint,
     required this.onChanged,
     required this.onCommit,
   });
@@ -1089,7 +1235,9 @@ class _CommitBox extends StatelessWidget {
   final String hint;
   final bool canCommit;
   final bool amend;
+  final bool committing;
   final bool generating;
+  final String generatingHint;
   final ValueChanged<String> onChanged;
   final VoidCallback onCommit;
 
@@ -1110,8 +1258,11 @@ class _CommitBox extends StatelessWidget {
                     controller: controller,
                     minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
                     maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 6),
-                    enabled: !generating,
-                    decoration: InputDecoration(hintText: hint, isDense: true),
+                    enabled: !generating && !committing,
+                    decoration: InputDecoration(
+                      hintText: generating ? generatingHint : hint,
+                      isDense: true,
+                    ),
                     onChanged: onChanged,
                   );
                 },
@@ -1119,11 +1270,35 @@ class _CommitBox extends StatelessWidget {
             ),
           ],
         ),
+        if (generating) ...[
+          const SizedBox(height: 6),
+          const LinearProgressIndicator(minHeight: 2),
+        ],
         const SizedBox(height: 8),
-        FilledButton.icon(
+        FilledButton(
+          key: const ValueKey('git-commit-button'),
           onPressed: canCommit ? onCommit : null,
-          icon: Icon(amend ? Icons.edit_outlined : Icons.check, size: 16),
-          label: Text(amend ? l10n.gitAmendCommit : l10n.gitCommit),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (committing)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                Icon(amend ? Icons.edit_outlined : Icons.check, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                committing
+                    ? l10n.gitCommitting
+                    : amend
+                    ? l10n.gitAmendCommit
+                    : l10n.gitCommit,
+              ),
+            ],
+          ),
         ),
       ],
     );

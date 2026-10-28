@@ -9,8 +9,10 @@ import '../../cubits/git_graph_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_graph.dart';
+import '../../models/git_operation.dart';
 import '../../models/layout_preferences.dart'
     show GitGraphColumnId, GitGraphColumnPrefs;
+import '../../widgets/git/git_operation_activity.dart';
 import 'git_graph_menus.dart';
 import 'git_graph_refs_menu.dart';
 
@@ -61,25 +63,61 @@ class GitGraphToolbar extends StatelessWidget {
                     ],
                     const SizedBox(width: 6),
                     TpIconButton(
+                      key: const ValueKey('git-graph-fetch-button'),
                       icon: Icons.cloud_download_outlined,
-                      tooltip: l10n.gitGraphFetch,
+                      iconWidget: _spinnerFor(
+                        state.operation,
+                        GitOperation.fetch,
+                      ),
+                      tooltip: state.operation == GitOperation.fetch
+                          ? l10n.gitFetching
+                          : l10n.gitGraphFetch,
                       compact: true,
-                      onTap: () =>
-                          _runAction(context, (actions) => actions.fetchAll()),
+                      enabled: !state.busy,
+                      onTap: () => _runAction(
+                        context,
+                        (actions) => actions.fetchAll(),
+                        title: l10n.gitFetching,
+                        doneMessage: l10n.gitFetchDone,
+                      ),
                     ),
                     TpIconButton(
+                      key: const ValueKey('git-graph-pull-button'),
                       icon: Icons.arrow_downward_rounded,
-                      tooltip: l10n.gitGraphPull,
+                      iconWidget: _spinnerFor(
+                        state.operation,
+                        GitOperation.pull,
+                      ),
+                      tooltip: state.operation == GitOperation.pull
+                          ? l10n.gitPulling
+                          : l10n.gitGraphPull,
                       compact: true,
-                      onTap: () =>
-                          _runAction(context, (actions) => actions.pull()),
+                      enabled: !state.busy,
+                      onTap: () => _runAction(
+                        context,
+                        (actions) => actions.pull(),
+                        title: l10n.gitPulling,
+                        doneMessage: l10n.gitPullDone,
+                      ),
                     ),
                     TpIconButton(
+                      key: const ValueKey('git-graph-push-button'),
                       icon: Icons.arrow_upward_rounded,
-                      tooltip: l10n.gitGraphPush,
+                      iconWidget: _spinnerFor(
+                        state.operation,
+                        GitOperation.push,
+                      ),
+                      tooltip: state.operation == GitOperation.push
+                          ? l10n.gitPushing
+                          : l10n.gitGraphPush,
                       compact: true,
-                      onTap: () =>
-                          _runAction(context, (actions) => actions.push()),
+                      enabled: !state.busy,
+                      onTap: () => _runAction(
+                        context,
+                        (actions) => actions.push(),
+                        title: l10n.gitPushing,
+                        doneMessage: l10n.gitPushDone,
+                      ),
                     ),
                     const SizedBox(width: 4),
                     _StashMenu(state: state),
@@ -99,10 +137,34 @@ class GitGraphToolbar extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           TpIconButton(
+            key: const ValueKey('git-graph-refresh-button'),
             icon: Icons.refresh_rounded,
-            tooltip: l10n.gitGraphRefresh,
+            iconWidget: state.isRefreshing
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : null,
+            tooltip: state.isRefreshing
+                ? l10n.gitRefreshing
+                : l10n.gitGraphRefresh,
             compact: true,
-            onTap: () => context.read<GitGraphCubit>().refresh(),
+            enabled: !state.isRefreshing && !state.busy,
+            onTap: () => unawaited(
+              runGitOperation(
+                context,
+                workspaceId: workspaceId,
+                repoRoot: state.repoRoot,
+                title: l10n.gitRefreshing,
+                doneMessage: l10n.gitRefreshing,
+                showSuccessToast: false,
+                body: () async {
+                  await context.read<GitGraphCubit>().refresh(manual: true);
+                  return true;
+                },
+              ),
+            ),
           ),
         ],
       ),
@@ -246,10 +308,30 @@ class GitGraphToolbar extends StatelessWidget {
 
   Future<void> _runAction(
     BuildContext context,
-    Future<bool> Function(GitGraphActionsController actions) run,
-  ) async {
-    await run(GitGraphActionsController(cubit: context.read<GitGraphCubit>()));
+    Future<bool> Function(GitGraphActionsController actions) run, {
+    required String title,
+    required String doneMessage,
+  }) async {
+    final cubit = context.read<GitGraphCubit>();
+    await runGitOperation(
+      context,
+      workspaceId: workspaceId,
+      repoRoot: state.repoRoot,
+      title: title,
+      doneMessage: doneMessage,
+      body: () => run(GitGraphActionsController(cubit: cubit)),
+    );
   }
+}
+
+/// 14 px in-button spinner for the operation that owns the click.
+Widget? _spinnerFor(GitOperation? current, GitOperation target) {
+  if (current != target) return null;
+  return const SizedBox(
+    width: 14,
+    height: 14,
+    child: CircularProgressIndicator(strokeWidth: 2),
+  );
 }
 
 /// Stash 弹层：主菜单列出 `stashList`，选中条目再弹 Pop/Applly/Drop 子菜单

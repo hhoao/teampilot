@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/floating_workspace/floating_workspace_cubit.dart';
@@ -14,6 +17,7 @@ import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/git/git_service.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/workbench/workbench_editor_opener.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:teampilot/widgets/git/git_source_control_panel.dart';
 
 import '../../support/post_frame_test_harness.dart';
@@ -29,6 +33,15 @@ class _HeaderGitStub extends GitService {
   final String branch;
   final int ahead;
   final int behind;
+
+  /// When set, `push` stays in flight until completed (drives the spinner).
+  Completer<void>? pushGate;
+
+  @override
+  Future<void> push(String dir) async {
+    final gate = pushGate;
+    if (gate != null) await gate.future;
+  }
 
   @override
   Future<bool> get isAvailable async => true;
@@ -120,12 +133,14 @@ void main() {
     required int ahead,
     required int behind,
     double width = 300,
+    _HeaderGitStub? stub,
   }) async {
     final aiSettingsCubit = AiFeatureSettingsCubit(
       repository: InMemoryAppSettingsRepository(),
     );
-    GitService.debugOverrideFactory = () =>
-        _HeaderGitStub(branch: branch, ahead: ahead, behind: behind);
+    final service =
+        stub ?? _HeaderGitStub(branch: branch, ahead: ahead, behind: behind);
+    GitService.debugOverrideFactory = () => service;
 
     await tester.pumpWidget(
       wrap(
@@ -188,4 +203,58 @@ void main() {
       expect(refresh.right, closeTo(panel.right - 16, 2));
     },
   );
+
+  testWidgets('push spins inside its own button and disables the others', (
+    tester,
+  ) async {
+    final stub = _HeaderGitStub(branch: 'main', ahead: 0, behind: 0)
+      ..pushGate = Completer<void>();
+    await pumpPanel(
+      tester,
+      branch: 'main',
+      ahead: 0,
+      behind: 0,
+      width: 720,
+      stub: stub,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('git-push-button')));
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('git-push-button')),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<TpIconButton>(find.byKey(const ValueKey('git-fetch-button')))
+          .enabled,
+      isFalse,
+    );
+    expect(
+      tester
+          .widget<TpIconButton>(
+            find.byKey(const ValueKey('git-refresh-button')),
+          )
+          .enabled,
+      isFalse,
+    );
+
+    stub.pushGate!.complete();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(
+      tester
+          .widget<TpIconButton>(find.byKey(const ValueKey('git-fetch-button')))
+          .enabled,
+      isTrue,
+    );
+
+    AppToast.dismiss();
+    await tester.pump(const Duration(seconds: 1));
+  });
 }

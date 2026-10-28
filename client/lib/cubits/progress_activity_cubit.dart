@@ -197,6 +197,7 @@ class ProgressActivityCubit extends Cubit<ProgressActivityState> {
     String? errorMessage,
     String? historyTitle,
     String? historyMessage,
+    bool recordHistory = true,
   }) {
     assert(
       outcome == ProgressActivityPhase.succeeded ||
@@ -213,6 +214,8 @@ class ProgressActivityCubit extends Cubit<ProgressActivityState> {
     _cancelHooks.remove(id);
     _cancelInvoked.remove(id);
     emit(ProgressActivityState(activities: activities));
+
+    if (!recordHistory) return;
 
     final variant = switch (outcome) {
       ProgressActivityPhase.succeeded => TpToastVariant.success,

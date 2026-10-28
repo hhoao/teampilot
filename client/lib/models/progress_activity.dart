@@ -9,6 +9,7 @@ enum ProgressActivityKind {
   packAcquire,
   cliProvision,
   repoClone,
+  gitOperation,
 }
 
 enum ProgressActivityPhase {

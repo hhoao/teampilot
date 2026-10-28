@@ -12,6 +12,7 @@ IconData progressActivityKindIcon(ProgressActivityKind kind) => switch (kind) {
   ProgressActivityKind.packAcquire => Icons.inventory_2_outlined,
   ProgressActivityKind.cliProvision => Icons.terminal_outlined,
   ProgressActivityKind.repoClone => Icons.cloud_download_outlined,
+  ProgressActivityKind.gitOperation => Icons.commit,
 };
 
 /// Ongoing progress row for the notification center.

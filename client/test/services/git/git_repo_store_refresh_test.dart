@@ -12,7 +12,7 @@ class _SpyGitCubit extends GitCubit {
   int refreshCalls = 0;
 
   @override
-  Future<void> refresh() async {
+  Future<void> refresh({bool manual = false}) async {
     refreshCalls++;
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:io';
 
 import '../models/ai_feature_setting.dart';
+import '../models/git_operation.dart';
 import '../models/git_status.dart';
 import '../models/runtime_target.dart';
 import '../services/ai_generation/commit_message_prompt.dart';
@@ -27,7 +28,7 @@ class GitState extends Equatable {
     this.repoRoot = '',
     this.gitAvailable = true,
     this.isLoading = false,
-    this.busy = false,
+    this.operation,
     this.status = GitRepoStatus.notARepository,
     this.commitMessage = '',
     this.branches = const [],
@@ -52,8 +53,13 @@ class GitState extends Equatable {
   final bool gitAvailable;
   final bool isLoading;
 
-  /// True while a mutating op (stage/commit/push/…) is running.
-  final bool busy;
+  /// The operation currently in flight, if any. Drives the per-button spinner
+  /// and disables the other actions (IDEA-style single VCS task).
+  final GitOperation? operation;
+
+  /// True while an operation (stage/commit/push/refresh/…) is running.
+  bool get busy => operation != null;
+
   final GitRepoStatus status;
   final String commitMessage;
   final List<String> branches;
@@ -86,11 +92,13 @@ class GitState extends Equatable {
     return all.isNotEmpty && all.every(expandedFolderPaths.contains);
   }
 
+  static const Object _unset = Object();
+
   GitState copyWith({
     String? repoRoot,
     bool? gitAvailable,
     bool? isLoading,
-    bool? busy,
+    Object? operation = _unset,
     GitRepoStatus? status,
     String? commitMessage,
     List<String>? branches,
@@ -107,7 +115,9 @@ class GitState extends Equatable {
       repoRoot: repoRoot ?? this.repoRoot,
       gitAvailable: gitAvailable ?? this.gitAvailable,
       isLoading: isLoading ?? this.isLoading,
-      busy: busy ?? this.busy,
+      operation: identical(operation, _unset)
+          ? this.operation
+          : operation as GitOperation?,
       status: status ?? this.status,
       commitMessage: commitMessage ?? this.commitMessage,
       branches: branches ?? this.branches,
@@ -127,7 +137,7 @@ class GitState extends Equatable {
     repoRoot,
     gitAvailable,
     isLoading,
-    busy,
+    operation,
     status,
     commitMessage,
     branches,
@@ -153,6 +163,7 @@ class GitCubit extends Cubit<GitState> {
     HeadlessAiService? headless,
     HomeStorage? storage,
     this.onHeadChanged,
+    this.minOperationVisible = const Duration(milliseconds: 300),
   }) : _service = service,
        _headless =
            headless ??
@@ -178,6 +189,18 @@ class GitCubit extends Cubit<GitState> {
   /// Fired after a branch-affecting mutation succeeds; `repoRoot` is the repo
   /// whose HEAD moved. Used to keep worktree/branch labels fresh.
   final void Function(String repoRoot)? onHeadChanged;
+
+  /// Minimum time an operation stays published so a sub-100 ms `git` call the
+  /// user explicitly triggered still shows its spinner (IDEA-style). Tests
+  /// pass [Duration.zero].
+  final Duration minOperationVisible;
+
+  Future<void> _holdMinVisible(DateTime started) async {
+    if (minOperationVisible <= Duration.zero) return;
+    final elapsed = DateTime.now().difference(started);
+    if (elapsed >= minOperationVisible) return;
+    await Future<void>.delayed(minOperationVisible - elapsed);
+  }
 
   /// Seeds [GitState.expandedFolderPaths] once after the first status load.
   bool _treeExpansionInitialized = false;
@@ -222,6 +245,7 @@ class GitCubit extends Cubit<GitState> {
     _publish(
       state.copyWith(
         repoRoot: path,
+        operation: null,
         branches: const [],
         expandedFolderPaths: const {},
         selectedPaths: const {},
@@ -258,16 +282,33 @@ class GitCubit extends Cubit<GitState> {
   /// chain runs at a time, with a single trailing run if calls arrived while it
   /// was busy. On large repos `git status` can outlast the poll interval, so
   /// this prevents process pile-ups (mirrors orca's coalesced poll runner).
-  Future<void> refresh() async {
+  ///
+  /// [manual] marks a user-triggered refresh (toolbar button / repo switch): it
+  /// publishes [GitOperation.refresh] and holds it for [minOperationVisible] so
+  /// the button visibly spins. Background polls stay silent.
+  Future<void> refresh({bool manual = false}) async {
     if (_refreshInFlight) {
       _refreshQueued = true;
       return;
     }
     _refreshInFlight = true;
+    final started = manual ? DateTime.now() : null;
+    if (manual) {
+      _publish(
+        state.copyWith(operation: GitOperation.refresh),
+        recomputeRows: false,
+      );
+    }
     try {
       await _runRefresh();
     } finally {
       _refreshInFlight = false;
+      if (started != null) {
+        await _holdMinVisible(started);
+        if (!isClosed && state.operation == GitOperation.refresh) {
+          _publish(state.copyWith(operation: null), recomputeRows: false);
+        }
+      }
       if (_refreshQueued) {
         _refreshQueued = false;
         await refresh();
@@ -519,16 +560,19 @@ class GitCubit extends Cubit<GitState> {
   Future<bool> initializeRepository() {
     final dir = state.repoRoot;
     if (dir.isEmpty) return Future<bool>.value(false);
-    return _mutate(() => _service.init(dir));
+    return _mutate(GitOperation.init, () => _service.init(dir));
   }
 
-  Future<void> discard(GitFileChange change) =>
-      _mutate(() => _service.discard(state.repoRoot, change));
+  Future<void> discard(GitFileChange change) => _mutate(
+    GitOperation.discard,
+    () => _service.discard(state.repoRoot, change),
+  );
 
   Future<void> discardAll() =>
-      _mutate(() => _service.discardAll(state.repoRoot));
+      _mutate(GitOperation.discard, () => _service.discardAll(state.repoRoot));
 
   Future<void> discardFolder(String folderPath) => _mutate(
+    GitOperation.discard,
     () => _service.discardFolder(
       state.repoRoot,
       folderPath,
@@ -551,6 +595,7 @@ class GitCubit extends Cubit<GitState> {
     if (state.amend) {
       if (!state.status.hasCommits) return false;
       final ok = await _mutate(
+        GitOperation.commit,
         () => _service.commitAmend(
           state.repoRoot,
           message,
@@ -565,6 +610,7 @@ class GitCubit extends Cubit<GitState> {
     final paths = state.selectedPaths.toList();
     if (paths.isEmpty) return false;
     final ok = await _mutate(
+      GitOperation.commit,
       () => _service.commitSelected(state.repoRoot, message, paths),
     );
     if (ok) {
@@ -573,14 +619,20 @@ class GitCubit extends Cubit<GitState> {
     return ok;
   }
 
-  Future<void> push() => _mutate(() => _service.push(state.repoRoot));
+  Future<bool> push() =>
+      _mutate(GitOperation.push, () => _service.push(state.repoRoot));
 
-  Future<void> pull() => _mutate(() => _service.pull(state.repoRoot));
+  Future<bool> pull() =>
+      _mutate(GitOperation.pull, () => _service.pull(state.repoRoot));
 
-  Future<void> fetchAll() => _mutate(() => _service.fetchAll(state.repoRoot));
+  Future<bool> fetchAll() =>
+      _mutate(GitOperation.fetch, () => _service.fetchAll(state.repoRoot));
 
   Future<void> checkoutBranch(String name) async {
-    if (await _mutate(() => _service.checkout(state.repoRoot, name))) {
+    if (await _mutate(
+      GitOperation.checkout,
+      () => _service.checkout(state.repoRoot, name),
+    )) {
       onHeadChanged?.call(state.repoRoot);
       await ensureBranches(force: true);
     }
@@ -588,6 +640,7 @@ class GitCubit extends Cubit<GitState> {
 
   Future<void> createBranch(String name) async {
     if (await _mutate(
+      GitOperation.branchCreate,
       () => _service.createBranch(state.repoRoot, name.trim()),
     )) {
       onHeadChanged?.call(state.repoRoot);
@@ -605,6 +658,7 @@ class GitCubit extends Cubit<GitState> {
       return;
     }
     _publish(state.copyWith(generatingCommitMessage: true, clearError: true));
+    final started = DateTime.now();
     try {
       final diff = await _service.diffSelectedPaths(
         dir,
@@ -616,6 +670,8 @@ class GitCubit extends Cubit<GitState> {
       );
       if (isClosed || state.repoRoot != dir) return;
       if (diff.trim().isEmpty) {
+        await _holdMinVisible(started);
+        if (isClosed) return;
         _publish(
           state.copyWith(generatingCommitMessage: false),
           recomputeRows: false,
@@ -628,6 +684,8 @@ class GitCubit extends Cubit<GitState> {
         workingDirectory: dir,
       );
       if (isClosed || state.repoRoot != dir) return;
+      await _holdMinVisible(started);
+      if (isClosed || state.repoRoot != dir) return;
       _publish(
         state.copyWith(
           commitMessage: cleanCommitMessageOutput(result.text),
@@ -637,17 +695,23 @@ class GitCubit extends Cubit<GitState> {
       );
     } on GitException catch (e) {
       if (isClosed) return;
+      await _holdMinVisible(started);
+      if (isClosed) return;
       _publish(
         state.copyWith(generatingCommitMessage: false, errorMessage: e.message),
         recomputeRows: false,
       );
     } on HeadlessAiException catch (e) {
       if (isClosed) return;
+      await _holdMinVisible(started);
+      if (isClosed) return;
       _publish(
         state.copyWith(generatingCommitMessage: false, errorMessage: e.message),
         recomputeRows: false,
       );
     } on Object catch (e) {
+      if (isClosed) return;
+      await _holdMinVisible(started);
       if (isClosed) return;
       _publish(
         state.copyWith(
@@ -683,24 +747,31 @@ class GitCubit extends Cubit<GitState> {
     }
   }
 
-  /// Runs [action], then refreshes. Returns false (and sets an error) on
-  /// failure. Guards against re-entrancy via [GitState.busy].
-  Future<bool> _mutate(Future<void> Function() action) async {
+  /// Runs [action] as [operation], then refreshes. Returns false (and sets an
+  /// error) on failure. Guards against re-entrancy via [GitState.busy] and keeps
+  /// the operation published for at least [minOperationVisible].
+  Future<bool> _mutate(
+    GitOperation operation,
+    Future<void> Function() action,
+  ) async {
     if (state.busy) return false;
+    final started = DateTime.now();
     _publish(
-      state.copyWith(busy: true, clearError: true),
+      state.copyWith(operation: operation, clearError: true),
       recomputeRows: false,
     );
     try {
       await action();
       await refresh();
+      await _holdMinVisible(started);
       if (isClosed) return false;
-      _publish(state.copyWith(busy: false), recomputeRows: false);
+      _publish(state.copyWith(operation: null), recomputeRows: false);
       return true;
     } on GitException catch (e) {
+      await _holdMinVisible(started);
       if (isClosed) return false;
       _publish(
-        state.copyWith(busy: false, errorMessage: e.message),
+        state.copyWith(operation: null, errorMessage: e.message),
         recomputeRows: false,
       );
       return false;

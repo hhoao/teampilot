@@ -1346,6 +1346,60 @@ abstract class AppLocalizations {
   /// **'Refresh'**
   String get gitRefresh;
 
+  /// No description provided for @gitFetching.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetching from remote…'**
+  String get gitFetching;
+
+  /// No description provided for @gitPulling.
+  ///
+  /// In en, this message translates to:
+  /// **'Pulling…'**
+  String get gitPulling;
+
+  /// No description provided for @gitPushing.
+  ///
+  /// In en, this message translates to:
+  /// **'Pushing…'**
+  String get gitPushing;
+
+  /// No description provided for @gitRefreshing.
+  ///
+  /// In en, this message translates to:
+  /// **'Refreshing…'**
+  String get gitRefreshing;
+
+  /// No description provided for @gitCommitting.
+  ///
+  /// In en, this message translates to:
+  /// **'Committing…'**
+  String get gitCommitting;
+
+  /// No description provided for @gitGeneratingCommitMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating commit message…'**
+  String get gitGeneratingCommitMessage;
+
+  /// No description provided for @gitFetchDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetched from remote'**
+  String get gitFetchDone;
+
+  /// No description provided for @gitPullDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull completed'**
+  String get gitPullDone;
+
+  /// No description provided for @gitPushDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Push completed'**
+  String get gitPushDone;
+
   /// No description provided for @gitAmend.
   ///
   /// In en, this message translates to:

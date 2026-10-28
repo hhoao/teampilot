@@ -225,10 +225,9 @@ void main() {
 
       await doubleClick(tester, rowA);
 
-      expect(
-        opener!.openedPaths,
-        [workContext.filesystem.pathContext.join('/repo', 'a.txt')],
-      );
+      expect(opener!.openedPaths, [
+        workContext.filesystem.pathContext.join('/repo', 'a.txt'),
+      ]);
       expect(opener!.openedWorkspaceIds, ['ws-test']);
       // The opener must receive the backend filesystem (identical, not a copy)
       // so WSL/SSH workspace paths resolve against the backend.
@@ -305,10 +304,9 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(
-        opener!.openedDiffs,
-        [workContext.filesystem.pathContext.join('/repo', 'a.txt')],
-      );
+      expect(opener!.openedDiffs, [
+        workContext.filesystem.pathContext.join('/repo', 'a.txt'),
+      ]);
       expect(opener!.openedPaths, isEmpty);
 
       // Selection enables "Discard Selected Change".
@@ -362,6 +360,9 @@ void main() {
       _UnstagedGitStub.calls.any((a) => a.join(' ').contains('restore .')),
       isTrue,
     );
+
+    // Let the discard operation's minimum-visible hold finish before teardown.
+    await tester.pump(const Duration(milliseconds: 350));
   });
 
   testWidgets('selecting a row enables Discard Selected Change', (

@@ -194,6 +194,8 @@ void main() {
     expect(labelColor('repoB'), cs.onSurface);
     expect(labelColor('repoA'), cs.onSurfaceVariant);
 
+    // Let the manual refresh's minimum-visible hold finish before teardown.
+    await tester.pump(const Duration(milliseconds: 350));
     await aiSettingsCubit.close();
   });
 }

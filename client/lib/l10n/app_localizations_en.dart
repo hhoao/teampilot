@@ -687,6 +687,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitRefresh => 'Refresh';
 
   @override
+  String get gitFetching => 'Fetching from remote…';
+
+  @override
+  String get gitPulling => 'Pulling…';
+
+  @override
+  String get gitPushing => 'Pushing…';
+
+  @override
+  String get gitRefreshing => 'Refreshing…';
+
+  @override
+  String get gitCommitting => 'Committing…';
+
+  @override
+  String get gitGeneratingCommitMessage => 'Generating commit message…';
+
+  @override
+  String get gitFetchDone => 'Fetched from remote';
+
+  @override
+  String get gitPullDone => 'Pull completed';
+
+  @override
+  String get gitPushDone => 'Push completed';
+
+  @override
   String get gitAmend => 'Amend';
 
   @override

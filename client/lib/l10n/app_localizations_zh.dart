@@ -658,6 +658,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitRefresh => '刷新';
 
   @override
+  String get gitFetching => '正在获取远端更新…';
+
+  @override
+  String get gitPulling => '正在拉取…';
+
+  @override
+  String get gitPushing => '正在推送…';
+
+  @override
+  String get gitRefreshing => '正在刷新…';
+
+  @override
+  String get gitCommitting => '正在提交…';
+
+  @override
+  String get gitGeneratingCommitMessage => '正在生成提交信息…';
+
+  @override
+  String get gitFetchDone => '已获取远端更新';
+
+  @override
+  String get gitPullDone => '拉取完成';
+
+  @override
+  String get gitPushDone => '推送完成';
+
+  @override
   String get gitAmend => '修正';
 
   @override

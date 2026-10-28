@@ -1,4 +1,5 @@
 import '../models/git_graph.dart';
+import '../models/git_operation.dart';
 import '../services/git/git_history_actions.dart';
 import '../services/git/git_service.dart' show GitException;
 import '../utils/logging/logger.dart';
@@ -88,16 +89,28 @@ class GitGraphActionsController {
   Future<bool> stashDrop({String? ref}) =>
       _run(() => _actions.stashDrop(_dir, ref: ref));
 
-  Future<bool> fetchAll() => _run(() => _actions.fetchAll(_dir));
+  Future<bool> fetchAll() =>
+      _run(() => _actions.fetchAll(_dir), operation: GitOperation.fetch);
 
-  Future<bool> pull() =>
-      // ignore: invalid_use_of_visible_for_testing_member
-      _run(() => cubit.gitService.pull(_dir));
-  Future<bool> push() =>
-      // ignore: invalid_use_of_visible_for_testing_member
-      _run(() => cubit.gitService.push(_dir));
+  Future<bool> pull() => _run(
+    // ignore: invalid_use_of_visible_for_testing_member
+    () => cubit.gitService.pull(_dir),
+    operation: GitOperation.pull,
+  );
 
-  Future<bool> _run(Future<void> Function() action) async {
+  Future<bool> push() => _run(
+    // ignore: invalid_use_of_visible_for_testing_member
+    () => cubit.gitService.push(_dir),
+    operation: GitOperation.push,
+  );
+
+  Future<bool> _run(
+    Future<void> Function() action, {
+    GitOperation? operation,
+  }) async {
+    if (operation != null && cubit.state.busy) return false;
+    final started = DateTime.now();
+    if (operation != null) cubit.beginOperation(operation);
     try {
       await action();
       await cubit.refresh();
@@ -108,6 +121,8 @@ class GitGraphActionsController {
       cubit.surfaceError(e.message);
       await cubit.refresh(); // 失败也可能部分生效（如冲突），刷新对齐真实状态
       return false;
+    } finally {
+      if (operation != null) await cubit.endOperation(started);
     }
   }
 }
