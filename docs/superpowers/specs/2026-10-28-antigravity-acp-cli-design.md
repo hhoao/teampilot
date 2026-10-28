@@ -35,10 +35,12 @@ The ACP Registry entry `antigravity-acp` is published by **Google LLC**
 | Linux x86_64 / arm64 | `agy-acp-server-1.4.3-linux-*.zip` | `./agy_acp_server.par --uid=` |
 | Windows x64 / arm64 | `agy-acp-server-1.4.3-windows-*.zip` | `./agy_acp_server.exe` |
 
-The Windows archive also contains `localharness_external.exe`. Each asset has a
-sha256 in `agent.json`; the Linux zip is ~337 MB. Google staff confirmed on the
-Antigravity forum that the standalone ACP server is the supported integration
-path for ACP clients, not the IDE and not `agy` itself.
+Every platform archive also contains `localharness_external` (`.exe` on
+Windows). It must sit next to `agy_acp_server`; without it every `session/new`
+fails with `-32603 Could not find default localharness binary`. Each asset has
+a sha256 in `agent.json`; the Linux zip is ~337 MB. Google staff confirmed on
+the Antigravity forum that the standalone ACP server is the supported
+integration path for ACP clients, not the IDE and not `agy` itself.
 
 Known upstream constraints:
 
@@ -48,7 +50,17 @@ Known upstream constraints:
   through `session/set_config_option`, or `AGY_ACP_DEFAULT_MODEL` before spawn.
 - Linux arm64 has a reported TCMalloc crash on some kernels.
 - Auth is `~/.gemini/antigravity-acp/settings.json` plus the OS keyring
-  (`auth.type: oauth-personal` for a personal Google account).
+  (`auth.type: oauth-personal` for a personal Google account). `session/new`
+  is refused until an auth type is known.
+- `--uid` is a google3 privilege-drop flag, **not** an account id. On hosts
+  without a `nobody` group, omit it and startup aborts; pass `--uid=` (empty)
+  to disable the switch. Never pass a user id.
+- `GEMINI_HOME` names the `.gemini` directory itself; it is a stronger
+  isolation knob than `HOME`.
+- `session/load` and `session/list` are supported (`loadSession: true`,
+  `sessionCapabilities.list`). `session/load` replays the transcript.
+- `usage_update.used` is the per-turn context delta, not a cumulative total;
+  `size` is the model context window.
 - The ACP release cadence lags `agy`; treat ACP and CLI versions independently.
 
 ### Antigravity CLI facts
@@ -112,8 +124,9 @@ Known upstream constraints:
 - PTY / terminal rendering.
 - SSH / Android ACP for Antigravity.
 - Per-provider Google account isolation.
-- Native `brain/.../transcript.jsonl` history parsing and `session/load`
-  resume (probe first; implement only if the server supports it).
+- Native `brain/.../transcript.jsonl` history parsing. ACP `session/load` is
+  supported and may be enabled in Phase 1; transcript replay must not duplicate
+  TeamPilot's stored messages.
 - Antigravity native team (TeamBus mixed seats only).
 - Antigravity marketplace browsing/installation from TeamPilot's catalog
   beyond projecting already-installed TeamPilot plugin bundles.
@@ -210,21 +223,26 @@ sites resolve capabilities through `CliToolRegistry`.
 
 ## ACP launch and environment
 
-- `agentExecutable` resolves the installed `agy_acp_server` first (versioned
-  app-data dir), then `PATH`, `~/.local/bin`, and the TeamPilot toolchain.
+- `agentExecutable` resolves the installed `agy_acp_server.par` (Windows:
+  `agy_acp_server.exe`) first (versioned app-data dir), then `PATH`,
+  `~/.local/bin`, and the TeamPilot toolchain.
 - `launchArgCandidates`:
   - macOS / Windows: `[[adapter]]`.
-  - Linux: `[[adapter, '--uid=<installId>'], [adapter]]`; the probe task
-    confirms the accepted form. `<installId>` is a random UUID persisted at
-    install time under the adapter install dir.
+  - Linux: `[[adapter, '--uid='], [adapter]]`. `--uid=` is an empty privilege
+    drop, not a user id; the probe confirmed that a non-empty value aborts when
+    the group does not exist.
 - `buildEnvironment`:
   - `HOME` (POSIX) / `USERPROFILE` (Windows) = `<sessionToolDir>/home`.
+  - `GEMINI_HOME` = `<sessionToolDir>/home/.gemini` (the stronger isolation
+    knob; it points at the `.gemini` directory itself).
   - `AGY_ACP_DEFAULT_MODEL` = selected model slug (unless empty).
   - `GEMINI_API_KEY`, `GOOGLE_GEMINI_BASE_URL` for the API-key provider.
   - `AGY_ADC_AUTH=true`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION` for ADC.
-  - `SURFACE=teampilot`.
-- `authenticateMethodId`: `null` initially (keyring); if `initialize` reports
-  no usable auth, probe `oauth-personal` and surface a sign-in action.
+- `authenticateMethodId`: `null`; `session/new` uses the pre-seeded
+  `auth.type` from `settings.json`. Do **not** call `authenticate` for
+  `oauth-personal` in a non-interactive path: it blocks on a browser flow.
+  A missing auth type surfaces the server's `-32000 Authentication required`
+  message as an actionable sign-in error.
 - `forwardSessionNewMcpServers`: `false` initially; MCP is staged in
   `mcp_config.json`. Flip only if the probe shows the server ignores the file.
 - `sessionNewMeta`: none.
@@ -294,11 +312,11 @@ Install flow:
 1. Resolve platform/arch; unsupported → structured failure.
 2. Download to `<appData>/downloads/antigravity-acp-<version>.zip`.
 3. Verify sha256 before extraction.
-4. Extract with `package:archive`; keep `agy_acp_server(.exe)` and, on Windows,
-   `localharness_external.exe`.
-5. `chmod 755` on Unix.
+4. Extract with `package:archive`; keep `agy_acp_server(.exe)` **and**
+   `localharness_external(.exe)` on every platform.
+5. `chmod 755` on Unix for both executables.
 6. Atomically move to `<appData>/toolchain/antigravity-acp/<version>/`.
-7. Persist `install.json` (`version`, `uid`, `installedAt`).
+7. Persist `install.json` (`version`, `installedAt`).
 8. `resolveInstalledPath()` returns the versioned executable; readiness and
    `AcpAdapterDiscovery` consult it before PATH.
 
@@ -483,7 +501,7 @@ assembled system prompt. Member role contributions are produced by the existing
 - Args: `agy -p`, `--output-format stream-json` when streaming, `--model`,
   `--effort`, `--dangerously-skip-permissions` (full access), prompt via argv
   or stdin.
-- Env: isolated `HOME` / `USERPROFILE`, provider key/ADC, `SURFACE`.
+- Env: isolated `HOME` / `USERPROFILE` / `GEMINI_HOME`, provider key/ADC.
 - `streamResultText`: parse `{"event":"result","result":{...}}` and return
   `result.response`.
 - `extractText`: parse the final JSON envelope; otherwise return stdout.
@@ -511,8 +529,9 @@ stub:
   `manage_task`, `schedule`, `ask_question`, `generate_image`.
 
 Phase 2 parses `~/.gemini/antigravity-cli/brain/<id>/.system_generated/logs/transcript.jsonl`
-(`step_index`, `source`, `type`, `status`, `content`, `tool_calls`) and probes
-`session/load` for resume.
+(`step_index`, `source`, `type`, `status`, `content`, `tool_calls`). ACP
+`session/load` is supported and replays the transcript; Phase 1 may use it as
+long as replay is treated as authoritative.
 
 ### Usage
 
@@ -521,8 +540,10 @@ ACP `usage_update` is parsed by `acpd` but currently dropped by
 snapshot to an app-owned `acp-usage.jsonl` (session-scoped). Then:
 
 - `AntigravitySessionUsageCapability.scanUsageSource` reads that log, maps
-  `used`/`size`/`cost` into `SessionUsageEvent`, dedupes by session + sequence,
-  and lets the existing cost engine price the model.
+  `used` into the input/context token field (`used` is a per-turn context
+  delta, not a cumulative total), records `size` as the context window, and
+  dedupes by session + sequence. `cost` is usually absent; the cost engine must
+  not invent output tokens or a cost when the server only reports context.
 - Headless runs read `result.usage` directly from the NDJSON stream.
 - Phase 1 wires the ACP usage log only for Antigravity. CodeBuddy/Gemini keep
   their native transcript scanners; they can opt into the collector later once
@@ -557,9 +578,9 @@ snapshot to an app-owned `acp-usage.jsonl` (session-scoped). Then:
 | Auth required | `acpStopAuthRequired`; prompt to run Sign in |
 | Cold start | ACP launch timeout for Antigravity raised to 120 s; UI shows “Starting Antigravity” |
 | Linux arm64 TCMalloc crash | Surface stderr + suggested workaround; no silent retry |
-| `--uid` rejected | Fall back to the next argv candidate; record the working form |
+| `--uid` rejected | Fall back to the no-flag candidate; never pass a user id |
 | Model rejected | Surface the server error; do not silently switch models |
-| `session/load` unsupported | Start a new session; history stays app-owned |
+| `session/load` replay | Treat the server replay as authoritative; do not duplicate stored messages |
 
 ## Testing
 

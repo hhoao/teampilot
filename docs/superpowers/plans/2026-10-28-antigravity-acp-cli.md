@@ -561,7 +561,10 @@ void main() {
     const installer = AntigravityAcpAdapterInstaller();
     expect(installer, isA<AcpAdapterInstaller>());
     expect(installer.adapterJobTarget, AntigravityAcpAdapterInstaller.jobTarget);
-    expect(installer.executableName, 'agy_acp_server');
+    expect(
+      installer.executableName,
+      anyOf('agy_acp_server.par', 'agy_acp_server.exe'),
+    );
     expect(installer.supportsInstaller, isTrue);
   });
 }
@@ -617,7 +620,8 @@ final class AntigravityAcpAdapterInstaller implements AcpAdapterInstaller {
   String get adapterJobTarget => jobTarget;
 
   @override
-  String get executableName => 'agy_acp_server';
+  String get executableName =>
+      Platform.isWindows ? 'agy_acp_server.exe' : 'agy_acp_server.par';
 
   @override
   String get displayName => 'Antigravity ACP adapter';
@@ -632,7 +636,8 @@ final class AntigravityAcpAdapterInstaller implements AcpAdapterInstaller {
     antigravityAcpVersion,
   );
 
-  String _exeName() => Platform.isWindows ? 'agy_acp_server.exe' : 'agy_acp_server';
+  String _exeName() =>
+      Platform.isWindows ? 'agy_acp_server.exe' : 'agy_acp_server.par';
 
   @override
   Future<String?> resolveInstalledPath() async {
@@ -671,9 +676,12 @@ final class AntigravityAcpAdapterInstaller implements AcpAdapterInstaller {
       sha256: antigravityAcpSha256[asset]!,
       destDir: _installDir(s),
       executableName: _exeName(),
-      extraExecutables: Platform.isWindows
-          ? const ['localharness_external.exe']
-          : const [],
+      // Probe 1.4.3: every platform needs the sidecar next to the .par.
+      extraExecutables: [
+        Platform.isWindows
+            ? 'localharness_external.exe'
+            : 'localharness_external',
+      ],
       onProgress: (received, total) => context.host.report(
         CliInstallPhase.installingCli,
         detail: total == null ? '$received bytes' : '$received/$total',
@@ -690,7 +698,7 @@ final class AntigravityAcpAdapterInstaller implements AcpAdapterInstaller {
 ```
 
 In production, `binary` is constructed in `app_shell.dart` from
-`RemoteDownloader` (Task 15) so the installer actually downloads. The unit test
+`RemoteDownloader` in Task 7 so the installer actually downloads. The unit test
 injects a fake `BinaryArchiveInstaller` or only checks mapping/contract.
 
 - [ ] **Step 4: Run the test**
@@ -939,9 +947,9 @@ import 'package:teampilot/services/cli/antigravity/capabilities/acp.dart';
 void main() {
   test('uses the separate ACP server with no CLI flags', () {
     const cap = AntigravityAcpCapability(linuxUid: false);
-    expect(cap.agentExecutable('/usr/bin/agy'), 'agy_acp_server');
-    expect(cap.launchArgCandidates('agy_acp_server'), [
-      ['agy_acp_server'],
+    expect(cap.agentExecutable('/usr/bin/agy'), 'agy_acp_server.par');
+    expect(cap.launchArgCandidates('agy_acp_server.par'), [
+      ['agy_acp_server.par'],
     ]);
     expect(cap.acpOnly, isTrue);
     expect(cap.forwardSessionNewMcpServers, isFalse);
@@ -960,15 +968,15 @@ void main() {
     );
     expect(env['HOME'], '/runtime/sessions/s1/antigravity/home');
     expect(env['USERPROFILE'], '/runtime/sessions/s1/antigravity/home');
-    expect(env['SURFACE'], 'teampilot');
+    expect(env['GEMINI_HOME'], '/runtime/sessions/s1/antigravity/home/.gemini');
     expect(env['AGY_ACP_DEFAULT_MODEL'], 'gemini-3.8-flash-medium');
     expect(env['PATH'], '/bin');
   });
 
-  test('Linux adapter candidates include the uid form first', () {
-    const cap = AntigravityAcpCapability(linuxUid: true, uid: 'abc-123');
+  test('Linux adapter candidates include the empty uid form first', () {
+    const cap = AntigravityAcpCapability(linuxUid: true);
     expect(cap.launchArgCandidates('server'), [
-      ['server', '--uid=abc-123'],
+      ['server', '--uid='],
       ['server'],
     ]);
   });
@@ -1020,7 +1028,11 @@ final class AntigravityAcpTranslator extends AcpAgentTranslator {
       if (suppressAbort && error.message.contains('aborted')) {
         return acpStopCancelled;
       }
-      if (error.code == ErrorCode.authRequired.code) return acpStopAuthRequired;
+      if (error.code == ErrorCode.authRequired.code ||
+          (error.code == -32000 &&
+              error.message.contains('Authentication required'))) {
+        return acpStopAuthRequired;
+      }
       return 'ACP error ${error.code}: ${error.message}';
     }
     return error.toString();
@@ -1030,13 +1042,11 @@ final class AntigravityAcpTranslator extends AcpAgentTranslator {
 final class AntigravityAcpCapability
     implements AcpCapability, AcpOnlyCapability {
   const AntigravityAcpCapability({
-    this.uid,
     this.model,
     this.adapterPath,
     this.linuxUid,
   });
 
-  final String? uid;
   final String? model;
   final String? adapterPath;
   final bool? linuxUid;
@@ -1048,11 +1058,14 @@ final class AntigravityAcpCapability
 
   @override
   String agentExecutable(String cliExecutable) =>
-      adapterPath ?? 'agy_acp_server';
+      adapterPath ??
+      (Platform.isWindows ? 'agy_acp_server.exe' : 'agy_acp_server.par');
 
   @override
   List<List<String>> launchArgCandidates(String executable) => [
-    if (_usesUid && uid != null && uid!.isNotEmpty) [executable, '--uid=$uid'],
+    // Probe 1.4.3: --uid is a privilege-drop flag, not an account id.
+    // Empty disables the switch; a non-empty value must be an existing group.
+    if (_usesUid) [executable, '--uid='],
     [executable],
   ];
 
@@ -1081,7 +1094,7 @@ final class AntigravityAcpCapability
     final env = Map<String, String>.of(baseEnv)
       ..['HOME'] = home
       ..['USERPROFILE'] = home
-      ..['SURFACE'] = 'teampilot';
+      ..['GEMINI_HOME'] = '$home/.gemini';
     final m = model?.trim() ?? '';
     if (m.isNotEmpty) env['AGY_ACP_DEFAULT_MODEL'] = m;
     return env;
@@ -1090,7 +1103,7 @@ final class AntigravityAcpCapability
 ```
 
 In production the ACP capability is constructed with `linuxUid:
-Platform.isLinux` and the persisted uid (Task 15).
+Platform.isLinux` (Task 15). No persisted uid exists.
 
 - [ ] **Step 5: Implement session + settings + executable**
 
@@ -1164,7 +1177,8 @@ final class AntigravityAcpSettings implements AcpSettingsCapability {
   @override
   bool get usesSeparateAdapter => true;
   @override
-  String? get adapterExecutableName => 'agy_acp_server';
+  String? get adapterExecutableName =>
+      Platform.isWindows ? 'agy_acp_server.exe' : 'agy_acp_server.par';
   @override
   AcpAdapterInstaller? get adapterInstaller => installer;
   @override
@@ -2040,7 +2054,7 @@ final class AntigravityHeadlessCapability implements HeadlessCapability {
   Map<String, String> buildEnvironment(HeadlessLaunchContext context) => {
     'HOME': '${context.configDir}/home',
     'USERPROFILE': '${context.configDir}/home',
-    'SURFACE': 'teampilot',
+    'GEMINI_HOME': '${context.configDir}/home/.gemini',
   };
 
   @override
@@ -2296,8 +2310,10 @@ into the cubit constructor from the attach site (preferred).
 `AntigravitySessionUsageCapability`:
 
 - `discoverUsageSources` returns `<sessionToolDir>/acp-usage.jsonl`.
-- `scanUsageSource` reads JSONL lines, maps `used` to `outputTokens` (or a
-  documented split if the probe shows input/cache fields), and emits
+- `scanUsageSource` reads JSONL lines. Probe 1.4.3: `used` is the per-turn
+  context delta, not cumulative and not output tokens. Map it to the
+  input/context token field, record `size` as the context window, and do not
+  synthesize output tokens or a cost when `cost` is absent. Emit
   `SessionUsageEvent` with `cli: CliTool.antigravity`,
   `requestId: '<sessionId>:<sequence>'`.
 - Register `sessionUsage` on the tool.
