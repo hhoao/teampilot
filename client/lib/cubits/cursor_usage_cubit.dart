@@ -1,4 +1,3 @@
-import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -149,13 +148,16 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
     }
     final selected = state.selectedAccountId;
     final keep = accounts.any((account) => account.accountId == selected);
+    final nextSelection = keep
+        ? selected
+        : (accounts.isEmpty ? null : accounts.first.accountId);
     if (!isClosed) {
       emit(
         state.copyWith(
           status: CursorUsageStatus.ready,
           accounts: accounts,
-          clearSelection: !keep,
-          selectedAccountId: keep ? selected : accounts.firstOrNull?.accountId,
+          selectedAccountId: nextSelection,
+          clearSelection: nextSelection == null,
         ),
       );
     }
@@ -177,9 +179,10 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
     for (final account in accounts) {
       try {
         await _refreshAccount(account.accountId);
-        final cycle =
-            cycles[account.accountId] ??
-            await _billingCycleFor(account.accountId);
+        final cycle = force
+            ? await _billingCycleFor(account.accountId)
+            : cycles[account.accountId] ??
+                  await _billingCycleFor(account.accountId);
         if (cycle != null) cycles[account.accountId] = cycle;
         reports[account.accountId] = await _loadReport(
           accountId: account.accountId,

@@ -156,4 +156,71 @@ void main() {
     expect(cubit.state.selectedAccountId, 'b');
     expect(cubit.state.selectedReport!.inputTokens, 20);
   });
+
+  test('first load selects the first account', () async {
+    final cubit = CursorUsageCubit(
+      loadAccounts: () async => [_accountA, _accountB],
+      refreshAccount: (_) async {},
+      billingCycleFor: (_) async => null,
+      loadReport:
+          ({
+            required accountId,
+            required range,
+            billingCycle,
+            forceRefresh = false,
+          }) async => CursorUsageReport(
+            accountId: accountId,
+            startMs: 0,
+            endMs: 1,
+            inputTokens: accountId == 'a' ? 10 : 20,
+          ),
+      saveRange: (_) async {},
+      addAccount: (_, _) async => true,
+      removeAccount: (_) async {},
+      initialRange: const CursorUsagePresetRange(CursorUsagePreset.today),
+    );
+
+    await cubit.ensureLoaded();
+
+    expect(cubit.state.selectedAccountId, 'a');
+    expect(cubit.state.selectedReport, isNotNull);
+  });
+
+  test(
+    'forced refresh re-reads the billing cycle, plain refresh does not',
+    () async {
+      var cycleReads = 0;
+      final cubit = CursorUsageCubit(
+        loadAccounts: () async => [_accountA],
+        refreshAccount: (_) async {},
+        billingCycleFor: (_) async {
+          cycleReads++;
+          return const CursorUsageWindow(startMs: 100, endMs: 200);
+        },
+        loadReport:
+            ({
+              required accountId,
+              required range,
+              billingCycle,
+              forceRefresh = false,
+            }) async =>
+                CursorUsageReport(accountId: accountId, startMs: 0, endMs: 1),
+        saveRange: (_) async {},
+        addAccount: (_, _) async => true,
+        removeAccount: (_) async {},
+        initialRange: const CursorUsagePresetRange(
+          CursorUsagePreset.billingCycle,
+        ),
+      );
+
+      await cubit.ensureLoaded();
+      expect(cycleReads, 1);
+
+      await cubit.refresh(force: true);
+      expect(cycleReads, 2);
+
+      await cubit.refresh();
+      expect(cycleReads, 2);
+    },
+  );
 }
