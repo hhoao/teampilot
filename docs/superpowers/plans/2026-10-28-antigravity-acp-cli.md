@@ -872,8 +872,23 @@ final result = installer == null
 `is CodexAcpAdapterInstaller` ternaries with
 `InstallJobKeys.acpAdapter(installer.adapterJobTarget, scope: scope)`.
 
-Also replace `_probe.latestNpm(adapter.npmPackage)` with
-`adapter.latestVersion()`; if null, skip the update badge.
+Version probing must preserve npm adapters:
+
+```dart
+Future<String?> _adapterLatest(AcpAdapterInstaller adapter) async {
+  if (adapter is NpmInstallerCapability) {
+    return _probe.latestNpm(adapter.npmPackage);
+  }
+  return adapter.latestVersion();
+}
+```
+
+Use `_adapterLatest` instead of `adapter.latestVersion()` directly. Task 2's
+`NpmInstallerCapability.latestVersion()` returns `null`, so a blind switch
+would silently remove Claude/Codex adapter update badges. Also remove the
+temporary `as NpmInstallerCapability` casts Task 2 added in
+`client/test/pages/config/cli_config_section_test.dart` and
+`client/test/services/install/runners/cli_install_job_runner_test.dart`.
 
 - [ ] **Step 5: Neutralize service parameter types**
 
