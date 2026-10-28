@@ -182,7 +182,8 @@ class SshProfile {
             pairedDesktopId == other.pairedDesktopId &&
             relayUrl == other.relayUrl &&
             lastGoodKind == other.lastGoodKind &&
-            embeddedTarget == other.embeddedTarget;
+            embeddedTarget == other.embeddedTarget &&
+            vaultEntryId == other.vaultEntryId;
   }
 
   @override
@@ -201,5 +202,6 @@ class SshProfile {
     relayUrl,
     lastGoodKind,
     embeddedTarget,
+    vaultEntryId,
   );
 }

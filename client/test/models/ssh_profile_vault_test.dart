@@ -18,4 +18,11 @@ void main() {
     expect(json.containsKey('vaultEntryId'), isFalse);
     expect(SshProfile.fromJson(json).vaultEntryId, isNull);
   });
+
+  test('profiles differing only by vaultEntryId are not equal', () {
+    const base = SshProfile(id: 'p1', name: 'S', host: 'h', username: 'u');
+    final linked = base.copyWith(vaultEntryId: 'v1');
+    expect(linked, isNot(base));
+    expect(linked.hashCode, isNot(base.hashCode));
+  });
 }
