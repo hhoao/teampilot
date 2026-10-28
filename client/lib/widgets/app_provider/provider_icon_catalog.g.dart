@@ -18,6 +18,7 @@ const Map<String, String> providerIconAssetPaths = {
   'claude': 'assets/providers/claude.svg',
   'claw': 'assets/providers/claw.svg',
   'cloudflare': 'assets/providers/cloudflare.svg',
+  'codebuddy': 'assets/providers/workbuddy.svg',
   'cohere': 'assets/providers/cohere.svg',
   'copilot': 'assets/providers/copilot.svg',
   'crazyrouter': 'assets/providers/crazyrouter.svg',
