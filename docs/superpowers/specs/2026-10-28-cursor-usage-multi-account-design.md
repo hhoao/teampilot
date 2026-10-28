@@ -76,8 +76,11 @@ and manual entries for the same account collapse into one row.
    the manual entry wins for `label` / `enabled` / `teamId` / `owningUser`, but
    the **token still comes from whichever source is freshest**, because a
    discovered home refreshes itself while a pasted cookie only expires.
-3. Keep expired accounts in the list, flagged `expired`. They never sync, and
-   they never block the others.
+3. Expiry is per source. A manual account whose pasted token expired stays in
+   the list with no credential and renders "expired"; a discovered account whose
+   token expired drops out entirely, because the resolver only surfaces live
+   tokens and the provider home refreshes itself on the next Cursor login.
+   Neither case blocks the other accounts.
 
 Storage is split: non-secret metadata in `<base>/cursor_usage/accounts.json`
 (atomic write, revision counter, cross-instance lock, following
@@ -121,7 +124,10 @@ epoch millis); when those fields are missing it falls back to the calendar
 month. Custom ranges snap to local day boundaries — `start` at `00:00:00.000`,
 `end` at `23:59:59.999` — so a partially covered day cannot be counted twice.
 
-The last selection is a single scalar in app settings.
+The last selection is stored as a single value in
+`<base>/cursor_usage/ui_state.json`. It stays out of app settings because this
+feature already owns a directory and the two writes must not interleave with
+unrelated settings mutations.
 
 ## Cache
 
