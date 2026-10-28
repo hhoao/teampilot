@@ -2140,7 +2140,8 @@ final class CursorAccountRegistry implements CursorAccountDirectory {
 }
 ```
 
-Note: `firstOrNull` requires `package:collection` or Dart 3 `Iterable.firstOrNull` from `dart:core`? It is in `package:collection`. Add `import 'package:collection/collection.dart';` if the analyzer complains; `collection` is already a transitive dependency of Flutter.
+Note: `firstOrNull` needs `import 'package:collection/collection.dart';`
+(`collection: ^1.19.0` is already a direct dependency in `client/pubspec.yaml`).
 
 - [ ] **Step 4: Run the tests**
 
@@ -2149,8 +2150,8 @@ Expected: PASS (5 tests).
 
 - [ ] **Step 5: Confirm the existing resolver tests still pass**
 
-Run: `cd client && dart run tool/run_tests.dart test/services/cli/cursor/cursor_usage_auth_resolver_test.dart`
-Expected: PASS. If the file does not exist, run `cd client && grep -rl "CursorUsageAuthResolver" test/` and run every listed file.
+Run: `cd client && dart run tool/run_tests.dart test/services/cli/cursor/provider/cursor_usage_auth_resolver_test.dart`
+Expected: PASS — `resolve()` keeps its old behaviour (`resolveAll().first`) so the session usage page is unaffected.
 
 - [ ] **Step 6: Commit**
 
