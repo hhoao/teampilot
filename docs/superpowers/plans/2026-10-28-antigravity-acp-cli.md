@@ -1322,6 +1322,11 @@ polishes the copy/assets):
   `provider_credential_action_bar.dart`: generic sign-in/success/failure copy.
 - `services/storage/workspace_cli_cache.dart`: the ACP-only `const []` arm.
 
+Update `AntigravityAcpAdapterInstaller` to report `CliInstallPhase.downloading`
+(added in Task 5) instead of `installingCli` for the archive download. Leave
+`extracting` unused until `BinaryArchiveInstaller` exposes an extraction
+callback.
+
 Add a minimal executable test:
 
 ```dart
