@@ -9988,4 +9988,136 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionUsageGroupName => 'Name';
+
+  @override
+  String get cursorUsageTitle => 'Cursor usage';
+
+  @override
+  String get cursorUsageRefresh => 'Refresh';
+
+  @override
+  String get cursorUsageAddAccount => 'Add account';
+
+  @override
+  String get cursorUsageAddAccountTitle => 'Add a Cursor account';
+
+  @override
+  String get cursorUsageAddAccountField => 'Session token';
+
+  @override
+  String get cursorUsageAddAccountHint =>
+      'Paste WorkosCursorSessionToken=... from cursor.com, or just the token.';
+
+  @override
+  String get cursorUsageAddAccountLabel => 'Label (optional)';
+
+  @override
+  String get cursorUsageAddAccountConfirm => 'Add';
+
+  @override
+  String get cursorUsageAddAccountSuccess => 'Cursor account added';
+
+  @override
+  String get cursorUsageAddAccountInvalid =>
+      'That token is invalid or already expired';
+
+  @override
+  String get cursorUsageNoAccounts =>
+      'No Cursor account found. Sign in with the Cursor CLI, or add one manually.';
+
+  @override
+  String get cursorUsageSourceAuto => 'Auto';
+
+  @override
+  String get cursorUsageSourceManual => 'Manual';
+
+  @override
+  String get cursorUsageStatusExpired => 'Expired';
+
+  @override
+  String get cursorUsageTotals => 'Totals';
+
+  @override
+  String get cursorUsageByModel => 'By model';
+
+  @override
+  String get cursorUsageUnattributed => 'Unattributed';
+
+  @override
+  String get cursorUsageSummaryOnly =>
+      'Only summary totals are kept for this range.';
+
+  @override
+  String get cursorUsageNoData => 'No usage in this range.';
+
+  @override
+  String get cursorUsageInput => 'Input';
+
+  @override
+  String get cursorUsageOutput => 'Output';
+
+  @override
+  String get cursorUsageCacheRead => 'Cache read';
+
+  @override
+  String get cursorUsageCacheWrite => 'Cache write';
+
+  @override
+  String get cursorUsageCost => 'Cost';
+
+  @override
+  String get cursorUsageEvents => 'Events';
+
+  @override
+  String get cursorUsageRangeCycle => 'Billing cycle';
+
+  @override
+  String get cursorUsageRangeToday => 'Today';
+
+  @override
+  String get cursorUsageRangeSevenDays => '7 days';
+
+  @override
+  String get cursorUsageRangeThirtyDays => '30 days';
+
+  @override
+  String get cursorUsageRangeLastMonth => 'Last month';
+
+  @override
+  String get cursorUsageRangeCustom => 'Custom';
+
+  @override
+  String get cursorUsageRangeCustomActive => 'Custom range';
+
+  @override
+  String get cursorUsageLoadFailed => 'Could not load Cursor accounts.';
+
+  @override
+  String get cursorUsageErrorLogin => 'Sign in again';
+
+  @override
+  String get cursorUsageErrorRateLimited => 'Rate limited';
+
+  @override
+  String get cursorUsageErrorNetwork => 'Network error';
+
+  @override
+  String get cursorUsageErrorHttp => 'Cursor error';
+
+  @override
+  String get cursorUsageErrorInvalid => 'Unexpected response';
+
+  @override
+  String get cursorUsageErrorMismatch => 'Token belongs to another account';
+
+  @override
+  String get cursorUsageErrorRangeTooLarge => 'Range too large';
+
+  @override
+  String get cursorUsageErrorNoCredential => 'No credential';
+
+  @override
+  String cursorUsageCycleRange(String start, String end) {
+    return 'Billing cycle: $start – $end';
+  }
 }

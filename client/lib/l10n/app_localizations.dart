@@ -17707,6 +17707,258 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Name'**
   String get sessionUsageGroupName;
+
+  /// No description provided for @cursorUsageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cursor usage'**
+  String get cursorUsageTitle;
+
+  /// No description provided for @cursorUsageRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get cursorUsageRefresh;
+
+  /// No description provided for @cursorUsageAddAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Add account'**
+  String get cursorUsageAddAccount;
+
+  /// No description provided for @cursorUsageAddAccountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a Cursor account'**
+  String get cursorUsageAddAccountTitle;
+
+  /// No description provided for @cursorUsageAddAccountField.
+  ///
+  /// In en, this message translates to:
+  /// **'Session token'**
+  String get cursorUsageAddAccountField;
+
+  /// No description provided for @cursorUsageAddAccountHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste WorkosCursorSessionToken=... from cursor.com, or just the token.'**
+  String get cursorUsageAddAccountHint;
+
+  /// No description provided for @cursorUsageAddAccountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Label (optional)'**
+  String get cursorUsageAddAccountLabel;
+
+  /// No description provided for @cursorUsageAddAccountConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get cursorUsageAddAccountConfirm;
+
+  /// No description provided for @cursorUsageAddAccountSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Cursor account added'**
+  String get cursorUsageAddAccountSuccess;
+
+  /// No description provided for @cursorUsageAddAccountInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'That token is invalid or already expired'**
+  String get cursorUsageAddAccountInvalid;
+
+  /// No description provided for @cursorUsageNoAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'No Cursor account found. Sign in with the Cursor CLI, or add one manually.'**
+  String get cursorUsageNoAccounts;
+
+  /// No description provided for @cursorUsageSourceAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get cursorUsageSourceAuto;
+
+  /// No description provided for @cursorUsageSourceManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get cursorUsageSourceManual;
+
+  /// No description provided for @cursorUsageStatusExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Expired'**
+  String get cursorUsageStatusExpired;
+
+  /// No description provided for @cursorUsageTotals.
+  ///
+  /// In en, this message translates to:
+  /// **'Totals'**
+  String get cursorUsageTotals;
+
+  /// No description provided for @cursorUsageByModel.
+  ///
+  /// In en, this message translates to:
+  /// **'By model'**
+  String get cursorUsageByModel;
+
+  /// No description provided for @cursorUsageUnattributed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unattributed'**
+  String get cursorUsageUnattributed;
+
+  /// No description provided for @cursorUsageSummaryOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only summary totals are kept for this range.'**
+  String get cursorUsageSummaryOnly;
+
+  /// No description provided for @cursorUsageNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No usage in this range.'**
+  String get cursorUsageNoData;
+
+  /// No description provided for @cursorUsageInput.
+  ///
+  /// In en, this message translates to:
+  /// **'Input'**
+  String get cursorUsageInput;
+
+  /// No description provided for @cursorUsageOutput.
+  ///
+  /// In en, this message translates to:
+  /// **'Output'**
+  String get cursorUsageOutput;
+
+  /// No description provided for @cursorUsageCacheRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache read'**
+  String get cursorUsageCacheRead;
+
+  /// No description provided for @cursorUsageCacheWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache write'**
+  String get cursorUsageCacheWrite;
+
+  /// No description provided for @cursorUsageCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Cost'**
+  String get cursorUsageCost;
+
+  /// No description provided for @cursorUsageEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get cursorUsageEvents;
+
+  /// No description provided for @cursorUsageRangeCycle.
+  ///
+  /// In en, this message translates to:
+  /// **'Billing cycle'**
+  String get cursorUsageRangeCycle;
+
+  /// No description provided for @cursorUsageRangeToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get cursorUsageRangeToday;
+
+  /// No description provided for @cursorUsageRangeSevenDays.
+  ///
+  /// In en, this message translates to:
+  /// **'7 days'**
+  String get cursorUsageRangeSevenDays;
+
+  /// No description provided for @cursorUsageRangeThirtyDays.
+  ///
+  /// In en, this message translates to:
+  /// **'30 days'**
+  String get cursorUsageRangeThirtyDays;
+
+  /// No description provided for @cursorUsageRangeLastMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Last month'**
+  String get cursorUsageRangeLastMonth;
+
+  /// No description provided for @cursorUsageRangeCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get cursorUsageRangeCustom;
+
+  /// No description provided for @cursorUsageRangeCustomActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom range'**
+  String get cursorUsageRangeCustomActive;
+
+  /// No description provided for @cursorUsageLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load Cursor accounts.'**
+  String get cursorUsageLoadFailed;
+
+  /// No description provided for @cursorUsageErrorLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in again'**
+  String get cursorUsageErrorLogin;
+
+  /// No description provided for @cursorUsageErrorRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate limited'**
+  String get cursorUsageErrorRateLimited;
+
+  /// No description provided for @cursorUsageErrorNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Network error'**
+  String get cursorUsageErrorNetwork;
+
+  /// No description provided for @cursorUsageErrorHttp.
+  ///
+  /// In en, this message translates to:
+  /// **'Cursor error'**
+  String get cursorUsageErrorHttp;
+
+  /// No description provided for @cursorUsageErrorInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Unexpected response'**
+  String get cursorUsageErrorInvalid;
+
+  /// No description provided for @cursorUsageErrorMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Token belongs to another account'**
+  String get cursorUsageErrorMismatch;
+
+  /// No description provided for @cursorUsageErrorRangeTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Range too large'**
+  String get cursorUsageErrorRangeTooLarge;
+
+  /// No description provided for @cursorUsageErrorNoCredential.
+  ///
+  /// In en, this message translates to:
+  /// **'No credential'**
+  String get cursorUsageErrorNoCredential;
+
+  /// No description provided for @cursorUsageCycleRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Billing cycle: {start} – {end}'**
+  String cursorUsageCycleRange(String start, String end);
 }
 
 class _AppLocalizationsDelegate

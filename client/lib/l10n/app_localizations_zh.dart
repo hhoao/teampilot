@@ -9562,4 +9562,133 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sessionUsageGroupName => '名称';
+
+  @override
+  String get cursorUsageTitle => 'Cursor 用量';
+
+  @override
+  String get cursorUsageRefresh => '刷新';
+
+  @override
+  String get cursorUsageAddAccount => '添加账号';
+
+  @override
+  String get cursorUsageAddAccountTitle => '添加 Cursor 账号';
+
+  @override
+  String get cursorUsageAddAccountField => '会话令牌';
+
+  @override
+  String get cursorUsageAddAccountHint =>
+      '粘贴 cursor.com 的 WorkosCursorSessionToken=...，也可以只粘贴令牌本身。';
+
+  @override
+  String get cursorUsageAddAccountLabel => '标签（可选）';
+
+  @override
+  String get cursorUsageAddAccountConfirm => '添加';
+
+  @override
+  String get cursorUsageAddAccountSuccess => '已添加 Cursor 账号';
+
+  @override
+  String get cursorUsageAddAccountInvalid => '该令牌无效或已过期';
+
+  @override
+  String get cursorUsageNoAccounts => '未找到 Cursor 账号。请先登录 Cursor CLI，或手动添加。';
+
+  @override
+  String get cursorUsageSourceAuto => '自动';
+
+  @override
+  String get cursorUsageSourceManual => '手动';
+
+  @override
+  String get cursorUsageStatusExpired => '已过期';
+
+  @override
+  String get cursorUsageTotals => '总计';
+
+  @override
+  String get cursorUsageByModel => '按模型';
+
+  @override
+  String get cursorUsageUnattributed => '未归属';
+
+  @override
+  String get cursorUsageSummaryOnly => '该时间范围仅保留汇总数据。';
+
+  @override
+  String get cursorUsageNoData => '该时间范围内没有用量。';
+
+  @override
+  String get cursorUsageInput => '输入';
+
+  @override
+  String get cursorUsageOutput => '输出';
+
+  @override
+  String get cursorUsageCacheRead => '缓存读取';
+
+  @override
+  String get cursorUsageCacheWrite => '缓存写入';
+
+  @override
+  String get cursorUsageCost => '费用';
+
+  @override
+  String get cursorUsageEvents => '事件';
+
+  @override
+  String get cursorUsageRangeCycle => '计费周期';
+
+  @override
+  String get cursorUsageRangeToday => '今天';
+
+  @override
+  String get cursorUsageRangeSevenDays => '7 天';
+
+  @override
+  String get cursorUsageRangeThirtyDays => '30 天';
+
+  @override
+  String get cursorUsageRangeLastMonth => '上个月';
+
+  @override
+  String get cursorUsageRangeCustom => '自定义';
+
+  @override
+  String get cursorUsageRangeCustomActive => '自定义范围';
+
+  @override
+  String get cursorUsageLoadFailed => '无法加载 Cursor 账号。';
+
+  @override
+  String get cursorUsageErrorLogin => '请重新登录';
+
+  @override
+  String get cursorUsageErrorRateLimited => '触发限流';
+
+  @override
+  String get cursorUsageErrorNetwork => '网络错误';
+
+  @override
+  String get cursorUsageErrorHttp => 'Cursor 错误';
+
+  @override
+  String get cursorUsageErrorInvalid => '响应异常';
+
+  @override
+  String get cursorUsageErrorMismatch => '令牌属于其他账号';
+
+  @override
+  String get cursorUsageErrorRangeTooLarge => '范围过大';
+
+  @override
+  String get cursorUsageErrorNoCredential => '缺少凭据';
+
+  @override
+  String cursorUsageCycleRange(String start, String end) {
+    return '计费周期：$start – $end';
+  }
 }
