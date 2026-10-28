@@ -4954,12 +4954,17 @@ and at line 101:
 
 ```dart
   if (group.label == cursorAccountUsageSessionId) {
-    return l10n.sessionUsageCursorImportedSession;
+    return l10n.cursorAccountUsageSession;
   }
 ```
 
+Add `"cursorAccountUsageSession": "Cursor accounts"` (and its zh translation) to
+both ARB files. Do **not** reuse `sessionUsageCursorImportedSession`: Task 13
+deletes the whole `sessionUsageCursor*` family, and reusing it here would leave
+that task breaking this call site.
+
 Remove the now-unused `import '../../models/cursor_usage_import.dart';` from
-that file. Keep the l10n key — only its vendor changes.
+that file.
 
 - [ ] **Step 7: Add the all-accounts totals row**
 
