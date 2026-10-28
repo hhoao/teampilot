@@ -114,6 +114,23 @@ void main() {
     expect(backend.values.keys, isEmpty);
   });
 
+  test('re-pasting a token keeps the stored team and enabled state', () async {
+    final credentials = manualCredentials();
+    await registry.upsertManual(credentials, label: 'Team', teamId: 7);
+    await registry.update(credentials.accountId, enabled: false);
+
+    // A rotated token is pasted with no label and no team: only the credential
+    // may change, everything the user configured has to survive.
+    await registry.upsertManual(credentials);
+
+    final account = (await registry.list()).firstWhere(
+      (entry) => entry.accountId == credentials.accountId,
+    );
+    expect(account.teamId, 7);
+    expect(account.enabled, isFalse);
+    expect(account.label, 'Team');
+  });
+
   test('corrupted accounts.json degrades to discovered only', () async {
     await fs.ensureDir('/root/cursor_usage');
     await fs.writeString('/root/cursor_usage/accounts.json', '{not json');
