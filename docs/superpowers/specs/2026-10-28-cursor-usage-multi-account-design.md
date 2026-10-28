@@ -14,15 +14,18 @@ This supersedes the Cursor sections of
 Two of its limits are removed: "the sync picks the newest valid token" and
 "multiple accounts are not merged into one report".
 
-The existing session usage page and `usage/cursor_import.json` are untouched.
-Account usage is a separate product surface with its own storage.
+The new cache is the **single source** for account-level Cursor usage. The
+session usage page's totals read it too, so one number covers every account
+(see [Session usage integration](#session-usage-integration)). The old
+`usage/cursor_import.json` path is retired.
 
 ## Decisions
 
 | Question | Decision |
 |----------|----------|
 | Where accounts come from | Auto-discovered provider homes **plus** manual entries, merged by `accountId` |
-| Where usage is shown | New page; session usage page stays scoped to local sessions |
+| Where usage is shown | New page for accounts; session usage totals read the same cache |
+| Session usage integration | Single source: account events feed `SessionUsageServices.loadEvents` |
 | Range default | Billing cycle from `usage-summary`, with presets and a custom range |
 | Data source | `POST /api/dashboard/get-filtered-usage-events`; the new page never uses CSV |
 | Cache | Coverage-based gap fill, raw events kept 90 days, day aggregates kept forever |
@@ -210,20 +213,54 @@ row, deep link `/home-v2?global=cursorUsage`.
   totals, last sync
 - `widgets/range_picker.dart` — presets plus a custom range dialog
 - `widgets/usage_totals.dart` — input, output, cache read, cache write, cost
-- `widgets/daily_trend.dart` — per-day bars
 - `widgets/model_breakdown.dart` — per-model split with an explicit
   "unattributed" bucket
 - `widgets/event_table.dart` — event detail, with the summary-only notice on
   older ranges
-- all-accounts view — one comparison table across accounts
+- the account list carries a "all accounts" totals row, so no separate
+  comparison view is needed
+
+No new trend chart is drawn here: the session usage page's existing chart now
+includes account events (see below), and duplicating it would be two places to
+keep in sync.
 
 `buildUsageDashboard` is not reused: it models session/team/CLI attribution, not
 accounts. Formatting helpers and `TpTextStyles` tokens are reused.
-`widgets/usage/usage_trend_chart.dart` currently takes a dashboard type, so its
-bar rendering is extracted into a component that accepts
-`List<(dayMs, tokens)>` and used by both pages.
 
 Localization goes to `client/lib/l10n/app_en.arb` and `app_zh.arb` only.
+
+## Session usage integration
+
+`CursorUsageEventSource` turns the caches into `SessionUsageEvent`s and
+`SessionUsageServices.loadEvents` appends them, so `buildUsageDashboard` totals
+every account.
+
+- Events are synthesized from the cache's **`days`** aggregates, one per
+  (account, day, model), not from the raw 90-day `events` list. Ranges older
+  than the retention window therefore still count, and the two lists cannot
+  double count because `days` is derived from `events`.
+- `requestId` is `cursor-account:<accountId>:<dayMs>:<model>`. Being
+  account-scoped removes the CSV-era collision where two accounts producing an
+  identical row overwrote each other.
+- `costMicroUsd` is `totalCents * 10000` (cents to micro-USD).
+- Rows use the synthetic session id `cursor-account-usage`, which
+  `usage_format.dart` maps to the existing "Cursor (imported)" label.
+- Cursor exposes no client field, so these rows cannot be split into IDE, CLI,
+  and web. The session usage total therefore means "local sessions plus every
+  Cursor account", not "what ran on this machine".
+
+### Retiring the old path
+
+Once the bridge lands, these are deleted rather than left unwired:
+`services/usage/cursor_usage_sync_service.dart`, `cursor_usage_csv.dart`,
+`cursor_usage_import_store.dart`, `models/cursor_usage_import.dart`, their
+tests, the four cursor seams on `SessionUsageServices` / `SessionUsageCubit`,
+the Cursor block in `usage_maintenance_dialog.dart`, and the
+`sessionUsageCursor*` l10n keys.
+
+There is no migration: the new source can re-fetch any range the old import
+covered, with better data (cost on plan-included rows). `usage/cursor_import.json`
+is left on disk and never read again.
 
 ## Testing
 
@@ -244,7 +281,8 @@ Fakes implement `CursorUsageApiClient`; storage uses
 
 - Refreshing Cursor tokens automatically, or any OAuth flow.
 - Per-conversation or per-request drill-down beyond the event table.
-- Changing the session usage page's Cursor import path.
+- Splitting account usage by client (IDE / CLI / web); Cursor exposes no such
+  field.
 - Team member attribution inside a team account's events.
 
 ## Limitations

@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a dedicated Cursor usage page that reports token usage and cost for any date range across every Cursor account, discovered automatically or added manually.
+**Goal:** Add a dedicated Cursor usage page that reports token usage and cost for any date range across every Cursor account, discovered automatically or added manually, and make those accounts count in the session usage totals.
 
-**Architecture:** A new `services/cursor_usage/` feature reads Cursor's `get-filtered-usage-events` endpoint, fills only the uncovered parts of the requested range, and caches per-account day aggregates plus 90 days of raw events. A cubit drives a `pages/cursor_usage/` UI registered as a new home global view. The existing session usage page and `usage/cursor_import.json` are untouched.
+**Architecture:** A new `services/cursor_usage/` feature reads Cursor's `get-filtered-usage-events` endpoint, fills only the uncovered parts of the requested range, and caches per-account day aggregates plus 90 days of raw events. A cubit drives a `pages/cursor_usage/` UI registered as a new home global view. The cache is also the single source for account-level Cursor rows in the session usage dashboard, replacing the old single-account CSV import path entirely.
 
 **Tech Stack:** Flutter, `flutter_bloc` Cubit, `http`, `flutter_secure_storage` (via the existing `SecureKeyValueStore` interface), `equatable`, `crypto`.
 
@@ -21,6 +21,7 @@
 - Soft file limits: `services/` ~600 lines, `cubits/` ~500, `pages/<domain>/` ~400-500.
 - Tests use `test/support/in_memory_filesystem.dart`; no network in tests.
 - Error text shown to users comes from l10n, never from an exception's `toString`.
+- Account-level Cursor usage has exactly one source of truth: `cursor_usage/cache/<accountId>.json`. Nothing may read `usage/cursor_import.json` again.
 
 ---
 
@@ -4702,6 +4703,413 @@ git commit -m "feat(cursor-usage): wire the page into the home shell"
 
 ---
 
+### Task 12: Feed account usage into the session usage totals
+
+**Files:**
+- Create: `client/lib/services/cursor_usage/cursor_usage_event_source.dart`
+- Modify: `client/lib/app/session_usage_services.dart` (`loadEvents` at line ~189, `forStorage` params at line ~67)
+- Modify: `client/lib/pages/usage/usage_format.dart:101`
+- Modify: `client/lib/pages/cursor_usage/widgets/account_list.dart` (totals row)
+- Modify: `client/lib/pages/cursor_usage/cursor_usage_page.dart` (pass reports)
+- Modify: `client/lib/l10n/app_en.arb`, `app_zh.arb` (one key)
+- Modify: `client/lib/app/app_shell.dart` (pass the source)
+- Test: `client/test/services/cursor_usage/cursor_usage_event_source_test.dart`
+
+**Interfaces:**
+- Consumes: `CursorUsageAccount`, `CursorUsageCache`, `CursorUsageDay`, `SessionUsageEvent`, `CliTool`.
+- Produces:
+  - `const cursorAccountUsageSessionId = 'cursor-account-usage'`
+  - `CursorUsageEventSource({required Future<List<CursorUsageAccount>> Function() listAccounts, required Future<CursorUsageCache> Function(String accountId) loadCache})`
+  - `Future<List<SessionUsageEvent>> loadEvents()`
+
+- [ ] **Step 1: Write the failing test**
+
+Create `client/test/services/cursor_usage/cursor_usage_event_source_test.dart`:
+
+```dart
+import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/cursor_usage_account.dart';
+import 'package:teampilot/models/cursor_usage_report.dart';
+import 'package:teampilot/services/cursor_usage/cursor_usage_event_source.dart';
+
+int ms(int day) => DateTime(2026, 10, day).millisecondsSinceEpoch;
+
+const _account = CursorUsageAccount(
+  accountId: 'acct1',
+  userId: 'user_a',
+  label: 'A',
+  source: CursorAccountSource.discovered,
+);
+
+CursorUsageCache cacheWithDays() => CursorUsageCache(
+  accountId: 'acct1',
+  days: [
+    CursorUsageDay(
+      dayMs: ms(1),
+      inputTokens: 10,
+      outputTokens: 5,
+      cacheReadTokens: 100,
+      cacheWriteTokens: 2,
+      totalCents: 3.5,
+      eventCount: 2,
+      models: const {
+        'cursor-grok-4.6-high': CursorUsageModelTotals(
+          inputTokens: 10,
+          outputTokens: 5,
+          cacheReadTokens: 100,
+          cacheWriteTokens: 2,
+          totalCents: 3.5,
+          eventCount: 2,
+        ),
+        '': CursorUsageModelTotals(totalCents: 1, eventCount: 1),
+      },
+    ),
+  ],
+);
+
+void main() {
+  test('synthesizes one event per account, day, and model', () async {
+    final source = CursorUsageEventSource(
+      listAccounts: () async => [_account],
+      loadCache: (_) async => cacheWithDays(),
+    );
+
+    final events = await source.loadEvents();
+
+    expect(events.length, 2);
+    final grok = events.firstWhere((e) => e.model == 'cursor-grok-4.6-high');
+    expect(grok.requestId, 'cursor-account:acct1:${ms(1)}:cursor-grok-4.6-high');
+    expect(grok.sessionId, cursorAccountUsageSessionId);
+    expect(grok.inputTokens, 10);
+    expect(grok.cacheCreationTokens, 2);
+    expect(grok.timestampMs, ms(1));
+    expect(grok.costMicroUsd, 35000);
+    expect(events.every((e) => e.cli.name == 'cursor'), isTrue);
+  });
+
+  test('an empty model name becomes cursor-auto', () async {
+    final source = CursorUsageEventSource(
+      listAccounts: () async => [_account],
+      loadCache: (_) async => cacheWithDays(),
+    );
+    final events = await source.loadEvents();
+    expect(events.map((e) => e.model), contains('cursor-auto'));
+  });
+
+  test('disabled accounts are skipped', () async {
+    final source = CursorUsageEventSource(
+      listAccounts: () async => [
+        const CursorUsageAccount(
+          accountId: 'acct1',
+          userId: 'user_a',
+          label: 'A',
+          source: CursorAccountSource.manual,
+          enabled: false,
+        ),
+      ],
+      loadCache: (_) async => cacheWithDays(),
+    );
+    expect(await source.loadEvents(), isEmpty);
+  });
+
+  test('two accounts with identical days do not collide', () async {
+    final source = CursorUsageEventSource(
+      listAccounts: () async => [
+        _account,
+        const CursorUsageAccount(
+          accountId: 'acct2',
+          userId: 'user_b',
+          label: 'B',
+          source: CursorAccountSource.manual,
+        ),
+      ],
+      loadCache: (accountId) async => CursorUsageCache(
+        accountId: accountId,
+        days: cacheWithDays().days,
+      ),
+    );
+    final events = await source.loadEvents();
+    expect(events.map((e) => e.requestId).toSet().length, events.length);
+  });
+}
+```
+
+- [ ] **Step 2: Run the test to confirm it fails**
+
+Run: `cd client && dart run tool/run_tests.dart test/services/cursor_usage/cursor_usage_event_source_test.dart`
+Expected: FAIL — unresolved import.
+
+- [ ] **Step 3: Implement the source**
+
+`client/lib/services/cursor_usage/cursor_usage_event_source.dart`:
+
+```dart
+import '../../models/cursor_usage_account.dart';
+import '../../models/cursor_usage_report.dart';
+import '../../models/session_usage.dart';
+import '../../models/team_config.dart';
+
+/// Synthetic session id for account-level Cursor rows.
+const cursorAccountUsageSessionId = 'cursor-account-usage';
+
+/// Turns the per-account caches into [SessionUsageEvent]s so the session usage
+/// dashboard totals every Cursor account.
+///
+/// Uses the `days` aggregates rather than the raw 90-day `events` list: older
+/// ranges still count, and `days` is derived from `events`, so the two can
+/// never double count.
+final class CursorUsageEventSource {
+  CursorUsageEventSource({
+    required Future<List<CursorUsageAccount>> Function() listAccounts,
+    required Future<CursorUsageCache> Function(String accountId) loadCache,
+  }) : _listAccounts = listAccounts,
+       _loadCache = loadCache;
+
+  final Future<List<CursorUsageAccount>> Function() _listAccounts;
+  final Future<CursorUsageCache> Function(String accountId) _loadCache;
+
+  Future<List<SessionUsageEvent>> loadEvents() async {
+    final accounts = await _listAccounts();
+    final out = <SessionUsageEvent>[];
+    for (final account in accounts) {
+      if (!account.enabled) continue;
+      final cache = await _loadCache(account.accountId);
+      for (final day in cache.days) {
+        for (final entry in day.models.entries) {
+          final totals = entry.value;
+          if (totals.totalTokens == 0 && totals.totalCents == 0) continue;
+          out.add(
+            SessionUsageEvent(
+              requestId:
+                  'cursor-account:${account.accountId}:${day.dayMs}:${entry.key}',
+              cli: CliTool.cursor,
+              model: entry.key.trim().isEmpty ? 'cursor-auto' : entry.key,
+              inputTokens: totals.inputTokens,
+              outputTokens: totals.outputTokens,
+              cacheReadTokens: totals.cacheReadTokens,
+              cacheCreationTokens: totals.cacheWriteTokens,
+              inputSemantics: UsageInputSemantics.fresh,
+              timestampMs: day.dayMs,
+              sessionId: cursorAccountUsageSessionId,
+              costMicroUsd: (totals.totalCents * 10000).round(),
+            ),
+          );
+        }
+      }
+    }
+    return out;
+  }
+}
+```
+
+The API's `inputTokens` excludes cache reads (verified: `9598 + 4642 + 335488 = 349728` equals the reported total), which is why the semantics are `fresh`.
+
+- [ ] **Step 4: Run the test**
+
+Run: `cd client && dart run tool/run_tests.dart test/services/cursor_usage/cursor_usage_event_source_test.dart`
+Expected: PASS (4 tests).
+
+- [ ] **Step 5: Wire it into `loadEvents`**
+
+In `client/lib/app/session_usage_services.dart`:
+
+1. Add a factory parameter next to `cursorHttpClient` (line ~74):
+
+```dart
+    Future<List<SessionUsageEvent>> Function()? loadCursorAccountUsage,
+```
+
+2. Replace the body of `loadEvents()` (line ~189) so the Cursor rows come from
+   the account source instead of `stores.cursorImport`. The whole method becomes:
+
+```dart
+    Future<List<SessionUsageEvent>> loadEvents() async {
+      final stores = currentStores();
+      final base = await stores.store.readLatest();
+      final imported = await (loadCursorAccountUsage?.call() ??
+          Future<List<SessionUsageEvent>>.value(const []));
+      if (imported.isEmpty) return base;
+      final byId = {for (final event in base) event.requestId: event};
+      for (final event in imported) {
+        byId[event.requestId] = event;
+      }
+      final merged = byId.values.toList(growable: false);
+      merged.sort((a, b) => a.timestampMs.compareTo(b.timestampMs));
+      return merged;
+    }
+```
+
+This deliberately drops `stores.cursorImport.loadEvents()`: keeping both
+sources would double count, since the two id schemes cannot be reconciled.
+
+- [ ] **Step 6: Relabel the synthetic session**
+
+In `client/lib/pages/usage/usage_format.dart`:
+
+```dart
+import '../../services/cursor_usage/cursor_usage_event_source.dart';
+```
+
+and at line 101:
+
+```dart
+  if (group.label == cursorAccountUsageSessionId) {
+    return l10n.sessionUsageCursorImportedSession;
+  }
+```
+
+Remove the now-unused `import '../../models/cursor_usage_import.dart';` from
+that file. Keep the l10n key — only its vendor changes.
+
+- [ ] **Step 7: Add the all-accounts totals row**
+
+In `cursor_usage_account_list`'s constructor add
+`required this.reports` (`Map<String, CursorUsageReport>`), and render above the
+list:
+
+```dart
+      if (reports.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            '${l10n.cursorUsageAllAccounts} · '
+            '${formatUsageTokens(totalTokens)} · ${formatCursorUsageUsd(totalCents)}',
+            style: styles.xsColored(cs.onSurface.withValues(alpha: 0.55)),
+          ),
+        ),
+```
+
+with locals computed first:
+
+```dart
+    final totalTokens = reports.values.fold<int>(0, (sum, r) => sum + r.totalTokens);
+    final totalCents = reports.values.fold<double>(0, (sum, r) => sum + r.totalCents);
+```
+
+Add imports for `usage_format.dart` and `cursor_usage_format.dart`, pass
+`reports: state.reports` from `cursor_usage_page.dart`, and add the key
+`"cursorUsageAllAccounts": "All accounts"` (+ zh) to both ARB files.
+
+- [ ] **Step 8: Pass the source from `app_shell.dart`**
+
+Where `SessionUsageServices.forStorage` is called (line ~1589):
+
+```dart
+      loadCursorAccountUsage: () => CursorUsageEventSource(
+        listAccounts: cursorAccountRegistry.list,
+        loadCache: cursorUsageCacheStore.load,
+      ).loadEvents(),
+```
+
+`cursorAccountRegistry` and `cursorUsageCacheStore` are created in Task 11's
+block, which appears *after* this call site. Move the Task 11 block above
+`sessionUsageServices` so both are in scope.
+
+- [ ] **Step 9: Run the affected tests**
+
+Run: `cd client && dart run tool/run_tests.dart test/services/cursor_usage/ test/services/usage/session_usage_services_test.dart test/pages/usage/`
+Expected: PASS. `session_usage_services_test.dart` exercises `loadEvents`; if it
+asserts imported Cursor rows, update it to the new source.
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add client/lib/services/cursor_usage/cursor_usage_event_source.dart client/lib/app/session_usage_services.dart client/lib/app/app_shell.dart client/lib/pages/usage/usage_format.dart client/lib/pages/cursor_usage client/lib/l10n/app_en.arb client/lib/l10n/app_zh.arb client/test/services/cursor_usage/cursor_usage_event_source_test.dart
+git commit -m "feat(cursor-usage): count every account in session usage totals"
+```
+
+---
+
+### Task 13: Retire the old Cursor import path
+
+**Files:**
+- Delete: `client/lib/services/usage/cursor_usage_sync_service.dart`
+- Delete: `client/lib/services/usage/cursor_usage_csv.dart`
+- Delete: `client/lib/services/usage/cursor_usage_import_store.dart`
+- Delete: `client/lib/models/cursor_usage_import.dart`
+- Delete: `client/test/services/usage/cursor_usage_csv_test.dart`
+- Delete: `client/test/services/usage/cursor_usage_import_store_test.dart`
+- Delete: `client/test/services/usage/cursor_usage_sync_service_test.dart`
+- Modify: `client/lib/app/session_usage_services.dart`, `client/lib/cubits/session_usage_cubit.dart`, `client/lib/pages/usage/session_usage_page.dart`, `client/lib/pages/usage/usage_maintenance_dialog.dart`, `client/lib/app/app_shell.dart`, `client/lib/l10n/app_en.arb`, `client/lib/l10n/app_zh.arb`
+- Modify: `client/test/cubits/session_usage_cubit_test.dart`, `client/test/pages/usage/usage_maintenance_dialog_test.dart`
+
+**Interfaces:**
+- Consumes: Task 12's bridge, which is now the only Cursor data path.
+- Produces: nothing new. `SessionUsageServices` loses `loadCursorStatus`,
+  `importCursorCsv`, `syncCursorUsage`, `clearCursorUsage`.
+
+- [ ] **Step 1: Delete the four implementation files and three test files**
+
+```bash
+git rm client/lib/services/usage/cursor_usage_sync_service.dart \
+       client/lib/services/usage/cursor_usage_csv.dart \
+       client/lib/services/usage/cursor_usage_import_store.dart \
+       client/lib/models/cursor_usage_import.dart \
+       client/test/services/usage/cursor_usage_csv_test.dart \
+       client/test/services/usage/cursor_usage_import_store_test.dart \
+       client/test/services/usage/cursor_usage_sync_service_test.dart
+```
+
+- [ ] **Step 2: Strip the seams from `SessionUsageServices`**
+
+Remove the four constructor fields and the four `return SessionUsageServices._(...)`
+entries (`loadCursorStatus`, `importCursorCsv`, `syncCursorUsage`,
+`clearCursorUsage`), the `_PlaneUsageStores.cursorImport` / `.cursorSync` fields,
+and the `cursorHttpClient` parameter. Delete the `_PlaneUsageStores` lines that
+construct them — leave every other store untouched.
+
+- [ ] **Step 3: Strip the seams from `SessionUsageCubit`**
+
+Remove the four injected functions, the state fields `cursorStatus`,
+`cursorBusy`, `cursorError`, and the methods `loadCursorStatus`,
+`importCursorCsv`, `syncCursorUsage`, `clearCursorUsage`. Keep `hasData`,
+pricing, and sync state untouched.
+
+- [ ] **Step 4: Remove the Cursor UI**
+
+In `usage_maintenance_dialog.dart`, delete the Cursor section and the params
+`cursorStatus`, `cursorBusy`, `onImportCursorCsv`, `onSyncCursor`,
+`onClearCursor`. In `session_usage_page.dart`, delete `_importCursorCsv`,
+`_syncCursorUsage`, `_clearCursorUsage`, `_pickCursorCsv`, `_cursorErrorText`,
+the `onCursor:` argument, and the `file_picker` import if nothing else uses it.
+
+- [ ] **Step 5: Delete the l10n keys**
+
+Remove every `sessionUsageCursor*` key (and its `@` metadata block) from
+`app_en.arb` and `app_zh.arb`. Cross-check with
+`grep -n "sessionUsageCursor" client/lib/l10n/app_en.arb`; anything still
+referenced in code means a usage was missed in Steps 2-4.
+
+- [ ] **Step 6: Let the analyzer find the rest**
+
+Run: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings`
+Expected: errors listing every remaining reference. Fix them one by one —
+`app_shell.dart` (the four cubit arguments and the `cursorHttpClient` argument),
+`session_usage_cubit_test.dart`, `usage_maintenance_dialog_test.dart`. Repeat
+until clean.
+
+- [ ] **Step 7: Run the tests**
+
+Run: `cd client && dart run tool/run_tests.dart test/cubits/session_usage_cubit_test.dart test/pages/usage/ test/services/usage/ test/services/cursor_usage/`
+Expected: PASS.
+
+- [ ] **Step 8: Full suite in the background**
+
+Run: `cd client && dart run tool/run_tests.dart`
+Expected: PASS.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add -A client/lib client/test
+git commit -m "refactor(cursor-usage): retire the single-account CSV import path"
+```
+
+`usage/cursor_import.json` stays on disk and is never read again. Do not add a
+deletion step for it.
+
+---
+
 ## Notes for the implementer
 
 - `validateCursorUsageAccount` (the `pageSize: 1` probe from the spec) is
@@ -4718,3 +5126,11 @@ git commit -m "feat(cursor-usage): wire the page into the home shell"
   home refreshes itself on the next Cursor login), while a manual account stays
   listed with `hasCredential: false` and renders "Expired". Do not add an
   expired-token code path to the resolver for this.
+- After Task 12 the session usage page's total means "local sessions plus every
+  Cursor account". It is no longer "what ran on this machine". Do not try to
+  subtract one from the other: Cursor records requests server-side for every
+  client (IDE, CLI, web) and exposes no client field, so the two sets overlap in
+  a way neither side can measure.
+- Task 12 moves the `app_shell.dart` block written in Task 11 to *above* the
+  `SessionUsageServices.forStorage` call. If you implement 11 then 12 in order,
+  that move is a cut-and-paste, not a rewrite.
