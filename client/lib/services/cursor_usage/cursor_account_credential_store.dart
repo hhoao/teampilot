@@ -22,6 +22,8 @@ CursorAccountCredentials? parseCursorSessionToken(String raw, {int? nowMs}) {
   }
   try {
     value = Uri.decodeComponent(value);
+  } on FormatException {
+    // Malformed percent-encoding: keep the raw value and let the JWT parse fail.
   } on ArgumentError {
     // Not percent-encoded; keep the raw value.
   }

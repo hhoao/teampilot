@@ -72,6 +72,20 @@ void main() {
       expect(parseCursorSessionToken('not-a-token', nowMs: nowMs), isNull);
       expect(parseCursorSessionToken('a.b.c', nowMs: nowMs), isNull);
     });
+
+    test('malformed percent-encoding does not throw', () {
+      expect(
+        () => parseCursorSessionToken(
+          'WorkosCursorSessionToken=%FF%FF',
+          nowMs: nowMs,
+        ),
+        returnsNormally,
+      );
+      expect(
+        parseCursorSessionToken('WorkosCursorSessionToken=%FF%FF', nowMs: nowMs),
+        isNull,
+      );
+    });
   });
 
   test('accountId is the first 16 chars of sha256(sub)', () {
