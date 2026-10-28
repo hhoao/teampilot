@@ -373,6 +373,10 @@ class AppPaths {
 
   String get sshProfilesDir => _ctx.join(basePath, 'ssh_profiles');
 
+  String get vaultDir => _ctx.join(basePath, 'vault');
+  String get vaultFile => _ctx.join(vaultDir, 'vault.json');
+  String get vaultBackupFile => _ctx.join(vaultDir, 'vault.json.bak');
+
   /// Control-plane runtime targets registry (`targets.json`). Holds the
   /// authoritative `defaultTargetId`, persisted ssh targets, and WSL distro.
   String get targetsFile => _ctx.join(basePath, 'targets.json');

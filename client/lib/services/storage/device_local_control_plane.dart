@@ -1,5 +1,6 @@
 import '../../models/runtime_target.dart';
 import '../../repositories/ssh_profile_repository.dart';
+import '../../repositories/vault_repository.dart';
 import '../cli/remote_cli_path_cache.dart';
 import '../io/local_filesystem.dart';
 import 'app_paths.dart';
@@ -111,3 +112,17 @@ RemoteCliPathCache deviceLocalRemoteCliPathCache(String nativeAppDataPath) =>
         nativeAppDataPath,
       ).join(nativeAppDataPath, 'remote-cli-paths.json'),
     );
+
+/// 设备本地保险库（`vault/vault.json` under native app data）。
+///
+/// 与 [deviceLocalSshProfileRepository] 同一 pin：Android Connect 会把 home
+/// 重绑到远端，保险库绝不能跟着走。
+VaultRepository deviceLocalVaultRepository(String nativeAppDataPath) {
+  final paths = AppPaths(nativeAppDataPath);
+  return VaultRepository(
+    rootDir: paths.vaultDir,
+    fs: LocalFilesystem(
+      pathContext: AppPaths.pathContextForDataRoot(nativeAppDataPath),
+    ),
+  );
+}
