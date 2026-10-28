@@ -10,7 +10,10 @@ void main() {
       final def = registry.tryGet(tool);
       expect(def, isNotNull, reason: '$tool missing from built-in registry');
       if (!def!.isLaunchSupported) continue;
-      if (registry.launchesAcpOnly(tool)) continue;
+      // Temporary vertical-slice skip: Tasks 11/13/16 add Antigravity's history,
+      // prompt, MCP, hook, skill, and category wiring. Gemini/CodeBuddy stay covered.
+      final needsAntigravityWiring = tool == CliTool.antigravity;
+      if (needsAntigravityWiring) continue;
       final cap = registry.capability<AiHistoryCapability>(tool);
       expect(cap, isNotNull, reason: '$tool missing AiHistoryCapability');
       expect(cap!.adapter.id, isNotEmpty);

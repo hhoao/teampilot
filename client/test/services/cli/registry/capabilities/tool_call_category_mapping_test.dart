@@ -7,10 +7,10 @@ import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 void main() {
   final registry = CliToolRegistry.builtIn();
+  // Temporary vertical-slice skip: Tasks 11/13/16 add Antigravity's history,
+  // prompt, MCP, hook, skill, and category wiring. Gemini/CodeBuddy stay covered.
   final clis = CliTool.values.where(
-    (c) =>
-        registry.tryGet(c) != null &&
-        !registry.launchesAcpOnly(c),
+    (c) => registry.tryGet(c) != null && c != CliTool.antigravity,
   );
 
   AiToolCallPart tool(String name) =>

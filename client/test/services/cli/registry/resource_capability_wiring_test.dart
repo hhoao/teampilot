@@ -12,12 +12,11 @@ import 'package:teampilot/services/resource/providers/skill_contribution_provide
 import 'package:teampilot/services/resource/resource_provider_set.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 
-/// Temporary vertical-slice skips for Antigravity (ACP-only): its prompt,
-/// MCP, hook, and skill targets land in later tasks, which must remove these
-/// skips (Tasks 11/13/16).
+/// Temporary vertical-slice skip: Tasks 11/13/16 add Antigravity's prompt,
+/// MCP, hook, and skill targets. Gemini/CodeBuddy stay covered.
 Iterable<CliToolDefinition> _ptyLaunchable(CliToolRegistry registry) =>
     registry.launchable.where(
-      (definition) => !registry.launchesAcpOnly(definition.id),
+      (definition) => definition.id != CliTool.antigravity,
     );
 
 Set<String> _expectedPromptProviderIds(CliTool cli) {
