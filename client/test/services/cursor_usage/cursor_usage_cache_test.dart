@@ -77,6 +77,48 @@ void main() {
     expect(report.inputTokens, 99);
   });
 
+  test('a re-fetch that omits a day keeps that day\'s aggregate', () {
+    final window = CursorUsageWindow(startMs: ms(1), endMs: ms(2) + 86399999);
+    var cache = applyCursorUsageEvents(CursorUsageCache(accountId: 'a'), [
+      event('e1', 1),
+      event('e2', 2),
+    ], window: window);
+
+    cache = applyCursorUsageEvents(cache, [event('e2', 2)], window: window);
+
+    final report = buildCursorUsageReport(cache, window: window);
+    expect(cache.days.firstWhere((day) => day.dayMs == ms(1)).inputTokens, 10);
+    expect(report.inputTokens, 20);
+  });
+
+  test('summaryOnly reports days that have totals but no raw events', () {
+    final window = CursorUsageWindow(startMs: ms(1), endMs: ms(2) + 86399999);
+    final days = [
+      CursorUsageDay(dayMs: ms(1), inputTokens: 10, eventCount: 1),
+      CursorUsageDay(dayMs: ms(2), inputTokens: 20, eventCount: 1),
+    ];
+
+    final withEvents = CursorUsageCache(
+      accountId: 'a',
+      days: days,
+      events: [event('e1', 1), event('e2', 2)],
+    );
+    expect(
+      buildCursorUsageReport(withEvents, window: window).summaryOnly,
+      isFalse,
+    );
+
+    final withoutEvents = CursorUsageCache(
+      accountId: 'a',
+      days: days,
+      events: [event('e2', 2)],
+    );
+    expect(
+      buildCursorUsageReport(withoutEvents, window: window).summaryOnly,
+      isTrue,
+    );
+  });
+
   test('trim drops events older than the retention window', () {
     final nowMs = ms(20);
     final cache = applyCursorUsageEvents(CursorUsageCache(accountId: 'a'), [

@@ -49,6 +49,14 @@ CursorUsageCache applyCursorUsageEvents(
     );
   }
 
+  // A day whose raw events were trimmed must not be zeroed by a fetch that no
+  // longer returns it: absence of returned data is not absence of usage.
+  for (final day in cache.days) {
+    if (!aligned.contains(day.dayMs)) continue;
+    if (daysByStart.containsKey(day.dayMs)) continue;
+    daysByStart[day.dayMs] = day;
+  }
+
   final days = daysByStart.values.toList()
     ..sort((a, b) => a.dayMs.compareTo(b.dayMs));
   final events = byId.values.toList()
@@ -112,6 +120,11 @@ CursorUsageReport buildCursorUsageReport(
     }
   }
 
+  final eventDays = {
+    for (final event in events) cursorUsageDayStartMs(event.timestampMs),
+  };
+  final summaryOnly = days.any((day) => !eventDays.contains(day.dayMs));
+
   return CursorUsageReport(
     accountId: cache.accountId,
     startMs: aligned.startMs,
@@ -126,6 +139,6 @@ CursorUsageReport buildCursorUsageReport(
     days: days,
     models: models,
     events: events,
-    summaryOnly: events.isEmpty && eventCount > 0,
+    summaryOnly: summaryOnly,
   );
 }

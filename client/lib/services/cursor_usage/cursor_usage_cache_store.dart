@@ -21,7 +21,16 @@ final class CursorUsageCacheStore {
     try {
       final decoded = jsonDecode(raw);
       if (decoded is! Map) return CursorUsageCache(accountId: accountId);
-      return CursorUsageCache.fromJson(Map<String, Object?>.from(decoded));
+      final parsed = CursorUsageCache.fromJson(
+        Map<String, Object?>.from(decoded),
+      );
+      return CursorUsageCache(
+        accountId: accountId,
+        owningUser: parsed.owningUser,
+        coverage: parsed.coverage,
+        days: parsed.days,
+        events: parsed.events,
+      );
     } on Object {
       return CursorUsageCache(accountId: accountId);
     }
