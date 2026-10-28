@@ -2,6 +2,7 @@ import '../../../models/team_config.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
 import '../registry/capabilities/acp_capability.dart';
+import '../registry/capabilities/cli_transport_capability.dart';
 import '../registry/capabilities/ai_history_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import '../registry/capabilities/cli_launch_security_capability.dart';
@@ -31,6 +32,7 @@ import 'capabilities/native_commands.dart';
 import 'capabilities/prompt.dart';
 import 'capabilities/provider.dart';
 import 'capabilities/session.dart';
+import 'capabilities/usage/session_usage.dart';
 import 'capabilities/workspace_base_info.dart';
 
 /// Gemini CLI (`@google/gemini-cli`) tool definition.
@@ -53,6 +55,7 @@ final class GeminiCliTool implements CliToolDefinition {
     this.skill = const DefaultSkillCapability(),
     this.nativeCommands = const GeminiNativeCommands(),
     this.aiHistory = const GeminiAiHistoryCapability(),
+    this.sessionUsage = const GeminiSessionUsageCapability(),
     this.userExtraArgs = const UserExtraArgsProvider(),
     this.prompt = const GeminiPromptCapability(),
     this.mcp = const GeminiMcpCapability(),
@@ -60,6 +63,9 @@ final class GeminiCliTool implements CliToolDefinition {
     this.workspaceBaseInfo = const GeminiWorkspaceBaseInfo(),
     this.launchSecurity = const AcpAskFullAccessCliLaunchSecurityCapability(),
     this.acp = const GeminiAcpCapability(),
+    this.transport = const CliTransportCapability(
+      supported: {CliTransport.acp},
+    ),
   });
 
   final TeamBehaviorCapability teamBehavior;
@@ -74,6 +80,7 @@ final class GeminiCliTool implements CliToolDefinition {
   final SkillCapability skill;
   final NativeCommandCapability nativeCommands;
   final AiHistoryCapability aiHistory;
+  final GeminiSessionUsageCapability sessionUsage;
   final UserExtraArgsProvider userExtraArgs;
   final PromptCapability prompt;
   final McpCapability mcp;
@@ -81,6 +88,7 @@ final class GeminiCliTool implements CliToolDefinition {
   final WorkspaceBaseInfoCapability workspaceBaseInfo;
   final CliLaunchSecurityCapability launchSecurity;
   final AcpCapability acp;
+  final CliTransportCapability transport;
 
   @override
   CliTool get id => CliTool.gemini;
@@ -102,6 +110,7 @@ final class GeminiCliTool implements CliToolDefinition {
     skill,
     nativeCommands,
     aiHistory,
+    sessionUsage,
     userExtraArgs,
     prompt,
     mcp,
@@ -109,5 +118,6 @@ final class GeminiCliTool implements CliToolDefinition {
     workspaceBaseInfo,
     launchSecurity,
     acp,
+    transport,
   ];
 }

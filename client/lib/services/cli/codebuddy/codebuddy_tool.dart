@@ -1,4 +1,5 @@
 import '../../../models/team_config.dart';
+import '../registry/capabilities/cli_transport_capability.dart';
 import '../registry/capabilities/acp_capability.dart';
 import '../registry/capabilities/acp_settings_capability.dart';
 import '../registry/capabilities/ai_history_capability.dart';
@@ -34,6 +35,7 @@ import 'capabilities/plugin.dart';
 import 'capabilities/prompt.dart';
 import 'capabilities/provider.dart';
 import 'capabilities/session.dart';
+import 'capabilities/usage/session_usage.dart';
 
 /// CodeBuddy CLI (`codebuddy`, alias `cbc`).
 ///
@@ -55,6 +57,7 @@ final class CodebuddyCliTool implements CliToolDefinition {
     this.skill = const DefaultSkillCapability(),
     this.nativeCommands = const CodebuddyNativeCommands(),
     this.aiHistory = const CodebuddyAiHistoryCapability(),
+    this.sessionUsage = const CodebuddySessionUsageCapability(),
     this.userExtraArgs = const UserExtraArgsProvider(),
     this.prompt = const CodebuddyPromptCapability(),
     this.mcp = const CodebuddyMcpCapability(),
@@ -66,6 +69,9 @@ final class CodebuddyCliTool implements CliToolDefinition {
     this.acpSettings = const DefaultAcpSettingsCapability(
       usesSeparateAdapter: false,
       showsPersonalAcpSwitch: false,
+    ),
+    this.transport = const CliTransportCapability(
+      supported: {CliTransport.acp},
     ),
   });
 
@@ -81,6 +87,7 @@ final class CodebuddyCliTool implements CliToolDefinition {
   final SkillCapability skill;
   final NativeCommandCapability nativeCommands;
   final AiHistoryCapability aiHistory;
+  final CodebuddySessionUsageCapability sessionUsage;
   final UserExtraArgsProvider userExtraArgs;
   final PromptCapability prompt;
   final McpCapability mcp;
@@ -90,6 +97,7 @@ final class CodebuddyCliTool implements CliToolDefinition {
   final HeadlessCapability headless;
   final AcpCapability acp;
   final AcpSettingsCapability acpSettings;
+  final CliTransportCapability transport;
 
   @override
   CliTool get id => CliTool.codebuddy;
@@ -111,6 +119,7 @@ final class CodebuddyCliTool implements CliToolDefinition {
     skill,
     nativeCommands,
     aiHistory,
+    sessionUsage,
     userExtraArgs,
     prompt,
     mcp,
@@ -120,5 +129,6 @@ final class CodebuddyCliTool implements CliToolDefinition {
     headless,
     acp,
     acpSettings,
+    transport,
   ];
 }
