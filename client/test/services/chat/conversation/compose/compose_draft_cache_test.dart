@@ -1,6 +1,10 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_draft.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_draft.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_draft_cache.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_draft_store.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_token_document.dart';
 
 import '../../../../support/in_memory_filesystem.dart';
 
@@ -9,9 +13,9 @@ void main() {
     final cache = ComposeDraftCache();
     expect(cache.landingDraft('w1'), isNull);
 
-    cache.setLandingDraft('w1', 'hello');
+    cache.setLandingDraft('w1', ComposeDraft(text: 'hello'));
 
-    expect(cache.landingDraft('w1'), 'hello');
+    expect(cache.landingDraft('w1')?.text, 'hello');
     expect(cache.landingDraft('w2'), isNull);
 
     cache.clearLandingDraft('w1');
@@ -20,8 +24,8 @@ void main() {
 
   test('session draft round-trips by sessionId', () {
     final cache = ComposeDraftCache();
-    cache.setSessionDraft('s1', 'hi');
-    expect(cache.sessionDraft('s1'), 'hi');
+    cache.setSessionDraft('s1', ComposeDraft(text: 'hi'));
+    expect(cache.sessionDraft('s1')?.text, 'hi');
     expect(cache.sessionDraft('s2'), isNull);
 
     cache.clearSessionDraft('s1');
@@ -30,32 +34,32 @@ void main() {
 
   test('landing and session keys are independent', () {
     final cache = ComposeDraftCache();
-    cache.setLandingDraft('w1', 'landing');
-    cache.setSessionDraft('s1', 'session');
+    cache.setLandingDraft('w1', ComposeDraft(text: 'landing'));
+    cache.setSessionDraft('s1', ComposeDraft(text: 'session'));
 
-    expect(cache.landingDraft('w1'), 'landing');
-    expect(cache.sessionDraft('s1'), 'session');
+    expect(cache.landingDraft('w1')?.text, 'landing');
+    expect(cache.sessionDraft('s1')?.text, 'session');
     expect(cache.sessionDraft('w1'), isNull);
 
     cache.clearLandingDraft('w1');
-    expect(cache.sessionDraft('s1'), 'session');
+    expect(cache.sessionDraft('s1')?.text, 'session');
   });
 
   test('writing trimmed-empty text removes the entry', () {
     final cache = ComposeDraftCache();
-    cache.setLandingDraft('w1', 'draft');
-    cache.setLandingDraft('w1', '   ');
+    cache.setLandingDraft('w1', ComposeDraft(text: 'draft'));
+    cache.setLandingDraft('w1', ComposeDraft(text: '   '));
     expect(cache.landingDraft('w1'), isNull);
 
-    cache.setSessionDraft('s1', 'draft');
-    cache.setSessionDraft('s1', '');
+    cache.setSessionDraft('s1', ComposeDraft(text: 'draft'));
+    cache.setSessionDraft('s1', ComposeDraft(text: ''));
     expect(cache.sessionDraft('s1'), isNull);
   });
 
   test('clear() resets all entries', () {
     final cache = ComposeDraftCache();
-    cache.setLandingDraft('w1', 'a');
-    cache.setSessionDraft('s1', 'b');
+    cache.setLandingDraft('w1', ComposeDraft(text: 'a'));
+    cache.setSessionDraft('s1', ComposeDraft(text: 'b'));
     cache.clear();
     expect(cache.landingDraft('w1'), isNull);
     expect(cache.sessionDraft('s1'), isNull);
@@ -66,11 +70,11 @@ void main() {
     () async {
       final fs = InMemoryFilesystem();
       final store = ComposeDraftStore(fs: fs, rootPath: '/tp');
-      await store.saveLanding('w1', 'persisted');
-      await store.saveSession('w1', 's1', 'persisted session');
+      await store.saveLanding('w1', ComposeDraft(text: 'persisted'));
+      await store.saveSession('w1', 's1', ComposeDraft(text: 'persisted session'));
       final cache = ComposeDraftCache(persistentStore: store);
-      cache.setLandingDraft('w1', 'typed while loading');
-      cache.setSessionDraft('s1', 'typed session while loading');
+      cache.setLandingDraft('w1', ComposeDraft(text: 'typed while loading'));
+      cache.setSessionDraft('s1', ComposeDraft(text: 'typed session while loading'));
 
       await cache.hydrateLanding(
         'w1',
@@ -84,8 +88,33 @@ void main() {
         storage: fakeHomeStorage(),
       );
 
-      expect(cache.landingDraft('w1'), 'typed while loading');
-      expect(cache.sessionDraft('s1'), 'typed session while loading');
+      expect(cache.landingDraft('w1')?.text, 'typed while loading');
+      expect(cache.sessionDraft('s1')?.text, 'typed session while loading');
     },
   );
+
+  test('token ranges survive the in-memory round-trip', () {
+    final cache = ComposeDraftCache();
+    cache.setLandingDraft(
+      'w1',
+      const ComposeDraft(
+        text: '@a hi',
+        tokens: [
+          ComposeToken(
+            id: 't',
+            kind: ComposeTokenKind.fileReference,
+            start: 0,
+            end: 2,
+            payload: '@a',
+          ),
+        ],
+      ),
+    );
+
+    expect(cache.landingDraft('w1')?.text, '@a hi');
+    expect(
+      cache.landingDraft('w1')?.tokens.single.range,
+      const TextRange(start: 0, end: 2),
+    );
+  });
 }

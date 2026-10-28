@@ -112,4 +112,36 @@ void main() {
     controller.text = '/plan ';
     expect(controller.tokenRanges, [const TextRange(start: 0, end: 5)]);
   });
+
+  test('restoreDocument keeps valid tokens and drops stale ones', () {
+    final controller = ComposeTextController(text: 'see @a and /plan');
+    addTearDown(controller.dispose);
+    controller.restoreDocument(const [
+      ComposeToken(
+        id: '1',
+        kind: ComposeTokenKind.fileReference,
+        start: 4,
+        end: 6,
+        payload: '@a',
+      ),
+      ComposeToken(
+        id: '2',
+        kind: ComposeTokenKind.skill,
+        start: 11,
+        end: 16,
+        payload: '/plan',
+      ),
+      ComposeToken(
+        id: '3',
+        kind: ComposeTokenKind.fileReference,
+        start: 0,
+        end: 3,
+        payload: '@xx',
+      ),
+    ]);
+    expect(controller.tokenRanges, [
+      const TextRange(start: 4, end: 6),
+      const TextRange(start: 11, end: 16),
+    ]);
+  });
 }

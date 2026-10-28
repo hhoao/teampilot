@@ -30,6 +30,7 @@ import '../../../models/runtime_target.dart';
 import '../../../models/git_worktree.dart';
 import '../../../services/chat/conversation/compose/compose_at_file_refs.dart';
 import '../../../services/chat/conversation/compose/compose_clip.dart';
+import '../../../services/chat/conversation/compose/compose_draft.dart';
 import '../../../services/chat/conversation/compose/compose_draft_cache.dart';
 import '../../../services/chat/conversation/compose/compose_file_attach.dart';
 import '../../../services/chat/conversation/compose/compose_file_drop_ingestor.dart';
@@ -247,7 +248,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         widget.workspace.workspaceId,
       );
       if (draft != null && draft.isNotEmpty) {
-        _setComposeText(draft);
+        _setComposeDraft(draft);
       }
     }
     _controller.addListener(_syncComposeDraft);
@@ -280,7 +281,10 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
     unawaited(
       composeDraftCache.saveLanding(
         widget.workspace.workspaceId,
-        _controller.text,
+        ComposeDraft(
+          text: _controller.text,
+          tokens: _controller.document.tokens,
+        ),
         storage: _homeStorage,
       ),
     );
@@ -298,7 +302,20 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         draft.isEmpty) {
       return;
     }
-    _setComposeText(draft);
+    _setComposeDraft(draft);
+  }
+
+  void _setComposeDraft(ComposeDraft draft) {
+    _suppressDraftSync = true;
+    try {
+      _controller.value = TextEditingValue(
+        text: draft.text,
+        selection: TextSelection.collapsed(offset: draft.text.length),
+      );
+      _controller.restoreDocument(draft.tokens);
+    } finally {
+      _suppressDraftSync = false;
+    }
   }
 
   void _setComposeText(String text) {

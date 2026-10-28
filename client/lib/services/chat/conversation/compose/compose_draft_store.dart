@@ -3,8 +3,12 @@ import 'dart:convert';
 import '../../../io/filesystem.dart';
 import '../../../storage/workspace_layout.dart';
 import '../../../../utils/lock_pool.dart';
+import 'compose_draft.dart';
 
-/// Persists landing and session compose text for one workspace.
+/// Persists landing and session compose drafts for one workspace.
+///
+/// New values are JSON maps (`{text, tokens}`); legacy plain-string drafts are
+/// still decoded with no tokens.
 class ComposeDraftStore {
   ComposeDraftStore({required Filesystem fs, required String rootPath})
     : _fs = fs,
@@ -14,35 +18,38 @@ class ComposeDraftStore {
   final WorkspaceLayout _layout;
   static final _workspaceMutationLocks = LockPool();
 
-  Future<String?> loadLanding(String workspaceId) async {
+  Future<ComposeDraft?> loadLanding(String workspaceId) async {
     final document = await _load(workspaceId);
-    return document['landing'] as String?;
+    return ComposeDraft.fromJson(document['landing']);
   }
 
-  Future<void> saveLanding(String workspaceId, String text) =>
+  Future<void> saveLanding(String workspaceId, ComposeDraft draft) =>
       _mutate(workspaceId, (document) {
-        if (text.trim().isEmpty) {
+        if (draft.isEmpty) {
           document.remove('landing');
         } else {
-          document['landing'] = text;
+          document['landing'] = draft.toJson();
         }
       });
 
-  Future<String?> loadSession(String workspaceId, String sessionId) async {
+  Future<ComposeDraft?> loadSession(String workspaceId, String sessionId) async {
     final document = await _load(workspaceId);
     final sessions = document['sessions'] as Map<String, dynamic>?;
-    return sessions?[sessionId] as String?;
+    return ComposeDraft.fromJson(sessions?[sessionId]);
   }
 
-  Future<void> saveSession(String workspaceId, String sessionId, String text) =>
-      _mutate(workspaceId, (document) {
-        final sessions = _sessions(document);
-        if (text.trim().isEmpty) {
-          sessions.remove(sessionId);
-        } else {
-          sessions[sessionId] = text;
-        }
-      });
+  Future<void> saveSession(
+    String workspaceId,
+    String sessionId,
+    ComposeDraft draft,
+  ) => _mutate(workspaceId, (document) {
+    final sessions = _sessions(document);
+    if (draft.isEmpty) {
+      sessions.remove(sessionId);
+    } else {
+      sessions[sessionId] = draft.toJson();
+    }
+  });
 
   Future<void> clearSession(String workspaceId, String sessionId) =>
       _mutate(workspaceId, (document) {

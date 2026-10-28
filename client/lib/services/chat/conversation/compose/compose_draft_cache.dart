@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../storage/home_storage.dart';
+import 'compose_draft.dart';
 import 'compose_draft_store.dart';
 
 /// Memory front for persisted compose input drafts.
@@ -9,17 +10,17 @@ import 'compose_draft_store.dart';
 /// [HomeStorage] (the app-scoped [composeDraftCache] instance has no storage
 /// of its own — UI/cubit call sites thread their injected storage in).
 ///
-/// Drafts persist plain text only. Token ranges are runtime state: restoring a
-/// draft reopens the text as plain text (no chips), matching "only explicitly
-/// inserted tokens are tokens". Re-selecting a reference creates a new token.
+/// A draft stores both its plain text and the explicit token ranges that were
+/// present. Tokens are restored only when the saved text still matches each
+/// token slice; if the text was edited elsewhere, only the text comes back.
 class ComposeDraftCache {
   ComposeDraftCache({
-    Map<String, String>? store,
+    Map<String, ComposeDraft>? store,
     ComposeDraftStore? persistentStore,
   }) : _store = store ?? {},
        _persistentStoreOverride = persistentStore;
 
-  final Map<String, String> _store;
+  final Map<String, ComposeDraft> _store;
   final ComposeDraftStore? _persistentStoreOverride;
 
   static const _landingPrefix = 'landing:';
@@ -31,74 +32,78 @@ class ComposeDraftCache {
 
   // ── Landing compose (workspace "New Chat") ──────────────────────────────
 
-  String? landingDraft(String workspaceId) =>
+  ComposeDraft? landingDraft(String workspaceId) =>
       _store[_landingPrefix + workspaceId];
 
-  void setLandingDraft(String workspaceId, String text) =>
-      _set(_landingPrefix + workspaceId, text);
+  void setLandingDraft(String workspaceId, ComposeDraft draft) =>
+      _set(_landingPrefix + workspaceId, draft);
 
   void clearLandingDraft(String workspaceId) =>
       _store.remove(_landingPrefix + workspaceId);
 
-  Future<String?> hydrateLanding(
+  Future<ComposeDraft?> hydrateLanding(
     String workspaceId, {
     required HomeStorage storage,
     bool Function()? shouldSeed,
   }) async {
-    final text = await _persistentStore(storage).loadLanding(workspaceId);
-    if (text != null && text.isNotEmpty && (shouldSeed?.call() ?? true)) {
-      setLandingDraft(workspaceId, text);
+    final draft = await _persistentStore(storage).loadLanding(workspaceId);
+    if (draft != null && draft.isNotEmpty && (shouldSeed?.call() ?? true)) {
+      setLandingDraft(workspaceId, draft);
     }
-    return text;
+    return draft;
   }
 
   Future<void> saveLanding(
     String workspaceId,
-    String text, {
+    ComposeDraft draft, {
     required HomeStorage storage,
   }) async {
-    setLandingDraft(workspaceId, text);
-    await _persistentStore(storage).saveLanding(workspaceId, text);
+    setLandingDraft(workspaceId, draft);
+    await _persistentStore(storage).saveLanding(workspaceId, draft);
   }
 
   Future<void> clearLandingPersistent(
     String workspaceId, {
     required HomeStorage storage,
-  }) => _persistentStore(storage).saveLanding(workspaceId, '');
+  }) => _persistentStore(storage).saveLanding(
+    workspaceId,
+    const ComposeDraft(text: ''),
+  );
 
   // ── Session compose (session workbench) ─────────────────────────────────
 
-  String? sessionDraft(String sessionId) => _store[_sessionPrefix + sessionId];
+  ComposeDraft? sessionDraft(String sessionId) =>
+      _store[_sessionPrefix + sessionId];
 
-  void setSessionDraft(String sessionId, String text) =>
-      _set(_sessionPrefix + sessionId, text);
+  void setSessionDraft(String sessionId, ComposeDraft draft) =>
+      _set(_sessionPrefix + sessionId, draft);
 
   void clearSessionDraft(String sessionId) =>
       _store.remove(_sessionPrefix + sessionId);
 
-  Future<String?> hydrateSession(
+  Future<ComposeDraft?> hydrateSession(
     String workspaceId,
     String sessionId, {
     required HomeStorage storage,
     bool Function()? shouldSeed,
   }) async {
-    final text = await _persistentStore(
+    final draft = await _persistentStore(
       storage,
     ).loadSession(workspaceId, sessionId);
-    if (text != null && text.isNotEmpty && (shouldSeed?.call() ?? true)) {
-      setSessionDraft(sessionId, text);
+    if (draft != null && draft.isNotEmpty && (shouldSeed?.call() ?? true)) {
+      setSessionDraft(sessionId, draft);
     }
-    return text;
+    return draft;
   }
 
   Future<void> saveSession(
     String workspaceId,
     String sessionId,
-    String text, {
+    ComposeDraft draft, {
     required HomeStorage storage,
   }) async {
-    setSessionDraft(sessionId, text);
-    await _persistentStore(storage).saveSession(workspaceId, sessionId, text);
+    setSessionDraft(sessionId, draft);
+    await _persistentStore(storage).saveSession(workspaceId, sessionId, draft);
   }
 
   Future<void> clearSessionPersistent(
@@ -109,12 +114,12 @@ class ComposeDraftCache {
 
   /// Writing trimmed-empty text removes the entry — a cleared input must not
   /// resurrect stale text on remount.
-  void _set(String key, String text) {
-    if (text.trim().isEmpty) {
+  void _set(String key, ComposeDraft draft) {
+    if (draft.isEmpty) {
       _store.remove(key);
       return;
     }
-    _store[key] = text;
+    _store[key] = draft;
   }
 
   /// Test helper / app teardown.

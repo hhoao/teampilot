@@ -38,8 +38,10 @@ import 'package:teampilot/pages/chat/session_chat_view.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_draft.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_draft_cache.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_draft_store.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_token_document.dart';
 import 'package:teampilot/services/chat/conversation/follow_up/follow_up_queue.dart';
 import 'package:teampilot/services/chat/conversation/history/history_awaiting_working_sync.dart';
 import 'package:teampilot/services/chat/conversation/history/failed_message_store.dart';
@@ -363,12 +365,46 @@ void main() {
       cli: CliTool.claude,
       createdAt: 1,
     );
-    composeDraftCache.setSessionDraft('s1', 'continue this');
+    composeDraftCache.setSessionDraft('s1', ComposeDraft(text: 'continue this'));
 
     await pumpSession(tester, session: session);
 
     final field = tester.widget<TextField>(find.byType(TextField).first);
     expect(field.controller!.text, 'continue this');
+  });
+
+  testWidgets('restores token chips with the cached session draft', (
+    tester,
+  ) async {
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'ws-1',
+      folders: const [WorkspaceFolder(path: '/work')],
+      cli: CliTool.claude,
+      createdAt: 1,
+    );
+    composeDraftCache.setSessionDraft(
+      's1',
+      const ComposeDraft(
+        text: '@a hi',
+        tokens: [
+          ComposeToken(
+            id: 't',
+            kind: ComposeTokenKind.fileReference,
+            start: 0,
+            end: 2,
+            payload: '@a',
+          ),
+        ],
+      ),
+    );
+
+    await pumpSession(tester, session: session);
+
+    final tokenField = tester.widget<TpTokenTextField>(
+      find.byType(TpTokenTextField),
+    );
+    expect(tokenField.tokenRanges, [const TpTokenRange(start: 0, end: 2)]);
   });
 
   testWidgets('session restores persisted draft after cache reset', (
@@ -378,7 +414,7 @@ void main() {
       () => ComposeDraftStore(
         fs: testHomeStorage.fs,
         rootPath: testHomeStorage.appDataRoot,
-      ).saveSession('ws-1', 's1', 'retry after restart'),
+      ).saveSession('ws-1', 's1', ComposeDraft(text: 'retry after restart')),
     );
     composeDraftCache.clear();
 
@@ -410,7 +446,7 @@ void main() {
     await tester.enterText(find.byType(TextField).first, 'draft two');
     await tester.pump();
 
-    expect(composeDraftCache.sessionDraft('s2'), 'draft two');
+    expect(composeDraftCache.sessionDraft('s2')?.text, 'draft two');
   });
 
   testWidgets('remounting after unmount restores the typed draft', (

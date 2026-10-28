@@ -41,6 +41,37 @@ class ComposeTextController extends TextEditingController {
     super.value = newValue;
   }
 
+  /// Restores token ranges that were persisted with a draft. Tokens whose
+  /// slice no longer matches the current text (or that overlap) are dropped.
+  void restoreDocument(Iterable<ComposeToken> tokens) {
+    final text = super.value.text;
+    final sorted = [...tokens]..sort((a, b) => a.start.compareTo(b.start));
+    var document = ComposeTokenDocument.empty;
+    var lastEnd = -1;
+    for (final token in sorted) {
+      if (token.start < lastEnd ||
+          token.start < 0 ||
+          token.end > text.length ||
+          token.end <= token.start) {
+        continue;
+      }
+      if (text.substring(token.start, token.end) != token.payload) continue;
+      document = document.add(
+        ComposeToken(
+          id: '${_nextTokenId++}',
+          kind: token.kind,
+          start: token.start,
+          end: token.end,
+          payload: token.payload,
+        ),
+      );
+      lastEnd = token.end;
+    }
+    _document = document;
+    _remember(text, _document);
+    notifyListeners();
+  }
+
   /// Replaces [start]..[end] with [tokenText] + [suffix] and records a token
   /// covering exactly [tokenText]. [suffix] stays plain text, so typing after
   /// it can never extend the token.

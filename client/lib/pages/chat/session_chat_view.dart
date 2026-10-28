@@ -36,6 +36,7 @@ import '../../services/chat/session/session_member_cli_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/cli/tasks/cli_task_board_controller.dart';
 import '../../services/chat/conversation/compose/compose_clip.dart';
+import '../../services/chat/conversation/compose/compose_draft.dart';
 import '../../services/chat/conversation/compose/compose_draft_cache.dart';
 import '../../services/chat/conversation/compose/compose_text_controller.dart';
 import '../../services/chat/conversation/compose/compose_file_attach.dart';
@@ -233,9 +234,10 @@ class _SessionChatViewState extends State<SessionChatView> {
     final draft = composeDraftCache.sessionDraft(widget.session.sessionId);
     if (draft != null && draft.isNotEmpty) {
       _controller.value = TextEditingValue(
-        text: draft,
-        selection: TextSelection.collapsed(offset: draft.length),
+        text: draft.text,
+        selection: TextSelection.collapsed(offset: draft.text.length),
       );
+      _controller.restoreDocument(draft.tokens);
     }
     _controller.addListener(_onComposeChanged);
     unawaited(_hydrateComposeDraft());
@@ -573,7 +575,10 @@ class _SessionChatViewState extends State<SessionChatView> {
       composeDraftCache.saveSession(
         widget.session.workspaceId,
         widget.session.sessionId,
-        _controller.text,
+        ComposeDraft(
+          text: _controller.text,
+          tokens: _controller.document.tokens,
+        ),
         storage: homeStorageOf(context),
       ),
     );
@@ -598,9 +603,10 @@ class _SessionChatViewState extends State<SessionChatView> {
       return;
     }
     _controller.value = TextEditingValue(
-      text: draft,
-      selection: TextSelection.collapsed(offset: draft.length),
+      text: draft.text,
+      selection: TextSelection.collapsed(offset: draft.text.length),
     );
+    _controller.restoreDocument(draft.tokens);
   }
 
   /// Submission owns recovery via the optimistic / failed history bubble —

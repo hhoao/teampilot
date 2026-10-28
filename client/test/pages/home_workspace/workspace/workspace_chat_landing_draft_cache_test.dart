@@ -17,8 +17,10 @@ import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing.
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_draft.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_draft_cache.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_draft_store.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_token_document.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
 import '../../../support/post_frame_test_harness.dart';
@@ -54,7 +56,7 @@ void main() {
   tearDown(tearDownTestAppStorage);
 
   testWidgets('restores the cached landing draft on mount', (tester) async {
-    composeDraftCache.setLandingDraft('workspace-1', 'my draft');
+    composeDraftCache.setLandingDraft('workspace-1', ComposeDraft(text: 'my draft'));
     await tester.pumpWidget(_landing(initialText: null));
     await tester.pumpAndSettle();
 
@@ -70,15 +72,15 @@ void main() {
       () => ComposeDraftStore(
         fs: testHomeStorage.fs,
         rootPath: testHomeStorage.appDataRoot,
-      ).saveLanding('workspace-1', 'survive restart'),
+      ).saveLanding('workspace-1', ComposeDraft(text: 'survive restart')),
     );
     expect(
-      await tester.runAsync(
+      (await tester.runAsync(
         () => ComposeDraftStore(
           fs: testHomeStorage.fs,
           rootPath: testHomeStorage.appDataRoot,
         ).loadLanding('workspace-1'),
-      ),
+      ))?.text,
       'survive restart',
     );
     composeDraftCache.clear();
@@ -89,17 +91,51 @@ void main() {
     expect(_composeField(tester).controller!.text, 'survive restart');
   });
 
+  testWidgets('restores token chips with a persisted draft', (tester) async {
+    const text = '@src/main.dart hi';
+    await tester.runAsync(
+      () => ComposeDraftStore(
+        fs: testHomeStorage.fs,
+        rootPath: testHomeStorage.appDataRoot,
+      ).saveLanding(
+        'workspace-1',
+        const ComposeDraft(
+          text: text,
+          tokens: [
+            ComposeToken(
+              id: 't',
+              kind: ComposeTokenKind.fileReference,
+              start: 0,
+              end: 14,
+              payload: '@src/main.dart',
+            ),
+          ],
+        ),
+      ),
+    );
+    composeDraftCache.clear();
+
+    await tester.pumpWidget(_landing(initialText: null));
+    await _flushRealIo(tester);
+
+    expect(_composeField(tester).controller!.text, text);
+    final tokenField = tester.widget<TpTokenTextField>(
+      find.byType(TpTokenTextField),
+    );
+    expect(tokenField.tokenRanges, [const TpTokenRange(start: 0, end: 14)]);
+  });
+
   testWidgets('does not restore the cache when initialText is provided', (
     tester,
   ) async {
-    composeDraftCache.setLandingDraft('workspace-1', 'cached');
+    composeDraftCache.setLandingDraft('workspace-1', ComposeDraft(text: 'cached'));
     await tester.pumpWidget(_landing(initialText: 'prefill'));
     await tester.pumpAndSettle();
 
     final field = tester.widget<TextField>(find.byType(TextField).first);
     expect(field.controller!.text, 'prefill');
     // The pre-seeded cache entry is untouched by Ask AI-style mounts.
-    expect(composeDraftCache.landingDraft('workspace-1'), 'cached');
+    expect(composeDraftCache.landingDraft('workspace-1')?.text, 'cached');
   });
 
   testWidgets('typing writes the draft into the cache', (tester) async {
@@ -109,11 +145,11 @@ void main() {
     await tester.enterText(find.byType(TextField).first, 'typed message');
     await tester.pump();
 
-    expect(composeDraftCache.landingDraft('workspace-1'), 'typed message');
+    expect(composeDraftCache.landingDraft('workspace-1')?.text, 'typed message');
   });
 
   testWidgets('clearing the field removes the cached draft', (tester) async {
-    composeDraftCache.setLandingDraft('workspace-1', 'old');
+    composeDraftCache.setLandingDraft('workspace-1', ComposeDraft(text: 'old'));
     await tester.pumpWidget(_landing(initialText: null));
     await tester.pumpAndSettle();
 

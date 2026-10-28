@@ -17,6 +17,7 @@ import 'package:teampilot/pages/home_workspace/workspace/workspace_chat_landing.
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/commands/command_bus.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_draft.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_draft_cache.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
@@ -131,7 +132,7 @@ void main() {
         );
       }
 
-      composeDraftCache.setLandingDraft(workspace.workspaceId, 'old draft');
+      composeDraftCache.setLandingDraft(workspace.workspaceId, ComposeDraft(text: 'old draft'));
 
       await tester.pumpWidget(
         landing(
@@ -147,7 +148,7 @@ void main() {
       expect(field().controller!.text, seed);
       expect(field().controller!.selection.baseOffset, seed.length);
       expect(
-        composeDraftCache.landingDraft(workspace.workspaceId),
+        composeDraftCache.landingDraft(workspace.workspaceId)?.text,
         'old draft',
       );
 
@@ -158,7 +159,7 @@ void main() {
 
       expect(field().controller!.text, 'replacement');
       expect(
-        composeDraftCache.landingDraft(workspace.workspaceId),
+        composeDraftCache.landingDraft(workspace.workspaceId)?.text,
         'old draft',
       );
 
@@ -167,7 +168,7 @@ void main() {
 
       expect(field().controller!.text, isEmpty);
       expect(
-        composeDraftCache.landingDraft(workspace.workspaceId),
+        composeDraftCache.landingDraft(workspace.workspaceId)?.text,
         'old draft',
       );
 
