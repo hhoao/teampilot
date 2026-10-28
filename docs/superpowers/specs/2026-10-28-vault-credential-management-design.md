@@ -44,11 +44,14 @@ client/lib/
     vault_entry.dart              # VaultEntry / VaultEntryType / 字段模板
     vault_document.dart           # VaultDocument（版本化序列化）
   services/vault/
-    credential_backend.dart       # CredentialBackend 抽象 + VaultLockedException 等
+    credential_backend.dart       # CredentialBackend 抽象 + VaultReference
+    vault_errors.dart             # VaultLockedException / VaultFormatException 等
     keychain_vault_backend.dart   # 系统钥匙串后端（默认）
     encrypted_vault_backend.dart  # 加密文件后端（可选启用）
     vault_crypto.dart             # Argon2id + AES-256-GCM（纯函数）
-    vault_service.dart            # 内存文档 + 锁定状态 + CRUD + 引用解析
+    vault_service.dart            # 内存文档 + 锁定状态 + CRUD
+  models/
+    vault_reference.dart          # 引用反查结果（cubit 产出）
   repositories/
     vault_repository.dart         # <root>/vault/vault.json 读写
   cubits/
@@ -71,6 +74,9 @@ client/lib/
 
 把整份 `VaultDocument` JSON 存在注入的 `SecureKeyValueStore` 单个 key 下：
 
+保险库是设备本地数据（见 4.2），因此计划中通过
+`deviceLocalVaultRepository(nativeAppDataPath)` 装配，而不是 `HomeStorage`。
+
 ```
 teampilot.vault.v1.document
 ```
@@ -82,8 +88,13 @@ teampilot.vault.v1.document
 ### 4.2 加密文件后端（可选启用）
 
 ```
-<teampilotRoot>/vault/vault.json
+<nativeAppDataPath>/vault/vault.json
 ```
+
+保险库是**设备本地**数据，必须和 `ssh_profiles/` 一样固定在本机
+`nativeAppDataPath`（`deviceLocalVaultRepository`），不能跟随 AppStorage 的
+home 平面。Android Connect 会把 home 重绑到远端主机，若放在 home 下会读空、
+甚至把保险库写到远端。
 
 ```json
 {
@@ -154,8 +165,9 @@ class VaultEntry {
 - `fromJson` 遇到未知 `type` 降级为 `custom`，未知字段原样保留，避免版本回退
   丢数据；`toJson` 写回时保留未知字段。
 - `toString()` 输出 `<redacted>`，不得包含字段值。
-- 引用关系不写进条目；由 `VaultService.referencesFor(entryId)` 实时扫描
-  `SshProfile` 与供应商配置得出，避免双向同步。
+- 引用关系不写进条目；由 `VaultCubit.referencesFor(entryId)` 实时扫描
+  `SshProfileRepository` 与 `AppProviderRepository` 得出，避免双向同步。
+  `VaultService` 只负责存储与取值，不依赖其它仓储。
 
 ## 6. 后端抽象与服务
 
@@ -166,27 +178,38 @@ abstract interface class CredentialBackend {
   /// 无文档返回 null；存在但锁定抛 [VaultLockedException]。
   Future<VaultDocument?> load();
   Future<void> save(VaultDocument doc);
-}
-
-class VaultReference {
-  final VaultReferenceKind kind; // sshProfile | appProvider
-  final String id;
-  final String label;
+  /// 删除（钥匙串）或归档（加密文件）本后端持有的文档。
+  Future<void> clear();
 }
 
 class VaultService {
+  Future<void> initialize();
   Future<void> unlock(String passphrase);
   void lock();
-  bool get isUnlocked;
-  Future<List<VaultEntry>> list({String query = '', Set<String> tags = {}});
+  bool get isEncrypted;
+  bool get isLocked;
+  Future<List<VaultEntry>> list({String query = '', VaultEntryType? type, Set<String> tags = const {}});
   Future<VaultEntry?> get(String id);
   Future<void> upsert(VaultEntry entry);
   Future<void> delete(String id);
   /// 条目或字段缺失返回 null；保险库锁定时抛 [VaultLockedException]。
   Future<String?> readField(String entryId, String field);
-  Future<List<VaultReference>> referencesFor(String entryId);
   Future<void> enableEncryptedBackend(String passphrase);
   Future<void> disableEncryptedBackend();
+}
+```
+
+引用反查在 `VaultCubit` 中完成：
+
+```dart
+// models/vault_reference.dart
+enum VaultReferenceKind { sshProfile, appProvider }
+
+class VaultReference {
+  const VaultReference({required this.kind, required this.id, required this.label});
+  final VaultReferenceKind kind;
+  final String id;
+  final String label;
 }
 ```
 
