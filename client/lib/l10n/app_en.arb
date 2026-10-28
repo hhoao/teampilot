@@ -4986,6 +4986,43 @@
   "sessionUsageMaintenanceFullDone": "Full usage rescan complete.",
   "sessionUsageMaintenanceFullHint": "Rebuild all sources and scan every session. Use this if history is missing.",
   "sessionUsageMaintenanceCompacted": "Usage storage compacted.",
+  "sessionUsageCursorTitle": "Cursor usage",
+  "sessionUsageCursorHint": "Cursor's local transcripts do not include token counts. Import the CSV from cursor.com/dashboard/usage, or sync with the signed-in account.",
+  "sessionUsageCursorImported": "{count} dashboard events",
+  "@sessionUsageCursorImported": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "sessionUsageCursorImportedSession": "Cursor (imported)",
+  "sessionUsageCursorNoData": "No Cursor dashboard usage imported.",
+  "sessionUsageCursorLastUpdated": "Last updated: {time}",
+  "@sessionUsageCursorLastUpdated": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "sessionUsageCursorImport": "Import CSV",
+  "sessionUsageCursorSync": "Sync",
+  "sessionUsageCursorClear": "Remove",
+  "sessionUsageCursorLoginRequired": "Cursor is not signed in, or the session expired. Open Cursor and sign in again.",
+  "sessionUsageCursorRateLimited": "Cursor rate-limited the usage export. Try again later.",
+  "sessionUsageCursorNetworkFailed": "Could not reach cursor.com. Check the network and try again.",
+  "sessionUsageCursorInvalidCsv": "That file is not a Cursor usage CSV.",
+  "sessionUsageCursorFailed": "Cursor usage import failed.",
+  "sessionUsageCursorImportedToast": "Imported {count} Cursor usage events.",
+  "@sessionUsageCursorImportedToast": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "sessionUsageCursorSyncedToast": "Synced {count} Cursor usage events.",
+  "@sessionUsageCursorSyncedToast": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "sessionUsageCursorCleared": "Removed imported Cursor usage.",
   "sessionUsageMaintenanceFailed": "Couldn't compact usage storage.",
   "sessionUsageFooterJsonl": "JSONL read-only",
   "sessionUsageFooterManual": "Auto + manual sync",

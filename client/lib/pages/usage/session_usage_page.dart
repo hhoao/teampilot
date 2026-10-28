@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/session_usage_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../services/usage/cursor_usage_sync_service.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/settings/workspace_pane_insets.dart';
@@ -164,6 +167,7 @@ class _SessionUsagePageState extends State<SessionUsagePage>
 
   Future<void> _openMaintenance(SessionUsageCubit cubit) async {
     await cubit.loadMaintenanceStats();
+    await cubit.loadCursorStatus();
     if (!mounted) return;
     final compactedMessage = context.l10n.sessionUsageMaintenanceCompacted;
     final fullDoneMessage = context.l10n.sessionUsageMaintenanceFullDone;
@@ -172,6 +176,11 @@ class _SessionUsagePageState extends State<SessionUsagePage>
       builder: (context) => UsageMaintenanceDialog(
         stats: cubit.state.usageStats,
         error: cubit.state.maintenanceError,
+        cursorStatus: cubit.state.cursorStatus,
+        cursorBusy: cubit.state.cursorBusy,
+        onImportCursorCsv: () => _importCursorCsv(cubit),
+        onSyncCursor: () => _syncCursorUsage(cubit),
+        onClearCursor: () => _clearCursorUsage(cubit),
         onCompact: () async {
           final ok = await cubit.compactUsage();
           if (ok) {
@@ -198,6 +207,74 @@ class _SessionUsagePageState extends State<SessionUsagePage>
         },
       ),
     );
+  }
+
+  Future<String?> _importCursorCsv(SessionUsageCubit cubit) async {
+    final bytes = await _pickCursorCsv();
+    if (bytes == null) return '';
+    String text;
+    try {
+      text = utf8.decode(bytes);
+    } on Object {
+      if (!mounted) return '';
+      return context.l10n.sessionUsageCursorInvalidCsv;
+    }
+    final result = await cubit.importCursorCsv(text);
+    if (!mounted) return '';
+    if (result == null) return _cursorErrorText(cubit.state.cursorError);
+    AppToast.showGlobal(
+      message: context.l10n.sessionUsageCursorImportedToast(
+        result.inserted + result.updated,
+      ),
+      variant: TpToastVariant.success,
+    );
+    return null;
+  }
+
+  Future<String?> _syncCursorUsage(SessionUsageCubit cubit) async {
+    final result = await cubit.syncCursorUsage();
+    if (!mounted) return '';
+    if (result == null) return _cursorErrorText(cubit.state.cursorError);
+    AppToast.showGlobal(
+      message: context.l10n.sessionUsageCursorSyncedToast(
+        result.inserted + result.updated,
+      ),
+      variant: TpToastVariant.success,
+    );
+    return null;
+  }
+
+  Future<String?> _clearCursorUsage(SessionUsageCubit cubit) async {
+    final ok = await cubit.clearCursorUsage();
+    if (!mounted) return '';
+    if (!ok) return _cursorErrorText(cubit.state.cursorError);
+    AppToast.showGlobal(
+      message: context.l10n.sessionUsageCursorCleared,
+      variant: TpToastVariant.info,
+    );
+    return null;
+  }
+
+  Future<List<int>?> _pickCursorCsv() async {
+    final picked = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['csv'],
+      withData: true,
+    );
+    final file = picked?.files.single;
+    if (file == null) return null;
+    return file.bytes ?? const <int>[];
+  }
+
+  String _cursorErrorText(CursorUsageSyncError? error) {
+    final l10n = context.l10n;
+    return switch (error) {
+      CursorUsageSyncError.login => l10n.sessionUsageCursorLoginRequired,
+      CursorUsageSyncError.rateLimited => l10n.sessionUsageCursorRateLimited,
+      CursorUsageSyncError.network => l10n.sessionUsageCursorNetworkFailed,
+      CursorUsageSyncError.invalidCsv => l10n.sessionUsageCursorInvalidCsv,
+      CursorUsageSyncError.http || null => l10n.sessionUsageCursorFailed,
+    };
   }
 
   Future<void> _openPricing(SessionUsageCubit cubit) async {
@@ -310,6 +387,7 @@ class _SessionUsagePageState extends State<SessionUsagePage>
           UsageFooter(
             state: state,
             onMaintenance: () => _openMaintenance(cubit),
+            onCursor: () => _openMaintenance(cubit),
           ),
         ],
       ),

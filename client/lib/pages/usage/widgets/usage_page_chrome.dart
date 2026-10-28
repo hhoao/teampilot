@@ -153,11 +153,7 @@ class UsageToolbar extends StatelessWidget {
           visualDensity: VisualDensity.compact,
           onSelected: (_) => cubit.setCli(null),
         ),
-        for (final cli in const [
-          CliTool.claude,
-          CliTool.codex,
-          CliTool.opencode,
-        ])
+        for (final cli in CliTool.values)
           ChoiceChip(
             label: Text(usageCliLabel(cli)),
             selected: state.cli == cli,
@@ -197,11 +193,13 @@ class UsageFooter extends StatelessWidget {
   const UsageFooter({
     required this.state,
     required this.onMaintenance,
+    this.onCursor,
     super.key,
   });
 
   final SessionUsageState state;
   final VoidCallback onMaintenance;
+  final VoidCallback? onCursor;
 
   @override
   Widget build(BuildContext context) {
@@ -236,6 +234,17 @@ class UsageFooter extends StatelessWidget {
                 color: cs.onSurface.withValues(alpha: 0.42),
               ),
             ),
+            if (onCursor != null)
+              TextButton.icon(
+                key: AppKeys.sessionUsageCursorButton,
+                onPressed: onCursor,
+                icon: const Icon(Icons.cloud_sync_outlined, size: 15),
+                label: Text(l10n.sessionUsageCursorTitle, style: styles.xs),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                ),
+              ),
             TextButton.icon(
               key: AppKeys.sessionUsageMaintenanceButton,
               onPressed: onMaintenance,

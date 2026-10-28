@@ -357,6 +357,10 @@ class AppPaths {
 
   String get usageSyncStateFile => _ctx.join(usageDir, 'sync_state.json');
 
+  /// Account-level Cursor dashboard import. Kept apart from the per-session
+  /// scanner so a later sync can replace its own window.
+  String get usageCursorImportFile => _ctx.join(usageDir, 'cursor_import.json');
+
   String get sshProfilesDir => _ctx.join(basePath, 'ssh_profiles');
 
   /// Control-plane runtime targets registry (`targets.json`). Holds the

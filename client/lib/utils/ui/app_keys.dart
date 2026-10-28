@@ -347,17 +347,19 @@ class AppKeys {
   static const sessionUsagePricingResetButton = Key(
     'session-usage-pricing-reset',
   );
-  static const sessionUsageMaintenanceButton = Key(
-    'session-usage-maintenance',
-  );
+  static const sessionUsageMaintenanceButton = Key('session-usage-maintenance');
+  static const sessionUsageCursorButton = Key('session-usage-cursor');
   static const sessionUsageMaintenanceDialog = Key(
     'session-usage-maintenance-dialog',
   );
-  static const sessionUsageCompactButton = Key(
-    'session-usage-compact',
+  static const sessionUsageCompactButton = Key('session-usage-compact');
+  static const sessionUsageFullSyncButton = Key('session-usage-full-sync');
+  static const sessionUsageCursorImportButton = Key(
+    'session-usage-cursor-import',
   );
-  static const sessionUsageFullSyncButton = Key(
-    'session-usage-full-sync',
+  static const sessionUsageCursorSyncButton = Key('session-usage-cursor-sync');
+  static const sessionUsageCursorClearButton = Key(
+    'session-usage-cursor-clear',
   );
   static const pluginsWorkspace = Key('plugins-workspace');
   static const mcpWorkspace = Key('mcp-workspace');

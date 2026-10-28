@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/session_usage_cubit.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/cursor_usage_import.dart';
 import 'package:teampilot/models/session_usage.dart';
 import 'package:teampilot/models/session_usage_dashboard.dart';
 import 'package:teampilot/models/session_usage_pricing.dart';
@@ -44,6 +45,34 @@ AppSession _session(String id, String display) => AppSession(
 );
 
 void main() {
+  test('imports Cursor rows and reloads the dashboard', () async {
+    final events = <SessionUsageEvent>[_event()];
+    var status = const CursorUsageImportStatus();
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => events,
+      syncAll: () async => const UsageSyncResult(),
+      loadCursorStatus: () async => status,
+      importCursorCsv: (text) async {
+        final imported = _event(id: 'cursor-1', sessionId: 'Cursor (imported)');
+        events.add(imported);
+        status = const CursorUsageImportStatus(eventCount: 1, lastSyncAtMs: 1);
+        return CursorUsageImportResult(status: status, inserted: 1);
+      },
+      loadSessions: () async => const <AppSession>[],
+      loadTeams: () async => const <TeamProfile>[],
+      now: () => _now,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.ensureLoaded();
+    final result = await cubit.importCursorCsv('csv');
+
+    expect(result, isNotNull);
+    expect(cubit.state.cursorStatus.eventCount, 1);
+    expect(cubit.state.dashboard.totalEventCount, 2);
+    expect(cubit.state.cursorBusy, isFalse);
+  });
+
   test('loads cached events and attribution', () async {
     final cubit = SessionUsageCubit(
       loadEvents: () async => [_event()],

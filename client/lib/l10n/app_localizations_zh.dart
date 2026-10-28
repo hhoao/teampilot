@@ -9433,6 +9433,67 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionUsageMaintenanceCompacted => '用量存储已压缩。';
 
   @override
+  String get sessionUsageCursorTitle => 'Cursor 用量';
+
+  @override
+  String get sessionUsageCursorHint =>
+      'Cursor 本地会话文件不含 token 数。请导入 cursor.com/dashboard/usage 导出的 CSV，或使用已登录账号同步。';
+
+  @override
+  String sessionUsageCursorImported(int count) {
+    return '$count 条 Dashboard 记录';
+  }
+
+  @override
+  String get sessionUsageCursorImportedSession => 'Cursor（导入）';
+
+  @override
+  String get sessionUsageCursorNoData => '尚未导入 Cursor Dashboard 用量。';
+
+  @override
+  String sessionUsageCursorLastUpdated(String time) {
+    return '最近更新：$time';
+  }
+
+  @override
+  String get sessionUsageCursorImport => '导入 CSV';
+
+  @override
+  String get sessionUsageCursorSync => '同步';
+
+  @override
+  String get sessionUsageCursorClear => '移除';
+
+  @override
+  String get sessionUsageCursorLoginRequired =>
+      'Cursor 未登录或登录已过期，请打开 Cursor 重新登录。';
+
+  @override
+  String get sessionUsageCursorRateLimited => 'Cursor 限流了用量导出，请稍后再试。';
+
+  @override
+  String get sessionUsageCursorNetworkFailed => '无法连接 cursor.com，请检查网络后重试。';
+
+  @override
+  String get sessionUsageCursorInvalidCsv => '该文件不是 Cursor 用量 CSV。';
+
+  @override
+  String get sessionUsageCursorFailed => 'Cursor 用量导入失败。';
+
+  @override
+  String sessionUsageCursorImportedToast(int count) {
+    return '已导入 $count 条 Cursor 用量记录。';
+  }
+
+  @override
+  String sessionUsageCursorSyncedToast(int count) {
+    return '已同步 $count 条 Cursor 用量记录。';
+  }
+
+  @override
+  String get sessionUsageCursorCleared => '已移除导入的 Cursor 用量。';
+
+  @override
   String get sessionUsageMaintenanceFailed => '用量存储压缩失败。';
 
   @override

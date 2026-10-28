@@ -1,16 +1,22 @@
 import 'dart:async';
 
+import 'package:http/http.dart' as http;
+
 import '../models/app_session.dart';
+import '../models/cursor_usage_import.dart';
 import '../models/session_usage.dart';
 import '../models/session_usage_pricing.dart';
 import '../models/session_usage_sync_state.dart';
 import '../models/team_config.dart';
 import '../repositories/launch_profile_repository.dart';
 import '../repositories/session_repository.dart';
+import '../services/cli/cursor/provider/cursor_usage_auth_resolver.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/storage/home_storage.dart';
 import '../services/usage/json_usage_cursor_store.dart';
 import '../services/usage/json_usage_pricing_store.dart';
+import '../services/usage/cursor_usage_import_store.dart';
+import '../services/usage/cursor_usage_sync_service.dart';
 import '../services/usage/json_usage_store.dart';
 import '../services/usage/json_usage_sync_state_store.dart';
 import '../services/usage/session_usage_sync_service.dart';
@@ -37,6 +43,10 @@ final class SessionUsageServices {
     required this.compactUsage,
     required this.loadSessions,
     required this.loadTeams,
+    required this.loadCursorStatus,
+    required this.importCursorCsv,
+    required this.syncCursorUsage,
+    required this.clearCursorUsage,
   });
 
   final Future<UsageSyncResult> Function() syncAll;
@@ -49,6 +59,10 @@ final class SessionUsageServices {
   final Future<UsageCompactResult> Function({int? retainAfterMs}) compactUsage;
   final Future<List<AppSession>> Function() loadSessions;
   final Future<List<TeamProfile>> Function() loadTeams;
+  final Future<CursorUsageImportStatus> Function() loadCursorStatus;
+  final Future<CursorUsageImportResult> Function(String text) importCursorCsv;
+  final Future<CursorUsageImportResult> Function() syncCursorUsage;
+  final Future<void> Function() clearCursorUsage;
 
   factory SessionUsageServices.forStorage({
     required HomeStorage storage,
@@ -57,6 +71,7 @@ final class SessionUsageServices {
     LaunchProfileRepository? teams,
     Future<List<AppSession>> Function()? loadSessions,
     Future<List<TeamProfile>> Function()? loadTeams,
+    http.Client? cursorHttpClient,
   }) {
     final registryForPlane = registry ?? CliToolRegistry.builtIn();
 
@@ -78,7 +93,10 @@ final class SessionUsageServices {
       final key = '${storage.generation}:${storage.paths.usageEventsFile}';
       if (planeStores == null || planeKey != key) {
         planeKey = key;
-        planeStores = _PlaneUsageStores(storage);
+        planeStores = _PlaneUsageStores(
+          storage,
+          cursorHttpClient: cursorHttpClient,
+        );
       }
       return planeStores!;
     }
@@ -173,11 +191,25 @@ final class SessionUsageServices {
 
     Future<UsageSyncResult> syncAll() => runSync(full: false);
 
+    Future<List<SessionUsageEvent>> loadEvents() async {
+      final stores = currentStores();
+      final base = await stores.store.readLatest();
+      final imported = await stores.cursorImport.loadEvents();
+      if (imported.isEmpty) return base;
+      final byId = {for (final event in base) event.requestId: event};
+      for (final event in imported) {
+        byId[event.requestId] = event;
+      }
+      final merged = byId.values.toList(growable: false);
+      merged.sort((a, b) => a.timestampMs.compareTo(b.timestampMs));
+      return merged;
+    }
+
     return SessionUsageServices._(
       syncAll: syncAll,
       startSync: startSync,
       startFullSync: startFullSync,
-      loadEvents: () => currentStores().store.readLatest(),
+      loadEvents: loadEvents,
       loadPricing: () => currentStores().pricing.load(),
       savePricing: (rules) => currentStores().pricing.save(rules),
       loadUsageStats: () => currentStores().store.stats(),
@@ -185,12 +217,16 @@ final class SessionUsageServices {
           currentStores().store.compact(retainAfterMs: retainAfterMs),
       loadSessions: loadSessionsFn,
       loadTeams: loadTeamsFn,
+      loadCursorStatus: () => currentStores().cursorSync.status(),
+      importCursorCsv: (text) => currentStores().cursorSync.importCsv(text),
+      syncCursorUsage: () => currentStores().cursorSync.sync(),
+      clearCursorUsage: () => currentStores().cursorSync.clear(),
     );
   }
 }
 
 final class _PlaneUsageStores {
-  _PlaneUsageStores(HomeStorage storage)
+  _PlaneUsageStores(HomeStorage storage, {http.Client? cursorHttpClient})
     : store = JsonUsageStore(
         fs: storage.fs,
         filePath: storage.paths.usageEventsFile,
@@ -206,10 +242,26 @@ final class _PlaneUsageStores {
       syncState = JsonUsageSyncStateStore(
         fs: storage.fs,
         filePath: storage.paths.usageSyncStateFile,
-      );
+      ) {
+    cursorImport = CursorUsageImportStore(
+      fs: storage.fs,
+      filePath: storage.paths.usageCursorImportFile,
+    );
+    cursorSync = CursorUsageSyncService(
+      store: cursorImport,
+      auth: CursorUsageAuthResolver(
+        fs: storage.fs,
+        basePath: storage.paths.basePath,
+        home: storage.home,
+      ),
+      httpClient: cursorHttpClient,
+    );
+  }
 
   final JsonUsageStore store;
   final JsonUsageCursorStore cursors;
   final JsonUsagePricingStore pricing;
   final JsonUsageSyncStateStore syncState;
+  late final CursorUsageImportStore cursorImport;
+  late final CursorUsageSyncService cursorSync;
 }

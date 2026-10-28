@@ -4290,6 +4290,43 @@
   "sessionUsageMaintenanceFullDone": "全量用量重扫完成。",
   "sessionUsageMaintenanceFullHint": "重建全部数据源并扫描所有会话；历史缺失时使用。",
   "sessionUsageMaintenanceCompacted": "用量存储已压缩。",
+  "sessionUsageCursorTitle": "Cursor 用量",
+  "sessionUsageCursorHint": "Cursor 本地会话文件不含 token 数。请导入 cursor.com/dashboard/usage 导出的 CSV，或使用已登录账号同步。",
+  "sessionUsageCursorImported": "{count} 条 Dashboard 记录",
+  "@sessionUsageCursorImported": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "sessionUsageCursorImportedSession": "Cursor（导入）",
+  "sessionUsageCursorNoData": "尚未导入 Cursor Dashboard 用量。",
+  "sessionUsageCursorLastUpdated": "最近更新：{time}",
+  "@sessionUsageCursorLastUpdated": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "sessionUsageCursorImport": "导入 CSV",
+  "sessionUsageCursorSync": "同步",
+  "sessionUsageCursorClear": "移除",
+  "sessionUsageCursorLoginRequired": "Cursor 未登录或登录已过期，请打开 Cursor 重新登录。",
+  "sessionUsageCursorRateLimited": "Cursor 限流了用量导出，请稍后再试。",
+  "sessionUsageCursorNetworkFailed": "无法连接 cursor.com，请检查网络后重试。",
+  "sessionUsageCursorInvalidCsv": "该文件不是 Cursor 用量 CSV。",
+  "sessionUsageCursorFailed": "Cursor 用量导入失败。",
+  "sessionUsageCursorImportedToast": "已导入 {count} 条 Cursor 用量记录。",
+  "@sessionUsageCursorImportedToast": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "sessionUsageCursorSyncedToast": "已同步 {count} 条 Cursor 用量记录。",
+  "@sessionUsageCursorSyncedToast": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "sessionUsageCursorCleared": "已移除导入的 Cursor 用量。",
   "sessionUsageMaintenanceFailed": "用量存储压缩失败。",
   "sessionUsageFooterJsonl": "JSONL 只读",
   "sessionUsageFooterManual": "自动 + 手动同步",

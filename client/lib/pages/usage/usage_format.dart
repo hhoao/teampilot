@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/session_usage_dashboard.dart';
 import '../../models/team_config.dart';
+import '../../models/cursor_usage_import.dart';
 import '../../services/usage/usage_aggregator.dart';
 
 String formatUsageTokens(int value) {
@@ -97,6 +98,9 @@ String usageGroupSubtitle(BuildContext context, String subtitle) {
 
 String usageGroupName(BuildContext context, UsageGroup group) {
   final l10n = context.l10n;
+  if (group.label == cursorImportedSessionId) {
+    return l10n.sessionUsageCursorImportedSession;
+  }
   return switch (group.label) {
     usageUnknownModel => l10n.sessionUsageUnknownModel,
     usageUnknownSession => l10n.sessionUsageUnknownSession,

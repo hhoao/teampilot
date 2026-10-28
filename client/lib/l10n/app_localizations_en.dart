@@ -9854,6 +9854,70 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionUsageMaintenanceCompacted => 'Usage storage compacted.';
 
   @override
+  String get sessionUsageCursorTitle => 'Cursor usage';
+
+  @override
+  String get sessionUsageCursorHint =>
+      'Cursor\'s local transcripts do not include token counts. Import the CSV from cursor.com/dashboard/usage, or sync with the signed-in account.';
+
+  @override
+  String sessionUsageCursorImported(int count) {
+    return '$count dashboard events';
+  }
+
+  @override
+  String get sessionUsageCursorImportedSession => 'Cursor (imported)';
+
+  @override
+  String get sessionUsageCursorNoData => 'No Cursor dashboard usage imported.';
+
+  @override
+  String sessionUsageCursorLastUpdated(String time) {
+    return 'Last updated: $time';
+  }
+
+  @override
+  String get sessionUsageCursorImport => 'Import CSV';
+
+  @override
+  String get sessionUsageCursorSync => 'Sync';
+
+  @override
+  String get sessionUsageCursorClear => 'Remove';
+
+  @override
+  String get sessionUsageCursorLoginRequired =>
+      'Cursor is not signed in, or the session expired. Open Cursor and sign in again.';
+
+  @override
+  String get sessionUsageCursorRateLimited =>
+      'Cursor rate-limited the usage export. Try again later.';
+
+  @override
+  String get sessionUsageCursorNetworkFailed =>
+      'Could not reach cursor.com. Check the network and try again.';
+
+  @override
+  String get sessionUsageCursorInvalidCsv =>
+      'That file is not a Cursor usage CSV.';
+
+  @override
+  String get sessionUsageCursorFailed => 'Cursor usage import failed.';
+
+  @override
+  String sessionUsageCursorImportedToast(int count) {
+    return 'Imported $count Cursor usage events.';
+  }
+
+  @override
+  String sessionUsageCursorSyncedToast(int count) {
+    return 'Synced $count Cursor usage events.';
+  }
+
+  @override
+  String get sessionUsageCursorCleared => 'Removed imported Cursor usage.';
+
+  @override
   String get sessionUsageMaintenanceFailed =>
       'Couldn\'t compact usage storage.';
 

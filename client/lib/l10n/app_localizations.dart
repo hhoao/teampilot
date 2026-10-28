@@ -17474,6 +17474,108 @@ abstract class AppLocalizations {
   /// **'Usage storage compacted.'**
   String get sessionUsageMaintenanceCompacted;
 
+  /// No description provided for @sessionUsageCursorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cursor usage'**
+  String get sessionUsageCursorTitle;
+
+  /// No description provided for @sessionUsageCursorHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Cursor\'s local transcripts do not include token counts. Import the CSV from cursor.com/dashboard/usage, or sync with the signed-in account.'**
+  String get sessionUsageCursorHint;
+
+  /// No description provided for @sessionUsageCursorImported.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} dashboard events'**
+  String sessionUsageCursorImported(int count);
+
+  /// No description provided for @sessionUsageCursorImportedSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Cursor (imported)'**
+  String get sessionUsageCursorImportedSession;
+
+  /// No description provided for @sessionUsageCursorNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No Cursor dashboard usage imported.'**
+  String get sessionUsageCursorNoData;
+
+  /// No description provided for @sessionUsageCursorLastUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Last updated: {time}'**
+  String sessionUsageCursorLastUpdated(String time);
+
+  /// No description provided for @sessionUsageCursorImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import CSV'**
+  String get sessionUsageCursorImport;
+
+  /// No description provided for @sessionUsageCursorSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync'**
+  String get sessionUsageCursorSync;
+
+  /// No description provided for @sessionUsageCursorClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get sessionUsageCursorClear;
+
+  /// No description provided for @sessionUsageCursorLoginRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Cursor is not signed in, or the session expired. Open Cursor and sign in again.'**
+  String get sessionUsageCursorLoginRequired;
+
+  /// No description provided for @sessionUsageCursorRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Cursor rate-limited the usage export. Try again later.'**
+  String get sessionUsageCursorRateLimited;
+
+  /// No description provided for @sessionUsageCursorNetworkFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach cursor.com. Check the network and try again.'**
+  String get sessionUsageCursorNetworkFailed;
+
+  /// No description provided for @sessionUsageCursorInvalidCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'That file is not a Cursor usage CSV.'**
+  String get sessionUsageCursorInvalidCsv;
+
+  /// No description provided for @sessionUsageCursorFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Cursor usage import failed.'**
+  String get sessionUsageCursorFailed;
+
+  /// No description provided for @sessionUsageCursorImportedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported {count} Cursor usage events.'**
+  String sessionUsageCursorImportedToast(int count);
+
+  /// No description provided for @sessionUsageCursorSyncedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced {count} Cursor usage events.'**
+  String sessionUsageCursorSyncedToast(int count);
+
+  /// No description provided for @sessionUsageCursorCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed imported Cursor usage.'**
+  String get sessionUsageCursorCleared;
+
   /// No description provided for @sessionUsageMaintenanceFailed.
   ///
   /// In en, this message translates to:

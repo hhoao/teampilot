@@ -4,10 +4,12 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/app_session.dart';
+import '../models/cursor_usage_import.dart';
 import '../models/session_usage.dart';
 import '../models/session_usage_dashboard.dart';
 import '../models/session_usage_pricing.dart';
 import '../models/team_config.dart';
+import '../services/usage/cursor_usage_sync_service.dart';
 import '../services/usage/session_usage_sync_service.dart';
 import '../services/usage/usage_aggregator.dart';
 import '../services/usage/usage_pricing_store.dart';
@@ -41,6 +43,9 @@ final class SessionUsageState extends Equatable {
     this.usageStats,
     this.maintenanceBusy = false,
     this.maintenanceError,
+    this.cursorStatus = const CursorUsageImportStatus(),
+    this.cursorBusy = false,
+    this.cursorError,
     this.errorMessage,
   }) : syncErrors = List.unmodifiable(syncErrors);
 
@@ -66,6 +71,9 @@ final class SessionUsageState extends Equatable {
   final UsageStoreStats? usageStats;
   final bool maintenanceBusy;
   final String? maintenanceError;
+  final CursorUsageImportStatus cursorStatus;
+  final bool cursorBusy;
+  final CursorUsageSyncError? cursorError;
   final String? errorMessage;
 
   bool get hasData => dashboard.totalEventCount > 0;
@@ -99,6 +107,10 @@ final class SessionUsageState extends Equatable {
     bool? maintenanceBusy,
     String? maintenanceError,
     bool clearMaintenanceError = false,
+    CursorUsageImportStatus? cursorStatus,
+    bool? cursorBusy,
+    CursorUsageSyncError? cursorError,
+    bool clearCursorError = false,
     String? errorMessage,
     bool clearError = false,
   }) {
@@ -133,6 +145,9 @@ final class SessionUsageState extends Equatable {
       maintenanceError: clearMaintenanceError
           ? null
           : (maintenanceError ?? this.maintenanceError),
+      cursorStatus: cursorStatus ?? this.cursorStatus,
+      cursorBusy: cursorBusy ?? this.cursorBusy,
+      cursorError: clearCursorError ? null : (cursorError ?? this.cursorError),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -161,6 +176,9 @@ final class SessionUsageState extends Equatable {
     usageStats,
     maintenanceBusy,
     maintenanceError,
+    cursorStatus,
+    cursorBusy,
+    cursorError,
     errorMessage,
   ];
 }
@@ -179,6 +197,10 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     Future<void> Function(List<UsagePriceRule> rules)? savePricing,
     Future<UsageStoreStats> Function()? loadUsageStats,
     Future<UsageCompactResult> Function({int? retainAfterMs})? compactUsage,
+    Future<CursorUsageImportStatus> Function()? loadCursorStatus,
+    Future<CursorUsageImportResult> Function(String text)? importCursorCsv,
+    Future<CursorUsageImportResult> Function()? syncCursorUsage,
+    Future<void> Function()? clearCursorUsage,
     required Future<List<AppSession>> Function() loadSessions,
     required Future<List<TeamProfile>> Function() loadTeams,
     Stream<void>? storageChanges,
@@ -191,6 +213,10 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
        _savePricing = savePricing,
        _loadUsageStats = loadUsageStats,
        _compactUsage = compactUsage,
+       _loadCursorStatus = loadCursorStatus,
+       _importCursorCsv = importCursorCsv,
+       _syncCursorUsage = syncCursorUsage,
+       _clearCursorUsage = clearCursorUsage,
        _loadSessions = loadSessions,
        _loadTeams = loadTeams,
        _now = now ?? DateTime.now,
@@ -209,6 +235,10 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   final Future<UsageStoreStats> Function()? _loadUsageStats;
   final Future<UsageCompactResult> Function({int? retainAfterMs})?
   _compactUsage;
+  final Future<CursorUsageImportStatus> Function()? _loadCursorStatus;
+  final Future<CursorUsageImportResult> Function(String text)? _importCursorCsv;
+  final Future<CursorUsageImportResult> Function()? _syncCursorUsage;
+  final Future<void> Function()? _clearCursorUsage;
   final Future<List<AppSession>> Function() _loadSessions;
   final Future<List<TeamProfile>> Function() _loadTeams;
   final DateTime Function() _now;
@@ -549,6 +579,89 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       nowMs: _now().millisecondsSinceEpoch,
       pricing: _pricing,
     );
+  }
+
+  Future<void> loadCursorStatus() async {
+    final loader = _loadCursorStatus;
+    if (loader == null) return;
+    try {
+      final status = await loader();
+      emit(state.copyWith(cursorStatus: status, clearCursorError: true));
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[usage] cursor status load failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<CursorUsageImportResult?> importCursorCsv(String text) =>
+      _runCursorAction(() async {
+        final action = _importCursorCsv;
+        if (action == null) return null;
+        return action(text);
+      });
+
+  Future<CursorUsageImportResult?> syncCursorUsage() =>
+      _runCursorAction(() async {
+        final action = _syncCursorUsage;
+        if (action == null) return null;
+        return action();
+      });
+
+  Future<bool> clearCursorUsage() async {
+    final action = _clearCursorUsage;
+    if (action == null) return false;
+    emit(state.copyWith(cursorBusy: true, clearCursorError: true));
+    try {
+      await action();
+      await loadCursorStatus();
+      await _reloadAfterExternalWrite();
+      return true;
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[usage] clear cursor usage failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      emit(state.copyWith(cursorError: CursorUsageSyncError.http));
+      return false;
+    } finally {
+      emit(state.copyWith(cursorBusy: false));
+    }
+  }
+
+  Future<CursorUsageImportResult?> _runCursorAction(
+    Future<CursorUsageImportResult?> Function() action,
+  ) async {
+    emit(state.copyWith(cursorBusy: true, clearCursorError: true));
+    try {
+      final result = await action();
+      if (result == null) return null;
+      emit(state.copyWith(cursorStatus: result.status));
+      await _reloadAfterExternalWrite();
+      return result;
+    } on CursorUsageSyncException catch (error) {
+      emit(state.copyWith(cursorError: error.code));
+      return null;
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[usage] cursor import failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      emit(state.copyWith(cursorError: CursorUsageSyncError.http));
+      return null;
+    } finally {
+      emit(state.copyWith(cursorBusy: false));
+    }
+  }
+
+  Future<void> _reloadAfterExternalWrite() async {
+    final inFlight = _loadFlight;
+    if (inFlight != null) await inFlight;
+    await reload();
   }
 
   @override
