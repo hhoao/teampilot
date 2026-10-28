@@ -49,13 +49,15 @@ final class SessionActivityAggregator {
         activeSessionId: activeSessionId,
         presenceNonEmpty: presence.isNotEmpty,
       );
-      final sessionWorking = usesPresenceSnapshot
-          ? presence.values.any((p) => p.isWorking)
-          : _sessionWorking.tabHasWorkingMember(
-              tab: tab,
-              team: _teamForTab(tab),
-              globalPresets: _globalPresets(),
-            );
+      final sessionWorking =
+          _acpInTurn(tab) ||
+          (usesPresenceSnapshot
+              ? presence.values.any((p) => p.isWorking)
+              : _sessionWorking.tabHasWorkingMember(
+                  tab: tab,
+                  team: _teamForTab(tab),
+                  globalPresets: _globalPresets(),
+                ));
       if (sessionWorking) {
         reasons.add(SessionBusyReason.inTurn);
       }
@@ -81,4 +83,15 @@ final class SessionActivityAggregator {
     if (activeTeam?.id == teamId) return activeTeam;
     return null;
   }
+
+  /// Terminal-less ACP seats have no [ChatTab.memberShells], so neither the
+  /// shell latch nor the presence snapshot can see their turn. Ask the runtime
+  /// itself: `AcpChatRuntimeCubit.state.inTurn` is set when the prompt is
+  /// dispatched and only cleared by the turn's stop/cancel event. It is the
+  /// authoritative source and — unlike the attention stamp, which is written
+  /// once per turn and expires after `agentAttentionStaleAfter` (30 min) — it
+  /// keeps a long turn busy for its whole lifetime.
+  bool _acpInTurn(ChatTab tab) => tab.liveAcpRuntimes.any(
+    (cubit) => cubit.state.inTurn || cubit.state.pendingClient != null,
+  );
 }
