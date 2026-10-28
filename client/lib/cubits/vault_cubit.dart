@@ -219,31 +219,53 @@ class VaultCubit extends Cubit<VaultState> {
   }
 
   Future<void> remove(String id) async {
-    await _service.delete(id);
-    await _refresh();
-    emit(state.copyWith(clearSelected: state.selectedId == id));
+    emit(state.copyWith(busy: true, clearError: true));
+    try {
+      await _service.delete(id);
+      await _refresh();
+      emit(
+        state.copyWith(
+          busy: false,
+          clearSelected: state.selectedId == id,
+        ),
+      );
+    } on VaultException catch (error) {
+      emit(state.copyWith(busy: false, errorMessage: error.code));
+    }
   }
 
   Future<void> enableEncryption(String passphrase) async {
-    await _service.enableEncryptedBackend(passphrase);
-    emit(
-      state.copyWith(
-        status: VaultStatus.ready,
-        encrypted: true,
-        unlocked: true,
-      ),
-    );
+    emit(state.copyWith(busy: true, clearError: true));
+    try {
+      await _service.enableEncryptedBackend(passphrase);
+      emit(
+        state.copyWith(
+          status: VaultStatus.ready,
+          busy: false,
+          encrypted: true,
+          unlocked: true,
+        ),
+      );
+    } on VaultException catch (error) {
+      emit(state.copyWith(busy: false, errorMessage: error.code));
+    }
   }
 
   Future<void> disableEncryption() async {
-    await _service.disableEncryptedBackend();
-    emit(
-      state.copyWith(
-        status: VaultStatus.ready,
-        encrypted: false,
-        unlocked: true,
-      ),
-    );
+    emit(state.copyWith(busy: true, clearError: true));
+    try {
+      await _service.disableEncryptedBackend();
+      emit(
+        state.copyWith(
+          status: VaultStatus.ready,
+          busy: false,
+          encrypted: false,
+          unlocked: true,
+        ),
+      );
+    } on VaultException catch (error) {
+      emit(state.copyWith(busy: false, errorMessage: error.code));
+    }
   }
 
   Future<List<VaultReference>> referencesFor(String entryId) async {
