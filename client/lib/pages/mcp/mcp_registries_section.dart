@@ -10,6 +10,7 @@ import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/home_storage_scope.dart';
 import '../../widgets/catalog/catalog_registry_row_actions.dart';
+import '../../widgets/tp_password_input.dart';
 import '../../widgets/workspace_library_card.dart';
 
 /// Registry API sources (skills repos layout).
@@ -311,10 +312,8 @@ class _RegistrySourceEditDialogState extends State<_RegistrySourceEditDialog> {
           ),
           if (_isSmithery) ...[
             const SizedBox(height: 12),
-            TextField(
+            TpPasswordInput(
               controller: _tokenCtrl,
-              obscureText: true,
-              autocorrect: false,
               decoration: InputDecoration(
                 labelText: l10n.mcpSmitheryApiTokenLabel,
                 hintText: l10n.mcpSmitheryApiTokenHint,

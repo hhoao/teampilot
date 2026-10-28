@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../widgets/app_toast/app_toast.dart';
+import '../widgets/tp_password_input.dart';
 import 'package:uuid/uuid.dart';
 
 import '../l10n/l10n_extensions.dart';
@@ -45,6 +46,8 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
   final _privateKeyController = TextEditingController();
   final _passphraseController = TextEditingController();
   var _authType = SshAuthType.privateKey;
+  var _obscurePassword = true;
+  var _obscurePassphrase = true;
   var _saving = false;
   var _testing = false;
 
@@ -247,8 +250,14 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
           decoration: InputDecoration(
             labelText: 'Password',
             hintText: _isEditing ? '留空则保留已保存密码' : null,
+            suffixIcon: TpPasswordVisibilityToggle(
+              key: const ValueKey('ssh-password-visibility-toggle'),
+              obscured: _obscurePassword,
+              onPressed: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
+            ),
           ),
-          obscureText: true,
+          obscureText: _obscurePassword,
           validator: (v) =>
               !_isEditing && (v == null || v.trim().isEmpty) ? '必填' : null,
         )
@@ -293,11 +302,17 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
         const SizedBox(height: 12),
         TextFormField(
           controller: _passphraseController,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Private Key Passphrase',
             hintText: '可选',
+            suffixIcon: TpPasswordVisibilityToggle(
+              key: const ValueKey('ssh-passphrase-visibility-toggle'),
+              obscured: _obscurePassphrase,
+              onPressed: () =>
+                  setState(() => _obscurePassphrase = !_obscurePassphrase),
+            ),
           ),
-          obscureText: true,
+          obscureText: _obscurePassphrase,
         ),
       ],
       const SizedBox(height: 24),

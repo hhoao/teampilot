@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../../widgets/app_toast/app_toast.dart';
+import '../../widgets/tp_password_input.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../cubits/ssh_profile_cubit.dart';
@@ -428,20 +429,29 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       description: helper == null ? null : Text(helper),
       validator: validator,
       builder: (state) {
+        final decoration = InputDecoration(
+          hintText: hint,
+          prefixIcon: prefixIcon == null ? null : Icon(prefixIcon),
+          suffixIcon: suffix,
+          // Border reflects error; message is shown by TpFormFieldLayout.
+          errorText: state.hasError ? '' : null,
+          errorStyle: const TextStyle(height: 0, fontSize: 0),
+        );
+        if (obscure) {
+          return TpPasswordInput(
+            controller: controller,
+            focusNode: state.focusNode,
+            keyboardType: keyboardType,
+            onChanged: state.didChange,
+            decoration: decoration,
+          );
+        }
         return TextField(
           controller: controller,
           focusNode: state.focusNode,
-          obscureText: obscure,
           keyboardType: keyboardType,
           onChanged: state.didChange,
-          decoration: InputDecoration(
-            hintText: hint,
-            prefixIcon: prefixIcon == null ? null : Icon(prefixIcon),
-            suffixIcon: suffix,
-            // Border reflects error; message is shown by TpFormFieldLayout.
-            errorText: state.hasError ? '' : null,
-            errorStyle: const TextStyle(height: 0, fontSize: 0),
-          ),
+          decoration: decoration,
         );
       },
     );

@@ -5,6 +5,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/managed_provider.dart';
 import '../../models/managed_provider_editor_schema.dart';
 import '../../services/provider_usage/managed_provider_presets.dart';
+import '../../widgets/tp_password_input.dart';
 import 'managed_provider_editor_field_examples.dart';
 import 'managed_provider_editor_validation.dart';
 
@@ -644,18 +645,28 @@ class _ManagedProviderTextField extends StatelessWidget {
   final FocusNode? focusNode;
 
   @override
-  Widget build(BuildContext context) => _LabeledControl(
-    label: label,
-    tip: tip,
-    child: TpInput(
-      key: fieldKey,
-      controller: controller,
-      focusNode: focusNode,
-      decoration: InputDecoration(hintText: hint),
-      obscureText: obscureText,
-      onChanged: onChanged,
-    ),
-  );
+  Widget build(BuildContext context) {
+    final decoration = InputDecoration(hintText: hint);
+    return _LabeledControl(
+      label: label,
+      tip: tip,
+      child: obscureText
+          ? TpPasswordInput(
+              key: fieldKey,
+              controller: controller,
+              focusNode: focusNode,
+              decoration: decoration,
+              onChanged: onChanged,
+            )
+          : TpInput(
+              key: fieldKey,
+              controller: controller,
+              focusNode: focusNode,
+              decoration: decoration,
+              onChanged: onChanged,
+            ),
+    );
+  }
 }
 
 class _LabeledControl extends StatelessWidget {

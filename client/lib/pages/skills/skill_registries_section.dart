@@ -12,6 +12,7 @@ import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/button_callbacks.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/catalog/catalog_registry_row_actions.dart';
+import '../../widgets/tp_password_input.dart';
 import '../../widgets/workspace_library_card.dart';
 import 'skill_management_cards.dart';
 
@@ -684,10 +685,8 @@ class _RegistryEditDialogState extends State<_RegistryEditDialog> {
             ),
             if (widget.config.protocol == SkillRegistryProtocol.skillsMp) ...[
               const SizedBox(height: 12),
-              TextField(
+              TpPasswordInput(
                 controller: _tokenCtl,
-                obscureText: true,
-                autocorrect: false,
                 decoration: InputDecoration(
                   labelText: l10n.skillsRegistryTokenLabel,
                 ),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
 import '../app_toast/app_toast.dart';
+import '../tp_password_input.dart';
 
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/managed_provider_cubit.dart';
@@ -510,9 +511,8 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                         entryName: _linkedEntryName(context),
                       )
                     else
-                      TpInput(
+                      TpPasswordInput(
                         controller: _apiKeyCtl,
-                        obscureText: true,
                         decoration: InputDecoration(
                           labelText: l10n.apiKey,
                           hintText: _isEditing

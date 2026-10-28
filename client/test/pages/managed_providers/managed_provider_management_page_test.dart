@@ -23,6 +23,7 @@ import 'package:teampilot/services/provider_usage/managed_provider_usage_coordin
     hide ManagedProviderUsageState;
 import 'package:teampilot/services/provider_usage/managed_provider_usage_registry.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
+import 'package:teampilot/widgets/tp_password_input.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
@@ -854,7 +855,7 @@ void main() {
     });
     await tester.pumpAndSettle();
 
-    final secretInput = tester.widget<TpInput>(
+    final secretInput = tester.widget<TpPasswordInput>(
       find.byKey(const Key('managed-provider-credential-secret')),
     );
     expect(secretInput.focusNode?.hasFocus, isTrue);

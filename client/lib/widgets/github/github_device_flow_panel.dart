@@ -5,6 +5,7 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../cubits/github_account_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/github/github_credentials_store.dart';
+import '../tp_password_input.dart';
 
 /// Shared GitHub Device Flow connect / waiting / connected UI for Settings and
 /// Hub publish.
@@ -78,10 +79,9 @@ class _GithubDeviceFlowPanelState extends State<GithubDeviceFlowPanel> {
                   title: l10n.hubPublishTokenLabel,
                   padding: EdgeInsets.zero,
                   showDividerBelow: false,
-                  body: TextField(
+                  body: TpPasswordInput(
                     key: const Key('github-pat-field'),
                     controller: _patController,
-                    obscureText: true,
                     decoration: InputDecoration(
                       hintText: l10n.hubPublishTokenHint,
                     ),
