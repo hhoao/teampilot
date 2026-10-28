@@ -4868,6 +4868,18 @@ abstract class AppLocalizations {
   /// **'Locating CLI executable…'**
   String get cliInstallProgressLocatingExecutable;
 
+  /// No description provided for @cliInstallProgressDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading adapter…'**
+  String get cliInstallProgressDownloading;
+
+  /// No description provided for @cliInstallProgressExtracting.
+  ///
+  /// In en, this message translates to:
+  /// **'Extracting adapter…'**
+  String get cliInstallProgressExtracting;
+
   /// No description provided for @cliInstallProgressSyncingRemoteWorkspace.
   ///
   /// In en, this message translates to:

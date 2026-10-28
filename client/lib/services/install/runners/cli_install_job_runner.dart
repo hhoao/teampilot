@@ -7,7 +7,7 @@ import '../../../models/team_config.dart';
 import '../../cli/claude/capabilities/acp_adapter_installer.dart';
 import '../../cli/cli_installer_service.dart';
 import '../../cli/codex/capabilities/acp_adapter_installer.dart';
-import '../../cli/registry/installer/npm_installer_capability.dart';
+import '../../cli/registry/installer/acp_adapter_installer.dart';
 import '../install_job_runner.dart';
 
 typedef SshProfileById = SshProfile? Function(String profileId);
@@ -16,11 +16,14 @@ final class CliInstallJobRunner implements InstallJobRunner {
   CliInstallJobRunner({
     required CliInstallerService Function() installerFactory,
     SshProfileById? sshProfileById,
+    AcpAdapterInstaller? Function(String target)? adapterResolver,
   }) : _installerFactory = installerFactory,
-       _sshProfileById = sshProfileById;
+       _sshProfileById = sshProfileById,
+       _adapterResolver = adapterResolver;
 
   final CliInstallerService Function() _installerFactory;
   final SshProfileById? _sshProfileById;
+  final AcpAdapterInstaller? Function(String target)? _adapterResolver;
 
   @override
   InstallJobKind get kind => InstallJobKind.cliExecutable;
@@ -67,6 +70,14 @@ final class CliInstallJobRunner implements InstallJobRunner {
     return result as T;
   }
 
+  AcpAdapterInstaller? _adapterFor(String target) =>
+      _adapterResolver?.call(target) ??
+      (target == ClaudeAcpAdapterInstaller.jobTarget
+          ? const ClaudeAcpAdapterInstaller()
+          : target == CodexAcpAdapterInstaller.jobTarget
+          ? const CodexAcpAdapterInstaller()
+          : null);
+
   (CliInstallMode, SshProfile?) _resolveInstallTarget(InstallJobScope scope) {
     return switch (scope) {
       InstallJobScopeLocal() => (CliInstallMode.local, null),
@@ -93,20 +104,12 @@ void _reportCliProgress(InstallJobContext ctx, CliInstallProgress progress) {
   ctx.reportPhase(phaseLabel);
 }
 
-NpmInstallerCapability? _adapterFor(String target) {
-  if (target == ClaudeAcpAdapterInstaller.jobTarget) {
-    return const ClaudeAcpAdapterInstaller();
-  }
-  if (target == CodexAcpAdapterInstaller.jobTarget) {
-    return const CodexAcpAdapterInstaller();
-  }
-  return null;
-}
-
 String _cliInstallPhaseLabel(CliInstallPhase phase) => switch (phase) {
   CliInstallPhase.checkingNpm => 'Checking npm',
   CliInstallPhase.bootstrappingNode => 'Bootstrapping Node',
   CliInstallPhase.installingCli => 'Installing CLI',
   CliInstallPhase.locatingExecutable => 'Locating executable',
+  CliInstallPhase.downloading => 'Downloading adapter',
+  CliInstallPhase.extracting => 'Extracting adapter',
   CliInstallPhase.syncingRemoteWorkspace => 'Syncing remote workspace',
 };

@@ -22,11 +22,11 @@ import '../../services/cli/acp_adapter_discovery.dart';
 import '../../services/cli/installer_types.dart';
 import '../../services/cli/cli_executable_discovery.dart';
 import '../../services/cli/cli_version_probe.dart';
-import '../../services/cli/codex/capabilities/acp_adapter_installer.dart';
 import '../../services/cli/remote_cli_locator.dart';
 import '../../services/cli/registry/capabilities/acp_settings_capability.dart';
 import '../../services/cli/registry/capabilities/cli_transport_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
+import '../../services/cli/registry/installer/acp_adapter_installer.dart';
 import '../../services/cli/registry/installer/npm_installer_capability.dart';
 import '../../services/install/install_job_enqueue.dart';
 import '../../services/install/install_job_keys.dart';
@@ -148,8 +148,8 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       }
     }
     final adapter = _settings?.adapterInstaller;
-    if (adapter is NpmInstallerCapability) {
-      final latest = await _probe.latestNpm(adapter.npmPackage);
+    if (adapter != null) {
+      final latest = await _adapterLatest(adapter);
       if (!mounted) return;
       if (latest != null) {
         widget.cubit.mergeBinaryVersion(
@@ -159,6 +159,13 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
         );
       }
     }
+  }
+
+  Future<String?> _adapterLatest(AcpAdapterInstaller adapter) async {
+    if (adapter is NpmInstallerCapability) {
+      return _probe.latestNpm(adapter.npmPackage);
+    }
+    return adapter.latestVersion();
   }
 
   Future<void> _probeInstalled(CliBinaryKind kind, String path) async {
@@ -212,12 +219,10 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
   }
 
   InstallJobKey _adapterJobKey(BuildContext context) {
-    final scope = installJobScopeForContext(context);
-    final installer = _settings?.adapterInstaller;
-    if (installer is CodexAcpAdapterInstaller) {
-      return InstallJobKeys.codexAcpAdapter(scope: scope);
-    }
-    return InstallJobKeys.claudeAcpAdapter(scope: scope);
+    return InstallJobKeys.acpAdapter(
+      _settings?.adapterInstaller?.adapterJobTarget ?? 'adapter:unknown',
+      scope: installJobScopeForContext(context),
+    );
   }
 
   Future<void> _pickFile() async {
@@ -442,12 +447,13 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
         await _probeInstalled(CliBinaryKind.adapter, path);
       }
 
-      final result = installer is CodexAcpAdapterInstaller
-          ? await jobs.installCodexAcpAdapter(
-              title: title,
-              onSucceeded: onSucceeded,
+      final result = installer == null
+          ? const CliInstallResult(
+              success: false,
+              message: 'No adapter installer',
             )
-          : await jobs.installClaudeAcpAdapter(
+          : await jobs.installAcpAdapter(
+              installer: installer,
               title: title,
               onSucceeded: onSucceeded,
             );

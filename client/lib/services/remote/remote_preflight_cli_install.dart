@@ -97,6 +97,8 @@ String remoteCliInstallProgressLabel(CliInstallProgress progress) {
           ? 'Installing CLI on remote host'
           : 'Installing $detail',
     CliInstallPhase.locatingExecutable => 'Locating remote CLI',
+    CliInstallPhase.downloading => 'Downloading adapter',
+    CliInstallPhase.extracting => 'Extracting adapter',
     CliInstallPhase.syncingRemoteWorkspace => 'Syncing remote workspace',
   };
 }

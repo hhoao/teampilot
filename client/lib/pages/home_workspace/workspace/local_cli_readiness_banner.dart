@@ -12,7 +12,6 @@ import '../../../models/team_config.dart';
 import '../../../services/chat/launch/pre_send/local_binary_requirements.dart';
 import '../../../services/cli/acp_adapter_discovery.dart';
 import '../../../services/cli/cli_executable_discovery.dart';
-import '../../../services/cli/codex/capabilities/acp_adapter_installer.dart';
 import '../../../services/cli/installer_types.dart';
 import '../../../services/cli/registry/capabilities/acp_settings_capability.dart';
 import '../../../services/cli/registry/capabilities/cli_executable_capability.dart';
@@ -46,7 +45,10 @@ class _LocalCliReadinessBannerState extends State<LocalCliReadinessBanner> {
   static bool _looksAbsolute(String value) =>
       value.contains('/') || value.contains(r'\');
 
-  bool _supportsInstaller(CliToolRegistry registry, LocalBinaryRequirement req) {
+  bool _supportsInstaller(
+    CliToolRegistry registry,
+    LocalBinaryRequirement req,
+  ) {
     if (req.kind == CliBinaryKind.adapter) {
       return registry
               .capability<AcpSettingsCapability>(req.cli)
@@ -108,10 +110,16 @@ class _LocalCliReadinessBannerState extends State<LocalCliReadinessBanner> {
     CliToolRegistry registry,
     CliTool cli,
     AppLocalizations l10n,
-  ) {
+  ) async {
     final installer = registry
         .capability<AcpSettingsCapability>(cli)
         ?.adapterInstaller;
+    if (installer == null) {
+      return const CliInstallResult(
+        success: false,
+        message: 'No adapter installer',
+      );
+    }
     Future<void> onSucceeded(CliInstallResult installResult) async {
       final path = installResult.executablePath?.trim() ?? '';
       if (path.isEmpty || !_looksAbsolute(path)) return;
@@ -119,10 +127,11 @@ class _LocalCliReadinessBannerState extends State<LocalCliReadinessBanner> {
       await cubit.setAcpAdapterPathFor(cli, path);
     }
 
-    final title = l10n.cliInstallInstalling;
-    return installer is CodexAcpAdapterInstaller
-        ? jobs.installCodexAcpAdapter(title: title, onSucceeded: onSucceeded)
-        : jobs.installClaudeAcpAdapter(title: title, onSucceeded: onSucceeded);
+    return jobs.installAcpAdapter(
+      installer: installer,
+      title: l10n.cliInstallInstalling,
+      onSucceeded: onSucceeded,
+    );
   }
 
   Future<void> _locate(

@@ -2579,6 +2579,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cliInstallProgressLocatingExecutable => '正在定位 CLI 可执行文件…';
 
   @override
+  String get cliInstallProgressDownloading => '正在下载适配器…';
+
+  @override
+  String get cliInstallProgressExtracting => '正在解压适配器…';
+
+  @override
   String get cliInstallProgressSyncingRemoteWorkspace => '正在同步远程工作区…';
 
   @override

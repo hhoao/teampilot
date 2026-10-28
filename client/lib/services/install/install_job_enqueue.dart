@@ -6,6 +6,7 @@ import '../../models/install_job/install_job_spec.dart';
 import '../../models/team_config.dart';
 import '../cli/cli_installer_service.dart';
 import '../cli/git_installer.dart';
+import '../cli/registry/installer/acp_adapter_installer.dart';
 import 'install_job_keys.dart';
 import 'install_job_registry.dart';
 
@@ -44,8 +45,9 @@ extension InstallJobEnqueue on InstallJobRegistry {
     return enqueue(spec);
   }
 
-  /// Installs the Claude ACP adapter (local or over SSH when scoped).
-  Future<CliInstallResult> installClaudeAcpAdapter({
+  /// Installs a separate ACP adapter (local or over SSH when scoped).
+  Future<CliInstallResult> installAcpAdapter({
+    required AcpAdapterInstaller installer,
     required String title,
     String? subtitle,
     InstallJobScope scope = const InstallJobScopeLocal(),
@@ -56,37 +58,10 @@ extension InstallJobEnqueue on InstallJobRegistry {
     if (runnerRegistry == null) {
       throw StateError('InstallJobRegistry has no runner registry');
     }
-    final key = InstallJobKeys.claudeAcpAdapter(scope: scope);
-    final runner = runnerRegistry.resolve(key);
-    if (runner == null) {
-      throw StateError('No InstallJobRunner for ${key.kind}');
-    }
-    late final InstallJobSpec<CliInstallResult> spec;
-    spec = InstallJobSpec(
-      key: key,
-      title: title,
-      subtitle: subtitle,
-      cancelPolicy: InstallCancelPolicy.cooperative,
-      onSucceeded: onSucceeded,
-      onFailed: onFailed,
-      run: (ctx) => runner.run(spec, ctx),
+    final key = InstallJobKeys.acpAdapter(
+      installer.adapterJobTarget,
+      scope: scope,
     );
-    return enqueue(spec);
-  }
-
-  /// Installs the Codex ACP adapter (local or over SSH when scoped).
-  Future<CliInstallResult> installCodexAcpAdapter({
-    required String title,
-    String? subtitle,
-    InstallJobScope scope = const InstallJobScopeLocal(),
-    FutureOr<void> Function(CliInstallResult result)? onSucceeded,
-    FutureOr<void> Function(Object error)? onFailed,
-  }) {
-    final runnerRegistry = this.runnerRegistry;
-    if (runnerRegistry == null) {
-      throw StateError('InstallJobRegistry has no runner registry');
-    }
-    final key = InstallJobKeys.codexAcpAdapter(scope: scope);
     final runner = runnerRegistry.resolve(key);
     if (runner == null) {
       throw StateError('No InstallJobRunner for ${key.kind}');

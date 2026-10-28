@@ -2705,6 +2705,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cliInstallProgressLocatingExecutable => 'Locating CLI executable…';
 
   @override
+  String get cliInstallProgressDownloading => 'Downloading adapter…';
+
+  @override
+  String get cliInstallProgressExtracting => 'Extracting adapter…';
+
+  @override
   String get cliInstallProgressSyncingRemoteWorkspace =>
       'Syncing remote workspace…';
 

@@ -845,6 +845,8 @@ class SessionShellConnector implements SessionShellConnectPort {
               CliInstallPhase.bootstrappingNode => 'Bootstrapping Node',
               CliInstallPhase.installingCli => 'Installing CLI',
               CliInstallPhase.locatingExecutable => 'Locating executable',
+              CliInstallPhase.downloading => 'Downloading adapter',
+              CliInstallPhase.extracting => 'Extracting adapter',
               CliInstallPhase.syncingRemoteWorkspace =>
                 'Syncing remote workspace',
             };

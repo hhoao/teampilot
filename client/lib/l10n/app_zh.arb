@@ -1203,6 +1203,8 @@
   "cliInstallProgressBootstrappingNode": "正在安装 Node.js…",
   "cliInstallProgressInstallingCli": "正在安装 CLI…",
   "cliInstallProgressLocatingExecutable": "正在定位 CLI 可执行文件…",
+  "cliInstallProgressDownloading": "正在下载适配器…",
+  "cliInstallProgressExtracting": "正在解压适配器…",
   "cliInstallProgressSyncingRemoteWorkspace": "正在同步远程工作区…",
   "sessionRemoteProvisionPreparing": "正在准备远程环境…",
   "sessionRemoteProvisionPreparingOnHost": "正在准备远程环境（{host}）",

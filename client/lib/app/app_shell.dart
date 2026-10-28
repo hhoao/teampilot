@@ -237,6 +237,7 @@ import '../services/floating_workspace/surfaces/terminal_floating_surface.dart';
 import '../pages/home_workspace/workspace_chrome_commands.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
+import '../services/cli/registry/capabilities/acp_settings_capability.dart';
 import '../services/cli/claude/claude_bootstrap_entry.dart';
 import '../services/cli/codex/codex_bootstrap_entry.dart';
 import '../services/cli/cursor/cursor_bootstrap_entry.dart';
@@ -1675,6 +1676,17 @@ Future<AppShell> buildAppShell({
             ),
           ),
           sshProfileById: sshProfileById,
+          adapterResolver: (target) {
+            for (final def in cliToolRegistry.launchable) {
+              final installer = cliToolRegistry
+                  .capability<AcpSettingsCapability>(def.id)
+                  ?.adapterInstaller;
+              if (installer != null && installer.adapterJobTarget == target) {
+                return installer;
+              }
+            }
+            return null;
+          },
         ),
         ToolchainInstallJobRunner(),
         PackAcquireInstallJobRunner(),

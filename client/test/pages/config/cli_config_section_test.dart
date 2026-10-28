@@ -22,7 +22,6 @@ import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/cli/cli_installer_service.dart';
 import 'package:teampilot/services/cli/cli_version_probe.dart';
 import 'package:teampilot/services/cli/registry/installer/acp_adapter_installer.dart';
-import 'package:teampilot/services/cli/registry/installer/npm_installer_capability.dart';
 import 'package:teampilot/services/install/install_job_registry.dart';
 import 'package:teampilot/services/install/install_job_runner_registry.dart';
 import 'package:teampilot/services/install/runners/cli_install_job_runner.dart';
@@ -58,8 +57,7 @@ class _AdapterInstallerService extends CliInstallerService {
     isCancelled,
     onProcessStarted,
   }) async {
-    // This fake only stands in for npm adapters (Claude/Codex).
-    installs.add((installer as NpmInstallerCapability).npmPackage);
+    installs.add(installer.executableName);
     return const CliInstallResult(
       success: true,
       message: 'Adapter installed',

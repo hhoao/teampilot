@@ -1303,6 +1303,8 @@
   "cliInstallProgressBootstrappingNode": "Installing Node.js…",
   "cliInstallProgressInstallingCli": "Installing CLI…",
   "cliInstallProgressLocatingExecutable": "Locating CLI executable…",
+  "cliInstallProgressDownloading": "Downloading adapter…",
+  "cliInstallProgressExtracting": "Extracting adapter…",
   "cliInstallProgressSyncingRemoteWorkspace": "Syncing remote workspace…",
   "sessionRemoteProvisionPreparing": "Preparing remote environment…",
   "sessionRemoteProvisionPreparingOnHost": "Preparing remote environment ({host})",
