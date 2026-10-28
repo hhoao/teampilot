@@ -10,8 +10,8 @@ int cursorUsageDayEndMs(int ms) {
   return DateTime(
         local.year,
         local.month,
-        local.day,
-      ).add(const Duration(days: 1)).millisecondsSinceEpoch -
+        local.day + 1,
+      ).millisecondsSinceEpoch -
       1;
 }
 
@@ -50,19 +50,16 @@ CursorUsageWindow cursorUsageResolveRange({
         case CursorUsagePreset.sevenDays:
           return _windowFor(
             todayStart,
-            todayStart.subtract(const Duration(days: 6)),
+            DateTime(now.year, now.month, now.day - 6),
           );
         case CursorUsagePreset.thirtyDays:
           return _windowFor(
             todayStart,
-            todayStart.subtract(const Duration(days: 29)),
+            DateTime(now.year, now.month, now.day - 29),
           );
         case CursorUsagePreset.lastMonth:
-          final firstOfThisMonth = DateTime(now.year, now.month, 1);
           final firstOfLastMonth = DateTime(now.year, now.month - 1, 1);
-          final lastOfLastMonth = firstOfThisMonth.subtract(
-            const Duration(days: 1),
-          );
+          final lastOfLastMonth = DateTime(now.year, now.month, 0);
           return CursorUsageWindow(
             startMs: firstOfLastMonth.millisecondsSinceEpoch,
             endMs: _endOfDay(lastOfLastMonth),
@@ -78,7 +75,12 @@ CursorUsageWindow _windowFor(DateTime todayStart, DateTime start) =>
     );
 
 int _endOfDay(DateTime dayStart) =>
-    dayStart.add(const Duration(days: 1)).millisecondsSinceEpoch - 1;
+    DateTime(
+      dayStart.year,
+      dayStart.month,
+      dayStart.day + 1,
+    ).millisecondsSinceEpoch -
+    1;
 
 List<CursorUsageWindow> cursorUsageMergeWindows(
   Iterable<CursorUsageWindow> windows,

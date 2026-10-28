@@ -119,4 +119,23 @@ void main() {
       expect(merged.single.endMs, cursorUsageDayEndMs(ms(2026, 10, 4)));
     });
   });
+
+  group('calendar-day boundaries', () {
+    test('adjacent day windows are contiguous', () {
+      expect(
+        cursorUsageDayEndMs(ms(2026, 10, 15)) + 1,
+        cursorUsageDayStartMs(ms(2026, 10, 16)),
+      );
+    });
+
+    test('sevenDays starts seven calendar days back', () {
+      expect(
+        cursorUsageResolveRange(
+          range: const CursorUsagePresetRange(CursorUsagePreset.sevenDays),
+          nowMs: ms(2026, 10, 28, 12),
+        ).startMs,
+        ms(2026, 10, 22),
+      );
+    });
+  });
 }
