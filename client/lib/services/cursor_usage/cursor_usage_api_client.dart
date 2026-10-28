@@ -200,7 +200,12 @@ final class CursorUsageApiClient implements CursorUsageApi {
 
   Map<String, Object?> _decodeObject(http.Response response) {
     final body = response.body.trimLeft();
-    if (body.isEmpty) return const {};
+    if (body.isEmpty) {
+      throw const CursorUsageApiException(
+        CursorUsageApiError.invalidResponse,
+        'Cursor returned an empty body',
+      );
+    }
     if (body.startsWith('<')) {
       throw const CursorUsageApiException(
         CursorUsageApiError.login,

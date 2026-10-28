@@ -55,7 +55,7 @@ void main() {
       page: 2,
     );
 
-    expect(captured.headers['Cookie'], contains('WorkosCursorSessionToken='));
+    expect(captured.headers['Cookie'], _credentials.cookie);
     expect(captured.headers['Origin'], 'https://cursor.com');
     final body = jsonDecode(captured.body) as Map<String, Object?>;
     expect(body['teamId'], 0);
@@ -117,6 +117,48 @@ void main() {
   test('a non-json body is invalidResponse', () async {
     final client = CursorUsageApiClient(
       client: MockClient((_) async => http.Response('not json at all', 200)),
+    );
+    await expectLater(
+      client.fetchPage(
+        credentials: _credentials,
+        startMs: 0,
+        endMs: 1,
+        page: 1,
+      ),
+      throwsA(
+        isA<CursorUsageApiException>().having(
+          (error) => error.code,
+          'code',
+          CursorUsageApiError.invalidResponse,
+        ),
+      ),
+    );
+  });
+
+  test('an html body is treated as a login page', () async {
+    final client = CursorUsageApiClient(
+      client: MockClient((_) async => http.Response('<html></html>', 200)),
+    );
+    await expectLater(
+      client.fetchPage(
+        credentials: _credentials,
+        startMs: 0,
+        endMs: 1,
+        page: 1,
+      ),
+      throwsA(
+        isA<CursorUsageApiException>().having(
+          (error) => error.code,
+          'code',
+          CursorUsageApiError.login,
+        ),
+      ),
+    );
+  });
+
+  test('an empty body is invalidResponse', () async {
+    final client = CursorUsageApiClient(
+      client: MockClient((_) async => http.Response('', 200)),
     );
     await expectLater(
       client.fetchPage(
