@@ -4,7 +4,7 @@ import 'package:teampilot/services/cli/registry/capabilities/session_usage_capab
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 void main() {
-  test('claude, codex, and opencode register usage extraction', () {
+  test('local transcript CLIs register usage extraction', () {
     final registry = CliToolRegistry.builtIn();
 
     expect(
@@ -19,12 +19,24 @@ void main() {
       registry.capability<SessionUsageCapability>(CliTool.opencode),
       isNotNull,
     );
+    expect(
+      registry.capability<SessionUsageCapability>(CliTool.gemini),
+      isNotNull,
+    );
+    expect(
+      registry.capability<SessionUsageCapability>(CliTool.codebuddy),
+      isNotNull,
+    );
   });
 
-  test('clis without extraction stay null', () {
+  test('clis without transcript extraction stay null', () {
     final registry = CliToolRegistry.builtIn();
 
+    // Cursor uses the dashboard import path instead of a session parser.
     expect(registry.capability<SessionUsageCapability>(CliTool.cursor), isNull);
-    expect(registry.capability<SessionUsageCapability>(CliTool.gemini), isNull);
+    expect(
+      registry.capability<SessionUsageCapability>(CliTool.flashskyai),
+      isNull,
+    );
   });
 }
