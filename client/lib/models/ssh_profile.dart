@@ -23,6 +23,7 @@ class SshProfile {
     this.relayUrl,
     this.lastGoodKind,
     this.embeddedTarget = false,
+    this.vaultEntryId,
   });
 
   factory SshProfile.fromJson(Map<String, Object?> json) {
@@ -66,6 +67,7 @@ class SshProfile {
       embeddedTarget: json['embeddedTarget'] is bool
           ? json['embeddedTarget'] as bool
           : false,
+      vaultEntryId: json['vaultEntryId']?.toString(),
     );
   }
 
@@ -89,6 +91,9 @@ class SshProfile {
   /// (paired from a v2 offer) rather than a system sshd.
   final bool embeddedTarget;
 
+  /// 非空时从保险库条目读取密码/私钥，优先于钥匙串。
+  final String? vaultEntryId;
+
   String get hostIdentifier => '$username@$host:$port';
 
   SshProfile copyWith({
@@ -108,6 +113,7 @@ class SshProfile {
     String? relayUrl,
     SshEndpointKind? lastGoodKind,
     bool? embeddedTarget,
+    String? vaultEntryId,
   }) {
     return SshProfile(
       id: id ?? this.id,
@@ -126,6 +132,7 @@ class SshProfile {
       relayUrl: relayUrl ?? this.relayUrl,
       lastGoodKind: lastGoodKind ?? this.lastGoodKind,
       embeddedTarget: embeddedTarget ?? this.embeddedTarget,
+      vaultEntryId: vaultEntryId ?? this.vaultEntryId,
     );
   }
 
@@ -150,6 +157,8 @@ class SshProfile {
       if (relayUrl != null) 'relayUrl': relayUrl,
       if (lastGoodKind != null) 'lastGoodKind': lastGoodKind!.name,
       if (embeddedTarget) 'embeddedTarget': embeddedTarget,
+      if (vaultEntryId != null && vaultEntryId!.isNotEmpty)
+        'vaultEntryId': vaultEntryId,
     };
   }
 
