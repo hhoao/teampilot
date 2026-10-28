@@ -10,7 +10,6 @@ void main() {
     expect(cap.launchArgCandidates('agy_acp_server.par'), [
       ['agy_acp_server.par'],
     ]);
-    expect(cap.acpOnly, isTrue);
     expect(cap.forwardSessionNewMcpServers, isFalse);
     expect(cap.authenticateMethodId, isNull);
     expect(cap.startupTimeout, const Duration(seconds: 120));

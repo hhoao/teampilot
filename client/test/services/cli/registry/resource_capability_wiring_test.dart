@@ -10,7 +10,6 @@ import 'package:teampilot/services/resource/providers/hook_contribution_provider
 import 'package:teampilot/services/resource/providers/mcp_contribution_provider.dart';
 import 'package:teampilot/services/resource/providers/skill_contribution_provider.dart';
 import 'package:teampilot/services/resource/resource_provider_set.dart';
-import 'package:teampilot/services/cli/registry/capabilities/acp_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 
 /// Temporary vertical-slice skips for Antigravity (ACP-only): its prompt,
@@ -18,8 +17,7 @@ import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 /// skips (Tasks 11/13/16).
 Iterable<CliToolDefinition> _ptyLaunchable(CliToolRegistry registry) =>
     registry.launchable.where(
-      (definition) =>
-          registry.capability<AcpOnlyCapability>(definition.id) == null,
+      (definition) => !registry.launchesAcpOnly(definition.id),
     );
 
 Set<String> _expectedPromptProviderIds(CliTool cli) {

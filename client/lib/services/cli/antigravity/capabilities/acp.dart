@@ -35,7 +35,7 @@ final class AntigravityAcpTranslator extends AcpAgentTranslator {
 }
 
 final class AntigravityAcpCapability
-    implements AcpCapability, AcpOnlyCapability {
+    implements AcpCapability {
   const AntigravityAcpCapability({this.model, this.adapterPath, this.linuxUid});
 
   final String? model;
@@ -43,8 +43,6 @@ final class AntigravityAcpCapability
   final bool? linuxUid;
 
   bool get _usesUid => linuxUid ?? Platform.isLinux;
-
-  bool get acpOnly => true;
 
   @override
   String agentExecutable(String cliExecutable) =>

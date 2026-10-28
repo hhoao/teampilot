@@ -4,6 +4,7 @@ import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
 import 'package:teampilot/services/cli/registry/capabilities/acp_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/acp_settings_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_executable_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_transport_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/headless_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/mcp_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -42,6 +43,14 @@ void main() {
     expect(acpSettings!.usesSeparateAdapter, isTrue);
     expect(acpSettings.adapterExecutableName, isNotNull);
     expect(acpSettings.showsPersonalAcpSwitch, isFalse);
+
+    final transport = registry.capability<CliTransportCapability>(
+      CliTool.antigravity,
+    );
+    expect(transport, isNotNull);
+    expect(transport!.supports(CliTransport.acp), isTrue);
+    expect(transport.supports(CliTransport.pty), isFalse);
+    expect(registry.launchesAcpOnly(CliTool.antigravity), isTrue);
   });
 
   test('antigravity stays out of native-team and member-agent-preset sets', () {

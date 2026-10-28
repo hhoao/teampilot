@@ -12,7 +12,6 @@ import 'package:teampilot/services/cli/cursor/capabilities/history/terminal_tool
 import 'package:teampilot/services/cli/opencode/capabilities/history/tool_output_backfill_enricher.dart';
 import 'package:teampilot/services/cli/registry/capabilities/history/tool_result_enricher.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/cli/registry/capabilities/acp_capability.dart';
 
 void main() {
   test('history capabilities expose toolResultEnricher', () {
@@ -77,7 +76,7 @@ void main() {
     () {
       final registry = CliToolRegistry.builtIn();
       for (final cli in CliTool.values) {
-        if (registry.capability<AcpOnlyCapability>(cli) != null) continue;
+        if (registry.launchesAcpOnly(cli)) continue;
         final cap = registry.capability<AiHistoryCapability>(cli);
         expect(cap, isNotNull, reason: '$cli');
         expect(cap!.editResolver, isNotNull, reason: '$cli editResolver');

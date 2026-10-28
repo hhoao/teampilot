@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/cli/registry/capabilities/acp_capability.dart';
 
 void main() {
   test('every launch-supported tool exposes AiHistoryCapability', () {
@@ -11,7 +10,7 @@ void main() {
       final def = registry.tryGet(tool);
       expect(def, isNotNull, reason: '$tool missing from built-in registry');
       if (!def!.isLaunchSupported) continue;
-      if (registry.capability<AcpOnlyCapability>(tool) != null) continue;
+      if (registry.launchesAcpOnly(tool)) continue;
       final cap = registry.capability<AiHistoryCapability>(tool);
       expect(cap, isNotNull, reason: '$tool missing AiHistoryCapability');
       expect(cap!.adapter.id, isNotEmpty);

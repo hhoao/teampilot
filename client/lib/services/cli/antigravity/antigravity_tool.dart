@@ -5,6 +5,7 @@ import '../registry/capabilities/chat_interaction_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import '../registry/capabilities/cli_launch_security_capability.dart';
 import '../registry/capabilities/cli_session_capability.dart';
+import '../registry/capabilities/cli_transport_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/plugin_capability.dart';
 import '../registry/capabilities/provider_capability.dart';
@@ -46,6 +47,7 @@ final class AntigravityCliTool implements CliToolDefinition {
     this.launchSecurity = const AcpAskFullAccessCliLaunchSecurityCapability(),
     this.acp = const AntigravityAcpCapability(),
     this.acpSettings = const AntigravityAcpSettings(),
+    this.transport = const CliTransportCapability(supported: {CliTransport.acp}),
   });
 
   final ProviderCapability provider;
@@ -63,6 +65,7 @@ final class AntigravityCliTool implements CliToolDefinition {
   final CliLaunchSecurityCapability launchSecurity;
   final AcpCapability acp;
   final AcpSettingsCapability acpSettings;
+  final CliTransportCapability transport;
 
   @override
   CliTool get id => CliTool.antigravity;
@@ -87,5 +90,6 @@ final class AntigravityCliTool implements CliToolDefinition {
     launchSecurity,
     acp,
     acpSettings,
+    transport,
   ];
 }
