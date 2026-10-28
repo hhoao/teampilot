@@ -326,6 +326,10 @@ class AppKeys {
   static const teamConfigWorkspace = Key('team-config-workspace');
   static const skillsWorkspace = Key('skills-workspace');
   static const sessionUsagePage = Key('session-usage-page');
+  static const cursorUsagePage = Key('cursor-usage-page');
+  static const cursorUsageAddAccount = Key('cursor-usage-add-account');
+  static const cursorUsageRefresh = Key('cursor-usage-refresh');
+  static const cursorUsageRangePicker = Key('cursor-usage-range-picker');
   static const sessionUsageSyncButton = Key('session-usage-sync-button');
   static const sessionUsageIncrementalSync = Key(
     'session-usage-sync-menu-incremental',
