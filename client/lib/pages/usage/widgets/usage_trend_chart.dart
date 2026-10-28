@@ -110,26 +110,41 @@ class UsageTrendChart extends StatelessWidget {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              for (final cli in legendClis)
-                                if ((day.tokensByCli[cli] ?? 0) > 0)
-                                  Container(
-                                    width: double.infinity,
-                                    height:
-                                        132 *
-                                        (day.tokensByCli[cli]! / maxTotal),
-                                    decoration: BoxDecoration(
-                                      color: usageCliColor(cli).withValues(
-                                        alpha:
-                                            selectedCli == null ||
-                                                selectedCli == cli
-                                            ? 0.92
-                                            : 0.22,
-                                      ),
-                                      borderRadius: const BorderRadius.vertical(
-                                        top: Radius.circular(3),
-                                      ),
-                                    ),
-                                  ),
+                              Expanded(
+                                child: LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final barSpace = constraints.maxHeight;
+                                    return Column(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        for (final cli in legendClis)
+                                          if ((day.tokensByCli[cli] ?? 0) > 0)
+                                            Container(
+                                              width: double.infinity,
+                                              height:
+                                                  barSpace *
+                                                  (day.tokensByCli[cli]! /
+                                                      maxTotal),
+                                              decoration: BoxDecoration(
+                                                color: usageCliColor(cli)
+                                                    .withValues(
+                                                      alpha:
+                                                          selectedCli == null ||
+                                                              selectedCli == cli
+                                                          ? 0.92
+                                                          : 0.22,
+                                                    ),
+                                                borderRadius:
+                                                    const BorderRadius.vertical(
+                                                      top: Radius.circular(3),
+                                                    ),
+                                              ),
+                                            ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ),
                               const SizedBox(height: 8),
                               Text(
                                 formatUsageDayLabel(

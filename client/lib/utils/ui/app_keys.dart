@@ -327,6 +327,10 @@ class AppKeys {
   static const skillsWorkspace = Key('skills-workspace');
   static const sessionUsagePage = Key('session-usage-page');
   static const sessionUsageSyncButton = Key('session-usage-sync-button');
+  static const sessionUsageIncrementalSync = Key(
+    'session-usage-sync-menu-incremental',
+  );
+  static const sessionUsageFullSync = Key('session-usage-sync-menu-full');
   static const sessionUsageCancelSyncButton = Key(
     'session-usage-cancel-sync-button',
   );
@@ -335,6 +339,10 @@ class AppKeys {
   static const sessionUsageErrorBanner = Key('session-usage-error-banner');
   static const sessionUsageEmptyState = Key('session-usage-empty-state');
   static const sessionUsageTable = Key('session-usage-table');
+  static const sessionUsagePrevPage = Key('session-usage-prev-page');
+  static const sessionUsageNextPage = Key('session-usage-next-page');
+  static const sessionUsagePageSize = Key('session-usage-page-size');
+  static const sessionUsagePageRange = Key('session-usage-page-range');
   static const sessionUsageCostCard = Key('session-usage-cost-card');
   static const sessionUsageManagePricingButton = Key(
     'session-usage-manage-pricing',

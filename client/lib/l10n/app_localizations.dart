@@ -16946,6 +16946,30 @@ abstract class AppLocalizations {
   /// **'Scan CLI transcripts for new usage'**
   String get sessionUsageSyncTooltip;
 
+  /// No description provided for @sessionUsageSyncIncremental.
+  ///
+  /// In en, this message translates to:
+  /// **'Incremental sync'**
+  String get sessionUsageSyncIncremental;
+
+  /// No description provided for @sessionUsageSyncIncrementalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan only files changed since the last sync'**
+  String get sessionUsageSyncIncrementalHint;
+
+  /// No description provided for @sessionUsageSyncFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Full sync'**
+  String get sessionUsageSyncFull;
+
+  /// No description provided for @sessionUsageSyncFullHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Rescan every transcript from scratch'**
+  String get sessionUsageSyncFullHint;
+
   /// No description provided for @sessionUsageCancelSync.
   ///
   /// In en, this message translates to:
@@ -17263,6 +17287,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} groups'**
   String sessionUsageGroupCount(int count);
+
+  /// No description provided for @sessionUsagePageRange.
+  ///
+  /// In en, this message translates to:
+  /// **'{start}–{end} of {total} groups'**
+  String sessionUsagePageRange(int start, int end, int total);
+
+  /// No description provided for @sessionUsagePageOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Page {page} / {pages}'**
+  String sessionUsagePageOf(int page, int pages);
+
+  /// No description provided for @sessionUsageRowsPerPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Rows per page'**
+  String get sessionUsageRowsPerPage;
+
+  /// No description provided for @sessionUsagePrevPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous page'**
+  String get sessionUsagePrevPage;
+
+  /// No description provided for @sessionUsageNextPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Next page'**
+  String get sessionUsageNextPage;
 
   /// No description provided for @sessionUsageCost.
   ///
@@ -17587,18 +17641,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t compact usage storage.'**
   String get sessionUsageMaintenanceFailed;
-
-  /// No description provided for @sessionUsageFooterJsonl.
-  ///
-  /// In en, this message translates to:
-  /// **'JSONL read-only'**
-  String get sessionUsageFooterJsonl;
-
-  /// No description provided for @sessionUsageFooterManual.
-  ///
-  /// In en, this message translates to:
-  /// **'Auto + manual sync'**
-  String get sessionUsageFooterManual;
 
   /// No description provided for @sessionUsageSyncedToast.
   ///

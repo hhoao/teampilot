@@ -9136,6 +9136,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionUsageSyncTooltip => '扫描 CLI 记录以获取新用量';
 
   @override
+  String get sessionUsageSyncIncremental => '增量同步';
+
+  @override
+  String get sessionUsageSyncIncrementalHint => '只扫描上次同步后变化的文件';
+
+  @override
+  String get sessionUsageSyncFull => '全量同步';
+
+  @override
+  String get sessionUsageSyncFullHint => '从头重新扫描全部记录';
+
+  @override
   String get sessionUsageCancelSync => '取消';
 
   @override
@@ -9320,6 +9332,25 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String sessionUsagePageRange(int start, int end, int total) {
+    return '第 $start–$end 条 · 共 $total 组';
+  }
+
+  @override
+  String sessionUsagePageOf(int page, int pages) {
+    return '第 $page / $pages 页';
+  }
+
+  @override
+  String get sessionUsageRowsPerPage => '每页条数';
+
+  @override
+  String get sessionUsagePrevPage => '上一页';
+
+  @override
+  String get sessionUsageNextPage => '下一页';
+
+  @override
   String get sessionUsageCost => '成本';
 
   @override
@@ -9498,12 +9529,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sessionUsageMaintenanceFailed => '用量存储压缩失败。';
-
-  @override
-  String get sessionUsageFooterJsonl => 'JSONL 只读';
-
-  @override
-  String get sessionUsageFooterManual => '自动 + 手动同步';
 
   @override
   String get sessionUsageSyncedToast => '用量同步完成';

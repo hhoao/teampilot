@@ -46,6 +46,44 @@ AppSession _session(String id, String display) => AppSession(
   createdAt: 1,
 );
 
+List<SessionUsageEvent> _pagedEvents(int count) => [
+  for (var i = 1; i <= count; i++)
+    _event(id: 'r$i', sessionId: 's$i', input: 200 - i),
+];
+
+List<AppSession> _pagedSessions(int count) => [
+  for (var i = 1; i <= count; i++) _session('s$i', 'Session $i'),
+];
+
+SessionUsageCubit _pagedCubit(int count) => SessionUsageCubit(
+  loadEvents: () async => _pagedEvents(count),
+  syncAll: () async => const UsageSyncResult(),
+  loadSessions: () async => _pagedSessions(count),
+  loadTeams: () async => const <TeamProfile>[],
+);
+
+void _useTallViewport(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1200, 3200);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+}
+
+Future<void> _chooseSync(
+  WidgetTester tester, {
+  required Key item,
+  bool settle = true,
+}) async {
+  await tester.tap(find.byKey(AppKeys.sessionUsageSyncButton));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(item));
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump();
+  }
+}
+
 Widget _wrap(
   SessionUsageCubit cubit, {
   Brightness brightness = Brightness.light,
@@ -116,8 +154,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(AppKeys.sessionUsageEmptyState), findsOneWidget);
-    await tester.tap(find.byKey(AppKeys.sessionUsageSyncButton));
-    await tester.pumpAndSettle();
+    await _chooseSync(tester, item: AppKeys.sessionUsageIncrementalSync);
 
     expect(syncCalls, 1);
     expect(find.byKey(AppKeys.sessionUsageEmptyState), findsNothing);
@@ -143,8 +180,7 @@ void main() {
 
     await tester.pumpWidget(_wrap(cubit));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(AppKeys.sessionUsageSyncButton));
-    await tester.pumpAndSettle();
+    await _chooseSync(tester, item: AppKeys.sessionUsageIncrementalSync);
 
     expect(find.byKey(AppKeys.sessionUsageErrorBanner), findsOneWidget);
     expect(find.text('Alpha'), findsOneWidget);
@@ -277,13 +313,15 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(AppKeys.sessionUsageSyncButton));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(AppKeys.sessionUsageIncrementalSync));
+    await tester.pumpAndSettle();
     expect(find.byKey(AppKeys.sessionUsageCancelSyncButton), findsOneWidget);
 
     progress.add(
       const UsageSyncProgress(targetsTotal: 2, targetsDone: 1, inserted: 3),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.byKey(AppKeys.sessionUsageSyncProgress), findsOneWidget);
     expect(find.textContaining('Scanning 1/2'), findsOneWidget);
 
@@ -298,6 +336,62 @@ void main() {
 
     await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('full sync menu option starts a full scan', (tester) async {
+    final done = Completer<UsageSyncResult>();
+    var fullCalls = 0;
+    final handle = UsageSyncHandle(
+      done: done.future,
+      progress: const Stream<UsageSyncProgress>.empty(),
+      cancel: () {},
+    );
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [_event()],
+      syncAll: () async => const UsageSyncResult(),
+      startFullSync: () {
+        fullCalls++;
+        return handle;
+      },
+      loadSessions: () async => [_session('s1', 'Alpha')],
+      loadTeams: () async => const <TeamProfile>[],
+    );
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(AppKeys.sessionUsageSyncButton));
+    await tester.pumpAndSettle();
+    expect(find.text('Incremental sync'), findsOneWidget);
+    expect(find.text('Full sync'), findsOneWidget);
+
+    await tester.tap(find.byKey(AppKeys.sessionUsageFullSync));
+    await tester.pumpAndSettle();
+    expect(fullCalls, 1);
+    expect(find.byKey(AppKeys.sessionUsageCancelSyncButton), findsOneWidget);
+
+    done.complete(const UsageSyncResult(inserted: 2));
+    await tester.pumpAndSettle();
+    expect(find.byKey(AppKeys.sessionUsageSyncButton), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('header hosts cursor and storage actions without footer notes', (
+    tester,
+  ) async {
+    final cubit = _pagedCubit(2);
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(AppKeys.sessionUsageCursorButton), findsOneWidget);
+    expect(find.byKey(AppKeys.sessionUsageMaintenanceButton), findsOneWidget);
+    expect(find.text('JSONL read-only'), findsNothing);
+    expect(find.text('Auto + manual sync'), findsNothing);
   });
 
   testWidgets('load reads cache once and never scans on open', (tester) async {
@@ -484,5 +578,87 @@ void main() {
     expect(find.textContaining('1 priced · 1 unpriced'), findsOneWidget);
     expect(find.text('Unpriced'), findsOneWidget);
     expect(find.text('Cost'), findsWidgets);
+  });
+
+  testWidgets('paginates session rows at 20 per page', (tester) async {
+    _useTallViewport(tester);
+    final cubit = _pagedCubit(25);
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Session 1'), findsOneWidget);
+    expect(find.text('Session 20'), findsOneWidget);
+    expect(find.text('Session 21'), findsNothing);
+    expect(find.byKey(AppKeys.sessionUsagePageRange), findsOneWidget);
+    expect(find.text('1–20 of 25 groups'), findsOneWidget);
+
+    await tester.tap(find.byKey(AppKeys.sessionUsageNextPage));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Session 1'), findsNothing);
+    expect(find.text('Session 20'), findsNothing);
+    expect(find.text('Session 21'), findsOneWidget);
+    expect(find.text('Session 25'), findsOneWidget);
+    expect(find.text('21–25 of 25 groups'), findsOneWidget);
+
+    await tester.tap(find.byKey(AppKeys.sessionUsagePrevPage));
+    await tester.pumpAndSettle();
+    expect(find.text('Session 1'), findsOneWidget);
+    expect(find.text('Session 21'), findsNothing);
+  });
+
+  testWidgets('search resets pagination to the first page', (tester) async {
+    _useTallViewport(tester);
+    final cubit = _pagedCubit(25);
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(AppKeys.sessionUsageNextPage));
+    await tester.pumpAndSettle();
+    expect(find.text('Session 21'), findsOneWidget);
+
+    await tester.enterText(find.byKey(AppKeys.sessionUsageSearchField), '22');
+    await tester.pumpAndSettle();
+
+    expect(cubit.state.dashboard.rows.single.label, 'Session 22');
+    expect(find.text('Session 22'), findsOneWidget);
+    expect(find.text('Session 21'), findsNothing);
+    expect(find.text('Session 23'), findsNothing);
+  });
+
+  testWidgets('page size selector changes the visible row count', (
+    tester,
+  ) async {
+    _useTallViewport(tester);
+    final cubit = _pagedCubit(25);
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pumpAndSettle();
+    expect(find.text('Session 21'), findsNothing);
+
+    await tester.tap(find.byKey(AppKeys.sessionUsagePageSize));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('50').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Session 25'), findsOneWidget);
+    expect(find.text('1–25 of 25 groups'), findsOneWidget);
+  });
+
+  testWidgets('hides pagination when rows fit on one page', (tester) async {
+    final cubit = _pagedCubit(2);
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(_wrap(cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(AppKeys.sessionUsagePageRange), findsNothing);
+    expect(find.byKey(AppKeys.sessionUsagePrevPage), findsNothing);
+    expect(find.byKey(AppKeys.sessionUsageNextPage), findsNothing);
   });
 }

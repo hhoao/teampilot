@@ -9550,6 +9550,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionUsageSyncTooltip => 'Scan CLI transcripts for new usage';
 
   @override
+  String get sessionUsageSyncIncremental => 'Incremental sync';
+
+  @override
+  String get sessionUsageSyncIncrementalHint =>
+      'Scan only files changed since the last sync';
+
+  @override
+  String get sessionUsageSyncFull => 'Full sync';
+
+  @override
+  String get sessionUsageSyncFullHint => 'Rescan every transcript from scratch';
+
+  @override
   String get sessionUsageCancelSync => 'Cancel';
 
   @override
@@ -9733,6 +9746,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String sessionUsageGroupCount(int count) {
     return '$count groups';
   }
+
+  @override
+  String sessionUsagePageRange(int start, int end, int total) {
+    return '$start–$end of $total groups';
+  }
+
+  @override
+  String sessionUsagePageOf(int page, int pages) {
+    return 'Page $page / $pages';
+  }
+
+  @override
+  String get sessionUsageRowsPerPage => 'Rows per page';
+
+  @override
+  String get sessionUsagePrevPage => 'Previous page';
+
+  @override
+  String get sessionUsageNextPage => 'Next page';
 
   @override
   String get sessionUsageCost => 'Cost';
@@ -9923,12 +9955,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sessionUsageMaintenanceFailed =>
       'Couldn\'t compact usage storage.';
-
-  @override
-  String get sessionUsageFooterJsonl => 'JSONL read-only';
-
-  @override
-  String get sessionUsageFooterManual => 'Auto + manual sync';
 
   @override
   String get sessionUsageSyncedToast => 'Usage synced';

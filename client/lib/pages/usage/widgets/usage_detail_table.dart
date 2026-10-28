@@ -8,13 +8,14 @@ import '../../../theme/workspace_surface_layers.dart';
 import '../../../utils/ui/app_keys.dart';
 import '../usage_format.dart';
 
-class UsageDetailTable extends StatelessWidget {
+class UsageDetailTable extends StatefulWidget {
   const UsageDetailTable({
     required this.dashboard,
     required this.groupBy,
     required this.searchController,
     required this.onQueryChanged,
     required this.onResetFilters,
+    this.resetKey = '',
     super.key,
   });
 
@@ -24,12 +25,46 @@ class UsageDetailTable extends StatelessWidget {
   final ValueChanged<String> onQueryChanged;
   final VoidCallback onResetFilters;
 
+  /// Changes whenever range/CLI/group/search filters change; resets the page.
+  final String resetKey;
+
+  @override
+  State<UsageDetailTable> createState() => _UsageDetailTableState();
+}
+
+class _UsageDetailTableState extends State<UsageDetailTable> {
+  static const _pageSizeOptions = <int>[10, 20, 50, 100];
+
+  int _pageSize = 20;
+  int _page = 0;
+
+  @override
+  void didUpdateWidget(covariant UsageDetailTable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.resetKey != widget.resetKey ||
+        oldWidget.groupBy != widget.groupBy) {
+      _page = 0;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
+    final dashboard = widget.dashboard;
+    final groupBy = widget.groupBy;
     final groupLabel = usageGroupLabel(context, groupBy);
+
+    final total = dashboard.rows.length;
+    final pageCount = total == 0 ? 1 : (total + _pageSize - 1) ~/ _pageSize;
+    final page = _page.clamp(0, pageCount - 1);
+    final start = page * _pageSize;
+    final end = (start + _pageSize).clamp(0, total);
+    final pageRows = total == 0
+        ? const <UsageGroup>[]
+        : dashboard.rows.sublist(start, end);
+    final showPager = total > _pageSizeOptions.first;
 
     return Container(
       key: AppKeys.sessionUsageTable,
@@ -67,21 +102,21 @@ class UsageDetailTable extends StatelessWidget {
                 width: 240,
                 child: TextField(
                   key: AppKeys.sessionUsageSearchField,
-                  controller: searchController,
-                  onChanged: onQueryChanged,
+                  controller: widget.searchController,
+                  onChanged: widget.onQueryChanged,
                   style: styles.sm,
                   decoration: InputDecoration(
                     isDense: true,
                     hintText: l10n.sessionUsageSearchHint,
                     prefixIcon: const Icon(Icons.search, size: 18),
-                    suffixIcon: searchController.text.isEmpty
+                    suffixIcon: widget.searchController.text.isEmpty
                         ? null
                         : IconButton(
                             tooltip: l10n.sessionUsageResetFilters,
                             iconSize: 18,
                             onPressed: () {
-                              searchController.clear();
-                              onQueryChanged('');
+                              widget.searchController.clear();
+                              widget.onQueryChanged('');
                             },
                             icon: const Icon(Icons.close),
                           ),
@@ -95,7 +130,7 @@ class UsageDetailTable extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Divider(color: cs.outlineVariant.withValues(alpha: 0.5), height: 1),
-          if (dashboard.rows.isEmpty)
+          if (total == 0)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 26),
               child: Column(
@@ -110,13 +145,13 @@ class UsageDetailTable extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton(
-                    onPressed: onResetFilters,
+                    onPressed: widget.onResetFilters,
                     child: Text(l10n.sessionUsageResetFilters),
                   ),
                 ],
               ),
             )
-          else
+          else ...[
             LayoutBuilder(
               builder: (context, constraints) {
                 final width = constraints.maxWidth < 1000
@@ -129,7 +164,7 @@ class UsageDetailTable extends StatelessWidget {
                     child: Column(
                       children: [
                         _HeaderRow(groupLabel: groupLabel),
-                        for (final row in dashboard.rows)
+                        for (final row in pageRows)
                           _UsageRow(
                             row: row,
                             groupBy: groupBy,
@@ -141,6 +176,29 @@ class UsageDetailTable extends StatelessWidget {
                 );
               },
             ),
+            if (showPager)
+              _PaginationBar(
+                page: page,
+                pageCount: pageCount,
+                start: start,
+                end: end,
+                total: total,
+                pageSize: _pageSize,
+                pageSizeOptions: _pageSizeOptions,
+                onPageSizeChanged: (size) {
+                  setState(() {
+                    _pageSize = size;
+                    _page = 0;
+                  });
+                },
+                onPrev: page == 0
+                    ? null
+                    : () => setState(() => _page = page - 1),
+                onNext: page >= pageCount - 1
+                    ? null
+                    : () => setState(() => _page = page + 1),
+              ),
+          ],
         ],
       ),
     );
@@ -324,6 +382,99 @@ class _CliBadge extends StatelessWidget {
       child: Text(
         usageCliLabel(cli),
         style: styles.xs.copyWith(color: color, fontSize: 10),
+      ),
+    );
+  }
+}
+
+class _PaginationBar extends StatelessWidget {
+  const _PaginationBar({
+    required this.page,
+    required this.pageCount,
+    required this.start,
+    required this.end,
+    required this.total,
+    required this.pageSize,
+    required this.pageSizeOptions,
+    required this.onPageSizeChanged,
+    required this.onPrev,
+    required this.onNext,
+  });
+
+  final int page;
+  final int pageCount;
+  final int start;
+  final int end;
+  final int total;
+  final int pageSize;
+  final List<int> pageSizeOptions;
+  final ValueChanged<int> onPageSizeChanged;
+  final VoidCallback? onPrev;
+  final VoidCallback? onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    final styles = TpTextStyles.of(context);
+    final muted = styles.xs.copyWith(
+      color: cs.onSurface.withValues(alpha: 0.56),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        runSpacing: 4,
+        children: [
+          Text(
+            l10n.sessionUsagePageRange(start + 1, end, total),
+            key: AppKeys.sessionUsagePageRange,
+            style: muted,
+          ),
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 2,
+            children: [
+              Text(l10n.sessionUsageRowsPerPage, style: muted),
+              DropdownButtonHideUnderline(
+                child: DropdownButton<int>(
+                  key: AppKeys.sessionUsagePageSize,
+                  value: pageSize,
+                  isDense: true,
+                  borderRadius: BorderRadius.circular(8),
+                  style: styles.xs.copyWith(color: cs.onSurface),
+                  items: [
+                    for (final size in pageSizeOptions)
+                      DropdownMenuItem(value: size, child: Text('$size')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) onPageSizeChanged(value);
+                  },
+                ),
+              ),
+              IconButton(
+                key: AppKeys.sessionUsagePrevPage,
+                tooltip: l10n.sessionUsagePrevPage,
+                onPressed: onPrev,
+                visualDensity: VisualDensity.compact,
+                iconSize: 20,
+                icon: const Icon(Icons.chevron_left),
+              ),
+              Text(l10n.sessionUsagePageOf(page + 1, pageCount), style: muted),
+              IconButton(
+                key: AppKeys.sessionUsageNextPage,
+                tooltip: l10n.sessionUsageNextPage,
+                onPressed: onNext,
+                visualDensity: VisualDensity.compact,
+                iconSize: 20,
+                icon: const Icon(Icons.chevron_right),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

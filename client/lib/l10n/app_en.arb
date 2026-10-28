@@ -4780,6 +4780,10 @@
   "sessionUsageSync": "Sync",
   "sessionUsageSyncing": "Syncing",
   "sessionUsageSyncTooltip": "Scan CLI transcripts for new usage",
+  "sessionUsageSyncIncremental": "Incremental sync",
+  "sessionUsageSyncIncrementalHint": "Scan only files changed since the last sync",
+  "sessionUsageSyncFull": "Full sync",
+  "sessionUsageSyncFullHint": "Rescan every transcript from scratch",
   "sessionUsageCancelSync": "Cancel",
   "sessionUsageCancelling": "Cancelling…",
   "sessionUsageCancelSyncTooltip": "Cancel usage sync",
@@ -4929,6 +4933,34 @@
       }
     }
   },
+  "sessionUsagePageRange": "{start}–{end} of {total} groups",
+  "@sessionUsagePageRange": {
+    "placeholders": {
+      "start": {
+        "type": "int"
+      },
+      "end": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsagePageOf": "Page {page} / {pages}",
+  "@sessionUsagePageOf": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "pages": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageRowsPerPage": "Rows per page",
+  "sessionUsagePrevPage": "Previous page",
+  "sessionUsageNextPage": "Next page",
   "sessionUsageCost": "Cost",
   "sessionUsageCostShort": "Cost",
   "sessionUsageCostPricedUnpriced": "{priced} priced · {unpriced} unpriced",
@@ -5025,8 +5057,6 @@
   },
   "sessionUsageCursorCleared": "Removed imported Cursor usage.",
   "sessionUsageMaintenanceFailed": "Couldn't compact usage storage.",
-  "sessionUsageFooterJsonl": "JSONL read-only",
-  "sessionUsageFooterManual": "Auto + manual sync",
   "sessionUsageSyncedToast": "Usage synced",
   "sessionUsageLoading": "Loading usage…",
   "sessionUsageTotalShort": "Total",

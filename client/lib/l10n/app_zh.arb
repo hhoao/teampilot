@@ -4084,6 +4084,10 @@
   "sessionUsageSync": "同步",
   "sessionUsageSyncing": "同步中",
   "sessionUsageSyncTooltip": "扫描 CLI 记录以获取新用量",
+  "sessionUsageSyncIncremental": "增量同步",
+  "sessionUsageSyncIncrementalHint": "只扫描上次同步后变化的文件",
+  "sessionUsageSyncFull": "全量同步",
+  "sessionUsageSyncFullHint": "从头重新扫描全部记录",
   "sessionUsageCancelSync": "取消",
   "sessionUsageCancelling": "正在取消…",
   "sessionUsageCancelSyncTooltip": "取消用量同步",
@@ -4233,6 +4237,34 @@
       }
     }
   },
+  "sessionUsagePageRange": "第 {start}–{end} 条 · 共 {total} 组",
+  "@sessionUsagePageRange": {
+    "placeholders": {
+      "start": {
+        "type": "int"
+      },
+      "end": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsagePageOf": "第 {page} / {pages} 页",
+  "@sessionUsagePageOf": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "pages": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageRowsPerPage": "每页条数",
+  "sessionUsagePrevPage": "上一页",
+  "sessionUsageNextPage": "下一页",
   "sessionUsageCost": "成本",
   "sessionUsageCostShort": "成本",
   "sessionUsageCostPricedUnpriced": "已定价 {priced} 条 · 未定价 {unpriced} 条",
@@ -4329,8 +4361,6 @@
   },
   "sessionUsageCursorCleared": "已移除导入的 Cursor 用量。",
   "sessionUsageMaintenanceFailed": "用量存储压缩失败。",
-  "sessionUsageFooterJsonl": "JSONL 只读",
-  "sessionUsageFooterManual": "自动 + 手动同步",
   "sessionUsageSyncedToast": "用量同步完成",
   "sessionUsageLoading": "正在加载用量…",
   "sessionUsageTotalShort": "总计",

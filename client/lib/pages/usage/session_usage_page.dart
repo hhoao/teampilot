@@ -145,8 +145,11 @@ class _SessionUsagePageState extends State<SessionUsagePage>
               children: [
                 UsagePageHeader(
                   state: state,
-                  onSync: () => cubit.sync(),
+                  onIncrementalSync: () => cubit.sync(),
+                  onFullSync: cubit.fullSync,
                   onCancel: cubit.cancelSync,
+                  onCursor: () => _openMaintenance(cubit),
+                  onMaintenance: () => _openMaintenance(cubit),
                 ),
                 if (_errorBanner(context, cubit, state) case final banner?) ...[
                   const SizedBox(height: 12),
@@ -382,13 +385,12 @@ class _SessionUsagePageState extends State<SessionUsagePage>
             searchController: _searchController,
             onQueryChanged: cubit.setQuery,
             onResetFilters: () => _resetFilters(cubit),
+            resetKey:
+                '${state.range.name}|${state.cli?.name ?? ''}|'
+                '${state.groupBy.name}|${state.query}',
           ),
           const SizedBox(height: 10),
-          UsageFooter(
-            state: state,
-            onMaintenance: () => _openMaintenance(cubit),
-            onCursor: () => _openMaintenance(cubit),
-          ),
+          UsageFooter(state: state),
         ],
       ),
     );
