@@ -4,7 +4,7 @@ import '../cli/cli_installer_service.dart';
 import '../cli/remote_cli_installer.dart';
 import '../cli/registry/capabilities/cli_executable_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
-import '../cli/registry/installer/npm_installer_capability.dart';
+import '../cli/registry/installer/acp_adapter_installer.dart';
 import '../host/host_execution_environment.dart';
 
 /// Runs the full remote CLI install path (npm locate → Node bootstrap →
@@ -48,11 +48,11 @@ RemoteInstallAction buildRemotePreflightCliInstall({
   };
 }
 
-/// Remote install of a separate ACP adapter npm package (Claude / Codex) over
-/// an existing preflight [SshCommandRunner]. Twin of
+/// Remote install of a separate ACP adapter (npm package or standalone binary)
+/// over an existing preflight [SshCommandRunner]. Twin of
 /// [buildRemotePreflightCliInstall] for `CliInstallerService.installAdapter`.
 RemoteInstallAction buildRemotePreflightAdapterInstall({
-  required NpmInstallerCapability installer,
+  required AcpAdapterInstaller installer,
   required SshProfile profile,
   String? Function()? preferredNodePath,
 }) {

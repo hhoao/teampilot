@@ -148,7 +148,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       }
     }
     final adapter = _settings?.adapterInstaller;
-    if (adapter != null) {
+    if (adapter is NpmInstallerCapability) {
       final latest = await _probe.latestNpm(adapter.npmPackage);
       if (!mounted) return;
       if (latest != null) {

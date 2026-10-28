@@ -11,7 +11,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/claude/capabilities/acp_adapter_installer.dart';
 import 'package:teampilot/services/cli/cli_installer_service.dart';
 import 'package:teampilot/services/cli/codex/capabilities/acp_adapter_installer.dart';
-import 'package:teampilot/services/cli/registry/installer/npm_installer_capability.dart';
+import 'package:teampilot/services/cli/registry/installer/acp_adapter_installer.dart';
 import 'package:teampilot/services/install/install_job_keys.dart';
 import 'package:teampilot/services/install/runners/cli_install_job_runner.dart';
 
@@ -58,7 +58,7 @@ InstallJobSpec<CliInstallResult> _spec(InstallJobKey key) => InstallJobSpec(
 class _AdapterRecordingService extends CliInstallerService {
   _AdapterRecordingService() : super(isWindowsOverride: false);
 
-  NpmInstallerCapability? installer;
+  AcpAdapterInstaller? installer;
   CliInstallMode? mode;
   var cliInstallCalls = 0;
 
@@ -77,7 +77,7 @@ class _AdapterRecordingService extends CliInstallerService {
 
   @override
   Future<CliInstallResult> installAdapter({
-    required NpmInstallerCapability installer,
+    required AcpAdapterInstaller installer,
     required CliInstallMode mode,
     SshProfile? sshProfile,
     CliInstallProgressCallback? onProgress,

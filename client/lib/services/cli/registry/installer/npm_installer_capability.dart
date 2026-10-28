@@ -1,4 +1,5 @@
 import '../../installer_types.dart';
+import 'acp_adapter_installer.dart';
 import 'installer_context.dart';
 import 'teampilot_node_install.dart';
 import 'termux_remote_detect.dart';
@@ -8,20 +9,39 @@ import 'termux_remote_detect.dart';
 /// Subclasses only supply the npm [npmPackage], the resulting [executableName],
 /// and a human-readable [displayName]; the local/remote Node bootstrap, install,
 /// and executable resolution flow is identical across tools.
-abstract class NpmInstallerCapability {
+///
+/// Also satisfies [AcpAdapterInstaller], so npm-distributed ACP adapters
+/// (Claude/Codex) need no extra plumbing; [adapterJobTarget] stays
+/// `adapter:<executableName>`, matching their existing static `jobTarget`.
+abstract class NpmInstallerCapability implements AcpAdapterInstaller {
   const NpmInstallerCapability();
 
   /// Global npm package to install (e.g. `@anthropic-ai/claude-code`).
   String get npmPackage;
 
   /// Executable name to locate after install (e.g. `claude`).
+  @override
   String get executableName;
 
   /// Tool name for progress detail and result messages (e.g. `Claude Code`).
+  @override
   String get displayName;
 
+  @override
   bool get supportsInstaller => true;
 
+  @override
+  String get adapterJobTarget => 'adapter:$executableName';
+
+  /// npm adapters resolve nothing eagerly; readiness probes the binary itself.
+  @override
+  Future<String?> resolveInstalledPath() async => null;
+
+  /// npm adapters have no pinned release catalog; callers fall back to npm.
+  @override
+  Future<String?> latestVersion() async => null;
+
+  @override
   Future<CliInstallResult> install(CliInstallContext context) {
     return switch (context.mode) {
       CliInstallMode.local => _installLocal(context),
