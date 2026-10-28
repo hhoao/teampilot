@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../services/cli/registry/cli_tool_registry.dart';
 import 'member_instance.dart';
 import 'session_continue_overrides.dart';
 import 'session_member_binding.dart';
@@ -186,7 +187,7 @@ class AppSession {
     final resolvedAcp =
         acp ??
         (trimmedTeam.isEmpty &&
-            (cli == CliTool.gemini || cli == CliTool.codebuddy));
+            CliToolRegistry.builtIn().launchesAcpOnly(cli));
     return AppSession._(
       sessionId: sessionId,
       workspaceId: workspaceId,

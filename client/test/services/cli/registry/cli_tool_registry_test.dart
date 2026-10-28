@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_transport_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -43,6 +45,40 @@ void main() {
           contains(CliTool.claude.value),
         ),
       ),
+    );
+  });
+
+  test('launchesAcpOnly marks only ACP-only CLIs', () {
+    final registry = CliToolRegistry();
+    registerBuiltInCliTools(registry);
+
+    expect(registry.launchesAcpOnly(CliTool.gemini), isTrue);
+    expect(registry.launchesAcpOnly(CliTool.codebuddy), isTrue);
+    for (final cli in [
+      CliTool.claude,
+      CliTool.codex,
+      CliTool.cursor,
+      CliTool.opencode,
+    ]) {
+      expect(registry.launchesAcpOnly(cli), isFalse, reason: cli.value);
+    }
+    expect(
+      registry.launchesAcpOnly(null),
+      isFalse,
+      reason: 'team sessions never infer ACP from a CLI',
+    );
+    expect(
+      registry.supportsTransport(CliTool.claude, CliTransport.pty),
+      isTrue,
+    );
+    expect(
+      registry.supportsTransport(CliTool.claude, CliTransport.acp),
+      isTrue,
+    );
+    expect(
+      registry.supportsTransport(CliTool.flashskyai, CliTransport.acp),
+      isFalse,
+      reason: 'FlashskyAI has no ACP capability',
     );
   });
 }

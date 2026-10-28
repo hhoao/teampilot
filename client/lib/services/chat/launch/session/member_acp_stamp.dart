@@ -39,7 +39,7 @@ bool resolveMemberBindingAcp({
   )) {
     return false;
   }
-  if (cli == CliTool.gemini || cli == CliTool.codebuddy) return true;
+  if (CliToolRegistry.builtIn().launchesAcpOnly(cli)) return true;
   return requested;
 }
 

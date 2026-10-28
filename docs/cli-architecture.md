@@ -262,6 +262,7 @@ tool 列表。
 | `AiHistoryCapability` | transcript 定位/解析、会话恢复、tool call 解析器 |
 | `TerminalObservationContributor` | 可选；在 `CliToolDefinition.capabilities` 上用 `is` 扫描。PTY detect/scan/listen 注册到 `TerminalObservationBus`。`TerminalLaunchController` 中禁止 `if (cli == …)` |
 | `AcpCapability` | ACP spawn argv / env / translator. Optional. Claude/Codex use a separate adapter binary; Cursor/OpenCode/Gemini/CodeBuddy pass `cli acp` / `--acp`. |
+| `CliTransportCapability` | `supported: Set<CliTransport>` (`pty` / `acp`) + derived `defaultTransport` / `acpOnly`. ACP membership must match `AcpCapability` (asserted at registry build). Gemini/CodeBuddy declare `{acp}`; session create and compose read `CliToolRegistry.launchesAcpOnly` instead of comparing `CliTool` values. |
 | `InteractiveCliLoginCapability` | Provider sign-in that only exists in the CLI's TUI (CodeBuddy `/login`): the credential bar opens the capability-built terminal dialog, then records completion. |
 | `AcpSettingsCapability` | Settings extras: `usesSeparateAdapter`, adapter installer, `showsPersonalAcpSwitch`. Gemini omits this (no personal switch). |
 | 团队能力细分 | `TeamBehaviorCapability.supportsNativeTeam`（仅 claude、flashskyai）、`agentPresetStyle`（agent 预设） |
@@ -514,6 +515,7 @@ for (final def in CliToolRegistry.builtIn().launchable)
 | `AiHistoryCapability` | `registry/capabilities/ai_history_capability.dart` | 基础设施 | - |
 | `MemberConfigInspectionCapability` | `registry/capabilities/member_config_inspection_capability.dart` | 基础设施 | ✅ |
 | `AcpCapability` | `registry/capabilities/acp_capability.dart` | 基础设施 | - |
+| `CliTransportCapability` | `registry/capabilities/cli_transport_capability.dart` | 基础设施 | ✅ |
 | `AcpSettingsCapability` | `registry/capabilities/acp_settings_capability.dart` | 基础设施 | - |
 
 > 注：46 → 14 收敛（2026-08-14）。`ConfigProfileCapability` 已解散：其"provider 解析 +

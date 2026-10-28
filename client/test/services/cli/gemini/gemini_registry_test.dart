@@ -2,11 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_executable_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_transport_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 void main() {
-  test('gemini registers all required capabilities on the built-in registry',
-      () {
+  test('gemini registers all required capabilities on the built-in registry', () {
     // registerBuiltInCliTools asserts every CliTool (incl. gemini) registers
     // Provider / MemberConfigInspection / CliSession / TeamBehavior /
     // CliExecutable / TerminalBehavior / Plugin / ChatInteraction /
@@ -23,11 +23,29 @@ void main() {
     expect(exe.supportsInstaller, isTrue);
   });
 
-  test('gemini stays out of native-team and member-agent-preset allowed sets',
-      () {
+  test('gemini launches only over ACP', () {
     final registry = CliToolRegistry();
     registerBuiltInCliTools(registry);
-    expect(registry.supportsNativeTeam(CliTool.gemini), isFalse);
-    expect(registry.supportsMemberAgentPreset(CliTool.gemini), isFalse);
+    final transport = registry.capability<CliTransportCapability>(
+      CliTool.gemini,
+    );
+    expect(transport, isNotNull);
+    expect(transport!.supported, {CliTransport.acp});
+    expect(transport.defaultTransport, CliTransport.acp);
+    expect(
+      registry.supportsTransport(CliTool.gemini, CliTransport.pty),
+      isFalse,
+    );
+    expect(registry.launchesAcpOnly(CliTool.gemini), isTrue);
   });
+
+  test(
+    'gemini stays out of native-team and member-agent-preset allowed sets',
+    () {
+      final registry = CliToolRegistry();
+      registerBuiltInCliTools(registry);
+      expect(registry.supportsNativeTeam(CliTool.gemini), isFalse);
+      expect(registry.supportsMemberAgentPreset(CliTool.gemini), isFalse);
+    },
+  );
 }

@@ -34,7 +34,7 @@ bool willLaunchPersonalAcp({
   bool? isAndroidOverride,
 }) {
   if (isPersonal &&
-      (cli == CliTool.gemini || cli == CliTool.codebuddy) &&
+      CliToolRegistry.builtIn().launchesAcpOnly(cli) &&
       !_isAndroid(isAndroidOverride)) {
     return true;
   }

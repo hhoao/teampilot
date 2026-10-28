@@ -1,6 +1,7 @@
 import 'capabilities/acp.dart';
 import 'capabilities/acp_adapter_installer.dart';
 import '../registry/capabilities/acp_settings_capability.dart';
+import '../registry/capabilities/cli_transport_capability.dart';
 import 'capabilities/provider.dart';
 import '../registry/capabilities/provider_capability.dart';
 import '../../../models/team_config.dart';
@@ -76,6 +77,9 @@ final class ClaudeCliTool implements CliToolDefinition {
       adapterExecutableName: ClaudeAcpCapability.adapterName,
       adapterInstaller: ClaudeAcpAdapterInstaller(),
     ),
+    this.transport = const CliTransportCapability(
+      supported: {CliTransport.pty, CliTransport.acp},
+    ),
 
     HookCapability? hookWriter,
   }) : hookWriter = hookWriter ?? const ClaudeFamilyHookWriter();
@@ -108,6 +112,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final PromptCapability prompt;
   final ClaudeAcpCapability acp;
   final AcpSettingsCapability acpSettings;
+  final CliTransportCapability transport;
 
   @override
   CliTool get id => CliTool.claude;
@@ -143,5 +148,6 @@ final class ClaudeCliTool implements CliToolDefinition {
     hookWriter,
     acp,
     acpSettings,
+    transport,
   ];
 }

@@ -14,6 +14,8 @@ import '../../../services/cli/gemini/gemini_bootstrap_entry.dart';
 import '../../../services/cli/opencode/capabilities/headless.dart';
 import '../../../services/cli/opencode/opencode_bootstrap_entry.dart';
 import 'capabilities/member_config_inspection_capability.dart';
+import 'capabilities/acp_capability.dart';
+import 'capabilities/cli_transport_capability.dart';
 import '../../../services/cli/claude/capabilities/provider.dart';
 import '../../../services/cli/codex/capabilities/provider.dart';
 import '../../../services/cli/cursor/capabilities/provider.dart';
@@ -158,6 +160,16 @@ void registerBuiltInCliTools(
   _verifyRequired<ChatInteractionCapability>(registry);
   _verifyRequired<RuntimeEventCapability>(registry);
   _verifyRequired<WorkspaceBaseInfoCapability>(registry);
+  _verifyRequired<CliTransportCapability>(registry);
+  assert(
+    CliTool.values.every((cli) {
+      final transport = registry.capability<CliTransportCapability>(cli);
+      return transport != null &&
+          transport.supports(CliTransport.acp) ==
+              (registry.capability<AcpCapability>(cli) != null);
+    }),
+    'CliTransportCapability ACP membership must match AcpCapability',
+  );
   _verifyNativeTeamRegistration(registry);
   _verifyMemberAgentPresetRegistration(registry);
 }

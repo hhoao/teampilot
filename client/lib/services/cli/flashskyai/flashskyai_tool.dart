@@ -2,6 +2,7 @@ import 'capabilities/provider.dart';
 import '../registry/capabilities/provider_capability.dart';
 import '../../../models/team_config.dart';
 import 'capabilities/session.dart';
+import '../registry/capabilities/cli_transport_capability.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
 import 'capabilities/team_behavior.dart';
@@ -61,6 +62,9 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.nativeCommands = const FlashskyaiNativeCommands(),
     this.hookWriter = const FlashskyaiHookWriter(),
     this.prompt = const FlashskyaiPromptCapability(),
+    this.transport = const CliTransportCapability(
+      supported: {CliTransport.pty},
+    ),
   });
 
   final ProviderCapability provider;
@@ -88,6 +92,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final FlashskyaiAiHistoryCapability aiHistory;
   final SkillCapability skill;
   final NativeCommandCapability nativeCommands;
+  final CliTransportCapability transport;
 
   @override
   CliTool get id => CliTool.flashskyai;
@@ -120,5 +125,6 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     nativeCommands,
     hookWriter,
     prompt,
+    transport,
   ];
 }

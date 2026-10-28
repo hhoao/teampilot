@@ -2,6 +2,7 @@ import '../registry/capabilities/provider_capability.dart';
 import 'capabilities/provider.dart';
 import '../../../models/team_config.dart';
 import 'capabilities/session.dart';
+import '../registry/capabilities/cli_transport_capability.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
 import 'capabilities/team_behavior.dart';
@@ -70,6 +71,9 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.hookWriter = const OpencodeHookWriter(),
     this.acp = const OpencodeAcpCapability(),
     this.acpSettings = const DefaultAcpSettingsCapability(),
+    this.transport = const CliTransportCapability(
+      supported: {CliTransport.pty, CliTransport.acp},
+    ),
   }) : provider = provider ?? OpencodeProviderCapability();
 
   final ProviderCapability provider;
@@ -101,6 +105,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final PromptCapability prompt;
   final OpencodeAcpCapability acp;
   final AcpSettingsCapability acpSettings;
+  final CliTransportCapability transport;
 
   @override
   CliTool get id => CliTool.opencode;
@@ -137,5 +142,6 @@ final class OpencodeCliTool implements CliToolDefinition {
     hookWriter,
     acp,
     acpSettings,
+    transport,
   ];
 }

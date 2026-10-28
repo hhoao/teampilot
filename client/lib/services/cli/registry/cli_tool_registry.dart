@@ -2,6 +2,7 @@ import '../../../models/team_config.dart';
 import 'built_in_cli_tools.dart';
 import 'capabilities/cli_session_capability.dart';
 import 'capabilities/cli_launch_security_capability.dart';
+import 'capabilities/cli_transport_capability.dart';
 import 'capabilities/noop_cli_session_capability.dart';
 import 'capabilities/provider_capability.dart';
 import 'capabilities/team_behavior_capability.dart';
@@ -84,6 +85,18 @@ class CliToolRegistry {
 
   bool supportsMemberAgentPreset(CliTool id) =>
       memberAgentPresetStyle(id) != null;
+
+  /// Whether [id] can only launch over ACP (no PTY fallback) — Gemini and
+  /// CodeBuddy. Session create and compose treat these as ACP without a
+  /// user opt-in; a null [id] (team sessions) is never ACP-only.
+  bool launchesAcpOnly(CliTool? id) {
+    if (id == null) return false;
+    return capability<CliTransportCapability>(id)?.acpOnly ?? false;
+  }
+
+  /// Whether [id] can launch over [transport].
+  bool supportsTransport(CliTool id, CliTransport transport) =>
+      capability<CliTransportCapability>(id)?.supports(transport) ?? false;
 
   Iterable<CliToolDefinition> get all => _definitions.values;
 

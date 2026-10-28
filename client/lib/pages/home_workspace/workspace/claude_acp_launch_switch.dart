@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../cubits/session_preferences_cubit.dart';
 import '../../../models/team_config.dart';
+import '../../../services/cli/registry/capabilities/cli_transport_capability.dart';
+import '../../../services/cli/registry/cli_tool_registry.dart';
 
 export '../../../services/chat/launch/session/member_acp_stamp.dart'
     show resolveMemberBindingAcp, shouldAttachMemberAcp, stampMemberAcp;
@@ -51,10 +53,11 @@ bool readPersonalAcpDefault(BuildContext context, CliTool? cli) {
       _ => false,
     };
   } on ProviderNotFoundException {
-    return cli == CliTool.claude ||
-        cli == CliTool.cursor ||
-        cli == CliTool.codex ||
-        cli == CliTool.opencode;
+    if (cli == null) return false;
+    return CliToolRegistry.builtIn()
+            .capability<CliTransportCapability>(cli)
+            ?.defaultTransport ==
+        CliTransport.acp;
   }
 }
 

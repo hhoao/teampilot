@@ -5,6 +5,7 @@ import 'package:teampilot/services/cli/registry/capabilities/acp_capability.dart
 import 'package:teampilot/services/cli/registry/capabilities/acp_settings_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_executable_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/headless_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/cli_transport_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/mcp_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
@@ -31,6 +32,12 @@ void main() {
       isNotNull,
       reason: 'ACP is the only launch mode',
     );
+    expect(
+      registry.capability<CliTransportCapability>(CliTool.codebuddy)!.supported,
+      {CliTransport.acp},
+      reason: 'session create infers ACP for ACP-only CLIs',
+    );
+    expect(registry.launchesAcpOnly(CliTool.codebuddy), isTrue);
     expect(
       registry.capability<HeadlessCapability>(CliTool.codebuddy),
       isNotNull,

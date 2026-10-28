@@ -5,6 +5,7 @@ import 'capabilities/provider.dart';
 import '../registry/capabilities/provider_capability.dart';
 import '../../../models/team_config.dart';
 import 'capabilities/session.dart';
+import '../registry/capabilities/cli_transport_capability.dart';
 import '../registry/cli_capability.dart';
 import '../registry/cli_tool_definition.dart';
 import 'capabilities/skill.dart';
@@ -70,6 +71,9 @@ final class CodexCliTool implements CliToolDefinition {
       adapterExecutableName: CodexAcpCapability.adapterName,
       adapterInstaller: CodexAcpAdapterInstaller(),
     ),
+    this.transport = const CliTransportCapability(
+      supported: {CliTransport.pty, CliTransport.acp},
+    ),
     CodexProviderCapability? provider,
   }) : provider = provider ?? CodexProviderCapability();
 
@@ -100,6 +104,7 @@ final class CodexCliTool implements CliToolDefinition {
   final PromptCapability prompt;
   final CodexAcpCapability acp;
   final AcpSettingsCapability acpSettings;
+  final CliTransportCapability transport;
 
   @override
   CliTool get id => CliTool.codex;
@@ -134,5 +139,6 @@ final class CodexCliTool implements CliToolDefinition {
     hookWriter,
     acp,
     acpSettings,
+    transport,
   ];
 }
