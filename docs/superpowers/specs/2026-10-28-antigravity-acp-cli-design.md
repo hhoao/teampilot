@@ -91,7 +91,7 @@ Known upstream constraints:
 ### TeamPilot patterns to reuse
 
 - `CodebuddyCliTool` / `GeminiCliTool` are the ACP-only templates.
-- `AcpCapability` + `AcpOnlyCapability` + `AcpSettingsCapability` already model
+- `AcpCapability` + `CliTransportCapability({acp})` + `AcpSettingsCapability` already model
   "separate adapter binary" (Claude / Codex) and "ACP-only" (Gemini / CodeBuddy).
 - `AcpAskFullAccessCliLaunchSecurityCapability` provides ACP `ask` / `fullAccess`.
 - `NoopCliSessionCapability` + `DefaultCliConfigLayout` provide the session
@@ -198,7 +198,7 @@ sites resolve capabilities through `CliToolRegistry`.
 
 | Capability | Implementation | Notes |
 |---|---|---|
-| `AcpCapability` + `AcpOnlyCapability` | `AntigravityAcpCapability` | `agy_acp_server`, no PTY |
+| `AcpCapability` + `CliTransportCapability({acp})` | `AntigravityAcpCapability` | `agy_acp_server`, no PTY |
 | `AcpSettingsCapability` | `AntigravityAcpSettings` | `usesSeparateAdapter: true`, `showsPersonalAcpSwitch: false` |
 | `CliExecutableCapability` | `AntigravityExecutableCapability` | `agy`; official install script |
 | `CliSessionCapability` | `AntigravityCliSessionCapability` | fake `HOME`; config root |
@@ -593,7 +593,7 @@ snapshot to an app-owned `acp-usage.jsonl` (session-scoped). Then:
   - `agy models` parsing and static fallback.
 - Registry tests:
   - `CliTool.antigravity` registers every required capability.
-  - `AcpOnlyCapability` present; `AcpSettingsCapability(usesSeparateAdapter: true,
+  - `CliTransportCapability({acp})` present; `AcpSettingsCapability(usesSeparateAdapter: true,
     showsPersonalAcpSwitch: false)`.
   - `launchesAcpOnly(CliTool.antigravity)` true.
   - Tool-call resolvers non-null.

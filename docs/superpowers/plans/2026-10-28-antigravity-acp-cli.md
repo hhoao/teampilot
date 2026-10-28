@@ -1055,7 +1055,7 @@ final class AntigravityAcpTranslator extends AcpAgentTranslator {
 }
 
 final class AntigravityAcpCapability
-    implements AcpCapability, AcpOnlyCapability {
+    implements AcpCapability {
   const AntigravityAcpCapability({
     this.model,
     this.adapterPath,
