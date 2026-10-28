@@ -16,7 +16,7 @@
 - l10n only via `client/lib/l10n/app_en.arb` / `app_zh.arb`.
 - Compose message wire format stays plain text (`@path`, `/skill`, `/command`); no markers in the text.
 - Pasted text is always plain text. Only explicit insertion creates a token.
-- Draft persistence stays plain text for this iteration: a restored draft reopens as plain text (no chips). This is intentional and must be documented in `compose_draft_cache.dart`.
+- Draft persistence stores `{text, tokens}`; a restored token is kept only when its saved slice still matches the text. Legacy plain-string drafts load without tokens.
 
 ---
 
@@ -1068,21 +1068,20 @@ git commit -m "test(compose): cover token document regressions"
 
 ---
 
-### Task 8: Document the new invariant
+### Task 8: Persist token ranges and polish interaction
 
 **Files:**
-- Modify: `client/lib/services/chat/conversation/compose/compose_draft_cache.dart`
-- Modify: `docs/ARCHITECTURE.md` (compose section) if it mentions regex tokens.
+- Add: `client/lib/services/chat/conversation/compose/compose_draft.dart`
+- Modify: `compose_draft_cache.dart`, `compose_draft_store.dart`,
+  `compose_text_controller.dart`, `session_chat_view.dart`,
+  `unbound_compose_body.dart`
+- Modify (shared_ui): arrow-key token skip + stadium chip radius.
 
-- [ ] **Step 1: Add the draft note**
-
-Add above `ComposeDraftCache`:
-
-```dart
-/// Drafts persist plain text only. Token ranges are runtime state: restoring a
-/// draft reopens the text as plain text (no chips), matching "only explicitly
-/// inserted tokens are tokens". Re-selecting a reference creates a new token.
-```
+- [x] Draft JSON stores `{text, tokens}`; legacy strings still decode.
+- [x] `ComposeTextController.restoreDocument` validates slices and drops stale
+  tokens.
+- [x] Left/Right (and Shift+Left/Right) step over a whole token.
+- [x] Chip pill radius is half its height (stadium), not a fixed 6px.
 
 - [ ] **Step 2: Grep docs for stale regex claims**
 
