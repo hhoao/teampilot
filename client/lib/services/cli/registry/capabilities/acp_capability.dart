@@ -7,9 +7,7 @@ import '../cli_capability.dart';
 typedef AcpCredentialSource = String? Function();
 
 /// Marks a CLI whose only launch mode is ACP.
-abstract interface class AcpOnlyCapability implements CliCapability {
-  bool get acpOnly;
-}
+abstract interface class AcpOnlyCapability implements CliCapability {}
 
 /// Declares how a CLI is launched as an ACP agent.
 ///

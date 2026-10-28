@@ -198,12 +198,14 @@ class AcpAgentConnection {
     List<acpd.McpServer> mcpServers = const [],
     Map<String, Object?> meta = const {},
     Duration permissionTimeout = AcpAgentSession.defaultPermissionTimeout,
+    Duration timeout = const Duration(seconds: 30),
   }) => _establish(
     kind: AcpSessionOpenKind.create,
     cwd: cwd,
     mcpServers: mcpServers,
     meta: meta,
     permissionTimeout: permissionTimeout,
+    timeout: timeout,
   );
 
   /// Opens an existing ACP session via `session/load` for [sessionId].
@@ -217,6 +219,7 @@ class AcpAgentConnection {
     List<acpd.McpServer> mcpServers = const [],
     Map<String, Object?> meta = const {},
     Duration permissionTimeout = AcpAgentSession.defaultPermissionTimeout,
+    Duration timeout = const Duration(seconds: 30),
   }) => _establish(
     kind: AcpSessionOpenKind.load,
     sessionId: sessionId,
@@ -224,6 +227,7 @@ class AcpAgentConnection {
     mcpServers: mcpServers,
     meta: meta,
     permissionTimeout: permissionTimeout,
+    timeout: timeout,
   );
 
   /// Resumes a paused ACP session via `session/resume` for [sessionId].
@@ -236,6 +240,7 @@ class AcpAgentConnection {
     List<acpd.McpServer> mcpServers = const [],
     Map<String, Object?> meta = const {},
     Duration permissionTimeout = AcpAgentSession.defaultPermissionTimeout,
+    Duration timeout = const Duration(seconds: 30),
   }) => _establish(
     kind: AcpSessionOpenKind.resume,
     sessionId: sessionId,
@@ -243,6 +248,7 @@ class AcpAgentConnection {
     mcpServers: mcpServers,
     meta: meta,
     permissionTimeout: permissionTimeout,
+    timeout: timeout,
   );
 
   /// Lists the agent's sessions via `session/list`.
@@ -267,6 +273,7 @@ class AcpAgentConnection {
     required List<acpd.McpServer> mcpServers,
     required Map<String, Object?> meta,
     required Duration permissionTimeout,
+    required Duration timeout,
   }) async {
     final existing = _openSession;
     if (existing != null) {
@@ -309,6 +316,7 @@ class AcpAgentConnection {
               mcpServers: mcpServers,
               meta: meta,
             ),
+            timeout: timeout,
           );
           resolvedId = response.sessionId;
           configOptions = response.configOptions;
@@ -320,6 +328,7 @@ class AcpAgentConnection {
               mcpServers: mcpServers,
               meta: meta,
             ),
+            timeout: timeout,
           );
           resolvedId = sessionId;
           configOptions = response.configOptions;
@@ -331,6 +340,7 @@ class AcpAgentConnection {
               mcpServers: mcpServers,
               meta: meta,
             ),
+            timeout: timeout,
           );
           resolvedId = sessionId;
           configOptions = response.configOptions;

@@ -13,7 +13,9 @@ import 'package:teampilot/services/resource/resource_provider_set.dart';
 import 'package:teampilot/services/cli/registry/capabilities/acp_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 
-/// ACP-only CLIs have no PTY resource surface (prompt/MCP/hook/skill targets).
+/// Temporary vertical-slice skips for Antigravity (ACP-only): its prompt,
+/// MCP, hook, and skill targets land in later tasks, which must remove these
+/// skips (Tasks 11/13/16).
 Iterable<CliToolDefinition> _ptyLaunchable(CliToolRegistry registry) =>
     registry.launchable.where(
       (definition) =>

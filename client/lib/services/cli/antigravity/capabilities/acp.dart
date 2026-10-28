@@ -42,9 +42,8 @@ final class AntigravityAcpCapability
   final String? adapterPath;
   final bool? linuxUid;
 
-  bool get _usesUid => linuxUid ?? false;
+  bool get _usesUid => linuxUid ?? Platform.isLinux;
 
-  @override
   bool get acpOnly => true;
 
   @override
