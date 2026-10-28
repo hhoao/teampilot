@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/cursor_usage_cubit.dart';
 import 'package:teampilot/models/cursor_usage_account.dart';
@@ -223,4 +225,98 @@ void main() {
       expect(cycleReads, 2);
     },
   );
+
+  test('a superseded flight cannot publish stale reports', () async {
+    // One gate per requested range: each flight parks in `loadReport` until
+    // its gate opens, so the release order is under the test's control.
+    final gates = <int, Completer<void>>{};
+    const rangeA = CursorUsageCustomRange(startMs: 1000, endMs: 2000);
+    const rangeB = CursorUsageCustomRange(startMs: 3000, endMs: 4000);
+    int tagOf(CursorUsageRange range) => switch (range) {
+      CursorUsageCustomRange(:final startMs) => startMs,
+      CursorUsagePresetRange() => -1,
+    };
+
+    final cubit = CursorUsageCubit(
+      loadAccounts: () async => [_accountA, _accountB],
+      refreshAccount: (_) async {},
+      billingCycleFor: (_) async => null,
+      loadReport:
+          ({
+            required accountId,
+            required range,
+            billingCycle,
+            forceRefresh = false,
+          }) async {
+            final tag = tagOf(range);
+            await gates.putIfAbsent(tag, Completer<void>.new).future;
+            return CursorUsageReport(
+              accountId: accountId,
+              startMs: tag,
+              endMs: tag + 1,
+            );
+          },
+      saveRange: (_) async {},
+      addAccount: (_, _) async => true,
+      removeAccount: (_) async {},
+      initialRange: const CursorUsagePresetRange(CursorUsagePreset.today),
+    );
+
+    final initial = cubit.ensureLoaded();
+    await pumpEventQueue();
+    final changeA = cubit.setRange(rangeA);
+    await pumpEventQueue();
+    final changeB = cubit.setRange(rangeB);
+    await pumpEventQueue();
+    expect(gates.keys, containsAll([-1, 1000, 3000]));
+
+    // Newest first, superseded initial flight last: without the generation
+    // guard its preset-range numbers land on top of B's reports.
+    gates[3000]!.complete();
+    gates[1000]!.complete();
+    gates[-1]!.complete();
+    await Future.wait([initial, changeA, changeB]);
+    await pumpEventQueue();
+
+    expect(cubit.state.range, rangeB);
+    expect(cubit.state.reports.keys, containsAll(['a', 'b']));
+    for (final report in cubit.state.reports.values) {
+      expect(report.startMs, rangeB.startMs);
+    }
+  });
+
+  test('removed accounts are pruned from state', () async {
+    final accounts = <CursorUsageAccount>[_accountA, _accountB];
+    final cubit = CursorUsageCubit(
+      loadAccounts: () async => [...accounts],
+      refreshAccount: (_) async {},
+      billingCycleFor: (_) async => null,
+      loadReport:
+          ({
+            required accountId,
+            required range,
+            billingCycle,
+            forceRefresh = false,
+          }) async =>
+              CursorUsageReport(accountId: accountId, startMs: 0, endMs: 1),
+      saveRange: (_) async {},
+      addAccount: (_, _) async => true,
+      removeAccount: (accountId) async {
+        accounts.removeWhere((account) => account.accountId == accountId);
+      },
+      initialRange: const CursorUsagePresetRange(CursorUsagePreset.today),
+    );
+
+    await cubit.ensureLoaded();
+    cubit.selectAccount('b');
+    expect(cubit.state.reports.containsKey('b'), isTrue);
+
+    await cubit.removeAccount('b');
+
+    expect(cubit.state.accounts.map((account) => account.accountId).toList(), [
+      'a',
+    ]);
+    expect(cubit.state.reports.containsKey('b'), isFalse);
+    expect(cubit.state.selectedAccountId, isNot('b'));
+  });
 }

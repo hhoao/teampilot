@@ -124,6 +124,10 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
 
   Future<void>? _loadFlight;
 
+  /// Bumped by every [_loadAll] flight; a flight that sees a newer value stops
+  /// publishing so a superseded load cannot overwrite fresher state.
+  int _generation = 0;
+
   Future<void> ensureLoaded() => _loadFlight ??= _load().whenComplete(() {
     _loadFlight = null;
   });
@@ -165,6 +169,7 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
   }
 
   Future<void> _loadAll({bool force = false}) async {
+    final generation = ++_generation;
     final accounts = state.accounts
         .where((account) => account.enabled)
         .toList();
@@ -172,17 +177,40 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
     final syncing = {...state.syncing, for (final a in accounts) a.accountId};
     if (!isClosed) emit(state.copyWith(syncing: syncing));
 
-    final reports = {...state.reports};
-    final failures = {...state.failures};
-    final cycles = {...state.billingCycles};
+    // Prune to the enabled set first: a removed or disabled account must not
+    // keep a stale report, failure or cycle around (nor stay selected).
+    final enabledIds = accounts.map((account) => account.accountId).toSet();
+    final reports = {
+      for (final entry in state.reports.entries)
+        if (enabledIds.contains(entry.key)) entry.key: entry.value,
+    };
+    final failures = {
+      for (final entry in state.failures.entries)
+        if (enabledIds.contains(entry.key)) entry.key: entry.value,
+    };
+    final cycles = {
+      for (final entry in state.billingCycles.entries)
+        if (enabledIds.contains(entry.key)) entry.key: entry.value,
+    };
+    if (!isClosed && generation == _generation) {
+      emit(
+        state.copyWith(
+          reports: Map.unmodifiable(reports),
+          failures: Map.unmodifiable(failures),
+          billingCycles: Map.unmodifiable(cycles),
+        ),
+      );
+    }
 
     for (final account in accounts) {
       try {
         await _refreshAccount(account.accountId);
+        if (isClosed || generation != _generation) return;
         final cycle = force
             ? await _billingCycleFor(account.accountId)
             : cycles[account.accountId] ??
                   await _billingCycleFor(account.accountId);
+        if (isClosed || generation != _generation) return;
         if (cycle != null) cycles[account.accountId] = cycle;
         reports[account.accountId] = await _loadReport(
           accountId: account.accountId,
@@ -190,13 +218,14 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
           billingCycle: cycle,
           forceRefresh: force,
         );
+        if (isClosed || generation != _generation) return;
         failures.remove(account.accountId);
       } on CursorUsageException catch (error) {
         failures[account.accountId] = error.failure;
       } on Object {
         failures[account.accountId] = CursorUsageFailure.network;
       }
-      if (isClosed) return;
+      if (isClosed || generation != _generation) return;
       emit(
         state.copyWith(
           syncing: {...state.syncing}..remove(account.accountId),
@@ -227,12 +256,12 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
 
   Future<bool> addAccount(String rawToken, {String? label}) async {
     final ok = await _addAccount(rawToken, label);
-    if (ok) await _load();
+    if (ok) await ensureLoaded();
     return ok;
   }
 
   Future<void> removeAccount(String accountId) async {
     await _removeAccount(accountId);
-    await _load();
+    await ensureLoaded();
   }
 }
