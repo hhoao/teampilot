@@ -82,9 +82,42 @@ void main() {
         returnsNormally,
       );
       expect(
-        parseCursorSessionToken('WorkosCursorSessionToken=%FF%FF', nowMs: nowMs),
+        parseCursorSessionToken(
+          'WorkosCursorSessionToken=%FF%FF',
+          nowMs: nowMs,
+        ),
         isNull,
       );
+    });
+
+    test('a non-numeric exp is rejected, not thrown', () {
+      final header = base64Url
+          .encode(utf8.encode('{"alg":"HS256"}'))
+          .replaceAll('=', '');
+      final payload = base64Url
+          .encode(
+            utf8.encode(
+              jsonEncode({'sub': 'auth0|user_01ABC', 'exp': '17000000000'}),
+            ),
+          )
+          .replaceAll('=', '');
+      expect(
+        () => parseCursorSessionToken('$header.$payload.sig', nowMs: nowMs),
+        returnsNormally,
+      );
+      expect(
+        parseCursorSessionToken('$header.$payload.sig', nowMs: nowMs),
+        isNull,
+      );
+    });
+
+    test('a sub with no non-empty segment is rejected, not thrown', () {
+      final token = _jwt(exp: exp, sub: '|');
+      expect(
+        () => parseCursorSessionToken(token, nowMs: nowMs),
+        returnsNormally,
+      );
+      expect(parseCursorSessionToken(token, nowMs: nowMs), isNull);
     });
   });
 
@@ -120,5 +153,20 @@ void main() {
     expect(await store.read(accountId), credentials);
     await store.delete(accountId);
     expect(await store.read(accountId), isNull);
+  });
+
+  test('read rejects a stored token belonging to another account', () async {
+    final backend = _MemoryStore();
+    final store = CursorAccountCredentialStore(
+      store: backend,
+      now: () => DateTime.fromMillisecondsSinceEpoch(nowMs),
+    );
+    // Write directly to the backend under the key `read` will look up, so the
+    // only thing under test is the identity check, not key derivation.
+    const requestedId = 'some-other-id';
+    backend.values['teampilot.cursor_usage.v1.$requestedId.token'] = _jwt(
+      exp: exp,
+    );
+    expect(await store.read(requestedId), isNull);
   });
 }

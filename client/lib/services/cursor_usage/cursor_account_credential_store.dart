@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:collection/collection.dart';
 import 'package:crypto/crypto.dart';
 
 import '../../models/cursor_usage_account.dart';
@@ -42,13 +43,16 @@ CursorAccountCredentials? parseCursorSessionToken(String raw, {int? nowMs}) {
   } on Object {
     return null;
   }
-  final exp = (claims['exp'] as num?)?.toInt();
+  final rawExp = claims['exp'];
+  final exp = rawExp is num ? rawExp.toInt() : null;
   final sub = claims['sub']?.toString().trim() ?? '';
   if (exp == null || sub.isEmpty) return null;
   final clock = nowMs ?? DateTime.now().millisecondsSinceEpoch;
   if (exp * 1000 <= clock + 60000) return null;
-  final userId = sub.split('|').where((part) => part.isNotEmpty).last;
-  if (!RegExp(r'^[A-Za-z0-9._-]+$').hasMatch(userId)) return null;
+  final userId = sub.split('|').where((part) => part.isNotEmpty).lastOrNull;
+  if (userId == null || !RegExp(r'^[A-Za-z0-9._-]+$').hasMatch(userId)) {
+    return null;
+  }
   return CursorAccountCredentials(
     accountId: cursorAccountIdFor(sub),
     userId: userId,
@@ -74,7 +78,11 @@ final class CursorAccountCredentialStore {
   Future<CursorAccountCredentials?> read(String accountId) async {
     final raw = await _store.read(_key(accountId));
     if (raw == null || raw.isEmpty) return null;
-    return parseCursorSessionToken(raw, nowMs: _now().millisecondsSinceEpoch);
+    final parsed = parseCursorSessionToken(
+      raw,
+      nowMs: _now().millisecondsSinceEpoch,
+    );
+    return parsed?.accountId == accountId ? parsed : null;
   }
 
   Future<void> write(CursorAccountCredentials credentials) =>
