@@ -319,4 +319,149 @@ void main() {
     expect(cubit.state.reports.containsKey('b'), isFalse);
     expect(cubit.state.selectedAccountId, isNot('b'));
   });
+
+  test('isSyncing recovers after a removal during an in-flight load', () async {
+    // The first two flights park in `loadReport` until their own gate opens.
+    final gates = <Completer<void>>[];
+    final accounts = <CursorUsageAccount>[_accountA, _accountB];
+    final cubit = CursorUsageCubit(
+      loadAccounts: () async => [...accounts],
+      refreshAccount: (_) async {},
+      billingCycleFor: (_) async => null,
+      loadReport:
+          ({
+            required accountId,
+            required range,
+            billingCycle,
+            forceRefresh = false,
+          }) async {
+            if (gates.length < 2) {
+              final gate = Completer<void>();
+              gates.add(gate);
+              await gate.future;
+            }
+            return CursorUsageReport(
+              accountId: accountId,
+              startMs: 0,
+              endMs: 1,
+            );
+          },
+      saveRange: (_) async {},
+      addAccount: (_, _) async => true,
+      removeAccount: (accountId) async {
+        accounts.removeWhere((account) => account.accountId == accountId);
+      },
+      initialRange: const CursorUsagePresetRange(CursorUsagePreset.today),
+    );
+
+    final load = cubit.ensureLoaded();
+    await pumpEventQueue();
+    expect(cubit.state.isSyncing, isTrue);
+
+    // Supersede the initial flight so it bails mid-way with `b` still marked
+    // as syncing.
+    final superseded = cubit.refresh();
+    await pumpEventQueue();
+    final removal = cubit.removeAccount('b');
+    await pumpEventQueue();
+    expect(gates.length, 2);
+
+    gates[0].complete();
+    await Future.wait([load, removal]);
+    await pumpEventQueue();
+
+    gates[1].complete();
+    await superseded;
+    await pumpEventQueue();
+
+    expect(cubit.state.accounts.map((account) => account.accountId).toList(), [
+      'a',
+    ]);
+    expect(cubit.state.isSyncing, isFalse);
+    expect(cubit.state.syncing, isEmpty);
+  });
+
+  test('removing the last account clears every report', () async {
+    final accounts = <CursorUsageAccount>[_accountA];
+    final cubit = CursorUsageCubit(
+      loadAccounts: () async => [...accounts],
+      refreshAccount: (_) async {},
+      billingCycleFor: (_) async => null,
+      loadReport:
+          ({
+            required accountId,
+            required range,
+            billingCycle,
+            forceRefresh = false,
+          }) async =>
+              CursorUsageReport(accountId: accountId, startMs: 0, endMs: 1),
+      saveRange: (_) async {},
+      addAccount: (_, _) async => true,
+      removeAccount: (accountId) async {
+        accounts.removeWhere((account) => account.accountId == accountId);
+      },
+      initialRange: const CursorUsagePresetRange(CursorUsagePreset.today),
+    );
+
+    await cubit.ensureLoaded();
+    expect(cubit.state.reports.keys, ['a']);
+    expect(cubit.state.selectedAccountId, 'a');
+
+    await cubit.removeAccount('a');
+
+    expect(cubit.state.accounts, isEmpty);
+    expect(cubit.state.reports, isEmpty);
+    expect(cubit.state.selectedAccountId, isNull);
+    expect(cubit.state.isSyncing, isFalse);
+  });
+
+  test('a mutation during an in-flight load is reflected', () async {
+    final gate = Completer<void>();
+    var gated = false;
+    final accounts = <CursorUsageAccount>[_accountA];
+    final cubit = CursorUsageCubit(
+      loadAccounts: () async => [...accounts],
+      refreshAccount: (_) async {},
+      billingCycleFor: (_) async => null,
+      loadReport:
+          ({
+            required accountId,
+            required range,
+            billingCycle,
+            forceRefresh = false,
+          }) async {
+            if (!gated) {
+              gated = true;
+              await gate.future;
+            }
+            return CursorUsageReport(
+              accountId: accountId,
+              startMs: 0,
+              endMs: 1,
+            );
+          },
+      saveRange: (_) async {},
+      addAccount: (_, _) async {
+        accounts.add(_accountB);
+        return true;
+      },
+      removeAccount: (_) async {},
+      initialRange: const CursorUsagePresetRange(CursorUsagePreset.today),
+    );
+
+    final load = cubit.ensureLoaded();
+    await pumpEventQueue();
+    final added = cubit.addAccount('token');
+    await pumpEventQueue();
+
+    gate.complete();
+    await Future.wait([load, added]);
+    await pumpEventQueue();
+
+    expect(cubit.state.accounts.map((account) => account.accountId).toList(), [
+      'a',
+      'b',
+    ]);
+    expect(cubit.state.reports.containsKey('b'), isTrue);
+  });
 }

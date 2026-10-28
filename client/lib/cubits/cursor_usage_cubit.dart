@@ -173,8 +173,10 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
     final accounts = state.accounts
         .where((account) => account.enabled)
         .toList();
-    if (accounts.isEmpty) return;
-    final syncing = {...state.syncing, for (final a in accounts) a.accountId};
+    // Seed with this flight's accounts only: a superseded flight bails without
+    // clearing its entries, so re-unioning a previous set would keep them (and
+    // `isSyncing`) alive forever.
+    final syncing = {for (final account in accounts) account.accountId};
     if (!isClosed) emit(state.copyWith(syncing: syncing));
 
     // Prune to the enabled set first: a removed or disabled account must not
@@ -201,6 +203,9 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
         ),
       );
     }
+    // Nothing to fetch (no accounts, or all disabled), but the prune above must
+    // still have run so removing the last account clears its report.
+    if (accounts.isEmpty) return;
 
     for (final account in accounts) {
       try {
@@ -256,12 +261,17 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
 
   Future<bool> addAccount(String rawToken, {String? label}) async {
     final ok = await _addAccount(rawToken, label);
-    if (ok) await ensureLoaded();
-    return ok;
+    if (!ok) return false;
+    // A flight that has already read the account list will not see the new
+    // account, so let it finish before starting a fresh load.
+    await _loadFlight;
+    await ensureLoaded();
+    return true;
   }
 
   Future<void> removeAccount(String accountId) async {
     await _removeAccount(accountId);
+    await _loadFlight;
     await ensureLoaded();
   }
 }
