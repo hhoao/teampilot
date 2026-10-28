@@ -1,3 +1,5 @@
+import 'package:collection/collection.dart';
+
 import '../../models/cursor_usage_account.dart';
 import '../../models/cursor_usage_range.dart';
 import '../../models/cursor_usage_report.dart';
@@ -90,6 +92,11 @@ final class CursorUsageCoordinator {
     );
 
     var cache = await _cacheStore.load(accountId);
+    final account = (await _registry.list())
+        .where((row) => row.accountId == accountId)
+        .firstOrNull;
+    final teamId = account?.teamId ?? 0;
+    final durableOwner = account?.owningUser;
     final gaps = forceRefresh
         ? [cursorUsageAlignWindow(window)]
         : cursorUsageMissingWindows(covered: cache.coverage, requested: window);
@@ -99,7 +106,8 @@ final class CursorUsageCoordinator {
         cache: cache,
         credentials: credentials,
         gap: gap,
-        teamId: 0,
+        teamId: teamId,
+        initialOwner: durableOwner,
       );
     }
     return buildCursorUsageReport(cache, window: window);
@@ -110,11 +118,12 @@ final class CursorUsageCoordinator {
     required CursorAccountCredentials credentials,
     required CursorUsageWindow gap,
     required int teamId,
+    required String? initialOwner,
   }) async {
     final collected = <CursorUsageEvent>[];
-    var boundOwningUser = cache.owningUser;
+    var boundOwningUser = cache.owningUser ?? initialOwner;
     var page = 1;
-    var total = 1;
+    var total = 0;
     while (page <= _maxPages) {
       final CursorUsagePage response;
       try {
@@ -129,16 +138,23 @@ final class CursorUsageCoordinator {
       } on CursorUsageApiException catch (error) {
         throw CursorUsageException(_failureFor(error.code), error.message);
       }
-      total = response.totalCount;
+      // Later pages may report a smaller total than earlier ones; keep the
+      // largest claim so a short page cannot hide a truncated result.
+      if (response.totalCount > total) total = response.totalCount;
       collected.addAll(response.events);
       if (response.events.isEmpty) break;
       if (collected.length >= total) break;
       page++;
     }
-    if (collected.length < total && page > _maxPages) {
-      throw const CursorUsageException(
-        CursorUsageFailure.rangeTooLarge,
-        'The selected range has too many events',
+    // Fewer events than Cursor promised means the fetch was truncated (paging
+    // ceiling, or a totalCount that counts events outside the range). Caching
+    // it would mark the whole gap covered and under-count until a refresh.
+    if (collected.length < total) {
+      throw CursorUsageException(
+        page > _maxPages
+            ? CursorUsageFailure.rangeTooLarge
+            : CursorUsageFailure.invalidResponse,
+        'Cursor returned ${collected.length} of $total events',
       );
     }
     if (teamId == 0) {
@@ -158,7 +174,9 @@ final class CursorUsageCoordinator {
           );
         }
         boundOwningUser = owner;
-        await _registry.update(cache.accountId, owningUser: owner);
+        if (owner != cache.owningUser) {
+          await _registry.update(cache.accountId, owningUser: owner);
+        }
       }
     }
 

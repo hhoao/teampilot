@@ -22,6 +22,16 @@ CursorUsageEvent event(String id, int day, {String owner = '111'}) =>
       totalCents: 1,
     );
 
+CursorUsageAccount accountRow({String? owningUser, int teamId = 0}) =>
+    CursorUsageAccount(
+      accountId: 'acct',
+      userId: 'user_01ABC',
+      label: 'Cursor · acct',
+      source: CursorAccountSource.manual,
+      owningUser: owningUser,
+      teamId: teamId,
+    );
+
 class _FakeApi implements CursorUsageApi {
   _FakeApi({this.pages = const []});
 
@@ -55,9 +65,10 @@ class _FakeApi implements CursorUsageApi {
 }
 
 class _FakeRegistry implements CursorAccountDirectory {
-  _FakeRegistry(this.credential, {this.owningUser});
+  _FakeRegistry(this.credential, {this.owningUser, this.accounts = const []});
 
   final CursorAccountCredentials? credential;
+  final List<CursorUsageAccount> accounts;
   String? owningUser;
   int bindCalls = 0;
 
@@ -78,7 +89,7 @@ class _FakeRegistry implements CursorAccountDirectory {
   }
 
   @override
-  Future<List<CursorUsageAccount>> list() async => const [];
+  Future<List<CursorUsageAccount>> list() async => accounts;
 
   @override
   Future<void> upsertManual(
@@ -187,6 +198,28 @@ void main() {
     expect(api.calls.length, 40);
   });
 
+  test('a truncated page is not cached as covered', () async {
+    final api = _FakeApi(
+      pages: [
+        CursorUsagePage(events: [event('e1', 28)], totalCount: 5),
+      ],
+    );
+    await expectLater(
+      coordinator(api: api, registry: _FakeRegistry(_credentials)).load(
+        accountId: 'acct',
+        range: CursorUsageCustomRange(startMs: ms(28), endMs: ms(28)),
+      ),
+      throwsA(
+        isA<CursorUsageException>().having(
+          (error) => error.failure,
+          'failure',
+          CursorUsageFailure.invalidResponse,
+        ),
+      ),
+    );
+    expect(fs.files, isEmpty);
+  });
+
   test('binds owningUser on first fetch and rejects a later swap', () async {
     final registry = _FakeRegistry(_credentials, owningUser: '111');
     final api = _FakeApi(
@@ -220,6 +253,78 @@ void main() {
         ),
       ),
     );
+  });
+
+  test('consults the durable owningUser when the cache is empty', () async {
+    final registry = _FakeRegistry(
+      _credentials,
+      accounts: [accountRow(owningUser: '111')],
+    );
+    final api = _FakeApi(
+      pages: [
+        CursorUsagePage(events: [event('e1', 28, owner: '222')], totalCount: 1),
+      ],
+    );
+    await expectLater(
+      coordinator(api: api, registry: registry).load(
+        accountId: 'acct',
+        range: CursorUsageCustomRange(startMs: ms(28), endMs: ms(28)),
+      ),
+      throwsA(
+        isA<CursorUsageException>().having(
+          (error) => error.failure,
+          'failure',
+          CursorUsageFailure.accountMismatch,
+        ),
+      ),
+    );
+    expect(fs.files, isEmpty);
+  });
+
+  test(
+    'a later gap with the same owner does not rewrite the account',
+    () async {
+      final registry = _FakeRegistry(_credentials);
+      final api = _FakeApi(
+        pages: [
+          CursorUsagePage(events: [event('e1', 27)], totalCount: 1),
+          CursorUsagePage(events: [event('e2', 28)], totalCount: 1),
+        ],
+      );
+      final coord = coordinator(api: api, registry: registry);
+      await coord.load(
+        accountId: 'acct',
+        range: CursorUsageCustomRange(startMs: ms(27), endMs: ms(27)),
+      );
+      await coord.load(
+        accountId: 'acct',
+        range: CursorUsageCustomRange(startMs: ms(28), endMs: ms(28)),
+      );
+      expect(registry.bindCalls, 1);
+    },
+  );
+
+  test('team accounts skip the owningUser check', () async {
+    final registry = _FakeRegistry(
+      _credentials,
+      accounts: [accountRow(teamId: 4)],
+    );
+    final api = _FakeApi(
+      pages: [
+        CursorUsagePage(
+          events: [
+            event('e1', 28),
+            event('e2', 28, owner: '222'),
+          ],
+          totalCount: 2,
+        ),
+      ],
+    );
+    final report = await coordinator(api: api, registry: registry).load(
+      accountId: 'acct',
+      range: CursorUsageCustomRange(startMs: ms(28), endMs: ms(28)),
+    );
+    expect(report.eventCount, 2);
   });
 
   test('matches events for more than one user are rejected', () async {
