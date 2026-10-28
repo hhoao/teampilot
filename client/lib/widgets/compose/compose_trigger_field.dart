@@ -18,10 +18,11 @@ import '../../services/search/workspace_search_indexes.dart';
 import '../../services/chat/conversation/compose/compose_clip.dart';
 import '../../services/chat/conversation/compose/compose_slash_catalog.dart';
 import '../../services/chat/conversation/compose/compose_trigger_caret.dart';
-import '../../services/chat/conversation/compose/compose_trigger_insert.dart';
 import '../../services/chat/conversation/compose/compose_trigger_query.dart';
 import '../../services/cli/registry/capabilities/skill_capability.dart';
 import '../../services/keyboard/compose_keyboard_shortcut_handler.dart';
+import '../../services/chat/conversation/compose/compose_text_controller.dart';
+import '../../services/chat/conversation/compose/compose_token_document.dart';
 import '../../services/inline_token/inline_token_palette.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -73,7 +74,7 @@ class ComposeTriggerField extends StatefulWidget {
     super.key,
   });
 
-  final TextEditingController controller;
+  final ComposeTextController controller;
   final FocusNode focusNode;
   final String hint;
   final bool enabled;
@@ -103,6 +104,13 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   late int _lastLineCount;
   final _fieldKey = GlobalKey();
   ComposeTriggerQuery? _trigger;
+
+  /// Trigger the currently displayed [_suggestions] were computed for. When
+  /// the user keeps typing, [_trigger] moves on while the search is still
+  /// pending; the old list must stay visible (no flicker) but must never be
+  /// applied to the new trigger — that would replace the text typed after the
+  /// query began.
+  ComposeTriggerQuery? _suggestionsTrigger;
   List<ComposeTriggerSuggestion> _suggestions = const [];
   var _selectedIndex = 0;
   var _searchGeneration = 0;
@@ -177,16 +185,20 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     _submitDisposer = null;
   }
 
-  /// Keeps `compose.submit` registered only while focused and the `@` / `/`
-  /// suggestion overlay is closed. While the overlay is open, Enter must
-  /// only pick the highlighted suggestion (handled locally in
-  /// [_handleComposeKey]) — not also fire `compose.submit` via the root
-  /// dispatcher, so submit is un-registered rather than made a no-op (a
-  /// registered no-op would still mark the key "handled" on the bus without
-  /// telling the dispatcher/focus chain anything changed).
+  /// Keeps `compose.submit` registered only while focused and Enter is not
+  /// claimed by a *fresh* suggestion overlay. While the overlay shows results
+  /// for the current query, Enter must only pick the highlighted suggestion
+  /// (handled locally in [_handleComposeKey]) — not also fire `compose.submit`
+  /// via the root dispatcher, so submit is un-registered rather than made a
+  /// no-op (a registered no-op would still mark the key "handled" on the bus
+  /// without telling the dispatcher/focus chain anything changed).
+  ///
+  /// A pending search leaves the previous list visible but stale, so submit
+  /// stays registered: Enter sends the draft instead of replacing it with a
+  /// result that no longer matches what the user typed.
   void _syncSubmitRegistration() {
     _submitDisposer?.call();
-    _submitDisposer = (widget.focusNode.hasFocus && !_overlayVisible)
+    _submitDisposer = (widget.focusNode.hasFocus && !_overlayInteractive)
         ? ComposeCommandBindings.registerSubmit(
             bus: context.read<CommandBus>(),
             onSubmit: widget.onSubmit,
@@ -262,9 +274,16 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   }
 
   void _clearSuggestions() {
-    if (_trigger == null && _suggestions.isEmpty) return;
+    if (_trigger == null &&
+        _suggestionsTrigger == null &&
+        _suggestions.isEmpty) {
+      return;
+    }
+    // Invalidate any in-flight search for the overlay being closed.
+    _searchGeneration++;
     setState(() {
       _trigger = null;
+      _suggestionsTrigger = null;
       _suggestions = const [];
       _selectedIndex = 0;
     });
@@ -280,6 +299,10 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   }
 
   void _refreshSuggestions({bool immediate = false}) {
+    // Bump on every text change — not when the debounced search starts — so a
+    // search that resolves after the user typed again is discarded instead of
+    // re-publishing results (and its trigger) for the older query.
+    final generation = ++_searchGeneration;
     final value = widget.controller.value;
     final cursor = value.selection.isValid
         ? value.selection.baseOffset
@@ -296,45 +319,48 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
 
     _trigger = trigger;
     _searchDebounce?.cancel();
+    // Slash candidates come from local catalogs — resolve them synchronously
+    // so the visible list never lags the query (fast typists press Enter
+    // before a debounce would fire).
+    if (trigger.kind == ComposeTriggerKind.slashInvoke) {
+      _applySuggestions(trigger, _slashSuggestions(trigger));
+      return;
+    }
+    // The visible list (if any) now belongs to an older query: keep it on
+    // screen but let Enter submit, and make sure submit is registered for the
+    // dispatch that follows this text change.
+    _syncSubmitRegistration();
     if (immediate) {
-      unawaited(_runSearch(trigger));
+      unawaited(_runSearch(trigger, generation));
       return;
     }
     _searchDebounce = Timer(const Duration(milliseconds: 120), () {
-      unawaited(_runSearch(trigger));
+      unawaited(_runSearch(trigger, generation));
     });
   }
 
-  Future<void> _runSearch(ComposeTriggerQuery trigger) async {
-    final generation = ++_searchGeneration;
-    late final List<ComposeTriggerSuggestion> suggestions;
-    switch (trigger.kind) {
-      case ComposeTriggerKind.fileReference:
-        try {
-          final files = await _searchComposeFiles(trigger.query);
-          suggestions = [
-            for (final file in files) ComposeTriggerFileSuggestion(file),
-          ];
-        } on Object {
-          suggestions = const [];
-        }
-      case ComposeTriggerKind.slashInvoke:
-        final slash = buildComposeSlashCandidates(
-          skills: widget.skills,
-          plugins: widget.plugins,
-          enabledBundle: widget.slashBundle,
-          query: trigger.query,
-          syntax: widget.skillSyntax,
-          nativeCommands: widget.nativeCommands,
-        );
-        suggestions = [
-          for (final item in slash) ComposeTriggerSlashSuggestion(item),
-        ];
-    }
+  List<ComposeTriggerSuggestion> _slashSuggestions(
+    ComposeTriggerQuery trigger,
+  ) {
+    return [
+      for (final item in buildComposeSlashCandidates(
+        skills: widget.skills,
+        plugins: widget.plugins,
+        enabledBundle: widget.slashBundle,
+        query: trigger.query,
+        syntax: widget.skillSyntax,
+        nativeCommands: widget.nativeCommands,
+      ))
+        ComposeTriggerSlashSuggestion(item),
+    ];
+  }
 
-    if (!mounted || generation != _searchGeneration) return;
+  void _applySuggestions(
+    ComposeTriggerQuery trigger,
+    List<ComposeTriggerSuggestion> suggestions,
+  ) {
     setState(() {
-      _trigger = trigger;
+      _suggestionsTrigger = trigger;
       _suggestions = suggestions;
       _selectedIndex = suggestions.isEmpty
           ? 0
@@ -342,6 +368,24 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     });
     _syncSubmitRegistration();
     _scheduleMenuAnchorUpdate();
+  }
+
+  Future<void> _runSearch(
+    ComposeTriggerQuery trigger,
+    int generation,
+  ) async {
+    List<ComposeTriggerSuggestion> suggestions;
+    try {
+      final files = await _searchComposeFiles(trigger.query);
+      suggestions = [
+        for (final file in files) ComposeTriggerFileSuggestion(file),
+      ];
+    } on Object {
+      suggestions = const [];
+    }
+
+    if (!mounted || generation != _searchGeneration) return;
+    _applySuggestions(trigger, suggestions);
   }
 
   /// Resolves `@`-mention file candidates. Path-segment queries (containing
@@ -369,12 +413,12 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
       widget.workspaceRoot,
     );
     await index.ensureFresh();
-    final fileMatches = index.query(
+    final fileMatches = await index.query(
       needle,
       mode: WorkspaceFileMatchMode.contains,
       limit: 40,
     );
-    final dirs = index.queryDirectories(needle, limit: 20);
+    final dirs = await index.queryDirectories(needle, limit: 20);
     return mergeComposeCandidates(
       fileMatches: fileMatches,
       directoryPaths: dirs,
@@ -383,20 +427,50 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
 
   bool get _overlayVisible => _trigger != null && _suggestions.isNotEmpty;
 
+  /// Whether the displayed list was produced for the trigger currently under
+  /// the caret. False while a debounced / async search is still pending.
+  bool get _suggestionsAreFresh {
+    final trigger = _trigger;
+    final resolved = _suggestionsTrigger;
+    if (trigger == null || resolved == null) return false;
+    return trigger.kind == resolved.kind &&
+        trigger.triggerStart == resolved.triggerStart &&
+        trigger.query == resolved.query;
+  }
+
+  /// Overlay owns Enter only when its results still match the typed query.
+  bool get _overlayInteractive => _overlayVisible && _suggestionsAreFresh;
+
   void _selectSuggestion(ComposeTriggerSuggestion suggestion) {
     final trigger = _trigger;
-    if (trigger == null) return;
+    if (trigger == null || !_suggestionsAreFresh) return;
 
-    final insertion = switch (suggestion) {
-      ComposeTriggerFileSuggestion(:final candidate) => ComposeTriggerInsertion(
-        text: candidate.insertText,
-      ),
-      ComposeTriggerSlashSuggestion(:final candidate) => candidate.insertion,
-    };
-    widget.controller.value = replaceComposeTrigger(
-      widget.controller,
-      trigger,
-      insertion,
+    late final String tokenText;
+    late final String suffix;
+    late final ComposeTokenKind kind;
+    late final String payload;
+    switch (suggestion) {
+      case ComposeTriggerFileSuggestion(:final candidate):
+        tokenText = candidate.insertText;
+        suffix = ' ';
+        kind = ComposeTokenKind.fileReference;
+        payload = candidate.insertText;
+      case ComposeTriggerSlashSuggestion(:final candidate):
+        final raw = candidate.insertText;
+        tokenText = raw.trimRight();
+        suffix = raw.substring(tokenText.length) + candidate.insertionSuffix;
+        kind = candidate.kind == ComposeSlashCandidateKind.skill
+            ? ComposeTokenKind.skill
+            : ComposeTokenKind.command;
+        payload = tokenText;
+    }
+    widget.controller.insertToken(
+      start: trigger.triggerStart,
+      end: trigger.triggerEnd,
+      tokenText: tokenText,
+      suffix: suffix,
+      kind: kind,
+      payload: payload,
     );
     _focusClearTimer?.cancel();
     _clearSuggestions();
@@ -407,6 +481,15 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
 
   KeyEventResult _handleComposeKey(FocusNode node, KeyEvent event) {
     if (_overlayVisible && event is KeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.escape) {
+        _clearSuggestions();
+        return KeyEventResult.handled;
+      }
+      // A pending search means the list on screen predates the current query.
+      // Do not steer the caret with it and never apply it: Enter/Tab fall
+      // through to `compose.submit` so the draft is sent, not replaced by a
+      // stale match (which could delete everything typed after the trigger).
+      if (!_suggestionsAreFresh) return KeyEventResult.ignored;
       if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
         setState(() {
           _selectedIndex = (_selectedIndex + 1) % _suggestions.length;
@@ -418,10 +501,6 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
           _selectedIndex =
               (_selectedIndex - 1 + _suggestions.length) % _suggestions.length;
         });
-        return KeyEventResult.handled;
-      }
-      if (event.logicalKey == LogicalKeyboardKey.escape) {
-        _clearSuggestions();
         return KeyEventResult.handled;
       }
       if (event.logicalKey == LogicalKeyboardKey.enter ||
@@ -530,7 +609,10 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
                 textStyle: textStyle,
                 hintStyle: styles.mdColored(widget.hintColor),
                 cursorColor: widget.mutedColor,
-                tokenPattern: defaultInlineTokenPattern,
+                tokenRanges: [
+                  for (final range in widget.controller.tokenRanges)
+                    TpTokenRange(start: range.start, end: range.end),
+                ],
                 resolveTokenPalette: resolveSlashAtTokenPalette,
                 // Fill the shell so blank viewport areas remain tappable.
                 expands: true,

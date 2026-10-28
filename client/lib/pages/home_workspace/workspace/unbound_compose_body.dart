@@ -34,6 +34,7 @@ import '../../../services/chat/conversation/compose/compose_draft_cache.dart';
 import '../../../services/chat/conversation/compose/compose_file_attach.dart';
 import '../../../services/chat/conversation/compose/compose_file_drop_ingestor.dart';
 import '../../../services/chat/conversation/compose/compose_landing_bundle.dart';
+import '../../../services/chat/conversation/compose/compose_text_controller.dart';
 import '../../../services/chat/conversation/compose/compose_text_edit.dart';
 import '../../../services/chat/conversation/compose/compose_voice_input.dart';
 import '../../../services/storage/home_storage.dart';
@@ -125,7 +126,7 @@ class UnboundComposeBody extends StatefulWidget {
 }
 
 class _UnboundComposeBodyState extends State<UnboundComposeBody> {
-  final _controller = TextEditingController();
+  final _controller = ComposeTextController();
   final _clip = ComposeClip();
   late final FocusNode _focusNode;
   late final ComposeVoiceInput _voiceInput;

@@ -1,9 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_slash_catalog.dart';
-import 'package:teampilot/services/chat/conversation/compose/compose_trigger_insert.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_trigger_query.dart';
-import 'package:flutter/material.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/skill.dart';
 
@@ -57,68 +55,6 @@ void main() {
     test('ignores stale @ after whitespace boundary', () {
       const text = '@file done ';
       expect(detectComposeTrigger(text, text.length), isNull);
-    });
-  });
-
-  group('replaceComposeTrigger', () {
-    test('replaces active token and leaves trailing space', () {
-      final controller = TextEditingController(text: 'run /bra');
-      controller.selection = TextSelection.collapsed(
-        offset: controller.text.length,
-      );
-      final trigger = detectComposeTrigger(
-        controller.text,
-        controller.text.length,
-      )!;
-
-      controller.value = replaceComposeTrigger(
-        controller,
-        trigger,
-        const ComposeTriggerInsertion(text: '/brainstorming'),
-      );
-
-      expect(controller.text, 'run /brainstorming ');
-      expect(controller.selection.baseOffset, 19);
-    });
-
-    test('keeps argument-command insertion spacing exactly', () {
-      final controller = TextEditingController(text: '/go');
-      controller.selection = TextSelection.collapsed(
-        offset: controller.text.length,
-      );
-      final trigger = detectComposeTrigger(
-        controller.text,
-        controller.text.length,
-      )!;
-
-      controller.value = replaceComposeTrigger(
-        controller,
-        trigger,
-        const ComposeTriggerInsertion(text: '/goal ', suffix: ''),
-      );
-
-      expect(controller.text, '/goal ');
-      expect(controller.selection.baseOffset, 6);
-    });
-
-    test('keeps zero-argument command insertion spacing exactly', () {
-      final controller = TextEditingController(text: '/he');
-      controller.selection = TextSelection.collapsed(
-        offset: controller.text.length,
-      );
-      final trigger = detectComposeTrigger(
-        controller.text,
-        controller.text.length,
-      )!;
-
-      controller.value = replaceComposeTrigger(
-        controller,
-        trigger,
-        const ComposeTriggerInsertion(text: '/help', suffix: ''),
-      );
-
-      expect(controller.text, '/help');
-      expect(controller.selection.baseOffset, 5);
     });
   });
 

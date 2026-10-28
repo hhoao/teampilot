@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_file_attach.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_text_controller.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_text_edit.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_token_document.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_voice_input.dart';
 import 'package:speech_to_text/speech_recognition_error.dart';
 
@@ -66,6 +68,42 @@ void main() {
 
       expect(controller.text, 'hello world ');
       expect(controller.selection.baseOffset, 12);
+    });
+  });
+
+  group('insertComposeReferences', () {
+    test('registers file tokens instead of parsing the text', () {
+      final controller = ComposeTextController();
+      addTearDown(controller.dispose);
+      controller.text = 'run';
+      controller.selection = const TextSelection.collapsed(offset: 3);
+
+      insertComposeReferences(controller, ['@a.txt', '@b.txt']);
+
+      expect(controller.text, 'run @a.txt @b.txt ');
+      expect(controller.document.tokens.length, 2);
+      expect(
+        controller.document.tokens.every(
+          (token) => token.kind == ComposeTokenKind.fileReference,
+        ),
+        isTrue,
+      );
+      expect(controller.tokenRanges, [
+        const TextRange(start: 4, end: 10),
+        const TextRange(start: 11, end: 17),
+      ]);
+    });
+
+    test('a second call appends after existing text', () {
+      final controller = ComposeTextController();
+      addTearDown(controller.dispose);
+      controller.text = 'hi';
+      controller.selection = const TextSelection.collapsed(offset: 2);
+      insertComposeReferences(controller, ['@a.txt']);
+      insertComposeReferences(controller, ['@b.txt']);
+
+      expect(controller.text, 'hi @a.txt @b.txt ');
+      expect(controller.document.tokens.length, 2);
     });
   });
 

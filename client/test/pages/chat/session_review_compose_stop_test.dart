@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_text_controller.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_file_drop_ingestor.dart';
 import 'package:teampilot/widgets/compose/compose_chrome.dart';
@@ -18,7 +19,7 @@ void main() {
     required bool showStop,
     VoidCallback? onStop,
   }) async {
-    final textController = TextEditingController();
+    final textController = ComposeTextController();
     final focusNode = FocusNode();
     addTearDown(textController.dispose);
     addTearDown(focusNode.dispose);
@@ -113,7 +114,7 @@ void main() {
   testWidgets('shows send when showStop is false and input has text', (
     tester,
   ) async {
-    final textController = TextEditingController(text: 'hello');
+    final textController = ComposeTextController(text: 'hello');
     addTearDown(textController.dispose);
     final focusNode = FocusNode();
     addTearDown(focusNode.dispose);

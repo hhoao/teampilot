@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_text_controller.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_file_drop_ingestor.dart';
 import 'package:teampilot/widgets/compose/compose_chrome.dart';
@@ -20,7 +21,7 @@ void main() {
     ValueChanged<Object?>? onExpertChipSelected,
     bool deferFieldMount = true,
   }) {
-    final controller = TextEditingController();
+    final controller = ComposeTextController();
     addTearDown(controller.dispose);
     final focusNode = FocusNode();
     addTearDown(focusNode.dispose);

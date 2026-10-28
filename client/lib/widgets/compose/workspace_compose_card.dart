@@ -14,6 +14,7 @@ import '../../services/cli/registry/capabilities/native_command_capability.dart'
 import '../../services/cli/registry/capabilities/skill_capability.dart';
 import '../../services/chat/conversation/compose/compose_at_file_refs.dart';
 import '../../services/chat/conversation/compose/compose_clip.dart';
+import '../../services/chat/conversation/compose/compose_text_controller.dart';
 import '../home_storage_scope.dart';
 import '../../utils/debounce/debounce.dart';
 import 'compose_at_file_chip_row.dart';
@@ -73,7 +74,7 @@ class WorkspaceComposeCard extends StatelessWidget {
     super.key,
   });
 
-  final TextEditingController controller;
+  final ComposeTextController controller;
   final FocusNode focusNode;
   final String hint;
   final bool canSubmit;
@@ -206,8 +207,8 @@ class WorkspaceComposeCard extends StatelessWidget {
                 if (clip != null) clip!,
               ]),
               builder: (context, _) {
-                final refs = parseComposeAtFileRefs(
-                  clip?.composeMessage(controller.text) ?? controller.text,
+                final refs = composeAtFileRefsFromTokens(
+                  tokens: controller.document.tokens,
                   workspaceRoot: workspaceRoot,
                   usesPosixPaths: homeStorageOf(context).usesPosixPaths,
                 );

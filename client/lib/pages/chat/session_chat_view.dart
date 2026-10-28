@@ -37,6 +37,7 @@ import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/cli/tasks/cli_task_board_controller.dart';
 import '../../services/chat/conversation/compose/compose_clip.dart';
 import '../../services/chat/conversation/compose/compose_draft_cache.dart';
+import '../../services/chat/conversation/compose/compose_text_controller.dart';
 import '../../services/chat/conversation/compose/compose_file_attach.dart';
 import 'acp_seat_message_sync.dart';
 import 'session_chat_voice_controller.dart';
@@ -145,7 +146,7 @@ class SessionChatView extends StatefulWidget {
 }
 
 class _SessionChatViewState extends State<SessionChatView> {
-  final _controller = TextEditingController();
+  final _controller = ComposeTextController();
   final _clip = ComposeClip();
   late final FocusNode _focusNode;
   late final SessionVoiceController _voice;

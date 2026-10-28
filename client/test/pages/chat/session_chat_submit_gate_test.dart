@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/config_bundle.dart';
+import 'package:teampilot/services/chat/conversation/compose/compose_text_controller.dart';
 import 'package:teampilot/pages/chat/history_continue_delivery.dart';
 import 'package:teampilot/pages/chat/session_history_review_submit.dart';
 import 'package:teampilot/services/chat/conversation/compose/compose_file_drop_ingestor.dart';
@@ -60,7 +61,7 @@ void main() {
 
     testWidgets('compose send is disabled while isSubmitting', (tester) async {
       var submits = 0;
-      final textController = TextEditingController(text: 'hello');
+      final textController = ComposeTextController(text: 'hello');
       final focusNode = FocusNode();
       addTearDown(textController.dispose);
       addTearDown(focusNode.dispose);

@@ -8,6 +8,10 @@ import 'compose_draft_store.dart';
 /// Persistence is home-plane: the persistent methods take the caller's
 /// [HomeStorage] (the app-scoped [composeDraftCache] instance has no storage
 /// of its own — UI/cubit call sites thread their injected storage in).
+///
+/// Drafts persist plain text only. Token ranges are runtime state: restoring a
+/// draft reopens the text as plain text (no chips), matching "only explicitly
+/// inserted tokens are tokens". Re-selecting a reference creates a new token.
 class ComposeDraftCache {
   ComposeDraftCache({
     Map<String, String>? store,

@@ -37,6 +37,7 @@ import '../../services/chat/conversation/compose/compose_at_file_refs.dart';
 import '../../widgets/home_storage_scope.dart';
 import '../../services/chat/conversation/compose/compose_clip.dart';
 import '../../services/chat/conversation/compose/compose_file_attach.dart';
+import '../../services/chat/conversation/compose/compose_text_controller.dart';
 import '../../services/chat/conversation/compose/compose_file_drop_ingestor.dart';
 import '../../services/chat/conversation/compose/compose_landing_bundle.dart';
 import '../../services/chat/conversation/compose/compose_voice_input.dart';
@@ -114,7 +115,7 @@ class SessionChatComposeSection extends StatelessWidget {
   final Workspace workspace;
   final String selectedMemberId;
   final String shellMemberId;
-  final TextEditingController composeController;
+  final ComposeTextController composeController;
   final FocusNode composeFocusNode;
 
   /// Optional paste-collapse buffer. The visible controller holds only the
@@ -682,7 +683,7 @@ class SessionChatComposeSection extends StatelessWidget {
   ComposeFileDropIngestor _buildDropTarget(
     BuildContext context,
     String root,
-    TextEditingController controller,
+    ComposeTextController controller,
   ) {
     return ComposeFileDropIngestor(
       workspaceRoot: root,
