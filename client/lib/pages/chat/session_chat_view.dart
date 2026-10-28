@@ -1231,6 +1231,9 @@ class _SessionChatViewState extends State<SessionChatView> {
     bool clearCompose = true,
   }) async {
     if (text.isEmpty) return const HistoryContinueSubmitResult.failed();
+    // Read before any await so the ACP race fallback below does not touch
+    // BuildContext across an async gap.
+    final chat = context.read<ChatCubit>();
     // Terminal-less ACP session: the ACP runtime owns the turn and the
     // app-side transcript. The failed-message store is a PTY delivery concern —
     // a persisted pending record here would never be reconciled (the cubit's
@@ -1259,6 +1262,17 @@ class _SessionChatViewState extends State<SessionChatView> {
         await _discardComposeDraftForSubmit();
       }
       final sent = acpRuntime.sendPrompt(text);
+      if (!sent && !acpRuntime.isClosed && acpRuntime.state.inTurn) {
+        // Race: the compose gate saw an idle seat, but the runtime latched a
+        // turn before `sendPrompt` ran. The draft is already cleared and ACP
+        // has no optimistic pending bubble — queue it instead of losing it.
+        chat.followUpQueue.enqueue(_followUpSeatKey, text);
+        _notifyFollowUpMemberWorking(chat);
+        return const HistoryContinueSubmitResult(
+          ok: true,
+          channel: HistoryContinueChannel.pty,
+        );
+      }
       return HistoryContinueSubmitResult(
         ok: sent,
         channel: HistoryContinueChannel.pty,

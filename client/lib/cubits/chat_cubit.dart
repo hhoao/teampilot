@@ -1124,6 +1124,29 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
+  /// Delivers one queued follow-up into a terminal-less ACP seat.
+  ///
+  /// Returns the operator-shaped result because the drainer only reads `ok`;
+  /// the PTY / mailbox side effects must not run for ACP (the cubit owns the
+  /// live transcript and the pending-bubble machinery).
+  HistoryContinueSubmitResult _deliverFollowUpToAcpSeat({
+    required String sessionId,
+    required String seatMemberId,
+    required AcpChatRuntimeCubit acp,
+    required String content,
+  }) {
+    final ok = acp.sendPrompt(content);
+    if (ok) {
+      // ACP turns are sequential: latch the drainer so the remaining heads
+      // wait for the next idle edge instead of racing the fresh turn.
+      notifyFollowUpMemberWorking(sessionId, seatMemberId, working: true);
+    }
+    return HistoryContinueSubmitResult(
+      ok: ok,
+      channel: HistoryContinueChannel.pty,
+    );
+  }
+
   Future<HistoryContinueSubmitResult> _deliverFollowUpAtSeat(
     String seat,
     String content,
@@ -1133,11 +1156,24 @@ class ChatCubit extends Cubit<ChatState>
 
     final sessionId = parsed.$1;
     final memberId = parsed.$2;
-    final session = _tabStore
-        .getOpenTabBySessionId(sessionId)
-        ?.persistedSession;
+    final tab = _tabStore.getOpenTabBySessionId(sessionId);
+    final session = tab?.persistedSession;
     if (session == null) {
       return const HistoryContinueSubmitResult.failed();
+    }
+
+    // Terminal-less ACP seat: deliver into that seat's cubit. The operator
+    // PTY / mailbox path below never reaches an ACP runtime. The seat key's
+    // member id is the runtime map key for both personal aliases (session id)
+    // and mixed seats (member id).
+    final acp = tab?.memberAcpRuntimes[memberId];
+    if (acp != null) {
+      return _deliverFollowUpToAcpSeat(
+        sessionId: sessionId,
+        seatMemberId: memberId,
+        acp: acp,
+        content: content,
+      );
     }
 
     final isPersonal = session.sessionTeam.trim().isEmpty;
@@ -1155,6 +1191,19 @@ class ChatCubit extends Cubit<ChatState>
     final shellMemberId = isPersonal
         ? session.sessionId
         : (connectMember?.id ?? memberId);
+    // Mixed seat queued without an explicit selection: the resolved lead may
+    // itself be the terminal-less ACP seat.
+    final resolvedAcp = shellMemberId == memberId
+        ? null
+        : tab?.memberAcpRuntimes[shellMemberId];
+    if (resolvedAcp != null) {
+      return _deliverFollowUpToAcpSeat(
+        sessionId: sessionId,
+        seatMemberId: memberId,
+        acp: resolvedAcp,
+        content: content,
+      );
+    }
     final workspaceId = session.workspaceId;
 
     return runOperatorHistorySend(
@@ -1353,6 +1402,13 @@ class ChatCubit extends Cubit<ChatState>
   bool isMemberWorking(String sessionId, String memberId) {
     final tab = _tabStore.getOpenTabBySessionId(sessionId);
     if (tab == null) return false;
+
+    // Terminal-less ACP seats have no PTY shell, so the shell/presence path
+    // below can never report them busy. The cubit's inTurn is the same truth
+    // the members panel publishes via `acpCubitMemberPresence`; the compose
+    // submit gate reads this to queue follow-ups instead of dropping them.
+    final acp = tab.memberAcpRuntimes[memberId];
+    if (acp != null) return !acp.isClosed && acp.state.inTurn;
 
     final presence = _presenceCubit?.state.presence ?? const {};
     final sessionWorking = _sessionRuntime.sessionWorking;

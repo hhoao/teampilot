@@ -547,6 +547,13 @@ class SessionChatComposeSection extends StatelessWidget {
                               onStop: showComposeStop
                                   ? () {
                                       if (showAcpStop) {
+                                        // Mirror the PTY stop semantics: a
+                                        // cancelled turn must not auto-fire
+                                        // the queued follow-ups.
+                                        chat.pauseFollowUpQueue(
+                                          session.sessionId,
+                                          shellMemberId,
+                                        );
                                         acpRuntime?.cancelTurn();
                                         return;
                                       }

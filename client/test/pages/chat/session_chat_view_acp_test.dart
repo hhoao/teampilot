@@ -64,6 +64,7 @@ import 'package:teampilot/services/storage/app_paths.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
+import 'package:teampilot/widgets/follow_up/follow_up_queue_strip.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
@@ -144,7 +145,10 @@ class _FakeAcpRuntime implements AcpSessionRuntimeApi {
   String get sessionId => 'acp-session-1';
 
   @override
-  Future<void> prompt(String text) async {}
+  Future<void> prompt(String text) async => prompts.add(text);
+
+  /// Every prompt the runtime accepted (turn guard regressions).
+  final prompts = <String>[];
 
   @override
   Stream<AcpSessionUpdate> get updates => const Stream.empty();
@@ -306,12 +310,15 @@ void main() {
   });
   tearDown(tearDownTestAppStorage);
 
-  Future<void> pumpSession(
+  Future<({_MockChatCubit chatCubit, InMemoryFollowUpQueueStore followUpQueue})>
+  pumpSession(
     WidgetTester tester, {
     required AppSession session,
     AcpChatRuntimeCubit? acpRuntime,
     String selectedMemberId = '',
     Future<HistoryContinueSubmitResult> Function(String message)? onSubmit,
+    bool memberWorking = false,
+    InMemoryFollowUpQueueStore? followUpQueueStore,
   }) async {
     final workspace = Workspace(
       workspaceId: 'ws-1',
@@ -354,7 +361,9 @@ void main() {
     _stubCubit(worktreeCubit, const WorktreeState());
     _stubCubit(memberPresenceCubit, const MemberPresenceState());
     _stubCubit(layoutCubit, const LayoutState());
-    when(() => chatCubit.isMemberWorking(any(), any())).thenReturn(false);
+    when(
+      () => chatCubit.isMemberWorking(any(), any()),
+    ).thenReturn(memberWorking);
     when(
       () => chatCubit.isMemberRunning(
         sessionId: any(named: 'sessionId'),
@@ -367,9 +376,8 @@ void main() {
       () => chatCubit.hydrateSessionDocument(any(), any()),
     ).thenAnswer((_) async => null);
     when(() => chatCubit.lifecycle).thenReturn(lifecycle);
-    when(
-      () => chatCubit.followUpQueue,
-    ).thenReturn(InMemoryFollowUpQueueStore());
+    final followUpQueue = followUpQueueStore ?? InMemoryFollowUpQueueStore();
+    when(() => chatCubit.followUpQueue).thenReturn(followUpQueue);
     when(
       () => chatCubit.tabStore,
     ).thenReturn(ChatTabStore(storage: testHomeStorage));
@@ -439,6 +447,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    return (chatCubit: chatCubit, followUpQueue: followUpQueue);
   }
 
   AppSession session(String id, {bool acp = false}) => AppSession(
@@ -748,7 +757,11 @@ void main() {
         workingDirectory: '/w',
       );
     });
-    await pumpSession(tester, session: session('s1'), acpRuntime: cubit);
+    final harness = await pumpSession(
+      tester,
+      session: session('s1'),
+      acpRuntime: cubit,
+    );
     expect(tester.takeException(), isNull);
 
     // Start a turn; the compose Stop button must appear (empty compose) and
@@ -766,7 +779,59 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(runtime.cancelled, isTrue);
+    // Same stop semantics as a PTY seat: queued follow-ups must not auto-fire
+    // after the cancelled turn.
+    verify(() => harness.chatCubit.pauseFollowUpQueue('s1', 's1')).called(1);
   });
+
+  testWidgets(
+    'ACP in-turn compose submit queues the follow-up instead of dropping it',
+    (tester) async {
+      final runtime = _FakeAcpRuntime();
+      final cubit = AcpChatRuntimeCubit(
+        runtime: runtime,
+        sessionId: 's1',
+        tool: CliTool.gemini,
+      );
+      addTearDown(() async {
+        await cubit.close();
+        await runtime.permissionsController.close();
+        await runtime.clientRequestsController.close();
+      });
+      await tester.runAsync(() async {
+        await cubit.start(
+          executable: 'gemini',
+          sessionToolDir: '/tmp/tool',
+          workingDirectory: '/w',
+        );
+      });
+      final harness = await pumpSession(
+        tester,
+        session: session('s1', acp: true),
+        acpRuntime: cubit,
+        memberWorking: true,
+      );
+
+      await tester.runAsync(() async {
+        cubit.sendPrompt('do work');
+        await Future<void>.delayed(Duration.zero);
+      });
+      await tester.pumpAndSettle();
+      expect(cubit.state.inTurn, isTrue);
+
+      await enterCompose(tester, 'queued next');
+      await submitCompose(tester);
+
+      final seatKey = followUpSeatKey('s1', 's1');
+      expect(
+        harness.followUpQueue.queueFor(seatKey).items.map((m) => m.content),
+        ['queued next'],
+      );
+      expect(find.byKey(kSessionFollowUpQueueStripKey), findsOneWidget);
+      // The running turn was not preempted or duplicated.
+      expect(runtime.prompts, ['do work']);
+    },
+  );
 
   testWidgets('ACP chat view renders the ask card through the compose slot', (
     tester,
