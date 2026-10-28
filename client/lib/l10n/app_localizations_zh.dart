@@ -9124,6 +9124,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionUsageScopeHint => '本地 + SSH · 按 TeamPilot 会话归属';
 
   @override
+  String get sessionUsageProgressTitle => '用量同步';
+
+  @override
   String get sessionUsageSync => '同步';
 
   @override

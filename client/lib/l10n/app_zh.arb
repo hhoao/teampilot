@@ -4080,6 +4080,7 @@
   "sessionUsageTitle": "Token 用量",
   "sessionUsageSubtitle": "按 TeamPilot 会话归属统计，本地与 SSH 主页面共用。",
   "sessionUsageScopeHint": "本地 + SSH · 按 TeamPilot 会话归属",
+  "sessionUsageProgressTitle": "用量同步",
   "sessionUsageSync": "同步",
   "sessionUsageSyncing": "同步中",
   "sessionUsageSyncTooltip": "扫描 CLI 记录以获取新用量",

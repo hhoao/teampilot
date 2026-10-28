@@ -9538,6 +9538,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Local + SSH · attributed by TeamPilot session';
 
   @override
+  String get sessionUsageProgressTitle => 'Usage sync';
+
+  @override
   String get sessionUsageSync => 'Sync';
 
   @override

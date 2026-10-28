@@ -16922,6 +16922,12 @@ abstract class AppLocalizations {
   /// **'Local + SSH · attributed by TeamPilot session'**
   String get sessionUsageScopeHint;
 
+  /// No description provided for @sessionUsageProgressTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage sync'**
+  String get sessionUsageProgressTitle;
+
   /// No description provided for @sessionUsageSync.
   ///
   /// In en, this message translates to:

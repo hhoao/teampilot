@@ -10,6 +10,7 @@ enum ProgressActivityKind {
   cliProvision,
   repoClone,
   gitOperation,
+  sessionUsage,
 }
 
 enum ProgressActivityPhase {

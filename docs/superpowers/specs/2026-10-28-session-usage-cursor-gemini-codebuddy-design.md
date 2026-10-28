@@ -65,6 +65,17 @@ Storage is separate from `events.jsonl`:
 Sync is manual (footer → Cursor usage → Sync). It is not part of the 10-minute
 local sync loop, so a network request never blocks local usage refresh.
 
+## Status bar progress
+
+`SessionUsageProgressBridge` wraps the home-shell status bar. While the
+app-level usage sync runs (manual, page-open, resume, or the 10-minute timer),
+it starts a `ProgressActivityKind.sessionUsage` activity in
+`ProgressActivityCubit`: the status-bar pill shows the percentage, the
+activities popover shows scanned sessions/inserted events, and the same row
+appears in the notification center. Cancel maps to `SessionUsageCubit.cancelSync`.
+The bridge is localized in the widget layer; routine syncs do not write
+notification history (`recordHistory: false`).
+
 ## Limitations
 
 - Cursor sync requires a live Cursor login and network; it uses an internal

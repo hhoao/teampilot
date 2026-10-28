@@ -29,6 +29,7 @@ import '../../services/workbench/workbench_shell_launcher.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/managed_provider/managed_provider_usage_status_item.dart';
 import '../../widgets/workspace_status_bar/progress_activities_status_item.dart';
+import '../../widgets/workspace_status_bar/session_usage_progress_bridge.dart';
 import '../../widgets/workspace_status_bar/resource_usage_status_item.dart';
 import '../../widgets/workspace_status_bar/ssh_hosts_status_item.dart';
 import '../../widgets/workspace_status_bar/workspace_status_bar.dart';
@@ -332,23 +333,25 @@ class _GlobalResourceManagerHostState extends State<GlobalResourceManagerHost> {
           children: [
             Expanded(child: widget.child),
             if (!isMobile)
-              WorkspaceStatusBar(
-                leadingItems: [
-                  ManagedProviderUsageStatusItem(
-                    onManage: () => context.go(
-                      HomeGlobalView.managedProviders.homeLocation,
+              SessionUsageProgressBridge(
+                child: WorkspaceStatusBar(
+                  leadingItems: [
+                    ManagedProviderUsageStatusItem(
+                      onManage: () => context.go(
+                        HomeGlobalView.managedProviders.homeLocation,
+                      ),
                     ),
-                  ),
-                ],
-                trailingItems: [
-                  ProgressActivitiesStatusItem(workspaceId: workspaceId),
-                  ResourceUsageStatusItem(),
-                  SshHostsStatusItem(
-                    onManage: () => openSshProfilesManagement(context),
-                    onOpenTerminal: (profileId) =>
-                        _openSshHostTerminal(profileId, workspaceId ?? ''),
-                  ),
-                ],
+                  ],
+                  trailingItems: [
+                    ProgressActivitiesStatusItem(workspaceId: workspaceId),
+                    ResourceUsageStatusItem(),
+                    SshHostsStatusItem(
+                      onManage: () => openSshProfilesManagement(context),
+                      onOpenTerminal: (profileId) =>
+                          _openSshHostTerminal(profileId, workspaceId ?? ''),
+                    ),
+                  ],
+                ),
               ),
           ],
         ),

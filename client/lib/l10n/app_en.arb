@@ -4776,6 +4776,7 @@
   "sessionUsageTitle": "Token usage",
   "sessionUsageSubtitle": "Usage attributed to TeamPilot sessions on local and SSH home planes.",
   "sessionUsageScopeHint": "Local + SSH · attributed by TeamPilot session",
+  "sessionUsageProgressTitle": "Usage sync",
   "sessionUsageSync": "Sync",
   "sessionUsageSyncing": "Syncing",
   "sessionUsageSyncTooltip": "Scan CLI transcripts for new usage",
