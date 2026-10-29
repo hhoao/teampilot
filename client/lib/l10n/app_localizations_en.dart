@@ -9594,13 +9594,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionUsageRangeToday => 'Today';
 
   @override
+  String get sessionUsageRangeLast24Hours => 'Last 24 hours';
+
+  @override
   String get sessionUsageRangeSevenDays => 'Last 7 days';
+
+  @override
+  String get sessionUsageRangeFourteenDays => 'Last 14 days';
 
   @override
   String get sessionUsageRangeThirtyDays => 'Last 30 days';
 
   @override
   String get sessionUsageRangeAll => 'All time';
+
+  @override
+  String get sessionUsageStartTime => 'Start time';
+
+  @override
+  String get sessionUsageEndTime => 'End time';
+
+  @override
+  String get sessionUsageLiveEnd => 'End time follows now';
+
+  @override
+  String get sessionUsageRangeHint => 'Date and time, up to 30 days';
+
+  @override
+  String get sessionUsageRangeInvalidOrder =>
+      'Start time cannot be later than end time';
+
+  @override
+  String get sessionUsageRangeTooLong => 'Range cannot exceed 30 days';
+
+  @override
+  String get sessionUsageColumnSettings => 'Columns';
+
+  @override
+  String get sessionUsageColumnReset => 'Reset to default';
+
+  @override
+  String get sessionUsageSortDescending => 'Sort descending';
+
+  @override
+  String get sessionUsageSortAscending => 'Sort ascending';
 
   @override
   String get sessionUsageCliAll => 'All';

@@ -9179,13 +9179,49 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionUsageRangeToday => '今天';
 
   @override
+  String get sessionUsageRangeLast24Hours => '近 24 小时';
+
+  @override
   String get sessionUsageRangeSevenDays => '近 7 天';
+
+  @override
+  String get sessionUsageRangeFourteenDays => '近 14 天';
 
   @override
   String get sessionUsageRangeThirtyDays => '近 30 天';
 
   @override
   String get sessionUsageRangeAll => '全部';
+
+  @override
+  String get sessionUsageStartTime => '开始时间';
+
+  @override
+  String get sessionUsageEndTime => '结束时间';
+
+  @override
+  String get sessionUsageLiveEnd => '结束时间跟随当前时刻';
+
+  @override
+  String get sessionUsageRangeHint => '支持日期与时间，最长 30 天';
+
+  @override
+  String get sessionUsageRangeInvalidOrder => '开始时间不能晚于结束时间';
+
+  @override
+  String get sessionUsageRangeTooLong => '时间范围不能超过 30 天';
+
+  @override
+  String get sessionUsageColumnSettings => '显示的列';
+
+  @override
+  String get sessionUsageColumnReset => '恢复默认';
+
+  @override
+  String get sessionUsageSortDescending => '降序';
+
+  @override
+  String get sessionUsageSortAscending => '升序';
 
   @override
   String get sessionUsageCliAll => '全部';

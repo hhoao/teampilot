@@ -110,6 +110,23 @@ String usageGroupName(BuildContext context, UsageGroup group) {
   };
 }
 
+/// Label for a usage range preset.
+///
+/// `UsageRange.custom` falls back to the all-time label; the range trigger
+/// formats the concrete custom dates itself.
+String usageRangeLabel(BuildContext context, UsageRange range) {
+  final l10n = context.l10n;
+  return switch (range) {
+    UsageRange.today => l10n.sessionUsageRangeToday,
+    UsageRange.last24Hours => l10n.sessionUsageRangeLast24Hours,
+    UsageRange.sevenDays => l10n.sessionUsageRangeSevenDays,
+    UsageRange.fourteenDays => l10n.sessionUsageRangeFourteenDays,
+    UsageRange.thirtyDays => l10n.sessionUsageRangeThirtyDays,
+    UsageRange.all => l10n.sessionUsageRangeAll,
+    UsageRange.custom => l10n.sessionUsageRangeAll,
+  };
+}
+
 /// Bottom-axis label stride for the usage trend chart.
 ///
 /// Keeps at most about seven day labels visible for any selected range.

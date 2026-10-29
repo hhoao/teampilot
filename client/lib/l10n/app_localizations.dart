@@ -17024,11 +17024,23 @@ abstract class AppLocalizations {
   /// **'Today'**
   String get sessionUsageRangeToday;
 
+  /// No description provided for @sessionUsageRangeLast24Hours.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 24 hours'**
+  String get sessionUsageRangeLast24Hours;
+
   /// No description provided for @sessionUsageRangeSevenDays.
   ///
   /// In en, this message translates to:
   /// **'Last 7 days'**
   String get sessionUsageRangeSevenDays;
+
+  /// No description provided for @sessionUsageRangeFourteenDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 14 days'**
+  String get sessionUsageRangeFourteenDays;
 
   /// No description provided for @sessionUsageRangeThirtyDays.
   ///
@@ -17041,6 +17053,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'All time'**
   String get sessionUsageRangeAll;
+
+  /// No description provided for @sessionUsageStartTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Start time'**
+  String get sessionUsageStartTime;
+
+  /// No description provided for @sessionUsageEndTime.
+  ///
+  /// In en, this message translates to:
+  /// **'End time'**
+  String get sessionUsageEndTime;
+
+  /// No description provided for @sessionUsageLiveEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End time follows now'**
+  String get sessionUsageLiveEnd;
+
+  /// No description provided for @sessionUsageRangeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Date and time, up to 30 days'**
+  String get sessionUsageRangeHint;
+
+  /// No description provided for @sessionUsageRangeInvalidOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Start time cannot be later than end time'**
+  String get sessionUsageRangeInvalidOrder;
+
+  /// No description provided for @sessionUsageRangeTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Range cannot exceed 30 days'**
+  String get sessionUsageRangeTooLong;
+
+  /// No description provided for @sessionUsageColumnSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Columns'**
+  String get sessionUsageColumnSettings;
+
+  /// No description provided for @sessionUsageColumnReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to default'**
+  String get sessionUsageColumnReset;
+
+  /// No description provided for @sessionUsageSortDescending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort descending'**
+  String get sessionUsageSortDescending;
+
+  /// No description provided for @sessionUsageSortAscending.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort ascending'**
+  String get sessionUsageSortAscending;
 
   /// No description provided for @sessionUsageCliAll.
   ///
