@@ -126,5 +126,6 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byType(BarChart), findsOneWidget);
+    expect(find.text('今天'), findsOneWidget);
   });
 }

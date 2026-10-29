@@ -159,7 +159,7 @@ class UsageTrendChart extends StatelessWidget {
                               final index = value.round();
                               if (index < 0 ||
                                   index >= days.length ||
-                                  index % stride != 0) {
+                                  (days.length - 1 - index) % stride != 0) {
                                 return const SizedBox.shrink();
                               }
                               return SideTitleWidget(
