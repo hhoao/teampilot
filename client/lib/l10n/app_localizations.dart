@@ -10808,6 +10808,78 @@ abstract class AppLocalizations {
   /// **'CodeBuddy sign-in failed.'**
   String get codebuddyCredentialsActionFailed;
 
+  /// No description provided for @antigravityCredentialsLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get antigravityCredentialsLogin;
+
+  /// No description provided for @antigravityCredentialsLoginTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to Antigravity'**
+  String get antigravityCredentialsLoginTitle;
+
+  /// No description provided for @antigravityCredentialsLoginIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete the Google sign-in in the terminal below, then press Done. Antigravity keeps the account in the OS keyring, so the account is shared by all Antigravity sessions and every official Antigravity provider row.'**
+  String get antigravityCredentialsLoginIntro;
+
+  /// No description provided for @antigravityCredentialsLoginStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting Antigravity…'**
+  String get antigravityCredentialsLoginStarting;
+
+  /// No description provided for @antigravityCredentialsLoginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the login terminal: {error}'**
+  String antigravityCredentialsLoginFailed(String error);
+
+  /// No description provided for @antigravityCredentialsLoginExited.
+  ///
+  /// In en, this message translates to:
+  /// **'Antigravity exited. Close this dialog and start the sign-in again.'**
+  String get antigravityCredentialsLoginExited;
+
+  /// No description provided for @antigravityCredentialsLoginVerifyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Antigravity did not confirm the sign-in (agy models failed). Finish the sign-in, then press Done again.'**
+  String get antigravityCredentialsLoginVerifyFailed;
+
+  /// No description provided for @antigravityCredentialsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get antigravityCredentialsDone;
+
+  /// No description provided for @antigravityCredentialsCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get antigravityCredentialsCancel;
+
+  /// No description provided for @antigravityCredentialsRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get antigravityCredentialsRetry;
+
+  /// No description provided for @antigravityCredentialsSignedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in to Antigravity.'**
+  String get antigravityCredentialsSignedIn;
+
+  /// No description provided for @antigravityCredentialsActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Antigravity sign-in failed.'**
+  String get antigravityCredentialsActionFailed;
+
   /// No description provided for @appProviderTeamToolSection.
   ///
   /// In en, this message translates to:

@@ -2652,6 +2652,25 @@
   "codebuddyCredentialsSendLogin": "发送 /login",
   "codebuddyCredentialsSignedIn": "已登录 CodeBuddy。",
   "codebuddyCredentialsActionFailed": "CodeBuddy 登录失败。",
+  "antigravityCredentialsLogin": "登录",
+  "antigravityCredentialsLoginTitle": "登录 Antigravity",
+  "antigravityCredentialsLoginIntro": "在下方终端完成 Google 登录，然后点击“完成”。Antigravity 将账号保存在系统钥匙串中，所有 Antigravity 会话以及所有官方 Antigravity 供应商行都会共享该账号。",
+  "antigravityCredentialsLoginStarting": "正在启动 Antigravity…",
+  "antigravityCredentialsLoginFailed": "无法启动登录终端：{error}",
+  "@antigravityCredentialsLoginFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "antigravityCredentialsLoginExited": "Antigravity 已退出。请关闭此对话框后重新登录。",
+  "antigravityCredentialsLoginVerifyFailed": "Antigravity 未确认登录成功（agy models 执行失败）。请完成登录后再次点击“完成”。",
+  "antigravityCredentialsDone": "完成",
+  "antigravityCredentialsCancel": "取消",
+  "antigravityCredentialsRetry": "重试",
+  "antigravityCredentialsSignedIn": "已登录 Antigravity。",
+  "antigravityCredentialsActionFailed": "Antigravity 登录失败。",
   "appProviderTeamToolSection": "团队默认服务商",
   "appProviderTeamToolSubtitle": "选择本团队启动时，各工具使用的统一服务商。",
   "appProviderTeamNone": "无",

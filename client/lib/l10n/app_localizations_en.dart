@@ -6067,6 +6067,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get codebuddyCredentialsActionFailed => 'CodeBuddy sign-in failed.';
 
   @override
+  String get antigravityCredentialsLogin => 'Sign in';
+
+  @override
+  String get antigravityCredentialsLoginTitle => 'Sign in to Antigravity';
+
+  @override
+  String get antigravityCredentialsLoginIntro =>
+      'Complete the Google sign-in in the terminal below, then press Done. Antigravity keeps the account in the OS keyring, so the account is shared by all Antigravity sessions and every official Antigravity provider row.';
+
+  @override
+  String get antigravityCredentialsLoginStarting => 'Starting Antigravity…';
+
+  @override
+  String antigravityCredentialsLoginFailed(String error) {
+    return 'Could not start the login terminal: $error';
+  }
+
+  @override
+  String get antigravityCredentialsLoginExited =>
+      'Antigravity exited. Close this dialog and start the sign-in again.';
+
+  @override
+  String get antigravityCredentialsLoginVerifyFailed =>
+      'Antigravity did not confirm the sign-in (agy models failed). Finish the sign-in, then press Done again.';
+
+  @override
+  String get antigravityCredentialsDone => 'Done';
+
+  @override
+  String get antigravityCredentialsCancel => 'Cancel';
+
+  @override
+  String get antigravityCredentialsRetry => 'Retry';
+
+  @override
+  String get antigravityCredentialsSignedIn => 'Signed in to Antigravity.';
+
+  @override
+  String get antigravityCredentialsActionFailed =>
+      'Antigravity sign-in failed.';
+
+  @override
   String get appProviderTeamToolSection => 'Tool providers for this team';
 
   @override

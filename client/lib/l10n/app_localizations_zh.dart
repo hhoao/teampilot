@@ -5821,6 +5821,47 @@ class AppLocalizationsZh extends AppLocalizations {
   String get codebuddyCredentialsActionFailed => 'CodeBuddy 登录失败。';
 
   @override
+  String get antigravityCredentialsLogin => '登录';
+
+  @override
+  String get antigravityCredentialsLoginTitle => '登录 Antigravity';
+
+  @override
+  String get antigravityCredentialsLoginIntro =>
+      '在下方终端完成 Google 登录，然后点击“完成”。Antigravity 将账号保存在系统钥匙串中，所有 Antigravity 会话以及所有官方 Antigravity 供应商行都会共享该账号。';
+
+  @override
+  String get antigravityCredentialsLoginStarting => '正在启动 Antigravity…';
+
+  @override
+  String antigravityCredentialsLoginFailed(String error) {
+    return '无法启动登录终端：$error';
+  }
+
+  @override
+  String get antigravityCredentialsLoginExited =>
+      'Antigravity 已退出。请关闭此对话框后重新登录。';
+
+  @override
+  String get antigravityCredentialsLoginVerifyFailed =>
+      'Antigravity 未确认登录成功（agy models 执行失败）。请完成登录后再次点击“完成”。';
+
+  @override
+  String get antigravityCredentialsDone => '完成';
+
+  @override
+  String get antigravityCredentialsCancel => '取消';
+
+  @override
+  String get antigravityCredentialsRetry => '重试';
+
+  @override
+  String get antigravityCredentialsSignedIn => '已登录 Antigravity。';
+
+  @override
+  String get antigravityCredentialsActionFailed => 'Antigravity 登录失败。';
+
+  @override
   String get appProviderTeamToolSection => '团队默认服务商';
 
   @override

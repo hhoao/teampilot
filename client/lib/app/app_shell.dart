@@ -13,6 +13,8 @@ import 'app_data_bootstrap.dart';
 import 'home_index_prefetch.dart';
 import 'team_generation_graph.dart';
 import '../cubits/app_provider_cubit.dart';
+import '../services/cli/antigravity/antigravity_bootstrap_entry.dart';
+import '../services/cli/antigravity/capabilities/acp_adapter_installer.dart';
 import '../services/cli/gemini/gemini_bootstrap_entry.dart';
 import '../cubits/app_update_cubit.dart';
 import '../cubits/remote_download_catalog_cubit.dart';
@@ -241,6 +243,7 @@ import '../services/cli/registry/capabilities/acp_settings_capability.dart';
 import '../services/cli/claude/claude_bootstrap_entry.dart';
 import '../services/cli/codex/codex_bootstrap_entry.dart';
 import '../services/cli/cursor/cursor_bootstrap_entry.dart';
+import '../services/cli/registry/installer/binary_archive_installer.dart';
 import '../services/cli/opencode/opencode_bootstrap_entry.dart';
 import '../services/host/host_one_shot_runner_for_context.dart';
 import '../services/host/host_process_starter_for_context.dart';
@@ -910,6 +913,10 @@ Future<AppShell> buildAppShell({
     () => remoteDownloadCatalogCubit.state.catalog,
   );
   final appUpdateHttpClient = http.Client();
+  final remoteDownloader = RemoteDownloader(
+    client: appUpdateHttpClient,
+    resolver: appUpdateResolver,
+  );
   final appUpdateService = AppUpdateService(
     httpClient: appUpdateHttpClient,
     resolver: appUpdateResolver,
@@ -917,10 +924,7 @@ Future<AppShell> buildAppShell({
       client: appUpdateHttpClient,
       resolver: appUpdateResolver,
     ),
-    downloader: RemoteDownloader(
-      client: appUpdateHttpClient,
-      resolver: appUpdateResolver,
-    ),
+    downloader: remoteDownloader,
   );
   final workspaceImportService = WorkspaceImportService();
   var termuxConfigCache = await termuxConfigStore.load();
@@ -1350,6 +1354,23 @@ Future<AppShell> buildAppShell({
         ),
         CliTool.gemini: GeminiBootstrapEntry(
           credentialSource: () => cachedGeminiApiKey,
+        ),
+        CliTool.antigravity: AntigravityBootstrapEntry(
+          storage: homeStorage,
+          acpInstaller: AntigravityAcpAdapterInstaller(
+            storage: homeStorage,
+            binary: BinaryArchiveInstaller(
+              fs: homeStorage.fs,
+              fetch: (uri, {expectedSha256, onProgress, isCancelled}) =>
+                  remoteDownloader.fetch(
+                    uri,
+                    destFileName: 'antigravity-acp.zip',
+                    expectedSha256: expectedSha256,
+                    onProgress: onProgress,
+                    isCancelled: isCancelled,
+                  ),
+            ),
+          ),
         ),
       }, storage: homeStorage),
     );

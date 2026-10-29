@@ -11,7 +11,7 @@ String providerCredentialSuccessMessage(AppLocalizations l10n, CliTool cli) {
     CliTool.flashskyai => l10n.appProviderToolFlashskyai,
     CliTool.gemini => l10n.appProviderToolGemini,
     CliTool.codebuddy => l10n.codebuddyCredentialsSignedIn,
-    CliTool.antigravity => l10n.appProviderToolAntigravity,
+    CliTool.antigravity => l10n.antigravityCredentialsSignedIn,
   };
 }
 
@@ -91,6 +91,6 @@ String _genericFailureMessage(AppLocalizations l10n, CliTool cli) {
     CliTool.flashskyai => l10n.appProviderToolFlashskyai,
     CliTool.gemini => l10n.appProviderToolGemini,
     CliTool.codebuddy => l10n.codebuddyCredentialsActionFailed,
-    CliTool.antigravity => l10n.appProviderToolAntigravity,
+    CliTool.antigravity => l10n.antigravityCredentialsActionFailed,
   };
 }

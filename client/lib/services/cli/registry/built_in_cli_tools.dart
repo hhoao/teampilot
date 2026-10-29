@@ -34,7 +34,10 @@ import 'capabilities/workspace_base_info_capability.dart';
 import 'cli_bootstrap.dart';
 import 'cli_capability.dart';
 import 'cli_tool_registry.dart';
+import '../antigravity/antigravity_bootstrap_entry.dart';
 import '../antigravity/antigravity_tool.dart';
+import '../antigravity/capabilities/acp_settings.dart';
+import '../antigravity/capabilities/provider.dart';
 import '../claude/claude_tool.dart';
 import '../codebuddy/codebuddy_tool.dart';
 import '../codebuddy/capabilities/provider.dart';
@@ -132,7 +135,17 @@ void registerBuiltInCliTools(
     ),
   );
 
-  registry.register(const AntigravityCliTool());
+  final antigravityEntry = bootstrap?.entry<AntigravityBootstrapEntry>(
+    CliTool.antigravity,
+  );
+  registry.register(
+    AntigravityCliTool(
+      provider: AntigravityProviderCapability(storage: storage),
+      acpSettings: AntigravityAcpSettings(
+        installer: antigravityEntry?.acpInstaller,
+      ),
+    ),
+  );
 
   assert(
     CliTool.values.every((cli) => registry.tryGet(cli) != null),

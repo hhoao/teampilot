@@ -3042,6 +3042,25 @@
   "codebuddyCredentialsSendLogin": "Send /login",
   "codebuddyCredentialsSignedIn": "Signed in to CodeBuddy.",
   "codebuddyCredentialsActionFailed": "CodeBuddy sign-in failed.",
+  "antigravityCredentialsLogin": "Sign in",
+  "antigravityCredentialsLoginTitle": "Sign in to Antigravity",
+  "antigravityCredentialsLoginIntro": "Complete the Google sign-in in the terminal below, then press Done. Antigravity keeps the account in the OS keyring, so the account is shared by all Antigravity sessions and every official Antigravity provider row.",
+  "antigravityCredentialsLoginStarting": "Starting Antigravity…",
+  "antigravityCredentialsLoginFailed": "Could not start the login terminal: {error}",
+  "@antigravityCredentialsLoginFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "antigravityCredentialsLoginExited": "Antigravity exited. Close this dialog and start the sign-in again.",
+  "antigravityCredentialsLoginVerifyFailed": "Antigravity did not confirm the sign-in (agy models failed). Finish the sign-in, then press Done again.",
+  "antigravityCredentialsDone": "Done",
+  "antigravityCredentialsCancel": "Cancel",
+  "antigravityCredentialsRetry": "Retry",
+  "antigravityCredentialsSignedIn": "Signed in to Antigravity.",
+  "antigravityCredentialsActionFailed": "Antigravity sign-in failed.",
   "appProviderTeamToolSection": "Tool providers for this team",
   "appProviderTeamToolSubtitle": "Select which unified provider each tool uses when this team starts.",
   "appProviderTeamNone": "None",
