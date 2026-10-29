@@ -120,9 +120,9 @@ wrap, and card decoration are unchanged.
 - fl_chart 1.3 has no built-in pie tooltip, so hover is handled with
   `PieTouchData(touchCallback: …)` storing the touched **CLI** (mapped from the
   touched section index) in local state, so a re-sorted `slices` list keeps the
-  highlight on the same tool. The touched section grows by 2px radius (44 + 31
-  = 75 is flush with the 150px box); every other interaction (rows, colours) is
-  unchanged.
+  highlight on the same tool. The touched section grows to radius 30 (44 + 30
+  = 74, a 1px inset inside the 150px box); every other interaction (rows,
+  colours) is unchanged.
 - Remove `LinearProgressIndicator` from `_CliSliceRow`; the row keeps dot,
   label, tokens, and share.
 - Keep the divider and cache-read share footer, and the empty state (no donut,
