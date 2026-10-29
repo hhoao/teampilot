@@ -46,7 +46,7 @@ class _CursorUsagePageState extends State<CursorUsagePage>
     if (widget.autoSync) {
       _autoSyncTimer = Timer.periodic(_autoSyncInterval, (_) {
         if (!mounted || !_appActive) return;
-        unawaited(context.read<CursorUsageCubit>().refresh());
+        unawaited(context.read<CursorUsageCubit>().syncIncremental());
       });
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -59,7 +59,7 @@ class _CursorUsagePageState extends State<CursorUsagePage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _appActive = state == AppLifecycleState.resumed;
     if (_appActive && widget.autoSync && mounted) {
-      unawaited(context.read<CursorUsageCubit>().refresh());
+      unawaited(context.read<CursorUsageCubit>().syncIncremental());
     }
   }
 
@@ -91,19 +91,30 @@ class _CursorUsagePageState extends State<CursorUsagePage>
                       style: styles.lgBold,
                     ),
                   ),
+                  if (state.isSyncing)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 8),
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
                   IconButton(
-                    key: AppKeys.cursorUsageRefresh,
-                    tooltip: context.l10n.cursorUsageRefresh,
+                    key: AppKeys.cursorUsageSyncIncremental,
+                    tooltip: context.l10n.cursorUsageSyncIncremental,
                     onPressed: state.isSyncing
                         ? null
-                        : () => cubit.refresh(force: true),
-                    icon: state.isSyncing
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.refresh),
+                        : () => cubit.syncIncremental(),
+                    icon: const Icon(Icons.sync),
+                  ),
+                  IconButton(
+                    key: AppKeys.cursorUsageSyncFull,
+                    tooltip: context.l10n.cursorUsageSyncFull,
+                    onPressed: state.isSyncing
+                        ? null
+                        : () => cubit.syncFull(),
+                    icon: const Icon(Icons.restart_alt),
                   ),
                   IconButton(
                     key: AppKeys.cursorUsageAddAccount,

@@ -9509,7 +9509,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cursorUsageTitle => 'Cursor 用量';
 
   @override
-  String get cursorUsageRefresh => '刷新';
+  String get cursorUsageSyncIncremental => '增量同步';
+
+  @override
+  String get cursorUsageSyncFull => '全量同步';
 
   @override
   String get cursorUsageAddAccount => '添加账号';

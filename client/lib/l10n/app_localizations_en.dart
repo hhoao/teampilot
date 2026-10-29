@@ -9932,7 +9932,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cursorUsageTitle => 'Cursor usage';
 
   @override
-  String get cursorUsageRefresh => 'Refresh';
+  String get cursorUsageSyncIncremental => 'Incremental sync';
+
+  @override
+  String get cursorUsageSyncFull => 'Full sync';
 
   @override
   String get cursorUsageAddAccount => 'Add account';

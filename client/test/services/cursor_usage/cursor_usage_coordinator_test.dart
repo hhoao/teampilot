@@ -224,7 +224,7 @@ void main() {
     expect(api.calls.length, 1);
   });
 
-  test('forceRefresh refetches a range the cache already covers', () async {
+  test('full sync refetches a range the cache already covers', () async {
     final api = _FakeApi(
       pages: [
         CursorUsagePage(events: [event('e1', 27)], totalCount: 1),
@@ -233,8 +233,17 @@ void main() {
     final coord = coordinator(api: api, registry: _FakeRegistry(_credentials));
     final range = CursorUsageCustomRange(startMs: ms(27), endMs: ms(27));
     await coord.load(accountId: 'acct', range: range);
-    await coord.load(accountId: 'acct', range: range, forceRefresh: true);
-    expect(api.calls.length, 2);
+    await coord.load(
+      accountId: 'acct',
+      range: range,
+      mode: CursorUsageSyncMode.full,
+    );
+    // The selected day was fetched once by the auto load and once again by
+    // the full sync, which ignores coverage.
+    final covering = api.calls
+        .where((call) => call.$1 <= ms(27) && call.$2 >= ms(27))
+        .length;
+    expect(covering, 2);
   });
 
   test('a 429 is retried once and then succeeds', () async {

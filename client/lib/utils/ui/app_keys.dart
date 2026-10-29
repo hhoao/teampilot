@@ -328,7 +328,8 @@ class AppKeys {
   static const sessionUsagePage = Key('session-usage-page');
   static const cursorUsagePage = Key('cursor-usage-page');
   static const cursorUsageAddAccount = Key('cursor-usage-add-account');
-  static const cursorUsageRefresh = Key('cursor-usage-refresh');
+  static const cursorUsageSyncIncremental = Key('cursor-usage-sync-incremental');
+  static const cursorUsageSyncFull = Key('cursor-usage-sync-full');
   static const cursorUsageRangePicker = Key('cursor-usage-range-picker');
   static const sessionUsageSyncButton = Key('session-usage-sync-button');
   static const sessionUsageIncrementalSync = Key(

@@ -34,7 +34,7 @@ void main() {
             required accountId,
             required range,
             billingCycle,
-            forceRefresh = false,
+            mode = CursorUsageSyncMode.auto,
           }) async {
             loaded.add(accountId);
             return CursorUsageReport(
@@ -72,7 +72,7 @@ void main() {
             required accountId,
             required range,
             billingCycle,
-            forceRefresh = false,
+            mode = CursorUsageSyncMode.auto,
           }) async {
             if (accountId == 'a') throw StateError('boom');
             return CursorUsageReport(
@@ -107,7 +107,7 @@ void main() {
             required accountId,
             required range,
             billingCycle,
-            forceRefresh = false,
+            mode = CursorUsageSyncMode.auto,
           }) async {
             loads++;
             return CursorUsageReport(
@@ -155,7 +155,7 @@ void main() {
             required accountId,
             required range,
             billingCycle,
-            forceRefresh = false,
+            mode = CursorUsageSyncMode.auto,
           }) async => throw StateError('boom'),
       saveRange: (_) async {},
       addAccount: (_, _) async => true,
@@ -180,7 +180,7 @@ void main() {
             required accountId,
             required range,
             billingCycle,
-            forceRefresh = false,
+            mode = CursorUsageSyncMode.auto,
           }) async => CursorUsageReport(
             accountId: accountId,
             startMs: 0,
@@ -211,7 +211,7 @@ void main() {
             required accountId,
             required range,
             billingCycle,
-            forceRefresh = false,
+            mode = CursorUsageSyncMode.auto,
           }) async => CursorUsageReport(
             accountId: accountId,
             startMs: 0,
@@ -247,7 +247,7 @@ void main() {
               required accountId,
               required range,
               billingCycle,
-              forceRefresh = false,
+              mode = CursorUsageSyncMode.auto,
             }) async =>
                 CursorUsageReport(accountId: accountId, startMs: 0, endMs: 1),
         saveRange: (_) async {},
@@ -262,10 +262,10 @@ void main() {
       await cubit.ensureLoaded();
       expect(cycleReads, 1);
 
-      await cubit.refresh(force: true);
+      await cubit.syncFull();
       expect(cycleReads, 2);
 
-      await cubit.refresh();
+      await cubit.syncIncremental();
       expect(cycleReads, 2);
     },
   );
@@ -290,7 +290,7 @@ void main() {
             required accountId,
             required range,
             billingCycle,
-            forceRefresh = false,
+            mode = CursorUsageSyncMode.auto,
           }) async {
             final tag = tagOf(range);
             await gates.putIfAbsent(tag, Completer<void>.new).future;
@@ -341,7 +341,7 @@ void main() {
             required accountId,
             required range,
             billingCycle,
-            forceRefresh = false,
+            mode = CursorUsageSyncMode.auto,
           }) async =>
               CursorUsageReport(accountId: accountId, startMs: 0, endMs: 1),
       saveRange: (_) async {},
@@ -379,7 +379,7 @@ void main() {
             required accountId,
             required range,
             billingCycle,
-            forceRefresh = false,
+            mode = CursorUsageSyncMode.auto,
           }) async {
             if (gates.length < 2) {
               final gate = Completer<void>();
@@ -407,7 +407,7 @@ void main() {
 
     // Supersede the initial flight so it bails mid-way with `b` still marked
     // as syncing.
-    final superseded = cubit.refresh();
+    final superseded = cubit.syncIncremental();
     await pumpEventQueue();
     final removal = cubit.removeAccount('b');
     await pumpEventQueue();
@@ -439,7 +439,7 @@ void main() {
             required accountId,
             required range,
             billingCycle,
-            forceRefresh = false,
+            mode = CursorUsageSyncMode.auto,
           }) async =>
               CursorUsageReport(accountId: accountId, startMs: 0, endMs: 1),
       saveRange: (_) async {},
@@ -476,7 +476,7 @@ void main() {
             required accountId,
             required range,
             billingCycle,
-            forceRefresh = false,
+            mode = CursorUsageSyncMode.auto,
           }) async {
             if (!gated) {
               gated = true;
@@ -533,7 +533,7 @@ void main() {
             required accountId,
             required range,
             billingCycle,
-            forceRefresh = false,
+            mode = CursorUsageSyncMode.auto,
           }) async =>
               CursorUsageReport(accountId: accountId, startMs: 0, endMs: 1),
       saveRange: (_) async {},

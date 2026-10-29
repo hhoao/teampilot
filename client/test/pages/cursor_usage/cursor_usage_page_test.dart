@@ -6,6 +6,7 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/cursor_usage_account.dart';
 import 'package:teampilot/models/cursor_usage_range.dart';
 import 'package:teampilot/models/cursor_usage_report.dart';
+import 'package:teampilot/services/cursor_usage/cursor_usage_coordinator.dart';
 import 'package:teampilot/pages/cursor_usage/cursor_usage_page.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
 
@@ -32,7 +33,7 @@ void main() {
           required accountId,
           required range,
           billingCycle,
-          forceRefresh = false,
+          mode = CursorUsageSyncMode.auto,
         }) async => const CursorUsageReport(
           accountId: 'a',
           startMs: 0,

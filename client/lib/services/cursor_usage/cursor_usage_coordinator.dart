@@ -11,6 +11,20 @@ import 'cursor_usage_cache_store.dart';
 import 'cursor_usage_range_math.dart';
 
 /// Why a [CursorUsageCoordinator] load could not produce a report.
+/// How a load was triggered.
+enum CursorUsageSyncMode {
+  /// Page open, resume, or the visibility timer: coverage gaps only, and the
+  /// today window is throttled by the refetch TTL.
+  auto,
+
+  /// The incremental button: no TTL, and the gap search stretches back to the
+  /// history anchor so uncovered history is backfilled.
+  manual,
+
+  /// The full button: every history chunk is re-fetched, covered or not.
+  full,
+}
+
 enum CursorUsageFailure {
   login,
   rateLimited,
@@ -115,7 +129,7 @@ final class CursorUsageCoordinator {
     required String accountId,
     required CursorUsageRange range,
     CursorUsageWindow? billingCycle,
-    bool forceRefresh = false,
+    CursorUsageSyncMode mode = CursorUsageSyncMode.auto,
   }) async {
     final credentials = await _registry.credentialFor(accountId);
     if (credentials == null) {
@@ -150,27 +164,39 @@ final class CursorUsageCoordinator {
         .firstOrNull;
     final teamId = account?.teamId ?? 0;
     final durableOwner = account?.owningUser;
-    var gaps = forceRefresh
-        ? [cursorUsageAlignWindow(window)]
-        : cursorUsageMissingWindows(covered: cache.coverage, requested: window);
-
-    // First fetch for an account: pull full history, not just the selected
-    // range. Cursor launched in 2023, so the anchor predates any real usage.
-    // The window is tiled into 90-day chunks so each chunk gets its own page
-    // budget, and the report below is still built for the requested range —
-    // the extra history only lands in the cache.
     final firstFetch =
         cache.coverage.isEmpty && cache.days.isEmpty && cache.events.isEmpty;
-    if (firstFetch && !forceRefresh && _fetchHistoryOnFirstLoad) {
-      gaps = historyChunks(window, nowMs);
-    }
+    var gaps = switch (mode) {
+      // Full sync re-fetches every chunk from the anchor, covered or not.
+      CursorUsageSyncMode.full => historyChunks(window, nowMs),
+      // First fetch for an account: pull full history, not just the selected
+      // range. Cursor launched in 2023, so the anchor predates any real usage.
+      // The window is tiled into 90-day chunks so each chunk gets its own page
+      // budget, and the report below is still built for the requested range —
+      // the extra history only lands in the cache.
+      _ when firstFetch && _fetchHistoryOnFirstLoad => historyChunks(
+        window,
+        nowMs,
+      ),
+      // Manual sync searches for gaps from the history anchor, so history
+      // that was never fetched is backfilled without re-fetching covered
+      // ranges. Auto only looks inside the requested range.
+      CursorUsageSyncMode.manual => cursorUsageMissingWindows(
+        covered: cache.coverage,
+        requested: _expandToAnchor(window, nowMs),
+      ),
+      CursorUsageSyncMode.auto => cursorUsageMissingWindows(
+        covered: cache.coverage,
+        requested: window,
+      ),
+    };
 
     // Today is never covered (it keeps accumulating), so without a throttle
     // every open would hit the network for every account. Inside the TTL the
     // today part of a gap is served from the last fill instead.
     final lastFetch = cache.lastFetchAtMs;
     final freshEnough =
-        !forceRefresh &&
+        mode == CursorUsageSyncMode.auto &&
         lastFetch != null &&
         nowMs - lastFetch < _todayRefetchTtl.inMilliseconds;
     if (freshEnough) {
@@ -191,6 +217,20 @@ final class CursorUsageCoordinator {
       );
     }
     return buildCursorUsageReport(cache, window: window);
+  }
+
+  /// Stretches [window] back to the history anchor.
+  CursorUsageWindow _expandToAnchor(CursorUsageWindow window, int nowMs) {
+    final now = DateTime.fromMillisecondsSinceEpoch(nowMs).toLocal();
+    final anchor = DateTime(
+      now.year - 3,
+      now.month,
+      now.day,
+    ).millisecondsSinceEpoch;
+    return CursorUsageWindow(
+      startMs: window.startMs < anchor ? window.startMs : anchor,
+      endMs: window.endMs,
+    );
   }
 
   /// Drops the today part of a gap; returns null when nothing remains.

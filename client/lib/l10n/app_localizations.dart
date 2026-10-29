@@ -17618,11 +17618,17 @@ abstract class AppLocalizations {
   /// **'Cursor usage'**
   String get cursorUsageTitle;
 
-  /// No description provided for @cursorUsageRefresh.
+  /// No description provided for @cursorUsageSyncIncremental.
   ///
   /// In en, this message translates to:
-  /// **'Refresh'**
-  String get cursorUsageRefresh;
+  /// **'Incremental sync'**
+  String get cursorUsageSyncIncremental;
+
+  /// No description provided for @cursorUsageSyncFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Full sync'**
+  String get cursorUsageSyncFull;
 
   /// No description provided for @cursorUsageAddAccount.
   ///

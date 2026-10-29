@@ -89,7 +89,7 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
       required String accountId,
       required CursorUsageRange range,
       CursorUsageWindow? billingCycle,
-      bool forceRefresh,
+      required CursorUsageSyncMode mode,
     })
     loadReport,
     required Future<void> Function(CursorUsageRange range) saveRange,
@@ -124,7 +124,7 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
     required String accountId,
     required CursorUsageRange range,
     CursorUsageWindow? billingCycle,
-    bool forceRefresh,
+    required CursorUsageSyncMode mode,
   })
   _loadReport;
   final Future<void> Function(CursorUsageRange range) _saveRange;
@@ -150,7 +150,7 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
     _loadFlight = null;
   });
 
-  Future<void> _load({bool force = false}) async {
+  Future<void> _load({CursorUsageSyncMode mode = CursorUsageSyncMode.auto}) async {
     if (state.status == CursorUsageStatus.initial) {
       final loader = _loadRange;
       if (loader != null) {
@@ -183,10 +183,10 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
         ),
       );
     }
-    await _loadAll(force: force);
+    await _loadAll(mode);
   }
 
-  Future<void> _loadAll({bool force = false}) async {
+  Future<void> _loadAll(CursorUsageSyncMode mode) async {
     final generation = ++_generation;
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     final accounts = state.accounts
@@ -230,7 +230,7 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
       try {
         await _refreshAccount(account.accountId);
         if (isClosed || generation != _generation) return;
-        final cycle = force
+        final cycle = mode == CursorUsageSyncMode.full
             ? await _billingCycleFor(account.accountId)
             : cycles[account.accountId] ??
                   await _billingCycleFor(account.accountId);
@@ -263,7 +263,7 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
           accountId: account.accountId,
           range: state.range,
           billingCycle: cycle,
-          forceRefresh: force,
+          mode: mode,
         );
         if (isClosed || generation != _generation) return;
         failures.remove(account.accountId);
@@ -300,10 +300,15 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
     // status dots show what is still in flight.
     emit(state.copyWith(range: range));
     await _saveRange(range);
-    await _loadAll();
+    await _loadAll(CursorUsageSyncMode.auto);
   }
 
-  Future<void> refresh({bool force = false}) => _loadAll(force: force);
+  /// The incremental button: no TTL, backfills uncovered history.
+  Future<void> syncIncremental() =>
+      _loadAll(CursorUsageSyncMode.manual);
+
+  /// The full button: re-fetches every history chunk, covered or not.
+  Future<void> syncFull() => _loadAll(CursorUsageSyncMode.full);
 
   Future<bool> addAccount(String rawToken, {String? label}) async {
     final ok = await _addAccount(rawToken, label);
