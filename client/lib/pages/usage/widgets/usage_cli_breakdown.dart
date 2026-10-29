@@ -52,6 +52,9 @@ class _UsageCliBreakdownState extends State<UsageCliBreakdown> {
             _touchedIndex! < slices.length
         ? slices[_touchedIndex!]
         : null;
+    final mutedXs = styles.xs.copyWith(
+      color: cs.onSurface.withValues(alpha: 0.56),
+    );
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -64,7 +67,7 @@ class _UsageCliBreakdownState extends State<UsageCliBreakdown> {
         children: [
           Text(l10n.sessionUsageCliBreakdown, style: styles.mdBold),
           const SizedBox(height: 12),
-          if (slices.isEmpty)
+          if (slices.isEmpty || total == 0)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 26),
               child: Center(
@@ -110,6 +113,7 @@ class _UsageCliBreakdownState extends State<UsageCliBreakdown> {
                   ),
                   IgnorePointer(
                     child: SizedBox(
+                      key: const ValueKey('usageCliBreakdownCenter'),
                       width: 86,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -122,18 +126,31 @@ class _UsageCliBreakdownState extends State<UsageCliBreakdown> {
                             style: styles.mdBold,
                           ),
                           const SizedBox(height: 2),
-                          Text(
-                            touched == null
-                                ? l10n.sessionUsageTotalTokens
-                                : '${usageCliLabel(touched.cli)} · '
-                                      '${formatUsagePercent(touched.share)}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: styles.xs.copyWith(
-                              color: cs.onSurface.withValues(alpha: 0.56),
+                          if (touched == null)
+                            Text(
+                              l10n.sessionUsageTotalTokens,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: mutedXs,
+                            )
+                          else ...[
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                usageCliLabel(touched.cli),
+                                maxLines: 1,
+                                textAlign: TextAlign.center,
+                                style: mutedXs,
+                              ),
                             ),
-                          ),
+                            Text(
+                              formatUsagePercent(touched.share),
+                              maxLines: 1,
+                              textAlign: TextAlign.center,
+                              style: mutedXs,
+                            ),
+                          ],
                         ],
                       ),
                     ),

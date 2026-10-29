@@ -141,7 +141,48 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Claude Code · 67%'), findsOneWidget);
-    expect(find.text('2.0K'), findsNWidgets(2));
+    final center = find.byKey(const ValueKey('usageCliBreakdownCenter'));
+    expect(
+      find.descendant(of: center, matching: find.text('Claude Code')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: center, matching: find.text('67%')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: center, matching: find.text('2.0K')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('all-zero slices keep the no-data state', (tester) async {
+    tester.view.physicalSize = const Size(800, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      _wrap(
+        slices: const [
+          UsageCliSlice(
+            cli: CliTool.claude,
+            totalTokens: 0,
+            requests: 0,
+            share: 0,
+          ),
+          UsageCliSlice(
+            cli: CliTool.codex,
+            totalTokens: 0,
+            requests: 0,
+            share: 0,
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PieChart), findsNothing);
+    expect(find.text('No data'), findsOneWidget);
   });
 }
