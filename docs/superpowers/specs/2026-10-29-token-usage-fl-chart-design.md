@@ -41,14 +41,14 @@ plugins, so Android/desktop builds are unaffected. `pubspec.lock` is updated by
 
 Mapping:
 
-- One `BarChartGroupData(x: index, barsSpace: 0)` per `UsageChartDay`.
+- One `BarChartGroupData(x: index)` per `UsageChartDay`.
 - One `BarChartRodData` per group with `rodStackItems` in `legendClis` order;
   skip CLIs whose token count is zero for that day. Segment colours come from
-  `usageCliColor(cli)`; alpha is `0.92` (or fully opaque) when the CLI is
-  selected or no filter is active, `0.22` otherwise.
-- `toY` of the rod = day total; `barRodData.width` scales down for 30 days
-  (about `min(18, availableWidth / dayCount)`), `borderRadius` 3 on the top
-  segment only.
+  `usageCliColor(cli)`; alpha is `0.92` when the CLI is selected or no filter is
+  active, `0.22` otherwise.
+- `toY` of the rod = day total; `barRodData.width` is
+  `availableWidth / days.length * 0.46` clamped to `3..18` so 30-day bars stay
+  narrow but still visible; `borderRadius` 3 on the top segment only.
 - `maxY = maxTotal * 1.12` so the tallest bar has headroom.
 - `duration: 260ms`, `curve: Curves.easeOutCubic` — changing the range animates
   bar heights.
@@ -59,9 +59,12 @@ Axes and grid:
   `reservedSize` ~34, low-alpha label colour from `cs.onSurface`.
 - Bottom `SideTitles` with `formatUsageDayLabel(context, dayStartMs, nowMs)`.
   When `days.length > 7`, show every `usageChartLabelStride(days.length)`-th
-  label; the axis still keeps one slot per day so bars stay evenly spaced.
-  `usageChartLabelStride` is a small pure helper in `usage_format.dart`
-  (`max(1, (dayCount / 7).ceil())`) so the thinning rule is unit-testable.
+  label. Labels are anchored to the newest day —
+  `(days.length - 1 - index) % stride == 0` — so "today" is always labelled and
+  thinning removes older labels, never the last one. The axis still keeps one
+  slot per day so bars stay evenly spaced. `usageChartLabelStride` is a small
+  pure helper in `usage_format.dart` (`max(1, (dayCount / 7).ceil())`) so the
+  thinning rule is unit-testable.
 - `FlGridData`: horizontal lines only, `cs.outlineVariant` at low alpha, no
   vertical lines. `FlBorderData(show: false)` with a single bottom axis line if
   it reads better against the card.
@@ -77,8 +80,9 @@ Touch:
   by `usageCliColor`) plus a total line. Styles come from `TpTextStyles`
   captured from `build`; `maxContentWidth` is raised from the 120 default to
   ~190 so rows do not wrap.
-- `fitInsideHorizontally` / `fitInsideVertically` are true. Hover and long-press
-  both work (desktop and Android).
+- `fitInsideHorizontally` / `fitInsideVertically` are true. Interaction is
+  hover on desktop and tap-down / long-press on touch devices; the tooltip
+  clears on tap-up or when the pointer leaves the chart.
 
 Height grows from 160 to 180 to fit the axis labels. The header row, legend
 wrap, and card decoration are unchanged.
@@ -87,9 +91,12 @@ wrap, and card decoration are unchanged.
 
 `UsageSparkline` becomes an axis-less `BarChart`:
 
-- One group per day, one rod with `toY = day.totalTokens`, colour
-  `cs.primary` alpha `0.56`; zero days get `maxY * 0.06` so an empty series
-  still shows a faint baseline (`maxY` is 1 when the range is all zero).
+- One group per day, one rod whose height is the day total. Because strictly
+  proportional rods make low-volume days disappear, the rod height is floored:
+  zero days get `maxY * 0.12` at alpha `0.24`, non-zero days below
+  `maxY * 0.10` get `maxY * 0.10`, everything else gets
+  `tokens.toDouble()`. Colour is `cs.primary` alpha `0.56` (`maxY` is 1 when
+  the range is all zero).
 - `titlesData`, `gridData`, `borderData` and `barTouchData` disabled; fixed
   height 26, fixed 6px rod width (same as today).
 - No animation needed (`duration: Duration.zero`) so the card does not move on
@@ -98,18 +105,24 @@ wrap, and card decoration are unchanged.
 ## CLI breakdown (`pages/usage/widgets/usage_cli_breakdown.dart`)
 
 - Add a centred donut above the rows: `PieChart` in a `SizedBox` of height
-  150 and full card width, `PieChartData(sectionsSpace: 2, centerSpaceRadius: 44)`.
+  150 and full card width, `PieChartData(centerSpaceRadius: 44)` with
+  `sectionsSpace: slices.length > 1 ? 2 : 0` so a single-CLI ring has no notch.
 - Sections come from `slices`: `value = totalTokens.toDouble()`, colour
-  `usageCliColor`, `radius` 28 (31 while touched) so a large centre hole fits
+  `usageCliColor`, `radius` 28 (30 while touched) so a large centre hole fits
   the readout. Segment alpha follows `selectedCli`.
-- Centre overlay (`Stack` + `IgnorePointer`): by default the total tokens in
-  `styles.mdBold` and `sessionUsageTotalTokens` in `styles.xs` muted. When the
-  pointer (or a long-press) is over a section, the centre switches to that CLI:
-  label, tokens, and share.
+- Centre overlay (`Stack` + `IgnorePointer`, one `FittedBox(scaleDown)` around
+  the readout so tokens, label and share shrink together): three stacked lines.
+  Untouched, it shows the donut total in `styles.mdBold`,
+  `sessionUsageChartTitle` ("Last 7 days" / "近 7 天消耗") in `styles.xs` muted —
+  it is the fixed seven-day slice total, not the range-filtered summary, so it
+  must not reuse `sessionUsageTotalTokens`. When the pointer or a long-press is
+  over a section, the centre switches to that CLI: tokens, label, and share.
 - fl_chart 1.3 has no built-in pie tooltip, so hover is handled with
-  `PieTouchData(touchCallback: …)` storing the touched index in local state.
-  The touched section grows by ~3px radius; every other interaction (rows,
-  colours) is unchanged.
+  `PieTouchData(touchCallback: …)` storing the touched **CLI** (mapped from the
+  touched section index) in local state, so a re-sorted `slices` list keeps the
+  highlight on the same tool. The touched section grows by 2px radius (44 + 31
+  = 75 is flush with the 150px box); every other interaction (rows, colours) is
+  unchanged.
 - Remove `LinearProgressIndicator` from `_CliSliceRow`; the row keeps dot,
   label, tokens, and share.
 - Keep the divider and cache-read share footer, and the empty state (no donut,

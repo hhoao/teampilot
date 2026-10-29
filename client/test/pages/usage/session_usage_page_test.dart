@@ -219,8 +219,9 @@ void main() {
     expect(find.text('Alpha'), findsNothing);
     expect(find.text('Beta'), findsWidgets);
     expect(cubit.state.dashboard.rows.single.label, 'Beta');
-    // The summary card and the breakdown donut centre both label the total.
-    expect(find.text('Total tokens'), findsNWidgets(2));
+    // Only the range-filtered summary card is labelled "Total tokens"; the
+    // breakdown donut centre is scoped to the last seven days.
+    expect(find.text('Total tokens'), findsOneWidget);
   });
 
   testWidgets('load failure shows retry state', (tester) async {

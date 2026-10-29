@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/session_usage_dashboard.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/usage/widgets/usage_summary_cards.dart';
 
 final _dashboard = UsageDashboard(
@@ -112,5 +113,42 @@ void main() {
 
     expect(find.byType(BarChart), findsOneWidget);
     expect(tester.getSize(find.byType(UsageSparkline)).height, 26);
+  });
+
+  testWidgets('sparkline keeps low-volume days visible', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 200,
+            child: UsageSparkline(
+              days: [
+                const UsageChartDay(dayStartMs: 0),
+                UsageChartDay(
+                  dayStartMs: Duration.millisecondsPerDay,
+                  tokensByCli: const {CliTool.claude: 1000},
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final groups = tester
+        .widget<BarChart>(find.byType(BarChart))
+        .data
+        .barGroups;
+    expect(groups, hasLength(2));
+    // maxY is 1000 * 1.05 = 1050: a zero day gets 12% and a non-zero day
+    // below 10% of maxY is lifted to the 10% floor.
+    expect(groups[0].barRods.single.toY, closeTo(126.0, 0.001));
+    expect(groups[1].barRods.single.toY, closeTo(1000.0, 0.001));
   });
 }

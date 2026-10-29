@@ -34,10 +34,7 @@ const _slices = <UsageCliSlice>[
   ),
 ];
 
-Widget _wrap({
-  List<UsageCliSlice> slices = _slices,
-  CliTool? selectedCli,
-}) {
+Widget _wrap({List<UsageCliSlice> slices = _slices, CliTool? selectedCli}) {
   return MaterialApp(
     locale: const Locale('en'),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -74,9 +71,12 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byType(PieChart), findsOneWidget);
     expect(find.text('3.0K'), findsOneWidget);
-    expect(find.text('Total tokens'), findsOneWidget);
+    expect(find.text('Last 7 days'), findsOneWidget);
     expect(find.text('Claude Code'), findsOneWidget);
     expect(find.text('Codex'), findsOneWidget);
+    // The rows keep their per-CLI token count and share.
+    expect(find.text('2.0K'), findsOneWidget);
+    expect(find.text('67%'), findsOneWidget);
   });
 
   testWidgets('empty slices keep the no-data state', (tester) async {

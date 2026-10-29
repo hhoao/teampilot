@@ -216,12 +216,10 @@ class UsageSparkline extends StatelessWidget {
                 x: index,
                 barRods: [
                   BarChartRodData(
-                    toY: days[index].totalTokens == 0
-                        ? maxY * 0.06
-                        : days[index].totalTokens.toDouble(),
+                    toY: _sparkRodTop(days[index].totalTokens, maxY),
                     width: 6,
                     color: cs.primary.withValues(
-                      alpha: days[index].totalTokens == 0 ? 0.16 : 0.56,
+                      alpha: days[index].totalTokens == 0 ? 0.24 : 0.56,
                     ),
                     borderRadius: BorderRadius.circular(3),
                   ),
@@ -231,10 +229,22 @@ class UsageSparkline extends StatelessWidget {
           titlesData: const FlTitlesData(show: false),
           gridData: const FlGridData(show: false),
           borderData: FlBorderData(show: false),
-          barTouchData: BarTouchData(enabled: false),
+          barTouchData: const BarTouchData(enabled: false),
         ),
         duration: Duration.zero,
       ),
     );
   }
+}
+
+/// Rod height for the sparkline.
+///
+/// Strictly proportional rods make low-volume days (and zero days) invisible,
+/// so anything under 10% of the tallest day gets a floor, and zero days get a
+/// slightly taller stub.
+double _sparkRodTop(int tokens, double maxY) {
+  if (tokens == 0) return maxY * 0.12;
+  final floor = maxY * 0.10;
+  final value = tokens.toDouble();
+  return value < floor ? floor : value;
 }

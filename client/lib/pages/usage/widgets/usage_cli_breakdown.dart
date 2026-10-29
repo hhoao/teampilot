@@ -25,15 +25,19 @@ class UsageCliBreakdown extends StatefulWidget {
 }
 
 class _UsageCliBreakdownState extends State<UsageCliBreakdown> {
-  int? _touchedIndex;
+  // Tracked by CLI rather than index so a re-sorted `slices` list keeps the
+  // hovered section highlighted on the right tool.
+  CliTool? _touchedCli;
 
   void _handleTouch(FlTouchEvent event, PieTouchResponse? response) {
     final index = event.isInterestedForInteractions
         ? response?.touchedSection?.touchedSectionIndex ?? -1
         : -1;
-    final next = index >= 0 && index < widget.slices.length ? index : null;
-    if (next == _touchedIndex) return;
-    setState(() => _touchedIndex = next);
+    final next = index >= 0 && index < widget.slices.length
+        ? widget.slices[index].cli
+        : null;
+    if (next == _touchedCli) return;
+    setState(() => _touchedCli = next);
   }
 
   @override
@@ -46,12 +50,10 @@ class _UsageCliBreakdownState extends State<UsageCliBreakdown> {
     final cacheShare = widget.summary.totalTokens == 0
         ? 0.0
         : widget.summary.cacheReadTokens / widget.summary.totalTokens;
-    final touched =
-        _touchedIndex != null &&
-            _touchedIndex! >= 0 &&
-            _touchedIndex! < slices.length
-        ? slices[_touchedIndex!]
-        : null;
+    final touchedIndex = _touchedCli == null
+        ? -1
+        : slices.indexWhere((slice) => slice.cli == _touchedCli);
+    final touched = touchedIndex >= 0 ? slices[touchedIndex] : null;
     final mutedXs = styles.xs.copyWith(
       color: cs.onSurface.withValues(alpha: 0.56),
     );
@@ -90,7 +92,7 @@ class _UsageCliBreakdownState extends State<UsageCliBreakdown> {
                     PieChartData(
                       startDegreeOffset: -90,
                       centerSpaceRadius: 44,
-                      sectionsSpace: 2,
+                      sectionsSpace: slices.length > 1 ? 2 : 0,
                       sections: [
                         for (var index = 0; index < slices.length; index++)
                           PieChartSectionData(
@@ -102,7 +104,9 @@ class _UsageCliBreakdownState extends State<UsageCliBreakdown> {
                                   ? 0.92
                                   : 0.22,
                             ),
-                            radius: _touchedIndex == index ? 31.0 : 28.0,
+                            radius: slices[index].cli == _touchedCli
+                                ? 30.0
+                                : 28.0,
                             showTitle: false,
                           ),
                       ],
@@ -115,43 +119,41 @@ class _UsageCliBreakdownState extends State<UsageCliBreakdown> {
                     child: SizedBox(
                       key: const ValueKey('usageCliBreakdownCenter'),
                       width: 86,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            formatUsageTokens(touched?.totalTokens ?? total),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: styles.mdBold,
-                          ),
-                          const SizedBox(height: 2),
-                          if (touched == null)
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
                             Text(
-                              l10n.sessionUsageTotalTokens,
+                              formatUsageTokens(touched?.totalTokens ?? total),
                               maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.center,
-                              style: mutedXs,
-                            )
-                          else ...[
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
+                              style: styles.mdBold,
+                            ),
+                            const SizedBox(height: 2),
+                            if (touched == null)
+                              Text(
+                                l10n.sessionUsageChartTitle,
+                                maxLines: 1,
+                                textAlign: TextAlign.center,
+                                style: mutedXs,
+                              )
+                            else ...[
+                              Text(
                                 usageCliLabel(touched.cli),
                                 maxLines: 1,
                                 textAlign: TextAlign.center,
                                 style: mutedXs,
                               ),
-                            ),
-                            Text(
-                              formatUsagePercent(touched.share),
-                              maxLines: 1,
-                              textAlign: TextAlign.center,
-                              style: mutedXs,
-                            ),
+                              Text(
+                                formatUsagePercent(touched.share),
+                                maxLines: 1,
+                                textAlign: TextAlign.center,
+                                style: mutedXs,
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -213,10 +215,7 @@ class _CliSliceRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
-          Text(
-            formatUsageTokens(slice.totalTokens),
-            style: styles.smMedium,
-          ),
+          Text(formatUsageTokens(slice.totalTokens), style: styles.smMedium),
           const SizedBox(width: 8),
           SizedBox(
             width: 42,

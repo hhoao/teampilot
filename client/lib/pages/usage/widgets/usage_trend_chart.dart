@@ -207,12 +207,9 @@ class UsageTrendChart extends StatelessWidget {
                             color: cs.outlineVariant.withValues(alpha: 0.5),
                           ),
                           getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                            final index = groupIndex < days.length
-                                ? groupIndex
-                                : days.length - 1;
                             return _chartTooltip(
                               context: context,
-                              day: days[index],
+                              day: days[groupIndex],
                               legendClis: legendClis,
                               styles: styles,
                               cs: cs,
@@ -262,9 +259,9 @@ BarChartGroupData _chartGroup({
   for (final cli in legendClis) {
     final tokens = day.tokensByCli[cli] ?? 0;
     if (tokens <= 0) continue;
-    final color = usageCliColor(
-      cli,
-    ).withValues(alpha: selectedCli == null || selectedCli == cli ? 0.92 : 0.22);
+    final color = usageCliColor(cli).withValues(
+      alpha: selectedCli == null || selectedCli == cli ? 0.92 : 0.22,
+    );
     stackItems.add(BarChartRodStackItem(stacked, stacked + tokens, color));
     stacked += tokens;
   }
@@ -296,7 +293,7 @@ BarTooltipItem _chartTooltip({
     if (tokens <= 0) continue;
     children.add(
       TextSpan(
-        text: '\n${usageCliLabel(cli)}  ${formatUsageTokens(tokens)}',
+        text: '\n${usageCliLabel(cli)} · ${formatUsageTokens(tokens)}',
         style: styles.xs.copyWith(color: usageCliColor(cli)),
       ),
     );

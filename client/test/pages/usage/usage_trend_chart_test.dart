@@ -7,9 +7,13 @@ import 'package:teampilot/models/session_usage_dashboard.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/usage/widgets/usage_trend_chart.dart';
 
-Widget _wrap(Widget child, {double textScale = 1.0}) {
+Widget _wrap(
+  Widget child, {
+  double textScale = 1.0,
+  Locale locale = const Locale('zh'),
+}) {
   return MaterialApp(
-    locale: const Locale('zh'),
+    locale: locale,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     builder: (context, appChild) => MediaQuery(
@@ -50,12 +54,34 @@ void main() {
           width: 1000,
           child: UsageTrendChart(days: _days(nowMs), nowMs: nowMs),
         ),
+        // English so the tooltip total line reads "{tokens} total".
+        locale: const Locale('en'),
       ),
     );
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
     expect(find.byType(BarChart), findsOneWidget);
+
+    final chart = tester.widget<BarChart>(find.byType(BarChart));
+    final groups = chart.data.barGroups;
+    final tip = chart.data.barTouchData.touchTooltipData.getTooltipItem(
+      groups[3],
+      3,
+      groups[3].barRods.single,
+      0,
+    )!;
+    expect(tip.text, '10/25');
+    final spanTexts = [
+      for (final child in tip.children ?? const <InlineSpan>[])
+        if (child is TextSpan) child.text ?? '',
+    ];
+    expect(spanTexts, contains('\nClaude Code · 4.0K'));
+    expect(spanTexts, contains('\nCodex · 500'));
+    expect(
+      spanTexts.where((text) => text.contains('4.5K total')),
+      hasLength(1),
+    );
   });
 
   testWidgets('fits when day labels are taller than the reserved slot', (
@@ -127,5 +153,13 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byType(BarChart), findsOneWidget);
     expect(find.text('今天'), findsOneWidget);
+    final dayLabels = find.byWidgetPredicate(
+      (widget) =>
+          widget is Text &&
+          widget.data != null &&
+          RegExp(r'^\d{1,2}/\d{1,2}$').hasMatch(widget.data!),
+    );
+    // 30 days at stride 5: the axis renders at most six date labels.
+    expect(dayLabels.evaluate().length, lessThanOrEqualTo(6));
   });
 }
