@@ -68,16 +68,17 @@ Axes and grid:
 
 Touch:
 
-- `BarTouchData(enabled: true, handleBuiltInTouches: false, touchCallback: …)`
-  resolves the touched `spot` to its day and sets local hover state (small
-  `StatefulWidget`), so the tooltip lists **every CLI plus the total** for that
-  day, not just one segment.
-- Tooltip is rendered with the existing `BarTouchTooltipData` custom item API
-  (`BarTooltipItem` with `TpTextStyles` captured from `build`); colours from
-  `usageCliColor`, total in `styles.smMedium`, rows in `styles.xs`.
+- `BarTouchData(enabled: true, handleBuiltInTouches: true, touchTooltipData: …)`.
+  fl_chart's built-in handler resolves the touched group/rod and asks
+  `getTooltipItem` for content, so the tooltip can list **every CLI plus the
+  total** for that day (the group index maps back to `days`).
+- Content is a `BarTooltipItem` whose `text` is the day label and whose
+  `children` are one `TextSpan` per CLI (`usageCliLabel`, `·`, tokens, coloured
+  by `usageCliColor`) plus a total line. Styles come from `TpTextStyles`
+  captured from `build`; `maxContentWidth` is raised from the 120 default to
+  ~190 so rows do not wrap.
 - `fitInsideHorizontally` / `fitInsideVertically` are true. Hover and long-press
   both work (desktop and Android).
-- Tooltip uses the day label as its title and `formatUsageTokens` for values.
 
 Height grows from 160 to 180 to fit the axis labels. The header row, legend
 wrap, and card decoration are unchanged.
@@ -98,14 +99,18 @@ wrap, and card decoration are unchanged.
 ## CLI breakdown (`pages/usage/widgets/usage_cli_breakdown.dart`)
 
 - Add a centred donut above the rows: `PieChart` in a `SizedBox` of height
-  ~132, `PieChartData(sectionsSpace: 2, centerSpaceRadius: ~34)`.
+  ~168, `PieChartData(sectionsSpace: 2, centerSpaceRadius: 34)`.
 - Sections come from `slices`: `value = totalTokens.toDouble()`, colour
-  `usageCliColor`, `radius` ~46. Segment alpha follows `selectedCli`.
-- Centre overlay (`Stack` + `IgnorePointer`): total tokens in
-  `styles.mdBold` and `sessionUsageTotalTokens` in `styles.xs` muted. Total is
-  the sum of `slices`, falling back to `summary.totalTokens` when empty.
-- `PieTouchData` with a tooltip: CLI label, `formatUsageTokens(tokens)`, and
-  `formatUsagePercent(share)`. Disabled when there are no slices.
+  `usageCliColor`, `radius` 40 (46 while touched) so the ring stays inside the
+  168px box. Segment alpha follows `selectedCli`.
+- Centre overlay (`Stack` + `IgnorePointer`): by default the total tokens in
+  `styles.mdBold` and `sessionUsageTotalTokens` in `styles.xs` muted. When the
+  pointer (or a long-press) is over a section, the centre switches to that CLI:
+  label, tokens, and share.
+- fl_chart 1.3 has no built-in pie tooltip, so hover is handled with
+  `PieTouchData(touchCallback: …)` storing the touched index in local state.
+  The touched section grows by ~6px radius; every other interaction (rows,
+  colours) is unchanged.
 - Remove `LinearProgressIndicator` from `_CliSliceRow`; the row keeps dot,
   label, tokens, and share.
 - Keep the divider and cache-read share footer, and the empty state (no donut,
@@ -143,7 +148,8 @@ trend chart with no height changes to the page.
 - `test/pages/usage/usage_cli_breakdown_test.dart` (new)
   - renders `PieChart` with slices, shows the centre total;
   - empty slices show `sessionUsageNoData` and no `PieChart`;
-  - selecting a CLI dims the other rows (`Opacity` check).
+  - selecting a CLI dims the other rows (`Opacity` check);
+  - tapping the donut ring updates the centre readout to that CLI's label.
 - Commands: `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings`
   then `dart run tool/run_tests.dart test/pages/usage`, followed by the full
   suite once before claiming done.
