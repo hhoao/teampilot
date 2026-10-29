@@ -217,4 +217,55 @@ void main() {
     final seeded = InMemoryAppSettingsRepository(acpFrameLogEnabled: true);
     expect(await seeded.loadAcpFrameLogEnabled(), isTrue);
   });
+
+  group('AppSettingsRepository.tableState', () {
+    test('round-trips and isolates table ids', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      await repo.saveTableState('usage.detail', {
+        'order': ['group', 'total'],
+        'hidden': ['share'],
+      });
+      await repo.saveTableState('other.table', {
+        'order': ['a'],
+      });
+
+      expect(await repo.loadTableState('usage.detail'), {
+        'order': ['group', 'total'],
+        'hidden': ['share'],
+      });
+      expect(await repo.loadTableState('other.table'), {
+        'order': ['a'],
+      });
+    });
+
+    test('returns null for missing tables', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      expect(await repo.loadTableState('missing'), isNull);
+    });
+
+    test('returns null for corrupt table state', () async {
+      SharedPreferences.setMockInitialValues({
+        SharedPrefsAppSettingsRepository.storageKey: jsonEncode({
+          'tableStates': 'not a map',
+        }),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      expect(await repo.loadTableState('usage.detail'), isNull);
+    });
+
+    test('InMemory round-trips table state', () async {
+      final repo = InMemoryAppSettingsRepository();
+      await repo.saveTableState('usage.detail', {'order': ['total']});
+
+      expect(await repo.loadTableState('usage.detail'), {
+        'order': ['total'],
+      });
+    });
+  });
 }

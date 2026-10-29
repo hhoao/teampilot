@@ -35,6 +35,10 @@ abstract class AppSettingsRepository {
   Future<bool> loadAcpFrameLogEnabled();
   Future<void> saveAcpFrameLogEnabled(bool value);
 
+  /// Persisted column order/visibility for a reusable table, keyed by table id.
+  Future<Map<String, dynamic>?> loadTableState(String tableId);
+  Future<void> saveTableState(String tableId, Map<String, dynamic> state);
+
   /// Legacy SkillsMP API key, kept for one-time migration to skills
   /// registry sources. Read-only: the write path was removed.
   Future<String?> loadSkillsMpApiKey();
@@ -52,6 +56,7 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
   static const _aiFeaturesKey = 'aiFeatures';
   static const _discoveryAutoRefreshKey = 'discoveryAutoRefresh';
   static const _acpFrameLogKey = 'acpFrameLog';
+  static const _tableStatesKey = 'tableStates';
 
   final SharedPreferences _preferences;
 
@@ -195,6 +200,39 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
     return null;
   }
 
+  @override
+  Future<Map<String, dynamic>?> loadTableState(String tableId) async {
+    final rawStates = _readMap()[_tableStatesKey];
+    if (rawStates is! Map) return null;
+    final raw = rawStates[tableId];
+    if (raw is! Map) return null;
+    try {
+      return Map<String, dynamic>.from(raw);
+    } on Object {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> saveTableState(
+    String tableId,
+    Map<String, dynamic> state,
+  ) async {
+    final current = _readMap();
+    final rawStates = current[_tableStatesKey];
+    Map<String, Object?> states;
+    try {
+      states = rawStates is Map
+          ? Map<String, Object?>.from(rawStates)
+          : <String, Object?>{};
+    } on Object {
+      states = <String, Object?>{};
+    }
+    states[tableId] = state;
+    current[_tableStatesKey] = states;
+    await _writeMap(current);
+  }
+
   Future<void> _writeMap(Map<String, Object?> current) async {
     if (current.isEmpty) {
       await _preferences.remove(storageKey);
@@ -312,5 +350,21 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
     AiFeatureSetting setting,
   ) async {
     _aiFeatures[id] = setting;
+  }
+
+  final Map<String, Map<String, dynamic>> _tableStates = {};
+
+  @override
+  Future<Map<String, dynamic>?> loadTableState(String tableId) async {
+    final state = _tableStates[tableId];
+    return state == null ? null : Map<String, dynamic>.from(state);
+  }
+
+  @override
+  Future<void> saveTableState(
+    String tableId,
+    Map<String, dynamic> state,
+  ) async {
+    _tableStates[tableId] = Map<String, dynamic>.from(state);
   }
 }
