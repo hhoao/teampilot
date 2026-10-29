@@ -307,6 +307,8 @@ List<UsageHeatmapDay> _heatmap(
 ) {
   final buckets = <int, _HeatmapAccumulator>{};
   for (final event in events) {
+    // A corrupt timestamp (wire default 0) must not create a 1970 bucket.
+    if (event.timestampMs <= 0) continue;
     if (cli != null && event.cli != cli) continue;
     final local = DateTime.fromMillisecondsSinceEpoch(
       event.timestampMs,

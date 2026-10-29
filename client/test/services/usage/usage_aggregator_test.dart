@@ -354,25 +354,30 @@ void main() {
   test('heatmap buckets by local day and follows only the CLI filter', () {
     final evening = DateTime(2026, 10, 25, 23, 30).millisecondsSinceEpoch;
     final morning = DateTime(2026, 10, 26, 0, 10).millisecondsSinceEpoch;
+    final events = [
+      // Out of order on purpose: buckets must still come back ascending.
+      _event(id: 'c', input: 3, output: 1, cacheRead: 6, timestampMs: morning),
+      _event(id: 'a', input: 10, output: 2, timestampMs: evening),
+      _event(
+        id: 'b',
+        cli: CliTool.codex,
+        input: 5,
+        output: 1,
+        timestampMs: evening,
+      ),
+    ];
     final dashboard = _build(
-      [
-        _event(id: 'a', input: 10, output: 2, timestampMs: evening),
-        _event(
-          id: 'b',
-          cli: CliTool.codex,
-          input: 5,
-          output: 1,
-          timestampMs: evening,
-        ),
-        _event(
-          id: 'c',
-          input: 3,
-          output: 1,
-          cacheRead: 6,
-          timestampMs: morning,
-        ),
-      ],
-      // A range that excludes both days must not affect the heatmap.
+      events,
+      // A range that excludes both days, and a search that matches nothing,
+      // must not affect the heatmap.
+      filter: const UsageFilter(
+        range: UsageRange.today,
+        cli: CliTool.claude,
+        query: 'zzz',
+      ),
+    );
+    final unrestricted = _build(
+      events,
       filter: const UsageFilter(range: UsageRange.today, cli: CliTool.claude),
     );
 
@@ -391,6 +396,41 @@ void main() {
     expect(dashboard.heatmap[1].requests, 1);
     expect(dashboard.heatmap[1].cacheHitRate, closeTo(6 / 9, 1e-9));
     expect(dashboard.heatmap[0].cacheHitRate, 0);
+    expect(dashboard.heatmap, unrestricted.heatmap);
+  });
+
+  test('heatmap hit rate is null on a day without input tokens', () {
+    final dashboard = _build([
+      _event(
+        id: 'output-only',
+        input: 0,
+        output: 4,
+        timestampMs: DateTime(2026, 10, 25, 9).millisecondsSinceEpoch,
+      ),
+    ]);
+
+    expect(dashboard.heatmap.single.tokens, 4);
+    expect(dashboard.heatmap.single.cacheHitRate, isNull);
+  });
+
+  test('heatmap ignores events with a non-positive timestamp', () {
+    final dashboard = _build([
+      _event(id: 'corrupt', input: 100, output: 0, timestampMs: 0),
+      _event(
+        id: 'ok',
+        input: 3,
+        output: 1,
+        timestampMs: DateTime(2026, 10, 25, 9).millisecondsSinceEpoch,
+      ),
+    ]);
+
+    expect(dashboard.heatmap, hasLength(1));
+    expect(
+      dashboard.heatmap.single.dayStartMs,
+      DateTime(2026, 10, 25).millisecondsSinceEpoch,
+    );
+    expect(dashboard.heatmap.single.requests, 1);
+    expect(dashboard.heatmap.single.tokens, 4);
   });
 
   test('heatmap prices days with the same catalog as the summary', () {
