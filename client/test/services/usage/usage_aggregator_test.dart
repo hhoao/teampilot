@@ -459,4 +459,95 @@ void main() {
   test('empty events produce an empty heatmap', () {
     expect(_build(const []).heatmap, isEmpty);
   });
+
+  test('last24Hours and fourteenDays use rolling/local windows', () {
+    final events = [
+      _event(
+        id: 'eight-hours',
+        timestampMs: DateTime(2026, 10, 26, 10).millisecondsSinceEpoch,
+      ),
+      _event(
+        id: 'thirty-two-hours',
+        timestampMs: DateTime(2026, 10, 25, 10).millisecondsSinceEpoch,
+      ),
+      _event(
+        id: 'ten-days',
+        timestampMs: DateTime(2026, 10, 16, 10).millisecondsSinceEpoch,
+      ),
+    ];
+
+    expect(
+      _build(
+        events,
+        filter: const UsageFilter(range: UsageRange.last24Hours),
+      ).summary.requests,
+      1,
+    );
+    expect(
+      _build(
+        events,
+        filter: const UsageFilter(range: UsageRange.fourteenDays),
+      ).summary.requests,
+      3,
+    );
+  });
+
+  test('custom range filters both ends', () {
+    final events = [
+      _event(
+        id: 'inside',
+        timestampMs: DateTime(2026, 10, 25, 12).millisecondsSinceEpoch,
+      ),
+      _event(
+        id: 'outside',
+        timestampMs: DateTime(2026, 10, 24, 12).millisecondsSinceEpoch,
+      ),
+    ];
+
+    final dashboard = _build(
+      events,
+      filter: UsageFilter(
+        range: UsageRange.custom,
+        customStartMs: DateTime(2026, 10, 25).millisecondsSinceEpoch,
+        customEndMs: DateTime(2026, 10, 26).millisecondsSinceEpoch,
+      ),
+    );
+
+    expect(dashboard.summary.requests, 1);
+  });
+
+  test('custom live end uses now as the end bound', () {
+    final events = [
+      _event(
+        id: 'now',
+        timestampMs: DateTime(2026, 10, 26, 18).millisecondsSinceEpoch,
+      ),
+    ];
+
+    final dashboard = _build(
+      events,
+      filter: UsageFilter(
+        range: UsageRange.custom,
+        customStartMs: DateTime(2026, 10, 26).millisecondsSinceEpoch,
+        customEndMs: DateTime(2026, 10, 26, 10).millisecondsSinceEpoch,
+        liveEnd: true,
+      ),
+    );
+
+    expect(dashboard.summary.requests, 1);
+  });
+
+  test('custom without both bounds falls back to all', () {
+    final events = [
+      _event(id: 'old', timestampMs: DateTime(2020).millisecondsSinceEpoch),
+    ];
+
+    expect(
+      _build(
+        events,
+        filter: const UsageFilter(range: UsageRange.custom),
+      ).summary.requests,
+      1,
+    );
+  });
 }

@@ -14,18 +14,53 @@ int usageTotalTokens(SessionUsageEvent event) =>
     event.cacheReadTokens +
     event.cacheCreationTokens;
 
-/// Local-midnight start of the selected window, or null for all time.
-int? usageRangeStartMs(UsageRange range, int nowMs) {
-  if (range == UsageRange.all) return null;
+/// Inclusive start/end bounds for a range selection.
+///
+/// A null bound means unbounded on that side. A custom range missing either
+/// endpoint falls back to all-time so a dirty filter cannot empty the table.
+({int? startMs, int? endMs}) usageRangeBounds({
+  required UsageRange range,
+  required int nowMs,
+  int? customStartMs,
+  int? customEndMs,
+  bool liveEnd = false,
+}) {
   final now = DateTime.fromMillisecondsSinceEpoch(nowMs).toLocal();
   final today = DateTime(now.year, now.month, now.day);
-  final days = switch (range) {
-    UsageRange.today => 0,
-    UsageRange.sevenDays => 6,
-    UsageRange.thirtyDays => 29,
-    UsageRange.all => 0,
+  return switch (range) {
+    UsageRange.today => (
+      startMs: today.millisecondsSinceEpoch,
+      endMs: null,
+    ),
+    UsageRange.last24Hours => (
+      startMs: nowMs - const Duration(hours: 24).inMilliseconds,
+      endMs: null,
+    ),
+    UsageRange.sevenDays => (
+      startMs: today.subtract(const Duration(days: 6)).millisecondsSinceEpoch,
+      endMs: null,
+    ),
+    UsageRange.fourteenDays => (
+      startMs: today.subtract(const Duration(days: 13)).millisecondsSinceEpoch,
+      endMs: null,
+    ),
+    UsageRange.thirtyDays => (
+      startMs: today.subtract(const Duration(days: 29)).millisecondsSinceEpoch,
+      endMs: null,
+    ),
+    UsageRange.all => (startMs: null, endMs: null),
+    UsageRange.custom => customStartMs == null || customEndMs == null
+        ? (startMs: null, endMs: null)
+        : (
+            startMs: customStartMs,
+            endMs: liveEnd ? nowMs : customEndMs,
+          ),
   };
-  return today.subtract(Duration(days: days)).millisecondsSinceEpoch;
+}
+
+/// Kept for callers that only need the start boundary.
+int? usageRangeStartMs(UsageRange range, int nowMs) {
+  return usageRangeBounds(range: range, nowMs: nowMs).startMs;
 }
 
 /// True when [dayStartMs] is the local day containing [nowMs].
@@ -43,10 +78,21 @@ UsageDashboard buildUsageDashboard({
   UsagePricingCatalog pricing = const UsagePricingCatalog(),
   List<UsageHeatmapDay>? heatmap,
 }) {
-  final rangeStart = usageRangeStartMs(filter.range, nowMs);
+  final bounds = usageRangeBounds(
+    range: filter.range,
+    nowMs: nowMs,
+    customStartMs: filter.customStartMs,
+    customEndMs: filter.customEndMs,
+    liveEnd: filter.liveEnd,
+  );
   final scoped = events
       .where((event) {
-        if (rangeStart != null && event.timestampMs < rangeStart) return false;
+        if (bounds.startMs != null && event.timestampMs < bounds.startMs!) {
+          return false;
+        }
+        if (bounds.endMs != null && event.timestampMs > bounds.endMs!) {
+          return false;
+        }
         if (filter.cli != null && event.cli != filter.cli) return false;
         return true;
       })

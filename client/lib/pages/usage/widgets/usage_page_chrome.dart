@@ -302,6 +302,8 @@ class UsageToolbar extends StatelessWidget {
       UsageRange.sevenDays => l10n.sessionUsageRangeSevenDays,
       UsageRange.thirtyDays => l10n.sessionUsageRangeThirtyDays,
       UsageRange.all => l10n.sessionUsageRangeAll,
+      // Temporary: Task 8 adds the real labels and Task 11 deletes this class.
+      _ => l10n.sessionUsageRangeAll,
     };
   }
 }
