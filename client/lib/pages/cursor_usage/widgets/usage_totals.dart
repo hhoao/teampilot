@@ -20,7 +20,10 @@ class CursorUsageTotals extends StatelessWidget {
       (
         l10n.cursorUsageGrandTotal,
         formatUsageTokens(
-          report.inputTokens + report.outputTokens + report.cacheReadTokens,
+          report.inputTokens +
+              report.outputTokens +
+              report.cacheReadTokens +
+              report.cacheWriteTokens,
         ),
       ),
       (l10n.cursorUsageInput, formatUsageTokens(report.inputTokens)),

@@ -9598,7 +9598,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cursorUsageCacheWrite => '缓存写入';
 
   @override
-  String get cursorUsageGrandTotal => '总量（输入 + 输出 + 缓存读）';
+  String get cursorUsageGrandTotal => '总量';
 
   @override
   String get cursorUsageCost => '费用';

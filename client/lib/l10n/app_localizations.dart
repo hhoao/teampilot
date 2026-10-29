@@ -17789,7 +17789,7 @@ abstract class AppLocalizations {
   /// No description provided for @cursorUsageGrandTotal.
   ///
   /// In en, this message translates to:
-  /// **'Total (in + out + cache read)'**
+  /// **'Total'**
   String get cursorUsageGrandTotal;
 
   /// No description provided for @cursorUsageCost.
