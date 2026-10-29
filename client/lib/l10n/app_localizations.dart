@@ -17702,6 +17702,12 @@ abstract class AppLocalizations {
   /// **'Disabled'**
   String get cursorUsageStatusDisabled;
 
+  /// No description provided for @cursorUsageFromProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'from {provider}'**
+  String cursorUsageFromProvider(String provider);
+
   /// No description provided for @cursorUsageDisableAccount.
   ///
   /// In en, this message translates to:

@@ -15,6 +15,7 @@ class CursorUsageAuth extends Equatable {
     required this.userId,
     required this.expiresAtMs,
     required this.modifiedAtMs,
+    this.providerId,
   });
 
   final String token;
@@ -22,6 +23,11 @@ class CursorUsageAuth extends Equatable {
   final String userId;
   final int expiresAtMs;
   final int modifiedAtMs;
+
+  /// Provider-home directory name the token came from, or null for a global
+  /// auth file (`~/.cursor`). Display-only; used to tell multiple provider
+  /// homes for the same account apart on the usage page.
+  final String? providerId;
 
   String get cookie => 'WorkosCursorSessionToken=$userId%3A%3A$token';
 
@@ -32,6 +38,7 @@ class CursorUsageAuth extends Equatable {
     userId,
     expiresAtMs,
     modifiedAtMs,
+    providerId,
   ];
 }
 
@@ -72,7 +79,11 @@ final class CursorUsageAuthResolver {
     final candidates = await _candidatePaths();
     final byAccount = <String, CursorUsageAuth>{};
     for (final path in candidates) {
-      final auth = await _readAuth(path, includeExpired: includeExpired);
+      final auth = await _readAuth(
+        path,
+        includeExpired: includeExpired,
+        providerId: _providerIdOf(path),
+      );
       if (auth == null) continue;
       final existing = byAccount[auth.account];
       if (existing == null ||
@@ -85,6 +96,15 @@ final class CursorUsageAuthResolver {
     final values = byAccount.values.toList()
       ..sort((a, b) => b.modifiedAtMs.compareTo(a.modifiedAtMs));
     return values;
+  }
+
+  /// Provider-home directory name embedded in an auth path, or null when the
+  /// path is a global auth file (`~/.config/cursor/auth.json`).
+  String? _providerIdOf(String path) {
+    final match = RegExp(
+      r'providers[/\\]cursor[/\\]([^/\\]+)[/\\]home[/\\]',
+    ).firstMatch(path);
+    return match?.group(1);
   }
 
   /// The newest unexpired token, kept for the session usage page.
@@ -117,6 +137,7 @@ final class CursorUsageAuthResolver {
   Future<CursorUsageAuth?> _readAuth(
     String path, {
     required bool includeExpired,
+    String? providerId,
   }) async {
     final stat = await _fs.stat(path);
     if (!stat.isFile) return null;
@@ -147,6 +168,7 @@ final class CursorUsageAuthResolver {
       userId: userId,
       expiresAtMs: expiresAtMs * 1000,
       modifiedAtMs: stat.mtime?.millisecondsSinceEpoch ?? 0,
+      providerId: providerId,
     );
   }
 

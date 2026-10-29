@@ -76,6 +76,7 @@ final class CursorAccountRegistry implements CursorAccountDirectory {
         owningUser: override?.owningUser,
         teamId: override?.teamId ?? 0,
         hasCredential: true,
+        providerId: auth.providerId,
       );
     }
 

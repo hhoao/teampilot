@@ -82,6 +82,7 @@ void main() {
     expect(await resolver.resolveAll(), isEmpty);
     final all = await resolver.resolveAll(includeExpired: true);
     expect(all.single.userId, 'old');
+    expect(all.single.providerId, 'provider-1');
     expect(
       all.single.expiresAtMs,
       lessThanOrEqualTo(now.millisecondsSinceEpoch),

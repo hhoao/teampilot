@@ -4351,6 +4351,12 @@
   "cursorUsageSourceManual": "手动",
   "cursorUsageStatusExpired": "已过期",
   "cursorUsageStatusDisabled": "已停用",
+  "cursorUsageFromProvider": "来自 {provider}",
+  "@cursorUsageFromProvider": {
+    "placeholders": {
+      "provider": { "type": "String" }
+    }
+  },
   "cursorUsageDisableAccount": "停用",
   "cursorUsageEnableAccount": "启用",
   "cursorUsageDeleteAccount": "删除账号",

@@ -5047,6 +5047,12 @@
   "cursorUsageSourceManual": "Manual",
   "cursorUsageStatusExpired": "Expired",
   "cursorUsageStatusDisabled": "Disabled",
+  "cursorUsageFromProvider": "from {provider}",
+  "@cursorUsageFromProvider": {
+    "placeholders": {
+      "provider": { "type": "String" }
+    }
+  },
   "cursorUsageDisableAccount": "Disable",
   "cursorUsageEnableAccount": "Enable",
   "cursorUsageDeleteAccount": "Delete account",

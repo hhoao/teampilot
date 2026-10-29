@@ -18,6 +18,7 @@ final class CursorUsageAccount extends Equatable {
     this.owningUser,
     this.teamId = 0,
     this.hasCredential = false,
+    this.providerId,
   });
 
   final String accountId;
@@ -29,6 +30,10 @@ final class CursorUsageAccount extends Equatable {
   final String? owningUser;
   final int teamId;
   final bool hasCredential;
+
+  /// Provider-home directory the token was discovered in. Null for manual
+  /// accounts; display-only and never persisted.
+  final String? providerId;
 
   /// Expired when the token would die inside the next minute.
   bool isExpired(int nowMs) {
@@ -95,6 +100,7 @@ final class CursorUsageAccount extends Equatable {
     owningUser,
     teamId,
     hasCredential,
+    providerId,
   ];
 }
 

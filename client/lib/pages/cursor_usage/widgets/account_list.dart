@@ -79,7 +79,29 @@ class CursorUsageAccountList extends StatelessWidget {
               _subtitle(context, account),
               style: styles.xsColored(cs.onSurface.withValues(alpha: 0.6)),
             ),
-            trailing: _accountMenu(context, account),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (reports[account.accountId] case final report?)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        formatUsageTokens(report.totalTokens),
+                        style: styles.xs,
+                      ),
+                      Text(
+                        formatCursorUsageUsd(report.totalCents),
+                        style: styles.xsColored(
+                          cs.onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                _accountMenu(context, account),
+              ],
+            ),
           ),
       ],
     );
@@ -177,6 +199,10 @@ class CursorUsageAccountList extends StatelessWidget {
           : l10n.cursorUsageSourceAuto,
     ];
     if (account.teamId != 0) parts.add('team ${account.teamId}');
+    final provider = account.providerId;
+    if (provider != null) {
+      parts.add(l10n.cursorUsageFromProvider(provider));
+    }
     if (!account.enabled) parts.add(l10n.cursorUsageStatusDisabled);
     if (account.isExpired(DateTime.now().millisecondsSinceEpoch)) {
       parts.add(l10n.cursorUsageStatusExpired);

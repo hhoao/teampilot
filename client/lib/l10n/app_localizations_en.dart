@@ -9977,6 +9977,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cursorUsageStatusDisabled => 'Disabled';
 
   @override
+  String cursorUsageFromProvider(String provider) {
+    return 'from $provider';
+  }
+
+  @override
   String get cursorUsageDisableAccount => 'Disable';
 
   @override

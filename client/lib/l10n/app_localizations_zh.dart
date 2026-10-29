@@ -9552,6 +9552,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cursorUsageStatusDisabled => '已停用';
 
   @override
+  String cursorUsageFromProvider(String provider) {
+    return '来自 $provider';
+  }
+
+  @override
   String get cursorUsageDisableAccount => '停用';
 
   @override
