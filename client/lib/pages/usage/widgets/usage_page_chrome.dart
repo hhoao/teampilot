@@ -254,7 +254,10 @@ class UsageToolbar extends StatelessWidget {
       runSpacing: 6,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        for (final range in UsageRange.values)
+        // Custom ranges are picker-only until Task 11 replaces this toolbar.
+        for (final range in UsageRange.values.where(
+          (r) => r != UsageRange.custom,
+        ))
           ChoiceChip(
             label: Text(_rangeLabel(context, range)),
             selected: state.range == range,

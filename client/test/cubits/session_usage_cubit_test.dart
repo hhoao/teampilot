@@ -156,11 +156,52 @@ void main() {
     cubit.setCli(CliTool.codex);
     expect(cubit.state.dashboard.summary.requests, 0);
 
+    cubit.setCustomRange(
+      startMs: _now.subtract(const Duration(days: 7)).millisecondsSinceEpoch,
+      endMs: _now.millisecondsSinceEpoch,
+      liveEnd: true,
+    );
+    expect(cubit.state.liveEnd, isTrue);
+
     cubit.resetFilters();
     expect(cubit.state.range, UsageRange.all);
     expect(cubit.state.cli, isNull);
     expect(cubit.state.query, '');
+    expect(cubit.state.customStartMs, isNull);
+    expect(cubit.state.customEndMs, isNull);
+    expect(cubit.state.liveEnd, isFalse);
     expect(loadCount, 1);
+  });
+
+  test('refreshRangeNow is a no-op when live end is off', () async {
+    var now = _now;
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [_event()],
+      syncAll: () async => const UsageSyncResult(),
+      loadSessions: () async => const <AppSession>[],
+      loadTeams: () async => const <TeamProfile>[],
+      now: () => now,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.ensureLoaded();
+    cubit.setRange(UsageRange.today);
+    expect(cubit.state.dashboard.summary.requests, 1);
+
+    final states = <SessionUsageState>[];
+    final sub = cubit.stream.listen(states.add);
+    try {
+      // Moving the clock past the day boundary would change a recomputed
+      // dashboard, so any emit here means the live-end guard is missing.
+      now = DateTime(2026, 10, 28, 12);
+      cubit.refreshRangeNow();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(states, isEmpty);
+      expect(cubit.state.dashboard.summary.requests, 1);
+    } finally {
+      await sub.cancel();
+    }
   });
 
   test('sync reloads, records time/result, and clears errors', () async {
