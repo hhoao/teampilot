@@ -24,6 +24,9 @@ final class SessionUsageState extends Equatable {
     this.status = SessionUsageStatus.initial,
     this.dashboard = const UsageDashboard(),
     this.range = UsageRange.all,
+    this.customStartMs,
+    this.customEndMs,
+    this.liveEnd = false,
     this.cli,
     this.groupBy = UsageGroupBy.session,
     this.query = '',
@@ -52,6 +55,9 @@ final class SessionUsageState extends Equatable {
   final SessionUsageStatus status;
   final UsageDashboard dashboard;
   final UsageRange range;
+  final int? customStartMs;
+  final int? customEndMs;
+  final bool liveEnd;
   final CliTool? cli;
   final UsageGroupBy groupBy;
   final String query;
@@ -83,6 +89,10 @@ final class SessionUsageState extends Equatable {
     SessionUsageStatus? status,
     UsageDashboard? dashboard,
     UsageRange? range,
+    int? customStartMs,
+    int? customEndMs,
+    bool clearCustomRange = false,
+    bool? liveEnd,
     CliTool? cli,
     bool clearCli = false,
     UsageGroupBy? groupBy,
@@ -118,6 +128,11 @@ final class SessionUsageState extends Equatable {
       status: status ?? this.status,
       dashboard: dashboard ?? this.dashboard,
       range: range ?? this.range,
+      customStartMs: clearCustomRange
+          ? null
+          : (customStartMs ?? this.customStartMs),
+      customEndMs: clearCustomRange ? null : (customEndMs ?? this.customEndMs),
+      liveEnd: liveEnd ?? this.liveEnd,
       cli: clearCli ? null : (cli ?? this.cli),
       groupBy: groupBy ?? this.groupBy,
       query: query ?? this.query,
@@ -157,6 +172,9 @@ final class SessionUsageState extends Equatable {
     status,
     dashboard,
     range,
+    customStartMs,
+    customEndMs,
+    liveEnd,
     cli,
     groupBy,
     query,
@@ -462,7 +480,29 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     }
   }
 
-  void setRange(UsageRange range) => _updateFilter(range: range);
+  void setRange(UsageRange range) {
+    _updateFilter(range: range, clearCustomRange: true, liveEnd: false);
+  }
+
+  void setCustomRange({
+    required int startMs,
+    required int endMs,
+    bool liveEnd = false,
+  }) {
+    _updateFilter(
+      range: UsageRange.custom,
+      customStartMs: startMs,
+      customEndMs: endMs,
+      liveEnd: liveEnd,
+    );
+  }
+
+  void setLiveEnd(bool value) => _updateFilter(liveEnd: value);
+
+  void refreshRangeNow() {
+    if (!state.liveEnd) return;
+    emit(state.copyWith(dashboard: _computeDashboard()));
+  }
 
   void setCli(CliTool? cli) => _updateFilter(cli: cli, clearCli: cli == null);
 
@@ -477,6 +517,8 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       clearCli: true,
       groupBy: UsageGroupBy.session,
       query: '',
+      clearCustomRange: true,
+      liveEnd: false,
     );
   }
 
@@ -558,6 +600,10 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     bool clearCli = false,
     UsageGroupBy? groupBy,
     String? query,
+    int? customStartMs,
+    int? customEndMs,
+    bool clearCustomRange = false,
+    bool? liveEnd,
   }) {
     final next = state.copyWith(
       range: range,
@@ -565,6 +611,10 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       clearCli: clearCli,
       groupBy: groupBy,
       query: query,
+      customStartMs: customStartMs,
+      customEndMs: customEndMs,
+      clearCustomRange: clearCustomRange,
+      liveEnd: liveEnd,
     );
     emit(next.copyWith(dashboard: _computeDashboard(next)));
   }
@@ -579,6 +629,9 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
         cli: current.cli,
         groupBy: current.groupBy,
         query: current.query,
+        customStartMs: current.customStartMs,
+        customEndMs: current.customEndMs,
+        liveEnd: current.liveEnd,
       ),
       nowMs: _now().millisecondsSinceEpoch,
       pricing: _pricing,

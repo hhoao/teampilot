@@ -565,4 +565,73 @@ void main() {
     expect(cubit.state.usageStats?.lineCount, 5);
     expect(cubit.state.maintenanceBusy, isFalse);
   });
+
+  test(
+    'custom range filters events and clears when switching presets',
+    () async {
+      final cubit = SessionUsageCubit(
+        loadEvents: () async => [
+          _event(
+            id: 'recent',
+            timestampMs: DateTime(2026, 10, 26, 12).millisecondsSinceEpoch,
+          ),
+          _event(
+            id: 'old',
+            timestampMs: DateTime(2026, 10, 20, 12).millisecondsSinceEpoch,
+          ),
+        ],
+        syncAll: () async => const UsageSyncResult(),
+        loadSessions: () async => const <AppSession>[],
+        loadTeams: () async => const <TeamProfile>[],
+        now: () => DateTime(2026, 10, 26, 18),
+      );
+      addTearDown(cubit.close);
+
+      await cubit.ensureLoaded();
+      expect(cubit.state.dashboard.summary.requests, 2);
+
+      cubit.setCustomRange(
+        startMs: DateTime(2026, 10, 25).millisecondsSinceEpoch,
+        endMs: DateTime(2026, 10, 26, 18).millisecondsSinceEpoch,
+      );
+      expect(cubit.state.range, UsageRange.custom);
+      expect(cubit.state.dashboard.summary.requests, 1);
+
+      cubit.setRange(UsageRange.all);
+      expect(cubit.state.range, UsageRange.all);
+      expect(cubit.state.customStartMs, isNull);
+      expect(cubit.state.customEndMs, isNull);
+      expect(cubit.state.liveEnd, isFalse);
+      expect(cubit.state.dashboard.summary.requests, 2);
+    },
+  );
+
+  test('live end uses now on refresh', () async {
+    var now = DateTime(2026, 10, 26, 12);
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [
+        _event(
+          id: 'later',
+          timestampMs: DateTime(2026, 10, 26, 13).millisecondsSinceEpoch,
+        ),
+      ],
+      syncAll: () async => const UsageSyncResult(),
+      loadSessions: () async => const <AppSession>[],
+      loadTeams: () async => const <TeamProfile>[],
+      now: () => now,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.ensureLoaded();
+    cubit.setCustomRange(
+      startMs: DateTime(2026, 10, 26).millisecondsSinceEpoch,
+      endMs: DateTime(2026, 10, 26, 12).millisecondsSinceEpoch,
+      liveEnd: true,
+    );
+    expect(cubit.state.dashboard.summary.requests, 0);
+
+    now = DateTime(2026, 10, 26, 14);
+    cubit.refreshRangeNow();
+    expect(cubit.state.dashboard.summary.requests, 1);
+  });
 }
