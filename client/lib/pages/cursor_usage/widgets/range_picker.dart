@@ -36,30 +36,11 @@ class CursorUsageRangePicker extends StatelessWidget {
             selected: selected == preset,
             onSelected: (_) => onChanged(CursorUsagePresetRange(preset)),
           ),
-        OutlinedButton.icon(
-          icon: const Icon(Icons.date_range_outlined, size: 16),
-          label: Text(
-            range is CursorUsageCustomRange
-                ? l10n.cursorUsageRangeCustomActive
-                : l10n.cursorUsageRangeCustom,
-            style: styles.xs,
-          ),
-          onPressed: () async {
-            final picked = await showDateRangePicker(
-              context: context,
-              firstDate: DateTime(2024),
-              lastDate: DateTime.now(),
-              initialDateRange: range is CursorUsageCustomRange
-                  ? DateTimeRange(
-                      start: DateTime.fromMillisecondsSinceEpoch(
-                        (range as CursorUsageCustomRange).startMs,
-                      ),
-                      end: DateTime.fromMillisecondsSinceEpoch(
-                        (range as CursorUsageCustomRange).endMs,
-                      ),
-                    )
-                  : null,
-            );
+        TpDateRangePicker(
+          firstDate: DateTime(2024),
+          lastDate: DateTime.now(),
+          value: _currentRange(),
+          onChanged: (picked) {
             if (picked == null) return;
             onChanged(
               CursorUsageCustomRange(
@@ -78,8 +59,28 @@ class CursorUsageRangePicker extends StatelessWidget {
               ),
             );
           },
+          triggerBuilder: (context, isOpen) => OutlinedButton.icon(
+            style: isOpen ? OutlinedButton.styleFrom(elevation: 0) : null,
+            icon: const Icon(Icons.date_range_outlined, size: 16),
+            label: Text(
+              range is CursorUsageCustomRange
+                  ? l10n.cursorUsageRangeCustomActive
+                  : l10n.cursorUsageRangeCustom,
+              style: styles.xs,
+            ),
+            onPressed: null,
+          ),
         ),
       ],
+    );
+  }
+
+  DateTimeRange? _currentRange() {
+    final custom = range;
+    if (custom is! CursorUsageCustomRange) return null;
+    return DateTimeRange(
+      start: DateTime.fromMillisecondsSinceEpoch(custom.startMs),
+      end: DateTime.fromMillisecondsSinceEpoch(custom.endMs),
     );
   }
 

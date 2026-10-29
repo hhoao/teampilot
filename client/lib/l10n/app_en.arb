@@ -5046,6 +5046,16 @@
   "cursorUsageSourceAuto": "Auto",
   "cursorUsageSourceManual": "Manual",
   "cursorUsageStatusExpired": "Expired",
+  "cursorUsageStatusDisabled": "Disabled",
+  "cursorUsageDisableAccount": "Disable",
+  "cursorUsageEnableAccount": "Enable",
+  "cursorUsageDeleteAccount": "Delete account",
+  "cursorUsageDeleteAccountBody": "Remove {label} and its stored session token? Its cached usage is deleted too.",
+  "@cursorUsageDeleteAccountBody": {
+    "placeholders": {
+      "label": { "type": "String" }
+    }
+  },
   "cursorUsageTotals": "Totals",
   "cursorUsageByModel": "By model",
   "cursorUsageUnattributed": "Unattributed",

@@ -95,6 +95,8 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
     required Future<void> Function(CursorUsageRange range) saveRange,
     required Future<bool> Function(String rawToken, String? label) addAccount,
     required Future<void> Function(String accountId) removeAccount,
+    required Future<void> Function(String accountId, bool enabled)
+    setAccountEnabled,
     Future<CursorUsageRange> Function()? loadRange,
     required CursorUsageRange initialRange,
   }) : _loadAccounts = loadAccounts,
@@ -104,6 +106,7 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
        _saveRange = saveRange,
        _addAccount = addAccount,
        _removeAccount = removeAccount,
+       _setAccountEnabled = setAccountEnabled,
        _loadRange = loadRange,
        super(CursorUsageState(range: initialRange));
 
@@ -120,6 +123,8 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
   final Future<void> Function(CursorUsageRange range) _saveRange;
   final Future<bool> Function(String rawToken, String? label) _addAccount;
   final Future<void> Function(String accountId) _removeAccount;
+  final Future<void> Function(String accountId, bool enabled)
+  _setAccountEnabled;
   final Future<CursorUsageRange> Function()? _loadRange;
 
   Future<void>? _loadFlight;
@@ -271,6 +276,12 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
 
   Future<void> removeAccount(String accountId) async {
     await _removeAccount(accountId);
+    await _loadFlight;
+    await ensureLoaded();
+  }
+
+  Future<void> setAccountEnabled(String accountId, bool enabled) async {
+    await _setAccountEnabled(accountId, enabled);
     await _loadFlight;
     await ensureLoaded();
   }

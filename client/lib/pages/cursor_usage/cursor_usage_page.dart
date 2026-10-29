@@ -143,6 +143,8 @@ class _CursorUsagePageState extends State<CursorUsagePage>
                               billingCycles: state.billingCycles,
                               reports: state.reports,
                               onSelect: cubit.selectAccount,
+                              onDelete: cubit.removeAccount,
+                              onSetEnabled: cubit.setAccountEnabled,
                             ),
                             const SizedBox(height: 12),
                             if (state.selectedReport case final report?)

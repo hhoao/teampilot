@@ -1675,7 +1675,12 @@ Future<AppShell> buildAppShell({
         await cursorStack().registry.upsertManual(credentials, label: label);
         return true;
       },
-      removeAccount: (accountId) => cursorStack().registry.remove(accountId),
+      removeAccount: (accountId) async {
+        await cursorStack().registry.remove(accountId);
+        await cursorStack().cacheStore.delete(accountId);
+      },
+      setAccountEnabled: (accountId, enabled) =>
+          cursorStack().registry.update(accountId, enabled: enabled),
       initialRange: const CursorUsagePresetRange(
         CursorUsagePreset.billingCycle,
       ),

@@ -44,6 +44,7 @@ void main() {
     saveRange: (_) async {},
     addAccount: (_, __) async => true,
     removeAccount: (_) async {},
+    setAccountEnabled: (_, __) async {},
     initialRange: const CursorUsagePresetRange(CursorUsagePreset.billingCycle),
   );
 

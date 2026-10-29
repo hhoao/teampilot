@@ -44,4 +44,8 @@ final class CursorUsageCacheStore {
       const JsonEncoder.withIndent('  ').convert(cache.toJson()),
     );
   }
+
+  Future<void> delete(String accountId) async {
+    await _fs.removeRecursive(_pathFor(accountId));
+  }
 }

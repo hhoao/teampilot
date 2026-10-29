@@ -17696,6 +17696,36 @@ abstract class AppLocalizations {
   /// **'Expired'**
   String get cursorUsageStatusExpired;
 
+  /// No description provided for @cursorUsageStatusDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get cursorUsageStatusDisabled;
+
+  /// No description provided for @cursorUsageDisableAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable'**
+  String get cursorUsageDisableAccount;
+
+  /// No description provided for @cursorUsageEnableAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable'**
+  String get cursorUsageEnableAccount;
+
+  /// No description provided for @cursorUsageDeleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get cursorUsageDeleteAccount;
+
+  /// No description provided for @cursorUsageDeleteAccountBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {label} and its stored session token? Its cached usage is deleted too.'**
+  String cursorUsageDeleteAccountBody(String label);
+
   /// No description provided for @cursorUsageTotals.
   ///
   /// In en, this message translates to:

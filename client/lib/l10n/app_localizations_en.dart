@@ -9974,6 +9974,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cursorUsageStatusExpired => 'Expired';
 
   @override
+  String get cursorUsageStatusDisabled => 'Disabled';
+
+  @override
+  String get cursorUsageDisableAccount => 'Disable';
+
+  @override
+  String get cursorUsageEnableAccount => 'Enable';
+
+  @override
+  String get cursorUsageDeleteAccount => 'Delete account';
+
+  @override
+  String cursorUsageDeleteAccountBody(String label) {
+    return 'Remove $label and its stored session token? Its cached usage is deleted too.';
+  }
+
+  @override
   String get cursorUsageTotals => 'Totals';
 
   @override

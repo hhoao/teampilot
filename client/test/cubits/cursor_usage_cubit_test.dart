@@ -45,6 +45,7 @@ void main() {
       saveRange: (_) async {},
       addAccount: (_, _) async => true,
       removeAccount: (_) async {},
+      setAccountEnabled: (_, __) async {},
       initialRange: const CursorUsagePresetRange(
         CursorUsagePreset.billingCycle,
       ),
@@ -81,6 +82,7 @@ void main() {
       saveRange: (_) async {},
       addAccount: (_, _) async => true,
       removeAccount: (_) async {},
+      setAccountEnabled: (_, __) async {},
       initialRange: const CursorUsagePresetRange(CursorUsagePreset.today),
     );
 
@@ -115,6 +117,7 @@ void main() {
       saveRange: (range) async => saved.add(range),
       addAccount: (_, _) async => true,
       removeAccount: (_) async {},
+      setAccountEnabled: (_, __) async {},
       initialRange: const CursorUsagePresetRange(
         CursorUsagePreset.billingCycle,
       ),
@@ -149,6 +152,7 @@ void main() {
       saveRange: (_) async {},
       addAccount: (_, _) async => true,
       removeAccount: (_) async {},
+      setAccountEnabled: (_, __) async {},
       initialRange: const CursorUsagePresetRange(CursorUsagePreset.today),
     );
 
@@ -179,6 +183,7 @@ void main() {
       saveRange: (_) async {},
       addAccount: (_, _) async => true,
       removeAccount: (_) async {},
+      setAccountEnabled: (_, __) async {},
       initialRange: const CursorUsagePresetRange(CursorUsagePreset.today),
     );
 
@@ -210,6 +215,7 @@ void main() {
         saveRange: (_) async {},
         addAccount: (_, _) async => true,
         removeAccount: (_) async {},
+        setAccountEnabled: (_, __) async {},
         initialRange: const CursorUsagePresetRange(
           CursorUsagePreset.billingCycle,
         ),
@@ -259,6 +265,7 @@ void main() {
       saveRange: (_) async {},
       addAccount: (_, _) async => true,
       removeAccount: (_) async {},
+      setAccountEnabled: (_, __) async {},
       initialRange: const CursorUsagePresetRange(CursorUsagePreset.today),
     );
 
@@ -304,6 +311,7 @@ void main() {
       removeAccount: (accountId) async {
         accounts.removeWhere((account) => account.accountId == accountId);
       },
+      setAccountEnabled: (_, _) async {},
       initialRange: const CursorUsagePresetRange(CursorUsagePreset.today),
     );
 
@@ -351,6 +359,7 @@ void main() {
       removeAccount: (accountId) async {
         accounts.removeWhere((account) => account.accountId == accountId);
       },
+      setAccountEnabled: (_, _) async {},
       initialRange: const CursorUsagePresetRange(CursorUsagePreset.today),
     );
 
@@ -400,6 +409,7 @@ void main() {
       removeAccount: (accountId) async {
         accounts.removeWhere((account) => account.accountId == accountId);
       },
+      setAccountEnabled: (_, _) async {},
       initialRange: const CursorUsagePresetRange(CursorUsagePreset.today),
     );
 
@@ -446,6 +456,7 @@ void main() {
         return true;
       },
       removeAccount: (_) async {},
+      setAccountEnabled: (_, __) async {},
       initialRange: const CursorUsagePresetRange(CursorUsagePreset.today),
     );
 
@@ -463,5 +474,40 @@ void main() {
       'b',
     ]);
     expect(cubit.state.reports.containsKey('b'), isTrue);
+  });
+
+  test('setAccountEnabled persists and reloads', () async {
+    final calls = <(String, bool)>[];
+    final cubit = CursorUsageCubit(
+      loadAccounts: () async => const [
+        CursorUsageAccount(
+          accountId: 'a',
+          userId: 'user_a',
+          label: 'A',
+          source: CursorAccountSource.discovered,
+        ),
+      ],
+      refreshAccount: (_) async {},
+      billingCycleFor: (_) async => null,
+      loadReport:
+          ({
+            required accountId,
+            required range,
+            billingCycle,
+            forceRefresh = false,
+          }) async =>
+              CursorUsageReport(accountId: accountId, startMs: 0, endMs: 1),
+      saveRange: (_) async {},
+      addAccount: (_, __) async => true,
+      removeAccount: (_) async {},
+      setAccountEnabled: (accountId, value) async =>
+          calls.add((accountId, value)),
+      initialRange: const CursorUsagePresetRange(CursorUsagePreset.today),
+    );
+
+    await cubit.ensureLoaded();
+    await cubit.setAccountEnabled('a', false);
+
+    expect(calls, [('a', false)]);
   });
 }

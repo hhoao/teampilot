@@ -9549,6 +9549,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cursorUsageStatusExpired => '已过期';
 
   @override
+  String get cursorUsageStatusDisabled => '已停用';
+
+  @override
+  String get cursorUsageDisableAccount => '停用';
+
+  @override
+  String get cursorUsageEnableAccount => '启用';
+
+  @override
+  String get cursorUsageDeleteAccount => '删除账号';
+
+  @override
+  String cursorUsageDeleteAccountBody(String label) {
+    return '移除 $label 并删除其保存的会话令牌？缓存用量也会一并删除。';
+  }
+
+  @override
   String get cursorUsageTotals => '总计';
 
   @override
