@@ -37,7 +37,7 @@ class _WorkspaceFileDropRegionState extends State<WorkspaceFileDropRegion> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return DragTarget<WorkspaceDragPayload>(
+    final dragTarget = DragTarget<WorkspaceDragPayload>(
       onWillAcceptWithDetails: (details) {
         final ok = widget.target.accepts(details.data.kind);
         if (ok && !_highlighted) setState(() => _highlighted = true);
@@ -51,25 +51,28 @@ class _WorkspaceFileDropRegionState extends State<WorkspaceFileDropRegion> {
         final outcome = await widget.target.consume(details.data);
         widget.onOutcome?.call(outcome);
       },
-      builder: (context, candidate, rejected) {
-        return Stack(
-          fit: StackFit.passthrough,
-          children: [
-            widget.child,
-            if (_highlighted)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: cs.primary, width: 2),
-                      color: cs.primary.withValues(alpha: 0.08),
-                    ),
-                  ),
-                ),
+      // Keep the highlight outside the DragTarget's child for the same reason
+      // as ExternalFileDropRegion: a setState inside the drop target's render
+      // object can leave it NEEDS-LAYOUT while a platform drop is dispatched.
+      builder: (context, candidate, rejected) => widget.child,
+    );
+
+    if (!_highlighted) return dragTarget;
+    return Stack(
+      fit: StackFit.passthrough,
+      children: [
+        dragTarget,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(color: cs.primary, width: 2),
+                color: cs.primary.withValues(alpha: 0.08),
               ),
-          ],
-        );
-      },
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
