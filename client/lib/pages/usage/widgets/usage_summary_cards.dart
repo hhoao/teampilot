@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -201,33 +202,38 @@ class UsageSparkline extends StatelessWidget {
       0,
       (max, day) => day.totalTokens > max ? day.totalTokens : max,
     );
+    final maxY = maxTotal == 0 ? 1.0 : maxTotal * 1.05;
     return SizedBox(
       height: 26,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          for (final day in days)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Container(
+      child: BarChart(
+        BarChartData(
+          minY: 0,
+          maxY: maxY,
+          alignment: BarChartAlignment.spaceAround,
+          barGroups: [
+            for (var index = 0; index < days.length; index++)
+              BarChartGroupData(
+                x: index,
+                barRods: [
+                  BarChartRodData(
+                    toY: days[index].totalTokens == 0
+                        ? maxY * 0.06
+                        : days[index].totalTokens.toDouble(),
                     width: 6,
-                    height: maxTotal == 0
-                        ? 3
-                        : 4 + 22 * (day.totalTokens / maxTotal),
-                    decoration: BoxDecoration(
-                      color: cs.primary.withValues(
-                        alpha: day.totalTokens == 0 ? 0.16 : 0.56,
-                      ),
-                      borderRadius: BorderRadius.circular(3),
+                    color: cs.primary.withValues(
+                      alpha: days[index].totalTokens == 0 ? 0.16 : 0.56,
                     ),
+                    borderRadius: BorderRadius.circular(3),
                   ),
-                ),
+                ],
               ),
-            ),
-        ],
+          ],
+          titlesData: const FlTitlesData(show: false),
+          gridData: const FlGridData(show: false),
+          borderData: FlBorderData(show: false),
+          barTouchData: BarTouchData(enabled: false),
+        ),
+        duration: Duration.zero,
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
@@ -98,5 +99,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('sparkline renders as a fl_chart bar chart', (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(_wrap(width: 700, fontSizeFactor: 1.0));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BarChart), findsOneWidget);
+    expect(tester.getSize(find.byType(UsageSparkline)).height, 26);
   });
 }
