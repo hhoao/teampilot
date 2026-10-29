@@ -550,4 +550,38 @@ void main() {
       1,
     );
   });
+
+  test('custom with only a start bound falls back to all', () {
+    final events = [
+      _event(id: 'old', timestampMs: DateTime(2020).millisecondsSinceEpoch),
+    ];
+
+    expect(
+      _build(
+        events,
+        filter: UsageFilter(
+          range: UsageRange.custom,
+          customStartMs: DateTime(2026, 10, 25).millisecondsSinceEpoch,
+        ),
+      ).summary.requests,
+      1,
+    );
+  });
+
+  test('custom with only an end bound falls back to all', () {
+    final events = [
+      _event(id: 'old', timestampMs: DateTime(2020).millisecondsSinceEpoch),
+    ];
+
+    expect(
+      _build(
+        events,
+        filter: UsageFilter(
+          range: UsageRange.custom,
+          customEndMs: DateTime(2026, 10, 26).millisecondsSinceEpoch,
+        ),
+      ).summary.requests,
+      1,
+    );
+  });
 }
