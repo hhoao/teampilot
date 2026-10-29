@@ -88,11 +88,10 @@ wrap, and card decoration are unchanged.
 `UsageSparkline` becomes an axis-less `BarChart`:
 
 - One group per day, one rod with `toY = day.totalTokens`, colour
-  `cs.primary` alpha `0.56`; zero days get a `toY` of `maxTotal == 0 ? 0 : maxTotal * 0.04`
-  so an empty series still shows a faint baseline (the current widget draws a
-  3px stub).
+  `cs.primary` alpha `0.56`; zero days get `maxY * 0.06` so an empty series
+  still shows a faint baseline (`maxY` is 1 when the range is all zero).
 - `titlesData`, `gridData`, `borderData` and `barTouchData` disabled; fixed
-  height 26, `barsSpace: 2`, rod width derived from available width.
+  height 26, fixed 6px rod width (same as today).
 - No animation needed (`duration: Duration.zero`) so the card does not move on
   rebuild.
 
