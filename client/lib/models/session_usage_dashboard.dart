@@ -258,6 +258,38 @@ final class UsageChartDay extends Equatable {
 }
 
 @immutable
+final class UsageHeatmapDay extends Equatable {
+  const UsageHeatmapDay({
+    required this.dayStartMs,
+    required this.tokens,
+    required this.requests,
+    required this.costMicroUsd,
+    this.cacheHitRate,
+  });
+
+  /// Local midnight of the day.
+  final int dayStartMs;
+
+  /// Billed total tokens, same definition as the rest of the page.
+  final int tokens;
+
+  final int requests;
+  final int costMicroUsd;
+
+  /// `cacheRead / (freshInput + cacheRead)`, null when there was no input.
+  final double? cacheHitRate;
+
+  @override
+  List<Object?> get props => [
+    dayStartMs,
+    tokens,
+    requests,
+    costMicroUsd,
+    cacheHitRate,
+  ];
+}
+
+@immutable
 final class UsageCliSlice extends Equatable {
   const UsageCliSlice({
     required this.cli,
@@ -284,6 +316,7 @@ final class UsageDashboard extends Equatable {
     this.rows = const [],
     this.chart = const [],
     this.cliSlices = const [],
+    this.heatmap = const [],
     this.matchedEventCount = 0,
     this.totalEventCount = 0,
   });
@@ -299,6 +332,9 @@ final class UsageDashboard extends Equatable {
   /// Fixed last-seven-local-day CLI distribution, all CLIs.
   final List<UsageCliSlice> cliSlices;
 
+  /// All-history local-day buckets, filtered by CLI only (ascending).
+  final List<UsageHeatmapDay> heatmap;
+
   final int matchedEventCount;
   final int totalEventCount;
 
@@ -308,6 +344,7 @@ final class UsageDashboard extends Equatable {
     rows,
     chart,
     cliSlices,
+    heatmap,
     matchedEventCount,
     totalEventCount,
   ];

@@ -350,4 +350,73 @@ void main() {
     expect(dashboard.rows.single.unpricedEvents, 1);
     expect(dashboard.rows.single.costMicroUsd, 18000000);
   });
+
+  test('heatmap buckets by local day and follows only the CLI filter', () {
+    final evening = DateTime(2026, 10, 25, 23, 30).millisecondsSinceEpoch;
+    final morning = DateTime(2026, 10, 26, 0, 10).millisecondsSinceEpoch;
+    final dashboard = _build(
+      [
+        _event(id: 'a', input: 10, output: 2, timestampMs: evening),
+        _event(
+          id: 'b',
+          cli: CliTool.codex,
+          input: 5,
+          output: 1,
+          timestampMs: evening,
+        ),
+        _event(
+          id: 'c',
+          input: 3,
+          output: 1,
+          cacheRead: 6,
+          timestampMs: morning,
+        ),
+      ],
+      // A range that excludes both days must not affect the heatmap.
+      filter: const UsageFilter(range: UsageRange.today, cli: CliTool.claude),
+    );
+
+    expect(dashboard.heatmap.length, 2);
+    expect(
+      dashboard.heatmap[0].dayStartMs,
+      DateTime(2026, 10, 25).millisecondsSinceEpoch,
+    );
+    expect(dashboard.heatmap[0].tokens, 12);
+    expect(dashboard.heatmap[0].requests, 1);
+    expect(
+      dashboard.heatmap[1].dayStartMs,
+      DateTime(2026, 10, 26).millisecondsSinceEpoch,
+    );
+    expect(dashboard.heatmap[1].tokens, 10);
+    expect(dashboard.heatmap[1].requests, 1);
+    expect(dashboard.heatmap[1].cacheHitRate, closeTo(6 / 9, 1e-9));
+    expect(dashboard.heatmap[0].cacheHitRate, 0);
+  });
+
+  test('heatmap prices days with the same catalog as the summary', () {
+    const rule = UsagePriceRule(
+      model: 'm',
+      inputPerMillion: 3,
+      outputPerMillion: 15,
+      cacheReadPerMillion: 0.3,
+      cacheWritePerMillion: 3.75,
+      effectiveFromMs: 0,
+      source: UsagePriceSource.user,
+    );
+    final dashboard = _build([
+      _event(
+        id: 'priced',
+        model: 'm',
+        input: 1000000,
+        output: 0,
+        timestampMs: DateTime(2026, 10, 25, 9).millisecondsSinceEpoch,
+      ),
+    ], pricing: const UsagePricingCatalog(userRules: [rule]));
+
+    expect(dashboard.heatmap.single.costMicroUsd, 3000000);
+  });
+
+  test('empty events produce an empty heatmap', () {
+    expect(_build(const []).heatmap, isEmpty);
+  });
 }

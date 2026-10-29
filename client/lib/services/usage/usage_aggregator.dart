@@ -74,6 +74,7 @@ UsageDashboard buildUsageDashboard({
     rows: rows,
     chart: _chart(sevenDayEvents, nowMs),
     cliSlices: _cliSlices(sevenDayEvents),
+    heatmap: _heatmap(events, filter.cli, pricing),
     matchedEventCount: rows.fold(0, (sum, row) => sum + row.requests),
     totalEventCount: events.length,
   );
@@ -289,4 +290,56 @@ final class _GroupAccumulator {
       unpricedEvents: unpricedEvents,
     );
   }
+}
+
+class _HeatmapAccumulator {
+  int tokens = 0;
+  int requests = 0;
+  int costMicroUsd = 0;
+  int freshInput = 0;
+  int cacheRead = 0;
+}
+
+List<UsageHeatmapDay> _heatmap(
+  List<SessionUsageEvent> events,
+  CliTool? cli,
+  UsagePricingCatalog pricing,
+) {
+  final buckets = <int, _HeatmapAccumulator>{};
+  for (final event in events) {
+    if (cli != null && event.cli != cli) continue;
+    final local = DateTime.fromMillisecondsSinceEpoch(
+      event.timestampMs,
+    ).toLocal();
+    final dayStart = DateTime(
+      local.year,
+      local.month,
+      local.day,
+    ).millisecondsSinceEpoch;
+    final bucket = buckets.putIfAbsent(dayStart, _HeatmapAccumulator.new);
+    bucket
+      ..tokens += usageTotalTokens(event)
+      ..requests += 1
+      ..freshInput += event.freshInputTokens
+      ..cacheRead += event.cacheReadTokens;
+    final unit = calculateUsageCost(event, pricing);
+    if (unit.microUsd != null) bucket.costMicroUsd += unit.microUsd!;
+  }
+
+  final dayStarts = buckets.keys.toList()..sort();
+  return List.unmodifiable([
+    for (final dayStart in dayStarts)
+      UsageHeatmapDay(
+        dayStartMs: dayStart,
+        tokens: buckets[dayStart]!.tokens,
+        requests: buckets[dayStart]!.requests,
+        costMicroUsd: buckets[dayStart]!.costMicroUsd,
+        cacheHitRate: _heatmapHitRate(buckets[dayStart]!),
+      ),
+  ]);
+}
+
+double? _heatmapHitRate(_HeatmapAccumulator bucket) {
+  final base = bucket.freshInput + bucket.cacheRead;
+  return base == 0 ? null : bucket.cacheRead / base;
 }
