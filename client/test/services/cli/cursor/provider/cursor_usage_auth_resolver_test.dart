@@ -62,4 +62,53 @@ void main() {
 
     expect(auth, isNull);
   });
+
+  test('includeExpired surfaces expired tokens for display', () async {
+    final fs = InMemoryFilesystem();
+    await fs.writeString(
+      '/tp/providers/cursor/provider-1/home/.config/cursor/auth.json',
+      jsonEncode({
+        'accessToken': _jwt(sub: 'user|old', exp: nowSeconds - 3600),
+      }),
+    );
+
+    final resolver = CursorUsageAuthResolver(
+      fs: fs,
+      basePath: '/tp',
+      home: '/home/test',
+      now: () => now,
+    );
+
+    expect(await resolver.resolveAll(), isEmpty);
+    final all = await resolver.resolveAll(includeExpired: true);
+    expect(all.single.userId, 'old');
+    expect(
+      all.single.expiresAtMs,
+      lessThanOrEqualTo(now.millisecondsSinceEpoch),
+    );
+  });
+
+  test(
+    'includeExpired keeps the live token when both exist for one account',
+    () async {
+      final fs = InMemoryFilesystem();
+      await fs.writeString(
+        '/tp/providers/cursor/older/home/.config/cursor/auth.json',
+        jsonEncode({'accessToken': _jwt(sub: 'user|a', exp: nowSeconds - 60)}),
+      );
+      await fs.writeString(
+        '/tp/providers/cursor/newer/home/.config/cursor/auth.json',
+        jsonEncode({'accessToken': _jwt(sub: 'user|a', exp: nowSeconds + 60)}),
+      );
+
+      final all = await CursorUsageAuthResolver(
+        fs: fs,
+        basePath: '/tp',
+        home: '/home/test',
+        now: () => now,
+      ).resolveAll(includeExpired: true);
+
+      expect(all.single.expiresAtMs, (nowSeconds + 60) * 1000);
+    },
+  );
 }

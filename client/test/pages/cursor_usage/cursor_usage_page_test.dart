@@ -22,6 +22,7 @@ void main() {
         userId: 'user_a',
         label: 'Work',
         source: CursorAccountSource.discovered,
+        expiresAtMs: 4000000000000,
       ),
     ],
     refreshAccount: (_) async {},

@@ -3383,11 +3383,13 @@ class _CursorUsageStack {
          fs: storage.fs,
          accountsPath: storage.paths.cursorUsageAccountsFile,
          credentials: CursorAccountCredentialStore(store: secureStore),
-         resolveAuths: CursorUsageAuthResolver(
+         resolveAuths: () => CursorUsageAuthResolver(
            fs: storage.fs,
            basePath: storage.paths.basePath,
            home: storage.home,
-         ).resolveAll,
+           // Expired tokens are included so the usage page can show the account
+           // as "expired, sign in again"; credentialFor filters them for sync.
+         ).resolveAll(includeExpired: true),
        ),
        cacheStore = CursorUsageCacheStore(
          fs: storage.fs,
@@ -3423,7 +3425,11 @@ Future<void> _warmCursorUsage({
     return;
   }
   for (final row in rows) {
-    if (!row.enabled) continue;
+    // Disabled rows are out by choice; expired rows have no live token, so a
+    // warm load would only log a warning per boot.
+    if (!row.enabled || row.isExpired(DateTime.now().millisecondsSinceEpoch)) {
+      continue;
+    }
     try {
       await load(row.accountId);
     } on Object catch (error) {

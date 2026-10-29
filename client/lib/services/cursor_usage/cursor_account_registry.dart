@@ -45,15 +45,18 @@ final class CursorAccountRegistry implements CursorAccountDirectory {
     required String accountsPath,
     required CursorAccountCredentialStore credentials,
     required Future<List<CursorUsageAuth>> Function() resolveAuths,
+    DateTime Function()? now,
   }) : _fs = fs,
        _path = accountsPath,
        _credentials = credentials,
-       _resolveAuths = resolveAuths;
+       _resolveAuths = resolveAuths,
+       _now = now ?? DateTime.now;
 
   final Filesystem _fs;
   final String _path;
   final CursorAccountCredentialStore _credentials;
   final Future<List<CursorUsageAuth>> Function() _resolveAuths;
+  final DateTime Function() _now;
 
   @override
   Future<List<CursorUsageAccount>> list() async {
@@ -103,7 +106,12 @@ final class CursorAccountRegistry implements CursorAccountDirectory {
   @override
   Future<CursorAccountCredentials?> credentialFor(String accountId) async {
     final stored = await _credentials.read(accountId);
-    final discoveredAccounts = await _resolveAuths();
+    // [_resolveAuths] may include expired tokens so the list can show them;
+    // syncing still requires a live one.
+    final nowMs = _now().millisecondsSinceEpoch;
+    final discoveredAccounts = (await _resolveAuths())
+        .where((auth) => auth.expiresAtMs > nowMs + 60000)
+        .toList();
     final match = discoveredAccounts
         .where((auth) => auth.account == accountId)
         .firstOrNull;

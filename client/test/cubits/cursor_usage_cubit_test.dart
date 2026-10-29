@@ -12,12 +12,14 @@ const _accountA = CursorUsageAccount(
   userId: 'user_a',
   label: 'A',
   source: CursorAccountSource.discovered,
+        expiresAtMs: 4000000000000,
 );
 const _accountB = CursorUsageAccount(
   accountId: 'b',
   userId: 'user_b',
   label: 'B',
   source: CursorAccountSource.manual,
+        expiresAtMs: 4000000000000,
 );
 
 void main() {
@@ -485,6 +487,7 @@ void main() {
           userId: 'user_a',
           label: 'A',
           source: CursorAccountSource.discovered,
+        expiresAtMs: 4000000000000,
         ),
       ],
       refreshAccount: (_) async {},

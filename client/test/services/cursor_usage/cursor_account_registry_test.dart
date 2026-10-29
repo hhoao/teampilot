@@ -147,4 +147,26 @@ void main() {
     expect(accounts.length, 1);
     expect(accounts.single.source, CursorAccountSource.discovered);
   });
+
+  test('an expired discovered account stays visible but cannot sync', () async {
+    final expiredSub = 'auth0|expired';
+    discovered = [
+      CursorUsageAuth(
+        token: 'expired-token',
+        account: cursorAccountIdFor(expiredSub),
+        userId: 'user_expired',
+        // Expires long before the registry's clock (2026-10-28).
+        expiresAtMs: DateTime.utc(2026, 10, 27).millisecondsSinceEpoch,
+        modifiedAtMs: 1,
+      ),
+    ];
+
+    final accounts = await registry.list();
+    expect(accounts.single.accountId, cursorAccountIdFor(expiredSub));
+    expect(accounts.single.isExpired(nowMs), isTrue);
+    expect(
+      await registry.credentialFor(cursorAccountIdFor(expiredSub)),
+      isNull,
+    );
+  });
 }

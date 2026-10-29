@@ -175,8 +175,9 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
 
   Future<void> _loadAll({bool force = false}) async {
     final generation = ++_generation;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
     final accounts = state.accounts
-        .where((account) => account.enabled)
+        .where((account) => account.enabled && !account.isExpired(nowMs))
         .toList();
     // Seed with this flight's accounts only: a superseded flight bails without
     // clearing its entries, so re-unioning a previous set would keep them (and

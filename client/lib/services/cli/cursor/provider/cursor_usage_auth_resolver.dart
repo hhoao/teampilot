@@ -60,12 +60,19 @@ final class CursorUsageAuthResolver {
   final CursorHomeLayout _layout;
   final DateTime Function() _now;
 
-  /// Every unexpired token, newest first, one entry per account.
-  Future<List<CursorUsageAuth>> resolveAll() async {
+  /// Every token, newest first, one entry per account.
+  ///
+  /// With [includeExpired] (the account registry uses this) expired tokens are
+  /// returned too so the usage page can show "expired, sign in again" instead
+  /// of silently dropping the account. The default keeps the old contract for
+  /// the session usage page: only unexpired tokens.
+  Future<List<CursorUsageAuth>> resolveAll({
+    bool includeExpired = false,
+  }) async {
     final candidates = await _candidatePaths();
     final byAccount = <String, CursorUsageAuth>{};
     for (final path in candidates) {
-      final auth = await _readAuth(path);
+      final auth = await _readAuth(path, includeExpired: includeExpired);
       if (auth == null) continue;
       final existing = byAccount[auth.account];
       if (existing == null ||
@@ -107,7 +114,10 @@ final class CursorUsageAuthResolver {
     return out;
   }
 
-  Future<CursorUsageAuth?> _readAuth(String path) async {
+  Future<CursorUsageAuth?> _readAuth(
+    String path, {
+    required bool includeExpired,
+  }) async {
     final stat = await _fs.stat(path);
     if (!stat.isFile) return null;
     final raw = await _fs.readString(path);
@@ -126,7 +136,7 @@ final class CursorUsageAuthResolver {
     if (claims == null) return null;
     final expiresAtMs = (claims['exp'] as num?)?.toInt() ?? 0;
     final nowMs = _now().millisecondsSinceEpoch;
-    if (expiresAtMs * 1000 <= nowMs + 60000) return null;
+    if (!includeExpired && expiresAtMs * 1000 <= nowMs + 60000) return null;
     final sub = claims['sub']?.toString().trim() ?? '';
     if (sub.isEmpty) return null;
     final userId = sub.split('|').where((part) => part.isNotEmpty).last;
