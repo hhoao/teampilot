@@ -11,6 +11,7 @@ import 'package:teampilot/models/session_usage.dart';
 import 'package:teampilot/models/session_usage_dashboard.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/usage/session_usage_page.dart';
+import 'package:teampilot/pages/usage/widgets/usage_heatmap_card.dart';
 import 'package:teampilot/services/usage/session_usage_sync_service.dart';
 import 'package:teampilot/services/usage/usage_sync_control.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
@@ -222,6 +223,7 @@ void main() {
     // Only the range-filtered summary card is labelled "Total tokens"; the
     // breakdown donut centre is scoped to the last seven days.
     expect(find.text('Total tokens'), findsOneWidget);
+    expect(find.byType(UsageHeatmapCard), findsOneWidget);
   });
 
   testWidgets('load failure shows retry state', (tester) async {

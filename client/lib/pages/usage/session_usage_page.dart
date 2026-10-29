@@ -17,6 +17,7 @@ import 'usage_pricing_dialog.dart';
 import 'widgets/usage_cli_breakdown.dart';
 import 'widgets/usage_cost_card.dart';
 import 'widgets/usage_detail_table.dart';
+import 'widgets/usage_heatmap_card.dart';
 import 'widgets/usage_page_chrome.dart';
 import 'widgets/usage_page_states.dart';
 import 'widgets/usage_summary_cards.dart';
@@ -348,6 +349,8 @@ class _SessionUsagePageState extends State<SessionUsagePage>
             corrupted: state.pricingCorrupted,
             onManagePricing: () => _openPricing(cubit),
           ),
+          const SizedBox(height: 14),
+          UsageHeatmapCard(days: dashboard.heatmap, nowMs: nowMs),
           const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
