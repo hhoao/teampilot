@@ -99,17 +99,17 @@ wrap, and card decoration are unchanged.
 ## CLI breakdown (`pages/usage/widgets/usage_cli_breakdown.dart`)
 
 - Add a centred donut above the rows: `PieChart` in a `SizedBox` of height
-  ~168, `PieChartData(sectionsSpace: 2, centerSpaceRadius: 34)`.
+  150 and full card width, `PieChartData(sectionsSpace: 2, centerSpaceRadius: 44)`.
 - Sections come from `slices`: `value = totalTokens.toDouble()`, colour
-  `usageCliColor`, `radius` 40 (46 while touched) so the ring stays inside the
-  168px box. Segment alpha follows `selectedCli`.
+  `usageCliColor`, `radius` 28 (31 while touched) so a large centre hole fits
+  the readout. Segment alpha follows `selectedCli`.
 - Centre overlay (`Stack` + `IgnorePointer`): by default the total tokens in
   `styles.mdBold` and `sessionUsageTotalTokens` in `styles.xs` muted. When the
   pointer (or a long-press) is over a section, the centre switches to that CLI:
   label, tokens, and share.
 - fl_chart 1.3 has no built-in pie tooltip, so hover is handled with
   `PieTouchData(touchCallback: …)` storing the touched index in local state.
-  The touched section grows by ~6px radius; every other interaction (rows,
+  The touched section grows by ~3px radius; every other interaction (rows,
   colours) is unchanged.
 - Remove `LinearProgressIndicator` from `_CliSliceRow`; the row keeps dot,
   label, tokens, and share.
