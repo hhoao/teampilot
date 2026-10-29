@@ -251,9 +251,66 @@ void main() {
         toolCallId: 'call-bg',
         title: 'dart run tool/run_tests.dart',
         status: AcpToolCallStatus.pending,
+        args: {
+          'command': 'dart run tool/run_tests.dart',
+          'background': true,
+        },
         background: true,
       ),
     );
+  });
+
+  test('tool_call rawInput reaches the update as args', () async {
+    session = await openSession();
+    final update = session.updates.first;
+    agent.connection.notify(
+      'session/update',
+      params: {
+        'sessionId': sessionId,
+        'update': {
+          'sessionUpdate': 'tool_call',
+          'toolCallId': 'call-task',
+          'title': 'TaskCreate',
+          'kind': 'other',
+          'status': 'pending',
+          'rawInput': {
+            'subject': 'Wire the task board',
+            'description': 'Show task text in the ACP capsule',
+            'activeForm': 'Wiring the task board',
+          },
+        },
+      },
+    );
+
+    final mapped = await update as AcpToolCallUpdate;
+    expect(mapped.args, {
+      'subject': 'Wire the task board',
+      'description': 'Show task text in the ACP capsule',
+      'activeForm': 'Wiring the task board',
+    });
+  });
+
+  test('tool_call rawOutput text reaches the update as result', () async {
+    session = await openSession();
+    final update = session.updates.first;
+    agent.connection.notify(
+      'session/update',
+      params: {
+        'sessionId': sessionId,
+        'update': {
+          'sessionUpdate': 'tool_call_update',
+          'toolCallId': 'call-task',
+          'status': 'completed',
+          'rawOutput': {
+            'type': 'text',
+            'text': 'Task #6 created successfully: Wire the task board',
+          },
+        },
+      },
+    );
+
+    final mapped = await update as AcpToolCallUpdate;
+    expect(mapped.result, 'Task #6 created successfully: Wire the task board');
   });
 
   test('loadHistory replays the session without emitting live updates', () async {

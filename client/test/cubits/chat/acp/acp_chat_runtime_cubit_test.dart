@@ -18,6 +18,7 @@ import 'package:teampilot/services/agent_status/agent_attention_state.dart';
 import 'package:teampilot/services/agent_status/agent_permission_request.dart';
 import 'package:teampilot/services/agent_status/agent_status_event.dart';
 import 'package:teampilot/services/agent_status/seat_lease_port.dart';
+import 'package:teampilot/services/cli/tasks/cli_task_board.dart';
 import '../../../support/in_memory_filesystem.dart';
 
 class _RecordingAttention implements AgentAttentionPort {
@@ -870,6 +871,49 @@ void main() {
   });
 
   test(
+    'tool call args land on the part and survive later status-only updates',
+    () async {
+      final cubit = bootCubit();
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      runtime.emit(
+        const AcpToolCallUpdate(
+          toolCallId: 't-task',
+          title: 'TaskCreate',
+          status: AcpToolCallStatus.inProgress,
+          args: {
+            'subject': 'Wire the task board',
+            'description': 'Show task text in the ACP capsule',
+            'activeForm': 'Wiring the task board',
+          },
+        ),
+      );
+      await pumpEventQueue();
+      var part = cubit.state.messages.single.parts.single as AiToolCallPart;
+      expect(part.args, {
+        'subject': 'Wire the task board',
+        'description': 'Show task text in the ACP capsule',
+        'activeForm': 'Wiring the task board',
+      });
+
+      runtime.emit(
+        const AcpToolCallUpdate(
+          toolCallId: 't-task',
+          status: AcpToolCallStatus.completed,
+        ),
+      );
+      await pumpEventQueue();
+      part = cubit.state.messages.single.parts.single as AiToolCallPart;
+      expect(part.status, AiToolCallStatus.complete);
+      expect(part.args?['subject'], 'Wire the task board');
+      await cubit.close();
+    },
+  );
+
+  test(
     'activity walks thinking → generating → toolRunning → generating → none',
     () async {
       final cubit = bootCubit();
@@ -1286,6 +1330,112 @@ void main() {
       loaded.single.parts.whereType<AiToolCallPart>().single.toolName,
       'TodoWrite',
     );
+    await cubit.close();
+  });
+
+  test('plan update folds a snapshot TodoWrite part and persists', () async {
+    final fs = InMemoryFilesystem();
+    final transcript = AcpChatTranscriptWriter(fs: fs, path: '/tp/acp.jsonl');
+    final cubit = bootCubit(transcript: transcript);
+    await cubit.start(
+      executable: 'gemini',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+
+    runtime.emit(
+      const AcpPlan(
+        entries: [
+          AcpPlanEntry(
+            content: 'Read the tab code',
+            priority: AcpPlanEntryPriority.high,
+            status: AcpPlanEntryStatus.completed,
+          ),
+          AcpPlanEntry(
+            content: 'Patch the sizing',
+            priority: AcpPlanEntryPriority.medium,
+            status: AcpPlanEntryStatus.inProgress,
+          ),
+        ],
+      ),
+    );
+    await pumpEventQueue();
+
+    final part = cubit.state.messages.single.parts.single as AiToolCallPart;
+    expect(part.toolName, 'TodoWrite');
+    expect(part.category, AiToolCallCategory.task);
+    expect(part.args?['merge'], isFalse);
+    expect(part.args?['todos'], [
+      {'id': '1', 'content': 'Read the tab code', 'status': 'completed'},
+      {'id': '2', 'content': 'Patch the sizing', 'status': 'in_progress'},
+    ]);
+
+    final loaded = await transcript.loadMessages();
+    expect(loaded.single.parts.whereType<AiToolCallPart>().single.args, {
+      'todos': [
+        {'id': '1', 'content': 'Read the tab code', 'status': 'completed'},
+        {'id': '2', 'content': 'Patch the sizing', 'status': 'in_progress'},
+      ],
+      'merge': false,
+    });
+    await cubit.close();
+  });
+
+  test('CodeBuddy task frames produce one titled, correlated board task', () async {
+    final cubit = bootCubit();
+    await cubit.start(
+      executable: 'codebuddy',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+
+    // Real CodeBuddy shape: args stream in, then the call completes and
+    // reports the created id in rawOutput; TaskUpdate references that id.
+    runtime.emit(
+      const AcpToolCallUpdate(
+        toolCallId: 'c1',
+        title: 'TaskCreate',
+        status: AcpToolCallStatus.inProgress,
+        args: {},
+      ),
+    );
+    runtime.emit(
+      const AcpToolCallUpdate(
+        toolCallId: 'c1',
+        args: {
+          'activeForm': 'Writing implementation plan',
+          'subject': 'Write implementation plan',
+        },
+      ),
+    );
+    runtime.emit(
+      const AcpToolCallUpdate(
+        toolCallId: 'c1',
+        status: AcpToolCallStatus.completed,
+        result: 'Task #6 created successfully: Write implementation plan',
+      ),
+    );
+    runtime.emit(
+      const AcpToolCallUpdate(
+        toolCallId: 'u1',
+        title: 'TaskUpdate',
+        status: AcpToolCallStatus.inProgress,
+        args: {},
+      ),
+    );
+    runtime.emit(
+      const AcpToolCallUpdate(
+        toolCallId: 'u1',
+        args: {'taskId': '6', 'status': 'completed'},
+        status: AcpToolCallStatus.completed,
+      ),
+    );
+    await pumpEventQueue();
+
+    final board = reduceCliTaskBoard(cubit.state.messages);
+    expect(board.totalCount, 1, reason: 'the update must not add a placeholder');
+    expect(board.tasks.single.subject, 'Write implementation plan');
+    expect(board.tasks.single.status, CliTaskStatus.completed);
     await cubit.close();
   });
 

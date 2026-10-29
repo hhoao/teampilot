@@ -140,6 +140,8 @@ class SessionChatView extends StatefulWidget {
   /// Icon-only Chat/Terminal control docked into the top-right task-board
   /// capsule. The host passes the bare [SessionWorkbenchViewIcons]; standalone
   /// chrome lives in [SessionWorkbenchViewToggle] for non-chat surfaces.
+  /// Null for chat-only seats (ACP): they have no terminal view to toggle to,
+  /// but still get the task capsule when the transcript carries tasks.
   final Widget? viewToggle;
 
   @override
@@ -1546,33 +1548,33 @@ class _SessionChatViewState extends State<SessionChatView> {
 
   @override
   Widget build(BuildContext context) {
+    final spacing = context.tpSpacing;
     final viewToggle = widget.viewToggle;
-    Widget content;
-    if (viewToggle == null) {
-      content = _buildContent(context);
-    } else {
-      final spacing = context.tpSpacing;
-      final controller = _taskBoardController;
-      Widget capsule() => AiMessageStringsScope(
-        strings: aiMessageStringsFromL10n(context.l10n),
-        child: controller == null
-            ? AiTaskBoardPanel(items: const [], collapsedLeading: viewToggle)
-            : ListenableBuilder(
-                listenable: controller,
-                builder: (context, _) => AiTaskBoardPanel(
-                  items: controller.board.aiItems,
-                  collapsedLeading: viewToggle,
-                ),
+    final controller = _taskBoardController;
+    // The task-board pill is independent of the Chat/Terminal toggle: ACP seats
+    // are chat-only (so they pass no toggle) but still own a task board. The
+    // panel collapses to nothing when it has neither tasks nor a leading
+    // control, so the overlay is harmless for every seat.
+    Widget capsule() => AiMessageStringsScope(
+      strings: aiMessageStringsFromL10n(context.l10n),
+      child: controller == null
+          ? AiTaskBoardPanel(items: const [], collapsedLeading: viewToggle)
+          : ListenableBuilder(
+              listenable: controller,
+              builder: (context, _) => AiTaskBoardPanel(
+                items: controller.board.aiItems,
+                collapsedLeading: viewToggle,
               ),
-      );
-      content = Stack(
+            ),
+    );
+    return _provideAcpRuntime(
+      Stack(
         children: [
           Positioned.fill(child: _buildContent(context)),
           Positioned(top: spacing.sm, right: spacing.sm, child: capsule()),
         ],
-      );
-    }
-    return _provideAcpRuntime(content);
+      ),
+    );
   }
 
   /// The compose section reads the ACP runtime's pending-permission state via

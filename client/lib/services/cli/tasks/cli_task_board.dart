@@ -90,10 +90,15 @@ CliTaskBoard reduceCliTaskBoard(List<AiMessage> messages) {
       final name = part.toolName.toLowerCase();
       if (name == _kTaskCreate) {
         final args = part.args ?? const <String, Object?>{};
+        final subject = _str(args['subject']);
+        // A create whose payload never arrived (e.g. an ACP tool call recorded
+        // before `rawInput` was mapped) would render as a nameless "…" row:
+        // drop it instead of padding the board with untitled tasks.
+        if (subject.trim().isEmpty) continue;
         tasks.add(
           CliTask(
             taskId: _taskIdFromCreate(part),
-            subject: _str(args['subject']),
+            subject: subject,
             description: _str(args['description']),
             activeForm: _str(args['activeForm']),
             status: CliTaskStatus.pending,

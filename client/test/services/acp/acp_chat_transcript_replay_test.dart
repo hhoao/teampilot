@@ -140,6 +140,31 @@ void main() {
     expect(part.args, {'description': 'a cat', 'filePath': '/tmp/cat.png'});
   });
 
+  test('round-trips a tool result so task ids survive a restart', () {
+    final original = [
+      AiMessage(
+        id: 'acp-a-task',
+        role: AiRole.assistant,
+        parts: const [
+          AiToolCallPart(
+            toolCallId: 'c1',
+            toolName: 'TaskCreate',
+            status: AiToolCallStatus.complete,
+            args: {'subject': 'Write implementation plan'},
+            result: 'Task #6 created successfully: Write implementation plan',
+          ),
+        ],
+      ),
+    ];
+    final loaded = decodeAcpChatTranscript(encodeAcpChatTranscript(original));
+    final part = loaded.single.parts.single as AiToolCallPart;
+    expect(part.args, {'subject': 'Write implementation plan'});
+    expect(
+      part.result,
+      'Task #6 created successfully: Write implementation plan',
+    );
+  });
+
   test('old tool lines without args or category still decode', () {
     final jsonl = _line({
       'v': 1,

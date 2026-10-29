@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:acpd/acpd.dart' as acpd;
+import 'package:collection/collection.dart';
 
 import '../../models/launch_security_policy.dart';
 import '../../utils/logging/logger_utils.dart';
@@ -107,6 +108,8 @@ final class AcpToolCallUpdate extends AcpSessionUpdate {
     required this.toolCallId,
     this.title,
     this.status,
+    this.args,
+    this.result,
     this.background = false,
   });
 
@@ -117,6 +120,16 @@ final class AcpToolCallUpdate extends AcpSessionUpdate {
 
   /// The reported status (omitted fields keep the previous status).
   final AcpToolCallStatus? status;
+
+  /// The agent's `rawInput` object, when it reported one. Task-shaped tools
+  /// (`TaskCreate` / `TaskUpdate` / `TodoWrite`) keep their payload here, and
+  /// the task board reads the same keys PTY transcripts use.
+  final Map<String, Object?>? args;
+
+  /// The agent's `rawOutput` (or its display text), when it reported one.
+  /// `TaskCreate` returns "Task #N created successfully: …" here, which is how
+  /// later `TaskUpdate` calls find the task they belong to.
+  final Object? result;
 
   /// Whether the agent launched this shell/tool call in the background.
   ///
@@ -132,10 +145,19 @@ final class AcpToolCallUpdate extends AcpSessionUpdate {
           toolCallId == other.toolCallId &&
           title == other.title &&
           status == other.status &&
-          background == other.background;
+          background == other.background &&
+          const DeepCollectionEquality().equals(result, other.result) &&
+          const DeepCollectionEquality().equals(args, other.args);
 
   @override
-  int get hashCode => Object.hash(toolCallId, title, status, background);
+  int get hashCode => Object.hash(
+    toolCallId,
+    title,
+    status,
+    background,
+    result == null ? null : const DeepCollectionEquality().hash(result),
+    args == null ? null : DeepCollectionEquality().hash(args),
+  );
 }
 
 /// The agent's execution plan (each update replaces the previous plan).
@@ -947,6 +969,8 @@ class AcpAgentSession {
           toolCallId: toolCall.toolCallId,
           title: toolCall.title,
           status: _mapToolCallStatus(toolCall.status),
+          args: _toolCallArgs(toolCall.rawInput),
+          result: _toolCallResult(toolCall.rawOutput),
           background: _isBackgroundToolCall(toolCall.rawInput),
         );
       case acpd.ToolCallStatusUpdate(:final update):
@@ -954,6 +978,8 @@ class AcpAgentSession {
           toolCallId: update.toolCallId,
           title: update.title,
           status: _mapToolCallStatus(update.status),
+          args: _toolCallArgs(update.rawInput),
+          result: _toolCallResult(update.rawOutput),
           background: _isBackgroundToolCall(update.rawInput),
         );
       case acpd.PlanUpdate(:final plan):
@@ -990,6 +1016,21 @@ class AcpAgentSession {
     if (rawInput is! Map) return false;
     return rawInput['background'] == true ||
         rawInput['run_in_background'] == true;
+  }
+
+  /// The tool's own input object, when the agent sent one. Kept verbatim so
+  /// task tools reach the board with the same arg keys a PTY transcript uses.
+  Map<String, Object?>? _toolCallArgs(Object? rawInput) =>
+      rawInput is Map<String, Object?> ? rawInput : null;
+
+  /// The tool's own output, when the agent sent one. CodeBuddy/Cursor wrap the
+  /// text as `{type: text, text: …}`; the task tools' id lives in that text.
+  Object? _toolCallResult(Object? rawOutput) {
+    if (rawOutput is Map) {
+      final text = rawOutput['text'];
+      if (text is String && text.isNotEmpty) return text;
+    }
+    return rawOutput;
   }
 
   AcpToolCallStatus? _mapToolCallStatus(acpd.ToolCallStatus? status) {

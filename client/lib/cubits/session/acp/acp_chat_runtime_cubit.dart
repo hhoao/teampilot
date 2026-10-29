@@ -756,10 +756,6 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         if (isClosed) return;
         _applyToolCall(update);
         if (!replaying) unawaited(_persist());
-      case AcpPlan():
-        // Plan updates have no chat-layer rendering yet (spec: recorded but
-        // no mode-switching UI ships).
-        break;
       case AcpStop():
         if (isClosed || replaying) return;
         _onStop(update);
@@ -776,7 +772,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       case AcpModelStateUpdate():
         if (isClosed) return;
         emit(state.copyWith(modelState: update.state));
-      case AcpTodoListUpdate() || AcpTaskUpdate() || AcpGeneratedImageUpdate():
+      case AcpPlan() ||
+          AcpTodoListUpdate() ||
+          AcpTaskUpdate() ||
+          AcpGeneratedImageUpdate():
         if (isClosed) return;
         final folded = foldAcpExtensionNotification(
           messages: _replayMessages ?? state.messages,
@@ -838,6 +837,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
             toolName: update.title ?? part.toolName,
             status: _mapToolStatus(update.status) ?? part.status,
             isError: update.status == AcpToolCallStatus.failed || part.isError,
+            args: update.args ?? part.args,
+            result: update.result ?? part.result,
           );
           matched = true;
           break;
@@ -858,6 +859,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
               toolName: update.title ?? update.toolCallId,
               status:
                   _mapToolStatus(update.status) ?? AiToolCallStatus.incomplete,
+              args: update.args,
+              result: update.result,
             ),
           ],
         );
@@ -871,6 +874,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         toolCallId: update.toolCallId,
         toolName: update.title ?? update.toolCallId,
         status: _mapToolStatus(update.status) ?? AiToolCallStatus.incomplete,
+        args: update.args,
+        result: update.result,
       ),
     ]);
   }
