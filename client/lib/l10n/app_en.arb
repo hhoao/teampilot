@@ -5068,6 +5068,7 @@
   "sessionUsageShareShort": "Share",
   "sessionUsageMixedCli": "Mixed",
   "sessionUsageGroupName": "Name",
+  "cursorUsageNav": "Cursor usage",
   "cursorUsageTitle": "Cursor usage",
   "cursorUsageRefresh": "Refresh",
   "cursorUsageAddAccount": "Add account",

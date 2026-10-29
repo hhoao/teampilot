@@ -17708,6 +17708,12 @@ abstract class AppLocalizations {
   /// **'Name'**
   String get sessionUsageGroupName;
 
+  /// No description provided for @cursorUsageNav.
+  ///
+  /// In en, this message translates to:
+  /// **'Cursor usage'**
+  String get cursorUsageNav;
+
   /// No description provided for @cursorUsageTitle.
   ///
   /// In en, this message translates to:

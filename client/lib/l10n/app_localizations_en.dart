@@ -9990,6 +9990,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionUsageGroupName => 'Name';
 
   @override
+  String get cursorUsageNav => 'Cursor usage';
+
+  @override
   String get cursorUsageTitle => 'Cursor usage';
 
   @override

@@ -23,6 +23,15 @@ import '../cubits/chat_cubit.dart';
 import '../cubits/session_groups_cubit.dart';
 import '../cubits/session_usage_cubit.dart';
 import 'session_usage_services.dart';
+import '../cubits/cursor_usage_cubit.dart';
+import '../models/cursor_usage_range.dart';
+import '../services/cli/cursor/provider/cursor_usage_auth_resolver.dart';
+import '../services/cursor_usage/cursor_account_credential_store.dart';
+import '../services/cursor_usage/cursor_account_registry.dart';
+import '../services/cursor_usage/cursor_usage_api_client.dart';
+import '../services/cursor_usage/cursor_usage_cache_store.dart';
+import '../services/cursor_usage/cursor_usage_coordinator.dart';
+import '../services/cursor_usage/cursor_usage_range_preference.dart';
 import '../services/agent_runtime/agent_event_gateway.dart';
 import '../services/agent_runtime/agent_runtime.dart';
 import '../services/agent_runtime/runtime_event_journal.dart';
@@ -470,6 +479,8 @@ class AppShell {
     required this.identityRepository,
     required this.teamCubit,
     required this.sessionUsageCubit,
+    required this.cursorUsageCubit,
+    required this.cursorUsageApiClient,
     required this.configCubit,
     required this.connectCubit,
     required this.embeddedSshServer,
@@ -580,6 +591,12 @@ class AppShell {
   final LaunchProfileRepository identityRepository;
   final LaunchProfileCubit teamCubit;
   final SessionUsageCubit sessionUsageCubit;
+
+  /// Home-shell-held Cursor usage state; the page reads it from the provider.
+  final CursorUsageCubit cursorUsageCubit;
+
+  /// Owned by the shell so its HTTP client is closed with the shell.
+  final CursorUsageApiClient cursorUsageApiClient;
   final ConfigCubit configCubit;
   final ConnectCubit? connectCubit;
 
@@ -1607,6 +1624,65 @@ Future<AppShell> buildAppShell({
       storageChanges: homeStorage.changes.map<void>((_) {}),
     );
     unawaited(sessionUsageCubit.ensureLoaded());
+
+    final cursorAccountCredentialStore = CursorAccountCredentialStore(
+      store: const FlutterSecureKeyValueStore(),
+    );
+    final cursorUsageCacheStore = CursorUsageCacheStore(
+      fs: homeStorage.fs,
+      pathFor: (accountId) => homeStorage.paths.cursorUsageCacheFile(accountId),
+    );
+    final cursorUsageApiClient = CursorUsageApiClient();
+    final cursorAccountRegistry = CursorAccountRegistry(
+      fs: homeStorage.fs,
+      accountsPath: homeStorage.paths.cursorUsageAccountsFile,
+      credentials: cursorAccountCredentialStore,
+      resolveAuths: CursorUsageAuthResolver(
+        fs: homeStorage.fs,
+        basePath: homeStorage.paths.basePath,
+        home: homeStorage.home,
+      ).resolveAll,
+    );
+    final cursorUsageCoordinator = CursorUsageCoordinator(
+      registry: cursorAccountRegistry,
+      cacheStore: cursorUsageCacheStore,
+      api: cursorUsageApiClient,
+    );
+    final cursorUsageRangePreference = CursorUsageRangePreference(
+      fs: homeStorage.fs,
+      path: homeStorage.paths.cursorUsageUiStateFile,
+    );
+    final cursorUsageCubit = CursorUsageCubit(
+      loadAccounts: cursorAccountRegistry.list,
+      // Credential refresh already happens inside the registry's
+      // `credentialFor`, so the cubit's hook stays a no-op.
+      refreshAccount: (accountId) async {},
+      billingCycleFor: cursorUsageCoordinator.billingCycleFor,
+      loadReport:
+          ({
+            required accountId,
+            required range,
+            billingCycle,
+            forceRefresh = false,
+          }) => cursorUsageCoordinator.load(
+            accountId: accountId,
+            range: range,
+            billingCycle: billingCycle,
+            forceRefresh: forceRefresh,
+          ),
+      saveRange: cursorUsageRangePreference.save,
+      loadRange: cursorUsageRangePreference.load,
+      addAccount: (raw, label) async {
+        final credentials = parseCursorSessionToken(raw);
+        if (credentials == null) return false;
+        await cursorAccountRegistry.upsertManual(credentials, label: label);
+        return true;
+      },
+      removeAccount: cursorAccountRegistry.remove,
+      initialRange: const CursorUsagePresetRange(
+        CursorUsagePreset.billingCycle,
+      ),
+    );
 
     final notificationCubit = NotificationCubit(storage: homeStorage);
     final notificationBootstrap = notificationCubit.load();
@@ -3173,6 +3249,8 @@ Future<AppShell> buildAppShell({
       identityRepository: identityRepository,
       teamCubit: teamCubit,
       sessionUsageCubit: sessionUsageCubit,
+      cursorUsageCubit: cursorUsageCubit,
+      cursorUsageApiClient: cursorUsageApiClient,
       configCubit: configCubit,
       connectCubit: connectCubit,
       embeddedSshServer: embeddedSshServer,
@@ -3505,6 +3583,8 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       unawaited(_teardownConnect(shell));
       unawaited(shell.managedProviderControlPlane.close());
       unawaited(shell.sessionUsageCubit.close());
+      unawaited(shell.cursorUsageCubit.close());
+      shell.cursorUsageApiClient.close();
     }
     // Drain queued events; dispose() is synchronous, so stop() is
     // fire-and-forget like the cubit closes above.
@@ -3558,6 +3638,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         BlocProvider.value(value: shell.managedProviderCubit),
         BlocProvider.value(value: shell.managedProviderUsageCubit),
         BlocProvider.value(value: shell.sessionUsageCubit),
+        BlocProvider.value(value: shell.cursorUsageCubit),
         if (shell.connectCubit != null)
           BlocProvider<ConnectCubit>.value(value: shell.connectCubit!),
       ],

@@ -214,6 +214,13 @@ class _HomeSidebarNavScroll extends StatelessWidget {
           active: activeGlobalView == HomeGlobalView.usage,
           onTap: () => onGlobal?.call(HomeGlobalView.usage),
         ),
+        const SizedBox(height: 4),
+        _ShortcutRow(
+          icon: Icons.token_outlined,
+          label: l10n.cursorUsageNav,
+          active: activeGlobalView == HomeGlobalView.cursorUsage,
+          onTap: () => onGlobal?.call(HomeGlobalView.cursorUsage),
+        ),
       ],
     );
   }

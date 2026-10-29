@@ -8,6 +8,7 @@ import '../../cubits/expert_hub_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
 import '../automations/automation_management_page.dart';
+import '../cursor_usage/cursor_usage_page.dart';
 import '../expert_hub/expert_hub_page.dart';
 import '../expert_hub/expert_team_picker_dialog.dart';
 import '../expert_hub/expert_workspace_picker_dialog.dart';
@@ -38,6 +39,7 @@ enum HomeGlobalView {
   providers,
   managedProviders,
   usage,
+  cursorUsage,
   automations;
 
   /// Query key on `/home-v2` for deep-linking a global management pane.
@@ -125,6 +127,7 @@ class _HomeGlobalSectionState extends State<HomeGlobalSection> {
         embedded: true,
       ),
       HomeGlobalView.usage => const SessionUsagePage(embedded: true),
+      HomeGlobalView.cursorUsage => const CursorUsagePage(embedded: true),
       HomeGlobalView.automations => const AutomationManagementPage(),
     };
     if (MediaQuery.disableAnimationsOf(context)) return content;

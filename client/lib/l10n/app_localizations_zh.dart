@@ -9564,6 +9564,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionUsageGroupName => '名称';
 
   @override
+  String get cursorUsageNav => 'Cursor 用量';
+
+  @override
   String get cursorUsageTitle => 'Cursor 用量';
 
   @override
