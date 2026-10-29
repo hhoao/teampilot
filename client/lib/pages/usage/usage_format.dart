@@ -109,3 +109,11 @@ String usageGroupName(BuildContext context, UsageGroup group) {
     _ => group.label,
   };
 }
+
+/// Bottom-axis label stride for the usage trend chart.
+///
+/// Keeps at most about seven day labels visible for any selected range.
+int usageChartLabelStride(int dayCount) {
+  if (dayCount <= 0) return 1;
+  return (dayCount / 7).ceil();
+}
