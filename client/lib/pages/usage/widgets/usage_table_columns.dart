@@ -27,7 +27,8 @@ List<TpTableColumn<UsageGroup>> buildUsageTableColumns({
       hideable: false,
       draggable: false,
       sortValue: (row) => row.label.toLowerCase(),
-      cellBuilder: (context, row) => _GroupCell(row: row),
+      cellBuilder: (context, row) =>
+          _GroupCell(row: row, isCliGroup: groupBy == UsageGroupBy.cli),
     ),
     _numberColumn(
       id: usageTotalColumnId,
@@ -142,25 +143,39 @@ class _NumberText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = TpTextStyles.of(context).sm.copyWith(
-      fontFeatures: const [FontFeature.tabularFigures()],
+    final style = TpTextStyles.of(
+      context,
+    ).sm.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
+    return Text(
+      text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: style,
     );
-    return Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: style);
   }
 }
 
 class _GroupCell extends StatelessWidget {
-  const _GroupCell({required this.row});
+  const _GroupCell({required this.row, required this.isCliGroup});
 
   final UsageGroup row;
+  final bool isCliGroup;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
-    final cli = CliTool.tryParse(row.label);
-    final label = cli == null ? usageGroupName(context, row) : usageCliLabel(cli);
+    final cli = isCliGroup ? CliTool.tryParse(row.label) : null;
+    final label = cli == null
+        ? usageGroupName(context, row)
+        : usageCliLabel(cli);
     final subtitle = usageGroupSubtitle(context, row.subtitle);
+    final badges = isCliGroup ? const <CliTool>[] : row.clis;
+    final visibleBadges = badges.take(2).toList(growable: false);
+    final hiddenBadgeCount = badges.length - visibleBadges.length;
+    final mutedStyle = styles.xs.copyWith(
+      color: cs.onSurface.withValues(alpha: 0.5),
+    );
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -173,22 +188,30 @@ class _GroupCell extends StatelessWidget {
           style: styles.smMedium,
         ),
         const SizedBox(height: 2),
-        Wrap(
-          spacing: 4,
-          runSpacing: 2,
-          crossAxisAlignment: WrapCrossAlignment.center,
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            for (final tool in row.clis)
-              if (cli == null) _CliBadge(cli: tool),
-            if (subtitle.isNotEmpty)
-              Text(
-                subtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: styles.xs.copyWith(
-                  color: cs.onSurface.withValues(alpha: 0.5),
+            for (final (index, tool) in visibleBadges.indexed) ...[
+              if (index > 0) const SizedBox(width: 4),
+              _CliBadge(cli: tool),
+            ],
+            if (hiddenBadgeCount > 0) ...[
+              if (visibleBadges.isNotEmpty) const SizedBox(width: 4),
+              Text('+$hiddenBadgeCount', style: mutedStyle),
+            ],
+            if (subtitle.isNotEmpty) ...[
+              if (visibleBadges.isNotEmpty || hiddenBadgeCount > 0)
+                const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: mutedStyle,
                 ),
               ),
+            ],
           ],
         ),
       ],
@@ -231,9 +254,9 @@ class _CostCell extends StatelessWidget {
         ? l10n.sessionUsageCostUnpriced
         : '${formatUsageCost(row.costMicroUsd)}'
               '${row.unpricedEvents > 0 ? '*' : ''}';
-    final style = TpTextStyles.of(context).sm.copyWith(
-      fontFeatures: const [FontFeature.tabularFigures()],
-    );
+    final style = TpTextStyles.of(
+      context,
+    ).sm.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
     return Text(text, maxLines: 1, style: style);
   }
 }

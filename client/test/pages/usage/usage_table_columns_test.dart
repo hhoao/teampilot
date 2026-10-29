@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/session_usage_dashboard.dart';
 import 'package:teampilot/pages/usage/widgets/usage_table_columns.dart';
 
@@ -60,5 +61,58 @@ void main() {
       const [],
     );
     expect(sorted.map((row) => row.label), ['a', 'b']);
+  });
+
+  testWidgets('columns expose a locked group column and formatted cells', (
+    tester,
+  ) async {
+    late List<TpTableColumn<UsageGroup>> columns;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) {
+            columns = buildUsageTableColumns(
+              context: context,
+              summary: const UsageSummary(totalTokens: 100),
+              groupBy: UsageGroupBy.session,
+            );
+            return Column(
+              children: [
+                SizedBox(
+                  width: 300,
+                  child: columns
+                      .firstWhere((column) => column.id == usageGroupColumnId)
+                      .cellBuilder(context, _row('codex', total: 10, input: 1)),
+                ),
+                columns
+                    .firstWhere((column) => column.id == 'share')
+                    .cellBuilder(context, _row('share', total: 50, input: 10)),
+                columns
+                    .firstWhere((column) => column.id == 'cost')
+                    .cellBuilder(context, _row('cost', total: 10, input: 1)),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+
+    final group = columns.firstWhere(
+      (column) => column.id == usageGroupColumnId,
+    );
+    expect(group.locked, isTrue);
+    expect(group.hideable, isFalse);
+    expect(group.draggable, isFalse);
+    expect(group.flex, 3);
+    expect(group.minWidth, 240);
+    expect(group.label, 'Session');
+
+    expect(find.text('codex'), findsOneWidget);
+    expect(find.text('Codex'), findsNothing);
+    expect(find.text('50%'), findsOneWidget);
+    expect(find.text('Unpriced'), findsOneWidget);
   });
 }
