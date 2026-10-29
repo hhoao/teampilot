@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../models/cursor_usage_account.dart';
 import '../../models/cursor_usage_range.dart';
@@ -44,19 +45,48 @@ final class CursorUsageCoordinator {
     Future<void> Function(Duration)? sleep,
     int maxPages = 40,
     int pageSize = 500,
+    bool fetchHistoryOnFirstLoad = true,
   }) : _registry = registry,
        _cacheStore = cacheStore,
        _api = api,
        _now = now ?? DateTime.now,
        _sleep = sleep ?? Future<void>.delayed,
        _maxPages = maxPages,
-       _pageSize = pageSize;
+       _pageSize = pageSize,
+       _fetchHistoryOnFirstLoad = fetchHistoryOnFirstLoad;
 
   static const Duration _rateLimitBackoff = Duration(seconds: 2);
 
   /// How long a today-window fill counts as fresh. Page opens inside this
   /// window reuse the cache instead of re-fetching every account.
   static const Duration _todayRefetchTtl = Duration(minutes: 5);
+
+  /// First-fetch history: Cursor's service launched in 2023, so a 3-year
+  /// anchor predates any account's earliest event.
+  static const _historyChunkMs = 90 * 86400000;
+
+  /// Tiles [anchorMs, window.endMs] into day-aligned 90-day chunks.
+  @visibleForTesting
+  List<CursorUsageWindow> historyChunks(CursorUsageWindow window, int nowMs) {
+    final now = DateTime.fromMillisecondsSinceEpoch(nowMs).toLocal();
+    var chunkStart = DateTime(
+      now.year - 3,
+      now.month,
+      now.day,
+    ).millisecondsSinceEpoch;
+    final chunks = <CursorUsageWindow>[];
+    while (chunkStart <= window.endMs) {
+      final rawEnd = chunkStart + _historyChunkMs - 1;
+      final chunkEnd = rawEnd > window.endMs ? window.endMs : rawEnd;
+      chunks.add(
+        cursorUsageAlignWindow(
+          CursorUsageWindow(startMs: chunkStart, endMs: chunkEnd),
+        ),
+      );
+      chunkStart = chunkEnd + 1;
+    }
+    return chunks;
+  }
 
   final CursorAccountDirectory _registry;
   final CursorUsageCacheStore _cacheStore;
@@ -65,6 +95,7 @@ final class CursorUsageCoordinator {
   final Future<void> Function(Duration) _sleep;
   final int _maxPages;
   final int _pageSize;
+  final bool _fetchHistoryOnFirstLoad;
 
   /// In-flight gap fills keyed by account + aligned gap, so two callers asking
   /// for the same window share one set of pages instead of doubling the load.
@@ -122,6 +153,17 @@ final class CursorUsageCoordinator {
     var gaps = forceRefresh
         ? [cursorUsageAlignWindow(window)]
         : cursorUsageMissingWindows(covered: cache.coverage, requested: window);
+
+    // First fetch for an account: pull full history, not just the selected
+    // range. Cursor launched in 2023, so the anchor predates any real usage.
+    // The window is tiled into 90-day chunks so each chunk gets its own page
+    // budget, and the report below is still built for the requested range —
+    // the extra history only lands in the cache.
+    final firstFetch =
+        cache.coverage.isEmpty && cache.days.isEmpty && cache.events.isEmpty;
+    if (firstFetch && !forceRefresh && _fetchHistoryOnFirstLoad) {
+      gaps = historyChunks(window, nowMs);
+    }
 
     // Today is never covered (it keeps accumulating), so without a throttle
     // every open would hit the network for every account. Inside the TTL the
