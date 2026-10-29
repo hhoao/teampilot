@@ -19,6 +19,7 @@ final class CursorUsageAccount extends Equatable {
     this.teamId = 0,
     this.hasCredential = false,
     this.providerId,
+    this.providerName,
   });
 
   final String accountId;
@@ -35,6 +36,10 @@ final class CursorUsageAccount extends Equatable {
   /// accounts; display-only and never persisted.
   final String? providerId;
 
+  /// Human name of [providerId] from the app provider catalog, resolved at
+  /// list time. Falls back to null when the catalog has no such provider.
+  final String? providerName;
+
   /// Expired when the token would die inside the next minute.
   bool isExpired(int nowMs) {
     final expires = expiresAtMs;
@@ -49,6 +54,8 @@ final class CursorUsageAccount extends Equatable {
     int? teamId,
     bool? hasCredential,
     CursorAccountSource? source,
+    String? providerId,
+    String? providerName,
   }) => CursorUsageAccount(
     accountId: accountId,
     userId: userId,
@@ -59,6 +66,8 @@ final class CursorUsageAccount extends Equatable {
     owningUser: owningUser ?? this.owningUser,
     teamId: teamId ?? this.teamId,
     hasCredential: hasCredential ?? this.hasCredential,
+    providerId: providerId ?? this.providerId,
+    providerName: providerName ?? this.providerName,
   );
 
   Map<String, Object?> toJson() => {
@@ -101,6 +110,7 @@ final class CursorUsageAccount extends Equatable {
     teamId,
     hasCredential,
     providerId,
+    providerName,
   ];
 }
 

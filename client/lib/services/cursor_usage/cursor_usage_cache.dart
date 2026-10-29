@@ -157,3 +157,51 @@ CursorUsageReport buildCursorUsageReport(
     summaryOnly: summaryOnly,
   );
 }
+
+/// Sums per-account reports into one all-accounts view. Only the scalar
+/// totals and the model split are meaningful here; `days` and `events` are
+/// intentionally left empty because each account has its own detail view.
+CursorUsageReport aggregateCursorUsageReports(
+  Iterable<CursorUsageReport> reports,
+) {
+  var inputTokens = 0;
+  var outputTokens = 0;
+  var cacheReadTokens = 0;
+  var cacheWriteTokens = 0;
+  var totalCents = 0.0;
+  var chargedCents = 0.0;
+  var eventCount = 0;
+  int? startMs;
+  int? endMs;
+  final models = <String, CursorUsageModelTotals>{};
+  for (final report in reports) {
+    inputTokens += report.inputTokens;
+    outputTokens += report.outputTokens;
+    cacheReadTokens += report.cacheReadTokens;
+    cacheWriteTokens += report.cacheWriteTokens;
+    totalCents += report.totalCents;
+    chargedCents += report.chargedCents;
+    eventCount += report.eventCount;
+    if (startMs == null || report.startMs < startMs) startMs = report.startMs;
+    if (endMs == null || report.endMs > endMs) endMs = report.endMs;
+    for (final entry in report.models.entries) {
+      models[entry.key] =
+          (models[entry.key] ?? const CursorUsageModelTotals()).merge(
+            entry.value,
+          );
+    }
+  }
+  return CursorUsageReport(
+    accountId: '*',
+    startMs: startMs ?? 0,
+    endMs: endMs ?? 0,
+    inputTokens: inputTokens,
+    outputTokens: outputTokens,
+    cacheReadTokens: cacheReadTokens,
+    cacheWriteTokens: cacheWriteTokens,
+    totalCents: totalCents,
+    chargedCents: chargedCents,
+    eventCount: eventCount,
+    models: models,
+  );
+}

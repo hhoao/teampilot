@@ -5,9 +5,9 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/cursor_usage_account.dart';
 import '../../../models/cursor_usage_range.dart';
 import '../../../models/cursor_usage_report.dart';
+import '../../../services/cursor_usage/cursor_usage_cache.dart';
 import '../../../services/cursor_usage/cursor_usage_coordinator.dart';
-import '../../usage/usage_format.dart';
-import '../cursor_usage_format.dart';
+import 'usage_totals.dart';
 
 class CursorUsageAccountList extends StatelessWidget {
   const CursorUsageAccountList({
@@ -38,14 +38,6 @@ class CursorUsageAccountList extends StatelessWidget {
     final l10n = context.l10n;
     final styles = TpTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
-    final totalTokens = reports.values.fold<int>(
-      0,
-      (sum, report) => sum + report.totalTokens,
-    );
-    final totalCents = reports.values.fold<double>(
-      0,
-      (sum, report) => sum + report.totalCents,
-    );
     if (accounts.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
@@ -56,17 +48,8 @@ class CursorUsageAccountList extends StatelessWidget {
       );
     }
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (reports.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              '${l10n.cursorUsageAllAccounts} · '
-              '${formatUsageTokens(totalTokens)} · '
-              '${formatCursorUsageUsd(totalCents)}',
-              style: styles.xsColored(cs.onSurface.withValues(alpha: 0.55)),
-            ),
-          ),
         for (final account in accounts)
           ListTile(
             dense: true,
@@ -81,6 +64,14 @@ class CursorUsageAccountList extends StatelessWidget {
             ),
             trailing: _accountMenu(context, account),
           ),
+        if (reports.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Text(l10n.cursorUsageAllAccounts, style: styles.mdSemibold),
+          const SizedBox(height: 8),
+          CursorUsageTotals(
+            report: aggregateCursorUsageReports(reports.values),
+          ),
+        ],
       ],
     );
   }
@@ -177,9 +168,11 @@ class CursorUsageAccountList extends StatelessWidget {
           : l10n.cursorUsageSourceAuto,
     ];
     if (account.teamId != 0) parts.add('team ${account.teamId}');
-    final provider = account.providerId;
-    if (provider != null) {
-      parts.add(l10n.cursorUsageFromProvider(provider));
+    // Prefer the catalog name; the raw provider id is only a fallback.
+    final providerName =
+        account.providerName ?? account.providerId;
+    if (providerName != null) {
+      parts.add(l10n.cursorUsageFromProvider(providerName));
     }
     if (!account.enabled) parts.add(l10n.cursorUsageStatusDisabled);
     if (account.isExpired(DateTime.now().millisecondsSinceEpoch)) {

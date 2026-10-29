@@ -45,27 +45,32 @@ final class CursorAccountRegistry implements CursorAccountDirectory {
     required String accountsPath,
     required CursorAccountCredentialStore credentials,
     required Future<List<CursorUsageAuth>> Function() resolveAuths,
+    Future<String?> Function(String providerId)? providerNameFor,
     DateTime Function()? now,
   }) : _fs = fs,
        _path = accountsPath,
        _credentials = credentials,
        _resolveAuths = resolveAuths,
+       _providerNameFor = providerNameFor,
        _now = now ?? DateTime.now;
 
   final Filesystem _fs;
   final String _path;
   final CursorAccountCredentialStore _credentials;
   final Future<List<CursorUsageAuth>> Function() _resolveAuths;
+  final Future<String?> Function(String providerId)? _providerNameFor;
   final DateTime Function() _now;
 
   @override
   Future<List<CursorUsageAccount>> list() async {
     final stored = await _readAccounts();
     final discoveredAccounts = await _resolveAuths();
+    final providerNames = await _resolveProviderNames(discoveredAccounts);
     final out = <String, CursorUsageAccount>{};
 
     for (final auth in discoveredAccounts) {
       final override = stored[auth.account];
+      final providerId = auth.providerId;
       out[auth.account] = CursorUsageAccount(
         accountId: auth.account,
         userId: auth.userId,
@@ -76,7 +81,10 @@ final class CursorAccountRegistry implements CursorAccountDirectory {
         owningUser: override?.owningUser,
         teamId: override?.teamId ?? 0,
         hasCredential: true,
-        providerId: auth.providerId,
+        providerId: providerId,
+        providerName: providerId == null
+            ? null
+            : providerNames[providerId],
       );
     }
 
@@ -102,6 +110,28 @@ final class CursorAccountRegistry implements CursorAccountDirectory {
       if (a.enabled != b.enabled) return a.enabled ? -1 : 1;
       return a.label.toLowerCase().compareTo(b.label.toLowerCase());
     });
+  }
+
+  /// Resolves display names for the distinct provider ids in one batch, so a
+  /// list render costs at most one catalog lookup per provider.
+  Future<Map<String, String>> _resolveProviderNames(
+    List<CursorUsageAuth> accounts,
+  ) async {
+    final resolver = _providerNameFor;
+    if (resolver == null) return const {};
+    final names = <String, String>{};
+    for (final id in accounts
+        .map((auth) => auth.providerId)
+        .whereType<String>()
+        .toSet()) {
+      try {
+        final name = await resolver(id);
+        if (name != null && name.trim().isNotEmpty) names[id] = name.trim();
+      } on Object {
+        // The catalog is display-only here; a missing name falls back to the id.
+      }
+    }
+    return names;
   }
 
   @override

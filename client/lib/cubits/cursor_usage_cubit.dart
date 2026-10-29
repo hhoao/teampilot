@@ -258,7 +258,11 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
 
   Future<void> setRange(CursorUsageRange range) async {
     if (range == state.range) return;
-    emit(state.copyWith(range: range, reports: const {}));
+    // Keep the previous reports on screen while the new range loads: blanking
+    // them makes every range switch look like the cache was lost. Each
+    // account's numbers are replaced as its fetch lands, and the spinning
+    // status dots show what is still in flight.
+    emit(state.copyWith(range: range));
     await _saveRange(range);
     await _loadAll();
   }
