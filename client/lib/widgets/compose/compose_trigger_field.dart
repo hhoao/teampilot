@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:extended_text_field/extended_text_field.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -17,7 +19,6 @@ import '../../services/file_tree/workspace_file_index.dart';
 import '../../services/search/workspace_search_indexes.dart';
 import '../../services/chat/conversation/compose/compose_clip.dart';
 import '../../services/chat/conversation/compose/compose_slash_catalog.dart';
-import '../../services/chat/conversation/compose/compose_trigger_caret.dart';
 import '../../services/chat/conversation/compose/compose_trigger_query.dart';
 import '../../services/cli/registry/capabilities/skill_capability.dart';
 import '../../services/keyboard/compose_keyboard_shortcut_handler.dart';
@@ -120,6 +121,8 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   Offset _menuAnchor = Offset.zero;
   VoidCallback? _newlineDisposer;
   VoidCallback? _submitDisposer;
+  FocusOnKeyEventCallback? _chainedKeyHandler;
+  FocusNode? _keyHandlerNode;
 
   @override
   void initState() {
@@ -128,6 +131,7 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     _lastTokenSignature = _tokenSignature();
     widget.controller.addListener(_handleControllerChanged);
     widget.focusNode.addListener(_handleFocusChanged);
+    _attachKeyHandler();
     if (widget.focusNode.hasFocus) {
       _registerComposeCommands();
     }
@@ -145,6 +149,8 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     if (oldWidget.focusNode != widget.focusNode) {
       oldWidget.focusNode.removeListener(_handleFocusChanged);
       widget.focusNode.addListener(_handleFocusChanged);
+      _detachKeyHandler(oldWidget.focusNode);
+      _attachKeyHandler();
     }
     if (widget.focusNode.hasFocus &&
         (oldWidget.controller != widget.controller ||
@@ -168,8 +174,31 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
     _searchDebounce?.cancel();
     widget.controller.removeListener(_handleControllerChanged);
     widget.focusNode.removeListener(_handleFocusChanged);
+    _detachKeyHandler(widget.focusNode);
     _unregisterComposeCommands();
     super.dispose();
+  }
+
+  void _attachKeyHandler() {
+    final node = widget.focusNode;
+    _keyHandlerNode = node;
+    _chainedKeyHandler = node.onKeyEvent;
+    node.onKeyEvent = _handleKeyWithChain;
+  }
+
+  void _detachKeyHandler(FocusNode node) {
+    if (!identical(_keyHandlerNode, node)) return;
+    if (node.onKeyEvent == _handleKeyWithChain) {
+      node.onKeyEvent = _chainedKeyHandler;
+    }
+    _keyHandlerNode = null;
+    _chainedKeyHandler = null;
+  }
+
+  KeyEventResult _handleKeyWithChain(FocusNode node, KeyEvent event) {
+    final result = _handleComposeKey(node, event);
+    if (result != KeyEventResult.ignored) return result;
+    return _chainedKeyHandler?.call(node, event) ?? KeyEventResult.ignored;
   }
 
   void _registerComposeCommands() {
@@ -274,20 +303,81 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
   }
 
   void _updateMenuAnchor() {
-    final fieldBox = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
-    if (fieldBox == null || !fieldBox.hasSize) return;
-
-    final styles = TpTextStyles.of(context);
-    final textStyle = styles.mdColored(widget.mutedColor);
-    final anchor = composeTriggerMenuAnchor(
-      context: context,
-      fieldBox: fieldBox,
-      value: widget.controller.value,
-      textStyle: textStyle,
-      maxWidth: fieldBox.size.width,
-    );
-    if (anchor == null || anchor == _menuAnchor) return;
+    final caretGlobal = _caretBottomGlobal();
+    if (caretGlobal == null) return;
+    final overlayBox =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (overlayBox == null) return;
+    final local = overlayBox.globalToLocal(caretGlobal);
+    final anchor = Offset(local.dx, local.dy + 4);
+    if (anchor == _menuAnchor) return;
     setState(() => _menuAnchor = anchor);
+  }
+
+  Offset? _caretBottomGlobal() {
+    final fieldContext = _fieldKey.currentContext;
+    if (fieldContext == null) return null;
+    final state = _findEditableState(fieldContext);
+    if (state == null) return null;
+    final dynamic editable = state.renderEditable;
+    if (editable is! RenderBox) return null;
+    final selection = widget.controller.selection;
+    final length = widget.controller.text.length;
+    final offset = selection.isValid
+        ? selection.extentOffset.clamp(0, length)
+        : length;
+    final Rect caret =
+        (editable as dynamic).getLocalRectForCaret(
+              TextPosition(offset: offset),
+            )
+            as Rect;
+    return editable.localToGlobal(caret.bottomLeft);
+  }
+
+  ExtendedEditableTextState? _findEditableState(BuildContext context) {
+    ExtendedEditableTextState? found;
+    void visit(Element element) {
+      if (found != null) return;
+      if (element is StatefulElement && element.state is ExtendedEditableTextState) {
+        found = element.state as ExtendedEditableTextState;
+        return;
+      }
+      element.visitChildren(visit);
+    }
+
+    context.visitChildElements(visit);
+    return found;
+  }
+
+  Widget _buildTokenChip(
+    BuildContext context,
+    ComposeToken token,
+    TextStyle? style,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    final palette = resolveSlashAtTokenPalette(token.payload, scheme);
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 1),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: palette.background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      constraints: const BoxConstraints(maxWidth: 360),
+      child: Tooltip(
+        message: token.payload,
+        waitDuration: const Duration(milliseconds: 500),
+        child: Text(
+          token.payload,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: (style ?? const TextStyle()).copyWith(
+            color: palette.foreground,
+            height: 1.2,
+          ),
+        ),
+      ),
+    );
   }
 
   void _clearSuggestions() {
@@ -527,10 +617,57 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
       }
     }
 
+    // With the inline-widget field, a token is one widget but its text may
+    // still be followed by an inserted separator space. Treat token + one
+    // separator as one navigation unit so Left/Right cross it in one press.
+    if (!_overlayVisible &&
+        event is KeyDownEvent &&
+        (event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+            event.logicalKey == LogicalKeyboardKey.arrowRight)) {
+      final keyboard = HardwareKeyboard.instance;
+      final selection = widget.controller.selection;
+      if (!keyboard.isControlPressed &&
+          !keyboard.isMetaPressed &&
+          !keyboard.isAltPressed &&
+          !keyboard.isShiftPressed &&
+          selection.isValid &&
+          selection.isCollapsed) {
+        final text = widget.controller.text;
+        final offset = selection.extentOffset;
+        for (final range in widget.controller.tokenRanges) {
+          final separatorEnd = _separatorEnd(text, range.end);
+          if (event.logicalKey == LogicalKeyboardKey.arrowLeft &&
+              offset > range.start &&
+              offset <= separatorEnd) {
+            widget.controller.selection = TextSelection.collapsed(
+              offset: range.start,
+            );
+            return KeyEventResult.handled;
+          }
+          if (event.logicalKey == LogicalKeyboardKey.arrowRight &&
+              offset >= range.start &&
+              offset < separatorEnd) {
+            widget.controller.selection = TextSelection.collapsed(
+              offset: separatorEnd,
+            );
+            return KeyEventResult.handled;
+          }
+        }
+      }
+    }
+
     // Enter / Mod+Enter (compose.submit / compose.newline) are matched by
     // the root ShortcutDispatcher and dispatched to the handlers registered
     // in _registerComposeCommands — nothing left to do here.
     return KeyEventResult.ignored;
+  }
+
+  int _separatorEnd(String text, int tokenEnd) {
+    if (tokenEnd < text.length) {
+      final next = text[tokenEnd];
+      if (next == ' ' || next == '\t') return tokenEnd + 1;
+    }
+    return tokenEnd;
   }
 
   /// Ctrl/Cmd+V handler from [_pasteImageShortcuts]. Tries the image import
@@ -615,38 +752,70 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
             resizable: true,
             textStyle: textStyle,
             focusNode: widget.focusNode,
-            builder: (context, lineCount) {
-              return TpTokenTextField(
-                fieldKey: _fieldKey,
-                controller: widget.controller,
-                focusNode: widget.focusNode,
-                hint: widget.hint,
-                enabled: widget.enabled,
-                onChanged: widget.onChanged,
-                textStyle: textStyle,
-                hintStyle: styles.mdColored(widget.hintColor),
-                cursorColor: widget.mutedColor,
-                tokenRanges: [
-                  for (final range in widget.controller.tokenRanges)
-                    TpTokenRange(start: range.start, end: range.end),
-                ],
-                resolveTokenPalette: resolveSlashAtTokenPalette,
-                // Fill the shell so blank viewport areas remain tappable.
-                expands: true,
-                minLines: lineCount,
-                maxLines: lineCount,
-                onKeyEvent: _handleComposeKey,
-                overlayVisible: _overlayVisible,
-                overlayAnchor: _menuAnchor,
-                overlayBuilder: _overlayVisible
-                    ? (context) => _ComposeTriggerSuggestionPanel(
-                        suggestions: _suggestions,
-                        selectedIndex: _selectedIndex,
-                        onSelected: _selectSuggestion,
-                        onHover: (index) =>
-                            setState(() => _selectedIndex = index),
-                      )
-                    : null,
+            builder: (context, _) {
+              final inlineField = KeyedSubtree(
+                key: _fieldKey,
+                child: TextSelectionTheme(
+                  data: TextSelectionThemeData(
+                    selectionColor: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.25),
+                    cursorColor: widget.mutedColor,
+                  ),
+                  child: ExtendedTextField(
+                    controller: widget.controller,
+                    focusNode: widget.focusNode,
+                    specialTextSpanBuilder: _ComposeTokenSpanBuilder(
+                      controller: widget.controller,
+                      chipBuilder: (token, style) =>
+                          _buildTokenChip(context, token, style),
+                    ),
+                    // Fill the shell so blank viewport areas remain tappable.
+                    expands: true,
+                    minLines: null,
+                    maxLines: null,
+                    enabled: widget.enabled,
+                    style: textStyle,
+                    cursorColor: widget.mutedColor,
+                    textAlignVertical: TextAlignVertical.top,
+                    decoration: InputDecoration(
+                      filled: false,
+                      hoverColor: Colors.transparent,
+                      hintText: widget.hint,
+                      hintStyle: styles.mdColored(widget.hintColor),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
+                      isDense: true,
+                    ),
+                    onChanged: widget.onChanged,
+                  ),
+                ),
+              );
+              if (!_overlayVisible) return inlineField;
+              return TpPortal(
+                visible: true,
+                anchor: TpGlobalAnchor(_menuAnchor),
+                portalBuilder: (context) {
+                  final box =
+                      _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+                  final width = (box != null && box.hasSize)
+                      ? box.size.width
+                      : 320.0;
+                  return SizedBox(
+                    width: width,
+                    child: _ComposeTriggerSuggestionPanel(
+                      suggestions: _suggestions,
+                      selectedIndex: _selectedIndex,
+                      onSelected: _selectSuggestion,
+                      onHover: (index) =>
+                          setState(() => _selectedIndex = index),
+                    ),
+                  );
+                },
+                child: inlineField,
               );
             },
           ),
@@ -654,6 +823,65 @@ class _ComposeTriggerFieldState extends State<ComposeTriggerField> {
       ),
     );
   }
+}
+
+class _ComposeTokenSpanBuilder extends SpecialTextSpanBuilder {
+  _ComposeTokenSpanBuilder({required this.controller, required this.chipBuilder});
+
+  final ComposeTextController controller;
+  final Widget Function(ComposeToken token, TextStyle? style) chipBuilder;
+
+  @override
+  TextSpan build(
+    String data, {
+    TextStyle? textStyle,
+    SpecialTextGestureTapCallback? onTap,
+  }) {
+    final spans = <InlineSpan>[];
+    var start = 0;
+    for (final range in controller.tokenRanges) {
+      if (range.start < start || range.end > data.length) continue;
+      if (range.start > start) {
+        spans.add(
+          TextSpan(text: data.substring(start, range.start), style: textStyle),
+        );
+      }
+      final token = _tokenAt(range.start);
+      final label = data.substring(range.start, range.end);
+      if (token == null) {
+        spans.add(TextSpan(text: label, style: textStyle));
+      } else {
+        spans.add(
+          ExtendedWidgetSpan(
+            actualText: label,
+            start: range.start,
+            alignment: ui.PlaceholderAlignment.middle,
+            child: chipBuilder(token, textStyle),
+          ),
+        );
+      }
+      start = range.end;
+    }
+    if (start < data.length) {
+      spans.add(TextSpan(text: data.substring(start), style: textStyle));
+    }
+    return TextSpan(children: spans, style: textStyle);
+  }
+
+  ComposeToken? _tokenAt(int offset) {
+    for (final token in controller.document.tokens) {
+      if (token.start == offset) return token;
+    }
+    return null;
+  }
+
+  @override
+  SpecialText? createSpecialText(
+    String flag, {
+    TextStyle? textStyle,
+    SpecialTextGestureTapCallback? onTap,
+    required int index,
+  }) => null;
 }
 
 class _ComposeTriggerSuggestionPanel extends StatelessWidget {

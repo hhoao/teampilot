@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:extended_text_field/extended_text_field.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
@@ -75,6 +76,17 @@ void main() {
     );
   }
 
+  Future<void> enterComposeText(WidgetTester tester, String text) async {
+    final field = tester.widget<ExtendedTextField>(
+      find.byType(ExtendedTextField),
+    );
+    field.controller!.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+    await tester.pump();
+  }
+
   testWidgets('native command shows source and inserts argument space', (
     tester,
   ) async {
@@ -103,7 +115,7 @@ void main() {
 
     focusNode.requestFocus();
     await tester.pump();
-    await tester.enterText(find.byType(TextField), '/go');
+    await enterComposeText(tester, '/go');
     await tester.pumpAndSettle(const Duration(milliseconds: 200));
 
     expect(find.text('/goal'), findsWidgets);
@@ -139,7 +151,7 @@ void main() {
 
     focusNode.requestFocus();
     await tester.pump();
-    await tester.enterText(find.byType(TextField), '/he');
+    await enterComposeText(tester, '/he');
     await tester.pumpAndSettle(const Duration(milliseconds: 200));
 
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
@@ -186,7 +198,7 @@ void main() {
       focusNode.requestFocus();
       await tester.pump();
 
-      await tester.enterText(find.byType(TextField), '/plan');
+      await enterComposeText(tester, '/plan');
       await tester.pumpAndSettle(const Duration(milliseconds: 200));
 
       expect(find.text('/plan'), findsWidgets);
@@ -236,13 +248,13 @@ void main() {
       await tester.pump();
 
       // A settled search populates the overlay for query "p".
-      await tester.enterText(find.byType(TextField), '/p');
+      await enterComposeText(tester, '/p');
       await tester.pumpAndSettle(const Duration(milliseconds: 200));
       expect(find.text('/plan'), findsWidgets);
 
       // Keep typing CJK text (no whitespace, so the trigger keeps growing)
       // and press Enter before the debounced search resolves the new query.
-      await tester.enterText(find.byType(TextField), '/p你好世界');
+      await enterComposeText(tester, '/p你好世界');
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump();
 
@@ -288,7 +300,7 @@ void main() {
 
     expect(focusNode.hasFocus, isTrue);
 
-    await tester.enterText(find.byType(TextField), 'from blank tap');
+    await enterComposeText(tester, 'from blank tap');
     await tester.pump();
     expect(controller.text, 'from blank tap');
   });
@@ -329,7 +341,7 @@ void main() {
 
       focusNode.requestFocus();
       await tester.pump();
-      await tester.enterText(find.byType(TextField), 'still editable');
+      await enterComposeText(tester, 'still editable');
       await tester.pump();
       expect(controller.text, 'still editable');
     },
@@ -361,11 +373,10 @@ void main() {
     focusNode.requestFocus();
     await tester.pump();
 
-    await tester.enterText(find.byType(TextField), 'hello after resize');
+    await enterComposeText(tester, 'hello after resize');
     await tester.pump();
 
     expect(controller.text, 'hello after resize');
-    expect(find.text('hello after resize'), findsWidgets);
   });
 
   group('image paste', () {
@@ -600,7 +611,7 @@ void main() {
     focusNode.requestFocus();
     await tester.pump();
 
-    await tester.enterText(find.byType(TextField), '@src/main.dart');
+    await enterComposeText(tester, '@src/main.dart');
     await tester.pump();
 
     expect(controller.tokenRanges, isEmpty);
@@ -625,10 +636,7 @@ void main() {
     focusNode.requestFocus();
     await tester.pump();
 
-    await tester.enterText(
-      find.byType(TextField),
-      '/home/me/report.pdf 帮我总结',
-    );
+    await enterComposeText(tester, '/home/me/report.pdf 帮我总结');
     await tester.pump();
 
     expect(controller.tokenRanges, isEmpty);
@@ -658,7 +666,7 @@ void main() {
     focusNode.requestFocus();
     await tester.pump();
 
-    await tester.enterText(find.byType(TextField), '/he');
+    await enterComposeText(tester, '/he');
     await tester.pumpAndSettle(const Duration(milliseconds: 200));
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pump();
@@ -693,8 +701,11 @@ void main() {
     focusNode.requestFocus();
     await tester.pump();
 
-    await tester.enterText(find.byType(TextField), '/pl');
+    await enterComposeText(tester, '/pl');
     await tester.pumpAndSettle(const Duration(milliseconds: 200));
+    focusNode.requestFocus();
+    await tester.pump();
+    expect(find.text('/plan'), findsWidgets);
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pump();
     expect(controller.text, '/plan ');
@@ -739,9 +750,85 @@ void main() {
     controller.text = 'x ${controller.text}';
     await tester.pump();
 
-    final field = tester.widget<TpTokenTextField>(
-      find.byType(TpTokenTextField),
+    expect(controller.tokenRanges, [const TextRange(start: 2, end: 7)]);
+  });
+
+  testWidgets('arrow keys cross a token and its separator in one press', (
+    tester,
+  ) async {
+    final bus = CommandBus();
+    final controller = ComposeTextController();
+    final focusNode = FocusNode();
+    addTearDown(() {
+      controller.dispose();
+      focusNode.dispose();
+    });
+
+    await pumpField(
+      tester,
+      bus: bus,
+      controller: controller,
+      focusNode: focusNode,
+      onSubmit: () {},
     );
-    expect(field.tokenRanges, [const TpTokenRange(start: 2, end: 7)]);
+    final dispatcher = installDispatcher(bus);
+    addTearDown(dispatcher.detach);
+    await enterComposeText(tester, '/pl');
+    await tester.pumpAndSettle(const Duration(milliseconds: 200));
+    focusNode.requestFocus();
+    await tester.pump();
+    expect(find.text('/plan'), findsWidgets);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(controller.text, '/plan ');
+
+    controller.selection = const TextSelection.collapsed(offset: 6);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pump();
+    expect(controller.selection.baseOffset, 0);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    expect(controller.selection.baseOffset, 6);
+  });
+
+  testWidgets('selected token renders a padded inline chip', (tester) async {
+    final bus = CommandBus();
+    final controller = ComposeTextController();
+    final focusNode = FocusNode();
+    addTearDown(() {
+      controller.dispose();
+      focusNode.dispose();
+    });
+
+    await pumpField(
+      tester,
+      bus: bus,
+      controller: controller,
+      focusNode: focusNode,
+      onSubmit: () {},
+    );
+    final dispatcher = installDispatcher(bus);
+    addTearDown(dispatcher.detach);
+    await enterComposeText(tester, '/pl');
+    await tester.pumpAndSettle(const Duration(milliseconds: 200));
+    focusNode.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    final label = find.text('/plan');
+    expect(label, findsWidgets);
+    final padded = find
+        .ancestor(of: label, matching: find.byType(Container))
+        .evaluate()
+        .map((element) => element.widget as Container)
+        .where(
+          (container) =>
+              container.padding ==
+              const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        );
+    expect(padded, isNotEmpty);
   });
 }

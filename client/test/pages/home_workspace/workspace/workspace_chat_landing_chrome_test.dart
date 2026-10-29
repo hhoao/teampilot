@@ -1,3 +1,4 @@
+import 'package:extended_text_field/extended_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,6 +26,7 @@ import 'package:teampilot/widgets/compose/workspace_compose_card.dart';
 import 'package:teampilot/widgets/compose/compose_permission_chip.dart';
 
 import '../../../support/post_frame_test_harness.dart';
+import '../../../support/compose_field_test_utils.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 
 class _MockChatCubit extends Mock implements ChatCubit {}
@@ -186,8 +188,8 @@ void main() {
     await pumpLanding(tester, landingFocusRevision: 1);
     await tester.pump();
 
-    final editable = tester.widget<EditableText>(
-      find.byType(EditableText).first,
+    final editable = tester.widget<ExtendedEditableText>(
+      find.byType(ExtendedEditableText).first,
     );
     expect(
       editable.focusNode.hasFocus,
@@ -200,8 +202,8 @@ void main() {
     await pumpLanding(tester);
     await tester.pump();
 
-    final editable = tester.widget<EditableText>(
-      find.byType(EditableText).first,
+    final editable = tester.widget<ExtendedEditableText>(
+      find.byType(ExtendedEditableText).first,
     );
     expect(editable.focusNode.hasFocus, isFalse);
   });
@@ -217,7 +219,7 @@ void main() {
     };
     addTearDown(() => debugOnRebuildDirtyWidget = null);
 
-    await tester.enterText(find.byType(TextField).first, 'hello');
+    await enterComposeText(tester, 'hello');
     await tester.pump();
 
     expect(

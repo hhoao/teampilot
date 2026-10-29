@@ -1,3 +1,4 @@
+import 'package:extended_text_field/extended_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,6 +24,7 @@ import 'package:teampilot/services/chat/conversation/compose/compose_draft_store
 import 'package:teampilot/services/chat/conversation/compose/compose_token_document.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
+import '../../../support/compose_field_test_utils.dart';
 import '../../../support/post_frame_test_harness.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 
@@ -60,7 +62,7 @@ void main() {
     await tester.pumpWidget(_landing(initialText: null));
     await tester.pumpAndSettle();
 
-    final field = tester.widget<TextField>(find.byType(TextField).first);
+    final field = composeFieldWidget(tester);
     expect(field.controller!.text, 'my draft');
     expect(field.controller!.selection.baseOffset, 'my draft'.length);
   });
@@ -119,10 +121,7 @@ void main() {
     await _flushRealIo(tester);
 
     expect(_composeField(tester).controller!.text, text);
-    final tokenField = tester.widget<TpTokenTextField>(
-      find.byType(TpTokenTextField),
-    );
-    expect(tokenField.tokenRanges, [const TpTokenRange(start: 0, end: 14)]);
+    expect(find.text('@src/main.dart'), findsOneWidget);
   });
 
   testWidgets('does not restore the cache when initialText is provided', (
@@ -132,7 +131,7 @@ void main() {
     await tester.pumpWidget(_landing(initialText: 'prefill'));
     await tester.pumpAndSettle();
 
-    final field = tester.widget<TextField>(find.byType(TextField).first);
+    final field = composeFieldWidget(tester);
     expect(field.controller!.text, 'prefill');
     // The pre-seeded cache entry is untouched by Ask AI-style mounts.
     expect(composeDraftCache.landingDraft('workspace-1')?.text, 'cached');
@@ -142,7 +141,7 @@ void main() {
     await tester.pumpWidget(_landing(initialText: null));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField).first, 'typed message');
+    await enterComposeText(tester, 'typed message');
     await tester.pump();
 
     expect(composeDraftCache.landingDraft('workspace-1')?.text, 'typed message');
@@ -153,7 +152,7 @@ void main() {
     await tester.pumpWidget(_landing(initialText: null));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField).first, '');
+    await enterComposeText(tester, '');
     await tester.pump();
 
     expect(composeDraftCache.landingDraft('workspace-1'), isNull);
@@ -165,7 +164,7 @@ void main() {
     await tester.pumpWidget(_landing(initialText: null));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField).first, 'work in progress');
+    await enterComposeText(tester, 'work in progress');
     await tester.pump();
 
     // Simulate navigating away and back — host unmounts, then remounts.
@@ -173,13 +172,12 @@ void main() {
     await tester.pumpWidget(_landing(initialText: null));
     await tester.pumpAndSettle();
 
-    final field = tester.widget<TextField>(find.byType(TextField).first);
+    final field = composeFieldWidget(tester);
     expect(field.controller!.text, 'work in progress');
   });
 }
 
-TextField _composeField(WidgetTester tester) =>
-    tester.widget<TextField>(find.byType(TextField).first);
+ExtendedTextField _composeField(WidgetTester tester) => composeFieldWidget(tester);
 
 Future<void> _flushRealIo(WidgetTester tester, {int rounds = 6}) async {
   for (var i = 0; i < rounds; i++) {

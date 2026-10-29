@@ -1,6 +1,7 @@
 import 'package:ai_message_core/ai_message_core.dart'
     show AiMessage, AiRole, AiTextPart, ExternalStoreAiThreadRuntime;
 import 'dart:async';
+import 'package:extended_text_field/extended_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -51,6 +52,7 @@ import 'package:teampilot/theme/app_theme.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
+import '../../support/compose_field_test_utils.dart';
 
 /// `SessionChatMessageArea` reads the non-nullable `sessionScrollAnchors`
 /// field, so the mock must provide a real empty map instead of mocktail's
@@ -369,7 +371,7 @@ void main() {
 
     await pumpSession(tester, session: session);
 
-    final field = tester.widget<TextField>(find.byType(TextField).first);
+    final field = composeFieldWidget(tester);
     expect(field.controller!.text, 'continue this');
   });
 
@@ -401,10 +403,7 @@ void main() {
 
     await pumpSession(tester, session: session);
 
-    final tokenField = tester.widget<TpTokenTextField>(
-      find.byType(TpTokenTextField),
-    );
-    expect(tokenField.tokenRanges, [const TpTokenRange(start: 0, end: 2)]);
+    expect(find.text('@a'), findsOneWidget);
   });
 
   testWidgets('session restores persisted draft after cache reset', (
@@ -443,7 +442,7 @@ void main() {
     );
 
     await pumpSession(tester, session: session);
-    await tester.enterText(find.byType(TextField).first, 'draft two');
+    await enterComposeText(tester, 'draft two');
     await tester.pump();
 
     expect(composeDraftCache.sessionDraft('s2')?.text, 'draft two');
@@ -461,14 +460,14 @@ void main() {
     );
 
     await pumpSession(tester, session: session);
-    await tester.enterText(find.byType(TextField).first, 'keep me');
+    await enterComposeText(tester, 'keep me');
     await tester.pump();
 
     await tester.pumpWidget(const SizedBox.shrink());
     await pumpSession(tester, session: session);
     await tester.pumpAndSettle();
 
-    final field = tester.widget<TextField>(find.byType(TextField).first);
+    final field = composeFieldWidget(tester);
     expect(field.controller!.text, 'keep me');
   });
 
@@ -482,7 +481,7 @@ void main() {
       onSubmit: (_) async => const HistoryContinueSubmitResult.failed(),
     );
 
-    await tester.enterText(find.byType(TextField).first, 'do not lose this');
+    await enterComposeText(tester, 'do not lose this');
     await tester.pump();
     await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
     await tester.pumpAndSettle();
@@ -519,7 +518,7 @@ void main() {
         },
       );
 
-      await tester.enterText(find.byType(TextField).first, 'in flight');
+      await enterComposeText(tester, 'in flight');
       await tester.pump();
       await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
       await tester.pump();
@@ -563,7 +562,7 @@ void main() {
       ),
     );
 
-    await tester.enterText(find.byType(TextField).first, 'delivered');
+    await enterComposeText(tester, 'delivered');
     await tester.pump();
     await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
     await tester.pumpAndSettle();
@@ -754,8 +753,7 @@ AppSession _session(String sessionId) => AppSession(
   createdAt: 1,
 );
 
-TextField _composeField(WidgetTester tester) =>
-    tester.widget<TextField>(find.byType(TextField).first);
+ExtendedTextField _composeField(WidgetTester tester) => composeFieldWidget(tester);
 
 Future<void> _flushRealIo(WidgetTester tester, {int rounds = 6}) async {
   for (var i = 0; i < rounds; i++) {

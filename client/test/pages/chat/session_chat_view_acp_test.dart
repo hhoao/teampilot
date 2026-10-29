@@ -8,6 +8,9 @@ import 'package:ai_message_core/ai_message_core.dart'
         AiMessage,
         AiRole,
         AiTextPart,
+        AiToolCallCategory,
+        AiToolCallPart,
+        AiToolCallStatus,
         ExternalStoreAiThreadRuntime;
 import 'package:ai_message_ui/ai_message_ui.dart';
 import 'package:flutter/material.dart';
@@ -47,6 +50,7 @@ import 'package:teampilot/pages/chat/history_continue_delivery.dart';
 import 'package:teampilot/pages/chat/operator_history_send.dart'
     show OperatorMailboxQueuedEvent;
 import 'package:teampilot/pages/chat/session_chat_view.dart';
+import '../../support/compose_field_test_utils.dart';
 import 'package:teampilot/services/acp/acp_chat_transcript_replay.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
 import 'package:teampilot/services/acp/acp_session.dart';
@@ -502,14 +506,8 @@ void main() {
   }
 
   Future<void> enterCompose(WidgetTester tester, String text) async {
-    final composeField = find.descendant(
-      of: find.byType(TpTokenTextField),
-      matching: find.byType(TextField),
-    );
-    expect(composeField, findsOneWidget);
-    await tester.enterText(composeField, text);
-    await tester.pump();
-    expect(tester.widget<TextField>(composeField).controller?.text, text);
+    await enterComposeText(tester, text);
+    expect(composeFieldWidget(tester).controller?.text, text);
     expect(
       tester
           .widget<WorkspaceComposeCard>(find.byType(WorkspaceComposeCard))
@@ -608,6 +606,41 @@ void main() {
   ) async {
     await pumpSession(tester, session: session('s2'));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('ACP chat-only seat still shows the task board capsule', (
+    tester,
+  ) async {
+    when(() => seat.loadedMessages).thenReturn([
+      AiMessage(
+        id: 'a-todos',
+        role: AiRole.assistant,
+        parts: const [
+          AiToolCallPart(
+            toolCallId: 'todo-1',
+            toolName: 'TodoWrite',
+            category: AiToolCallCategory.task,
+            status: AiToolCallStatus.complete,
+            args: {
+              'todos': [
+                {'id': '1', 'content': 'wire the board', 'status': 'pending'},
+                {'id': '2', 'content': 'ship it', 'status': 'pending'},
+              ],
+            },
+          ),
+        ],
+        createdAt: DateTime.utc(2020),
+      ),
+    ]);
+
+    await pumpSession(tester, session: session('s-tasks', acp: true));
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('0/2'), findsOneWidget);
+    await tester.tap(find.text('0/2'));
+    await tester.pumpAndSettle();
+    expect(find.text('wire the board'), findsOneWidget);
+    expect(find.text('ship it'), findsOneWidget);
   });
 
   testWidgets(

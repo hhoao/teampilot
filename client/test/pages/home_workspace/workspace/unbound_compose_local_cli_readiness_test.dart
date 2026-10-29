@@ -27,6 +27,7 @@ import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/theme/app_theme.dart';
 
 import '../../../support/post_frame_test_harness.dart';
+import '../../../support/compose_field_test_utils.dart';
 
 class _MockChatCubit extends Mock implements ChatCubit {}
 
@@ -165,7 +166,7 @@ void main() {
     expect(find.text('Install'), findsOneWidget);
     expect(find.text('Locate'), findsOneWidget);
 
-    await tester.enterText(find.byType(EditableText), 'hello');
+    await enterComposeText(tester, 'hello');
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
     await tester.pumpAndSettle();
@@ -186,7 +187,7 @@ void main() {
 
     expect(find.byType(LocalCliReadinessBanner), findsNothing);
 
-    await tester.enterText(find.byType(EditableText), 'hello');
+    await enterComposeText(tester, 'hello');
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
     await tester.pumpAndSettle();
