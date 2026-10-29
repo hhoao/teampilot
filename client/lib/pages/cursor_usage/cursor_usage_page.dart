@@ -48,7 +48,7 @@ class _CursorUsagePageState extends State<CursorUsagePage> {
                   Expanded(
                     child: Text(
                       context.l10n.cursorUsageTitle,
-                      style: styles.xl.copyWith(fontWeight: FontWeight.w700),
+                      style: styles.lgBold,
                     ),
                   ),
                   IconButton(
