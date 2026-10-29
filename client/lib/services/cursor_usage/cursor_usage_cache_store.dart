@@ -30,6 +30,7 @@ final class CursorUsageCacheStore {
         coverage: parsed.coverage,
         days: parsed.days,
         events: parsed.events,
+        lastFetchAtMs: parsed.lastFetchAtMs,
       );
     } on Object {
       return CursorUsageCache(accountId: accountId);

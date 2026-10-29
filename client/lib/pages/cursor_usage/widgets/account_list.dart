@@ -79,29 +79,7 @@ class CursorUsageAccountList extends StatelessWidget {
               _subtitle(context, account),
               style: styles.xsColored(cs.onSurface.withValues(alpha: 0.6)),
             ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (reports[account.accountId] case final report?)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        formatUsageTokens(report.totalTokens),
-                        style: styles.xs,
-                      ),
-                      Text(
-                        formatCursorUsageUsd(report.totalCents),
-                        style: styles.xsColored(
-                          cs.onSurface.withValues(alpha: 0.6),
-                        ),
-                      ),
-                    ],
-                  ),
-                _accountMenu(context, account),
-              ],
-            ),
+            trailing: _accountMenu(context, account),
           ),
       ],
     );

@@ -195,6 +195,27 @@ void main() {
     expect(api.calls.length, 2);
   });
 
+  test('today inside the refetch TTL is served from the cache', () async {
+    var nowMs = ms(28) + 3600000;
+    final api = _FakeApi(
+      pages: [
+        CursorUsagePage(events: [event('e1', 28)], totalCount: 1),
+      ],
+    );
+    final coord = coordinator(
+      api: api,
+      registry: _FakeRegistry(_credentials),
+      now: () => DateTime.fromMillisecondsSinceEpoch(nowMs),
+    );
+    final range = CursorUsageCustomRange(startMs: ms(28), endMs: ms(28));
+
+    await coord.load(accountId: 'acct', range: range);
+    nowMs += const Duration(minutes: 4).inMilliseconds;
+    await coord.load(accountId: 'acct', range: range);
+
+    expect(api.calls.length, 1);
+  });
+
   test('forceRefresh refetches a range the cache already covers', () async {
     final api = _FakeApi(
       pages: [

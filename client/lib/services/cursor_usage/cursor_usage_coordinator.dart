@@ -54,6 +54,10 @@ final class CursorUsageCoordinator {
 
   static const Duration _rateLimitBackoff = Duration(seconds: 2);
 
+  /// How long a today-window fill counts as fresh. Page opens inside this
+  /// window reuse the cache instead of re-fetching every account.
+  static const Duration _todayRefetchTtl = Duration(minutes: 5);
+
   final CursorAccountDirectory _registry;
   final CursorUsageCacheStore _cacheStore;
   final CursorUsageApi _api;
@@ -115,9 +119,24 @@ final class CursorUsageCoordinator {
         .firstOrNull;
     final teamId = account?.teamId ?? 0;
     final durableOwner = account?.owningUser;
-    final gaps = forceRefresh
+    var gaps = forceRefresh
         ? [cursorUsageAlignWindow(window)]
         : cursorUsageMissingWindows(covered: cache.coverage, requested: window);
+
+    // Today is never covered (it keeps accumulating), so without a throttle
+    // every open would hit the network for every account. Inside the TTL the
+    // today part of a gap is served from the last fill instead.
+    final lastFetch = cache.lastFetchAtMs;
+    final freshEnough =
+        !forceRefresh &&
+        lastFetch != null &&
+        nowMs - lastFetch < _todayRefetchTtl.inMilliseconds;
+    if (freshEnough) {
+      gaps = gaps
+          .map((gap) => _clipBelowToday(gap, nowMs))
+          .whereType<CursorUsageWindow>()
+          .toList();
+    }
 
     for (final gap in gaps) {
       cache = await _fillGap(
@@ -130,6 +149,14 @@ final class CursorUsageCoordinator {
       );
     }
     return buildCursorUsageReport(cache, window: window);
+  }
+
+  /// Drops the today part of a gap; returns null when nothing remains.
+  CursorUsageWindow? _clipBelowToday(CursorUsageWindow gap, int nowMs) {
+    final todayStart = cursorUsageDayStartMs(nowMs);
+    if (gap.startMs >= todayStart) return null;
+    if (gap.endMs < todayStart) return gap;
+    return CursorUsageWindow(startMs: gap.startMs, endMs: todayStart - 1);
   }
 
   Future<CursorUsageCache> _fillGap({
@@ -237,8 +264,11 @@ final class CursorUsageCoordinator {
       next,
       nowMs: _now().millisecondsSinceEpoch,
     );
-    await _cacheStore.save(trimmed);
-    return trimmed;
+    final stamped = trimmed.copyWith(
+      lastFetchAtMs: _now().millisecondsSinceEpoch,
+    );
+    await _cacheStore.save(stamped);
+    return stamped;
   }
 
   /// Cursor leaves `owningUser` empty for personal accounts; an empty value is

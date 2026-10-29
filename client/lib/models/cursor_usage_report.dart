@@ -270,6 +270,7 @@ final class CursorUsageCache extends Equatable {
     this.coverage = const [],
     this.days = const [],
     this.events = const [],
+    this.lastFetchAtMs,
   });
 
   final String accountId;
@@ -277,6 +278,10 @@ final class CursorUsageCache extends Equatable {
   final List<CursorUsageWindow> coverage;
   final List<CursorUsageDay> days;
   final List<CursorUsageEvent> events;
+
+  /// Last successful network fill for this account. Gates re-fetching today,
+  /// whose window is never marked covered because it keeps accumulating.
+  final int? lastFetchAtMs;
 
   bool isCovered(int startMs, int endMs) => coverage.any(
     (window) => window.startMs <= startMs && window.endMs >= endMs,
@@ -287,18 +292,21 @@ final class CursorUsageCache extends Equatable {
     List<CursorUsageWindow>? coverage,
     List<CursorUsageDay>? days,
     List<CursorUsageEvent>? events,
+    int? lastFetchAtMs,
   }) => CursorUsageCache(
     accountId: accountId,
     owningUser: owningUser ?? this.owningUser,
     coverage: coverage ?? this.coverage,
     days: days ?? this.days,
     events: events ?? this.events,
+    lastFetchAtMs: lastFetchAtMs ?? this.lastFetchAtMs,
   );
 
   Map<String, Object?> toJson() => {
     'version': 1,
     'accountId': accountId,
     'owningUser': owningUser,
+    'lastFetchAtMs': lastFetchAtMs,
     'coverage': [
       for (final window in coverage)
         {'startMs': window.startMs, 'endMs': window.endMs},
@@ -348,11 +356,19 @@ final class CursorUsageCache extends Equatable {
       coverage: coverage,
       days: days,
       events: events,
+      lastFetchAtMs: (json['lastFetchAtMs'] as num?)?.toInt(),
     );
   }
 
   @override
-  List<Object?> get props => [accountId, owningUser, coverage, days, events];
+  List<Object?> get props => [
+    accountId,
+    owningUser,
+    coverage,
+    days,
+    events,
+    lastFetchAtMs,
+  ];
 }
 
 /// What the page renders for one account and one range.

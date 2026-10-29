@@ -177,6 +177,22 @@ void main() {
     );
   });
 
+  test('a zero total without an events array is an empty page', () async {
+    final client = CursorUsageApiClient(
+      client: MockClient(
+        (_) async => _json(const {'totalUsageEventsCount': 0}),
+      ),
+    );
+    final page = await client.fetchPage(
+      credentials: _credentials,
+      startMs: 0,
+      endMs: 1,
+      page: 1,
+    );
+    expect(page.events, isEmpty);
+    expect(page.totalCount, 0);
+  });
+
   test('a 200 error envelope without events is invalidResponse', () async {
     final client = CursorUsageApiClient(
       client: MockClient((_) async => _json(const {'error': 'nope'})),

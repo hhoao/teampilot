@@ -92,13 +92,21 @@ final class CursorUsageApiClient implements CursorUsageApi {
     });
     final json = _decodeObject(response);
     final rawEvents = json['usageEventsDisplay'];
-    // A 200 that carries no events array is an error envelope, not an empty
-    // page: caching it would record "covered, zero usage" for a real range.
-    // Individual malformed events inside a present list are still tolerated.
+    final declaredTotal = (json['totalUsageEventsCount'] as num?)?.toInt();
+    // An empty result set may omit the array entirely — that is a real
+    // "zero events" page and must be cached as covered. A missing array next
+    // to a non-zero (or absent) count is an unparseable envelope; the body
+    // snippet goes into the message so the log shows which shape appeared.
     if (rawEvents is! List) {
-      throw const CursorUsageApiException(
+      if (declaredTotal == 0) {
+        return const CursorUsagePage(events: [], totalCount: 0);
+      }
+      final snippet = response.body.replaceAll(RegExp(r'\s+'), ' ').trim();
+      throw CursorUsageApiException(
         CursorUsageApiError.invalidResponse,
-        'Cursor returned no usage events array',
+        'Cursor returned no usage events array '
+        '(total=$declaredTotal): '
+        '${snippet.length > 160 ? snippet.substring(0, 160) : snippet}',
       );
     }
     final events = <CursorUsageEvent>[];
@@ -189,6 +197,13 @@ final class CursorUsageApiClient implements CursorUsageApi {
       throw const CursorUsageApiException(
         CursorUsageApiError.login,
         'Cursor rejected the session',
+      );
+    }
+    // A dead session arrives as a 3xx redirect to WorkOS sign-in, not a 401.
+    if (status >= 300 && status < 400) {
+      throw const CursorUsageApiException(
+        CursorUsageApiError.login,
+        'Cursor redirected the session to sign-in',
       );
     }
     if (status == 429) {
