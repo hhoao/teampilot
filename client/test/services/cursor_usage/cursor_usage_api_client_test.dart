@@ -193,9 +193,25 @@ void main() {
     expect(page.totalCount, 0);
   });
 
+  test('an empty json object is an empty page, not an error', () async {
+    final client = CursorUsageApiClient(
+      client: MockClient((_) async => _json(const <String, Object?>{})),
+    );
+    final page = await client.fetchPage(
+      credentials: _credentials,
+      startMs: 0,
+      endMs: 1,
+      page: 1,
+    );
+    expect(page.events, isEmpty);
+    expect(page.totalCount, 0);
+  });
+
   test('a 200 error envelope without events is invalidResponse', () async {
     final client = CursorUsageApiClient(
-      client: MockClient((_) async => _json(const {'error': 'nope'})),
+      client: MockClient(
+        (_) async => _json(const {'error': 'nope', 'totalUsageEventsCount': 5}),
+      ),
     );
     await expectLater(
       client.fetchPage(

@@ -93,12 +93,13 @@ final class CursorUsageApiClient implements CursorUsageApi {
     final json = _decodeObject(response);
     final rawEvents = json['usageEventsDisplay'];
     final declaredTotal = (json['totalUsageEventsCount'] as num?)?.toInt();
-    // An empty result set may omit the array entirely — that is a real
-    // "zero events" page and must be cached as covered. A missing array next
-    // to a non-zero (or absent) count is an unparseable envelope; the body
-    // snippet goes into the message so the log shows which shape appeared.
+    // An empty result set may omit the array AND the count — the body is
+    // literally `{}` for an account with no events in the range. That is a
+    // real "zero events" page and must be cached as covered. A missing array
+    // next to a non-zero count is an unparseable envelope; the body snippet
+    // goes into the message so the log shows which shape appeared.
     if (rawEvents is! List) {
-      if (declaredTotal == 0) {
+      if (declaredTotal == null || declaredTotal == 0) {
         return const CursorUsagePage(events: [], totalCount: 0);
       }
       final snippet = response.body.replaceAll(RegExp(r'\s+'), ' ').trim();
