@@ -9694,4 +9694,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String cursorUsageCycleRange(String start, String end) {
     return '计费周期：$start – $end';
   }
+
+  @override
+  String get cursorAccountUsageSession => 'Cursor 账号';
+
+  @override
+  String get cursorUsageAllAccounts => '全部账号';
 }

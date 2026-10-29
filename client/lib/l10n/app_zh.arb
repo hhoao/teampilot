@@ -4420,5 +4420,7 @@
       "start": { "type": "String" },
       "end": { "type": "String" }
     }
-  }
+  },
+  "cursorAccountUsageSession": "Cursor 账号",
+  "cursorUsageAllAccounts": "全部账号"
 }

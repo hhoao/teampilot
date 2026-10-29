@@ -72,6 +72,7 @@ final class SessionUsageServices {
     Future<List<AppSession>> Function()? loadSessions,
     Future<List<TeamProfile>> Function()? loadTeams,
     http.Client? cursorHttpClient,
+    Future<List<SessionUsageEvent>> Function()? loadCursorAccountUsage,
   }) {
     final registryForPlane = registry ?? CliToolRegistry.builtIn();
 
@@ -194,7 +195,11 @@ final class SessionUsageServices {
     Future<List<SessionUsageEvent>> loadEvents() async {
       final stores = currentStores();
       final base = await stores.store.readLatest();
-      final imported = await stores.cursorImport.loadEvents();
+      // Account rows replace the legacy CSV import: keeping both would double
+      // count, since the two id schemes cannot be reconciled.
+      final imported =
+          await (loadCursorAccountUsage?.call() ??
+              Future<List<SessionUsageEvent>>.value(const []));
       if (imported.isEmpty) return base;
       final byId = {for (final event in base) event.requestId: event};
       for (final event in imported) {

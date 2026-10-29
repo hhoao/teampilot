@@ -31,6 +31,7 @@ import '../services/cursor_usage/cursor_account_registry.dart';
 import '../services/cursor_usage/cursor_usage_api_client.dart';
 import '../services/cursor_usage/cursor_usage_cache_store.dart';
 import '../services/cursor_usage/cursor_usage_coordinator.dart';
+import '../services/cursor_usage/cursor_usage_event_source.dart';
 import '../services/cursor_usage/cursor_usage_range_preference.dart';
 import '../services/agent_runtime/agent_event_gateway.dart';
 import '../services/agent_runtime/agent_runtime.dart';
@@ -1600,31 +1601,6 @@ Future<AppShell> buildAppShell({
       },
     );
 
-    final sessionUsageServices = SessionUsageServices.forStorage(
-      storage: homeStorage,
-      registry: cliToolRegistry,
-      sessions: sessionRepo,
-      teams: identityRepository,
-    );
-    final sessionUsageCubit = SessionUsageCubit(
-      loadEvents: sessionUsageServices.loadEvents,
-      syncAll: sessionUsageServices.syncAll,
-      startSync: sessionUsageServices.startSync,
-      startFullSync: sessionUsageServices.startFullSync,
-      loadPricing: sessionUsageServices.loadPricing,
-      savePricing: sessionUsageServices.savePricing,
-      loadUsageStats: sessionUsageServices.loadUsageStats,
-      compactUsage: sessionUsageServices.compactUsage,
-      loadCursorStatus: sessionUsageServices.loadCursorStatus,
-      importCursorCsv: sessionUsageServices.importCursorCsv,
-      syncCursorUsage: sessionUsageServices.syncCursorUsage,
-      clearCursorUsage: sessionUsageServices.clearCursorUsage,
-      loadSessions: sessionUsageServices.loadSessions,
-      loadTeams: sessionUsageServices.loadTeams,
-      storageChanges: homeStorage.changes.map<void>((_) {}),
-    );
-    unawaited(sessionUsageCubit.ensureLoaded());
-
     final cursorAccountCredentialStore = CursorAccountCredentialStore(
       store: const FlutterSecureKeyValueStore(),
     );
@@ -1652,6 +1628,36 @@ Future<AppShell> buildAppShell({
       fs: homeStorage.fs,
       path: homeStorage.paths.cursorUsageUiStateFile,
     );
+
+    final sessionUsageServices = SessionUsageServices.forStorage(
+      storage: homeStorage,
+      registry: cliToolRegistry,
+      sessions: sessionRepo,
+      teams: identityRepository,
+      loadCursorAccountUsage: () => CursorUsageEventSource(
+        listAccounts: cursorAccountRegistry.list,
+        loadCache: cursorUsageCacheStore.load,
+      ).loadEvents(),
+    );
+    final sessionUsageCubit = SessionUsageCubit(
+      loadEvents: sessionUsageServices.loadEvents,
+      syncAll: sessionUsageServices.syncAll,
+      startSync: sessionUsageServices.startSync,
+      startFullSync: sessionUsageServices.startFullSync,
+      loadPricing: sessionUsageServices.loadPricing,
+      savePricing: sessionUsageServices.savePricing,
+      loadUsageStats: sessionUsageServices.loadUsageStats,
+      compactUsage: sessionUsageServices.compactUsage,
+      loadCursorStatus: sessionUsageServices.loadCursorStatus,
+      importCursorCsv: sessionUsageServices.importCursorCsv,
+      syncCursorUsage: sessionUsageServices.syncCursorUsage,
+      clearCursorUsage: sessionUsageServices.clearCursorUsage,
+      loadSessions: sessionUsageServices.loadSessions,
+      loadTeams: sessionUsageServices.loadTeams,
+      storageChanges: homeStorage.changes.map<void>((_) {}),
+    );
+    unawaited(sessionUsageCubit.ensureLoaded());
+
     final cursorUsageCubit = CursorUsageCubit(
       loadAccounts: cursorAccountRegistry.list,
       // Credential refresh already happens inside the registry's

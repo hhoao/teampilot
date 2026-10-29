@@ -17965,6 +17965,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Billing cycle: {start} – {end}'**
   String cursorUsageCycleRange(String start, String end);
+
+  /// No description provided for @cursorAccountUsageSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Cursor accounts'**
+  String get cursorAccountUsageSession;
+
+  /// No description provided for @cursorUsageAllAccounts.
+  ///
+  /// In en, this message translates to:
+  /// **'All accounts'**
+  String get cursorUsageAllAccounts;
 }
 
 class _AppLocalizationsDelegate

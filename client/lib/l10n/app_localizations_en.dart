@@ -10123,4 +10123,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String cursorUsageCycleRange(String start, String end) {
     return 'Billing cycle: $start – $end';
   }
+
+  @override
+  String get cursorAccountUsageSession => 'Cursor accounts';
+
+  @override
+  String get cursorUsageAllAccounts => 'All accounts';
 }

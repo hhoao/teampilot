@@ -101,6 +101,7 @@ class _CursorUsagePageState extends State<CursorUsagePage> {
                               syncing: state.syncing,
                               failures: state.failures,
                               billingCycles: state.billingCycles,
+                              reports: state.reports,
                               onSelect: cubit.selectAccount,
                             ),
                             const SizedBox(height: 12),

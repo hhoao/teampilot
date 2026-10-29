@@ -5116,5 +5116,7 @@
       "start": { "type": "String" },
       "end": { "type": "String" }
     }
-  }
+  },
+  "cursorAccountUsageSession": "Cursor accounts",
+  "cursorUsageAllAccounts": "All accounts"
 }

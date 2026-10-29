@@ -4,7 +4,10 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/cursor_usage_account.dart';
 import '../../../models/cursor_usage_range.dart';
+import '../../../models/cursor_usage_report.dart';
 import '../../../services/cursor_usage/cursor_usage_coordinator.dart';
+import '../../usage/usage_format.dart';
+import '../cursor_usage_format.dart';
 
 class CursorUsageAccountList extends StatelessWidget {
   const CursorUsageAccountList({
@@ -13,6 +16,7 @@ class CursorUsageAccountList extends StatelessWidget {
     required this.syncing,
     required this.failures,
     required this.billingCycles,
+    required this.reports,
     required this.onSelect,
     super.key,
   });
@@ -22,6 +26,7 @@ class CursorUsageAccountList extends StatelessWidget {
   final Set<String> syncing;
   final Map<String, CursorUsageFailure> failures;
   final Map<String, CursorUsageWindow> billingCycles;
+  final Map<String, CursorUsageReport> reports;
   final ValueChanged<String> onSelect;
 
   @override
@@ -29,6 +34,14 @@ class CursorUsageAccountList extends StatelessWidget {
     final l10n = context.l10n;
     final styles = TpTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
+    final totalTokens = reports.values.fold<int>(
+      0,
+      (sum, report) => sum + report.totalTokens,
+    );
+    final totalCents = reports.values.fold<double>(
+      0,
+      (sum, report) => sum + report.totalCents,
+    );
     if (accounts.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
@@ -40,6 +53,16 @@ class CursorUsageAccountList extends StatelessWidget {
     }
     return Column(
       children: [
+        if (reports.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              '${l10n.cursorUsageAllAccounts} · '
+              '${formatUsageTokens(totalTokens)} · '
+              '${formatCursorUsageUsd(totalCents)}',
+              style: styles.xsColored(cs.onSurface.withValues(alpha: 0.55)),
+            ),
+          ),
         for (final account in accounts)
           ListTile(
             dense: true,
