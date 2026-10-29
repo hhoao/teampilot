@@ -143,6 +143,7 @@ class TpDataTable<T> extends StatefulWidget {
     required this.rowKey,
     required this.state,
     required this.onStateChanged,
+    this.defaultSort,
     this.toolbar,
     this.footer,
     this.emptyState,
@@ -178,7 +179,7 @@ class TpDataTable<T> extends StatefulWidget {
 - 列头点击只计算下一个 `TpTableSort` 并回调 `onStateChanged`：
   - 当前不是排序列 → 按该列降序。
   - 当前是降序 → 升序。
-  - 当前是升序 → `sort = null`（回到调用方默认顺序）。
+  - 当前是升序 → `defaultSort`（没有默认排序时为 `null`）。
 - 排序由调用方执行：调用方根据 `sortValue` 排序后再分页，把当前页 `rows` 传给 `TpDataTable`。
 - 排序稳定：相同 `sortValue` 保持原始顺序。
 - 排序列头显示 `arrow_downward` / `arrow_upward`；不可排序列头不显示箭头。
