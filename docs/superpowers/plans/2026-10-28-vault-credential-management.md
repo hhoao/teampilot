@@ -4451,3 +4451,19 @@ git commit -m "docs(vault): document vault storage and service boundary"
   `ssh_credentials_resolver.dart`、`VaultCredentialReader` 注入、工厂接入及其测试。
 
 设计语义不变，仅调整任务边界。
+
+---
+
+## 执行拆分（Task 7 依赖修正）
+
+Task 7 原本一次创建 list/status/page/route/DI，但 `vault_page.dart` 依赖 Task 8 的详情与
+Task 9 的编辑器，编辑器又依赖 `vault_entry_list.dart` 里的 `vaultTypeLabel`。执行时按以下顺序拆分，
+设计语义不变：
+
+- **7a**（Task 7 的一部分）：l10n、`vault_entry_list.dart`（含 `vaultTypeLabel`）、
+  `vault_status_section.dart`（状态卡 + 解锁/启用对话框）及其 widget 测试。
+- **7b**（原 Task 9）：`vault_entry_editor.dart` + 测试。
+- **7c**（原 Task 8）：`vault_entry_detail.dart` + 测试。
+- **7d**（Task 7 剩余）：`vault_page.dart`、`vault_config_section.dart`、
+  `ConfigSection.vault`/路由/侧栏/AppKeys、`app_shell`/`main.dart` DI、页面 widget 测试。
+- Task 10 只保留 SSH resolver/factory（模型字段已在 Task 6 完成）。
