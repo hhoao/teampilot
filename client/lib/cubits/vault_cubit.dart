@@ -178,8 +178,12 @@ class VaultCubit extends Cubit<VaultState> {
   }
 
   Future<void> setQuery(String query) async {
-    emit(state.copyWith(query: query));
-    await _refreshEntries();
+    emit(state.copyWith(query: query, clearError: true));
+    try {
+      await _refreshEntries();
+    } on VaultException catch (error) {
+      emit(state.copyWith(errorMessage: error.code));
+    }
   }
 
   Future<void> setTypeFilter(VaultEntryType? type) async {
@@ -187,16 +191,25 @@ class VaultCubit extends Cubit<VaultState> {
       state.copyWith(
         typeFilter: type,
         clearTypeFilter: type == null,
+        clearError: true,
       ),
     );
-    await _refreshEntries();
+    try {
+      await _refreshEntries();
+    } on VaultException catch (error) {
+      emit(state.copyWith(errorMessage: error.code));
+    }
   }
 
   Future<void> toggleTag(String tag) async {
     final tags = {...state.tagFilter};
     if (!tags.remove(tag)) tags.add(tag);
-    emit(state.copyWith(tagFilter: tags));
-    await _refreshEntries();
+    emit(state.copyWith(tagFilter: tags, clearError: true));
+    try {
+      await _refreshEntries();
+    } on VaultException catch (error) {
+      emit(state.copyWith(errorMessage: error.code));
+    }
   }
 
   void select(String? id) {
@@ -238,6 +251,7 @@ class VaultCubit extends Cubit<VaultState> {
     emit(state.copyWith(busy: true, clearError: true));
     try {
       await _service.enableEncryptedBackend(passphrase);
+      await _refresh();
       emit(
         state.copyWith(
           status: VaultStatus.ready,
@@ -255,6 +269,7 @@ class VaultCubit extends Cubit<VaultState> {
     emit(state.copyWith(busy: true, clearError: true));
     try {
       await _service.disableEncryptedBackend();
+      await _refresh();
       emit(
         state.copyWith(
           status: VaultStatus.ready,
@@ -280,7 +295,10 @@ class VaultCubit extends Cubit<VaultState> {
           ),
     ];
     for (final cli in CliTool.values) {
-      final providers = await _appProviders.loadProviders(cli);
+      final providers = await _appProviders.loadProviders(
+        cli,
+        reconcileCredentials: false,
+      );
       for (final provider in providers) {
         if (provider.credentialLink.trim() == 'vault:$entryId') {
           references.add(

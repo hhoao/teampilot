@@ -92,4 +92,30 @@ void main() {
     expect(refs.single.kind, VaultReferenceKind.sshProfile);
     expect(refs.single.label, 'Server');
   });
+
+  test('setQuery while locked surfaces error and keeps query', () async {
+    await cubit.load();
+    await cubit.enableEncryption('master');
+    cubit.lock();
+    await cubit.setQuery('x');
+    expect(cubit.state.errorMessage, isNotNull);
+    expect(cubit.state.query, 'x');
+  });
+
+  test('enabling encryption twice surfaces error and clears busy', () async {
+    await cubit.load();
+    await cubit.enableEncryption('master');
+    await cubit.enableEncryption('master');
+    expect(cubit.state.errorMessage, isNotNull);
+    expect(cubit.state.busy, isFalse);
+  });
+
+  test('remove while locked surfaces error and clears busy', () async {
+    await cubit.load();
+    await cubit.enableEncryption('master');
+    cubit.lock();
+    await cubit.remove('nope');
+    expect(cubit.state.errorMessage, isNotNull);
+    expect(cubit.state.busy, isFalse);
+  });
 }
