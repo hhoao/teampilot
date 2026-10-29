@@ -459,6 +459,21 @@ void main() {
     );
   });
 
+  test('peek serves the cache without touching the network', () async {
+    final api = _FakeApi(
+      pages: [CursorUsagePage(events: [event('e1', 28)], totalCount: 1)],
+    );
+    final coord = coordinator(api: api, registry: _FakeRegistry(_credentials));
+    final range = CursorUsageCustomRange(startMs: ms(28), endMs: ms(28));
+    await coord.load(accountId: 'acct', range: range);
+    final before = api.calls.length;
+
+    final peeked = await coord.peek(accountId: 'acct', range: range);
+    expect(peeked, isNotNull);
+    expect(peeked!.inputTokens, 10);
+    expect(api.calls.length, before);
+  });
+
   test('missing credential fails before any request', () async {
     final api = _FakeApi();
     await expectLater(

@@ -134,6 +134,42 @@ void main() {
     expect(cubit.state.billingCycles['a']!.startMs, 100);
   });
 
+  test('a failed refresh keeps the peeked report visible', () async {
+    final cubit = CursorUsageCubit(
+      loadAccounts: () async => [_accountA],
+      refreshAccount: (_) async {},
+      billingCycleFor: (_) async => null,
+      peekReport:
+          ({
+            required accountId,
+            required range,
+            billingCycle,
+          }) async => const CursorUsageReport(
+            accountId: 'a',
+            startMs: 0,
+            endMs: 1,
+            inputTokens: 99,
+          ),
+      loadReport:
+          ({
+            required accountId,
+            required range,
+            billingCycle,
+            forceRefresh = false,
+          }) async => throw StateError('boom'),
+      saveRange: (_) async {},
+      addAccount: (_, _) async => true,
+      removeAccount: (_) async {},
+      setAccountEnabled: (_, __) async {},
+      initialRange: const CursorUsagePresetRange(CursorUsagePreset.today),
+    );
+
+    await cubit.ensureLoaded();
+
+    expect(cubit.state.failures['a'], CursorUsageFailure.network);
+    expect(cubit.state.reports['a']!.inputTokens, 99);
+  });
+
   test('selecting an account exposes its report', () async {
     final cubit = CursorUsageCubit(
       loadAccounts: () async => [_accountA, _accountB],

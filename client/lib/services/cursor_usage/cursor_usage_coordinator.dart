@@ -159,6 +159,30 @@ final class CursorUsageCoordinator {
     return CursorUsageWindow(startMs: gap.startMs, endMs: todayStart - 1);
   }
 
+  /// The cached report for [range], without touching the network.
+  ///
+  /// The UI shows this first so a slow or failing refresh never blanks out
+  /// data that is already on disk. Returns null when the cache is empty.
+  Future<CursorUsageReport?> peek({
+    required String accountId,
+    required CursorUsageRange range,
+    CursorUsageWindow? billingCycle,
+  }) async {
+    final cache = await _cacheStore.load(accountId);
+    if (cache.days.isEmpty && cache.events.isEmpty) return null;
+    final nowMs = _now().millisecondsSinceEpoch;
+    final resolved = cursorUsageResolveRange(
+      range: range,
+      nowMs: nowMs,
+      billingCycle: billingCycle,
+    );
+    final window = CursorUsageWindow(
+      startMs: resolved.startMs,
+      endMs: resolved.endMs > nowMs ? nowMs : resolved.endMs,
+    );
+    return buildCursorUsageReport(cache, window: window);
+  }
+
   Future<CursorUsageCache> _fillGap({
     required CursorUsageCache cache,
     required CursorAccountCredentials credentials,

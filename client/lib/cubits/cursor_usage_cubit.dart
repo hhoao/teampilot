@@ -98,6 +98,12 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
     required Future<void> Function(String accountId, bool enabled)
     setAccountEnabled,
     Future<CursorUsageRange> Function()? loadRange,
+    Future<CursorUsageReport?> Function({
+      required String accountId,
+      required CursorUsageRange range,
+      CursorUsageWindow? billingCycle,
+    })?
+    peekReport,
     required CursorUsageRange initialRange,
   }) : _loadAccounts = loadAccounts,
        _refreshAccount = refreshAccount,
@@ -108,6 +114,7 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
        _removeAccount = removeAccount,
        _setAccountEnabled = setAccountEnabled,
        _loadRange = loadRange,
+       _peekReport = peekReport,
        super(CursorUsageState(range: initialRange));
 
   final Future<List<CursorUsageAccount>> Function() _loadAccounts;
@@ -126,6 +133,12 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
   final Future<void> Function(String accountId, bool enabled)
   _setAccountEnabled;
   final Future<CursorUsageRange> Function()? _loadRange;
+  final Future<CursorUsageReport?> Function({
+    required String accountId,
+    required CursorUsageRange range,
+    CursorUsageWindow? billingCycle,
+  })?
+  _peekReport;
 
   Future<void>? _loadFlight;
 
@@ -223,6 +236,29 @@ final class CursorUsageCubit extends Cubit<CursorUsageState> {
                   await _billingCycleFor(account.accountId);
         if (isClosed || generation != _generation) return;
         if (cycle != null) cycles[account.accountId] = cycle;
+        // Serve the cached numbers before the network call so a slow or
+        // failing refresh never blanks out data that is already on disk.
+        final peek = _peekReport;
+        if (peek != null) {
+          final cached = await peek(
+            accountId: account.accountId,
+            range: state.range,
+            billingCycle: cycle,
+          );
+          if (isClosed || generation != _generation) return;
+          if (cached != null) {
+            reports[account.accountId] = cached;
+            if (!isClosed) {
+              emit(
+                state.copyWith(
+                  reports: Map.unmodifiable(reports),
+                  failures: Map.unmodifiable(failures),
+                  billingCycles: Map.unmodifiable(cycles),
+                ),
+              );
+            }
+          }
+        }
         reports[account.accountId] = await _loadReport(
           accountId: account.accountId,
           range: state.range,

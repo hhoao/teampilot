@@ -1670,6 +1670,16 @@ Future<AppShell> buildAppShell({
           ),
       saveRange: (range) => cursorStack().rangePreference.save(range),
       loadRange: () => cursorStack().rangePreference.load(),
+      peekReport:
+          ({
+            required accountId,
+            required range,
+            billingCycle,
+          }) => cursorStack().coordinator.peek(
+            accountId: accountId,
+            range: range,
+            billingCycle: billingCycle,
+          ),
       addAccount: (raw, label) async {
         final credentials = parseCursorSessionToken(raw);
         if (credentials == null) return false;
