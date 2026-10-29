@@ -17,6 +17,12 @@ class CursorUsageTotals extends StatelessWidget {
     final styles = TpTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
     final cells = <(String, String)>[
+      (
+        l10n.cursorUsageGrandTotal,
+        formatUsageTokens(
+          report.inputTokens + report.outputTokens + report.cacheReadTokens,
+        ),
+      ),
       (l10n.cursorUsageInput, formatUsageTokens(report.inputTokens)),
       (l10n.cursorUsageOutput, formatUsageTokens(report.outputTokens)),
       (l10n.cursorUsageCacheRead, formatUsageTokens(report.cacheReadTokens)),

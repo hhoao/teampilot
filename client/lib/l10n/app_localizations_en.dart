@@ -10024,6 +10024,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cursorUsageCacheWrite => 'Cache write';
 
   @override
+  String get cursorUsageGrandTotal => 'Total (in + out + cache read)';
+
+  @override
   String get cursorUsageCost => 'Cost';
 
   @override

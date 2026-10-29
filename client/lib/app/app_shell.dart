@@ -30,6 +30,7 @@ import '../models/cursor_usage_report.dart';
 import '../services/cli/cursor/provider/cursor_usage_auth_resolver.dart';
 import '../services/cursor_usage/cursor_account_credential_store.dart';
 import '../services/cursor_usage/cursor_account_registry.dart';
+import '../services/cli/cursor/provider/cursor_provider_settings_resolver.dart';
 import '../services/cursor_usage/cursor_usage_api_client.dart';
 import '../services/cursor_usage/cursor_usage_cache_store.dart';
 import '../services/cursor_usage/cursor_usage_coordinator.dart';
@@ -3379,7 +3380,7 @@ class _CursorUsageStack {
     required HomeStorage storage,
     required CursorUsageApiClient api,
     required SecureKeyValueStore secureStore,
-  }) : registry = CursorAccountRegistry(
+  }) :        registry = CursorAccountRegistry(
          fs: storage.fs,
          accountsPath: storage.paths.cursorUsageAccountsFile,
          credentials: CursorAccountCredentialStore(store: secureStore),
@@ -3390,6 +3391,10 @@ class _CursorUsageStack {
            // Expired tokens are included so the usage page can show the account
            // as "expired, sign in again"; credentialFor filters them for sync.
          ).resolveAll(includeExpired: true),
+         providerNameFor: (providerId) => CursorProviderSettingsResolver(
+           basePath: storage.paths.basePath,
+           storage: storage,
+         ).findById(providerId).then((provider) => provider?.name),
        ),
        cacheStore = CursorUsageCacheStore(
          fs: storage.fs,

@@ -5071,6 +5071,7 @@
   "cursorUsageOutput": "Output",
   "cursorUsageCacheRead": "Cache read",
   "cursorUsageCacheWrite": "Cache write",
+  "cursorUsageGrandTotal": "Total (in + out + cache read)",
   "cursorUsageCost": "Cost",
   "cursorUsageEvents": "Events",
   "cursorUsageRangeCycle": "Billing cycle",

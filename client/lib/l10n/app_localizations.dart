@@ -17786,6 +17786,12 @@ abstract class AppLocalizations {
   /// **'Cache write'**
   String get cursorUsageCacheWrite;
 
+  /// No description provided for @cursorUsageGrandTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total (in + out + cache read)'**
+  String get cursorUsageGrandTotal;
+
   /// No description provided for @cursorUsageCost.
   ///
   /// In en, this message translates to:

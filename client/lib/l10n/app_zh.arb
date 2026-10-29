@@ -4375,6 +4375,7 @@
   "cursorUsageOutput": "输出",
   "cursorUsageCacheRead": "缓存读取",
   "cursorUsageCacheWrite": "缓存写入",
+  "cursorUsageGrandTotal": "总量（输入 + 输出 + 缓存读）",
   "cursorUsageCost": "费用",
   "cursorUsageEvents": "事件",
   "cursorUsageRangeCycle": "计费周期",
