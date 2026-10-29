@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:acpd/acpd.dart';
 
 import '../../../acp/acp_agent_translator.dart';
@@ -43,7 +45,9 @@ final class CodebuddyAcpTranslator extends AcpAgentTranslator {
 
   /// CodeBuddy reports auth failures as `stopReason: refusal` plus
   /// `_meta["codebuddy.ai/errorMessage"]` (a JSON string with `code`/`message`)
-  /// rather than a JSON-RPC error.
+  /// rather than a JSON-RPC error. Quota and other non-auth failures use the
+  /// same channel; their message is surfaced so the turn does not end
+  /// silently as a plain `refusal` → `aborted` stop.
   @override
   String? translateStopMeta(StopReason reason, Map<String, Object?> meta) {
     if (reason != StopReason.refusal) return null;
@@ -56,7 +60,22 @@ final class CodebuddyAcpTranslator extends AcpAgentTranslator {
         lower.contains('login')) {
       return acpStopAuthRequired;
     }
-    return null;
+    return _errorMessage(raw);
+  }
+
+  /// Extracts the nested error `message`, falling back to the raw string
+  /// when it is not the expected JSON envelope.
+  String _errorMessage(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        final message = decoded['message'];
+        if (message is String && message.isNotEmpty) return message;
+      }
+    } on FormatException {
+      // Not JSON — surface the raw string.
+    }
+    return raw;
   }
 }
 

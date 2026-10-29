@@ -88,7 +88,7 @@ void main() {
         translator.translateStopMeta(StopReason.refusal, const {
           'codebuddy.ai/errorMessage': '{"code":1,"message":"content policy"}',
         }),
-        isNull,
+        'content policy',
       );
       expect(
         translator.translateStopMeta(StopReason.endTurn, const {}),
@@ -96,4 +96,28 @@ void main() {
       );
     },
   );
+
+  test('refusal meta with a quota error surfaces the nested message', () {
+    const translator = CodebuddyAcpTranslator();
+    const message =
+        'Quota exceeded: 429 您的使用量已超出频率限制，将在 2026-10-29 16:56:40 UTC+8 重置，'
+        '您也可以切换其他模型继续使用。';
+    expect(
+      translator.translateStopMeta(StopReason.refusal, const {
+        'codebuddy.ai/errorMessage':
+            '{"code":-32003,"message":"$message","data":{"statusCode":429}}',
+      }),
+      message,
+    );
+  });
+
+  test('refusal meta that is not JSON surfaces the raw string', () {
+    const translator = CodebuddyAcpTranslator();
+    expect(
+      translator.translateStopMeta(StopReason.refusal, const {
+        'codebuddy.ai/errorMessage': 'plain refusal text',
+      }),
+      'plain refusal text',
+    );
+  });
 }
