@@ -119,6 +119,27 @@ void main() {
     );
   });
 
+  test('a coverageLimit keeps today out of coverage but counts its tokens', () {
+    final todayStart = ms(28);
+    final todayEnd = ms(28) + 86399999;
+
+    final cache = applyCursorUsageEvents(
+      CursorUsageCache(accountId: 'a'),
+      [event('e1', 28)],
+      window: CursorUsageWindow(startMs: todayStart, endMs: todayEnd),
+      coverageLimit: CursorUsageWindow(
+        startMs: todayStart,
+        endMs: todayStart - 1,
+      ),
+    );
+
+    expect(cache.isCovered(todayStart, todayEnd), isFalse);
+    expect(
+      cache.days.firstWhere((day) => day.dayMs == todayStart).inputTokens,
+      10,
+    );
+  });
+
   test('trim drops events older than the retention window', () {
     final nowMs = ms(20);
     final cache = applyCursorUsageEvents(CursorUsageCache(accountId: 'a'), [

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_ui/shared_ui.dart';
@@ -12,23 +14,61 @@ import 'widgets/add_account_dialog.dart';
 import 'widgets/range_picker.dart';
 import 'widgets/usage_detail.dart';
 
+const Duration _autoSyncInterval = Duration(minutes: 10);
+
 class CursorUsagePage extends StatefulWidget {
-  const CursorUsagePage({this.embedded = false, super.key});
+  const CursorUsagePage({
+    this.embedded = false,
+    this.autoSync = true,
+    super.key,
+  });
 
   final bool embedded;
+
+  /// Refreshes on open, on app resume, and every 10 minutes while visible.
+  final bool autoSync;
 
   @override
   State<CursorUsagePage> createState() => _CursorUsagePageState();
 }
 
-class _CursorUsagePageState extends State<CursorUsagePage> {
+class _CursorUsagePageState extends State<CursorUsagePage>
+    with WidgetsBindingObserver {
+  Timer? _autoSyncTimer;
+  bool _appActive = true;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    _appActive = lifecycle == null || lifecycle == AppLifecycleState.resumed;
+    if (widget.autoSync) {
+      _autoSyncTimer = Timer.periodic(_autoSyncInterval, (_) {
+        if (!mounted || !_appActive) return;
+        unawaited(context.read<CursorUsageCubit>().refresh());
+      });
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<CursorUsageCubit>().ensureLoaded();
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appActive = state == AppLifecycleState.resumed;
+    if (_appActive && widget.autoSync && mounted) {
+      unawaited(context.read<CursorUsageCubit>().refresh());
+    }
+  }
+
+  @override
+  void dispose() {
+    _autoSyncTimer?.cancel();
+    _autoSyncTimer = null;
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   @override

@@ -177,6 +177,27 @@ void main() {
     );
   });
 
+  test('a 200 error envelope without events is invalidResponse', () async {
+    final client = CursorUsageApiClient(
+      client: MockClient((_) async => _json(const {'error': 'nope'})),
+    );
+    await expectLater(
+      client.fetchPage(
+        credentials: _credentials,
+        startMs: 0,
+        endMs: 1,
+        page: 1,
+      ),
+      throwsA(
+        isA<CursorUsageApiException>().having(
+          (error) => error.code,
+          'code',
+          CursorUsageApiError.invalidResponse,
+        ),
+      ),
+    );
+  });
+
   test('fetchBillingCycle parses the ISO bounds', () async {
     final client = CursorUsageApiClient(
       client: MockClient(
@@ -196,6 +217,18 @@ void main() {
       cycle.endMs,
       DateTime.utc(2026, 11, 6, 7, 5, 16).millisecondsSinceEpoch,
     );
+  });
+
+  test('fetchBillingCycle sends the session cookie', () async {
+    late http.Request captured;
+    final client = CursorUsageApiClient(
+      client: MockClient((request) async {
+        captured = request;
+        return _json(const {'membershipType': 'pro'});
+      }),
+    );
+    await client.fetchBillingCycle(credentials: _credentials);
+    expect(captured.headers['Cookie'], _credentials.cookie);
   });
 
   test('fetchBillingCycle returns null when the fields are absent', () async {

@@ -4,11 +4,17 @@ import 'cursor_usage_range_math.dart';
 
 /// Adds [incoming] to [cache], first dropping anything previously stored inside
 /// [window] so a re-fetch of the same range replaces rather than duplicates.
+///
+/// [coverageLimit] separates "which events to store" from "which days are
+/// complete": events still land for the whole aligned [window], but only
+/// [coverageLimit] is marked covered. The coordinator passes yesterday's end
+/// so today's still-accumulating events are cached without freezing the day.
 CursorUsageCache applyCursorUsageEvents(
   CursorUsageCache cache,
   List<CursorUsageEvent> incoming, {
   required CursorUsageWindow window,
   String? owningUser,
+  CursorUsageWindow? coverageLimit,
 }) {
   final aligned = cursorUsageAlignWindow(window);
   final keptEvents = cache.events
@@ -62,9 +68,18 @@ CursorUsageCache applyCursorUsageEvents(
   final events = byId.values.toList()
     ..sort((a, b) => b.timestampMs.compareTo(a.timestampMs));
 
+  final limit = coverageLimit;
+  // An inverted limit means the window lies entirely after the last completed
+  // day; recording any coverage there would claim a day we only half saw.
+  final covered = limit == null
+      ? aligned
+      : (limit.startMs <= limit.endMs ? limit : null);
+
   return cache.copyWith(
     owningUser: owningUser ?? cache.owningUser,
-    coverage: cursorUsageMergeWindows([...cache.coverage, aligned]),
+    coverage: covered == null
+        ? cache.coverage
+        : cursorUsageMergeWindows([...cache.coverage, covered]),
     days: days,
     events: events,
   );

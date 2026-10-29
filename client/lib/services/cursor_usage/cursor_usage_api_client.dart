@@ -92,13 +92,20 @@ final class CursorUsageApiClient implements CursorUsageApi {
     });
     final json = _decodeObject(response);
     final rawEvents = json['usageEventsDisplay'];
+    // A 200 that carries no events array is an error envelope, not an empty
+    // page: caching it would record "covered, zero usage" for a real range.
+    // Individual malformed events inside a present list are still tolerated.
+    if (rawEvents is! List) {
+      throw const CursorUsageApiException(
+        CursorUsageApiError.invalidResponse,
+        'Cursor returned no usage events array',
+      );
+    }
     final events = <CursorUsageEvent>[];
-    if (rawEvents is List) {
-      for (final item in rawEvents) {
-        if (item is! Map) continue;
-        final event = _parseEvent(Map<String, Object?>.from(item));
-        if (event != null) events.add(event);
-      }
+    for (final item in rawEvents) {
+      if (item is! Map) continue;
+      final event = _parseEvent(Map<String, Object?>.from(item));
+      if (event != null) events.add(event);
     }
     return CursorUsagePage(
       events: events,

@@ -131,6 +131,15 @@ void main() {
     expect(account.label, 'Team');
   });
 
+  test('accounts.json holds metadata only, never the token', () async {
+    final credentials = manualCredentials();
+    await registry.upsertManual(credentials, label: 'Work');
+
+    final raw = await fs.readString('/root/cursor_usage/accounts.json');
+    expect(raw, isNotNull);
+    expect(raw, isNot(contains(credentials.token)));
+  });
+
   test('corrupted accounts.json degrades to discovered only', () async {
     await fs.ensureDir('/root/cursor_usage');
     await fs.writeString('/root/cursor_usage/accounts.json', '{not json');

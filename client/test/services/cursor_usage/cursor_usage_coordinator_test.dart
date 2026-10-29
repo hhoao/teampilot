@@ -39,6 +39,9 @@ class _FakeApi implements CursorUsageApi {
   final calls = <(int, int, int)>[];
   Object? throwOnFetch;
 
+  /// Thrown once, then cleared, so a retry can succeed.
+  Object? throwOnce;
+
   @override
   Future<CursorUsagePage> fetchPage({
     required CursorAccountCredentials credentials,
@@ -49,6 +52,11 @@ class _FakeApi implements CursorUsageApi {
     int teamId = 0,
   }) async {
     calls.add((startMs, endMs, page));
+    final once = throwOnce;
+    if (once != null) {
+      throwOnce = null;
+      throw once;
+    }
     final error = throwOnFetch;
     if (error != null) throw error;
     final index = page - 1;
@@ -124,11 +132,14 @@ void main() {
   CursorUsageCoordinator coordinator({
     required CursorUsageApi api,
     required _FakeRegistry registry,
+    DateTime Function()? now,
+    Future<void> Function(Duration)? sleep,
   }) => CursorUsageCoordinator(
     registry: registry,
     cacheStore: cacheStore,
     api: api,
-    now: () => DateTime.fromMillisecondsSinceEpoch(ms(28) + 3600000),
+    now: now ?? () => DateTime.fromMillisecondsSinceEpoch(ms(28) + 3600000),
+    sleep: sleep,
   );
 
   test('fetches every page until the total is reached', () async {
@@ -149,29 +160,102 @@ void main() {
     expect(report.eventCount, 2);
   });
 
-  test('a second load inside the covered range makes no request', () async {
+  test('a second load inside a completed range makes no request', () async {
     final api = _FakeApi(
       pages: [
-        CursorUsagePage(events: [event('e1', 28)], totalCount: 1),
+        CursorUsagePage(events: [event('e1', 27)], totalCount: 1),
       ],
     );
     final coord = coordinator(api: api, registry: _FakeRegistry(_credentials));
-    final range = CursorUsageCustomRange(startMs: ms(28), endMs: ms(28));
+    final range = CursorUsageCustomRange(startMs: ms(27), endMs: ms(27));
     await coord.load(accountId: 'acct', range: range);
     await coord.load(accountId: 'acct', range: range);
     expect(api.calls.length, 1);
   });
 
-  test('forceRefresh refetches a range the cache already covers', () async {
+  test('today is refetched on the next load', () async {
+    var nowMs = ms(28) + 3600000;
     final api = _FakeApi(
       pages: [
         CursorUsagePage(events: [event('e1', 28)], totalCount: 1),
+        CursorUsagePage(events: [event('e1', 28)], totalCount: 1),
+      ],
+    );
+    final coord = coordinator(
+      api: api,
+      registry: _FakeRegistry(_credentials),
+      now: () => DateTime.fromMillisecondsSinceEpoch(nowMs),
+    );
+    final range = CursorUsageCustomRange(startMs: ms(28), endMs: ms(28));
+
+    await coord.load(accountId: 'acct', range: range);
+    nowMs += 3600000;
+    await coord.load(accountId: 'acct', range: range);
+
+    expect(api.calls.length, 2);
+  });
+
+  test('forceRefresh refetches a range the cache already covers', () async {
+    final api = _FakeApi(
+      pages: [
+        CursorUsagePage(events: [event('e1', 27)], totalCount: 1),
       ],
     );
     final coord = coordinator(api: api, registry: _FakeRegistry(_credentials));
-    final range = CursorUsageCustomRange(startMs: ms(28), endMs: ms(28));
+    final range = CursorUsageCustomRange(startMs: ms(27), endMs: ms(27));
     await coord.load(accountId: 'acct', range: range);
     await coord.load(accountId: 'acct', range: range, forceRefresh: true);
+    expect(api.calls.length, 2);
+  });
+
+  test('a 429 is retried once and then succeeds', () async {
+    final api =
+        _FakeApi(
+            pages: [
+              CursorUsagePage(events: [event('e1', 27)], totalCount: 1),
+            ],
+          )
+          ..throwOnce = const CursorUsageApiException(
+            CursorUsageApiError.rateLimited,
+            'slow down',
+          );
+    final report =
+        await coordinator(
+          api: api,
+          registry: _FakeRegistry(_credentials),
+          sleep: (_) async {},
+        ).load(
+          accountId: 'acct',
+          range: CursorUsageCustomRange(startMs: ms(27), endMs: ms(27)),
+        );
+
+    expect(api.calls.length, 2);
+    expect(report.eventCount, 1);
+  });
+
+  test('a second 429 maps to rateLimited', () async {
+    final api = _FakeApi()
+      ..throwOnFetch = const CursorUsageApiException(
+        CursorUsageApiError.rateLimited,
+        'slow down',
+      );
+    await expectLater(
+      coordinator(
+        api: api,
+        registry: _FakeRegistry(_credentials),
+        sleep: (_) async {},
+      ).load(
+        accountId: 'acct',
+        range: CursorUsageCustomRange(startMs: ms(27), endMs: ms(27)),
+      ),
+      throwsA(
+        isA<CursorUsageException>().having(
+          (error) => error.failure,
+          'failure',
+          CursorUsageFailure.rateLimited,
+        ),
+      ),
+    );
     expect(api.calls.length, 2);
   });
 

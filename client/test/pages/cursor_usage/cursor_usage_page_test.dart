@@ -55,7 +55,7 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: BlocProvider<CursorUsageCubit>.value(
           value: cubit,
-          child: const Scaffold(body: CursorUsagePage()),
+          child: const Scaffold(body: CursorUsagePage(autoSync: false)),
         ),
       ),
     );

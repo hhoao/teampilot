@@ -24,7 +24,9 @@ import '../cubits/session_groups_cubit.dart';
 import '../cubits/session_usage_cubit.dart';
 import 'session_usage_services.dart';
 import '../cubits/cursor_usage_cubit.dart';
+import '../models/cursor_usage_account.dart';
 import '../models/cursor_usage_range.dart';
+import '../models/cursor_usage_report.dart';
 import '../services/cli/cursor/provider/cursor_usage_auth_resolver.dart';
 import '../services/cursor_usage/cursor_account_credential_store.dart';
 import '../services/cursor_usage/cursor_account_registry.dart';
@@ -1601,33 +1603,25 @@ Future<AppShell> buildAppShell({
       },
     );
 
-    final cursorAccountCredentialStore = CursorAccountCredentialStore(
-      store: const FlutterSecureKeyValueStore(),
-    );
-    final cursorUsageCacheStore = CursorUsageCacheStore(
-      fs: homeStorage.fs,
-      pathFor: (accountId) => homeStorage.paths.cursorUsageCacheFile(accountId),
-    );
     final cursorUsageApiClient = CursorUsageApiClient();
-    final cursorAccountRegistry = CursorAccountRegistry(
-      fs: homeStorage.fs,
-      accountsPath: homeStorage.paths.cursorUsageAccountsFile,
-      credentials: cursorAccountCredentialStore,
-      resolveAuths: CursorUsageAuthResolver(
-        fs: homeStorage.fs,
-        basePath: homeStorage.paths.basePath,
-        home: homeStorage.home,
-      ).resolveAll,
-    );
-    final cursorUsageCoordinator = CursorUsageCoordinator(
-      registry: cursorAccountRegistry,
-      cacheStore: cursorUsageCacheStore,
-      api: cursorUsageApiClient,
-    );
-    final cursorUsageRangePreference = CursorUsageRangePreference(
-      fs: homeStorage.fs,
-      path: homeStorage.paths.cursorUsageUiStateFile,
-    );
+    final cursorSecureStore = const FlutterSecureKeyValueStore();
+    // The Cursor stack resolves paths and the filesystem from the active home
+    // plane, so it is rebuilt whenever that plane changes instead of pinning
+    // the first one for the whole app lifetime.
+    var cursorStackGeneration = -1;
+    _CursorUsageStack? cachedCursorStack;
+    _CursorUsageStack cursorStack() {
+      if (cachedCursorStack == null ||
+          cursorStackGeneration != homeStorage.generation) {
+        cursorStackGeneration = homeStorage.generation;
+        cachedCursorStack = _CursorUsageStack(
+          storage: homeStorage,
+          api: cursorUsageApiClient,
+          secureStore: cursorSecureStore,
+        );
+      }
+      return cachedCursorStack!;
+    }
 
     final sessionUsageServices = SessionUsageServices.forStorage(
       storage: homeStorage,
@@ -1635,8 +1629,8 @@ Future<AppShell> buildAppShell({
       sessions: sessionRepo,
       teams: identityRepository,
       loadCursorAccountUsage: () => CursorUsageEventSource(
-        listAccounts: cursorAccountRegistry.list,
-        loadCache: cursorUsageCacheStore.load,
+        listAccounts: () => cursorStack().registry.list(),
+        loadCache: (accountId) => cursorStack().cacheStore.load(accountId),
       ).loadEvents(),
     );
     final sessionUsageCubit = SessionUsageCubit(
@@ -1655,34 +1649,46 @@ Future<AppShell> buildAppShell({
     unawaited(sessionUsageCubit.ensureLoaded());
 
     final cursorUsageCubit = CursorUsageCubit(
-      loadAccounts: cursorAccountRegistry.list,
+      loadAccounts: () => cursorStack().registry.list(),
       // Credential refresh already happens inside the registry's
       // `credentialFor`, so the cubit's hook stays a no-op.
       refreshAccount: (accountId) async {},
-      billingCycleFor: cursorUsageCoordinator.billingCycleFor,
+      billingCycleFor: (accountId) =>
+          cursorStack().coordinator.billingCycleFor(accountId),
       loadReport:
           ({
             required accountId,
             required range,
             billingCycle,
             forceRefresh = false,
-          }) => cursorUsageCoordinator.load(
+          }) => cursorStack().coordinator.load(
             accountId: accountId,
             range: range,
             billingCycle: billingCycle,
             forceRefresh: forceRefresh,
           ),
-      saveRange: cursorUsageRangePreference.save,
-      loadRange: cursorUsageRangePreference.load,
+      saveRange: (range) => cursorStack().rangePreference.save(range),
+      loadRange: () => cursorStack().rangePreference.load(),
       addAccount: (raw, label) async {
         final credentials = parseCursorSessionToken(raw);
         if (credentials == null) return false;
-        await cursorAccountRegistry.upsertManual(credentials, label: label);
+        await cursorStack().registry.upsertManual(credentials, label: label);
         return true;
       },
-      removeAccount: cursorAccountRegistry.remove,
+      removeAccount: (accountId) => cursorStack().registry.remove(accountId),
       initialRange: const CursorUsagePresetRange(
         CursorUsagePreset.billingCycle,
+      ),
+    );
+    // Warm the caches once at boot so the session usage dashboard has account
+    // rows even when the Cursor page is never opened.
+    unawaited(
+      _warmCursorUsage(
+        accounts: () => cursorStack().registry.list(),
+        load: (accountId) => cursorStack().coordinator.load(
+          accountId: accountId,
+          range: const CursorUsagePresetRange(CursorUsagePreset.billingCycle),
+        ),
       ),
     );
 
@@ -3356,6 +3362,70 @@ class _DefaultProviderUsageHttpClient implements ProviderUsageHttpClient {
       body: await response.stream.bytesToString(),
       headers: response.headers,
     );
+  }
+}
+
+/// The Cursor usage objects bound to one home storage plane.
+///
+/// `CursorUsageCacheStore` pairs a filesystem with paths resolved from the same
+/// plane, so a plane swap has to rebuild the whole group, not just the paths.
+class _CursorUsageStack {
+  _CursorUsageStack({
+    required HomeStorage storage,
+    required CursorUsageApiClient api,
+    required SecureKeyValueStore secureStore,
+  }) : registry = CursorAccountRegistry(
+         fs: storage.fs,
+         accountsPath: storage.paths.cursorUsageAccountsFile,
+         credentials: CursorAccountCredentialStore(store: secureStore),
+         resolveAuths: CursorUsageAuthResolver(
+           fs: storage.fs,
+           basePath: storage.paths.basePath,
+           home: storage.home,
+         ).resolveAll,
+       ),
+       cacheStore = CursorUsageCacheStore(
+         fs: storage.fs,
+         pathFor: storage.paths.cursorUsageCacheFile,
+       ),
+       rangePreference = CursorUsageRangePreference(
+         fs: storage.fs,
+         path: storage.paths.cursorUsageUiStateFile,
+       ) {
+    coordinator = CursorUsageCoordinator(
+      registry: registry,
+      cacheStore: cacheStore,
+      api: api,
+    );
+  }
+
+  final CursorAccountRegistry registry;
+  final CursorUsageCacheStore cacheStore;
+  final CursorUsageRangePreference rangePreference;
+  late final CursorUsageCoordinator coordinator;
+}
+
+/// Fills each enabled account's cache so the session usage dashboard has
+/// account rows even if the Cursor page is never opened. Best effort.
+Future<void> _warmCursorUsage({
+  required Future<List<CursorUsageAccount>> Function() accounts,
+  required Future<CursorUsageReport> Function(String accountId) load,
+}) async {
+  final List<CursorUsageAccount> rows;
+  try {
+    rows = await accounts();
+  } on Object {
+    return;
+  }
+  for (final row in rows) {
+    if (!row.enabled) continue;
+    try {
+      await load(row.accountId);
+    } on Object catch (error) {
+      AppLogger.instance.w(
+        'cursor usage warm failed for ${row.accountId}: $error',
+      );
+    }
   }
 }
 
