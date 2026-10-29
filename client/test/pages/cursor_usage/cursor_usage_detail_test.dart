@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/cursor_usage_report.dart';
+import 'package:teampilot/pages/cursor_usage/widgets/event_table.dart';
 import 'package:teampilot/pages/cursor_usage/widgets/model_breakdown.dart';
 import 'package:teampilot/pages/cursor_usage/widgets/usage_detail.dart';
 import 'package:teampilot/pages/cursor_usage/widgets/usage_totals.dart';
@@ -38,6 +39,17 @@ void main() {
       ),
     );
     expect(find.text('1.5K'), findsOneWidget);
+  });
+
+  testWidgets('totalCents is rendered as dollars', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const CursorUsageTotals(report: report),
+      ),
+    );
+    expect(find.text(r'$12.34'), findsOneWidget);
   });
 
   testWidgets('model breakdown folds the empty model into unattributed', (
@@ -126,25 +138,58 @@ void main() {
     expect(find.text('Unattributed'), findsNWidgets(2));
   });
 
-  testWidgets('summary-only report explains why there are no rows', (
+  // A range straddling the retention cutoff: summary-only, yet some days still
+  // have raw events cached.
+  CursorUsageReport summaryOnlyReport({
+    List<CursorUsageEvent> events = const [],
+  }) => CursorUsageReport(
+    accountId: 'a',
+    startMs: 0,
+    endMs: 86400000,
+    inputTokens: 100,
+    totalCents: 12,
+    eventCount: 1,
+    days: const [
+      CursorUsageDay(dayMs: 0, inputTokens: 100, totalCents: 12, eventCount: 1),
+    ],
+    events: events,
+    summaryOnly: true,
+  );
+
+  testWidgets('summary-only range still renders the rows it has', (
     tester,
   ) async {
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
     await tester.pumpWidget(
       host(
-        const CursorUsageDetail(
-          report: CursorUsageReport(
-            accountId: 'a',
-            startMs: 0,
-            endMs: 1,
-            eventCount: 3,
-            totalCents: 5,
-            summaryOnly: true,
+        CursorUsageEventTable(
+          report: summaryOnlyReport(
+            events: const [
+              CursorUsageEvent(
+                eventId: 'e1',
+                timestampMs: 1700000000000,
+                model: 'cursor-grok-4.6-high',
+                kind: 'usage',
+                inputTokens: 100,
+                totalCents: 12,
+              ),
+            ],
           ),
-          account: null,
-          cycle: null,
         ),
       ),
+    );
+
+    expect(find.text(l10n.cursorUsageSummaryOnly), findsOneWidget);
+    expect(find.text('cursor-grok-4.6-high'), findsOneWidget);
+    expect(find.text(l10n.cursorUsageNoData), findsNothing);
+  });
+
+  testWidgets('summary-only report with no rows shows the notice and no-data', (
+    tester,
+  ) async {
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await tester.pumpWidget(
+      host(CursorUsageEventTable(report: summaryOnlyReport())),
     );
 
     expect(find.text(l10n.cursorUsageSummaryOnly), findsOneWidget);

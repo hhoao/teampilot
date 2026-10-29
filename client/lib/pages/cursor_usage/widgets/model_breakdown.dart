@@ -84,7 +84,7 @@ class CursorUsageModelBreakdown extends StatelessWidget {
                 ),
                 Text(
                   '${formatUsageTokens(slice.totals.totalTokens)}  '
-                  '${(slice.share * 100).toStringAsFixed(0)}%',
+                  '${formatUsagePercent(slice.share)}',
                   style: styles.xsColored(cs.onSurface.withValues(alpha: 0.6)),
                 ),
               ],
