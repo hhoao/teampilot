@@ -3493,6 +3493,8 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         await shell.memberPresenceCubit.close();
         await _teardownConnect(shell);
         await shell.managedProviderControlPlane.close();
+        await shell.cursorUsageCubit.close();
+        shell.cursorUsageApiClient.close();
         return;
       }
       await yieldUiFrame();
@@ -3502,6 +3504,8 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         await shell.memberPresenceCubit.close();
         await _teardownConnect(shell);
         await shell.managedProviderControlPlane.close();
+        await shell.cursorUsageCubit.close();
+        shell.cursorUsageApiClient.close();
         return;
       }
       appLogger.i(
@@ -3535,6 +3539,8 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
       // the buildAppShell failure path). The presence cubit is closed for the
       // same reason: it subscribes to the app-lifetime presence projection.
       await builtShell?.memberPresenceCubit.close();
+      await builtShell?.cursorUsageCubit.close();
+      builtShell?.cursorUsageApiClient.close();
       await builtShell?.catalogRuntime?.bus.close();
       await _eventTransportController.apply(EventTransportRole.none);
       appLogger.e(
