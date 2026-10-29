@@ -41,6 +41,7 @@ UsageDashboard buildUsageDashboard({
   required UsageFilter filter,
   required int nowMs,
   UsagePricingCatalog pricing = const UsagePricingCatalog(),
+  List<UsageHeatmapDay>? heatmap,
 }) {
   final rangeStart = usageRangeStartMs(filter.range, nowMs);
   final scoped = events
@@ -74,7 +75,7 @@ UsageDashboard buildUsageDashboard({
     rows: rows,
     chart: _chart(sevenDayEvents, nowMs),
     cliSlices: _cliSlices(sevenDayEvents),
-    heatmap: _heatmap(events, filter.cli, pricing),
+    heatmap: heatmap ?? _heatmap(events, filter.cli, pricing),
     matchedEventCount: rows.fold(0, (sum, row) => sum + row.requests),
     totalEventCount: events.length,
   );
@@ -291,6 +292,12 @@ final class _GroupAccumulator {
     );
   }
 }
+
+List<UsageHeatmapDay> buildUsageHeatmap({
+  required List<SessionUsageEvent> events,
+  CliTool? cli,
+  UsagePricingCatalog pricing = const UsagePricingCatalog(),
+}) => _heatmap(events, cli, pricing);
 
 class _HeatmapAccumulator {
   int tokens = 0;

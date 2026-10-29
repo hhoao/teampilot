@@ -231,10 +231,19 @@ class _SpanBlock extends StatelessWidget {
     final monthFormat = DateFormat.MMM(
       Localizations.localeOf(context).toLanguageTag(),
     );
-    final monthLabels = [
-      for (var week = 0; week < usageHeatmapWeeks; week++)
-        _monthLabel(span.weekDayStarts[week], week, monthFormat),
-    ];
+    final monthLabels = <String?>[];
+    int? previousMonth;
+    for (var week = 0; week < usageHeatmapWeeks; week++) {
+      final first = DateTime.fromMillisecondsSinceEpoch(
+        span.weekDayStarts[week].first,
+      ).toLocal();
+      if (week == 0 || first.month != previousMonth) {
+        monthLabels.add(monthFormat.format(first));
+        previousMonth = first.month;
+      } else {
+        monthLabels.add(null);
+      }
+    }
     final range =
         '${material.formatShortDate(DateTime.fromMillisecondsSinceEpoch(span.startDayMs))} – '
         '${material.formatShortDate(DateTime.fromMillisecondsSinceEpoch(span.endDayMs))}';
@@ -311,16 +320,24 @@ class _SpanBlock extends StatelessWidget {
                         children: [
                           SizedBox(
                             width: labelWidth,
+                            height: cell + gap,
                             child: day == 0 || day == 2 || day == 4
-                                ? Padding(
-                                    padding: const EdgeInsets.only(right: 4),
-                                    child: Text(
-                                      material.narrowWeekdays[(day + 1) % 7],
-                                      maxLines: 1,
-                                      textAlign: TextAlign.end,
-                                      style: styles.xs.copyWith(
-                                        color: cs.onSurface.withValues(
-                                          alpha: 0.54,
+                                ? MediaQuery.withNoTextScaling(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerRight,
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: 4,
+                                        ),
+                                        child: Text(
+                                          material.narrowWeekdays[(day + 1) % 7],
+                                          maxLines: 1,
+                                          style: styles.xs.copyWith(
+                                            color: cs.onSurface.withValues(
+                                              alpha: 0.54,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -351,20 +368,6 @@ class _SpanBlock extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  String? _monthLabel(
-    List<int> days,
-    int weekIndex,
-    DateFormat format,
-  ) {
-    for (final dayStart in days) {
-      final date = DateTime.fromMillisecondsSinceEpoch(dayStart).toLocal();
-      if (weekIndex == 0 || date.day == 1) {
-        return format.format(date);
-      }
-    }
-    return null;
   }
 
   Widget _cell(int dayStart, double cell, MaterialLocalizations material) {

@@ -252,6 +252,10 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   bool _syncFull = false;
   UsagePricingCatalog _pricing = const UsagePricingCatalog();
   List<SessionUsageEvent> _events = const [];
+  List<UsageHeatmapDay>? _heatmapCache;
+  List<SessionUsageEvent>? _heatmapCacheEvents;
+  CliTool? _heatmapCacheCli;
+  UsagePricingCatalog? _heatmapCachePricing;
   UsageAttribution _attribution = const UsageAttribution();
 
   Future<void> ensureLoaded() {
@@ -578,7 +582,28 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       ),
       nowMs: _now().millisecondsSinceEpoch,
       pricing: _pricing,
+      heatmap: _heatmapFor(current.cli),
     );
+  }
+
+  List<UsageHeatmapDay> _heatmapFor(CliTool? cli) {
+    final cached = _heatmapCache;
+    if (cached != null &&
+        identical(_heatmapCacheEvents, _events) &&
+        _heatmapCacheCli == cli &&
+        identical(_heatmapCachePricing, _pricing)) {
+      return cached;
+    }
+    final next = buildUsageHeatmap(
+      events: _events,
+      cli: cli,
+      pricing: _pricing,
+    );
+    _heatmapCache = next;
+    _heatmapCacheEvents = _events;
+    _heatmapCacheCli = cli;
+    _heatmapCachePricing = _pricing;
+    return next;
   }
 
   Future<void> loadCursorStatus() async {

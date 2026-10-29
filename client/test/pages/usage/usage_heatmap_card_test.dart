@@ -24,11 +24,17 @@ UsageHeatmapDay _day(
   );
 }
 
-Widget _wrap(Widget child, {double width = 1000}) {
+Widget _wrap(Widget child, {double width = 1000, double textScale = 1.0}) {
   return MaterialApp(
     locale: const Locale('en'),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
+    builder: (context, appChild) => MediaQuery(
+      data: MediaQuery.of(
+        context,
+      ).copyWith(textScaler: TextScaler.linear(textScale)),
+      child: appChild!,
+    ),
     home: TpTheme(
       data: TpThemeData.fromColorScheme(
         ColorScheme.fromSeed(seedColor: Colors.indigo),
@@ -89,6 +95,8 @@ void main() {
     expect(find.text('Usage heatmap'), findsOneWidget);
     expect(_cells(), findsNWidgets(371));
     expect(find.text('Show earlier'), findsNothing);
+    // The first span crosses 2025-10-27 → 2026-10-28, so both months show.
+    expect(find.text('Nov'), findsOneWidget);
   });
 
   testWidgets('tooltip lists tokens, requests, cost and hit rate', (
@@ -216,5 +224,30 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(_cells(), findsNWidgets(371));
+  });
+
+  testWidgets('keeps the row pitch when text is scaled up', (tester) async {
+    tester.view.physicalSize = const Size(900, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      _wrap(
+        UsageHeatmapCard(days: [_day(_today)], nowMs: _now),
+        width: 400,
+        textScale: 2,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    Rect rect(DateTime date) => tester.getRect(
+      find.byKey(ValueKey('usageHeatmapCell-${date.millisecondsSinceEpoch}')),
+    );
+    final monday = rect(DateTime(2026, 10, 26)).top;
+    final tuesday = rect(DateTime(2026, 10, 27)).top;
+    final wednesday = rect(DateTime(2026, 10, 28)).top;
+    expect(tuesday - monday, closeTo(wednesday - tuesday, 0.01));
   });
 }
