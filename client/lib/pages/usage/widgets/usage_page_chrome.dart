@@ -15,7 +15,6 @@ class UsagePageHeader extends StatelessWidget {
     required this.onIncrementalSync,
     required this.onFullSync,
     required this.onCancel,
-    required this.onCursor,
     required this.onMaintenance,
     super.key,
   });
@@ -24,7 +23,6 @@ class UsagePageHeader extends StatelessWidget {
   final Future<void> Function() onIncrementalSync;
   final Future<void> Function() onFullSync;
   final VoidCallback onCancel;
-  final VoidCallback onCursor;
   final VoidCallback onMaintenance;
 
   @override
@@ -82,12 +80,6 @@ class UsagePageHeader extends StatelessWidget {
       runSpacing: 8,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        _secondaryAction(
-          key: AppKeys.sessionUsageCursorButton,
-          icon: Icons.cloud_sync_outlined,
-          label: l10n.sessionUsageCursorTitle,
-          onPressed: onCursor,
-        ),
         _secondaryAction(
           key: AppKeys.sessionUsageMaintenanceButton,
           icon: Icons.storage_outlined,

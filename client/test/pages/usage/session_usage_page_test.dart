@@ -379,7 +379,7 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('header hosts cursor and storage actions without footer notes', (
+  testWidgets('header hosts the storage action without footer notes', (
     tester,
   ) async {
     final cubit = _pagedCubit(2);
@@ -388,7 +388,6 @@ void main() {
     await tester.pumpWidget(_wrap(cubit));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(AppKeys.sessionUsageCursorButton), findsOneWidget);
     expect(find.byKey(AppKeys.sessionUsageMaintenanceButton), findsOneWidget);
     expect(find.text('JSONL read-only'), findsNothing);
     expect(find.text('Auto + manual sync'), findsNothing);

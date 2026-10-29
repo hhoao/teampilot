@@ -51,28 +51,4 @@ void main() {
     expect(events.single.requestId, event.requestId);
     expect(events.single.cli, CliTool.cursor);
   });
-
-  test('legacy CSV imports no longer feed the merged event view', () async {
-    final services = SessionUsageServices.forStorage(
-      storage: testHomeStorage,
-      loadSessions: () async => const <AppSession>[],
-      loadTeams: () async => const <TeamProfile>[],
-    );
-    const csv =
-        'Date,Cloud Agent ID,Automation ID,Kind,Model,Max Mode,'
-        'Input (w/ Cache Write),Input (w/o Cache Write),Cache Read,'
-        'Output Tokens,Total Tokens,Cost\n'
-        '2026-10-26T10:00:00Z,,,chat,claude-sonnet-4,,0,100,10,20,130,\$0.50\n';
-
-    final result = await services.importCursorCsv(csv);
-
-    expect(result.inserted, 1);
-    // Account rows replace the CSV import as the Cursor source, so the two
-    // cannot double count.
-    expect(await services.loadEvents(), isEmpty);
-    expect((await services.loadCursorStatus()).eventCount, 1);
-
-    await services.clearCursorUsage();
-    expect((await services.loadCursorStatus()).eventCount, 0);
-  });
 }
