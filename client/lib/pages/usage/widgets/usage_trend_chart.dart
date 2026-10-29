@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -6,6 +7,9 @@ import '../../../models/session_usage_dashboard.dart';
 import '../../../models/team_config.dart';
 import '../../../theme/workspace_surface_layers.dart';
 import '../usage_format.dart';
+
+const double _chartHeight = 180;
+const Duration _chartAnimation = Duration(milliseconds: 260);
 
 class UsageTrendChart extends StatelessWidget {
   const UsageTrendChart({
@@ -85,7 +89,7 @@ class UsageTrendChart extends StatelessWidget {
           const SizedBox(height: 14),
           if (maxTotal == 0)
             SizedBox(
-              height: 150,
+              height: _chartHeight,
               child: Center(
                 child: Text(
                   l10n.sessionUsageNoData,
@@ -97,73 +101,131 @@ class UsageTrendChart extends StatelessWidget {
             )
           else
             SizedBox(
-              height: 160,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  for (final day in days)
-                    Expanded(
-                      child: Tooltip(
-                        message: formatUsageTokens(day.totalTokens),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Expanded(
-                                child: LayoutBuilder(
-                                  builder: (context, constraints) {
-                                    final barSpace = constraints.maxHeight;
-                                    return Column(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        for (final cli in legendClis)
-                                          if ((day.tokensByCli[cli] ?? 0) > 0)
-                                            Container(
-                                              width: double.infinity,
-                                              height:
-                                                  barSpace *
-                                                  (day.tokensByCli[cli]! /
-                                                      maxTotal),
-                                              decoration: BoxDecoration(
-                                                color: usageCliColor(cli)
-                                                    .withValues(
-                                                      alpha:
-                                                          selectedCli == null ||
-                                                              selectedCli == cli
-                                                          ? 0.92
-                                                          : 0.22,
-                                                    ),
-                                                borderRadius:
-                                                    const BorderRadius.vertical(
-                                                      top: Radius.circular(3),
-                                                    ),
-                                              ),
-                                            ),
-                                      ],
-                                    );
-                                  },
-                                ),
+              height: _chartHeight,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final rodWidth = (constraints.maxWidth / days.length * 0.46)
+                      .clamp(3.0, 18.0)
+                      .toDouble();
+                  final stride = usageChartLabelStride(days.length);
+                  final tickInterval = maxTotal <= 2 ? 1.0 : maxTotal / 2;
+                  final labelStyle = styles.xs.copyWith(
+                    color: cs.onSurface.withValues(alpha: 0.54),
+                  );
+                  return BarChart(
+                    BarChartData(
+                      minY: 0,
+                      maxY: maxTotal * 1.12,
+                      alignment: BarChartAlignment.spaceEvenly,
+                      barGroups: [
+                        for (var index = 0; index < days.length; index++)
+                          _chartGroup(
+                            index: index,
+                            day: days[index],
+                            legendClis: legendClis,
+                            rodWidth: rodWidth,
+                            selectedCli: selectedCli,
+                          ),
+                      ],
+                      titlesData: FlTitlesData(
+                        topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 40,
+                            interval: tickInterval,
+                            maxIncluded: false,
+                            getTitlesWidget: (value, meta) => SideTitleWidget(
+                              meta: meta,
+                              space: 6,
+                              child: Text(
+                                formatUsageTokens(value.round()),
+                                style: labelStyle,
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                formatUsageDayLabel(
-                                  context,
-                                  day.dayStartMs,
-                                  nowMs,
+                            ),
+                          ),
+                        ),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 26,
+                            interval: 1,
+                            getTitlesWidget: (value, meta) {
+                              final index = value.round();
+                              if (index < 0 ||
+                                  index >= days.length ||
+                                  index % stride != 0) {
+                                return const SizedBox.shrink();
+                              }
+                              return SideTitleWidget(
+                                meta: meta,
+                                space: 6,
+                                child: Text(
+                                  formatUsageDayLabel(
+                                    context,
+                                    days[index].dayStartMs,
+                                    nowMs,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: labelStyle,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: styles.xs.copyWith(
-                                  color: cs.onSurface.withValues(alpha: 0.54),
-                                ),
-                              ),
-                            ],
+                              );
+                            },
                           ),
                         ),
                       ),
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        horizontalInterval: tickInterval,
+                        getDrawingHorizontalLine: (value) => FlLine(
+                          color: cs.outlineVariant.withValues(alpha: 0.35),
+                          strokeWidth: 1,
+                        ),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      barTouchData: BarTouchData(
+                        enabled: true,
+                        touchTooltipData: BarTouchTooltipData(
+                          tooltipBorderRadius: BorderRadius.circular(8),
+                          tooltipPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          tooltipMargin: 8,
+                          maxContentWidth: 190,
+                          fitInsideHorizontally: true,
+                          fitInsideVertically: true,
+                          getTooltipColor: (_) => cs.surfaceContainerHighest,
+                          tooltipBorder: BorderSide(
+                            color: cs.outlineVariant.withValues(alpha: 0.5),
+                          ),
+                          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                            final index = groupIndex < days.length
+                                ? groupIndex
+                                : days.length - 1;
+                            return _chartTooltip(
+                              context: context,
+                              day: days[index],
+                              legendClis: legendClis,
+                              styles: styles,
+                              cs: cs,
+                              nowMs: nowMs,
+                            );
+                          },
+                        ),
+                      ),
                     ),
-                ],
+                    duration: _chartAnimation,
+                    curve: Curves.easeOutCubic,
+                  );
+                },
               ),
             ),
           if (legendClis.isNotEmpty) ...[
@@ -186,6 +248,71 @@ class UsageTrendChart extends StatelessWidget {
       ),
     );
   }
+}
+
+BarChartGroupData _chartGroup({
+  required int index,
+  required UsageChartDay day,
+  required List<CliTool> legendClis,
+  required double rodWidth,
+  required CliTool? selectedCli,
+}) {
+  var stacked = 0.0;
+  final stackItems = <BarChartRodStackItem>[];
+  for (final cli in legendClis) {
+    final tokens = day.tokensByCli[cli] ?? 0;
+    if (tokens <= 0) continue;
+    final color = usageCliColor(
+      cli,
+    ).withValues(alpha: selectedCli == null || selectedCli == cli ? 0.92 : 0.22);
+    stackItems.add(BarChartRodStackItem(stacked, stacked + tokens, color));
+    stacked += tokens;
+  }
+  return BarChartGroupData(
+    x: index,
+    barRods: [
+      BarChartRodData(
+        toY: day.totalTokens.toDouble(),
+        width: rodWidth,
+        color: Colors.transparent,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+        rodStackItems: stackItems,
+      ),
+    ],
+  );
+}
+
+BarTooltipItem _chartTooltip({
+  required BuildContext context,
+  required UsageChartDay day,
+  required List<CliTool> legendClis,
+  required TpTextStyles styles,
+  required ColorScheme cs,
+  required int nowMs,
+}) {
+  final children = <TextSpan>[];
+  for (final cli in legendClis) {
+    final tokens = day.tokensByCli[cli] ?? 0;
+    if (tokens <= 0) continue;
+    children.add(
+      TextSpan(
+        text: '\n${usageCliLabel(cli)}  ${formatUsageTokens(tokens)}',
+        style: styles.xs.copyWith(color: usageCliColor(cli)),
+      ),
+    );
+  }
+  children.add(
+    TextSpan(
+      text:
+          '\n${context.l10n.sessionUsageChartTotal(formatUsageTokens(day.totalTokens))}',
+      style: styles.xsSemibold.copyWith(color: cs.onSurface),
+    ),
+  );
+  return BarTooltipItem(
+    formatUsageDayLabel(context, day.dayStartMs, nowMs),
+    styles.smMedium.copyWith(color: cs.onSurface),
+    children: children,
+  );
 }
 
 class _LegendDot extends StatelessWidget {
