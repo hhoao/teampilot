@@ -18,8 +18,12 @@ CursorAccountCredentials? parseCursorSessionToken(String raw, {int? nowMs}) {
   var value = raw.trim();
   if (value.isEmpty) return null;
   const prefix = 'WorkosCursorSessionToken=';
-  if (value.toLowerCase().startsWith(prefix.toLowerCase())) {
-    value = value.substring(prefix.length);
+  final prefixIndex = value.toLowerCase().indexOf(prefix.toLowerCase());
+  if (prefixIndex >= 0) {
+    value = value.substring(prefixIndex + prefix.length);
+    // A pasted cookie jar may carry more cookies after this one.
+    final end = value.indexOf(';');
+    if (end >= 0) value = value.substring(0, end);
   }
   try {
     value = Uri.decodeComponent(value);
@@ -30,7 +34,7 @@ CursorAccountCredentials? parseCursorSessionToken(String raw, {int? nowMs}) {
   }
   final separator = value.indexOf('::');
   var token = separator >= 0 ? value.substring(separator + 2) : value;
-  token = token.trim();
+  token = token.split(';').first.trim();
   final parts = token.split('.');
   if (parts.length != 3) return null;
   final Map<String, Object?> claims;

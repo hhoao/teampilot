@@ -54,6 +54,28 @@ void main() {
       expect(parsed?.userId, 'user_01ABC');
     });
 
+    test('extracts the session cookie from a whole cookie jar', () {
+      final token = _jwt(exp: exp);
+      final parsed = parseCursorSessionToken(
+        '__stripe_mid=abc; cursor_anonymous_id=def; '
+        'WorkosCursorSessionToken=user_01ABC%3A%3A$token; _dd_s=aid=123',
+        nowMs: nowMs,
+      );
+      expect(parsed, isNotNull);
+      expect(parsed!.token, token);
+      expect(parsed.userId, 'user_01ABC');
+      expect(parsed.accountId, cursorAccountIdFor('auth0|user_01ABC'));
+    });
+
+    test('drops trailing cookies after the bare userId::jwt form', () {
+      final token = _jwt(exp: exp);
+      final parsed = parseCursorSessionToken(
+        'user_01ABC::$token; _dd_s=aid=123',
+        nowMs: nowMs,
+      );
+      expect(parsed?.token, token);
+    });
+
     test('accepts the userId::jwt form', () {
       final token = _jwt(exp: exp);
       final parsed = parseCursorSessionToken(
