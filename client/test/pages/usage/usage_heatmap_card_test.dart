@@ -196,6 +196,8 @@ void main() {
 
     expect(_cells(), findsNothing);
     expect(find.text('No data'), findsOneWidget);
+    expect(find.text('Less'), findsNothing);
+    expect(find.text('More'), findsNothing);
   });
 
   testWidgets('fits a narrow card without overflowing', (tester) async {

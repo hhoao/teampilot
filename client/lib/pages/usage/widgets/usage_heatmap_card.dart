@@ -281,25 +281,29 @@ class _SpanBlock extends StatelessWidget {
                   children: [
                     SizedBox(
                       height: 16,
-                      child: Row(
-                        children: [
-                          const SizedBox(width: labelWidth),
-                          for (var week = 0; week < usageHeatmapWeeks; week++)
-                            SizedBox(
-                              width: cell + gap,
-                              child: OverflowBox(
-                                alignment: Alignment.centerLeft,
-                                maxWidth: 48,
-                                child: Text(
-                                  monthLabels[week] ?? '',
-                                  maxLines: 1,
-                                  style: styles.xs.copyWith(
-                                    color: cs.onSurface.withValues(alpha: 0.54),
+                      child: MediaQuery.withNoTextScaling(
+                        child: Row(
+                          children: [
+                            const SizedBox(width: labelWidth),
+                            for (var week = 0; week < usageHeatmapWeeks; week++)
+                              SizedBox(
+                                width: cell + gap,
+                                child: OverflowBox(
+                                  alignment: Alignment.centerLeft,
+                                  maxWidth: 48,
+                                  child: Text(
+                                    monthLabels[week] ?? '',
+                                    maxLines: 1,
+                                    style: styles.xs.copyWith(
+                                      color: cs.onSurface.withValues(
+                                        alpha: 0.54,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                     for (var day = 0; day < 7; day++)
@@ -416,7 +420,7 @@ double? _metricValue(UsageHeatmapDay? day, _HeatmapMetric metric) {
 
 Color _heatColor(int level, ColorScheme cs) {
   return switch (level) {
-    0 => cs.surfaceContainerHighest.withValues(alpha: 0.55),
+    0 => cs.surfaceContainerHighest,
     1 => cs.primary.withValues(alpha: 0.20),
     2 => cs.primary.withValues(alpha: 0.38),
     3 => cs.primary.withValues(alpha: 0.58),
