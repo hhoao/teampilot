@@ -94,6 +94,39 @@ void main() {
     expect(usageHeatmapLevel(5, thresholds), 4);
   });
 
+  test('single value repeats across thresholds', () {
+    final thresholds = usageHeatmapThresholds([5]);
+    expect(thresholds, [5, 5, 5]);
+    expect(usageHeatmapLevel(5, thresholds), 1);
+  });
+
+  test('skewed distribution collapses the upper quartiles', () {
+    final thresholds = usageHeatmapThresholds([0, 0, 0, 1000]);
+    expect(thresholds, [0, 0, 1000]);
+    expect(usageHeatmapLevel(0, thresholds), 1);
+    // With four samples the max lands on t2, so level 4 is unreachable here.
+    expect(usageHeatmapLevel(1000, thresholds), 3);
+  });
+
+  test('day starts stay at local midnight across a DST transition', () {
+    final spans = usageHeatmapSpans(
+      days: [_day(DateTime(2025, 10, 20))],
+      nowMs: DateTime(2025, 11, 5, 12).millisecondsSinceEpoch,
+    );
+    final cell = spans.single.weekDayStarts.expand((week) => week).firstWhere(
+      (dayStart) {
+        final date = DateTime.fromMillisecondsSinceEpoch(dayStart);
+        return date.year == 2025 && date.month == 10 && date.day == 26;
+      },
+    );
+    final date = DateTime.fromMillisecondsSinceEpoch(cell);
+    expect(date.hour, 0);
+    expect(date.minute, 0);
+    expect(date.year, 2025);
+    expect(date.month, 10);
+    expect(date.day, 26);
+  });
+
   test('local day start ignores the time of day', () {
     final first = usageHeatmapLocalDayStart(
       DateTime(2026, 10, 28, 0, 1).millisecondsSinceEpoch,

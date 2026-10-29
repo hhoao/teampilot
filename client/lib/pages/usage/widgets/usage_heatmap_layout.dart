@@ -140,7 +140,7 @@ List<double> usageHeatmapThresholds(Iterable<double> values) {
     return sorted[index];
   }
 
-  return [at(0.25), at(0.5), at(0.75)];
+  return List.unmodifiable([at(0.25), at(0.5), at(0.75)]);
 }
 
 int usageHeatmapLevel(double? value, List<double> thresholds) {
