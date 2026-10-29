@@ -17240,6 +17240,64 @@ abstract class AppLocalizations {
   /// **'Dismiss'**
   String get sessionUsageDismiss;
 
+  /// No description provided for @sessionUsageHeatmapTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage heatmap'**
+  String get sessionUsageHeatmapTitle;
+
+  /// No description provided for @sessionUsageHeatmapSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 53 weeks · hover or long-press a day'**
+  String get sessionUsageHeatmapSubtitle;
+
+  /// No description provided for @sessionUsageHeatmapMetricTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'Tokens'**
+  String get sessionUsageHeatmapMetricTokens;
+
+  /// No description provided for @sessionUsageHeatmapMetricHitRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Hit rate'**
+  String get sessionUsageHeatmapMetricHitRate;
+
+  /// No description provided for @sessionUsageHeatmapShowEarlier.
+  ///
+  /// In en, this message translates to:
+  /// **'Show earlier'**
+  String get sessionUsageHeatmapShowEarlier;
+
+  /// No description provided for @sessionUsageHeatmapShowLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Show less'**
+  String get sessionUsageHeatmapShowLess;
+
+  /// No description provided for @sessionUsageHeatmapLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Less'**
+  String get sessionUsageHeatmapLess;
+
+  /// No description provided for @sessionUsageHeatmapMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get sessionUsageHeatmapMore;
+
+  /// No description provided for @sessionUsageHeatmapSpanSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{tokens} tokens · {requests} requests · {cost}'**
+  String sessionUsageHeatmapSpanSummary(
+    String tokens,
+    String requests,
+    String cost,
+  );
+
   /// No description provided for @sessionUsageNoData.
   ///
   /// In en, this message translates to:

@@ -9720,6 +9720,40 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionUsageDismiss => 'Dismiss';
 
   @override
+  String get sessionUsageHeatmapTitle => 'Usage heatmap';
+
+  @override
+  String get sessionUsageHeatmapSubtitle =>
+      'Last 53 weeks · hover or long-press a day';
+
+  @override
+  String get sessionUsageHeatmapMetricTokens => 'Tokens';
+
+  @override
+  String get sessionUsageHeatmapMetricHitRate => 'Hit rate';
+
+  @override
+  String get sessionUsageHeatmapShowEarlier => 'Show earlier';
+
+  @override
+  String get sessionUsageHeatmapShowLess => 'Show less';
+
+  @override
+  String get sessionUsageHeatmapLess => 'Less';
+
+  @override
+  String get sessionUsageHeatmapMore => 'More';
+
+  @override
+  String sessionUsageHeatmapSpanSummary(
+    String tokens,
+    String requests,
+    String cost,
+  ) {
+    return '$tokens tokens · $requests requests · $cost';
+  }
+
+  @override
   String get sessionUsageNoData => 'No data';
 
   @override

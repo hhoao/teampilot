@@ -4908,6 +4908,22 @@
   "sessionUsageLoadFailed": "Could not load usage data.",
   "sessionUsageRetry": "Retry",
   "sessionUsageDismiss": "Dismiss",
+  "sessionUsageHeatmapTitle": "Usage heatmap",
+  "sessionUsageHeatmapSubtitle": "Last 53 weeks · hover or long-press a day",
+  "sessionUsageHeatmapMetricTokens": "Tokens",
+  "sessionUsageHeatmapMetricHitRate": "Hit rate",
+  "sessionUsageHeatmapShowEarlier": "Show earlier",
+  "sessionUsageHeatmapShowLess": "Show less",
+  "sessionUsageHeatmapLess": "Less",
+  "sessionUsageHeatmapMore": "More",
+  "sessionUsageHeatmapSpanSummary": "{tokens} tokens · {requests} requests · {cost}",
+  "@sessionUsageHeatmapSpanSummary": {
+    "placeholders": {
+      "tokens": { "type": "String" },
+      "requests": { "type": "String" },
+      "cost": { "type": "String" }
+    }
+  },
   "sessionUsageNoData": "No data",
   "sessionUsageToday": "Today",
   "sessionUsageUnknownModel": "Unknown model",

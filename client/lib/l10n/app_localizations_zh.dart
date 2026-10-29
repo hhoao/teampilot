@@ -9304,6 +9304,39 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionUsageDismiss => '关闭';
 
   @override
+  String get sessionUsageHeatmapTitle => '用量热力图';
+
+  @override
+  String get sessionUsageHeatmapSubtitle => '近 53 周 · 悬停或长按查看当天明细';
+
+  @override
+  String get sessionUsageHeatmapMetricTokens => 'Token';
+
+  @override
+  String get sessionUsageHeatmapMetricHitRate => '命中率';
+
+  @override
+  String get sessionUsageHeatmapShowEarlier => '显示更早';
+
+  @override
+  String get sessionUsageHeatmapShowLess => '收起更早';
+
+  @override
+  String get sessionUsageHeatmapLess => '少';
+
+  @override
+  String get sessionUsageHeatmapMore => '多';
+
+  @override
+  String sessionUsageHeatmapSpanSummary(
+    String tokens,
+    String requests,
+    String cost,
+  ) {
+    return '$tokens Token · $requests 请求 · $cost';
+  }
+
+  @override
   String get sessionUsageNoData => '暂无数据';
 
   @override

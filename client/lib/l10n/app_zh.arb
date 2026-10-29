@@ -4212,6 +4212,22 @@
   "sessionUsageLoadFailed": "无法加载用量数据。",
   "sessionUsageRetry": "重试",
   "sessionUsageDismiss": "关闭",
+  "sessionUsageHeatmapTitle": "用量热力图",
+  "sessionUsageHeatmapSubtitle": "近 53 周 · 悬停或长按查看当天明细",
+  "sessionUsageHeatmapMetricTokens": "Token",
+  "sessionUsageHeatmapMetricHitRate": "命中率",
+  "sessionUsageHeatmapShowEarlier": "显示更早",
+  "sessionUsageHeatmapShowLess": "收起更早",
+  "sessionUsageHeatmapLess": "少",
+  "sessionUsageHeatmapMore": "多",
+  "sessionUsageHeatmapSpanSummary": "{tokens} Token · {requests} 请求 · {cost}",
+  "@sessionUsageHeatmapSpanSummary": {
+    "placeholders": {
+      "tokens": { "type": "String" },
+      "requests": { "type": "String" },
+      "cost": { "type": "String" }
+    }
+  },
   "sessionUsageNoData": "暂无数据",
   "sessionUsageToday": "今天",
   "sessionUsageUnknownModel": "未知模型",
