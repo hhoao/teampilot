@@ -52,9 +52,10 @@ Widget _wrap({
   required UsageDashboard dashboard,
   required AppSettingsRepository repository,
   ValueChanged<UsageGroupBy>? onGroupByChanged,
+  Locale locale = const Locale('en'),
 }) {
   return MaterialApp(
-    locale: const Locale('en'),
+    locale: locale,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: RepositoryProvider<AppSettingsRepository>.value(
@@ -96,7 +97,10 @@ void main() {
 
     expect(find.text('Alpha'), findsOneWidget);
     expect(find.text('Beta'), findsOneWidget);
-    expect(find.widgetWithText(ChoiceChip, 'Sessions'), findsNothing);
+    final segment = tester.widget<TpSegmentedControl>(
+      find.byType(TpSegmentedControl),
+    );
+    expect(segment.labels, ['Session', 'Member', 'Model', 'CLI']);
     expect(find.textContaining('Group by'), findsOneWidget);
   });
 
@@ -167,6 +171,48 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(selected, UsageGroupBy.model);
+  });
+
+  testWidgets('empty-state headline uses the medium body token', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1300, 2000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      _wrap(
+        dashboard: const UsageDashboard(),
+        repository: InMemoryAppSettingsRepository(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final headlineFinder = find.text('No matching rows');
+    final headline = tester.widget<Text>(headlineFinder);
+    expect(
+      headline.style,
+      TpTextStyles.of(tester.element(headlineFinder)).smMedium,
+    );
+  });
+
+  testWidgets('sort tooltip uses localized table labels', (tester) async {
+    tester.view.physicalSize = const Size(1300, 2000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      _wrap(
+        dashboard: _dashboard(),
+        repository: InMemoryAppSettingsRepository(),
+        locale: const Locale('zh'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('升序'), findsOneWidget);
   });
 
   testWidgets('clicking the total header reverses row order', (tester) async {

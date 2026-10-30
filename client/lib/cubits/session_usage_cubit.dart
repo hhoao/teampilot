@@ -497,8 +497,6 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     );
   }
 
-  void setLiveEnd(bool value) => _updateFilter(liveEnd: value);
-
   void refreshRangeNow() {
     if (!state.liveEnd) return;
     emit(state.copyWith(dashboard: _computeDashboard()));

@@ -570,7 +570,10 @@ void main() {
 
   test('custom with only an end bound falls back to all', () {
     final events = [
-      _event(id: 'old', timestampMs: DateTime(2020).millisecondsSinceEpoch),
+      _event(
+        id: 'after-end',
+        timestampMs: DateTime(2026, 10, 27).millisecondsSinceEpoch,
+      ),
     ];
 
     expect(

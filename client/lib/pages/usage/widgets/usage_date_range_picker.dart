@@ -66,6 +66,10 @@ class UsageDateRangePicker extends StatelessWidget {
       },
       onChanged: (range) {
         if (range == null) return;
+        if (state.range == UsageRange.all &&
+            range.start == now.subtract(const Duration(days: 30))) {
+          return;
+        }
         cubit.setCustomRange(
           startMs: range.start.millisecondsSinceEpoch,
           endMs: range.end.millisecondsSinceEpoch,
@@ -90,17 +94,19 @@ class UsageDateRangePicker extends StatelessWidget {
       );
     }
 
+    if (state.range == UsageRange.all || state.range == UsageRange.custom) {
+      return TpDateTimeRange(
+        start: now.subtract(const Duration(days: 30)),
+        end: now,
+      );
+    }
+
     final bounds = usageRangeBounds(
-      range: state.range == UsageRange.custom ? UsageRange.all : state.range,
+      range: state.range,
       nowMs: now.millisecondsSinceEpoch,
     );
-    final start = bounds.startMs == null
-        ? now.subtract(const Duration(days: 30))
-        : DateTime.fromMillisecondsSinceEpoch(bounds.startMs!);
-    final end = bounds.endMs == null
-        ? now
-        : DateTime.fromMillisecondsSinceEpoch(bounds.endMs!);
-    return TpDateTimeRange(start: start, end: end);
+    final start = DateTime.fromMillisecondsSinceEpoch(bounds.startMs!);
+    return TpDateTimeRange(start: start, end: now, liveEnd: true);
   }
 
   String _triggerLabel(BuildContext context, SessionUsageState state) {

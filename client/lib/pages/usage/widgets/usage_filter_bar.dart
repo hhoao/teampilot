@@ -99,9 +99,7 @@ class _CliButton extends StatelessWidget {
                 ? icon
                 : Text(
                     label!,
-                    style: styles.xs.copyWith(
-                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                    ),
+                    style: selected ? styles.xsSemibold : styles.xsMedium,
                   ),
           ),
         ),

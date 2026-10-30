@@ -112,8 +112,8 @@ String usageGroupName(BuildContext context, UsageGroup group) {
 
 /// Label for a usage range preset.
 ///
-/// `UsageRange.custom` falls back to the all-time label; the range trigger
-/// formats the concrete custom dates itself.
+/// `UsageRange.custom` has no preset label and uses all-time as a neutral
+/// fallback.
 String usageRangeLabel(BuildContext context, UsageRange range) {
   final l10n = context.l10n;
   return switch (range) {

@@ -13,7 +13,9 @@ void main() {
     expect(usageChartLabelStride(30), 5);
   });
 
-  testWidgets('range labels cover all presets', (tester) async {
+  testWidgets('range labels cover rolling 24-hour and 14-day presets', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('en'),

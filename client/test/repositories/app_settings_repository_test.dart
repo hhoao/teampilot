@@ -219,6 +219,8 @@ void main() {
   });
 
   group('AppSettingsRepository.tableState', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
     test('round-trips and isolates table ids', () async {
       final prefs = await SharedPreferences.getInstance();
       final repo = SharedPrefsAppSettingsRepository(prefs);
@@ -261,7 +263,9 @@ void main() {
 
     test('InMemory round-trips table state', () async {
       final repo = InMemoryAppSettingsRepository();
-      await repo.saveTableState('usage.detail', {'order': ['total']});
+      await repo.saveTableState('usage.detail', {
+        'order': ['total'],
+      });
 
       expect(await repo.loadTableState('usage.detail'), {
         'order': ['total'],

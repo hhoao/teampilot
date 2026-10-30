@@ -234,10 +234,7 @@ class _CliBadge extends StatelessWidget {
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Text(
-        usageCliLabel(cli),
-        style: styles.xs.copyWith(color: color, fontSize: 10),
-      ),
+      child: Text(usageCliLabel(cli), style: styles.xsColored(color)),
     );
   }
 }

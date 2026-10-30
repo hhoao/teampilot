@@ -143,6 +143,8 @@ class _UsageDetailTableState extends State<UsageDetailTable> {
       columns: l10n.sessionUsageColumnSettings,
       reset: l10n.sessionUsageColumnReset,
       empty: l10n.sessionUsageTableEmpty,
+      sortAscending: l10n.sessionUsageSortAscending,
+      sortDescending: l10n.sessionUsageSortDescending,
     );
 
     return Container(
@@ -201,7 +203,10 @@ class _UsageDetailTableState extends State<UsageDetailTable> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(l10n.sessionUsageTableEmpty),
+              Text(
+                l10n.sessionUsageTableEmpty,
+                style: TpTextStyles.of(context).smMedium,
+              ),
               const SizedBox(height: 4),
               Text(
                 l10n.sessionUsageTableEmptyHint,
