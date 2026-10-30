@@ -162,6 +162,7 @@ class _UsageDetailTableState extends State<UsageDetailTable> {
         onStateChanged: _onStateChanged,
         minTableWidth: 1080,
         rowHeight: 56,
+        maxHeight: 560,
         labels: labels,
         toolbar: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),

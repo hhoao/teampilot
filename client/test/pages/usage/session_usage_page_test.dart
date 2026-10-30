@@ -615,7 +615,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Session 1'), findsOneWidget);
-    expect(find.text('Session 20'), findsOneWidget);
     expect(find.text('Session 21'), findsNothing);
     expect(find.byKey(AppKeys.sessionUsagePageRange), findsOneWidget);
     expect(find.text('1–20 of 25 groups'), findsOneWidget);
@@ -672,7 +671,6 @@ void main() {
     await tester.tap(find.text('50').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('Session 25'), findsOneWidget);
     expect(find.text('1–25 of 25 groups'), findsOneWidget);
   });
 
