@@ -122,7 +122,7 @@ void main() {
     expect(group.hideable, isFalse);
     expect(group.draggable, isFalse);
     expect(group.flex, 3);
-    expect(group.minWidth, 240);
+    expect(group.minWidth, 200);
     expect(group.label, 'Session');
 
     expect(find.text('codex'), findsOneWidget);

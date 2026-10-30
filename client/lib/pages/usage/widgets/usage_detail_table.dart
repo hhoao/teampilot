@@ -163,6 +163,7 @@ class _UsageDetailTableState extends State<UsageDetailTable> {
         minTableWidth: 1080,
         rowHeight: 48,
         showScrollbar: false,
+        horizontalScroll: true,
         labels: labels,
         toolbar: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
