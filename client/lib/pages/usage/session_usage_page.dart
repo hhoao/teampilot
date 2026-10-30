@@ -425,8 +425,6 @@ class _SessionUsagePageState extends State<SessionUsagePage>
                 '${state.customEndMs ?? ''}|${state.liveEnd}|'
                 '${state.cli?.name ?? ''}|${state.groupBy.name}|${state.query}',
           ),
-          const SizedBox(height: 10),
-          UsageFooter(state: state),
         ],
       ),
     );

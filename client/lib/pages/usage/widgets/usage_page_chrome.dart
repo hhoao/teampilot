@@ -235,23 +235,3 @@ String _progressLabel(BuildContext context, UsageSyncProgress? progress) {
     progress.inserted,
   );
 }
-
-class UsageFooter extends StatelessWidget {
-  const UsageFooter({required this.state, super.key});
-
-  final SessionUsageState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
-    return Text(
-      l10n.sessionUsageShowing(
-        state.dashboard.rows.length,
-        state.dashboard.totalEventCount,
-      ),
-      style: styles.xs.copyWith(color: cs.onSurface.withValues(alpha: 0.5)),
-    );
-  }
-}

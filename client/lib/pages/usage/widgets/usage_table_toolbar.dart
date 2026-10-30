@@ -100,7 +100,7 @@ class UsageTableToolbar extends StatelessWidget {
           );
         }
         return Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(child: groupControls),
             const SizedBox(width: 12),

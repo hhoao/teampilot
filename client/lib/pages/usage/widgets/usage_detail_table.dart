@@ -148,7 +148,7 @@ class _UsageDetailTableState extends State<UsageDetailTable> {
 
     return Container(
       key: AppKeys.sessionUsageTable,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+      padding: const EdgeInsets.only(top: 14, bottom: 10),
       decoration: workspaceCardDecoration(
         cs,
         radius: 14,
@@ -163,37 +163,43 @@ class _UsageDetailTableState extends State<UsageDetailTable> {
         minTableWidth: 1080,
         rowHeight: 56,
         labels: labels,
-        toolbar: UsageTableToolbar(
-          groupBy: widget.groupBy,
-          searchController: widget.searchController,
-          onQueryChanged: widget.onQueryChanged,
-          onGroupByChanged: widget.onGroupByChanged,
-          columns: columns,
-          tableState: _tableState,
-          onTableStateChanged: _onStateChanged,
-          labels: labels,
+        toolbar: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: UsageTableToolbar(
+            groupBy: widget.groupBy,
+            searchController: widget.searchController,
+            onQueryChanged: widget.onQueryChanged,
+            onGroupByChanged: widget.onGroupByChanged,
+            columns: columns,
+            tableState: _tableState,
+            onTableStateChanged: _onStateChanged,
+            labels: labels,
+          ),
         ),
         footer: showPager
-            ? UsageTablePagination(
-                page: page,
-                pageCount: pageCount,
-                start: start,
-                end: end,
-                total: total,
-                pageSize: _pageSize,
-                pageSizeOptions: _pageSizeOptions,
-                onPageSizeChanged: (size) {
-                  setState(() {
-                    _pageSize = size;
-                    _page = 0;
-                  });
-                },
-                onPrev: page == 0
-                    ? null
-                    : () => setState(() => _page = page - 1),
-                onNext: page >= pageCount - 1
-                    ? null
-                    : () => setState(() => _page = page + 1),
+            ? Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: UsageTablePagination(
+                  page: page,
+                  pageCount: pageCount,
+                  start: start,
+                  end: end,
+                  total: total,
+                  pageSize: _pageSize,
+                  pageSizeOptions: _pageSizeOptions,
+                  onPageSizeChanged: (size) {
+                    setState(() {
+                      _pageSize = size;
+                      _page = 0;
+                    });
+                  },
+                  onPrev: page == 0
+                      ? null
+                      : () => setState(() => _page = page - 1),
+                  onNext: page >= pageCount - 1
+                      ? null
+                      : () => setState(() => _page = page + 1),
+                ),
               )
             : null,
         emptyState: Padding(
