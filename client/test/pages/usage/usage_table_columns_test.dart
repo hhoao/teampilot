@@ -11,10 +11,12 @@ UsageGroup _row(
   required int total,
   required int input,
   List<CliTool> clis = const [],
+  String subtitle = '',
 }) {
   return UsageGroup(
     key: 'k:$label',
     label: label,
+    subtitle: subtitle,
     clis: clis,
     totalTokens: total,
     freshInputTokens: input,
@@ -135,6 +137,67 @@ void main() {
     expect(cliColumn.width, 120);
     expect(
       cliGroupColumns.any((column) => column.id == usageCliColumnId),
+      isFalse,
+    );
+  });
+
+  testWidgets('team is a separate column for session and member groups', (
+    tester,
+  ) async {
+    late List<TpTableColumn<UsageGroup>> sessionColumns;
+    late List<TpTableColumn<UsageGroup>> memberColumns;
+    late List<TpTableColumn<UsageGroup>> modelColumns;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) {
+            sessionColumns = buildUsageTableColumns(
+              context: context,
+              summary: const UsageSummary(totalTokens: 100),
+              groupBy: UsageGroupBy.session,
+            );
+            memberColumns = buildUsageTableColumns(
+              context: context,
+              summary: const UsageSummary(totalTokens: 100),
+              groupBy: UsageGroupBy.member,
+            );
+            modelColumns = buildUsageTableColumns(
+              context: context,
+              summary: const UsageSummary(totalTokens: 100),
+              groupBy: UsageGroupBy.model,
+            );
+            final row = _row('Alpha', total: 10, input: 1, subtitle: 'Team A');
+            return Column(
+              children: [
+                sessionColumns
+                    .firstWhere((column) => column.id == usageGroupColumnId)
+                    .cellBuilder(context, row),
+                sessionColumns
+                    .firstWhere((column) => column.id == usageTeamColumnId)
+                    .cellBuilder(context, row),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+
+    final team = sessionColumns.firstWhere(
+      (column) => column.id == usageTeamColumnId,
+    );
+    expect(team.label, 'Team');
+    expect(team.width, 150);
+    expect(find.text('Alpha'), findsOneWidget);
+    expect(find.text('Team A'), findsOneWidget);
+    expect(
+      memberColumns.any((column) => column.id == usageTeamColumnId),
+      isTrue,
+    );
+    expect(
+      modelColumns.any((column) => column.id == usageTeamColumnId),
       isFalse,
     );
   });

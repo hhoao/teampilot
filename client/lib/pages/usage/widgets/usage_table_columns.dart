@@ -10,6 +10,7 @@ import '../usage_format.dart';
 
 const String usageGroupColumnId = 'group';
 const String usageCliColumnId = 'cli';
+const String usageTeamColumnId = 'team';
 const String usageTotalColumnId = 'total';
 
 List<TpTableColumn<UsageGroup>> buildUsageTableColumns({
@@ -39,6 +40,14 @@ List<TpTableColumn<UsageGroup>> buildUsageTableColumns({
         width: 120,
         sortValue: (row) => row.clis.map((cli) => cli.value).join(','),
         cellBuilder: (context, row) => _CliCell(row: row),
+      ),
+    if (groupBy == UsageGroupBy.session || groupBy == UsageGroupBy.member)
+      TpTableColumn<UsageGroup>(
+        id: usageTeamColumnId,
+        label: l10n.workspaceChatLandingModeTeam,
+        width: 150,
+        sortValue: (row) => row.subtitle.toLowerCase(),
+        cellBuilder: (context, row) => _TeamCell(row: row),
       ),
     _numberColumn(
       id: usageTotalColumnId,
@@ -173,37 +182,35 @@ class _GroupCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
     final cli = isCliGroup ? CliTool.tryParse(row.label) : null;
     final label = cli == null
         ? usageGroupName(context, row)
         : usageCliLabel(cli);
-    final subtitle = usageGroupSubtitle(context, row.subtitle);
-    final mutedStyle = styles.xs.copyWith(
-      color: cs.onSurface.withValues(alpha: 0.5),
-    );
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: styles.smMedium,
-        ),
-        if (subtitle.isNotEmpty) ...[
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: mutedStyle,
-          ),
-        ],
-      ],
+    return Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: styles.smMedium,
+    );
+  }
+}
+
+class _TeamCell extends StatelessWidget {
+  const _TeamCell({required this.row});
+
+  final UsageGroup row;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = usageGroupSubtitle(context, row.subtitle);
+    if (text.isEmpty) return const SizedBox.shrink();
+    return Text(
+      text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TpTextStyles.of(context).sm,
     );
   }
 }
