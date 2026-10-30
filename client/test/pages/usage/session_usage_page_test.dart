@@ -12,6 +12,7 @@ import 'package:teampilot/models/session_usage_dashboard.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/usage/session_usage_page.dart';
 import 'package:teampilot/pages/usage/widgets/usage_heatmap_card.dart';
+import 'package:teampilot/pages/usage/widgets/usage_table_toolbar.dart';
 import 'package:teampilot/services/usage/session_usage_sync_service.dart';
 import 'package:teampilot/services/usage/usage_sync_control.dart';
 import 'package:teampilot/utils/ui/app_keys.dart';
@@ -258,7 +259,10 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('range, CLI, and group chips update the cubit', (tester) async {
+  testWidgets('range picker, CLI icons, and group control update the cubit', (
+    tester,
+  ) async {
+    _useTallViewport(tester);
     final cubit = SessionUsageCubit(
       loadEvents: () async => [
         _event(),
@@ -276,16 +280,28 @@ void main() {
     await tester.pumpWidget(_wrap(cubit));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Last 7 days'));
+    await tester.tap(find.byKey(AppKeys.sessionUsageRangeTrigger));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(TpDateTimeRangePanel),
+        matching: find.text('Last 7 days'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(cubit.state.range, UsageRange.sevenDays);
 
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Codex'));
+    await tester.tap(find.byTooltip('Codex'));
     await tester.pumpAndSettle();
     expect(cubit.state.cli, CliTool.codex);
     expect(find.text('Alpha'), findsNothing);
 
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Model'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(UsageTableToolbar),
+        matching: find.text('Model'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(cubit.state.groupBy, UsageGroupBy.model);
   });

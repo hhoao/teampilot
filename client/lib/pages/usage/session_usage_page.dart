@@ -17,6 +17,7 @@ import 'usage_pricing_dialog.dart';
 import 'widgets/usage_cli_breakdown.dart';
 import 'widgets/usage_cost_card.dart';
 import 'widgets/usage_detail_table.dart';
+import 'widgets/usage_filter_bar.dart';
 import 'widgets/usage_heatmap_card.dart';
 import 'widgets/usage_page_chrome.dart';
 import 'widgets/usage_page_states.dart';
@@ -47,6 +48,7 @@ class _SessionUsagePageState extends State<SessionUsagePage>
     with WidgetsBindingObserver {
   final _searchController = TextEditingController();
   Timer? _autoSyncTimer;
+  Timer? _liveRangeTimer;
   bool _appActive = true;
 
   @override
@@ -88,6 +90,8 @@ class _SessionUsagePageState extends State<SessionUsagePage>
   void dispose() {
     _autoSyncTimer?.cancel();
     _autoSyncTimer = null;
+    _liveRangeTimer?.cancel();
+    _liveRangeTimer = null;
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     super.dispose();
@@ -98,70 +102,90 @@ class _SessionUsagePageState extends State<SessionUsagePage>
     cubit.resetFilters();
   }
 
+  /// Keeps a live-end custom range moving while the page is open.
+  void _syncLiveRangeTimer(bool live) {
+    if (live && _liveRangeTimer == null) {
+      _liveRangeTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+        if (!mounted) return;
+        context.read<SessionUsageCubit>().refreshRangeNow();
+      });
+      return;
+    }
+    if (!live) {
+      _liveRangeTimer?.cancel();
+      _liveRangeTimer = null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final content = BlocListener<SessionUsageCubit, SessionUsageState>(
-      listenWhen: (previous, current) =>
-          previous.isSyncing && !current.isSyncing,
-      listener: (context, state) {
-        if (state.syncCancelled) {
-          AppToast.show(
-            context,
-            message: context.l10n.sessionUsageSyncCancelled,
-            variant: TpToastVariant.info,
-          );
-          return;
-        }
-        if (state.lastSyncManual &&
-            !state.syncFailed &&
-            state.syncErrors.isEmpty &&
-            state.lastSyncResult != null) {
-          AppToast.show(
-            context,
-            message: context.l10n.sessionUsageSyncedToast,
-            variant: TpToastVariant.success,
-          );
-        }
-      },
-      child: BlocBuilder<SessionUsageCubit, SessionUsageState>(
-        builder: (context, state) {
-          final cubit = context.read<SessionUsageCubit>();
-          final body = BlocBuilder<SessionUsageCubit, SessionUsageState>(
-            buildWhen: (previous, current) =>
-                previous.status != current.status ||
-                previous.dashboard != current.dashboard ||
-                previous.errorMessage != current.errorMessage ||
-                previous.pricingCorrupted != current.pricingCorrupted,
-            builder: (context, bodyState) => _buildBody(
+      listenWhen: (previous, current) => previous.liveEnd != current.liveEnd,
+      listener: (context, state) => _syncLiveRangeTimer(state.liveEnd),
+      child: BlocListener<SessionUsageCubit, SessionUsageState>(
+        listenWhen: (previous, current) =>
+            previous.isSyncing && !current.isSyncing,
+        listener: (context, state) {
+          if (state.syncCancelled) {
+            AppToast.show(
               context,
-              cubit,
-              bodyState,
-              DateTime.now().millisecondsSinceEpoch,
-            ),
-          );
-          return KeyedSubtree(
-            key: AppKeys.sessionUsagePage,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                UsagePageHeader(
-                  state: state,
-                  onIncrementalSync: () => cubit.sync(),
-                  onFullSync: cubit.fullSync,
-                  onCancel: cubit.cancelSync,
-                  onCursor: () => _openMaintenance(cubit),
-                  onMaintenance: () => _openMaintenance(cubit),
-                ),
-                if (_errorBanner(context, cubit, state) case final banner?) ...[
-                  const SizedBox(height: 12),
-                  banner,
-                ],
-                const SizedBox(height: 16),
-                Expanded(child: body),
-              ],
-            ),
-          );
+              message: context.l10n.sessionUsageSyncCancelled,
+              variant: TpToastVariant.info,
+            );
+            return;
+          }
+          if (state.lastSyncManual &&
+              !state.syncFailed &&
+              state.syncErrors.isEmpty &&
+              state.lastSyncResult != null) {
+            AppToast.show(
+              context,
+              message: context.l10n.sessionUsageSyncedToast,
+              variant: TpToastVariant.success,
+            );
+          }
         },
+        child: BlocBuilder<SessionUsageCubit, SessionUsageState>(
+          builder: (context, state) {
+            final cubit = context.read<SessionUsageCubit>();
+            final body = BlocBuilder<SessionUsageCubit, SessionUsageState>(
+              buildWhen: (previous, current) =>
+                  previous.status != current.status ||
+                  previous.dashboard != current.dashboard ||
+                  previous.errorMessage != current.errorMessage ||
+                  previous.pricingCorrupted != current.pricingCorrupted,
+              builder: (context, bodyState) => _buildBody(
+                context,
+                cubit,
+                bodyState,
+                DateTime.now().millisecondsSinceEpoch,
+              ),
+            );
+            return KeyedSubtree(
+              key: AppKeys.sessionUsagePage,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  UsagePageHeader(
+                    state: state,
+                    onIncrementalSync: () => cubit.sync(),
+                    onFullSync: cubit.fullSync,
+                    onCancel: cubit.cancelSync,
+                    onCursor: () => _openMaintenance(cubit),
+                    onMaintenance: () => _openMaintenance(cubit),
+                  ),
+                  if (_errorBanner(context, cubit, state)
+                      case final banner?) ...[
+                    const SizedBox(height: 12),
+                    banner,
+                  ],
+                  const SizedBox(height: 16),
+                  Expanded(child: body),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
 
@@ -340,7 +364,7 @@ class _SessionUsagePageState extends State<SessionUsagePage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          UsageToolbar(state: state, cubit: cubit),
+          UsageFilterBar(state: state, cubit: cubit),
           const SizedBox(height: 14),
           UsageSummaryCards(dashboard: dashboard, nowMs: nowMs),
           const SizedBox(height: 12),
@@ -390,8 +414,9 @@ class _SessionUsagePageState extends State<SessionUsagePage>
             onGroupByChanged: cubit.setGroupBy,
             onResetFilters: () => _resetFilters(cubit),
             resetKey:
-                '${state.range.name}|${state.cli?.name ?? ''}|'
-                '${state.groupBy.name}|${state.query}',
+                '${state.range.name}|${state.customStartMs ?? ''}|'
+                '${state.customEndMs ?? ''}|${state.liveEnd}|'
+                '${state.cli?.name ?? ''}|${state.groupBy.name}|${state.query}',
           ),
           const SizedBox(height: 10),
           UsageFooter(state: state),

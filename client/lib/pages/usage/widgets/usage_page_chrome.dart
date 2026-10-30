@@ -3,8 +3,6 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../../cubits/session_usage_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
-import '../../../models/session_usage_dashboard.dart';
-import '../../../models/team_config.dart';
 import '../../../services/usage/usage_sync_control.dart';
 import '../../../utils/ui/app_keys.dart';
 import '../usage_format.dart';
@@ -236,79 +234,6 @@ String _progressLabel(BuildContext context, UsageSyncProgress? progress) {
     progress.targetsTotal,
     progress.inserted,
   );
-}
-
-class UsageToolbar extends StatelessWidget {
-  const UsageToolbar({required this.state, required this.cubit, super.key});
-
-  final SessionUsageState state;
-  final SessionUsageCubit cubit;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
-    final styles = TpTextStyles.of(context);
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        // Custom ranges are picker-only until Task 11 replaces this toolbar.
-        for (final range in UsageRange.values.where(
-          (r) => r != UsageRange.custom,
-        ))
-          ChoiceChip(
-            label: Text(_rangeLabel(context, range)),
-            selected: state.range == range,
-            showCheckmark: false,
-            visualDensity: VisualDensity.compact,
-            onSelected: (_) => cubit.setRange(range),
-          ),
-        const SizedBox(width: 8),
-        ChoiceChip(
-          label: Text(l10n.sessionUsageCliAll),
-          selected: state.cli == null,
-          showCheckmark: false,
-          visualDensity: VisualDensity.compact,
-          onSelected: (_) => cubit.setCli(null),
-        ),
-        for (final cli in CliTool.values)
-          ChoiceChip(
-            label: Text(usageCliLabel(cli)),
-            selected: state.cli == cli,
-            showCheckmark: false,
-            visualDensity: VisualDensity.compact,
-            onSelected: (_) => cubit.setCli(cli),
-          ),
-        const SizedBox(width: 8),
-        Text(
-          l10n.sessionUsageGroupBy,
-          style: styles.xs.copyWith(color: cs.onSurface.withValues(alpha: 0.5)),
-        ),
-        for (final group in UsageGroupBy.values)
-          ChoiceChip(
-            label: Text(usageGroupLabel(context, group)),
-            selected: state.groupBy == group,
-            showCheckmark: false,
-            visualDensity: VisualDensity.compact,
-            onSelected: (_) => cubit.setGroupBy(group),
-          ),
-      ],
-    );
-  }
-
-  String _rangeLabel(BuildContext context, UsageRange range) {
-    final l10n = context.l10n;
-    return switch (range) {
-      UsageRange.today => l10n.sessionUsageRangeToday,
-      UsageRange.sevenDays => l10n.sessionUsageRangeSevenDays,
-      UsageRange.thirtyDays => l10n.sessionUsageRangeThirtyDays,
-      UsageRange.all => l10n.sessionUsageRangeAll,
-      // Temporary: Task 8 adds the real labels and Task 11 deletes this class.
-      _ => l10n.sessionUsageRangeAll,
-    };
-  }
 }
 
 class UsageFooter extends StatelessWidget {

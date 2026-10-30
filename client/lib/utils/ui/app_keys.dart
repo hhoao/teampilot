@@ -336,6 +336,7 @@ class AppKeys {
   );
   static const sessionUsageSyncProgress = Key('session-usage-sync-progress');
   static const sessionUsageSearchField = Key('session-usage-search-field');
+  static const sessionUsageRangeTrigger = Key('session-usage-range-trigger');
   static const sessionUsageErrorBanner = Key('session-usage-error-banner');
   static const sessionUsageEmptyState = Key('session-usage-empty-state');
   static const sessionUsageTable = Key('session-usage-table');
