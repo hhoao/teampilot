@@ -5094,3 +5094,15 @@ git commit -m "test: verify usage table and range picker"
 - `shared_ui` stays free of app l10n and preferences; labels and table state are injected.
 - Persistence strips sort with `copyWith(clearSort: true)`.
 - `custom` range falls back to all-time when either bound is missing.
+
+---
+
+## Deviations applied during execution
+
+- Task 2: `TpDataTable` does not auto-render a column menu; the host supplies `toolbar` containing `TpTableColumnMenu` (plan's own code+test were incompatible).
+- Task 3: drop indicator side is derived from the full ordered id list (`allColumnIds` added to `TpTableHeader`); drag source and drop target capability are separate.
+- Task 4: picker adds a `TpPopoverController` listener; the dialog path gets a rebuild callback; timer driven by explicit panel-open state; trigger toggles instead of re-opening.
+- Task 7: `UsageRange.custom` excluded from the legacy `UsageToolbar` chip loop until it is deleted.
+- Task 9: `_GroupCell` takes `isCliGroup` and renders a single-line badge strip (max two badges + `+N`).
+- Task 10: `UsageDetailTable` gained required `onGroupByChanged`; `session_usage_page.dart` passes `cubit.setGroupBy`.
+- Task 11: `sessionUsageRangeTrigger` AppKeys entry; live-range timer seeded on mount and gated on app-active; test taps scoped to `TpDateTimeRangePanel`.
