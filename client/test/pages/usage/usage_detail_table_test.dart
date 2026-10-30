@@ -286,6 +286,7 @@ void main() {
       tester.getTopLeft(find.text('Alpha')).dy,
       lessThan(tester.getTopLeft(find.text('Beta')).dy),
     );
+    expect(find.text('Total'), findsOneWidget);
     expect(
       (await repository.loadTableState('usage.detail'))?.containsKey('sort'),
       isFalse,
