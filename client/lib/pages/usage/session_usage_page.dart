@@ -387,6 +387,7 @@ class _SessionUsagePageState extends State<SessionUsagePage>
             groupBy: state.groupBy,
             searchController: _searchController,
             onQueryChanged: cubit.setQuery,
+            onGroupByChanged: cubit.setGroupBy,
             onResetFilters: () => _resetFilters(cubit),
             resetKey:
                 '${state.range.name}|${state.cli?.name ?? ''}|'
