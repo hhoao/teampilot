@@ -5,9 +5,11 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/session_usage_dashboard.dart';
 import '../../../models/team_config.dart';
+import '../../../widgets/cli/cli_brand_icon.dart';
 import '../usage_format.dart';
 
 const String usageGroupColumnId = 'group';
+const String usageCliColumnId = 'cli';
 const String usageTotalColumnId = 'total';
 
 List<TpTableColumn<UsageGroup>> buildUsageTableColumns({
@@ -30,6 +32,14 @@ List<TpTableColumn<UsageGroup>> buildUsageTableColumns({
       cellBuilder: (context, row) =>
           _GroupCell(row: row, isCliGroup: groupBy == UsageGroupBy.cli),
     ),
+    if (groupBy != UsageGroupBy.cli)
+      TpTableColumn<UsageGroup>(
+        id: usageCliColumnId,
+        label: l10n.sessionUsageGroupCli,
+        width: 120,
+        sortValue: (row) => row.clis.map((cli) => cli.value).join(','),
+        cellBuilder: (context, row) => _CliCell(row: row),
+      ),
     _numberColumn(
       id: usageTotalColumnId,
       label: l10n.sessionUsageTotalShort,
@@ -170,9 +180,6 @@ class _GroupCell extends StatelessWidget {
         ? usageGroupName(context, row)
         : usageCliLabel(cli);
     final subtitle = usageGroupSubtitle(context, row.subtitle);
-    final badges = isCliGroup ? const <CliTool>[] : row.clis;
-    final visibleBadges = badges.take(2).toList(growable: false);
-    final hiddenBadgeCount = badges.length - visibleBadges.length;
     final mutedStyle = styles.xs.copyWith(
       color: cs.onSurface.withValues(alpha: 0.5),
     );
@@ -187,54 +194,39 @@ class _GroupCell extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: styles.smMedium,
         ),
-        const SizedBox(height: 2),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            for (final (index, tool) in visibleBadges.indexed) ...[
-              if (index > 0) const SizedBox(width: 4),
-              _CliBadge(cli: tool),
-            ],
-            if (hiddenBadgeCount > 0) ...[
-              if (visibleBadges.isNotEmpty) const SizedBox(width: 4),
-              Text('+$hiddenBadgeCount', style: mutedStyle),
-            ],
-            if (subtitle.isNotEmpty) ...[
-              if (visibleBadges.isNotEmpty || hiddenBadgeCount > 0)
-                const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: mutedStyle,
-                ),
-              ),
-            ],
-          ],
-        ),
+        if (subtitle.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: mutedStyle,
+          ),
+        ],
       ],
     );
   }
 }
 
-class _CliBadge extends StatelessWidget {
-  const _CliBadge({required this.cli});
+class _CliCell extends StatelessWidget {
+  const _CliCell({required this.row});
 
-  final CliTool cli;
+  final UsageGroup row;
 
   @override
   Widget build(BuildContext context) {
-    final color = usageCliColor(cli);
-    final styles = TpTextStyles.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(usageCliLabel(cli), style: styles.xsColored(color)),
+    if (row.clis.isEmpty) return const SizedBox.shrink();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final (index, cli) in row.clis.indexed) ...[
+          if (index > 0) const SizedBox(width: 6),
+          Tooltip(
+            message: usageCliLabel(cli),
+            child: CliBrandIcon(cli: cli, size: 16, showBorder: false),
+          ),
+        ],
+      ],
     );
   }
 }

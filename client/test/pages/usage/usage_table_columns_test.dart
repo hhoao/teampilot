@@ -3,12 +3,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/session_usage_dashboard.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/usage/widgets/usage_table_columns.dart';
 
-UsageGroup _row(String label, {required int total, required int input}) {
+UsageGroup _row(
+  String label, {
+  required int total,
+  required int input,
+  List<CliTool> clis = const [],
+}) {
   return UsageGroup(
     key: 'k:$label',
     label: label,
+    clis: clis,
     totalTokens: total,
     freshInputTokens: input,
     outputTokens: 0,
@@ -67,6 +74,7 @@ void main() {
     tester,
   ) async {
     late List<TpTableColumn<UsageGroup>> columns;
+    late List<TpTableColumn<UsageGroup>> cliGroupColumns;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -78,6 +86,11 @@ void main() {
               context: context,
               summary: const UsageSummary(totalTokens: 100),
               groupBy: UsageGroupBy.session,
+            );
+            cliGroupColumns = buildUsageTableColumns(
+              context: context,
+              summary: const UsageSummary(totalTokens: 100),
+              groupBy: UsageGroupBy.cli,
             );
             return Column(
               children: [
@@ -114,5 +127,49 @@ void main() {
     expect(find.text('Codex'), findsNothing);
     expect(find.text('50%'), findsOneWidget);
     expect(find.text('Unpriced'), findsOneWidget);
+
+    final cliColumn = columns.firstWhere(
+      (column) => column.id == usageCliColumnId,
+    );
+    expect(cliColumn.label, 'CLI');
+    expect(cliColumn.width, 120);
+    expect(
+      cliGroupColumns.any((column) => column.id == usageCliColumnId),
+      isFalse,
+    );
+  });
+
+  testWidgets('CLI column renders one icon per tool', (tester) async {
+    late List<TpTableColumn<UsageGroup>> columns;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) {
+            columns = buildUsageTableColumns(
+              context: context,
+              summary: const UsageSummary(totalTokens: 100),
+              groupBy: UsageGroupBy.session,
+            );
+            return columns
+                .firstWhere((column) => column.id == usageCliColumnId)
+                .cellBuilder(
+                  context,
+                  _row(
+                    'Alpha',
+                    total: 10,
+                    input: 1,
+                    clis: [CliTool.claude, CliTool.codex],
+                  ),
+                );
+          },
+        ),
+      ),
+    );
+
+    expect(find.byTooltip('Claude Code'), findsOneWidget);
+    expect(find.byTooltip('Codex'), findsOneWidget);
   });
 }

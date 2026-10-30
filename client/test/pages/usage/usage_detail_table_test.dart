@@ -128,6 +128,29 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('resizing a column persists its width', (tester) async {
+    tester.view.physicalSize = const Size(1300, 2000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final repository = InMemoryAppSettingsRepository();
+    await tester.pumpWidget(
+      _wrap(dashboard: _dashboard(), repository: repository),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.byKey(const ValueKey('resize-total')),
+      const Offset(30, 0),
+    );
+    await tester.pumpAndSettle();
+
+    final saved = await repository.loadTableState('usage.detail');
+    expect(saved?['widths'], isA<Map<String, dynamic>>());
+    expect((saved?['widths'] as Map)['total'], greaterThan(100));
+  });
+
   testWidgets('hiding a column persists and removes its header', (
     tester,
   ) async {

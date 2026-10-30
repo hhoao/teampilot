@@ -11,6 +11,7 @@ import 'package:teampilot/models/session_usage.dart';
 import 'package:teampilot/models/session_usage_dashboard.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/usage/session_usage_page.dart';
+import 'package:teampilot/pages/usage/widgets/usage_filter_bar.dart';
 import 'package:teampilot/pages/usage/widgets/usage_heatmap_card.dart';
 import 'package:teampilot/pages/usage/widgets/usage_table_toolbar.dart';
 import 'package:teampilot/services/usage/session_usage_sync_service.dart';
@@ -291,7 +292,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(cubit.state.range, UsageRange.sevenDays);
 
-    await tester.tap(find.byTooltip('Codex'));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(UsageFilterBar),
+        matching: find.byTooltip('Codex'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(cubit.state.cli, CliTool.codex);
     expect(find.text('Alpha'), findsNothing);
