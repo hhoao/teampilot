@@ -51,6 +51,7 @@ UsageDashboard _dashboard() {
 Widget _wrap({
   required UsageDashboard dashboard,
   required AppSettingsRepository repository,
+  ValueChanged<UsageGroupBy>? onGroupByChanged,
 }) {
   return MaterialApp(
     locale: const Locale('en'),
@@ -69,7 +70,7 @@ Widget _wrap({
             groupBy: UsageGroupBy.session,
             searchController: TextEditingController(),
             onQueryChanged: (_) {},
-            onGroupByChanged: (_) {},
+            onGroupByChanged: onGroupByChanged ?? (_) {},
             onResetFilters: () {},
           ),
         ),
@@ -141,17 +142,42 @@ void main() {
     expect(saved?['hidden'], contains('share'));
   });
 
+  testWidgets('group segment reports the selection', (tester) async {
+    tester.view.physicalSize = const Size(1300, 2000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    UsageGroupBy? selected;
+    await tester.pumpWidget(
+      _wrap(
+        dashboard: _dashboard(),
+        repository: InMemoryAppSettingsRepository(),
+        onGroupByChanged: (group) => selected = group,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(TpSegmentedControl),
+        matching: find.text('Model'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(selected, UsageGroupBy.model);
+  });
+
   testWidgets('clicking the total header reverses row order', (tester) async {
     tester.view.physicalSize = const Size(1300, 2000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
+    final repository = InMemoryAppSettingsRepository();
     await tester.pumpWidget(
-      _wrap(
-        dashboard: _dashboard(),
-        repository: InMemoryAppSettingsRepository(),
-      ),
+      _wrap(dashboard: _dashboard(), repository: repository),
     );
     await tester.pumpAndSettle();
 
@@ -166,6 +192,10 @@ void main() {
     expect(
       tester.getTopLeft(find.text('Alpha')).dy,
       lessThan(tester.getTopLeft(find.text('Beta')).dy),
+    );
+    expect(
+      (await repository.loadTableState('usage.detail'))?.containsKey('sort'),
+      isFalse,
     );
   });
 }
