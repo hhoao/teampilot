@@ -53,6 +53,7 @@ Widget _wrap({
   required AppSettingsRepository repository,
   ValueChanged<UsageGroupBy>? onGroupByChanged,
   Locale locale = const Locale('en'),
+  TextScaler textScaler = TextScaler.noScaling,
 }) {
   return MaterialApp(
     locale: locale,
@@ -66,13 +67,18 @@ Widget _wrap({
           scale: 1,
         ),
         child: Scaffold(
-          body: UsageDetailTable(
-            dashboard: dashboard,
-            groupBy: UsageGroupBy.session,
-            searchController: TextEditingController(),
-            onQueryChanged: (_) {},
-            onGroupByChanged: onGroupByChanged ?? (_) {},
-            onResetFilters: () {},
+          body: Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+              child: UsageDetailTable(
+                dashboard: dashboard,
+                groupBy: UsageGroupBy.session,
+                searchController: TextEditingController(),
+                onQueryChanged: (_) {},
+                onGroupByChanged: onGroupByChanged ?? (_) {},
+                onResetFilters: () {},
+              ),
+            ),
           ),
         ),
       ),
@@ -101,7 +107,25 @@ void main() {
       find.byType(TpSegmentedControl),
     );
     expect(segment.labels, ['Session', 'Member', 'Model', 'CLI']);
-    expect(find.textContaining('Group by'), findsOneWidget);
+    expect(find.textContaining('Group by'), findsNothing);
+  });
+
+  testWidgets('rows fit at 1.3x text scale', (tester) async {
+    tester.view.physicalSize = const Size(1300, 2000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      _wrap(
+        dashboard: _dashboard(),
+        repository: InMemoryAppSettingsRepository(),
+        textScaler: const TextScaler.linear(1.3),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('hiding a column persists and removes its header', (

@@ -9,8 +9,6 @@ import '../usage_format.dart';
 class UsageTableToolbar extends StatelessWidget {
   const UsageTableToolbar({
     required this.groupBy,
-    required this.groupLabel,
-    required this.count,
     required this.searchController,
     required this.onQueryChanged,
     required this.onGroupByChanged,
@@ -22,8 +20,6 @@ class UsageTableToolbar extends StatelessWidget {
   });
 
   final UsageGroupBy groupBy;
-  final String groupLabel;
-  final int count;
   final TextEditingController searchController;
   final ValueChanged<String> onQueryChanged;
   final ValueChanged<UsageGroupBy> onGroupByChanged;
@@ -34,7 +30,6 @@ class UsageTableToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
 
     final search = TextField(
@@ -61,36 +56,22 @@ class UsageTableToolbar extends StatelessWidget {
       ),
     );
 
-    final groupControls = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(context.l10n.sessionUsageGroupCount(count), style: styles.mdBold),
-        const SizedBox(height: 2),
-        Text(
-          '${context.l10n.sessionUsageGroupBy} · $groupLabel',
-          style: styles.xs.copyWith(
-            color: cs.onSurface.withValues(alpha: 0.56),
-          ),
-        ),
-        const SizedBox(height: 8),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: TpSegmentedControl(
-            totalSwitches: UsageGroupBy.values.length,
-            initialLabelIndex: UsageGroupBy.values.indexOf(groupBy),
-            labels: [
-              for (final group in UsageGroupBy.values)
-                usageGroupLabel(context, group),
-            ],
-            variant: TpSegmentedControlVariant.outlined,
-            minHeight: 28,
-            onToggle: (index) {
-              if (index == null) return;
-              onGroupByChanged(UsageGroupBy.values[index]);
-            },
-          ),
-        ),
-      ],
+    final groupControls = SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: TpSegmentedControl(
+        totalSwitches: UsageGroupBy.values.length,
+        initialLabelIndex: UsageGroupBy.values.indexOf(groupBy),
+        labels: [
+          for (final group in UsageGroupBy.values)
+            usageGroupLabel(context, group),
+        ],
+        variant: TpSegmentedControlVariant.outlined,
+        minHeight: 28,
+        onToggle: (index) {
+          if (index == null) return;
+          onGroupByChanged(UsageGroupBy.values[index]);
+        },
+      ),
     );
 
     final columnMenu = TpTableColumnMenu<UsageGroup>(

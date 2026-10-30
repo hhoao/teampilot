@@ -10,7 +10,6 @@ import '../../../repositories/app_settings_repository.dart';
 import '../../../theme/workspace_surface_layers.dart';
 import '../../../utils/logging/logger.dart';
 import '../../../utils/ui/app_keys.dart';
-import '../usage_format.dart';
 import 'usage_table_columns.dart';
 import 'usage_table_pagination.dart';
 import 'usage_table_toolbar.dart';
@@ -162,11 +161,10 @@ class _UsageDetailTableState extends State<UsageDetailTable> {
         defaultSort: _defaultSort,
         onStateChanged: _onStateChanged,
         minTableWidth: 1080,
+        rowHeight: 56,
         labels: labels,
         toolbar: UsageTableToolbar(
           groupBy: widget.groupBy,
-          groupLabel: usageGroupLabel(context, widget.groupBy),
-          count: dashboard.rows.length,
           searchController: widget.searchController,
           onQueryChanged: widget.onQueryChanged,
           onGroupByChanged: widget.onGroupByChanged,
