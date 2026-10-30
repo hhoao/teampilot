@@ -74,6 +74,13 @@ class _SessionUsagePageState extends State<SessionUsagePage>
       if (!mounted || !widget.autoSync || !_appActive) return;
       await cubit.syncIfStale(ttl: _autoSyncTtl);
     });
+
+    // The cubit outlives this State, so a live range set before the page was
+    // remounted never produces a liveEnd transition to listen for.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncLiveRangeTimer(context.read<SessionUsageCubit>().state.liveEnd);
+    });
   }
 
   @override
@@ -106,7 +113,7 @@ class _SessionUsagePageState extends State<SessionUsagePage>
   void _syncLiveRangeTimer(bool live) {
     if (live && _liveRangeTimer == null) {
       _liveRangeTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-        if (!mounted) return;
+        if (!mounted || !_appActive) return;
         context.read<SessionUsageCubit>().refreshRangeNow();
       });
       return;
