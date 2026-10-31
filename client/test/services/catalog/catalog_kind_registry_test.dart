@@ -77,4 +77,29 @@ void main() {
     expect(module.lastOp, CatalogOp.run);
     expect(result.kind, 'automation');
   });
+
+  test('advertised policy includes automation read and mutate tools', () {
+    final registry = CatalogMcpPolicy.advertisedRegistry();
+    expect(
+      CatalogMcpPolicy.readToolNames(registry),
+      contains('read_automation'),
+    );
+    expect(
+      CatalogMcpPolicy.mutateToolNames(registry),
+      containsAll([
+        'create_automation',
+        'update_automation',
+        'delete_automation',
+        'run_automation',
+      ]),
+    );
+    expect(
+      CatalogMcpPolicy.claudeAllowEntries(registry),
+      contains('mcp__teampilot__read_automation'),
+    );
+    expect(
+      CatalogMcpPolicy.claudeAllowEntries(registry),
+      isNot(contains('mcp__teampilot__create_automation')),
+    );
+  });
 }
