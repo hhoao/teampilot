@@ -3437,6 +3437,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appProviderOpencodeSubscription => '订阅';
 
   @override
+  String get appProviderOpencodeSubscriptionOn =>
+      '已绑定 OpenCode Go，订阅模型与免费模型均可用。';
+
+  @override
+  String get appProviderOpencodeSubscriptionOff =>
+      '仅免费模型。绑定 OpenCode Go 后可使用订阅模型。';
+
+  @override
   String get renameProviderName => '修改名称';
 
   @override

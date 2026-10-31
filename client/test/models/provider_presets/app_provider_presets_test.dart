@@ -67,7 +67,7 @@ void main() {
 
   test('opencode zen preset ships a default model', () {
     final zen = OpencodeProviderPresets.byId('opencode')!.template;
-    expect(zen.defaultModel, 'claude-sonnet-4-5');
+    expect(zen.defaultModel, 'deepseek-v4.1-flash-free');
   });
 
   test('codex preset TOML is valid', () {

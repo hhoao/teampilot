@@ -263,6 +263,22 @@ String resolveDefaultProviderModel(
   return candidates.isNotEmpty ? candidates.first : '';
 }
 
+/// One bucket of [ProviderCapability.modelCandidates] for hierarchical pickers
+/// (e.g. OpenCode: `opencode-go` / `opencode`).
+///
+/// The menu level is labeled with [namespace] itself: it is the exact prefix
+/// written into `model: "<namespace>/<model>"`, so nothing is renamed between
+/// what the picker shows and what the launch writes.
+@immutable
+class ProviderModelGroup {
+  const ProviderModelGroup({required this.namespace, required this.models});
+
+  /// Upstream provider namespace these models are requested from.
+  final String namespace;
+
+  final List<String> models;
+}
+
 /// One composable source of built-in candidate model ids for a provider.
 ///
 /// The provider record itself (`defaultModel` + `config['models']`) is always
@@ -284,6 +300,13 @@ abstract base class CatalogModelCapability implements ProviderCapability {
 
   @override
   String? get launchSettingsFileEnvKey => null;
+
+  /// Flat one-level picker by default; see [ProviderCapability.modelGroups].
+  @override
+  List<ProviderModelGroup> modelGroups({
+    required AppProviderConfig provider,
+    required String currentModel,
+  }) => const [];
 
   /// Built-in catalogs merged before the provider record. Order is irrelevant
   /// (results are deduped and sorted).
@@ -622,6 +645,17 @@ abstract interface class ProviderCapability implements CliCapability {
     required String providerId,
   });
   bool get supportsModelTiers;
+
+  /// Optional labeled buckets of [modelCandidates] for multi-level pickers.
+  ///
+  /// Empty (the default) keeps the flat one-level list every other CLI uses.
+  /// CLIs whose one catalog row spans several upstream namespaces (e.g. a paid
+  /// subscription plus a free tier) return one group per namespace so the pick
+  /// itself carries the namespace — nothing has to be re-derived at launch.
+  List<ProviderModelGroup> modelGroups({
+    required AppProviderConfig provider,
+    required String currentModel,
+  }) => const [];
 
   /// Live catalog change notifications; no-op for non-refreshable CLIs.
   Listenable get catalogUpdates => _emptyCatalogUpdates;

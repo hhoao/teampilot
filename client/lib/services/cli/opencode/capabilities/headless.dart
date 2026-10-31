@@ -15,6 +15,7 @@ import 'model_launch.dart';
 import 'session_selection_launch.dart';
 import '../provider/opencode_credential_kind.dart';
 import '../provider/opencode_credential_materializer.dart';
+import '../provider/opencode_model_namespace.dart';
 import '../provider/opencode_provider_settings_resolver.dart';
 import 'provider.dart';
 import 'standalone_launch.dart';
@@ -107,7 +108,10 @@ final class OpencodeHeadlessCapability
     config = mergeOpencodeProvider(config, resolved);
     config = mergeOpencodeDefaultModel(
       config,
-      providerId: opencodeStagingProviderKey(resolved),
+      providerId: OpencodeModelNamespace.forModel(
+        provider: resolved,
+        modelId: ctx.model,
+      ),
       modelId: ctx.model,
     );
     config = mergeOpencodeSecurityPolicy(config, ctx.securityPolicy);

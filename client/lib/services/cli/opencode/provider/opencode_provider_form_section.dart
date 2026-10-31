@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../../../l10n/l10n_extensions.dart';
-import 'package:shared_ui/shared_ui.dart';
+import '../opencode_go_layer.dart';
 
-/// OpenCode-only provider form fields (subscription namespace for staging).
-class OpencodeProviderFormSection extends StatefulWidget {
+/// OpenCode-only provider form fields.
+///
+/// The catalog row is a single "OpenCode" provider; the Go plan is a boolean
+/// binding that switches the paid layer on, not a separate provider.
+class OpencodeProviderFormSection extends StatelessWidget {
   const OpencodeProviderFormSection({
     required this.subscription,
     required this.onSubscriptionChanged,
@@ -14,45 +17,24 @@ class OpencodeProviderFormSection extends StatefulWidget {
   final String subscription;
   final ValueChanged<String> onSubscriptionChanged;
 
-  @override
-  State<OpencodeProviderFormSection> createState() =>
-      _OpencodeProviderFormSectionState();
-}
-
-class _OpencodeProviderFormSectionState extends State<OpencodeProviderFormSection> {
-  late final TextEditingController _ctl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctl = TextEditingController(text: widget.subscription);
-  }
-
-  @override
-  void didUpdateWidget(covariant OpencodeProviderFormSection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.subscription != widget.subscription &&
-        _ctl.text != widget.subscription) {
-      _ctl.text = widget.subscription;
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctl.dispose();
-    super.dispose();
-  }
+  bool get _goBound => OpencodeGoLayer.isNamespace(subscription);
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return TpInput(
-      key: const ValueKey('opencode-provider-subscription'),
-      controller: _ctl,
-      onChanged: widget.onSubscriptionChanged,
-      decoration: InputDecoration(
-        labelText: l10n.appProviderOpencodeSubscription,
+    return SwitchListTile(
+      key: const ValueKey('opencode-provider-go-subscription'),
+      contentPadding: EdgeInsets.zero,
+      value: _goBound,
+      onChanged: (value) =>
+          onSubscriptionChanged(value ? OpencodeGoLayer.namespace : ''),
+      title: Text(l10n.appProviderOpencodeSubscription),
+      subtitle: Text(
+        _goBound
+            ? l10n.appProviderOpencodeSubscriptionOn
+            : l10n.appProviderOpencodeSubscriptionOff,
       ),
+      secondary: const Icon(Icons.workspace_premium_outlined),
     );
   }
 }

@@ -6422,6 +6422,18 @@ abstract class AppLocalizations {
   /// **'Subscription'**
   String get appProviderOpencodeSubscription;
 
+  /// No description provided for @appProviderOpencodeSubscriptionOn.
+  ///
+  /// In en, this message translates to:
+  /// **'OpenCode Go bound — subscription and free models are both available.'**
+  String get appProviderOpencodeSubscriptionOn;
+
+  /// No description provided for @appProviderOpencodeSubscriptionOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Free models only. Bind OpenCode Go to use subscription models.'**
+  String get appProviderOpencodeSubscriptionOff;
+
   /// No description provided for @renameProviderName.
   ///
   /// In en, this message translates to:

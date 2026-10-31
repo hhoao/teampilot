@@ -52,11 +52,27 @@ final class CascadeCustomModelRequest extends CascadeSelection {
   });
 }
 
+/// One labeled bucket inside a provider submenu (e.g. OpenCode `opencode-go`).
+///
+/// The label is the upstream namespace itself, so the submenu shows exactly the
+/// prefix that ends up in `model: "<namespace>/<model>"`.
+class ComposeCascadeModelGroup {
+  final String namespace;
+  final List<String> models;
+  const ComposeCascadeModelGroup({
+    required this.namespace,
+    required this.models,
+  });
+}
+
 class ComposeCascadeProvider {
   final String id;
   final String name;
   final bool supportsCustomModelEntry;
   final List<String> models;
+
+  /// Non-empty ⇒ render one extra menu level, one submenu per group.
+  final List<ComposeCascadeModelGroup> groups;
   final AppProviderConfig config;
   final Map<String, List<String>>
   effortByModel; // value empty ⇒ model is a leaf
@@ -67,6 +83,7 @@ class ComposeCascadeProvider {
     required this.models,
     required this.config,
     required this.effortByModel,
+    this.groups = const [],
   });
 }
 
@@ -149,6 +166,16 @@ List<ComposeCascadeCliGroup> resolveComposeCascadeCliGroups({
                   ? capability.effortCandidates(model: m, provider: p)
                   : const <String>[],
           },
+          groups: [
+            for (final group in capability.modelGroups(
+              provider: p,
+              currentModel: '',
+            ))
+              ComposeCascadeModelGroup(
+                namespace: group.namespace,
+                models: group.models,
+              ),
+          ],
         ),
       );
     }
@@ -239,55 +266,98 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
   bool showSavePreset = true,
   bool showManagePresets = true,
 }) {
+  /// Model rows for one upstream namespace.
+  ///
+  /// [namespace] — not `p.id` — is what the pick reports, because the launch
+  /// writes `model: "<namespace>/<model>"`. The pick therefore carries the
+  /// namespace instead of anything re-deriving it later.
+  List<TpActionMenuSpec> modelRows(
+    ComposeCascadeCliGroup group,
+    ComposeCascadeProvider p,
+    Iterable<String> models,
+    String namespace,
+  ) {
+    return [
+      for (final model in models)
+        if ((p.effortByModel[model]?.isNotEmpty ?? false))
+          TpActionMenuSpec.submenu(
+            value: CascadeModelPick(
+              cli: group.cli,
+              providerId: namespace,
+              modelId: model,
+            ),
+            label: model,
+            children: [
+              TpActionMenuSpec.item(
+                value: CascadeModelPick(
+                  cli: group.cli,
+                  providerId: namespace,
+                  modelId: model,
+                ),
+                label: defaultEffortLabel,
+                selected: false,
+              ),
+              for (final e in p.effortByModel[model]!)
+                TpActionMenuSpec.item(
+                  value: CascadeEffortPick(
+                    cli: group.cli,
+                    providerId: namespace,
+                    modelId: model,
+                    effort: e,
+                  ),
+                  label: e,
+                ),
+            ],
+          )
+        else
+          TpActionMenuSpec.item(
+            value: CascadeModelPick(
+              cli: group.cli,
+              providerId: namespace,
+              modelId: model,
+            ),
+            label: model,
+          ),
+    ];
+  }
+
   List<TpActionMenuSpec> providerChildren(
     ComposeCascadeCliGroup group,
     ComposeCascadeProvider p,
   ) {
+    final grouped = p.groups.isNotEmpty;
     final rows = <TpActionMenuSpec>[
-      if (p.models.isEmpty)
-        TpActionMenuSpec.item(value: null, label: noModelsLabel, enabled: false)
+      if (!grouped)
+        if (p.models.isEmpty)
+          TpActionMenuSpec.item(
+            value: null,
+            label: noModelsLabel,
+            enabled: false,
+          )
+        else
+          ...modelRows(group, p, p.models, p.id)
       else
-        for (final model in p.models)
-          if ((p.effortByModel[model]?.isNotEmpty ?? false))
-            TpActionMenuSpec.submenu(
-              value: CascadeModelPick(
-                cli: group.cli,
-                providerId: p.id,
-                modelId: model,
-              ),
-              label: model,
-              children: [
+        for (final g in p.groups)
+          TpActionMenuSpec.submenu(
+            label: g.namespace,
+            searchable: true,
+            children: [
+              ...modelRows(group, p, g.models, g.namespace),
+              // Custom ids are offered per layer: a model that is not in the
+              // catalog yet still belongs to the namespace the user picked.
+              if (p.supportsCustomModelEntry) ...[
+                const TpActionMenuSpec.divider(),
                 TpActionMenuSpec.item(
-                  value: CascadeModelPick(
+                  value: CascadeCustomModelRequest(
                     cli: group.cli,
-                    providerId: p.id,
-                    modelId: model,
+                    providerId: g.namespace,
                   ),
-                  label: defaultEffortLabel,
-                  selected: false,
+                  label: customModelIdLabel,
                 ),
-                for (final e in p.effortByModel[model]!)
-                  TpActionMenuSpec.item(
-                    value: CascadeEffortPick(
-                      cli: group.cli,
-                      providerId: p.id,
-                      modelId: model,
-                      effort: e,
-                    ),
-                    label: e,
-                  ),
               ],
-            )
-          else
-            TpActionMenuSpec.item(
-              value: CascadeModelPick(
-                cli: group.cli,
-                providerId: p.id,
-                modelId: model,
-              ),
-              label: model,
-            ),
-      if (p.supportsCustomModelEntry) ...[
+            ],
+          ),
+      if (!grouped && p.supportsCustomModelEntry) ...[
         const TpActionMenuSpec.divider(),
         TpActionMenuSpec.item(
           value: CascadeCustomModelRequest(cli: group.cli, providerId: p.id),

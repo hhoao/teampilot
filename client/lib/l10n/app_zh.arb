@@ -1604,6 +1604,8 @@
     }
   },
   "appProviderOpencodeSubscription": "订阅",
+  "appProviderOpencodeSubscriptionOn": "已绑定 OpenCode Go，订阅模型与免费模型均可用。",
+  "appProviderOpencodeSubscriptionOff": "仅免费模型。绑定 OpenCode Go 后可使用订阅模型。",
   "renameProviderName": "修改名称",
   "renameProviderTitle": "修改提供商名称",
   "deleteProvider": "删除提供商",

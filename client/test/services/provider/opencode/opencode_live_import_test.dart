@@ -30,10 +30,12 @@ void main() {
       expect(snapshot.providers, hasLength(1));
       expect(snapshot.sources, contains('live'));
       final provider = snapshot.providers.single;
-      expect(provider.id, 'opencode-go');
+      // The Go auth entry merges into the single OpenCode row.
+      expect(provider.id, 'opencode');
       expect(provider.apiKey, 'sk-test');
+      expect(provider.config['opencodeSubscription'], 'opencode-go');
       expect(provider.baseUrl, 'https://opencode.ai/zen/go/v1');
-      expect(provider.defaultModel, 'deepseek-v4-flash');
+      expect(provider.defaultModel, 'deepseek-v4.1-flash-free');
     },
   );
 

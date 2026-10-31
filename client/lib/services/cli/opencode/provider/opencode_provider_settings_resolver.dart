@@ -2,6 +2,10 @@ import '../../../../models/app_provider_config.dart';
 import '../../../../models/team_config.dart';
 import '../../../../repositories/app_provider_repository.dart';
 import '../../../storage/home_storage.dart';
+import '../opencode_config.dart';
+import '../opencode_go_layer.dart';
+import '../provider_presets.dart';
+import 'opencode_model_namespace.dart';
 
 /// Resolves opencode providers from the app catalog for session launch.
 ///
@@ -21,7 +25,23 @@ final class OpencodeProviderSettingsResolver {
   Future<AppProviderConfig?> findById(String? providerId) async {
     final trimmed = providerId?.trim() ?? '';
     if (trimmed.isEmpty) return null;
-    return _repository.findById(CliTool.opencode, trimmed);
+    final direct = await _repository.findById(CliTool.opencode, trimmed);
+    if (direct != null) return direct;
+    // Model picks carry the upstream namespace (`opencode-go`), which is not a
+    // catalog row: one "OpenCode" row owns both the Go and the free Zen layer.
+    if (!OpencodeGoLayer.isNamespace(trimmed) &&
+        trimmed != OpencodeModelNamespace.zen) {
+      return null;
+    }
+    final providers = await _repository.loadProviders(CliTool.opencode);
+    for (final provider in providers) {
+      if (provider.id == OpencodeModelNamespace.zen ||
+          opencodeSubscriptionKey(provider).isNotEmpty) {
+        return provider;
+      }
+    }
+    // Zen needs no configuration at all, so the preset is a usable fallback.
+    return OpencodeProviderPresets.byId(OpencodeModelNamespace.zen)?.template;
   }
 
   Future<String?> resolveProviderId(

@@ -1,4 +1,5 @@
 import '../../../../models/app_provider_config.dart';
+import '../opencode_config.dart';
 import '../provider_presets.dart';
 
 /// How an OpenCode provider acquires and stores credentials in TeamPilot.
@@ -31,6 +32,16 @@ abstract final class OpencodeCredentialKindResolver {
 
   static OpencodeCredentialKind forProvider(AppProviderConfig provider) {
     if (provider.cli != CliTool.opencode) return OpencodeCredentialKind.none;
+
+    // One "OpenCode" row covers both the free Zen layer and the paid Go layer.
+    // Free Zen models need no credential, so the row starts credential-free and
+    // only requires one once a key is entered or Go is bound. This must be
+    // checked before the stored `credentialKind` because the preset seeds it
+    // with `none` for the free layer.
+    if (provider.apiKey.trim().isNotEmpty ||
+        opencodeSubscriptionKey(provider).isNotEmpty) {
+      return OpencodeCredentialKind.apiKey;
+    }
 
     final fromConfig = _parse(
       provider.config[OpencodeCredentialConfigKeys.kind],

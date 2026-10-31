@@ -3595,6 +3595,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appProviderOpencodeSubscription => 'Subscription';
 
   @override
+  String get appProviderOpencodeSubscriptionOn =>
+      'OpenCode Go bound — subscription and free models are both available.';
+
+  @override
+  String get appProviderOpencodeSubscriptionOff =>
+      'Free models only. Bind OpenCode Go to use subscription models.';
+
+  @override
   String get renameProviderName => 'Rename';
 
   @override

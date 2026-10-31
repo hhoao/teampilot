@@ -428,5 +428,78 @@ void main() {
         isNull,
       );
     });
+
+    test('grouped provider renders one submenu per upstream namespace', () {
+      final groups = [
+        ComposeCascadeCliGroup(
+          cli: CliTool.opencode,
+          providers: [
+            ComposeCascadeProvider(
+              id: 'opencode',
+              name: 'OpenCode',
+              supportsCustomModelEntry: true,
+              models: const ['deepseek-v4.1-flash', 'deepseek-v4.1-flash-free'],
+              config: provider('opencode'),
+              effortByModel: const {},
+              groups: const [
+                ComposeCascadeModelGroup(
+                  namespace: 'opencode-go',
+                  models: ['deepseek-v4.1-flash'],
+                ),
+                ComposeCascadeModelGroup(
+                  namespace: 'opencode',
+                  models: ['deepseek-v4.1-flash-free'],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ];
+
+      final specs = buildComposeModelCascadeMenuSpecs(
+        presets: const [],
+        selectedPresetId: null,
+        emptyHintLabel: 'No presets',
+        emptyProvidersLabel: 'No providers',
+        presetsLabel: 'Presets',
+        defaultEffortLabel: 'Default',
+        customModelIdLabel: 'Custom model ID…',
+        noModelsLabel: 'No models',
+        savePresetLabel: 'Save as preset…',
+        managePresetsLabel: 'Manage',
+        cliGroups: groups,
+        groupByCli: false,
+      );
+
+      final providerSpec = specs.firstWhere(
+        (s) => s.isSubmenu && s.label == 'OpenCode',
+      );
+      final levelTwo = providerSpec.children!;
+      // The extra level is labeled with the namespace itself, because that is
+      // exactly the prefix written into `model: "<namespace>/<model>"`.
+      expect(levelTwo, hasLength(2));
+      expect(levelTwo[0].label, 'opencode-go');
+      expect(levelTwo[1].label, 'opencode');
+
+      // Each layer offers its own custom-id entry, so unrestricted ids still
+      // land in the namespace the user chose.
+      expect(levelTwo[0].children!.last.label, 'Custom model ID…');
+      final goCustom =
+          levelTwo[0].children!.last.value as CascadeCustomModelRequest;
+      expect(goCustom.providerId, 'opencode-go');
+
+      final freeCustom =
+          levelTwo[1].children!.last.value as CascadeCustomModelRequest;
+      expect(freeCustom.providerId, 'opencode');
+
+      // The pick carries the upstream namespace, not the catalog row id.
+      final goPick = levelTwo[0].children!.first.value as CascadeModelPick;
+      expect(goPick.providerId, 'opencode-go');
+      expect(goPick.modelId, 'deepseek-v4.1-flash');
+
+      final freePick = levelTwo[1].children!.first.value as CascadeModelPick;
+      expect(freePick.providerId, 'opencode');
+      expect(freePick.modelId, 'deepseek-v4.1-flash-free');
+    });
   });
 }

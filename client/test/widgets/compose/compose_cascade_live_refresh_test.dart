@@ -73,6 +73,12 @@ class _FakeRefreshableCapability implements RefreshableProviderModelCapability {
   }
 
   @override
+  List<ProviderModelGroup> modelGroups({
+    required AppProviderConfig provider,
+    required String currentModel,
+  }) => const [];
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 

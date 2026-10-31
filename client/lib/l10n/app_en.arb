@@ -1742,6 +1742,8 @@
     }
   },
   "appProviderOpencodeSubscription": "Subscription",
+  "appProviderOpencodeSubscriptionOn": "OpenCode Go bound — subscription and free models are both available.",
+  "appProviderOpencodeSubscriptionOff": "Free models only. Bind OpenCode Go to use subscription models.",
   "renameProviderName": "Rename",
   "renameProviderTitle": "Rename provider",
   "deleteProvider": "Delete Provider",
