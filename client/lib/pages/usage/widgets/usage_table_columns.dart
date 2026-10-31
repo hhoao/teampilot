@@ -219,7 +219,7 @@ class _GroupCell extends StatelessWidget {
       label,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: styles.mdMedium,
+      style: styles.md,
     );
   }
 }
@@ -308,7 +308,7 @@ class _ShareCell extends StatelessWidget {
           formatUsagePercent(share),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: styles.mdMedium.copyWith(
+          style: styles.md.copyWith(
             fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
