@@ -159,6 +159,7 @@ class _SessionUsagePageState extends State<SessionUsagePage>
               buildWhen: (previous, current) =>
                   previous.status != current.status ||
                   previous.dashboard != current.dashboard ||
+                  previous.isComputing != current.isComputing ||
                   previous.errorMessage != current.errorMessage ||
                   previous.pricingCorrupted != current.pricingCorrupted,
               builder: (context, bodyState) => _buildBody(
@@ -454,6 +455,7 @@ class _SessionUsagePageState extends State<SessionUsagePage>
             onQueryChanged: cubit.setQuery,
             onGroupByChanged: cubit.setGroupBy,
             onResetFilters: () => _resetFilters(cubit),
+            isComputing: state.isComputing,
             resetKey:
                 '${state.range.name}|${state.customStartMs ?? ''}|'
                 '${state.customEndMs ?? ''}|${state.liveEnd}|'

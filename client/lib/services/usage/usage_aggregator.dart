@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../../models/session_usage.dart';
 import '../../models/session_usage_dashboard.dart';
 import '../../models/session_usage_pricing.dart';
@@ -28,10 +30,7 @@ int usageTotalTokens(SessionUsageEvent event) =>
   final now = DateTime.fromMillisecondsSinceEpoch(nowMs).toLocal();
   final today = DateTime(now.year, now.month, now.day);
   return switch (range) {
-    UsageRange.today => (
-      startMs: today.millisecondsSinceEpoch,
-      endMs: null,
-    ),
+    UsageRange.today => (startMs: today.millisecondsSinceEpoch, endMs: null),
     UsageRange.last24Hours => (
       startMs: nowMs - const Duration(hours: 24).inMilliseconds,
       endMs: null,
@@ -49,12 +48,10 @@ int usageTotalTokens(SessionUsageEvent event) =>
       endMs: null,
     ),
     UsageRange.all => (startMs: null, endMs: null),
-    UsageRange.custom => customStartMs == null || customEndMs == null
-        ? (startMs: null, endMs: null)
-        : (
-            startMs: customStartMs,
-            endMs: liveEnd ? nowMs : customEndMs,
-          ),
+    UsageRange.custom =>
+      customStartMs == null || customEndMs == null
+          ? (startMs: null, endMs: null)
+          : (startMs: customStartMs, endMs: liveEnd ? nowMs : customEndMs),
   };
 }
 
@@ -397,4 +394,36 @@ List<UsageHeatmapDay> _heatmap(
 double? _heatmapHitRate(_HeatmapAccumulator bucket) {
   final base = bucket.freshInput + bucket.cacheRead;
   return base == 0 ? null : bucket.cacheRead / base;
+}
+
+/// Sendable payload for computing a dashboard on a background isolate.
+@immutable
+class UsageDashboardRequest {
+  const UsageDashboardRequest({
+    required this.events,
+    required this.attribution,
+    required this.filter,
+    required this.nowMs,
+    required this.pricing,
+    this.heatmap,
+  });
+
+  final List<SessionUsageEvent> events;
+  final UsageAttribution attribution;
+  final UsageFilter filter;
+  final int nowMs;
+  final UsagePricingCatalog pricing;
+  final List<UsageHeatmapDay>? heatmap;
+}
+
+/// Top-level entry point for `compute`.
+UsageDashboard buildUsageDashboardRequest(UsageDashboardRequest request) {
+  return buildUsageDashboard(
+    events: request.events,
+    attribution: request.attribution,
+    filter: request.filter,
+    nowMs: request.nowMs,
+    pricing: request.pricing,
+    heatmap: request.heatmap,
+  );
 }

@@ -54,6 +54,7 @@ Widget _wrap({
   ValueChanged<UsageGroupBy>? onGroupByChanged,
   Locale locale = const Locale('en'),
   TextScaler textScaler = TextScaler.noScaling,
+  bool isComputing = false,
 }) {
   return MaterialApp(
     locale: locale,
@@ -77,6 +78,7 @@ Widget _wrap({
                 onQueryChanged: (_) {},
                 onGroupByChanged: onGroupByChanged ?? (_) {},
                 onResetFilters: () {},
+                isComputing: isComputing,
               ),
             ),
           ),
@@ -108,6 +110,19 @@ void main() {
     );
     expect(segment.labels, ['Session', 'Member', 'Model', 'CLI']);
     expect(find.textContaining('Group by'), findsNothing);
+  });
+
+  testWidgets('shows a loading overlay while computing', (tester) async {
+    await tester.pumpWidget(
+      _wrap(
+        dashboard: _dashboard(),
+        repository: InMemoryAppSettingsRepository(),
+        isComputing: true,
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 
   testWidgets('rows fit at 1.3x text scale', (tester) async {

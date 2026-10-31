@@ -23,6 +23,7 @@ class UsageDetailTable extends StatefulWidget {
     required this.onGroupByChanged,
     required this.onResetFilters,
     this.resetKey = '',
+    this.isComputing = false,
     super.key,
   });
 
@@ -35,6 +36,7 @@ class UsageDetailTable extends StatefulWidget {
 
   /// Changes whenever range/CLI/group/search filters change; resets the page.
   final String resetKey;
+  final bool isComputing;
 
   @override
   State<UsageDetailTable> createState() => _UsageDetailTableState();
@@ -153,81 +155,94 @@ class _UsageDetailTableState extends State<UsageDetailTable> {
         cs,
         radius: 14,
       ).copyWith(color: cs.workspaceCard),
-      child: TpDataTable<UsageGroup>(
-        columns: columns,
-        rows: pageRows,
-        rowKey: (row) => row.key,
-        state: _tableState,
-        defaultSort: _defaultSort,
-        onStateChanged: _onStateChanged,
-        minTableWidth: 1080,
-        rowHeight: 48,
-        showScrollbar: false,
-        horizontalScroll: true,
-        labels: labels,
-        toolbar: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: UsageTableToolbar(
-            groupBy: widget.groupBy,
-            searchController: widget.searchController,
-            onQueryChanged: widget.onQueryChanged,
-            onGroupByChanged: widget.onGroupByChanged,
+      child: Stack(
+        children: [
+          TpDataTable<UsageGroup>(
             columns: columns,
-            tableState: _tableState,
-            onTableStateChanged: _onStateChanged,
+            rows: pageRows,
+            rowKey: (row) => row.key,
+            state: _tableState,
+            defaultSort: _defaultSort,
+            onStateChanged: _onStateChanged,
+            minTableWidth: 1080,
+            rowHeight: 48,
+            showScrollbar: false,
+            horizontalScroll: true,
             labels: labels,
+            toolbar: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: UsageTableToolbar(
+                groupBy: widget.groupBy,
+                searchController: widget.searchController,
+                onQueryChanged: widget.onQueryChanged,
+                onGroupByChanged: widget.onGroupByChanged,
+                columns: columns,
+                tableState: _tableState,
+                onTableStateChanged: _onStateChanged,
+                labels: labels,
+              ),
+            ),
+            footer: showPager
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: UsageTablePagination(
+                      page: page,
+                      pageCount: pageCount,
+                      start: start,
+                      end: end,
+                      total: total,
+                      pageSize: _pageSize,
+                      pageSizeOptions: _pageSizeOptions,
+                      onPageSizeChanged: (size) {
+                        setState(() {
+                          _pageSize = size;
+                          _page = 0;
+                        });
+                      },
+                      onPrev: page == 0
+                          ? null
+                          : () => setState(() => _page = page - 1),
+                      onNext: page >= pageCount - 1
+                          ? null
+                          : () => setState(() => _page = page + 1),
+                    ),
+                  )
+                : null,
+            emptyState: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 26),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n.sessionUsageTableEmpty,
+                    style: TpTextStyles.of(context).smMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l10n.sessionUsageTableEmptyHint,
+                    style: TpTextStyles.of(
+                      context,
+                    ).xs.copyWith(color: cs.onSurface.withValues(alpha: 0.56)),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: widget.onResetFilters,
+                    child: Text(l10n.sessionUsageResetFilters),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-        footer: showPager
-            ? Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: UsageTablePagination(
-                  page: page,
-                  pageCount: pageCount,
-                  start: start,
-                  end: end,
-                  total: total,
-                  pageSize: _pageSize,
-                  pageSizeOptions: _pageSizeOptions,
-                  onPageSizeChanged: (size) {
-                    setState(() {
-                      _pageSize = size;
-                      _page = 0;
-                    });
-                  },
-                  onPrev: page == 0
-                      ? null
-                      : () => setState(() => _page = page - 1),
-                  onNext: page >= pageCount - 1
-                      ? null
-                      : () => setState(() => _page = page + 1),
+          if (widget.isComputing)
+            Positioned.fill(
+              child: AbsorbPointer(
+                child: ColoredBox(
+                  color: cs.surface.withValues(alpha: 0.55),
+                  child: const Center(child: CircularProgressIndicator()),
                 ),
-              )
-            : null,
-        emptyState: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 26),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                l10n.sessionUsageTableEmpty,
-                style: TpTextStyles.of(context).smMedium,
               ),
-              const SizedBox(height: 4),
-              Text(
-                l10n.sessionUsageTableEmptyHint,
-                style: TpTextStyles.of(
-                  context,
-                ).xs.copyWith(color: cs.onSurface.withValues(alpha: 0.56)),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: widget.onResetFilters,
-                child: Text(l10n.sessionUsageResetFilters),
-              ),
-            ],
-          ),
-        ),
+            ),
+        ],
       ),
     );
   }

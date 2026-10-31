@@ -611,6 +611,34 @@ void main() {
     expect(cubit.state.maintenanceBusy, isFalse);
   });
 
+  test('large filter changes compute off the UI thread', () async {
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [
+        _event(id: 'a', sessionId: 's1'),
+        _event(id: 'b', sessionId: 's2', input: 100),
+      ],
+      syncAll: () async => const UsageSyncResult(),
+      loadSessions: () async => [
+        _session('s1', 'Alpha'),
+        _session('s2', 'Beta'),
+      ],
+      loadTeams: () async => const <TeamProfile>[],
+      now: () => _now,
+      isolateThreshold: 1,
+    );
+    addTearDown(cubit.close);
+
+    await cubit.ensureLoaded();
+    final done = cubit.stream.firstWhere((state) => !state.isComputing);
+    cubit.setGroupBy(UsageGroupBy.model);
+    expect(cubit.state.isComputing, isTrue);
+    await done.timeout(const Duration(seconds: 10));
+
+    expect(cubit.state.isComputing, isFalse);
+    expect(cubit.state.dashboard.rows, hasLength(1));
+    expect(cubit.state.dashboard.rows.single.label, 'claude-sonnet-4');
+  });
+
   test(
     'custom range filters events and clears when switching presets',
     () async {

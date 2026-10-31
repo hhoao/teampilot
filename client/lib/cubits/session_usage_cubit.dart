@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/app_session.dart';
@@ -31,6 +32,7 @@ final class SessionUsageState extends Equatable {
     this.groupBy = UsageGroupBy.session,
     this.query = '',
     this.isSyncing = false,
+    this.isComputing = false,
     this.lastSyncAtMs,
     this.lastSyncResult,
     List<UsageSyncError> syncErrors = const [],
@@ -62,6 +64,7 @@ final class SessionUsageState extends Equatable {
   final UsageGroupBy groupBy;
   final String query;
   final bool isSyncing;
+  final bool isComputing;
   final int? lastSyncAtMs;
   final UsageSyncResult? lastSyncResult;
   final List<UsageSyncError> syncErrors;
@@ -98,6 +101,7 @@ final class SessionUsageState extends Equatable {
     UsageGroupBy? groupBy,
     String? query,
     bool? isSyncing,
+    bool? isComputing,
     int? lastSyncAtMs,
     UsageSyncResult? lastSyncResult,
     bool clearLastSyncResult = false,
@@ -137,6 +141,7 @@ final class SessionUsageState extends Equatable {
       groupBy: groupBy ?? this.groupBy,
       query: query ?? this.query,
       isSyncing: isSyncing ?? this.isSyncing,
+      isComputing: isComputing ?? this.isComputing,
       lastSyncAtMs: lastSyncAtMs ?? this.lastSyncAtMs,
       lastSyncResult: clearLastSyncResult
           ? null
@@ -179,6 +184,7 @@ final class SessionUsageState extends Equatable {
     groupBy,
     query,
     isSyncing,
+    isComputing,
     lastSyncAtMs,
     lastSyncResult,
     syncErrors,
@@ -223,6 +229,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
     required Future<List<TeamProfile>> Function() loadTeams,
     Stream<void>? storageChanges,
     DateTime Function()? now,
+    this.isolateThreshold = 4000,
   }) : _loadEvents = loadEvents,
        _syncAll = syncAll,
        _startSync = startSync,
@@ -270,7 +277,9 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   bool _syncFull = false;
   UsagePricingCatalog _pricing = const UsagePricingCatalog();
   List<SessionUsageEvent> _events = const [];
+  final int isolateThreshold;
   final Map<String, UsageDashboard> _dashboardCache = {};
+  int _computeGeneration = 0;
   List<UsageHeatmapDay>? _heatmapCache;
   List<SessionUsageEvent>? _heatmapCacheEvents;
   CliTool? _heatmapCacheCli;
@@ -327,6 +336,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       if (isClosed) return;
       _events = events;
       _pricing = pricing;
+      _computeGeneration++;
       _dashboardCache.clear();
       _attribution = UsageAttribution.fromSessionsAndTeams(
         sessions: sessions,
@@ -442,6 +452,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       final teams = await _loadTeams();
       if (isClosed) return;
       _events = events;
+      _computeGeneration++;
       _dashboardCache.clear();
       _attribution = UsageAttribution.fromSessionsAndTeams(
         sessions: sessions,
@@ -502,7 +513,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
 
   void refreshRangeNow() {
     if (!state.liveEnd) return;
-    emit(state.copyWith(dashboard: _computeDashboard()));
+    _updateFilter();
   }
 
   void setCli(CliTool? cli) => _updateFilter(cli: cli, clearCli: cli == null);
@@ -618,12 +629,25 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       clearCustomRange: clearCustomRange,
       liveEnd: liveEnd,
     );
-    emit(next.copyWith(dashboard: _computeDashboard(next)));
+    final nowMs = _now().millisecondsSinceEpoch;
+    final cached = _dashboardCache[_dashboardKey(next, nowMs)];
+    if (cached != null) {
+      _computeGeneration++;
+      emit(next.copyWith(dashboard: cached, isComputing: false));
+      return;
+    }
+    if (_events.length < isolateThreshold) {
+      emit(
+        next.copyWith(dashboard: _computeDashboard(next), isComputing: false),
+      );
+      return;
+    }
+    final generation = ++_computeGeneration;
+    emit(next.copyWith(isComputing: true));
+    unawaited(_computeDashboardInBackground(next, generation, nowMs));
   }
 
-  UsageDashboard _computeDashboard([SessionUsageState? stateOverride]) {
-    final current = stateOverride ?? state;
-    final nowMs = _now().millisecondsSinceEpoch;
+  String _dashboardKey(SessionUsageState current, int nowMs) {
     final nowLocal = DateTime.fromMillisecondsSinceEpoch(nowMs).toLocal();
     final bucket = current.liveEnd || current.range == UsageRange.last24Hours
         ? nowMs ~/ 60000
@@ -632,10 +656,64 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
             nowLocal.month,
             nowLocal.day,
           ).millisecondsSinceEpoch;
-    final key =
-        '${current.range.name}|${current.cli?.value}|${current.groupBy.name}|'
+    return '${current.range.name}|${current.cli?.value}|${current.groupBy.name}|'
         '${current.query}|${current.customStartMs}|${current.customEndMs}|'
         '${current.liveEnd}|$bucket';
+  }
+
+  Future<void> _computeDashboardInBackground(
+    SessionUsageState current,
+    int generation,
+    int nowMs,
+  ) async {
+    final request = UsageDashboardRequest(
+      events: _events,
+      attribution: _attribution,
+      filter: UsageFilter(
+        range: current.range,
+        cli: current.cli,
+        groupBy: current.groupBy,
+        query: current.query,
+        customStartMs: current.customStartMs,
+        customEndMs: current.customEndMs,
+        liveEnd: current.liveEnd,
+      ),
+      nowMs: nowMs,
+      pricing: _pricing,
+      heatmap: _heatmapFor(current.cli),
+    );
+    UsageDashboard dashboard;
+    try {
+      dashboard = await compute(buildUsageDashboardRequest, request);
+    } on Object catch (error, stackTrace) {
+      AppLogger.instance.w(
+        '[usage] background dashboard failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      dashboard = _computeDashboard(current);
+    }
+    if (isClosed || generation != _computeGeneration) return;
+    _cacheDashboard(current, nowMs, dashboard);
+    emit(state.copyWith(dashboard: dashboard, isComputing: false));
+  }
+
+  void _cacheDashboard(
+    SessionUsageState current,
+    int nowMs,
+    UsageDashboard dashboard,
+  ) {
+    final key = _dashboardKey(current, nowMs);
+    if (_dashboardCache.length >= 16) {
+      _dashboardCache.remove(_dashboardCache.keys.first);
+    }
+    _dashboardCache[key] = dashboard;
+  }
+
+  UsageDashboard _computeDashboard([SessionUsageState? stateOverride]) {
+    final current = stateOverride ?? state;
+    final nowMs = _now().millisecondsSinceEpoch;
+    final key = _dashboardKey(current, nowMs);
     final cached = _dashboardCache[key];
     if (cached != null) return cached;
     final dashboard = buildUsageDashboard(
@@ -654,10 +732,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       pricing: _pricing,
       heatmap: _heatmapFor(current.cli),
     );
-    if (_dashboardCache.length >= 16) {
-      _dashboardCache.remove(_dashboardCache.keys.first);
-    }
-    _dashboardCache[key] = dashboard;
+    _cacheDashboard(current, nowMs, dashboard);
     return dashboard;
   }
 
