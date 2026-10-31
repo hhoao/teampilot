@@ -8,12 +8,14 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/session_usage_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../repositories/app_settings_repository.dart';
 import '../../services/usage/cursor_usage_sync_service.dart';
 import '../../utils/ui/app_keys.dart';
 import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/settings/workspace_pane_insets.dart';
 import 'usage_maintenance_dialog.dart';
 import 'usage_pricing_dialog.dart';
+import 'usage_settings_dialog.dart';
 import 'widgets/usage_detail_table.dart';
 import 'widgets/usage_filter_bar.dart';
 import 'widgets/usage_heatmap_card.dart';
@@ -39,7 +41,6 @@ class SessionUsagePage extends StatefulWidget {
 }
 
 const Duration _autoSyncTtl = Duration(minutes: 5);
-const Duration _autoSyncInterval = Duration(minutes: 10);
 
 class _SessionUsagePageState extends State<SessionUsagePage>
     with WidgetsBindingObserver {
@@ -47,6 +48,10 @@ class _SessionUsagePageState extends State<SessionUsagePage>
   Timer? _autoSyncTimer;
   Timer? _liveRangeTimer;
   bool _appActive = true;
+  late final AppSettingsRepository _settings;
+  late final Future<void> _settingsReady;
+  bool _autoSyncEnabled = true;
+  int _autoSyncIntervalMinutes = usageSyncIntervalDefaultMinutes;
 
   @override
   void initState() {
@@ -55,20 +60,15 @@ class _SessionUsagePageState extends State<SessionUsagePage>
     final lifecycle = WidgetsBinding.instance.lifecycleState;
     _appActive = lifecycle == null || lifecycle == AppLifecycleState.resumed;
 
-    if (widget.autoSync) {
-      _autoSyncTimer = Timer.periodic(_autoSyncInterval, (_) {
-        if (!mounted || !_appActive) return;
-        unawaited(
-          context.read<SessionUsageCubit>().syncIfStale(ttl: _autoSyncTtl),
-        );
-      });
-    }
+    _settings = context.read<AppSettingsRepository>();
+    _settingsReady = _loadSyncSettings();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final cubit = context.read<SessionUsageCubit>();
       await cubit.ensureLoaded();
-      if (!mounted || !widget.autoSync || !_appActive) return;
+      await _settingsReady;
+      if (!mounted || !_autoSyncActive || !_appActive) return;
       await cubit.syncIfStale(ttl: _autoSyncTtl);
     });
 
@@ -80,10 +80,46 @@ class _SessionUsagePageState extends State<SessionUsagePage>
     });
   }
 
+  bool get _autoSyncActive => widget.autoSync && _autoSyncEnabled;
+
+  Future<void> _loadSyncSettings() async {
+    final enabled = await _settings.loadUsageAutoSyncEnabled();
+    final minutes = await _settings.loadUsageSyncIntervalMinutes();
+    if (!mounted) return;
+    setState(() {
+      _autoSyncEnabled = enabled;
+      _autoSyncIntervalMinutes = normalizeUsageSyncInterval(minutes);
+    });
+    _restartAutoSyncTimer();
+  }
+
+  void _restartAutoSyncTimer() {
+    _autoSyncTimer?.cancel();
+    _autoSyncTimer = null;
+    if (!_autoSyncActive) return;
+    final interval = Duration(minutes: _autoSyncIntervalMinutes);
+    _autoSyncTimer = Timer.periodic(interval, (_) {
+      if (!mounted || !_appActive) return;
+      unawaited(context.read<SessionUsageCubit>().syncIfStale(ttl: interval));
+    });
+  }
+
+  Future<void> _setAutoSyncEnabled(bool value) async {
+    setState(() => _autoSyncEnabled = value);
+    _restartAutoSyncTimer();
+    await _settings.saveUsageAutoSyncEnabled(value);
+  }
+
+  Future<void> _setAutoSyncInterval(int minutes) async {
+    setState(() => _autoSyncIntervalMinutes = minutes);
+    _restartAutoSyncTimer();
+    await _settings.saveUsageSyncIntervalMinutes(minutes);
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     _appActive = state == AppLifecycleState.resumed;
-    if (_appActive && widget.autoSync) {
+    if (_appActive && _autoSyncActive) {
       unawaited(
         context.read<SessionUsageCubit>().syncIfStale(ttl: _autoSyncTtl),
       );
@@ -176,7 +212,7 @@ class _SessionUsagePageState extends State<SessionUsagePage>
                     onIncrementalSync: () => cubit.sync(),
                     onFullSync: cubit.fullSync,
                     onCancel: cubit.cancelSync,
-                    onMaintenance: () => _openMaintenance(cubit),
+                    onSettings: () => _openSettings(cubit),
                   ),
                   if (_errorBanner(context, cubit, state)
                       case final banner?) ...[
@@ -195,6 +231,25 @@ class _SessionUsagePageState extends State<SessionUsagePage>
 
     if (widget.embedded) return content;
     return Padding(padding: WorkspacePaneInsets.page, child: content);
+  }
+
+  Future<void> _openSettings(SessionUsageCubit cubit) async {
+    final action = await showDialog<UsageSettingsAction>(
+      context: context,
+      builder: (context) => UsageSettingsDialog(
+        autoSyncEnabled: _autoSyncEnabled,
+        intervalMinutes: _autoSyncIntervalMinutes,
+        onAutoSyncChanged: _setAutoSyncEnabled,
+        onIntervalChanged: _setAutoSyncInterval,
+      ),
+    );
+    if (!mounted || action == null) return;
+    switch (action) {
+      case UsageSettingsAction.syncNow:
+        unawaited(cubit.sync());
+      case UsageSettingsAction.maintenance:
+        await _openMaintenance(cubit);
+    }
   }
 
   Future<void> _openMaintenance(SessionUsageCubit cubit) async {

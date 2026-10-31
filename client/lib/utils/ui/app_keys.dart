@@ -356,8 +356,17 @@ class AppKeys {
   static const sessionUsagePricingResetButton = Key(
     'session-usage-pricing-reset',
   );
-  static const sessionUsageMaintenanceButton = Key('session-usage-maintenance');
+  static const sessionUsageSettingsButton = Key('session-usage-settings');
   static const sessionUsageCursorButton = Key('session-usage-cursor');
+  static const sessionUsageSettingsDialog = Key('session-usage-settings-dialog');
+  static const sessionUsageAutoScanSwitch = Key(
+    'session-usage-auto-scan-switch',
+  );
+  static const sessionUsageScanInterval = Key('session-usage-scan-interval');
+  static const sessionUsageSyncNowButton = Key('session-usage-sync-now');
+  static const sessionUsageSettingsStorageEntry = Key(
+    'session-usage-settings-storage',
+  );
   static const sessionUsageMaintenanceDialog = Key(
     'session-usage-maintenance-dialog',
   );

@@ -95,8 +95,11 @@ void main() {
     expect(find.text('Usage heatmap'), findsOneWidget);
     expect(_cells(), findsNWidgets(371));
     expect(find.text('Show earlier'), findsNothing);
-    // The first span crosses 2025-10-27 → 2026-10-28, so both months show.
-    expect(find.text('Nov'), findsOneWidget);
+    // The span starts 2025-10-27, so November would only be one column after
+    // October: that label is skipped instead of overlapping, and December is
+    // the next one drawn.
+    expect(find.text('Nov'), findsNothing);
+    expect(find.text('Dec'), findsOneWidget);
   });
 
   testWidgets('tooltip lists tokens, requests, cost and hit rate', (

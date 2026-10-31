@@ -16910,12 +16910,6 @@ abstract class AppLocalizations {
   /// **'Token usage'**
   String get sessionUsageTitle;
 
-  /// No description provided for @sessionUsageSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Usage attributed to TeamPilot sessions on local and SSH home planes.'**
-  String get sessionUsageSubtitle;
-
   /// No description provided for @sessionUsageScopeHint.
   ///
   /// In en, this message translates to:
@@ -17011,6 +17005,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not synced yet'**
   String get sessionUsageNeverSynced;
+
+  /// No description provided for @sessionUsageSyncedJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced just now'**
+  String get sessionUsageSyncedJustNow;
 
   /// No description provided for @sessionUsageLastSync.
   ///
@@ -17609,6 +17609,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Storage'**
   String get sessionUsageStorage;
+
+  /// No description provided for @sessionUsageSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Usage settings'**
+  String get sessionUsageSettings;
+
+  /// No description provided for @sessionUsageDataSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Data source'**
+  String get sessionUsageDataSource;
+
+  /// No description provided for @sessionUsageAutoScan.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-scan session logs'**
+  String get sessionUsageAutoScan;
+
+  /// No description provided for @sessionUsageAutoScanHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scans when this page opens, then every {minutes} minutes in the background.'**
+  String sessionUsageAutoScanHint(int minutes);
+
+  /// No description provided for @sessionUsageScanInterval.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan interval'**
+  String get sessionUsageScanInterval;
+
+  /// No description provided for @sessionUsageIntervalMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {minutes} min'**
+  String sessionUsageIntervalMinutes(int minutes);
+
+  /// No description provided for @sessionUsageSyncNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync now'**
+  String get sessionUsageSyncNow;
+
+  /// No description provided for @sessionUsageMaintenanceEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage and Cursor maintenance'**
+  String get sessionUsageMaintenanceEntry;
 
   /// No description provided for @sessionUsageMaintenanceTitle.
   ///

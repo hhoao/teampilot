@@ -4,7 +4,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/session_usage_dashboard.dart';
 import '../../models/team_config.dart';
 import '../../models/cursor_usage_import.dart';
-import '../../services/usage/usage_aggregator.dart';
 
 String formatUsageTokens(int value) {
   if (value >= 1000000) {
@@ -48,12 +47,6 @@ String formatUsageLastSync(BuildContext context, int? timestampMs) {
   return context.l10n.sessionUsageLastSync(
     '${material.formatShortDate(date)} $time',
   );
-}
-
-String formatUsageDayLabel(BuildContext context, int dayStartMs, int nowMs) {
-  if (usageIsToday(dayStartMs, nowMs)) return context.l10n.sessionUsageToday;
-  final date = DateTime.fromMillisecondsSinceEpoch(dayStartMs).toLocal();
-  return '${date.month}/${date.day}';
 }
 
 String usageCliLabel(CliTool cli) => switch (cli) {
@@ -125,14 +118,6 @@ String usageRangeLabel(BuildContext context, UsageRange range) {
     UsageRange.all => l10n.sessionUsageRangeAll,
     UsageRange.custom => l10n.sessionUsageRangeAll,
   };
-}
-
-/// Bottom-axis label stride for the usage trend chart.
-///
-/// Keeps at most about seven day labels visible for any selected range.
-int usageChartLabelStride(int dayCount) {
-  if (dayCount <= 0) return 1;
-  return (dayCount / 7).ceil();
 }
 
 /// Shared height for the usage filter controls and search field.

@@ -10,6 +10,10 @@ import 'usage_heatmap_layout.dart';
 
 enum _HeatmapMetric { tokens, requests, cost, hitRate }
 
+/// Month labels are wider than one week column, so skip labels that would
+/// sit closer than this many weeks to the previous one.
+const int _minMonthLabelWeeks = 3;
+
 class UsageHeatmapCard extends StatefulWidget {
   const UsageHeatmapCard({required this.days, required this.nowMs, super.key});
 
@@ -68,7 +72,7 @@ class _UsageHeatmapCardState extends State<UsageHeatmapCard> {
                   const SizedBox(height: 2),
                   Text(
                     l10n.sessionUsageHeatmapSubtitle,
-                    style: styles.xs.copyWith(
+                    style: styles.sm.copyWith(
                       color: cs.onSurface.withValues(alpha: 0.56),
                     ),
                   ),
@@ -233,85 +237,100 @@ class _SpanBlock extends StatelessWidget {
     );
     final monthLabels = <String?>[];
     int? previousMonth;
+    var lastLabelWeek = -_minMonthLabelWeeks;
     for (var week = 0; week < usageHeatmapWeeks; week++) {
       final first = DateTime.fromMillisecondsSinceEpoch(
         span.weekDayStarts[week].first,
       ).toLocal();
-      if (week == 0 || first.month != previousMonth) {
+      // Labels are wider than one week column, so a month that starts right
+      // after the previous label (span start) is skipped instead of overlapping.
+      final newMonth = week == 0 || first.month != previousMonth;
+      if (newMonth && week - lastLabelWeek >= _minMonthLabelWeeks) {
         monthLabels.add(monthFormat.format(first));
-        previousMonth = first.month;
+        lastLabelWeek = week;
       } else {
         monthLabels.add(null);
       }
+      previousMonth = first.month;
     }
     final range =
         '${material.formatShortDate(DateTime.fromMillisecondsSinceEpoch(span.startDayMs))} – '
         '${material.formatShortDate(DateTime.fromMillisecondsSinceEpoch(span.endDayMs))}';
 
+    final spacing = context.tpSpacing;
+    final gap = spacing.xs;
+    final labelWidth = spacing.xxl;
+    final labelStyle = styles.md.copyWith(
+      color: cs.onSurface.withValues(alpha: 0.54),
+      // Keep the label box inside one cell pitch.
+      height: 1.1,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Wrap(
-          spacing: 8,
-          runSpacing: 2,
+          spacing: spacing.sm,
+          runSpacing: spacing.xxs,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Text(range, style: styles.xsMedium),
+            Text(range, style: styles.smMedium),
             Text(
               l10n.sessionUsageHeatmapSpanSummary(
                 formatUsageTokens(span.tokens),
                 '${span.requests}',
                 formatUsageCost(span.costMicroUsd),
               ),
-              style: styles.xs.copyWith(
+              style: styles.sm.copyWith(
                 color: cs.onSurface.withValues(alpha: 0.56),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: spacing.md),
         LayoutBuilder(
           builder: (context, constraints) {
-            const labelWidth = 24.0;
-            const gap = 3.0;
-            final available = constraints.maxWidth - labelWidth;
+            // Cells grow up to [spacing.xl] to fill the card; narrower
+            // layouts keep [spacing.md] and scroll instead.
             final rawCell =
-                (available - gap * (usageHeatmapWeeks - 1)) /
+                (constraints.maxWidth -
+                    labelWidth -
+                    gap * (usageHeatmapWeeks - 1)) /
                 usageHeatmapWeeks;
-            final cell = rawCell.clamp(6.0, 14.0);
-            final contentWidth =
-                labelWidth + usageHeatmapWeeks * (cell + gap);
+            final cell = rawCell.clamp(spacing.md, spacing.xl);
             return SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: SizedBox(
-                width: contentWidth,
+                width: labelWidth + usageHeatmapWeeks * (cell + gap),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(
-                      height: 16,
-                      child: MediaQuery.withNoTextScaling(
-                        child: Row(
-                          children: [
-                            const SizedBox(width: labelWidth),
-                            for (var week = 0; week < usageHeatmapWeeks; week++)
-                              SizedBox(
-                                width: cell + gap,
-                                child: OverflowBox(
-                                  alignment: Alignment.centerLeft,
-                                  maxWidth: 48,
-                                  child: Text(
-                                    monthLabels[week] ?? '',
-                                    maxLines: 1,
-                                    style: styles.xs.copyWith(
-                                      color: cs.onSurface.withValues(
-                                        alpha: 0.54,
-                                      ),
+                    Padding(
+                      // Month labels keep one spacing step above the grid.
+                      padding: EdgeInsets.only(bottom: spacing.md),
+                      child: SizedBox(
+                        height: cell + gap,
+                        child: MediaQuery.withNoTextScaling(
+                          child: Row(
+                            children: [
+                              SizedBox(width: labelWidth),
+                              for (var week = 0;
+                                  week < usageHeatmapWeeks;
+                                  week++)
+                                SizedBox(
+                                  width: cell + gap,
+                                  child: OverflowBox(
+                                    alignment: Alignment.centerLeft,
+                                    maxWidth: 48,
+                                    child: Text(
+                                      monthLabels[week] ?? '',
+                                      maxLines: 1,
+                                      style: labelStyle,
                                     ),
                                   ),
                                 ),
-                              ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -327,17 +346,13 @@ class _SpanBlock extends StatelessWidget {
                                       fit: BoxFit.scaleDown,
                                       alignment: Alignment.centerRight,
                                       child: Padding(
-                                        padding: const EdgeInsets.only(
-                                          right: 4,
+                                        padding: EdgeInsets.only(
+                                          right: spacing.md,
                                         ),
                                         child: Text(
                                           material.narrowWeekdays[(day + 1) % 7],
                                           maxLines: 1,
-                                          style: styles.xs.copyWith(
-                                            color: cs.onSurface.withValues(
-                                              alpha: 0.54,
-                                            ),
-                                          ),
+                                          style: labelStyle,
                                         ),
                                       ),
                                     ),
@@ -348,10 +363,7 @@ class _SpanBlock extends StatelessWidget {
                               week < usageHeatmapWeeks;
                               week++)
                             Padding(
-                              padding: const EdgeInsets.only(
-                                right: gap,
-                                bottom: gap,
-                              ),
+                              padding: EdgeInsets.only(right: gap, bottom: gap),
                               child: _cell(
                                 span.weekDayStarts[week][day],
                                 cell,

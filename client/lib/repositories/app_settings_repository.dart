@@ -29,6 +29,15 @@ abstract class AppSettingsRepository {
   Future<bool> loadDiscoveryAutoRefreshEnabled();
   Future<void> saveDiscoveryAutoRefreshEnabled(bool value);
 
+  /// Whether the usage page scans CLI transcripts automatically (on open and
+  /// in the background). Defaults to `true`.
+  Future<bool> loadUsageAutoSyncEnabled();
+  Future<void> saveUsageAutoSyncEnabled(bool value);
+
+  /// Minutes between background usage scans. Defaults to 10.
+  Future<int> loadUsageSyncIntervalMinutes();
+  Future<void> saveUsageSyncIntervalMinutes(int value);
+
   /// Whether ACP protocol frames are mirrored into the app log (console and
   /// `{appDataRoot}/logs/`). Defaults to `false`: the frames are high-volume
   /// and drown out app logs, so they are opt-in for debugging the ACP channel.
@@ -55,6 +64,8 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
   static const _skillsMpApiKey = 'skillsMpApiKey';
   static const _aiFeaturesKey = 'aiFeatures';
   static const _discoveryAutoRefreshKey = 'discoveryAutoRefresh';
+  static const _usageAutoSyncKey = 'usageAutoSync';
+  static const _usageSyncIntervalKey = 'usageSyncIntervalMinutes';
   static const _acpFrameLogKey = 'acpFrameLog';
   static const _tableStatesKey = 'tableStates';
 
@@ -176,6 +187,33 @@ class SharedPrefsAppSettingsRepository implements AppSettingsRepository {
   Future<void> saveDiscoveryAutoRefreshEnabled(bool value) async {
     final current = _readMap();
     current[_discoveryAutoRefreshKey] = value;
+    await _writeMap(current);
+  }
+
+  @override
+  Future<bool> loadUsageAutoSyncEnabled() async {
+    final value = _readMap()[_usageAutoSyncKey];
+    // Opt-out: enabled unless explicitly turned off.
+    return value != false;
+  }
+
+  @override
+  Future<void> saveUsageAutoSyncEnabled(bool value) async {
+    final current = _readMap();
+    current[_usageAutoSyncKey] = value;
+    await _writeMap(current);
+  }
+
+  @override
+  Future<int> loadUsageSyncIntervalMinutes() async {
+    final value = _readMap()[_usageSyncIntervalKey];
+    return value is int ? value : 10;
+  }
+
+  @override
+  Future<void> saveUsageSyncIntervalMinutes(int value) async {
+    final current = _readMap();
+    current[_usageSyncIntervalKey] = value;
     await _writeMap(current);
   }
 
@@ -328,6 +366,25 @@ class InMemoryAppSettingsRepository implements AppSettingsRepository {
   @override
   Future<void> saveDiscoveryAutoRefreshEnabled(bool value) async {
     _discoveryAutoRefreshEnabled = value;
+  }
+
+  bool _usageAutoSyncEnabled = true;
+  int _usageSyncIntervalMinutes = 10;
+
+  @override
+  Future<bool> loadUsageAutoSyncEnabled() async => _usageAutoSyncEnabled;
+
+  @override
+  Future<void> saveUsageAutoSyncEnabled(bool value) async {
+    _usageAutoSyncEnabled = value;
+  }
+
+  @override
+  Future<int> loadUsageSyncIntervalMinutes() async => _usageSyncIntervalMinutes;
+
+  @override
+  Future<void> saveUsageSyncIntervalMinutes(int value) async {
+    _usageSyncIntervalMinutes = value;
   }
 
   @override

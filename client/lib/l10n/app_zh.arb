@@ -4078,7 +4078,6 @@
   "acpModelSectionLaunch": "启动配置",
   "sessionUsageNav": "Token 用量",
   "sessionUsageTitle": "Token 用量",
-  "sessionUsageSubtitle": "按 TeamPilot 会话归属统计，本地与 SSH 主页面共用。",
   "sessionUsageScopeHint": "本地 + SSH · 按 TeamPilot 会话归属",
   "sessionUsageProgressTitle": "用量同步",
   "sessionUsageSync": "同步",
@@ -4108,6 +4107,7 @@
     }
   },
   "sessionUsageNeverSynced": "尚未同步",
+  "sessionUsageSyncedJustNow": "刚刚同步",
   "sessionUsageLastSync": "上次同步 {time}",
   "@sessionUsageLastSync": {
     "placeholders": {
@@ -4331,6 +4331,28 @@
   "sessionUsagePricingEmpty": "没有自定义规则，当前使用内置价格。",
   "sessionUsagePricingDelete": "删除",
   "sessionUsageStorage": "存储",
+  "sessionUsageSettings": "用量设置",
+  "sessionUsageDataSource": "数据来源",
+  "sessionUsageAutoScan": "自动扫描会话日志",
+  "sessionUsageAutoScanHint": "打开本页时立即扫描，之后每 {minutes} 分钟在后台扫描。",
+  "@sessionUsageAutoScanHint": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageScanInterval": "扫描间隔",
+  "sessionUsageIntervalMinutes": "每 {minutes} 分钟",
+  "@sessionUsageIntervalMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageSyncNow": "立即同步",
+  "sessionUsageMaintenanceEntry": "存储与 Cursor 维护",
   "sessionUsageMaintenanceTitle": "用量存储",
   "sessionUsageMaintenanceLines": "{lines} 行 · {events} 条事件",
   "@sessionUsageMaintenanceLines": {

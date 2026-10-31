@@ -9530,10 +9530,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionUsageTitle => 'Token usage';
 
   @override
-  String get sessionUsageSubtitle =>
-      'Usage attributed to TeamPilot sessions on local and SSH home planes.';
-
-  @override
   String get sessionUsageScopeHint =>
       'Local + SSH · attributed by TeamPilot session';
 
@@ -9584,6 +9580,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionUsageNeverSynced => 'Not synced yet';
+
+  @override
+  String get sessionUsageSyncedJustNow => 'Synced just now';
 
   @override
   String sessionUsageLastSync(String time) {
@@ -9925,6 +9924,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionUsageStorage => 'Storage';
+
+  @override
+  String get sessionUsageSettings => 'Usage settings';
+
+  @override
+  String get sessionUsageDataSource => 'Data source';
+
+  @override
+  String get sessionUsageAutoScan => 'Auto-scan session logs';
+
+  @override
+  String sessionUsageAutoScanHint(int minutes) {
+    return 'Scans when this page opens, then every $minutes minutes in the background.';
+  }
+
+  @override
+  String get sessionUsageScanInterval => 'Scan interval';
+
+  @override
+  String sessionUsageIntervalMinutes(int minutes) {
+    return 'Every $minutes min';
+  }
+
+  @override
+  String get sessionUsageSyncNow => 'Sync now';
+
+  @override
+  String get sessionUsageMaintenanceEntry => 'Storage and Cursor maintenance';
 
   @override
   String get sessionUsageMaintenanceTitle => 'Usage storage';

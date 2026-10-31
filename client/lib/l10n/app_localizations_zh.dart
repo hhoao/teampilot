@@ -9118,9 +9118,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionUsageTitle => 'Token 用量';
 
   @override
-  String get sessionUsageSubtitle => '按 TeamPilot 会话归属统计，本地与 SSH 主页面共用。';
-
-  @override
   String get sessionUsageScopeHint => '本地 + SSH · 按 TeamPilot 会话归属';
 
   @override
@@ -9169,6 +9166,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sessionUsageNeverSynced => '尚未同步';
+
+  @override
+  String get sessionUsageSyncedJustNow => '刚刚同步';
 
   @override
   String sessionUsageLastSync(String time) {
@@ -9503,6 +9503,34 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sessionUsageStorage => '存储';
+
+  @override
+  String get sessionUsageSettings => '用量设置';
+
+  @override
+  String get sessionUsageDataSource => '数据来源';
+
+  @override
+  String get sessionUsageAutoScan => '自动扫描会话日志';
+
+  @override
+  String sessionUsageAutoScanHint(int minutes) {
+    return '打开本页时立即扫描，之后每 $minutes 分钟在后台扫描。';
+  }
+
+  @override
+  String get sessionUsageScanInterval => '扫描间隔';
+
+  @override
+  String sessionUsageIntervalMinutes(int minutes) {
+    return '每 $minutes 分钟';
+  }
+
+  @override
+  String get sessionUsageSyncNow => '立即同步';
+
+  @override
+  String get sessionUsageMaintenanceEntry => '存储与 Cursor 维护';
 
   @override
   String get sessionUsageMaintenanceTitle => '用量存储';

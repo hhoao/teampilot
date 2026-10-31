@@ -11,6 +11,7 @@ import 'package:teampilot/models/session_usage.dart';
 import 'package:teampilot/models/session_usage_dashboard.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/usage/session_usage_page.dart';
+import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/pages/usage/widgets/usage_filter_bar.dart';
 import 'package:teampilot/pages/usage/widgets/usage_heatmap_card.dart';
 import 'package:teampilot/pages/usage/widgets/usage_table_toolbar.dart';
@@ -91,6 +92,7 @@ Widget _wrap(
   SessionUsageCubit cubit, {
   Brightness brightness = Brightness.light,
   bool autoSync = false,
+  AppSettingsRepository? settings,
 }) {
   return MaterialApp(
     locale: const Locale('en'),
@@ -101,10 +103,13 @@ Widget _wrap(
         ColorScheme.fromSeed(seedColor: Colors.indigo, brightness: brightness),
         scale: 1,
       ),
-      child: BlocProvider.value(
-        value: cubit,
-        child: Scaffold(
-          body: SessionUsagePage(embedded: true, autoSync: autoSync),
+      child: RepositoryProvider<AppSettingsRepository>.value(
+        value: settings ?? InMemoryAppSettingsRepository(),
+        child: BlocProvider.value(
+          value: cubit,
+          child: Scaffold(
+            body: SessionUsagePage(embedded: true, autoSync: autoSync),
+          ),
         ),
       ),
     ),
@@ -414,7 +419,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(AppKeys.sessionUsageSyncButton), findsOneWidget);
-    expect(find.byKey(AppKeys.sessionUsageMaintenanceButton), findsOneWidget);
+    expect(find.byKey(AppKeys.sessionUsageSettingsButton), findsOneWidget);
     // Cursor import/sync moved into the settings dialog.
     expect(find.byKey(AppKeys.sessionUsageCursorButton), findsNothing);
     expect(find.text('JSONL read-only'), findsNothing);
@@ -537,6 +542,51 @@ void main() {
     await tester.pump(const Duration(minutes: 10));
     await tester.pumpAndSettle();
     expect(syncCount, 2);
+  });
+
+  testWidgets('settings dialog persists the auto-scan toggle', (tester) async {
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [_event()],
+      syncAll: () async => const UsageSyncResult(),
+      loadSessions: () async => [_session('s1', 'Alpha')],
+      loadTeams: () async => const <TeamProfile>[],
+    );
+    addTearDown(cubit.close);
+    final settings = InMemoryAppSettingsRepository();
+
+    await tester.pumpWidget(_wrap(cubit, settings: settings));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(AppKeys.sessionUsageSettingsButton));
+    await tester.pumpAndSettle();
+    expect(find.byKey(AppKeys.sessionUsageSettingsDialog), findsOneWidget);
+
+    await tester.tap(find.byKey(AppKeys.sessionUsageAutoScanSwitch));
+    await tester.pumpAndSettle();
+    expect(await settings.loadUsageAutoSyncEnabled(), isFalse);
+  });
+
+  testWidgets('disabled auto sync skips the scan on open', (tester) async {
+    var syncCount = 0;
+    final cubit = SessionUsageCubit(
+      loadEvents: () async => [_event()],
+      syncAll: () async {
+        syncCount++;
+        return const UsageSyncResult();
+      },
+      loadSessions: () async => [_session('s1', 'Alpha')],
+      loadTeams: () async => const <TeamProfile>[],
+    );
+    addTearDown(cubit.close);
+    final settings = InMemoryAppSettingsRepository();
+    await settings.saveUsageAutoSyncEnabled(false);
+
+    await tester.pumpWidget(
+      _wrap(cubit, autoSync: true, settings: settings),
+    );
+    await tester.pumpAndSettle();
+
+    expect(syncCount, 0);
   });
 
   testWidgets('auto sync rechecks stale data on app resume', (tester) async {

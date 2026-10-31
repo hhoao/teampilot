@@ -13,8 +13,7 @@ class UsagePageHeader extends StatelessWidget {
     required this.onIncrementalSync,
     required this.onFullSync,
     required this.onCancel,
-    required this.onCursor,
-    required this.onMaintenance,
+    required this.onSettings,
     super.key,
   });
 
@@ -22,8 +21,7 @@ class UsagePageHeader extends StatelessWidget {
   final Future<void> Function() onIncrementalSync;
   final Future<void> Function() onFullSync;
   final VoidCallback onCancel;
-  final VoidCallback onCursor;
-  final VoidCallback onMaintenance;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -38,23 +36,12 @@ class UsagePageHeader extends StatelessWidget {
           l10n.sessionUsageTitle,
           style: styles.xl.copyWith(fontWeight: FontWeight.w700),
         ),
-        const SizedBox(height: 5),
-        Text(
-          l10n.sessionUsageSubtitle,
-          style: styles.smColored(cs.onSurface.withValues(alpha: 0.6)),
-        ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Wrap(
           spacing: 12,
           runSpacing: 4,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Text(
-              formatUsageLastSync(context, state.lastSyncAtMs),
-              style: styles.xs.copyWith(
-                color: cs.onSurface.withValues(alpha: 0.52),
-              ),
-            ),
             Text(
               l10n.sessionUsageScopeHint,
               style: styles.xs.copyWith(
@@ -75,33 +62,14 @@ class UsagePageHeader extends StatelessWidget {
       ],
     );
 
-    final actions = Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        _secondaryAction(
-          key: AppKeys.sessionUsageCursorButton,
-          icon: Icons.cloud_sync_outlined,
-          label: l10n.sessionUsageCursorTitle,
-          onPressed: onCursor,
-        ),
-        _secondaryAction(
-          key: AppKeys.sessionUsageMaintenanceButton,
-          icon: Icons.storage_outlined,
-          label: l10n.sessionUsageStorage,
-          onPressed: onMaintenance,
-        ),
-        _syncControl(context),
-      ],
-    );
+    final controls = _controls(context, styles, cs);
 
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < 720) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [summary, const SizedBox(height: 12), actions],
+            children: [summary, const SizedBox(height: 12), controls],
           );
         }
         return Row(
@@ -109,96 +77,167 @@ class UsagePageHeader extends StatelessWidget {
           children: [
             Expanded(child: summary),
             const SizedBox(width: 12),
-            actions,
+            controls,
           ],
         );
       },
     );
   }
 
-  Widget _secondaryAction({
-    required Key key,
-    required IconData icon,
-    required String label,
-    required VoidCallback onPressed,
-  }) {
-    return OutlinedButton.icon(
-      key: key,
-      onPressed: onPressed,
-      icon: Icon(icon, size: 16),
-      style: OutlinedButton.styleFrom(
-        visualDensity: VisualDensity.compact,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+  /// One capsule: sync status (opens the sync menu) and the settings entry.
+  Widget _controls(
+    BuildContext context,
+    TpTextStyles styles,
+    ColorScheme cs,
+  ) {
+    final borderColor = cs.outlineVariant.withValues(alpha: 0.6);
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor),
       ),
-      label: Text(label),
-    );
-  }
-
-  Widget _syncControl(BuildContext context) {
-    final l10n = context.l10n;
-    if (state.isSyncing) {
-      return Tooltip(
-        message: l10n.sessionUsageCancelSyncTooltip,
-        child: FilledButton.icon(
-          key: AppKeys.sessionUsageCancelSyncButton,
-          onPressed: state.isCancelling ? null : onCancel,
-          icon: state.isCancelling
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.close, size: 18),
-          label: Text(
-            state.isCancelling
-                ? l10n.sessionUsageCancelling
-                : l10n.sessionUsageCancelSync,
-          ),
-        ),
-      );
-    }
-    return Tooltip(
-      message: l10n.sessionUsageSyncTooltip,
-      child: MenuAnchor(
-        alignmentOffset: const Offset(0, 4),
-        menuChildren: [
-          MenuItemButton(
-            key: AppKeys.sessionUsageIncrementalSync,
-            leadingIcon: const Icon(Icons.sync, size: 18),
-            onPressed: () => onIncrementalSync(),
-            child: _menuOption(
-              context,
-              l10n.sessionUsageSyncIncremental,
-              l10n.sessionUsageSyncIncrementalHint,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _syncSegment(context, styles, cs),
+          Container(width: 1, height: 20, color: borderColor),
+          _segment(
+            key: AppKeys.sessionUsageSettingsButton,
+            tooltip: context.l10n.sessionUsageSettings,
+            onTap: onSettings,
+            borderRadius: const BorderRadius.horizontal(
+              right: Radius.circular(9),
             ),
-          ),
-          MenuItemButton(
-            key: AppKeys.sessionUsageFullSync,
-            leadingIcon: const Icon(Icons.restart_alt, size: 18),
-            onPressed: () => onFullSync(),
-            child: _menuOption(
-              context,
-              l10n.sessionUsageSyncFull,
-              l10n.sessionUsageSyncFullHint,
+            child: Icon(
+              Icons.tune,
+              size: 18,
+              color: cs.onSurface.withValues(alpha: 0.7),
             ),
           ),
         ],
-        builder: (context, controller, child) => FilledButton.icon(
-          key: AppKeys.sessionUsageSyncButton,
-          onPressed: () =>
-              controller.isOpen ? controller.close() : controller.open(),
-          icon: const Icon(Icons.sync, size: 18),
-          label: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(l10n.sessionUsageSync),
-              const SizedBox(width: 2),
-              const Icon(Icons.arrow_drop_down, size: 18),
-            ],
+      ),
+    );
+  }
+
+  Widget _syncSegment(
+    BuildContext context,
+    TpTextStyles styles,
+    ColorScheme cs,
+  ) {
+    final l10n = context.l10n;
+    if (state.isSyncing) {
+      return _segment(
+        key: AppKeys.sessionUsageCancelSyncButton,
+        tooltip: l10n.sessionUsageCancelSyncTooltip,
+        onTap: state.isCancelling ? null : onCancel,
+        borderRadius: const BorderRadius.horizontal(left: Radius.circular(9)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: state.isCancelling
+                  ? const CircularProgressIndicator(strokeWidth: 2)
+                  : Icon(Icons.close, size: 14, color: cs.onSurface),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              state.isCancelling
+                  ? l10n.sessionUsageCancelling
+                  : l10n.sessionUsageCancelSync,
+              style: styles.smMedium.copyWith(color: cs.onSurface),
+            ),
+          ],
+        ),
+      );
+    }
+    return MenuAnchor(
+      alignmentOffset: const Offset(0, 6),
+      menuChildren: [
+        MenuItemButton(
+          key: AppKeys.sessionUsageIncrementalSync,
+          leadingIcon: const Icon(Icons.sync, size: 18),
+          onPressed: () => onIncrementalSync(),
+          child: _menuOption(
+            context,
+            l10n.sessionUsageSyncIncremental,
+            l10n.sessionUsageSyncIncrementalHint,
           ),
+        ),
+        MenuItemButton(
+          key: AppKeys.sessionUsageFullSync,
+          leadingIcon: const Icon(Icons.restart_alt, size: 18),
+          onPressed: () => onFullSync(),
+          child: _menuOption(
+            context,
+            l10n.sessionUsageSyncFull,
+            l10n.sessionUsageSyncFullHint,
+          ),
+        ),
+      ],
+      builder: (context, controller, child) => _segment(
+        key: AppKeys.sessionUsageSyncButton,
+        tooltip: l10n.sessionUsageSyncTooltip,
+        borderRadius: const BorderRadius.horizontal(left: Radius.circular(9)),
+        onTap: () =>
+            controller.isOpen ? controller.close() : controller.open(),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.refresh,
+              size: 16,
+              color: cs.onSurface.withValues(alpha: 0.75),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              _syncLabel(context),
+              style: styles.smMedium.copyWith(
+                color: cs.onSurface.withValues(alpha: 0.85),
+              ),
+            ),
+            Icon(
+              Icons.arrow_drop_down,
+              size: 18,
+              color: cs.onSurface.withValues(alpha: 0.55),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _segment({
+    required Key key,
+    required Widget child,
+    required VoidCallback? onTap,
+    required BorderRadius borderRadius,
+    String? tooltip,
+  }) {
+    final segment = InkWell(
+      key: key,
+      onTap: onTap,
+      borderRadius: borderRadius,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        child: child,
+      ),
+    );
+    if (tooltip == null) return segment;
+    return Tooltip(message: tooltip, child: segment);
+  }
+
+  String _syncLabel(BuildContext context) {
+    final l10n = context.l10n;
+    final lastSyncAtMs = state.lastSyncAtMs;
+    if (lastSyncAtMs == null) return l10n.sessionUsageNeverSynced;
+    final elapsedMs = DateTime.now().millisecondsSinceEpoch - lastSyncAtMs;
+    if (elapsedMs < const Duration(minutes: 1).inMilliseconds) {
+      return l10n.sessionUsageSyncedJustNow;
+    }
+    return formatUsageLastSync(context, lastSyncAtMs);
   }
 
   Widget _menuOption(BuildContext context, String title, String hint) {

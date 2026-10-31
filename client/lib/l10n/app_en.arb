@@ -4774,7 +4774,6 @@
   "acpModelSectionLaunch": "Launch config",
   "sessionUsageNav": "Token usage",
   "sessionUsageTitle": "Token usage",
-  "sessionUsageSubtitle": "Usage attributed to TeamPilot sessions on local and SSH home planes.",
   "sessionUsageScopeHint": "Local + SSH · attributed by TeamPilot session",
   "sessionUsageProgressTitle": "Usage sync",
   "sessionUsageSync": "Sync",
@@ -4804,6 +4803,7 @@
     }
   },
   "sessionUsageNeverSynced": "Not synced yet",
+  "sessionUsageSyncedJustNow": "Synced just now",
   "sessionUsageLastSync": "Last sync {time}",
   "@sessionUsageLastSync": {
     "placeholders": {
@@ -5027,6 +5027,28 @@
   "sessionUsagePricingEmpty": "No custom rules. Built-in prices are active.",
   "sessionUsagePricingDelete": "Delete",
   "sessionUsageStorage": "Storage",
+  "sessionUsageSettings": "Usage settings",
+  "sessionUsageDataSource": "Data source",
+  "sessionUsageAutoScan": "Auto-scan session logs",
+  "sessionUsageAutoScanHint": "Scans when this page opens, then every {minutes} minutes in the background.",
+  "@sessionUsageAutoScanHint": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageScanInterval": "Scan interval",
+  "sessionUsageIntervalMinutes": "Every {minutes} min",
+  "@sessionUsageIntervalMinutes": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "sessionUsageSyncNow": "Sync now",
+  "sessionUsageMaintenanceEntry": "Storage and Cursor maintenance",
   "sessionUsageMaintenanceTitle": "Usage storage",
   "sessionUsageMaintenanceLines": "{lines} lines · {events} events",
   "@sessionUsageMaintenanceLines": {

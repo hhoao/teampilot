@@ -188,6 +188,39 @@ void main() {
     expect(await seeded.loadDiscoveryAutoRefreshEnabled(), isTrue);
   });
 
+  group('AppSettingsRepository.usageSync', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    test('auto scan defaults to enabled and the interval to 10 minutes', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      expect(await repo.loadUsageAutoSyncEnabled(), isTrue);
+      expect(await repo.loadUsageSyncIntervalMinutes(), 10);
+    });
+
+    test('round-trips the auto scan flag and interval', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      await repo.saveUsageAutoSyncEnabled(false);
+      await repo.saveUsageSyncIntervalMinutes(30);
+      expect(await repo.loadUsageAutoSyncEnabled(), isFalse);
+      expect(await repo.loadUsageSyncIntervalMinutes(), 30);
+    });
+  });
+
+  test('InMemory usageSync round trip', () async {
+    final repo = InMemoryAppSettingsRepository();
+    expect(await repo.loadUsageAutoSyncEnabled(), isTrue);
+    expect(await repo.loadUsageSyncIntervalMinutes(), 10);
+
+    await repo.saveUsageAutoSyncEnabled(false);
+    await repo.saveUsageSyncIntervalMinutes(1);
+    expect(await repo.loadUsageAutoSyncEnabled(), isFalse);
+    expect(await repo.loadUsageSyncIntervalMinutes(), 1);
+  });
+
   group('AppSettingsRepository.acpFrameLog', () {
     test('defaults to disabled (opt-in) when nothing stored', () async {
       final prefs = await SharedPreferences.getInstance();
