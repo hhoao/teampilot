@@ -163,24 +163,19 @@ class _UsageSummaryCardsState extends State<UsageSummaryCards> {
           children: [
             grid(cards, intrinsic: true),
             const SizedBox(height: 4),
-            Tooltip(
-              message: _expanded
-                  ? l10n.sessionUsageHeatmapShowLess
-                  : l10n.sessionUsageHeatmapMore,
-              child: InkWell(
-                onTap: () => setState(() => _expanded = !_expanded),
-                mouseCursor: SystemMouseCursors.click,
-                borderRadius: BorderRadius.circular(6),
-                child: SizedBox(
-                  height: 24,
-                  child: Center(
-                    child: Icon(
-                      _expanded
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
-                      size: context.tpIconSizes.md,
-                      color: cs.onSurface.withValues(alpha: 0.56),
-                    ),
+            InkWell(
+              onTap: () => setState(() => _expanded = !_expanded),
+              mouseCursor: SystemMouseCursors.click,
+              borderRadius: BorderRadius.circular(6),
+              child: SizedBox(
+                height: 24,
+                child: Center(
+                  child: Icon(
+                    _expanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    size: context.tpIconSizes.md,
+                    color: cs.onSurface.withValues(alpha: 0.56),
                   ),
                 ),
               ),
