@@ -5,9 +5,11 @@ import '../../../models/automation.dart';
 import '../../../repositories/automation_repository.dart';
 import '../../automation/automation_schedule_calculator.dart';
 import '../../automation/automation_schedule_defaults.dart';
+import '../catalog_error_sanitizer.dart';
 import '../catalog_kind.dart';
 import '../catalog_mutation_bus.dart';
 import 'automation_catalog_tools.dart';
+import 'automation_schedule_args.dart';
 
 typedef AutomationRunNow =
     Future<void> Function(String workspaceId, String automationId);
@@ -74,11 +76,10 @@ class AutomationCatalogModule implements CatalogKindModule {
       CatalogOp.search ||
       CatalogOp.install ||
       CatalogOp.importPath ||
-      CatalogOp.unbind =>
-        throw CatalogException(
-          'unsupported_op',
-          'automation does not support ${op.name}',
-        ),
+      CatalogOp.unbind => throw CatalogException(
+        'unsupported_op',
+        'automation does not support ${op.name}',
+      ),
     };
   }
 
@@ -99,18 +100,22 @@ class AutomationCatalogModule implements CatalogKindModule {
         latest[run.automationId] = run;
       }
     }
-    return _ok(req, [for (final a in automations) a.id], {
-      'automation': {
-        'items': [
-          for (final automation in automations)
-            {
-              ...automation.toJson(),
-              'summary': scheduleCalculator.formatScheduleSummary(automation),
-              'last_run': latest[automation.id]?.toJson(),
-            },
-        ],
+    return _ok(
+      req,
+      [for (final a in automations) a.id],
+      {
+        'automation': {
+          'items': [
+            for (final automation in automations)
+              {
+                ...automation.toJson(),
+                'summary': scheduleCalculator.formatScheduleSummary(automation),
+                'last_run': latest[automation.id]?.toJson(),
+              },
+          ],
+        },
       },
-    });
+    );
   }
 
   Future<CatalogResult> _read(CatalogRequest req) async {
@@ -122,24 +127,33 @@ class AutomationCatalogModule implements CatalogKindModule {
       automationId: automation.id,
     );
     final recent = [...runs]
-      ..sort(
-        (a, b) => (b.startedAtMs ?? 0).compareTo(a.startedAtMs ?? 0),
-      );
-    return _ok(req, [automation.id], {
-      'automation': {
-        ...automation.toJson(),
-        'summary': scheduleCalculator.formatScheduleSummary(automation),
-        'recent_runs': [for (final run in recent.take(5)) run.toJson()],
+      ..sort((a, b) => (b.startedAtMs ?? 0).compareTo(a.startedAtMs ?? 0));
+    return _ok(
+      req,
+      [automation.id],
+      {
+        'automation': {
+          ...automation.toJson(),
+          'summary': scheduleCalculator.formatScheduleSummary(automation),
+          'recent_runs': [for (final run in recent.take(5)) run.toJson()],
+        },
       },
-    });
+    );
   }
 
   Future<CatalogResult> _create(CatalogRequest req) async {
     final now = _nowMs();
-    final schedule = _parseSchedule(req.arguments['schedule'], now: now);
+    final schedule = parseAutomationSchedule(
+      req.arguments['schedule'],
+      calculator: scheduleCalculator,
+      defaultTimezone: _defaultTimezone(),
+      now: now,
+    );
     final action = _parseAction(req.arguments['action']);
     final name = _requireText(req, 'name');
     final message = _requireText(req, 'message');
+    final maxRunCount = _maxRunCount(req);
+    final missedRunGraceMinutes = _graceMinutes(req);
     final id = _newId();
 
     final Automation draft;
@@ -160,6 +174,8 @@ class AutomationCatalogModule implements CatalogKindModule {
         message: message,
         schedule: schedule,
         now: now,
+        maxRunCount: maxRunCount,
+        missedRunGraceMinutes: missedRunGraceMinutes,
       ).copyWith(sessionId: sessionId);
     } else {
       final teamId = _text(req.arguments['team_id']);
@@ -189,21 +205,17 @@ class AutomationCatalogModule implements CatalogKindModule {
         message: message,
         schedule: schedule,
         now: now,
+        maxRunCount: maxRunCount,
+        missedRunGraceMinutes: missedRunGraceMinutes,
         isPersonal: teamId == null,
         presetId: teamId == null ? presetId : null,
         teamId: teamId,
-        targetMemberId:
-            _text(req.arguments['target_member_id']) ?? 'team-lead',
+        targetMemberId: _text(req.arguments['target_member_id']) ?? 'team-lead',
         reuseSession: req.arguments['reuse_session'] == true,
       );
     }
 
-    draft.validate();
-    final preview = scheduleCalculator.computeNextRunAtMs(
-      draft.copyWith(enabled: true),
-      afterMs: now,
-    );
-    final saved = await repository.upsert(draft);
+    final (saved, preview) = await _commit(draft, now);
     _emit(CatalogOp.create, req, [saved.id]);
     return _ok(
       req,
@@ -224,8 +236,10 @@ class AutomationCatalogModule implements CatalogKindModule {
     required AutomationAction action,
     required String workspaceId,
     required String message,
-    required _ScheduleSpec schedule,
+    required AutomationScheduleSpec schedule,
     required int now,
+    required int missedRunGraceMinutes,
+    int? maxRunCount,
     bool isPersonal = true,
     String? presetId,
     String? teamId,
@@ -252,22 +266,50 @@ class AutomationCatalogModule implements CatalogKindModule {
       dtstartMs: schedule.dtstartMs,
       runAtMs: schedule.runAtMs,
       enabled: false,
-      missedRunGraceMinutes: 15,
+      missedRunGraceMinutes: missedRunGraceMinutes,
+      maxRunCount: maxRunCount,
       createdAtMs: now,
       updatedAtMs: now,
     );
   }
 
-  Future<CatalogResult> _update(CatalogRequest req) => throw UnsupportedError(
-    'implemented in Task 3',
+  /// Validates and persists [draft], translating data-layer failures so the
+  /// catalog transport never surfaces a raw `ArgumentError` as
+  /// `install_failed`.
+  Future<(Automation, int?)> _commit(Automation draft, int now) async {
+    try {
+      draft.validate();
+      final preview = scheduleCalculator.computeNextRunAtMs(
+        draft.copyWith(enabled: true),
+        afterMs: now,
+      );
+      final saved = await repository.upsert(draft);
+      return (saved, preview);
+    } on ArgumentError catch (error) {
+      throw CatalogException(
+        'invalid_argument',
+        error.message?.toString() ?? 'invalid automation',
+      );
+    } on FormatException catch (error) {
+      throw CatalogException('invalid_argument', error.message);
+    } on Object catch (error) {
+      throw CatalogException(
+        'write_failed',
+        CatalogErrorSanitizer.sanitize('$error'),
+      );
+    }
+  }
+
+  Future<CatalogResult> _update(CatalogRequest req) => Future.error(
+    CatalogException('unsupported_op', 'update is implemented in Task 3'),
   );
 
-  Future<CatalogResult> _delete(CatalogRequest req) => throw UnsupportedError(
-    'implemented in Task 3',
+  Future<CatalogResult> _delete(CatalogRequest req) => Future.error(
+    CatalogException('unsupported_op', 'delete is implemented in Task 3'),
   );
 
-  Future<CatalogResult> _run(CatalogRequest req) => throw UnsupportedError(
-    'implemented in Task 3',
+  Future<CatalogResult> _run(CatalogRequest req) => Future.error(
+    CatalogException('unsupported_op', 'run is implemented in Task 3'),
   );
 
   Future<Automation> _require(String workspaceId, String id) async {
@@ -306,97 +348,39 @@ class AutomationCatalogModule implements CatalogKindModule {
     );
   }
 
-  _ScheduleSpec _parseSchedule(Object? raw, {required int now}) {
-    if (raw is! Map) {
-      throw CatalogException('schedule_invalid', 'schedule is required');
-    }
-    final map = raw.cast<String, Object?>();
-    final type = _text(map['type'])?.toLowerCase();
-    if (type == null) {
-      throw CatalogException('schedule_invalid', 'schedule.type is required');
-    }
-    final timezone = _text(map['timezone']) ?? _defaultTimezone();
-    final dtstartMs = _int(map['dtstart_ms']) ?? now;
-    const defaultTime = '09:00';
-    try {
-      switch (type) {
-        case 'hourly':
-          final minute = _int(map['minute']) ?? 0;
-          if (minute < 0 || minute > 59) {
-            throw ArgumentError('minute must be 0..59');
-          }
-          return _ScheduleSpec(
-            preset: AutomationSchedulePreset.hourly,
-            minute: minute,
-            hourMinute: defaultTime,
-            timezone: timezone,
-            dtstartMs: dtstartMs,
-          );
-        case 'daily':
-        case 'weekdays':
-          final time = _text(map['time']) ?? defaultTime;
-          parseHourMinute(time);
-          return _ScheduleSpec(
-            preset: type == 'daily'
-                ? AutomationSchedulePreset.daily
-                : AutomationSchedulePreset.weekdays,
-            hourMinute: time,
-            timezone: timezone,
-            dtstartMs: dtstartMs,
-          );
-        case 'weekly':
-          final time = _text(map['time']) ?? defaultTime;
-          parseHourMinute(time);
-          final day = _int(map['day_of_week']) ?? 1;
-          if (day < 1 || day > 7) {
-            throw ArgumentError('day_of_week must be 1..7');
-          }
-          return _ScheduleSpec(
-            preset: AutomationSchedulePreset.weekly,
-            hourMinute: time,
-            dayOfWeek: day,
-            timezone: timezone,
-            dtstartMs: dtstartMs,
-          );
-        case 'custom':
-          final cron = _text(map['cron']);
-          if (cron == null || !scheduleCalculator.isValidCron(cron)) {
-            throw ArgumentError('invalid cron expression');
-          }
-          return _ScheduleSpec(
-            preset: AutomationSchedulePreset.custom,
-            customCron: cron,
-            timezone: timezone,
-            dtstartMs: dtstartMs,
-          );
-        case 'once':
-          final at = _runAtMs(map['at']);
-          if (at == null || at <= now) {
-            throw ArgumentError('at must be a future timestamp');
-          }
-          return _ScheduleSpec(
-            preset: AutomationSchedulePreset.once,
-            runAtMs: at,
-            timezone: timezone,
-            dtstartMs: dtstartMs,
-          );
-        default:
-          throw ArgumentError('unknown schedule type: $type');
-      }
-    } on ArgumentError catch (error) {
+  int? _maxRunCount(CatalogRequest req) {
+    final raw = req.arguments['max_run_count'];
+    if (raw == null) return null;
+    if (raw is! num) {
       throw CatalogException(
-        'schedule_invalid',
-        error.message?.toString() ?? 'invalid schedule',
+        'invalid_argument',
+        'max_run_count must be a number',
       );
     }
+    final value = raw.toInt();
+    if (value < 0) {
+      throw CatalogException('invalid_argument', 'max_run_count must be >= 0');
+    }
+    return value == 0 ? null : value;
   }
 
-  int? _runAtMs(Object? raw) {
-    if (raw is int) return raw;
-    if (raw is String && raw.trim().isNotEmpty) {
-      return DateTime.tryParse(raw.trim())?.millisecondsSinceEpoch;
+  int _graceMinutes(CatalogRequest req) {
+    final raw = req.arguments['missed_run_grace_minutes'];
+    if (raw == null) return 15;
+    if (raw is! num) {
+      throw CatalogException(
+        'invalid_argument',
+        'missed_run_grace_minutes must be a number',
+      );
     }
-    return null;
+    final value = raw.toInt();
+    if (value < 0) {
+      throw CatalogException(
+        'invalid_argument',
+        'missed_run_grace_minutes must be >= 0',
+      );
+    }
+    return value;
   }
 
   AutomationAction _parseAction(Object? raw) {
@@ -430,32 +414,4 @@ class AutomationCatalogModule implements CatalogKindModule {
     final trimmed = value.trim();
     return trimmed.isEmpty ? null : trimmed;
   }
-
-  static int? _int(Object? value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    return null;
-  }
-}
-
-class _ScheduleSpec {
-  const _ScheduleSpec({
-    required this.preset,
-    required this.timezone,
-    required this.dtstartMs,
-    this.customCron,
-    this.dayOfWeek,
-    this.minute = 0,
-    this.hourMinute = '09:00',
-    this.runAtMs,
-  });
-
-  final AutomationSchedulePreset preset;
-  final String? customCron;
-  final int? dayOfWeek;
-  final int minute;
-  final String hourMinute;
-  final String timezone;
-  final int dtstartMs;
-  final int? runAtMs;
 }

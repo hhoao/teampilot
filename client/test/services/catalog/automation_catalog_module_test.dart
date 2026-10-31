@@ -47,7 +47,10 @@ void main() {
     );
   });
 
-  CatalogRequest request(Map<String, Object?> args, {String sessionId = 'sess-1'}) {
+  CatalogRequest request(
+    Map<String, Object?> args, {
+    String sessionId = 'sess-1',
+  }) {
     return CatalogRequest(
       sessionId: sessionId,
       workspaceId: workspaceId,
@@ -72,8 +75,16 @@ void main() {
     expect(result.restartRequired, isFalse);
     expect(result.ids, ['auto-1']);
     expect(result.data!['enabled'], isFalse);
-    expect(result.data!['next_run_at_ms'], isNotNull);
+    expect(
+      result.data!['next_run_at_ms'],
+      DateTime.utc(2026, 10, 31, 9).millisecondsSinceEpoch,
+    );
     expect(result.message, contains('Created disabled'));
+
+    await Future<void>.delayed(Duration.zero);
+    expect(events, hasLength(1));
+    expect(events.single.kind, 'automation');
+    expect(events.single.op, CatalogOp.create);
 
     final stored = await repo.listForWorkspace(workspaceId);
     expect(stored, hasLength(1));
@@ -93,7 +104,11 @@ void main() {
         }),
       ),
       throwsA(
-        isA<CatalogException>().having((e) => e.code, 'code', 'schedule_invalid'),
+        isA<CatalogException>().having(
+          (e) => e.code,
+          'code',
+          'schedule_invalid',
+        ),
       ),
     );
   });
@@ -146,13 +161,38 @@ void main() {
         'schedule': {'type': 'hourly', 'minute': 5},
       }),
     );
+    await repo.upsertRun(
+      workspaceId,
+      AutomationRun(
+        id: 'run-old',
+        automationId: 'auto-1',
+        workspaceId: workspaceId,
+        scheduledForMs: 10,
+        status: AutomationRunStatus.completed,
+        trigger: AutomationRunTrigger.scheduled,
+      ),
+    );
+    await repo.upsertRun(
+      workspaceId,
+      AutomationRun(
+        id: 'run-new',
+        automationId: 'auto-1',
+        workspaceId: workspaceId,
+        scheduledForMs: 20,
+        status: AutomationRunStatus.dispatchFailed,
+        trigger: AutomationRunTrigger.manual,
+        startedAtMs: now - 1000,
+      ),
+    );
+
     final result = await module.handle(CatalogOp.list, request(const {}));
     final data = result.data!['automation']! as Map<String, Object?>;
     final items = data['items']! as List;
     expect(items, hasLength(1));
-    expect((items.single as Map)['id'], 'auto-1');
-    expect((items.single as Map)['summary'], 'Hourly at :05');
-    expect((items.single as Map)['last_run'], isNull);
+    final item = items.single as Map;
+    expect(item['id'], 'auto-1');
+    expect(item['summary'], 'Hourly at :05');
+    expect((item['last_run']! as Map)['id'], 'run-new');
   });
 
   test('read without id behaves like list', () async {
@@ -179,7 +219,65 @@ void main() {
     await repo.upsert(foreign);
     await expectLater(
       module.handle(CatalogOp.read, request(const {'id': 'other'})),
-      throwsA(isA<CatalogException>().having((e) => e.code, 'code', 'not_found')),
+      throwsA(
+        isA<CatalogException>().having((e) => e.code, 'code', 'not_found'),
+      ),
     );
+  });
+
+  test('create rejects a malformed time', () async {
+    await expectLater(
+      module.handle(
+        CatalogOp.create,
+        request({
+          'name': 'x',
+          'message': 'x',
+          'schedule': {'type': 'daily', 'time': '9:0x'},
+        }),
+      ),
+      throwsA(
+        isA<CatalogException>().having(
+          (e) => e.code,
+          'code',
+          'schedule_invalid',
+        ),
+      ),
+    );
+  });
+
+  test('create rejects a stringly-typed minute', () async {
+    await expectLater(
+      module.handle(
+        CatalogOp.create,
+        request({
+          'name': 'x',
+          'message': 'x',
+          'schedule': {'type': 'hourly', 'minute': '5'},
+        }),
+      ),
+      throwsA(
+        isA<CatalogException>().having(
+          (e) => e.code,
+          'code',
+          'schedule_invalid',
+        ),
+      ),
+    );
+  });
+
+  test('create persists the run limit and grace minutes', () async {
+    await module.handle(
+      CatalogOp.create,
+      request({
+        'name': 'limited',
+        'message': 'x',
+        'schedule': {'type': 'daily'},
+        'max_run_count': 3,
+        'missed_run_grace_minutes': 30,
+      }),
+    );
+    final stored = (await repo.listForWorkspace(workspaceId)).single;
+    expect(stored.effectiveMaxRunCount, 3);
+    expect(stored.missedRunGraceMinutes, 30);
   });
 }

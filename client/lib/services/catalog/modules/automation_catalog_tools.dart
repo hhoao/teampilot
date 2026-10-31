@@ -4,7 +4,7 @@ const automationCatalogTools = <CatalogToolSpec>[
   CatalogToolSpec(
     name: 'read_automation',
     description:
-        'List this workspace automations, or read one automation and its '
+        "List this workspace's automations, or read one automation and its "
         'recent runs when `id` is given',
     inputSchema: {
       'type': 'object',
@@ -47,7 +47,9 @@ const automationCatalogTools = <CatalogToolSpec>[
             'minute': {'type': 'integer'},
             'day_of_week': {'type': 'integer'},
             'cron': {'type': 'string'},
-            'at': {'type': ['string', 'integer']},
+            'at': {
+              'type': ['string', 'integer'],
+            },
             'timezone': {'type': 'string'},
             'dtstart_ms': {'type': 'integer'},
           },
@@ -93,7 +95,9 @@ const automationCatalogTools = <CatalogToolSpec>[
             'minute': {'type': 'integer'},
             'day_of_week': {'type': 'integer'},
             'cron': {'type': 'string'},
-            'at': {'type': ['string', 'integer']},
+            'at': {
+              'type': ['string', 'integer'],
+            },
             'timezone': {'type': 'string'},
             'dtstart_ms': {'type': 'integer'},
           },
