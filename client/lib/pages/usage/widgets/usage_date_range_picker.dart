@@ -138,8 +138,8 @@ class _Trigger extends StatelessWidget {
       constraints: const BoxConstraints(maxWidth: 240),
       child: Container(
         key: AppKeys.sessionUsageRangeTrigger,
-        height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        height: usageFilterControlHeight,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color: open ? cs.surfaceContainerHighest : cs.surface,
           borderRadius: BorderRadius.circular(8),

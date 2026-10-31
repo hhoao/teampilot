@@ -32,27 +32,30 @@ class UsageTableToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final styles = TpTextStyles.of(context);
 
-    final search = TextField(
-      key: AppKeys.sessionUsageSearchField,
-      controller: searchController,
-      onChanged: onQueryChanged,
-      style: styles.sm,
-      decoration: InputDecoration(
-        isDense: true,
-        hintText: context.l10n.sessionUsageSearchHint,
-        prefixIcon: const Icon(Icons.search, size: 18),
-        suffixIcon: searchController.text.isEmpty
-            ? null
-            : IconButton(
-                tooltip: context.l10n.sessionUsageResetFilters,
-                iconSize: 18,
-                onPressed: () {
-                  searchController.clear();
-                  onQueryChanged('');
-                },
-                icon: const Icon(Icons.close),
-              ),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(9)),
+    final search = SizedBox(
+      height: usageFilterControlHeight,
+      child: TextField(
+        key: AppKeys.sessionUsageSearchField,
+        controller: searchController,
+        onChanged: onQueryChanged,
+        style: styles.sm,
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: context.l10n.sessionUsageSearchHint,
+          prefixIcon: const Icon(Icons.search, size: 18),
+          suffixIcon: searchController.text.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: context.l10n.sessionUsageResetFilters,
+                  iconSize: 18,
+                  onPressed: () {
+                    searchController.clear();
+                    onQueryChanged('');
+                  },
+                  icon: const Icon(Icons.close),
+                ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(9)),
+        ),
       ),
     );
 

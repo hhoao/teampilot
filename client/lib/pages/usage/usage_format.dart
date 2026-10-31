@@ -134,3 +134,6 @@ int usageChartLabelStride(int dayCount) {
   if (dayCount <= 0) return 1;
   return (dayCount / 7).ceil();
 }
+
+/// Shared height for the usage filter controls and search field.
+const double usageFilterControlHeight = 40;
