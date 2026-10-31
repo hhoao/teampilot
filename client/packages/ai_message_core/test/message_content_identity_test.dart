@@ -24,9 +24,100 @@ void main() {
     expect(messageContentIdentity(m1), messageContentIdentity(m2));
   });
 
+  test('identity is a fixed-size fingerprint, not a copy of the payload', () {
+    // The live ACP tip can hold megabytes of tool output, and identity is
+    // recomputed on every streaming chunk: it must never embed the payload.
+    final huge = 'x' * 200000;
+    final id = messageContentIdentity(
+      AiMessage(
+        id: 'm',
+        role: AiRole.assistant,
+        parts: [AiTextPart(text: huge)],
+      ),
+    );
+    expect(id.length, lessThan(200));
+    expect(
+      id,
+      messageContentIdentity(
+        AiMessage(
+          id: 'm',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: String.fromCharCodes(huge.codeUnits))],
+        ),
+      ),
+    );
+    // Tool payloads (raw args text + result) are digested the same way.
+    final toolId = messageContentIdentity(
+      AiMessage(
+        id: 'm',
+        role: AiRole.assistant,
+        parts: [
+          AiToolCallPart(
+            toolCallId: 't1',
+            toolName: 'Write',
+            argsText: huge,
+            result: huge,
+          ),
+        ],
+      ),
+    );
+    expect(toolId.length, lessThan(200));
+  });
+
+  test('identity detects payload changes behind the fingerprint', () {
+    String idOf(List<AiMessagePart> parts) => messageContentIdentity(
+      AiMessage(id: 'm', role: AiRole.assistant, parts: parts),
+    );
+
+    final base = idOf(const [AiTextPart(text: 'hello')]);
+    expect(base, isNot(idOf(const [AiTextPart(text: 'hellp')])));
+    expect(base, isNot(idOf(const [AiTextPart(text: 'hello!')])));
+    expect(base, isNot(idOf(const [AiReasoningPart(text: 'hello')])));
+
+    final tool = idOf(const [
+      AiToolCallPart(
+        toolCallId: 't1',
+        toolName: 'Bash',
+        args: {'command': 'ls'},
+        result: 'a',
+      ),
+    ]);
+    expect(
+      tool,
+      isNot(
+        idOf(const [
+          AiToolCallPart(
+            toolCallId: 't1',
+            toolName: 'Bash',
+            args: {'command': 'ls -a'},
+            result: 'a',
+          ),
+        ]),
+      ),
+    );
+    expect(
+      tool,
+      isNot(
+        idOf(const [
+          AiToolCallPart(
+            toolCallId: 't1',
+            toolName: 'Bash',
+            args: {'command': 'ls'},
+            result: 'b',
+          ),
+        ]),
+      ),
+    );
+  });
+
   test('cheapStringEqual uses full compare at or under 128 chars', () {
-    expect(cheapStringEqual('a' * 64 + 'MID' + 'b' * 61, 'a' * 64 + 'XXX' + 'b' * 61),
-        isFalse);
+    expect(
+      cheapStringEqual(
+        'a' * 64 + 'MID' + 'b' * 61,
+        'a' * 64 + 'XXX' + 'b' * 61,
+      ),
+      isFalse,
+    );
   });
 
   test('cheapStringEqual ignores middle of strings longer than 128', () {
@@ -36,53 +127,57 @@ void main() {
     expect(cheapStringEqual(a, b), isTrue);
   });
 
-  test('messagesCheapEqual matches large tool results by length and head/tail', () {
-    final result = 'HEAD'.padRight(64, 'H') + ('x' * 8000) + 'TAIL'.padLeft(64, 'T');
-    final a = AiMessage(
-      id: 'm',
-      role: AiRole.assistant,
-      parts: [
-        AiToolCallPart(
-          toolCallId: 't1',
-          toolName: 'Bash',
-          result: result,
-          status: AiToolCallStatus.complete,
+  test(
+    'messagesCheapEqual matches large tool results by length and head/tail',
+    () {
+      final result =
+          'HEAD'.padRight(64, 'H') + ('x' * 8000) + 'TAIL'.padLeft(64, 'T');
+      final a = AiMessage(
+        id: 'm',
+        role: AiRole.assistant,
+        parts: [
+          AiToolCallPart(
+            toolCallId: 't1',
+            toolName: 'Bash',
+            result: result,
+            status: AiToolCallStatus.complete,
+          ),
+        ],
+      );
+      final b = AiMessage(
+        id: 'm',
+        role: AiRole.assistant,
+        parts: [
+          AiToolCallPart(
+            toolCallId: 't1',
+            toolName: 'Bash',
+            result: StringBuffer(result).toString(),
+            status: AiToolCallStatus.complete,
+          ),
+        ],
+      );
+      expect(identical(a, b), isFalse);
+      expect(messagesCheapEqual(a, b), isTrue);
+      expect(
+        messagesCheapEqual(
+          a,
+          AiMessage(
+            id: 'm',
+            role: AiRole.assistant,
+            parts: [
+              AiToolCallPart(
+                toolCallId: 't1',
+                toolName: 'Bash',
+                result: '${result}!',
+                status: AiToolCallStatus.complete,
+              ),
+            ],
+          ),
         ),
-      ],
-    );
-    final b = AiMessage(
-      id: 'm',
-      role: AiRole.assistant,
-      parts: [
-        AiToolCallPart(
-          toolCallId: 't1',
-          toolName: 'Bash',
-          result: StringBuffer(result).toString(),
-          status: AiToolCallStatus.complete,
-        ),
-      ],
-    );
-    expect(identical(a, b), isFalse);
-    expect(messagesCheapEqual(a, b), isTrue);
-    expect(
-      messagesCheapEqual(
-        a,
-        AiMessage(
-          id: 'm',
-          role: AiRole.assistant,
-          parts: [
-            AiToolCallPart(
-              toolCallId: 't1',
-              toolName: 'Bash',
-              result: '${result}!',
-              status: AiToolCallStatus.complete,
-            ),
-          ],
-        ),
-      ),
-      isFalse,
-    );
-  });
+        isFalse,
+      );
+    },
+  );
 
   test('messagesCheapEqual treats streaming text append as different', () {
     const a = AiMessage(

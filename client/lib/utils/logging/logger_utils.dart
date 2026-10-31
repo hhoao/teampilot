@@ -254,7 +254,10 @@ class AppLogger {
       await _cleanOldLogs(logDir);
       _logFile = await _resolveLogFile(logDir);
 
-      _fileLogOutput = _FlushingFileOutput(file: _logFile!);
+      _fileLogOutput = _FlushingFileOutput(
+        file: _logFile!,
+        onWriteError: _handleFileWriteError,
+      );
       await _fileLogOutput!.init();
       _fileLogger = Logger(
         printer: _printer(colors: false),
@@ -393,7 +396,7 @@ class AppLogger {
         case AppLogLevel.error:
           _fileLogger!.e(message, error: error, stackTrace: stackTrace);
       }
-      unawaited(_rotateIfNeeded());
+      _maybeRotate();
     } on Object catch (e) {
       if (AppErrorUtils.isStorageError(e)) {
         _disableFileLogging('File logging disabled after write failure: $e');
@@ -436,6 +439,20 @@ class AppLogger {
     return file;
   }
 
+  /// Size-checks the log file at most once per [_rotateCheckInterval] — every
+  /// buffered line used to trigger a stat pair, which is pure overhead while a
+  /// chatty agent streams.
+  static const Duration _rotateCheckInterval = Duration(seconds: 5);
+  DateTime? _lastRotateCheck;
+
+  void _maybeRotate() {
+    final now = DateTime.now();
+    final last = _lastRotateCheck;
+    if (last != null && now.difference(last) < _rotateCheckInterval) return;
+    _lastRotateCheck = now;
+    unawaited(_rotateIfNeeded());
+  }
+
   Future<void> _rotateIfNeeded() async {
     final file = _logFile;
     final logDirPath = _logDirPath;
@@ -449,7 +466,10 @@ class AppLogger {
       final logDir = Directory(logDirPath);
       await _fileLogOutput?.destroy();
       _logFile = await _resolveLogFile(logDir);
-      _fileLogOutput = _FlushingFileOutput(file: _logFile!);
+      _fileLogOutput = _FlushingFileOutput(
+        file: _logFile!,
+        onWriteError: _handleFileWriteError,
+      );
       await _fileLogOutput!.init();
       _fileLogger = Logger(
         printer: _printer(colors: false),
@@ -489,6 +509,15 @@ class AppLogger {
       }
     } on Object catch (e) {
       _consoleLogger?.w('[AppLogger] failed to clean old logs: $e');
+    }
+  }
+
+  /// File writes happen off the logging call site, so write failures surface
+  /// here instead of the `_writeToFile` try/catch.
+  void _handleFileWriteError(Object error) {
+    if (_fileLoggingDisabled) return;
+    if (AppErrorUtils.isStorageError(error)) {
+      _disableFileLogging('File logging disabled after write failure: $error');
     }
   }
 
@@ -629,11 +658,28 @@ class AppLogger {
   }
 }
 
-/// Append-only file output with `flush: true` so Windows readers see full lines.
+/// Append-only file output that buffers lines and writes them off the caller's
+/// isolate.
+///
+/// High-volume diagnostics (ACP frame mirroring emits several lines per model
+/// token) must not do a synchronous write-with-flush on the UI isolate: at tens
+/// of lines per second the fsyncs starve the frame loop. Lines are batched for
+/// [_flushDelay] and written asynchronously; [flush] forces a write (tests, log
+/// viewer, rotation, shutdown).
 class _FlushingFileOutput extends LogOutput {
-  _FlushingFileOutput({required this.file});
+  _FlushingFileOutput({required this.file, this.onWriteError});
 
   final File file;
+
+  /// Called when an asynchronous write fails (the logger disables file
+  /// logging on storage errors).
+  final void Function(Object error)? onWriteError;
+
+  static const Duration _flushDelay = Duration(milliseconds: 200);
+
+  final StringBuffer _buffer = StringBuffer();
+  Timer? _flushTimer;
+  Future<void> _pendingWrite = Future<void>.value();
 
   @override
   Future<void> init() async {}
@@ -641,17 +687,35 @@ class _FlushingFileOutput extends LogOutput {
   @override
   void output(OutputEvent event) {
     if (event.lines.isEmpty) return;
-    file.writeAsStringSync(
-      '${event.lines.join('\n')}\n',
-      mode: FileMode.append,
-      flush: true,
-    );
+    for (final line in event.lines) {
+      _buffer.writeln(line);
+    }
+    _flushTimer ??= Timer(_flushDelay, () {
+      _flushTimer = null;
+      unawaited(flush());
+    });
   }
 
-  Future<void> flush() async {}
+  Future<void> flush() {
+    _flushTimer?.cancel();
+    _flushTimer = null;
+    final text = _buffer.toString();
+    _buffer.clear();
+    if (text.isEmpty) return _pendingWrite;
+    _pendingWrite = _pendingWrite.then((_) => _append(text));
+    return _pendingWrite;
+  }
+
+  Future<void> _append(String text) async {
+    try {
+      await file.writeAsString(text, mode: FileMode.append, flush: true);
+    } on Object catch (error) {
+      onWriteError?.call(error);
+    }
+  }
 
   @override
-  Future<void> destroy() async {}
+  Future<void> destroy() => flush();
 }
 
 class _ConsoleLogFilter extends LogFilter {

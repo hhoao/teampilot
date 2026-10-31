@@ -55,5 +55,21 @@ void main() {
         ),
       ),
     );
+
+    // A chatty burst (ACP frame mirroring is one line per streamed token) is
+    // buffered and lands in order on the next flush, without one blocking
+    // write-with-flush per line.
+    for (var i = 0; i < 200; i++) {
+      AppLogger.instance.i('burst line $i');
+    }
+    await AppLogger.instance.flushFileLogging();
+
+    final afterBurst = await File(logPath).readAsString();
+    expect(afterBurst, contains('burst line 0\n'));
+    expect(afterBurst, contains('burst line 199'));
+    expect(
+      afterBurst.indexOf('burst line 0\n'),
+      lessThan(afterBurst.indexOf('burst line 199')),
+    );
   });
 }
