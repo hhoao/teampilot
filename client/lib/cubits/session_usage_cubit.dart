@@ -624,9 +624,14 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   UsageDashboard _computeDashboard([SessionUsageState? stateOverride]) {
     final current = stateOverride ?? state;
     final nowMs = _now().millisecondsSinceEpoch;
+    final nowLocal = DateTime.fromMillisecondsSinceEpoch(nowMs).toLocal();
     final bucket = current.liveEnd || current.range == UsageRange.last24Hours
         ? nowMs ~/ 60000
-        : nowMs ~/ Duration.millisecondsPerDay;
+        : DateTime(
+            nowLocal.year,
+            nowLocal.month,
+            nowLocal.day,
+          ).millisecondsSinceEpoch;
     final key =
         '${current.range.name}|${current.cli?.value}|${current.groupBy.name}|'
         '${current.query}|${current.customStartMs}|${current.customEndMs}|'
