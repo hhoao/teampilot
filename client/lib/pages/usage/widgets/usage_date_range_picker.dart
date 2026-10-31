@@ -150,7 +150,7 @@ class _Trigger extends StatelessWidget {
           children: [
             Icon(
               Icons.calendar_today_outlined,
-              size: 15,
+              size: context.tpIconSizes.md,
               color: cs.onSurface.withValues(alpha: 0.56),
             ),
             const SizedBox(width: 6),
@@ -159,13 +159,13 @@ class _Trigger extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: styles.xs,
+                style: styles.md,
               ),
             ),
             const SizedBox(width: 2),
             Icon(
               Icons.arrow_drop_down,
-              size: 18,
+              size: context.tpIconSizes.md,
               color: cs.onSurface.withValues(alpha: 0.56),
             ),
           ],

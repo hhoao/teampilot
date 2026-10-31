@@ -165,7 +165,7 @@ class _UsageDetailTableState extends State<UsageDetailTable> {
             defaultSort: _defaultSort,
             onStateChanged: _onStateChanged,
             minTableWidth: 1080,
-            rowHeight: 48,
+            rowHeight: 56,
             showScrollbar: false,
             horizontalScroll: true,
             labels: labels,

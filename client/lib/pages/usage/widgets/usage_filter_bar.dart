@@ -97,6 +97,7 @@ class _CliButton extends StatelessWidget {
       borderRadius: BorderRadius.circular(6),
       child: InkWell(
         onTap: onTap,
+        mouseCursor: SystemMouseCursors.click,
         borderRadius: BorderRadius.circular(6),
         child: SizedBox(
           height: 32,
@@ -104,12 +105,7 @@ class _CliButton extends StatelessWidget {
               ? SizedBox(width: 32, child: Center(child: icon))
               : Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Center(
-                    child: Text(
-                      label!,
-                      style: selected ? styles.mdMedium : styles.md,
-                    ),
-                  ),
+                  child: Center(child: Text(label!, style: styles.md)),
                 ),
         ),
       ),

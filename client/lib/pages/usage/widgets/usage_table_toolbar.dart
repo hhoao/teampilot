@@ -85,11 +85,14 @@ class UsageTableToolbar extends StatelessWidget {
         border: Border.all(color: cs.outlineVariant),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: TpTableColumnMenu<UsageGroup>(
-        columns: columns,
-        state: tableState,
-        onChanged: onTableStateChanged,
-        labels: labels,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: TpTableColumnMenu<UsageGroup>(
+          columns: columns,
+          state: tableState,
+          onChanged: onTableStateChanged,
+          labels: labels,
+        ),
       ),
     );
 

@@ -31,6 +31,12 @@ List<TpTableColumn<UsageGroup>> buildUsageTableColumns({
       hideable: false,
       draggable: false,
       sortValue: (row) => row.label.toLowerCase(),
+      tooltip: (row) {
+        final cli = groupBy == UsageGroupBy.cli
+            ? CliTool.tryParse(row.label)
+            : null;
+        return cli == null ? usageGroupName(context, row) : usageCliLabel(cli);
+      },
       cellBuilder: (context, row) =>
           _GroupCell(row: row, isCliGroup: groupBy == UsageGroupBy.cli),
     ),
@@ -42,6 +48,7 @@ List<TpTableColumn<UsageGroup>> buildUsageTableColumns({
         minWidth: 72,
         maxWidth: 160,
         sortValue: (row) => row.clis.map((cli) => cli.value).join(','),
+        tooltip: (row) => row.clis.map(usageCliLabel).join(' · '),
         cellBuilder: (context, row) => _CliCell(row: row),
       ),
     if (groupBy == UsageGroupBy.session || groupBy == UsageGroupBy.member)
@@ -52,6 +59,7 @@ List<TpTableColumn<UsageGroup>> buildUsageTableColumns({
         minWidth: 90,
         maxWidth: 260,
         sortValue: (row) => row.subtitle.toLowerCase(),
+        tooltip: (row) => usageGroupSubtitle(context, row.subtitle),
         cellBuilder: (context, row) => _TeamCell(row: row),
       ),
     _numberColumn(
@@ -86,6 +94,10 @@ List<TpTableColumn<UsageGroup>> buildUsageTableColumns({
       maxWidth: 200,
       groupStart: true,
       sortValue: (row) => row.costMicroUsd,
+      tooltip: (row) => row.pricedEvents == 0
+          ? l10n.sessionUsageCostUnpriced
+          : '${formatUsageCost(row.costMicroUsd)}'
+                '${row.unpricedEvents > 0 ? '*' : ''}',
       cellBuilder: (context, row) => _CostCell(row: row),
     ),
     _numberColumn(
@@ -108,6 +120,9 @@ List<TpTableColumn<UsageGroup>> buildUsageTableColumns({
       maxWidth: 240,
       groupStart: true,
       sortValue: (row) => row.totalTokens,
+      tooltip: (row) => formatUsagePercent(
+        summary.totalTokens == 0 ? 0 : row.totalTokens / summary.totalTokens,
+      ),
       cellBuilder: (context, row) => _ShareCell(
         totalTokens: row.totalTokens,
         summaryTotal: summary.totalTokens,
@@ -129,6 +144,7 @@ TpTableColumn<UsageGroup> _numberColumn({
     minWidth: 64,
     maxWidth: 200,
     sortValue: (row) => value(row),
+    tooltip: (row) => '${value(row)}',
     cellBuilder: (context, row) =>
         _NumberText(text: formatUsageTokens(value(row))),
   );
@@ -241,7 +257,11 @@ class _CliCell extends StatelessWidget {
           if (index > 0) const SizedBox(width: 6),
           Tooltip(
             message: usageCliLabel(cli),
-            child: CliBrandIcon(cli: cli, size: 16, showBorder: false),
+            child: CliBrandIcon(
+              cli: cli,
+              size: context.tpIconSizes.md,
+              showBorder: false,
+            ),
           ),
         ],
       ],
