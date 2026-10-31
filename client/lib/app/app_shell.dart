@@ -55,8 +55,10 @@ import '../services/chat/team_generation/mcp/team_composer_mcp_handler.dart';
 import '../models/app_provider_config.dart';
 import '../models/app_session.dart';
 import '../services/catalog/catalog_runtime.dart';
+import '../services/catalog/catalog_mutation_bus.dart';
 import '../services/catalog/catalog_production.dart';
 import '../services/catalog/catalog_workspace_binder.dart';
+import '../services/catalog/modules/automation_catalog_module.dart';
 import '../services/chat/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/chat/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/chat/team_bus/remote/remote_member_bus_setup.dart';
@@ -127,6 +129,7 @@ import '../repositories/app_provider_repository.dart';
 import '../repositories/launch_profile_repository.dart';
 import '../services/storage/launch_profile_provisioner.dart';
 import '../cubits/cli_presets_cubit.dart';
+import '../models/cli_preset.dart';
 import '../repositories/cli_presets_repository.dart';
 import '../cubits/skill_cubit.dart';
 import '../repositories/mcp_repository.dart';
@@ -643,6 +646,10 @@ class AppShell {
   final CatalogRuntime? catalogRuntime;
   final AutomationCubit automationCubit;
   final AutomationScheduler automationScheduler;
+
+  /// Refreshes the Automations page after catalog-driven writes; owned by the
+  /// shell so bootstrap teardown can cancel it.
+  StreamSubscription<CatalogMutationEvent>? _automationCatalogSub;
   final CommandBus commandBus;
   final ShortcutCubit shortcutCubit;
   final WorkspaceChromeCommands workspaceChromeCommands;
@@ -2551,6 +2558,14 @@ Future<AppShell> buildAppShell({
       relayTunnels: pairedRelayTunnels,
     );
 
+    TeamProfile? teamById(String teamId) {
+      final profile = teamCubit.state.byId(teamId);
+      return profile is TeamProfile ? profile : null;
+    }
+    CliPreset? resolveCliPreset(String presetId) => cliPresetsCubit.state.presets
+        .where((preset) => preset.id == presetId.trim())
+        .firstOrNull;
+
     final scheduleCalculator = AutomationScheduleCalculator();
     final automationDispatcher = AutomationDispatcher(
       repository: automationRepo,
@@ -2565,13 +2580,8 @@ Future<AppShell> buildAppShell({
       workspaceById: (workspaceId) => chatCubit.state.workspaces
           .where((w) => w.workspaceId == workspaceId)
           .firstOrNull,
-      teamById: (teamId) {
-        final profile = teamCubit.state.byId(teamId);
-        return profile is TeamProfile ? profile : null;
-      },
-      resolveCliPreset: (presetId) => cliPresetsCubit.state.presets
-          .where((preset) => preset.id == presetId.trim())
-          .firstOrNull,
+      teamById: teamById,
+      resolveCliPreset: resolveCliPreset,
       sessionById: (sessionId, workspaceId) => chatCubit.state.sessions
           .where(
             (s) => s.sessionId == sessionId && s.workspaceId == workspaceId,
@@ -2590,6 +2600,31 @@ Future<AppShell> buildAppShell({
       scheduleCalculator: scheduleCalculator,
     );
     chatCubit.bindAutomationsChangeNotifier(() {
+      if (!automationCubit.isClosed) {
+        unawaited(automationCubit.reloadPreservingScope());
+      }
+    });
+    // Registered here rather than in CatalogRuntime.assemble because the
+    // automation repo, scheduler and resolver locals are constructed below
+    // that assemble call. The registry recomputes routes on every call, so
+    // these tools appear as soon as this runs; the bus subscription refreshes
+    // the Automations page after catalog-driven writes.
+    catalogRuntime.registry.register(
+      AutomationCatalogModule(
+        repository: automationRepo,
+        scheduleCalculator: scheduleCalculator,
+        bus: catalogRuntime.bus,
+        runNow: automationScheduler.runNow,
+        teamExists: (teamId) => teamById(teamId) != null,
+        presetExists: (presetId) => resolveCliPreset(presetId) != null,
+        sessionExists: (sessionId, workspaceId) async {
+          final session = await sessionRepo.findById(sessionId);
+          return session != null && session.workspaceId == workspaceId;
+        },
+      ),
+    );
+    final automationCatalogSub = catalogRuntime.bus.listen().listen((event) {
+      if (event.kind != 'automation') return;
       if (!automationCubit.isClosed) {
         unawaited(automationCubit.reloadPreservingScope());
       }
@@ -3231,6 +3266,7 @@ Future<AppShell> buildAppShell({
       workspaceContentSearchHost: workspaceContentSearchHost,
       uiZoomBaseline: uiZoomBaseline,
     );
+    shell._automationCatalogSub = automationCatalogSub;
     managedProviderControlPlaneLease.transferOwnership();
     await applyHomeEventTransport();
     return shell;
@@ -3501,6 +3537,7 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     _usageAutoRefresh?.dispose();
     final shell = _shell;
     if (shell != null) {
+      shell._automationCatalogSub?.cancel();
       shell.homeInvalidationService.stop();
       unawaited(_teardownConnect(shell));
       unawaited(shell.managedProviderControlPlane.close());
