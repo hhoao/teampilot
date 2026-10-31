@@ -22,6 +22,7 @@ const _opPrefixes = <String, CatalogOp>{
   'update_': CatalogOp.update,
   'unbind_': CatalogOp.unbind,
   'delete_': CatalogOp.delete,
+  'run_': CatalogOp.run,
 };
 
 class CatalogKindRegistry {

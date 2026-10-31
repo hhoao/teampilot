@@ -69,6 +69,10 @@ class SkillCatalogModule implements CatalogKindModule {
       CatalogOp.update => _update(req),
       CatalogOp.unbind => _unbind(req),
       CatalogOp.delete => _delete(req),
+      CatalogOp.run => throw CatalogException(
+        'unsupported_op',
+        'skill does not support run',
+      ),
     };
   }
 

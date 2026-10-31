@@ -78,6 +78,10 @@ class PluginCatalogModule implements CatalogKindModule {
       CatalogOp.update => _update(req),
       CatalogOp.unbind => _unbind(req),
       CatalogOp.delete => _delete(req),
+      CatalogOp.run => throw CatalogException(
+        'unsupported_op',
+        'plugin does not support run',
+      ),
     };
   }
 

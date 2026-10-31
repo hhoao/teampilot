@@ -69,4 +69,12 @@ void main() {
     expect(result.ids, ['x']);
     expect(skill.lastOp, CatalogOp.search);
   });
+
+  test('dispatch maps run_automation to automation run op', () async {
+    final module = FakeCatalogModule(kind: 'automation');
+    final registry = CatalogKindRegistry()..register(module);
+    final result = await registry.dispatch('run_automation', req());
+    expect(module.lastOp, CatalogOp.run);
+    expect(result.kind, 'automation');
+  });
 }

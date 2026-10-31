@@ -11,6 +11,7 @@ enum CatalogOp {
   update,
   unbind,
   delete,
+  run,
 }
 
 const catalogGenerationAcquisitionOps = <CatalogOp>{
