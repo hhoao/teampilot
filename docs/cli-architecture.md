@@ -229,7 +229,7 @@ unsupported diagnostic；空资源是 no-op。Provider/Assembler 结果和诊断
 每次会话启动（simple 与 mixed）都通过 extra MCP 注入托管的 `teampilot` server
 （`/catalog/mcp`），并始终注入 managed skill `teampilot-catalog`（`ResourceOriginKind.managed`，
 不进用户 `skills/installed`）和一句 prompt。stdio 复用 teammate-bus bridge（`--bus-url` 为
-catalog URL）；SSH 走 idle HTTP 隧道。Kind 模块（skill / plugin / mcp）与 handler、policy、
+catalog URL）；SSH 走 idle HTTP 隧道。Kind 模块（skill / plugin / mcp / automation）与 handler、policy、
 transport 都在 `client/lib/services/catalog/`，不按 CLI 分目录，也不进 `teammate-bus` 的
 tool 列表。
 

@@ -98,6 +98,10 @@ void main() {
       contains('mcp__teampilot__read_automation'),
     );
     expect(
+      CatalogMcpPolicy.cursorAllowEntries(registry),
+      contains('Mcp(teampilot:read_automation)'),
+    );
+    expect(
       CatalogMcpPolicy.claudeAllowEntries(registry),
       isNot(contains('mcp__teampilot__create_automation')),
     );
