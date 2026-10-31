@@ -373,28 +373,62 @@ class _SessionUsagePageState extends State<SessionUsagePage>
         children: [
           UsageFilterBar(state: state, cubit: cubit),
           const SizedBox(height: 14),
-          UsageSummaryCards(dashboard: dashboard, nowMs: nowMs),
+          BlocSelector<SessionUsageCubit, SessionUsageState, int>(
+            selector: (state) => Object.hash(
+              state.dashboard.summary,
+              Object.hashAll(state.dashboard.chart),
+            ),
+            builder: (context, _) => UsageSummaryCards(
+              dashboard: cubit.state.dashboard,
+              nowMs: nowMs,
+            ),
+          ),
           const SizedBox(height: 12),
-          UsageCostCard(
-            summary: dashboard.summary,
-            corrupted: state.pricingCorrupted,
-            onManagePricing: () => _openPricing(cubit),
+          BlocSelector<SessionUsageCubit, SessionUsageState, int>(
+            selector: (state) =>
+                Object.hash(state.dashboard.summary, state.pricingCorrupted),
+            builder: (context, _) => UsageCostCard(
+              summary: cubit.state.dashboard.summary,
+              corrupted: cubit.state.pricingCorrupted,
+              onManagePricing: () => _openPricing(cubit),
+            ),
           ),
           const SizedBox(height: 14),
-          UsageHeatmapCard(days: dashboard.heatmap, nowMs: nowMs),
+          BlocSelector<SessionUsageCubit, SessionUsageState, int>(
+            selector: (state) => Object.hashAll(state.dashboard.heatmap),
+            builder: (context, _) => UsageHeatmapCard(
+              days: cubit.state.dashboard.heatmap,
+              nowMs: nowMs,
+            ),
+          ),
           const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
-              final chart = UsageTrendChart(
-                days: dashboard.chart,
-                nowMs: nowMs,
-                selectedCli: state.cli,
-              );
-              final breakdown = UsageCliBreakdown(
-                slices: dashboard.cliSlices,
-                summary: dashboard.summary,
-                selectedCli: state.cli,
-              );
+              final chart =
+                  BlocSelector<SessionUsageCubit, SessionUsageState, int>(
+                    selector: (state) => Object.hash(
+                      Object.hashAll(state.dashboard.chart),
+                      state.cli,
+                    ),
+                    builder: (context, _) => UsageTrendChart(
+                      days: cubit.state.dashboard.chart,
+                      nowMs: nowMs,
+                      selectedCli: cubit.state.cli,
+                    ),
+                  );
+              final breakdown =
+                  BlocSelector<SessionUsageCubit, SessionUsageState, int>(
+                    selector: (state) => Object.hash(
+                      Object.hashAll(state.dashboard.cliSlices),
+                      state.dashboard.summary,
+                      state.cli,
+                    ),
+                    builder: (context, _) => UsageCliBreakdown(
+                      slices: cubit.state.dashboard.cliSlices,
+                      summary: cubit.state.dashboard.summary,
+                      selectedCli: cubit.state.cli,
+                    ),
+                  );
               if (constraints.maxWidth < 900) {
                 return Column(
                   children: [chart, const SizedBox(height: 12), breakdown],

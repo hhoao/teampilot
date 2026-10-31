@@ -624,10 +624,13 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   UsageDashboard _computeDashboard([SessionUsageState? stateOverride]) {
     final current = stateOverride ?? state;
     final nowMs = _now().millisecondsSinceEpoch;
+    final bucket = current.liveEnd || current.range == UsageRange.last24Hours
+        ? nowMs ~/ 60000
+        : nowMs ~/ Duration.millisecondsPerDay;
     final key =
         '${current.range.name}|${current.cli?.value}|${current.groupBy.name}|'
         '${current.query}|${current.customStartMs}|${current.customEndMs}|'
-        '${current.liveEnd}|${nowMs ~/ 60000}';
+        '${current.liveEnd}|$bucket';
     final cached = _dashboardCache[key];
     if (cached != null) return cached;
     final dashboard = buildUsageDashboard(
