@@ -110,10 +110,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Hit rate'), findsNothing);
+    expect(find.text('Cost'), findsNothing);
 
     await tester.tap(find.byIcon(Icons.keyboard_arrow_down));
     await tester.pumpAndSettle();
 
+    expect(find.text('Cost'), findsOneWidget);
     expect(find.text('Cache write'), findsOneWidget);
     expect(find.text('Hit rate'), findsOneWidget);
     expect(find.text('Requests'), findsOneWidget);
@@ -123,5 +125,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Hit rate'), findsNothing);
+    expect(find.text('Cost'), findsNothing);
   });
 }
