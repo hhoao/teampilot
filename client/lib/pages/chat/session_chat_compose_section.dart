@@ -464,7 +464,9 @@ class SessionChatComposeSection extends StatelessWidget {
                           // a turn is in flight (empty compose), even when the
                           // seat is not memberWorking.
                           final showAcpStop =
-                              acpRuntime != null && acpTurnInFlight;
+                              acpRuntime != null &&
+                              acpTurnInFlight &&
+                              composeTextEmpty;
                           final showComposeStop =
                               showAcpStop ||
                               shouldShowComposeStop(

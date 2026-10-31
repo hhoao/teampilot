@@ -818,6 +818,51 @@ void main() {
   });
 
   testWidgets(
+    'ACP in-turn compose flips Stop back to Send while a follow-up is typed',
+    (tester) async {
+      final runtime = _FakeAcpRuntime();
+      final cubit = AcpChatRuntimeCubit(
+        runtime: runtime,
+        sessionId: 's1',
+        tool: CliTool.gemini,
+      );
+      addTearDown(() async {
+        await cubit.close();
+        await runtime.permissionsController.close();
+        await runtime.clientRequestsController.close();
+      });
+
+      await tester.runAsync(() async {
+        await cubit.start(
+          executable: 'gemini',
+          sessionToolDir: '/tmp/tool',
+          workingDirectory: '/w',
+        );
+      });
+      await pumpSession(tester, session: session('s1'), acpRuntime: cubit);
+
+      await tester.runAsync(() async {
+        cubit.sendPrompt('do work');
+        await Future<void>.delayed(Duration.zero);
+      });
+      await tester.pumpAndSettle();
+      expect(cubit.state.inTurn, isTrue);
+      expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_upward_rounded), findsNothing);
+
+      await enterCompose(tester, 'queued next');
+      await tester.pump();
+      expect(find.byIcon(Icons.stop_rounded), findsNothing);
+      expect(find.byIcon(Icons.arrow_upward_rounded), findsOneWidget);
+
+      await enterCompose(tester, '');
+      await tester.pump();
+      expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_upward_rounded), findsNothing);
+    },
+  );
+
+  testWidgets(
     'ACP in-turn compose submit queues the follow-up instead of dropping it',
     (tester) async {
       final runtime = _FakeAcpRuntime();
