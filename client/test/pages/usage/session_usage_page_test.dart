@@ -112,7 +112,7 @@ Widget _wrap(
 }
 
 void main() {
-  testWidgets('renders summary, chart, and grouped rows', (tester) async {
+  testWidgets('renders summary and grouped rows', (tester) async {
     final cubit = SessionUsageCubit(
       loadEvents: () async => [
         _event(),
@@ -134,7 +134,6 @@ void main() {
     expect(find.text('Token usage'), findsOneWidget);
     expect(find.text('Alpha'), findsOneWidget);
     expect(find.text('Beta'), findsOneWidget);
-    expect(find.text('Claude Code'), findsWidgets);
     expect(find.byKey(AppKeys.sessionUsageEmptyState), findsNothing);
   });
 
@@ -405,7 +404,7 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('header hosts cursor and storage actions without footer notes', (
+  testWidgets('header hosts the sync status and settings entries', (
     tester,
   ) async {
     final cubit = _pagedCubit(2);
@@ -414,8 +413,10 @@ void main() {
     await tester.pumpWidget(_wrap(cubit));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(AppKeys.sessionUsageCursorButton), findsOneWidget);
+    expect(find.byKey(AppKeys.sessionUsageSyncButton), findsOneWidget);
     expect(find.byKey(AppKeys.sessionUsageMaintenanceButton), findsOneWidget);
+    // Cursor import/sync moved into the settings dialog.
+    expect(find.byKey(AppKeys.sessionUsageCursorButton), findsNothing);
     expect(find.text('JSONL read-only'), findsNothing);
     expect(find.text('Auto + manual sync'), findsNothing);
   });
@@ -599,11 +600,15 @@ void main() {
     await tester.pumpWidget(_wrap(cubit));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(AppKeys.sessionUsageCostCard), findsOneWidget);
+    expect(find.byKey(AppKeys.sessionUsageCostCard), findsNothing);
+    await tester.tap(find.byIcon(Icons.keyboard_arrow_down));
+    await tester.pumpAndSettle();
+
     expect(find.textContaining(r'$18.00'), findsWidgets);
     expect(find.textContaining('1 priced · 1 unpriced'), findsOneWidget);
     expect(find.text('Unpriced'), findsOneWidget);
     expect(find.text('Cost'), findsWidgets);
+    expect(find.byKey(AppKeys.sessionUsageManagePricingButton), findsOneWidget);
   });
 
   testWidgets('paginates session rows at 20 per page', (tester) async {

@@ -14,15 +14,12 @@ import '../../widgets/app_toast/app_toast.dart';
 import '../../widgets/settings/workspace_pane_insets.dart';
 import 'usage_maintenance_dialog.dart';
 import 'usage_pricing_dialog.dart';
-import 'widgets/usage_cli_breakdown.dart';
-import 'widgets/usage_cost_card.dart';
 import 'widgets/usage_detail_table.dart';
 import 'widgets/usage_filter_bar.dart';
 import 'widgets/usage_heatmap_card.dart';
 import 'widgets/usage_page_chrome.dart';
 import 'widgets/usage_page_states.dart';
 import 'widgets/usage_summary_cards.dart';
-import 'widgets/usage_trend_chart.dart';
 
 class SessionUsagePage extends StatefulWidget {
   const SessionUsagePage({
@@ -179,7 +176,6 @@ class _SessionUsagePageState extends State<SessionUsagePage>
                     onIncrementalSync: () => cubit.sync(),
                     onFullSync: cubit.fullSync,
                     onCancel: cubit.cancelSync,
-                    onCursor: () => _openMaintenance(cubit),
                     onMaintenance: () => _openMaintenance(cubit),
                   ),
                   if (_errorBanner(context, cubit, state)
@@ -378,19 +374,12 @@ class _SessionUsagePageState extends State<SessionUsagePage>
             selector: (state) => Object.hash(
               state.dashboard.summary,
               Object.hashAll(state.dashboard.chart),
+              state.pricingCorrupted,
             ),
             builder: (context, _) => UsageSummaryCards(
               dashboard: cubit.state.dashboard,
               nowMs: nowMs,
-            ),
-          ),
-          const SizedBox(height: 12),
-          BlocSelector<SessionUsageCubit, SessionUsageState, int>(
-            selector: (state) =>
-                Object.hash(state.dashboard.summary, state.pricingCorrupted),
-            builder: (context, _) => UsageCostCard(
-              summary: cubit.state.dashboard.summary,
-              corrupted: cubit.state.pricingCorrupted,
+              pricingCorrupted: cubit.state.pricingCorrupted,
               onManagePricing: () => _openPricing(cubit),
             ),
           ),
@@ -401,51 +390,6 @@ class _SessionUsagePageState extends State<SessionUsagePage>
               days: cubit.state.dashboard.heatmap,
               nowMs: nowMs,
             ),
-          ),
-          const SizedBox(height: 14),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final chart =
-                  BlocSelector<SessionUsageCubit, SessionUsageState, int>(
-                    selector: (state) => Object.hash(
-                      Object.hashAll(state.dashboard.chart),
-                      state.cli,
-                    ),
-                    builder: (context, _) => UsageTrendChart(
-                      days: cubit.state.dashboard.chart,
-                      nowMs: nowMs,
-                      selectedCli: cubit.state.cli,
-                    ),
-                  );
-              final breakdown =
-                  BlocSelector<SessionUsageCubit, SessionUsageState, int>(
-                    selector: (state) => Object.hash(
-                      Object.hashAll(state.dashboard.cliSlices),
-                      state.dashboard.summary,
-                      state.cli,
-                    ),
-                    builder: (context, _) => UsageCliBreakdown(
-                      slices: cubit.state.dashboard.cliSlices,
-                      summary: cubit.state.dashboard.summary,
-                      selectedCli: cubit.state.cli,
-                    ),
-                  );
-              if (constraints.maxWidth < 900) {
-                return Column(
-                  children: [chart, const SizedBox(height: 12), breakdown],
-                );
-              }
-              return IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(flex: 2, child: chart),
-                    const SizedBox(width: 12),
-                    SizedBox(width: 300, child: breakdown),
-                  ],
-                ),
-              );
-            },
           ),
           const SizedBox(height: 14),
           UsageDetailTable(

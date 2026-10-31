@@ -4,17 +4,22 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/session_usage_dashboard.dart';
 import '../../../theme/workspace_surface_layers.dart';
+import '../../../utils/ui/app_keys.dart';
 import '../usage_format.dart';
 
 class UsageSummaryCards extends StatefulWidget {
   const UsageSummaryCards({
     required this.dashboard,
     required this.nowMs,
+    this.onManagePricing,
+    this.pricingCorrupted = false,
     super.key,
   });
 
   final UsageDashboard dashboard;
   final int nowMs;
+  final VoidCallback? onManagePricing;
+  final bool pricingCorrupted;
 
   @override
   State<UsageSummaryCards> createState() => _UsageSummaryCardsState();
@@ -32,6 +37,15 @@ class _UsageSummaryCardsState extends State<UsageSummaryCards> {
         ? l10n.sessionUsageCostUnpriced
         : '${formatUsageCost(summary.costMicroUsd)}'
               '${summary.unpricedEvents > 0 ? '*' : ''}';
+    final costDetails = <String>[
+      l10n.sessionUsageCostPricedUnpriced(
+        summary.pricedEvents,
+        summary.unpricedEvents,
+      ),
+      if (summary.unpricedEvents > 0)
+        l10n.sessionUsageCostPartial(summary.unpricedEvents),
+      if (widget.pricingCorrupted) l10n.sessionUsagePricingCorrupt,
+    ].join(' · ');
 
     final cards = <Widget>[
       _MetricCard(
@@ -61,7 +75,11 @@ class _UsageSummaryCardsState extends State<UsageSummaryCards> {
     ];
 
     final details = <Widget>[
-      _DetailTile(label: l10n.sessionUsageCost, value: cost),
+      _DetailTile(
+        label: l10n.sessionUsageCost,
+        value: cost,
+        subtitle: costDetails,
+      ),
       _DetailTile(
         label: l10n.sessionUsagePricingCacheWrite,
         value: formatUsageTokens(summary.cacheCreationTokens),
@@ -176,13 +194,28 @@ class _UsageSummaryCardsState extends State<UsageSummaryCards> {
               duration: const Duration(milliseconds: 180),
               alignment: Alignment.topCenter,
               child: _expanded
-                  ? Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: grid(
-                        details,
-                        intrinsic: false,
-                        columns: detailColumns,
-                      ),
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: grid(
+                            details,
+                            intrinsic: false,
+                            columns: detailColumns,
+                          ),
+                        ),
+                        if (widget.onManagePricing != null)
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              key: AppKeys.sessionUsageManagePricingButton,
+                              onPressed: widget.onManagePricing,
+                              icon: const Icon(Icons.tune, size: 17),
+                              label: Text(l10n.sessionUsageManagePricing),
+                            ),
+                          ),
+                      ],
                     )
                   : const SizedBox(width: double.infinity),
             ),
@@ -249,10 +282,11 @@ class _MetricCard extends StatelessWidget {
 }
 
 class _DetailTile extends StatelessWidget {
-  const _DetailTile({required this.label, required this.value});
+  const _DetailTile({required this.label, required this.value, this.subtitle});
 
   final String label;
   final String value;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -282,6 +316,17 @@ class _DetailTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: styles.lg,
           ),
+          if (subtitle != null && subtitle!.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle!,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: styles.xs.copyWith(
+                color: cs.onSurface.withValues(alpha: 0.56),
+              ),
+            ),
+          ],
         ],
       ),
     );
