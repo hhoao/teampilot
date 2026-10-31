@@ -291,6 +291,39 @@ void main() {
     }
   });
 
+  test('generation scope rejects automation mutations', () async {
+    final generation = _RecordingGenerationMutationHandler();
+    final module = FakeCatalogModule(kind: 'automation');
+    final h = CatalogMcpHandler(
+      registry: CatalogKindRegistry()..register(module),
+      generationMutationHandler: generation,
+    );
+
+    final res = await h.handle(
+      const JsonRpcRequest(
+        id: 9,
+        method: 'tools/call',
+        params: {
+          'name': 'create_automation',
+          'arguments': {
+            'name': 'demo',
+            'message': 'go',
+            'schedule': {'type': 'daily'},
+            'bind_to': 'generation',
+          },
+        },
+      ),
+      builderSession(),
+    );
+
+    expect(res!.result!['isError'], isTrue);
+    final text = (res.result!['content'] as List).first['text'] as String;
+    expect(text, contains('code=generation_mutation_forbidden'));
+    expect(generation.request, isNull);
+    expect(generation.op, isNull);
+    expect(module.lastOp, isNull);
+  });
+
   test('tools/list advertises the automation tools', () async {
     final handler = CatalogMcpHandler(
       registry: CatalogMcpPolicy.advertisedRegistry(),

@@ -20,6 +20,10 @@ const catalogGenerationAcquisitionOps = <CatalogOp>{
   CatalogOp.create,
 };
 
+/// Kinds a Team Builder session may stage into generation scope. Other kinds
+/// (notably `automation`) are runtime objects and cannot be replayed at commit.
+const catalogGenerationKinds = <String>{'skill', 'plugin', 'mcp'};
+
 enum CatalogBindTo { workspace, team, expert, generation }
 
 class CatalogException implements Exception {
