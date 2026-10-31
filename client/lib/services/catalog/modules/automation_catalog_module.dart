@@ -276,15 +276,43 @@ class AutomationCatalogModule implements CatalogKindModule {
   /// Validates and persists [draft], translating data-layer failures so the
   /// catalog transport never surfaces a raw `ArgumentError` as
   /// `install_failed`.
-  Future<(Automation, int?)> _commit(Automation draft, int now) async {
+  ///
+  /// With [scheduleNextRun] the next run is resolved from the draft's own
+  /// `enabled` flag (update); otherwise the next run is only previewed from a
+  /// would-be enabled automation (create). Both paths run inside the same
+  /// translation boundary, so a validation failure raised by the schedule
+  /// calculator is reported exactly like one raised by [Automation.validate].
+  Future<(Automation, int?)> _commit(
+    Automation draft,
+    int now, {
+    bool scheduleNextRun = false,
+  }) async {
     try {
       draft.validate();
-      final preview = scheduleCalculator.computeNextRunAtMs(
-        draft.copyWith(enabled: true),
-        afterMs: now,
-      );
-      final saved = await repository.upsert(draft);
+      final Automation ready;
+      final int? preview;
+      if (scheduleNextRun) {
+        final nextMs = draft.enabled
+            ? scheduleCalculator.computeNextRunAtMs(draft, afterMs: now)
+            : null;
+        ready = draft.copyWith(
+          enabled: draft.enabled && nextMs != null,
+          nextRunAtMs: nextMs,
+          clearNextRunAtMs: nextMs == null,
+        );
+        preview = nextMs;
+      } else {
+        ready = draft;
+        preview = scheduleCalculator.computeNextRunAtMs(
+          draft.copyWith(enabled: true),
+          afterMs: now,
+        );
+      }
+      ready.validate();
+      final saved = await repository.upsert(ready);
       return (saved, preview);
+    } on CatalogException {
+      rethrow;
     } on ArgumentError catch (error) {
       throw CatalogException(
         'invalid_argument',
@@ -313,12 +341,15 @@ class AutomationCatalogModule implements CatalogKindModule {
       next = next.copyWith(message: _requireText(req, 'message'));
     }
     if (req.arguments.containsKey('schedule')) {
+      final rawSchedule = req.arguments['schedule'];
       final schedule = parseAutomationSchedule(
-        req.arguments['schedule'],
+        rawSchedule,
         calculator: scheduleCalculator,
-        defaultTimezone: _defaultTimezone(),
+        defaultTimezone: next.timezone,
         now: now,
       );
+      final overridesDtstart =
+          rawSchedule is Map && rawSchedule.containsKey('dtstart_ms');
       next = next.copyWith(
         preset: schedule.preset,
         customCron: schedule.customCron,
@@ -328,7 +359,7 @@ class AutomationCatalogModule implements CatalogKindModule {
         minute: schedule.minute,
         hourMinute: schedule.hourMinute,
         timezone: schedule.timezone,
-        dtstartMs: schedule.dtstartMs,
+        dtstartMs: overridesDtstart ? schedule.dtstartMs : next.dtstartMs,
         runAtMs: schedule.runAtMs,
         clearRunAtMs: schedule.runAtMs == null,
       );
@@ -344,7 +375,9 @@ class AutomationCatalogModule implements CatalogKindModule {
       next = next.copyWith(missedRunGraceMinutes: _graceMinutes(req));
     }
     if (req.arguments.containsKey('reuse_session')) {
-      next = next.copyWith(reuseSession: req.arguments['reuse_session'] == true);
+      next = next.copyWith(
+        reuseSession: req.arguments['reuse_session'] == true,
+      );
     }
     if (req.arguments.containsKey('target_member_id')) {
       next = next.copyWith(
@@ -355,32 +388,34 @@ class AutomationCatalogModule implements CatalogKindModule {
       next = next.copyWith(enabled: req.arguments['enabled'] == true);
     }
 
-    next = next.copyWith(updatedAtMs: now);
-    if (next.enabled) {
-      final nextMs = scheduleCalculator.computeNextRunAtMs(next, afterMs: now);
-      next = next.copyWith(
-        enabled: nextMs != null,
-        nextRunAtMs: nextMs,
-        clearNextRunAtMs: nextMs == null,
+    if (req.arguments['enabled'] == true && next.isRunLimitReached) {
+      throw CatalogException(
+        'run_limit_reached',
+        'automation has reached its run limit: $id; increase or clear '
+            'max_run_count before enabling it',
       );
-    } else {
-      next = next.copyWith(clearNextRunAtMs: true);
     }
 
-    final (saved, _) = await _commit(next, now);
+    final (saved, _) = await _commit(next, now, scheduleNextRun: true);
     _emit(CatalogOp.update, req, [saved.id]);
-    return _ok(req, [saved.id], {
-      'automation': saved.toJson(),
-      'summary': scheduleCalculator.formatScheduleSummary(saved),
-      'enabled': saved.enabled,
-      'next_run_at_ms': saved.nextRunAtMs,
-    });
+    return _ok(
+      req,
+      [saved.id],
+      {
+        'automation': saved.toJson(),
+        'summary': scheduleCalculator.formatScheduleSummary(saved),
+        'enabled': saved.enabled,
+        'next_run_at_ms': saved.nextRunAtMs,
+      },
+    );
   }
 
   Future<CatalogResult> _delete(CatalogRequest req) async {
     final id = _requireId(req);
     final existing = await _require(req.workspaceId, id);
-    await repository.delete(existing.workspaceId, existing.id);
+    await _translateWrite(
+      () => repository.delete(existing.workspaceId, existing.id),
+    );
     _emit(CatalogOp.delete, req, [existing.id]);
     return _ok(
       req,
@@ -401,18 +436,40 @@ class AutomationCatalogModule implements CatalogKindModule {
         'automation has reached its run limit: $id',
       );
     }
-    await runNow(automation.workspaceId, automation.id);
-    final runs = await repository.runsFor(
-      automation.workspaceId,
-      automationId: automation.id,
-    );
-    final latest = [...runs]
-      ..sort((a, b) => (b.startedAtMs ?? 0).compareTo(a.startedAtMs ?? 0));
-    _emit(CatalogOp.run, req, [automation.id]);
-    return _ok(req, [automation.id], {
-      'run': latest.isEmpty ? null : latest.first.toJson(),
-      'automation': (await _require(req.workspaceId, id)).toJson(),
+    final run = await _translateWrite(() async {
+      await runNow(automation.workspaceId, automation.id);
+      final runs = await repository.runsFor(
+        automation.workspaceId,
+        automationId: automation.id,
+      );
+      final latest = [...runs]
+        ..sort((a, b) => (b.startedAtMs ?? 0).compareTo(a.startedAtMs ?? 0));
+      return latest.isEmpty ? null : latest.first;
     });
+    _emit(CatalogOp.run, req, [automation.id]);
+    return _ok(
+      req,
+      [automation.id],
+      {
+        'run': run?.toJson(),
+        'automation': (await _require(req.workspaceId, id)).toJson(),
+      },
+    );
+  }
+
+  /// Runs a write that does not go through [_commit] (delete, dispatch) and
+  /// maps unexpected failures to the same `write_failed` code.
+  Future<T> _translateWrite<T>(Future<T> Function() action) async {
+    try {
+      return await action();
+    } on CatalogException {
+      rethrow;
+    } on Object catch (error) {
+      throw CatalogException(
+        'write_failed',
+        CatalogErrorSanitizer.sanitize('$error'),
+      );
+    }
   }
 
   Future<Automation> _require(String workspaceId, String id) async {

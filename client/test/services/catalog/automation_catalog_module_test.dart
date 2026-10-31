@@ -36,7 +36,22 @@ void main() {
       repository: repo,
       scheduleCalculator: AutomationScheduleCalculator(),
       bus: bus,
-      runNow: (workspace, id) async => dispatched.add('$workspace/$id'),
+      runNow: (workspace, id) async {
+        dispatched.add('$workspace/$id');
+        await repo.upsertRun(
+          workspace,
+          AutomationRun(
+            id: 'run-new',
+            automationId: id,
+            workspaceId: workspace,
+            scheduledForMs: now,
+            status: AutomationRunStatus.completed,
+            trigger: AutomationRunTrigger.manual,
+            startedAtMs: now + 1000,
+            completedAtMs: now + 1000,
+          ),
+        );
+      },
       sessionExists: (sessionId, ws) async =>
           ws == workspaceId && sessionId == 'sess-1',
       teamExists: (teamId) => teamId == 'team-1',
@@ -281,17 +296,39 @@ void main() {
     expect(stored.missedRunGraceMinutes, 30);
   });
 
-  Future<String> createDaily() async {
+  Future<String> createDaily({Map<String, Object?>? schedule}) async {
     final result = await module.handle(
       CatalogOp.create,
       request({
         'name': 'daily',
         'message': 'm',
-        'schedule': {'type': 'daily', 'time': '09:00'},
+        'schedule': schedule ?? {'type': 'daily', 'time': '09:00'},
       }),
     );
     return result.ids.single;
   }
+
+  Future<void> seedForeign() async {
+    await repo.upsert(
+      Automation(
+        id: 'other',
+        name: 'other',
+        action: AutomationAction.scheduledMessage,
+        workspaceId: 'ws2',
+        sessionId: 'sess-2',
+        message: 'x',
+        preset: AutomationSchedulePreset.daily,
+        hourMinute: '09:00',
+        timezone: 'UTC',
+        dtstartMs: 1,
+        enabled: false,
+        createdAtMs: 1,
+        updatedAtMs: 1,
+      ),
+    );
+  }
+
+  Future<void> flushEvents() => Future<void>.delayed(Duration.zero);
 
   test('update keeps unspecified fields and recomputes on enable', () async {
     final id = await createDaily();
@@ -308,10 +345,7 @@ void main() {
 
   test('update to disabled clears the next run', () async {
     final id = await createDaily();
-    await module.handle(
-      CatalogOp.update,
-      request({'id': id, 'enabled': true}),
-    );
+    await module.handle(CatalogOp.update, request({'id': id, 'enabled': true}));
     await module.handle(
       CatalogOp.update,
       request({'id': id, 'enabled': false}),
@@ -334,6 +368,80 @@ void main() {
     expect(stored.preset, AutomationSchedulePreset.custom);
     expect(stored.customCron, '*/15 * * * *');
     expect(stored.dayOfWeek, isNull);
+    expect(stored.runAtMs, isNull);
+    expect(stored.hourMinute, '09:00');
+  });
+
+  test(
+    'update keeps timezone and dtstart when the schedule omits them',
+    () async {
+      final dtstart = now - 86400000;
+      final id = await createDaily(
+        schedule: {
+          'type': 'daily',
+          'time': '09:00',
+          'timezone': 'Asia/Tokyo',
+          'dtstart_ms': dtstart,
+        },
+      );
+      await module.handle(
+        CatalogOp.update,
+        request({
+          'id': id,
+          'schedule': {'type': 'custom', 'cron': '*/15 * * * *'},
+        }),
+      );
+      var stored = (await repo.listForWorkspace(workspaceId)).single;
+      expect(stored.timezone, 'Asia/Tokyo');
+      expect(stored.dtstartMs, dtstart);
+
+      await module.handle(
+        CatalogOp.update,
+        request({
+          'id': id,
+          'schedule': {
+            'type': 'custom',
+            'cron': '*/15 * * * *',
+            'timezone': 'UTC',
+            'dtstart_ms': now,
+          },
+        }),
+      );
+      stored = (await repo.listForWorkspace(workspaceId)).single;
+      expect(stored.timezone, 'UTC');
+      expect(stored.dtstartMs, now);
+    },
+  );
+
+  test('update of a foreign workspace id is not_found', () async {
+    await seedForeign();
+    await expectLater(
+      module.handle(CatalogOp.update, request(const {'id': 'other'})),
+      throwsA(
+        isA<CatalogException>().having((e) => e.code, 'code', 'not_found'),
+      ),
+    );
+  });
+
+  test('delete of a foreign workspace id is not_found', () async {
+    await seedForeign();
+    await expectLater(
+      module.handle(CatalogOp.delete, request(const {'id': 'other'})),
+      throwsA(
+        isA<CatalogException>().having((e) => e.code, 'code', 'not_found'),
+      ),
+    );
+  });
+
+  test('run_automation of a foreign workspace id is not_found', () async {
+    await seedForeign();
+    await expectLater(
+      module.handle(CatalogOp.run, request(const {'id': 'other'})),
+      throwsA(
+        isA<CatalogException>().having((e) => e.code, 'code', 'not_found'),
+      ),
+    );
+    expect(dispatched, isEmpty);
   });
 
   test('delete removes the automation and its runs', () async {
@@ -373,7 +481,7 @@ void main() {
     );
     final result = await module.handle(CatalogOp.run, request({'id': id}));
     expect(dispatched, ['$workspaceId/$id']);
-    expect((result.data!['run']! as Map)['id'], 'run-1');
+    expect((result.data!['run']! as Map)['id'], 'run-new');
   });
 
   test('run_automation rejects a run-limit-reached automation', () async {
@@ -398,10 +506,81 @@ void main() {
     );
   });
 
-  test('every mutation emits an automation bus event', () async {
-    await createDaily();
-    await Future<void>.delayed(Duration.zero);
-    expect(events, isNotEmpty);
+  test(
+    'update cannot enable an automation that reached its run limit',
+    () async {
+      final id = await createDaily();
+      final stored = (await repo.listForWorkspace(workspaceId)).single;
+      await repo.upsert(stored.copyWith(maxRunCount: 1, runCount: 1));
+      await expectLater(
+        module.handle(CatalogOp.update, request({'id': id, 'enabled': true})),
+        throwsA(
+          isA<CatalogException>().having(
+            (e) => e.code,
+            'code',
+            'run_limit_reached',
+          ),
+        ),
+      );
+      expect(dispatched, isEmpty);
+      final after = (await repo.listForWorkspace(workspaceId)).single;
+      expect(after.enabled, isFalse);
+      expect(after.nextRunAtMs, isNull);
+    },
+  );
+
+  test(
+    'update translates a validate failure for an enabled automation',
+    () async {
+      final id = await createDaily();
+      await module.handle(
+        CatalogOp.update,
+        request({'id': id, 'enabled': true}),
+      );
+      await expectLater(
+        module.handle(
+          CatalogOp.update,
+          request({'id': id, 'reuse_session': true}),
+        ),
+        throwsA(
+          isA<CatalogException>().having(
+            (e) => e.code,
+            'code',
+            'invalid_argument',
+          ),
+        ),
+      );
+    },
+  );
+
+  test('update emits an automation bus event', () async {
+    final id = await createDaily();
+    await module.handle(
+      CatalogOp.update,
+      request({'id': id, 'name': 'renamed'}),
+    );
+    await flushEvents();
+    expect(events.map((e) => e.op).toList(), [
+      CatalogOp.create,
+      CatalogOp.update,
+    ]);
     expect(events.every((e) => e.kind == 'automation'), isTrue);
+  });
+
+  test('delete emits an automation bus event', () async {
+    final id = await createDaily();
+    await module.handle(CatalogOp.delete, request({'id': id}));
+    await flushEvents();
+    expect(events.map((e) => e.op).toList(), [
+      CatalogOp.create,
+      CatalogOp.delete,
+    ]);
+  });
+
+  test('run_automation emits an automation bus event', () async {
+    final id = await createDaily();
+    await module.handle(CatalogOp.run, request({'id': id}));
+    await flushEvents();
+    expect(events.map((e) => e.op).toList(), [CatalogOp.create, CatalogOp.run]);
   });
 }
