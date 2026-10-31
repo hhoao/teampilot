@@ -141,6 +141,10 @@ void main() {
     await cubit.ensureLoaded();
     expect(loadCount, 1);
     expect(cubit.state.dashboard.rows, hasLength(2));
+    final sessionDashboard = cubit.state.dashboard;
+    cubit.setGroupBy(UsageGroupBy.model);
+    cubit.setGroupBy(UsageGroupBy.session);
+    expect(identical(cubit.state.dashboard, sessionDashboard), isTrue);
 
     cubit.setRange(UsageRange.today);
     cubit.setGroupBy(UsageGroupBy.model);

@@ -270,6 +270,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
   bool _syncFull = false;
   UsagePricingCatalog _pricing = const UsagePricingCatalog();
   List<SessionUsageEvent> _events = const [];
+  final Map<String, UsageDashboard> _dashboardCache = {};
   List<UsageHeatmapDay>? _heatmapCache;
   List<SessionUsageEvent>? _heatmapCacheEvents;
   CliTool? _heatmapCacheCli;
@@ -326,6 +327,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       if (isClosed) return;
       _events = events;
       _pricing = pricing;
+      _dashboardCache.clear();
       _attribution = UsageAttribution.fromSessionsAndTeams(
         sessions: sessions,
         teams: teams,
@@ -440,6 +442,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       final teams = await _loadTeams();
       if (isClosed) return;
       _events = events;
+      _dashboardCache.clear();
       _attribution = UsageAttribution.fromSessionsAndTeams(
         sessions: sessions,
         teams: teams,
@@ -535,6 +538,7 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
       await saver(rules);
       if (isClosed) return;
       _pricing = UsagePricingCatalog(userRules: rules);
+      _dashboardCache.clear();
       emit(
         state.copyWith(
           pricing: _pricing,
@@ -619,7 +623,14 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
 
   UsageDashboard _computeDashboard([SessionUsageState? stateOverride]) {
     final current = stateOverride ?? state;
-    return buildUsageDashboard(
+    final nowMs = _now().millisecondsSinceEpoch;
+    final key =
+        '${current.range.name}|${current.cli?.value}|${current.groupBy.name}|'
+        '${current.query}|${current.customStartMs}|${current.customEndMs}|'
+        '${current.liveEnd}|${nowMs ~/ 60000}';
+    final cached = _dashboardCache[key];
+    if (cached != null) return cached;
+    final dashboard = buildUsageDashboard(
       events: _events,
       attribution: _attribution,
       filter: UsageFilter(
@@ -631,10 +642,15 @@ final class SessionUsageCubit extends Cubit<SessionUsageState> {
         customEndMs: current.customEndMs,
         liveEnd: current.liveEnd,
       ),
-      nowMs: _now().millisecondsSinceEpoch,
+      nowMs: nowMs,
       pricing: _pricing,
       heatmap: _heatmapFor(current.cli),
     );
+    if (_dashboardCache.length >= 16) {
+      _dashboardCache.remove(_dashboardCache.keys.first);
+    }
+    _dashboardCache[key] = dashboard;
+    return dashboard;
   }
 
   List<UsageHeatmapDay> _heatmapFor(CliTool? cli) {
