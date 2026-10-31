@@ -66,6 +66,7 @@ import '../services/remote/local_credential_exporter.dart';
 import '../services/remote/remote_cli_readiness.dart';
 import '../services/editor_platform/editor_platform.dart';
 import '../services/chat/launch/launch_factory.dart';
+import '../services/launch_profile/team/launch_profile_selectors.dart';
 import '../cubits/board_cubit.dart';
 import '../utils/session/workspace_tab_session_scope.dart';
 import '../cubits/mailbox_cubit.dart';
@@ -2243,6 +2244,9 @@ Future<AppShell> buildAppShell({
       ),
     );
     catalogRuntime.bus.listen().listen((event) {
+      // Automation writes are refreshed by the automation cubit's own
+      // subscription; skip the unrelated catalog reloads for them.
+      if (event.kind == 'automation') return;
       unawaited(skillCubit.loadAll());
       unawaited(pluginCubit.load());
       unawaited(mcpCubit.loadAll());
@@ -2558,13 +2562,10 @@ Future<AppShell> buildAppShell({
       relayTunnels: pairedRelayTunnels,
     );
 
-    TeamProfile? teamById(String teamId) {
-      final profile = teamCubit.state.byId(teamId);
-      return profile is TeamProfile ? profile : null;
-    }
-    CliPreset? resolveCliPreset(String presetId) => cliPresetsCubit.state.presets
-        .where((preset) => preset.id == presetId.trim())
-        .firstOrNull;
+    TeamProfile? teamById(String teamId) =>
+        LaunchProfileSelectors.teamById(teamCubit.state, teamId);
+    CliPreset? resolveCliPreset(String presetId) =>
+        cliPresetsCubit.state.presetById(presetId);
 
     final scheduleCalculator = AutomationScheduleCalculator();
     final automationDispatcher = AutomationDispatcher(
@@ -2599,11 +2600,12 @@ Future<AppShell> buildAppShell({
       scheduler: automationScheduler,
       scheduleCalculator: scheduleCalculator,
     );
-    chatCubit.bindAutomationsChangeNotifier(() {
+    void refreshAutomations() {
       if (!automationCubit.isClosed) {
         unawaited(automationCubit.reloadPreservingScope());
       }
-    });
+    }
+    chatCubit.bindAutomationsChangeNotifier(refreshAutomations);
     // Registered here rather than in CatalogRuntime.assemble because the
     // automation repo, scheduler and resolver locals are constructed below
     // that assemble call. The registry recomputes routes on every call, so
@@ -2625,9 +2627,7 @@ Future<AppShell> buildAppShell({
     );
     final automationCatalogSub = catalogRuntime.bus.listen().listen((event) {
       if (event.kind != 'automation') return;
-      if (!automationCubit.isClosed) {
-        unawaited(automationCubit.reloadPreservingScope());
-      }
+      refreshAutomations();
     });
 
     final mailboxCubit = MailboxCubit(
