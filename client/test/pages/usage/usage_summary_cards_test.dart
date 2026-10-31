@@ -53,6 +53,7 @@ Widget _wrap({
             child: UsageSummaryCards(
               dashboard: _dashboard,
               nowMs: DateTime.now().millisecondsSinceEpoch,
+              onManagePricing: () {},
             ),
           ),
         ),

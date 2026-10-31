@@ -604,6 +604,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.keyboard_arrow_down));
     await tester.pumpAndSettle();
 
+    expect(find.byKey(AppKeys.sessionUsageCostCard), findsOneWidget);
     expect(find.textContaining(r'$18.00'), findsWidgets);
     expect(find.textContaining('1 priced · 1 unpriced'), findsOneWidget);
     expect(find.text('Unpriced'), findsOneWidget);

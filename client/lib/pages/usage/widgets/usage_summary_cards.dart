@@ -4,8 +4,8 @@ import 'package:shared_ui/shared_ui.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/session_usage_dashboard.dart';
 import '../../../theme/workspace_surface_layers.dart';
-import '../../../utils/ui/app_keys.dart';
 import '../usage_format.dart';
+import 'usage_cost_card.dart';
 
 class UsageSummaryCards extends StatefulWidget {
   const UsageSummaryCards({
@@ -33,20 +33,6 @@ class _UsageSummaryCardsState extends State<UsageSummaryCards> {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final summary = widget.dashboard.summary;
-    final cost = summary.pricedEvents == 0
-        ? l10n.sessionUsageCostUnpriced
-        : '${formatUsageCost(summary.costMicroUsd)}'
-              '${summary.unpricedEvents > 0 ? '*' : ''}';
-    final costDetails = <String>[
-      l10n.sessionUsageCostPricedUnpriced(
-        summary.pricedEvents,
-        summary.unpricedEvents,
-      ),
-      if (summary.unpricedEvents > 0)
-        l10n.sessionUsageCostPartial(summary.unpricedEvents),
-      if (widget.pricingCorrupted) l10n.sessionUsagePricingCorrupt,
-    ].join(' · ');
-
     final cards = <Widget>[
       _MetricCard(
         title: l10n.sessionUsageTotalTokens,
@@ -76,11 +62,6 @@ class _UsageSummaryCardsState extends State<UsageSummaryCards> {
 
     final details = <Widget>[
       _DetailTile(
-        label: l10n.sessionUsageCost,
-        value: cost,
-        subtitle: costDetails,
-      ),
-      _DetailTile(
         label: l10n.sessionUsagePricingCacheWrite,
         value: formatUsageTokens(summary.cacheCreationTokens),
       ),
@@ -107,8 +88,6 @@ class _UsageSummaryCardsState extends State<UsageSummaryCards> {
             ? 2
             : 1;
         const gap = 12.0;
-        final detailColumns = width >= 1200 ? 5 : columns;
-
         Widget grid(
           List<Widget> children, {
           required bool intrinsic,
@@ -197,24 +176,22 @@ class _UsageSummaryCardsState extends State<UsageSummaryCards> {
                   ? Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        if (widget.onManagePricing != null) ...[
+                          UsageCostCard(
+                            summary: summary,
+                            corrupted: widget.pricingCorrupted,
+                            onManagePricing: widget.onManagePricing!,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: grid(
                             details,
                             intrinsic: false,
-                            columns: detailColumns,
+                            columns: columns,
                           ),
                         ),
-                        if (widget.onManagePricing != null)
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton.icon(
-                              key: AppKeys.sessionUsageManagePricingButton,
-                              onPressed: widget.onManagePricing,
-                              icon: const Icon(Icons.tune, size: 17),
-                              label: Text(l10n.sessionUsageManagePricing),
-                            ),
-                          ),
                       ],
                     )
                   : const SizedBox(width: double.infinity),
@@ -282,11 +259,10 @@ class _MetricCard extends StatelessWidget {
 }
 
 class _DetailTile extends StatelessWidget {
-  const _DetailTile({required this.label, required this.value, this.subtitle});
+  const _DetailTile({required this.label, required this.value});
 
   final String label;
   final String value;
-  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -316,17 +292,6 @@ class _DetailTile extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: styles.lg,
           ),
-          if (subtitle != null && subtitle!.isNotEmpty) ...[
-            const SizedBox(height: 2),
-            Text(
-              subtitle!,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: styles.xs.copyWith(
-                color: cs.onSurface.withValues(alpha: 0.56),
-              ),
-            ),
-          ],
         ],
       ),
     );
