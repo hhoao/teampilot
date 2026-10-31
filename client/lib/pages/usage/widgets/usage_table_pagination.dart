@@ -57,20 +57,46 @@ class UsageTablePagination extends StatelessWidget {
             spacing: 2,
             children: [
               Text(l10n.sessionUsageRowsPerPage, style: muted),
-              DropdownButtonHideUnderline(
-                child: DropdownButton<int>(
+              TpActionMenuButton(
+                minWidth: 88,
+                specs: [
+                  for (final size in pageSizeOptions)
+                    TpActionMenuSpec.item(
+                      value: size,
+                      label: '$size',
+                      selected: size == pageSize,
+                    ),
+                ],
+                onSelected: (value) {
+                  if (value is int) onPageSizeChanged(value);
+                },
+                triggerBuilder: (context, controller) => InkWell(
                   key: AppKeys.sessionUsagePageSize,
-                  value: pageSize,
-                  isDense: true,
-                  borderRadius: BorderRadius.circular(8),
-                  style: styles.md.copyWith(color: cs.onSurface),
-                  items: [
-                    for (final size in pageSizeOptions)
-                      DropdownMenuItem(value: size, child: Text('$size')),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) onPageSizeChanged(value);
-                  },
+                  onTap: () => controller.isOpen
+                      ? controller.close()
+                      : controller.open(),
+                  mouseCursor: SystemMouseCursors.click,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 4,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '$pageSize',
+                          style: styles.md.copyWith(color: cs.onSurface),
+                        ),
+                        Icon(
+                          Icons.arrow_drop_down,
+                          size: context.tpIconSizes.md,
+                          color: cs.onSurface.withValues(alpha: 0.56),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
               IconButton(
