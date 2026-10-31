@@ -104,7 +104,7 @@ List<TpTableColumn<UsageGroup>> buildUsageTableColumns({
       id: 'share',
       label: l10n.sessionUsageShareShort,
       width: 120,
-      minWidth: 80,
+      minWidth: 110,
       maxWidth: 240,
       groupStart: true,
       sortValue: (row) => row.totalTokens,
@@ -286,6 +286,8 @@ class _ShareCell extends StatelessWidget {
       children: [
         Text(
           formatUsagePercent(share),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: styles.smMedium.copyWith(
             fontFeatures: const [FontFeature.tabularFigures()],
           ),
