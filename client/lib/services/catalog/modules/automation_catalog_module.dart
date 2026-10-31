@@ -300,17 +300,120 @@ class AutomationCatalogModule implements CatalogKindModule {
     }
   }
 
-  Future<CatalogResult> _update(CatalogRequest req) => Future.error(
-    CatalogException('unsupported_op', 'update is implemented in Task 3'),
-  );
+  Future<CatalogResult> _update(CatalogRequest req) async {
+    final id = _requireId(req);
+    final existing = await _require(req.workspaceId, id);
+    final now = _nowMs();
+    var next = existing;
 
-  Future<CatalogResult> _delete(CatalogRequest req) => Future.error(
-    CatalogException('unsupported_op', 'delete is implemented in Task 3'),
-  );
+    if (req.arguments.containsKey('name')) {
+      next = next.copyWith(name: _requireText(req, 'name'));
+    }
+    if (req.arguments.containsKey('message')) {
+      next = next.copyWith(message: _requireText(req, 'message'));
+    }
+    if (req.arguments.containsKey('schedule')) {
+      final schedule = parseAutomationSchedule(
+        req.arguments['schedule'],
+        calculator: scheduleCalculator,
+        defaultTimezone: _defaultTimezone(),
+        now: now,
+      );
+      next = next.copyWith(
+        preset: schedule.preset,
+        customCron: schedule.customCron,
+        clearCustomCron: schedule.customCron == null,
+        dayOfWeek: schedule.dayOfWeek,
+        clearDayOfWeek: schedule.dayOfWeek == null,
+        minute: schedule.minute,
+        hourMinute: schedule.hourMinute,
+        timezone: schedule.timezone,
+        dtstartMs: schedule.dtstartMs,
+        runAtMs: schedule.runAtMs,
+        clearRunAtMs: schedule.runAtMs == null,
+      );
+    }
+    if (req.arguments.containsKey('max_run_count')) {
+      final maxRunCount = _maxRunCount(req);
+      next = next.copyWith(
+        maxRunCount: maxRunCount,
+        clearMaxRunCount: maxRunCount == null,
+      );
+    }
+    if (req.arguments.containsKey('missed_run_grace_minutes')) {
+      next = next.copyWith(missedRunGraceMinutes: _graceMinutes(req));
+    }
+    if (req.arguments.containsKey('reuse_session')) {
+      next = next.copyWith(reuseSession: req.arguments['reuse_session'] == true);
+    }
+    if (req.arguments.containsKey('target_member_id')) {
+      next = next.copyWith(
+        targetMemberId: _text(req.arguments['target_member_id']) ?? 'team-lead',
+      );
+    }
+    if (req.arguments.containsKey('enabled')) {
+      next = next.copyWith(enabled: req.arguments['enabled'] == true);
+    }
 
-  Future<CatalogResult> _run(CatalogRequest req) => Future.error(
-    CatalogException('unsupported_op', 'run is implemented in Task 3'),
-  );
+    next = next.copyWith(updatedAtMs: now);
+    if (next.enabled) {
+      final nextMs = scheduleCalculator.computeNextRunAtMs(next, afterMs: now);
+      next = next.copyWith(
+        enabled: nextMs != null,
+        nextRunAtMs: nextMs,
+        clearNextRunAtMs: nextMs == null,
+      );
+    } else {
+      next = next.copyWith(clearNextRunAtMs: true);
+    }
+
+    final (saved, _) = await _commit(next, now);
+    _emit(CatalogOp.update, req, [saved.id]);
+    return _ok(req, [saved.id], {
+      'automation': saved.toJson(),
+      'summary': scheduleCalculator.formatScheduleSummary(saved),
+      'enabled': saved.enabled,
+      'next_run_at_ms': saved.nextRunAtMs,
+    });
+  }
+
+  Future<CatalogResult> _delete(CatalogRequest req) async {
+    final id = _requireId(req);
+    final existing = await _require(req.workspaceId, id);
+    await repository.delete(existing.workspaceId, existing.id);
+    _emit(CatalogOp.delete, req, [existing.id]);
+    return _ok(
+      req,
+      [existing.id],
+      {
+        'automation': {'id': existing.id, 'deleted': true},
+      },
+      message: 'Automation deleted.',
+    );
+  }
+
+  Future<CatalogResult> _run(CatalogRequest req) async {
+    final id = _requireId(req);
+    final automation = await _require(req.workspaceId, id);
+    if (automation.isRunLimitReached) {
+      throw CatalogException(
+        'run_limit_reached',
+        'automation has reached its run limit: $id',
+      );
+    }
+    await runNow(automation.workspaceId, automation.id);
+    final runs = await repository.runsFor(
+      automation.workspaceId,
+      automationId: automation.id,
+    );
+    final latest = [...runs]
+      ..sort((a, b) => (b.startedAtMs ?? 0).compareTo(a.startedAtMs ?? 0));
+    _emit(CatalogOp.run, req, [automation.id]);
+    return _ok(req, [automation.id], {
+      'run': latest.isEmpty ? null : latest.first.toJson(),
+      'automation': (await _require(req.workspaceId, id)).toJson(),
+    });
+  }
 
   Future<Automation> _require(String workspaceId, String id) async {
     final automations = await repository.listForWorkspace(workspaceId);

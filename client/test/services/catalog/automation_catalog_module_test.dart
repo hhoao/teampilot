@@ -280,4 +280,128 @@ void main() {
     expect(stored.effectiveMaxRunCount, 3);
     expect(stored.missedRunGraceMinutes, 30);
   });
+
+  Future<String> createDaily() async {
+    final result = await module.handle(
+      CatalogOp.create,
+      request({
+        'name': 'daily',
+        'message': 'm',
+        'schedule': {'type': 'daily', 'time': '09:00'},
+      }),
+    );
+    return result.ids.single;
+  }
+
+  test('update keeps unspecified fields and recomputes on enable', () async {
+    final id = await createDaily();
+    await module.handle(
+      CatalogOp.update,
+      request({'id': id, 'name': 'renamed', 'enabled': true}),
+    );
+    final stored = (await repo.listForWorkspace(workspaceId)).single;
+    expect(stored.name, 'renamed');
+    expect(stored.message, 'm');
+    expect(stored.enabled, isTrue);
+    expect(stored.nextRunAtMs, isNotNull);
+  });
+
+  test('update to disabled clears the next run', () async {
+    final id = await createDaily();
+    await module.handle(
+      CatalogOp.update,
+      request({'id': id, 'enabled': true}),
+    );
+    await module.handle(
+      CatalogOp.update,
+      request({'id': id, 'enabled': false}),
+    );
+    final stored = (await repo.listForWorkspace(workspaceId)).single;
+    expect(stored.enabled, isFalse);
+    expect(stored.nextRunAtMs, isNull);
+  });
+
+  test('update can switch a daily schedule to a cron schedule', () async {
+    final id = await createDaily();
+    await module.handle(
+      CatalogOp.update,
+      request({
+        'id': id,
+        'schedule': {'type': 'custom', 'cron': '*/15 * * * *'},
+      }),
+    );
+    final stored = (await repo.listForWorkspace(workspaceId)).single;
+    expect(stored.preset, AutomationSchedulePreset.custom);
+    expect(stored.customCron, '*/15 * * * *');
+    expect(stored.dayOfWeek, isNull);
+  });
+
+  test('delete removes the automation and its runs', () async {
+    final id = await createDaily();
+    await repo.upsertRun(
+      workspaceId,
+      AutomationRun(
+        id: 'run-1',
+        automationId: id,
+        workspaceId: workspaceId,
+        scheduledForMs: now,
+        status: AutomationRunStatus.completed,
+        trigger: AutomationRunTrigger.manual,
+        startedAtMs: now,
+        completedAtMs: now,
+      ),
+    );
+    await module.handle(CatalogOp.delete, request({'id': id}));
+    expect(await repo.listForWorkspace(workspaceId), isEmpty);
+    expect(await repo.runsForWorkspace(workspaceId), isEmpty);
+  });
+
+  test('run_automation dispatches and returns the newest run', () async {
+    final id = await createDaily();
+    await repo.upsertRun(
+      workspaceId,
+      AutomationRun(
+        id: 'run-1',
+        automationId: id,
+        workspaceId: workspaceId,
+        scheduledForMs: now,
+        status: AutomationRunStatus.completed,
+        trigger: AutomationRunTrigger.manual,
+        startedAtMs: now,
+        completedAtMs: now,
+      ),
+    );
+    final result = await module.handle(CatalogOp.run, request({'id': id}));
+    expect(dispatched, ['$workspaceId/$id']);
+    expect((result.data!['run']! as Map)['id'], 'run-1');
+  });
+
+  test('run_automation rejects a run-limit-reached automation', () async {
+    final id = await createDaily();
+    final stored = (await repo.listForWorkspace(workspaceId)).single;
+    await repo.upsert(
+      stored.copyWith(
+        preset: AutomationSchedulePreset.once,
+        runAtMs: now + 60000,
+        runCount: 1,
+      ),
+    );
+    await expectLater(
+      module.handle(CatalogOp.run, request({'id': id})),
+      throwsA(
+        isA<CatalogException>().having(
+          (e) => e.code,
+          'code',
+          'run_limit_reached',
+        ),
+      ),
+    );
+  });
+
+  test('every mutation emits an automation bus event', () async {
+    await createDaily();
+    await Future<void>.delayed(Duration.zero);
+    expect(events, isNotEmpty);
+    expect(events.every((e) => e.kind == 'automation'), isTrue);
+  });
 }
