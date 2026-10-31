@@ -1,9 +1,7 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/session_usage_dashboard.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/usage/widgets/usage_summary_cards.dart';
 
 final _dashboard = UsageDashboard(
@@ -102,7 +100,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('sparkline renders as a fl_chart bar chart', (tester) async {
+  testWidgets('summary details expand and collapse', (tester) async {
     tester.view.physicalSize = const Size(1400, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -111,44 +109,19 @@ void main() {
     await tester.pumpWidget(_wrap(width: 700, fontSizeFactor: 1.0));
     await tester.pumpAndSettle();
 
-    expect(find.byType(BarChart), findsOneWidget);
-    expect(tester.getSize(find.byType(UsageSparkline)).height, 26);
-  });
+    expect(find.text('Hit rate'), findsNothing);
 
-  testWidgets('sparkline keeps low-volume days visible', (tester) async {
-    tester.view.physicalSize = const Size(1400, 900);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 200,
-            child: UsageSparkline(
-              days: [
-                const UsageChartDay(dayStartMs: 0),
-                UsageChartDay(
-                  dayStartMs: Duration.millisecondsPerDay,
-                  tokensByCli: const {CliTool.claude: 1000},
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+    await tester.tap(find.byIcon(Icons.keyboard_arrow_down));
     await tester.pumpAndSettle();
 
-    final groups = tester
-        .widget<BarChart>(find.byType(BarChart))
-        .data
-        .barGroups;
-    expect(groups, hasLength(2));
-    // maxY is 1000 * 1.05 = 1050: a zero day gets 12% and a non-zero day
-    // below 10% of maxY is lifted to the 10% floor.
-    expect(groups[0].barRods.single.toY, closeTo(126.0, 0.001));
-    expect(groups[1].barRods.single.toY, closeTo(1000.0, 0.001));
+    expect(find.text('Cache write'), findsOneWidget);
+    expect(find.text('Hit rate'), findsOneWidget);
+    expect(find.text('Requests'), findsOneWidget);
+    expect(find.text('Sessions'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.keyboard_arrow_up));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hit rate'), findsNothing);
   });
 }

@@ -1,4 +1,3 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
@@ -7,7 +6,7 @@ import '../../../models/session_usage_dashboard.dart';
 import '../../../theme/workspace_surface_layers.dart';
 import '../usage_format.dart';
 
-class UsageSummaryCards extends StatelessWidget {
+class UsageSummaryCards extends StatefulWidget {
   const UsageSummaryCards({
     required this.dashboard,
     required this.nowMs,
@@ -18,9 +17,17 @@ class UsageSummaryCards extends StatelessWidget {
   final int nowMs;
 
   @override
+  State<UsageSummaryCards> createState() => _UsageSummaryCardsState();
+}
+
+class _UsageSummaryCardsState extends State<UsageSummaryCards> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final summary = dashboard.summary;
+    final cs = Theme.of(context).colorScheme;
+    final summary = widget.dashboard.summary;
     final total = summary.totalTokens;
 
     final cards = <Widget>[
@@ -32,7 +39,6 @@ class UsageSummaryCards extends StatelessWidget {
         details: [
           l10n.sessionUsageRequestsSessions(summary.requests, summary.sessions),
         ],
-        sparkline: UsageSparkline(days: dashboard.chart),
       ),
       _MetricCard(
         title: l10n.sessionUsageInputTokens,
@@ -68,6 +74,25 @@ class UsageSummaryCards extends StatelessWidget {
       ),
     ];
 
+    final details = <Widget>[
+      _DetailTile(
+        label: l10n.sessionUsagePricingCacheWrite,
+        value: formatUsageTokens(summary.cacheCreationTokens),
+      ),
+      _DetailTile(
+        label: l10n.sessionUsageHeatmapMetricHitRate,
+        value: formatUsagePercent(summary.cacheHitRate),
+      ),
+      _DetailTile(
+        label: l10n.sessionUsageRequests,
+        value: '${summary.requests}',
+      ),
+      _DetailTile(
+        label: l10n.sessionUsageSessions,
+        value: '${summary.sessions}',
+      ),
+    ];
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -80,36 +105,96 @@ class UsageSummaryCards extends StatelessWidget {
         final cardWidth = columns == 1
             ? width
             : (width - gap * (columns - 1)) / columns;
-        // Cards grow with their content (typography is scaled through the
-        // theme, not MediaQuery.textScaler, so a fixed height overflows) while
-        // every card in a run keeps the height of the tallest one.
+
+        Widget grid(List<Widget> children, {required bool intrinsic}) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (
+                var start = 0;
+                start < children.length;
+                start += columns
+              ) ...[
+                if (start > 0) const SizedBox(height: gap),
+                intrinsic
+                    ? IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (
+                              var index = start;
+                              index < start + columns &&
+                                  index < children.length;
+                              index++
+                            ) ...[
+                              if (index > start) const SizedBox(width: gap),
+                              SizedBox(
+                                width: cardWidth,
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(
+                                    minHeight: 132,
+                                  ),
+                                  child: children[index],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      )
+                    : Row(
+                        children: [
+                          for (
+                            var index = start;
+                            index < start + columns && index < children.length;
+                            index++
+                          ) ...[
+                            if (index > start) const SizedBox(width: gap),
+                            SizedBox(width: cardWidth, child: children[index]),
+                          ],
+                        ],
+                      ),
+              ],
+            ],
+          );
+        }
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (var start = 0; start < cards.length; start += columns) ...[
-              if (start > 0) const SizedBox(height: gap),
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (
-                      var index = start;
-                      index < start + columns && index < cards.length;
-                      index++
-                    ) ...[
-                      if (index > start) const SizedBox(width: gap),
-                      SizedBox(
-                        width: cardWidth,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(minHeight: 148),
-                          child: cards[index],
-                        ),
-                      ),
-                    ],
-                  ],
+            grid(cards, intrinsic: true),
+            const SizedBox(height: 4),
+            Tooltip(
+              message: _expanded
+                  ? l10n.sessionUsageHeatmapShowLess
+                  : l10n.sessionUsageHeatmapMore,
+              child: InkWell(
+                onTap: () => setState(() => _expanded = !_expanded),
+                mouseCursor: SystemMouseCursors.click,
+                borderRadius: BorderRadius.circular(6),
+                child: SizedBox(
+                  height: 24,
+                  child: Center(
+                    child: Icon(
+                      _expanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      size: context.tpIconSizes.md,
+                      color: cs.onSurface.withValues(alpha: 0.56),
+                    ),
+                  ),
                 ),
               ),
-            ],
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 180),
+              alignment: Alignment.topCenter,
+              child: _expanded
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: grid(details, intrinsic: false),
+                    )
+                  : const SizedBox(width: double.infinity),
+            ),
           ],
         );
       },
@@ -124,7 +209,6 @@ class _MetricCard extends StatelessWidget {
     required this.icon,
     required this.accent,
     required this.details,
-    this.sparkline,
   });
 
   final String title;
@@ -132,7 +216,6 @@ class _MetricCard extends StatelessWidget {
   final IconData icon;
   final Color accent;
   final List<String> details;
-  final Widget? sparkline;
 
   @override
   Widget build(BuildContext context) {
@@ -171,7 +254,6 @@ class _MetricCard extends StatelessWidget {
             style: styles.xl.copyWith(fontWeight: FontWeight.w700),
           ),
           const Spacer(),
-          if (sparkline != null) ...[sparkline!, const SizedBox(height: 7)],
           for (final detail in details)
             Padding(
               padding: const EdgeInsets.only(top: 2),
@@ -190,61 +272,42 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-class UsageSparkline extends StatelessWidget {
-  const UsageSparkline({required this.days, super.key});
+class _DetailTile extends StatelessWidget {
+  const _DetailTile({required this.label, required this.value});
 
-  final List<UsageChartDay> days;
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final maxTotal = days.fold<int>(
-      0,
-      (max, day) => day.totalTokens > max ? day.totalTokens : max,
-    );
-    final maxY = maxTotal == 0 ? 1.0 : maxTotal * 1.05;
-    return SizedBox(
-      height: 26,
-      child: BarChart(
-        BarChartData(
-          minY: 0,
-          maxY: maxY,
-          alignment: BarChartAlignment.spaceAround,
-          barGroups: [
-            for (var index = 0; index < days.length; index++)
-              BarChartGroupData(
-                x: index,
-                barRods: [
-                  BarChartRodData(
-                    toY: _sparkRodTop(days[index].totalTokens, maxY),
-                    width: 6,
-                    color: cs.primary.withValues(
-                      alpha: days[index].totalTokens == 0 ? 0.24 : 0.56,
-                    ),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ],
-              ),
-          ],
-          titlesData: const FlTitlesData(show: false),
-          gridData: const FlGridData(show: false),
-          borderData: FlBorderData(show: false),
-          barTouchData: const BarTouchData(enabled: false),
-        ),
-        duration: Duration.zero,
+    final styles = TpTextStyles.of(context);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: styles.md.copyWith(
+              color: cs.onSurface.withValues(alpha: 0.56),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: styles.lg,
+          ),
+        ],
       ),
     );
   }
-}
-
-/// Rod height for the sparkline.
-///
-/// Strictly proportional rods make low-volume days (and zero days) invisible,
-/// so anything under 10% of the tallest day gets a floor, and zero days get a
-/// slightly taller stub.
-double _sparkRodTop(int tokens, double maxY) {
-  if (tokens == 0) return maxY * 0.12;
-  final floor = maxY * 0.10;
-  final value = tokens.toDouble();
-  return value < floor ? floor : value;
 }
