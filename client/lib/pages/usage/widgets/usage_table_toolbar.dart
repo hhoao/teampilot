@@ -30,6 +30,7 @@ class UsageTableToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
 
     final search = SizedBox(
@@ -69,7 +70,7 @@ class UsageTableToolbar extends StatelessWidget {
             usageGroupLabel(context, group),
         ],
         variant: TpSegmentedControlVariant.outlined,
-        minHeight: 28,
+        minHeight: usageFilterControlHeight,
         onToggle: (index) {
           if (index == null) return;
           onGroupByChanged(UsageGroupBy.values[index]);
@@ -77,11 +78,19 @@ class UsageTableToolbar extends StatelessWidget {
       ),
     );
 
-    final columnMenu = TpTableColumnMenu<UsageGroup>(
-      columns: columns,
-      state: tableState,
-      onChanged: onTableStateChanged,
-      labels: labels,
+    final columnMenu = Container(
+      width: usageFilterControlHeight,
+      height: usageFilterControlHeight,
+      decoration: BoxDecoration(
+        border: Border.all(color: cs.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: TpTableColumnMenu<UsageGroup>(
+        columns: columns,
+        state: tableState,
+        onChanged: onTableStateChanged,
+        labels: labels,
+      ),
     );
 
     return LayoutBuilder(

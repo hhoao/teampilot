@@ -85,31 +85,22 @@ class _CliButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
-    final borderColor = selected ? cs.primary : cs.outlineVariant;
     return Material(
       color: selected ? cs.surfaceContainerHighest : Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: borderColor),
-      ),
-      clipBehavior: Clip.antiAlias,
+      borderRadius: BorderRadius.circular(6),
       child: InkWell(
         onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 40),
-          child: SizedBox(
-            height: usageFilterControlHeight,
-            child: Center(
-              child: label == null
-                  ? icon
-                  : Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Text(
-                        label!,
-                        style: selected ? styles.xsSemibold : styles.xsMedium,
-                      ),
-                    ),
-            ),
+        borderRadius: BorderRadius.circular(6),
+        child: SizedBox(
+          width: 30,
+          height: 30,
+          child: Center(
+            child: label == null
+                ? icon
+                : Text(
+                    label!,
+                    style: selected ? styles.xsSemibold : styles.xsMedium,
+                  ),
           ),
         ),
       ),
