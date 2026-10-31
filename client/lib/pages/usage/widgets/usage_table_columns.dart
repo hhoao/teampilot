@@ -175,7 +175,7 @@ class _NumberText extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = TpTextStyles.of(
       context,
-    ).sm.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
+    ).md.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
     return Text(
       text,
       maxLines: 1,
@@ -203,7 +203,7 @@ class _GroupCell extends StatelessWidget {
       label,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: styles.smMedium,
+      style: styles.mdMedium,
     );
   }
 }
@@ -221,7 +221,7 @@ class _TeamCell extends StatelessWidget {
       text,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: TpTextStyles.of(context).sm,
+      style: TpTextStyles.of(context).md,
     );
   }
 }
@@ -263,7 +263,7 @@ class _CostCell extends StatelessWidget {
               '${row.unpricedEvents > 0 ? '*' : ''}';
     final style = TpTextStyles.of(
       context,
-    ).sm.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
+    ).md.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
     return Text(text, maxLines: 1, style: style);
   }
 }
@@ -288,7 +288,7 @@ class _ShareCell extends StatelessWidget {
           formatUsagePercent(share),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: styles.smMedium.copyWith(
+          style: styles.mdMedium.copyWith(
             fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
