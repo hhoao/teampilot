@@ -2604,7 +2604,6 @@ Future<AppShell> buildAppShell({
       if (!automationCubit.isClosed) {
         unawaited(automationCubit.reloadPreservingScope());
       }
-    }
     chatCubit.bindAutomationsChangeNotifier(refreshAutomations);
     // Registered here rather than in CatalogRuntime.assemble because the
     // automation repo, scheduler and resolver locals are constructed below
@@ -2619,6 +2618,11 @@ Future<AppShell> buildAppShell({
         runNow: automationScheduler.runNow,
         teamExists: (teamId) => teamById(teamId) != null,
         presetExists: (presetId) => resolveCliPreset(presetId) != null,
+        memberExists: (teamId, memberId) {
+          final team = teamById(teamId);
+          return team != null &&
+              team.members.any((m) => m.id == memberId && m.isValid);
+        },
         sessionExists: (sessionId, workspaceId) async {
           final session = await sessionRepo.findById(sessionId);
           return session != null && session.workspaceId == workspaceId;

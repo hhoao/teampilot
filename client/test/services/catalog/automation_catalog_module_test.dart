@@ -56,6 +56,8 @@ void main() {
           ws == workspaceId && sessionId == 'sess-1',
       teamExists: (teamId) => teamId == 'team-1',
       presetExists: (presetId) => presetId == 'preset-1',
+      memberExists: (teamId, memberId) =>
+          teamId == 'team-1' && memberId == 'team-lead',
       nowMs: () => now,
       newId: () => 'auto-1',
       defaultTimezone: () => 'UTC',
@@ -142,6 +144,48 @@ void main() {
       ),
       throwsA(
         isA<CatalogException>().having((e) => e.code, 'code', 'target_invalid'),
+      ),
+    );
+  });
+
+  test('create launchPrompt rejects an unknown team member', () async {
+    await expectLater(
+      module.handle(
+        CatalogOp.create,
+        request({
+          'name': 'x',
+          'message': 'x',
+          'action': 'launchPrompt',
+          'team_id': 'team-1',
+          'target_member_id': 'ghost',
+          'schedule': {'type': 'daily'},
+        }),
+      ),
+      throwsA(
+        isA<CatalogException>().having((e) => e.code, 'code', 'target_invalid'),
+      ),
+    );
+  });
+
+  test('create rejects a non-boolean reuse_session', () async {
+    await expectLater(
+      module.handle(
+        CatalogOp.create,
+        request({
+          'name': 'x',
+          'message': 'x',
+          'action': 'launchPrompt',
+          'team_id': 'team-1',
+          'reuse_session': 1,
+          'schedule': {'type': 'daily'},
+        }),
+      ),
+      throwsA(
+        isA<CatalogException>().having(
+          (e) => e.code,
+          'code',
+          'invalid_argument',
+        ),
       ),
     );
   });
@@ -353,6 +397,84 @@ void main() {
     final stored = (await repo.listForWorkspace(workspaceId)).single;
     expect(stored.enabled, isFalse);
     expect(stored.nextRunAtMs, isNull);
+  });
+
+  test('update rejects a non-boolean enabled and keeps storage', () async {
+    final id = await createDaily();
+    await expectLater(
+      module.handle(CatalogOp.update, request({'id': id, 'enabled': 'true'})),
+      throwsA(
+        isA<CatalogException>().having(
+          (e) => e.code,
+          'code',
+          'invalid_argument',
+        ),
+      ),
+    );
+    final stored = (await repo.listForWorkspace(workspaceId)).single;
+    expect(stored.enabled, isFalse);
+    expect(stored.nextRunAtMs, isNull);
+  });
+
+  test(
+    'update rejects a non-boolean reuse_session and keeps storage',
+    () async {
+      final id = await createDaily();
+      await expectLater(
+        module.handle(
+          CatalogOp.update,
+          request({'id': id, 'reuse_session': 'yes'}),
+        ),
+        throwsA(
+          isA<CatalogException>().having(
+            (e) => e.code,
+            'code',
+            'invalid_argument',
+          ),
+        ),
+      );
+      final stored = (await repo.listForWorkspace(workspaceId)).single;
+      expect(stored.reuseSession, isFalse);
+    },
+  );
+
+  test('update enabling a past once schedule is schedule_invalid', () async {
+    await repo.upsert(
+      Automation(
+        id: 'once-1',
+        name: 'once',
+        action: AutomationAction.scheduledMessage,
+        workspaceId: workspaceId,
+        sessionId: 'sess-1',
+        message: 'x',
+        preset: AutomationSchedulePreset.once,
+        runAtMs: now - 1000,
+        timezone: 'UTC',
+        dtstartMs: 1,
+        enabled: false,
+        createdAtMs: 1,
+        updatedAtMs: 1,
+      ),
+    );
+
+    await expectLater(
+      module.handle(
+        CatalogOp.update,
+        request({'id': 'once-1', 'enabled': true}),
+      ),
+      throwsA(
+        isA<CatalogException>().having(
+          (e) => e.code,
+          'code',
+          'schedule_invalid',
+        ),
+      ),
+    );
+
+    final stored = (await repo.listForWorkspace(workspaceId)).single;
+    expect(stored.enabled, isFalse);
+    expect(stored.nextRunAtMs, isNull);
+    expect(dispatched, isEmpty);
   });
 
   test('update can switch a daily schedule to a cron schedule', () async {

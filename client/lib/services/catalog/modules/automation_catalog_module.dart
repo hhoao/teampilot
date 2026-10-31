@@ -15,6 +15,7 @@ typedef AutomationRunNow =
     Future<void> Function(String workspaceId, String automationId);
 typedef AutomationSessionExists =
     Future<bool> Function(String sessionId, String workspaceId);
+typedef AutomationMemberExists = bool Function(String teamId, String memberId);
 
 const _createdDisabledMessage =
     'Created disabled. Enable it in Automations, or call update_automation '
@@ -29,6 +30,7 @@ class AutomationCatalogModule implements CatalogKindModule {
     this.sessionExists,
     this.teamExists,
     this.presetExists,
+    this.memberExists,
     int Function()? nowMs,
     String Function()? newId,
     String Function()? defaultTimezone,
@@ -43,6 +45,7 @@ class AutomationCatalogModule implements CatalogKindModule {
   final AutomationSessionExists? sessionExists;
   final bool Function(String teamId)? teamExists;
   final bool Function(String presetId)? presetExists;
+  final AutomationMemberExists? memberExists;
   final int Function() _nowMs;
   final String Function() _newId;
   final String Function() _defaultTimezone;
@@ -154,6 +157,7 @@ class AutomationCatalogModule implements CatalogKindModule {
     final message = _requireText(req, 'message');
     final maxRunCount = _maxRunCount(req);
     final missedRunGraceMinutes = _graceMinutes(req);
+    final reuseSession = _boolArg(req, 'reuse_session') ?? false;
     final id = _newId();
 
     final Automation draft;
@@ -186,10 +190,19 @@ class AutomationCatalogModule implements CatalogKindModule {
           'launchPrompt requires team_id or preset_id',
         );
       }
+      final targetMemberId =
+          _text(req.arguments['target_member_id']) ?? 'team-lead';
       if (teamId != null) {
         final exists = teamExists;
         if (exists != null && !exists(teamId)) {
           throw CatalogException('target_invalid', 'unknown team: $teamId');
+        }
+        final memberCheck = memberExists;
+        if (memberCheck != null && !memberCheck(teamId, targetMemberId)) {
+          throw CatalogException(
+            'target_invalid',
+            'unknown team member: $targetMemberId',
+          );
         }
       } else {
         final exists = presetExists;
@@ -210,8 +223,8 @@ class AutomationCatalogModule implements CatalogKindModule {
         isPersonal: teamId == null,
         presetId: teamId == null ? presetId : null,
         teamId: teamId,
-        targetMemberId: _text(req.arguments['target_member_id']) ?? 'team-lead',
-        reuseSession: req.arguments['reuse_session'] == true,
+        targetMemberId: targetMemberId,
+        reuseSession: reuseSession,
       );
     }
 
@@ -282,10 +295,15 @@ class AutomationCatalogModule implements CatalogKindModule {
   /// would-be enabled automation (create). Both paths run inside the same
   /// translation boundary, so a validation failure raised by the schedule
   /// calculator is reported exactly like one raised by [Automation.validate].
+  ///
+  /// [requireEnabled] marks a caller that explicitly asked for `enabled: true`.
+  /// Such a caller gets `schedule_invalid` instead of a silent downgrade when
+  /// the recomputed schedule has no future occurrence.
   Future<(Automation, int?)> _commit(
     Automation draft,
     int now, {
     bool scheduleNextRun = false,
+    bool requireEnabled = false,
   }) async {
     try {
       draft.validate();
@@ -295,6 +313,12 @@ class AutomationCatalogModule implements CatalogKindModule {
         final nextMs = draft.enabled
             ? scheduleCalculator.computeNextRunAtMs(draft, afterMs: now)
             : null;
+        if (requireEnabled && nextMs == null) {
+          throw CatalogException(
+            'schedule_invalid',
+            'once schedule is in the past; set a future schedule.at',
+          );
+        }
         ready = draft.copyWith(
           enabled: draft.enabled && nextMs != null,
           nextRunAtMs: nextMs,
@@ -376,7 +400,7 @@ class AutomationCatalogModule implements CatalogKindModule {
     }
     if (req.arguments.containsKey('reuse_session')) {
       next = next.copyWith(
-        reuseSession: req.arguments['reuse_session'] == true,
+        reuseSession: _boolArg(req, 'reuse_session') ?? false,
       );
     }
     if (req.arguments.containsKey('target_member_id')) {
@@ -384,11 +408,12 @@ class AutomationCatalogModule implements CatalogKindModule {
         targetMemberId: _text(req.arguments['target_member_id']) ?? 'team-lead',
       );
     }
+    final enableArg = _boolArg(req, 'enabled');
     if (req.arguments.containsKey('enabled')) {
-      next = next.copyWith(enabled: req.arguments['enabled'] == true);
+      next = next.copyWith(enabled: enableArg ?? false);
     }
 
-    if (req.arguments['enabled'] == true && next.isRunLimitReached) {
+    if (enableArg == true && next.isRunLimitReached) {
       throw CatalogException(
         'run_limit_reached',
         'automation has reached its run limit: $id; increase or clear '
@@ -396,7 +421,12 @@ class AutomationCatalogModule implements CatalogKindModule {
       );
     }
 
-    final (saved, _) = await _commit(next, now, scheduleNextRun: true);
+    final (saved, _) = await _commit(
+      next,
+      now,
+      scheduleNextRun: true,
+      requireEnabled: enableArg == true,
+    );
     _emit(CatalogOp.update, req, [saved.id]);
     return _ok(
       req,
@@ -568,6 +598,16 @@ class AutomationCatalogModule implements CatalogKindModule {
   }
 
   String? _optionalId(CatalogRequest req) => _text(req.arguments['id']);
+
+  /// Missing key → null; present but not a boolean → [CatalogException].
+  bool? _boolArg(CatalogRequest req, String key) {
+    if (!req.arguments.containsKey(key)) return null;
+    final raw = req.arguments[key];
+    if (raw is! bool) {
+      throw CatalogException('invalid_argument', '$key must be a boolean');
+    }
+    return raw;
+  }
 
   static String? _text(Object? value) {
     if (value is! String) return null;
