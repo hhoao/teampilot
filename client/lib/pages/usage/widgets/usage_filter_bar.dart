@@ -38,32 +38,39 @@ class _CliFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 2,
-      runSpacing: 2,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        _CliButton(
-          label: context.l10n.sessionUsageCliAll,
-          selected: state.cli == null,
-          onTap: () => cubit.setCli(null),
-        ),
-        for (final cli in CliTool.values)
-          Tooltip(
-            message: usageCliLabel(cli),
-            waitDuration: const Duration(milliseconds: 500),
-            child: _CliButton(
-              selected: state.cli == cli,
-              onTap: () => cubit.setCli(cli),
-              icon: CliBrandIcon(
-                cli: cli,
-                size: 18,
-                borderRadius: 4,
-                showBorder: false,
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      height: usageFilterControlHeight,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        border: Border.all(color: cs.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _CliButton(
+            label: context.l10n.sessionUsageCliAll,
+            selected: state.cli == null,
+            onTap: () => cubit.setCli(null),
+          ),
+          for (final cli in CliTool.values)
+            Tooltip(
+              message: usageCliLabel(cli),
+              waitDuration: const Duration(milliseconds: 500),
+              child: _CliButton(
+                selected: state.cli == cli,
+                onTap: () => cubit.setCli(cli),
+                icon: CliBrandIcon(
+                  cli: cli,
+                  size: context.tpIconSizes.md,
+                  borderRadius: 4,
+                  showBorder: false,
+                ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -92,16 +99,18 @@ class _CliButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(6),
         child: SizedBox(
-          width: 30,
-          height: 30,
-          child: Center(
-            child: label == null
-                ? icon
-                : Text(
-                    label!,
-                    style: selected ? styles.xsSemibold : styles.xsMedium,
+          height: 32,
+          child: label == null
+              ? SizedBox(width: 32, child: Center(child: icon))
+              : Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Center(
+                    child: Text(
+                      label!,
+                      style: selected ? styles.mdMedium : styles.md,
+                    ),
                   ),
-          ),
+                ),
         ),
       ),
     );
