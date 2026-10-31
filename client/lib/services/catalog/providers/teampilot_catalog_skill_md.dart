@@ -15,9 +15,9 @@ Use the `teampilot` MCP to search, install, import, create, update, unbind, or d
 1. Search first with `search_skills`, `search_plugins`, or `search_mcp`. Match an existing catalog entry before installing. Do not guess a git URL.
 2. Remote source, marketplace, or `script_url` → `install_skill` / `install_plugin` / `install_mcp`.
 3. A directory the agent already produced with Bash, `npx`, or an install script → `import_skill` / `import_plugin`. MCP JSON fragments → `import_mcp`.
-4. Write from scratch → `create_skill` (plugins cannot be created from scratch). Change installed files → `update_*`. Remove from this workspace only → `unbind_*`. Remove from the TeamPilot library → `delete_*`.
+4. Write from scratch → `create_skill` (plugins cannot be created from scratch). Change installed files → `update_*`. Remove from this workspace only → `unbind_*`. Remove from the TeamPilot library → `delete_skill` / `delete_plugin` / `delete_mcp`.
 5. Recurring or scheduled work → `create_automation` (created disabled; the user enables it in Automations, or you call `update_automation` with `enabled:true` only when asked). Read with `read_automation`, test with `run_automation`, clean up with `delete_automation`.
-6. On success, tell the user to reconnect the session using the tool result `message`. The current session does not hot-load the change.
+6. For skill/plugin/MCP changes, on success tell the user to reconnect the session using the tool result `message`. The current session does not hot-load those changes; automation changes apply immediately.
 7. Never write to `~/.claude/skills`, `.claude/skills`, or `~/.claude.json`. Do not `git clone` into `~/.claude`, treat a project `.mcp.json` as installed into TeamPilot, or treat `claude mcp add` as done.
 
 TeamPilot stores the global library under the application data directory and binds ids in workspace project config. Isolation wipes `~/.claude` paths on the next session start.
