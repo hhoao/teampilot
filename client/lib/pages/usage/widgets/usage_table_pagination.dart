@@ -35,7 +35,7 @@ class UsageTablePagination extends StatelessWidget {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final styles = TpTextStyles.of(context);
-    final muted = styles.xs.copyWith(
+    final muted = styles.md.copyWith(
       color: cs.onSurface.withValues(alpha: 0.56),
     );
 
@@ -63,7 +63,7 @@ class UsageTablePagination extends StatelessWidget {
                   value: pageSize,
                   isDense: true,
                   borderRadius: BorderRadius.circular(8),
-                  style: styles.xs.copyWith(color: cs.onSurface),
+                  style: styles.md.copyWith(color: cs.onSurface),
                   items: [
                     for (final size in pageSizeOptions)
                       DropdownMenuItem(value: size, child: Text('$size')),
