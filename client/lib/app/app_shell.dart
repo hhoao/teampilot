@@ -2604,6 +2604,7 @@ Future<AppShell> buildAppShell({
       if (!automationCubit.isClosed) {
         unawaited(automationCubit.reloadPreservingScope());
       }
+    }
     chatCubit.bindAutomationsChangeNotifier(refreshAutomations);
     // Registered here rather than in CatalogRuntime.assemble because the
     // automation repo, scheduler and resolver locals are constructed below
