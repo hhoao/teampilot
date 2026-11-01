@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -8,40 +6,11 @@ import '../../../models/team_config.dart';
 import '../../../services/cli/registry/capabilities/cli_transport_capability.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
 
+export '../../../services/chat/launch/session/launch_acp_policy.dart'
+    show resolveLaunchAcp;
+
 export '../../../services/chat/launch/session/member_acp_stamp.dart'
     show resolveMemberBindingAcp, shouldAttachMemberAcp, stampMemberAcp;
-
-bool _isAndroid(bool? isAndroidOverride) =>
-    isAndroidOverride ?? Platform.isAndroid;
-
-bool _personalAcpAllowed({
-  required bool isPersonal,
-  required CliTool? cli,
-  bool? isAndroidOverride,
-}) {
-  if (!isPersonal || cli == null) return false;
-  if (_isAndroid(isAndroidOverride)) return false;
-  return CliToolRegistry.builtIn()
-          .capability<CliTransportCapability>(cli)
-          ?.canChooseTransport ??
-      false;
-}
-
-/// Final ACP flag for a launch: [requested] only counts for personal Claude,
-/// Cursor, Codex, or OpenCode on desktop and is always false on Android.
-/// Gemini ACP is inferred by session create.
-bool resolveLaunchAcp({
-  required bool isPersonal,
-  required CliTool? cli,
-  required bool requested,
-  bool? isAndroidOverride,
-}) =>
-    requested &&
-    _personalAcpAllowed(
-      isPersonal: isPersonal,
-      cli: cli,
-      isAndroidOverride: isAndroidOverride,
-    );
 
 bool readPersonalAcpDefault(BuildContext context, CliTool? cli) {
   if (cli == null) return false;
