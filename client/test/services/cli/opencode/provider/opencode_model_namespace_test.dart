@@ -106,4 +106,22 @@ void main() {
       'opencode',
     );
   });
+
+  group('parseOpencodeModelRef', () {
+    test('splits a known namespace prefix', () {
+      final go = parseOpencodeModelRef('opencode-go/deepseek-v4.1-flash')!;
+      expect(go.namespace, 'opencode-go');
+      expect(go.modelId, 'deepseek-v4.1-flash');
+
+      final zen = parseOpencodeModelRef('opencode/company/internal-model')!;
+      expect(zen.namespace, 'opencode');
+      expect(zen.modelId, 'company/internal-model');
+    });
+
+    test('leaves a bare id whole, even when it contains a slash', () {
+      expect(parseOpencodeModelRef('company/internal-model'), isNull);
+      expect(parseOpencodeModelRef('deepseek-v4.1-flash'), isNull);
+      expect(parseOpencodeModelRef(''), isNull);
+    });
+  });
 }

@@ -1238,7 +1238,8 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       SimpleLaunchFourTuple(
         cli: request.cli,
         providerId: request.providerId,
-        modelId: modelId,
+        namespace: request.namespace,
+        modelId: composeCustomModelRef(request.namespace, modelId),
         effort: _selectedEffort ?? '',
       ),
     );

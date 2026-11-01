@@ -26,6 +26,7 @@ import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/acp/acp_client_extensions.dart';
+import '../../services/acp/acp_model_ref.dart';
 import '../../services/acp/acp_session.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/native_command_capability.dart';
@@ -398,6 +399,9 @@ class SessionChatComposeSection extends StatelessWidget {
                                 lockedCli: providerList.toList(growable: false),
                               },
                               cliItems: [lockedCli],
+                              liveModelsByNamespace: acpModelState == null
+                                  ? const {}
+                                  : acpLiveModelsByNamespace(acpModelState),
                             )
                           : const <ComposeCascadeCliGroup>[];
                       final launchSpecs = session.isSimple
@@ -881,6 +885,7 @@ class SessionChatComposeSection extends StatelessWidget {
     required List<CliPreset> sameCliPresets,
     required CliTool lockedCli,
     required String selectedMemberId,
+    AcpChatRuntimeCubit? acpRuntime,
   }) async {
     final chatCubit = context.read<ChatCubit>();
     final live = _cubitSession(chatCubit, session.sessionId) ?? session;
@@ -906,6 +911,8 @@ class SessionChatComposeSection extends StatelessWidget {
           context,
           session: live,
           memberId: memberId,
+          previousProvider: live.provider,
+          acpRuntime: acpRuntime,
         );
       }
     } on Object {
@@ -929,6 +936,7 @@ class SessionChatComposeSection extends StatelessWidget {
       await _switchAcpModel(
         context: context,
         runtime: runtime,
+        sessionId: session.sessionId,
         modelId: value.modelId,
       );
       return;
@@ -942,6 +950,7 @@ class SessionChatComposeSection extends StatelessWidget {
         sameCliPresets: sameCliPresets,
         lockedCli: lockedCli,
         selectedMemberId: selectedMemberId,
+        acpRuntime: acpRuntime,
       );
       return;
     }
@@ -951,8 +960,10 @@ class SessionChatComposeSection extends StatelessWidget {
         context,
         session: session,
         provider: tuple.providerId,
+        namespace: tuple.namespace,
         model: tuple.modelId,
         effort: tuple.effort,
+        acpRuntime: acpRuntime,
       );
       return;
     }
@@ -968,8 +979,10 @@ class SessionChatComposeSection extends StatelessWidget {
         context,
         session: session,
         provider: value.providerId,
-        model: modelId,
+        namespace: value.namespace,
+        model: composeCustomModelRef(value.namespace, modelId),
         effort: session.effort,
+        acpRuntime: acpRuntime,
       );
       return;
     }
@@ -1003,16 +1016,76 @@ class SessionChatComposeSection extends StatelessWidget {
   static Future<void> _switchAcpModel({
     required BuildContext context,
     required AcpChatRuntimeCubit runtime,
+    required String sessionId,
     required String modelId,
   }) async {
     if (modelId.isEmpty) return;
     final ok = await runtime.setModel(modelId);
-    if (ok || !context.mounted) return;
-    AppToast.show(
+    if (!ok) {
+      if (!context.mounted) return;
+      AppToast.show(
+        context,
+        message: context.l10n.acpModelSwitchFailed,
+        variant: TpToastVariant.warning,
+      );
+      return;
+    }
+    // Keep the session's launch identity in sync: the agent persists the model
+    // in its own session store, but a fresh `session/new` (no resume) would
+    // otherwise start from the old launch config.
+    await _persistAcpModelChoice(
       context,
-      message: context.l10n.acpModelSwitchFailed,
-      variant: TpToastVariant.warning,
+      runtime: runtime,
+      sessionId: sessionId,
+      modelId: modelId,
     );
+  }
+
+  static Future<void> _persistAcpModelChoice(
+    BuildContext context, {
+    required AcpChatRuntimeCubit runtime,
+    required String sessionId,
+    required String modelId,
+  }) async {
+    final chatCubit = context.read<ChatCubit>();
+    final live = _cubitSession(chatCubit, sessionId);
+    if (live == null || !live.isSimple) return;
+    final slash = modelId.indexOf('/');
+    final namespace = slash > 0 ? modelId.substring(0, slash) : '';
+    final bare = slash > 0 ? modelId.substring(slash + 1) : modelId;
+    final ref = acpPersistedModelRef(
+      state: runtime.state.modelState,
+      namespace: namespace,
+      model: bare,
+    );
+    if (ref == live.model) return;
+    await chatCubit.setSessionContinueCustom(
+      sessionId: sessionId,
+      provider: live.provider,
+      model: ref,
+      effort: live.effort,
+    );
+  }
+
+  /// Switches the live ACP agent to the session's persisted provider/model.
+  ///
+  /// Returns true when the agent advertised that exact model and accepted it,
+  /// meaning the switch is live and no restart is needed. An effort-only change
+  /// (same model) returns false so the restart still re-stages the config.
+  static Future<bool> _applyAcpLaunchModel({
+    required AcpChatRuntimeCubit runtime,
+    required AppSession live,
+    required String namespace,
+  }) async {
+    final state = runtime.state.modelState;
+    if (state == null) return false;
+    final target = acpModelIdForLaunch(
+      state: state,
+      namespace: namespace,
+      model: live.model,
+    );
+    if (target == null || target == state.currentId) return false;
+    return runtime.setModel(target);
   }
 
   static Future<void> _applyContinueCustom(
@@ -1021,6 +1094,8 @@ class SessionChatComposeSection extends StatelessWidget {
     required String provider,
     required String model,
     required String effort,
+    String namespace = '',
+    AcpChatRuntimeCubit? acpRuntime,
   }) async {
     final chatCubit = context.read<ChatCubit>();
     final live = _cubitSession(chatCubit, session.sessionId);
@@ -1032,7 +1107,11 @@ class SessionChatComposeSection extends StatelessWidget {
       final ok = await chatCubit.setSessionContinueCustom(
         sessionId: live.sessionId,
         provider: provider,
-        model: model,
+        model: acpPersistedModelRef(
+          state: acpRuntime?.state.modelState,
+          namespace: namespace,
+          model: model,
+        ),
         effort: effort,
       );
       if (!ok && context.mounted) {
@@ -1044,6 +1123,9 @@ class SessionChatComposeSection extends StatelessWidget {
           context,
           session: live,
           memberId: null,
+          previousProvider: live.provider,
+          namespace: namespace,
+          acpRuntime: acpRuntime,
         );
       }
     } on Object {
@@ -1052,15 +1134,42 @@ class SessionChatComposeSection extends StatelessWidget {
   }
 
   /// After a successful provider/model switch, the running terminal keeps the
-  /// old materialized config. Offer an immediate restart so the switch lands;
-  /// team members restart only their own PTY, Simple restarts the session.
+  /// old materialized config. For ACP seats the agent can switch to the picked
+  /// model in place; only when the provider row changed (new credentials /
+  /// endpoint), the agent does not advertise that id, or only the effort
+  /// changed does the seat need a restart. PTY seats always restart.
   static Future<void> _offerRestartAfterIdentitySwitch(
     BuildContext context, {
     required AppSession session,
     required String? memberId,
+    required String previousProvider,
+    String namespace = '',
+    AcpChatRuntimeCubit? acpRuntime,
   }) async {
     final chatCubit = context.read<ChatCubit>();
     final sessionId = session.sessionId;
+    if (session.isSimple && acpRuntime != null) {
+      final live = _cubitSession(chatCubit, sessionId);
+      // A provider row change must re-materialize that row's credentials and
+      // endpoint, and an effort change is part of the launch config, so neither
+      // can be replaced by a live model switch.
+      final providerChanged =
+          live != null &&
+          live.provider.trim() != previousProvider.trim();
+      final effortChanged =
+          live != null && live.effort.trim() != session.effort.trim();
+      if (!providerChanged &&
+          !effortChanged &&
+          live != null &&
+          await _applyAcpLaunchModel(
+            runtime: acpRuntime,
+            live: live,
+            namespace: namespace,
+          )) {
+        return;
+      }
+    }
+    if (!context.mounted) return;
     final running = session.isSimple
         ? chatCubit.isSessionRunning(sessionId)
         : (memberId?.isNotEmpty == true &&

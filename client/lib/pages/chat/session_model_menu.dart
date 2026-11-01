@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_ui/shared_ui.dart';
 
+import '../../services/acp/acp_model_ref.dart';
 import '../../services/acp/acp_session.dart';
 
 /// A menu pick that switches the live ACP agent model.
@@ -50,4 +51,41 @@ List<TpActionMenuSpec> buildSessionModelMenuSpecs({
       ),
     ],
   ];
+}
+
+/// The live agent model id for a launch-config [namespace] / [model] pair.
+///
+/// Agents advertise their own ids. Most use the bare model id; OpenCode
+/// qualifies it with the upstream namespace (`opencode-go/<model>`).
+///
+/// Returns null when the agent does not advertise the pair — the caller must
+/// then restart the seat instead of switching the live session.
+String? acpModelIdForLaunch({
+  required AcpModelState state,
+  required String namespace,
+  required String model,
+}) => acpModelIdForLaunchRef(
+  state: state,
+  provider: namespace,
+  model: model,
+  // An explicit namespace is the pick's own decision: never fall back to the
+  // other layer's same-named model.
+  allowSuffix: namespace.trim().isEmpty,
+);
+
+/// The agent's advertised ids grouped by namespace prefix.
+///
+/// `opencode-go/x` → `{'opencode-go': ['x']}`; a bare `sonnet` → `{'': ['sonnet']}`.
+/// Used to build the launch picker from what the running agent actually serves.
+Map<String, List<String>> acpLiveModelsByNamespace(AcpModelState state) {
+  final byNamespace = <String, List<String>>{};
+  for (final option in state.options) {
+    final id = option.id;
+    final slash = id.indexOf('/');
+    final namespace = slash > 0 ? id.substring(0, slash) : '';
+    final model = slash > 0 ? id.substring(slash + 1) : id;
+    if (model.isEmpty) continue;
+    (byNamespace[namespace] ??= <String>[]).add(model);
+  }
+  return byNamespace;
 }

@@ -256,11 +256,15 @@ void main() {
     AcpAgentSessionStore? agentSession,
     SeatBackgroundLeasePort? seatLeases,
     Duration? backgroundSyncInterval,
+    String launchProvider = '',
+    String launchModel = '',
   }) {
     final cubit = AcpChatRuntimeCubit(
       runtime: runtime,
       sessionId: 's1',
       tool: CliTool.gemini,
+      launchProvider: launchProvider,
+      launchModel: launchModel,
       attention: attention,
       transcript: transcript,
       agentSession: agentSession,
@@ -420,6 +424,61 @@ void main() {
 
     expect(await cubit.setModel('opus'), isFalse);
     expect(cubit.state.modelState!.currentId, 'sonnet');
+    await cubit.close();
+  });
+
+  test('start applies the persisted launch model', () async {
+    // OpenCode v2 ignores `opencode.json`'s `model` for ACP sessions, so the
+    // cubit must apply the launch identity itself after the session opens.
+    runtime.modelState = const AcpModelState(
+      configId: 'model',
+      currentId: 'opencode/flint-40b-free',
+      options: [
+        AcpModelOption(id: 'opencode/flint-40b-free', name: 'Flint'),
+        AcpModelOption(
+          id: 'opencode-go/deepseek-v4.1-flash',
+          name: 'Go Flash',
+        ),
+      ],
+    );
+    final cubit = bootCubit(
+      launchProvider: 'opencode-go-google',
+      launchModel: 'deepseek-v4.1-flash',
+    );
+    await cubit.start(
+      executable: 'opencode',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+
+    expect(runtime.setModels, ['opencode-go/deepseek-v4.1-flash']);
+    expect(
+      cubit.state.modelState!.currentId,
+      'opencode-go/deepseek-v4.1-flash',
+    );
+    await cubit.close();
+  });
+
+  test('start leaves an unserved launch model alone', () async {
+    runtime.modelState = const AcpModelState(
+      configId: 'model',
+      currentId: 'opencode/flint-40b-free',
+      options: [
+        AcpModelOption(id: 'opencode/flint-40b-free', name: 'Flint'),
+      ],
+    );
+    final cubit = bootCubit(
+      launchProvider: 'opencode',
+      launchModel: 'deepseek-v4.1-flash',
+    );
+    await cubit.start(
+      executable: 'opencode',
+      sessionToolDir: '/tmp/tool',
+      workingDirectory: '/w',
+    );
+
+    expect(runtime.setModels, isEmpty);
+    expect(cubit.state.modelState!.currentId, 'opencode/flint-40b-free');
     await cubit.close();
   });
 

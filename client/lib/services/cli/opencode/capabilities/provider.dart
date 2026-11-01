@@ -462,9 +462,16 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       launchProvider ??= await resolver.resolveSole();
     }
 
-    final modelNamespace = launchProvider != null
-        ? _modelNamespace(launchProvider, member?.model ?? '')
-        : (member?.provider.trim() ?? '');
+    // A custom id carries its picked namespace as a prefix (`opencode-go/<id>`)
+    // because it has no catalog entry to infer from. Catalog ids stay bare and
+    // resolve their namespace from the provider binding + model list.
+    final modelRef = parseOpencodeModelRef(member?.model);
+    final memberModel = modelRef?.modelId ?? (member?.model ?? '').trim();
+    final modelNamespace =
+        modelRef?.namespace ??
+        (launchProvider != null
+            ? _modelNamespace(launchProvider, memberModel)
+            : (member?.provider.trim() ?? ''));
 
     if (launchProvider != null) {
       config = mergeOpencodeProvider(config, launchProvider);
@@ -479,7 +486,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
           config,
           launchProvider,
           effort,
-          memberModel: member?.model,
+          memberModel: memberModel,
           providerId: modelNamespace,
         );
       }
@@ -490,7 +497,7 @@ final class OpencodeProviderCapability extends CatalogModelCapability
       final withModel = mergeOpencodeDefaultModel(
         config,
         providerId: modelNamespace,
-        modelId: member.model,
+        modelId: memberModel,
       );
       if (!identical(withModel, config)) {
         config = withModel;

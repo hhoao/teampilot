@@ -112,7 +112,8 @@ class _LaunchFourTuplePickerState extends State<LaunchFourTuplePicker> {
         SimpleLaunchFourTuple(
           cli: value.cli,
           providerId: value.providerId,
-          modelId: modelId,
+          namespace: value.namespace,
+          modelId: composeCustomModelRef(value.namespace, modelId),
           effort: widget.value?.effort ?? '',
         ),
       );

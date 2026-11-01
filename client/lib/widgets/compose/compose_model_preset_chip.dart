@@ -20,8 +20,19 @@ enum ComposeModelPresetChipAction { manage, savePreset }
 
 sealed class CascadeSelection {
   final CliTool cli;
+
+  /// Provider catalog row id (what the session/preset persists as `provider`).
   final String providerId;
-  const CascadeSelection({required this.cli, required this.providerId});
+
+  /// Upstream model namespace the leaf was picked under, when the provider
+  /// splits its catalog into layers (OpenCode Zen / Go). Empty for CLIs whose
+  /// agent model ids are bare.
+  final String namespace;
+  const CascadeSelection({
+    required this.cli,
+    required this.providerId,
+    this.namespace = '',
+  });
 }
 
 final class CascadeModelPick extends CascadeSelection {
@@ -31,6 +42,7 @@ final class CascadeModelPick extends CascadeSelection {
     required super.cli,
     required super.providerId,
     required this.modelId,
+    super.namespace,
   });
 }
 
@@ -42,6 +54,7 @@ final class CascadeEffortPick extends CascadeSelection {
     required super.providerId,
     required this.modelId,
     required this.effort,
+    super.namespace,
   });
 }
 
@@ -49,6 +62,7 @@ final class CascadeCustomModelRequest extends CascadeSelection {
   const CascadeCustomModelRequest({
     required super.cli,
     required super.providerId,
+    super.namespace,
   });
 }
 
@@ -126,10 +140,17 @@ final class CascadeCatalogListenable extends ChangeNotifier {
   }
 }
 
+/// Builds the provider → model cascade for the compose menu.
+///
+/// [liveModelsByNamespace] — when an ACP seat is open, the agent's advertised
+/// model ids grouped by their namespace prefix (bare ids under `''`). It is the
+/// authoritative list for that seat: the catalog may offer ids the running
+/// agent does not serve, and picking one only fails on the next turn.
 List<ComposeCascadeCliGroup> resolveComposeCascadeCliGroups({
   required CliToolRegistry registry,
   required Map<CliTool, List<AppProviderConfig>> providersByCli,
   required List<CliTool> cliItems,
+  Map<String, List<String>> liveModelsByNamespace = const {},
 }) {
   final groups = <ComposeCascadeCliGroup>[];
   for (final cli in cliItems) {
@@ -145,13 +166,31 @@ List<ComposeCascadeCliGroup> resolveComposeCascadeCliGroups({
     final cascadeProviders = <ComposeCascadeProvider>[];
     for (final p in providers) {
       final mode = capability.pickerMode(p);
-      final models = mode == ProviderModelPickerMode.hidden
+      final catalogModels = mode == ProviderModelPickerMode.hidden
           ? const <String>[]
           : capability.modelCandidates(
               provider: p,
               providerId: p.id,
               currentModel: '',
             );
+      final catalogGroups = mode == ProviderModelPickerMode.hidden
+          ? const <ComposeCascadeModelGroup>[]
+          : [
+              for (final group in capability.modelGroups(
+                provider: p,
+                currentModel: '',
+              ))
+                ComposeCascadeModelGroup(
+                  namespace: group.namespace,
+                  models: group.models,
+                ),
+            ];
+      final (models, groups_) = _applyLiveModels(
+        provider: p,
+        catalogModels: catalogModels,
+        catalogGroups: catalogGroups,
+        live: liveModelsByNamespace,
+      );
       cascadeProviders.add(
         ComposeCascadeProvider(
           id: p.id,
@@ -166,22 +205,42 @@ List<ComposeCascadeCliGroup> resolveComposeCascadeCliGroups({
                   ? capability.effortCandidates(model: m, provider: p)
                   : const <String>[],
           },
-          groups: [
-            for (final group in capability.modelGroups(
-              provider: p,
-              currentModel: '',
-            ))
-              ComposeCascadeModelGroup(
-                namespace: group.namespace,
-                models: group.models,
-              ),
-          ],
+          groups: groups_,
         ),
       );
     }
     groups.add(ComposeCascadeCliGroup(cli: cli, providers: cascadeProviders));
   }
   return groups;
+}
+
+/// Replaces catalog models with the open ACP seat's advertised ids when
+/// available, so the launch picker cannot offer a model the agent would reject.
+(List<String>, List<ComposeCascadeModelGroup>) _applyLiveModels({
+  required AppProviderConfig provider,
+  required List<String> catalogModels,
+  required List<ComposeCascadeModelGroup> catalogGroups,
+  required Map<String, List<String>> live,
+}) {
+  if (live.isEmpty) return (catalogModels, catalogGroups);
+  if (catalogGroups.isNotEmpty) {
+    final groupModels = <String>[];
+    final groups = <ComposeCascadeModelGroup>[];
+    for (final group in catalogGroups) {
+      final models = live[group.namespace];
+      if (models == null || models.isEmpty) continue;
+      groups.add(
+        ComposeCascadeModelGroup(namespace: group.namespace, models: models),
+      );
+      groupModels.addAll(models);
+    }
+    return (groupModels, groups);
+  }
+  final flat =
+      live[provider.id] ??
+      live[''] ??
+      [for (final models in live.values) ...models];
+  return (flat, catalogGroups);
 }
 
 Future<void> refreshComposeCascadeCatalog(
@@ -220,6 +279,7 @@ SimpleLaunchFourTuple? decodeComposeCascadeValue(Object? value) {
     return SimpleLaunchFourTuple(
       cli: value.cli,
       providerId: value.providerId,
+      namespace: value.namespace,
       modelId: value.modelId,
       effort: value.effort,
     );
@@ -228,6 +288,7 @@ SimpleLaunchFourTuple? decodeComposeCascadeValue(Object? value) {
     return SimpleLaunchFourTuple(
       cli: value.cli,
       providerId: value.providerId,
+      namespace: value.namespace,
       modelId: value.modelId,
       effort: '',
     );
@@ -238,6 +299,7 @@ SimpleLaunchFourTuple? decodeComposeCascadeValue(Object? value) {
 class SimpleLaunchFourTuple {
   final CliTool cli;
   final String providerId;
+  final String namespace;
   final String modelId;
   final String effort;
   const SimpleLaunchFourTuple({
@@ -245,7 +307,21 @@ class SimpleLaunchFourTuple {
     required this.providerId,
     required this.modelId,
     required this.effort,
+    this.namespace = '',
   });
+}
+
+/// Model ref for a custom id typed under [namespace].
+///
+/// Catalog ids stay bare (the launch resolves their namespace from the provider
+/// + catalog); a custom id has no catalog entry, so the picked namespace is
+/// prefixed to keep it self-describing. An id that already contains `/` is left
+/// alone — it is either already qualified or belongs to another namespace.
+String composeCustomModelRef(String namespace, String modelId) {
+  final ns = namespace.trim();
+  final id = modelId.trim();
+  if (ns.isEmpty || id.isEmpty || id.contains('/')) return id;
+  return '$ns/$id';
 }
 
 List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
@@ -266,11 +342,11 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
   bool showSavePreset = true,
   bool showManagePresets = true,
 }) {
-  /// Model rows for one upstream namespace.
+  /// Model rows for one provider, optionally one upstream namespace.
   ///
-  /// [namespace] — not `p.id` — is what the pick reports, because the launch
-  /// writes `model: "<namespace>/<model>"`. The pick therefore carries the
-  /// namespace instead of anything re-deriving it later.
+  /// The pick reports the provider **row id** (what the session/preset stores)
+  /// and the namespace separately, so a provider switch is not confused with a
+  /// namespace switch.
   List<TpActionMenuSpec> modelRows(
     ComposeCascadeCliGroup group,
     ComposeCascadeProvider p,
@@ -283,7 +359,8 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
           TpActionMenuSpec.submenu(
             value: CascadeModelPick(
               cli: group.cli,
-              providerId: namespace,
+              providerId: p.id,
+              namespace: namespace,
               modelId: model,
             ),
             label: model,
@@ -291,7 +368,8 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
               TpActionMenuSpec.item(
                 value: CascadeModelPick(
                   cli: group.cli,
-                  providerId: namespace,
+                  providerId: p.id,
+                  namespace: namespace,
                   modelId: model,
                 ),
                 label: defaultEffortLabel,
@@ -301,7 +379,8 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
                 TpActionMenuSpec.item(
                   value: CascadeEffortPick(
                     cli: group.cli,
-                    providerId: namespace,
+                    providerId: p.id,
+                    namespace: namespace,
                     modelId: model,
                     effort: e,
                   ),
@@ -313,7 +392,8 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
           TpActionMenuSpec.item(
             value: CascadeModelPick(
               cli: group.cli,
-              providerId: namespace,
+              providerId: p.id,
+              namespace: namespace,
               modelId: model,
             ),
             label: model,
@@ -335,7 +415,7 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
             enabled: false,
           )
         else
-          ...modelRows(group, p, p.models, p.id)
+          ...modelRows(group, p, p.models, '')
       else
         for (final g in p.groups)
           TpActionMenuSpec.submenu(
@@ -350,7 +430,8 @@ List<TpActionMenuSpec> buildComposeModelCascadeMenuSpecs({
                 TpActionMenuSpec.item(
                   value: CascadeCustomModelRequest(
                     cli: group.cli,
-                    providerId: g.namespace,
+                    providerId: p.id,
+                    namespace: g.namespace,
                   ),
                   label: customModelIdLabel,
                 ),

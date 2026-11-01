@@ -13,6 +13,7 @@ import '../../../services/acp/acp_chat_strings.dart';
 import '../../../services/acp/acp_chat_transcript.dart';
 import '../../../services/acp/acp_chat_transcript_replay.dart';
 import '../../../services/acp/acp_client_extensions.dart';
+import '../../../services/acp/acp_model_ref.dart';
 import '../../../services/acp/acp_rpc_error.dart';
 import '../../../services/acp/acp_session.dart';
 import '../../../services/acp/acp_session_runtime.dart';
@@ -160,6 +161,8 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     required this.sessionId,
     required this.tool,
     this.seatMemberId = acpMemberId,
+    this.launchProvider = '',
+    this.launchModel = '',
     AgentAttentionPort? attention,
     AcpChatTranscriptWriter? transcript,
     AcpAgentSessionStore? agentSession,
@@ -198,6 +201,15 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   final String sessionId;
   final CliTool tool;
   final String seatMemberId;
+
+  /// Launch identity persisted on the session (provider row + model ref).
+  ///
+  /// Applied to the agent once after [start]: OpenCode v2 ignores
+  /// `opencode.json`'s `model` for ACP sessions, so without this a restart
+  /// silently falls back to the agent's default model.
+  final String launchProvider;
+  final String launchModel;
+
   final AgentAttentionPort? _attention;
   final AcpChatTranscriptWriter? _transcript;
   final AcpAgentSessionStore? _agentSession;
@@ -324,6 +336,35 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         stackTrace: stackTrace,
       );
       return false;
+    }
+  }
+
+  /// Aligns the just-opened agent with the session's persisted launch model.
+  ///
+  /// The CLI config is not authoritative for every agent (OpenCode v2 ignores
+  /// `opencode.json`'s `model` in ACP mode), so the launch identity is applied
+  /// explicitly. A model the agent does not advertise is left alone: the seat
+  /// keeps the agent's own selection rather than failing the launch.
+  Future<void> _applyLaunchModel() async {
+    if (launchModel.trim().isEmpty) return;
+    final modelRuntime = _runtime is AcpModelSwitchApi
+        ? _runtime as AcpModelSwitchApi
+        : null;
+    final state = modelRuntime?.modelState;
+    if (state == null) return;
+    final target = acpModelIdForLaunchRef(
+      state: state,
+      provider: launchProvider,
+      model: launchModel,
+    );
+    if (target == null || target == state.currentId) return;
+    try {
+      await modelRuntime!.setModel(target);
+      appLogger.d('[acp-chat] session $sessionId applied launch model $target');
+    } on Object catch (error) {
+      appLogger.w(
+        '[acp-chat] session $sessionId launch model $target failed: $error',
+      );
     }
   }
 
@@ -471,6 +512,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       // can move), so this is the fallback for agents without `session/list`.
       unawaited(_agentSession?.write(liveId, cwd: effectiveWorkingDirectory));
     }
+    await _applyLaunchModel();
     emit(
       state.copyWith(phase: AcpChatPhase.ready, modelState: _readModelState()),
     );

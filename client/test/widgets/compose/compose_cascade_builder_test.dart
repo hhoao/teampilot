@@ -65,8 +65,56 @@ void main() {
       expect(groups.where((g) => g.cli == CliTool.codex), isEmpty);
     });
 
-    test('sorts providers by category then lowercase name', () {
-      final zebra = AppProviderConfig(
+    test('live agent models replace the catalog groups', () {
+      const bound = AppProviderConfig(
+        id: 'opencode',
+        cli: CliTool.opencode,
+        name: 'OpenCode',
+        config: {'opencodeSubscription': 'opencode-go'},
+      );
+
+      final groups = resolveComposeCascadeCliGroups(
+        registry: registry,
+        providersByCli: {
+          CliTool.opencode: [bound],
+        },
+        cliItems: [CliTool.opencode],
+        liveModelsByNamespace: const {
+          'opencode-go': ['hy3'],
+          'opencode': ['big-pickle'],
+        },
+      );
+
+      final p = groups.single.providers.single;
+      expect(p.groups.map((g) => g.namespace), ['opencode-go', 'opencode']);
+      expect(p.groups[0].models, ['hy3']);
+      expect(p.groups[1].models, ['big-pickle']);
+    });
+
+    test('drops a namespace the running agent does not advertise', () {
+      const bound = AppProviderConfig(
+        id: 'opencode',
+        cli: CliTool.opencode,
+        name: 'OpenCode',
+        config: {'opencodeSubscription': 'opencode-go'},
+      );
+
+      final groups = resolveComposeCascadeCliGroups(
+        registry: registry,
+        providersByCli: {
+          CliTool.opencode: [bound],
+        },
+        cliItems: [CliTool.opencode],
+        liveModelsByNamespace: const {
+          'opencode-go': ['hy3'],
+        },
+      );
+
+      final p = groups.single.providers.single;
+      expect(p.groups.map((g) => g.namespace), ['opencode-go']);
+    });
+
+    test('sorts providers by category then lowercase name', () {      final zebra = AppProviderConfig(
         id: 'z',
         cli: CliTool.claude,
         name: 'Zebra',
@@ -486,19 +534,24 @@ void main() {
       expect(levelTwo[0].children!.last.label, 'Custom model ID…');
       final goCustom =
           levelTwo[0].children!.last.value as CascadeCustomModelRequest;
-      expect(goCustom.providerId, 'opencode-go');
+      expect(goCustom.providerId, 'opencode');
+      expect(goCustom.namespace, 'opencode-go');
 
       final freeCustom =
           levelTwo[1].children!.last.value as CascadeCustomModelRequest;
       expect(freeCustom.providerId, 'opencode');
+      expect(freeCustom.namespace, 'opencode');
 
-      // The pick carries the upstream namespace, not the catalog row id.
+      // The pick keeps the catalog row id (what a preset stores) and carries
+      // the upstream namespace separately.
       final goPick = levelTwo[0].children!.first.value as CascadeModelPick;
-      expect(goPick.providerId, 'opencode-go');
+      expect(goPick.providerId, 'opencode');
+      expect(goPick.namespace, 'opencode-go');
       expect(goPick.modelId, 'deepseek-v4.1-flash');
 
       final freePick = levelTwo[1].children!.first.value as CascadeModelPick;
       expect(freePick.providerId, 'opencode');
+      expect(freePick.namespace, 'opencode');
       expect(freePick.modelId, 'deepseek-v4.1-flash-free');
     });
   });

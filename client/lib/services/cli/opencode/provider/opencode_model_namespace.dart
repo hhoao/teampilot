@@ -1,5 +1,6 @@
 import '../../../../models/app_provider_config.dart';
 import '../opencode_config.dart';
+import '../opencode_go_layer.dart';
 import 'opencode_model_catalog.dart';
 
 /// Which upstream provider a model must be requested from.
@@ -59,4 +60,33 @@ abstract final class OpencodeModelNamespace {
   /// Offline fallback used when the live `models.dev` cache is unavailable.
   static List<String> staticSubscriptionModels(String subscriptionKey) =>
       OpencodeModelCatalog.knownModelsForProvider(subscriptionKey);
+}
+
+/// Splits a qualified model ref (`opencode-go/<id>`) into namespace + id.
+///
+/// Only a known OpenCode namespace prefix qualifies. A bare id — including a
+/// custom id that itself contains `/` — stays whole, so a launch can still
+/// infer its namespace from the provider binding.
+OpencodeModelRef? parseOpencodeModelRef(String? model) {
+  final ref = model?.trim() ?? '';
+  if (ref.isEmpty) return null;
+  final slash = ref.indexOf('/');
+  if (slash <= 0 || slash == ref.length - 1) return null;
+  final namespace = ref.substring(0, slash);
+  if (namespace != OpencodeModelNamespace.zen &&
+      !OpencodeGoLayer.isNamespace(namespace)) {
+    return null;
+  }
+  return OpencodeModelRef(
+    namespace: namespace,
+    modelId: ref.substring(slash + 1),
+  );
+}
+
+/// One OpenCode model reference and the upstream namespace that serves it.
+class OpencodeModelRef {
+  const OpencodeModelRef({required this.namespace, required this.modelId});
+
+  final String namespace;
+  final String modelId;
 }

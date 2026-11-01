@@ -207,6 +207,8 @@ class AcpRuntimeAttach {
       sshLaunch: sshLaunch,
       remoteAdapterPath: remoteAdapterPath,
       processWorkingDirectory: workingDirectory,
+      launchProvider: session.provider,
+      launchModel: session.model,
     );
     tab.acpRuntime = cubit;
     tab.reclaimedAcpRuntime = false;
@@ -397,6 +399,8 @@ class AcpRuntimeAttach {
       launchTarget: launchTarget,
       sshLaunch: null,
       processWorkingDirectory: staged.workingDirectory,
+      launchProvider: member.provider,
+      launchModel: member.model,
     );
     tab.memberAcpRuntimes[member.id] = cubit;
     _listenForMemberIdle(tab, member.id, cubit);
@@ -470,6 +474,8 @@ class AcpRuntimeAttach {
     required String? memberId,
     required RuntimeTarget launchTarget,
     required String processWorkingDirectory,
+    String launchProvider = '',
+    String launchModel = '',
     AcpSshLaunch? sshLaunch,
     String? remoteAdapterPath,
   }) {
@@ -503,6 +509,8 @@ class AcpRuntimeAttach {
       sessionId: session.sessionId,
       tool: cli,
       seatMemberId: personal ? AcpChatRuntimeCubit.acpMemberId : memberId!,
+      launchProvider: launchProvider,
+      launchModel: launchModel,
       attention: _host.agentAttentionCubit,
       seatLeases: switch (_host.seatLeaseCubit) {
         final SeatBackgroundLeasePort port => port,
