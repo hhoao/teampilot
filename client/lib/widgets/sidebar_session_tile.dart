@@ -738,7 +738,10 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                   icon: Icon(Icons.more_horiz, size: context.tpIconSizes.md),
                   onOpen: () => setState(() => _menuOpen = true),
                   onClose: () => setState(() => _menuOpen = false),
-                  buildMenuChildren: (context, controller) => [
+                  // Actions run after the popover closes: use the tile's own
+                  // context, never the popover builder's (that subtree is
+                  // gone by the time an awaited dialog returns).
+                  buildMenuChildren: (_, controller) => [
                     if (!widget.archiveMode)
                       TpActionMenuItem(
                         icon: Icons.vertical_split_outlined,

@@ -213,6 +213,30 @@ Future<SessionGroupsCubit> _groupsCubit(
   return cubit;
 }
 
+/// Records renames without touching disk, so the tile's rename round-trip can
+/// complete inside [testWidgets] (real file IO only finishes in runAsync).
+class _RenameRecordingRepo extends SessionRepository {
+  _RenameRecordingRepo() : super(storage: testHomeStorage);
+
+  final renamed = <String, String>{};
+
+  @override
+  Future<void> renameSession(String sessionId, String newName) async {
+    renamed[sessionId] = newName;
+  }
+}
+
+Future<void> _openHoverOverflowMenu(WidgetTester tester) async {
+  final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+  await mouse.addPointer(location: Offset.zero);
+  addTearDown(mouse.removePointer);
+  await tester.pump();
+  await mouse.moveTo(tester.getCenter(find.byType(TpHoverRow)));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byIcon(Icons.more_horiz));
+  await tester.pumpAndSettle();
+}
+
 Future<void> _openContextMenu(WidgetTester tester) async {
   await tester.tap(
     find.byType(SidebarSessionTile),
@@ -1457,5 +1481,44 @@ void main() {
     TpToast.dismiss();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
+  });
+
+  testWidgets('rename from the hover overflow menu applies the new title', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    final session = _session.copyWith(display: 'old-title');
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    chatCubit.emit(chatCubit.state.copyWith(sessions: [session]));
+    final (attention, automationCubit) = _tileCubits();
+    final repo = _RenameRecordingRepo();
+    addTearDown(chatCubit.close);
+    addTearDown(automationCubit.close);
+    addTearDown(attention.close);
+
+    await tester.pumpWidget(
+      _host(
+        chatCubit: chatCubit,
+        automationCubit: automationCubit,
+        attentionCubit: attention,
+        sessionRepository: repo,
+        child: SidebarSessionTile(session: session, onTap: () {}),
+      ),
+    );
+    await tester.pump();
+
+    await _openHoverOverflowMenu(tester);
+    await tester.tap(find.text('Rename conversation'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'new-title');
+    await tester.pump();
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(repo.renamed['sess-1'], 'new-title');
+    expect(chatCubit.state.sessions.single.display, 'new-title');
+    expect(find.text('new-title'), findsWidgets);
+    debugDefaultTargetPlatformOverride = null;
   });
 }
