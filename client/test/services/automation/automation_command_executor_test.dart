@@ -44,12 +44,29 @@ void main() {
     final automations = await env.repository.listForWorkspace('ws1');
     expect(automations.single.runCount, 1);
   });
+
+  test('runner failure records dispatchFailed and advances runCount', () async {
+    final env = await _TestEnv.build(null, failOnRun: true);
+
+    final run = await env.executor.enqueue(env.automation);
+
+    expect(run!.status, AutomationRunStatus.dispatchFailed);
+    expect(run.error, 'runner_failed');
+    expect(run.completedAtMs, isNotNull);
+
+    final stored = await env.repository.runsFor('ws1');
+    expect(stored.single.status, AutomationRunStatus.dispatchFailed);
+    expect(stored.single.error, 'runner_failed');
+    final automations = await env.repository.listForWorkspace('ws1');
+    expect(automations.single.runCount, 1);
+  });
 }
 
 class _GatedRunner implements AutomationCommandRunner {
-  _GatedRunner(this.outcome);
+  _GatedRunner(this.outcome, {this.failOnRun = false});
 
   final AutomationCommandOutcome? outcome;
+  final bool failOnRun;
   final Completer<void> _gate = Completer<void>();
   final Completer<void> _started = Completer<void>();
 
@@ -62,6 +79,7 @@ class _GatedRunner implements AutomationCommandRunner {
   @override
   Future<AutomationCommandOutcome> run(AutomationCommandRequest request) async {
     if (!_started.isCompleted) _started.complete();
+    if (failOnRun) throw StateError('runner boom');
     if (outcome != null) return outcome!;
     await _gate.future;
     return const AutomationCommandOutcome(exitCode: 0);
@@ -76,7 +94,10 @@ class _TestEnv {
   final _GatedRunner runner;
   final Automation automation;
 
-  static Future<_TestEnv> build(AutomationCommandOutcome? outcome) async {
+  static Future<_TestEnv> build(
+    AutomationCommandOutcome? outcome, {
+    bool failOnRun = false,
+  }) async {
     final layout = WorkspaceLayout(
       teampilotRoot: testHomeStorage.paths.basePath,
       fs: testHomeStorage.fs,
@@ -100,7 +121,7 @@ class _TestEnv {
       updatedAtMs: 0,
     );
     await repository.upsert(automation);
-    final runner = _GatedRunner(outcome);
+    final runner = _GatedRunner(outcome, failOnRun: failOnRun);
     final executor = AutomationCommandExecutor(
       repository: repository,
       accounting: AutomationRunAccounting(AutomationScheduleCalculator()),

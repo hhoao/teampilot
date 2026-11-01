@@ -423,4 +423,53 @@ void main() {
     expect(stale.status, AutomationRunStatus.dispatchFailed);
     expect(stale.error, 'interrupted');
   });
+
+  test('scheduled runCommand records the due slot as scheduledForMs', () async {
+    final layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+    final executor = AutomationCommandExecutor(
+      repository: repo,
+      accounting: AutomationRunAccounting(AutomationScheduleCalculator()),
+      runner: _NoopRunner(),
+      nowMs: () => _now,
+    );
+    final scheduler = AutomationScheduler(
+      repository: repo,
+      dispatcher: _buildDispatcher(
+        repo: repo,
+        bus: _RecordingBusGateway(),
+        sessions: const [],
+      ),
+      scheduleCalculator: AutomationScheduleCalculator(),
+      commandExecutor: executor,
+      nowMs: () => _now,
+    );
+    final dueSlot = _now - const Duration(hours: 2).inMilliseconds;
+    final automation = _runCommandAutomation(
+      catchUpPolicy: AutomationCatchUpPolicy.once,
+      nextRunAtMs: dueSlot,
+    );
+    await repo.upsert(automation);
+
+    scheduler.start();
+    await scheduler.waitForIdle();
+    await executor.waitForIdle();
+    scheduler.stop();
+
+    final runs = await repo.runsFor('ws1');
+    expect(runs.single.scheduledForMs, dueSlot);
+    expect(runs.single.status, AutomationRunStatus.completed);
+    final stored = (await repo.listForWorkspace('ws1')).single;
+    expect(stored.runCount, 1);
+    expect(
+      stored.nextRunAtMs,
+      AutomationScheduleCalculator().computeNextRunAtMs(
+        automation,
+        afterMs: _now,
+      ),
+    );
+  });
 }

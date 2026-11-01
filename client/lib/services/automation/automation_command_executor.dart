@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../models/automation.dart';
 import '../../repositories/automation_repository.dart';
+import '../../utils/logging/logger.dart';
 import 'automation_command_runner.dart';
 import 'automation_run_accounting.dart';
 
@@ -90,14 +91,23 @@ class AutomationCommandExecutor {
     );
     await _repository.upsertRun(automation.workspaceId, pending);
 
-    final outcome = await _runner.run(
-      AutomationCommandRequest(
-        workspaceId: automation.workspaceId,
-        command: automation.command ?? '',
-        workingDirectoryPath: automation.workingDirectoryPath,
-        timeoutSeconds: automation.timeoutSeconds,
-      ),
+    final request = AutomationCommandRequest(
+      workspaceId: automation.workspaceId,
+      command: automation.command ?? '',
+      workingDirectoryPath: automation.workingDirectoryPath,
+      timeoutSeconds: automation.timeoutSeconds,
     );
+    AutomationCommandOutcome outcome;
+    try {
+      outcome = await _runner.run(request);
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[automations] command runner failed for ${automation.id}: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      outcome = const AutomationCommandOutcome(error: 'runner_failed');
+    }
     final finishedAtMs = _nowMs();
     final finished = pending.copyWith(
       status: outcome.status,

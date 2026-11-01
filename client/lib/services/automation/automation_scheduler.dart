@@ -200,9 +200,23 @@ class AutomationScheduler {
     if (automation.isRunCommand) {
       if (executor == null) return;
       if (trigger == AutomationRunTrigger.manual) {
-        await executor.enqueue(claimed, trigger: trigger);
+        await executor.enqueue(automation, trigger: trigger);
       } else {
-        unawaited(executor.enqueue(claimed, trigger: trigger));
+        unawaited(
+          executor
+              .enqueue(automation, trigger: trigger)
+              .then<void>(
+                (_) {},
+                onError: (Object error, StackTrace stackTrace) {
+                  appLogger.w(
+                    '[automations] command enqueue failed for '
+                    '${automation.id}: $error',
+                    error: error,
+                    stackTrace: stackTrace,
+                  );
+                },
+              ),
+        );
       }
       return;
     }
