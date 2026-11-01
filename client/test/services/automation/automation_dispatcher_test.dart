@@ -632,6 +632,63 @@ void main() {
     expect(captured!.acp, isFalse);
   });
 
+  test('personal launchPrompt resolves the ACP preference at dispatch time', () async {
+    final layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    SessionCreateRequest? captured;
+    var enabled = true;
+
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository(const []),
+      busGateway: _RecordingBusGateway(),
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (request) async {
+        captured = request;
+        return SessionOpenStatus.opened;
+      },
+      workspaceById: (_) => workspace,
+      teamById: (_) => null,
+      sessionById: (sessionId, workspaceId) => AppSession(
+        sessionId: sessionId,
+        workspaceId: workspaceId,
+        createdAt: 1,
+      ),
+      personalAcpDefaultFor: (_) => enabled,
+      nowMs: () => 100,
+    );
+
+    final automation = Automation(
+      id: 'launch-live-acp',
+      name: 'Live ACP launch',
+      action: AutomationAction.launchPrompt,
+      workspaceId: 'ws1',
+      isPersonal: true,
+      presetId: 'preset-1',
+      message: 'run',
+      preset: AutomationSchedulePreset.daily,
+      hourMinute: '09:00',
+      timezone: 'UTC',
+      dtstartMs: 1,
+      enabled: true,
+      nextRunAtMs: 1,
+      createdAtMs: 1,
+      updatedAtMs: 1,
+    );
+
+    await dispatcher.dispatch(automation);
+    expect(captured!.acp, isTrue);
+
+    enabled = false;
+    await dispatcher.dispatch(automation);
+    expect(captured!.acp, isFalse);
+  });
+
   test('team launchPrompt seeds member ACP from the same preference', () async {
     final layout = WorkspaceLayout(
       teampilotRoot: testHomeStorage.paths.basePath,
