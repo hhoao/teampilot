@@ -14696,6 +14696,18 @@ abstract class AppLocalizations {
   /// **'Sign in or import credentials below, or fill the same fields manually.'**
   String get managedProvidersQuickPresetCursorHint;
 
+  /// No description provided for @managedProvidersQuickPresetCodebuddy.
+  ///
+  /// In en, this message translates to:
+  /// **'CodeBuddy'**
+  String get managedProvidersQuickPresetCodebuddy;
+
+  /// No description provided for @managedProvidersQuickPresetCodebuddyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Query credit balance with your CodeBuddy sign-in.'**
+  String get managedProvidersQuickPresetCodebuddyHint;
+
   /// No description provided for @managedProvidersQuickPresetDeepSeek.
   ///
   /// In en, this message translates to:

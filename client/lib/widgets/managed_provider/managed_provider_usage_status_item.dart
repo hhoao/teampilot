@@ -309,11 +309,26 @@ class _Summary {
   ) {
     final measure = usageState.snapshotFor(provider.id)?.measures.firstOrNull;
     if (measure == null) return '—';
-    final value = measure.remaining ?? measure.used ?? measure.total ?? '—';
+    var value = measure.remaining ?? measure.used ?? measure.total ?? '—';
+    final places = provider.displayConfig.decimalPlaces;
+    if (places != null && value != '—') value = _formatDecimal(value, places);
     final suffix = [
       if (measure.currency?.trim().isNotEmpty == true) measure.currency!,
       if (measure.unit?.trim().isNotEmpty == true) measure.unit!,
     ].join(' ');
     return suffix.isEmpty ? value : '$value $suffix';
+  }
+
+  static String _formatDecimal(String value, int places) {
+    if (places < 0) return value;
+    final negative = value.startsWith('-');
+    final unsigned = negative ? value.substring(1) : value;
+    final parts = unsigned.split('.');
+    final whole = parts.first;
+    final fraction = parts.length > 1 ? parts[1] : '';
+    final normalized = places == 0
+        ? whole
+        : '$whole.${fraction.padRight(places, '0').substring(0, places)}';
+    return negative ? '-$normalized' : normalized;
   }
 }

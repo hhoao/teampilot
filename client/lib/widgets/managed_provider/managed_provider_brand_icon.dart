@@ -75,6 +75,11 @@ ManagedProviderBrandIconSpec resolveManagedProviderBrandIcon(
   if (host == 'api.deepseek.com' || name == 'deepseek') {
     return const ManagedProviderBrandIconSpec.bundled('deepseek');
   }
+  if (host == 'www.codebuddy.cn' ||
+      host == 'www.codebuddy.ai' ||
+      name == 'codebuddy') {
+    return const ManagedProviderBrandIconSpec.bundled('codebuddy');
+  }
   if (host == 'opencode.ai' || name == 'opencode' || name == 'opencode go') {
     return const ManagedProviderBrandIconSpec.bundled('opencode');
   }

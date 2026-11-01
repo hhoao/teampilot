@@ -8253,6 +8253,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Sign in or import credentials below, or fill the same fields manually.';
 
   @override
+  String get managedProvidersQuickPresetCodebuddy => 'CodeBuddy';
+
+  @override
+  String get managedProvidersQuickPresetCodebuddyHint =>
+      'Query credit balance with your CodeBuddy sign-in.';
+
+  @override
   String get managedProvidersQuickPresetDeepSeek => 'DeepSeek';
 
   @override

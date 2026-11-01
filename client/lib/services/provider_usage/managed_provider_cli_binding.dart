@@ -1,5 +1,6 @@
 import '../../models/app_provider_config.dart';
 import '../cli/claude/provider_presets.dart';
+import '../cli/codebuddy/provider_presets.dart';
 import '../cli/codex/provider_presets.dart';
 import '../cli/cursor/provider_presets.dart';
 
@@ -17,12 +18,14 @@ class ManagedProviderCliBinding {
     CliTool.cursor,
     CliTool.claude,
     CliTool.codex,
+    CliTool.codebuddy,
   };
 
   static const _officialTemplates = <CliTool, AppProviderConfig Function()>{
     CliTool.cursor: _cursorTemplate,
     CliTool.claude: _claudeTemplate,
     CliTool.codex: _codexTemplate,
+    CliTool.codebuddy: _codebuddyTemplate,
   };
 
   static AppProviderConfig _cursorTemplate() =>
@@ -33,6 +36,9 @@ class ManagedProviderCliBinding {
 
   static AppProviderConfig _codexTemplate() =>
       CodexProviderPresets.byId('openai-official')!.template;
+
+  static AppProviderConfig _codebuddyTemplate() =>
+      CodebuddyProviderPresets.byId('codebuddy')!.template;
 
   /// CLI for a per-entry credential source (`cli:<cli>-mp-<entryId>`).
   ///

@@ -6,6 +6,7 @@ import 'package:teampilot/models/managed_provider.dart';
 import 'package:teampilot/models/provider_usage_snapshot.dart';
 import 'package:teampilot/repositories/managed_provider_repository.dart';
 import 'package:teampilot/repositories/managed_provider_usage_repository.dart';
+import 'package:teampilot/services/provider_usage/adapters/codebuddy_credits_adapter.dart';
 import 'package:teampilot/services/provider_usage/adapters/claude_official_subscription_auth.dart';
 import 'package:teampilot/services/provider_usage/adapters/http_json_mapping_adapter.dart';
 import 'package:teampilot/services/provider_usage/cli_credential_source.dart';
@@ -31,9 +32,25 @@ void main() {
     final registry = buildDefaultManagedProviderUsageRegistry();
 
     expect(registry.adapterFor('http-json'), isA<HttpJsonMappingAdapter>());
+    expect(registry.adapterFor('codebuddy-credits'), isNull);
     expect(registry.adapterFor('official-claude-subscription'), isNull);
     expect(registry.adapterFor('official-codex-subscription'), isNull);
   });
+
+  test(
+    'registry registers codebuddy credits when auth storage is available',
+    () {
+      final registry = buildDefaultManagedProviderUsageRegistry(
+        fs: InMemoryFilesystem(),
+        basePath: '/tp',
+      );
+
+      expect(
+        registry.adapterFor('codebuddy-credits'),
+        isA<CodebuddyCreditsUsageAdapter>(),
+      );
+    },
+  );
 
   test(
     'http-json adapter without cli credentials fails closed for cli sources',

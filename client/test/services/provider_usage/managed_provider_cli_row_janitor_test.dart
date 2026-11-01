@@ -200,6 +200,34 @@ void main() {
     );
   });
 
+  test('sweep reclaims orphan codebuddy managed-provider rows', () async {
+    await appCubit.upsertProvider(
+      AppProviderConfig(
+        id: 'codebuddy-mp-managed-1',
+        cli: CliTool.codebuddy,
+        name: 'CodeBuddy row',
+      ),
+    );
+    await fs.ensureDir('/tp/providers/codebuddy/codebuddy-mp-managed-1');
+
+    await ManagedProviderCliRowJanitor(
+      fs: fs,
+      basePath: '/tp',
+      appProviderCubit: appCubit,
+    ).sweep(entries: const []);
+
+    expect(
+      appCubit.state
+          .providersFor(CliTool.codebuddy)
+          .any((row) => row.id == 'codebuddy-mp-managed-1'),
+      isFalse,
+    );
+    expect(
+      (await fs.stat('/tp/providers/codebuddy/codebuddy-mp-managed-1')).exists,
+      isFalse,
+    );
+  });
+
   test('sweep is a no-op on empty catalogs', () async {
     await ManagedProviderCliRowJanitor(
       fs: fs,

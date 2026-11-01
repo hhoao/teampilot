@@ -7930,6 +7930,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get managedProvidersQuickPresetCursorHint => '登录或导入，或手填相同字段。';
 
   @override
+  String get managedProvidersQuickPresetCodebuddy => 'CodeBuddy';
+
+  @override
+  String get managedProvidersQuickPresetCodebuddyHint =>
+      '使用 CodeBuddy 登录态查询积分余额。';
+
+  @override
   String get managedProvidersQuickPresetDeepSeek => 'DeepSeek';
 
   @override

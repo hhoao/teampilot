@@ -9,6 +9,7 @@ void main() {
       'codex',
       'claude-code',
       'cursor',
+      'codebuddy',
       'deepseek',
       'opencode-go',
     ]);
@@ -37,6 +38,13 @@ void main() {
       cursor.template.endpointConfig.credentialTemplate,
       'WorkosCursorSessionToken={accountId}::{accessToken}',
     );
+
+    final codebuddy = managedProviderPresetById('codebuddy')!;
+    expect(codebuddy.template.name, 'CodeBuddy');
+    expect(codebuddy.template.kind, ManagedProviderKind.apiBalance);
+    expect(codebuddy.template.adapterId, 'codebuddy-credits');
+    expect(codebuddy.template.endpointConfig.credentialSource, 'cli:codebuddy');
+    expect(codebuddy.template.credentialRef, isNull);
   });
 
   test('DeepSeek preset is ready for an API key without containing one', () {
@@ -110,6 +118,7 @@ void main() {
       'codex',
       'claude-code',
       'cursor',
+      'codebuddy',
       'deepseek',
       'opencode-go',
       kManagedProviderQuickPresetCustomId,

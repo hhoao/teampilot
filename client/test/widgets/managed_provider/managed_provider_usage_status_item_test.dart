@@ -581,6 +581,46 @@ void main() {
     expect(adapter.calls, 0);
   });
 
+  testWidgets('status label honors displayConfig decimal places', (
+    tester,
+  ) async {
+    final provider = ManagedProvider(
+      id: 'p1',
+      name: 'CodeBuddy',
+      kind: ManagedProviderKind.apiBalance,
+      adapterId: 'codebuddy-credits',
+      endpointConfig: ManagedProviderEndpointConfig(
+        url: 'https://www.codebuddy.cn/billing/meter/get-user-resource-summary',
+      ),
+      displayConfig: ManagedProviderDisplayConfig(
+        unit: 'credits',
+        decimalPlaces: 2,
+      ),
+    );
+    await pumpItem(
+      tester,
+      providers: [provider],
+      snapshots: {
+        'p1': ProviderUsageSnapshot(
+          providerId: 'p1',
+          status: ProviderUsageStatus.ready,
+          fetchedAt: 100,
+          measures: [
+            ProviderUsageMeasure(
+              label: 'Credits',
+              kind: ProviderUsageMeasureKind.balance,
+              remaining: '2476.53000001',
+              unit: 'credits',
+            ),
+          ],
+        ),
+      },
+    );
+
+    expect(find.text('2476.53 credits'), findsOneWidget);
+    expect(find.text('2476.53000001 credits'), findsNothing);
+  });
+
   testWidgets('opens a 360px panel with refresh and management actions', (
     tester,
   ) async {

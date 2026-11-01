@@ -4251,6 +4251,8 @@
   "managedProvidersQuickPresetClaudeCodeHint": "Sign in or import credentials below, or fill the same fields manually.",
   "managedProvidersQuickPresetCursor": "Cursor",
   "managedProvidersQuickPresetCursorHint": "Sign in or import credentials below, or fill the same fields manually.",
+  "managedProvidersQuickPresetCodebuddy": "CodeBuddy",
+  "managedProvidersQuickPresetCodebuddyHint": "Query credit balance with your CodeBuddy sign-in.",
   "managedProvidersQuickPresetDeepSeek": "DeepSeek",
   "managedProvidersQuickPresetDeepSeekHint": "Balance API preset; add a secret.",
   "managedProvidersQuickPresetOpencodeGo": "OpenCode Go",

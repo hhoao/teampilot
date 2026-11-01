@@ -41,4 +41,11 @@ abstract final class CodebuddyProviderPresets {
       ),
     ),
   ];
+
+  static AppProviderPreset? byId(String id) {
+    for (final preset in all) {
+      if (preset.id == id) return preset;
+    }
+    return null;
+  }
 }

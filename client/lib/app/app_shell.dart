@@ -257,7 +257,9 @@ import '../services/provider_usage/managed_provider_usage_adapter.dart';
 import '../services/provider_usage/managed_provider_usage_auto_refresh.dart';
 import '../services/provider_usage/managed_provider_usage_coordinator.dart';
 import '../services/provider_usage/managed_provider_usage_registry.dart';
+import '../services/io/filesystem.dart';
 import '../services/provider_usage/adapters/claude_official_subscription_auth.dart';
+import '../services/provider_usage/adapters/codebuddy_credits_adapter.dart';
 import '../services/provider_usage/adapters/codex_official_subscription_auth.dart';
 import '../services/provider_usage/adapters/cursor_official_subscription_auth.dart';
 import '../services/provider_usage/adapters/http_json_mapping_adapter.dart';
@@ -417,9 +419,13 @@ class ManagedProviderControlPlaneLease {
 /// readers and the official usage HTTP clients.
 ManagedProviderUsageRegistry buildDefaultManagedProviderUsageRegistry({
   CliCredentialSourceResolver? cliCredentials,
+  Filesystem? fs,
+  String? basePath,
 }) {
   return ManagedProviderUsageRegistry([
     HttpJsonMappingAdapter(cliCredentials: cliCredentials),
+    if (fs != null && basePath != null)
+      CodebuddyCreditsUsageAdapter(fs: fs, basePath: basePath),
   ]);
 }
 
@@ -1052,6 +1058,8 @@ Future<AppShell> buildAppShell({
   final resolvedManagedProviderUsageRegistry =
       managedProviderUsageRegistry ??
       buildDefaultManagedProviderUsageRegistry(
+        fs: homeStorage.fs,
+        basePath: homeStorage.paths.basePath,
         cliCredentials:
             managedProviderCliCredentials ??
             CliCredentialSourceResolver(
