@@ -8,6 +8,7 @@ import 'package:teampilot/cubits/session/acp/acp_chat_runtime_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/acp/acp_agent_session_store.dart';
 import 'package:teampilot/services/acp/acp_agent_translator.dart';
+import 'package:teampilot/services/acp/acp_background_transcript.dart';
 import 'package:teampilot/services/acp/acp_chat_strings.dart';
 import 'package:teampilot/services/acp/acp_chat_transcript.dart';
 import 'package:teampilot/services/acp/acp_client_extensions.dart';
@@ -64,6 +65,19 @@ class _RecordingSeatLeases implements SeatBackgroundLeasePort {
     required String leaseId,
   }) {
     releases.add((sessionId: sessionId, memberId: memberId, leaseId: leaseId));
+  }
+}
+
+/// Records the incremental transcript reads of the out-of-turn watch.
+class _FakeBackgroundTranscript implements AcpBackgroundTranscriptSource {
+  AcpBackgroundTranscriptResult? result =
+      AcpBackgroundTranscriptResult.unchanged;
+  int refreshes = 0;
+
+  @override
+  Future<AcpBackgroundTranscriptResult?> refresh() async {
+    refreshes++;
+    return result;
   }
 }
 
@@ -255,6 +269,7 @@ void main() {
     AcpChatTranscriptWriter? transcript,
     AcpAgentSessionStore? agentSession,
     SeatBackgroundLeasePort? seatLeases,
+    AcpBackgroundTranscriptSourceFactory? backgroundTranscriptFactory,
     Duration? backgroundSyncInterval,
     String launchProvider = '',
     String launchModel = '',
@@ -271,6 +286,7 @@ void main() {
       transcript: transcript,
       agentSession: agentSession,
       seatLeases: seatLeases,
+      backgroundTranscriptFactory: backgroundTranscriptFactory,
       backgroundSyncInterval: backgroundSyncInterval,
     )..ensureStrings(_testStrings);
     return cubit;
@@ -2383,6 +2399,125 @@ void main() {
       await pumpEventQueue();
     }
   }
+
+  test(
+    'background watch tails the agent transcript instead of replaying history',
+    () async {
+      final source = _FakeBackgroundTranscript();
+      final leases = _RecordingSeatLeases();
+      String? boundToolDir;
+      String? boundSessionId;
+      final cubit = AcpChatRuntimeCubit(
+        runtime: runtime,
+        sessionId: 's1',
+        tool: CliTool.claude,
+        seatLeases: leases,
+        backgroundTranscriptFactory:
+            ({required String sessionToolDir, required String sessionId}) {
+              boundToolDir = sessionToolDir;
+              boundSessionId = sessionId;
+              return source;
+            },
+        backgroundSyncInterval: const Duration(milliseconds: 10),
+        backgroundSyncWindow: const Duration(minutes: 1),
+      )..ensureStrings(_testStrings);
+      await cubit.start(
+        executable: 'claude-agent-acp',
+        sessionToolDir: '/tmp/claude',
+        workingDirectory: '/w',
+      );
+      await pumpEventQueue();
+
+      expect(boundToolDir, '/tmp/claude');
+      expect(boundSessionId, 'acp-session-1');
+      // The initial reconcile read the transcript, not the protocol.
+      expect(runtime.loadHistoryCalls, 0);
+
+      await sendBackgroundTurn(cubit);
+      await waitFor(() => source.refreshes > 1);
+
+      expect(
+        runtime.loadHistoryCalls,
+        0,
+        reason:
+            'the watch must not replay history when the transcript is readable',
+      );
+      expect(leases.acquires, hasLength(1));
+      await cubit.close();
+    },
+  );
+
+  test('transcript progress releases the background lease', () async {
+    final source = _FakeBackgroundTranscript();
+    final leases = _RecordingSeatLeases();
+    final cubit = AcpChatRuntimeCubit(
+      runtime: runtime,
+      sessionId: 's1',
+      tool: CliTool.claude,
+      seatLeases: leases,
+      backgroundTranscriptFactory:
+          ({required String sessionToolDir, required String sessionId}) =>
+              source,
+      backgroundSyncInterval: const Duration(milliseconds: 10),
+      backgroundSyncWindow: const Duration(minutes: 1),
+    )..ensureStrings(_testStrings);
+    await cubit.start(
+      executable: 'claude-agent-acp',
+      sessionToolDir: '/tmp/claude',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+
+    await sendBackgroundTurn(cubit);
+    await waitFor(() => leases.acquires.isNotEmpty);
+
+    source.result = AcpBackgroundTranscriptResult(
+      changed: true,
+      messages: [
+        AiMessage(
+          id: 'claude-0',
+          role: AiRole.user,
+          parts: const [AiTextPart(text: 'run')],
+        ),
+        AiMessage(
+          id: 'claude-1',
+          role: AiRole.assistant,
+          parts: const [AiTextPart(text: 'Started')],
+        ),
+        AiMessage(
+          id: 'claude-2',
+          role: AiRole.assistant,
+          parts: const [AiTextPart(text: 'All tests passed')],
+        ),
+      ],
+    );
+
+    await waitFor(() => leases.releases.isNotEmpty);
+    expect(_textOf(cubit.state.messages.last), contains('All tests passed'));
+    await cubit.close();
+  });
+
+  test(
+    'falls back to session/load when the transcript is not locatable',
+    () async {
+      final source = _FakeBackgroundTranscript()..result = null;
+      final cubit = bootCubit(
+        backgroundTranscriptFactory:
+            ({required String sessionToolDir, required String sessionId}) =>
+                source,
+      );
+      await cubit.start(
+        executable: 'claude-agent-acp',
+        sessionToolDir: '/tmp/claude',
+        workingDirectory: '/w',
+      );
+      await pumpEventQueue();
+
+      expect(source.refreshes, greaterThan(0));
+      expect(runtime.loadHistoryCalls, 1);
+      await cubit.close();
+    },
+  );
 
   test(
     'background watch holds the seat lease then releases it on completion',

@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../../../models/team_config.dart';
 import '../../../services/acp/acp_agent_session_store.dart';
 import '../../../services/acp/acp_agent_translator.dart';
+import '../../../services/acp/acp_background_transcript.dart';
 import '../../../services/acp/acp_chat_extension_fold.dart';
 import '../../../services/acp/acp_chat_strings.dart';
 import '../../../services/acp/acp_chat_transcript.dart';
@@ -168,6 +169,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     AcpChatTranscriptWriter? transcript,
     AcpAgentSessionStore? agentSession,
     SeatBackgroundLeasePort? seatLeases,
+    AcpBackgroundTranscriptSourceFactory? backgroundTranscriptFactory,
     Duration? backgroundSyncInterval,
     this.backgroundSyncWindow = defaultBackgroundSyncWindow,
   }) : _runtime = runtime,
@@ -175,6 +177,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
        _transcript = transcript,
        _agentSession = agentSession,
        _seatLeases = seatLeases,
+       _backgroundTranscriptFactory = backgroundTranscriptFactory,
        _backgroundSyncInterval = backgroundSyncInterval,
        super(const AcpChatRuntimeState());
 
@@ -195,6 +198,13 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   static const _backgroundSyncFastInterval = Duration(seconds: 10);
   static const _backgroundSyncSlowInterval = Duration(seconds: 60);
   static const _backgroundSyncFastWindow = Duration(minutes: 3);
+
+  /// Poll cadence while the agent's own transcript is readable: each tick is a
+  /// stat plus (when it grew) the appended bytes, so it can stay responsive
+  /// without replaying the session over the protocol. Long waits back off to
+  /// the slow cadence — a background shell can run for the whole window.
+  static const _backgroundTranscriptInterval = Duration(seconds: 2);
+  static const _backgroundTranscriptSlowInterval = Duration(seconds: 10);
 
   static const _uuid = Uuid();
 
@@ -220,6 +230,16 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   final AcpChatTranscriptWriter? _transcript;
   final AcpAgentSessionStore? _agentSession;
   final SeatBackgroundLeasePort? _seatLeases;
+  final AcpBackgroundTranscriptSourceFactory? _backgroundTranscriptFactory;
+
+  /// Incremental reader of the agent's own transcript, built once the agent
+  /// session id is known. Null when this CLI keeps no readable transcript.
+  AcpBackgroundTranscriptSource? _backgroundTranscript;
+
+  /// Whether the last transcript read located the file. Only then may the
+  /// watch tick at the transcript cadence — a bound source whose file is
+  /// missing must keep the slow `session/load` cadence.
+  bool _backgroundTranscriptActive = false;
 
   /// Test/embedding override for the history-sync poll cadence.
   final Duration? _backgroundSyncInterval;
@@ -517,6 +537,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       // their sessions re-discover the current cwd on every resume (a session
       // can move), so this is the fallback for agents without `session/list`.
       unawaited(_agentSession?.write(liveId, cwd: effectiveWorkingDirectory));
+      _bindBackgroundTranscript(sessionToolDir: sessionToolDir, agentId: liveId);
     }
     await _applyLaunchModel();
     emit(
@@ -1000,27 +1021,26 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
 
   // ----- out-of-turn history reconciliation -----
 
-  /// Replays the agent's own session history and merges anything the app
-  /// missed after `end_turn` (background shell tasks / subagents).
+  /// Reconciles the agent's own record of the session with the app transcript.
   ///
   /// ACP v1 sends no `session/update` after a turn ends, so the agent's
-  /// summary of out-of-turn work only exists in its recorded history. Uses
-  /// `session/load` on the live connection and folds the replay into the app
-  /// transcript (idempotent: matched messages keep their ids and are replaced
-  /// with the replayed, possibly longer, parts).
+  /// summary of out-of-turn work only exists on the agent side. When the CLI
+  /// keeps a readable transcript ([AcpBackgroundTranscriptSource]) only the
+  /// appended records are parsed; otherwise this replays the session through
+  /// `session/load` (idempotent: matched messages keep their ids and are
+  /// replaced with the replayed, possibly longer, parts).
   ///
-  /// No-ops while a turn is in flight, after the session ended, or when the
-  /// runtime does not implement [AcpHistorySyncApi].
+  /// No-ops while a turn is in flight, after the session ended, or when
+  /// neither a transcript nor [AcpHistorySyncApi] is available.
   Future<void> syncHistory() async {
     final runtime = _runtime;
-    if (runtime is! AcpHistorySyncApi) return;
+    if (runtime is! AcpHistorySyncApi && _backgroundTranscript == null) return;
     if (_closing || isClosed) return;
     if (state.inTurn || state.phase == AcpChatPhase.ended) return;
     final inFlight = _historySyncInFlight;
     if (inFlight != null) return inFlight;
     final serial = _turnSerial;
-    final syncRuntime = runtime as AcpHistorySyncApi;
-    final future = _runHistorySync(syncRuntime, serial);
+    final future = _runHistorySync(runtime, serial);
     _historySyncInFlight = future;
     try {
       await future;
@@ -1032,10 +1052,22 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     }
   }
 
-  Future<void> _runHistorySync(AcpHistorySyncApi runtime, int serial) async {
+  Future<void> _runHistorySync(
+    AcpSessionRuntimeApi runtime,
+    int serial,
+  ) async {
+    final transcript = _backgroundTranscript;
+    if (transcript != null && await _tryTranscriptSync(transcript, serial)) {
+      return;
+    }
+    // [AcpHistorySyncApi] is a sibling interface, not a supertype of
+    // [AcpSessionRuntimeApi] — an `is` check alone cannot promote here.
+    if (runtime is! AcpHistorySyncApi) return;
+    final historySync = runtime as AcpHistorySyncApi;
+
     List<AcpSessionUpdate> updates;
     try {
-      updates = await runtime.loadHistory();
+      updates = await historySync.loadHistory();
     } on Object catch (error, stackTrace) {
       appLogger.w(
         '[acp-chat] session $sessionId history sync failed: $error',
@@ -1071,8 +1103,94 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     unawaited(_persist());
   }
 
-  /// Arms out-of-turn polling and the seat keep-alive after a turn that
+  /// Binds the agent's own transcript once its session id is known.
+  void _bindBackgroundTranscript({
+    required String sessionToolDir,
+    required String agentId,
+  }) {
+    if (_backgroundTranscript != null) return;
+    final factory = _backgroundTranscriptFactory;
+    if (factory == null) return;
+    try {
+      _backgroundTranscript = factory(
+        sessionToolDir: sessionToolDir,
+        sessionId: agentId,
+      );
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[acp-chat] session $sessionId transcript source failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  /// Reads the agent's transcript incrementally.
+  ///
+  /// Returns false when this session has no readable transcript (the caller
+  /// then reconciles through `session/load`), true when the reconcile is done
+  /// — including the common "nothing changed" tick.
+  Future<bool> _tryTranscriptSync(
+    AcpBackgroundTranscriptSource source,
+    int serial,
+  ) async {
+    AcpBackgroundTranscriptResult? result;
+    try {
+      result = await source.refresh();
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[acp-chat] session $sessionId transcript sync failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return false;
+    }
+    if (result == null) {
+      // The source could not locate the file: keep the slow protocol cadence
+      // so a capability mismatch never turns into a 2 s replay loop.
+      _backgroundTranscriptActive = false;
+      return false;
+    }
+    _backgroundTranscriptActive = true;
+    if (_closing || isClosed) return true;
+    if (serial != _turnSerial || state.inTurn) return true;
+    if (!result.changed || result.messages.isEmpty) return true;
+    _replayedBackgroundToolCalls
+      ..clear()
+      ..addAll(_backgroundToolCallIdsOf(result.messages));
+    _noteBackgroundProgress(result.messages);
+    final merged = _mergeReplayedHistory(
+      current: state.messages,
+      replayed: result.messages,
+    );
+    if (_messageShapeEqual(merged, state.messages)) return true;
+    emit(state.copyWith(messages: merged));
+    unawaited(_persist());
+    return true;
+  }
+
+  /// Background tool-call ids carried by transcript messages, so the
+  /// multi-task heuristic in [_noteBackgroundProgress] works without an ACP
+  /// replay buffer.
+  Set<String> _backgroundToolCallIdsOf(List<AiMessage> messages) {
+    final ids = <String>{};
+    for (final message in messages) {
+      for (final part in message.parts) {
+        if (part is! AiToolCallPart) continue;
+        final args = part.args;
+        if (args == null) continue;
+        if (args['run_in_background'] != true && args['background'] != true) {
+          continue;
+        }
+        ids.add(part.toolCallId);
+      }
+    }
+    return ids;
+  }
+
+  /// Arms the out-of-turn watch and the seat keep-alive after a turn that
   /// launched a background tool call. Idempotent while a watch is live.
+  /// Ticks read the agent transcript when one is bound, else replay history.
   void _armBackgroundWatch() {
     if (_closing || isClosed) return;
     if (!_backgroundWorkActive) {
@@ -1158,6 +1276,11 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   Duration _nextBackgroundSyncDelay(DateTime started) {
     final override = _backgroundSyncInterval;
     if (override != null) return override;
+    if (_backgroundTranscriptActive) {
+      return DateTime.now().difference(started) < _backgroundSyncFastWindow
+          ? _backgroundTranscriptInterval
+          : _backgroundTranscriptSlowInterval;
+    }
     if (DateTime.now().difference(started) < _backgroundSyncFastWindow) {
       return _backgroundSyncFastInterval;
     }

@@ -1,8 +1,12 @@
 import 'package:acpd/acpd.dart';
 
 import '../../../acp/acp_agent_translator.dart';
+import '../../../acp/acp_background_transcript.dart';
+import '../../../io/filesystem.dart';
+import '../../registry/capabilities/acp_background_transcript_capability.dart';
 import '../../registry/capabilities/acp_capability.dart';
 import '../../registry/member_role_provision.dart';
+import 'acp_background_transcript.dart';
 
 /// Claude absorption of ACP protocol quirks. The adapter
 /// (`claude-agent-acp`) takes no ACP flag, and no abort workaround is needed.
@@ -56,7 +60,8 @@ typedef ClaudeAcpAuthSource = ClaudeAcpAuth Function();
 
 /// Claude's ACP launch/env declaration. Claude speaks ACP through the
 /// `claude-agent-acp` adapter binary, not through the `claude` CLI itself.
-final class ClaudeAcpCapability implements AcpCapability {
+final class ClaudeAcpCapability
+    implements AcpCapability, AcpBackgroundTranscriptCapability {
   const ClaudeAcpCapability({
     ClaudeAcpAuthSource? authSource,
     String Function(String cliExecutable)? locateAdapter,
@@ -154,4 +159,19 @@ final class ClaudeAcpCapability implements AcpCapability {
     'ANTHROPIC_AUTH_TOKEN',
     'ANTHROPIC_BASE_URL',
   ];
+
+  /// `claude-agent-acp` keeps the SDK transcript under
+  /// `$CLAUDE_CONFIG_DIR/projects/<bucket>/<agent session id>.jsonl`, the same
+  /// file `claude --resume` reads, so the out-of-turn watch can tail it
+  /// instead of replaying the session over ACP.
+  @override
+  AcpBackgroundTranscriptSource? createBackgroundTranscriptSource({
+    required Filesystem fs,
+    required String sessionToolDir,
+    required String sessionId,
+  }) => ClaudeAcpBackgroundTranscriptSource(
+    fs: fs,
+    sessionToolDir: sessionToolDir,
+    sessionId: sessionId,
+  );
 }
