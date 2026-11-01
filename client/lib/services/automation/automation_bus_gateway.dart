@@ -1,3 +1,4 @@
+import '../../cubits/session/acp/acp_chat_runtime_cubit.dart';
 import '../../models/app_session.dart';
 import '../chat/launch/session/tab_member_materializer.dart';
 import '../chat/runtime/tab_session_runtime_coordinator.dart';
@@ -61,6 +62,7 @@ class TabTeamBusGateway implements AutomationBusGateway {
         tab: tab,
         selectedMemberId: memberId,
       )?.sendPrompt,
+      acpReadiness: () => _acpReadiness(session, tab, memberId),
       activateAcp: () => _activate(session, memberId),
       ptySubmit: (sessionId, memberId, text) => _sessionRuntime
           .deliverUserCommandToMember(
@@ -79,6 +81,24 @@ class TabTeamBusGateway implements AutomationBusGateway {
       return;
     }
     await _activateMemberSeat?.call(session.sessionId, memberId);
+  }
+
+  AutomationAcpReadiness _acpReadiness(
+    AppSession session,
+    ChatTab tab,
+    String memberId,
+  ) {
+    final cubit = acpRuntimeForView(
+      session: session,
+      tab: tab,
+      selectedMemberId: memberId,
+    );
+    if (cubit == null) return AutomationAcpReadiness.missing;
+    return switch (cubit.state.phase) {
+      AcpChatPhase.launching => AutomationAcpReadiness.launching,
+      AcpChatPhase.ready || AcpChatPhase.idle => AutomationAcpReadiness.ready,
+      AcpChatPhase.ended => AutomationAcpReadiness.ended,
+    };
   }
 
   @override

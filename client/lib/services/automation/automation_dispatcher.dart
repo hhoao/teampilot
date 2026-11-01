@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:uuid/uuid.dart';
 
 import '../chat/launch/session/launch_acp_policy.dart';
+import '../chat/launch/session/seat_prompt_delivery.dart';
 import '../chat/session/session_create_request.dart';
 import '../chat/session/session_open_request.dart';
 import '../chat/session/session_open_status.dart';
@@ -186,6 +187,7 @@ class AutomationDispatcher {
         final updated = _advanceAutomationAfterRun(
           automation,
           lastRunAtMs: startedAtMs,
+          dispatchedSessionId: session.sessionId,
         );
         return (failed, updated);
       }
@@ -203,9 +205,12 @@ class AutomationDispatcher {
           sessionId: session.sessionId,
           error: outcome.reason,
         );
+        // The session was created/opened successfully; keep reusing it even
+        // though this delivery did not land.
         final updated = _advanceAutomationAfterRun(
           automation,
           lastRunAtMs: startedAtMs,
+          dispatchedSessionId: session.sessionId,
         );
         return (failed, updated);
       }
@@ -362,6 +367,11 @@ class AutomationDispatcher {
       ),
     );
     if (status != SessionOpenStatus.opened) return false;
+
+    // ACP seats have no PTY composer: the gateway's activation + bounded
+    // readiness wait owns readiness. Gating here would wait for a runtime that
+    // only that activation can create (notably a deferred mixed non-lead seat).
+    if (seatUsesAcp(session, memberId)) return true;
 
     try {
       await _busGateway
