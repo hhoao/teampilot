@@ -93,7 +93,9 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
               icon: Icon(Icons.more_horiz, size: context.tpIconSizes.sm),
               onOpen: () => setState(() => _menuOpen = true),
               onClose: () => setState(() => _menuOpen = false),
-              buildMenuChildren: (context, controller) => [
+              // Popover children are built with the popover's context, which
+              // unmounts as the menu closes; actions must use the card's own.
+              buildMenuChildren: (_, controller) => [
                 TpActionMenuItem(
                   icon: Icons.drive_file_rename_outline,
                   label: l10n.homeWorkspaceRenameWorkspace,

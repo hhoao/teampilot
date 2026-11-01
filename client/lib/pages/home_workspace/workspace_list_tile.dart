@@ -162,7 +162,10 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
                         ),
                         onOpen: () => setState(() => _menuOpen = true),
                         onClose: () => setState(() => _menuOpen = false),
-                        buildMenuChildren: (context, controller) => [
+                        // Popover children are built with the popover's
+                        // context, which unmounts as the menu closes; the
+                        // workspace actions must use this tile's context.
+                        buildMenuChildren: (_, controller) => [
                           TpActionMenuItem(
                             icon: Icons.drive_file_rename_outline,
                             label: l10n.homeWorkspaceRenameWorkspace,
