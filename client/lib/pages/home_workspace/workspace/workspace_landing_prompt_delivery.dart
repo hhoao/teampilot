@@ -1,17 +1,13 @@
 import '../../../cubits/session/acp/acp_chat_runtime_cubit.dart';
 import '../../../models/app_session.dart';
 import '../../../services/chat/launch/session/member_input_ready_wait.dart';
+import '../../../services/chat/launch/session/seat_prompt_delivery.dart';
 import '../../../services/chat/session/chat_tab.dart';
 
 typedef LandingPtySubmit =
     Future<String?> Function(String sessionId, String memberId, String message);
 
 /// Whether landing should write a PTY optimistic bubble before delivery.
-///
-/// ACP [AcpChatRuntimeCubit.sendPrompt] already appends the user message.
-/// A `pending:<uuid>` overlay uses a different id, so seat adopt would paint
-/// two user bubbles for the same text. Mixed ACP seats use [memberId]
-/// (`AppSession.acp` stays personal-only).
 bool shouldPersistLandingHistoryPending({
   required bool switchToTerminal,
   required AppSession session,
@@ -23,7 +19,7 @@ bool shouldPersistLandingHistoryPending({
 
 /// True when the landing prompt must go to an ACP cubit, not PTY.
 bool landingPromptUsesAcp(AppSession session, String memberId) =>
-    isAcpChatSession(session) || isAcpChatSeat(session, memberId);
+    seatUsesAcp(session, memberId);
 
 /// Landing prompt for a personal or mixed-seat ACP session goes to
 /// [AcpChatRuntimeCubit.sendPrompt], never PTY `issueSubmit` — those seats
@@ -36,12 +32,14 @@ Future<bool> deliverWorkspaceLandingPrompt({
   required String message,
   required LandingPtySubmit ptySubmit,
 }) async {
-  if (landingPromptUsesAcp(session, memberId)) {
-    if (acpRuntime == null) return false;
-    return acpRuntime.sendPrompt(message);
-  }
-  final deliveryId = await ptySubmit(session.sessionId, memberId, message);
-  return deliveryId != null && deliveryId.trim().isNotEmpty;
+  final result = await deliverSeatPrompt(
+    session: session,
+    memberId: memberId,
+    message: message,
+    acpSend: acpRuntime?.sendPrompt,
+    ptySubmit: ptySubmit,
+  );
+  return result == SeatPromptDeliveryResult.delivered;
 }
 
 /// Result of overlapping ACP connect with an early [sendPrompt].
