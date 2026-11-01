@@ -751,6 +751,53 @@ void main() {
     expect(captured!.seedCursorMemberAcp, isFalse);
     expect(captured!.seedOpencodeMemberAcp, isFalse);
   });
+
+  test('failed delivery marks the run dispatchFailed with the reason', () async {
+    final layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+    final session = AppSession(
+      sessionId: 'sess-1',
+      workspaceId: 'ws1',
+      sessionTeam: 'team-1',
+      createdAt: 1,
+    );
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    final team = TeamProfile(
+      id: 'team-1',
+      name: 'Team',
+      members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+    );
+    final bus = _RecordingBusGateway(
+      deliveryOutcome: const AutomationDeliveryOutcome.failed(
+        'acp_runtime_unavailable',
+      ),
+    );
+
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository([session]),
+      busGateway: bus,
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
+      workspaceById: (_) => workspace,
+      teamById: (_) => team,
+      nowMs: () => 100,
+    );
+
+    final result = await dispatcher.dispatch(
+      _scheduledMessageAutomation(sessionId: 'sess-1'),
+    );
+
+    expect(result.run.status, AutomationRunStatus.dispatchFailed);
+    expect(result.run.error, 'acp_runtime_unavailable');
+    expect(result.run.sessionId, 'sess-1');
+    final runs = await repo.runsFor('ws1', automationId: 'auto-1');
+    expect(runs.single.status, AutomationRunStatus.dispatchFailed);
+  });
 }
 
 class _SlowBusGateway implements AutomationBusGateway {

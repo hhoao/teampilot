@@ -190,11 +190,25 @@ class AutomationDispatcher {
         return (failed, updated);
       }
 
-      await _busGateway.deliverUserCommandToMember(
+      final outcome = await _busGateway.deliverUserCommandToMember(
         session,
         memberId,
         automation.message,
       );
+      if (!outcome.delivered) {
+        final failed = _finishRun(
+          pending,
+          AutomationRunStatus.dispatchFailed,
+          startedAtMs: startedAtMs,
+          sessionId: session.sessionId,
+          error: outcome.reason,
+        );
+        final updated = _advanceAutomationAfterRun(
+          automation,
+          lastRunAtMs: startedAtMs,
+        );
+        return (failed, updated);
+      }
       await _repository.upsertRun(
         automation.workspaceId,
         _finishRun(
