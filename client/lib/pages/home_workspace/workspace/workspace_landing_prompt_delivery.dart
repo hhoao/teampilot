@@ -8,6 +8,11 @@ typedef LandingPtySubmit =
     Future<String?> Function(String sessionId, String memberId, String message);
 
 /// Whether landing should write a PTY optimistic bubble before delivery.
+///
+/// ACP [AcpChatRuntimeCubit.sendPrompt] already appends the user message.
+/// A `pending:<uuid>` overlay uses a different id, so seat adopt would paint
+/// two user bubbles for the same text. Mixed ACP seats use [memberId]
+/// (`AppSession.acp` stays personal-only).
 bool shouldPersistLandingHistoryPending({
   required bool switchToTerminal,
   required AppSession session,
