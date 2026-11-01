@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:uuid/uuid.dart';
 
+import '../chat/launch/session/launch_acp_policy.dart';
 import '../chat/session/session_create_request.dart';
 import '../chat/session/session_open_request.dart';
 import '../chat/session/session_open_status.dart';
@@ -30,6 +31,8 @@ typedef AutomationSessionLookup =
 
 int _automationDefaultNowMs() => DateTime.now().millisecondsSinceEpoch;
 
+bool _defaultPersonalAcpDefaultFor(CliTool cli) => true;
+
 class AutomationDispatcher {
   AutomationDispatcher({
     required AutomationRepository repository,
@@ -44,6 +47,7 @@ class AutomationDispatcher {
     required AutomationTeamResolver teamById,
     CliPreset? Function(String id)? resolveCliPreset,
     AutomationSessionLookup? sessionById,
+    bool Function(CliTool cli)? personalAcpDefaultFor,
     int Function()? nowMs,
     Duration memberReadyTimeout = const Duration(seconds: 60),
     Future<T> Function<T>(String sessionId, Future<T> Function() action)?
@@ -58,6 +62,8 @@ class AutomationDispatcher {
        _teamById = teamById,
        _resolveCliPreset = resolveCliPreset,
        _sessionById = sessionById,
+       _personalAcpDefaultFor =
+           personalAcpDefaultFor ?? _defaultPersonalAcpDefaultFor,
        _nowMs = nowMs ?? _automationDefaultNowMs,
        _memberReadyTimeout = memberReadyTimeout,
        _runDeliveryInFlight = runDeliveryInFlight;
@@ -77,6 +83,7 @@ class AutomationDispatcher {
   final AutomationTeamResolver _teamById;
   final CliPreset? Function(String id)? _resolveCliPreset;
   final AutomationSessionLookup? _sessionById;
+  final bool Function(CliTool cli) _personalAcpDefaultFor;
   final int Function() _nowMs;
   final Duration _memberReadyTimeout;
   final Future<T> Function<T>(String sessionId, Future<T> Function() action)?
@@ -258,6 +265,11 @@ class AutomationDispatcher {
         expertKey: expertKey,
         officialProviderId: CliToolRegistry.builtIn().defaultOfficialProviderId,
       );
+      final acp = resolveLaunchAcp(
+        isPersonal: true,
+        cli: simpleIdentity.cli,
+        requested: _personalAcpDefaultFor(simpleIdentity.cli),
+      );
       status = await _requestCreateAndOpenSession(
         SessionCreateRequest(
           workspace: workspace,
@@ -268,6 +280,8 @@ class AutomationDispatcher {
           expertKey: expertKey,
           workingDirectory: workingDirectory,
           fixedSessionId: plannedSessionId,
+          acp: acp,
+          acpPermission: LaunchSecurityPolicy.fullAccess,
         ),
       );
     } else {
@@ -285,6 +299,11 @@ class AutomationDispatcher {
           repo: _sessionRepository,
           workingDirectory: workingDirectory,
           fixedSessionId: plannedSessionId,
+          seedClaudeMemberAcp: _personalAcpDefaultFor(CliTool.claude),
+          seedCodexMemberAcp: _personalAcpDefaultFor(CliTool.codex),
+          seedCursorMemberAcp: _personalAcpDefaultFor(CliTool.cursor),
+          seedOpencodeMemberAcp: _personalAcpDefaultFor(CliTool.opencode),
+          acpPermission: LaunchSecurityPolicy.fullAccess,
         ),
       );
     }

@@ -2599,6 +2599,8 @@ Future<AppShell> buildAppShell({
             (s) => s.sessionId == sessionId && s.workspaceId == workspaceId,
           )
           .firstOrNull,
+      personalAcpDefaultFor:
+          sessionPreferencesCubit.state.preferences.personalAcpDefaultFor,
       runDeliveryInFlight: chatCubit.withOperatorDeliveryInFlight,
     );
     automationScheduler = AutomationScheduler(

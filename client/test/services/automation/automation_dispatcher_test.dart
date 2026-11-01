@@ -7,6 +7,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/repositories/automation_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/chat/session/session_create_request.dart';
 import 'package:teampilot/services/automation/automation_bus_gateway.dart';
 import 'package:teampilot/services/automation/automation_dispatcher.dart';
 import 'package:teampilot/services/automation/automation_prompt_delivery.dart';
@@ -569,6 +570,129 @@ void main() {
     expect(openCalls, 1);
     expect(result.run.status, AutomationRunStatus.completed);
     expect(result.automation.sessionId, 'bound-sess');
+  });
+
+  test('personal launchPrompt passes the CLI ACP preference to the request', () async {
+    final layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    SessionCreateRequest? captured;
+
+    Future<void> run(bool acpEnabled) async {
+      captured = null;
+      final dispatcher = AutomationDispatcher(
+        repository: repo,
+        scheduleCalculator: AutomationScheduleCalculator(),
+        sessionRepository: _FakeSessionRepository(const []),
+        busGateway: _RecordingBusGateway(),
+        requestOpenSession: (_) async => SessionOpenStatus.opened,
+        requestCreateAndOpenSession: (request) async {
+          captured = request;
+          return SessionOpenStatus.opened;
+        },
+        workspaceById: (_) => workspace,
+        teamById: (_) => null,
+        sessionById: (sessionId, workspaceId) => AppSession(
+          sessionId: sessionId,
+          workspaceId: workspaceId,
+          createdAt: 1,
+        ),
+        personalAcpDefaultFor: (_) => acpEnabled,
+        nowMs: () => 100,
+      );
+      await dispatcher.dispatch(
+        Automation(
+          id: 'launch-acp',
+          name: 'ACP launch',
+          action: AutomationAction.launchPrompt,
+          workspaceId: 'ws1',
+          isPersonal: true,
+          presetId: 'preset-1',
+          message: 'run',
+          preset: AutomationSchedulePreset.daily,
+          hourMinute: '09:00',
+          timezone: 'UTC',
+          dtstartMs: 1,
+          enabled: true,
+          nextRunAtMs: 1,
+          createdAtMs: 1,
+          updatedAtMs: 1,
+        ),
+      );
+    }
+
+    await run(true);
+    expect(captured!.acp, isTrue);
+    expect(captured!.acpPermission, LaunchSecurityPolicy.fullAccess);
+
+    await run(false);
+    expect(captured!.acp, isFalse);
+  });
+
+  test('team launchPrompt seeds member ACP from the same preference', () async {
+    final layout = WorkspaceLayout(
+      teampilotRoot: testHomeStorage.paths.basePath,
+      fs: testHomeStorage.fs,
+    );
+    final repo = AutomationRepository(fs: testHomeStorage.fs, layout: layout);
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    final team = TeamProfile(
+      id: 'team-1',
+      name: 'Team',
+      members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+    );
+    SessionCreateRequest? captured;
+
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository(const []),
+      busGateway: _RecordingBusGateway(),
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (request) async {
+        captured = request;
+        return SessionOpenStatus.opened;
+      },
+      workspaceById: (_) => workspace,
+      teamById: (id) => id == 'team-1' ? team : null,
+      sessionById: (sessionId, workspaceId) => AppSession(
+        sessionId: sessionId,
+        workspaceId: workspaceId,
+        createdAt: 1,
+      ),
+      personalAcpDefaultFor: (cli) => cli == CliTool.codex,
+      nowMs: () => 100,
+    );
+
+    await dispatcher.dispatch(
+      Automation(
+        id: 'launch-team-acp',
+        name: 'Team ACP launch',
+        action: AutomationAction.launchPrompt,
+        workspaceId: 'ws1',
+        isPersonal: false,
+        teamId: 'team-1',
+        targetMemberId: 'team-lead',
+        message: 'run',
+        preset: AutomationSchedulePreset.daily,
+        hourMinute: '09:00',
+        timezone: 'UTC',
+        dtstartMs: 1,
+        enabled: true,
+        nextRunAtMs: 1,
+        createdAtMs: 1,
+        updatedAtMs: 1,
+      ),
+    );
+
+    expect(captured!.acp, isFalse);
+    expect(captured!.seedClaudeMemberAcp, isFalse);
+    expect(captured!.seedCodexMemberAcp, isTrue);
+    expect(captured!.seedCursorMemberAcp, isFalse);
+    expect(captured!.seedOpencodeMemberAcp, isFalse);
   });
 }
 
