@@ -5,6 +5,7 @@ import 'package:collection/collection.dart';
 import '../../models/automation.dart';
 import '../../repositories/automation_repository.dart';
 import '../../utils/logging/logger.dart';
+import 'automation_command_executor.dart';
 import 'automation_dispatcher.dart';
 import 'automation_schedule_calculator.dart';
 
@@ -15,17 +16,20 @@ class AutomationScheduler {
     required AutomationRepository repository,
     required AutomationDispatcher dispatcher,
     required AutomationScheduleCalculator scheduleCalculator,
+    AutomationCommandExecutor? commandExecutor,
     Duration tickInterval = const Duration(seconds: 30),
     int Function()? nowMs,
   }) : _repository = repository,
        _dispatcher = dispatcher,
        _scheduleCalculator = scheduleCalculator,
+       _commandExecutor = commandExecutor,
        _tickInterval = tickInterval,
        _nowMs = nowMs ?? _automationSchedulerDefaultNowMs;
 
   final AutomationRepository _repository;
   final AutomationDispatcher _dispatcher;
   final AutomationScheduleCalculator _scheduleCalculator;
+  final AutomationCommandExecutor? _commandExecutor;
   final Duration _tickInterval;
   final int Function() _nowMs;
   void Function()? onAfterTick;
@@ -86,13 +90,16 @@ class AutomationScheduler {
     _missedRunsProcessed = true;
     final now = _nowMs();
     final automations = await _repository.listAll();
+    await _markInterruptedRuns(automations, now);
     for (final automation in automations) {
       if (!automation.enabled || automation.isRunLimitReached) continue;
       final dueAt = automation.nextRunAtMs;
       if (dueAt == null || dueAt >= now) continue;
 
       final graceMs = automation.missedRunGraceMinutes * 60 * 1000;
-      if (now - dueAt <= graceMs) {
+      if (now - dueAt <= graceMs ||
+          (automation.isRunCommand &&
+              automation.catchUpPolicy == AutomationCatchUpPolicy.once)) {
         await _dispatchClaimed(automation);
         continue;
       }
@@ -123,6 +130,36 @@ class AutomationScheduler {
         updatedAtMs: now,
       );
       await _repository.upsert(advanced);
+    }
+  }
+
+  Future<void> _markInterruptedRuns(
+    List<Automation> automations,
+    int now,
+  ) async {
+    for (final automation in automations) {
+      if (!automation.isRunCommand) continue;
+      final runs = await _repository.runsFor(
+        automation.workspaceId,
+        automationId: automation.id,
+      );
+      final limitMs = automation.timeoutSeconds * 1000 + 60 * 1000;
+      for (final run in runs) {
+        if (run.status != AutomationRunStatus.pending &&
+            run.status != AutomationRunStatus.dispatching) {
+          continue;
+        }
+        final startedAtMs = run.startedAtMs ?? run.scheduledForMs;
+        if (now - startedAtMs <= limitMs) continue;
+        await _repository.upsertRun(
+          automation.workspaceId,
+          run.copyWith(
+            status: AutomationRunStatus.dispatchFailed,
+            error: 'interrupted',
+            completedAtMs: now,
+          ),
+        );
+      }
     }
   }
 
@@ -158,6 +195,17 @@ class AutomationScheduler {
       updatedAtMs: now,
     );
     await _repository.upsert(claimed);
+
+    final executor = _commandExecutor;
+    if (automation.isRunCommand) {
+      if (executor == null) return;
+      if (trigger == AutomationRunTrigger.manual) {
+        await executor.enqueue(claimed, trigger: trigger);
+      } else {
+        unawaited(executor.enqueue(claimed, trigger: trigger));
+      }
+      return;
+    }
     await _dispatcher.dispatch(automation, trigger: trigger);
   }
 }
