@@ -109,6 +109,32 @@ void main() {
     expect(outputs.single.data, 'hello\n');
   });
 
+  test('outputClosed waits for both output streams to end', () async {
+    final stdout = StreamController<List<int>>();
+    final spawner = FakeSpawner()
+      ..stdout = stdout.stream
+      ..stderr = Stream.value(utf8.encode('err'));
+    final exec = ProcessRunExecutor(spawner: spawner.call);
+    final result = await exec.start(
+      sessionId: 's1',
+      command: 'make',
+      args: const [],
+      plan: localPlan,
+      onOutput: (_) {},
+    );
+
+    expect(await result.exitCode, 0);
+    var closed = false;
+    unawaited(result.outputClosed.then((_) => closed = true));
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(closed, isFalse);
+
+    stdout.add(utf8.encode('late'));
+    await stdout.close();
+    await result.outputClosed;
+    expect(closed, isTrue);
+  });
+
   test('process executor stop kills the process', () async {
     final spawner = FakeSpawner();
     final exec = ProcessRunExecutor(spawner: spawner.call);

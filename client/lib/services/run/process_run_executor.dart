@@ -46,10 +46,19 @@ typedef SshProcessSpawner =
     });
 
 class ProcessRunResult {
-  const ProcessRunResult({required this.exitCode, required this.stop});
+  ProcessRunResult({
+    required this.exitCode,
+    required this.stop,
+    Future<void>? outputClosed,
+  }) : outputClosed = outputClosed ?? Future<void>.value();
 
   final Future<int> exitCode;
   final Future<void> Function() stop;
+
+  /// Completes once both output streams have ended, so callers reading
+  /// accumulated output do not miss a trailing chunk that lands after
+  /// [exitCode]. Never completes if the run is stopped before the streams end.
+  final Future<void> outputClosed;
 }
 
 /// Spawns built-in `process` launch configs on the resolved local / WSL / SSH
@@ -80,6 +89,9 @@ class ProcessRunExecutor {
     );
 
     final subscriptions = <StreamSubscription<List<int>>>[];
+    final outputClosed = Completer<void>();
+    var openStreams = 2;
+
     void emit(String category, List<int> data) {
       if (data.isEmpty) return;
       onOutput(
@@ -91,8 +103,25 @@ class ProcessRunExecutor {
       );
     }
 
-    subscriptions.add(handle.stdout.listen((data) => emit('stdout', data)));
-    subscriptions.add(handle.stderr.listen((data) => emit('stderr', data)));
+    void finishStream() {
+      openStreams -= 1;
+      if (openStreams == 0 && !outputClosed.isCompleted) {
+        outputClosed.complete();
+      }
+    }
+
+    subscriptions.add(
+      handle.stdout.listen(
+        (data) => emit('stdout', data),
+        onDone: finishStream,
+      ),
+    );
+    subscriptions.add(
+      handle.stderr.listen(
+        (data) => emit('stderr', data),
+        onDone: finishStream,
+      ),
+    );
 
     Future<void> stop() async {
       for (final subscription in subscriptions) {
@@ -101,7 +130,11 @@ class ProcessRunExecutor {
       handle.kill();
     }
 
-    return ProcessRunResult(exitCode: handle.exitCode, stop: stop);
+    return ProcessRunResult(
+      exitCode: handle.exitCode,
+      stop: stop,
+      outputClosed: outputClosed.future,
+    );
   }
 
   Future<ProcessRunHandle> _spawn({

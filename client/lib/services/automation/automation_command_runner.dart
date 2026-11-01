@@ -85,16 +85,18 @@ class HostAutomationCommandRunner implements AutomationCommandRunner {
       return const AutomationCommandOutcome(error: 'working_directory_invalid');
     }
 
-    final plan = _resolver.resolve(
-      owner: folder,
-      cwd: request.workingDirectoryPath,
-    );
     final stdout = AutomationTailBuffer(maxBytes: request.outputTailBytes);
     final stderr = AutomationTailBuffer(maxBytes: request.outputTailBytes);
     final watch = Stopwatch()..start();
 
+    RuntimeKind? targetKind;
     final ProcessRunResult result;
     try {
+      final plan = _resolver.resolve(
+        owner: folder,
+        cwd: request.workingDirectoryPath,
+      );
+      targetKind = plan.runtimeTarget.kind;
       result = await _executor.start(
         sessionId: 'automation:${request.workspaceId}',
         command: request.command,
@@ -110,9 +112,10 @@ class HostAutomationCommandRunner implements AutomationCommandRunner {
         },
       );
     } on Object {
+      final kind = targetKind;
       return AutomationCommandOutcome(
         durationMs: watch.elapsedMilliseconds,
-        error: _unreachable(plan.runtimeTarget.kind)
+        error: kind != null && _unreachable(kind)
             ? 'target_unreachable'
             : 'spawn_failed',
       );
@@ -121,6 +124,8 @@ class HostAutomationCommandRunner implements AutomationCommandRunner {
     final exitCode = await _awaitExit(result, request.timeoutSeconds);
     if (exitCode == null) {
       await result.stop();
+    } else {
+      await _awaitOutputClosed(result);
     }
     watch.stop();
 
@@ -143,6 +148,20 @@ class HostAutomationCommandRunner implements AutomationCommandRunner {
     unawaited(
       result.exitCode.then((code) {
         if (!completer.isCompleted) completer.complete(code);
+      }),
+    );
+    return completer.future.whenComplete(timer.cancel);
+  }
+
+  /// Waits for trailing output, bounded so a stuck stream cannot hang the run.
+  Future<void> _awaitOutputClosed(ProcessRunResult result) {
+    final completer = Completer<void>();
+    final timer = Timer(const Duration(seconds: 2), () {
+      if (!completer.isCompleted) completer.complete();
+    });
+    unawaited(
+      result.outputClosed.whenComplete(() {
+        if (!completer.isCompleted) completer.complete();
       }),
     );
     return completer.future.whenComplete(timer.cancel);

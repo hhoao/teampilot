@@ -26,14 +26,12 @@ class _FakeHandle implements ProcessRunHandle {
   Future<int> get exitCode async => exit;
 
   @override
-  Stream<List<int>> get stdout => Stream.fromIterable(
-    stdoutChunks.map((c) => c.codeUnits),
-  );
+  Stream<List<int>> get stdout =>
+      Stream.fromIterable(stdoutChunks.map((c) => c.codeUnits));
 
   @override
-  Stream<List<int>> get stderr => Stream.fromIterable(
-    stderrChunks.map((c) => c.codeUnits),
-  );
+  Stream<List<int>> get stderr =>
+      Stream.fromIterable(stderrChunks.map((c) => c.codeUnits));
 
   @override
   void kill() => killed = true;
@@ -115,6 +113,31 @@ void main() {
     expect(handle.killed, isTrue);
   });
 
+  test('waits for late output before reading the tail', () async {
+    final runner = HostAutomationCommandRunner(
+      workspaceById: (_) => _workspace([const WorkspaceFolder(path: '/repo')]),
+      resolver: RunTargetResolver(homeTarget: () => RuntimeTarget.local()),
+      executor: ProcessRunExecutor(
+        spawner:
+            ({
+              required executable,
+              required arguments,
+              required workingDirectory,
+              environment,
+              runInShell = false,
+              includeParentEnvironment = true,
+            }) async => _DelayedOutputHandle(),
+      ),
+    );
+
+    final outcome = await runner.run(
+      const AutomationCommandRequest(workspaceId: 'ws1', command: 'make'),
+    );
+
+    expect(outcome.exitCode, 3);
+    expect(outcome.stdoutTail, 'late error line');
+  });
+
   test('rejects a working directory outside the workspace', () async {
     final runner = HostAutomationCommandRunner(
       workspaceById: (_) => _workspace([const WorkspaceFolder(path: '/repo')]),
@@ -158,6 +181,26 @@ Future<ProcessRunHandle> _unexpectedSpawner({
   bool includeParentEnvironment = true,
 }) {
   throw StateError('spawner must not be called');
+}
+
+/// Exits immediately; its stdout chunk arrives only afterwards.
+class _DelayedOutputHandle implements ProcessRunHandle {
+  @override
+  Future<int> get exitCode async => 3;
+
+  @override
+  Stream<List<int>> get stdout => Stream<List<int>>.fromFuture(
+    Future<List<int>>.delayed(
+      const Duration(milliseconds: 50),
+      () => 'late error line'.codeUnits,
+    ),
+  );
+
+  @override
+  Stream<List<int>> get stderr => const Stream.empty();
+
+  @override
+  void kill() {}
 }
 
 class _HungHandle implements ProcessRunHandle {
