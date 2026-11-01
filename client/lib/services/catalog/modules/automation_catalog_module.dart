@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:collection/collection.dart';
+import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
 import '../../../models/automation.dart';
+import '../../../models/workspace_folder.dart';
 import '../../../repositories/automation_repository.dart';
 import '../../automation/automation_schedule_calculator.dart';
 import '../../automation/automation_schedule_defaults.dart';
@@ -31,6 +35,7 @@ class AutomationCatalogModule implements CatalogKindModule {
     this.teamExists,
     this.presetExists,
     this.memberExists,
+    this.workspaceFolders,
     int Function()? nowMs,
     String Function()? newId,
     String Function()? defaultTimezone,
@@ -46,6 +51,9 @@ class AutomationCatalogModule implements CatalogKindModule {
   final bool Function(String teamId)? teamExists;
   final bool Function(String presetId)? presetExists;
   final AutomationMemberExists? memberExists;
+
+  /// Folders of a workspace, used to validate `working_directory`.
+  final List<WorkspaceFolder>? Function(String workspaceId)? workspaceFolders;
   final int Function() _nowMs;
   final String Function() _newId;
   final String Function() _defaultTimezone;
@@ -154,13 +162,60 @@ class AutomationCatalogModule implements CatalogKindModule {
     );
     final action = _parseAction(req.arguments['action']);
     final name = _requireText(req, 'name');
-    final message = _requireText(req, 'message');
+    final message = action == AutomationAction.runCommand
+        ? (_text(req.arguments['message']) ?? '')
+        : _requireText(req, 'message');
     final maxRunCount = _maxRunCount(req);
     final missedRunGraceMinutes = _graceMinutes(req);
     final reuseSession = _boolArg(req, 'reuse_session') ?? false;
     final id = _newId();
 
     final Automation draft;
+    if (action == AutomationAction.runCommand) {
+      final command = _requireCommand(req);
+      final workingDirectory = _workingDirectory(req);
+      final timeoutSeconds = _timeoutSeconds(req);
+      final catchUp = _catchUpPolicy(req);
+      final wantsEnabled = _boolArg(req, 'enabled') ?? false;
+      draft =
+          _baseAutomation(
+            id: id,
+            name: name,
+            action: action,
+            workspaceId: req.workspaceId,
+            message: '',
+            schedule: schedule,
+            now: now,
+            maxRunCount: maxRunCount,
+            missedRunGraceMinutes: missedRunGraceMinutes,
+          ).copyWith(
+            command: command,
+            timeoutSeconds: timeoutSeconds,
+            catchUpPolicy: catchUp,
+            workingDirectoryPath: workingDirectory,
+            enabled: wantsEnabled,
+          );
+      final (saved, preview) = await _commit(
+        draft,
+        now,
+        scheduleNextRun: wantsEnabled,
+        requireEnabled: wantsEnabled,
+      );
+      _emit(CatalogOp.create, req, [saved.id]);
+      return _ok(
+        req,
+        [saved.id],
+        {
+          'automation': saved.toJson(),
+          'summary': scheduleCalculator.formatScheduleSummary(saved),
+          'enabled': saved.enabled,
+          'next_run_at_ms': preview,
+        },
+        message: saved.enabled
+            ? 'Created and enabled. It will run on the resolved schedule.'
+            : _createdDisabledMessage,
+      );
+    }
     if (action == AutomationAction.scheduledMessage) {
       final sessionId = _text(req.arguments['session_id']) ?? req.sessionId;
       final exists = sessionExists;
@@ -253,6 +308,9 @@ class AutomationCatalogModule implements CatalogKindModule {
     required int now,
     required int missedRunGraceMinutes,
     int? maxRunCount,
+    String? command,
+    int timeoutSeconds = 300,
+    AutomationCatchUpPolicy catchUpPolicy = AutomationCatchUpPolicy.none,
     bool isPersonal = true,
     String? presetId,
     String? teamId,
@@ -269,6 +327,9 @@ class AutomationCatalogModule implements CatalogKindModule {
       teamId: teamId,
       targetMemberId: targetMemberId,
       message: message,
+      command: command,
+      timeoutSeconds: timeoutSeconds,
+      catchUpPolicy: catchUpPolicy,
       reuseSession: reuseSession,
       preset: schedule.preset,
       customCron: schedule.customCron,
@@ -363,6 +424,29 @@ class AutomationCatalogModule implements CatalogKindModule {
     }
     if (req.arguments.containsKey('message')) {
       next = next.copyWith(message: _requireText(req, 'message'));
+    }
+    if (req.arguments.containsKey('command')) {
+      final command = _text(req.arguments['command']) ?? '';
+      if (command.isEmpty || command.length > 2000) {
+        throw CatalogException(
+          'command_invalid',
+          'command must be 1..2000 characters',
+        );
+      }
+      next = next.copyWith(command: command);
+    }
+    if (req.arguments.containsKey('working_directory')) {
+      final workingDirectory = _workingDirectory(req);
+      next = next.copyWith(
+        workingDirectoryPath: workingDirectory,
+        clearWorkingDirectoryPath: workingDirectory == null,
+      );
+    }
+    if (req.arguments.containsKey('timeout_seconds')) {
+      next = next.copyWith(timeoutSeconds: _timeoutSeconds(req));
+    }
+    if (req.arguments.containsKey('catch_up')) {
+      next = next.copyWith(catchUpPolicy: _catchUpPolicy(req));
     }
     if (req.arguments.containsKey('schedule')) {
       final rawSchedule = req.arguments['schedule'];
@@ -571,6 +655,70 @@ class AutomationCatalogModule implements CatalogKindModule {
       );
     }
     return value;
+  }
+
+  String _requireCommand(CatalogRequest req) {
+    final command = _text(req.arguments['command']) ?? '';
+    if (command.isEmpty) {
+      throw CatalogException('command_invalid', 'command is required');
+    }
+    if (command.length > 2000) {
+      throw CatalogException(
+        'command_invalid',
+        'command must be at most 2000 characters',
+      );
+    }
+    return command;
+  }
+
+  String? _workingDirectory(CatalogRequest req) {
+    final raw = _text(req.arguments['working_directory']);
+    if (raw == null) return null;
+    final folders = workspaceFolders?.call(req.workspaceId) ?? const [];
+    if (!folders.any((folder) => _isUnder(raw, folder.path))) {
+      throw CatalogException(
+        'working_directory_invalid',
+        'working_directory must be inside this workspace: $raw',
+      );
+    }
+    return raw;
+  }
+
+  int _timeoutSeconds(CatalogRequest req) {
+    final raw = req.arguments['timeout_seconds'];
+    if (raw == null) return 300;
+    final value = raw is num ? raw.toInt() : int.tryParse('$raw');
+    if (value == null || value < 30 || value > 1800) {
+      throw CatalogException(
+        'invalid_argument',
+        'timeout_seconds must be 30..1800',
+      );
+    }
+    return value;
+  }
+
+  AutomationCatchUpPolicy _catchUpPolicy(CatalogRequest req) {
+    final raw = _text(req.arguments['catch_up']);
+    if (raw == null) return AutomationCatchUpPolicy.none;
+    for (final value in AutomationCatchUpPolicy.values) {
+      if (value.name == raw) return value;
+    }
+    throw CatalogException('invalid_argument', 'unknown catch_up: $raw');
+  }
+
+  bool _isUnder(String child, String parent) {
+    final ctx = p.Context(
+      style: Platform.isWindows && !parent.startsWith('/')
+          ? p.Style.windows
+          : p.Style.posix,
+    );
+    final normalizedChild = ctx.normalize(child);
+    final normalizedParent = ctx.normalize(parent);
+    if (normalizedChild == normalizedParent) return true;
+    final prefix = normalizedParent.endsWith(ctx.separator)
+        ? normalizedParent
+        : '$normalizedParent${ctx.separator}';
+    return normalizedChild.startsWith(prefix);
   }
 
   AutomationAction _parseAction(Object? raw) {

@@ -18,7 +18,8 @@ const automationCatalogTools = <CatalogToolSpec>[
     name: 'create_automation',
     description:
         'Create an automation. Always created disabled; enable it in the '
-        'Automations page or with update_automation.',
+        'Automations page or with update_automation. runCommand requires '
+        'command; message is ignored for it.',
     inputSchema: {
       'type': 'object',
       'properties': {
@@ -26,8 +27,16 @@ const automationCatalogTools = <CatalogToolSpec>[
         'message': {'type': 'string'},
         'action': {
           'type': 'string',
-          'enum': ['scheduledMessage', 'launchPrompt'],
+          'enum': ['scheduledMessage', 'launchPrompt', 'runCommand'],
         },
+        'command': {'type': 'string'},
+        'working_directory': {'type': 'string'},
+        'timeout_seconds': {'type': 'integer'},
+        'catch_up': {
+          'type': 'string',
+          'enum': ['none', 'once'],
+        },
+        'enabled': {'type': 'boolean'},
         'session_id': {'type': 'string'},
         'schedule': {
           'type': 'object',
@@ -62,7 +71,7 @@ const automationCatalogTools = <CatalogToolSpec>[
         'target_member_id': {'type': 'string'},
         'preset_id': {'type': 'string'},
       },
-      'required': ['name', 'message', 'schedule'],
+      'required': ['name', 'schedule'],
     },
     mutating: true,
   ),
@@ -77,6 +86,13 @@ const automationCatalogTools = <CatalogToolSpec>[
         'id': {'type': 'string'},
         'name': {'type': 'string'},
         'message': {'type': 'string'},
+        'command': {'type': 'string'},
+        'working_directory': {'type': 'string'},
+        'timeout_seconds': {'type': 'integer'},
+        'catch_up': {
+          'type': 'string',
+          'enum': ['none', 'once'],
+        },
         'schedule': {
           'type': 'object',
           'properties': {
