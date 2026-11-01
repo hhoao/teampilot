@@ -4,17 +4,22 @@ import 'app_session.dart';
 import 'automation_session_match.dart';
 import 'landing_launch_context.dart';
 
-enum AutomationAction { scheduledMessage, launchPrompt }
+enum AutomationAction { scheduledMessage, launchPrompt, runCommand }
 
 enum AutomationSchedulePreset { hourly, daily, weekdays, weekly, custom, once }
+
+enum AutomationCatchUpPolicy { none, once }
 
 enum AutomationRunStatus {
   pending,
   dispatching,
   dispatched,
   completed,
+  failed,
+  timedOut,
   skippedUnavailable,
   skippedMissed,
+  skippedOverlap,
   dispatchFailed,
 }
 
@@ -64,6 +69,9 @@ class Automation {
     this.sessionId,
     this.targetMemberId = 'team-lead',
     required this.message,
+    this.command,
+    this.timeoutSeconds = 300,
+    this.catchUpPolicy = AutomationCatchUpPolicy.none,
     this.reuseSession = false,
     required this.preset,
     this.customCron,
@@ -102,6 +110,11 @@ class Automation {
       sessionId: json['sessionId'] as String?,
       targetMemberId: json['targetMemberId'] as String? ?? 'team-lead',
       message: json['message'] as String? ?? '',
+      command: json['command'] as String?,
+      timeoutSeconds: (json['timeoutSeconds'] as num?)?.toInt() ?? 300,
+      catchUpPolicy:
+          _enumByName(AutomationCatchUpPolicy.values, json['catchUpPolicy']) ??
+          AutomationCatchUpPolicy.none,
       reuseSession: json['reuseSession'] as bool? ?? false,
       preset: _requireEnum(
         AutomationSchedulePreset.values,
@@ -153,6 +166,11 @@ class Automation {
   final String? sessionId;
   final String targetMemberId;
   final String message;
+
+  /// One-line shell command executed when [action] is [AutomationAction.runCommand].
+  final String? command;
+  final int timeoutSeconds;
+  final AutomationCatchUpPolicy catchUpPolicy;
   final bool reuseSession;
   final AutomationSchedulePreset preset;
   final String? customCron;
@@ -176,6 +194,8 @@ class Automation {
   bool get isScheduledMessage => action == AutomationAction.scheduledMessage;
 
   bool get isLaunchPrompt => action == AutomationAction.launchPrompt;
+
+  bool get isRunCommand => action == AutomationAction.runCommand;
 
   bool get isOnce => preset == AutomationSchedulePreset.once;
 
@@ -210,11 +230,11 @@ class Automation {
     if (workspaceId.trim().isEmpty) {
       throw ArgumentError('Automation workspaceId is required');
     }
-    if (message.trim().isEmpty) {
-      throw ArgumentError('Automation message is required');
-    }
     switch (action) {
       case AutomationAction.scheduledMessage:
+        if (message.trim().isEmpty) {
+          throw ArgumentError('Automation message is required');
+        }
         if (sessionId == null || sessionId!.trim().isEmpty) {
           throw ArgumentError('scheduledMessage requires sessionId');
         }
@@ -222,6 +242,9 @@ class Automation {
           throw ArgumentError('scheduledMessage must not reuse session');
         }
       case AutomationAction.launchPrompt:
+        if (message.trim().isEmpty) {
+          throw ArgumentError('Automation message is required');
+        }
         if (isPersonal) {
           if (presetId == null || presetId!.trim().isEmpty) {
             throw ArgumentError('launchPrompt simple mode requires presetId');
@@ -235,6 +258,26 @@ class Automation {
               'launchPrompt team mode requires targetMemberId',
             );
           }
+        }
+      case AutomationAction.runCommand:
+        final cmd = command?.trim() ?? '';
+        if (cmd.isEmpty) {
+          throw ArgumentError('runCommand requires command');
+        }
+        if (cmd.length > 2000) {
+          throw ArgumentError('command must be at most 2000 characters');
+        }
+        if (timeoutSeconds < 30 || timeoutSeconds > 1800) {
+          throw ArgumentError('timeoutSeconds must be 30..1800');
+        }
+        if (sessionId != null && sessionId!.trim().isNotEmpty) {
+          throw ArgumentError('runCommand must not bind a session');
+        }
+        if (presetId != null || teamId != null) {
+          throw ArgumentError('runCommand must not carry a launch identity');
+        }
+        if (reuseSession) {
+          throw ArgumentError('runCommand must not reuse session');
         }
     }
     if (preset == AutomationSchedulePreset.custom &&
@@ -283,6 +326,10 @@ class Automation {
     bool clearSessionId = false,
     String? targetMemberId,
     String? message,
+    String? command,
+    bool clearCommand = false,
+    int? timeoutSeconds,
+    AutomationCatchUpPolicy? catchUpPolicy,
     bool? reuseSession,
     AutomationSchedulePreset? preset,
     String? customCron,
@@ -325,6 +372,9 @@ class Automation {
       sessionId: clearSessionId ? null : (sessionId ?? this.sessionId),
       targetMemberId: targetMemberId ?? this.targetMemberId,
       message: message ?? this.message,
+      command: clearCommand ? null : (command ?? this.command),
+      timeoutSeconds: timeoutSeconds ?? this.timeoutSeconds,
+      catchUpPolicy: catchUpPolicy ?? this.catchUpPolicy,
       reuseSession: reuseSession ?? this.reuseSession,
       preset: preset ?? this.preset,
       customCron: clearCustomCron ? null : (customCron ?? this.customCron),
@@ -368,6 +418,11 @@ class Automation {
         if (workingDirectoryPath != null && workingDirectoryPath!.isNotEmpty)
           'workingDirectoryPath': workingDirectoryPath,
       },
+      if (isRunCommand) ...{
+        'command': command,
+        'timeoutSeconds': timeoutSeconds,
+        'catchUpPolicy': catchUpPolicy.name,
+      },
       if (sessionId != null && sessionId!.isNotEmpty) 'sessionId': sessionId,
       'message': message,
       'preset': preset.name,
@@ -408,6 +463,9 @@ class Automation {
             sessionId == other.sessionId &&
             targetMemberId == other.targetMemberId &&
             message == other.message &&
+            command == other.command &&
+            timeoutSeconds == other.timeoutSeconds &&
+            catchUpPolicy == other.catchUpPolicy &&
             reuseSession == other.reuseSession &&
             preset == other.preset &&
             customCron == other.customCron &&
@@ -442,6 +500,9 @@ class Automation {
     sessionId,
     targetMemberId,
     message,
+    command,
+    timeoutSeconds,
+    catchUpPolicy,
     reuseSession,
     preset,
     customCron,
@@ -475,6 +536,11 @@ class AutomationRun {
     this.error,
     this.startedAtMs,
     this.completedAtMs,
+    this.exitCode,
+    this.stdoutTail,
+    this.stderrTail,
+    this.outputTruncated = false,
+    this.durationMs,
   });
 
   factory AutomationRun.fromJson(Map<String, Object?> json) {
@@ -497,6 +563,11 @@ class AutomationRun {
       error: json['error'] as String?,
       startedAtMs: (json['startedAtMs'] as num?)?.toInt(),
       completedAtMs: (json['completedAtMs'] as num?)?.toInt(),
+      exitCode: (json['exitCode'] as num?)?.toInt(),
+      stdoutTail: json['stdoutTail'] as String?,
+      stderrTail: json['stderrTail'] as String?,
+      outputTruncated: json['outputTruncated'] as bool? ?? false,
+      durationMs: (json['durationMs'] as num?)?.toInt(),
     );
   }
 
@@ -510,6 +581,11 @@ class AutomationRun {
   final String? error;
   final int? startedAtMs;
   final int? completedAtMs;
+  final int? exitCode;
+  final String? stdoutTail;
+  final String? stderrTail;
+  final bool outputTruncated;
+  final int? durationMs;
 
   AutomationRun copyWith({
     String? id,
@@ -526,6 +602,15 @@ class AutomationRun {
     bool clearStartedAtMs = false,
     int? completedAtMs,
     bool clearCompletedAtMs = false,
+    int? exitCode,
+    bool clearExitCode = false,
+    String? stdoutTail,
+    bool clearStdoutTail = false,
+    String? stderrTail,
+    bool clearStderrTail = false,
+    bool? outputTruncated,
+    int? durationMs,
+    bool clearDurationMs = false,
   }) {
     return AutomationRun(
       id: id ?? this.id,
@@ -540,6 +625,11 @@ class AutomationRun {
       completedAtMs: clearCompletedAtMs
           ? null
           : (completedAtMs ?? this.completedAtMs),
+      exitCode: clearExitCode ? null : (exitCode ?? this.exitCode),
+      stdoutTail: clearStdoutTail ? null : (stdoutTail ?? this.stdoutTail),
+      stderrTail: clearStderrTail ? null : (stderrTail ?? this.stderrTail),
+      outputTruncated: outputTruncated ?? this.outputTruncated,
+      durationMs: clearDurationMs ? null : (durationMs ?? this.durationMs),
     );
   }
 
@@ -555,6 +645,13 @@ class AutomationRun {
       if (error != null && error!.isNotEmpty) 'error': error,
       if (startedAtMs != null) 'startedAtMs': startedAtMs,
       if (completedAtMs != null) 'completedAtMs': completedAtMs,
+      if (exitCode != null) 'exitCode': exitCode,
+      if (stdoutTail != null && stdoutTail!.isNotEmpty)
+        'stdoutTail': stdoutTail,
+      if (stderrTail != null && stderrTail!.isNotEmpty)
+        'stderrTail': stderrTail,
+      if (outputTruncated) 'outputTruncated': true,
+      if (durationMs != null) 'durationMs': durationMs,
     };
   }
 
@@ -572,7 +669,12 @@ class AutomationRun {
             sessionId == other.sessionId &&
             error == other.error &&
             startedAtMs == other.startedAtMs &&
-            completedAtMs == other.completedAtMs;
+            completedAtMs == other.completedAtMs &&
+            exitCode == other.exitCode &&
+            stdoutTail == other.stdoutTail &&
+            stderrTail == other.stderrTail &&
+            outputTruncated == other.outputTruncated &&
+            durationMs == other.durationMs;
   }
 
   @override
@@ -587,5 +689,10 @@ class AutomationRun {
     error,
     startedAtMs,
     completedAtMs,
+    exitCode,
+    stdoutTail,
+    stderrTail,
+    outputTruncated,
+    durationMs,
   );
 }
