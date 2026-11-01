@@ -683,6 +683,11 @@ class AutomationRunHistoryRow extends StatelessWidget {
       AutomationRunStatus.skippedMissed =>
         l10n.automationsRunStatusSkippedMissed,
       AutomationRunStatus.dispatchFailed => l10n.automationsDispatchFailed,
+      // Placeholder labels until the command run statuses get dedicated strings.
+      AutomationRunStatus.failed ||
+      AutomationRunStatus.timedOut => l10n.automationsDispatchFailed,
+      AutomationRunStatus.skippedOverlap =>
+        l10n.automationsRunStatusSkippedMissed,
       AutomationRunStatus.dispatching => l10n.automationsRunStatusDispatching,
       AutomationRunStatus.dispatched => l10n.automationsRunStatusDispatched,
       AutomationRunStatus.pending => l10n.automationsRunStatusPending,
