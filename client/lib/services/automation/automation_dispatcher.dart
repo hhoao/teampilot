@@ -102,6 +102,11 @@ class AutomationDispatcher {
     AutomationRunTrigger trigger = AutomationRunTrigger.scheduled,
   }) async {
     automation.validate();
+    if (automation.isRunCommand) {
+      throw ArgumentError(
+        'runCommand automations are executed by AutomationCommandExecutor',
+      );
+    }
     final workspaceId = automation.workspaceId;
     final startedAtMs = _nowMs();
     final pending = _pendingRun(
