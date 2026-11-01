@@ -46,7 +46,9 @@ void main() {
       },
       ptySubmit: (sessionId, memberId, message) async => 'pty-id',
       pollInterval: const Duration(milliseconds: 1),
-      activationTimeout: const Duration(milliseconds: 50),
+      // Generous relative to the 5ms attach so an event-loop stall during the
+      // poll cannot expire the deadline before the sender appears.
+      activationTimeout: const Duration(milliseconds: 500),
     );
 
     expect(outcome.delivered, isTrue);
