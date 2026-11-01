@@ -22,6 +22,7 @@ import '../../utils/logging/logger.dart';
 import 'automation_bus_gateway.dart';
 import 'automation_dispatch_result.dart';
 import 'automation_launch_session_binding.dart';
+import 'automation_run_accounting.dart';
 import 'automation_schedule_calculator.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 
@@ -451,28 +452,19 @@ class AutomationDispatcher {
     );
   }
 
+  late final AutomationRunAccounting _accounting = AutomationRunAccounting(
+    _scheduleCalculator,
+  );
+
   Automation _advanceAutomationAfterRun(
     Automation automation, {
     required int lastRunAtMs,
     String? dispatchedSessionId,
   }) {
-    final nextRunCount = automation.runCount + 1;
-    final max = automation.effectiveMaxRunCount;
-    final limitReached = max != null && nextRunCount >= max;
-    final stillEnabled = automation.enabled && !limitReached;
-    final nextRunAtMs = stillEnabled
-        ? _scheduleCalculator.computeNextRunAtMs(
-            automation,
-            afterMs: lastRunAtMs,
-          )
-        : null;
-    var updated = automation.copyWith(
+    var updated = _accounting.advance(
+      automation: automation,
       lastRunAtMs: lastRunAtMs,
-      runCount: nextRunCount,
-      enabled: stillEnabled,
-      nextRunAtMs: nextRunAtMs,
-      clearNextRunAtMs: nextRunAtMs == null,
-      updatedAtMs: _nowMs(),
+      nowMs: _nowMs(),
     );
     if (dispatchedSessionId != null && dispatchedSessionId.trim().isNotEmpty) {
       updated = AutomationLaunchSessionBinding.applyAfterSuccessfulDispatch(
