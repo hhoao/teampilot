@@ -25,7 +25,9 @@ class TabTeamBusGateway implements AutomationBusGateway {
     required ChatTabStore tabStore,
     Future<void> Function(String sessionId)? activatePersonalAcp,
     Future<void> Function(String sessionId, String memberId)? activateMemberSeat,
-    Duration acpActivationTimeout = const Duration(seconds: 30),
+    // Must cover a cold ACP connect (session/new + MCP startup); deliberately
+    // matches the dispatcher's `_memberReadyTimeout` PTY gate.
+    Duration acpActivationTimeout = const Duration(seconds: 60),
   }) : _memberMaterializer = memberMaterializer,
        _sessionRuntime = sessionRuntime,
        _tabStore = tabStore,
