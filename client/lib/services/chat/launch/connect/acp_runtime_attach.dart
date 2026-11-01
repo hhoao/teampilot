@@ -84,6 +84,7 @@ class AcpRuntimeAttach {
     this.memberLifecycleGate,
     this.prepareRemoteStaging,
     this.sshLaunchFactory,
+    this.touchUserActivity,
   }) : _host = host,
        _storage = storage;
 
@@ -96,6 +97,10 @@ class AcpRuntimeAttach {
   final AcpContributionEnvBuilder? preparePersonalContribution;
   final AcpTeamConnectPrepare? prepareTeamConnect;
   final AcpMemberExtraMcp? extraMcpForMember;
+
+  /// Debounced `session.updatedAt` bump for operator prompts (production wires
+  /// `SessionLaunchService.touchOnUserActivity`). Null in tests.
+  final void Function(String sessionId)? touchUserActivity;
 
   /// Production wires [SessionLaunchService.lifecycleGateBeforeAttach] here.
   AcpMemberLifecycleGate? memberLifecycleGate;
@@ -508,6 +513,7 @@ class AcpRuntimeAttach {
       seatMemberId: personal ? AcpChatRuntimeCubit.acpMemberId : memberId!,
       launchProvider: launchProvider,
       launchModel: launchModel,
+      onUserActivity: touchUserActivity,
       attention: _host.agentAttentionCubit,
       seatLeases: switch (_host.seatLeaseCubit) {
         final SeatBackgroundLeasePort port => port,

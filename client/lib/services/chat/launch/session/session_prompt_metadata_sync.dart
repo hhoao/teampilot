@@ -6,10 +6,10 @@ import '../../../../models/app_session.dart';
 import '../../../../repositories/session_repository.dart';
 import '../../../../utils/session/session_display_title.dart';
 
-/// Minimum gap between [touchOnUserActivity] persists for one session.
+/// Minimum gap between touch persists for one session.
 const sessionActivityTouchDebounceMs = 5000;
 
-/// Auto-rename and debounced touch hooks driven by user activity.
+/// Auto-rename and debounced `updatedAt` touches for user activity and turns.
 class SessionPromptMetadataSync {
   SessionPromptMetadataSync({
     required SessionLaunchHost host,
@@ -54,7 +54,15 @@ class SessionPromptMetadataSync {
 
   /// Bumps [AppSession.updatedAt] for user activity (compose inject, mailbox,
   /// keyboard Enter). Debounced per session.
-  void touchOnUserActivity(String sessionId) {
+  void touchOnUserActivity(String sessionId) => _touch(sessionId);
+
+  /// Bumps [AppSession.updatedAt] when a session stops running a turn, so an
+  /// agent reply that lands after the operator looked away still makes the row
+  /// read "just now" and sorts as recently updated. Shares the debounce window
+  /// with [touchOnUserActivity] — a prompt and its short turn cost one write.
+  void touchOnTurnEnded(String sessionId) => _touch(sessionId);
+
+  void _touch(String sessionId) {
     if (sessionId.startsWith('local-')) return;
     final repo = _host.sessionRepository;
     if (repo == null) return;

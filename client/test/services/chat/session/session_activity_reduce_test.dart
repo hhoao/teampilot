@@ -91,4 +91,63 @@ void main() {
     expect(again.disposition, SessionTurnDisposition.none);
     expect(again.isReadyToChat, isFalse);
   });
+
+  group('sessionTurnJustEnded', () {
+    test('fires once on the turn-end edge, not on repeated reduces', () {
+      final running = reduceSessionActivity(
+        previous: const SessionActivity(),
+        reasons: {SessionBusyReason.inTurn},
+      );
+      final done = reduceSessionActivity(previous: running, reasons: {});
+
+      expect(
+        sessionTurnJustEnded(previous: running, next: done),
+        isTrue,
+        reason: 'leaving inTurn with a landed disposition is a turn end',
+      );
+      expect(
+        sessionTurnJustEnded(previous: done, next: done),
+        isFalse,
+        reason: 'the idle watch re-reduces the same finished state every tick',
+      );
+    });
+
+    test('fires on a cancelled turn', () {
+      final running = reduceSessionActivity(
+        previous: const SessionActivity(),
+        reasons: {SessionBusyReason.inTurn},
+      );
+      final cancelled = reduceSessionActivity(
+        previous: running,
+        reasons: {},
+        forced: SessionTurnDisposition.cancelled,
+      );
+
+      expect(sessionTurnJustEnded(previous: running, next: cancelled), isTrue);
+    });
+
+    test('does not fire for a delivery failure that never ran a turn', () {
+      final delivering = reduceSessionActivity(
+        previous: const SessionActivity(),
+        reasons: {SessionBusyReason.delivering},
+      );
+      final failed = reduceSessionActivity(previous: delivering, reasons: {});
+
+      expect(failed.disposition, SessionTurnDisposition.failed);
+      expect(sessionTurnJustEnded(previous: delivering, next: failed), isFalse);
+    });
+
+    test('does not fire while the session is still busy', () {
+      final a = reduceSessionActivity(
+        previous: const SessionActivity(),
+        reasons: {SessionBusyReason.inTurn},
+      );
+      final b = reduceSessionActivity(
+        previous: a,
+        reasons: {SessionBusyReason.inTurn, SessionBusyReason.delivering},
+      );
+
+      expect(sessionTurnJustEnded(previous: a, next: b), isFalse);
+    });
+  });
 }

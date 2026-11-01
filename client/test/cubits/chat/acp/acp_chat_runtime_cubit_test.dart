@@ -258,6 +258,7 @@ void main() {
     Duration? backgroundSyncInterval,
     String launchProvider = '',
     String launchModel = '',
+    void Function(String sessionId)? onUserActivity,
   }) {
     final cubit = AcpChatRuntimeCubit(
       runtime: runtime,
@@ -265,6 +266,7 @@ void main() {
       tool: CliTool.gemini,
       launchProvider: launchProvider,
       launchModel: launchModel,
+      onUserActivity: onUserActivity,
       attention: attention,
       transcript: transcript,
       agentSession: agentSession,
@@ -625,6 +627,23 @@ void main() {
       expect(cubit.state.inTurn, isFalse);
       expect(cubit.state.phase, AcpChatPhase.ready);
       expect(cubit.state.messages.single.role, AiRole.user);
+      await cubit.close();
+    },
+  );
+
+  test(
+    'sendPrompt reports user activity once per accepted prompt',
+    () async {
+      final touched = <String>[];
+      final cubit = bootCubit(onUserActivity: touched.add);
+
+      expect(cubit.sendPrompt('hello'), isTrue);
+      // Rejected while the queued turn is still in flight.
+      expect(cubit.sendPrompt('later'), isFalse);
+      // Blank submits never count as activity.
+      expect(cubit.sendPrompt('   '), isFalse);
+      expect(touched, ['s1']);
+
       await cubit.close();
     },
   );

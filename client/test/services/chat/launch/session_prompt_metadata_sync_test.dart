@@ -148,6 +148,32 @@ void main() {
     expect(host.state.sessions.single.updatedAt, 10_000);
     expect(repo.touched, ['sess-1']);
   });
+
+  test('touchOnTurnEnded bumps updatedAt and persists', () async {
+    sync.touchOnTurnEnded('sess-1');
+    await Future<void>.value();
+
+    expect(host.state.sessions.single.updatedAt, 10_000);
+    expect(repo.touched, ['sess-1']);
+  });
+
+  test('turn end shares the debounce window with user activity', () async {
+    sync.touchOnUserActivity('sess-1');
+    nowMs = 12_000;
+    sync.touchOnTurnEnded('sess-1');
+    await Future<void>.value();
+
+    expect(repo.touched, [
+      'sess-1',
+    ], reason: 'a prompt and its short turn must cost one write');
+
+    nowMs = 15_000;
+    sync.touchOnTurnEnded('sess-1');
+    await Future<void>.value();
+
+    expect(repo.touched, ['sess-1', 'sess-1']);
+    expect(host.state.sessions.single.updatedAt, 15_000);
+  });
 }
 
 class _FakeRepo extends Fake implements SessionRepository {

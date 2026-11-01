@@ -163,6 +163,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     this.seatMemberId = acpMemberId,
     this.launchProvider = '',
     this.launchModel = '',
+    this.onUserActivity,
     AgentAttentionPort? attention,
     AcpChatTranscriptWriter? transcript,
     AcpAgentSessionStore? agentSession,
@@ -209,6 +210,11 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
   /// silently falls back to the agent's default model.
   final String launchProvider;
   final String launchModel;
+
+  /// Bumps the session's `updatedAt` when the operator submits a prompt, so
+  /// the conversation list's relative time and `recentlyUpdated` order move
+  /// like the PTY path (which touches on every user line). Null in tests.
+  final void Function(String sessionId)? onUserActivity;
 
   final AgentAttentionPort? _attention;
   final AcpChatTranscriptWriter? _transcript;
@@ -541,6 +547,7 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
     // Handshake `kind=none` is a CLI probe, not a confirmed logout. Drop it
     // as soon as the user sends so it never sits above the turn.
     _removeAuthNoticeMessage();
+    onUserActivity?.call(sessionId);
     _turnSerial++;
     final serial = _turnSerial;
     if (state.phase == AcpChatPhase.launching ||

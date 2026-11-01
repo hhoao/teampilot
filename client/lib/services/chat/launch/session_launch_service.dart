@@ -121,6 +121,7 @@ class SessionLaunchService
     memberLifecycleGate: acpMemberLifecycleGate,
     prepareRemoteStaging: prepareAcpRemoteStaging,
     sshLaunchFactory: prepareAcpSshLaunch,
+    touchUserActivity: touchOnUserActivity,
   );
 
   static const _uuid = Uuid();
@@ -129,7 +130,15 @@ class SessionLaunchService
   late final MemberConnectStage _memberConnect;
   late final SessionSshProfileReconnect _sshReconnect;
   late final SessionLifecycleConnectCoordinator _lifecycleCoordinator;
-  late final SessionPromptMetadataSync _promptMetadata;
+
+  /// Set by [configureLaunchComponents] in production. Left null by tests that
+  /// stop after the constructor, where the getter still builds the same helper
+  /// (debounce included) so prompt touches behave identically.
+  SessionPromptMetadataSync? _promptMetadataOverride;
+
+  SessionPromptMetadataSync get _promptMetadata => _promptMetadataOverride ??=
+      SessionPromptMetadataSync(host: _h, state: () => _h.stateSnapshot());
+
   late final TeamConfigLaunchValidator _teamConfigValidator;
 
   /// Called by the launch composition root after the service has been created
@@ -148,7 +157,7 @@ class SessionLaunchService
     _memberConnect = memberConnect;
     _sshReconnect = sshReconnect;
     _lifecycleCoordinator = lifecycleCoordinator;
-    _promptMetadata = promptMetadata;
+    _promptMetadataOverride = promptMetadata;
     _teamConfigValidator = teamConfigValidator;
     _acpAttach.memberLifecycleGate ??=
         ({
@@ -1042,6 +1051,10 @@ class SessionLaunchService
 
   void touchOnUserActivity(String sessionId) =>
       _promptMetadata.touchOnUserActivity(sessionId);
+
+  /// Session stopped running a turn (any runtime): bump `updatedAt`.
+  void touchOnTurnEnded(String sessionId) =>
+      _promptMetadata.touchOnTurnEnded(sessionId);
 
   ChatTab _appendLocalTab(TeamProfile team, {required bool emitChange}) {
     final tab = _tabStore.appendLocalTab(team, cliTeamName: _uuid.v4());

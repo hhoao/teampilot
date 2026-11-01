@@ -937,11 +937,18 @@ class ChatCubit extends Cubit<ChatState>
       final id = tab.info.id;
       final prev = state.sessionActivities[id] ?? const SessionActivity();
       final forced = _forcedDisposition.remove(id);
-      next[id] = reduceSessionActivity(
+      final activity = reduceSessionActivity(
         previous: prev,
         reasons: reasons[id] ?? const {},
         forced: forced,
       );
+      next[id] = activity;
+      // Turn-end recency is runtime-agnostic (PTY latch / hook Stop / ACP
+      // `_endTurn` all converge here), so the row's "last updated" and the
+      // recently-updated order move for every CLI, not just on user input.
+      if (sessionTurnJustEnded(previous: prev, next: activity)) {
+        _launchService.touchOnTurnEnded(id);
+      }
     }
     if (!mapEquals(next, state.sessionActivities)) {
       emit(state.copyWith(sessionActivities: next));
