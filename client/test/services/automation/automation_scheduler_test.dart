@@ -8,6 +8,7 @@ import 'package:teampilot/repositories/automation_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/automation/automation_bus_gateway.dart';
 import 'package:teampilot/services/automation/automation_dispatcher.dart';
+import 'package:teampilot/services/automation/automation_prompt_delivery.dart';
 import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
 import 'package:teampilot/services/automation/automation_scheduler.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
@@ -34,12 +35,13 @@ class _RecordingBusGateway implements AutomationBusGateway {
   var deliverCount = 0;
 
   @override
-  Future<void> deliverUserCommandToMember(
-    String sessionId,
+  Future<AutomationDeliveryOutcome> deliverUserCommandToMember(
+    AppSession session,
     String memberId,
     String message,
   ) async {
     deliverCount++;
+    return const AutomationDeliveryOutcome.delivered();
   }
 
   @override

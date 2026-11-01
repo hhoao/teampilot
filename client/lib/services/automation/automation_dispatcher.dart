@@ -184,7 +184,7 @@ class AutomationDispatcher {
       }
 
       await _busGateway.deliverUserCommandToMember(
-        session.sessionId,
+        session,
         memberId,
         automation.message,
       );

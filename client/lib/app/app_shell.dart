@@ -2583,6 +2583,9 @@ Future<AppShell> buildAppShell({
       busGateway: TabTeamBusGateway(
         memberMaterializer: chatCubit.memberMaterializer,
         sessionRuntime: chatCubit.sessionRuntime,
+        tabStore: chatCubit.tabStore,
+        activatePersonalAcp: chatCubit.retrySessionLaunch,
+        activateMemberSeat: chatCubit.ensureMemberTerminalForView,
       ),
       requestOpenSession: chatCubit.requestOpenSession,
       requestCreateAndOpenSession: chatCubit.requestCreateAndOpenSession,

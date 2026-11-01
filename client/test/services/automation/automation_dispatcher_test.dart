@@ -9,6 +9,7 @@ import 'package:teampilot/repositories/automation_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/automation/automation_bus_gateway.dart';
 import 'package:teampilot/services/automation/automation_dispatcher.dart';
+import 'package:teampilot/services/automation/automation_prompt_delivery.dart';
 import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
 import 'package:teampilot/services/storage/home_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
@@ -36,20 +37,25 @@ class _FakeSessionRepository implements SessionRepository {
 }
 
 class _RecordingBusGateway implements AutomationBusGateway {
-  _RecordingBusGateway({this.events});
+  _RecordingBusGateway({
+    this.events,
+    this.deliveryOutcome = const AutomationDeliveryOutcome.delivered(),
+  });
 
   final List<String>? events;
+  final AutomationDeliveryOutcome deliveryOutcome;
   final deliverCalls = <(String sessionId, String memberId, String message)>[];
   final ensureCalls = <(String sessionId, String memberId)>[];
 
   @override
-  Future<void> deliverUserCommandToMember(
-    String sessionId,
+  Future<AutomationDeliveryOutcome> deliverUserCommandToMember(
+    AppSession session,
     String memberId,
     String message,
   ) async {
-    events?.add('deliver:$sessionId');
-    deliverCalls.add((sessionId, memberId, message));
+    events?.add('deliver:${session.sessionId}');
+    deliverCalls.add((session.sessionId, memberId, message));
+    return deliveryOutcome;
   }
 
   @override
@@ -568,11 +574,11 @@ void main() {
 
 class _SlowBusGateway implements AutomationBusGateway {
   @override
-  Future<void> deliverUserCommandToMember(
-    String sessionId,
+  Future<AutomationDeliveryOutcome> deliverUserCommandToMember(
+    AppSession session,
     String memberId,
     String message,
-  ) async {}
+  ) async => const AutomationDeliveryOutcome.delivered();
 
   @override
   Future<void> ensureMemberReady(String sessionId, String memberId) async {
