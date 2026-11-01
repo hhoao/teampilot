@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -21,15 +23,26 @@ void main() {
   test('activates a missing ACP runtime and then delivers', () async {
     bool? sender;
     var activations = 0;
+    var acpSendCalls = 0;
 
     final outcome = await deliverAutomationPrompt(
       session: acpSession,
       memberId: 'sess-acp',
       message: 'run',
-      acpSend: () => sender == null ? null : (text) => true,
+      acpSend: () {
+        acpSendCalls++;
+        return sender == null ? null : (text) => true;
+      },
       activateAcp: () async {
         activations++;
-        sender = true;
+        // The runtime attaches 5ms after activation returns — longer than
+        // pollInterval — so the activation wait must observe at least one
+        // poll tick before the sender appears.
+        unawaited(
+          Future<void>.delayed(const Duration(milliseconds: 5), () {
+            sender = true;
+          }),
+        );
       },
       ptySubmit: (sessionId, memberId, message) async => 'pty-id',
       pollInterval: const Duration(milliseconds: 1),
@@ -39,6 +52,12 @@ void main() {
     expect(outcome.delivered, isTrue);
     expect(outcome.reason, isNull);
     expect(activations, 1);
+    // Guard call + at least one poll tick + the delivery lookup.
+    expect(
+      acpSendCalls,
+      greaterThan(2),
+      reason: 'the activation wait must poll until the runtime attaches',
+    );
   });
 
   test('reports acp_runtime_unavailable when activation never attaches', () async {
