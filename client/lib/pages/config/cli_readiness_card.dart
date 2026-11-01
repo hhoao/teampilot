@@ -25,6 +25,7 @@ import '../../services/cli/cli_version_probe.dart';
 import '../../services/cli/codex/capabilities/acp_adapter_installer.dart';
 import '../../services/cli/remote_cli_locator.dart';
 import '../../services/cli/registry/capabilities/acp_settings_capability.dart';
+import '../../services/cli/registry/capabilities/cli_transport_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/installer/npm_installer_capability.dart';
 import '../../services/install/install_job_enqueue.dart';
@@ -107,6 +108,11 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       _registry.capability<AcpSettingsCapability>(widget.cli);
 
   bool get _separateAdapter => _settings?.usesSeparateAdapter == true;
+
+  bool get _canChooseTransport =>
+      _registry.capability<CliTransportCapability>(widget.cli)
+          ?.canChooseTransport ??
+      false;
 
   @override
   void initState() {
@@ -583,8 +589,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
                 : null,
             locating: _locatingCli,
           ),
-          if (_separateAdapter ||
-              _settings?.showsPersonalAcpSwitch == true) ...[
+          if (_separateAdapter || _canChooseTransport) ...[
             const SizedBox(height: 12),
             _buildAcpBlock(
               context,
@@ -614,7 +619,7 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
       cubit.installedVersion(widget.cli, CliBinaryKind.adapter),
       l10n.cliReadinessVersionUnknown,
     );
-    final showSwitch = _settings?.showsPersonalAcpSwitch == true;
+    final showSwitch = _canChooseTransport;
     final busyAdapter = _locatingAdapter || installingAdapter;
     final showAdapterInstall =
         !adapterKnown && _settings?.adapterInstaller != null;

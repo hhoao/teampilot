@@ -936,7 +936,9 @@ final class _RecordingMcpCapability implements McpCapability {
   }) async {}
 }
 
-final class _RecordingHookCapability implements HookCapability {
+final class _RecordingHookCapability
+    with BusProtocolHookDefaults
+    implements HookCapability {
   const _RecordingHookCapability(this.events);
   final List<String> events;
   @override
@@ -988,7 +990,9 @@ final class _WritingPromptCapability implements PromptCapability {
   }
 }
 
-final class _WritingHookCapability implements HookCapability {
+final class _WritingHookCapability
+    with BusProtocolHookDefaults
+    implements HookCapability {
   @override
   String? nativeEvent(HookEvent event) => event.name;
   @override

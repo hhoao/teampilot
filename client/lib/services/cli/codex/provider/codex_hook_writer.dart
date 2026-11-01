@@ -7,7 +7,7 @@ import '../../registry/capabilities/hook_capability.dart';
 import 'codex_http_hook_script.dart';
 
 /// Codex hook writer：`config.toml` 的 `[[hooks.<Event>]]` 片段。
-class CodexHookWriter implements HookCapability {
+class CodexHookWriter with BusProtocolHookDefaults implements HookCapability {
   const CodexHookWriter({this.denyReason = 'TeamPilot hook policy'});
 
   final String denyReason;

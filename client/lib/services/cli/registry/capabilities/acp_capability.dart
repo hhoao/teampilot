@@ -37,6 +37,11 @@ abstract interface class AcpCapability implements CliCapability {
   /// servers are also forwarded on `session/new`.
   bool get forwardSessionNewMcpServers => true;
 
+  /// Extra spawn env needed once the agent-status plugin is staged for this
+  /// seat. Empty for every CLI that needs nothing; callers gate on "agent
+  /// status staged", never on the CLI identity.
+  Map<String, String> get agentStatusEnvironment;
+
   /// Extra `session/new` `_meta` (for example Claude mixed-seat
   /// `disallowedTools` / `allowedTools`). Default empty.
   Map<String, Object?> sessionNewMeta(Map<String, String> env) => const {};

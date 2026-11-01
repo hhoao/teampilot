@@ -326,11 +326,11 @@ class AppProviderCubit extends Cubit<AppProviderState> {
         state.providersByCli[cli] ?? await _repository.loadProviders(cli);
     final now = DateTime.now().toUtc().millisecondsSinceEpoch;
     final existing = current.where((p) => p.id == trimmedId).firstOrNull;
-    final normalizedConfig = _normalizedConfigForCli(
-      cli: cli,
-      providerId: trimmedId,
-      config: provider.config,
-    );
+    final normalizedConfig =
+        CliToolRegistry.builtIn()
+            .capability<ProviderCapability>(cli)
+            ?.normalizeConfig(providerId: trimmedId, config: provider.config) ??
+        provider.config;
     // A form draft never probes credentials: saving it (e.g. Save after a
     // successful login inside the add form) must not clobber the probed
     // ready state of the existing row. Probe-driven updates always carry a
@@ -776,38 +776,5 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     }
     return 'Imported $changed providers'
         '${mirrored > 0 ? ', mirrored $mirrored to FlashskyAI' : ''}.';
-  }
-
-  Map<String, Object?> _normalizedConfigForCli({
-    required CliTool cli,
-    required String providerId,
-    required Map<String, Object?> config,
-  }) {
-    if (cli != CliTool.flashskyai) return config;
-    return _normalizeFlashskyaiModelsProvider(
-      config: config,
-      providerId: providerId,
-    );
-  }
-
-  Map<String, Object?> _normalizeFlashskyaiModelsProvider({
-    required Map<String, Object?> config,
-    required String providerId,
-  }) {
-    final rawModels = config['models'];
-    if (rawModels is! Map) return config;
-    final normalizedModels = <String, Object?>{};
-    for (final entry in rawModels.entries) {
-      final key = entry.key.toString();
-      final value = entry.value;
-      if (value is Map) {
-        final modelJson = Map<String, Object?>.from(value);
-        modelJson['provider'] = providerId;
-        normalizedModels[key] = modelJson;
-      } else {
-        normalizedModels[key] = value;
-      }
-    }
-    return {...config, 'models': normalizedModels};
   }
 }

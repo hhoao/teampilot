@@ -36,28 +36,8 @@ abstract final class BusAwarenessPrompt {
     return MemberRoleProvision.mixedTeammateRoleAddendum.trim();
   }
 
-  static Map<String, Object?> sessionStartStdout({
-    required CliTool cli,
-    required String additionalContext,
-  }) {
-    if (cli == CliTool.cursor) {
-      return {'additional_context': additionalContext};
-    }
-    return {
-      'hookSpecificOutput': {
-        'hookEventName': 'SessionStart',
-        'additionalContext': additionalContext,
-      },
-    };
-  }
-
-  static String sessionStartScript({
-    required CliTool cli,
-    required String additionalContext,
-  }) {
-    final json = jsonEncode(
-      sessionStartStdout(cli: cli, additionalContext: additionalContext),
-    );
+  static String sessionStartScript({required Map<String, Object?> payload}) {
+    final json = jsonEncode(payload);
     return '#!/usr/bin/env bash\n'
         '# TeamPilot bus awareness — do not edit.\n'
         "cat <<'$_jsonDelimiter'\n"

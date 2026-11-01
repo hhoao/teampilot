@@ -49,7 +49,6 @@ void main() {
     );
     expect(acpSettings, isNotNull);
     expect(acpSettings!.usesSeparateAdapter, isFalse);
-    expect(acpSettings.showsPersonalAcpSwitch, isFalse);
   });
 
   test('codebuddy stays out of native-team and member-agent-preset sets', () {

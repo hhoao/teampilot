@@ -56,6 +56,9 @@ final class CursorAcpCapability implements AcpCapability {
   bool get forwardSessionNewMcpServers => false;
 
   @override
+  Map<String, String> get agentStatusEnvironment => const {};
+
+  @override
   Map<String, Object?> sessionNewMeta(Map<String, String> env) => const {};
 
   @override

@@ -82,6 +82,29 @@ final class FlashskyaiProviderCapability extends CatalogModelCapability
   Map<String, Object?> defaultConfig() => {'provider_type': 'openai'};
 
   @override
+  Map<String, Object?> normalizeConfig({
+    required String providerId,
+    required Map<String, Object?> config,
+  }) {
+    final rawModels = config['models'];
+    if (rawModels is! Map) return config;
+    final normalizedModels = <String, Object?>{};
+    for (final entry in rawModels.entries) {
+      final key = entry.key.toString();
+      final value = entry.value;
+      if (value is Map) {
+        normalizedModels[key] = {
+          ...Map<String, Object?>.from(value),
+          'provider': providerId,
+        };
+      } else {
+        normalizedModels[key] = value;
+      }
+    }
+    return {...config, 'models': normalizedModels};
+  }
+
+  @override
   String defaultApiKeyField() => 'api_key';
 
   // ---- ProviderModelCapability (record semantics) ----

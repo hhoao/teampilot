@@ -264,7 +264,7 @@ tool 列表。
 | `AcpCapability` | ACP spawn argv / env / translator. Optional. Claude/Codex use a separate adapter binary; Cursor/OpenCode/Gemini/CodeBuddy pass `cli acp` / `--acp`. |
 | `CliTransportCapability` | `supported: Set<CliTransport>` (`pty` / `acp`) + derived `defaultTransport` / `acpOnly`. ACP membership must match `AcpCapability` (asserted at registry build). Gemini/CodeBuddy declare `{acp}`; session create and compose read `CliToolRegistry.launchesAcpOnly` instead of comparing `CliTool` values. |
 | `InteractiveCliLoginCapability` | Provider sign-in that only exists in the CLI's TUI (CodeBuddy `/login`): the credential bar opens the capability-built terminal dialog, then records completion. |
-| `AcpSettingsCapability` | Settings extras: `usesSeparateAdapter`, adapter installer, `showsPersonalAcpSwitch`. Gemini omits this (no personal switch). |
+| `AcpSettingsCapability` | Settings extras: `usesSeparateAdapter` / `adapterExecutableName` / `adapterInstaller`。个人 ACP 开关不在这里——由 `CliTransportCapability.canChooseTransport`（同时声明 pty+acp）派生；ACP-only CLI 没有可选项。 |
 | 团队能力细分 | `TeamBehaviorCapability.supportsNativeTeam`（仅 claude、flashskyai）、`agentPresetStyle`（agent 预设） |
 
 Boot discovery locates separate adapters via `AcpAdapterDiscovery`; Settings must not `if (cli == …)`.

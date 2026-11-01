@@ -10,7 +10,7 @@ import '../../registry/config_profile/claude_family_hook_writer.dart';
 /// event names, matcher + command/http entries), so rendering reuses
 /// [ClaudeFamilyHookWriter]. [nativeEvent] still goes through the shared
 /// matrix so UI support badges stay capability-driven.
-final class CodebuddyHookWriter implements HookCapability {
+final class CodebuddyHookWriter with BusProtocolHookDefaults implements HookCapability {
   const CodebuddyHookWriter({this.denyReason = 'TeamPilot hook policy'});
 
   final String denyReason;

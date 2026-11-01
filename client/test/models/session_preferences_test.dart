@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/launch_security_policy.dart';
 import 'package:teampilot/models/session_preferences.dart';
+import 'package:teampilot/models/team_config.dart';
 
 void main() {
   group('SessionPreferences', () {
@@ -109,62 +110,43 @@ void main() {
       );
     });
 
-    test('claudePersonalAcpDefault defaults true and round-trips', () {
-      expect(SessionPreferences().claudePersonalAcpDefault, isTrue);
+    test('personalAcpDefaults defaults true and round-trips', () {
+      final defaults = SessionPreferences();
+      expect(defaults.personalAcpDefaultFor(CliTool.claude), isTrue);
+      expect(defaults.personalAcpDefaultFor(CliTool.gemini), isTrue);
       expect(
-        SessionPreferences.fromJson(const {}).claudePersonalAcpDefault,
+        SessionPreferences.fromJson(
+          const {},
+        ).personalAcpDefaultFor(CliTool.codex),
         isTrue,
       );
-      final off = SessionPreferences(claudePersonalAcpDefault: false);
-      expect(off.toJson()['claudePersonalAcpDefault'], isFalse);
+
+      final off = defaults.withPersonalAcpDefault(CliTool.cursor, false);
+      expect(off.personalAcpDefaultFor(CliTool.cursor), isFalse);
+      expect(off.personalAcpDefaultFor(CliTool.claude), isTrue);
+      expect(off.toJson()['personalAcpDefaults'], {
+        CliTool.cursor.value: false,
+      });
       expect(
-        SessionPreferences.fromJson(off.toJson()).claudePersonalAcpDefault,
+        SessionPreferences.fromJson(
+          off.toJson(),
+        ).personalAcpDefaultFor(CliTool.cursor),
         isFalse,
       );
     });
 
-    test('cursorPersonalAcpDefault defaults true and round-trips', () {
-      expect(SessionPreferences().cursorPersonalAcpDefault, isTrue);
-      expect(
-        SessionPreferences.fromJson(const {}).cursorPersonalAcpDefault,
-        isTrue,
-      );
-      final off = SessionPreferences(cursorPersonalAcpDefault: false);
-      expect(off.toJson()['cursorPersonalAcpDefault'], isFalse);
-      expect(
-        SessionPreferences.fromJson(off.toJson()).cursorPersonalAcpDefault,
-        isFalse,
-      );
-    });
-
-    test('opencodePersonalAcpDefault defaults true and round-trips', () {
-      expect(SessionPreferences().opencodePersonalAcpDefault, isTrue);
-      expect(
-        SessionPreferences.fromJson(const {}).opencodePersonalAcpDefault,
-        isTrue,
-      );
-      final off = SessionPreferences(opencodePersonalAcpDefault: false);
-      expect(off.toJson()['opencodePersonalAcpDefault'], isFalse);
-      expect(
-        SessionPreferences.fromJson(off.toJson()).opencodePersonalAcpDefault,
-        isFalse,
-      );
-    });
-
-    test('codexPersonalAcpDefault defaults true and round-trips', () {
-      expect(SessionPreferences().codexPersonalAcpDefault, isTrue);
-      expect(
-        SessionPreferences.fromJson(const {}).codexPersonalAcpDefault,
-        isTrue,
-      );
-      final off = SessionPreferences(codexPersonalAcpDefault: false);
-      expect(off.toJson()['codexPersonalAcpDefault'], isFalse);
-      expect(
-        SessionPreferences.fromJson(off.toJson()).codexPersonalAcpDefault,
-        isFalse,
-      );
-      final claude = SessionPreferences(claudePersonalAcpDefault: false);
-      expect(claude.codexPersonalAcpDefault, isTrue);
+    test('legacy per-CLI keys migrate into personalAcpDefaults', () {
+      final migrated = SessionPreferences.fromJson(const {
+        'claudePersonalAcpDefault': false,
+        'codexPersonalAcpDefault': true,
+        'cursorPersonalAcpDefault': false,
+        'opencodePersonalAcpDefault': true,
+      });
+      expect(migrated.personalAcpDefaultFor(CliTool.claude), isFalse);
+      expect(migrated.personalAcpDefaultFor(CliTool.codex), isTrue);
+      expect(migrated.personalAcpDefaultFor(CliTool.cursor), isFalse);
+      expect(migrated.personalAcpDefaultFor(CliTool.opencode), isTrue);
+      expect(migrated.toJson().containsKey('claudePersonalAcpDefault'), isFalse);
     });
 
     test('acpPermissionDefault defaults fullAccess and round-trips ask', () {

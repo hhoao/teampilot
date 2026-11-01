@@ -10,7 +10,7 @@ import '../capabilities/hook_capability.dart';
 /// 渲染产物为 `{'hooks': {...}}` 片段；装配点用 `mergeHooksInto` 幂等并入
 /// （按 (event, url|command) 去重）。Task 19 后为唯一渲染路径
 /// （旧 ClaudeFamilyHookRegistry.render 资产路径已删除）。
-class ClaudeFamilyHookWriter implements HookCapability {
+class ClaudeFamilyHookWriter with BusProtocolHookDefaults implements HookCapability {
   const ClaudeFamilyHookWriter({this.denyReason = 'TeamPilot hook policy'});
 
   final String denyReason;

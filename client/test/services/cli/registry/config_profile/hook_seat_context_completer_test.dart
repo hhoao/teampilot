@@ -3,6 +3,8 @@ import 'package:teampilot/models/hook_entry.dart';
 import 'package:teampilot/models/hook_event.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/config_profile/hook_seat_context_completer.dart';
 import 'package:teampilot/services/host/team_pilot_hook_scripts.dart';
 import 'package:teampilot/services/team_config/team_lead_settings_merge.dart';
@@ -42,7 +44,6 @@ void main() {
     final entries = completer.busAwarenessHooks(
       member: worker,
       cli: CliTool.claude,
-      pushDelivery: false,
     );
     expect(entries, hasLength(1));
     final entry = entries.single;
@@ -54,14 +55,17 @@ void main() {
     expect(entry.timeout, const Duration(seconds: 5));
     final action = entry.action as CommandHookAction;
     expect(action.fileName, 'hook.sh');
+    final context = BusAwarenessPrompt.additionalContext(
+      member: worker,
+      pushDelivery: false,
+    );
     expect(
       action.scriptContent,
       BusAwarenessPrompt.sessionStartScript(
-        cli: CliTool.claude,
-        additionalContext: BusAwarenessPrompt.additionalContext(
-          member: worker,
-          pushDelivery: false,
-        ),
+        payload:
+            CliToolRegistry.builtIn()
+                .capability<HookCapability>(CliTool.claude)!
+                .sessionStartStdoutPayload(additionalContext: context),
       ),
     );
   });
@@ -69,11 +73,7 @@ void main() {
   test('bus awareness is empty when the CLI has no sessionStart', () {
     const worker = TeamMemberConfig(id: 'implementer', name: 'Implementer');
     expect(
-      completer.busAwarenessHooks(
-        member: worker,
-        cli: CliTool.opencode,
-        pushDelivery: false,
-      ),
+      completer.busAwarenessHooks(member: worker, cli: CliTool.opencode),
       isEmpty,
     );
   });

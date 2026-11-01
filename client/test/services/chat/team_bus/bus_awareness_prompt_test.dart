@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/cli/registry/capabilities/hook_capability.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/member_role_provision.dart';
 import 'package:teampilot/services/chat/team_bus/bus_awareness_prompt.dart';
 
@@ -52,10 +54,10 @@ void main() {
         member: worker,
         pushDelivery: false,
       );
-      final payload = BusAwarenessPrompt.sessionStartStdout(
-        cli: CliTool.claude,
-        additionalContext: context,
-      );
+      final payload =
+          CliToolRegistry.builtIn()
+              .capability<HookCapability>(CliTool.claude)!
+              .sessionStartStdoutPayload(additionalContext: context);
       expect(payload['additional_context'], isNull);
       final hook = payload['hookSpecificOutput'] as Map;
       expect(hook['hookEventName'], 'SessionStart');
@@ -68,10 +70,10 @@ void main() {
       member: worker,
       pushDelivery: true,
     );
-    final payload = BusAwarenessPrompt.sessionStartStdout(
-      cli: CliTool.cursor,
-      additionalContext: context,
-    );
+    final payload =
+        CliToolRegistry.builtIn()
+            .capability<HookCapability>(CliTool.cursor)!
+            .sessionStartStdoutPayload(additionalContext: context);
     expect(payload['additional_context'], context);
     expect(payload.containsKey('hookSpecificOutput'), isFalse);
   });
@@ -81,14 +83,13 @@ void main() {
       member: worker,
       pushDelivery: false,
     );
-    final payload = BusAwarenessPrompt.sessionStartStdout(
-      cli: CliTool.codex,
-      additionalContext: context,
-    );
-    final script = BusAwarenessPrompt.sessionStartScript(
-      cli: CliTool.codex,
-      additionalContext: context,
-    );
+    final payload = {
+      'hookSpecificOutput': {
+        'hookEventName': 'SessionStart',
+        'additionalContext': context,
+      },
+    };
+    final script = BusAwarenessPrompt.sessionStartScript(payload: payload);
     expect(script, startsWith('#!/usr/bin/env bash'));
     expect(script, contains(jsonEncode(payload)));
   });

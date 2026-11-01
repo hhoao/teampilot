@@ -97,8 +97,10 @@ void main() {
       sessionPreferencesCubit,
       SessionPreferencesState(
         preferences: SessionPreferences(
-          claudePersonalAcpDefault: preferenceDefault,
-          codexPersonalAcpDefault: codexPreferenceDefault,
+          personalAcpDefaults: {
+            CliTool.claude.value: preferenceDefault,
+            CliTool.codex.value: codexPreferenceDefault,
+          },
         ),
       ),
     );

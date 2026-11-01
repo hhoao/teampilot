@@ -4,7 +4,7 @@ import '../../registry/capabilities/hook_capability.dart';
 
 /// Gemini has no native hook config surface in this phase; render is a no-op
 /// and no events are claimed.
-final class GeminiHookWriter implements HookCapability {
+final class GeminiHookWriter with BusProtocolHookDefaults implements HookCapability {
   const GeminiHookWriter();
 
   @override

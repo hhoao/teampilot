@@ -55,6 +55,11 @@ final class OpencodeAcpCapability implements AcpCapability {
   bool get forwardSessionNewMcpServers => false;
 
   @override
+  Map<String, String> get agentStatusEnvironment => const {
+    opencodeEnableQuestionToolEnvKey: 'true',
+  };
+
+  @override
   Map<String, Object?> sessionNewMeta(Map<String, String> env) => const {};
 
   @override
@@ -66,9 +71,9 @@ final class OpencodeAcpCapability implements AcpCapability {
     required String workingDirectory,
     Map<String, String> baseEnv = const {},
   }) {
-    // The question tool is enabled by the ACP attach path only when the
-    // agent-status plugin (the responder) is staged, so an unanswered
-    // `Question.ask` can never hang the turn. See `AcpRuntimeAttach`.
+    // Question tool env is declared by [agentStatusEnvironment]; the ACP
+    // attach path merges it only when the agent-status plugin is staged, so an
+    // unanswered `Question.ask` can never hang the turn.
     return Map<String, String>.of(baseEnv);
   }
 }

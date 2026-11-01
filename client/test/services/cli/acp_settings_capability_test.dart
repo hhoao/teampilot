@@ -13,7 +13,6 @@ void main() {
     expect(claude.usesSeparateAdapter, isTrue);
     expect(claude.adapterExecutableName, 'claude-agent-acp');
     expect(claude.adapterInstaller, isA<ClaudeAcpAdapterInstaller>());
-    expect(claude.showsPersonalAcpSwitch, isTrue);
 
     final codex = registry.capability<AcpSettingsCapability>(CliTool.codex)!;
     expect(codex.usesSeparateAdapter, isTrue);
@@ -27,7 +26,6 @@ void main() {
       expect(settings.usesSeparateAdapter, isFalse);
       expect(settings.adapterExecutableName, isNull);
       expect(settings.adapterInstaller, isNull);
-      expect(settings.showsPersonalAcpSwitch, isTrue);
     }
   });
 

@@ -43,4 +43,9 @@ final class CliTransportCapability implements CliCapability {
 
   /// True when ACP is the only launch mode (no PTY fallback).
   bool get acpOnly => supported.length == 1 && supports(CliTransport.acp);
+
+  /// True when the user can pick between PTY and ACP: both transports are
+  /// declared. ACP-only CLIs have nothing to choose, so no personal switch.
+  bool get canChooseTransport =>
+      supports(CliTransport.pty) && supports(CliTransport.acp);
 }

@@ -87,6 +87,9 @@ final class ClaudeAcpCapability implements AcpCapability {
   bool get forwardSessionNewMcpServers => true;
 
   @override
+  Map<String, String> get agentStatusEnvironment => const {};
+
+  @override
   Map<String, Object?> sessionNewMeta(Map<String, String> env) {
     final raw =
         env[MemberRoleProvision.mixedAcpDisallowedToolsEnvKey]?.trim() ?? '';

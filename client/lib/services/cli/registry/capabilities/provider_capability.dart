@@ -301,6 +301,13 @@ abstract base class CatalogModelCapability implements ProviderCapability {
   @override
   String? get launchSettingsFileEnvKey => null;
 
+  /// No config fixups by default; a CLI with a bespoke schema overrides this.
+  @override
+  Map<String, Object?> normalizeConfig({
+    required String providerId,
+    required Map<String, Object?> config,
+  }) => config;
+
   /// Flat one-level picker by default; see [ProviderCapability.modelGroups].
   @override
   List<ProviderModelGroup> modelGroups({
@@ -625,6 +632,13 @@ abstract interface class ProviderCapability implements CliCapability {
   String defaultApiKeyField();
   String normalizeApiKeyField(String? raw);
   Map<String, Object?> configForCliSwitch();
+
+  /// 持久化前的 per-CLI 配置修补（如把 provider id 写进模型条目）。
+  /// 默认原样返回，见 [CatalogModelCapability.normalizeConfig]。
+  Map<String, Object?> normalizeConfig({
+    required String providerId,
+    required Map<String, Object?> config,
+  });
   Map<String, Object?> extraFromExisting(AppProviderConfig? existing);
   Map<String, Object?> extraFromPreset(AppProviderPreset preset);
   Map<String, Object?> buildConfig(ProviderFormInput input);

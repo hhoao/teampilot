@@ -1,10 +1,12 @@
 import 'launch_security_policy.dart';
+import 'team_config.dart';
 
 class SessionPreferences {
   SessionPreferences({
     Map<String, String> cliExecutablePaths = const {},
     Map<String, String> toolchainPaths = const {},
     Map<String, String> acpAdapterPaths = const {},
+    Map<String, bool> personalAcpDefaults = const {},
     this.defaultSshWorkingDirectory = '',
     this.sshUseLoginShell = false,
     this.autoLaunchAllMembersOnConnect = false,
@@ -18,10 +20,6 @@ class SessionPreferences {
     this.notifyOnSessionIdle = true,
     this.openExistingSessionStartsTerminal = false,
     this.chatSubmitSwitchesToTerminal = false,
-    this.claudePersonalAcpDefault = true,
-    this.cursorPersonalAcpDefault = true,
-    this.opencodePersonalAcpDefault = true,
-    this.codexPersonalAcpDefault = true,
     this.acpPermissionDefault = LaunchSecurityPolicy.fullAccess,
   }) : cliExecutablePaths = Map.unmodifiable(
          _normalizeCliExecutablePaths(cliExecutablePaths),
@@ -31,7 +29,8 @@ class SessionPreferences {
        ),
        acpAdapterPaths = Map.unmodifiable(
          _normalizeCliExecutablePaths(acpAdapterPaths),
-       );
+       ),
+       personalAcpDefaults = Map.unmodifiable(personalAcpDefaults);
 
   /// Well-known keys for [toolchainPaths].
   static const toolchainGit = 'git';
@@ -66,14 +65,7 @@ class SessionPreferences {
           json['openExistingSessionStartsTerminal'] as bool? ?? false,
       chatSubmitSwitchesToTerminal:
           json['chatSubmitSwitchesToTerminal'] as bool? ?? false,
-      claudePersonalAcpDefault:
-          json['claudePersonalAcpDefault'] as bool? ?? true,
-      cursorPersonalAcpDefault:
-          json['cursorPersonalAcpDefault'] as bool? ?? true,
-      opencodePersonalAcpDefault:
-          json['opencodePersonalAcpDefault'] as bool? ?? true,
-      codexPersonalAcpDefault:
-          json['codexPersonalAcpDefault'] as bool? ?? true,
+      personalAcpDefaults: _personalAcpDefaultsFromJson(json),
       acpPermissionDefault: acpPermissionFromJson(json['acpPermissionDefault']),
     );
   }
@@ -144,25 +136,10 @@ class SessionPreferences {
   /// background.
   final bool chatSubmitSwitchesToTerminal;
 
-  /// When true (the default), new personal Claude sessions launch as ACP chat
-  /// instead of PTY. Controlled from CLI settings; existing sessions keep
-  /// the runtime they were started with.
-  final bool claudePersonalAcpDefault;
-
-  /// When true (the default), new personal Cursor sessions launch as ACP chat
-  /// instead of PTY. Controlled from CLI settings; existing sessions keep
-  /// the runtime they were started with.
-  final bool cursorPersonalAcpDefault;
-
-  /// When true (the default), new personal OpenCode sessions launch as ACP chat
-  /// instead of PTY. Controlled from CLI settings; existing sessions keep
-  /// the runtime they were started with.
-  final bool opencodePersonalAcpDefault;
-
-  /// When true (the default), new personal Codex sessions launch as ACP chat
-  /// instead of PTY. Controlled from CLI settings; existing sessions keep
-  /// the runtime they were started with.
-  final bool codexPersonalAcpDefault;
+  /// Personal ACP defaults keyed by [CliTool.value]. Missing key means "launch
+  /// personal sessions as ACP" — controlled from CLI settings; existing
+  /// sessions keep the runtime they were started with.
+  final Map<String, bool> personalAcpDefaults;
 
   /// Default ACP compose permission for new personal ACP launches and new
   /// mixed ACP seats. Missing JSON key → [LaunchSecurityPolicy.fullAccess].
@@ -174,10 +151,18 @@ class SessionPreferences {
   String acpAdapterPathFor(String toolId) =>
       acpAdapterPaths[toolId]?.trim() ?? '';
 
+  /// Whether new personal sessions for [cli] launch as ACP chat.
+  bool personalAcpDefaultFor(CliTool cli) =>
+      personalAcpDefaults[cli.value] ?? true;
+
+  SessionPreferences withPersonalAcpDefault(CliTool cli, bool value) =>
+      copyWith(personalAcpDefaults: {...personalAcpDefaults, cli.value: value});
+
   SessionPreferences copyWith({
     Map<String, String>? cliExecutablePaths,
     Map<String, String>? acpAdapterPaths,
     Map<String, String>? toolchainPaths,
+    Map<String, bool>? personalAcpDefaults,
     String? defaultSshWorkingDirectory,
     bool? sshUseLoginShell,
     bool? autoLaunchAllMembersOnConnect,
@@ -191,10 +176,6 @@ class SessionPreferences {
     bool? notifyOnSessionIdle,
     bool? openExistingSessionStartsTerminal,
     bool? chatSubmitSwitchesToTerminal,
-    bool? claudePersonalAcpDefault,
-    bool? cursorPersonalAcpDefault,
-    bool? opencodePersonalAcpDefault,
-    bool? codexPersonalAcpDefault,
     LaunchSecurityPolicy? acpPermissionDefault,
   }) {
     return SessionPreferences(
@@ -225,14 +206,7 @@ class SessionPreferences {
           this.openExistingSessionStartsTerminal,
       chatSubmitSwitchesToTerminal:
           chatSubmitSwitchesToTerminal ?? this.chatSubmitSwitchesToTerminal,
-      claudePersonalAcpDefault:
-          claudePersonalAcpDefault ?? this.claudePersonalAcpDefault,
-      cursorPersonalAcpDefault:
-          cursorPersonalAcpDefault ?? this.cursorPersonalAcpDefault,
-      opencodePersonalAcpDefault:
-          opencodePersonalAcpDefault ?? this.opencodePersonalAcpDefault,
-      codexPersonalAcpDefault:
-          codexPersonalAcpDefault ?? this.codexPersonalAcpDefault,
+      personalAcpDefaults: personalAcpDefaults ?? this.personalAcpDefaults,
       acpPermissionDefault: acpPermissionDefault ?? this.acpPermissionDefault,
     );
   }
@@ -255,12 +229,34 @@ class SessionPreferences {
       'notifyOnSessionIdle': notifyOnSessionIdle,
       'openExistingSessionStartsTerminal': openExistingSessionStartsTerminal,
       'chatSubmitSwitchesToTerminal': chatSubmitSwitchesToTerminal,
-      'claudePersonalAcpDefault': claudePersonalAcpDefault,
-      'cursorPersonalAcpDefault': cursorPersonalAcpDefault,
-      'opencodePersonalAcpDefault': opencodePersonalAcpDefault,
-      'codexPersonalAcpDefault': codexPersonalAcpDefault,
+      'personalAcpDefaults': personalAcpDefaults,
       if (acpPermissionToJson(acpPermissionDefault) case final id?)
         'acpPermissionDefault': id,
+    };
+  }
+
+  /// Older builds stored each CLI's default as its own boolean key.
+  static const Map<String, String> _legacyPersonalAcpKeys = {
+    'claude': 'claudePersonalAcpDefault',
+    'codex': 'codexPersonalAcpDefault',
+    'cursor': 'cursorPersonalAcpDefault',
+    'opencode': 'opencodePersonalAcpDefault',
+  };
+
+  static Map<String, bool> _personalAcpDefaultsFromJson(
+    Map<String, Object?> json,
+  ) {
+    final raw = json['personalAcpDefaults'];
+    if (raw is Map) {
+      return {
+        for (final entry in raw.entries)
+          if (entry.key is String && entry.value is bool)
+            entry.key as String: entry.value as bool,
+      };
+    }
+    return {
+      for (final entry in _legacyPersonalAcpKeys.entries)
+        if (json[entry.value] case final bool value) entry.key: value,
     };
   }
 

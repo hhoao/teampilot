@@ -15,8 +15,8 @@ import '../../../acp/acp_session_runtime.dart';
 import '../../../acp/acp_ssh_transport.dart';
 import '../../../agent_status/member_agent_status_endpoint.dart';
 import '../../../agent_status/seat_lease_port.dart';
-import '../../../cli/opencode/capabilities/acp.dart'
-    show opencodeEnableQuestionToolEnvKey;
+import '../../../cli/registry/capabilities/acp_capability.dart';
+import '../../../cli/registry/cli_tool_registry.dart';
 import '../../../ssh/ssh_member_session.dart';
 import '../../../storage/home_storage.dart';
 import '../../../storage/runtime_context.dart';
@@ -182,9 +182,7 @@ class AcpRuntimeAttach {
         agentStatus: agentStatus,
         extraMcpServers: extraMcpServers,
       );
-      if (agentStatus != null && cli == CliTool.opencode) {
-        env = {...env, opencodeEnableQuestionToolEnvKey: 'true'};
-      }
+      env = _withAgentStatusEnvironment(cli, agentStatus != null, env);
       baseEnv = env;
     }
 
@@ -419,12 +417,11 @@ class AcpRuntimeAttach {
         staged.memberConfigDir,
       ),
       workingDirectory: staged.workingDirectory,
-      baseEnv: agentStatus != null && cli == CliTool.opencode
-          ? {
-              ...staged.env,
-              opencodeEnableQuestionToolEnvKey: 'true',
-            }
-          : staged.env,
+      baseEnv: _withAgentStatusEnvironment(
+        cli,
+        agentStatus != null,
+        staged.env,
+      ),
       mcpServers: staged.mcpServers,
       permissionPolicy:
           session.bindingFor(member.id)?.acpPermission ??
@@ -634,6 +631,21 @@ class AcpRuntimeAttach {
       );
       return const {};
     }
+  }
+
+  /// Merges the CLI's declared agent-status env once the plugin is staged.
+  Map<String, String> _withAgentStatusEnvironment(
+    CliTool cli,
+    bool agentStatusStaged,
+    Map<String, String> env,
+  ) {
+    if (!agentStatusStaged) return env;
+    final extra =
+        CliToolRegistry.builtIn()
+            .capability<AcpCapability>(cli)
+            ?.agentStatusEnvironment ??
+        const <String, String>{};
+    return extra.isEmpty ? env : {...env, ...extra};
   }
 
   /// Resolve the opencode agent-status plugin endpoint for a terminal-less ACP

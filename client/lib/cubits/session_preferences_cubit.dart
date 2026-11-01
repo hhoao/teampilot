@@ -195,22 +195,11 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   String? latestVersion(CliTool cli, CliBinaryKind kind) =>
       _latestVersions[(cli, kind)];
 
-  bool personalAcpDefaultFor(CliTool cli) => switch (cli) {
-    CliTool.claude => state.preferences.claudePersonalAcpDefault,
-    CliTool.cursor => state.preferences.cursorPersonalAcpDefault,
-    CliTool.codex => state.preferences.codexPersonalAcpDefault,
-    CliTool.opencode => state.preferences.opencodePersonalAcpDefault,
-    _ => false,
-  };
+  bool personalAcpDefaultFor(CliTool cli) =>
+      state.preferences.personalAcpDefaultFor(cli);
 
   Future<void> setPersonalAcpDefaultFor(CliTool cli, bool value) =>
-      switch (cli) {
-        CliTool.claude => setClaudePersonalAcpDefault(value),
-        CliTool.cursor => setCursorPersonalAcpDefault(value),
-        CliTool.codex => setCodexPersonalAcpDefault(value),
-        CliTool.opencode => setOpencodePersonalAcpDefault(value),
-        _ => Future.value(),
-      };
+      _save(state.preferences.withPersonalAcpDefault(cli, value));
 
   /// Merges startup PATH discovery for toolchain tools; user paths always win.
   void mergeLocatedToolchains(Map<String, String> discovered) {
@@ -384,21 +373,17 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     );
   }
 
-  Future<void> setClaudePersonalAcpDefault(bool value) {
-    return _save(state.preferences.copyWith(claudePersonalAcpDefault: value));
-  }
+  Future<void> setClaudePersonalAcpDefault(bool value) =>
+      setPersonalAcpDefaultFor(CliTool.claude, value);
 
-  Future<void> setCodexPersonalAcpDefault(bool value) {
-    return _save(state.preferences.copyWith(codexPersonalAcpDefault: value));
-  }
+  Future<void> setCodexPersonalAcpDefault(bool value) =>
+      setPersonalAcpDefaultFor(CliTool.codex, value);
 
-  Future<void> setCursorPersonalAcpDefault(bool value) {
-    return _save(state.preferences.copyWith(cursorPersonalAcpDefault: value));
-  }
+  Future<void> setCursorPersonalAcpDefault(bool value) =>
+      setPersonalAcpDefaultFor(CliTool.cursor, value);
 
-  Future<void> setOpencodePersonalAcpDefault(bool value) {
-    return _save(state.preferences.copyWith(opencodePersonalAcpDefault: value));
-  }
+  Future<void> setOpencodePersonalAcpDefault(bool value) =>
+      setPersonalAcpDefaultFor(CliTool.opencode, value);
 
   Future<void> setAcpPermissionDefault(LaunchSecurityPolicy value) {
     return _save(state.preferences.copyWith(acpPermissionDefault: value));

@@ -1620,20 +1620,14 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
         int,
         Map<String, String>,
         Map<String, String>,
-        bool,
-        bool,
-        bool,
-        bool,
+        Map<String, bool>,
       )
     >(
       (c) => (
         c.state.locatedExecutablesRevision,
         c.state.preferences.cliExecutablePaths,
         c.state.preferences.acpAdapterPaths,
-        c.state.preferences.claudePersonalAcpDefault,
-        c.state.preferences.codexPersonalAcpDefault,
-        c.state.preferences.cursorPersonalAcpDefault,
-        c.state.preferences.opencodePersonalAcpDefault,
+        c.state.preferences.personalAcpDefaults,
       ),
     );
     final identities = context.select(

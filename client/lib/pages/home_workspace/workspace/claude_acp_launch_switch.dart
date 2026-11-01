@@ -18,13 +18,14 @@ bool _personalAcpAllowed({
   required bool isPersonal,
   required CliTool? cli,
   bool? isAndroidOverride,
-}) =>
-    isPersonal &&
-    (cli == CliTool.claude ||
-        cli == CliTool.cursor ||
-        cli == CliTool.codex ||
-        cli == CliTool.opencode) &&
-    !_isAndroid(isAndroidOverride);
+}) {
+  if (!isPersonal || cli == null) return false;
+  if (_isAndroid(isAndroidOverride)) return false;
+  return CliToolRegistry.builtIn()
+          .capability<CliTransportCapability>(cli)
+          ?.canChooseTransport ??
+      false;
+}
 
 /// Final ACP flag for a launch: [requested] only counts for personal Claude,
 /// Cursor, Codex, or OpenCode on desktop and is always false on Android.
@@ -43,17 +44,14 @@ bool resolveLaunchAcp({
     );
 
 bool readPersonalAcpDefault(BuildContext context, CliTool? cli) {
+  if (cli == null) return false;
   try {
-    final prefs = context.read<SessionPreferencesCubit>().state.preferences;
-    return switch (cli) {
-      CliTool.claude => prefs.claudePersonalAcpDefault,
-      CliTool.cursor => prefs.cursorPersonalAcpDefault,
-      CliTool.codex => prefs.codexPersonalAcpDefault,
-      CliTool.opencode => prefs.opencodePersonalAcpDefault,
-      _ => false,
-    };
+    return context
+        .read<SessionPreferencesCubit>()
+        .state
+        .preferences
+        .personalAcpDefaultFor(cli);
   } on ProviderNotFoundException {
-    if (cli == null) return false;
     return CliToolRegistry.builtIn()
             .capability<CliTransportCapability>(cli)
             ?.defaultTransport ==

@@ -168,7 +168,9 @@ void main() {
       _stubCubit(
         sessionPreferencesCubit,
         SessionPreferencesState(
-          preferences: SessionPreferences(claudePersonalAcpDefault: true),
+          preferences: SessionPreferences(
+            personalAcpDefaults: {CliTool.claude.value: true},
+          ),
         ),
       );
       _stubCubit(skillCubit, const SkillState());
