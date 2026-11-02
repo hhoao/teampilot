@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:acpd/acpd.dart' as acpd;
 import 'package:ai_message_core/ai_message_core.dart';
@@ -2189,6 +2190,57 @@ void main() {
     expect(cubit.state.messages, hasLength(2));
     expect(cubit.state.messages.last.id, mergedId);
     expect(_textOf(cubit.state.messages.last), 'Started\n\nAll tests passed');
+    await cubit.close();
+  });
+
+  test('history replay never re-appends usage samples', () async {
+    final fs = InMemoryFilesystem();
+    final transcript = AcpChatTranscriptWriter(
+      fs: fs,
+      path: '/tp/acp.jsonl',
+      usagePath: '/tp/tool/acp-usage.jsonl',
+    );
+    final cubit = bootCubit(transcript: transcript);
+    await cubit.start(
+      executable: 'agy_acp_server.par',
+      sessionToolDir: '/tp/tool',
+      workingDirectory: '/w',
+    );
+    await pumpEventQueue();
+
+    // A `session/load` replay re-sends usage samples that were already
+    // captured live; minting a fresh sequence here would duplicate them with
+    // request ids the collector cannot dedupe.
+    runtime.historyUpdates = const [
+      AcpMessageChunk(
+        role: AcpRole.assistant,
+        content: 'replayed',
+        isThought: false,
+      ),
+      AcpUsageUpdate(used: 4096, size: 1048576),
+    ];
+    await cubit.syncHistory();
+    await pumpEventQueue();
+
+    expect(await fs.readString('/tp/tool/acp-usage.jsonl'), isNull);
+
+    // A live sample is persisted exactly once and still adds no chat row.
+    runtime.emit(const AcpUsageUpdate(used: 8192, size: 1048576));
+    await pumpEventQueue();
+    await pumpEventQueue();
+
+    final raw = await fs.readString('/tp/tool/acp-usage.jsonl');
+    final lines = const LineSplitter().convert(raw!.trim());
+    expect(lines, hasLength(1));
+    final record = Map<String, Object?>.from(jsonDecode(lines.single) as Map);
+    expect(record['used'], 8192);
+    expect(record['size'], 1048576);
+    expect(
+      cubit.state.messages,
+      hasLength(1),
+      reason: 'only the replayed assistant message; usage adds none',
+    );
+    expect(_textOf(cubit.state.messages.last), 'replayed');
     await cubit.close();
   });
 

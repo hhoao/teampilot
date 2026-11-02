@@ -877,17 +877,19 @@ class AcpRuntimeAttach {
         ),
         acpTranscriptFileName(memberId: memberId, personal: personal),
       ),
-      // The ACP usage collector reads this JSONL from the session tool dir;
-      // the cubit appends one record per `usage_update`.
-      usagePath: _storage.context.layout.pathContext.join(
-        _storage.context.layout.sessionRuntimeToolDir(
-          session.workspaceId,
-          session.sessionId,
-          cli.value,
-          memberId: memberId,
-        ),
-        'acp-usage.jsonl',
-      ),
+      // Only Antigravity has an ACP usage capability (spec scope); leaving the
+      // sink unwired elsewhere avoids dead I/O on every other ACP chat.
+      usagePath: cli != CliTool.antigravity
+          ? null
+          : _storage.context.layout.pathContext.join(
+              _storage.context.layout.sessionRuntimeToolDir(
+                session.workspaceId,
+                session.sessionId,
+                cli.value,
+                memberId: memberId,
+              ),
+              'acp-usage.jsonl',
+            ),
     );
   }
 

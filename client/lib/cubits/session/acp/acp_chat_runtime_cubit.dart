@@ -844,7 +844,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         emit(state.copyWith(modelState: update.state));
       case AcpUsageUpdate():
         // Context usage is recorded out-of-band for the usage collector; it
-        // never becomes a chat row, and replay must not duplicate samples.
+        // never becomes a chat row. A history replay re-sends the session's
+        // updates, and appending those would mint fresh sequence ids for
+        // already-captured samples (duplicates the collector cannot dedupe),
+        // so only live updates are persisted.
         if (!replaying) unawaited(_appendUsage(update));
       case AcpPlan() ||
           AcpTodoListUpdate() ||
