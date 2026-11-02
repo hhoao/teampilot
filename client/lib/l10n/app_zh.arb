@@ -2663,6 +2663,9 @@
     }
   },
   "qoderCredentialsLoginExited": "Qoder CLI 已退出。请关闭此对话框后重新登录。",
+  "qoderCredentialsDone": "完成",
+  "qoderCredentialsCancel": "取消",
+  "qoderCredentialsRelaunch": "重新启动",
   "qoderCredentialsSignedIn": "已登录",
   "qoderCredentialsActionFailed": "Qoder 操作失败",
   "appProviderTeamToolSection": "团队默认服务商",

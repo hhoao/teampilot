@@ -6083,6 +6083,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Qoder CLI exited. Close this dialog and start the sign-in again.';
 
   @override
+  String get qoderCredentialsDone => 'Done';
+
+  @override
+  String get qoderCredentialsCancel => 'Cancel';
+
+  @override
+  String get qoderCredentialsRelaunch => 'Relaunch';
+
+  @override
   String get qoderCredentialsSignedIn => 'Signed in';
 
   @override

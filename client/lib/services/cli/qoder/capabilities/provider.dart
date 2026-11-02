@@ -8,6 +8,7 @@ import '../../../../models/credential_probe.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/logging/logger_utils.dart';
 import '../../../../utils/team/team_member_naming.dart';
+import '../../../../widgets/home_storage_scope.dart';
 import '../../../chat/launch/staging/manifest/work_plane_paths.dart';
 import '../../../io/filesystem.dart';
 import '../../../provider/credential_binding.dart';
@@ -17,6 +18,7 @@ import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/interactive_login_capability.dart';
 import '../../registry/capabilities/provider_capability.dart';
 import '../provider/qoder_auth_store.dart';
+import '../provider/qoder_login_dialog.dart';
 import '../provider/qoder_provider_settings_resolver.dart';
 import '../provider_presets.dart';
 import 'defaults.dart';
@@ -196,7 +198,20 @@ final class QoderProviderCapability extends CatalogModelCapability
     BuildContext context, {
     required AppProviderConfig provider,
     required String executable,
-  }) => const SizedBox.shrink();
+  }) {
+    final storage = homeStorageOf(context);
+    final store = QoderAuthStore(
+      fs: storage.fs,
+      basePath: storage.paths.basePath,
+      pathContext: storage.fs.pathContext,
+    );
+    return QoderLoginDialog(
+      executable: executable,
+      arguments: loginArguments,
+      store: store,
+      providerId: provider.id,
+    );
+  }
 
   @override
   bool hidesApiKeyFields(AppProviderConfig provider) =>

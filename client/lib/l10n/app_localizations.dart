@@ -10832,6 +10832,24 @@ abstract class AppLocalizations {
   /// **'Qoder CLI exited. Close this dialog and start the sign-in again.'**
   String get qoderCredentialsLoginExited;
 
+  /// No description provided for @qoderCredentialsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get qoderCredentialsDone;
+
+  /// No description provided for @qoderCredentialsCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get qoderCredentialsCancel;
+
+  /// No description provided for @qoderCredentialsRelaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Relaunch'**
+  String get qoderCredentialsRelaunch;
+
   /// No description provided for @qoderCredentialsSignedIn.
   ///
   /// In en, this message translates to:

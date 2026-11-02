@@ -5836,6 +5836,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get qoderCredentialsLoginExited => 'Qoder CLI 已退出。请关闭此对话框后重新登录。';
 
   @override
+  String get qoderCredentialsDone => '完成';
+
+  @override
+  String get qoderCredentialsCancel => '取消';
+
+  @override
+  String get qoderCredentialsRelaunch => '重新启动';
+
+  @override
   String get qoderCredentialsSignedIn => '已登录';
 
   @override

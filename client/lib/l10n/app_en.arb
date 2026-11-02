@@ -3053,6 +3053,9 @@
     }
   },
   "qoderCredentialsLoginExited": "Qoder CLI exited. Close this dialog and start the sign-in again.",
+  "qoderCredentialsDone": "Done",
+  "qoderCredentialsCancel": "Cancel",
+  "qoderCredentialsRelaunch": "Relaunch",
   "qoderCredentialsSignedIn": "Signed in",
   "qoderCredentialsActionFailed": "The Qoder action failed",
   "appProviderTeamToolSection": "Tool providers for this team",
