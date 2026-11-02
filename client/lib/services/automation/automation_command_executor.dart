@@ -47,12 +47,23 @@ class AutomationCommandExecutor {
     AutomationRunTrigger trigger = AutomationRunTrigger.scheduled,
   }) {
     if (_running.contains(automation.id)) {
-      return _recordOverlap(automation, trigger: trigger);
+      // Overlap bookkeeping touches the same `automations.json` as the
+      // in-flight run's read-modify-write, so it must ride the same serial
+      // queue instead of racing it.
+      return _enqueueSerial(
+        () => _recordOverlap(automation, trigger: trigger),
+      );
     }
     _running.add(automation.id);
     final next = _queue.then((_) => _run(automation, trigger: trigger));
     _queue = next.then<void>((_) {}, onError: (Object _, StackTrace __) {});
     return next.whenComplete(() => _running.remove(automation.id));
+  }
+
+  Future<T> _enqueueSerial<T>(Future<T> Function() work) {
+    final next = _queue.then((_) => work());
+    _queue = next.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    return next;
   }
 
   Future<AutomationRun> _recordOverlap(
@@ -126,6 +137,13 @@ class AutomationCommandExecutor {
     // Re-read the row: a long run may overlap a user edit or a disable, and
     // advancing the snapshot captured at enqueue would revert it.
     final current = await _currentAutomation(automation);
+    if (current == null) {
+      // The automation was deleted while the command ran. Do not resurrect
+      // it; drop the run so history does not reference a dead automation.
+      await _repository.deleteRun(automation.workspaceId, finished.id);
+      onAfterRun?.call();
+      return finished;
+    }
     var advanced = _accounting.advance(
       automation: current,
       lastRunAtMs: startedAtMs,
@@ -146,11 +164,11 @@ class AutomationCommandExecutor {
     return finished;
   }
 
-  Future<Automation> _currentAutomation(Automation fallback) async {
+  Future<Automation?> _currentAutomation(Automation fallback) async {
     final rows = await _repository.listForWorkspace(fallback.workspaceId);
     for (final row in rows) {
       if (row.id == fallback.id) return row;
     }
-    return fallback;
+    return null;
   }
 }

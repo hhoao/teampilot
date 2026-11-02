@@ -36,13 +36,57 @@ void main() {
     final first = env.executor.enqueue(env.automation);
     await env.runner.waitForStart();
 
-    final second = await env.executor.enqueue(env.automation);
-    expect(second!.status, AutomationRunStatus.skippedOverlap);
-
+    // Overlap recording is serialized behind the in-flight run, so it lands
+    // only after that run releases the queue.
+    final second = env.executor.enqueue(env.automation);
     env.runner.release();
+    final overlap = await second;
+    expect(overlap!.status, AutomationRunStatus.skippedOverlap);
+
     await first;
     final automations = await env.repository.listForWorkspace('ws1');
     expect(automations.single.runCount, 1);
+  });
+
+  test('serializes overlap recording behind the in-flight run', () async {
+    final env = await _TestEnv.build(null);
+    final first = env.executor.enqueue(env.automation);
+    await env.runner.waitForStart();
+
+    var overlapDone = false;
+    final second = env.executor.enqueue(env.automation);
+    unawaited(second.then((_) => overlapDone = true));
+    await pumpEventQueue();
+    // The overlap record must not write `automations.json` while the run is
+    // still in flight.
+    expect(overlapDone, isFalse);
+
+    env.runner.release();
+    await first;
+    final overlap = await second;
+    expect(overlap!.status, AutomationRunStatus.skippedOverlap);
+    final runs = await env.repository.runsFor('ws1');
+    expect(
+      runs.map((r) => r.status),
+      containsAll([
+        AutomationRunStatus.completed,
+        AutomationRunStatus.skippedOverlap,
+      ]),
+    );
+  });
+
+  test('does not resurrect an automation deleted while running', () async {
+    final env = await _TestEnv.build(null);
+    final pending = env.executor.enqueue(env.automation);
+    await env.runner.waitForStart();
+
+    await env.repository.delete('ws1', env.automation.id);
+    env.runner.release();
+    final run = await pending;
+
+    expect(run!.status, AutomationRunStatus.completed);
+    expect(await env.repository.listForWorkspace('ws1'), isEmpty);
+    expect(await env.repository.runsFor('ws1'), isEmpty);
   });
 
   test('runner failure records dispatchFailed and advances runCount', () async {
