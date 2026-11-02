@@ -5217,5 +5217,8 @@
   "sshCredentialVaultDeleted": "Deleted vault entry",
   "sshSaveToVault": "Save to vault",
   "sshMigrateToVault": "Move to vault",
-  "sshVaultBadge": "Vault"
+  "sshVaultBadge": "Vault",
+  "vaultLockedSaveBlocked": "Unlock the vault to save credentials.",
+  "vaultUnavailable": "Credential vault is unavailable.",
+  "vaultStoredInVault": "Stored in vault"
 }

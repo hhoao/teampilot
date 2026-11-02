@@ -10332,4 +10332,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sshVaultBadge => 'Vault';
+
+  @override
+  String get vaultLockedSaveBlocked => 'Unlock the vault to save credentials.';
+
+  @override
+  String get vaultUnavailable => 'Credential vault is unavailable.';
+
+  @override
+  String get vaultStoredInVault => 'Stored in vault';
 }

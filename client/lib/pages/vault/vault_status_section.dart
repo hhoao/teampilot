@@ -4,6 +4,7 @@ import 'package:shared_ui/shared_ui.dart';
 
 import '../../cubits/vault_cubit.dart';
 import '../../l10n/app_localizations.dart';
+import '../../router/app_router.dart';
 import '../../widgets/tp_password_input.dart';
 
 class VaultStatusSection extends StatelessWidget {
@@ -54,7 +55,7 @@ class VaultStatusSection extends StatelessWidget {
   }
 }
 
-Future<void> showVaultUnlockDialog(BuildContext context) async {
+Future<bool> showVaultUnlockDialog(BuildContext context) async {
   final l10n = AppLocalizations.of(context);
   final cubit = context.read<VaultCubit>();
   final controller = TextEditingController();
@@ -80,8 +81,16 @@ Future<void> showVaultUnlockDialog(BuildContext context) async {
     ),
   );
   controller.dispose();
-  if (passphrase == null || passphrase.isEmpty) return;
+  if (passphrase == null || passphrase.isEmpty) return false;
   await cubit.unlock(passphrase);
+  return cubit.state.unlocked;
+}
+
+/// Router-based prompt for non-widget call sites (cubits, stores).
+Future<bool> promptVaultUnlockFromRouter() async {
+  final context = appRouter.routerDelegate.navigatorKey.currentContext;
+  if (context == null) return false;
+  return showVaultUnlockDialog(context);
 }
 
 Future<void> showVaultEnableEncryptionDialog(BuildContext context) async {
