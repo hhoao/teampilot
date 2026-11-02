@@ -136,16 +136,15 @@ Qoder credentials are an **opaque blob**: `~/.qoder/.auth/user` plus
   `QODER_CONFIG_DIR` to `…/config`.
 - `qodercli login` is browser-based (prints an authorization URL and waits).
   The dialog surfaces the CLI output; the user completes the browser flow.
-- On **Done**, `execute(login)` validates the isolated config dir with
-  `qodercli status` (`Username:` present, not `Account: Not logged in`) and
-  copies `.auth/user` + `.auth/machine_id` into
-  `<appData>/providers/qoder/<provider>.auth/` (chmod 600). Validation failure
-  → `verifyFailed`, nothing stored, nothing written to `~/.qoder`.
+- On **Done**, `execute(login)` copies `.auth/user` + `.auth/machine_id` from
+  the isolated login config into `<appData>/providers/qoder/<provider>.auth/`
+  (chmod 600). Missing files → `verifyFailed`, nothing stored, nothing
+  written to `~/.qoder`.
 - Session launch seeds the session `.auth` from the provider store. When no
   provider store exists, it copies the machine `.auth` (read-only source).
-- `probe()` runs `qodercli status` against a temporary config dir seeded from
-  the provider store; "Not logged in" or a missing store → not ready. The
-  action stays visible so accounts can be switched.
+- `probe()` is ready when the provider store holds both files. The account
+  identity (`qodercli status`) is a diagnostic shown by the login dialog, not
+  a launch gate.
 
 Multiple provider rows can therefore hold different Qoder accounts at the same
 time. Machine login is never mutated.
