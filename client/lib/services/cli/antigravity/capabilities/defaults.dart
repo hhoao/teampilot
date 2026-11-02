@@ -4,14 +4,9 @@ import '../../../agent_status/agent_status_event.dart';
 import '../../../chat/runtime/pty/fullscreen_cr_ack_config.dart';
 import '../../../chat/runtime/pty/fullscreen_input_readiness.dart';
 import '../../registry/capabilities/chat_interaction_capability.dart';
-import '../../registry/capabilities/native_command_capability.dart';
 import '../../registry/capabilities/runtime_event_capability.dart';
 import '../../registry/capabilities/team_behavior_capability.dart';
 import '../../registry/capabilities/terminal_behavior_capability.dart';
-import '../../registry/capabilities/workspace_base_info_capability.dart';
-import '../../registry/launch/cli_launch_arg_contribution.dart';
-import '../../registry/launch/cli_launch_context.dart';
-import '../../registry/launch/workspace_access.dart';
 
 /// Antigravity is ACP-only in TeamPilot: there is no PTY launch, so
 /// native team mode is not offered. Mixed TeamBus seats still attach through
@@ -147,25 +142,4 @@ final class AntigravityTerminalBehavior implements TerminalBehaviorCapability {
 
   @override
   Duration get startupDeadline => const Duration(seconds: 15);
-}
-
-/// Primary workspace is process cwd, set by the launch command builder. No
-/// directory flag is contributed (ACP sessions run over one home folder).
-final class AntigravityWorkspaceBaseInfo
-    extends WorkspaceBaseInfoCapabilityBase {
-  const AntigravityWorkspaceBaseInfo();
-
-  @override
-  Iterable<CliLaunchArgContribution> buildWorkspaceAccessArgs(
-    CliLaunchContext context,
-    WorkspaceAccess access,
-  ) => const [];
-}
-
-/// Native commands are registered by a later task.
-final class AntigravityNativeCommands implements NativeCommandCapability {
-  const AntigravityNativeCommands();
-
-  @override
-  List<NativeCommand> get commands => const [];
 }
