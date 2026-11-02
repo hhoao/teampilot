@@ -365,6 +365,14 @@ class AppProviderCubit extends Cubit<AppProviderState> {
         state.providersByCli[cli] ?? await _repository.loadProviders(cli);
     final now = DateTime.now().toUtc().millisecondsSinceEpoch;
     final existing = current.where((p) => p.id == trimmedId).firstOrNull;
+    if (!captureVaultCredentials &&
+        existing != null &&
+        existing.credentialLink.trim().isNotEmpty &&
+        provider.credentialLink.trim() != existing.credentialLink.trim()) {
+      // A background update (provider-link janitor, probe) that drops a link
+      // must never persist the resolved secret as plaintext.
+      effectiveApiKey = '';
+    }
     final normalizedConfig =
         CliToolRegistry.builtIn()
             .capability<ProviderCapability>(cli)
