@@ -869,14 +869,6 @@ void main() {
   });
 }
 
-class _ThrowingSshProfileRepository implements SshProfileRepository {
-  @override
-  Future<void> save(SshProfile profile) async => throw StateError('save failed');
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
 class _LockedVaultService implements VaultService {
   _LockedVaultService(this._delegate);
 
@@ -1620,14 +1612,6 @@ class _FakeVaultStore implements SecureKeyValueStore {
 
   @override
   Future<void> write(String key, String value) async => values[key] = value;
-}
-
-class _ThrowingSshProfileRepository implements SshProfileRepository {
-  @override
-  Future<void> save(SshProfile profile) async => throw StateError('save failed');
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _LockedVaultService implements VaultService {
