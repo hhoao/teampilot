@@ -16,6 +16,10 @@ typedef AcpCredentialSource = String? Function();
 /// ACP session.
 abstract interface class AcpLocalOnlyCapability implements CliCapability {}
 
+/// Marker for an ACP agent that appends `usage_update` samples to the per-seat
+/// ACP usage JSONL sink. Call sites read this instead of comparing CLI ids.
+abstract interface class AcpUsageLogCapability implements CliCapability {}
+
 abstract interface class AcpCapability implements CliCapability {
   /// Maximum time allowed for the ACP startup handshake.
   Duration get startupTimeout => const Duration(seconds: 30);

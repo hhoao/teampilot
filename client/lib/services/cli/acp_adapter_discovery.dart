@@ -24,6 +24,14 @@ class AcpAdapterDiscovery {
           settings.adapterExecutableName!.isEmpty) {
         continue;
       }
+      // Managed adapters record their exact install path; prefer it over a
+      // PATH lookup so a boot discovery pass finds the installed binary even
+      // when the app-data directory is not on PATH.
+      final installed = await settings.adapterInstaller?.resolveInstalledPath();
+      if (installed != null && installed.trim().isNotEmpty) {
+        located[def.id] = installed;
+        continue;
+      }
       final path = locateAcpAdapter(
         name: settings.adapterExecutableName!,
         environment: environment,

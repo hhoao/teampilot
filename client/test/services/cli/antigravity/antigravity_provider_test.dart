@@ -39,16 +39,28 @@ gemini-3.8-flash-medium  Gemini 3.8 Flash (Medium)
       );
     });
 
-    test('falls back to the documented catalog', () {
+    test('falls back to the collapsed documented catalog', () {
+      expect(AntigravityModelCatalog.fallback, [
+        'gemini-4-argon',
+        'gemini-3.8-flash',
+        'gemini-3.7-flash',
+        'gemini-3.6-flash',
+        'gemini-3.1-pro',
+      ]);
+    });
+
+    test('collapse strips a trailing CLI effort suffix', () {
       expect(
-        AntigravityModelCatalog.fallback,
-        containsAll([
-          'gemini-4-argon-high',
-          'gemini-4-argon-medium',
-          'gemini-3.8-flash-high',
-          'gemini-3.8-flash-medium',
-          'gemini-3.1-pro-high',
-        ]),
+        AntigravityModelCatalog.collapse('gemini-3.8-flash-medium'),
+        'gemini-3.8-flash',
+      );
+      expect(
+        AntigravityModelCatalog.collapse('gemini-4-argon-high'),
+        'gemini-4-argon',
+      );
+      expect(
+        AntigravityModelCatalog.collapse('gemini-3.8-flash'),
+        'gemini-3.8-flash',
       );
     });
 
@@ -93,6 +105,13 @@ gemini-3.8-flash-medium  Gemini 3.8 Flash (Medium)
       );
       expect(official.template.isOfficial, isTrue);
       expect(official.template.category, AppProviderCategory.official);
+      expect(official.template.defaultModel, 'gemini-3.8-flash');
+      expect(
+        AntigravityProviderPresets.all
+            .map((preset) => preset.template.defaultModel)
+            .toSet(),
+        {'gemini-3.8-flash'},
+      );
       expect(
         official.template.notes.toLowerCase(),
         contains('all antigravity sessions'),
@@ -157,32 +176,24 @@ gemini-3.8-flash-medium  Gemini 3.8 Flash (Medium)
   group('effort', () {
     const cap = AntigravityProviderCapability();
 
-    test('maps low, medium, and high for a chosen model', () {
-      expect(cap.isApplicable(model: 'gemini-3.8-flash-high'), isTrue);
-      expect(cap.effortCandidates(model: 'gemini-3.8-flash-high'), [
-        'low',
-        'medium',
-        'high',
-      ]);
-      expect(cap.isApplicable(model: ''), isFalse);
-      expect(cap.effortCandidates(model: ''), isEmpty);
-    });
-
-    test('only writes an effort the row explicitly pins', () {
+    test('keeps every effort picker hidden until thinking_level is wired', () {
+      expect(cap.teamPickerPlacement(), EffortPickerPlacement.hidden);
       expect(
-        cap.defaultEffort(model: 'gemini-3.8-flash-high', provider: null),
-        '',
+        cap.memberPickerPlacement(provider: null),
+        EffortPickerPlacement.hidden,
       );
-      final pinned = AppProviderConfig(
-        id: 'gemini-api-key',
+      final provider = AppProviderConfig(
+        id: 'antigravity',
         cli: CliTool.antigravity,
-        name: 'Gemini API key',
-        config: const {'effort': 'medium'},
+        name: 'Google account',
       );
       expect(
-        cap.defaultEffort(model: 'gemini-3.8-flash-high', provider: pinned),
-        'medium',
+        cap.providerPickerPlacement(provider),
+        EffortPickerPlacement.hidden,
       );
+      expect(cap.isApplicable(model: 'gemini-3.8-flash'), isFalse);
+      expect(cap.effortCandidates(model: 'gemini-3.8-flash'), isEmpty);
+      expect(cap.defaultEffort(model: 'gemini-3.8-flash'), '');
     });
   });
 
@@ -287,7 +298,7 @@ gemini-3.8-flash-medium  Gemini 3.8 Flash (Medium)
         (jsonDecode((await catalogFs.readString(path))!))
             as Map<String, Object?>;
 
-    test('official account writes oauth-personal with no env', () async {
+    test('official account writes oauth-personal with the model env', () async {
       final contribution = await materialize(
         member: const TeamMemberConfig(
           id: 'm1',
@@ -297,10 +308,12 @@ gemini-3.8-flash-medium  Gemini 3.8 Flash (Medium)
         ),
       );
 
-      expect(contribution.environment, isEmpty);
+      expect(contribution.environment, {
+        'AGY_ACP_DEFAULT_MODEL': 'gemini-3.8-flash',
+      });
       expect(contribution.environment.containsKey('HOME'), isFalse);
       final cli = await readJson(cliSettingsPath());
-      expect(cli['model'], 'gemini-3.8-flash-high');
+      expect(cli['model'], 'gemini-3.8-flash');
       expect(cli.containsKey('modelProvider'), isFalse);
       final acp = await readJson(acpSettingsPath());
       expect(acp['auth'], {'type': 'oauth-personal'});
@@ -319,10 +332,14 @@ gemini-3.8-flash-medium  Gemini 3.8 Flash (Medium)
 
       final toolDir = p.join(runtimeDir(memberId: 'm1'), 'antigravity');
       expect(contribution.environment['HOME'], toolDir);
+      expect(
+        contribution.environment['AGY_ACP_DEFAULT_MODEL'],
+        'gemini-3.8-flash',
+      );
       expect(contribution.environment.containsKey('GEMINI_API_KEY'), isFalse);
 
       final cli = await readJson(cliSettingsPath(memberId: 'm1'));
-      expect(cli['model'], 'gemini-3.8-flash-high');
+      expect(cli['model'], 'gemini-3.8-flash');
       final acp = await readJson(acpSettingsPath(memberId: 'm1'));
       expect(acp['auth'], {'type': 'oauth-personal'});
     });
@@ -381,11 +398,12 @@ gemini-3.8-flash-medium  Gemini 3.8 Flash (Medium)
       expect(contribution.environment, {
         'GEMINI_API_KEY': 'sk-secret',
         'GOOGLE_GEMINI_BASE_URL': 'https://generativelanguage.example.test',
+        'AGY_ACP_DEFAULT_MODEL': 'gemini-3.8-flash',
       });
       final cliText = (await catalogFs.readString(cliSettingsPath()))!;
       expect(cliText, isNot(contains('sk-secret')));
       final cli = jsonDecode(cliText) as Map<String, Object?>;
-      expect(cli['model'], 'gemini-3.8-flash-medium');
+      expect(cli['model'], 'gemini-3.8-flash');
       expect(cli['modelProvider'], 'gemini');
       final acp = await readJson(acpSettingsPath());
       expect(acp['auth'], {'type': 'gemini-api-key'});
@@ -477,7 +495,7 @@ gemini-3.8-flash-medium  Gemini 3.8 Flash (Medium)
       );
 
       final cli = await readJson(cliSettingsPath());
-      expect(cli['model'], 'gemini-3.7-flash-high');
+      expect(cli['model'], 'gemini-3.7-flash');
       expect(cli['theme'], 'dark');
       expect(cli['permissions'], {
         'allow': ['ls'],

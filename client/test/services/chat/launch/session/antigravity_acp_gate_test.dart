@@ -52,10 +52,23 @@ void main() {
     });
 
     test('willLaunchAcp is true on desktop and false on Android', () {
+      expect(willLaunchAcp(cli: CliTool.antigravity, requested: false), isTrue);
       expect(
         willLaunchAcp(
           cli: CliTool.antigravity,
           requested: false,
+          isAndroidOverride: true,
+        ),
+        isFalse,
+      );
+    });
+
+    test('willLaunchAcp keeps local-only Antigravity off remote targets', () {
+      expect(
+        willLaunchAcp(
+          cli: CliTool.antigravity,
+          requested: false,
+          targetId: 'local',
         ),
         isTrue,
       );
@@ -63,7 +76,7 @@ void main() {
         willLaunchAcp(
           cli: CliTool.antigravity,
           requested: false,
-          isAndroidOverride: true,
+          targetId: 'ssh:prod',
         ),
         isFalse,
       );

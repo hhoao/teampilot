@@ -233,39 +233,35 @@ final class AntigravityProviderCapability extends CatalogModelCapability
     required AppProviderConfig provider,
   }) async => null;
 
-  // ---- CliEffortCapability (`--effort` / ACP config option) ----
+  // ---- CliEffortCapability (hidden until `thinking_level` is applied) ----
+  //
+  // The adapter exposes thinking effort as a separate `thinking_level` config
+  // option; team/member/provider pickers do not write it yet, so showing them
+  // would claim a no-op. Keep them hidden and the candidate list empty.
   @override
-  EffortPickerPlacement teamPickerPlacement() => EffortPickerPlacement.team;
+  EffortPickerPlacement teamPickerPlacement() => EffortPickerPlacement.hidden;
 
   @override
   EffortPickerPlacement memberPickerPlacement({AppProviderConfig? provider}) =>
-      EffortPickerPlacement.member;
+      EffortPickerPlacement.hidden;
 
   @override
   EffortPickerPlacement providerPickerPlacement(AppProviderConfig provider) =>
-      EffortPickerPlacement.provider;
+      EffortPickerPlacement.hidden;
 
   @override
-  bool isApplicable({required String model}) => model.trim().isNotEmpty;
+  bool isApplicable({required String model}) => false;
 
   @override
   List<String> effortCandidates({
     required String model,
     AppProviderConfig? provider,
-  }) => isApplicable(model: model) ? const ['low', 'medium', 'high'] : const [];
+  }) => const [];
 
-  /// Empty unless the row pins one: model slugs already encode an effort and
-  /// silently forcing `high` would change cost for every launch.
+  /// Empty until the effort picker is exposed; model slugs no longer encode it.
   @override
-  String defaultEffort({required String model, AppProviderConfig? provider}) {
-    final fromProvider = provider?.config['effort']?.toString().trim() ?? '';
-    return effortCandidates(
-          model: model,
-          provider: provider,
-        ).contains(fromProvider)
-        ? fromProvider
-        : '';
-  }
+  String defaultEffort({required String model, AppProviderConfig? provider}) =>
+      '';
 
   // ---- Session-home materialization ----
   @override
@@ -314,6 +310,10 @@ final class AntigravityProviderCapability extends CatalogModelCapability
     // capability still rewrites `HOME` to `<toolDir>/home` at spawn.
     final environment = <String, String>{
       ..._authEnv(provider, authMode),
+      // The ACP capability copies baseEnv into the adapter spawn, so the
+      // selected model reaches `agy_acp_server` even though the adapter owns
+      // its own settings file.
+      if (model.isNotEmpty) 'AGY_ACP_DEFAULT_MODEL': model,
       if (ctx.memberId != null && ctx.memberId!.trim().isNotEmpty)
         'HOME': toolDir,
     };
@@ -402,12 +402,18 @@ final class AntigravityProviderCapability extends CatalogModelCapability
 
   String _resolveModel(SessionHomeContext ctx, AppProviderConfig? provider) {
     final fromMember = ctx.member?.model.trim() ?? '';
-    if (fromMember.isNotEmpty) return fromMember;
+    if (fromMember.isNotEmpty) {
+      return AntigravityModelCatalog.collapse(fromMember);
+    }
     final fromPreset = ctx.preset?.model.trim() ?? '';
-    if (fromPreset.isNotEmpty) return fromPreset;
+    if (fromPreset.isNotEmpty) {
+      return AntigravityModelCatalog.collapse(fromPreset);
+    }
     // No model chosen anywhere → leave settings.model untouched so the CLI's
     // own default applies.
-    return provider?.defaultModel.trim() ?? '';
+    return AntigravityModelCatalog.collapse(
+      provider?.defaultModel.trim() ?? '',
+    );
   }
 }
 

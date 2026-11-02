@@ -17,7 +17,4 @@ final class AntigravityAcpSettings implements AcpSettingsCapability {
 
   @override
   AcpAdapterInstaller? get adapterInstaller => installer;
-
-  @override
-  bool get showsPersonalAcpSwitch => false;
 }

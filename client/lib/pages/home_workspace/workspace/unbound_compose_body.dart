@@ -986,6 +986,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
       acp: willLaunchAcp(
         cli: launchCli,
         requested: readAcpDefault(context, launchCli),
+        targetId: _homeTargetForLaunch().id,
       ),
       generateLaunch: !isSimple && _generateLaunch,
       presetId: _selectedPresetId,

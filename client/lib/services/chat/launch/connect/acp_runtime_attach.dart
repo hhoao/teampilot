@@ -877,9 +877,10 @@ class AcpRuntimeAttach {
         ),
         acpTranscriptFileName(memberId: memberId, personal: personal),
       ),
-      // Only Antigravity has an ACP usage capability (spec scope); leaving the
-      // sink unwired elsewhere avoids dead I/O on every other ACP chat.
-      usagePath: cli != CliTool.antigravity
+      // Only CLIs with an ACP usage-log capability sink samples; leaving it
+      // unwired elsewhere avoids dead I/O on every other ACP chat.
+      usagePath:
+          _host.cliRegistry.capability<AcpUsageLogCapability>(cli) == null
           ? null
           : _storage.context.layout.pathContext.join(
               _storage.context.layout.sessionRuntimeToolDir(

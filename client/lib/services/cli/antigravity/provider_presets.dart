@@ -26,7 +26,7 @@ abstract final class AntigravityProviderPresets {
         category: AppProviderCategory.official,
         isOfficial: true,
         apiKeyField: 'api_key',
-        defaultModel: 'gemini-3.8-flash-high',
+        defaultModel: 'gemini-3.8-flash',
         icon: 'gemini',
         notes:
             'Sign in with a Google account. The account is stored in the OS '
@@ -46,7 +46,7 @@ abstract final class AntigravityProviderPresets {
         apiKeyUrl: 'https://aistudio.google.com/apikey',
         category: AppProviderCategory.custom,
         apiKeyField: 'api_key',
-        defaultModel: 'gemini-3.8-flash-high',
+        defaultModel: 'gemini-3.8-flash',
         icon: 'gemini',
         config: {'authMode': 'gemini-api-key'},
       ),

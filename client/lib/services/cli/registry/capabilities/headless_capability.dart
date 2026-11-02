@@ -105,3 +105,9 @@ abstract interface class HeadlessCapability
 
   Future<HeadlessProvisionResult> provision(HeadlessProvisionContext ctx);
 }
+
+/// Marker: this CLI can run headless one-shots, but its [HeadlessCapability.provision]
+/// does not yet materialize provider credentials into the isolated config dir.
+/// AI features hide it until the follow-up provisioning work lands.
+abstract interface class HeadlessCredentialProvisioningPendingCapability
+    implements CliCapability {}

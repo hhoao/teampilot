@@ -30,6 +30,7 @@ import 'connect/session_shell_connector.dart';
 import 'session/session_launch_coordinator.dart';
 import 'session/session_launch_workspace_index.dart';
 import '../../cli/preset_resolver.dart';
+import '../../cli/registry/capabilities/cli_transport_capability.dart';
 import 'session/session_launch_config_snapshot.dart';
 import 'session/session_member_cli_locks.dart';
 import '../../storage/home_storage.dart';
@@ -188,6 +189,15 @@ class SessionLaunchService
     AppSession session,
     ResolvedLaunchMembers resolved,
   ) => _acpAttach.attachMemberAcpRuntime(job, session, resolved);
+
+  /// ACP-only seats have no shell to fall back to; the executor settles the
+  /// connect as failed instead of spawning a PTY for a CLI that never uses one.
+  @override
+  bool supportsPtyTransport(CliTool cli) =>
+      _h.cliRegistry
+          .capability<CliTransportCapability>(cli)
+          ?.supports(CliTransport.pty) ??
+      true;
 
   ChatDataSnapshot get _state => _h.stateSnapshot();
   ChatTabStore get _tabStore => _h.tabStore;

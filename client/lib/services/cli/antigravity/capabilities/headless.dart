@@ -14,7 +14,10 @@ import '../../registry/launch/cli_launch_arg_contribution.dart';
 /// materialize a provider API key or ADC configuration into the isolated home.
 /// OAuth accounts rely on the OS keyring, while API-key/ADC runs only work when
 /// the caller already supplies the relevant env to the process.
-final class AntigravityHeadlessCapability implements HeadlessCapability {
+final class AntigravityHeadlessCapability
+    implements
+        HeadlessCapability,
+        HeadlessCredentialProvisioningPendingCapability {
   const AntigravityHeadlessCapability();
 
   @override
