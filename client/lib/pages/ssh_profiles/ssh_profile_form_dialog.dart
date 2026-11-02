@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -12,12 +11,14 @@ import 'package:uuid/uuid.dart';
 import '../../cubits/ssh_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/ssh_profile.dart';
-import '../../models/vault_entry.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_profile_repository.dart';
 import '../../services/ssh/ssh_connection_failure.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
+import '../../services/ssh/ssh_profile_vault_writer.dart';
+import '../../services/vault/credential_capture.dart';
 import '../../services/vault/vault_service.dart';
+import '../../services/vault/vault_unlock_gate.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
 import '../../services/workspace/workspace_pane_policy.dart';
 
@@ -56,9 +57,6 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
   late final TextEditingController _passwordController;
   var _saving = false;
   var _testing = false;
-  List<VaultEntry> _vaultEntries = const [];
-  String? _vaultEntryId;
-  bool _saveToVault = false;
 
   bool get _isEditing => widget.initialProfile != null;
 
@@ -73,35 +71,6 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     _identityFileController = TextEditingController();
     _passphraseController = TextEditingController();
     _passwordController = TextEditingController();
-    _vaultEntryId = p?.vaultEntryId;
-    unawaited(_loadVaultEntries());
-  }
-
-  VaultEntry? get _selectedVaultEntry {
-    final id = _vaultEntryId;
-    if (id == null) return null;
-    for (final entry in _vaultEntries) {
-      if (entry.id == id) return entry;
-    }
-    return null;
-  }
-
-  Future<void> _loadVaultEntries() async {
-    List<VaultEntry> entries;
-    try {
-      entries = await context.read<VaultService>().list();
-    } on Object {
-      entries = const [];
-    }
-    if (!mounted) return;
-    setState(() {
-      _vaultEntries = [
-        for (final entry in entries)
-          if (entry.type == VaultEntryType.sshPassword ||
-              entry.type == VaultEntryType.sshPrivateKey)
-            entry,
-      ];
-    });
   }
 
   @override
@@ -133,7 +102,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       authType: _usesPasswordAuth
           ? SshAuthType.password
           : SshAuthType.privateKey,
-      vaultEntryId: _vaultEntryId,
+      vaultEntryId: widget.initialProfile?.vaultEntryId,
       createdAt: existing == null || existing.createdAt == 0
           ? now
           : existing.createdAt,
@@ -142,12 +111,12 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
   }
 
   bool get _usesPasswordAuth {
-    final selected = _selectedVaultEntry;
-    if (selected != null) {
-      return selected.type == VaultEntryType.sshPassword;
+    if (_passwordController.text.isNotEmpty) return true;
+    if (_identityFileController.text.isNotEmpty ||
+        _passphraseController.text.isNotEmpty) {
+      return false;
     }
-    return _identityFileController.text.trim().isEmpty &&
-        _passwordController.text.isNotEmpty;
+    return widget.initialProfile?.authType == SshAuthType.password;
   }
 
   Future<void> _browseIdentityFile() async {
@@ -173,32 +142,10 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
     return file.readAsString();
   }
 
-  Future<void> _persistCredentials(SshProfile profile) async {
-    // 已链接保险库条目的 profile 不再写钥匙串。
-    if ((profile.vaultEntryId ?? '').isNotEmpty) return;
-    final store = context.read<SshCredentialStore>();
-    if (_usesPasswordAuth) {
-      await store.savePassword(profile.id, _passwordController.text);
-      return;
-    }
-    final identityPath = _identityFileController.text.trim();
-    if (identityPath.isNotEmpty) {
-      final pem = await _readIdentityFile();
-      if (pem != null && pem.isNotEmpty) {
-        await store.savePrivateKey(profile.id, pem);
-      }
-    }
-    final passphrase = _passphraseController.text;
-    if (passphrase.isNotEmpty) {
-      await store.savePrivateKeyPassphrase(profile.id, passphrase);
-    }
-  }
-
   Future<SshProfile?> _save({required bool notify}) async {
     if (_formKey.currentState?.validate() != true) return null;
     final profile = _buildProfile();
     if (!_isEditing &&
-        _vaultEntryId == null &&
         !_usesPasswordAuth &&
         _identityFileController.text.trim().isEmpty) {
       AppToast.show(
@@ -208,55 +155,85 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       );
       return null;
     }
-    await context.read<SshProfileRepository>().save(profile);
-    var credentialsSaved = true;
     try {
-      await _persistCredentials(profile);
-    } on Object {
-      credentialsSaved = false;
-    }
-    if (!mounted) return profile;
-    if (!credentialsSaved) {
-      AppToast.show(
-        context,
-        message: context.l10n.sshProfileFormCredentialSaveFailed,
-        variant: TpToastVariant.warning,
+      final linked = (widget.initialProfile?.vaultEntryId ?? '').isNotEmpty;
+      final capture = context.read<VaultCredentialCapture>();
+      final unlockGate = context.read<VaultUnlockGate>();
+      final repository = context.read<SshProfileRepository>();
+      final credentialStore = context.read<SshCredentialStore>();
+      String? password;
+      String? privateKey;
+      String? passphrase;
+      if (_usesPasswordAuth) {
+        password = _passwordController.text.isEmpty
+            ? (linked ? null : '')
+            : _passwordController.text;
+        privateKey = '';
+        passphrase = '';
+      } else {
+        privateKey = await _readIdentityFile();
+        passphrase = _passphraseController.text.isEmpty
+            ? null
+            : _passphraseController.text;
+        password = '';
+      }
+      final result = await saveSshProfileWithVault(
+        profile: profile,
+        password: password,
+        privateKey: privateKey,
+        passphrase: passphrase,
+        capture: capture,
+        unlockGate: unlockGate,
+        repository: repository,
+        credentialStore: credentialStore,
       );
+      if (!mounted) return result.profile;
+      if (notify) {
+        await context.read<SshProfileCubit>().load();
+        if (mounted) Navigator.of(context).pop();
+      }
+      return result.profile;
+    } on VaultSaveBlockedException {
+      if (mounted) {
+        AppToast.show(
+          context,
+          message: context.l10n.vaultLockedSaveBlocked,
+          variant: TpToastVariant.error,
+        );
+      }
+      return null;
+    } on Object {
+      if (mounted) {
+        AppToast.show(
+          context,
+          message: context.l10n.sshProfileFormCredentialSaveFailed,
+          variant: TpToastVariant.warning,
+        );
+      }
+      return null;
     }
-    var migrated = false;
-    if (credentialsSaved &&
-        _saveToVault &&
-        (profile.vaultEntryId ?? '').isEmpty) {
-      final cubit = context.read<SshProfileCubit>();
-      await cubit.load();
-      migrated = (await cubit.migrateToVault(profile.id)) != null;
-    }
-    if (!mounted) return profile;
-    if (notify) {
-      if (!migrated) await context.read<SshProfileCubit>().load();
-      if (mounted) Navigator.of(context).pop();
-    }
-    return profile;
   }
 
   Future<void> _testConnection() async {
     if (_formKey.currentState?.validate() != true) return;
     setState(() => _testing = true);
     final credentialStore = context.read<SshCredentialStore>();
-    final sshClientFactory =
-        context.read<TerminalTransportFactory>().sshClientFactory;
+    final sshClientFactory = context
+        .read<TerminalTransportFactory>()
+        .sshClientFactory;
     try {
       final profile = _buildProfile();
+      final linkedId = widget.initialProfile?.vaultEntryId;
       String? password;
       String? privateKey;
       String? passphrase;
-      if ((_vaultEntryId ?? '').isNotEmpty) {
+      if (linkedId != null && linkedId.isNotEmpty) {
         final vault = context.read<VaultService>();
         if (_usesPasswordAuth) {
-          password = await vault.readField(_vaultEntryId!, 'password');
+          password = await vault.readField(linkedId, 'password');
         } else {
-          privateKey = await vault.readField(_vaultEntryId!, 'privateKey');
-          passphrase = await vault.readField(_vaultEntryId!, 'passphrase');
+          privateKey = await vault.readField(linkedId, 'privateKey');
+          passphrase = await vault.readField(linkedId, 'passphrase');
         }
       } else if (_usesPasswordAuth) {
         password = _passwordController.text;
@@ -269,9 +246,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
             ? await credentialStore.loadPrivateKeyPassphrase(profile.id)
             : _passphraseController.text;
       }
-      await SshProfileConnectionTester(
-        clientFactory: sshClientFactory,
-      ).test(
+      await SshProfileConnectionTester(clientFactory: sshClientFactory).test(
         profile,
         password: password,
         privateKey: privateKey,
@@ -364,27 +339,6 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
           ),
         ),
         const SizedBox(height: 16),
-        if (_vaultEntries.isNotEmpty || _vaultEntryId != null) ...[
-          TpSelect<String>(
-            key: const Key('ssh-credential-source'),
-            items: ['', ..._vaultEntries.map((entry) => entry.id)],
-            initialItem: _vaultEntryId ?? '',
-            itemLabel: (id) {
-              if (id.isEmpty) return l10n.sshCredentialSourceKeychain;
-              for (final entry in _vaultEntries) {
-                if (entry.id == id) return entry.title;
-              }
-              return l10n.sshCredentialVaultDeleted;
-            },
-            onChanged: (id) => setState(() {
-              _vaultEntryId = (id == null || id.isEmpty) ? null : id;
-              if (_vaultEntryId != null) _saveToVault = false;
-            }),
-            decoration: TpSelectDecorations.themed(context),
-            overlayHeight: kTpSelectDefaultOverlayHeight,
-          ),
-          const SizedBox(height: 12),
-        ],
         _field(
           id: 'identityFile',
           controller: _identityFileController,
@@ -419,14 +373,6 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
           obscure: true,
           onChanged: () => setState(() {}),
         ),
-        if (_vaultEntryId == null)
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(l10n.sshSaveToVault),
-            value: _saveToVault,
-            onChanged: (value) =>
-                setState(() => _saveToVault = value ?? false),
-          ),
       ],
     );
 
@@ -490,9 +436,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
                 children: [
                   Flexible(
                     fit: FlexFit.loose,
-                    child: SingleChildScrollView(
-                      child: formFields,
-                    ),
+                    child: SingleChildScrollView(child: formFields),
                   ),
                   actions,
                 ],

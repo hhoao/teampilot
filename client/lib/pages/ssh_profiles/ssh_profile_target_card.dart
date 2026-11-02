@@ -31,7 +31,6 @@ class SshProfileTargetCard extends StatelessWidget {
     required this.onDelete,
     required this.onRefresh,
     this.onConfigure,
-    this.onMigrate,
   });
 
   final SshProfile profile;
@@ -46,7 +45,6 @@ class SshProfileTargetCard extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback onRefresh;
   final VoidCallback? onConfigure;
-  final VoidCallback? onMigrate;
 
   static const _leadingWidth = 32.0;
   static const _actionsGap = 8.0;
@@ -352,21 +350,6 @@ class SshProfileTargetCard extends StatelessWidget {
                       style: TpTextStyles.of(context).mutedSm,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if ((profile.vaultEntryId ?? '').isEmpty &&
-                        profile.authType == SshAuthType.password &&
-                        onMigrate != null)
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton(
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          onPressed: onMigrate,
-                          child: Text(context.l10n.sshMigrateToVault),
-                        ),
-                      ),
                     if (statusError != null && statusError!.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(

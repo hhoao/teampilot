@@ -252,9 +252,6 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                         openSshProfileEditor(context, profile: profile),
                     onDelete: () => confirmDeleteSshProfile(context, profile),
                     onRefresh: () => context.read<SshProfileCubit>().load(),
-                    onMigrate: () => context
-                        .read<SshProfileCubit>()
-                        .migrateToVault(profile.id),
                     onConfigure: () => showSshProfileTargetConfigDialog(
                       context,
                       profile: profile,
