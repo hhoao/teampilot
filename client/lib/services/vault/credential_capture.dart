@@ -83,11 +83,12 @@ class VaultCredentialCapture {
     );
   }
 
+  /// [apiKey]: null keeps the stored key, an empty string removes it, a
+  /// value overwrites it. Callers that have a key must pass it explicitly.
   Future<VaultCaptureResult> captureProvider(
     AppProviderConfig provider, {
     String? apiKey,
   }) {
-    final effectiveApiKey = apiKey ?? provider.apiKey;
     return _upsert(
       ownerKind: vaultOwnerKindAppProvider,
       ownerId: provider.id,
@@ -98,7 +99,7 @@ class VaultCredentialCapture {
       fields: {
         'provider': provider.id,
         'baseUrl': provider.baseUrl,
-        if (effectiveApiKey.isNotEmpty) 'apiKey': effectiveApiKey,
+        if (apiKey != null) 'apiKey': apiKey,
       },
     );
   }
@@ -139,7 +140,7 @@ class VaultCredentialCapture {
     return _upsert(
       ownerKind: vaultOwnerKindGithub,
       ownerId: 'default',
-      type: VaultEntryType.apiKey,
+      type: VaultEntryType.token,
       title: 'GitHub',
       tags: const ['github'],
       revealable: true,
@@ -192,6 +193,7 @@ class VaultCredentialCapture {
       title: title,
       fields: merged,
       tags: {...?existing?.tags, ...tags}.toList(growable: false),
+      notes: existing?.notes ?? '',
       favorite: existing?.favorite ?? false,
       revealable: type == VaultEntryType.sshPrivateKey ? false : revealable,
       createdAt: existing?.createdAt ?? now,
@@ -199,11 +201,13 @@ class VaultCredentialCapture {
       extra: {...?existing?.extra, 'ownerKind': ownerKind, 'ownerId': ownerId},
     );
     await _vault.upsert(entry);
-    for (final field in merged.keys) {
-      final readBack = await _vault.readField(entry.id, field);
-      if (readBack != merged[field]) {
-        throw const VaultCaptureException('verifyFailed');
+    if (!await _vault.verifyFields(entry.id, merged)) {
+      if (existing == null) {
+        await _vault.delete(entry.id);
+      } else {
+        await _vault.upsert(existing);
       }
+      throw const VaultCaptureException('verifyFailed');
     }
     return VaultCaptureResult(
       entryId: entry.id,
