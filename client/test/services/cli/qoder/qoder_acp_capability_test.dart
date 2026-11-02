@@ -34,6 +34,27 @@ void main() {
     expect(cap.sessionNewMeta(const {}), isEmpty);
   });
 
+  test('auth-required refusal maps to the sign-in sentinel', () {
+    const translator = QoderAcpTranslator();
+    expect(
+      translator.translateStopMeta(StopReason.refusal, const {
+        'qoder.ai/errorMessage': '-32000 Authentication required',
+      }),
+      acpStopAuthRequired,
+    );
+  });
+
+  test('stop meta is only consulted for prompt-turn refusals', () {
+    const translator = QoderAcpTranslator();
+    expect(
+      translator.translateStopMeta(StopReason.endTurn, const {
+        'qoder.ai/errorMessage': 'quota exceeded',
+      }),
+      isNull,
+      reason: 'a normal end_turn must keep its plain stop reason',
+    );
+  });
+
   test('auth-required RPC maps to the sign-in sentinel', () {
     const translator = QoderAcpTranslator();
     expect(

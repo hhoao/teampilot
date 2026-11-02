@@ -33,10 +33,14 @@ final class QoderAcpTranslator extends AcpAgentTranslator {
     return error.toString();
   }
 
-  /// `session/new` reports an unseeded config dir as `-32000
-  /// Authentication required`; surface it as the app's sign-in sentinel.
+  /// Qoder reports a prompt-turn failure as `stopReason: refusal` plus
+  /// `_meta["qoder.ai/errorMessage"]` (a JSON string with `code`/`message`).
+  /// Quota and auth failures both use that channel; surface the message (or
+  /// the sign-in sentinel) so the turn does not end silently as a plain
+  /// `refusal` → `aborted` stop. Non-refusal stops keep their plain reason.
   @override
   String? translateStopMeta(StopReason reason, Map<String, Object?> meta) {
+    if (reason != StopReason.refusal) return null;
     final raw = meta['qoder.ai/errorMessage']?.toString() ?? '';
     if (raw.isEmpty) return null;
     final lower = raw.toLowerCase();
