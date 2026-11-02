@@ -204,6 +204,25 @@ void main() {
     );
   });
 
+  test('existingManagedFields reads the provider vault entry', () async {
+    final service = await _service();
+    final capture = VaultCredentialCapture(vault: service);
+    final provider = ManagedProvider(
+      id: 'm1',
+      name: 'Usage',
+      kind: ManagedProviderKind.apiBalance,
+      adapterId: 'http_json_mapping',
+    );
+    final result = await capture.captureManaged(provider, {'apiKey': 'a'});
+    final linked = provider.copyWith(vaultEntryId: result.entryId);
+    expect(await capture.existingManagedFields(linked), {'apiKey': 'a'});
+    expect(
+      await capture.existingManagedFields(provider),
+      isEmpty,
+      reason: 'no link means no vault fields',
+    );
+  });
+
   test('rollback of an update restores the previous fields', () async {
     final store = _FakeStore();
     final service = await _service(store: store);

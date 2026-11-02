@@ -705,7 +705,8 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     ];
     for (final entry in managed) {
       final ref = entry.credentialRef?.trim() ?? '';
-      if (ref.isEmpty) continue;
+      final vaultEntryId = entry.vaultEntryId?.trim() ?? '';
+      if (ref.isEmpty && vaultEntryId.isEmpty) continue;
       if (entry.kind != ManagedProviderKind.apiBalance &&
           entry.kind != ManagedProviderKind.customHttp) {
         continue;
