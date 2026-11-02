@@ -37,6 +37,7 @@ import 'capabilities/plugin.dart';
 import 'capabilities/prompt.dart';
 import 'capabilities/provider.dart';
 import 'capabilities/session.dart';
+import 'capabilities/usage.dart';
 import 'capabilities/workspace_base_info.dart';
 
 /// Antigravity CLI (`agy`) tool definition.
@@ -66,6 +67,7 @@ final class AntigravityCliTool implements CliToolDefinition {
     this.acp = const AntigravityAcpCapability(),
     this.acpSettings = const AntigravityAcpSettings(),
     this.aiHistory = const AntigravityAiHistoryCapability(),
+    this.sessionUsage = const AntigravitySessionUsageCapability(),
     this.transport = const CliTransportCapability(
       supported: {CliTransport.acp},
     ),
@@ -92,6 +94,7 @@ final class AntigravityCliTool implements CliToolDefinition {
   final AcpCapability acp;
   final AcpSettingsCapability acpSettings;
   final AiHistoryCapability aiHistory;
+  final AntigravitySessionUsageCapability sessionUsage;
   final CliTransportCapability transport;
 
   @override
@@ -123,6 +126,7 @@ final class AntigravityCliTool implements CliToolDefinition {
     acp,
     acpSettings,
     aiHistory,
+    sessionUsage,
     transport,
   ];
 }

@@ -842,6 +842,10 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
       case AcpModelStateUpdate():
         if (isClosed) return;
         emit(state.copyWith(modelState: update.state));
+      case AcpUsageUpdate():
+        // Context usage is recorded out-of-band for the usage collector; it
+        // never becomes a chat row, and replay must not duplicate samples.
+        if (!replaying) unawaited(_appendUsage(update));
       case AcpPlan() ||
           AcpTodoListUpdate() ||
           AcpTaskUpdate() ||
@@ -868,6 +872,30 @@ class AcpChatRuntimeCubit extends Cubit<AcpChatRuntimeState> {
         ? AiReasoningPart(text: chunk.content)
         : AiTextPart(text: chunk.content),
   ];
+
+  /// Persists one context-usage sample beside the chat transcript.
+  ///
+  /// Fire-and-forget: a failed append must never disturb the turn, so it is
+  /// logged and dropped.
+  Future<void> _appendUsage(AcpUsageUpdate update) async {
+    final transcript = _transcript;
+    if (transcript == null) return;
+    try {
+      await transcript.appendUsage(
+        sessionId: sessionId,
+        used: update.used,
+        size: update.size,
+        cost: update.cost,
+        model: _readModelState()?.currentId,
+      );
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[acp-chat] session $sessionId usage append failed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
 
   void _applyToolCall(AcpToolCallUpdate update) {
     final replaying = _replayMessages != null;

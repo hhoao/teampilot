@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:ai_message_core/ai_message_core.dart';
 
 import '../io/filesystem.dart';
 import '../../utils/logging/logger.dart';
 import 'acp_chat_transcript_replay.dart';
+import 'acp_usage.dart';
 
 /// Append-free snapshot of one ACP chat session's folded messages.
 ///
@@ -12,12 +14,22 @@ import 'acp_chat_transcript_replay.dart';
 /// of tool-call updates rewrites the transcript once instead of once per
 /// update. Each call still resolves only after a write that includes its state
 /// (or newer) lands, so `loadMessages` never observes an older snapshot.
+///
+/// Also appends `usage_update` samples to [usagePath] (JSONL) so the usage
+/// collector can re-read them out-of-band; the transcript snapshot itself
+/// never carries usage.
 class AcpChatTranscriptWriter {
-  AcpChatTranscriptWriter({required Filesystem fs, required this.path})
-    : _fs = fs;
+  AcpChatTranscriptWriter({
+    required Filesystem fs,
+    required this.path,
+    this.usagePath,
+  }) : _fs = fs;
 
   final Filesystem _fs;
   final String path;
+
+  /// JSONL sink for [AcpUsageRecord]s, or null when usage is not collected.
+  final String? usagePath;
 
   Future<void> _pending = Future<void>.value();
 
@@ -68,5 +80,34 @@ class AcpChatTranscriptWriter {
     } finally {
       _draining = false;
     }
+  }
+
+  /// Appends one `usage_update` sample as a JSONL record.
+  ///
+  /// Serialized through the same queue as [saveMessages] so a chat snapshot
+  /// and a usage record never interleave writes. No-op when [usagePath] is
+  /// unset.
+  Future<void> appendUsage({
+    required String sessionId,
+    required int? used,
+    required int? size,
+    Object? cost,
+    String? model,
+  }) {
+    final target = usagePath;
+    if (target == null || target.trim().isEmpty) return Future<void>.value();
+    final record = AcpUsageRecord.fromUpdate(
+      sessionId: sessionId,
+      used: used,
+      size: size,
+      cost: cost,
+      model: model,
+    );
+    final next = _pending.then((_) async {
+      await _fs.ensureDir(_fs.pathContext.dirname(target));
+      await _fs.appendString(target, '${jsonEncode(record.toJson())}\n');
+    });
+    _pending = next.catchError((Object _) {});
+    return next;
   }
 }

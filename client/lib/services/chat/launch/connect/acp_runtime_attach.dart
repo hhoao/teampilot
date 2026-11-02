@@ -558,7 +558,12 @@ class AcpRuntimeAttach {
         final SeatBackgroundLeasePort port => port,
         _ => null,
       },
-      transcript: _transcript(session, memberId: memberId, personal: personal),
+      transcript: _transcript(
+        session,
+        cli: cli,
+        memberId: memberId,
+        personal: personal,
+      ),
       agentSession: _agentSessionStore(session, memberId: memberId, personal: personal),
       backgroundTranscriptFactory: _backgroundTranscriptFactory(
         cli,
@@ -859,6 +864,7 @@ class AcpRuntimeAttach {
 
   AcpChatTranscriptWriter _transcript(
     AppSession session, {
+    required CliTool cli,
     required String? memberId,
     required bool personal,
   }) {
@@ -870,6 +876,17 @@ class AcpRuntimeAttach {
           session.sessionId,
         ),
         acpTranscriptFileName(memberId: memberId, personal: personal),
+      ),
+      // The ACP usage collector reads this JSONL from the session tool dir;
+      // the cubit appends one record per `usage_update`.
+      usagePath: _storage.context.layout.pathContext.join(
+        _storage.context.layout.sessionRuntimeToolDir(
+          session.workspaceId,
+          session.sessionId,
+          cli.value,
+          memberId: memberId,
+        ),
+        'acp-usage.jsonl',
       ),
     );
   }

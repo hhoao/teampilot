@@ -183,6 +183,39 @@ final class AcpPlan extends AcpSessionUpdate {
   }
 }
 
+/// A context-usage sample reported by the agent (`usage_update`).
+///
+/// ACP exposes the context window as `used` / `size`. Probe 1.4.3
+/// (Antigravity) shows `used` is a per-turn context delta, not a cumulative
+/// total and not output tokens; the chat layer persists the raw sample and
+/// derives nothing from it.
+final class AcpUsageUpdate extends AcpSessionUpdate {
+  const AcpUsageUpdate({this.used, this.size, this.cost});
+
+  /// Maps an acpd `usage_update` onto the chat-layer variant.
+  factory AcpUsageUpdate.fromAcpd(acpd.UsageSessionUpdate update) =>
+      AcpUsageUpdate(
+        used: update.used,
+        size: update.size,
+        cost: update.cost,
+      );
+
+  final int? used;
+  final int? size;
+  final acpd.Cost? cost;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AcpUsageUpdate &&
+          used == other.used &&
+          size == other.size &&
+          cost == other.cost;
+
+  @override
+  int get hashCode => Object.hash(used, size, cost);
+}
+
 /// The terminal event of a prompt turn.
 final class AcpStop extends AcpSessionUpdate {
   const AcpStop({required this.kind, this.message});
@@ -994,9 +1027,11 @@ class AcpAgentSession {
               )
               .toList(),
         );
-      // Available-commands, mode, session-info, and usage updates have no
-      // chat-layer representation yet. Config options are handled before
-      // mapping (they update the model selector).
+      case acpd.UsageSessionUpdate():
+        return AcpUsageUpdate.fromAcpd(update);
+      // Available-commands, mode, and session-info updates have no chat-layer
+      // representation yet. Config options are handled before mapping (they
+      // update the model selector).
       default:
         return null;
     }
