@@ -5,10 +5,11 @@ import '../vault/vault_unlock_gate.dart';
 /// Captures managed-provider credentials, then persists the provider row.
 ///
 /// Rollback removes/restores the entry when [persist] fails, so a failed save
-/// never leaves the vault ahead of the catalog.
+/// never leaves the vault ahead of the catalog. A rollback failure never masks
+/// the persistence error.
 Future<ManagedProvider> saveManagedProviderWithVault({
   required ManagedProvider provider,
-  required ManagedProvider? current,
+  required Map<String, String> existingValues,
   required Map<String, String> secretValues,
   required VaultCredentialCapture capture,
   required VaultUnlockGate unlockGate,
@@ -21,18 +22,19 @@ Future<ManagedProvider> saveManagedProviderWithVault({
   if (!await unlockGate.ensureUnlocked()) {
     throw const VaultSaveBlockedException();
   }
-  final existing = current == null
-      ? const <String, String>{}
-      : await capture.existingManagedFields(current);
   final result = await capture.captureManaged(provider, {
-    ...existing,
+    ...existingValues,
     ...secretValues,
   });
   final saved = provider.copyWith(vaultEntryId: result.entryId);
   try {
     await persist(saved);
   } on Object {
-    await capture.rollback(result);
+    try {
+      await capture.rollback(result);
+    } on Object {
+      // Preserve the persistence error.
+    }
     rethrow;
   }
   return saved;

@@ -26,19 +26,39 @@ class _FakeStore implements SecureKeyValueStore {
   Future<void> write(String key, String value) async => values[key] = value;
 }
 
-Future<VaultService> _vault() async {
-  final service = VaultService(
-    keychainBackend: KeychainVaultBackend(_FakeStore()),
-    encryptedBackend: EncryptedVaultBackend(
-      repository: VaultRepository(
-        rootDir: '/root/vault',
-        fs: InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix)),
+VaultService _buildVault(_FakeStore store, InMemoryFilesystem fs) =>
+    VaultService(
+      keychainBackend: KeychainVaultBackend(store),
+      encryptedBackend: EncryptedVaultBackend(
+        repository: VaultRepository(rootDir: '/root/vault', fs: fs),
+        crypto: const VaultCrypto(
+          memoryKiB: 256,
+          iterations: 1,
+          parallelism: 1,
+        ),
       ),
-      crypto: const VaultCrypto(memoryKiB: 256, iterations: 1, parallelism: 1),
-    ),
+    );
+
+Future<VaultService> _vault() async {
+  final service = _buildVault(
+    _FakeStore(),
+    InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix)),
   );
   await service.initialize();
   return service;
+}
+
+/// An unlocked writer and a second service over the same encrypted document
+/// that starts locked, so a gate call would fail.
+Future<(VaultService, VaultService)> _encryptedVaultPair() async {
+  final store = _FakeStore();
+  final fs = InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix));
+  final unlocked = _buildVault(store, fs);
+  await unlocked.initialize();
+  await unlocked.enableEncryptedBackend('pass');
+  final locked = _buildVault(store, fs);
+  await locked.initialize();
+  return (unlocked, locked);
 }
 
 void main() {
@@ -56,7 +76,7 @@ void main() {
 
     final saved = await saveManagedProviderWithVault(
       provider: provider,
-      current: null,
+      existingValues: const {},
       secretValues: {'apiKey': 'a'},
       capture: capture,
       unlockGate: VaultUnlockGate(vault: vault, prompt: () async => true),
@@ -73,7 +93,7 @@ void main() {
     final capture = VaultCredentialCapture(vault: vault);
     final first = await saveManagedProviderWithVault(
       provider: provider,
-      current: null,
+      existingValues: const {},
       secretValues: {'apiKey': 'a'},
       capture: capture,
       unlockGate: VaultUnlockGate(vault: vault, prompt: () async => true),
@@ -81,7 +101,7 @@ void main() {
     );
     await saveManagedProviderWithVault(
       provider: first,
-      current: first,
+      existingValues: {'apiKey': 'a'},
       secretValues: {'secretKey': 'b'},
       capture: capture,
       unlockGate: VaultUnlockGate(vault: vault, prompt: () async => true),
@@ -91,6 +111,31 @@ void main() {
     expect(entry.fields, {'apiKey': 'a', 'secretKey': 'b'});
   });
 
+  test('empty secret values persist without touching the vault', () async {
+    final (_, locked) = await _encryptedVaultPair();
+    var prompted = false;
+    ManagedProvider? persisted;
+
+    final saved = await saveManagedProviderWithVault(
+      provider: provider,
+      existingValues: const {},
+      secretValues: const {},
+      capture: VaultCredentialCapture(vault: locked),
+      unlockGate: VaultUnlockGate(
+        vault: locked,
+        prompt: () async {
+          prompted = true;
+          return true;
+        },
+      ),
+      persist: (value) async => persisted = value,
+    );
+
+    expect(saved, same(provider));
+    expect(persisted, same(provider));
+    expect(prompted, isFalse);
+  });
+
   test('persist failure rolls the capture back', () async {
     final vault = await _vault();
     final capture = VaultCredentialCapture(vault: vault);
@@ -98,7 +143,7 @@ void main() {
     await expectLater(
       saveManagedProviderWithVault(
         provider: provider,
-        current: null,
+        existingValues: const {},
         secretValues: {'apiKey': 'a'},
         capture: capture,
         unlockGate: VaultUnlockGate(vault: vault, prompt: () async => true),
@@ -107,5 +152,32 @@ void main() {
       throwsA(isA<StateError>()),
     );
     expect(await vault.list(), isEmpty);
+  });
+
+  test('update persist failure restores the previous fields', () async {
+    final vault = await _vault();
+    final capture = VaultCredentialCapture(vault: vault);
+    final first = await saveManagedProviderWithVault(
+      provider: provider,
+      existingValues: const {},
+      secretValues: {'apiKey': 'a'},
+      capture: capture,
+      unlockGate: VaultUnlockGate(vault: vault, prompt: () async => true),
+      persist: (_) async {},
+    );
+
+    await expectLater(
+      saveManagedProviderWithVault(
+        provider: first,
+        existingValues: {'apiKey': 'a'},
+        secretValues: {'secretKey': 'b'},
+        capture: capture,
+        unlockGate: VaultUnlockGate(vault: vault, prompt: () async => true),
+        persist: (_) async => throw StateError('persist failed'),
+      ),
+      throwsA(isA<StateError>()),
+    );
+    final entry = (await vault.get(first.vaultEntryId!))!;
+    expect(entry.fields, {'apiKey': 'a'});
   });
 }
