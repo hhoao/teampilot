@@ -231,6 +231,13 @@ class HeadlessAiService {
         'Headless mode is not supported for ${cli.value}.',
       );
     }
+    if (_registry
+            .capability<HeadlessCredentialProvisioningPendingCapability>(cli) !=
+        null) {
+      throw HeadlessAiException(
+        'Headless mode for ${cli.value} is not available yet.',
+      );
+    }
 
     final provider = await _resolveProvider(cli, setting.providerId);
     final model = setting.model.trim().isNotEmpty
@@ -385,6 +392,13 @@ class HeadlessAiService {
     if (cap == null || !cap.isSupported) {
       throw HeadlessAiException(
         'Headless mode is not supported for ${cli.value}.',
+      );
+    }
+    if (_registry
+            .capability<HeadlessCredentialProvisioningPendingCapability>(cli) !=
+        null) {
+      throw HeadlessAiException(
+        'Headless mode for ${cli.value} is not available yet.',
       );
     }
 

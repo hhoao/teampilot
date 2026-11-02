@@ -3,6 +3,7 @@ import '../../../../models/runtime_target.dart';
 import '../../../../models/simple_launch_identity.dart';
 import '../../../../models/workspace.dart';
 import '../../../../models/team_config.dart';
+import '../../../cli/registry/capabilities/acp_capability.dart';
 import '../../../cli/registry/cli_tool_registry.dart';
 import '../../../storage/work_target_canonicalizer.dart';
 
@@ -45,11 +46,18 @@ AppSession buildProvisionalSession({
   // Personal-only by contract: team ACP lives on the member seats
   // (`isAcpChatSeat`), never on the session, so a team session is always
   // `acp: false` even when the caller requests it.
+  final registry = CliToolRegistry.builtIn();
+  final launchCli = identity?.cli ?? cli;
+  final localOnly =
+      launchCli != null &&
+      registry.capability<AcpLocalOnlyCapability>(launchCli) != null;
+  final targetLocal = home == null || home.kind == RuntimeKind.local;
   final resolvedAcp =
       trimmedTeam.isEmpty &&
       isPersonal &&
       ((acp ?? false) ||
-          CliToolRegistry.builtIn().launchesAcpOnly(identity?.cli ?? cli));
+          (registry.launchesAcpOnly(launchCli) &&
+              (!localOnly || targetLocal)));
 
   return AppSession(
     sessionId: sessionId,

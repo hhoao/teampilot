@@ -30,7 +30,7 @@ import 'connect/session_shell_connector.dart';
 import 'session/session_launch_coordinator.dart';
 import 'session/session_launch_workspace_index.dart';
 import '../../cli/preset_resolver.dart';
-import '../../cli/registry/capabilities/cli_transport_capability.dart';
+import '../../cli/registry/capabilities/acp_capability.dart';
 import 'session/session_launch_config_snapshot.dart';
 import 'session/session_member_cli_locks.dart';
 import '../../storage/home_storage.dart';
@@ -193,11 +193,12 @@ class SessionLaunchService
   /// ACP-only seats have no shell to fall back to; the executor settles the
   /// connect as failed instead of spawning a PTY for a CLI that never uses one.
   @override
-  bool supportsPtyTransport(CliTool cli) =>
-      _h.cliRegistry
-          .capability<CliTransportCapability>(cli)
-          ?.supports(CliTransport.pty) ??
-      true;
+  bool supportsPtyTransport(CliTool cli) {
+    // Only local-only adapters (Antigravity in Phase 1) have no useful PTY
+    // fallback. Gemini/CodeBuddy are ACP-only but keep their existing
+    // attach-decline behavior.
+    return _h.cliRegistry.capability<AcpLocalOnlyCapability>(cli) == null;
+  }
 
   ChatDataSnapshot get _state => _h.stateSnapshot();
   ChatTabStore get _tabStore => _h.tabStore;
