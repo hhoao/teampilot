@@ -823,6 +823,8 @@ Future<AppShell> buildAppShell({
     events: sshConnectionEvents,
     onHostKeyPrompt: showSshHostKeyPrompt,
     dialTargetResolver: (profile) => pairedRelayTunnels.targetFor(profile.id),
+    vaultCredentials: (entryId, field) =>
+        vaultService.readField(entryId, field),
   );
 
   // P1: the home target (the machine the control plane runs on) is the single
