@@ -3,7 +3,11 @@ import 'package:collection/collection.dart';
 import 'vault_entry.dart';
 
 class VaultDocument {
-  const VaultDocument({this.version = 1, this.entries = const []});
+  const VaultDocument({
+    this.version = 1,
+    this.entries = const [],
+    this.legacyImportVersion = 0,
+  });
 
   factory VaultDocument.fromJson(Map<String, Object?> json) {
     final version = (json['version'] as num?)?.toInt() ?? 1;
@@ -20,27 +24,43 @@ class VaultDocument {
                   VaultEntry.fromJson(Map<String, Object?>.from(raw)),
             ]
           : const [],
+      legacyImportVersion:
+          (json['legacyImportVersion'] as num?)?.toInt() ?? 0,
     );
   }
 
   final int version;
   final List<VaultEntry> entries;
 
+  /// `0` until the one-shot legacy import completed a full pass.
+  final int legacyImportVersion;
+
   Map<String, Object?> toJson() => {
     'version': version,
+    if (legacyImportVersion > 0) 'legacyImportVersion': legacyImportVersion,
     'entries': [for (final entry in entries) entry.toJson()],
   };
 
-  VaultDocument copyWith({List<VaultEntry>? entries}) =>
-      VaultDocument(version: version, entries: entries ?? this.entries);
+  VaultDocument copyWith({
+    List<VaultEntry>? entries,
+    int? legacyImportVersion,
+  }) => VaultDocument(
+    version: version,
+    entries: entries ?? this.entries,
+    legacyImportVersion: legacyImportVersion ?? this.legacyImportVersion,
+  );
 
   @override
   bool operator ==(Object other) =>
       other is VaultDocument &&
       other.version == version &&
+      other.legacyImportVersion == legacyImportVersion &&
       const ListEquality<VaultEntry>().equals(other.entries, entries);
 
   @override
-  int get hashCode =>
-      Object.hash(version, const ListEquality<VaultEntry>().hash(entries));
+  int get hashCode => Object.hash(
+    version,
+    legacyImportVersion,
+    const ListEquality<VaultEntry>().hash(entries),
+  );
 }

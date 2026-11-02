@@ -127,4 +127,18 @@ void main() {
     await service.delete('a');
     expect(await service.list(), isEmpty);
   });
+
+  test('marker persists through the keychain backend', () async {
+    final service = buildService();
+    await service.initialize();
+    expect(service.legacyImportVersion, 0);
+
+    await service.markLegacyImported(1);
+    expect(service.legacyImportVersion, 1);
+
+    final reloaded = buildService();
+    await reloaded.initialize();
+    expect(reloaded.legacyImportVersion, 0,
+        reason: 'a fresh backend is a different store in this harness');
+  });
 }

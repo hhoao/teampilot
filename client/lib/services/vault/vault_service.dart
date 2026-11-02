@@ -27,6 +27,15 @@ class VaultService {
 
   bool get isUnlocked => !_locked;
 
+  /// `0` until the one-shot legacy import has completed.
+  int get legacyImportVersion => _requireDocument().legacyImportVersion;
+
+  Future<void> markLegacyImported(int version) {
+    return _mutate(
+      (document) => document.copyWith(legacyImportVersion: version),
+    );
+  }
+
   Future<void> initialize() async {
     if (_initialized) return;
     _encrypted = await _encryptedBackend.isInitialized;
