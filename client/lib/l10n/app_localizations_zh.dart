@@ -9747,4 +9747,136 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get cursorAccountUsageSession => 'Cursor 账号';
+
+  @override
+  String get vaultPageTitle => '保险库';
+
+  @override
+  String get vaultPageSubtitle => 'SSH 密码、私钥与供应商 API Key';
+
+  @override
+  String get vaultNewEntry => '新建条目';
+
+  @override
+  String get vaultSearchHint => '搜索标题、字段或标签';
+
+  @override
+  String get vaultEmptyTitle => '还没有条目';
+
+  @override
+  String get vaultEmptyHint => '在这里保存 SSH 密码、私钥或供应商 API Key。';
+
+  @override
+  String get vaultStatusKeychain => '系统钥匙串 · 无需解锁';
+
+  @override
+  String get vaultStatusEncrypted => '加密保险库 · 已锁定';
+
+  @override
+  String get vaultStatusUnlocked => '加密保险库 · 已解锁';
+
+  @override
+  String get vaultUnlock => '解锁';
+
+  @override
+  String get vaultLock => '立即锁定';
+
+  @override
+  String get vaultEnableEncryption => '启用加密保险库';
+
+  @override
+  String get vaultDisableEncryption => '停用加密保险库';
+
+  @override
+  String get vaultUnlockTitle => '解锁保险库';
+
+  @override
+  String get vaultPassphrase => '主密码';
+
+  @override
+  String get vaultPassphraseConfirm => '确认主密码';
+
+  @override
+  String get vaultPassphraseMismatch => '两次输入的密码不一致';
+
+  @override
+  String get vaultPassphraseRequired => '请输入主密码';
+
+  @override
+  String get vaultUnlockFailed => '解锁失败';
+
+  @override
+  String get vaultWrongPassphraseHint => '密码错误或文件损坏，数据未被修改。';
+
+  @override
+  String get vaultCopy => '复制';
+
+  @override
+  String get vaultReveal => '显示';
+
+  @override
+  String get vaultHide => '隐藏';
+
+  @override
+  String get vaultCopied => '已复制';
+
+  @override
+  String get vaultOnlyCopy => '仅复制';
+
+  @override
+  String get vaultReferences => '被引用';
+
+  @override
+  String get vaultNoReferences => '尚未被引用';
+
+  @override
+  String get vaultDeleteTitle => '删除条目？';
+
+  @override
+  String get vaultDeleteReferenced => '该条目仍被以下位置使用：';
+
+  @override
+  String get vaultDeleteConfirm => '删除';
+
+  @override
+  String get vaultCancel => '取消';
+
+  @override
+  String get vaultSave => '保存';
+
+  @override
+  String get vaultEntryTitle => '标题';
+
+  @override
+  String get vaultEntryType => '类型';
+
+  @override
+  String get vaultEntryTags => '标签（逗号分隔）';
+
+  @override
+  String get vaultEntryNotes => '备注';
+
+  @override
+  String get vaultEntryFavorite => '收藏';
+
+  @override
+  String get vaultTypeSshPassword => 'SSH 密码';
+
+  @override
+  String get vaultTypeSshPrivateKey => 'SSH 私钥';
+
+  @override
+  String get vaultTypeApiKey => '供应商 API Key';
+
+  @override
+  String get vaultTypeLogin => '账号密码';
+
+  @override
+  String get vaultTypeToken => '令牌';
+
+  @override
+  String get vaultTypeSecureNote => '安全笔记';
+
+  @override
+  String get vaultTypeCustom => '自定义';
 }
