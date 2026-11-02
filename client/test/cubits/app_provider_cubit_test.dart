@@ -371,6 +371,61 @@ void main() {
     expect(await vault.get(entryId), isNull);
   });
 
+  test('a managed-linked row keeps its link on probe upserts', () async {
+    final vault = await _vaultService();
+    final autoCubit = AppProviderCubit(
+      repository: repository,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: VaultCredentialCapture(vault: vault),
+      ensureVaultUnlocked: () async => true,
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+
+    const linked = AppProviderConfig(
+      id: 'linked',
+      cli: CliTool.claude,
+      name: 'Linked',
+      apiKey: 'resolved-in-memory',
+      credentialLink: 'm1',
+    );
+    expect(await autoCubit.upsertProvider(linked), isTrue);
+    final saved = autoCubit.state.providersFor(CliTool.claude)
+        .firstWhere((p) => p.id == 'linked');
+    expect(saved.credentialLink, 'm1');
+    expect(await vault.list(), isEmpty);
+  });
+
+  test('removeProviderRow deletes the vault entry best-effort', () async {
+    final vault = await _vaultService();
+    final autoCubit = AppProviderCubit(
+      repository: repository,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: VaultCredentialCapture(vault: vault),
+      ensureVaultUnlocked: () async => true,
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+
+    const draft = AppProviderConfig(
+      id: 'row',
+      cli: CliTool.claude,
+      name: 'Row',
+      apiKey: 'sk-row',
+    );
+    expect(await autoCubit.upsertProvider(draft), isTrue);
+    final saved = autoCubit.state.providersFor(CliTool.claude).single;
+    final entryId = saved.credentialLink.substring('vault:'.length);
+    expect(await vault.get(entryId), isNotNull);
+
+    await autoCubit.removeProviderRow(CliTool.claude, 'row');
+
+    expect(autoCubit.state.providersFor(CliTool.claude), isEmpty);
+    expect(await vault.get(entryId), isNull);
+  });
+
   test('a refused unlock aborts the save', () async {
     final vault = await _vaultService();
     final autoCubit = AppProviderCubit(
