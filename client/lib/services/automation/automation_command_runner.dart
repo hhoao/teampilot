@@ -97,12 +97,16 @@ class HostAutomationCommandRunner implements AutomationCommandRunner {
         cwd: request.workingDirectoryPath,
       );
       targetKind = plan.runtimeTarget.kind;
+      // SSH/Termux ignore `shell` and build an argv from (command, args), so a
+      // raw shell line would be quoted as an executable name. Run it through
+      // `sh -c` instead; local/WSL keep the shell flag.
+      final remote = usesSshTransport(targetKind);
       result = await _executor.start(
         sessionId: 'automation:${request.workspaceId}',
-        command: request.command,
-        args: const [],
+        command: remote ? 'sh' : request.command,
+        args: remote ? ['-c', request.command] : const [],
         plan: plan,
-        shell: true,
+        shell: !remote,
         onOutput: (output) {
           if (output.category == 'stderr') {
             stderr.add(output.data);

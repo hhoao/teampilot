@@ -45,6 +45,42 @@ Workspace _workspace(List<WorkspaceFolder> folders) => Workspace(
   createdAt: 0,
 );
 
+class _RecordingExecutor extends ProcessRunExecutor {
+  String? capturedCommand;
+  List<String>? capturedArgs;
+  bool? capturedShell;
+
+  @override
+  Future<ProcessRunResult> start({
+    required String sessionId,
+    required String command,
+    required List<String> args,
+    required RunTargetPlan plan,
+    Map<String, String>? env,
+    bool shell = false,
+    required void Function(ProcessRunOutput output) onOutput,
+  }) async {
+    capturedCommand = command;
+    capturedArgs = args;
+    capturedShell = shell;
+    return ProcessRunResult(exitCode: Future<int>.value(0), stop: () async {});
+  }
+}
+
+class _FixedPlanResolver extends RunTargetResolver {
+  _FixedPlanResolver(this.plan)
+    : super(homeTarget: () => RuntimeTarget.local());
+
+  final RunTargetPlan plan;
+
+  @override
+  RunTargetPlan resolve({
+    required WorkspaceFolder owner,
+    String? cwd,
+    Map<String, String> env = const {},
+  }) => plan;
+}
+
 void main() {
   test('captures exit code and output tail', () async {
     final runner = HostAutomationCommandRunner(
@@ -136,6 +172,55 @@ void main() {
 
     expect(outcome.exitCode, 3);
     expect(outcome.stdoutTail, 'late error line');
+  });
+
+  test('runs SSH commands through sh -c', () async {
+    final executor = _RecordingExecutor();
+    final runner = HostAutomationCommandRunner(
+      workspaceById: (_) => _workspace([const WorkspaceFolder(path: '/repo')]),
+      resolver: _FixedPlanResolver(
+        RunTargetPlan(
+          workingDirectory: '/repo',
+          runtimeTarget: RuntimeTarget.ssh('profile-1', label: 'server'),
+          targetId: 'ssh:profile-1',
+          useWslPaths: false,
+        ),
+      ),
+      executor: executor,
+    );
+
+    final outcome = await runner.run(
+      const AutomationCommandRequest(
+        workspaceId: 'ws1',
+        command: 'bash scripts/backup.sh',
+      ),
+    );
+
+    expect(outcome.exitCode, 0);
+    expect(executor.capturedCommand, 'sh');
+    expect(executor.capturedArgs, ['-c', 'bash scripts/backup.sh']);
+    expect(executor.capturedShell, isFalse);
+  });
+
+  test('runs local commands as a raw shell line', () async {
+    final executor = _RecordingExecutor();
+    final runner = HostAutomationCommandRunner(
+      workspaceById: (_) => _workspace([const WorkspaceFolder(path: '/repo')]),
+      resolver: RunTargetResolver(homeTarget: () => RuntimeTarget.local()),
+      executor: executor,
+    );
+
+    final outcome = await runner.run(
+      const AutomationCommandRequest(
+        workspaceId: 'ws1',
+        command: 'bash scripts/backup.sh',
+      ),
+    );
+
+    expect(outcome.exitCode, 0);
+    expect(executor.capturedCommand, 'bash scripts/backup.sh');
+    expect(executor.capturedArgs, isEmpty);
+    expect(executor.capturedShell, isTrue);
   });
 
   test('rejects a working directory outside the workspace', () async {

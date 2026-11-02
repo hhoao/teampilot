@@ -123,13 +123,34 @@ class AutomationCommandExecutor {
     );
     await _repository.upsertRun(automation.workspaceId, finished);
 
-    final advanced = _accounting.advance(
-      automation: automation,
+    // Re-read the row: a long run may overlap a user edit or a disable, and
+    // advancing the snapshot captured at enqueue would revert it.
+    final current = await _currentAutomation(automation);
+    var advanced = _accounting.advance(
+      automation: current,
       lastRunAtMs: startedAtMs,
       nowMs: finishedAtMs,
     );
+    // The scheduler already claimed the next slot before the run began.
+    // Recomputing from the start time can rewrite it to an earlier slot that
+    // is already due, firing a duplicate run.
+    final claimedNextRunAtMs = current.nextRunAtMs;
+    if (advanced.enabled &&
+        claimedNextRunAtMs != null &&
+        advanced.nextRunAtMs != null &&
+        claimedNextRunAtMs > advanced.nextRunAtMs!) {
+      advanced = advanced.copyWith(nextRunAtMs: claimedNextRunAtMs);
+    }
     await _repository.upsert(advanced);
     onAfterRun?.call();
     return finished;
+  }
+
+  Future<Automation> _currentAutomation(Automation fallback) async {
+    final rows = await _repository.listForWorkspace(fallback.workspaceId);
+    for (final row in rows) {
+      if (row.id == fallback.id) return row;
+    }
+    return fallback;
   }
 }

@@ -59,7 +59,30 @@ class AutomationScheduler {
           .where((a) => a.id == automationId)
           .firstOrNull;
       if (automation == null || automation.isRunLimitReached) return;
-      await _dispatchClaimed(automation, trigger: AutomationRunTrigger.manual);
+      final dispatch = _dispatchClaimed(
+        automation,
+        trigger: AutomationRunTrigger.manual,
+      );
+      if (automation.isRunCommand) {
+        // A manual run is queued behind other commands on the executor's
+        // serial queue, so waiting unbounded could exceed the promised
+        // `timeoutSeconds + 30 s` cap. The run keeps going on timeout and its
+        // record lands when it finishes.
+        try {
+          await dispatch.timeout(
+            Duration(seconds: automation.timeoutSeconds + 30),
+          );
+        } on TimeoutException catch (error, stackTrace) {
+          appLogger.w(
+            '[automations] manual run of ${automation.id} still queued after '
+            '${automation.timeoutSeconds + 30}s: $error',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
+      } else {
+        await dispatch;
+      }
       onAfterTick?.call();
     });
   }

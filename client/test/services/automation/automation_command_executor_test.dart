@@ -60,6 +60,63 @@ void main() {
     final automations = await env.repository.listForWorkspace('ws1');
     expect(automations.single.runCount, 1);
   });
+
+  test('keeps user edits made while the run is in flight', () async {
+    final env = await _TestEnv.build(null);
+    final pending = env.executor.enqueue(env.automation);
+    await env.runner.waitForStart();
+
+    await env.repository.upsert(
+      env.automation.copyWith(enabled: false, command: 'echo changed'),
+    );
+    env.runner.release();
+    await pending;
+
+    final stored = (await env.repository.listForWorkspace('ws1')).single;
+    expect(stored.enabled, isFalse);
+    expect(stored.command, 'echo changed');
+    expect(stored.runCount, 1);
+  });
+
+  test(
+    'keeps the claimed next slot when the recomputed one is earlier',
+    () async {
+      final now = DateTime.utc(2026, 1, 1, 10, 2).millisecondsSinceEpoch;
+      final claimed = now + const Duration(minutes: 30).inMilliseconds;
+      final automation = Automation(
+        id: 'a1',
+        name: 'nightly',
+        action: AutomationAction.runCommand,
+        workspaceId: 'ws1',
+        command: 'echo hi',
+        message: '',
+        preset: AutomationSchedulePreset.custom,
+        customCron: '*/5 * * * *',
+        timezone: 'UTC',
+        dtstartMs: 0,
+        nextRunAtMs: claimed,
+        createdAtMs: 0,
+        updatedAtMs: 0,
+      );
+      final env = await _TestEnv.build(
+        const AutomationCommandOutcome(exitCode: 0),
+        automation: automation,
+        nowMs: () => now,
+      );
+
+      final run = await env.executor.enqueue(automation);
+
+      expect(run!.status, AutomationRunStatus.completed);
+      final recomputed = AutomationScheduleCalculator().computeNextRunAtMs(
+        automation,
+        afterMs: now,
+      );
+      expect(recomputed, lessThan(claimed));
+      final stored = (await env.repository.listForWorkspace('ws1')).single;
+      expect(stored.nextRunAtMs, claimed);
+      expect(stored.runCount, 1);
+    },
+  );
 }
 
 class _GatedRunner implements AutomationCommandRunner {
@@ -97,6 +154,8 @@ class _TestEnv {
   static Future<_TestEnv> build(
     AutomationCommandOutcome? outcome, {
     bool failOnRun = false,
+    Automation? automation,
+    int Function()? nowMs,
   }) async {
     final layout = WorkspaceLayout(
       teampilotRoot: testHomeStorage.paths.basePath,
@@ -106,27 +165,30 @@ class _TestEnv {
       fs: testHomeStorage.fs,
       layout: layout,
     );
-    final automation = Automation(
-      id: 'a1',
-      name: 'nightly',
-      action: AutomationAction.runCommand,
-      workspaceId: 'ws1',
-      command: 'echo hi',
-      message: '',
-      preset: AutomationSchedulePreset.daily,
-      hourMinute: '02:00',
-      timezone: 'Asia/Shanghai',
-      dtstartMs: 0,
-      createdAtMs: 0,
-      updatedAtMs: 0,
-    );
-    await repository.upsert(automation);
+    final seeded =
+        automation ??
+        Automation(
+          id: 'a1',
+          name: 'nightly',
+          action: AutomationAction.runCommand,
+          workspaceId: 'ws1',
+          command: 'echo hi',
+          message: '',
+          preset: AutomationSchedulePreset.daily,
+          hourMinute: '02:00',
+          timezone: 'Asia/Shanghai',
+          dtstartMs: 0,
+          createdAtMs: 0,
+          updatedAtMs: 0,
+        );
+    await repository.upsert(seeded);
     final runner = _GatedRunner(outcome, failOnRun: failOnRun);
     final executor = AutomationCommandExecutor(
       repository: repository,
       accounting: AutomationRunAccounting(AutomationScheduleCalculator()),
       runner: runner,
+      nowMs: nowMs,
     );
-    return _TestEnv(repository, executor, runner, automation);
+    return _TestEnv(repository, executor, runner, seeded);
   }
 }
