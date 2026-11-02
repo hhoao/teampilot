@@ -194,6 +194,11 @@ class VaultService {
   }
 
   Future<void> _mutate(VaultDocument Function(VaultDocument) update) {
+    if (!_initialized) {
+      return Future<void>.error(
+        const VaultStorageException('notInitialized'),
+      );
+    }
     final previous = _writeTail ?? Future<void>.value();
     final next = previous.then((_) async {
       final document = update(_requireDocument());

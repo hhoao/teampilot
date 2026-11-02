@@ -167,7 +167,7 @@ void main() {
       ),
     );
     final store = ManagedProviderSecretStore(_FakeSecureKeyValueStore());
-    await store.write('managed-provider:m1', {'apiKey': 'from-store'});
+    await store.write('managed-provider:m2', {'apiKey': 'from-store'});
     final resolver = ManagedProviderCredentialResolver(store, vault: vault);
     final provider = _secretEntry().copyWith(vaultEntryId: 'v1');
 
