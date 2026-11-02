@@ -3721,6 +3721,11 @@
   "automationsCommandHelp": "Runs only while TeamPilot is running. Missed runs older than the grace window are skipped unless catch-up is on.",
   "automationsCommandTimeout": "Timeout (seconds)",
   "automationsCommandRequired": "Command is required",
+  "automationsCommandTimeoutInvalid": "Timeout must be a whole number of seconds",
+  "automationsCommandTimeoutRange": "Timeout must be between 30 and 1800 seconds",
+  "automationsCommandTooLong": "Command must be at most 2000 characters",
+  "automationsCommandWorkingDirectory": "Working directory",
+  "automationsCommandWorkingDirectoryMain": "Workspace default folder",
   "automationsCatchUpOnce": "Catch up once after startup",
   "automationsMaxRunCount": "Run limit",
   "@automationsMaxRunCount": {

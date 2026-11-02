@@ -7246,6 +7246,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationsCommandRequired => 'Command is required';
 
   @override
+  String get automationsCommandTimeoutInvalid =>
+      'Timeout must be a whole number of seconds';
+
+  @override
+  String get automationsCommandTimeoutRange =>
+      'Timeout must be between 30 and 1800 seconds';
+
+  @override
+  String get automationsCommandTooLong =>
+      'Command must be at most 2000 characters';
+
+  @override
+  String get automationsCommandWorkingDirectory => 'Working directory';
+
+  @override
+  String get automationsCommandWorkingDirectoryMain =>
+      'Workspace default folder';
+
+  @override
   String get automationsCatchUpOnce => 'Catch up once after startup';
 
   @override

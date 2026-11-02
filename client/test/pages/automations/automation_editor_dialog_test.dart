@@ -1148,6 +1148,88 @@ void main() {
     expect(saved.timeoutSeconds, 300);
     expect(saved.catchUpPolicy, AutomationCatchUpPolicy.none);
     expect(saved.message, isEmpty);
+    // No explicit folder chosen: the runner resolves the workspace main
+    // folder, so nothing is persisted.
+    expect(saved.workingDirectoryPath, isNull);
+  });
+
+  testWidgets('runCommand editor renders a working-directory picker', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    addTearDown(setup.cubit.close);
+
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
+          cubit: setup.cubit,
+          child: const AutomationEditorDialog(
+            kind: AutomationEditorKind.runCommand,
+            workspaceId: 'ws1',
+            defaultName: 'Nightly',
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(AutomationEditorDialog)),
+    );
+
+    expect(find.text(l10n.automationsCommandWorkingDirectory), findsOneWidget);
+    expect(
+      find.text(l10n.automationsCommandWorkingDirectoryMain),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('runCommand timeout errors surface on the command field', (
+    tester,
+  ) async {
+    final setup = testAutomationSetup();
+    addTearDown(setup.cubit.close);
+
+    await tester.pumpWidget(
+      RepositoryProvider<HomeStorage>.value(
+        value: testHomeStorage,
+        child: _host(
+          cubit: setup.cubit,
+          child: const AutomationEditorDialog(
+            kind: AutomationEditorKind.runCommand,
+            workspaceId: 'ws1',
+            defaultName: 'Nightly',
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(AutomationEditorDialog)),
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('automationCommandField')),
+      'echo hi',
+    );
+    await tester.enterText(
+      find.byKey(const Key('automationTimeoutField')),
+      '10',
+    );
+    await tester.tap(find.text(l10n.save));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text(l10n.automationsCommandTimeoutRange), findsOneWidget);
+    expect(find.byType(AutomationEditorDialog), findsOneWidget);
+    expect(
+      await tester.runAsync(() => setup.repo.listForWorkspace('ws1')),
+      isEmpty,
+    );
   });
 
   testWidgets('runCommand editor blocks an empty command', (tester) async {

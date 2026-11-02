@@ -8,6 +8,7 @@ import '../../services/automation/automation_schedule_defaults.dart';
 import 'package:shared_ui/shared_ui.dart';
 import 'automation_editor_dialog.dart' show AutomationEditorKind;
 import 'automation_editor_launch_section.dart';
+import 'automation_command_working_directory_field.dart';
 import 'automation_schedule_picker.dart';
 
 /// Label column width for the automation editor inline form.
@@ -31,6 +32,7 @@ class AutomationEditorFormBody extends StatelessWidget {
     required this.reuseSessionSubtitle,
     this.commandController,
     this.commandError,
+    this.onCommandChanged,
     this.timeoutController,
     this.catchUpOnce = false,
     this.onCatchUpChanged,
@@ -68,6 +70,7 @@ class AutomationEditorFormBody extends StatelessWidget {
   final String reuseSessionSubtitle;
   final TextEditingController? commandController;
   final String? commandError;
+  final ValueChanged<String>? onCommandChanged;
   final TextEditingController? timeoutController;
   final bool catchUpOnce;
   final ValueChanged<bool>? onCatchUpChanged;
@@ -146,12 +149,22 @@ class AutomationEditorFormBody extends StatelessWidget {
             minLines: 3,
             maxLines: 8,
             style: monospaceStyle,
+            onChanged: onCommandChanged,
             decoration: InputDecoration(
               labelText: l10n.automationsCommand,
               helperText: l10n.automationsCommandHelp,
               errorText: commandError,
             ),
           ),
+          if (workspace != null) ...[
+            const SizedBox(height: 12),
+            AutomationCommandWorkingDirectoryField(
+              workspace: workspace!,
+              workingDirectoryPath: workingDirectoryPath,
+              labelWidth: kAutomationEditorFormLabelWidth,
+              onChanged: onWorktreeChanged ?? (_) {},
+            ),
+          ],
           const SizedBox(height: 12),
           Row(
             children: [

@@ -6961,6 +6961,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationsCommandRequired => '命令不能为空';
 
   @override
+  String get automationsCommandTimeoutInvalid => '超时时间必须是整数秒';
+
+  @override
+  String get automationsCommandTimeoutRange => '超时时间须在 30 到 1800 秒之间';
+
+  @override
+  String get automationsCommandTooLong => '命令不能超过 2000 个字符';
+
+  @override
+  String get automationsCommandWorkingDirectory => '工作目录';
+
+  @override
+  String get automationsCommandWorkingDirectoryMain => '工作区默认目录';
+
+  @override
   String get automationsCatchUpOnce => '启动后补跑一次';
 
   @override

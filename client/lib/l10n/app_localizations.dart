@@ -12884,6 +12884,36 @@ abstract class AppLocalizations {
   /// **'Command is required'**
   String get automationsCommandRequired;
 
+  /// No description provided for @automationsCommandTimeoutInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Timeout must be a whole number of seconds'**
+  String get automationsCommandTimeoutInvalid;
+
+  /// No description provided for @automationsCommandTimeoutRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Timeout must be between 30 and 1800 seconds'**
+  String get automationsCommandTimeoutRange;
+
+  /// No description provided for @automationsCommandTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Command must be at most 2000 characters'**
+  String get automationsCommandTooLong;
+
+  /// No description provided for @automationsCommandWorkingDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Working directory'**
+  String get automationsCommandWorkingDirectory;
+
+  /// No description provided for @automationsCommandWorkingDirectoryMain.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace default folder'**
+  String get automationsCommandWorkingDirectoryMain;
+
   /// No description provided for @automationsCatchUpOnce.
   ///
   /// In en, this message translates to:

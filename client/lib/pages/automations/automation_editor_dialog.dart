@@ -294,6 +294,18 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     return _resolvedProjectFolderPath(workspace);
   }
 
+  /// `runCommand` stores only the explicit picker choice; an empty value means
+  /// the workspace main folder and must stay null instead of persisting a
+  /// resolved path the user never chose.
+  String? _resolvedCommandWorkingDirectory() {
+    final stored = _workingDirectoryPath?.trim() ?? '';
+    if (stored.isEmpty) return null;
+    return normalizeWorkspacePath(
+      stored,
+      usesPosixPaths: homeStorageOf(context).usesPosixPaths,
+    );
+  }
+
   void _seedPresetDefault() {
     if (!_isPersonal) return;
     if (_presetId != null && _presetId!.trim().isNotEmpty) return;
@@ -441,7 +453,9 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     final expertKey = _expertKey?.trim();
     final workspace = _workspace;
     final projectFolderPath = _resolvedProjectFolderPath(workspace);
-    final workingDirectoryPath = _resolvedWorkingDirectoryPath(workspace);
+    final workingDirectoryPath = _isRunCommand
+        ? _resolvedCommandWorkingDirectory()
+        : _resolvedWorkingDirectoryPath(workspace);
 
     // Keep hourMinute parseable for the calculator/summary paths; once/countdown
     // saves carry the time of day of the resolved target (for countdown the
@@ -463,8 +477,26 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
         setState(() => _commandError = context.l10n.automationsCommandRequired);
         return;
       }
-      _commandError = null;
-      final timeout = int.tryParse(_timeoutCtl.text.trim()) ?? 300;
+      if (command.length > 2000) {
+        setState(() => _commandError = l10n.automationsCommandTooLong);
+        return;
+      }
+      if (_commandError != null) {
+        setState(() => _commandError = null);
+      }
+      final timeout = int.tryParse(_timeoutCtl.text.trim());
+      if (timeout == null) {
+        setState(
+          () => _commandError = l10n.automationsCommandTimeoutInvalid,
+        );
+        return;
+      }
+      if (timeout < 30 || timeout > 1800) {
+        setState(
+          () => _commandError = l10n.automationsCommandTimeoutRange,
+        );
+        return;
+      }
       var automation = Automation(
         id: widget.initial?.id ?? const Uuid().v4(),
         name: name,
@@ -499,7 +531,9 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       try {
         automation.validate();
       } on ArgumentError catch (e) {
-        form.setFieldError('name', e.message?.toString() ?? e.toString());
+        // Command and timeout problems belong on the command field, not the
+        // name field.
+        setState(() => _commandError = e.message?.toString() ?? e.toString());
         return;
       }
       final nextRun = _enabled && !_runLimitReached
@@ -610,6 +644,11 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
             maxRunCountController: _maxRunCountCtl,
             commandController: _commandCtl,
             commandError: _commandError,
+            onCommandChanged: (_) {
+              if (_commandError != null) {
+                setState(() => _commandError = null);
+              }
+            },
             timeoutController: _timeoutCtl,
             catchUpOnce: _catchUpOnce,
             onCatchUpChanged: (value) => setState(() => _catchUpOnce = value),
