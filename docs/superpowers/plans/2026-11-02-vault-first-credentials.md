@@ -1624,6 +1624,32 @@ Append to `client/test/cubits/app_provider_cubit_test.dart` inside `main()` (add
     expect(await vault.get(entryId), isNull);
   });
 
+  test('a managed-linked row keeps its link on probe upserts', () async {
+    final vault = await _vaultService();
+    final autoCubit = AppProviderCubit(
+      repository: repository,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: VaultCredentialCapture(vault: vault),
+      ensureVaultUnlocked: () async => true,
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+
+    const linked = AppProviderConfig(
+      id: 'linked',
+      cli: CliTool.claude,
+      name: 'Linked',
+      apiKey: 'resolved-in-memory',
+      credentialLink: 'm1',
+    );
+    expect(await autoCubit.upsertProvider(linked), isTrue);
+    final saved = autoCubit.state.providersFor(CliTool.claude)
+        .firstWhere((p) => p.id == 'linked');
+    expect(saved.credentialLink, 'm1');
+    expect(await vault.list(), isEmpty);
+  });
+
   test('a refused unlock aborts the save', () async {
     final vault = await _vaultService();
     final autoCubit = AppProviderCubit(
@@ -1724,8 +1750,13 @@ In `client/lib/cubits/app_provider_cubit.dart`:
     final capture = _vaultCapture;
     var effectiveLink = provider.credentialLink.trim();
     var effectiveApiKey = provider.apiKey;
+    // Managed links resolve their secret into apiKey in memory; probe and
+    // binding upserts must never rewrite them into a vault link.
+    final linkIsVault = effectiveLink.startsWith('vault:');
+    final linkIsManaged = effectiveLink.isNotEmpty && !linkIsVault;
     if (capture != null &&
-        (effectiveLink.startsWith('vault:') || provider.apiKey.isNotEmpty)) {
+        !linkIsManaged &&
+        (linkIsVault || provider.apiKey.isNotEmpty)) {
       final unlock = _ensureVaultUnlocked;
       if (unlock != null && !await unlock()) return false;
       final captured = await capture.captureProvider(
@@ -2374,6 +2405,32 @@ Append to `client/test/services/github/github_credentials_store_test.dart` insid
 
     await store.clearStored();
     expect(await store.readStored(), isNull);
+    expect(await vault.list(), isEmpty);
+  });
+
+  test('a managed-linked row keeps its link on probe upserts', () async {
+    final vault = await _vaultService();
+    final autoCubit = AppProviderCubit(
+      repository: repository,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: VaultCredentialCapture(vault: vault),
+      ensureVaultUnlocked: () async => true,
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+
+    const linked = AppProviderConfig(
+      id: 'linked',
+      cli: CliTool.claude,
+      name: 'Linked',
+      apiKey: 'resolved-in-memory',
+      credentialLink: 'm1',
+    );
+    expect(await autoCubit.upsertProvider(linked), isTrue);
+    final saved = autoCubit.state.providersFor(CliTool.claude)
+        .firstWhere((p) => p.id == 'linked');
+    expect(saved.credentialLink, 'm1');
     expect(await vault.list(), isEmpty);
   });
 
