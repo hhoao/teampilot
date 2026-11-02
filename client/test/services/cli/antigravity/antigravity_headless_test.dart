@@ -81,10 +81,11 @@ void main() {
       expect(args, isNot(contains('json')));
     });
 
-    test('promptViaStdin omits the argv prompt', () {
+    test('promptViaStdin keeps -p but omits the argv prompt', () {
       final args = argsFor(ctx(promptViaStdin: true));
+      expect(args, contains('-p'));
       expect(args, isNot(contains('hi')));
-      expect(args, isNot(contains('-p')));
+      expect(args.last, '-p', reason: '-p must not consume a following flag');
       expect(args, containsAllInOrder(['--model', 'gemini-3.8-flash-medium']));
     });
   });

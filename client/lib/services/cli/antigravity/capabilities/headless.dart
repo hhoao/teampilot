@@ -8,9 +8,12 @@ import '../../registry/launch/cli_launch_arg_contribution.dart';
 /// Antigravity one-shot via `agy -p`.
 ///
 /// Runs against an isolated `HOME` so the CLI never reads or writes the user's
-/// real `~/.gemini`. Provider credentials (Gemini API key / ADC) are inherited
-/// from the process env contributed by the provider stack; they are never
-/// re-materialized here.
+/// real `~/.gemini`.
+///
+/// Credential provisioning is not implemented yet: this capability does not
+/// materialize a provider API key or ADC configuration into the isolated home.
+/// OAuth accounts rely on the OS keyring, while API-key/ADC runs only work when
+/// the caller already supplies the relevant env to the process.
 final class AntigravityHeadlessCapability implements HeadlessCapability {
   const AntigravityHeadlessCapability();
 
@@ -43,9 +46,6 @@ final class AntigravityHeadlessCapability implements HeadlessCapability {
       key: 'antigravity-headless',
       phase: LaunchArgPhase.command,
       args: [
-        // In stdin mode the piped content is the prompt; `-p` without a value
-        // would otherwise consume the next flag as its argument.
-        if (!context.promptViaStdin) ...['-p', context.prompt],
         if (context.model.isNotEmpty) ...['--model', context.model],
         if (context.effort.isNotEmpty) ...['--effort', context.effort],
         if (context.securityPolicy == LaunchSecurityPolicy.fullAccess)
@@ -57,6 +57,14 @@ final class AntigravityHeadlessCapability implements HeadlessCapability {
           'json',
         ],
       ],
+    ),
+    // `-p` selects print mode; without it a bare invocation starts the TUI,
+    // even when the prompt is piped on stdin. The contribution is last so a
+    // valueless `-p` cannot consume a following flag as its argument.
+    CliLaunchArgContribution(
+      key: 'antigravity-headless-prompt',
+      phase: LaunchArgPhase.prompt,
+      args: ['-p', if (!context.promptViaStdin) context.prompt],
     ),
   ];
 
