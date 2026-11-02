@@ -56,6 +56,13 @@ class TpFileIndex {
   bool get isBuilt => _isBuilt;
   bool get truncated => _truncated;
 
+  /// Number of files in the built index (0 before a build).
+  int get length {
+    final handle = _handle;
+    if (handle == null || !_isBuilt) return 0;
+    return bindings.tp_file_index_len(handle);
+  }
+
   /// Builds an index rooted at [root].
   Future<void> build(
     String root, [

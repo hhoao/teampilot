@@ -164,6 +164,34 @@ void main() {
       await index.ensureFresh();
       expect(index.usedRustBackend, isTrue);
       expect(await index.query('readme'), isNotEmpty);
+      // The rust backend reports its entry count too (not just the walk).
+      expect(index.size, 2);
+    });
+
+    test('keeps serving the previous snapshot while it rebuilds', () async {
+      final dir = Directory.systemTemp.createTempSync('tp_ws_index_swap_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      File('${dir.path}/before.txt').writeAsStringSync('');
+
+      final index = WorkspaceFileIndex(fs: LocalFilesystem(), root: dir.path);
+      addTearDown(index.dispose);
+      await index.ensureFresh();
+      expect(await index.query('before'), isNotEmpty);
+
+      var revision = 0;
+      index.revision.addListener(() => revision++);
+
+      File('${dir.path}/after.txt').writeAsStringSync('');
+      final rebuild = index.refresh();
+      // The rebuilt snapshot is swapped in only once the build finishes, so a
+      // query issued meanwhile is answered by the previous index rather than
+      // queueing behind (or racing) the rescan.
+      expect(await index.query('before'), isNotEmpty);
+      await rebuild;
+
+      expect(await index.query('after'), isNotEmpty);
+      expect(index.size, 2);
+      expect(revision, greaterThan(0));
     });
 
     test('respects maxIndexEntries during the build walk', () async {
