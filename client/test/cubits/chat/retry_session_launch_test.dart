@@ -120,6 +120,33 @@ void main() {
   });
 
   test(
+    'retrySessionLaunch carries a trimmed first prompt onto the connect request',
+    () async {
+      final cubit = _RecordingChatCubit();
+      addTearDown(cubit.close);
+
+      final session = _session('s-acp');
+      cubit.tabStore.setActiveWorkspaceId('w1');
+      cubit.tabStore.registerSession(
+        ChatTab(
+          info: ChatTabInfo(id: session.sessionId, title: 'S', subtitle: ''),
+          cliTeamName: '',
+        )..persistedSession = session,
+      );
+
+      await cubit.retrySessionLaunch(
+        session.sessionId,
+        firstPrompt: '  continue please  ',
+      );
+      expect(cubit.opens.single.request.firstPrompt, 'continue please');
+
+      // A blank prompt (Retry banner / view toggle) never reaches the attach.
+      await cubit.retrySessionLaunch(session.sessionId, firstPrompt: '   ');
+      expect(cubit.opens.last.request.firstPrompt, isNull);
+    },
+  );
+
+  test(
     'retrySessionLaunch reconnects without redelivering failed messages',
     () async {
       final cubit = _RecordingChatCubit();

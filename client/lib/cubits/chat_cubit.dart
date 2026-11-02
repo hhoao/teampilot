@@ -2547,7 +2547,16 @@ class ChatCubit extends Cubit<ChatState>
 
   /// Rebuilds and replays the connect request for a failed/disconnected
   /// session — used by the launch-failure banner's Retry action.
-  Future<void> retrySessionLaunch(String sessionId) async {
+  ///
+  /// [firstPrompt] is the lazy attach-then-send path: a terminal-less ACP seat
+  /// with no runtime passes the message it is about to send so the cubit can
+  /// display it immediately and dispatch it as soon as the handshake settles
+  /// (skipping the launch-time history reconcile that would otherwise own the
+  /// update stream).
+  Future<void> retrySessionLaunch(
+    String sessionId, {
+    String? firstPrompt,
+  }) async {
     final id = sessionId.trim();
     if (id.isEmpty) return;
     final tab = _tabStore.getOpenTabBySessionId(id);
@@ -2579,6 +2588,7 @@ class ChatCubit extends Cubit<ChatState>
       );
       return;
     }
+    final prompt = firstPrompt?.trim() ?? '';
     await requestOpenSession(
       SessionOpenRequest(
         session: request.session,
@@ -2587,6 +2597,7 @@ class ChatCubit extends Cubit<ChatState>
         member: request.member,
         repo: _sessionRepository,
         preserveWorkbenchView: request.preserveWorkbenchView,
+        firstPrompt: prompt.isEmpty ? null : prompt,
       ),
       reason: LaunchReason.retry,
     );

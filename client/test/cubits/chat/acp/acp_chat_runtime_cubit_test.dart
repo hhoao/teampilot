@@ -618,6 +618,36 @@ void main() {
   });
 
   test(
+    'a prompt queued during launch skips the launch replay and reconciles '
+    'after the turn',
+    () async {
+      final cubit = bootCubit();
+      // The user's first send can arrive before the handshake settles (lazy
+      // attach-then-send). It must own the connection: a launch-time replay
+      // would swallow the turn's live updates.
+      expect(cubit.sendPrompt('do it'), isTrue);
+
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      await pumpEventQueue();
+
+      expect(runtime.prompts, ['do it']);
+      expect(runtime.loadHistoryCalls, 0);
+
+      runtime.emit(const AcpStop(kind: AcpStopKind.endTurn));
+      await pumpEventQueue();
+
+      // The deferred reconcile still aligns out-of-turn work, just after the
+      // turn instead of blocking it.
+      expect(runtime.loadHistoryCalls, 1);
+      await cubit.close();
+    },
+  );
+
+  test(
     'cancelTurn during launching drops the queue and does not prompt',
     () async {
       final cubit = bootCubit();
@@ -2191,6 +2221,67 @@ void main() {
     expect(_textOf(cubit.state.messages.last), 'Started\n\nAll tests passed');
     await cubit.close();
   });
+
+  test(
+    'syncHistory reuses local ids when the replay has no matching anchor',
+    () async {
+      final fs = InMemoryFilesystem();
+      const path = '/tp/acp-transcript.jsonl';
+      final transcript = AcpChatTranscriptWriter(fs: fs, path: path);
+      await transcript.saveMessages([
+        AiMessage(
+          id: 'u1',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'hi')],
+        ),
+        AiMessage(
+          id: 'a1',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'hello')],
+        ),
+        AiMessage(
+          id: 'u2',
+          role: AiRole.user,
+          parts: [AiTextPart(text: 'next')],
+        ),
+        AiMessage(
+          id: 'a2',
+          role: AiRole.assistant,
+          parts: [AiTextPart(text: 'working')],
+        ),
+      ]);
+      final cubit = bootCubit(transcript: transcript);
+      await cubit.start(
+        executable: 'gemini',
+        sessionToolDir: '/tmp/tool',
+        workingDirectory: '/w',
+      );
+      await pumpEventQueue();
+      expect(
+        cubit.state.messages.map((message) => message.id),
+        ['u1', 'a1', 'u2', 'a2'],
+      );
+
+      // The agent rewrote the final answer, so the local tail (a2) is not an
+      // anchor. The overlapping turns must still keep their ids — a wholesale
+      // replacement rebuilds every bubble in the virtualized thread.
+      runtime.historyUpdates = const [
+        AcpMessageChunk(role: AcpRole.user, content: 'hi', isThought: false),
+        AcpMessageChunk(role: AcpRole.assistant, content: 'hello', isThought: false),
+        AcpMessageChunk(role: AcpRole.user, content: 'next', isThought: false),
+        AcpMessageChunk(role: AcpRole.assistant, content: 'done', isThought: false),
+      ];
+      await cubit.syncHistory();
+
+      expect(
+        cubit.state.messages.take(3).map((message) => message.id),
+        ['u1', 'a1', 'u2'],
+      );
+      expect(_textOf(cubit.state.messages.last), 'done');
+      expect(cubit.state.messages.last.id, isNot('a2'));
+      await cubit.close();
+    },
+  );
 
   test('syncHistory is a no-op while a turn is in flight', () async {
     final cubit = bootCubit();

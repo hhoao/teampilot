@@ -66,33 +66,50 @@ void main() {
     );
   });
 
-  test('non-empty launching cubit publishes the user bubble', () {
+  test('unhydrated live bubble does not wipe a painted seat', () {
+    final bubble = [
+      AiMessage(
+        id: 'u1',
+        role: AiRole.user,
+        parts: const [AiTextPart(text: 'hello')],
+        createdAt: DateTime(2026),
+      ),
+    ];
+    // Lazy attach-then-send queues the user message before the JSONL hydrate.
+    // The seat already shows the stored transcript: publishing only the live
+    // bubble would replace it.
     expect(
       shouldPublishAcpSeatMessages(
-        cubitMessages: [
-          AiMessage(
-            id: 'u1',
-            role: AiRole.user,
-            parts: const [AiTextPart(text: 'hello')],
-            createdAt: DateTime(2026),
-          ),
-        ],
+        cubitMessages: bubble,
         phase: AcpChatPhase.launching,
         seatHasMessages: true,
         historyHydrated: false,
+      ),
+      isFalse,
+    );
+    // A cold seat (landing send / no snapshot yet) still paints the bubble.
+    expect(
+      shouldPublishAcpSeatMessages(
+        cubitMessages: bubble,
+        phase: AcpChatPhase.launching,
+        seatHasMessages: false,
+        historyHydrated: false,
+      ),
+      isTrue,
+    );
+    // Once hydrate lands the merged transcript replaces the seat.
+    expect(
+      shouldPublishAcpSeatMessages(
+        cubitMessages: bubble,
+        phase: AcpChatPhase.launching,
+        seatHasMessages: true,
+        historyHydrated: true,
       ),
       isTrue,
     );
     expect(
       shouldShowAcpHistoryLoading(
-        cubitMessages: [
-          AiMessage(
-            id: 'u1',
-            role: AiRole.user,
-            parts: const [AiTextPart(text: 'hello')],
-            createdAt: DateTime(2026),
-          ),
-        ],
+        cubitMessages: bubble,
         historyHydrated: false,
       ),
       isFalse,
