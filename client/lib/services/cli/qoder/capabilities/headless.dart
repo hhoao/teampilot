@@ -149,9 +149,10 @@ final class QoderHeadlessCapability
     if (effort.isNotEmpty) settings['reasoningEffort'] = effort;
     await writeJson(settingsPath, settings);
 
+    // No provider bound still seeds from the machine login — the same fallback
+    // ACP sessions use, so a one-shot run can authenticate without a provider
+    // row.
     final providerId = (provider?.id ?? ctx.providerId).trim();
-    if (providerId.isEmpty) return const HeadlessProvisionResult();
-
     final store = QoderAuthStore(
       fs: fs,
       basePath: basePath,

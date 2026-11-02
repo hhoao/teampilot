@@ -264,6 +264,19 @@ void main() {
       );
     });
 
+    test('an empty provider id still seeds from the machine login', () async {
+      await fs.ensureDir('/home/test/.qoder/.auth');
+      await fs.atomicWrite('/home/test/.qoder/.auth/user', 'MACHINE');
+      await fs.atomicWrite('/home/test/.qoder/.auth/machine_id', 'M2');
+
+      final result = await cap.provision(provisionCtx(providerId: ''));
+
+      expect(result.credentialsReady, isTrue);
+      expect(result.warnings, isEmpty);
+      expect(await fs.readString('$_configDir/.auth/user'), 'MACHINE');
+      expect(await fs.readString('$_configDir/.auth/machine_id'), 'M2');
+    });
+
     test('reports missing credentials when no login exists', () async {
       final result = await cap.provision(provisionCtx(providerId: 'missing'));
 
