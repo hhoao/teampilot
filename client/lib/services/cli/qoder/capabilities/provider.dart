@@ -17,6 +17,7 @@ import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/interactive_login_capability.dart';
 import '../../registry/capabilities/provider_capability.dart';
 import '../provider/qoder_auth_store.dart';
+import '../provider/qoder_provider_settings_resolver.dart';
 import '../provider_presets.dart';
 import 'defaults.dart';
 
@@ -141,10 +142,22 @@ final class QoderProviderCapability extends CatalogModelCapability
 
   @override
   Future<CredentialProbe> probe(AppProviderConfig provider) async {
+    final store = _authStore;
+    if (store == null) {
+      return CredentialProbe(
+        providerId: provider.id,
+        status: CredentialStatus.missing,
+        credentialPath: '',
+      );
+    }
+    final ready = await store.hasProviderAuth(provider.id);
+    final path = store.providerAuthDir(provider.id);
+    final stat = await store.fs.stat(path);
     return CredentialProbe(
       providerId: provider.id,
-      status: CredentialStatus.missing,
-      credentialPath: '',
+      status: ready ? CredentialStatus.ready : CredentialStatus.missing,
+      credentialPath: path,
+      updatedAt: stat.isDirectory ? stat.mtime : null,
     );
   }
 
@@ -153,7 +166,24 @@ final class QoderProviderCapability extends CatalogModelCapability
     required String providerId,
     required ProviderCredentialActionKind kind,
     ProviderCredentialActionInput input = const ProviderCredentialActionInput(),
-  }) async => CredentialActionResult.unsupported();
+  }) async {
+    if (kind != ProviderCredentialActionKind.login) {
+      return CredentialActionResult.unsupported();
+    }
+    final store = _authStore;
+    if (store == null) return CredentialActionResult.serviceUnavailable();
+    final written = await store.writeProviderAuthFromLogin(
+      providerId,
+      loginConfigDir: store.loginConfigDir(providerId),
+    );
+    return written
+        ? CredentialActionResult.success
+        : CredentialActionResult.failure(
+            const CredentialActionFailure(
+              code: CredentialActionFailureCode.verifyFailed,
+            ),
+          );
+  }
 
   @override
   String get loginExecutableName => 'qodercli';
@@ -252,8 +282,12 @@ final class QoderProviderCapability extends CatalogModelCapability
     final denyTools = _mixedNativeTeamDenyTools(ctx);
     if (denyTools.isNotEmpty) _mergePermissionsDeny(settings, denyTools);
 
-    final model = ctx.member?.model.trim() ?? '';
+    final provider = await _resolveLaunchProvider(ctx);
+    final model = _resolveModel(ctx, provider);
     if (model.isNotEmpty) settings['model'] = model;
+    final effort = provider?.config['reasoningEffort']?.toString().trim() ?? '';
+    if (effort.isNotEmpty) settings['reasoningEffort'] = effort;
+
     await delegate.writeSettingsFile(
       settingsPath,
       settings,
@@ -262,6 +296,42 @@ final class QoderProviderCapability extends CatalogModelCapability
       workspaceId: ctx.workspaceId,
     );
     return SessionHomeContribution(environment: environment);
+  }
+
+  Future<AppProviderConfig?> _resolveLaunchProvider(
+    SessionHomeContext ctx,
+  ) async {
+    final home = storage;
+    if (home == null) return null;
+    final resolver = QoderProviderSettingsResolver(
+      basePath: ctx.catalog.basePath,
+      fs: ctx.catalog.fs,
+      storage: home,
+    );
+    final team = ctx.team;
+    if (team != null) {
+      return resolver.resolveForLaunch(team: team, member: ctx.member);
+    }
+    final fromMember = ctx.member?.provider.trim() ?? '';
+    if (fromMember.isNotEmpty) {
+      final byId = await resolver.findById(fromMember);
+      if (byId != null) return byId;
+    }
+    final resolved = ctx.resolvedProviderId?.trim() ?? '';
+    if (resolved.isNotEmpty) {
+      final byId = await resolver.findById(resolved);
+      if (byId != null) return byId;
+    }
+    final official = await resolver.findById(defaultOfficialProviderId);
+    return official ?? resolver.resolveSole();
+  }
+
+  String _resolveModel(SessionHomeContext ctx, AppProviderConfig? provider) {
+    final fromMember = ctx.member?.model.trim() ?? '';
+    if (fromMember.isNotEmpty) return fromMember;
+    // No model chosen anywhere → leave settings.model untouched so the CLI's
+    // own account default applies.
+    return provider?.defaultModel.trim() ?? '';
   }
 }
 
