@@ -83,10 +83,10 @@ gemini-3.8-flash-medium  Gemini 3.8 Flash (Medium)
   });
 
   group('presets', () {
-    test('covers the Google account, API key, and ADC rows', () {
+    test('offers the Google account and Gemini API key rows only', () {
       expect(
-        AntigravityProviderPresets.all.map((preset) => preset.id),
-        containsAll(['antigravity', 'gemini-api-key', 'agent-platform']),
+        AntigravityProviderPresets.all.map((preset) => preset.id).toList(),
+        ['antigravity', 'gemini-api-key'],
       );
       final official = AntigravityProviderPresets.all.firstWhere(
         (preset) => preset.id == 'antigravity',
@@ -115,6 +115,15 @@ gemini-3.8-flash-medium  Gemini 3.8 Flash (Medium)
         expect(action.primary, isTrue);
         expect(action.showWhenReady, isTrue);
         expect(cap.hidesApiKeyFields(official), isTrue);
+
+        final officialCategory = AppProviderConfig(
+          id: 'google-official',
+          cli: CliTool.antigravity,
+          name: 'Google account',
+          category: AppProviderCategory.official,
+        );
+        expect(cap.appliesTo(officialCategory), isTrue);
+        expect(cap.hidesApiKeyFields(officialCategory), isTrue);
       }
 
       final apiKey = official.copyWith(
@@ -201,23 +210,36 @@ gemini-3.8-flash-medium  Gemini 3.8 Flash (Medium)
       if (await base.exists()) await base.delete(recursive: true);
     });
 
-    String sessionHome() => p.join(
-      base.path,
-      'workspace',
-      'workspaces',
-      'workspace-1',
-      'sessions',
-      'session-1',
-      'runtime',
-      'antigravity',
-      'home',
+    String runtimeDir({String? memberId}) {
+      final member = memberId?.trim() ?? '';
+      final root = p.join(
+        base.path,
+        'workspace',
+        'workspaces',
+        'workspace-1',
+        'sessions',
+        'session-1',
+        'runtime',
+      );
+      return member.isEmpty ? root : p.join(root, member);
+    }
+
+    String sessionHome({String? memberId}) =>
+        p.join(runtimeDir(memberId: memberId), 'antigravity', 'home');
+
+    String cliSettingsPath({String? memberId}) => p.join(
+      sessionHome(memberId: memberId),
+      '.gemini',
+      'antigravity-cli',
+      'settings.json',
     );
 
-    String cliSettingsPath() =>
-        p.join(sessionHome(), '.gemini', 'antigravity-cli', 'settings.json');
-
-    String acpSettingsPath() =>
-        p.join(sessionHome(), '.gemini', 'antigravity-acp', 'settings.json');
+    String acpSettingsPath({String? memberId}) => p.join(
+      sessionHome(memberId: memberId),
+      '.gemini',
+      'antigravity-acp',
+      'settings.json',
+    );
 
     Future<void> writeProviders(Map<String, Object?> providers) async {
       final path = p.join(
@@ -230,7 +252,10 @@ gemini-3.8-flash-medium  Gemini 3.8 Flash (Medium)
       await catalogFs.atomicWrite(path, jsonEncode({'providers': providers}));
     }
 
-    Future<SessionHomeContribution> materialize({TeamMemberConfig? member}) {
+    Future<SessionHomeContribution> materialize({
+      TeamMemberConfig? member,
+      String? memberId,
+    }) {
       final scope = resolveLaunchProfileScope(
         workspaceId: 'workspace-1',
         teamId: 'team-a',
@@ -248,6 +273,7 @@ gemini-3.8-flash-medium  Gemini 3.8 Flash (Medium)
             scope: scope,
             member: member,
             members: [if (member != null) member],
+            memberId: memberId,
             workingDirectory: '/workspace/workspace',
             paths: service,
             catalog: service,
@@ -272,12 +298,63 @@ gemini-3.8-flash-medium  Gemini 3.8 Flash (Medium)
       );
 
       expect(contribution.environment, isEmpty);
+      expect(contribution.environment.containsKey('HOME'), isFalse);
       final cli = await readJson(cliSettingsPath());
       expect(cli['model'], 'gemini-3.8-flash-high');
       expect(cli.containsKey('modelProvider'), isFalse);
       final acp = await readJson(acpSettingsPath());
       expect(acp['auth'], {'type': 'oauth-personal'});
     });
+
+    test('mixed-mode launch returns the member-scoped HOME hint', () async {
+      final contribution = await materialize(
+        member: const TeamMemberConfig(
+          id: 'm1',
+          name: 'Member',
+          provider: 'antigravity',
+          model: 'gemini-3.8-flash-high',
+        ),
+        memberId: 'm1',
+      );
+
+      final toolDir = p.join(runtimeDir(memberId: 'm1'), 'antigravity');
+      expect(contribution.environment['HOME'], toolDir);
+      expect(contribution.environment.containsKey('GEMINI_API_KEY'), isFalse);
+
+      final cli = await readJson(cliSettingsPath(memberId: 'm1'));
+      expect(cli['model'], 'gemini-3.8-flash-high');
+      final acp = await readJson(acpSettingsPath(memberId: 'm1'));
+      expect(acp['auth'], {'type': 'oauth-personal'});
+    });
+
+    test(
+      'official category without isOfficial maps to oauth-personal',
+      () async {
+        await writeProviders({
+          'google-official': {
+            'id': 'google-official',
+            'cli': 'antigravity',
+            'name': 'Google account',
+            'category': 'official',
+            'isOfficial': false,
+          },
+        });
+
+        final contribution = await materialize(
+          member: const TeamMemberConfig(
+            id: 'm1',
+            name: 'Member',
+            provider: 'google-official',
+          ),
+        );
+
+        expect(contribution.environment, isEmpty);
+        final cli = await readJson(cliSettingsPath());
+        expect(cli.containsKey('modelProvider'), isFalse);
+        final acp = await readJson(acpSettingsPath());
+        expect(acp['auth'], {'type': 'oauth-personal'});
+      },
+    );
 
     test('Gemini API key maps to gemini-api-key and GEMINI_API_KEY', () async {
       await writeProviders({

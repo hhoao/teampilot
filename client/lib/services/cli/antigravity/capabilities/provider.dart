@@ -146,7 +146,9 @@ final class AntigravityProviderCapability extends CatalogModelCapability
   // ---- ProviderCredentialCapability (Google account via agy login) ----
   @override
   bool appliesTo(AppProviderConfig provider) =>
-      provider.isOfficial && !Platform.isAndroid && !Platform.isIOS;
+      _resolveAuthMode(provider) == _AntigravityAuthMode.official &&
+      !Platform.isAndroid &&
+      !Platform.isIOS;
 
   @override
   List<ProviderCredentialActionSpec> actionsFor(AppProviderConfig provider) {
@@ -305,18 +307,32 @@ final class AntigravityProviderCapability extends CatalogModelCapability
       'auth': {'type': authMode.authType},
     });
 
-    return SessionHomeContribution(environment: _authEnv(provider, authMode));
+    // The lifecycle derives `memberConfigDir` from `HOME` first. Member-scoped
+    // settings live under the member tool dir, so hand the same path back when
+    // the launch is member-scoped; without it a member ACP runtime would fall
+    // back to the non-member `sessionToolDir` and miss these files. The ACP
+    // capability still rewrites `HOME` to `<toolDir>/home` at spawn.
+    final environment = <String, String>{
+      ..._authEnv(provider, authMode),
+      if (ctx.memberId != null && ctx.memberId!.trim().isNotEmpty)
+        'HOME': toolDir,
+    };
+    return SessionHomeContribution(environment: environment);
   }
 
   /// Explicit `config.authMode` wins; otherwise the row shape decides:
-  /// official → Google account, cloud-provider rows → ADC, the rest → API key.
+  /// official (flag or category) → Google account, cloud-provider rows → ADC,
+  /// the rest → API key.
   _AntigravityAuthMode _resolveAuthMode(AppProviderConfig? provider) {
     if (provider == null) return _AntigravityAuthMode.official;
     final configured = _AntigravityAuthMode.fromConfig(
       provider.config[_authModeConfigKey],
     );
     if (configured != null) return configured;
-    if (provider.isOfficial) return _AntigravityAuthMode.official;
+    if (provider.isOfficial ||
+        provider.category == AppProviderCategory.official) {
+      return _AntigravityAuthMode.official;
+    }
     if (provider.category == AppProviderCategory.cloudProvider) {
       return _AntigravityAuthMode.adc;
     }

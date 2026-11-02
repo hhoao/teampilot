@@ -4,9 +4,13 @@ import '../../../models/app_provider_config.dart';
 ///
 /// The official row signs in with a Google account through the CLI's own
 /// login terminal (`auth.type: oauth-personal`). The Gemini API-key row uses
-/// `GEMINI_API_KEY` from the process env; the key never lands on disk. The ADC
-/// row reuses the host's Application Default Credentials through the adapter's
-/// `agent-platform` auth mode.
+/// `GEMINI_API_KEY` from the process env; the key never lands on disk.
+///
+/// ADC (`agent-platform`) has no preset: the isolated per-session `HOME` also
+/// isolates `$HOME/.config/gcloud`, so a host ADC login would not be visible to
+/// the adapter. `AntigravityProviderCapability` still honours a custom /
+/// cloud-provider row that pins `authMode: agent-platform` (for a pre-seeded
+/// home or explicit credentials).
 abstract final class AntigravityProviderPresets {
   const AntigravityProviderPresets._();
 
@@ -45,29 +49,6 @@ abstract final class AntigravityProviderPresets {
         defaultModel: 'gemini-3.8-flash-high',
         icon: 'gemini',
         config: {'authMode': 'gemini-api-key'},
-      ),
-    ),
-    AppProviderPreset(
-      id: 'agent-platform',
-      label: 'Google Cloud ADC',
-      template: AppProviderConfig(
-        id: 'agent-platform',
-        cli: CliTool.antigravity,
-        name: 'Google Cloud ADC',
-        websiteUrl: 'https://cloud.google.com/docs/authentication',
-        category: AppProviderCategory.cloudProvider,
-        apiKeyField: 'api_key',
-        defaultModel: 'gemini-3.8-flash-high',
-        icon: 'gemini',
-        notes:
-            'Uses Application Default Credentials from the host '
-            '(`gcloud auth application-default login`). Set "project" and '
-            '"location" in the advanced config.',
-        config: {
-          'authMode': 'agent-platform',
-          'project': '',
-          'location': 'us-central1',
-        },
       ),
     ),
   ];
