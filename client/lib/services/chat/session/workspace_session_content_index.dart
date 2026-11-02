@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:ai_message_core/ai_message_core.dart';
 
 import '../../../models/app_session.dart';
@@ -12,24 +10,10 @@ import '../conversation/history/session_history_context.dart';
 import '../conversation/history/session_history_context_builder.dart';
 import '../../storage/runtime_layout.dart';
 
-/// Searchable plain-text projection of a session transcript, plus the start
-/// offset of each message's block so a hit can be mapped back to a message.
-class SessionTranscriptDoc {
-  const SessionTranscriptDoc({
-    required this.text,
-    required this.messageStarts,
-    required this.folded,
-  });
+import 'isolated_transcript_doc.dart';
+import 'session_transcript_doc.dart';
 
-  final String text;
-  final List<int> messageStarts;
-
-  /// [text] with ASCII (and same-length non-ASCII) letters lowercased, so a
-  /// query is a plain `indexOf` instead of a case-insensitive regex scan on
-  /// every keystroke. Always the same length as [text], so offsets found here
-  /// are valid in [text] too.
-  final String folded;
-}
+export 'session_transcript_doc.dart';
 
 /// A transcript search hit for one session seat.
 class WorkspaceSessionContentMatch {
@@ -55,75 +39,6 @@ class WorkspaceSessionContentMatch {
 
   /// Index into the seat's message list where the match starts.
   final int messageIndex;
-}
-
-/// Projects [messages] into one searchable plain-text document with a line per
-/// role label / text / reasoning / tool call, so users can find sessions by
-/// what was said or done — not just the title. Cheap: only string building,
-/// no message enrichment or subagent attachment inflation.
-SessionTranscriptDoc buildTranscriptDoc(List<AiMessage> messages) {
-  final buffer = StringBuffer();
-  final starts = <int>[];
-  for (final message in messages) {
-    starts.add(buffer.length);
-    buffer.write(_roleLabel(message.role));
-    buffer.write(': ');
-    for (final part in message.parts) {
-      if (part is AiTextPart) {
-        buffer.writeln(part.text);
-      } else if (part is AiReasoningPart) {
-        buffer.writeln('[thought] ${part.text}');
-      } else if (part is AiToolCallPart) {
-        buffer.writeln(
-          '[tool] ${part.toolName}${_toolArgsSuffix(part.argsText)}',
-        );
-      }
-    }
-    buffer.writeln();
-  }
-  final text = buffer.toString();
-  return SessionTranscriptDoc(
-    text: text,
-    messageStarts: starts,
-    folded: foldCasePreservingLength(text),
-  );
-}
-
-/// Lowercases [text] **without changing its length**, so an offset found in the
-/// result is also valid in the original (a plain `toLowerCase()` can expand
-/// `ß` → `ss` and shift every later offset). Only ASCII is folded for speed;
-/// non-ASCII code units are folded when the lowercase form is still a single
-/// code unit, and kept as-is otherwise.
-String foldCasePreservingLength(String text) {
-  final units = Uint16List(text.length);
-  var changed = false;
-  for (var i = 0; i < text.length; i++) {
-    final unit = text.codeUnitAt(i);
-    var folded = unit;
-    if (unit >= 0x41 && unit <= 0x5A) {
-      folded = unit + 0x20;
-    } else if (unit > 0x7F && unit < 0xD800) {
-      final lower = String.fromCharCode(unit).toLowerCase();
-      if (lower.length == 1) folded = lower.codeUnitAt(0);
-    }
-    if (folded != unit) changed = true;
-    units[i] = folded;
-  }
-  return changed ? String.fromCharCodes(units) : text;
-}
-
-String _roleLabel(AiRole role) => switch (role) {
-  AiRole.user => 'user',
-  AiRole.assistant => 'assistant',
-  AiRole.system => 'system',
-};
-
-String _toolArgsSuffix(String? argsText) {
-  final args = argsText?.trim() ?? '';
-  if (args.isEmpty) return '';
-  final inline = args.replaceAll(RegExp(r'\s+'), ' ');
-  final max = 160;
-  return inline.length <= max ? ' $inline' : ' ${inline.substring(0, max)}…';
 }
 
 class _Seat {
@@ -160,10 +75,11 @@ class _SeatDoc {
 ///
 /// For each session seat (simple → one seat; team → one per roster member),
 /// locates the on-disk transcript via [AiHistoryLocator], parses it with the
-/// matching CLI's [AiTranscriptAdapter] (parse only — no enrich/inflate), and
-/// projects it into a [SessionTranscriptDoc]. Docs are cached keyed by
-/// `sessionId|memberId` and reused across keystrokes and dialog opens, so
-/// [search] is a synchronous in-memory scan after the first [warm].
+/// matching CLI's [AiTranscriptAdapter] (parse only — no enrich/inflate) and
+/// projects it into a [SessionTranscriptDoc]; cold parses run on a background
+/// isolate so warming a large session list does not stall frames. Docs are
+/// cached keyed by `sessionId|memberId` and reused across keystrokes and dialog
+/// opens, so [search] is a synchronous in-memory scan after the first [warm].
 ///
 /// Seat freshness uses the transcript cache token (path+mtime+size) from the
 /// locate hints plus a [WorkspaceSessionContentIndex.maxStale] TTL — cheap, no
@@ -209,10 +125,14 @@ class WorkspaceSessionContentIndex {
 
   final Map<String, _SeatDoc> _docs = {};
 
+  /// Background parse + projection worker; created on the first cold parse.
+  IsolatedTranscriptDoc? _transcriptParser;
+
   /// Writes a transcript doc for every seat of [sessions] that is missing or
-  /// stale. Yields to the event loop every few seats so the dialog stays
-  /// responsive while a large session list warms up. Per-seat errors are
-  /// contained — one bad seat never aborts the warm.
+  /// stale. Cold parses run on a background worker ([IsolatedTranscriptDoc]) and
+  /// the loop still yields between seats, so a large session list warms without
+  /// blocking the UI. Per-seat errors are contained — one bad seat never aborts
+  /// the warm.
   Future<void> warm({required List<AppSession> sessions}) async {
     var warmed = 0;
     for (final session in sessions) {
@@ -255,6 +175,14 @@ class WorkspaceSessionContentIndex {
 
   void clear() => _docs.clear();
 
+  /// Drops cached docs **and** releases the background parse worker. Called when
+  /// the workspace goes away (tab closed / storage backend swapped).
+  void dispose() {
+    _transcriptParser?.dispose();
+    _transcriptParser = null;
+    _docs.clear();
+  }
+
   Future<void> _warmSeat(AppSession session, _Seat seat) async {
     final key = _seatKey(session.sessionId, seat.memberId);
     final existing = _docs[key];
@@ -280,22 +208,36 @@ class WorkspaceSessionContentIndex {
         memberId: seat.memberId,
         token: token,
       );
-      List<AiMessage> messages;
+      SessionTranscriptDoc doc;
       if (cached != null) {
-        messages = cached;
+        // The chat loader already parsed this seat: projecting it is cheap.
+        doc = buildTranscriptDoc(cached);
       } else {
         final cap = _registry.capability<AiHistoryCapability>(located.cli);
-        messages = cap == null
-            ? const <AiMessage>[]
-            : await cap.adapter.parse(located.bundle);
+        doc = cap == null
+            ? buildTranscriptDoc(const <AiMessage>[])
+            : await _parseOffIsolate(cap.adapter, located.bundle);
       }
-      _docs[key] = _SeatDoc(
-        doc: buildTranscriptDoc(messages),
-        token: token,
-        warmedAt: DateTime.now(),
-      );
+      _docs[key] = _SeatDoc(doc: doc, token: token, warmedAt: DateTime.now());
     } on Object {
       _docs.remove(key);
+    }
+  }
+
+  /// Parses + projects a transcript on the background worker, falling back to a
+  /// local parse when the adapter (or its output) cannot cross the isolate
+  /// boundary.
+  Future<SessionTranscriptDoc> _parseOffIsolate(
+    AiTranscriptAdapter adapter,
+    AiTranscriptBundle bundle,
+  ) async {
+    final parser = _transcriptParser ??= IsolatedTranscriptDoc();
+    try {
+      return await parser.build(adapter, bundle);
+    } on Object {
+      if (identical(_transcriptParser, parser)) _transcriptParser = null;
+      parser.dispose();
+      return buildTranscriptDoc(await adapter.parse(bundle));
     }
   }
 
