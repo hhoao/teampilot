@@ -13,11 +13,14 @@ ACP 与 PTY 的能力正在对齐，同时 ACP 的适用范围也从「仅个人
   「原生团队和远程成员仍用终端」、右侧 `Switch`。
 - 范围放开后副标题描述的例外不再成立，必须删除；删完这一行只剩一句标题 + 一个开关，
   占 60px 高度只为托一个 Switch。
-- 后端门禁有两处，都要一起拆：
+- 后端门禁有三处，都要一起拆：
   - `client/lib/services/chat/launch/session/launch_acp_policy.dart:10-21`
-    （`_personalAcpAllowed` 要求 `isPersonal`，且 Android 一律 false）
+    （`_personalAcpAllowed` 要求 `isPersonal`）
   - `client/lib/services/chat/launch/session/session_provisional_builder.dart:45-49`
     （`resolvedAcp` 要求 `trimmedTeam.isEmpty && isPersonal`）
+  - `client/lib/services/chat/launch/session/member_acp_stamp.dart:14-25`
+    （`_memberAcpGates` 要求 `teamMode == mixed` 且目标必须是
+    `RuntimeKind.local`，原生团队与远程成员一律 false）
 - 远程 ACP 的传输层已具备：`client/lib/services/acp/acp_ssh_transport.dart`、
   `client/lib/services/chat/launch/connect/acp_runtime_attach.dart:299`
   （`DartSsh2AcpChannel`）。
@@ -70,20 +73,25 @@ header 顺序：
 |---|---|
 | `canChooseTransport == false` | 整枚胶囊不渲染（Gemini / CodeBuddy 等 ACP-only CLI） |
 | CLI 或适配器未就绪 | 仍渲染且可点，未就绪交给状态徽章表达 |
-| Android | 与桌面一致渲染（门禁拆除后没有平台差异） |
+| Android | 不渲染——`resolveLaunchAcp` 仍拒绝 Android ACP，避免出现点了不生效的控件 |
 | 远程工作区 | 渲染；远端适配器是否就绪由状态徽章与 ACP 路径行表达 |
 
 不放灰色 / 不可点的控件：header 上摆一个永远点不动的控件是最差选项。
 
 ### 3. 后端门禁放开
 
-- `launch_acp_policy.dart`：删除 `_personalAcpAllowed` 的 `isPersonal` 判定与
-  `_isAndroid` 判定，仅保留 `canChooseTransport` 能力检查；`resolveLaunchAcp`
-  去掉 `isPersonal`、`isAndroidOverride` 两个参数。
+- `launch_acp_policy.dart`：删除 `isPersonal` 判定，仅保留 `canChooseTransport`
+  能力检查与 Android 平台判定；`resolveLaunchAcp` 去掉 `isPersonal` 参数，
+  保留 `isAndroidOverride`（测试注入）。
 - `session_provisional_builder.dart:45-49`：改为
-  `resolvedAcp = (acp ?? false) || launchesAcpOnly(cli)`，不再要求
-  `trimmedTeam.isEmpty && isPersonal`。
-- 团队成员的 ACP 打标已经走 `stampMemberAcp` + `seed*MemberAcp`，无需改动。
+  `resolvedAcp = (acp ?? false) || launchesAcpOnly(identity?.cli ?? cli)`，
+  不再要求 `trimmedTeam.isEmpty && isPersonal`。
+- `member_acp_stamp.dart`：`_memberAcpGates` 去掉 `teamMode` 与 `targetId` 判定，
+  只保留 Android、`cli != null`、`AcpCapability` 三项；`resolveMemberBindingAcp`
+  与 `shouldAttachMemberAcp` 相应去掉 `teamMode` / `targetId` 参数。
+  ACP-only CLI 仍短路为 true。
+- Android 平台门禁本次保留：远程 SSH exec 的适配器探活只有手工清单
+  （`docs/remote-acp-adapter-smoke.md`），没有自动化覆盖，拆 gate 单独排期。
 
 ### 4. 文案
 
@@ -117,9 +125,12 @@ header 顺序：
 | 文件 | 改动 |
 |---|---|
 | `client/lib/pages/config/cli_readiness_card.dart` | header `Row` 末尾插入胶囊；删除 `_buildAcpBlock` 里的 `TpPreferenceRow` 与 `showSwitch`；保留 ACP 路径行 |
-| `client/lib/services/chat/launch/session/launch_acp_policy.dart` | 去掉 `isPersonal` / Android 门禁与对应参数 |
+| `client/lib/services/chat/launch/session/launch_acp_policy.dart` | 去掉 `isPersonal` 门禁与参数 |
 | `client/lib/services/chat/launch/session/session_provisional_builder.dart` | `resolvedAcp` 不再受团队 / 个人限制 |
-| `client/lib/pages/home_workspace/workspace/workspace_session_actions.dart` | 调用点去掉 `isPersonal` / `isAndroidOverride` 实参（`resolveLaunchAcp`） |
+| `client/lib/services/chat/launch/session/member_acp_stamp.dart` | `_memberAcpGates` 去掉团队模式与目标判定 |
+| `client/lib/services/chat/launch/pre_send/local_binary_requirements.dart` | 跟随 `resolveMemberBindingAcp` 签名 |
+| `client/lib/services/chat/launch/connect/acp_runtime_attach.dart` | 跟随 `shouldAttachMemberAcp` 签名 |
+| `client/lib/pages/home_workspace/workspace/workspace_session_actions.dart` | 调用点去掉 `isPersonal` 实参（`resolveLaunchAcp`） |
 | `client/lib/services/automation/automation_dispatcher.dart` | 同上 |
 | `client/lib/pages/config/*`、`models/*`、`cubits/*` | 命名重命名（第 5 节） |
 | `client/lib/l10n/app_zh.arb`、`app_en.arb` | 删 4 条、加 2 条 |
@@ -132,7 +143,7 @@ header 顺序：
 | 文件 | 覆盖 |
 |---|---|
 | `client/test/pages/config/cli_config_section_test.dart` | 胶囊存在；点击 chat / terminal 写入偏好；Gemini 无胶囊；旧的开关行文案不再渲染 |
-| `client/test/pages/home_workspace/workspace/claude_acp_launch_switch_test.dart` | 团队、Android 用例从 false 翻成 true；移除 `isAndroidOverride` 相关断言 |
+| `client/test/pages/home_workspace/workspace/claude_acp_launch_switch_test.dart` | 会话级、成员级放开的用例；Android 仍为 false；`buildWorkspaceConversationCreateRequest` 团队用例翻成 true |
 | `client/test/services/chat/launch/session_provisional_builder_test.dart` | 团队会话 `acp` 可置 true；ACP-only CLI 在团队里同样 resolve 为 true |
 
 `unbound_compose_*_acp_test.dart` 断言的是 compose 页上不存在设置卡片开关
@@ -147,9 +158,12 @@ header 顺序：
   已有会话的运行时。
 - 团队 lead 变成 ACP 后，team bus 投递走 `seat_prompt_delivery` 的 ACP 分支
   （已有实现，见 `51c6244d8`），需在团队场景实测一条 user command 往返。
-- Android 上 ACP 的端到端探活目前没有自动化覆盖。门禁按本设计一并拆除，但合并前必须在
-  真机确认远程 SSH exec 能起 `claude-agent-acp`；确认失败则回退为「Android 不渲染胶囊
-  + 保留 `_isAndroid` 门禁」，而不是保留一个点了不生效的控件。
+- Android 平台门禁本次保留（`resolveLaunchAcp` 与 `_memberAcpGates` 的 `_isAndroid`）。
+  远程 SSH exec 的适配器探活只有手工清单（`docs/remote-acp-adapter-smoke.md`），无自动化
+  覆盖；拆 gate、放开 Android 胶囊单独排期。
+- 远程成员放开后，`shouldAttachMemberAcp` 不再按目标过滤，WSL 目标也会走 ACP。
+  WSL 的 exec 通道与 SSH 不同，需在实现后单独确认一次；若不通，只在 gate 中保留
+  `RuntimeKind.local` 以外的白名单即可。
 - 胶囊是纯图标，手机上无 hover、看不到 tooltip。若实测发现不可读，再在窄屏补一行
   11px 说明（本设计不包含）。
 
@@ -158,5 +172,7 @@ header 顺序：
 1. `cd client && flutter analyze --no-fatal-infos --no-fatal-warnings && dart run tool/run_tests.dart`
 2. 桌面：新建个人 Claude 会话 → 默认走 ACP（无终端）；同一 CLI 切到终端 → 新建走 PTY。
 3. 桌面：新建原生 Claude 团队会话 → lead 与成员均走 ACP，无终端面板，用户指令能送达。
-4. 远程：SSH 工作区新建会话 → 走远端 ACP，适配器缺失时卡片显示需要设置。
+4. 远程：SSH 工作区新建个人会话与团队成员会话 → 均走远端 ACP；按
+   `docs/remote-acp-adapter-smoke.md` 跑一遍适配器缺失、安装、首轮对话三项。
 5. 设置页：360dp 宽度下 header 不溢出，标题省略，胶囊与徽章完整显示。
+6. Android：胶囊不渲染，行为与改动前一致。
