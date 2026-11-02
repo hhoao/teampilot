@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -8,8 +10,24 @@ import 'vault_entry_editor.dart';
 import 'vault_entry_list.dart';
 import 'vault_status_section.dart';
 
-class VaultPageBody extends StatelessWidget {
+class VaultPageBody extends StatefulWidget {
   const VaultPageBody({super.key});
+
+  @override
+  State<VaultPageBody> createState() => _VaultPageBodyState();
+}
+
+class _VaultPageBodyState extends State<VaultPageBody> {
+  @override
+  void initState() {
+    super.initState();
+    // The cubit is created at boot but not loaded: the vault may be locked,
+    // and reading the keychain is unnecessary until the page is opened.
+    final cubit = context.read<VaultCubit>();
+    if (cubit.state.status == VaultStatus.loading) {
+      unawaited(cubit.load());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
