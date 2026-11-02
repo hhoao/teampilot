@@ -272,6 +272,12 @@ final appRouter = GoRouter(
               ),
             ),
             GoRoute(
+              path: '/config/vault',
+              pageBuilder: (context, state) => const NoTransitionPage(
+                child: ConfigWorkspace(section: ConfigSection.vault),
+              ),
+            ),
+            GoRoute(
               path: '/config/connect',
               pageBuilder: (context, state) => const NoTransitionPage(
                 child: ConfigWorkspace(section: ConfigSection.connect),
