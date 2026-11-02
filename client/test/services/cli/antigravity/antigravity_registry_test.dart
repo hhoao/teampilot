@@ -10,7 +10,7 @@ import 'package:teampilot/services/cli/registry/capabilities/mcp_capability.dart
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 
 void main() {
-  test('antigravity registers the ACP-only vertical slice', () {
+  test('antigravity registers the ACP vertical slice plus headless', () {
     final registry = CliToolRegistry();
     registerBuiltInCliTools(registry);
 
@@ -32,7 +32,8 @@ void main() {
     );
     expect(
       registry.capability<HeadlessCapability>(CliTool.antigravity),
-      isNull,
+      isNotNull,
+      reason: 'agy -p one-shot runs are supported',
     );
     expect(registry.capability<McpCapability>(CliTool.antigravity), isNotNull);
 

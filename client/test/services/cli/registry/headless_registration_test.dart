@@ -12,6 +12,7 @@ void main() {
       CliTool.cursor,
       CliTool.opencode,
       CliTool.flashskyai,
+      CliTool.antigravity,
     ]) {
       final cap = registry.capability<HeadlessCapability>(cli);
       expect(cap, isNotNull, reason: '${cli.value} missing HeadlessCapability');
