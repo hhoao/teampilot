@@ -83,3 +83,35 @@ Future<SshProfileVaultWriteResult> saveSshProfileWithVault({
   }
   return SshProfileVaultWriteResult(profile: saved, capture: result);
 }
+
+typedef SshEditorSecretInputs = ({
+  String? password,
+  String? privateKey,
+  String? passphrase,
+});
+
+/// Maps editor field state to the writer's null/''/value contract.
+///
+/// A linked profile keeps an emptied field (`null`); an unlinked profile
+/// passes `''` so the writer can adopt the legacy keychain value. The
+/// inactive auth-type fields are always `''` (remove).
+SshEditorSecretInputs sshEditorSecretInputs({
+  required SshAuthType authType,
+  required bool linked,
+  required String passwordText,
+  required String privateKeyPem,
+  required String passphraseText,
+}) {
+  if (authType == SshAuthType.password) {
+    return (
+      password: passwordText.isEmpty ? (linked ? null : '') : passwordText,
+      privateKey: '',
+      passphrase: '',
+    );
+  }
+  return (
+    password: '',
+    privateKey: privateKeyPem.isEmpty ? null : privateKeyPem,
+    passphrase: passphraseText.isEmpty ? null : passphraseText,
+  );
+}

@@ -123,23 +123,18 @@ class _SshProfileSetupPageState extends State<SshProfileSetupPage> {
       return null;
     }
     try {
+      final inputs = sshEditorSecretInputs(
+        authType: _authType,
+        linked: linked,
+        passwordText: _passwordController.text,
+        privateKeyPem: _privateKeyController.text,
+        passphraseText: _passphraseController.text,
+      );
       final result = await saveSshProfileWithVault(
         profile: profile,
-        password: _authType == SshAuthType.password
-            ? (_passwordController.text.isEmpty && linked
-                  ? null
-                  : _passwordController.text)
-            : '',
-        privateKey: _authType == SshAuthType.privateKey
-            ? (_privateKeyController.text.isEmpty
-                  ? null
-                  : _privateKeyController.text)
-            : '',
-        passphrase: _authType == SshAuthType.privateKey
-            ? (_passphraseController.text.isEmpty
-                  ? null
-                  : _passphraseController.text)
-            : '',
+        password: inputs.password,
+        privateKey: inputs.privateKey,
+        passphrase: inputs.passphrase,
         capture: widget.vaultCapture ?? context.read<VaultCredentialCapture>(),
         unlockGate: widget.vaultUnlockGate ?? context.read<VaultUnlockGate>(),
         repository: widget.profileRepository,

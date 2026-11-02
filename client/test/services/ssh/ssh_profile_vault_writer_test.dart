@@ -177,6 +177,40 @@ void main() {
     expect(await repository.loadAll(), isEmpty);
     expect(await vault.list(), isEmpty);
   });
+
+  test('editor mapping keeps linked empties and clears the inactive auth', () {
+    expect(
+      sshEditorSecretInputs(
+        authType: SshAuthType.password,
+        linked: true,
+        passwordText: '',
+        privateKeyPem: '',
+        passphraseText: '',
+      ),
+      (password: null, privateKey: '', passphrase: ''),
+    );
+    expect(
+      sshEditorSecretInputs(
+        authType: SshAuthType.privateKey,
+        linked: true,
+        passwordText: '',
+        privateKeyPem: '',
+        passphraseText: '',
+      ),
+      (password: '', privateKey: null, passphrase: null),
+    );
+    expect(
+      sshEditorSecretInputs(
+        authType: SshAuthType.password,
+        linked: false,
+        passwordText: '',
+        privateKeyPem: '',
+        passphraseText: '',
+      ).password,
+      '',
+      reason: 'unlinked empty lets the writer adopt the keychain value',
+    );
+  });
 }
 
 class _ThrowingSshProfileRepository implements SshProfileRepository {

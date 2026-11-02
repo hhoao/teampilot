@@ -111,11 +111,8 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
   }
 
   bool get _usesPasswordAuth {
+    if (_identityFileController.text.isNotEmpty) return false;
     if (_passwordController.text.isNotEmpty) return true;
-    if (_identityFileController.text.isNotEmpty ||
-        _passphraseController.text.isNotEmpty) {
-      return false;
-    }
     return widget.initialProfile?.authType == SshAuthType.password;
   }
 
@@ -161,27 +158,22 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       final unlockGate = context.read<VaultUnlockGate>();
       final repository = context.read<SshProfileRepository>();
       final credentialStore = context.read<SshCredentialStore>();
-      String? password;
-      String? privateKey;
-      String? passphrase;
-      if (_usesPasswordAuth) {
-        password = _passwordController.text.isEmpty
-            ? (linked ? null : '')
-            : _passwordController.text;
-        privateKey = '';
-        passphrase = '';
-      } else {
-        privateKey = await _readIdentityFile();
-        passphrase = _passphraseController.text.isEmpty
-            ? null
-            : _passphraseController.text;
-        password = '';
-      }
+      final usesPassword = _usesPasswordAuth;
+      final privateKeyPem = usesPassword
+          ? ''
+          : (await _readIdentityFile() ?? '');
+      final inputs = sshEditorSecretInputs(
+        authType: usesPassword ? SshAuthType.password : SshAuthType.privateKey,
+        linked: linked,
+        passwordText: _passwordController.text,
+        privateKeyPem: privateKeyPem,
+        passphraseText: _passphraseController.text,
+      );
       final result = await saveSshProfileWithVault(
         profile: profile,
-        password: password,
-        privateKey: privateKey,
-        passphrase: passphrase,
+        password: inputs.password,
+        privateKey: inputs.privateKey,
+        passphrase: inputs.passphrase,
         capture: capture,
         unlockGate: unlockGate,
         repository: repository,
