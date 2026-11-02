@@ -4,8 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/vault_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/vault_document.dart';
 import 'package:teampilot/models/vault_entry.dart';
 import 'package:teampilot/pages/vault/vault_entry_list.dart';
+import 'package:teampilot/pages/vault/vault_page.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
@@ -63,6 +65,50 @@ void main() {
         home: BlocProvider.value(
           value: cubit,
           child: Scaffold(body: VaultEntryList(onOpen: (_) {})),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('GitHub'), findsOneWidget);
+  });
+
+  testWidgets('page loads the vault on first mount', (tester) async {
+    final fs = InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix));
+    final backend = KeychainVaultBackend(_FakeStore());
+    await backend.save(
+      const VaultDocument(
+        entries: [
+          VaultEntry(id: 'a', type: VaultEntryType.login, title: 'GitHub'),
+        ],
+      ),
+    );
+    final service = VaultService(
+      keychainBackend: backend,
+      encryptedBackend: EncryptedVaultBackend(
+        repository: VaultRepository(rootDir: '/root/vault', fs: fs),
+        crypto: const VaultCrypto(
+          memoryKiB: 256,
+          iterations: 1,
+          parallelism: 1,
+        ),
+      ),
+    );
+    final cubit = VaultCubit(
+      service: service,
+      sshProfiles: SshProfileRepository(storage: fakeHomeStorage()),
+      appProviders: AppProviderRepository(storage: fakeHomeStorage()),
+    );
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        home: BlocProvider.value(
+          value: cubit,
+          child: const Scaffold(body: VaultPageBody()),
         ),
       ),
     );
