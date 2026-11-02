@@ -38,6 +38,18 @@ class VaultService {
   /// start the migration again.
   Future<void> refreshMarkerFromBackend() async {
     if (_locked || _encrypted || !_initialized) return;
+    // Serialize with in-flight writes: reloading outside the tail could replace
+    // `_document` with a pre-write copy, and the next mutation would then
+    // persist that stale document and drop a freshly captured entry.
+    final pending = _writeTail;
+    if (pending != null) {
+      try {
+        await pending;
+      } on Object {
+        // A failed write already surfaced to its caller; the reload below
+        // still needs to run against whatever the backend holds.
+      }
+    }
     try {
       final reloaded = await _keychainBackend.load();
       if (reloaded != null) _document = reloaded;

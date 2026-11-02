@@ -1,4 +1,6 @@
 // client/test/services/vault/vault_service_test.dart
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/vault_entry.dart';
@@ -22,6 +24,21 @@ class _FakeStore implements SecureKeyValueStore {
 
   @override
   Future<void> write(String key, String value) async => values[key] = value;
+}
+
+class _BlockingWriteStore extends _FakeStore {
+  _BlockingWriteStore({this.writeGate});
+
+  final Future<void>? writeGate;
+  final writeStarted = Completer<void>();
+
+  @override
+  Future<void> write(String key, String value) async {
+    if (!writeStarted.isCompleted) writeStarted.complete();
+    final gate = writeGate;
+    if (gate != null) await gate;
+    await super.write(key, value);
+  }
 }
 
 void main() {
@@ -158,6 +175,38 @@ void main() {
     expect(await service.verifyFields('a', {'token': 'other'}), isFalse);
     expect(await service.verifyFields('missing', {'token': 't'}), isFalse);
   });
+
+  test(
+    'marker refresh waits for an in-flight write before reloading',
+    () async {
+      final gate = Completer<void>();
+      final store = _BlockingWriteStore(writeGate: gate.future);
+      final service = buildService(store: store);
+      await service.initialize();
+
+      final write = service.upsert(
+        const VaultEntry(id: 'a', type: VaultEntryType.token, title: 'A'),
+      );
+      await store.writeStarted.future;
+
+      var refreshed = false;
+      final refresh = service.refreshMarkerFromBackend().then((_) {
+        refreshed = true;
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        refreshed,
+        isFalse,
+        reason: 'the reload must queue behind the in-flight write',
+      );
+
+      gate.complete();
+      await write;
+      await refresh;
+
+      expect((await service.list()).single.id, 'a');
+    },
+  );
 
   test('writes before initialize are rejected without touching the store', () async {
     final store = _FakeStore();

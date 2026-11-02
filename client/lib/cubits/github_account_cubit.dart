@@ -131,9 +131,17 @@ class GithubAccountCubit extends Cubit<GithubAccountState> {
           // login in memory and let the importer persist it after unlock.
           try {
             if (stored.source == GithubCredentialSource.oauth) {
-              await _store.saveOAuth(token: stored.token, login: login);
+              await _store.saveOAuth(
+                token: stored.token,
+                login: login,
+                allowUnlockPrompt: false,
+              );
             } else {
-              await _store.savePat(stored.token, login: login);
+              await _store.savePat(
+                stored.token,
+                login: login,
+                allowUnlockPrompt: false,
+              );
             }
           } on VaultSaveBlockedException {
             // Not persisted; the in-memory state still hydrates.

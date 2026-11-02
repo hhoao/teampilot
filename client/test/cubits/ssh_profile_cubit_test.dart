@@ -2,15 +2,50 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/ssh_profile_cubit.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
+import 'package:teampilot/repositories/vault_repository.dart';
 import 'package:teampilot/services/cli/remote_cli_path_cache.dart';
 import 'package:teampilot/services/storage/app_paths.dart';
+import 'package:teampilot/services/vault/credential_capture.dart';
+import 'package:teampilot/services/vault/encrypted_vault_backend.dart';
+import 'package:teampilot/services/vault/keychain_vault_backend.dart';
+import 'package:teampilot/services/vault/vault_crypto.dart';
+import 'package:teampilot/services/vault/vault_service.dart';
 import '../support/test_runtime_context.dart';
 import '../support/in_memory_filesystem.dart';
+
+Future<VaultService> _vault() async {
+  final service = VaultService(
+    keychainBackend: KeychainVaultBackend(_FakeSecureStore()),
+    encryptedBackend: EncryptedVaultBackend(
+      repository: VaultRepository(
+        rootDir: '/root/vault',
+        fs: InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix)),
+      ),
+      crypto: const VaultCrypto(memoryKiB: 256, iterations: 1, parallelism: 1),
+    ),
+  );
+  await service.initialize();
+  return service;
+}
+
+class _FakeSecureStore implements SecureKeyValueStore {
+  final values = <String, String>{};
+
+  @override
+  Future<void> delete(String key) async => values.remove(key);
+
+  @override
+  Future<String?> read(String key) async => values[key];
+
+  @override
+  Future<void> write(String key, String value) async => values[key] = value;
+}
 
 /// Lets fire-and-forget discovery (unawaited from `load`/`selectProfile`)
 /// finish its microtask chain before assertions.
@@ -503,6 +538,82 @@ void main() {
     },
   );
 
+  test('deleteProfile removes the linked vault entry', () async {
+    final temp = await Directory.systemTemp.createTemp(
+      'ssh_profile_cubit_delete_vault_',
+    );
+    addTearDown(() => temp.delete(recursive: true));
+
+    final repository = SshProfileRepository(
+      rootDir: temp.path,
+      storage: fakeHomeStorage(),
+    );
+    const profile = SshProfile(
+      id: 'p1',
+      name: 'one',
+      host: 'one.example.com',
+      username: 'alice',
+    );
+    await repository.save(profile);
+    final vault = await _vault();
+    final capture = VaultCredentialCapture(vault: vault);
+    final result = await capture.captureSsh(profile, password: 'pw');
+    await repository.save(profile.copyWith(vaultEntryId: result.entryId));
+
+    final cubit = SshProfileCubit(
+      profileRepository: repository,
+      credentialStore: InMemorySshCredentialStore(),
+      vaultCapture: capture,
+    );
+    addTearDown(cubit.close);
+    await cubit.load();
+
+    await cubit.deleteProfile('p1');
+
+    expect(cubit.state.profiles, isEmpty);
+    expect(
+      await capture.findOwner(vaultOwnerKindSshProfile, 'p1'),
+      isNull,
+      reason: 'the vault entry must not outlive its profile',
+    );
+    expect(await vault.list(), isEmpty);
+  });
+
+  test(
+    'deleteProfile keeps the vault entry when the repository delete fails',
+    () async {
+      final vault = await _vault();
+      final capture = VaultCredentialCapture(vault: vault);
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'one',
+        host: 'one.example.com',
+        username: 'alice',
+      );
+      final result = await capture.captureSsh(profile, password: 'pw');
+      final repository = _FailingDeleteSshProfileRepository(
+        profile.copyWith(vaultEntryId: result.entryId),
+      );
+
+      final cubit = SshProfileCubit(
+        profileRepository: repository,
+        credentialStore: InMemorySshCredentialStore(),
+        vaultCapture: capture,
+      );
+      addTearDown(cubit.close);
+      await cubit.load();
+
+      await expectLater(cubit.deleteProfile('p1'), throwsA(isA<StateError>()));
+
+      expect(
+        await capture.findOwner(vaultOwnerKindSshProfile, 'p1'),
+        isNotNull,
+        reason: 'a failed row delete must keep the secret for a retry',
+      );
+      expect(await vault.readField(result.entryId, 'password'), 'pw');
+    },
+  );
+
   test(
     'load follows AppStorage home when repository root is dynamic',
     () async {
@@ -675,6 +786,36 @@ class _SlowFakeSshProfileRepository implements SshProfileRepository {
   @override
   Future<SshProfile?> findById(String profileId) async =>
       profileId == 'p1' ? _profile : null;
+}
+
+class _FailingDeleteSshProfileRepository implements SshProfileRepository {
+  _FailingDeleteSshProfileRepository(this._profile);
+
+  final SshProfile _profile;
+
+  @override
+  Future<List<SshProfile>> loadAll() async => [_profile];
+
+  @override
+  Future<String> loadSelectedProfileId() async => '';
+
+  @override
+  Future<void> save(SshProfile profile) async {}
+
+  @override
+  Future<void> saveAll(List<SshProfile> profiles) async {}
+
+  @override
+  Future<void> saveSelectedProfileId(String profileId) async {}
+
+  @override
+  Future<void> delete(String profileId) async {
+    throw StateError('delete failed');
+  }
+
+  @override
+  Future<SshProfile?> findById(String profileId) async =>
+      profileId == _profile.id ? _profile : null;
 }
 
 class _ThrowingCredentialStore implements SshCredentialStore {

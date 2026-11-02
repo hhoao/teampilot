@@ -936,6 +936,7 @@ Future<AppShell> buildAppShell({
     enableRemoteCliDiscovery: () =>
         Platform.isAndroid && defaultTargetResolver().kind == RuntimeKind.ssh,
     remoteCliPathCache: deviceLocalRemoteCliPathCache(nativeAppDataPath),
+    vaultCapture: vaultCredentialCapture,
   );
 
   final githubCredentialsStore = GithubCredentialsStore(
@@ -1266,6 +1267,7 @@ Future<AppShell> buildAppShell({
         repository: resolvedManagedProviderRepository,
         appProviderCubit: appProviderCubit,
         rowJanitor: managedProviderCliRowJanitor,
+        ensureVaultUnlocked: vaultUnlockGate.ensureUnlocked,
         onProviderDeletedState:
             resolvedManagedProviderUsageCubit.removeProvider,
         onProviderDeletedCredentialCleanup: (provider) async {

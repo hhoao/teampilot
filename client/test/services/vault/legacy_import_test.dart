@@ -400,6 +400,49 @@ void main() {
   );
 
   test(
+    'a verified SSH link merges a keychain-only relay grant before cleanup',
+    () async {
+      final h = await _harness();
+      final sshProfiles = SshProfileRepository(storage: h.storage);
+      final sshCredentials = InMemorySshCredentialStore();
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'Server',
+        host: 'h',
+        username: 'u',
+      );
+      await sshProfiles.save(profile);
+      final captured = await h.capture.captureSsh(
+        profile,
+        password: 'vault-pw',
+      );
+      await sshProfiles.save(profile.copyWith(vaultEntryId: captured.entryId));
+      // Paired tunnels write grants through the legacy store even after the
+      // profile was linked; the entry does not hold it yet.
+      await sshCredentials.saveRelayGrant('p1', 'grant-1');
+
+      await _importer(
+        h,
+        sshProfiles: sshProfiles,
+        sshCredentials: sshCredentials,
+      ).runOnce();
+
+      expect(
+        await h.vault.readField(captured.entryId, 'relayGrant'),
+        'grant-1',
+        reason: 'the grant must be merged before the keychain is cleared',
+      );
+      expect(await sshCredentials.loadRelayGrant('p1'), isNull);
+      expect(await sshCredentials.loadPassword('p1'), isNull);
+      expect(
+        (await sshProfiles.loadAll()).single.vaultEntryId,
+        captured.entryId,
+      );
+      expect(h.vault.legacyImportVersion, 1);
+    },
+  );
+
+  test(
     'a dangling SSH link is re-captured before the keychain is deleted',
     () async {
       final h = await _harness();

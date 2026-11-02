@@ -743,6 +743,9 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
             for (final option in options) {
               if (option.$1 == value) return option.$2;
             }
+            if (vaultEntryIdFromCredentialLink(value) != null) {
+              return context.l10n.vaultStoredInVault;
+            }
             return value;
           },
           onChanged: (value) {
