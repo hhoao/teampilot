@@ -171,6 +171,7 @@ import '../services/acp/acp_chat_strings.dart';
 import '../services/acp/acp_frame_logger.dart';
 import '../pages/system/app_bootstrap_loading_page.dart';
 import '../pages/system/bootstrap_startup_error_page.dart';
+import '../pages/vault/vault_status_section.dart' show promptVaultUnlockFromRouter;
 import '../repositories/app_settings_repository.dart';
 import '../repositories/layout_repository.dart';
 import '../repositories/session_preferences_repository.dart';
@@ -191,10 +192,12 @@ import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
 import '../services/storage/app_paths.dart';
 import '../services/storage/device_local_control_plane.dart';
+import '../services/vault/credential_capture.dart';
 import '../services/vault/encrypted_vault_backend.dart';
 import '../services/vault/keychain_vault_backend.dart';
 import '../services/vault/provider_credential_link.dart';
 import '../services/vault/vault_service.dart';
+import '../services/vault/vault_unlock_gate.dart';
 import '../services/io/local_filesystem.dart';
 import '../services/connect/connect_agent.dart';
 import '../services/connect/authorized_keys_file.dart';
@@ -920,6 +923,12 @@ Future<AppShell> buildAppShell({
 
   final githubCredentialsStore = GithubCredentialsStore(
     kv: const FlutterSecureKeyValueStore(),
+    vault: vaultService,
+    vaultCapture: VaultCredentialCapture(vault: vaultService),
+    ensureVaultUnlocked: VaultUnlockGate(
+      vault: vaultService,
+      prompt: promptVaultUnlockFromRouter,
+    ).ensureUnlocked,
   );
   final githubDeviceFlow = githubDeviceFlowAvailable
       ? GithubDeviceFlowAuth(clientId: githubOauthClientId)
