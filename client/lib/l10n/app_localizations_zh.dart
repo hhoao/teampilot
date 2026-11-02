@@ -9882,4 +9882,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get vaultTypeCustom => '自定义';
+
+  @override
+  String get sshCredentialSource => '凭据来源';
+
+  @override
+  String get sshCredentialSourceKeychain => '本机钥匙串';
+
+  @override
+  String get sshCredentialVaultDeleted => '已删除的条目';
+
+  @override
+  String get sshSaveToVault => '保存到保险库';
+
+  @override
+  String get sshMigrateToVault => '迁移到保险库';
+
+  @override
+  String get sshVaultBadge => '保险库';
 }

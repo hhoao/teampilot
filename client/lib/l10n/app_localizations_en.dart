@@ -10314,4 +10314,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get vaultTypeCustom => 'Custom';
+
+  @override
+  String get sshCredentialSource => 'Credentials';
+
+  @override
+  String get sshCredentialSourceKeychain => 'This device\'s keychain';
+
+  @override
+  String get sshCredentialVaultDeleted => 'Deleted vault entry';
+
+  @override
+  String get sshSaveToVault => 'Save to vault';
+
+  @override
+  String get sshMigrateToVault => 'Move to vault';
+
+  @override
+  String get sshVaultBadge => 'Vault';
 }

@@ -4,12 +4,15 @@ import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logger/logger.dart';
+import 'package:uuid/uuid.dart';
 
 import '../models/ssh_profile.dart';
 import '../models/team_config.dart';
+import '../models/vault_entry.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../services/cli/remote_cli_path_cache.dart';
+import '../services/vault/vault_service.dart';
 import '../services/storage/home_ssh_profile_impact.dart';
 
 class SshProfileState extends Equatable {
@@ -62,6 +65,7 @@ class SshProfileCubit extends Cubit<SshProfileState> {
     void Function(String profileId)? invalidateProfileConnection,
     bool Function()? enableRemoteCliDiscovery,
     RemoteCliPathCache? remoteCliPathCache,
+    VaultService? vaultService,
   }) : _profileRepository = profileRepository,
        _credentialStore = credentialStore,
        _locateRemoteCliPaths = locateRemoteCliPaths,
@@ -69,6 +73,7 @@ class SshProfileCubit extends Cubit<SshProfileState> {
        _invalidateProfileConnection = invalidateProfileConnection,
        _enableRemoteCliDiscovery = enableRemoteCliDiscovery,
        _remoteCliPathCache = remoteCliPathCache,
+       _vaultService = vaultService,
        super(const SshProfileState());
 
   final SshProfileRepository _profileRepository;
@@ -78,6 +83,7 @@ class SshProfileCubit extends Cubit<SshProfileState> {
   final void Function(String profileId)? _invalidateProfileConnection;
   final bool Function()? _enableRemoteCliDiscovery;
   final RemoteCliPathCache? _remoteCliPathCache;
+  final VaultService? _vaultService;
 
   /// Single-flight: bootstrapHomeIndex, prepareInteractiveShell, and
   /// reconnectHomeSshIfNeeded all call [load] concurrently on boot; coalescing
@@ -163,6 +169,55 @@ class SshProfileCubit extends Cubit<SshProfileState> {
     _invalidateProfileConnection?.call(profile.id);
     await _profileRepository.save(profile);
     await load();
+  }
+
+  /// 把钥匙串里的单条凭据复制进保险库，成功后才清除旧值。
+  Future<String?> migrateToVault(String profileId) async {
+    final vault = _vaultService;
+    if (vault == null) return null;
+    final profile = state.profiles.where((p) => p.id == profileId).firstOrNull;
+    if (profile == null || (profile.vaultEntryId ?? '').isNotEmpty) {
+      return profile?.vaultEntryId;
+    }
+
+    final fields = <String, String>{};
+    if (profile.authType == SshAuthType.password) {
+      final password = await _credentialStore.loadPassword(profileId);
+      if (password == null || password.isEmpty) return null;
+      fields['password'] = password;
+    } else {
+      final privateKey = await _credentialStore.loadPrivateKey(profileId);
+      if (privateKey == null || privateKey.isEmpty) return null;
+      fields['privateKey'] = privateKey;
+      final passphrase = await _credentialStore.loadPrivateKeyPassphrase(
+        profileId,
+      );
+      if (passphrase != null && passphrase.isNotEmpty) {
+        fields['passphrase'] = passphrase;
+      }
+    }
+
+    final entry = VaultEntry(
+      id: const Uuid().v4(),
+      type: profile.authType == SshAuthType.password
+          ? VaultEntryType.sshPassword
+          : VaultEntryType.sshPrivateKey,
+      title: profile.name,
+      fields: {
+        'host': profile.host,
+        'port': '${profile.port}',
+        'username': profile.username,
+        ...fields,
+      },
+      revealable: profile.authType == SshAuthType.password,
+    );
+    await vault.upsert(entry);
+
+    final updated = profile.copyWith(vaultEntryId: entry.id);
+    await _profileRepository.save(updated);
+    await _credentialStore.deleteAll(profileId);
+    await load();
+    return entry.id;
   }
 
   Future<void> deleteProfile(String profileId) async {

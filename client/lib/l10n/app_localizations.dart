@@ -18317,6 +18317,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Custom'**
   String get vaultTypeCustom;
+
+  /// No description provided for @sshCredentialSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Credentials'**
+  String get sshCredentialSource;
+
+  /// No description provided for @sshCredentialSourceKeychain.
+  ///
+  /// In en, this message translates to:
+  /// **'This device\'s keychain'**
+  String get sshCredentialSourceKeychain;
+
+  /// No description provided for @sshCredentialVaultDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted vault entry'**
+  String get sshCredentialVaultDeleted;
+
+  /// No description provided for @sshSaveToVault.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to vault'**
+  String get sshSaveToVault;
+
+  /// No description provided for @sshMigrateToVault.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to vault'**
+  String get sshMigrateToVault;
+
+  /// No description provided for @sshVaultBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Vault'**
+  String get sshVaultBadge;
 }
 
 class _AppLocalizationsDelegate

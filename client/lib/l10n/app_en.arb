@@ -5211,5 +5211,11 @@
   "vaultTypeLogin": "Login",
   "vaultTypeToken": "Token",
   "vaultTypeSecureNote": "Secure note",
-  "vaultTypeCustom": "Custom"
+  "vaultTypeCustom": "Custom",
+  "sshCredentialSource": "Credentials",
+  "sshCredentialSourceKeychain": "This device's keychain",
+  "sshCredentialVaultDeleted": "Deleted vault entry",
+  "sshSaveToVault": "Save to vault",
+  "sshMigrateToVault": "Move to vault",
+  "sshVaultBadge": "Vault"
 }
