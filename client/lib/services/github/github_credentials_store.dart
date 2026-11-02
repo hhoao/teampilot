@@ -110,6 +110,12 @@ class GithubCredentialsStore {
     return true;
   }
 
+  /// Vault entry id this store points at, or null when no pointer is stored.
+  Future<String?> storedVaultEntryId() async {
+    final pointer = (await _kv.read(_vaultEntryKey))?.trim() ?? '';
+    return pointer.isEmpty ? null : pointer;
+  }
+
   Future<void> clearStored() async {
     final pointer = (await _kv.read(_vaultEntryKey))?.trim() ?? '';
     if (pointer.isNotEmpty && _vault != null) {
