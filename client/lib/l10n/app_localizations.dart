@@ -10718,6 +10718,12 @@ abstract class AppLocalizations {
   /// **'CodeBuddy'**
   String get appProviderToolCodebuddy;
 
+  /// No description provided for @appProviderToolQoder.
+  ///
+  /// In en, this message translates to:
+  /// **'Qoder'**
+  String get appProviderToolQoder;
+
   /// No description provided for @codebuddyCredentialsLogin.
   ///
   /// In en, this message translates to:
@@ -10789,6 +10795,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'CodeBuddy sign-in failed.'**
   String get codebuddyCredentialsActionFailed;
+
+  /// No description provided for @qoderCredentialsLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get qoderCredentialsLogin;
+
+  /// No description provided for @qoderCredentialsLoginTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to Qoder'**
+  String get qoderCredentialsLoginTitle;
+
+  /// No description provided for @qoderCredentialsLoginIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete the sign-in in the terminal below. The CLI opens a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.'**
+  String get qoderCredentialsLoginIntro;
+
+  /// No description provided for @qoderCredentialsLoginStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting Qoder CLI…'**
+  String get qoderCredentialsLoginStarting;
+
+  /// No description provided for @qoderCredentialsLoginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start the login terminal: {error}'**
+  String qoderCredentialsLoginFailed(String error);
+
+  /// No description provided for @qoderCredentialsLoginExited.
+  ///
+  /// In en, this message translates to:
+  /// **'Qoder CLI exited. Close this dialog and start the sign-in again.'**
+  String get qoderCredentialsLoginExited;
+
+  /// No description provided for @qoderCredentialsSignedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in'**
+  String get qoderCredentialsSignedIn;
+
+  /// No description provided for @qoderCredentialsActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The Qoder action failed'**
+  String get qoderCredentialsActionFailed;
 
   /// No description provided for @appProviderTeamToolSection.
   ///

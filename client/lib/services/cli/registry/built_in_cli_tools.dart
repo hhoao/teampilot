@@ -43,6 +43,8 @@ import '../flashskyai/flashskyai_tool.dart';
 import '../gemini/capabilities/acp.dart';
 import '../gemini/gemini_tool.dart';
 import '../opencode/opencode_tool.dart';
+import '../qoder/capabilities/provider.dart';
+import '../qoder/qoder_tool.dart';
 
 void registerBuiltInCliTools(
   CliToolRegistry registry, {
@@ -129,6 +131,10 @@ void registerBuiltInCliTools(
       // pre-configure registry (tests / arg assembly) keeps the const default.
       provider: CodebuddyProviderCapability(storage: storage),
     ),
+  );
+
+  registry.register(
+    QoderCliTool(provider: QoderProviderCapability(storage: storage)),
   );
 
   assert(

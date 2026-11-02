@@ -61,6 +61,7 @@ void main() {
       CliTool.flashskyai => null,
       CliTool.gemini => 'google',
       CliTool.codebuddy => 'codebuddy',
+      CliTool.qoder => 'qoder',
     };
     expect(
       SimpleLaunchIdentity.resolve(

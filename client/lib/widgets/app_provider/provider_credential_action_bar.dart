@@ -469,6 +469,7 @@ String _sectionTitle(AppLocalizations l10n, CliTool cli) {
     CliTool.flashskyai => l10n.appProviderToolFlashskyai,
     CliTool.gemini => l10n.appProviderToolGemini,
     CliTool.codebuddy => l10n.appProviderToolCodebuddy,
+    CliTool.qoder => l10n.appProviderToolQoder,
   };
 }
 
@@ -486,6 +487,7 @@ String _actionLabel(
       CliTool.flashskyai => l10n.appProviderToolFlashskyai,
       CliTool.gemini => l10n.appProviderToolGemini,
       CliTool.codebuddy => l10n.codebuddyCredentialsLogin,
+      CliTool.qoder => l10n.qoderCredentialsLogin,
     },
     ProviderCredentialActionKind.importGlobal => switch (cli) {
       CliTool.claude => l10n.claudeOfficialCredentialsImportGlobal,
@@ -495,6 +497,7 @@ String _actionLabel(
       CliTool.flashskyai => l10n.appProviderToolFlashskyai,
       CliTool.gemini => l10n.appProviderToolGemini,
       CliTool.codebuddy => l10n.appProviderToolCodebuddy,
+      CliTool.qoder => l10n.appProviderToolQoder,
     },
     ProviderCredentialActionKind.importFile => switch (cli) {
       CliTool.claude => l10n.claudeOfficialCredentialsImportFile,
@@ -504,6 +507,7 @@ String _actionLabel(
       CliTool.flashskyai => l10n.appProviderToolFlashskyai,
       CliTool.gemini => l10n.appProviderToolGemini,
       CliTool.codebuddy => l10n.appProviderToolCodebuddy,
+      CliTool.qoder => l10n.appProviderToolQoder,
     },
     ProviderCredentialActionKind.importDirectory =>
       l10n.cursorCredentialsImportFile,
@@ -515,6 +519,7 @@ String _actionLabel(
       CliTool.flashskyai => l10n.appProviderToolFlashskyai,
       CliTool.gemini => l10n.appProviderToolGemini,
       CliTool.codebuddy => l10n.appProviderToolCodebuddy,
+      CliTool.qoder => l10n.appProviderToolQoder,
     },
   };
 }
@@ -541,6 +546,7 @@ String _revokeConfirmMessage(
     CliTool.flashskyai => l10n.appProviderToolFlashskyai,
     CliTool.gemini => l10n.appProviderToolGemini,
     CliTool.codebuddy => l10n.appProviderToolCodebuddy,
+    CliTool.qoder => l10n.appProviderToolQoder,
   };
 }
 

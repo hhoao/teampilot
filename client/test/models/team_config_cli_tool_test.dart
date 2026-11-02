@@ -16,7 +16,13 @@ void main() {
     expect(CliTool.tryParse('CodeBuddy'), CliTool.codebuddy);
   });
 
-  test('CliTool.values length is 7 after adding codebuddy', () {
-    expect(CliTool.values.length, 7);
+  test('CliTool has a qoder value that parses round-trip', () {
+    expect(CliTool.qoder.value, 'qoder');
+    expect(CliTool.tryParse('qoder'), CliTool.qoder);
+    expect(CliTool.tryParse('Qoder'), CliTool.qoder);
+  });
+
+  test('CliTool.values length is 8 after adding qoder', () {
+    expect(CliTool.values.length, 8);
   });
 }

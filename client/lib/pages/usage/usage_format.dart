@@ -56,6 +56,7 @@ String usageCliLabel(CliTool cli) => switch (cli) {
   CliTool.cursor => 'Cursor',
   CliTool.gemini => 'Gemini',
   CliTool.codebuddy => 'CodeBuddy',
+  CliTool.qoder => 'Qoder',
   CliTool.flashskyai => 'FlashSky',
 };
 
@@ -66,6 +67,7 @@ Color usageCliColor(CliTool cli) => switch (cli) {
   CliTool.cursor => const Color(0xFF2F80ED),
   CliTool.gemini => const Color(0xFF4285F4),
   CliTool.codebuddy => const Color(0xFF1E6FFF),
+  CliTool.qoder => const Color(0xFF6B4EFF),
   CliTool.flashskyai => const Color(0xFFF59E0B),
 };
 

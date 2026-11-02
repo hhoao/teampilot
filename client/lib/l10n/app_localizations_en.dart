@@ -6018,6 +6018,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appProviderToolCodebuddy => 'CodeBuddy';
 
   @override
+  String get appProviderToolQoder => 'Qoder';
+
+  @override
   String get codebuddyCredentialsLogin => 'Sign in';
 
   @override
@@ -6056,6 +6059,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get codebuddyCredentialsActionFailed => 'CodeBuddy sign-in failed.';
+
+  @override
+  String get qoderCredentialsLogin => 'Sign in';
+
+  @override
+  String get qoderCredentialsLoginTitle => 'Sign in to Qoder';
+
+  @override
+  String get qoderCredentialsLoginIntro =>
+      'Complete the sign-in in the terminal below. The CLI opens a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.';
+
+  @override
+  String get qoderCredentialsLoginStarting => 'Starting Qoder CLI…';
+
+  @override
+  String qoderCredentialsLoginFailed(String error) {
+    return 'Could not start the login terminal: $error';
+  }
+
+  @override
+  String get qoderCredentialsLoginExited =>
+      'Qoder CLI exited. Close this dialog and start the sign-in again.';
+
+  @override
+  String get qoderCredentialsSignedIn => 'Signed in';
+
+  @override
+  String get qoderCredentialsActionFailed => 'The Qoder action failed';
 
   @override
   String get appProviderTeamToolSection => 'Tool providers for this team';

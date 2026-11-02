@@ -5773,6 +5773,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appProviderToolCodebuddy => 'CodeBuddy';
 
   @override
+  String get appProviderToolQoder => 'Qoder';
+
+  @override
   String get codebuddyCredentialsLogin => '登录';
 
   @override
@@ -5810,6 +5813,33 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get codebuddyCredentialsActionFailed => 'CodeBuddy 登录失败。';
+
+  @override
+  String get qoderCredentialsLogin => '登录';
+
+  @override
+  String get qoderCredentialsLoginTitle => '登录 Qoder';
+
+  @override
+  String get qoderCredentialsLoginIntro =>
+      '在下方终端完成登录。CLI 会打开浏览器；如果没有打开，请手动访问它输出的链接。也可以在这里切换账号。';
+
+  @override
+  String get qoderCredentialsLoginStarting => '正在启动 Qoder CLI…';
+
+  @override
+  String qoderCredentialsLoginFailed(String error) {
+    return '无法启动登录终端：$error';
+  }
+
+  @override
+  String get qoderCredentialsLoginExited => 'Qoder CLI 已退出。请关闭此对话框后重新登录。';
+
+  @override
+  String get qoderCredentialsSignedIn => '已登录';
+
+  @override
+  String get qoderCredentialsActionFailed => 'Qoder 操作失败';
 
   @override
   String get appProviderTeamToolSection => '团队默认服务商';

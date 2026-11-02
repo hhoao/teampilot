@@ -3020,6 +3020,7 @@
   "appProviderToolCursor": "Cursor",
   "appProviderToolGemini": "Gemini CLI",
   "appProviderToolCodebuddy": "CodeBuddy",
+  "appProviderToolQoder": "Qoder",
   "codebuddyCredentialsLogin": "Sign in",
   "codebuddyCredentialsLoginTitle": "Sign in to CodeBuddy",
   "codebuddyCredentialsLoginIntro": "Complete the sign-in in the terminal below. If a login-method list appears, choose one first (e.g. WeChat / enterprise domain). The CLI may open a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.",
@@ -3039,6 +3040,21 @@
   "codebuddyCredentialsSendLogin": "Send /login",
   "codebuddyCredentialsSignedIn": "Signed in to CodeBuddy.",
   "codebuddyCredentialsActionFailed": "CodeBuddy sign-in failed.",
+  "qoderCredentialsLogin": "Sign in",
+  "qoderCredentialsLoginTitle": "Sign in to Qoder",
+  "qoderCredentialsLoginIntro": "Complete the sign-in in the terminal below. The CLI opens a browser tab; if it does not, open the URL it prints. This is also where you switch accounts.",
+  "qoderCredentialsLoginStarting": "Starting Qoder CLI…",
+  "qoderCredentialsLoginFailed": "Could not start the login terminal: {error}",
+  "@qoderCredentialsLoginFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "qoderCredentialsLoginExited": "Qoder CLI exited. Close this dialog and start the sign-in again.",
+  "qoderCredentialsSignedIn": "Signed in",
+  "qoderCredentialsActionFailed": "The Qoder action failed",
   "appProviderTeamToolSection": "Tool providers for this team",
   "appProviderTeamToolSubtitle": "Select which unified provider each tool uses when this team starts.",
   "appProviderTeamNone": "None",
