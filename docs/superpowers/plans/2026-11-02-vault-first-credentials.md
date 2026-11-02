@@ -2199,7 +2199,7 @@ Append to `client/test/services/provider_usage/managed_provider_credential_link_
       ),
     );
     final store = ManagedProviderSecretStore(_FakeSecureKeyValueStore());
-    await store.write('managed-provider:m1', {'apiKey': 'from-store'});
+    await store.write('managed-provider:m2', {'apiKey': 'from-store'});
     final resolver = ManagedProviderCredentialResolver(store, vault: vault);
     final provider = _secretEntry().copyWith(vaultEntryId: 'v1');
 
@@ -2264,7 +2264,15 @@ In `client/lib/services/provider_usage/managed_provider_secret_store.dart`:
         onProviderDeletedCredentialCleanup: (provider) async {
           final vaultEntryId = provider.vaultEntryId?.trim() ?? '';
           if (vaultEntryId.isNotEmpty) {
-            await vaultService.delete(vaultEntryId);
+            try {
+              await vaultService.delete(vaultEntryId);
+            } on Object catch (error, stackTrace) {
+              appLogger.w(
+                'Vault entry cleanup failed for managed provider ${provider.id}',
+                error: error,
+                stackTrace: stackTrace,
+              );
+            }
           }
           final ref = provider.credentialRef?.trim();
           if (ref != null && ref.isNotEmpty) {
@@ -2286,6 +2294,41 @@ In `client/lib/services/provider_usage/managed_provider_secret_store.dart`:
     }
     final ref = entry.credentialRef?.trim();
 ```
+
+- [ ] **Step 7b: Guard writes before initialization**
+
+Add to `client/test/services/vault/vault_service_test.dart`:
+
+```dart
+  test('writes before initialize are rejected without touching the store', () async {
+    final store = _FakeStore();
+    final service = buildService(store: store);
+    await expectLater(
+      service.upsert(
+        const VaultEntry(id: 'a', type: VaultEntryType.token, title: 'A'),
+      ),
+      throwsA(isA<VaultStorageException>()),
+    );
+    await expectLater(
+      service.delete('a'),
+      throwsA(isA<VaultStorageException>()),
+    );
+    expect(store.values, isEmpty);
+  });
+```
+
+In `client/lib/services/vault/vault_service.dart`, at the start of `_mutate`:
+
+```dart
+    if (!_initialized) {
+      return Future<void>.error(
+        const VaultStorageException('notInitialized'),
+      );
+    }
+```
+
+This prevents an uninitialized service from saving an empty document over a
+vault whose load failed at boot.
 
 - [ ] **Step 8: Run the tests and analyze**
 
@@ -2310,6 +2353,7 @@ git commit -m "feat(vault): read managed-provider credentials from the vault"
 - Create: `client/lib/services/provider_usage/managed_provider_vault_writer.dart`
 - Modify: `client/lib/services/vault/credential_capture.dart` (add `existingManagedFields`)
 - Modify: `client/lib/pages/managed_providers/managed_provider_editor_page.dart`
+- Modify: `client/lib/widgets/app_provider/app_provider_form_sheet.dart` (managed options include vault-only entries)
 - Test: `client/test/services/provider_usage/managed_provider_vault_writer_test.dart`
 
 **Interfaces:**
@@ -2625,7 +2669,19 @@ Future<bool> _vaultHasRequiredSecrets(
 }
 ```
 
-- [ ] **Step 6: Run managed-provider tests**
+- [ ] **Step 6: Include vault-only managed entries in provider link options**
+
+In `client/lib/widgets/app_provider/app_provider_form_sheet.dart`, change the
+managed-entry filter so a vault-backed entry without a legacy ref is still
+selectable:
+
+```dart
+      final ref = entry.credentialRef?.trim() ?? '';
+      final vaultEntryId = entry.vaultEntryId?.trim() ?? '';
+      if (ref.isEmpty && vaultEntryId.isEmpty) continue;
+```
+
+- [ ] **Step 7: Run managed-provider tests**
 
 Run: `cd client && dart run tool/run_tests.dart test/services/provider_usage test/pages/managed_providers test/cubits/managed_provider_cubit_test.dart test/services/vault/credential_capture_test.dart`
 Expected: `All tests passed!`
