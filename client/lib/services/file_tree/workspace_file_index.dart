@@ -31,11 +31,14 @@ class _ScoredFileMatch {
 /// Cached, VSCode-style file name index for one workspace root.
 ///
 /// Builds a flat record of every file under [root] once (streamed/chunked so
-/// the UI event loop stays responsive), then serves [query] synchronously from
-/// memory — no per-keystroke tree walk. [ensureFresh] rebuilds only when the
-/// root's mtime changed since the last build (or, when mtimes are unavailable,
-/// after [WorkspaceFileIndex.maxStale] has elapsed), so repeated queries and
-/// repeated dialog opens reuse the built index.
+/// the UI event loop stays responsive), then serves [query] without walking the
+/// tree again. On local roots the index — including its fuzzy scoring, which
+/// touches every entry — lives on a worker isolate so a query never stalls
+/// frames; elsewhere the entries are kept here and queried in memory.
+/// [ensureFresh] rebuilds only when the root's mtime changed since the last
+/// build (or, when mtimes are unavailable, after
+/// [WorkspaceFileIndex.maxStale] has elapsed), so repeated queries and repeated
+/// dialog opens reuse the built index.
 ///
 /// Keeps the same skip rules as [searchWorkspaceFiles] (hidden entries and the
 /// `_ignoredDirNames` set), so the dialog and the pure walker agree on what is
@@ -57,10 +60,14 @@ class WorkspaceFileIndex {
   /// Entries built so far; `null` until the first [ensureFresh] completes.
   List<WorkspaceFileMatch>? _entries;
 
+  /// Lowercased [WorkspaceFileMatch.relativePath] for each entry, built once so
+  /// a query does not re-allocate lowercased copies of every path per keystroke.
+  List<String>? _lowerPaths;
+
   /// Distinct relative directory paths (e.g. `src/utils`) collected during the
   /// same build, used by [queryDirectories] for directory-name matches.
   List<String>? _dirs;
-  TpFileIndex? _rust;
+  IsolatedFileIndex? _rust;
   DateTime? _builtRootMtime;
   DateTime? _builtAt;
   Future<void>? _buildInFlight;
@@ -99,6 +106,7 @@ class WorkspaceFileIndex {
     _rust?.dispose();
     _rust = null;
     _entries = null;
+    _lowerPaths = null;
     _dirs = null;
     _builtRootMtime = null;
     _builtAt = null;
@@ -129,7 +137,7 @@ class WorkspaceFileIndex {
 
   Future<void> _buildIndex() async {
     if (_shouldUseRust()) {
-      final rust = _rust ?? TpFileIndex();
+      final rust = _rust ?? IsolatedFileIndex();
       try {
         await rust.build(
           root,
@@ -140,6 +148,7 @@ class WorkspaceFileIndex {
         );
         _rust = rust;
         _entries = null;
+        _lowerPaths = null;
         _dirs = null;
         _builtAt = DateTime.now();
         _builtRootMtime = (await _fs.stat(root)).mtime;
@@ -155,6 +164,7 @@ class WorkspaceFileIndex {
   Future<void> _build() async {
     final ctx = _fs.pathContext;
     final entries = <WorkspaceFileMatch>[];
+    final lowerPaths = <String>[];
     final dirs = <String>[];
     // BFS with O(1) pop (List.removeAt(0) is O(n) and would make a large
     // workspace build quadratic).
@@ -190,6 +200,7 @@ class WorkspaceFileIndex {
             relativePath: ctx.relative(full, from: root),
           ),
         );
+        lowerPaths.add(entries.last.relativePath.toLowerCase());
       }
       // Yield to the event loop every few directories so building a large
       // workspace does not stall the UI.
@@ -199,39 +210,47 @@ class WorkspaceFileIndex {
     }
 
     _entries = entries;
+    _lowerPaths = lowerPaths;
     _dirs = dirs;
     _builtAt = DateTime.now();
     _builtRootMtime = (await _fs.stat(root)).mtime;
   }
 
-  /// Synchronously filters the built index. Empty when the index is not built
-  /// yet or [query] is blank.
-  List<WorkspaceFileMatch> query(
+  /// Filters the built index. Empty when the index is not built yet or [query]
+  /// is blank. On local roots the work happens on the index's worker isolate.
+  Future<List<WorkspaceFileMatch>> query(
     String query, {
     int? limit,
     WorkspaceFileMatchMode mode = WorkspaceFileMatchMode.fuzzy,
-  }) {
+  }) async {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return const [];
     final cap = limit ?? _limits.maxResults;
     if (cap <= 0) return const [];
 
     final rust = _rust;
-    if (rust?.isBuilt == true) {
-      return [
-        for (final hit in rust!.query(
+    if (rust != null && rust.isBuilt) {
+      try {
+        final hits = await rust.query(
           q,
           mode: mode == WorkspaceFileMatchMode.fuzzy
               ? TpFileMatchMode.fuzzy
               : TpFileMatchMode.contains,
           limit: cap,
-        ))
-          WorkspaceFileMatch(
-            path: hit.path,
-            name: hit.name,
-            relativePath: hit.relativePath,
-          ),
-      ];
+        );
+        return [
+          for (final hit in hits)
+            WorkspaceFileMatch(
+              path: hit.path,
+              name: hit.name,
+              relativePath: hit.relativePath,
+            ),
+        ];
+      } on Object {
+        // The worker was disposed/rebuilt under us (tab close, storage swap).
+        // Treat it like an unbuilt index: the next ensureFresh rebuilds.
+        return const [];
+      }
     }
 
     final entries = _entries;
@@ -246,9 +265,15 @@ class WorkspaceFileIndex {
       return out;
     }
 
+    final lowerPaths = _lowerPaths;
     final scored = <_ScoredFileMatch>[];
-    for (final match in entries) {
-      final score = fuzzyMatchScore(match.relativePath, q);
+    for (var i = 0; i < entries.length; i++) {
+      final match = entries[i];
+      final score = fuzzyMatchScorePrepared(
+        match.relativePath,
+        lowerPaths?[i] ?? match.relativePath.toLowerCase(),
+        q,
+      );
       if (score < 0) continue;
       scored.add(_ScoredFileMatch(score: score, match: match));
     }
@@ -265,12 +290,16 @@ class WorkspaceFileIndex {
   /// contains [query], case-insensitively. Used by the compose `@`-mention
   /// picker to keep directory-drilling suggestions alongside file matches.
   /// Empty when the index is not built yet or [query] is blank.
-  List<String> queryDirectories(String query, {int limit = 20}) {
+  Future<List<String>> queryDirectories(String query, {int limit = 20}) async {
     final q = query.trim().toLowerCase();
     if (q.isEmpty || limit <= 0) return const [];
     final rust = _rust;
-    if (rust?.isBuilt == true) {
-      return rust!.queryDirectories(q, limit: limit);
+    if (rust != null && rust.isBuilt) {
+      try {
+        return await rust.queryDirectories(q, limit: limit);
+      } on Object {
+        return const [];
+      }
     }
 
     final dirs = _dirs;
@@ -299,9 +328,16 @@ class WorkspaceFileIndex {
 /// - a match inside the basename (and especially a basename prefix) is worth
 ///   more than a match buried in the directory portion;
 /// - a shorter relative path beats a longer one at equal match quality.
-int fuzzyMatchScore(String text, String query) {
-  final target = text.toLowerCase();
-  final q = query.toLowerCase();
+int fuzzyMatchScore(String text, String query) =>
+    fuzzyMatchScorePrepared(text, text.toLowerCase(), query.toLowerCase());
+
+/// Same as [fuzzyMatchScore] with the lowercased forms supplied by the caller.
+///
+/// The file index keeps every path lowercased after the build so a query does
+/// not re-allocate a lowercased copy of each path on every keystroke. [text]
+/// must be the original (case-preserving) path — camelCase boundary bonuses
+/// need it.
+int fuzzyMatchScorePrepared(String text, String target, String q) {
   if (q.isEmpty) return -1;
 
   var score = 0;

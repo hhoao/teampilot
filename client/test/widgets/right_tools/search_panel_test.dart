@@ -84,10 +84,29 @@ void main() {
   }
 
   /// Types a query, fires the debounce, then drains the engine stream.
-  Future<void> runSearch(WidgetTester tester, String query) async {
-    await tester.enterText(find.byType(TextField).first, query);
-    await tester.pump(const Duration(milliseconds: 350));
-    await tester.pumpAndSettle();
+  ///
+  /// The debounce timer, the engine's worker isolate and its chunk delivery all
+  /// run in the real zone, which the fake clock behind [WidgetTester.pump]
+  /// never advances. The query therefore runs inside [WidgetTester.runAsync]
+  /// (waiting for [cubit] to leave the searching state) and the pumps after it
+  /// render the emitted results.
+  Future<void> runSearch(
+    WidgetTester tester,
+    String query, {
+    ContentSearchCubit? cubit,
+  }) async {
+    await tester.runAsync(() async {
+      await tester.enterText(find.byType(TextField).first, query);
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      final target = cubit;
+      if (target == null) return;
+      final deadline = DateTime.now().add(const Duration(seconds: 15));
+      while (target.state.searching && DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+    });
+    await tester.pump();
+    await tester.pump();
   }
 
   testWidgets(
@@ -96,7 +115,7 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await tester.pumpWidget(wrap(cubit));
-      await runSearch(tester, 'hello');
+      await runSearch(tester, 'hello', cubit: cubit);
       expect(find.textContaining('a.dart'), findsWidgets);
       expect(find.textContaining('hello world'), findsWidgets);
       expect(cubit.state.searching, isFalse);
@@ -131,7 +150,7 @@ void main() {
         ),
       ),
     );
-    await runSearch(tester, 'needle');
+    await runSearch(tester, 'needle', cubit: cubit);
     expect(cubit.state.searching, isFalse);
     // Results span two roots: both directory headers render, in slice order.
     expect(find.text('a'), findsOneWidget);
@@ -149,7 +168,7 @@ void main() {
     final cubit = buildCubit();
     addTearDown(cubit.close);
     await tester.pumpWidget(wrap(cubit));
-    await runSearch(tester, 'hello');
+    await runSearch(tester, 'hello', cubit: cubit);
     expect(find.text('tp_panel_'), findsNothing);
     expect(find.textContaining('a.dart'), findsWidgets);
   });
@@ -190,7 +209,7 @@ void main() {
           ),
         ),
       );
-      await runSearch(tester, 'hello');
+      await runSearch(tester, 'hello', cubit: cubit);
       final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
       expect(
         find.text(l10n.workspaceSearchSliceError('missing')),
@@ -234,7 +253,7 @@ void main() {
           ),
         ),
       );
-      await runSearch(tester, 'needle');
+      await runSearch(tester, 'needle', cubit: cubit);
       expect(find.text('root'), findsOneWidget);
       expect(find.text('a'), findsOneWidget);
       expect(find.text('a/one.dart'), findsOneWidget);
@@ -272,7 +291,7 @@ void main() {
         ),
       ),
     );
-    await runSearch(tester, 'hello');
+    await runSearch(tester, 'hello', cubit: cubit);
     await tester.tap(find.textContaining('hello world').first);
     await tester.pumpAndSettle();
     expect(openedPath, endsWith('a.dart'));
@@ -283,7 +302,7 @@ void main() {
     final cubit = buildCubit();
     addTearDown(cubit.close);
     await tester.pumpWidget(wrap(cubit));
-    await runSearch(tester, 'hello');
+    await runSearch(tester, 'hello', cubit: cubit);
     expect(find.textContaining('hello world'), findsWidgets);
 
     final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
@@ -317,7 +336,7 @@ void main() {
     final cubit = buildCubit();
     addTearDown(cubit.close);
     await tester.pumpWidget(wrap(cubit));
-    await runSearch(tester, 'match');
+    await runSearch(tester, 'match', cubit: cubit);
     expect(cubit.state.truncated, isTrue);
   });
 
@@ -327,7 +346,7 @@ void main() {
     final cubit = buildCubit();
     addTearDown(cubit.close);
     await tester.pumpWidget(wrap(cubit));
-    await runSearch(tester, 'hello');
+    await runSearch(tester, 'hello', cubit: cubit);
     expect(find.textContaining('hello world'), findsWidgets);
     await tester.enterText(find.byType(TextField).first, '');
     await tester.pump(const Duration(milliseconds: 350));
@@ -400,10 +419,20 @@ void main() {
     );
 
     final fields = find.byType(TextField);
-    await tester.enterText(fields.at(0), 'hello');
-    await tester.enterText(fields.at(1), 'beta');
-    await tester.pump(const Duration(milliseconds: 350));
-    await tester.pumpAndSettle();
+    // Both debounce timers and both engine streams live in the real zone, so
+    // the query has to run under runAsync (see [runSearch]).
+    await tester.runAsync(() async {
+      await tester.enterText(fields.at(0), 'hello');
+      await tester.enterText(fields.at(1), 'beta');
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      final deadline = DateTime.now().add(const Duration(seconds: 15));
+      while ((firstCubit.state.searching || secondCubit.state.searching) &&
+          DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+    });
+    await tester.pump();
+    await tester.pump();
 
     expect(firstCubit.state.query, 'hello');
     expect(secondCubit.state.query, 'beta');
@@ -415,7 +444,7 @@ void main() {
     final cubit = buildCubit();
     addTearDown(cubit.close);
     await tester.pumpWidget(wrap(cubit));
-    await runSearch(tester, 'hello');
+    await runSearch(tester, 'hello', cubit: cubit);
     final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
     expect(find.text(l10n.workspaceSearchResultSummary(1, 1)), findsOneWidget);
   });
@@ -476,7 +505,7 @@ void main() {
     final cubit = buildCubit();
     addTearDown(cubit.close);
     await tester.pumpWidget(wrap(cubit));
-    await runSearch(tester, 'hello');
+    await runSearch(tester, 'hello', cubit: cubit);
     expect(find.textContaining('hello world'), findsWidgets);
     await tester.tap(find.textContaining('a.dart').first);
     await tester.pumpAndSettle();
@@ -493,7 +522,7 @@ void main() {
     addTearDown(cubit.close);
     await tester.pumpWidget(wrap(cubit));
     final l10n = AppLocalizations.of(tester.element(find.byType(Scaffold)));
-    await runSearch(tester, 'hello');
+    await runSearch(tester, 'hello', cubit: cubit);
     await tester.tap(find.byTooltip(l10n.editorFindToggleReplace));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(1), 'hi');
@@ -580,7 +609,7 @@ void main() {
     await tester.tap(find.byTooltip(l10n.editorFindMatchCase));
     await tester.tap(find.byTooltip(l10n.editorFindUseRegex));
     await tester.pump();
-    await runSearch(tester, 'hello');
+    await runSearch(tester, 'hello', cubit: cubit);
     expect(cubit.state.useGitignore, isFalse);
     expect(cubit.state.caseSensitive, isTrue);
     expect(cubit.state.isRegex, isFalse);

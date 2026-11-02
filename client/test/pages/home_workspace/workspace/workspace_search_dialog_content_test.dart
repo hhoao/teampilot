@@ -64,10 +64,18 @@ void main() {
 
   /// Types a query in the content section, fires the 300ms debounce, then
   /// drains the engine stream.
+  ///
+  /// The debounce timer, the engine's worker isolate and its chunk delivery all
+  /// run in the real zone, which the fake clock behind [WidgetTester.pump]
+  /// never advances; the pumps after [WidgetTester.runAsync] render the results
+  /// the section emits once its stream completes.
   Future<void> runSearch(WidgetTester tester, String query) async {
-    await tester.enterText(find.byType(TextField).first, query);
-    await tester.pump(const Duration(milliseconds: 350));
-    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.enterText(find.byType(TextField).first, query);
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    });
+    await tester.pump();
+    await tester.pump();
   }
 
   testWidgets('content filter runs a real search and lists file:line rows', (

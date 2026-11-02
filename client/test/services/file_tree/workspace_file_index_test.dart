@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/file_tree/workspace_file_index.dart';
 import 'package:teampilot/services/file_tree/workspace_file_search.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -22,11 +25,11 @@ void main() {
 
     test('returns nothing before the first build', () async {
       final index = WorkspaceFileIndex(fs: fs, root: root);
-      expect(index.query('router'), isEmpty);
+      expect(await index.query('router'), isEmpty);
       expect(index.isReady, isFalse);
     });
 
-    test('builds once and serves synchronous fuzzy queries', () async {
+    test('builds once and serves fuzzy queries from the cache', () async {
       final index = WorkspaceFileIndex(fs: fs, root: root);
       await index.ensureFresh();
       expect(index.isReady, isTrue);
@@ -36,7 +39,9 @@ void main() {
       await index.ensureFresh();
       expect(index.size, greaterThan(0));
 
-      final names = index.query('router').map((m) => m.relativePath).toList();
+      final names = (await index.query(
+        'router',
+      )).map((m) => m.relativePath).toList();
       expect(
         names,
         containsAll(['lib/app_router.dart', 'lib/widgets/router_guard.dart']),
@@ -50,7 +55,7 @@ void main() {
       () async {
         final index = WorkspaceFileIndex(fs: fs, root: root);
         await index.ensureFresh();
-        final results = index.query('router_guard');
+        final results = await index.query('router_guard');
         expect(results.first.relativePath, 'lib/widgets/router_guard.dart');
       },
     );
@@ -60,7 +65,7 @@ void main() {
       await index.ensureFresh();
       // 'ppro' is a subsequence of 'lib/app_router.dart' but of nothing else
       // in the fixture.
-      final results = index.query('ppro');
+      final results = await index.query('ppro');
       expect(results, hasLength(1));
       expect(results.single.name, 'app_router.dart');
     });
@@ -68,24 +73,24 @@ void main() {
     test('contains mode matches file name case-insensitively', () async {
       final index = WorkspaceFileIndex(fs: fs, root: root);
       await index.ensureFresh();
-      final names = index
-          .query('CHAT', mode: WorkspaceFileMatchMode.contains)
-          .map((m) => m.name)
-          .toList();
+      final names = (await index.query(
+        'CHAT',
+        mode: WorkspaceFileMatchMode.contains,
+      )).map((m) => m.name).toList();
       expect(names, ['chat_cubit.dart']);
     });
 
     test('skips hidden entries even when queried by name', () async {
       final index = WorkspaceFileIndex(fs: fs, root: root);
       await index.ensureFresh();
-      expect(index.query('hidden'), isEmpty);
-      expect(index.query('.hidden'), isEmpty);
+      expect(await index.query('hidden'), isEmpty);
+      expect(await index.query('.hidden'), isEmpty);
     });
 
     test('empty query yields no matches', () async {
       final index = WorkspaceFileIndex(fs: fs, root: root);
       await index.ensureFresh();
-      expect(index.query('   '), isEmpty);
+      expect(await index.query('   '), isEmpty);
     });
 
     test('caps fuzzy results at the limit', () async {
@@ -98,7 +103,7 @@ void main() {
         limits: const WorkspaceFileSearchLimits(maxResults: 3),
       );
       await index.ensureFresh();
-      expect(index.query('match_'), hasLength(3));
+      expect(await index.query('match_'), hasLength(3));
     });
 
     test('invalidate drops the cache and rebuilds on demand', () async {
@@ -108,7 +113,7 @@ void main() {
       index.invalidate();
       await index.ensureFresh();
       expect(
-        index.query('brand_new').map((m) => m.relativePath),
+        (await index.query('brand_new')).map((m) => m.relativePath),
         contains('lib/brand_new.dart'),
       );
     });
@@ -119,18 +124,47 @@ void main() {
         final index = WorkspaceFileIndex(fs: fs, root: root);
         await index.ensureFresh();
 
-        expect(index.queryDirectories('widgets'), contains('lib/widgets'));
-        expect(index.queryDirectories('widgets'), isNot(contains('lib')));
+        expect(
+          await index.queryDirectories('widgets'),
+          contains('lib/widgets'),
+        );
+        expect(await index.queryDirectories('widgets'), isNot(contains('lib')));
 
         // Blank query yields nothing.
-        expect(index.queryDirectories('   '), isEmpty);
+        expect(await index.queryDirectories('   '), isEmpty);
         // Unbuilt index yields nothing.
         expect(
-          WorkspaceFileIndex(fs: fs, root: root).queryDirectories('widgets'),
+          await WorkspaceFileIndex(
+            fs: fs,
+            root: root,
+          ).queryDirectories('widgets'),
           isEmpty,
         );
       },
     );
+
+    test('resolves local roots on the worker isolate', () async {
+      final dir = Directory.systemTemp.createTempSync('tp_ws_index_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      Directory('${dir.path}/lib').createSync();
+      File('${dir.path}/lib/app_router.dart').writeAsStringSync('');
+      File('${dir.path}/README.md').writeAsStringSync('');
+
+      final index = WorkspaceFileIndex(fs: LocalFilesystem(), root: dir.path);
+      addTearDown(index.dispose);
+      await index.ensureFresh();
+      expect(index.usedRustBackend, isTrue);
+
+      final paths = (await index.query('router')).map((m) => m.relativePath);
+      expect(paths, contains('lib/app_router.dart'));
+      expect(await index.queryDirectories('lib'), contains('lib'));
+
+      // Invalidation tears the worker down; the next build starts a fresh one.
+      index.invalidate();
+      await index.ensureFresh();
+      expect(index.usedRustBackend, isTrue);
+      expect(await index.query('readme'), isNotEmpty);
+    });
 
     test('respects maxIndexEntries during the build walk', () async {
       await fs.writeString('$root/a/one.txt', '');
@@ -143,7 +177,7 @@ void main() {
       await index.ensureFresh();
       // The build walk stops after 2 entries scanned, so only a subset is
       // indexed — the query must not crash and must only see indexed files.
-      final results = index.query('txt');
+      final results = await index.query('txt');
       expect(results.length, lessThanOrEqualTo(2));
     });
   });
@@ -183,7 +217,7 @@ void main() {
       expect(identical(first, second), isTrue);
 
       await first.ensureFresh();
-      expect(first.query('file_a'), hasLength(1));
+      expect(await first.query('file_a'), hasLength(1));
 
       registry.remove(root);
       expect(identical(registry.indexFor(root, fs), first), isFalse);
