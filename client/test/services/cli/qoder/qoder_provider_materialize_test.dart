@@ -238,6 +238,102 @@ void main() {
     expect(settings['telemetry'], isFalse);
   });
 
+  test(
+    'seeds the team default provider when the member has no binding',
+    () async {
+      final base = await Directory.systemTemp.createTemp('qoder_cap_');
+      addTearDown(() async {
+        if (await base.exists()) await base.delete(recursive: true);
+      });
+
+      final catalogFs = LocalFilesystem();
+      // Home plane: holds both the provider store and the machine fallback, so a
+      // wrong provider id would silently seed the machine account.
+      final homeFs = InMemoryFilesystem();
+      final storage = fakeHomeStorage(filesystem: homeFs, appDataRoot: '/tp');
+      final service = ConfigProfileService(
+        basePath: base.path,
+        fs: catalogFs,
+        layout: RuntimeLayout(teampilotRoot: base.path, fs: catalogFs),
+        storage: storage,
+      );
+      final capability = QoderProviderCapability(storage: storage);
+
+      await catalogFs.ensureDir(p.join(base.path, 'providers', 'qoder'));
+      await catalogFs.atomicWrite(
+        p.join(base.path, 'providers', 'qoder', 'providers.json'),
+        jsonEncode({
+          'providers': {
+            'work': {
+              'id': 'work',
+              'cli': 'qoder',
+              'name': 'Work',
+              'defaultModel': 'glm-5.3',
+            },
+          },
+        }),
+      );
+      await homeFs.ensureDir('/tp/providers/qoder/work');
+      await homeFs.atomicWrite('/tp/providers/qoder/work/user', 'WORK');
+      await homeFs.atomicWrite('/tp/providers/qoder/work/machine_id', 'MID');
+      await homeFs.ensureDir('/home/test/.qoder/.auth');
+      await homeFs.atomicWrite('/home/test/.qoder/.auth/user', 'MACHINE');
+      await homeFs.atomicWrite('/home/test/.qoder/.auth/machine_id', 'MID2');
+
+      const member = TeamMemberConfig(id: 'm1', name: 'Member');
+      const team = TeamProfile(
+        id: 'team-a',
+        name: 'Team',
+        cli: CliTool.qoder,
+        providerIdsByTool: {'qoder': 'work'},
+      );
+      final scope = resolveLaunchProfileScope(
+        workspaceId: 'workspace-1',
+        teamId: 'team-a',
+        appSessionId: 'session-1',
+        cliTeamName: 'session-1',
+      );
+
+      final contribution = await capability.materializeSessionHome(
+        sessionHomeContextFromLaunch(
+          ConfigProfileLaunchContext(
+            workspaceId: 'workspace-1',
+            teamId: 'team-a',
+            sessionId: scope.sessionId,
+            scope: scope,
+            team: team,
+            member: member,
+            members: const [member],
+            workingDirectory: '/workspace/workspace',
+            paths: service,
+            catalog: service,
+          ),
+          CliTool.qoder,
+        ),
+      );
+
+      final configDir =
+          contribution.environment[QoderProviderCapability.configDirEnvKey]!;
+      expect(
+        await homeFs.readString(p.posix.join(configDir, '.auth', 'user')),
+        'WORK',
+        reason: 'the team default provider account must seed the session',
+      );
+      expect(
+        await homeFs.readString(p.posix.join(configDir, '.auth', 'machine_id')),
+        'MID',
+      );
+      final settings =
+          jsonDecode(
+                (await catalogFs.readString(
+                  p.join(configDir, 'settings.json'),
+                ))!,
+              )
+              as Map<String, Object?>;
+      expect(settings['model'], 'glm-5.3');
+    },
+  );
+
   group('probe / execute', () {
     const provider = AppProviderConfig(
       id: 'qoder',

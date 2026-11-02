@@ -259,7 +259,10 @@ final class QoderProviderCapability extends CatalogModelCapability
       memberId: ctx.scope.memberId,
     );
     await delegate.fs.ensureDir(configDir);
-    final providerId = ctx.member?.provider.trim() ?? '';
+    // Resolve first: a seat bound only by the team default must seed that
+    // account, not fall back to the machine login.
+    final provider = await _resolveLaunchProvider(ctx);
+    final providerId = provider?.id.trim() ?? ctx.member?.provider.trim() ?? '';
     final authStore = _authStore;
     if (authStore == null) {
       AppLogger.instance.w(
@@ -282,7 +285,6 @@ final class QoderProviderCapability extends CatalogModelCapability
     final denyTools = _mixedNativeTeamDenyTools(ctx);
     if (denyTools.isNotEmpty) _mergePermissionsDeny(settings, denyTools);
 
-    final provider = await _resolveLaunchProvider(ctx);
     final model = _resolveModel(ctx, provider);
     if (model.isNotEmpty) settings['model'] = model;
     final effort = provider?.config['reasoningEffort']?.toString().trim() ?? '';
