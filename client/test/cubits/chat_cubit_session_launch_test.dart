@@ -73,6 +73,7 @@ void main() {
       workspace.workspaceId,
       sessionTeam: team.id,
       rosterMembers: team.members,
+      seedClaudeMemberAcp: false,
 
       memberClis: {for (final m in team.members) m.id: CliTool.claude},
     )).session;
@@ -273,6 +274,7 @@ void main() {
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
+        seedClaudeMemberAcp: false,
 
         memberClis: {for (final m in team.members) m.id: CliTool.claude},
       );
@@ -338,6 +340,7 @@ void main() {
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
+        seedClaudeMemberAcp: false,
 
         memberClis: {for (final m in team.members) m.id: CliTool.claude},
       );
@@ -467,6 +470,7 @@ void main() {
       workspace.workspaceId,
       sessionTeam: team.id,
       rosterMembers: team.members,
+      seedClaudeMemberAcp: false,
 
       memberClis: {for (final m in team.members) m.id: CliTool.claude},
     );
@@ -521,6 +525,7 @@ void main() {
       workspace.workspaceId,
       sessionTeam: team.id,
       rosterMembers: team.members,
+      seedClaudeMemberAcp: false,
 
       memberClis: {for (final m in team.members) m.id: CliTool.claude},
     )).session;
@@ -581,6 +586,7 @@ void main() {
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
+        seedClaudeMemberAcp: false,
 
         memberClis: {for (final m in team.members) m.id: CliTool.claude},
       )).session;
@@ -643,6 +649,7 @@ void main() {
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
+        seedClaudeMemberAcp: false,
 
         memberClis: {for (final m in team.members) m.id: CliTool.claude},
       );

@@ -271,7 +271,7 @@ void main() {
     },
   );
 
-  test('native Gemini plan path keeps binding acp false', () async {
+  test('native Gemini plan path binds acp true for the ACP-only CLI', () async {
     final session = (await repo.createSession(
       workspaceId,
       sessionTeam: 'team-1',
@@ -280,6 +280,6 @@ void main() {
       teamMode: TeamMode.native,
     )).session;
     expect(session.acp, isFalse);
-    expect(session.members.single.acp, isFalse);
+    expect(session.members.single.acp, isTrue);
   });
 }

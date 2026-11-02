@@ -1,7 +1,6 @@
 import 'dart:io' show Platform;
 
 import '../../../../models/app_session.dart';
-import '../../../../models/runtime_target.dart';
 import '../../../../models/session_member_binding.dart';
 import '../../../../models/team_config.dart';
 import '../../session/chat_tab.dart';
@@ -12,31 +11,20 @@ bool _isAndroid(bool? isAndroidOverride) =>
     isAndroidOverride ?? Platform.isAndroid;
 
 bool _memberAcpGates({
-  required TeamMode teamMode,
-  required String targetId,
   required CliTool? cli,
   bool? isAndroidOverride,
 }) {
-  if (teamMode != TeamMode.mixed) return false;
   if (_isAndroid(isAndroidOverride)) return false;
-  if (runtimeKindOfId(targetId) != RuntimeKind.local) return false;
   if (cli == null) return false;
   return CliToolRegistry.builtIn().capability<AcpCapability>(cli) != null;
 }
 
 bool resolveMemberBindingAcp({
   required CliTool? cli,
-  required TeamMode teamMode,
-  required String targetId,
   required bool requested,
   bool? isAndroidOverride,
 }) {
-  if (!_memberAcpGates(
-    teamMode: teamMode,
-    targetId: targetId,
-    cli: cli,
-    isAndroidOverride: isAndroidOverride,
-  )) {
+  if (!_memberAcpGates(cli: cli, isAndroidOverride: isAndroidOverride)) {
     return false;
   }
   if (CliToolRegistry.builtIn().launchesAcpOnly(cli)) return true;
@@ -57,14 +45,14 @@ bool _requestedMemberAcpSeed(
   _ => false,
 };
 
-/// Stamps mixed local member bindings with ACP from CLI settings seeds.
+/// Stamps member bindings with ACP from CLI settings seeds.
 ///
-/// Gemini is true whenever the mixed-local gates pass. Team session `acp`
-/// stays on the session, not on this list. Native teams stay false.
+/// Gemini is true whenever the gates pass. Team session `acp` stays on the
+/// session, not on this list. Every seat follows the CLI preference; only the
+/// platform and the CLI's ACP capability gate it.
 List<SessionMemberBinding> stampMemberAcp({
   required List<SessionMemberBinding> members,
   required Map<String, String> memberTargets,
-  required TeamMode teamMode,
   required bool seedClaudeMemberAcp,
   required bool seedCodexMemberAcp,
   bool seedCursorMemberAcp = true,
@@ -80,8 +68,6 @@ List<SessionMemberBinding> stampMemberAcp({
             ? false
             : resolveMemberBindingAcp(
                 cli: member.cli,
-                teamMode: teamMode,
-                targetId: memberTargets[member.rosterMemberId]!,
                 requested: _requestedMemberAcpSeed(
                   member.cli,
                   seedClaudeMemberAcp: seedClaudeMemberAcp,
@@ -121,16 +107,9 @@ SessionMemberBinding _bindingWithAcp(
 bool shouldAttachMemberAcp({
   required AppSession session,
   required String memberId,
-  required TeamProfile? team,
-  required String targetId,
   bool? isAndroidOverride,
 }) {
   if (!isAcpChatSeat(session, memberId)) return false;
   final cli = session.bindingFor(memberId)?.cli;
-  return _memberAcpGates(
-    teamMode: team?.teamMode ?? TeamMode.native,
-    targetId: targetId,
-    cli: cli,
-    isAndroidOverride: isAndroidOverride,
-  );
+  return _memberAcpGates(cli: cli, isAndroidOverride: isAndroidOverride);
 }

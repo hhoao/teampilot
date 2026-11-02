@@ -850,7 +850,6 @@ class SessionRepository {
         resolvedMembers = stampMemberAcp(
           members: plan.members,
           memberTargets: plan.memberTargets,
-          teamMode: teamMode,
           seedClaudeMemberAcp: seedClaudeMemberAcp,
           seedCodexMemberAcp: seedCodexMemberAcp,
           seedCursorMemberAcp: seedCursorMemberAcp,

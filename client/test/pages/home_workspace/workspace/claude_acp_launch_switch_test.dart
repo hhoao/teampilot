@@ -167,17 +167,13 @@ void main() {
   });
 
   group('resolveMemberBindingAcp', () {
-    test('mixed local Claude/Codex/OpenCode follow requested; Gemini always', () {
+    test('follows requested for every team mode and target; Gemini always', () {
       bool resolve({
         CliTool? cli = CliTool.claude,
-        TeamMode mode = TeamMode.mixed,
-        String target = 'local',
         bool requested = true,
         bool android = false,
       }) => resolveMemberBindingAcp(
         cli: cli,
-        teamMode: mode,
-        targetId: target,
         requested: requested,
         isAndroidOverride: android,
       );
@@ -189,9 +185,6 @@ void main() {
       expect(resolve(cli: CliTool.opencode), isTrue);
       expect(resolve(cli: CliTool.opencode, requested: false), isFalse);
       expect(resolve(cli: CliTool.flashskyai), isFalse);
-      expect(resolve(mode: TeamMode.native), isFalse);
-      expect(resolve(target: 'ssh:prod'), isFalse);
-      expect(resolve(target: 'wsl:ubuntu'), isFalse);
       expect(resolve(android: true), isFalse);
     });
   });
@@ -203,7 +196,6 @@ void main() {
     List<SessionMemberBinding> stamp({
       required List<SessionMemberBinding> members,
       Map<String, String>? targets,
-      TeamMode mode = TeamMode.mixed,
       bool seedClaude = true,
       bool seedCodex = false,
       bool seedCursor = true,
@@ -214,7 +206,6 @@ void main() {
       members: members,
       memberTargets:
           targets ?? {for (final m in members) m.rosterMemberId: 'local'},
-      teamMode: mode,
       seedClaudeMemberAcp: seedClaude,
       seedCodexMemberAcp: seedCodex,
       seedCursorMemberAcp: seedCursor,
@@ -286,34 +277,20 @@ void main() {
       );
     });
 
-    test('Codex follows seed and non-local or native seats stay false', () {
-      expect(
-        stamp(
-          members: [member(CliTool.codex, 'codex')],
-          seedCodex: true,
-        ).single.acp,
-        isTrue,
-      );
-      expect(
-        stamp(
-          members: [member(CliTool.codex, 'codex')],
-          seedCodex: false,
-        ).single.acp,
-        isFalse,
-      );
+    test('non-local and native seats follow the seed', () {
       expect(
         stamp(
           members: [member(CliTool.claude, 'lead')],
           targets: const {'lead': 'ssh:prod'},
         ).single.acp,
-        isFalse,
+        isTrue,
       );
       expect(
         stamp(
           members: [member(CliTool.gemini, 'gem')],
-          mode: TeamMode.native,
+          targets: const {'gem': 'ssh:prod'},
         ).single.acp,
-        isFalse,
+        isTrue,
       );
       expect(
         stamp(
@@ -341,7 +318,7 @@ void main() {
   });
 
   group('shouldAttachMemberAcp', () {
-    test('false when binding true but target is ssh', () {
+    test('attaches for any target when the seat is ACP', () {
       final session = AppSession(
         sessionId: 's1',
         workspaceId: 'w1',
@@ -356,35 +333,13 @@ void main() {
           ),
         ],
       );
-      const team = TeamProfile(
-        id: 't1',
-        name: 'T',
-        teamMode: TeamMode.mixed,
-        members: [TeamMemberConfig(id: 'lead', name: 'Lead')],
-      );
       expect(
-        shouldAttachMemberAcp(
-          session: session,
-          memberId: 'lead',
-          team: team,
-          targetId: 'ssh:prod',
-          isAndroidOverride: false,
-        ),
-        isFalse,
-      );
-      expect(
-        shouldAttachMemberAcp(
-          session: session,
-          memberId: 'lead',
-          team: team,
-          targetId: 'local',
-          isAndroidOverride: false,
-        ),
+        shouldAttachMemberAcp(session: session, memberId: 'lead'),
         isTrue,
       );
     });
 
-    test('OpenCode false when binding true but target is ssh', () {
+    test('OpenCode attaches for any target when the seat is ACP', () {
       final session = AppSession(
         sessionId: 's1',
         workspaceId: 'w1',
@@ -399,30 +354,8 @@ void main() {
           ),
         ],
       );
-      const team = TeamProfile(
-        id: 't1',
-        name: 'T',
-        teamMode: TeamMode.mixed,
-        members: [TeamMemberConfig(id: 'lead', name: 'Lead')],
-      );
       expect(
-        shouldAttachMemberAcp(
-          session: session,
-          memberId: 'lead',
-          team: team,
-          targetId: 'ssh:prod',
-          isAndroidOverride: false,
-        ),
-        isFalse,
-      );
-      expect(
-        shouldAttachMemberAcp(
-          session: session,
-          memberId: 'lead',
-          team: team,
-          targetId: 'local',
-          isAndroidOverride: false,
-        ),
+        shouldAttachMemberAcp(session: session, memberId: 'lead'),
         isTrue,
       );
     });

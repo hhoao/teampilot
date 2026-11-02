@@ -125,17 +125,11 @@ void main() {
     });
     await tester.pump();
     expect(chatCubit.tabStore.openTabs.length, 1);
-    expect(
-      chatCubit.tabStore.openTabs.single.info.id.startsWith('local-'),
-      isFalse,
-    );
-    expect(
-      chatCubit.isMemberRunning(
-        sessionId: chatCubit.tabStore.openTabs.single.info.id,
-        memberId: 'team-lead',
-      ),
-      isTrue,
-    );
+    final openTab = chatCubit.tabStore.openTabs.single;
+    expect(openTab.info.id.startsWith('local-'), isFalse);
+    // The default team's CLIs prefer ACP, so the lead attaches an ACP runtime
+    // instead of a PTY shell.
+    expect(openTab.memberAcpRuntimes.keys, contains('team-lead'));
     await pumpPhaseTransitions(tester);
     // Session exits compose: prefs dock restored (default: right tools hidden).
     final workbenchCubit = tester

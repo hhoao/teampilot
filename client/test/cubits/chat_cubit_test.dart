@@ -576,6 +576,7 @@ void main() {
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
+          seedClaudeMemberAcp: false,
 
           memberClis: {for (final m in team.members) m.id: CliTool.claude},
         )).session;
@@ -1025,6 +1026,8 @@ void main() {
         const team = TeamProfile(
           id: 'team-a',
           name: 'A',
+          // No ACP capability, so members launch PTY shells.
+          cli: CliTool.flashskyai,
           members: [
             TeamMemberConfig(id: 'm-lead', name: 'team-lead'),
             TeamMemberConfig(id: 'm-dev', name: 'developer'),
@@ -1151,6 +1154,7 @@ void main() {
         workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
+        seedClaudeMemberAcp: false,
 
         memberClis: {for (final m in team.members) m.id: CliTool.claude},
       )).session;
@@ -1232,6 +1236,7 @@ void main() {
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
+          seedClaudeMemberAcp: false,
 
           memberClis: {for (final m in team.members) m.id: CliTool.claude},
         )).session;
@@ -1318,6 +1323,7 @@ void main() {
           workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
+          seedClaudeMemberAcp: false,
 
           memberClis: {for (final m in team.members) m.id: CliTool.claude},
         )).session;

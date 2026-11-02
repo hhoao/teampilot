@@ -354,8 +354,7 @@ void main() {
     },
   );
 
-  test('attachMemberAcpRuntime keeps a remote (ssh) member on the terminal',
-      () async {
+  test('attachMemberAcpRuntime attaches a remote (ssh) ACP member', () async {
     final harness = _Harness();
     final session = AppSession(
       sessionId: 's1',
@@ -381,9 +380,9 @@ void main() {
       (team: team, member: member, cli: CliTool.claude),
     );
 
-    expect(handled, isFalse);
-    expect(harness.tab.memberAcpRuntimes, isEmpty);
-    expect(harness.runtime.started, isFalse);
+    expect(handled, isTrue);
+    expect(harness.tab.memberAcpRuntimes.keys, contains('lead'));
+    expect(harness.runtime.started, isTrue);
   });
 
   test(

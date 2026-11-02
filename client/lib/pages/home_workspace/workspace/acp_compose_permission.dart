@@ -109,7 +109,6 @@ List<SessionMemberBinding> stampedLandingMembers({
     return stampMemberAcp(
       members: plan.members,
       memberTargets: plan.memberTargets,
-      teamMode: team.teamMode,
       seedClaudeMemberAcp: seedClaudeMemberAcp,
       seedCodexMemberAcp: seedCodexMemberAcp,
       seedCursorMemberAcp: seedCursorMemberAcp,

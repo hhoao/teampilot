@@ -241,7 +241,7 @@ void main() {
       );
     });
 
-    test('native team members stay PTY', () {
+    test('native team members follow the CLI preference', () {
       const team = TeamProfile(
         id: 'team-native',
         name: 'Native',
@@ -261,7 +261,7 @@ void main() {
         seedCodexMemberAcp: true,
         seedCursorMemberAcp: true,
       );
-      expect(stamped.any((m) => m.acp), isFalse);
+      expect(stamped.single.acp, isTrue);
     });
   });
 

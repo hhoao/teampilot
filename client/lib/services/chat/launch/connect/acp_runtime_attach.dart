@@ -315,8 +315,6 @@ class AcpRuntimeAttach {
         !shouldAttachMemberAcp(
           session: session,
           memberId: member.id,
-          team: team,
-          targetId: launchTarget.id,
         )) {
       return false;
     }
