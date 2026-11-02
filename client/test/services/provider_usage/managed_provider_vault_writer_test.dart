@@ -111,6 +111,23 @@ void main() {
     expect(entry.fields, {'apiKey': 'a', 'secretKey': 'b'});
   });
 
+  test('carries legacy fields into a new vault entry', () async {
+    final vault = await _vault();
+    final capture = VaultCredentialCapture(vault: vault);
+
+    final saved = await saveManagedProviderWithVault(
+      provider: provider,
+      existingValues: {'apiKey': 'legacy'},
+      secretValues: {'secretKey': 'new'},
+      capture: capture,
+      unlockGate: VaultUnlockGate(vault: vault, prompt: () async => true),
+      persist: (_) async {},
+    );
+
+    final entry = (await vault.get(saved.vaultEntryId!))!;
+    expect(entry.fields, {'apiKey': 'legacy', 'secretKey': 'new'});
+  });
+
   test('empty secret values persist without touching the vault', () async {
     final (_, locked) = await _encryptedVaultPair();
     var prompted = false;
