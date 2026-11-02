@@ -3919,12 +3919,13 @@ Future<ManagedProvider> saveManagedProviderWithVault({
 2. **Editor current fields and first query.** Before persisting, compute:
 
 ```dart
+    // Vault-backed rows need no pre-read: capture merges the owner entry.
+    // Reading it here would throw while the encrypted vault is locked, before
+    // the writer can prompt for unlock.
     final existingValues = current == null
         ? const <String, String>{}
         : (current.vaultEntryId?.trim().isNotEmpty ?? false)
-        ? await context.read<VaultCredentialCapture>().existingManagedFields(
-            current,
-          )
+        ? const <String, String>{}
         : await _legacyManagedFields(secretStore, current.credentialRef);
 ```
 
@@ -3996,4 +3997,7 @@ Also:
 
 3. **Tests.** Writer tests pass `existingValues` (`const {}` for creates, `{'apiKey': 'a'}` for updates) and add:
    - empty secret values → persist without touching the vault or prompting;
-   - update persist failure → previous fields restored.
+   - update persist failure → previous fields restored;
+   - legacy carry-over: a provider with no owner entry plus
+     `existingValues: {'apiKey': 'legacy'}` and `secretValues: {'secretKey': 'new'}`
+     produces an entry containing both fields.
