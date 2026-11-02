@@ -15,6 +15,7 @@ import '../../../remote/remote_credential_materializer.dart';
 import '../../../storage/home_storage.dart';
 import '../../registry/capabilities/interactive_login_capability.dart';
 import '../../registry/capabilities/provider_capability.dart';
+import '../provider/qoder_auth_store.dart';
 import '../provider_presets.dart';
 import 'defaults.dart';
 
@@ -55,6 +56,16 @@ final class QoderProviderCapability extends CatalogModelCapability
   const QoderProviderCapability({this.storage});
 
   final HomeStorage? storage;
+
+  QoderAuthStore? get _authStore {
+    final home = storage;
+    if (home == null) return null;
+    return QoderAuthStore(
+      fs: home.fs,
+      basePath: home.paths.basePath,
+      pathContext: home.fs.pathContext,
+    );
+  }
 
   static const configDirEnvKey = 'QODER_CONFIG_DIR';
 
@@ -216,6 +227,11 @@ final class QoderProviderCapability extends CatalogModelCapability
       memberId: ctx.scope.memberId,
     );
     await delegate.fs.ensureDir(configDir);
+    final providerId = ctx.member?.provider.trim() ?? '';
+    await _authStore?.seedSessionAuth(
+      providerId: providerId,
+      sessionConfigDir: configDir,
+    );
     final environment = <String, String>{configDirEnvKey: configDir};
 
     final settingsPath = delegate.joinWork(configDir, 'settings.json');
