@@ -4263,3 +4263,44 @@ before deleting refs; otherwise count a failure and skip deletions.
 7. Replace the vacuous managed-delete assertion with
 `expect((await managedSecrets.read(ref)).isEmpty, isTrue)` or an explicit
 missing-scope assertion.
+
+### Task 12 correction follow-up
+
+1. **Never block unlock on the network.** `onUnlocked` runs the importer
+   first, then `unawaited(githubAccountCubit.hydrate())`; the unlock dialog and
+   `ensureUnlocked()` must not wait for `api.github.com`.
+2. **Boot ordering.** Replace the independent `unawaited(hydrate())` and
+   `unawaited(importer.runOnce())` with one background sequence:
+
+```dart
+  unawaited(() async {
+    try {
+      await githubAccountCubit.hydrate();
+      await legacyImporter.runOnce();
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[vault] boot hydrate/import failed: ${error.runtimeType}',
+        stackTrace: stackTrace,
+      );
+    }
+  }());
+```
+
+3. **Process-wide single-flight.** Retried `buildAppShell` calls must not run a
+   second concurrent importer for the same vault. Replace the per-instance
+   `_running` with a static per-vault map:
+
+```dart
+  static final _runningByVault = Expando<Future<void>>();
+
+  Future<void> runOnce() {
+    final existing = _runningByVault[_vault];
+    if (existing != null) return existing;
+    final next = _run().whenComplete(() => _runningByVault[_vault] = null);
+    _runningByVault[_vault] = next;
+    return next;
+  }
+```
+
+4. **Diagnostics.** Log only `error.runtimeType` in `_runOnUnlocked`; never pass
+   the error object (it may stringify request data).
