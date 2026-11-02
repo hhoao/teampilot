@@ -55,14 +55,22 @@ final class QoderHeadlessCapability
     CliHeadlessLaunchContext ctx,
   ) sync* {
     final interactive = interactiveContextForHeadless(ctx, CliTool.qoder);
-    // No `--model` here: the model is selected through settings.json (see
-    // provision()) so the one-shot call uses the same provider-config path as
-    // an ACP session.
     yield CliLaunchArgContribution(
       key: 'qoder-headless-command',
       phase: LaunchArgPhase.command,
       args: const ['-p'],
     );
+    // `--model` and settings.json are both written: the flag wins for this
+    // one-shot run, and the settings keep the same provider-config path as an
+    // ACP session.
+    final model = ctx.model.trim();
+    if (model.isNotEmpty) {
+      yield CliLaunchArgContribution(
+        key: 'qoder-headless-model',
+        phase: LaunchArgPhase.behavior,
+        args: ['--model', model],
+      );
+    }
     yield CliLaunchArgContribution(
       key: 'qoder-headless-permission',
       phase: LaunchArgPhase.behavior,
@@ -170,12 +178,12 @@ final class QoderHeadlessCapability
     HeadlessProvisionContext ctx,
   ) async {
     if (ctx.provider != null) return ctx.provider;
-    final home = storage;
-    if (home == null) return null;
+    final homeStorage = storage;
+    if (homeStorage == null) return null;
     final resolver = QoderProviderSettingsResolver(
       basePath: basePath,
       fs: fs,
-      storage: home,
+      storage: homeStorage,
     );
     final byId = await resolver.findById(ctx.providerId);
     if (byId != null) return byId;

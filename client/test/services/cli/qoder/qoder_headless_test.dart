@@ -13,6 +13,7 @@ import 'package:teampilot/services/storage/home_storage.dart';
 import '../../../support/in_memory_filesystem.dart';
 
 const _configDir = '/tmp/headless-qoder';
+const _model = 'glm-5.3';
 
 HeadlessLaunchContext _run({
   String prompt = 'P',
@@ -89,18 +90,24 @@ void main() {
   });
 
   group('launch args', () {
-    test('full access passes -p and the bypass mode', () {
-      expect(_assemble(_run()), [
+    test('full access passes -p, the model and the bypass mode', () {
+      expect(_assemble(_run(model: _model)), [
         '-p',
+        '--model',
+        _model,
         '--permission-mode',
         'bypass_permissions',
         'P',
       ]);
+      // No model chosen → no flag, so settings.json / the account default wins.
+      expect(_assemble(_run()), isNot(contains('--model')));
     });
 
     test('requesting json selects the non-stream output format', () {
-      expect(_assemble(_run(expectJson: true)), [
+      expect(_assemble(_run(model: _model, expectJson: true)), [
         '-p',
+        '--model',
+        _model,
         '--permission-mode',
         'bypass_permissions',
         'P',
@@ -110,8 +117,10 @@ void main() {
     });
 
     test('streaming selects stream-json', () {
-      expect(_assemble(_run(stream: true)), [
+      expect(_assemble(_run(model: _model, stream: true)), [
         '-p',
+        '--model',
+        _model,
         '--permission-mode',
         'bypass_permissions',
         'P',
@@ -121,9 +130,10 @@ void main() {
     });
 
     test('stdin mode leaves the prompt out of argv', () {
-      final args = _assemble(_run(promptViaStdin: true));
+      final args = _assemble(_run(model: _model, promptViaStdin: true));
       expect(args, isNot(contains('P')));
       expect(args.first, '-p');
+      expect(args, containsAllInOrder(['--model', _model]));
     });
 
     test('ask policy falls back to the default permission mode', () {
