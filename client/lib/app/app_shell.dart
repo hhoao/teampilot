@@ -2599,7 +2599,7 @@ Future<AppShell> buildAppShell({
             (s) => s.sessionId == sessionId && s.workspaceId == workspaceId,
           )
           .firstOrNull,
-      personalAcpDefaultFor: sessionPreferencesCubit.personalAcpDefaultFor,
+      acpDefaultFor: sessionPreferencesCubit.acpDefaultFor,
       runDeliveryInFlight: chatCubit.withOperatorDeliveryInFlight,
     );
     automationScheduler = AutomationScheduler(

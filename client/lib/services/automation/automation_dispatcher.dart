@@ -48,7 +48,7 @@ class AutomationDispatcher {
     required AutomationTeamResolver teamById,
     CliPreset? Function(String id)? resolveCliPreset,
     AutomationSessionLookup? sessionById,
-    bool Function(CliTool cli)? personalAcpDefaultFor,
+    bool Function(CliTool cli)? acpDefaultFor,
     int Function()? nowMs,
     Duration memberReadyTimeout = const Duration(seconds: 60),
     Future<T> Function<T>(String sessionId, Future<T> Function() action)?
@@ -63,8 +63,7 @@ class AutomationDispatcher {
        _teamById = teamById,
        _resolveCliPreset = resolveCliPreset,
        _sessionById = sessionById,
-       _personalAcpDefaultFor =
-           personalAcpDefaultFor ?? _defaultPersonalAcpDefaultFor,
+       _acpDefaultFor = acpDefaultFor ?? _defaultPersonalAcpDefaultFor,
        _nowMs = nowMs ?? _automationDefaultNowMs,
        _memberReadyTimeout = memberReadyTimeout,
        _runDeliveryInFlight = runDeliveryInFlight;
@@ -84,7 +83,7 @@ class AutomationDispatcher {
   final AutomationTeamResolver _teamById;
   final CliPreset? Function(String id)? _resolveCliPreset;
   final AutomationSessionLookup? _sessionById;
-  final bool Function(CliTool cli) _personalAcpDefaultFor;
+  final bool Function(CliTool cli) _acpDefaultFor;
   final int Function() _nowMs;
   final Duration _memberReadyTimeout;
   final Future<T> Function<T>(String sessionId, Future<T> Function() action)?
@@ -286,7 +285,7 @@ class AutomationDispatcher {
       );
       final acp = resolveLaunchAcp(
         cli: simpleIdentity.cli,
-        requested: _personalAcpDefaultFor(simpleIdentity.cli),
+        requested: _acpDefaultFor(simpleIdentity.cli),
       );
       status = await _requestCreateAndOpenSession(
         SessionCreateRequest(
@@ -317,10 +316,10 @@ class AutomationDispatcher {
           repo: _sessionRepository,
           workingDirectory: workingDirectory,
           fixedSessionId: plannedSessionId,
-          seedClaudeMemberAcp: _personalAcpDefaultFor(CliTool.claude),
-          seedCodexMemberAcp: _personalAcpDefaultFor(CliTool.codex),
-          seedCursorMemberAcp: _personalAcpDefaultFor(CliTool.cursor),
-          seedOpencodeMemberAcp: _personalAcpDefaultFor(CliTool.opencode),
+          seedClaudeMemberAcp: _acpDefaultFor(CliTool.claude),
+          seedCodexMemberAcp: _acpDefaultFor(CliTool.codex),
+          seedCursorMemberAcp: _acpDefaultFor(CliTool.cursor),
+          seedOpencodeMemberAcp: _acpDefaultFor(CliTool.opencode),
           acpPermission: LaunchSecurityPolicy.fullAccess,
         ),
       );

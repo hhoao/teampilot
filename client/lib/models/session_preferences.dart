@@ -151,11 +151,10 @@ class SessionPreferences {
   String acpAdapterPathFor(String toolId) =>
       acpAdapterPaths[toolId]?.trim() ?? '';
 
-  /// Whether new personal sessions for [cli] launch as ACP chat.
-  bool personalAcpDefaultFor(CliTool cli) =>
-      personalAcpDefaults[cli.value] ?? true;
+  /// Whether new sessions for [cli] launch as ACP chat.
+  bool acpDefaultFor(CliTool cli) => personalAcpDefaults[cli.value] ?? true;
 
-  SessionPreferences withPersonalAcpDefault(CliTool cli, bool value) =>
+  SessionPreferences withAcpDefault(CliTool cli, bool value) =>
       copyWith(personalAcpDefaults: {...personalAcpDefaults, cli.value: value});
 
   SessionPreferences copyWith({

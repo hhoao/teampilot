@@ -193,13 +193,10 @@ ComposePermissionControl? landingAcpPermissionControl({
       ? stampedLandingMembers(
           team: selectedTeam,
           workspace: workspace,
-          seedClaudeMemberAcp: readPersonalAcpDefault(context, CliTool.claude),
-          seedCodexMemberAcp: readPersonalAcpDefault(context, CliTool.codex),
-          seedCursorMemberAcp: readPersonalAcpDefault(context, CliTool.cursor),
-          seedOpencodeMemberAcp: readPersonalAcpDefault(
-            context,
-            CliTool.opencode,
-          ),
+          seedClaudeMemberAcp: readAcpDefault(context, CliTool.claude),
+          seedCodexMemberAcp: readAcpDefault(context, CliTool.codex),
+          seedCursorMemberAcp: readAcpDefault(context, CliTool.cursor),
+          seedOpencodeMemberAcp: readAcpDefault(context, CliTool.opencode),
           globalPresets: presets,
           acpPermission: current,
         )
@@ -209,7 +206,7 @@ ComposePermissionControl? landingAcpPermissionControl({
   return buildLandingAcpComposePermissionControl(
     isPersonal: isPersonal,
     launchCli: launchCli,
-    requested: readPersonalAcpDefault(context, launchCli),
+    requested: readAcpDefault(context, launchCli),
     stampedMembers: stamped,
     current: current,
     registry: registry,

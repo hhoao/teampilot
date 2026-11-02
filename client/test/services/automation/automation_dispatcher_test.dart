@@ -717,7 +717,7 @@ void main() {
           workspaceId: workspaceId,
           createdAt: 1,
         ),
-        personalAcpDefaultFor: (_) => acpEnabled,
+        acpDefaultFor: (_) => acpEnabled,
         nowMs: () => 100,
       );
       await dispatcher.dispatch(
@@ -776,7 +776,7 @@ void main() {
         workspaceId: workspaceId,
         createdAt: 1,
       ),
-      personalAcpDefaultFor: (_) => enabled,
+      acpDefaultFor: (_) => enabled,
       nowMs: () => 100,
     );
 
@@ -837,7 +837,7 @@ void main() {
         workspaceId: workspaceId,
         createdAt: 1,
       ),
-      personalAcpDefaultFor: (cli) => cli == CliTool.codex,
+      acpDefaultFor: (cli) => cli == CliTool.codex,
       nowMs: () => 100,
     );
 
@@ -957,7 +957,7 @@ void main() {
           createdAt: 1,
         );
       },
-      personalAcpDefaultFor: (_) => false,
+      acpDefaultFor: (_) => false,
       nowMs: () => 100,
     );
 

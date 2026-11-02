@@ -112,25 +112,25 @@ void main() {
 
     test('personalAcpDefaults defaults true and round-trips', () {
       final defaults = SessionPreferences();
-      expect(defaults.personalAcpDefaultFor(CliTool.claude), isTrue);
-      expect(defaults.personalAcpDefaultFor(CliTool.gemini), isTrue);
+      expect(defaults.acpDefaultFor(CliTool.claude), isTrue);
+      expect(defaults.acpDefaultFor(CliTool.gemini), isTrue);
       expect(
         SessionPreferences.fromJson(
           const {},
-        ).personalAcpDefaultFor(CliTool.codex),
+        ).acpDefaultFor(CliTool.codex),
         isTrue,
       );
 
-      final off = defaults.withPersonalAcpDefault(CliTool.cursor, false);
-      expect(off.personalAcpDefaultFor(CliTool.cursor), isFalse);
-      expect(off.personalAcpDefaultFor(CliTool.claude), isTrue);
+      final off = defaults.withAcpDefault(CliTool.cursor, false);
+      expect(off.acpDefaultFor(CliTool.cursor), isFalse);
+      expect(off.acpDefaultFor(CliTool.claude), isTrue);
       expect(off.toJson()['personalAcpDefaults'], {
         CliTool.cursor.value: false,
       });
       expect(
         SessionPreferences.fromJson(
           off.toJson(),
-        ).personalAcpDefaultFor(CliTool.cursor),
+        ).acpDefaultFor(CliTool.cursor),
         isFalse,
       );
     });
@@ -142,10 +142,10 @@ void main() {
         'cursorPersonalAcpDefault': false,
         'opencodePersonalAcpDefault': true,
       });
-      expect(migrated.personalAcpDefaultFor(CliTool.claude), isFalse);
-      expect(migrated.personalAcpDefaultFor(CliTool.codex), isTrue);
-      expect(migrated.personalAcpDefaultFor(CliTool.cursor), isFalse);
-      expect(migrated.personalAcpDefaultFor(CliTool.opencode), isTrue);
+      expect(migrated.acpDefaultFor(CliTool.claude), isFalse);
+      expect(migrated.acpDefaultFor(CliTool.codex), isTrue);
+      expect(migrated.acpDefaultFor(CliTool.cursor), isFalse);
+      expect(migrated.acpDefaultFor(CliTool.opencode), isTrue);
       expect(migrated.toJson().containsKey('claudePersonalAcpDefault'), isFalse);
     });
 

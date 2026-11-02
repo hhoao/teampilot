@@ -356,7 +356,7 @@ void main() {
   });
 
   testWidgets(
-    'Needs setup shows adapter Install and Locate and keeps the switch',
+    'Needs setup shows adapter Install and Locate and keeps the transport pill',
     (tester) async {
       final cubit = await _makeCubit(
         locatedExecutables: const {CliTool.claude: '/usr/local/bin/claude'},
@@ -529,15 +529,15 @@ void main() {
     addTearDown(cubit.close);
     await tester.pumpWidget(_wrapCard(cubit));
     await tester.pump();
-    expect(cubit.personalAcpDefaultFor(CliTool.claude), isTrue);
+    expect(cubit.acpDefaultFor(CliTool.claude), isTrue);
 
     await tester.tap(find.byIcon(Icons.terminal_rounded));
     await tester.pumpAndSettle();
-    expect(cubit.personalAcpDefaultFor(CliTool.claude), isFalse);
+    expect(cubit.acpDefaultFor(CliTool.claude), isFalse);
 
     await tester.tap(find.byIcon(Icons.chat_bubble_outline_rounded));
     await tester.pumpAndSettle();
-    expect(cubit.personalAcpDefaultFor(CliTool.claude), isTrue);
+    expect(cubit.acpDefaultFor(CliTool.claude), isTrue);
   });
 
   testWidgets('ACP pill replaces the old preference row', (tester) async {

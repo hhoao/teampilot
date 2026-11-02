@@ -195,11 +195,10 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   String? latestVersion(CliTool cli, CliBinaryKind kind) =>
       _latestVersions[(cli, kind)];
 
-  bool personalAcpDefaultFor(CliTool cli) =>
-      state.preferences.personalAcpDefaultFor(cli);
+  bool acpDefaultFor(CliTool cli) => state.preferences.acpDefaultFor(cli);
 
-  Future<void> setPersonalAcpDefaultFor(CliTool cli, bool value) =>
-      _save(state.preferences.withPersonalAcpDefault(cli, value));
+  Future<void> setAcpDefaultFor(CliTool cli, bool value) =>
+      _save(state.preferences.withAcpDefault(cli, value));
 
   /// Merges startup PATH discovery for toolchain tools; user paths always win.
   void mergeLocatedToolchains(Map<String, String> discovered) {
@@ -374,16 +373,16 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   }
 
   Future<void> setClaudePersonalAcpDefault(bool value) =>
-      setPersonalAcpDefaultFor(CliTool.claude, value);
+      setAcpDefaultFor(CliTool.claude, value);
 
   Future<void> setCodexPersonalAcpDefault(bool value) =>
-      setPersonalAcpDefaultFor(CliTool.codex, value);
+      setAcpDefaultFor(CliTool.codex, value);
 
   Future<void> setCursorPersonalAcpDefault(bool value) =>
-      setPersonalAcpDefaultFor(CliTool.cursor, value);
+      setAcpDefaultFor(CliTool.cursor, value);
 
   Future<void> setOpencodePersonalAcpDefault(bool value) =>
-      setPersonalAcpDefaultFor(CliTool.opencode, value);
+      setAcpDefaultFor(CliTool.opencode, value);
 
   Future<void> setAcpPermissionDefault(LaunchSecurityPolicy value) {
     return _save(state.preferences.copyWith(acpPermissionDefault: value));

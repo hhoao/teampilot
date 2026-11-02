@@ -887,13 +887,10 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
   final l10n = context.l10n;
-  final seedClaudeMemberAcp = readPersonalAcpDefault(context, CliTool.claude);
-  final seedCodexMemberAcp = readPersonalAcpDefault(context, CliTool.codex);
-  final seedCursorMemberAcp = readPersonalAcpDefault(context, CliTool.cursor);
-  final seedOpencodeMemberAcp = readPersonalAcpDefault(
-    context,
-    CliTool.opencode,
-  );
+  final seedClaudeMemberAcp = readAcpDefault(context, CliTool.claude);
+  final seedCodexMemberAcp = readAcpDefault(context, CliTool.codex);
+  final seedCursorMemberAcp = readAcpDefault(context, CliTool.cursor);
+  final seedOpencodeMemberAcp = readAcpDefault(context, CliTool.opencode);
   final acpPermission = readAcpPermissionDefault(context);
   final team = isPersonal ? null : _teamProfileById(context, sessionTeamId);
 

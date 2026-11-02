@@ -562,9 +562,9 @@ class _CliReadinessCardState extends State<CliReadinessCard> {
                 KeyedSubtree(
                   key: AppKeys.personalAcpSwitchFor(widget.cli),
                   child: _CliTransportPill(
-                    acp: cubit.personalAcpDefaultFor(widget.cli),
+                    acp: cubit.acpDefaultFor(widget.cli),
                     onChanged: (value) =>
-                        cubit.setPersonalAcpDefaultFor(widget.cli, value),
+                        cubit.setAcpDefaultFor(widget.cli, value),
                   ),
                 ),
               ],
