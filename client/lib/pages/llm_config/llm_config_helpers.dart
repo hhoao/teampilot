@@ -28,7 +28,7 @@ Future<String?> saveNewAppProvider(
       : AppProviderCubit.uniqueId(baseId, existing.map((p) => p.id));
   final provider = draft.copyWith(id: id, name: draft.name.trim());
 
-  await appCubit.upsertProvider(provider);
+  await appCubit.upsertProvider(provider, captureVaultCredentials: true);
   return id;
 }
 
@@ -40,6 +40,7 @@ Future<void> saveExistingAppProvider(
   final appCubit = context.read<AppProviderCubit>();
   await appCubit.upsertProvider(
     draft.copyWith(id: existing.id, cli: existing.cli),
+    captureVaultCredentials: true,
   );
 }
 

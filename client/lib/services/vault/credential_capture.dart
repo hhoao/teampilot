@@ -91,7 +91,9 @@ class VaultCredentialCapture {
   }) {
     return _upsert(
       ownerKind: vaultOwnerKindAppProvider,
-      ownerId: provider.id,
+      // Provider ids are per-CLI catalogs; qualify to avoid cross-CLI
+      // clobbering of the same id.
+      ownerId: '${provider.cli.value}:${provider.id.trim()}',
       type: VaultEntryType.apiKey,
       title: provider.name,
       tags: const ['provider'],

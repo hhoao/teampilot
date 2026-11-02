@@ -303,7 +303,10 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     );
   }
 
-  Future<bool> upsertProvider(AppProviderConfig provider) async {
+  Future<bool> upsertProvider(
+    AppProviderConfig provider, {
+    bool captureVaultCredentials = false,
+  }) async {
     final cli = provider.cli;
     final trimmedId = provider.id.trim();
     if (trimmedId.isEmpty) return false;
@@ -336,17 +339,27 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     // binding upserts must never rewrite them into a vault link.
     final linkIsVault = effectiveLink.startsWith('vault:');
     final linkIsManaged = effectiveLink.isNotEmpty && !linkIsVault;
-    if (capture != null &&
+    if (captureVaultCredentials &&
+        capture != null &&
         !linkIsManaged &&
         (linkIsVault || provider.apiKey.isNotEmpty)) {
-      final unlock = _ensureVaultUnlocked;
-      if (unlock != null && !await unlock()) return false;
-      final captured = await capture.captureProvider(
-        provider,
-        apiKey: provider.apiKey.isEmpty ? null : provider.apiKey,
-      );
-      effectiveLink = 'vault:${captured.entryId}';
-      effectiveApiKey = '';
+      try {
+        final unlock = _ensureVaultUnlocked;
+        if (unlock != null && !await unlock()) return false;
+        final captured = await capture.captureProvider(
+          provider,
+          apiKey: provider.apiKey.isEmpty ? null : provider.apiKey,
+        );
+        effectiveLink = 'vault:${captured.entryId}';
+        effectiveApiKey = '';
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          'Vault provider capture failed for ${provider.id}',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return false;
+      }
     }
     final current =
         state.providersByCli[cli] ?? await _repository.loadProviders(cli);
@@ -407,15 +420,31 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   Future<void> deleteProvider(String id) async {
     final cli = state.selectedCli;
     final target = state.providers.where((p) => p.id == id).firstOrNull;
-    if (target != null && target.credentialLink.trim().startsWith('vault:')) {
+    final removeEntry =
+        target != null && target.credentialLink.trim().startsWith('vault:');
+    if (removeEntry) {
       final unlock = _ensureVaultUnlocked;
       if (unlock != null && !await unlock()) return;
-      await _vaultCapture?.deleteOwner(vaultOwnerKindAppProvider, id);
     }
     final list = state.providers
         .where((p) => p.id != id)
         .toList(growable: false);
+    // Persist the catalog first: if this fails, the credential must survive.
     await _repository.saveProviders(cli, list);
+    if (removeEntry) {
+      try {
+        await _vaultCapture?.deleteOwner(
+          vaultOwnerKindAppProvider,
+          '${cli.value}:${id.trim()}',
+        );
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          'Vault entry cleanup failed for provider $id',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
     final selectedStillExists = list.any((p) => p.id == state.selectedId);
     final nextSelected = selectedStillExists
         ? state.selectedId
@@ -444,12 +473,19 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     final current = await loadProvidersFor(cli);
     final filtered = current.where((p) => p.id != trimmed).toList();
     if (filtered.length == current.length) return;
+    final target = current.where((p) => p.id == trimmed).firstOrNull;
+    final removeEntry =
+        target != null && target.credentialLink.trim().startsWith('vault:');
+    // Persist the catalog first: if this fails, the credential must survive.
+    await _repository.saveProviders(cli, filtered);
     // Programmatic removal: drop the vault entry best-effort so a failure to
     // delete it never keeps the row around as an orphan.
-    final target = current.where((p) => p.id == trimmed).firstOrNull;
-    if (target != null && target.credentialLink.trim().startsWith('vault:')) {
+    if (removeEntry) {
       try {
-        await _vaultCapture?.deleteOwner(vaultOwnerKindAppProvider, trimmed);
+        await _vaultCapture?.deleteOwner(
+          vaultOwnerKindAppProvider,
+          '${cli.value}:$trimmed',
+        );
       } on Object catch (error, stackTrace) {
         appLogger.w(
           'Vault entry cleanup failed for provider $trimmed',
@@ -458,7 +494,6 @@ class AppProviderCubit extends Cubit<AppProviderState> {
         );
       }
     }
-    await _repository.saveProviders(cli, filtered);
     emit(
       state.copyWith(
         providersByCli: {...state.providersByCli, cli: filtered},

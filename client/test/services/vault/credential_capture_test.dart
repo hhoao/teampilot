@@ -114,6 +114,7 @@ void main() {
     expect(entry.fields['apiKey'], 'sk-1');
     expect(entry.fields['baseUrl'], 'https://api.example.com');
     expect(entry.tags, contains('provider'));
+    expect(entry.extra['ownerId'], 'codex:openai');
 
     await capture.captureProvider(
       provider.copyWith(name: 'OpenAI 2', apiKey: 'sk-2'),
