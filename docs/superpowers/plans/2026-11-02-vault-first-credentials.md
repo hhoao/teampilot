@@ -1293,9 +1293,85 @@ git commit -m "feat(vault): add an atomic SSH profile writer"
 
 **Interfaces:**
 - Consumes: `saveSshProfileWithVault`.
-- Produces: no new public API; removes `SshProfileCubit.migrateToVault` and `SshProfileTargetCard.onMigrate`.
+- Produces: `SshEditorSecretInputs sshEditorSecretInputs({required SshAuthType authType, required bool linked, required String passwordText, required String privateKeyPem, required String passphraseText})` in `ssh_profile_vault_writer.dart`; removes `SshProfileCubit.migrateToVault` and `SshProfileTargetCard.onMigrate`.
 
-- [ ] **Step 1: Update the desktop dialog**
+- [ ] **Step 1: Add the editor field-mapping helper and its test**
+
+Append to `client/lib/services/ssh/ssh_profile_vault_writer.dart`:
+
+```dart
+typedef SshEditorSecretInputs = ({
+  String? password,
+  String? privateKey,
+  String? passphrase,
+});
+
+/// Maps editor field state to the writer's null/''/value contract.
+///
+/// A linked profile keeps an emptied field (`null`); an unlinked profile
+/// passes `''` so the writer can adopt the legacy keychain value. The
+/// inactive auth-type fields are always `''` (remove).
+SshEditorSecretInputs sshEditorSecretInputs({
+  required SshAuthType authType,
+  required bool linked,
+  required String passwordText,
+  required String privateKeyPem,
+  required String passphraseText,
+}) {
+  if (authType == SshAuthType.password) {
+    return (
+      password: passwordText.isEmpty ? (linked ? null : '') : passwordText,
+      privateKey: '',
+      passphrase: '',
+    );
+  }
+  return (
+    password: '',
+    privateKey: privateKeyPem.isEmpty ? null : privateKeyPem,
+    passphrase: passphraseText.isEmpty ? null : passphraseText,
+  );
+}
+```
+
+Append to `client/test/services/ssh/ssh_profile_vault_writer_test.dart` inside `main()`:
+
+```dart
+  test('editor mapping keeps linked empties and clears the inactive auth', () {
+    expect(
+      sshEditorSecretInputs(
+        authType: SshAuthType.password,
+        linked: true,
+        passwordText: '',
+        privateKeyPem: '',
+        passphraseText: '',
+      ),
+      (password: null, privateKey: '', passphrase: ''),
+    );
+    expect(
+      sshEditorSecretInputs(
+        authType: SshAuthType.privateKey,
+        linked: true,
+        passwordText: '',
+        privateKeyPem: '',
+        passphraseText: '',
+      ),
+      (password: '', privateKey: null, passphrase: null),
+    );
+    expect(
+      sshEditorSecretInputs(
+        authType: SshAuthType.password,
+        linked: false,
+        passwordText: '',
+        privateKeyPem: '',
+        passphraseText: '',
+      ).password,
+      '',
+      reason: 'unlinked empty lets the writer adopt the keychain value',
+    );
+  });
+```
+
+- [ ] **Step 2: Update the desktop dialog**
 
 In `client/lib/pages/ssh_profiles/ssh_profile_form_dialog.dart`:
 
@@ -1305,11 +1381,8 @@ In `client/lib/pages/ssh_profiles/ssh_profile_form_dialog.dart`:
 
 ```dart
   bool get _usesPasswordAuth {
+    if (_identityFileController.text.isNotEmpty) return false;
     if (_passwordController.text.isNotEmpty) return true;
-    if (_identityFileController.text.isNotEmpty ||
-        _passphraseController.text.isNotEmpty) {
-      return false;
-    }
     return widget.initialProfile?.authType == SshAuthType.password;
   }
 ```
@@ -1335,27 +1408,23 @@ In `client/lib/pages/ssh_profiles/ssh_profile_form_dialog.dart`:
     try {
       final linked =
           (widget.initialProfile?.vaultEntryId ?? '').isNotEmpty;
-      String? password;
-      String? privateKey;
-      String? passphrase;
-      if (_usesPasswordAuth) {
-        password = _passwordController.text.isEmpty
-            ? (linked ? null : '')
-            : _passwordController.text;
-        privateKey = '';
-        passphrase = '';
-      } else {
-        privateKey = await _readIdentityFile();
-        passphrase = _passphraseController.text.isEmpty
-            ? null
-            : _passphraseController.text;
-        password = '';
-      }
+      final privateKeyPem = _usesPasswordAuth
+          ? ''
+          : (await _readIdentityFile() ?? '');
+      final inputs = sshEditorSecretInputs(
+        authType: _usesPasswordAuth
+            ? SshAuthType.password
+            : SshAuthType.privateKey,
+        linked: linked,
+        passwordText: _passwordController.text,
+        privateKeyPem: privateKeyPem,
+        passphraseText: _passphraseController.text,
+      );
       final result = await saveSshProfileWithVault(
         profile: profile,
-        password: password,
-        privateKey: privateKey,
-        passphrase: passphrase,
+        password: inputs.password,
+        privateKey: inputs.privateKey,
+        passphrase: inputs.passphrase,
         capture: context.read<VaultCredentialCapture>(),
         unlockGate: context.read<VaultUnlockGate>(),
         repository: context.read<SshProfileRepository>(),
@@ -1431,23 +1500,18 @@ and fields:
       return null;
     }
     try {
+      final inputs = sshEditorSecretInputs(
+        authType: _authType,
+        linked: linked,
+        passwordText: _passwordController.text,
+        privateKeyPem: _privateKeyController.text,
+        passphraseText: _passphraseController.text,
+      );
       final result = await saveSshProfileWithVault(
         profile: profile,
-        password: _authType == SshAuthType.password
-            ? (_passwordController.text.isEmpty && linked
-                  ? null
-                  : _passwordController.text)
-            : '',
-        privateKey: _authType == SshAuthType.privateKey
-            ? (_privateKeyController.text.isEmpty
-                  ? null
-                  : _privateKeyController.text)
-            : '',
-        passphrase: _authType == SshAuthType.privateKey
-            ? (_passphraseController.text.isEmpty
-                  ? null
-                  : _passphraseController.text)
-            : '',
+        password: inputs.password,
+        privateKey: inputs.privateKey,
+        passphrase: inputs.passphrase,
         capture: widget.vaultCapture ?? context.read<VaultCredentialCapture>(),
         unlockGate:
             widget.vaultUnlockGate ?? context.read<VaultUnlockGate>(),
