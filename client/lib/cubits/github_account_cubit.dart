@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../services/github/github_credentials_store.dart';
 import '../services/github/github_device_flow_auth.dart';
+import '../services/vault/vault_unlock_gate.dart';
 
 enum GithubAccountStatus {
   unknown,
@@ -98,6 +99,8 @@ class GithubAccountCubit extends Cubit<GithubAccountState> {
   static const _networkErrorMessage = 'Could not reach GitHub. Try again.';
   static const _deviceFlowUnavailableMessage =
       'GitHub sign-in is unavailable in this build. Use a personal access token.';
+  static const _vaultLockedMessage =
+      'Unlock the credential vault to change GitHub credentials.';
 
   final GithubCredentialsStore _store;
   GithubCredentialsStore get store => _store;
@@ -117,10 +120,16 @@ class GithubAccountCubit extends Cubit<GithubAccountState> {
       if (login == null || login.isEmpty) {
         login = await _tryFetchLogin(stored.token);
         if (login != null) {
-          if (stored.source == GithubCredentialSource.oauth) {
-            await _store.saveOAuth(token: stored.token, login: login);
-          } else {
-            await _store.savePat(stored.token, login: login);
+          // A locked vault must not break boot hydration: keep the fetched
+          // login in memory and let the importer persist it after unlock.
+          try {
+            if (stored.source == GithubCredentialSource.oauth) {
+              await _store.saveOAuth(token: stored.token, login: login);
+            } else {
+              await _store.savePat(stored.token, login: login);
+            }
+          } on VaultSaveBlockedException {
+            // Not persisted; the in-memory state still hydrates.
           }
         }
       }
@@ -255,7 +264,19 @@ class GithubAccountCubit extends Cubit<GithubAccountState> {
     if (trimmed.isEmpty) return;
 
     final login = await _tryFetchLogin(trimmed);
-    await _store.savePat(trimmed, login: login);
+    try {
+      await _store.savePat(trimmed, login: login);
+    } on VaultSaveBlockedException {
+      emit(
+        state.copyWith(
+          status: GithubAccountStatus.disconnected,
+          errorMessage: _vaultLockedMessage,
+          clearUserCode: true,
+          clearVerificationUri: true,
+        ),
+      );
+      return;
+    }
     emit(
       state.copyWith(
         status: GithubAccountStatus.connected,
@@ -269,7 +290,11 @@ class GithubAccountCubit extends Cubit<GithubAccountState> {
   }
 
   Future<void> onUnauthorized() async {
-    await _store.clearStored();
+    try {
+      await _store.clearStored();
+    } on VaultSaveBlockedException {
+      // Keep the vault entry for later cleanup; the in-memory token is invalid.
+    }
     emit(
       state.copyWith(
         status: GithubAccountStatus.disconnected,
@@ -283,7 +308,13 @@ class GithubAccountCubit extends Cubit<GithubAccountState> {
   }
 
   Future<void> _clearStoredAndDisconnect() async {
-    await _store.clearStored();
+    try {
+      await _store.clearStored();
+    } on VaultSaveBlockedException {
+      // Do not fake a disconnect: the credentials are still there.
+      emit(state.copyWith(errorMessage: _vaultLockedMessage));
+      return;
+    }
     emit(
       state.copyWith(
         status: GithubAccountStatus.disconnected,
