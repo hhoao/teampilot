@@ -75,6 +75,7 @@ class _Adapter implements ManagedProviderUsageAdapter {
   Object? error;
   int calls = 0;
   ProviderCredentialScope? resolvedCredentials;
+  ManagedProvider? resolvedProvider;
 
   @override
   String get id => adapterId;
@@ -87,6 +88,7 @@ class _Adapter implements ManagedProviderUsageAdapter {
     required DateTime now,
   }) async {
     calls++;
+    resolvedProvider = provider;
     resolvedCredentials = await credentials.resolve(provider);
     final error = this.error;
     if (error != null) throw error;
@@ -929,6 +931,11 @@ void main() {
     expect(httpJsonAdapter.calls, 1);
     expect(find.byKey(const Key('managed-provider-editor-page')), findsNothing);
     expect(find.text('12.50 USD'), findsOneWidget);
+    final saved = providerCubit.state.providers.single;
+    expect(saved.vaultEntryId, isNotNull);
+    // The first query must see the persisted row (vault link included), not
+    // the pre-capture draft.
+    expect(httpJsonAdapter.resolvedProvider?.vaultEntryId, saved.vaultEntryId);
   });
 
   testWidgets(

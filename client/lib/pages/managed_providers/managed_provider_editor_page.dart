@@ -202,7 +202,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                   nameController: _name,
                   credentialSecretController: _credentialSecret,
                   credentialSecretFocusNode: _credentialSecretFocus,
-                  credentialConfigured: _credentialRef.text.trim().isNotEmpty,
+                  credentialConfigured: _credentialConfigured,
                   enabled: _enabled,
                   hideSecret: _isLinkedProviderSource,
                   onQuickPresetChanged: _handleQuickPresetChanged,
@@ -275,9 +275,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
                         credentialPlacementController: _credentialPlacement,
                         credentialSourceController: _credentialSource,
                         credentialTemplateController: _credentialTemplate,
-                        credentialConfigured: _credentialRef.text
-                            .trim()
-                            .isNotEmpty,
+                        credentialConfigured: _credentialConfigured,
                         onCredentialFieldChanged: _handleCredentialFieldChanged,
                         credentialLinkModeSelector:
                             _buildCredentialLinkModeSelector(context),
@@ -654,6 +652,10 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     return row?.name ?? '';
   }
 
+  bool get _credentialConfigured =>
+      (_provider?.vaultEntryId ?? '').trim().isNotEmpty ||
+      (_provider?.credentialRef ?? '').trim().isNotEmpty;
+
   bool get _credentialsInitiallyExpanded {
     if (_isCliCredentialSource) return true;
     final provider = _provider;
@@ -741,8 +743,13 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
           .where((field) => field != credentialField)
           .toSet();
     }
+    final hasNewSecret = credentialValues.isNotEmpty;
+    final capture = hasNewSecret
+        ? context.read<VaultCredentialCapture>()
+        : null;
+    final unlockGate = hasNewSecret ? context.read<VaultUnlockGate>() : null;
     if (requiredSecretsToKeep.isNotEmpty) {
-      final hasExisting = current?.vaultEntryId != null
+      final hasExisting = (current?.vaultEntryId?.trim().isNotEmpty ?? false)
           ? await _vaultHasRequiredSecrets(
               context.read<VaultService>(),
               current!,
@@ -810,7 +817,9 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
         credentialPrefix: _credentialPrefix,
       ),
       credentialRef: credentialRef.isEmpty ? null : credentialRef,
-      vaultEntryId: current?.vaultEntryId,
+      vaultEntryId: (current?.vaultEntryId?.trim().isEmpty ?? true)
+          ? null
+          : current!.vaultEntryId!.trim(),
       displayConfig: ManagedProviderDisplayConfig(
         currency: _currency.text.trim().isEmpty ? null : _currency.text.trim(),
         unit: _unit.text.trim().isEmpty ? null : _unit.text.trim(),
@@ -828,14 +837,20 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     final secretValues = _isLinkedProviderSource
         ? const <String, String>{}
         : credentialValues;
+    var persisted = next;
     try {
       if (secretValues.isNotEmpty) {
-        final saved = await saveManagedProviderWithVault(
+        final existingValues = current == null
+            ? const <String, String>{}
+            : (current.vaultEntryId?.trim().isNotEmpty ?? false)
+            ? await capture!.existingManagedFields(current)
+            : await _legacyManagedFields(secretStore, current.credentialRef);
+        persisted = await saveManagedProviderWithVault(
           provider: next,
-          current: current,
+          existingValues: existingValues,
           secretValues: secretValues,
-          capture: context.read<VaultCredentialCapture>(),
-          unlockGate: context.read<VaultUnlockGate>(),
+          capture: capture!,
+          unlockGate: unlockGate!,
           persist: (value) async {
             await cubit.upsert(value);
             if (cubit.state.errorCode != null) {
@@ -843,9 +858,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
             }
           },
         );
-        if (saved.vaultEntryId != next.vaultEntryId && mounted) {
-          setState(() => _savedProvider = saved);
-        }
+        if (mounted) setState(() => _savedProvider = persisted);
       } else {
         await cubit.upsert(next);
         if (cubit.state.errorCode != null) {
@@ -880,7 +893,7 @@ class _ManagedProviderEditorPageState extends State<ManagedProviderEditorPage> {
     }
     if (!mounted) return;
     if (shouldRunFirstQuery) {
-      await context.read<ManagedProviderUsageCubit>().queryProvider(next);
+      await context.read<ManagedProviderUsageCubit>().queryProvider(persisted);
       if (!mounted) return;
     }
     setState(() => _saving = false);
@@ -1095,6 +1108,24 @@ Future<bool> _existingCredentialHasRequiredSecrets({
     return fields.every((field) => scope.valueFor(field)?.isNotEmpty ?? false);
   } on Object {
     return false;
+  }
+}
+
+Future<Map<String, String>> _legacyManagedFields(
+  ManagedProviderSecretStore store,
+  String? credentialRef,
+) async {
+  final ref = credentialRef?.trim() ?? '';
+  if (ref.isEmpty) return const {};
+  try {
+    final scope = await store.read(ref);
+    return {
+      for (final field in scope.fields)
+        if ((scope.valueFor(field) ?? '').isNotEmpty)
+          field: scope.valueFor(field)!,
+    };
+  } on Object {
+    return const {};
   }
 }
 
