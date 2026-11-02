@@ -46,6 +46,7 @@ class VaultLegacyImportService {
   VaultLegacyImportService({
     required VaultService vault,
     required VaultCredentialCapture capture,
+    required String importKey,
     required SshProfileRepository sshProfiles,
     required SshCredentialStore sshCredentials,
     required AppProviderRepository appProviders,
@@ -54,6 +55,7 @@ class VaultLegacyImportService {
     required GithubCredentialsStore github,
   }) : _vault = vault,
        _capture = capture,
+       _importKey = importKey,
        _sshProfiles = sshProfiles,
        _sshCredentials = sshCredentials,
        _appProviders = appProviders,
@@ -65,6 +67,13 @@ class VaultLegacyImportService {
 
   final VaultService _vault;
   final VaultCredentialCapture _capture;
+
+  /// Identifies the app-data root this importer migrates into.
+  ///
+  /// A retried `buildAppShell` builds a *new* `VaultService` over the same
+  /// root, so the service instance cannot key single-flight.
+  final String _importKey;
+
   final SshProfileRepository _sshProfiles;
   final SshCredentialStore _sshCredentials;
   final AppProviderRepository _appProviders;
@@ -72,9 +81,9 @@ class VaultLegacyImportService {
   final ManagedProviderSecretStore _managedSecrets;
   final GithubCredentialsStore _github;
 
-  /// In-flight pass per vault, shared by every importer instance so a retried
-  /// `buildAppShell` cannot start a second concurrent migration.
-  static final _runningByVault = Expando<Future<void>>();
+  /// In-flight pass per app-data root, shared by every importer instance so a
+  /// retried `buildAppShell` cannot start a second concurrent migration.
+  static final _runningByKey = <String, Future<void>>{};
 
   /// Runs the migration once; concurrent calls share the same pass.
   ///
@@ -82,18 +91,25 @@ class VaultLegacyImportService {
   /// clean pass, and a failed pass retries only the owners that did not
   /// finish (finished owners are skipped by their stored reference).
   ///
-  /// Single-flight is keyed on the vault, not the instance: a retried
-  /// `buildAppShell` constructs a second importer over the same vault, and two
-  /// concurrent passes would race on capture/delete.
+  /// Single-flight is keyed on the app-data root, not the instance or the
+  /// service: a retried `buildAppShell` constructs both anew.
   Future<void> runOnce() {
-    final existing = _runningByVault[_vault];
+    final existing = _runningByKey[_importKey];
     if (existing != null) return existing;
-    final next = _run().whenComplete(() => _runningByVault[_vault] = null);
-    _runningByVault[_vault] = next;
+    late final Future<void> next;
+    next = _run().whenComplete(() {
+      if (identical(_runningByKey[_importKey], next)) {
+        _runningByKey.remove(_importKey);
+      }
+    });
+    _runningByKey[_importKey] = next;
     return next;
   }
 
   Future<void> _run() async {
+    // Another shell may have finished a pass after this service loaded its
+    // document: re-read the marker so a retried bootstrap no-ops.
+    await _vault.refreshMarkerFromBackend();
     if (!_vault.isUnlocked) return;
     if (_vault.legacyImportVersion >= _version) return;
 

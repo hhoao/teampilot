@@ -30,6 +30,22 @@ class VaultService {
   /// `0` until the one-shot legacy import has completed.
   int get legacyImportVersion => _requireDocument().legacyImportVersion;
 
+  /// Re-reads the keychain document so a marker written by another
+  /// `VaultService` over the same store is visible.
+  ///
+  /// A retried bootstrap builds a second service whose in-memory document
+  /// predates the first shell's import pass; without this the new shell would
+  /// start the migration again.
+  Future<void> refreshMarkerFromBackend() async {
+    if (_locked || _encrypted || !_initialized) return;
+    try {
+      final reloaded = await _keychainBackend.load();
+      if (reloaded != null) _document = reloaded;
+    } on Object {
+      // Keep the in-memory document.
+    }
+  }
+
   Future<void> markLegacyImported(int version) {
     return _mutate(
       (document) => document.copyWith(legacyImportVersion: version),

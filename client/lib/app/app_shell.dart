@@ -1116,7 +1116,14 @@ Future<AppShell> buildAppShell({
       // Hydration is NOT awaited: it may hit api.github.com, and unlock/save
       // must stay responsive while it runs.
       await legacyImporter.runOnce();
-      unawaited(githubAccountCubit.hydrate());
+      unawaited(
+        githubAccountCubit.hydrate().catchError((Object error, StackTrace stack) {
+          appLogger.w(
+            '[vault] post-unlock GitHub hydrate failed: ${error.runtimeType}',
+            stackTrace: stack,
+          );
+        }),
+      );
     },
   );
 
@@ -1313,6 +1320,7 @@ Future<AppShell> buildAppShell({
   legacyImporter = VaultLegacyImportService(
     vault: vaultService,
     capture: vaultCredentialCapture,
+    importKey: nativeAppDataPath,
     sshProfiles: sshProfileRepo,
     sshCredentials: sshCredentialStore,
     appProviders: AppProviderRepository(storage: homeStorage),
