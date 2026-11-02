@@ -195,6 +195,7 @@ import '../services/storage/device_local_control_plane.dart';
 import '../services/vault/credential_capture.dart';
 import '../services/vault/encrypted_vault_backend.dart';
 import '../services/vault/keychain_vault_backend.dart';
+import '../services/vault/legacy_import.dart';
 import '../services/vault/provider_credential_link.dart';
 import '../services/vault/vault_service.dart';
 import '../services/vault/vault_unlock_gate.dart';
@@ -544,6 +545,8 @@ class AppShell {
     required this.sshProfileCubit,
     required this.vaultService,
     required this.vaultCubit,
+    required this.vaultCredentialCapture,
+    required this.vaultUnlockGate,
     required this.termuxCubit,
     required this.homeStorageInvalidator,
     required this.homeInvalidationService,
@@ -668,6 +671,8 @@ class AppShell {
   final SshProfileCubit sshProfileCubit;
   final VaultService vaultService;
   final VaultCubit vaultCubit;
+  final VaultCredentialCapture vaultCredentialCapture;
+  final VaultUnlockGate vaultUnlockGate;
   final TermuxCubit termuxCubit;
   final HomeStorageInvalidator homeStorageInvalidator;
   final HomeInvalidationService homeInvalidationService;
@@ -814,6 +819,14 @@ Future<AppShell> buildAppShell({
       stackTrace: stackTrace,
     );
   }
+  // Shared vault-first capture path + unlock gate: every credential writer
+  // (GitHub, app providers, SSH setup) goes through these so a locked vault
+  // prompts exactly once per action instead of per call site.
+  final vaultCredentialCapture = VaultCredentialCapture(vault: vaultService);
+  final vaultUnlockGate = VaultUnlockGate(
+    vault: vaultService,
+    prompt: promptVaultUnlockFromRouter,
+  );
   // Relay tunnels for paired (QR) SSH profiles: while a tunnel lives, every
   // dial for that profile rides the loopback port instead of the stored host.
   final pairedRelayTunnels = PairedRelayTunnelRegistry(
@@ -904,6 +917,9 @@ Future<AppShell> buildAppShell({
   reloadAllAppData;
 
   late final SshProfileCubit sshProfileCubit;
+  // Declared before the VaultCubit closure that captures it: the closure only
+  // runs on a later unlock/encrypt, after the importer is assigned below.
+  late final VaultLegacyImportService legacyImporter;
   late final VaultCubit vaultCubit;
   late final HomeTargetController homeTargetController;
   late final HomeWorkspaceUiCache homeWorkspaceUiCache;
@@ -925,11 +941,8 @@ Future<AppShell> buildAppShell({
   final githubCredentialsStore = GithubCredentialsStore(
     kv: const FlutterSecureKeyValueStore(),
     vault: vaultService,
-    vaultCapture: VaultCredentialCapture(vault: vaultService),
-    ensureVaultUnlocked: VaultUnlockGate(
-      vault: vaultService,
-      prompt: promptVaultUnlockFromRouter,
-    ).ensureUnlocked,
+    vaultCapture: vaultCredentialCapture,
+    ensureVaultUnlocked: vaultUnlockGate.ensureUnlocked,
   );
   final githubDeviceFlow = githubDeviceFlowAvailable
       ? GithubDeviceFlowAuth(clientId: githubOauthClientId)
@@ -1098,6 +1111,12 @@ Future<AppShell> buildAppShell({
     service: vaultService,
     sshProfiles: sshProfileRepo,
     appProviders: AppProviderRepository(storage: homeStorage),
+    onUnlocked: () async {
+      // Import first: GitHub hydration reads the store, and a token that only
+      // lives in the vault must be captured before the pointer is consulted.
+      await legacyImporter.runOnce();
+      await githubAccountCubit.hydrate();
+    },
   );
 
   // Managed Providers belong to the home/control plane. Construct this graph
@@ -1220,6 +1239,8 @@ Future<AppShell> buildAppShell({
     flashskyaiExecutablePath: sessionPreferencesCubit.resolveExecutable,
     openCredentialLoginUrl: openCredentialLoginUrl,
     managedProviderRepository: resolvedManagedProviderRepository,
+    vaultCapture: vaultCredentialCapture,
+    ensureVaultUnlocked: vaultUnlockGate.ensureUnlocked,
   );
 
   // Reclaims dedicated CLI provider rows and their isolated HOME
@@ -1283,6 +1304,22 @@ Future<AppShell> buildAppShell({
   final managedProviderControlPlaneLease = ManagedProviderControlPlaneLease(
     managedProviderControlPlane,
   );
+
+  // Vault-first migration of every legacy secret. Constructed after the
+  // managed-provider graph and the GitHub store so the closure above always
+  // sees a fully-assigned importer. `runOnce` is a no-op while the vault is
+  // locked and after a clean pass, so it is safe at every boot.
+  legacyImporter = VaultLegacyImportService(
+    vault: vaultService,
+    capture: vaultCredentialCapture,
+    sshProfiles: sshProfileRepo,
+    sshCredentials: sshCredentialStore,
+    appProviders: AppProviderRepository(storage: homeStorage),
+    managedProviders: resolvedManagedProviderRepository,
+    managedSecrets: resolvedManagedProviderSecretStore,
+    github: githubCredentialsStore,
+  );
+  unawaited(legacyImporter.runOnce());
 
   // One-shot startup sweep: reclaim orphaned `-mp-` rows and the legacy
   // shared rows. Fire-and-forget and failure-tolerant — the control plane
@@ -3449,6 +3486,8 @@ Future<AppShell> buildAppShell({
       sshProfileCubit: sshProfileCubit,
       vaultService: vaultService,
       vaultCubit: vaultCubit,
+      vaultCredentialCapture: vaultCredentialCapture,
+      vaultUnlockGate: vaultUnlockGate,
       termuxCubit: termuxCubit,
       homeStorageInvalidator: homeStorageInvalidator,
       homeInvalidationService: homeInvalidationService,

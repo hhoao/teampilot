@@ -33,15 +33,19 @@ void main() {
   late VaultCubit cubit;
   late SshProfileRepository sshRepo;
 
-  setUp(() {
+  VaultService buildService() {
     final fs = InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix));
-    final service = VaultService(
+    return VaultService(
       keychainBackend: KeychainVaultBackend(_FakeStore()),
       encryptedBackend: EncryptedVaultBackend(
         repository: VaultRepository(rootDir: '/root/vault', fs: fs),
         crypto: crypto,
       ),
     );
+  }
+
+  setUp(() {
+    final service = buildService();
     sshRepo = SshProfileRepository(storage: fakeHomeStorage());
     cubit = VaultCubit(
       service: service,
@@ -124,5 +128,36 @@ void main() {
     await cubit.disableEncryption();
     expect(cubit.state.errorMessage, isNotNull);
     expect(cubit.state.busy, isFalse);
+  });
+
+  test('onUnlocked fires after a successful unlock', () async {
+    final service = buildService();
+    await service.initialize();
+    await service.enableEncryptedBackend('pass');
+    service.lock();
+    var calls = 0;
+    final unlockedCubit = VaultCubit(
+      service: service,
+      sshProfiles: SshProfileRepository(storage: fakeHomeStorage()),
+      appProviders: AppProviderRepository(storage: fakeHomeStorage()),
+      onUnlocked: () async => calls++,
+    );
+    addTearDown(unlockedCubit.close);
+    await unlockedCubit.unlock('pass');
+    expect(calls, 1);
+  });
+
+  test('onUnlocked does not fire on load', () async {
+    var calls = 0;
+    final service = buildService();
+    final loadCubit = VaultCubit(
+      service: service,
+      sshProfiles: SshProfileRepository(storage: fakeHomeStorage()),
+      appProviders: AppProviderRepository(storage: fakeHomeStorage()),
+      onUnlocked: () async => calls++,
+    );
+    addTearDown(loadCubit.close);
+    await loadCubit.load();
+    expect(calls, 0);
   });
 }

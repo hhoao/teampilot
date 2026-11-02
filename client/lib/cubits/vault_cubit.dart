@@ -8,6 +8,7 @@ import '../repositories/app_provider_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../services/vault/vault_errors.dart';
 import '../services/vault/vault_service.dart';
+import '../utils/logging/logger_utils.dart';
 
 enum VaultStatus { loading, ready, locked, error }
 
@@ -103,14 +104,21 @@ class VaultCubit extends Cubit<VaultState> {
     required VaultService service,
     required SshProfileRepository sshProfiles,
     required AppProviderRepository appProviders,
+    Future<void> Function()? onUnlocked,
   }) : _service = service,
        _sshProfiles = sshProfiles,
        _appProviders = appProviders,
+       _onUnlocked = onUnlocked,
        super(const VaultState());
 
   final VaultService _service;
   final SshProfileRepository _sshProfiles;
   final AppProviderRepository _appProviders;
+
+  /// Runs after the vault becomes writable (unlock or first encryption).
+  /// Never runs on [load]: a keychain vault is already unlocked at boot and
+  /// startup work belongs to the explicit boot paths.
+  final Future<void> Function()? _onUnlocked;
 
   Future<void> load() async {
     emit(state.copyWith(status: VaultStatus.loading, clearError: true));
@@ -159,6 +167,7 @@ class VaultCubit extends Cubit<VaultState> {
           unlocked: true,
         ),
       );
+      await _runOnUnlocked();
     } on VaultException catch (error) {
       emit(state.copyWith(busy: false, errorMessage: error.code));
     }
@@ -260,6 +269,7 @@ class VaultCubit extends Cubit<VaultState> {
           unlocked: true,
         ),
       );
+      await _runOnUnlocked();
     } on VaultException catch (error) {
       emit(state.copyWith(busy: false, errorMessage: error.code));
     }
@@ -312,6 +322,22 @@ class VaultCubit extends Cubit<VaultState> {
       }
     }
     return references;
+  }
+
+  /// Post-unlock work is best-effort: the vault is already open, so a failing
+  /// import or hydration must not surface as a failed unlock.
+  Future<void> _runOnUnlocked() async {
+    final hook = _onUnlocked;
+    if (hook == null) return;
+    try {
+      await hook();
+    } on Object catch (error, stackTrace) {
+      AppLogger.instance.w(
+        '[vault] post-unlock hook failed',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   Future<void> _refresh() async {
