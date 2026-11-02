@@ -12800,6 +12800,60 @@ abstract class AppLocalizations {
   /// **'Skipped — missed window'**
   String get automationsRunStatusSkippedMissed;
 
+  /// No description provided for @automationsRunStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get automationsRunStatusFailed;
+
+  /// No description provided for @automationsRunStatusTimedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Timed out'**
+  String get automationsRunStatusTimedOut;
+
+  /// No description provided for @automationsRunStatusSkippedOverlap.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped (still running)'**
+  String get automationsRunStatusSkippedOverlap;
+
+  /// No description provided for @automationsExitCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit code {code}'**
+  String automationsExitCode(int code);
+
+  /// No description provided for @automationsCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Command'**
+  String get automationsCommand;
+
+  /// No description provided for @automationsCommandHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs only while TeamPilot is running. Missed runs older than the grace window are skipped unless catch-up is on.'**
+  String get automationsCommandHelp;
+
+  /// No description provided for @automationsCommandTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'Timeout (seconds)'**
+  String get automationsCommandTimeout;
+
+  /// No description provided for @automationsCommandRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Command is required'**
+  String get automationsCommandRequired;
+
+  /// No description provided for @automationsCatchUpOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'Catch up once after startup'**
+  String get automationsCatchUpOnce;
+
   /// Label for optional max automation run count
   ///
   /// In en, this message translates to:

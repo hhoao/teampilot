@@ -173,9 +173,7 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
     final saved = await AutomationEditorDialog.show(
       context,
       initial: automation,
-      kind: automation.isScheduledMessage
-          ? AutomationEditorKind.scheduledMessage
-          : AutomationEditorKind.launchPrompt,
+      kind: kindForAutomation(automation),
       workspaceId: automation.workspaceId,
       sessionId: automation.sessionId,
     );
@@ -445,9 +443,9 @@ String _automationActionTypeLabel(
   AppLocalizations l10n,
   Automation automation,
 ) {
-  return automation.isScheduledMessage
-      ? l10n.automationsCompactTitle
-      : l10n.automationsFilterLaunchPrompt;
+  if (automation.isScheduledMessage) return l10n.automationsCompactTitle;
+  if (automation.isRunCommand) return l10n.automationsCommand;
+  return l10n.automationsFilterLaunchPrompt;
 }
 
 class AutomationRow extends StatefulWidget {
@@ -667,6 +665,13 @@ class AutomationRunHistoryRow extends StatelessWidget {
                 style: styles.lg,
               ),
             ),
+            if (run.exitCode != null) ...[
+              const SizedBox(width: 12),
+              Text(
+                l10n.automationsExitCode(run.exitCode!),
+                style: styles.smColored(cs.onSurfaceVariant),
+              ),
+            ],
             const SizedBox(width: 12),
             Text(label, style: styles.smSemiboldColored(statusColor)),
           ],
@@ -683,11 +688,10 @@ class AutomationRunHistoryRow extends StatelessWidget {
       AutomationRunStatus.skippedMissed =>
         l10n.automationsRunStatusSkippedMissed,
       AutomationRunStatus.dispatchFailed => l10n.automationsDispatchFailed,
-      // Placeholder labels until the command run statuses get dedicated strings.
-      AutomationRunStatus.failed ||
-      AutomationRunStatus.timedOut => l10n.automationsDispatchFailed,
+      AutomationRunStatus.failed => l10n.automationsRunStatusFailed,
+      AutomationRunStatus.timedOut => l10n.automationsRunStatusTimedOut,
       AutomationRunStatus.skippedOverlap =>
-        l10n.automationsRunStatusSkippedMissed,
+        l10n.automationsRunStatusSkippedOverlap,
       AutomationRunStatus.dispatching => l10n.automationsRunStatusDispatching,
       AutomationRunStatus.dispatched => l10n.automationsRunStatusDispatched,
       AutomationRunStatus.pending => l10n.automationsRunStatusPending,
@@ -698,8 +702,11 @@ class AutomationRunHistoryRow extends StatelessWidget {
     return switch (status) {
       AutomationRunStatus.completed => cs.primary,
       AutomationRunStatus.skippedUnavailable ||
-      AutomationRunStatus.skippedMissed => cs.onSurfaceVariant,
-      AutomationRunStatus.dispatchFailed => cs.error,
+      AutomationRunStatus.skippedMissed ||
+      AutomationRunStatus.skippedOverlap => cs.onSurfaceVariant,
+      AutomationRunStatus.dispatchFailed ||
+      AutomationRunStatus.failed ||
+      AutomationRunStatus.timedOut => cs.error,
       _ => cs.onSurface,
     };
   }

@@ -6910,6 +6910,36 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationsRunStatusSkippedMissed => '已跳过 — 错过窗口';
 
   @override
+  String get automationsRunStatusFailed => '失败';
+
+  @override
+  String get automationsRunStatusTimedOut => '超时';
+
+  @override
+  String get automationsRunStatusSkippedOverlap => '已跳过（上次仍在运行）';
+
+  @override
+  String automationsExitCode(int code) {
+    return '退出码 $code';
+  }
+
+  @override
+  String get automationsCommand => '命令';
+
+  @override
+  String get automationsCommandHelp =>
+      '仅在 TeamPilot 运行时执行。超过宽限期的错过运行会被跳过，除非开启了补跑。';
+
+  @override
+  String get automationsCommandTimeout => '超时（秒）';
+
+  @override
+  String get automationsCommandRequired => '命令不能为空';
+
+  @override
+  String get automationsCatchUpOnce => '启动后补跑一次';
+
+  @override
   String get automationsMaxRunCount => '运行次数上限';
 
   @override

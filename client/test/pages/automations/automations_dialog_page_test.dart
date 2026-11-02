@@ -6,6 +6,7 @@ import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/automation_list_scope.dart';
+import 'package:teampilot/pages/automations/automation_editor_dialog.dart';
 import 'package:teampilot/pages/automations/automations_dialog.dart';
 import 'package:teampilot/services/workspace/workspace_pane_policy.dart';
 
@@ -139,5 +140,37 @@ void main() {
     expect(find.byType(Dialog), findsOneWidget);
     expect(find.byType(TpDialogHeader), findsOneWidget);
     expect(find.byType(TpDialogMobileNavBar), findsNothing);
+  });
+
+  testWidgets('create menu offers the three automation kinds', (tester) async {
+    final setup = testAutomationSetup();
+    addTearDown(setup.cubit.close);
+    final chatCubit = testChatCubit(executableResolver: () => 'claude');
+    addTearDown(chatCubit.close);
+
+    await _openAutomations(
+      tester,
+      viewport: const Size(1200, 800),
+      automationCubit: setup.cubit,
+      chatCubit: chatCubit,
+    );
+
+    final l10n = lookupAppLocalizations(const Locale('en'));
+
+    await tester.tap(find.byTooltip(l10n.automationsNew));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text(l10n.automationsCompactTitle), findsOneWidget);
+    expect(find.text(l10n.automationsFilterLaunchPrompt), findsOneWidget);
+    expect(find.text(l10n.automationsCommand), findsOneWidget);
+
+    await tester.tap(find.text(l10n.automationsCommand));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.byType(AutomationEditorDialog), findsOneWidget);
+    expect(find.byKey(const Key('automationCommandField')), findsOneWidget);
   });
 }

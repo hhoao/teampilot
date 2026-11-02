@@ -6,6 +6,7 @@ import '../../models/workspace.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
 import '../../services/automation/automation_schedule_defaults.dart';
 import 'package:shared_ui/shared_ui.dart';
+import 'automation_editor_dialog.dart' show AutomationEditorKind;
 import 'automation_editor_launch_section.dart';
 import 'automation_schedule_picker.dart';
 
@@ -15,7 +16,7 @@ const double kAutomationEditorFormLabelWidth = 160;
 /// Field body for [AutomationEditorDialog] under an [TpForm].
 class AutomationEditorFormBody extends StatelessWidget {
   const AutomationEditorFormBody({
-    required this.isScheduledMessage,
+    required this.kind,
     required this.nameController,
     required this.messageController,
     required this.maxRunCountController,
@@ -28,6 +29,11 @@ class AutomationEditorFormBody extends StatelessWidget {
     required this.reuseSession,
     required this.onReuseSessionChanged,
     required this.reuseSessionSubtitle,
+    this.commandController,
+    this.commandError,
+    this.timeoutController,
+    this.catchUpOnce = false,
+    this.onCatchUpChanged,
     this.onMaxRunCountChanged,
     this.workspace,
     this.isPersonal = true,
@@ -47,7 +53,7 @@ class AutomationEditorFormBody extends StatelessWidget {
     super.key,
   });
 
-  final bool isScheduledMessage;
+  final AutomationEditorKind kind;
   final TextEditingController nameController;
   final TextEditingController messageController;
   final TextEditingController maxRunCountController;
@@ -60,6 +66,11 @@ class AutomationEditorFormBody extends StatelessWidget {
   final bool reuseSession;
   final ValueChanged<bool> onReuseSessionChanged;
   final String reuseSessionSubtitle;
+  final TextEditingController? commandController;
+  final String? commandError;
+  final TextEditingController? timeoutController;
+  final bool catchUpOnce;
+  final ValueChanged<bool>? onCatchUpChanged;
   final VoidCallback? onMaxRunCountChanged;
   final Workspace? workspace;
   final bool isPersonal;
@@ -77,10 +88,15 @@ class AutomationEditorFormBody extends StatelessWidget {
   final ValueChanged<String?>? onExpertChanged;
   final ValueChanged<String>? onTargetMemberChanged;
 
+  bool get isScheduledMessage => kind == AutomationEditorKind.scheduledMessage;
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final bodyStyle = TpTextStyles.of(context).md;
+    final monospaceStyle = Theme.of(
+      context,
+    ).textTheme.bodySmall?.copyWith(fontFamily: 'monospace');
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -107,20 +123,62 @@ class AutomationEditorFormBody extends StatelessWidget {
             );
           },
         ),
-        const SizedBox(height: 12),
-        TpTextareaFormField(
-          id: 'message',
-          controller: messageController,
-          label: Text(l10n.automationsMessage),
-          layoutStyle: TpFormFieldLayoutStyle.inline,
-          labelWidth: kAutomationEditorFormLabelWidth,
-          minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
-          maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 5),
-          validator: (v) => (v == null || v.trim().isEmpty)
-              ? l10n.automationsValidationRequired
-              : null,
-        ),
-        if (!isScheduledMessage && workspace != null) ...[
+        if (kind != AutomationEditorKind.runCommand) ...[
+          const SizedBox(height: 12),
+          TpTextareaFormField(
+            id: 'message',
+            controller: messageController,
+            label: Text(l10n.automationsMessage),
+            layoutStyle: TpFormFieldLayoutStyle.inline,
+            labelWidth: kAutomationEditorFormLabelWidth,
+            minHeight: tpTextareaHeightForLines(bodyStyle, lines: 2),
+            maxHeight: tpTextareaHeightForLines(bodyStyle, lines: 5),
+            validator: (v) => (v == null || v.trim().isEmpty)
+                ? l10n.automationsValidationRequired
+                : null,
+          ),
+        ],
+        if (kind == AutomationEditorKind.runCommand) ...[
+          const SizedBox(height: 12),
+          TextField(
+            key: const Key('automationCommandField'),
+            controller: commandController,
+            minLines: 3,
+            maxLines: 8,
+            style: monospaceStyle,
+            decoration: InputDecoration(
+              labelText: l10n.automationsCommand,
+              helperText: l10n.automationsCommandHelp,
+              errorText: commandError,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: TextField(
+                  key: const Key('automationTimeoutField'),
+                  controller: timeoutController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: l10n.automationsCommandTimeout,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 3,
+                child: SwitchListTile(
+                  value: catchUpOnce,
+                  onChanged: onCatchUpChanged,
+                  title: Text(l10n.automationsCatchUpOnce),
+                ),
+              ),
+            ],
+          ),
+        ],
+        if (kind == AutomationEditorKind.launchPrompt && workspace != null) ...[
           const SizedBox(height: 12),
           AutomationEditorLaunchSection(
             workspace: workspace!,

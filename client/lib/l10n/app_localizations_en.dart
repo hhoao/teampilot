@@ -7195,6 +7195,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationsRunStatusSkippedMissed => 'Skipped — missed window';
 
   @override
+  String get automationsRunStatusFailed => 'Failed';
+
+  @override
+  String get automationsRunStatusTimedOut => 'Timed out';
+
+  @override
+  String get automationsRunStatusSkippedOverlap => 'Skipped (still running)';
+
+  @override
+  String automationsExitCode(int code) {
+    return 'Exit code $code';
+  }
+
+  @override
+  String get automationsCommand => 'Command';
+
+  @override
+  String get automationsCommandHelp =>
+      'Runs only while TeamPilot is running. Missed runs older than the grace window are skipped unless catch-up is on.';
+
+  @override
+  String get automationsCommandTimeout => 'Timeout (seconds)';
+
+  @override
+  String get automationsCommandRequired => 'Command is required';
+
+  @override
+  String get automationsCatchUpOnce => 'Catch up once after startup';
+
+  @override
   String get automationsMaxRunCount => 'Run limit';
 
   @override
