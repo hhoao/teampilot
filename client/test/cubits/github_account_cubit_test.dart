@@ -7,6 +7,8 @@ import 'package:teampilot/cubits/github_account_cubit.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/services/github/github_credentials_store.dart';
 import 'package:teampilot/services/github/github_device_flow_auth.dart';
+import 'package:teampilot/services/vault/credential_capture.dart';
+import 'package:teampilot/services/vault/vault_service.dart';
 
 class InMemorySecureKeyValueStore implements SecureKeyValueStore {
   final values = <String, String>{};
@@ -19,6 +21,19 @@ class InMemorySecureKeyValueStore implements SecureKeyValueStore {
 
   @override
   Future<void> write(String key, String value) async => values[key] = value;
+}
+
+/// A vault that always reports itself locked, so every mutating store call
+/// fails unless the caller unlocks it.
+class _LockedVault implements VaultService {
+  @override
+  bool get isEncrypted => false;
+
+  @override
+  bool get isUnlocked => false;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 GithubDeviceFlowAuth controllableDeviceFlowAuth({
@@ -103,6 +118,19 @@ GithubAccountCubit createCubit({
   );
 }
 
+GithubCredentialsStore lockedVaultStore({
+  InMemorySecureKeyValueStore? kv,
+}) {
+  final backing = kv ?? InMemorySecureKeyValueStore();
+  final vault = _LockedVault();
+  return GithubCredentialsStore(
+    kv: backing,
+    vault: vault,
+    vaultCapture: VaultCredentialCapture(vault: vault),
+    ensureVaultUnlocked: () async => false,
+  );
+}
+
 Future<void> pumpUntil(
   bool Function() predicate, {
   int maxAttempts = 50,
@@ -171,6 +199,26 @@ void main() {
       await cubit.hydrate();
 
       expect(cubit.state.status, GithubAccountStatus.disconnected);
+    });
+
+    test('survives a locked vault with a legacy token', () async {
+      final kv = InMemorySecureKeyValueStore();
+      kv.values['teampilot.github.v1.token'] = 'ghp_legacy';
+      final store = lockedVaultStore(kv: kv);
+
+      final cubit = createCubit(store: store, fetchLogin: (_) async => 'bob');
+      addTearDown(cubit.close);
+
+      await cubit.hydrate();
+
+      expect(cubit.state.status, GithubAccountStatus.connected);
+      expect(cubit.state.login, 'bob');
+      // The fetched login was not persisted: the vault is locked.
+      expect(
+        kv.values.containsKey('teampilot.github.v1.vault_entry'),
+        isFalse,
+      );
+      expect(kv.values['teampilot.github.v1.token'], 'ghp_legacy');
     });
   });
 
@@ -411,6 +459,65 @@ void main() {
       expect(cubit.state.status, GithubAccountStatus.disconnected);
       expect(cubit.state.errorMessage, 'Authorization expired. Try again.');
       expect(await store.readStored(), isNull);
+    });
+
+    test('blocked savePat emits the locked message and stays disconnected', () async {
+      final store = lockedVaultStore();
+
+      final cubit = createCubit(store: store);
+      addTearDown(cubit.close);
+      await cubit.hydrate();
+
+      await cubit.savePat('ghp_blocked');
+
+      expect(cubit.state.status, GithubAccountStatus.disconnected);
+      expect(
+        cubit.state.errorMessage,
+        'Unlock the credential vault to change GitHub credentials.',
+      );
+      expect(cubit.state.source, isNull);
+    });
+
+    test('blocked disconnect keeps connected and shows the locked message', () async {
+      final kv = InMemorySecureKeyValueStore();
+      kv.values['teampilot.github.v1.vault_entry'] = 'entry-1';
+      kv.values['teampilot.github.v1.token'] = 'ghp_legacy';
+      kv.values['teampilot.github.v1.login'] = 'alice';
+      kv.values['teampilot.github.v1.source'] = 'pat';
+      final store = lockedVaultStore(kv: kv);
+
+      final cubit = createCubit(store: store);
+      addTearDown(cubit.close);
+      await cubit.hydrate();
+      expect(cubit.state.status, GithubAccountStatus.connected);
+
+      await cubit.disconnect();
+
+      expect(cubit.state.status, GithubAccountStatus.connected);
+      expect(
+        cubit.state.errorMessage,
+        'Unlock the credential vault to change GitHub credentials.',
+      );
+      expect(kv.values['teampilot.github.v1.token'], 'ghp_legacy');
+    });
+
+    test('blocked onUnauthorized still disconnects with the expired message', () async {
+      final kv = InMemorySecureKeyValueStore();
+      kv.values['teampilot.github.v1.vault_entry'] = 'entry-1';
+      kv.values['teampilot.github.v1.token'] = 'ghp_legacy';
+      kv.values['teampilot.github.v1.login'] = 'alice';
+      kv.values['teampilot.github.v1.source'] = 'pat';
+      final store = lockedVaultStore(kv: kv);
+
+      final cubit = createCubit(store: store);
+      addTearDown(cubit.close);
+      await cubit.hydrate();
+
+      await cubit.onUnauthorized();
+
+      expect(cubit.state.status, GithubAccountStatus.disconnected);
+      expect(cubit.state.errorMessage, 'Authorization expired. Try again.');
+      expect(kv.values['teampilot.github.v1.token'], 'ghp_legacy');
     });
   });
 }

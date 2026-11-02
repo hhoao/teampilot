@@ -1,4 +1,5 @@
 import '../../repositories/ssh_credential_store.dart';
+import '../../utils/logging/logger_utils.dart';
 import '../vault/credential_capture.dart';
 import '../vault/vault_service.dart';
 import '../vault/vault_unlock_gate.dart';
@@ -26,7 +27,8 @@ class GithubCredentialsStore {
     VaultService? vault,
     VaultCredentialCapture? vaultCapture,
     Future<bool> Function()? ensureVaultUnlocked,
-  }) : _kv = kv,
+  }) : assert(vaultCapture == null || vault != null),
+       _kv = kv,
        _readEnvToken = readEnvToken ?? readGithubTokenFromEnvironment,
        _vault = vault,
        _vaultCapture = vaultCapture,
@@ -91,7 +93,19 @@ class GithubCredentialsStore {
       login: login,
       source: source,
     );
-    await _kv.write(_vaultEntryKey, result.entryId);
+    try {
+      await _kv.write(_vaultEntryKey, result.entryId);
+    } on Object {
+      try {
+        await capture.rollback(result);
+      } on Object catch (error, stackTrace) {
+        AppLogger.instance.w(
+          '[vault] github capture rollback failed: ${error.runtimeType}',
+          stackTrace: stackTrace,
+        );
+      }
+      rethrow;
+    }
     await _clearLegacy();
     return true;
   }
@@ -114,17 +128,21 @@ class GithubCredentialsStore {
 
     final pointer = (await _kv.read(_vaultEntryKey))?.trim() ?? '';
     if (pointer.isNotEmpty) {
-      final entry = await _vault?.get(pointer);
-      if (entry != null) {
-        final token = entry.fields['token'] ?? '';
-        if (token.isEmpty) return null;
-        final sourceRaw = entry.fields['source'];
-        final login = entry.fields['login'] ?? '';
-        return GithubCredentialsSnapshot(
-          token: token,
-          login: login.isEmpty ? null : login,
-          source: _parseSource(sourceRaw),
-        );
+      try {
+        final entry = await _vault?.get(pointer);
+        if (entry != null) {
+          final token = entry.fields['token'] ?? '';
+          if (token.isEmpty) return null;
+          final sourceRaw = entry.fields['source'];
+          final login = entry.fields['login'] ?? '';
+          return GithubCredentialsSnapshot(
+            token: token,
+            login: login.isEmpty ? null : login,
+            source: _parseSource(sourceRaw),
+          );
+        }
+      } on Object {
+        // Locked or unavailable vault: fall through to the legacy keys.
       }
     }
 
@@ -144,6 +162,15 @@ class GithubCredentialsStore {
   Future<void> migrateLegacyHubPublishTokenIfNeeded() async {
     if (_legacyMigrated) return;
 
+    final pointer = (await _kv.read(_vaultEntryKey))?.trim() ?? '';
+    if (pointer.isNotEmpty) {
+      // A vault entry is authoritative; drop the stale legacy token without
+      // touching newer credentials.
+      await _kv.delete(_legacyTokenKey);
+      _legacyMigrated = true;
+      return;
+    }
+
     final legacy = await _kv.read(_legacyTokenKey);
     if (legacy == null || legacy.isEmpty) {
       _legacyMigrated = true;
@@ -160,7 +187,8 @@ class GithubCredentialsStore {
 
   Future<void> _migrateLegacyTokenToVault(String token) async {
     final capture = _vaultCapture;
-    if (capture == null) return;
+    final vault = _vault;
+    if (capture == null || vault == null || !vault.isUnlocked) return;
     try {
       final login = await _kv.read(_loginKey) ?? '';
       final source = await _kv.read(_sourceKey) ?? '';
@@ -170,8 +198,11 @@ class GithubCredentialsStore {
         source: source,
       );
       await _kv.write(_vaultEntryKey, result.entryId);
-    } on Object {
-      // Legacy read still succeeds; the importer retries later.
+    } on Object catch (error, stackTrace) {
+      AppLogger.instance.w(
+        '[vault] github migration deferred: ${error.runtimeType}',
+        stackTrace: stackTrace,
+      );
     }
   }
 

@@ -3699,7 +3699,10 @@ Place it after the emit so the vault state is already unlocked.
 
 2. Pass `vault: vaultService` to `PairedRelayTunnelRegistry` (Task 10).
 3. Use `vaultCredentialCapture` and `vaultUnlockGate.ensureUnlocked` in the GitHub store (replace Task 9 temporaries).
-4. `VaultCubit` construction:
+4. `VaultCubit` construction — `onUnlocked` runs the legacy import **and** rehydrates
+   GitHub so a token that only lives in the vault becomes visible after unlock. Order
+   matters: the import must finish before hydration reads the store, otherwise GitHub
+   hydrates from the pointer before the token is captured.
 
 ```dart
   late final VaultLegacyImportService legacyImporter;
@@ -3707,9 +3710,17 @@ Place it after the emit so the vault state is already unlocked.
     service: vaultService,
     sshProfiles: sshProfileRepo,
     appProviders: AppProviderRepository(storage: homeStorage),
-    onUnlocked: () => legacyImporter.runOnce(),
+    onUnlocked: () async {
+      await legacyImporter.runOnce();
+      await githubAccountCubit.hydrate();
+    },
   );
 ```
+
+   `githubAccountCubit` is the `final` local built earlier in `buildAppShell`
+   (before this `vaultCubit` construction), so the closure captures it directly. If a
+   future refactor moves `VaultCubit` construction above it, hoist the GitHub cubit
+   into a `late final` declared before `vaultCubit` instead of reordering the unlock path.
 
 5. After the managed-provider graph is constructed (after `resolvedManagedProviderSecretStore` / `resolvedManagedProviderRepository` / `githubCredentialsStore`):
 

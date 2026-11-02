@@ -224,8 +224,9 @@ void main() {
 
   test('stores OAuth credentials in the vault and reads the pointer', () async {
     final vault = await _githubVault();
+    final kv = InMemorySecureKeyValueStore();
     final store = GithubCredentialsStore(
-      kv: InMemorySecureKeyValueStore(),
+      kv: kv,
       vault: vault,
       vaultCapture: VaultCredentialCapture(vault: vault),
       ensureVaultUnlocked: () async => true,
@@ -237,9 +238,67 @@ void main() {
     expect(snapshot?.login, 'me');
     expect(snapshot?.source, GithubCredentialSource.oauth);
     expect(await vault.list(), hasLength(1));
+    expect(kv.values['teampilot.github.v1.vault_entry'], isNotEmpty);
+    expect(kv.values.containsKey('teampilot.github.v1.token'), isFalse);
+    expect(kv.values.containsKey('teampilot.github.v1.login'), isFalse);
+    expect(kv.values.containsKey('teampilot.github.v1.source'), isFalse);
 
     await store.clearStored();
     expect(await store.readStored(), isNull);
+    expect(await vault.list(), isEmpty);
+  });
+
+  test('a dangling pointer falls back to the legacy keys', () async {
+    final vault = await _githubVault();
+    final kv = InMemorySecureKeyValueStore();
+    kv.values['teampilot.github.v1.vault_entry'] = 'missing-entry';
+    kv.values['teampilot.github.v1.token'] = 'ghp_legacy';
+    kv.values['teampilot.github.v1.login'] = 'alice';
+    kv.values['teampilot.github.v1.source'] = 'pat';
+    final store = GithubCredentialsStore(kv: kv, vault: vault);
+
+    final snapshot = await store.readStored();
+
+    expect(snapshot?.token, 'ghp_legacy');
+    expect(snapshot?.login, 'alice');
+    expect(snapshot?.source, GithubCredentialSource.pat);
+  });
+
+  test('a vault read failure falls back to the legacy keys', () async {
+    final vault = await _githubVault();
+    final kv = InMemorySecureKeyValueStore();
+    kv.values['teampilot.github.v1.vault_entry'] = 'entry-1';
+    kv.values['teampilot.github.v1.token'] = 'ghp_legacy';
+    final store = GithubCredentialsStore(
+      kv: kv,
+      vault: _LockedGithubVault(vault),
+      vaultCapture: VaultCredentialCapture(vault: _LockedGithubVault(vault)),
+      ensureVaultUnlocked: () async => false,
+    );
+
+    final snapshot = await store.readStored();
+
+    expect(snapshot?.token, 'ghp_legacy');
+  });
+
+  test('rolls back the capture when the pointer write fails', () async {
+    final vault = await _githubVault();
+    final inner = InMemorySecureKeyValueStore();
+    final kv = ThrowingSecureKeyValueStore(
+      inner,
+      shouldThrowOnWrite: (key) => key == 'teampilot.github.v1.vault_entry',
+    );
+    final store = GithubCredentialsStore(
+      kv: kv,
+      vault: vault,
+      vaultCapture: VaultCredentialCapture(vault: vault),
+      ensureVaultUnlocked: () async => true,
+    );
+
+    await expectLater(
+      store.savePat('ghp_rollback'),
+      throwsA(isA<StateError>()),
+    );
     expect(await vault.list(), isEmpty);
   });
 
@@ -255,5 +314,29 @@ void main() {
       store.savePat('ghp_y'),
       throwsA(isA<VaultSaveBlockedException>()),
     );
+  });
+
+  test('a refused unlock leaves the legacy keys untouched', () async {
+    final vault = await _githubVault();
+    final kv = InMemorySecureKeyValueStore();
+    kv.values['teampilot.github.v1.token'] = 'ghp_legacy';
+    kv.values['teampilot.github.v1.login'] = 'alice';
+    kv.values['teampilot.github.v1.source'] = 'pat';
+    final store = GithubCredentialsStore(
+      kv: kv,
+      vault: vault,
+      vaultCapture: VaultCredentialCapture(vault: _LockedGithubVault(vault)),
+      ensureVaultUnlocked: () async => false,
+    );
+
+    await expectLater(
+      store.savePat('ghp_new'),
+      throwsA(isA<VaultSaveBlockedException>()),
+    );
+
+    expect(kv.values['teampilot.github.v1.token'], 'ghp_legacy');
+    expect(kv.values['teampilot.github.v1.login'], 'alice');
+    expect(kv.values['teampilot.github.v1.source'], 'pat');
+    expect(await vault.list(), isEmpty);
   });
 }
