@@ -818,6 +818,7 @@ Future<AppShell> buildAppShell({
   // dial for that profile rides the loopback port instead of the stored host.
   final pairedRelayTunnels = PairedRelayTunnelRegistry(
     credentialStore: sshCredentialStore,
+    vault: vaultService,
   );
   final sshKnownHostRepo = SharedPrefsSshKnownHostRepository(preferences);
   final sshConnectionEvents = SshConnectionEvents();
