@@ -209,10 +209,13 @@ git commit -m "feat(vault): persist a one-shot legacy import marker"
 
 **Files:**
 - Create: `client/lib/services/vault/credential_capture.dart`
+- Modify: `client/lib/services/vault/vault_service.dart` (add `verifyFields`)
 - Test: `client/test/services/vault/credential_capture_test.dart`
+- Test: `client/test/services/vault/vault_service_test.dart`
 
 **Interfaces:**
-- Consumes: `VaultService` (`list`, `get`, `upsert`, `delete`, `readField`), `VaultEntry`, `SshProfile`, `AppProviderConfig`, `ManagedProvider`.
+- Consumes: `VaultService` (`list`, `get`, `upsert`, `delete`, `verifyFields`), `VaultEntry`, `SshProfile`, `AppProviderConfig`, `ManagedProvider`.
+- Produces: `Future<bool> VaultService.verifyFields(String entryId, Map<String, String> fields)` — reloads the keychain backend and compares; encrypted backends compare the in-memory document (the passphrase is not retained after save).
 - Produces:
   - consts `vaultOwnerKindSshProfile`, `vaultOwnerKindAppProvider`, `vaultOwnerKindManagedProvider`, `vaultOwnerKindGithub`
   - `class VaultCaptureResult { String entryId; bool created; VaultEntry? previous; }`
@@ -229,7 +232,77 @@ git commit -m "feat(vault): persist a one-shot legacy import marker"
 
 Merge semantics: `null` keeps an existing field, `''` removes it, a value overwrites it.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Add the failing `verifyFields` test**
+
+Append to `client/test/services/vault/vault_service_test.dart` inside `main()`:
+
+```dart
+  test('verifyFields reloads the keychain backend', () async {
+    final store = _FakeStore();
+    final service = buildService(store: store);
+    await service.initialize();
+    await service.upsert(
+      const VaultEntry(
+        id: 'a',
+        type: VaultEntryType.token,
+        title: 'A',
+        fields: {'token': 't'},
+      ),
+    );
+    expect(await service.verifyFields('a', {'token': 't'}), isTrue);
+    expect(await service.verifyFields('a', {'token': 'other'}), isFalse);
+    expect(await service.verifyFields('missing', {'token': 't'}), isFalse);
+  });
+```
+
+Run it: `cd client && dart run tool/run_tests.dart test/services/vault/vault_service_test.dart`
+Expected: FAIL — `The method 'verifyFields' isn't defined`.
+
+Implement in `client/lib/services/vault/vault_service.dart`:
+
+```dart
+  /// Verifies that [fields] are present with these values.
+  ///
+  /// Keychain mode reloads the backend, so this is a real persistence
+  /// round-trip. The encrypted backend does not retain the passphrase after
+  /// save, so it compares the in-memory document that the awaited save
+  /// already committed.
+  Future<bool> verifyFields(String entryId, Map<String, String> fields) async {
+    if (_locked) return false;
+    VaultDocument? source;
+    if (_encrypted) {
+      source = _document;
+    } else {
+      try {
+        source = await _keychainBackend.load();
+      } on Object {
+        return false;
+      }
+    }
+    final entry = source?.entries.where((entry) => entry.id == entryId).firstOrNull;
+    if (entry == null) return false;
+    for (final field in fields.entries) {
+      if (entry.fields[field.key] != field.value) return false;
+    }
+    return true;
+  }
+```
+
+Import `package:collection/collection.dart` only if `firstOrNull` is not available; the file already uses plain loops, so prefer a loop:
+
+```dart
+    VaultEntry? entry;
+    for (final candidate in source?.entries ?? const <VaultEntry>[]) {
+      if (candidate.id == entryId) {
+        entry = candidate;
+        break;
+      }
+    }
+```
+
+Run the test again: expected PASS.
+
+- [ ] **Step 2: Write the failing capture test**
 
 Create `client/test/services/vault/credential_capture_test.dart`:
 
@@ -339,7 +412,10 @@ void main() {
       baseUrl: 'https://api.example.com',
     );
 
-    final result = await capture.captureProvider(provider);
+    final result = await capture.captureProvider(
+      provider,
+      apiKey: provider.apiKey,
+    );
     final entry = (await service.get(result.entryId))!;
     expect(entry.title, 'OpenAI');
     expect(entry.fields['apiKey'], 'sk-1');
@@ -348,6 +424,7 @@ void main() {
 
     await capture.captureProvider(
       provider.copyWith(name: 'OpenAI 2', apiKey: 'sk-2'),
+      apiKey: 'sk-2',
     );
     expect((await service.get(result.entryId))!.fields['apiKey'], 'sk-2');
     expect(await service.readField(result.entryId, 'apiKey'), 'sk-2');
@@ -385,13 +462,13 @@ void main() {
     expect(entry.extra['ownerId'], 'default');
   });
 
-  test('verify failure throws and rollback restores the previous entry', () async {
+  test('verify failure restores the previous entry', () async {
     final store = _FakeStore();
     final service = await _service(store: store);
     final capture = VaultCredentialCapture(vault: service);
-    final created = await capture.captureSsh(passwordProfile, password: 'old');
+    await capture.captureSsh(passwordProfile, password: 'old');
 
-    final broken = _BrokenReadBackVaultService(store);
+    final broken = _BrokenVerifyVaultService(store);
     await broken.initialize();
     final brokenCapture = VaultCredentialCapture(vault: broken);
     await expectLater(
@@ -399,13 +476,31 @@ void main() {
       throwsA(isA<VaultCaptureException>()),
     );
 
-    await capture.rollback(created);
-    expect(await service.list(), isEmpty);
+    final reloaded = await _service(store: store);
+    expect(
+      await reloaded.readField(
+        (await reloaded.list()).single.id,
+        'password',
+      ),
+      'old',
+    );
+  });
+
+  test('rollback of an update restores the previous fields', () async {
+    final store = _FakeStore();
+    final service = await _service(store: store);
+    final capture = VaultCredentialCapture(vault: service);
+    await capture.captureSsh(passwordProfile, password: 'old');
+    final updated = await capture.captureSsh(passwordProfile, password: 'new');
+    expect(updated.created, isFalse);
+
+    await capture.rollback(updated);
+    expect(await service.readField(updated.entryId, 'password'), 'old');
   });
 }
 
-class _BrokenReadBackVaultService extends VaultService {
-  _BrokenReadBackVaultService(_FakeStore store)
+class _BrokenVerifyVaultService extends VaultService {
+  _BrokenVerifyVaultService(_FakeStore store)
     : super(
         keychainBackend: KeychainVaultBackend(store),
         encryptedBackend: EncryptedVaultBackend(
@@ -422,7 +517,8 @@ class _BrokenReadBackVaultService extends VaultService {
       );
 
   @override
-  Future<String?> readField(String entryId, String field) async => null;
+  Future<bool> verifyFields(String entryId, Map<String, String> fields) async =>
+      false;
 }
 ```
 
@@ -521,11 +617,12 @@ class VaultCredentialCapture {
     );
   }
 
+  /// [apiKey]: null keeps the stored key, an empty string removes it, a
+  /// value overwrites it. Callers that have a key must pass it explicitly.
   Future<VaultCaptureResult> captureProvider(
     AppProviderConfig provider, {
     String? apiKey,
   }) {
-    final effectiveApiKey = apiKey ?? provider.apiKey;
     return _upsert(
       ownerKind: vaultOwnerKindAppProvider,
       ownerId: provider.id,
@@ -536,7 +633,7 @@ class VaultCredentialCapture {
       fields: {
         'provider': provider.id,
         'baseUrl': provider.baseUrl,
-        if (effectiveApiKey.isNotEmpty) 'apiKey': effectiveApiKey,
+        if (apiKey != null) 'apiKey': apiKey,
       },
     );
   }
@@ -572,7 +669,7 @@ class VaultCredentialCapture {
     return _upsert(
       ownerKind: vaultOwnerKindGithub,
       ownerId: 'default',
-      type: VaultEntryType.apiKey,
+      type: VaultEntryType.token,
       title: 'GitHub',
       tags: const ['github'],
       revealable: true,
@@ -625,6 +722,7 @@ class VaultCredentialCapture {
       title: title,
       fields: merged,
       tags: {...?existing?.tags, ...tags}.toList(growable: false),
+      notes: existing?.notes ?? '',
       favorite: existing?.favorite ?? false,
       revealable: type == VaultEntryType.sshPrivateKey ? false : revealable,
       createdAt: existing?.createdAt ?? now,
@@ -636,11 +734,13 @@ class VaultCredentialCapture {
       },
     );
     await _vault.upsert(entry);
-    for (final field in merged.keys) {
-      final readBack = await _vault.readField(entry.id, field);
-      if (readBack != merged[field]) {
-        throw const VaultCaptureException('verifyFailed');
+    if (!await _vault.verifyFields(entry.id, merged)) {
+      if (existing == null) {
+        await _vault.delete(entry.id);
+      } else {
+        await _vault.upsert(existing);
       }
+      throw const VaultCaptureException('verifyFailed');
     }
     return VaultCaptureResult(
       entryId: entry.id,
@@ -650,8 +750,6 @@ class VaultCredentialCapture {
   }
 }
 ```
-
-Note: `captureManaged` computes `type` from the *incoming* values before merge. After merge the entry may have more than one field; `_upsert` will not recompute. Acceptable: single-field saves become `apiKey`, multi-field saves become `custom`. Document this in the method doc comment.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
@@ -2917,7 +3015,10 @@ class VaultLegacyImportService {
         final link = provider.credentialLink.trim();
         if (link.isNotEmpty) continue;
         if (provider.apiKey.isEmpty) continue;
-        final result = await _capture.captureProvider(provider);
+        final result = await _capture.captureProvider(
+          provider,
+          apiKey: provider.apiKey,
+        );
         providers[index] = provider.copyWith(
           credentialLink: 'vault:${result.entryId}',
           apiKey: '',
