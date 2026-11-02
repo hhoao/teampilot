@@ -234,3 +234,31 @@ capability.
   mixed-seat gate)
 - Custom / BYOK providers
 - Qoder private `_meta` (quota model breakdown, prompt queueing)
+
+## Implementation notes (2026-11-03)
+
+Deliberate deviations from the text above, as shipped:
+
+- **Model catalog is static.** `QoderModelCatalog` carries a known list of
+  account models instead of calling `--list-models` / reading ACP
+  `models.availableModels`; the provider section renders that list. A live
+  catalog is a follow-up.
+- **`reasoningEffort` is a dead write.** The value is merged into
+  `settings.json` but is not forwarded as a launch argument, and the effort
+  pickers are hidden (`teamPickerPlacement` / `memberPickerPlacement` /
+  `providerPickerPlacement` all return `hidden`). Effectively no behavior
+  change from the user's perspective until the CLI accepts the setting.
+- **Native commands are a hardcoded subset.** Goal / compact / plan / help are
+  declared statically rather than driven by ACP `available_commands_update`.
+- **Cross-machine seats seed `.auth` through the work-plane manifest.** The
+  source (provider store, else the machine `~/.qoder/.auth`) is read on the
+  control plane, then both files are copied onto the work plane with
+  `copyFile` / `writeWorkString` so the manifest flushes them to the SSH
+  target. The machine-login fallback itself remains control-plane only: a
+  remote host with no seeded copy cannot authenticate from its own `~/.qoder`.
+- **Session `.auth` is reseeded only when the provider marker changes.** A
+  successful seed writes `<configDir>/.auth/.qoder-provider` (the provider id,
+  or `machine` for the fallback). Later seeds keep the session copy when the
+  marker matches or is absent (legacy/preexisting), so in-session token
+  refreshes survive; a different marker reseeds, so re-login on another
+  provider row reaches existing sessions.
