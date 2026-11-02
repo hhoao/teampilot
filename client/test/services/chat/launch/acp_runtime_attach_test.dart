@@ -354,8 +354,25 @@ void main() {
     },
   );
 
-  test('attachMemberAcpRuntime attaches a remote (ssh) ACP member', () async {
-    final harness = _Harness();
+  test('attachMemberAcpRuntime builds an SSH launch for a remote ACP member', () async {
+    var sshLaunchBuilt = false;
+    final harness = _Harness(
+      sshLaunchFactory: ({required session, required launchTarget}) {
+        sshLaunchBuilt = true;
+        return (
+          profile: const SshProfile(
+            id: 'p1',
+            name: 'host',
+            host: 'host',
+            username: 'u',
+            authType: SshAuthType.password,
+          ),
+          // The injected acpRuntimeFactory replaces the production spawner,
+          // so this opener is never invoked.
+          openChannel: (_) async => throw UnimplementedError(),
+        );
+      },
+    );
     final session = AppSession(
       sessionId: 's1',
       workspaceId: 'w1',
@@ -381,6 +398,7 @@ void main() {
     );
 
     expect(handled, isTrue);
+    expect(sshLaunchBuilt, isTrue);
     expect(harness.tab.memberAcpRuntimes.keys, contains('lead'));
     expect(harness.runtime.started, isTrue);
   });

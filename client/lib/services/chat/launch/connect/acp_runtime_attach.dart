@@ -394,13 +394,24 @@ class AcpRuntimeAttach {
         '[session-launch] acp member lifecycle gate done member=${member.id}',
       );
     }
+    final remote = usesSshTransport(launchTarget.kind);
+    final sshLaunch = remote
+        ? (sshLaunchFactory ?? _productionSshLaunch)(
+            session: session,
+            launchTarget: launchTarget,
+          )
+        : null;
+    final remoteAdapterPath = remote
+        ? await _resolveRemoteAdapterPath(cli, launchTarget)
+        : null;
     final cubit = _cubit(
       session: session,
       cli: cli,
       personal: false,
       memberId: member.id,
       launchTarget: launchTarget,
-      sshLaunch: null,
+      sshLaunch: sshLaunch,
+      remoteAdapterPath: remoteAdapterPath,
       processWorkingDirectory: staged.workingDirectory,
       launchProvider: member.provider,
       launchModel: member.model,
