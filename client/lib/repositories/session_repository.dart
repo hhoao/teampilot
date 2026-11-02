@@ -897,6 +897,9 @@ class SessionRepository {
                 )
               : workflowId.trim())
         : '';
+    // Personal-only by contract: team ACP is stamped per member seat
+    // (`SessionMemberBinding.acp` / `isAcpChatSeat`), so a team session keeps
+    // `acp: false` no matter what the caller requests.
     final resolvedAcp =
         trimmedTeam.isEmpty &&
         (acp || CliToolRegistry.builtIn().launchesAcpOnly(cli));

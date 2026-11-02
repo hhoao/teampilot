@@ -110,15 +110,17 @@ void main() {
       expect(request.acp, isFalse);
     });
 
-    test('team create keeps request.acp when requested', () {
+    test('team create with a null cli never sets request.acp', () {
+      // Production passes `identity?.cli`, which is null for team creates;
+      // team ACP is seeded per member instead.
       final request = buildWorkspaceConversationCreateRequest(
         workspace: workspace,
         isPersonal: false,
-        cli: CliTool.claude,
+        cli: null,
         acp: true,
         isAndroidOverride: false,
       );
-      expect(request.acp, isTrue);
+      expect(request.acp, isFalse);
     });
 
     test('Android forces acp false', () {
@@ -132,11 +134,11 @@ void main() {
       expect(request.acp, isFalse);
     });
 
-    test('team create copies CLI seeds and keeps request.acp', () {
+    test('team create copies CLI seeds and leaves request.acp false', () {
       final request = buildWorkspaceConversationCreateRequest(
         workspace: workspace,
         isPersonal: false,
-        cli: CliTool.claude,
+        cli: null,
         acp: true,
         seedClaudeMemberAcp: true,
         seedCodexMemberAcp: true,
@@ -144,7 +146,7 @@ void main() {
         seedOpencodeMemberAcp: true,
         isAndroidOverride: false,
       );
-      expect(request.acp, isTrue);
+      expect(request.acp, isFalse);
       expect(request.seedClaudeMemberAcp, isTrue);
       expect(request.seedCodexMemberAcp, isTrue);
       expect(request.seedCursorMemberAcp, isTrue);
@@ -167,12 +169,14 @@ void main() {
   });
 
   group('resolveMemberBindingAcp', () {
-    test('follows requested for every team mode and target; Gemini always', () {
+    test('follows requested on local / ssh / termux; Gemini always', () {
       bool resolve({
         CliTool? cli = CliTool.claude,
         bool requested = true,
+        String targetId = 'local',
         bool android = false,
       }) => resolveMemberBindingAcp(
+        targetId: targetId,
         cli: cli,
         requested: requested,
         isAndroidOverride: android,
@@ -185,7 +189,31 @@ void main() {
       expect(resolve(cli: CliTool.opencode), isTrue);
       expect(resolve(cli: CliTool.opencode, requested: false), isFalse);
       expect(resolve(cli: CliTool.flashskyai), isFalse);
+      expect(resolve(targetId: 'ssh:prod'), isTrue);
+      expect(resolve(targetId: 'termux:default'), isTrue);
       expect(resolve(android: true), isFalse);
+    });
+
+    test('WSL has no ACP transport, so its seats stay PTY', () {
+      expect(
+        resolveMemberBindingAcp(
+          targetId: 'wsl:Ubuntu',
+          cli: CliTool.claude,
+          requested: true,
+          isAndroidOverride: false,
+        ),
+        isFalse,
+      );
+      expect(
+        resolveMemberBindingAcp(
+          targetId: 'wsl:Ubuntu',
+          cli: CliTool.gemini,
+          requested: true,
+          isAndroidOverride: false,
+        ),
+        isFalse,
+        reason: 'ACP-only CLIs still need an ACP transport on the target',
+      );
     });
   });
 
@@ -277,7 +305,7 @@ void main() {
       );
     });
 
-    test('non-local and native seats follow the seed', () {
+    test('SSH and native seats follow the seed; WSL seats do not', () {
       expect(
         stamp(
           members: [member(CliTool.claude, 'lead')],
@@ -291,6 +319,13 @@ void main() {
           targets: const {'gem': 'ssh:prod'},
         ).single.acp,
         isTrue,
+      );
+      expect(
+        stamp(
+          members: [member(CliTool.claude, 'wsl')],
+          targets: const {'wsl': 'wsl:Ubuntu'},
+        ).single.acp,
+        isFalse,
       );
       expect(
         stamp(
@@ -318,7 +353,7 @@ void main() {
   });
 
   group('shouldAttachMemberAcp', () {
-    test('attaches for any target when the seat is ACP', () {
+    test('attaches for a local seat that is ACP', () {
       final session = AppSession(
         sessionId: 's1',
         workspaceId: 'w1',
@@ -334,12 +369,16 @@ void main() {
         ],
       );
       expect(
-        shouldAttachMemberAcp(session: session, memberId: 'lead'),
+        shouldAttachMemberAcp(
+          session: session,
+          memberId: 'lead',
+          targetId: 'local',
+        ),
         isTrue,
       );
     });
 
-    test('OpenCode attaches for any target when the seat is ACP', () {
+    test('OpenCode attaches for an SSH seat that is ACP', () {
       final session = AppSession(
         sessionId: 's1',
         workspaceId: 'w1',
@@ -355,8 +394,37 @@ void main() {
         ],
       );
       expect(
-        shouldAttachMemberAcp(session: session, memberId: 'lead'),
+        shouldAttachMemberAcp(
+          session: session,
+          memberId: 'lead',
+          targetId: 'ssh:prod',
+        ),
         isTrue,
+      );
+    });
+
+    test('does not attach an ACP seat placed on WSL', () {
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        createdAt: 1,
+        sessionTeam: 't1',
+        members: const [
+          SessionMemberBinding(
+            rosterMemberId: 'lead',
+            taskId: 't',
+            cli: CliTool.claude,
+            acp: true,
+          ),
+        ],
+      );
+      expect(
+        shouldAttachMemberAcp(
+          session: session,
+          memberId: 'lead',
+          targetId: 'wsl:Ubuntu',
+        ),
+        isFalse,
       );
     });
   });

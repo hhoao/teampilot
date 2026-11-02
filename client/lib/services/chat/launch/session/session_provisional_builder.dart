@@ -42,9 +42,14 @@ AppSession buildProvisionalSession({
             ))
       : null;
 
+  // Personal-only by contract: team ACP lives on the member seats
+  // (`isAcpChatSeat`), never on the session, so a team session is always
+  // `acp: false` even when the caller requests it.
   final resolvedAcp =
-      (acp ?? false) ||
-      CliToolRegistry.builtIn().launchesAcpOnly(identity?.cli ?? cli);
+      trimmedTeam.isEmpty &&
+      isPersonal &&
+      ((acp ?? false) ||
+          CliToolRegistry.builtIn().launchesAcpOnly(identity?.cli ?? cli));
 
   return AppSession(
     sessionId: sessionId,

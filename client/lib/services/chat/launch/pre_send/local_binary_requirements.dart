@@ -64,6 +64,7 @@ List<LocalBinaryRequirement> localBinaryRequirementsForPlacement({
       if (seen.add(cliRequirement.key)) out.add(cliRequirement);
 
       final memberAcp = resolveMemberBindingAcp(
+        targetId: target.id,
         cli: cli,
         requested: acpSeed?.call(cli) ?? false,
         isAndroidOverride: isAndroidOverride,
