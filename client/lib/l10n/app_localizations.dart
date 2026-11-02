@@ -18053,6 +18053,270 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cursor accounts'**
   String get cursorAccountUsageSession;
+
+  /// No description provided for @vaultPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential Vault'**
+  String get vaultPageTitle;
+
+  /// No description provided for @vaultPageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH passwords, private keys and provider API keys'**
+  String get vaultPageSubtitle;
+
+  /// No description provided for @vaultNewEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'New entry'**
+  String get vaultNewEntry;
+
+  /// No description provided for @vaultSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search title, fields or tags'**
+  String get vaultSearchHint;
+
+  /// No description provided for @vaultEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No entries yet'**
+  String get vaultEmptyTitle;
+
+  /// No description provided for @vaultEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Save SSH passwords, private keys or provider API keys here.'**
+  String get vaultEmptyHint;
+
+  /// No description provided for @vaultStatusKeychain.
+  ///
+  /// In en, this message translates to:
+  /// **'System keychain · no unlock needed'**
+  String get vaultStatusKeychain;
+
+  /// No description provided for @vaultStatusEncrypted.
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted vault · locked'**
+  String get vaultStatusEncrypted;
+
+  /// No description provided for @vaultStatusUnlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Encrypted vault · unlocked'**
+  String get vaultStatusUnlocked;
+
+  /// No description provided for @vaultUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get vaultUnlock;
+
+  /// No description provided for @vaultLock.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock now'**
+  String get vaultLock;
+
+  /// No description provided for @vaultEnableEncryption.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable encrypted vault'**
+  String get vaultEnableEncryption;
+
+  /// No description provided for @vaultDisableEncryption.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable encrypted vault'**
+  String get vaultDisableEncryption;
+
+  /// No description provided for @vaultUnlockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock vault'**
+  String get vaultUnlockTitle;
+
+  /// No description provided for @vaultPassphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Master passphrase'**
+  String get vaultPassphrase;
+
+  /// No description provided for @vaultPassphraseConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm passphrase'**
+  String get vaultPassphraseConfirm;
+
+  /// No description provided for @vaultPassphraseMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passphrases do not match'**
+  String get vaultPassphraseMismatch;
+
+  /// No description provided for @vaultPassphraseRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Passphrase is required'**
+  String get vaultPassphraseRequired;
+
+  /// No description provided for @vaultUnlockFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not unlock the vault'**
+  String get vaultUnlockFailed;
+
+  /// No description provided for @vaultWrongPassphraseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong passphrase or damaged file. Data was not modified.'**
+  String get vaultWrongPassphraseHint;
+
+  /// No description provided for @vaultCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get vaultCopy;
+
+  /// No description provided for @vaultReveal.
+  ///
+  /// In en, this message translates to:
+  /// **'Reveal'**
+  String get vaultReveal;
+
+  /// No description provided for @vaultHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get vaultHide;
+
+  /// No description provided for @vaultCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get vaultCopied;
+
+  /// No description provided for @vaultOnlyCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy only'**
+  String get vaultOnlyCopy;
+
+  /// No description provided for @vaultReferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Used by'**
+  String get vaultReferences;
+
+  /// No description provided for @vaultNoReferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Not referenced yet'**
+  String get vaultNoReferences;
+
+  /// No description provided for @vaultDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete entry?'**
+  String get vaultDeleteTitle;
+
+  /// No description provided for @vaultDeleteReferenced.
+  ///
+  /// In en, this message translates to:
+  /// **'This entry is still used by:'**
+  String get vaultDeleteReferenced;
+
+  /// No description provided for @vaultDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get vaultDeleteConfirm;
+
+  /// No description provided for @vaultCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get vaultCancel;
+
+  /// No description provided for @vaultSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get vaultSave;
+
+  /// No description provided for @vaultEntryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get vaultEntryTitle;
+
+  /// No description provided for @vaultEntryType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get vaultEntryType;
+
+  /// No description provided for @vaultEntryTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags (comma separated)'**
+  String get vaultEntryTags;
+
+  /// No description provided for @vaultEntryNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get vaultEntryNotes;
+
+  /// No description provided for @vaultEntryFavorite.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorite'**
+  String get vaultEntryFavorite;
+
+  /// No description provided for @vaultTypeSshPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH password'**
+  String get vaultTypeSshPassword;
+
+  /// No description provided for @vaultTypeSshPrivateKey.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH private key'**
+  String get vaultTypeSshPrivateKey;
+
+  /// No description provided for @vaultTypeApiKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider API key'**
+  String get vaultTypeApiKey;
+
+  /// No description provided for @vaultTypeLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Login'**
+  String get vaultTypeLogin;
+
+  /// No description provided for @vaultTypeToken.
+  ///
+  /// In en, this message translates to:
+  /// **'Token'**
+  String get vaultTypeToken;
+
+  /// No description provided for @vaultTypeSecureNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Secure note'**
+  String get vaultTypeSecureNote;
+
+  /// No description provided for @vaultTypeCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get vaultTypeCustom;
 }
 
 class _AppLocalizationsDelegate

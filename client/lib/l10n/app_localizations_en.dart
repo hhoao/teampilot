@@ -10179,4 +10179,139 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cursorAccountUsageSession => 'Cursor accounts';
+
+  @override
+  String get vaultPageTitle => 'Credential Vault';
+
+  @override
+  String get vaultPageSubtitle =>
+      'SSH passwords, private keys and provider API keys';
+
+  @override
+  String get vaultNewEntry => 'New entry';
+
+  @override
+  String get vaultSearchHint => 'Search title, fields or tags';
+
+  @override
+  String get vaultEmptyTitle => 'No entries yet';
+
+  @override
+  String get vaultEmptyHint =>
+      'Save SSH passwords, private keys or provider API keys here.';
+
+  @override
+  String get vaultStatusKeychain => 'System keychain · no unlock needed';
+
+  @override
+  String get vaultStatusEncrypted => 'Encrypted vault · locked';
+
+  @override
+  String get vaultStatusUnlocked => 'Encrypted vault · unlocked';
+
+  @override
+  String get vaultUnlock => 'Unlock';
+
+  @override
+  String get vaultLock => 'Lock now';
+
+  @override
+  String get vaultEnableEncryption => 'Enable encrypted vault';
+
+  @override
+  String get vaultDisableEncryption => 'Disable encrypted vault';
+
+  @override
+  String get vaultUnlockTitle => 'Unlock vault';
+
+  @override
+  String get vaultPassphrase => 'Master passphrase';
+
+  @override
+  String get vaultPassphraseConfirm => 'Confirm passphrase';
+
+  @override
+  String get vaultPassphraseMismatch => 'Passphrases do not match';
+
+  @override
+  String get vaultPassphraseRequired => 'Passphrase is required';
+
+  @override
+  String get vaultUnlockFailed => 'Could not unlock the vault';
+
+  @override
+  String get vaultWrongPassphraseHint =>
+      'Wrong passphrase or damaged file. Data was not modified.';
+
+  @override
+  String get vaultCopy => 'Copy';
+
+  @override
+  String get vaultReveal => 'Reveal';
+
+  @override
+  String get vaultHide => 'Hide';
+
+  @override
+  String get vaultCopied => 'Copied';
+
+  @override
+  String get vaultOnlyCopy => 'Copy only';
+
+  @override
+  String get vaultReferences => 'Used by';
+
+  @override
+  String get vaultNoReferences => 'Not referenced yet';
+
+  @override
+  String get vaultDeleteTitle => 'Delete entry?';
+
+  @override
+  String get vaultDeleteReferenced => 'This entry is still used by:';
+
+  @override
+  String get vaultDeleteConfirm => 'Delete';
+
+  @override
+  String get vaultCancel => 'Cancel';
+
+  @override
+  String get vaultSave => 'Save';
+
+  @override
+  String get vaultEntryTitle => 'Title';
+
+  @override
+  String get vaultEntryType => 'Type';
+
+  @override
+  String get vaultEntryTags => 'Tags (comma separated)';
+
+  @override
+  String get vaultEntryNotes => 'Notes';
+
+  @override
+  String get vaultEntryFavorite => 'Favorite';
+
+  @override
+  String get vaultTypeSshPassword => 'SSH password';
+
+  @override
+  String get vaultTypeSshPrivateKey => 'SSH private key';
+
+  @override
+  String get vaultTypeApiKey => 'Provider API key';
+
+  @override
+  String get vaultTypeLogin => 'Login';
+
+  @override
+  String get vaultTypeToken => 'Token';
+
+  @override
+  String get vaultTypeSecureNote => 'Secure note';
+
+  @override
+  String get vaultTypeCustom => 'Custom';
 }
