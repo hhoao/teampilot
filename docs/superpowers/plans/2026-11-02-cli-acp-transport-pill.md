@@ -490,6 +490,120 @@ git commit -m "feat(acp): stamp member ACP for native teams and remote targets"
 
 ---
 
+### Task 2b: 远程成员的 ACP 通道接线
+
+**Files:**
+- Modify: `client/lib/services/chat/launch/connect/acp_runtime_attach.dart:347-407`
+- Test: `client/test/services/chat/launch/acp_runtime_attach_test.dart:357-386`
+
+**Interfaces:**
+- 无签名变化；`attachMemberAcpRuntime` 现在把 `sshLaunch` 与 `remoteAdapterPath` 传给 `_cubit`，与 `attachAcpRuntime`（个人路径，`:196-217`）一致。
+
+**背景：** `_cubit` 内的 `acpStarterForTarget` 对 SSH 目标要求非空 `sshLaunch`，
+否则抛 `StateError: Remote ACP launch requires an SSH launch`。成员路径一直传
+`sshLaunch: null`，在 Task 2 放开远程成员之前永远不会被触发；放开后每个远程成员都会
+在 `cubit.start` 时抛错。现有 `attachMemberAcpRuntime attaches a remote (ssh) ACP member`
+用例注入的是假 `acpRuntimeFactory`，绕过了生产 spawner，所以测试是绿的。
+
+- [ ] **Step 1: 改测试**
+
+把 `client/test/services/chat/launch/acp_runtime_attach_test.dart:357-386` 的用例替换为：
+
+```dart
+  test('attachMemberAcpRuntime builds an SSH launch for a remote ACP member', () async {
+    var sshLaunchBuilt = false;
+    final harness = _Harness(
+      sshLaunchFactory: ({required session, required launchTarget}) {
+        sshLaunchBuilt = true;
+        return (
+          profile: const SshProfile(
+            id: 'p1',
+            name: 'host',
+            host: 'host',
+            username: 'u',
+            authType: SshAuthType.password,
+          ),
+          // The injected acpRuntimeFactory replaces the production spawner,
+          // so this opener is never invoked.
+          openChannel: (_) async => throw UnimplementedError(),
+        );
+      },
+    );
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      sessionTeam: 'team-1',
+      members: [
+        SessionMemberBinding(
+          rosterMemberId: 'lead',
+          taskId: 'task-lead',
+          cli: CliTool.claude,
+          acp: true,
+        ),
+      ],
+      memberTargets: const {'lead': 'ssh:p1'},
+      createdAt: 1,
+    );
+    final team = _mixedTeam();
+    final member = _lead();
+
+    final handled = await harness.service.attachMemberAcpRuntime(
+      _job(session, team, member),
+      session,
+      (team: team, member: member, cli: CliTool.claude),
+    );
+
+    expect(handled, isTrue);
+    expect(sshLaunchBuilt, isTrue);
+    expect(harness.tab.memberAcpRuntimes.keys, contains('lead'));
+    expect(harness.runtime.started, isTrue);
+  });
+```
+
+- [ ] **Step 2: 跑测试确认失败**
+
+Run: `cd client && dart run tool/run_tests.dart test/services/chat/launch/acp_runtime_attach_test.dart --plain-name "builds an SSH launch"`
+Expected: FAIL — `sshLaunchBuilt` 为 false。
+
+- [ ] **Step 3: 改实现**
+
+`attachMemberAcpRuntime` 中，`final cubit = _cubit(` 之前插入：
+
+```dart
+    final remote = usesSshTransport(launchTarget.kind);
+    final sshLaunch = remote
+        ? (sshLaunchFactory ?? _productionSshLaunch)(
+            session: session,
+            launchTarget: launchTarget,
+          )
+        : null;
+    final remoteAdapterPath = remote
+        ? await _resolveRemoteAdapterPath(cli, launchTarget)
+        : null;
+```
+
+并把 `_cubit(...)` 调用里的 `sshLaunch: null,` 改成：
+
+```dart
+      sshLaunch: sshLaunch,
+      remoteAdapterPath: remoteAdapterPath,
+```
+
+- [ ] **Step 4: 跑测试确认通过**
+
+Run: `cd client && dart run tool/run_tests.dart test/services/chat/launch/acp_runtime_attach_test.dart`
+Expected: PASS（全部用例）
+
+- [ ] **Step 5: 提交**
+
+```bash
+git add client/lib/services/chat/launch/connect/acp_runtime_attach.dart \
+  client/test/services/chat/launch/acp_runtime_attach_test.dart
+git commit -m "fix(acp): wire the SSH launch for remote ACP members"
+```
+
+---
+
 ### Task 3: 团队临时会话保留 acp 标记
 
 **Files:**
