@@ -164,12 +164,28 @@ class GithubCredentialsStore {
 
     final pointer = (await _kv.read(_vaultEntryKey))?.trim() ?? '';
     if (pointer.isNotEmpty) {
-      // A vault entry is authoritative; drop the stale legacy token without
-      // touching newer credentials.
-      await _kv.delete(_legacyTokenKey);
-      _legacyMigrated = true;
-      return;
+      final vault = _vault;
+      if (vault == null) {
+        _legacyMigrated = true;
+        return;
+      }
+      try {
+        final entry = await vault.get(pointer);
+        if (entry != null) {
+          // A resolvable vault entry is authoritative; the legacy hub token is
+          // a superseded duplicate.
+          await _kv.delete(_legacyTokenKey);
+          _legacyMigrated = true;
+          return;
+        }
+      } on Object {
+        // Locked/unavailable: keep the legacy token for a later pass.
+        return;
+      }
     }
+
+    final vault = _vault;
+    if (vault != null && !vault.isUnlocked) return;
 
     final legacy = await _kv.read(_legacyTokenKey);
     if (legacy == null || legacy.isEmpty) {

@@ -302,6 +302,40 @@ void main() {
     expect(await vault.list(), isEmpty);
   });
 
+  test('a dangling pointer keeps the legacy hub token resolvable', () async {
+    final vault = await _githubVault();
+    final kv = InMemorySecureKeyValueStore();
+    kv.values['teampilot.github.v1.vault_entry'] = 'missing-entry';
+    kv.values['teampilot.hub_publish.v1.github_token'] = 'ghp_hub';
+    final store = GithubCredentialsStore(kv: kv, vault: vault);
+
+    final snapshot = await store.readStored();
+
+    expect(snapshot?.token, 'ghp_hub');
+    expect(snapshot?.source, GithubCredentialSource.pat);
+    // The credential survives the pointer miss: the unchanged migration turns
+    // the hub token into the regular legacy token instead of dropping it.
+    expect(kv.values['teampilot.github.v1.token'], 'ghp_hub');
+    expect(await store.resolveToken(), 'ghp_hub');
+  });
+
+  test('a locked vault keeps the legacy hub token', () async {
+    final vault = await _githubVault();
+    final kv = InMemorySecureKeyValueStore();
+    kv.values['teampilot.github.v1.vault_entry'] = 'entry-1';
+    kv.values['teampilot.hub_publish.v1.github_token'] = 'ghp_hub';
+    final store = GithubCredentialsStore(
+      kv: kv,
+      vault: _LockedGithubVault(vault),
+    );
+
+    expect(await store.readStored(), isNull);
+    expect(
+      kv.values['teampilot.hub_publish.v1.github_token'],
+      'ghp_hub',
+    );
+  });
+
   test('a refused unlock aborts the save', () async {
     final vault = await _githubVault();
     final store = GithubCredentialsStore(
