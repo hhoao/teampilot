@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../models/workspace.dart';
 import '../models/workspace_topology.dart';
+import '../models/runtime_target.dart';
 import '../models/workspace_folder.dart';
 import '../models/app_session.dart';
 import '../models/session_list_entry.dart';
@@ -905,9 +906,16 @@ class SessionRepository {
     final localOnly =
         cli != null &&
         registry.capability<AcpLocalOnlyCapability>(cli) != null;
+    final primaryTargetId = workspace.folders.isEmpty
+        ? WorkspaceFolder.localTargetId
+        : workspace.folders.first.targetId;
+    final targetLocal =
+        runtimeKindOfId(primaryTargetId) == RuntimeKind.local;
     final resolvedAcp =
         trimmedTeam.isEmpty &&
-        (acp || (registry.launchesAcpOnly(cli) && !localOnly));
+        (acp ||
+            (registry.launchesAcpOnly(cli) &&
+                (!localOnly || targetLocal)));
     final session = AppSession(
       sessionId: sessionId,
       workspaceId: workspaceId,

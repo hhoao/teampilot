@@ -1694,6 +1694,7 @@ class _UnboundComposeBodyState extends State<UnboundComposeBody> {
               l10n: l10n,
               selectedTeam: selectedTeam,
               workspace: launchWorkspace,
+              targetId: _homeTargetForLaunch().id,
               presets: presets,
             ),
             autoChipLabel: _autoChipLabel(

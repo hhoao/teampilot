@@ -63,6 +63,7 @@ bool showLandingAcpPermissionChip({
   required CliTool? cli,
   required bool requested,
   List<SessionMemberBinding> stampedMembers = const [],
+  String? targetId,
   bool? isAndroidOverride,
 }) {
   if (_isAndroid(isAndroidOverride)) return false;
@@ -70,6 +71,7 @@ bool showLandingAcpPermissionChip({
     return willLaunchAcp(
       cli: cli,
       requested: requested,
+      targetId: targetId,
       isAndroidOverride: isAndroidOverride,
     );
   }
@@ -168,6 +170,7 @@ ComposePermissionControl? buildLandingAcpComposePermissionControl({
   required CliToolRegistry registry,
   required AppLocalizations l10n,
   required ValueChanged<LaunchSecurityPolicy> onSelected,
+  String? targetId,
   bool? isAndroidOverride,
 }) {
   if (!showLandingAcpPermissionChip(
@@ -175,6 +178,7 @@ ComposePermissionControl? buildLandingAcpComposePermissionControl({
     cli: launchCli,
     requested: requested,
     stampedMembers: stampedMembers,
+    targetId: targetId,
     isAndroidOverride: isAndroidOverride,
   )) {
     return null;
@@ -202,6 +206,7 @@ ComposePermissionControl? landingAcpPermissionControl({
   required AppLocalizations l10n,
   TeamProfile? selectedTeam,
   Workspace? workspace,
+  String? targetId,
   List<CliPreset> presets = const [],
 }) {
   final current = watchAcpPermissionDefault(context);
@@ -227,6 +232,7 @@ ComposePermissionControl? landingAcpPermissionControl({
     current: current,
     registry: registry,
     l10n: l10n,
+    targetId: targetId,
     onSelected: (policy) {
       unawaited(
         context.read<SessionPreferencesCubit>().setAcpPermissionDefault(policy),
