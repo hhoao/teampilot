@@ -332,8 +332,13 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     final capture = _vaultCapture;
     var effectiveLink = provider.credentialLink.trim();
     var effectiveApiKey = provider.apiKey;
+    // Managed links resolve their secret into apiKey in memory; probe and
+    // binding upserts must never rewrite them into a vault link.
+    final linkIsVault = effectiveLink.startsWith('vault:');
+    final linkIsManaged = effectiveLink.isNotEmpty && !linkIsVault;
     if (capture != null &&
-        (effectiveLink.startsWith('vault:') || provider.apiKey.isNotEmpty)) {
+        !linkIsManaged &&
+        (linkIsVault || provider.apiKey.isNotEmpty)) {
       final unlock = _ensureVaultUnlocked;
       if (unlock != null && !await unlock()) return false;
       final captured = await capture.captureProvider(
@@ -439,6 +444,20 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     final current = await loadProvidersFor(cli);
     final filtered = current.where((p) => p.id != trimmed).toList();
     if (filtered.length == current.length) return;
+    // Programmatic removal: drop the vault entry best-effort so a failure to
+    // delete it never keeps the row around as an orphan.
+    final target = current.where((p) => p.id == trimmed).firstOrNull;
+    if (target != null && target.credentialLink.trim().startsWith('vault:')) {
+      try {
+        await _vaultCapture?.deleteOwner(vaultOwnerKindAppProvider, trimmed);
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          'Vault entry cleanup failed for provider $trimmed',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
     await _repository.saveProviders(cli, filtered);
     emit(
       state.copyWith(
