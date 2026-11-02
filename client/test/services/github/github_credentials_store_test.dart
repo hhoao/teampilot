@@ -1,6 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/repositories/ssh_credential_store.dart';
+import 'package:teampilot/repositories/vault_repository.dart';
 import 'package:teampilot/services/github/github_credentials_store.dart';
+import 'package:teampilot/services/vault/credential_capture.dart';
+import 'package:teampilot/services/vault/encrypted_vault_backend.dart';
+import 'package:teampilot/services/vault/keychain_vault_backend.dart';
+import 'package:teampilot/services/vault/vault_crypto.dart';
+import 'package:teampilot/services/vault/vault_service.dart';
+import 'package:teampilot/services/vault/vault_unlock_gate.dart';
+
+import '../../support/in_memory_filesystem.dart';
 
 class ThrowingSecureKeyValueStore implements SecureKeyValueStore {
   ThrowingSecureKeyValueStore(this.inner, {required this.shouldThrowOnWrite});
@@ -38,6 +48,45 @@ class InMemorySecureKeyValueStore implements SecureKeyValueStore {
   Future<void> write(String key, String value) async {
     values[key] = value;
   }
+}
+
+class _FakeStore implements SecureKeyValueStore {
+  final values = <String, String>{};
+
+  @override
+  Future<void> delete(String key) async => values.remove(key);
+
+  @override
+  Future<String?> read(String key) async => values[key];
+
+  @override
+  Future<void> write(String key, String value) async => values[key] = value;
+}
+
+Future<VaultService> _githubVault() async {
+  final service = VaultService(
+    keychainBackend: KeychainVaultBackend(_FakeStore()),
+    encryptedBackend: EncryptedVaultBackend(
+      repository: VaultRepository(
+        rootDir: '/root/vault',
+        fs: InMemoryFilesystem(pathContext: p.Context(style: p.Style.posix)),
+      ),
+      crypto: const VaultCrypto(memoryKiB: 256, iterations: 1, parallelism: 1),
+    ),
+  );
+  await service.initialize();
+  return service;
+}
+
+class _LockedGithubVault implements VaultService {
+  _LockedGithubVault(this._delegate);
+  final VaultService _delegate;
+  @override
+  bool get isEncrypted => _delegate.isEncrypted;
+  @override
+  bool get isUnlocked => false;
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
@@ -170,6 +219,41 @@ void main() {
     expect(
       kv.values.containsKey('teampilot.hub_publish.v1.github_token'),
       isFalse,
+    );
+  });
+
+  test('stores OAuth credentials in the vault and reads the pointer', () async {
+    final vault = await _githubVault();
+    final store = GithubCredentialsStore(
+      kv: InMemorySecureKeyValueStore(),
+      vault: vault,
+      vaultCapture: VaultCredentialCapture(vault: vault),
+      ensureVaultUnlocked: () async => true,
+    );
+
+    await store.saveOAuth(token: 'ghp_x', login: 'me');
+    final snapshot = await store.readStored();
+    expect(snapshot?.token, 'ghp_x');
+    expect(snapshot?.login, 'me');
+    expect(snapshot?.source, GithubCredentialSource.oauth);
+    expect(await vault.list(), hasLength(1));
+
+    await store.clearStored();
+    expect(await store.readStored(), isNull);
+    expect(await vault.list(), isEmpty);
+  });
+
+  test('a refused unlock aborts the save', () async {
+    final vault = await _githubVault();
+    final store = GithubCredentialsStore(
+      kv: InMemorySecureKeyValueStore(),
+      vault: vault,
+      vaultCapture: VaultCredentialCapture(vault: _LockedGithubVault(vault)),
+      ensureVaultUnlocked: () async => false,
+    );
+    await expectLater(
+      store.savePat('ghp_y'),
+      throwsA(isA<VaultSaveBlockedException>()),
     );
   });
 }
