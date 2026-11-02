@@ -14,6 +14,7 @@ import '../services/provider/credential_login_progress.dart';
 import '../services/provider/provider_import_service.dart';
 import '../services/provider/tool_config_generator.dart';
 import '../services/provider_usage/managed_provider_link_binding.dart';
+import '../services/vault/credential_capture.dart';
 import '../utils/logging/logger.dart';
 
 class AppProviderState extends Equatable {
@@ -108,6 +109,8 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     String? basePath,
     Future<void> Function(Uri uri)? openCredentialLoginUrl,
     ManagedProviderRepository? managedProviderRepository,
+    VaultCredentialCapture? vaultCapture,
+    Future<bool> Function()? ensureVaultUnlocked,
   }) : _repository =
            repository ??
            AppProviderRepository(basePath: basePath, storage: storage),
@@ -117,6 +120,8 @@ class AppProviderCubit extends Cubit<AppProviderState> {
        _openCredentialLoginUrl = openCredentialLoginUrl,
        _storage = storage,
        _managedProviderRepository = managedProviderRepository,
+       _vaultCapture = vaultCapture,
+       _ensureVaultUnlocked = ensureVaultUnlocked,
        super(const AppProviderState());
 
   final AppProviderRepository _repository;
@@ -126,6 +131,8 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   final Future<void> Function(Uri uri)? _openCredentialLoginUrl;
   final HomeStorage _storage;
   final ManagedProviderRepository? _managedProviderRepository;
+  final VaultCredentialCapture? _vaultCapture;
+  final Future<bool> Function()? _ensureVaultUnlocked;
 
   ProviderImportService _importServiceForRequest() {
     return _importService ??
@@ -322,6 +329,20 @@ class AppProviderCubit extends Cubit<AppProviderState> {
         }
       }
     }
+    final capture = _vaultCapture;
+    var effectiveLink = provider.credentialLink.trim();
+    var effectiveApiKey = provider.apiKey;
+    if (capture != null &&
+        (effectiveLink.startsWith('vault:') || provider.apiKey.isNotEmpty)) {
+      final unlock = _ensureVaultUnlocked;
+      if (unlock != null && !await unlock()) return false;
+      final captured = await capture.captureProvider(
+        provider,
+        apiKey: provider.apiKey.isEmpty ? null : provider.apiKey,
+      );
+      effectiveLink = 'vault:${captured.entryId}';
+      effectiveApiKey = '';
+    }
     final current =
         state.providersByCli[cli] ?? await _repository.loadProviders(cli);
     final now = DateTime.now().toUtc().millisecondsSinceEpoch;
@@ -345,6 +366,8 @@ class AppProviderCubit extends Cubit<AppProviderState> {
       cli: cli,
       name: provider.name.trim(),
       config: normalizedConfig,
+      credentialLink: effectiveLink,
+      apiKey: effectiveApiKey,
       createdAt:
           existing?.createdAt ??
           (provider.createdAt > 0 ? provider.createdAt : now),
@@ -378,6 +401,12 @@ class AppProviderCubit extends Cubit<AppProviderState> {
 
   Future<void> deleteProvider(String id) async {
     final cli = state.selectedCli;
+    final target = state.providers.where((p) => p.id == id).firstOrNull;
+    if (target != null && target.credentialLink.trim().startsWith('vault:')) {
+      final unlock = _ensureVaultUnlocked;
+      if (unlock != null && !await unlock()) return;
+      await _vaultCapture?.deleteOwner(vaultOwnerKindAppProvider, id);
+    }
     final list = state.providers
         .where((p) => p.id != id)
         .toList(growable: false);

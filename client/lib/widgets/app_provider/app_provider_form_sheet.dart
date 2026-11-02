@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -12,7 +11,6 @@ import '../../cubits/managed_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/managed_provider.dart';
-import '../../models/vault_entry.dart';
 import '../../services/cli/registry/capabilities/provider_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -20,7 +18,6 @@ import '../../services/cli/codex/capabilities/provider.dart';
 import '../../services/provider/credential_binding.dart';
 import '../../services/provider_usage/managed_provider_link_binding.dart';
 import '../../services/vault/provider_credential_link.dart';
-import '../../services/vault/vault_service.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
 import 'brand_dropdown_rows.dart';
@@ -62,7 +59,6 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   late String _presetId;
   late AppProviderCategory _category;
   late String _credentialLink;
-  List<VaultEntry> _vaultEntries = const [];
   late String _apiKeyField;
   late String _apiKeyUrl;
   late String _icon;
@@ -124,7 +120,6 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
           ? const JsonEncoder.withIndent('  ').convert(e.toJson())
           : '{}',
     );
-    unawaited(_loadVaultEntries());
   }
 
   @override
@@ -697,26 +692,6 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     }
   }
 
-  VaultService? _vaultOf(BuildContext context) {
-    try {
-      return context.read<VaultService>();
-    } on ProviderNotFoundException {
-      return null;
-    }
-  }
-
-  Future<void> _loadVaultEntries() async {
-    final vault = _vaultOf(context);
-    if (vault == null) return;
-    List<VaultEntry> entries;
-    try {
-      entries = await vault.list(type: VaultEntryType.apiKey);
-    } on Object {
-      entries = const [];
-    }
-    if (mounted) setState(() => _vaultEntries = entries);
-  }
-
   /// (managed entry id, label) options: own key first, then every
   /// secret-backed balance/usage entry. Entries that link back to THIS
   /// provider row (cycle) are excluded.
@@ -745,12 +720,6 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
         continue;
       }
       options.add((entry.id, entry.name));
-    }
-    for (final entry in _vaultEntries) {
-      options.add((
-        'vault:${entry.id}',
-        '${l10n.vaultPageTitle} · ${entry.title}',
-      ));
     }
     return options;
   }
@@ -794,10 +763,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     if (link.isEmpty) return '';
     final vaultEntryId = vaultEntryIdFromCredentialLink(link);
     if (vaultEntryId != null) {
-      for (final entry in _vaultEntries) {
-        if (entry.id == vaultEntryId) return entry.title;
-      }
-      return '';
+      return context.l10n.vaultStoredInVault;
     }
     final entry = _managedCubitOf(
       context,
