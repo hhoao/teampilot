@@ -1,4 +1,5 @@
 import 'package:ai_message_core/ai_message_core.dart';
+import 'package:path/path.dart' as p;
 
 import '../../../../chat/conversation/history/session_history_context.dart';
 import '../../../registry/capabilities/ai_history_capability.dart';
@@ -50,12 +51,19 @@ final class AntigravityAiHistoryCapability implements AiHistoryCapability {
   @override
   ToolResultEnricher get toolResultEnricher => const NoOpToolResultEnricher();
 
-  /// Antigravity's isolated home is the session tool root; `~/.gemini` is
-  /// derived from it by the CLI, so history only needs `HOME`.
+  /// [toolRoot] is the session config dir (`<toolDir>/home/.gemini/config`).
+  /// The isolated home is its grandparent (`<toolDir>/home`), matching the ACP
+  /// launch environment's `HOME` / `USERPROFILE` and `GEMINI_HOME`.
   @override
   Map<String, String> sessionEnv({String? toolRoot}) {
     if (toolRoot == null || toolRoot.isEmpty) return const {};
-    return {'HOME': toolRoot};
+    final configDir = p.normalize(toolRoot);
+    final home = p.dirname(p.dirname(configDir));
+    return {
+      'HOME': home,
+      'USERPROFILE': home,
+      'GEMINI_HOME': p.dirname(configDir),
+    };
   }
 
   @override

@@ -22,7 +22,6 @@ final class AntigravityToolCallResolvers extends SharedToolCallResolvers {
   static const _editToolNames = {
     ...SharedToolCallResolverKeys.editToolNames,
     'replace_file_content',
-    'multi_replace_file_content',
   };
 
   static const _writeToolNames = {
@@ -109,6 +108,8 @@ final class AntigravityToolCallResolvers extends SharedToolCallResolvers {
     AiToolFileTargetRule(
       toolNames: _fileReadToolNames,
       pathKeys: _readPathKeys,
+      startLineKeys: ['start_line', 'startLine', 'StartLine'],
+      endLineKeys: ['end_line', 'endLine', 'EndLine'],
       useOffsetLimit: true,
     ),
     AiToolFileTargetRule(

@@ -1,5 +1,6 @@
 import 'package:ai_message_core/ai_message_core.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/antigravity/capabilities/history/ai_history_capability.dart';
 import 'package:teampilot/services/cli/antigravity/capabilities/tool_call_resolvers.dart';
 import 'package:teampilot/services/cli/registry/capabilities/ai_history_capability.dart';
@@ -31,9 +32,13 @@ void main() {
     expect(cap.subagentToolNames, {'invoke_subagent'});
   });
 
-  test('sessionEnv exposes the isolated home/tool root', () {
-    expect(cap.sessionEnv(toolRoot: '/runtime/tool/home'), {
-      'HOME': '/runtime/tool/home',
+  test('sessionEnv derives the isolated home from the config dir', () {
+    final home = p.join('runtime', 'tool', 'home');
+    final configDir = p.join(home, '.gemini', 'config');
+    expect(cap.sessionEnv(toolRoot: configDir), {
+      'HOME': home,
+      'USERPROFILE': home,
+      'GEMINI_HOME': p.join(home, '.gemini'),
     });
     expect(cap.sessionEnv(), isEmpty);
   });
@@ -90,6 +95,50 @@ void main() {
       );
       expect(target, isNotNull);
       expect(target!.path, '/src/main.dart');
+    });
+
+    test('view_file maps StartLine/EndLine to a line range', () {
+      final target = resolvers.fileResolver.resolve(
+        part(
+          'view_file',
+          args: {
+            'AbsolutePath': '/src/main.dart',
+            'StartLine': 10,
+            'EndLine': 20,
+          },
+        ),
+      );
+      expect(target, isNotNull);
+      expect(target!.path, '/src/main.dart');
+      expect(target.startLine, 10);
+      expect(target.endLine, 20);
+    });
+
+    test('multi_replace_file_content does not claim edit hunk support', () {
+      final args = <String, Object?>{
+        'TargetFile': '/src/main.dart',
+        'ReplacementChunks': [
+          {'TargetContent': 'a', 'ReplacementContent': 'b'},
+        ],
+      };
+      expect(
+        resolvers.editResolver.resolve(
+          part('multi_replace_file_content', args: args),
+        ),
+        isNull,
+      );
+      expect(
+        resolvers.fileResolver
+            .resolve(part('multi_replace_file_content', args: args))
+            ?.path,
+        '/src/main.dart',
+      );
+      expect(
+        resolvers.categoryResolver.resolve(
+          part('multi_replace_file_content', args: args),
+        ),
+        AiToolCallCategory.edit,
+      );
     });
 
     test('run_command maps CommandLine to a shell target', () {
