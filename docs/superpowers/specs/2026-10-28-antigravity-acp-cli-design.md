@@ -199,7 +199,7 @@ sites resolve capabilities through `CliToolRegistry`.
 | Capability | Implementation | Notes |
 |---|---|---|
 | `AcpCapability` + `CliTransportCapability({acp})` | `AntigravityAcpCapability` | `agy_acp_server`, no PTY |
-| `AcpSettingsCapability` | `AntigravityAcpSettings` | `usesSeparateAdapter: true`, `showsPersonalAcpSwitch: false` |
+| `AcpSettingsCapability` | `AntigravityAcpSettings` | `usesSeparateAdapter: true`; ACP-only is expressed by `CliTransportCapability({acp})` |
 | `CliExecutableCapability` | `AntigravityExecutableCapability` | `agy`; official install script |
 | `CliSessionCapability` | `AntigravityCliSessionCapability` | fake `HOME`; config root |
 | `ProviderCapability` | `AntigravityProviderCapability` | account + API key + ADC |
@@ -593,8 +593,7 @@ snapshot to an app-owned `acp-usage.jsonl` (session-scoped). Then:
   - `agy models` parsing and static fallback.
 - Registry tests:
   - `CliTool.antigravity` registers every required capability.
-  - `CliTransportCapability({acp})` present; `AcpSettingsCapability(usesSeparateAdapter: true,
-    showsPersonalAcpSwitch: false)`.
+  - `CliTransportCapability({acp})` present; `AcpSettingsCapability(usesSeparateAdapter: true)`.
   - `launchesAcpOnly(CliTool.antigravity)` true.
   - Tool-call resolvers non-null.
   - `HookEventCapability` has exactly the six native events.

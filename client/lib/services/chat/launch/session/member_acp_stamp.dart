@@ -26,7 +26,13 @@ bool _memberAcpGates({
   if (_isAndroid(isAndroidOverride)) return false;
   if (!_memberAcpTargetSupported(targetId)) return false;
   if (cli == null) return false;
-  return CliToolRegistry.builtIn().capability<AcpCapability>(cli) != null;
+  final registry = CliToolRegistry.builtIn();
+  if (registry.capability<AcpCapability>(cli) == null) return false;
+  if (registry.capability<AcpLocalOnlyCapability>(cli) != null &&
+      runtimeKindOfId(targetId) != RuntimeKind.local) {
+    return false;
+  }
+  return true;
 }
 
 bool resolveMemberBindingAcp({

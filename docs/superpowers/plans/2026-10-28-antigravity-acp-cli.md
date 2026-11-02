@@ -309,7 +309,6 @@ abstract interface class AcpSettingsCapability implements CliCapability {
   bool get usesSeparateAdapter;
   String? get adapterExecutableName;
   AcpAdapterInstaller? get adapterInstaller;
-  bool get showsPersonalAcpSwitch;
 }
 ```
 
@@ -1196,8 +1195,6 @@ final class AntigravityAcpSettings implements AcpSettingsCapability {
       Platform.isWindows ? 'agy_acp_server.exe' : 'agy_acp_server.par';
   @override
   AcpAdapterInstaller? get adapterInstaller => installer;
-  @override
-  bool get showsPersonalAcpSwitch => false;
 }
 ```
 
@@ -2443,7 +2440,7 @@ test('personal desktop sessions infer ACP for Antigravity', () {
 });
 
 test('Android rejects personal ACP for Antigravity', () {
-  expect(willLaunchPersonalAcp(cli: CliTool.antigravity, isAndroid: true), isFalse);
+  expect(willLaunchAcp(cli: CliTool.antigravity, requested: false, isAndroidOverride: true), isFalse);
 });
 ```
 

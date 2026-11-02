@@ -43,7 +43,6 @@ void main() {
     expect(acpSettings, isNotNull);
     expect(acpSettings!.usesSeparateAdapter, isTrue);
     expect(acpSettings.adapterExecutableName, isNotNull);
-    expect(acpSettings.showsPersonalAcpSwitch, isFalse);
 
     final transport = registry.capability<CliTransportCapability>(
       CliTool.antigravity,

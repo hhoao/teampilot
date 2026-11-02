@@ -35,7 +35,7 @@ final class AntigravityAcpTranslator extends AcpAgentTranslator {
 }
 
 final class AntigravityAcpCapability
-    implements AcpCapability {
+    implements AcpCapability, AcpLocalOnlyCapability {
   const AntigravityAcpCapability({this.model, this.adapterPath, this.linuxUid});
 
   final String? model;
@@ -69,6 +69,9 @@ final class AntigravityAcpCapability
 
   @override
   bool get forwardSessionNewMcpServers => false;
+
+  @override
+  Map<String, String> get agentStatusEnvironment => const {};
 
   @override
   Map<String, Object?> sessionNewMeta(Map<String, String> env) => const {};

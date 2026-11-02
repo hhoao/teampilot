@@ -28,7 +28,9 @@ import '../../registry/capabilities/hook_registry.dart';
 ///
 /// Only command hooks are native: HTTP entries and target-native plugin
 /// artifacts are reported as warnings instead of being silently dropped.
-final class AntigravityHookWriter implements HookCapability {
+final class AntigravityHookWriter
+    with BusProtocolHookDefaults
+    implements HookCapability {
   const AntigravityHookWriter({this.denyReason = 'TeamPilot hook policy'});
 
   /// Default per-hook timeout, in seconds.

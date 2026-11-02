@@ -51,18 +51,16 @@ void main() {
       expect(session.acp, isFalse);
     });
 
-    test('willLaunchPersonalAcp is true on desktop and false on Android', () {
+    test('willLaunchAcp is true on desktop and false on Android', () {
       expect(
-        willLaunchPersonalAcp(
-          isPersonal: true,
+        willLaunchAcp(
           cli: CliTool.antigravity,
           requested: false,
         ),
         isTrue,
       );
       expect(
-        willLaunchPersonalAcp(
-          isPersonal: true,
+        willLaunchAcp(
           cli: CliTool.antigravity,
           requested: false,
           isAndroidOverride: true,
@@ -83,7 +81,6 @@ void main() {
       expect(
         resolveMemberBindingAcp(
           cli: CliTool.antigravity,
-          teamMode: TeamMode.mixed,
           targetId: 'local',
           requested: false,
           isAndroidOverride: false,
@@ -96,7 +93,6 @@ void main() {
       expect(
         resolveMemberBindingAcp(
           cli: CliTool.antigravity,
-          teamMode: TeamMode.mixed,
           targetId: 'ssh:prod',
           requested: true,
           isAndroidOverride: false,
@@ -106,20 +102,9 @@ void main() {
       expect(
         resolveMemberBindingAcp(
           cli: CliTool.antigravity,
-          teamMode: TeamMode.mixed,
           targetId: 'local',
           requested: true,
           isAndroidOverride: true,
-        ),
-        isFalse,
-      );
-      expect(
-        resolveMemberBindingAcp(
-          cli: CliTool.antigravity,
-          teamMode: TeamMode.native,
-          targetId: 'local',
-          requested: true,
-          isAndroidOverride: false,
         ),
         isFalse,
       );
@@ -129,7 +114,6 @@ void main() {
       final stamped = stampMemberAcp(
         members: [member('agy')],
         memberTargets: const {'agy': 'local'},
-        teamMode: TeamMode.mixed,
         seedClaudeMemberAcp: false,
         seedCodexMemberAcp: false,
         isAndroidOverride: false,
@@ -141,7 +125,6 @@ void main() {
       final stamped = stampMemberAcp(
         members: [member('agy')],
         memberTargets: const {'agy': 'local'},
-        teamMode: TeamMode.mixed,
         seedClaudeMemberAcp: false,
         seedCodexMemberAcp: false,
         isAndroidOverride: true,

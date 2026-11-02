@@ -11,6 +11,11 @@ typedef AcpCredentialSource = String? Function();
 /// Each ACP-capable CLI exposes: the argv candidates to probe (preference
 /// order — the runtime tries the first, falls back on failure), its
 /// per-agent translator, and the isolated environment for the agent process.
+/// Marker for an ACP agent whose adapter is local-only (no remote install).
+/// Mixed seats on SSH/Termux targets stay on PTY instead of starting a broken
+/// ACP session.
+abstract interface class AcpLocalOnlyCapability implements CliCapability {}
+
 abstract interface class AcpCapability implements CliCapability {
   /// Maximum time allowed for the ACP startup handshake.
   Duration get startupTimeout => const Duration(seconds: 30);
