@@ -76,10 +76,6 @@ void main() {
     () {
       final registry = CliToolRegistry.builtIn();
       for (final cli in CliTool.values) {
-        // Temporary vertical-slice skip: Tasks 11/13/16 add Antigravity's history,
-        // prompt, MCP, hook, skill, and category wiring. Gemini/CodeBuddy stay covered.
-        final needsAntigravityWiring = cli == CliTool.antigravity;
-        if (needsAntigravityWiring) continue;
         final cap = registry.capability<AiHistoryCapability>(cli);
         expect(cap, isNotNull, reason: '$cli');
         expect(cap!.editResolver, isNotNull, reason: '$cli editResolver');

@@ -1,6 +1,7 @@
 import '../../../models/team_config.dart';
 import '../registry/capabilities/acp_capability.dart';
 import '../registry/capabilities/acp_settings_capability.dart';
+import '../registry/capabilities/ai_history_capability.dart';
 import '../registry/capabilities/chat_interaction_capability.dart';
 import '../registry/capabilities/cli_executable_capability.dart';
 import '../registry/capabilities/cli_launch_security_capability.dart';
@@ -28,6 +29,7 @@ import 'capabilities/acp_settings.dart';
 import 'capabilities/defaults.dart';
 import 'capabilities/executable.dart';
 import 'capabilities/headless.dart';
+import 'capabilities/history/ai_history_capability.dart';
 import 'capabilities/hook_writer.dart';
 import 'capabilities/mcp.dart';
 import 'capabilities/native_commands.dart';
@@ -63,6 +65,7 @@ final class AntigravityCliTool implements CliToolDefinition {
     this.headless = const AntigravityHeadlessCapability(),
     this.acp = const AntigravityAcpCapability(),
     this.acpSettings = const AntigravityAcpSettings(),
+    this.aiHistory = const AntigravityAiHistoryCapability(),
     this.transport = const CliTransportCapability(
       supported: {CliTransport.acp},
     ),
@@ -88,6 +91,7 @@ final class AntigravityCliTool implements CliToolDefinition {
   final HeadlessCapability headless;
   final AcpCapability acp;
   final AcpSettingsCapability acpSettings;
+  final AiHistoryCapability aiHistory;
   final CliTransportCapability transport;
 
   @override
@@ -118,6 +122,7 @@ final class AntigravityCliTool implements CliToolDefinition {
     headless,
     acp,
     acpSettings,
+    aiHistory,
     transport,
   ];
 }
