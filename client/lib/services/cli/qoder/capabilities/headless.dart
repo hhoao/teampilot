@@ -55,9 +55,9 @@ final class QoderHeadlessCapability
     CliHeadlessLaunchContext ctx,
   ) sync* {
     final interactive = interactiveContextForHeadless(ctx, CliTool.qoder);
-    // The model is selected through settings.json (see provision()), not
-    // `--model`, so the one-shot call uses the same provider-config path as an
-    // ACP session.
+    // No `--model` here: the model is selected through settings.json (see
+    // provision()) so the one-shot call uses the same provider-config path as
+    // an ACP session.
     yield CliLaunchArgContribution(
       key: 'qoder-headless-command',
       phase: LaunchArgPhase.command,
