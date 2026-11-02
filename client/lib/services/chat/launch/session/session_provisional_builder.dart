@@ -43,10 +43,8 @@ AppSession buildProvisionalSession({
       : null;
 
   final resolvedAcp =
-      trimmedTeam.isEmpty &&
-      isPersonal &&
-      ((acp ?? false) ||
-          CliToolRegistry.builtIn().launchesAcpOnly(identity?.cli ?? cli));
+      (acp ?? false) ||
+      CliToolRegistry.builtIn().launchesAcpOnly(identity?.cli ?? cli);
 
   return AppSession(
     sessionId: sessionId,

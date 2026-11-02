@@ -46,15 +46,27 @@ void main() {
     expect(session.acp, isTrue);
   });
 
-  test('team session is always acp false', () {
+  test('team session keeps acp true when requested', () {
     final session = buildProvisionalSession(
       sessionId: 's1',
       workspace: workspace,
       isPersonal: false,
       usesPosixPaths: true,
-      cli: CliTool.gemini,
+      cli: CliTool.claude,
       sessionTeamId: 'team-1',
       acp: true,
+    );
+    expect(session.acp, isTrue);
+  });
+
+  test('team session defaults to acp false when not requested', () {
+    final session = buildProvisionalSession(
+      sessionId: 's1',
+      workspace: workspace,
+      isPersonal: false,
+      usesPosixPaths: true,
+      cli: CliTool.claude,
+      sessionTeamId: 'team-1',
     );
     expect(session.acp, isFalse);
   });
