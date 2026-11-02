@@ -6,6 +6,7 @@ import '../registry/capabilities/cli_executable_capability.dart';
 import '../registry/capabilities/cli_launch_security_capability.dart';
 import '../registry/capabilities/cli_session_capability.dart';
 import '../registry/capabilities/cli_transport_capability.dart';
+import '../registry/capabilities/mcp_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/capabilities/plugin_capability.dart';
 import '../registry/capabilities/provider_capability.dart';
@@ -22,6 +23,7 @@ import 'capabilities/acp.dart';
 import 'capabilities/acp_settings.dart';
 import 'capabilities/defaults.dart';
 import 'capabilities/executable.dart';
+import 'capabilities/mcp.dart';
 import 'capabilities/plugin.dart';
 import 'capabilities/provider.dart';
 import 'capabilities/session.dart';
@@ -42,6 +44,7 @@ final class AntigravityCliTool implements CliToolDefinition {
     this.chatInteraction = const AntigravityChatInteraction(),
     this.runtimeEvents = const AntigravityChatInteraction(),
     this.skill = const DefaultSkillCapability(),
+    this.mcp = const AntigravityMcpCapability(),
     this.userExtraArgs = const UserExtraArgsProvider(),
     this.workspaceBaseInfo = const AntigravityWorkspaceBaseInfo(),
     this.launchSecurity = const AcpAskFullAccessCliLaunchSecurityCapability(),
@@ -60,6 +63,7 @@ final class AntigravityCliTool implements CliToolDefinition {
   final ChatInteractionCapability chatInteraction;
   final RuntimeEventCapability runtimeEvents;
   final SkillCapability skill;
+  final McpCapability mcp;
   final UserExtraArgsProvider userExtraArgs;
   final WorkspaceBaseInfoCapability workspaceBaseInfo;
   final CliLaunchSecurityCapability launchSecurity;
@@ -85,6 +89,7 @@ final class AntigravityCliTool implements CliToolDefinition {
     chatInteraction,
     runtimeEvents,
     skill,
+    mcp,
     userExtraArgs,
     workspaceBaseInfo,
     launchSecurity,

@@ -34,7 +34,7 @@ void main() {
       registry.capability<HeadlessCapability>(CliTool.antigravity),
       isNull,
     );
-    expect(registry.capability<McpCapability>(CliTool.antigravity), isNull);
+    expect(registry.capability<McpCapability>(CliTool.antigravity), isNotNull);
 
     final acpSettings = registry.capability<AcpSettingsCapability>(
       CliTool.antigravity,
