@@ -4001,3 +4001,80 @@ Also:
    - legacy carry-over: a provider with no owner entry plus
      `existingValues: {'apiKey': 'legacy'}` and `secretValues: {'secretKey': 'new'}`
      produces an entry containing both fields.
+
+---
+
+## Execution Amendment — Task 9 corrections (2026-11-02)
+
+Task 9's original snippets had four Important gaps found in review. Where they differ, this amendment governs.
+
+1. **Reads must never throw on a locked/unavailable vault.** In `readStored`, wrap the pointer lookup and entry read in `try/on Object { /* fall through to legacy */ }`. In `_migrateLegacyTokenToVault`, return immediately when `!_vault.isUnlocked` (a read must not prompt), and log failures:
+
+```dart
+  Future<void> _migrateLegacyTokenToVault(String token) async {
+    final capture = _vaultCapture;
+    final vault = _vault;
+    if (capture == null || vault == null || !vault.isUnlocked) return;
+    try {
+      final login = await _kv.read(_loginKey) ?? '';
+      final source = await _kv.read(_sourceKey) ?? '';
+      final result = await capture.captureGithub(
+        token: token,
+        login: login,
+        source: source,
+      );
+      await _kv.write(_vaultEntryKey, result.entryId);
+    } on Object catch (error, stackTrace) {
+      AppLogger.instance.w(
+        '[vault] github migration deferred: ${error.runtimeType}',
+        stackTrace: stackTrace,
+      );
+    }
+  }
+```
+
+2. **Pointer-write rollback.** In `_captureVault`, if writing the pointer fails after a successful capture, roll the capture back and rethrow:
+
+```dart
+    final result = await capture.captureGithub(
+      token: token,
+      login: login,
+      source: source,
+    );
+    try {
+      await _kv.write(_vaultEntryKey, result.entryId);
+    } on Object {
+      await capture.rollback(result);
+      rethrow;
+    }
+    await _clearLegacy();
+```
+
+3. **Denied save/clear must surface, not crash.** In `GithubAccountCubit`:
+
+```dart
+  static const _vaultLockedMessage =
+      'Unlock the credential vault to change GitHub credentials.';
+```
+
+- `savePat`: wrap the store call in `try/on VaultSaveBlockedException { emit(state.copyWith(status: GithubAccountStatus.disconnected, errorMessage: _vaultLockedMessage, clearUserCode: true, clearVerificationUri: true)); return; }`.
+- `_clearStoredAndDisconnect`: same guard; on block, emit the current connected state with `errorMessage: _vaultLockedMessage` and return (do not fake a disconnect).
+- `onUnauthorized`: catch the blocked exception and still emit `disconnected` (the token is invalid in memory) while leaving the vault entry for later cleanup.
+
+4. **Tests must prove the invariants.** In the store test, keep the KV instance in a local and assert `_tokenKey`/`_loginKey`/`_sourceKey` are absent after a vault save; add:
+   - dangling pointer (`pointer -> missing entry`) falls back to legacy;
+   - refused unlock leaves the legacy keys untouched.
+   Add cubit tests: blocked `savePat` emits an error and stays unauthenticated; blocked `disconnect` keeps `connected` with an error.
+
+5. **Pointer-aware legacy migration.** `migrateLegacyHubPublishTokenIfNeeded` returns early when `_vaultEntryKey` already points at an entry, so a stale legacy token never overwrites newer vault credentials.
+
+6. **Constructor guard.** Add `assert(vaultCapture == null || vault != null)` to the constructor doc/initializer; a capture without a vault cannot read or clear its pointer.
+
+7. **Task 12 rehydration.** Wire `onUnlocked` to rehydrate GitHub after the import:
+
+```dart
+    onUnlocked: () async {
+      await legacyImporter.runOnce();
+      await githubAccountCubit.hydrate();
+    },
+```
