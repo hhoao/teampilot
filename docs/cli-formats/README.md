@@ -1,7 +1,7 @@
 # CLI 格式参考库
 
-**日期:** 2026-08-12
-**状态:** 完成（5 页全部落地，Task 7 收尾校验通过）
+**日期:** 2026-08-12（2026-11-02 增补 Antigravity ACP-only 页）
+**状态:** 完成（5 个 PTY/transcript CLI + 1 个 ACP-only CLI 页面全部落地）
 
 各 CLI 原生 transcript 的消息格式与工具调用格式参考。统一解析体系设计见
 [docs/superpowers/specs/2026-08-12-cli-parsing-unification-design.md](../superpowers/specs/2026-08-12-cli-parsing-unification-design.md)；
@@ -16,6 +16,7 @@
 | opencode | `$XDG_DATA_HOME/opencode/opencode.db`（实测 `~/.local/share/opencode/opencode.db`；TeamPilot 会话为 `{runtime}/opencode/opencode.db`，走 `OPENCODE_DB`） | SQLite(WAL) | [opencode.md](opencode.md) | `services/cli/opencode/capabilities/history/ai_transcript.dart` | 有（`lineAppend=null`；sqlite 增量 locate `id>afterMessageId` + liveCacheToken store 级指纹） | 完成 |
 | cursor | `{configDir}/projects/{project}/agent-transcripts/{chatId}/{chatId}.jsonl`（亦支持扁平 `agent-transcripts/{chatId}.jsonl`；configDir = `$CURSOR_CONFIG_DIR`，缺省 `$HOME/.cursor`） | JSONL | [cursor.md](cursor.md) | `services/cli/cursor/capabilities/history/ai_transcript.dart` | 有（lineAppend 非空；tailFallbackPrefix=`cursor`；resolveParentTranscriptPath + path liveCacheToken） | 完成 |
 | flashskyai | `~/.flashskyai/projects/{bucket}/{id}.jsonl`（实测 `projects/`；`layoutSegments: ['projects','workspaces']` 双探针，`workspaces` 为旧布局回退） | JSONL | [flashskyai.md](flashskyai.md) | `services/cli/flashskyai/capabilities/history/ai_transcript.dart` | 有（lineAppend 非空，复用 `appendClaudeJsonlEvent`；tailFallbackPrefix=`flashskyai`） | 完成 |
+| antigravity | 应用自有 `acp-transcript.jsonl`（ACP-only，不解析 CLI 原生 `~/.gemini/antigravity-cli/brain/<id>/…/transcript.jsonl`） | JSONL（app-owned） | [antigravity.md](antigravity.md) | `services/cli/antigravity/capabilities/history/ai_history_capability.dart`（stub；仅 tool-call resolvers 生效） | 无（`lineAppend=null`、`locate=null`；ACP `session/load` 回放权威） | 完成（Phase 1 ACP-only） |
 
 > 注：位置列与各 CLI 页面「Transcript 存储」表语义一致（token 写法以各页定义为准，如 claude/flashskyai 的 `{root}` = CLI config 目录对应的 transcript roots）；
 > 「增量能力」= 该 CLI 的 `AiHistoryCapability.lineAppend` 是否非空（opencode 走 sqlite 增量 locate，机制见 [opencode.md](opencode.md)）。

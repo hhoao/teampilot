@@ -1,6 +1,6 @@
 # CLI Architecture
 
-TeamPilot 支持多个 CLI 工具（Claude Code、Cursor、Codex、OpenCode、FlashskyAI、Gemini、CodeBuddy）。本文档定义 CLI 代码的组织规范、能力接口模式、以及新增 CLI 的完整流程。
+TeamPilot 支持多个 CLI 工具（Claude Code、Cursor、Codex、OpenCode、FlashskyAI、Gemini、CodeBuddy、Antigravity）。其中 Antigravity 是 **ACP-only**（无 PTY），能力形状见 [cli-formats/antigravity.md](cli-formats/antigravity.md)。本文档定义 CLI 代码的组织规范、能力接口模式、以及新增 CLI 的完整流程。
 
 ## 目录结构
 
@@ -254,17 +254,17 @@ tool 列表。
 
 | 能力 | 说明 |
 |------|------|
-| `SkillCapability` | Skill 目标物化；当前五个内置可启动 CLI 均注册（claude/flashskyai 使用共享 `DefaultSkillCapability`） |
-| `McpCapability` | MCP 目标写入；当前五个内置可启动 CLI 均注册（claude/flashskyai 共用 `FlashskyaiMcpCapability`） |
-| `HookCapability` | Hook 目标渲染；当前五个内置可启动 CLI 均注册（claude/flashskyai 共用 `ClaudeFamilyHookWriter`） |
+| `SkillCapability` | Skill 目标物化；全部内置可启动 CLI 均注册（claude/flashskyai/antigravity 使用共享 `DefaultSkillCapability`） |
+| `McpCapability` | MCP 目标写入；全部内置可启动 CLI 均注册（claude/flashskyai 共用 `FlashskyaiMcpCapability`；antigravity 用 `AntigravityMcpCapability` → `mcp_config.json`） |
+| `HookCapability` | Hook 目标渲染；全部内置可启动 CLI 均注册（claude/flashskyai 共用 `ClaudeFamilyHookWriter`；antigravity 用 6 事件的 `AntigravityHookWriter`） |
 | `PromptCapability` | Prompt 目标物化；`PromptContributionProvider → PromptAssembler → materialize(document)`，staged launch 经 `CliResourceProvisioner` 编排，`PromptHubService` 仅作兼容 facade |
 | `HeadlessCapability` | 无头运行（一次性调用 + 供给） |
 | `AiHistoryCapability` | transcript 定位/解析、会话恢复、tool call 解析器 |
 | `TerminalObservationContributor` | 可选；在 `CliToolDefinition.capabilities` 上用 `is` 扫描。PTY detect/scan/listen 注册到 `TerminalObservationBus`。`TerminalLaunchController` 中禁止 `if (cli == …)` |
-| `AcpCapability` | ACP spawn argv / env / translator. Optional. Claude/Codex use a separate adapter binary; Cursor/OpenCode/Gemini/CodeBuddy pass `cli acp` / `--acp`. |
-| `CliTransportCapability` | `supported: Set<CliTransport>` (`pty` / `acp`) + derived `defaultTransport` / `acpOnly`. ACP membership must match `AcpCapability` (asserted at registry build). Gemini/CodeBuddy declare `{acp}`; session create and compose read `CliToolRegistry.launchesAcpOnly` instead of comparing `CliTool` values. |
+| `AcpCapability` | ACP spawn argv / env / translator. Optional. Claude/Codex/Antigravity use a separate adapter binary (`AntigravityAcpCapability` → `agy_acp_server.par`); Cursor/OpenCode/Gemini/CodeBuddy pass `cli acp` / `--acp`. |
+| `CliTransportCapability` | `supported: Set<CliTransport>` (`pty` / `acp`) + derived `defaultTransport` / `acpOnly`. ACP membership must match `AcpCapability` (asserted at registry build). Gemini/CodeBuddy/Antigravity declare `{acp}`（Antigravity 是 ACP-only：`launchesAcpOnly` 为 true）；session create 与 compose 读 `CliToolRegistry.launchesAcpOnly`，不比较 `CliTool` 值。 |
 | `InteractiveCliLoginCapability` | Provider sign-in that only exists in the CLI's TUI (CodeBuddy `/login`): the credential bar opens the capability-built terminal dialog, then records completion. |
-| `AcpSettingsCapability` | Settings extras: `usesSeparateAdapter` / `adapterExecutableName` / `adapterInstaller`。个人 ACP 开关不在这里——由 `CliTransportCapability.canChooseTransport`（同时声明 pty+acp）派生；ACP-only CLI 没有可选项。 |
+| `AcpSettingsCapability` | Settings extras: `usesSeparateAdapter` / `adapterExecutableName` / `adapterInstaller`。个人 ACP 开关不在这里——由 `CliTransportCapability.canChooseTransport`（同时声明 pty+acp）派生；ACP-only CLI 没有可选项。Antigravity 声明 `usesSeparateAdapter: true` + 置顶 `agy_acp_server` 安装器。 |
 | 团队能力细分 | `TeamBehaviorCapability.supportsNativeTeam`（仅 claude、flashskyai）、`agentPresetStyle`（agent 预设） |
 
 Boot discovery locates separate adapters via `AcpAdapterDiscovery`; Settings must not `if (cli == …)`.
@@ -570,8 +570,8 @@ Provider 返回不可变语义片段 `CliLaunchArgContribution`，而不是修�
 - `exclusiveGroup`：互斥选择（例如 resume 与 fixed session、权限模式）。
 
 Provider 可以在语义未启用时返回空结果。是否存在某个 Provider 由实际的 CLI definition
-注册决定，不能因为其他 CLI 支持同一语义就假定它也存在。当前五个内置可启动 CLI 的
-注册形状如下：
+注册决定，不能因为其他 CLI 支持同一语义就假定它也存在。当前内置可启动 CLI 的
+注册形状如下（Antigravity 为 ACP-only，只有会话/工作区/模型/权限等 ACP 侧语义，不注册终端身份 Provider）：
 
 | CLI | 已注册的启动 Provider 语义 |
 |-----|----------------------------|
@@ -580,6 +580,7 @@ Provider 可以在语义未启用时返回空结果。是否存在某个 Provide
 | Codex | 会话、工作区（`WorkspaceBaseInfoCapability`）、模型、权限、用户额外参数；不注册原生团队身份 Provider |
 | Cursor | 团队行为、会话、工作区（`WorkspaceBaseInfoCapability`）、模型、权限、用户额外参数 |
 | OpenCode | 会话、用户额外参数；始终带 `--standalone`；TUI 的模型/agent 写入 `opencode.json` 的 `model` / `default_agent`（v2 TUI 无 `--model`/`--agent`）；`opencode run` 仍带这些 flag；官方二进制在 `~/.opencode/bin`；`WorkspaceBaseInfoCapability` argv 为空，外部目录走 `permissions` 的 `external_directory` 规则 |
+| Antigravity（ACP-only） | ACP spawn（`agy_acp_server`）、会话/隔离 HOME、工作区（`WorkspaceBaseInfoCapability`）、模型、权限、提示词（`rules/teampilot.md`）、用户额外参数；无 PTY / 原生团队 Provider |
 
 新增 CLI 时，先在该 CLI 的 `capabilities/` 中实现它实际支持的 Provider，再把实例按
 稳定语义顺序放入 `{cli_name}_tool.dart` 的 `capabilities` 列表。不要在测试或调用方为

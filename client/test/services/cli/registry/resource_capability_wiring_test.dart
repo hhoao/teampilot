@@ -12,12 +12,8 @@ import 'package:teampilot/services/resource/providers/skill_contribution_provide
 import 'package:teampilot/services/resource/resource_provider_set.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 
-/// Temporary vertical-slice skip: Tasks 11/13/16 add Antigravity's prompt,
-/// MCP, hook, and skill targets. Gemini/CodeBuddy stay covered.
-Iterable<CliToolDefinition> _ptyLaunchable(CliToolRegistry registry) =>
-    registry.launchable.where(
-      (definition) => definition.id != CliTool.antigravity,
-    );
+Iterable<CliToolDefinition> _launchable(CliToolRegistry registry) =>
+    registry.launchable;
 
 Set<String> _expectedPromptProviderIds(CliTool cli) {
   return {cli.value, workspaceBaseInfoProviderId};
@@ -27,7 +23,7 @@ void main() {
   test('every launchable CLI wires all resource target capabilities', () {
     final registry = CliToolRegistry.builtIn();
 
-    for (final definition in _ptyLaunchable(registry)) {
+    for (final definition in _launchable(registry)) {
       final cli = definition.id;
       expect(
         registry.capability<PromptCapability>(cli),
@@ -57,7 +53,7 @@ void main() {
     () {
       final registry = CliToolRegistry.builtIn();
 
-      for (final definition in _ptyLaunchable(registry)) {
+      for (final definition in _launchable(registry)) {
         final providers = registry
             .providersOf<PromptContributionProvider>(definition.id)
             .toList();
@@ -86,7 +82,7 @@ void main() {
     () {
       final registry = CliToolRegistry.builtIn();
 
-      for (final definition in _ptyLaunchable(registry)) {
+      for (final definition in _launchable(registry)) {
         final set = ResourceProviderSet.fromRegistryAndInjected(
           cli: definition.id,
           registry: registry,
