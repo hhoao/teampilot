@@ -201,12 +201,12 @@ class LlmProviderEditPage extends StatelessWidget {
                 onCancel: () =>
                     context.go(llmProviderConfigRoute(cli, provider.id)),
                 onSaved: (draft) async {
-                  await saveExistingAppProvider(
+                  final saved = await saveExistingAppProvider(
                     context,
                     provider,
                     draft: draft,
                   );
-                  if (!context.mounted) return;
+                  if (!context.mounted || !saved) return;
                   context.go(llmProviderConfigRoute(cli, provider.id));
                 },
               ),

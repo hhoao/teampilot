@@ -407,6 +407,45 @@ void main() {
     expect(saved.apiKey, 'resolved-in-memory');
     expect(await vault.list(), isEmpty);
     expect(prompts, 0);
+
+    const unlinked = AppProviderConfig(
+      id: 'unlinked',
+      cli: CliTool.claude,
+      name: 'Unlinked',
+      apiKey: 'plain',
+    );
+    expect(await autoCubit.upsertProvider(unlinked), isTrue);
+    final persisted = autoCubit.state.providersFor(CliTool.claude)
+        .firstWhere((p) => p.id == 'unlinked');
+    expect(persisted.apiKey, 'plain');
+    expect(await vault.list(), isEmpty);
+    expect(prompts, 0);
+  });
+
+  test('dropping a managed link never persists the resolved key', () async {
+    final vault = await _vaultService();
+    final autoCubit = AppProviderCubit(
+      repository: repository,
+      basePath: temp.path,
+      storage: fakeHomeStorage(),
+      vaultCapture: VaultCredentialCapture(vault: vault),
+      ensureVaultUnlocked: () async => true,
+    );
+    addTearDown(autoCubit.close);
+    await autoCubit.load();
+
+    const linked = AppProviderConfig(
+      id: 'linked',
+      cli: CliTool.claude,
+      name: 'Linked',
+      credentialLink: 'm1',
+    );
+    await autoCubit.upsertProvider(linked);
+    final resolved = linked.copyWith(apiKey: 'resolved', credentialLink: '');
+    await autoCubit.upsertProvider(resolved);
+    final saved = autoCubit.state.providersFor(CliTool.claude)
+        .firstWhere((p) => p.id == 'linked');
+    expect(saved.apiKey, isEmpty);
   });
 
   test('same provider id in two CLIs keeps separate vault entries', () async {

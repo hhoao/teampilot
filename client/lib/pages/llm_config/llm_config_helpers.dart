@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
+import '../../widgets/app_toast/app_toast.dart';
 import 'package:shared_ui/shared_ui.dart';
 
 Future<String?> saveNewAppProvider(
@@ -28,20 +29,41 @@ Future<String?> saveNewAppProvider(
       : AppProviderCubit.uniqueId(baseId, existing.map((p) => p.id));
   final provider = draft.copyWith(id: id, name: draft.name.trim());
 
-  await appCubit.upsertProvider(provider, captureVaultCredentials: true);
+  final saved = await appCubit.upsertProvider(
+    provider,
+    captureVaultCredentials: true,
+  );
+  if (!saved) {
+    if (context.mounted) {
+      AppToast.show(
+        context,
+        message: context.l10n.vaultLockedSaveBlocked,
+        variant: TpToastVariant.error,
+      );
+    }
+    return null;
+  }
   return id;
 }
 
-Future<void> saveExistingAppProvider(
+Future<bool> saveExistingAppProvider(
   BuildContext context,
   AppProviderConfig existing, {
   required AppProviderConfig draft,
 }) async {
   final appCubit = context.read<AppProviderCubit>();
-  await appCubit.upsertProvider(
+  final saved = await appCubit.upsertProvider(
     draft.copyWith(id: existing.id, cli: existing.cli),
     captureVaultCredentials: true,
   );
+  if (!saved && context.mounted) {
+    AppToast.show(
+      context,
+      message: context.l10n.vaultLockedSaveBlocked,
+      variant: TpToastVariant.error,
+    );
+  }
+  return saved;
 }
 
 Future<void> confirmDeleteAppProvider(BuildContext context, String id) async {
