@@ -66,13 +66,21 @@ class HostAutomationCommandRunner implements AutomationCommandRunner {
     required Workspace? Function(String workspaceId) workspaceById,
     required RunTargetResolver resolver,
     required ProcessRunExecutor executor,
+    bool Function()? isWindows,
+    this.timeoutGrace = const Duration(seconds: 5),
   }) : _workspaceById = workspaceById,
        _resolver = resolver,
-       _executor = executor;
+       _executor = executor,
+       _isWindows = isWindows ?? (() => Platform.isWindows);
 
   final Workspace? Function(String workspaceId) _workspaceById;
   final RunTargetResolver _resolver;
   final ProcessRunExecutor _executor;
+  final bool Function() _isWindows;
+
+  /// Extra time past `timeoutSeconds` allowed for start/stop to settle before
+  /// the whole invocation is abandoned as timed out.
+  final Duration timeoutGrace;
 
   @override
   Future<AutomationCommandOutcome> run(AutomationCommandRequest request) async {
@@ -88,7 +96,72 @@ class HostAutomationCommandRunner implements AutomationCommandRunner {
     final stdout = AutomationTailBuffer(maxBytes: request.outputTailBytes);
     final stderr = AutomationTailBuffer(maxBytes: request.outputTailBytes);
     final watch = Stopwatch()..start();
+    ProcessRunResult? started;
+    final deadline = Completer<AutomationCommandOutcome>();
+    final timer = Timer(
+      Duration(seconds: request.timeoutSeconds) + timeoutGrace,
+      () {
+        if (deadline.isCompleted) return;
+        // The runner invocation may be stuck in start() or stop(); do not wait
+        // for it. Kill best-effort and report a terminal timeout so the
+        // executor's serial queue always drains.
+        final result = started;
+        if (result != null) unawaited(_stopQuietly(result));
+        deadline.complete(
+          AutomationCommandOutcome(
+            stdoutTail: stdout.text,
+            stderrTail: stderr.text,
+            truncated: stdout.truncated || stderr.truncated,
+            timedOut: true,
+            durationMs: watch.elapsedMilliseconds,
+          ),
+        );
+      },
+    );
 
+    unawaited(() async {
+      AutomationCommandOutcome outcome;
+      try {
+        outcome = await _execute(
+          request,
+          folder,
+          stdout: stdout,
+          stderr: stderr,
+          watch: watch,
+          onStarted: (result) {
+            started = result;
+            if (deadline.isCompleted) {
+              // The overall deadline fired while `start()` was still in
+              // flight; kill the process that appeared late.
+              unawaited(_stopQuietly(result));
+              return false;
+            }
+            return true;
+          },
+        );
+      } on Object {
+        outcome = AutomationCommandOutcome(
+          stdoutTail: stdout.text,
+          stderrTail: stderr.text,
+          truncated: stdout.truncated || stderr.truncated,
+          durationMs: watch.elapsedMilliseconds,
+          error: 'runner_failed',
+        );
+      }
+      if (!deadline.isCompleted) deadline.complete(outcome);
+    }());
+
+    return deadline.future.whenComplete(timer.cancel);
+  }
+
+  Future<AutomationCommandOutcome> _execute(
+    AutomationCommandRequest request,
+    WorkspaceFolder folder, {
+    required AutomationTailBuffer stdout,
+    required AutomationTailBuffer stderr,
+    required Stopwatch watch,
+    required bool Function(ProcessRunResult) onStarted,
+  }) async {
     RuntimeKind? targetKind;
     final ProcessRunResult result;
     try {
@@ -97,16 +170,17 @@ class HostAutomationCommandRunner implements AutomationCommandRunner {
         cwd: request.workingDirectoryPath,
       );
       targetKind = plan.runtimeTarget.kind;
-      // SSH/Termux ignore `shell` and build an argv from (command, args), so a
-      // raw shell line would be quoted as an executable name. Run it through
-      // `sh -c` instead; local/WSL keep the shell flag.
-      final remote = usesSshTransport(targetKind);
+      // Never use ProcessRunExecutor's `shell:` flag for the command line:
+      // `runInShell` passes the whole string as one argv element, so shell
+      // syntax (`&&`, pipes) would be treated as an executable name. Always
+      // invoke a shell explicitly with the line as a single argument.
+      final invocation = _invocationFor(targetKind, request.command);
       result = await _executor.start(
         sessionId: 'automation:${request.workspaceId}',
-        command: remote ? 'sh' : request.command,
-        args: remote ? ['-c', request.command] : const [],
+        command: invocation.command,
+        args: invocation.args,
         plan: plan,
-        shell: !remote,
+        shell: false,
         onOutput: (output) {
           if (output.category == 'stderr') {
             stderr.add(output.data);
@@ -115,6 +189,17 @@ class HostAutomationCommandRunner implements AutomationCommandRunner {
           }
         },
       );
+      if (!onStarted(result)) {
+        // The whole invocation was abandoned while spawning; the process has
+        // already been killed and the deadline has produced the outcome.
+        return AutomationCommandOutcome(
+          stdoutTail: stdout.text,
+          stderrTail: stderr.text,
+          truncated: stdout.truncated || stderr.truncated,
+          timedOut: true,
+          durationMs: watch.elapsedMilliseconds,
+        );
+      }
     } on Object {
       final kind = targetKind;
       return AutomationCommandOutcome(
@@ -125,34 +210,88 @@ class HostAutomationCommandRunner implements AutomationCommandRunner {
       );
     }
 
-    final exitCode = await _awaitExit(result, request.timeoutSeconds);
-    if (exitCode == null) {
-      await result.stop();
+    final exit = await _awaitExit(result, request.timeoutSeconds, targetKind);
+    if (exit.error != null) {
+      unawaited(_stopQuietly(result));
+      watch.stop();
+      return AutomationCommandOutcome(
+        stdoutTail: stdout.text,
+        stderrTail: stderr.text,
+        truncated: stdout.truncated || stderr.truncated,
+        durationMs: watch.elapsedMilliseconds,
+        error: exit.error,
+      );
+    }
+    if (exit.exitCode == null) {
+      await _stopQuietly(result);
     } else {
       await _awaitOutputClosed(result);
     }
     watch.stop();
 
     return AutomationCommandOutcome(
-      exitCode: exitCode,
+      exitCode: exit.exitCode,
       stdoutTail: stdout.text,
       stderrTail: stderr.text,
       truncated: stdout.truncated || stderr.truncated,
-      timedOut: exitCode == null,
+      timedOut: exit.exitCode == null,
       durationMs: watch.elapsedMilliseconds,
     );
   }
 
-  /// Returns the exit code, or `null` when the timeout fires first.
-  Future<int?> _awaitExit(ProcessRunResult result, int timeoutSeconds) {
-    final completer = Completer<int?>();
+  /// Shell invocation for one command line on [kind].
+  ///
+  /// Local POSIX and WSL get `sh -c`; Windows local gets `cmd.exe /c`. SSH and
+  /// Termux are wrapped by [ProcessRunExecutor] into a remote shell string, so
+  /// `sh -c` keeps the line intact as a single argument.
+  ({String command, List<String> args}) _invocationFor(
+    RuntimeKind kind,
+    String line,
+  ) {
+    if (kind == RuntimeKind.wsl) {
+      // `ProcessRunExecutor` passes these args through to `wsl.exe` verbatim
+      // (no extra quoting), so the line stays a single `sh -c` argument.
+      return (command: 'sh', args: ['-c', line]);
+    }
+    if (usesSshTransport(kind)) {
+      return (command: 'sh', args: ['-c', line]);
+    }
+    if (_isWindows()) {
+      return (command: 'cmd.exe', args: ['/c', line]);
+    }
+    return (command: 'sh', args: ['-c', line]);
+  }
+
+  /// Returns the exit code, an error marker, or neither when timed out.
+  Future<({int? exitCode, String? error})> _awaitExit(
+    ProcessRunResult result,
+    int timeoutSeconds,
+    RuntimeKind kind,
+  ) {
+    final completer = Completer<({int? exitCode, String? error})>();
     final timer = Timer(Duration(seconds: timeoutSeconds), () {
-      if (!completer.isCompleted) completer.complete(null);
+      if (!completer.isCompleted) {
+        completer.complete((exitCode: null, error: null));
+      }
     });
     unawaited(
-      result.exitCode.then((code) {
-        if (!completer.isCompleted) completer.complete(code);
-      }),
+      result.exitCode.then(
+        (code) {
+          if (!completer.isCompleted) {
+            completer.complete((exitCode: code, error: null));
+          }
+        },
+        onError: (Object _, StackTrace __) {
+          if (!completer.isCompleted) {
+            completer.complete((
+              exitCode: null,
+              error: _unreachable(kind)
+                  ? 'target_unreachable'
+                  : 'spawn_failed',
+            ));
+          }
+        },
+      ),
     );
     return completer.future.whenComplete(timer.cancel);
   }
@@ -164,25 +303,47 @@ class HostAutomationCommandRunner implements AutomationCommandRunner {
       if (!completer.isCompleted) completer.complete();
     });
     unawaited(
-      result.outputClosed.whenComplete(() {
-        if (!completer.isCompleted) completer.complete();
-      }),
+      result.outputClosed.then(
+        (_) {
+          if (!completer.isCompleted) completer.complete();
+        },
+        onError: (Object _, StackTrace __) {
+          if (!completer.isCompleted) completer.complete();
+        },
+      ),
     );
     return completer.future.whenComplete(timer.cancel);
   }
 
-  bool _unreachable(RuntimeKind kind) =>
-      kind == RuntimeKind.ssh || kind == RuntimeKind.termux;
+  /// Best-effort stop bounded so a hung cancel cannot block the caller.
+  Future<void> _stopQuietly(ProcessRunResult result) async {
+    try {
+      await result.stop().timeout(const Duration(seconds: 2));
+    } on Object {
+      // The process is already gone or the transport is broken.
+    }
+  }
+
+  bool _unreachable(RuntimeKind kind) => usesSshTransport(kind);
 
   WorkspaceFolder? _folderFor(Workspace workspace, String? rawPath) {
     final raw = rawPath?.trim() ?? '';
     if (raw.isEmpty) {
       return workspace.folders.isEmpty ? null : workspace.folders.first;
     }
+    // Choose the most specific match: with `/repo` and `/repo/svc` on
+    // different targets, `/repo/svc` must resolve to its own folder.
+    WorkspaceFolder? best;
+    var bestLength = -1;
     for (final folder in workspace.folders) {
-      if (_isUnder(raw, folder.path)) return folder;
+      if (!_isUnder(raw, folder.path)) continue;
+      final length = folder.path.trim().length;
+      if (length > bestLength) {
+        best = folder;
+        bestLength = length;
+      }
     }
-    return null;
+    return best;
   }
 
   bool _isUnder(String child, String parent) {

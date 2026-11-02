@@ -49,6 +49,7 @@ class _RecordingExecutor extends ProcessRunExecutor {
   String? capturedCommand;
   List<String>? capturedArgs;
   bool? capturedShell;
+  RunTargetPlan? capturedPlan;
 
   @override
   Future<ProcessRunResult> start({
@@ -63,7 +64,23 @@ class _RecordingExecutor extends ProcessRunExecutor {
     capturedCommand = command;
     capturedArgs = args;
     capturedShell = shell;
+    capturedPlan = plan;
     return ProcessRunResult(exitCode: Future<int>.value(0), stop: () async {});
+  }
+}
+
+class _HangingStartExecutor extends ProcessRunExecutor {
+  @override
+  Future<ProcessRunResult> start({
+    required String sessionId,
+    required String command,
+    required List<String> args,
+    required RunTargetPlan plan,
+    Map<String, String>? env,
+    bool shell = false,
+    required void Function(ProcessRunOutput output) onOutput,
+  }) {
+    return Completer<ProcessRunResult>().future;
   }
 }
 
@@ -202,12 +219,13 @@ void main() {
     expect(executor.capturedShell, isFalse);
   });
 
-  test('runs local commands as a raw shell line', () async {
+  test('runs local POSIX commands through sh -c', () async {
     final executor = _RecordingExecutor();
     final runner = HostAutomationCommandRunner(
       workspaceById: (_) => _workspace([const WorkspaceFolder(path: '/repo')]),
       resolver: RunTargetResolver(homeTarget: () => RuntimeTarget.local()),
       executor: executor,
+      isWindows: () => false,
     );
 
     final outcome = await runner.run(
@@ -218,9 +236,210 @@ void main() {
     );
 
     expect(outcome.exitCode, 0);
-    expect(executor.capturedCommand, 'bash scripts/backup.sh');
-    expect(executor.capturedArgs, isEmpty);
-    expect(executor.capturedShell, isTrue);
+    expect(executor.capturedCommand, 'sh');
+    expect(executor.capturedArgs, ['-c', 'bash scripts/backup.sh']);
+    expect(executor.capturedShell, isFalse);
+  });
+
+  test('runs local Windows commands through cmd.exe /c', () async {
+    final executor = _RecordingExecutor();
+    final runner = HostAutomationCommandRunner(
+      workspaceById: (_) => _workspace([const WorkspaceFolder(path: '/repo')]),
+      resolver: RunTargetResolver(homeTarget: () => RuntimeTarget.local()),
+      executor: executor,
+      isWindows: () => true,
+    );
+
+    final outcome = await runner.run(
+      const AutomationCommandRequest(
+        workspaceId: 'ws1',
+        command: 'npm ci && npm run build',
+      ),
+    );
+
+    expect(outcome.exitCode, 0);
+    expect(executor.capturedCommand, 'cmd.exe');
+    expect(executor.capturedArgs, ['/c', 'npm ci && npm run build']);
+    expect(executor.capturedShell, isFalse);
+  });
+
+  test('WSL argv keeps the command line as one sh -c argument', () async {
+    String? spawnedExecutable;
+    List<String>? spawnedArguments;
+    final runner = HostAutomationCommandRunner(
+      workspaceById: (_) => _workspace([const WorkspaceFolder(path: '/repo')]),
+      resolver: _FixedPlanResolver(
+        RunTargetPlan(
+          workingDirectory: '/repo',
+          runtimeTarget: RuntimeTarget.wsl('Ubuntu'),
+          targetId: 'wsl:Ubuntu',
+          useWslPaths: true,
+        ),
+      ),
+      executor: ProcessRunExecutor(
+        spawner:
+            ({
+              required executable,
+              required arguments,
+              required workingDirectory,
+              environment,
+              runInShell = false,
+              includeParentEnvironment = true,
+            }) async {
+              spawnedExecutable = executable;
+              spawnedArguments = arguments;
+              return _FakeHandle();
+            },
+      ),
+    );
+
+    final outcome = await runner.run(
+      const AutomationCommandRequest(
+        workspaceId: 'ws1',
+        command: 'npm ci && npm run build',
+      ),
+    );
+
+    expect(outcome.exitCode, 0);
+    expect(spawnedExecutable, 'wsl.exe');
+    expect(spawnedArguments, [
+      '-d',
+      'Ubuntu',
+      '--cd',
+      '/repo',
+      'sh',
+      '-c',
+      'npm ci && npm run build',
+    ]);
+  });
+
+  test('SSH argv keeps the command line as one sh -c argument', () async {
+    String? capturedShellCommand;
+    final runner = HostAutomationCommandRunner(
+      workspaceById: (_) => _workspace([const WorkspaceFolder(path: '/repo')]),
+      resolver: _FixedPlanResolver(
+        RunTargetPlan(
+          workingDirectory: '/repo',
+          runtimeTarget: RuntimeTarget.ssh('profile-1', label: 'server'),
+          targetId: 'ssh:profile-1',
+          useWslPaths: false,
+        ),
+      ),
+      executor: ProcessRunExecutor(
+        sshSpawner: ({required sshProfileId, required shellCommand}) async {
+          capturedShellCommand = shellCommand;
+          return _FakeHandle();
+        },
+      ),
+    );
+
+    final outcome = await runner.run(
+      const AutomationCommandRequest(
+        workspaceId: 'ws1',
+        command: 'npm ci && npm run build',
+      ),
+    );
+
+    expect(outcome.exitCode, 0);
+    expect(
+      capturedShellCommand,
+      "cd '/repo' && 'sh' '-c' 'npm ci && npm run build'",
+    );
+  });
+
+  test('reports an SSH exit-code failure as target_unreachable', () async {
+    final runner = HostAutomationCommandRunner(
+      workspaceById: (_) => _workspace([const WorkspaceFolder(path: '/repo')]),
+      resolver: _FixedPlanResolver(
+        RunTargetPlan(
+          workingDirectory: '/repo',
+          runtimeTarget: RuntimeTarget.ssh('profile-1', label: 'server'),
+          targetId: 'ssh:profile-1',
+          useWslPaths: false,
+        ),
+      ),
+      executor: ProcessRunExecutor(
+        sshSpawner: ({required sshProfileId, required shellCommand}) async =>
+            _ErrorExitHandle(),
+      ),
+    );
+
+    final outcome = await runner.run(
+      const AutomationCommandRequest(workspaceId: 'ws1', command: 'make'),
+    );
+
+    expect(outcome.error, 'target_unreachable');
+    expect(outcome.status, AutomationRunStatus.dispatchFailed);
+  });
+
+  test('reports a local exit-code failure as spawn_failed', () async {
+    final runner = HostAutomationCommandRunner(
+      workspaceById: (_) => _workspace([const WorkspaceFolder(path: '/repo')]),
+      resolver: RunTargetResolver(homeTarget: () => RuntimeTarget.local()),
+      executor: ProcessRunExecutor(
+        spawner:
+            ({
+              required executable,
+              required arguments,
+              required workingDirectory,
+              environment,
+              runInShell = false,
+              includeParentEnvironment = true,
+            }) async => _ErrorExitHandle(),
+      ),
+    );
+
+    final outcome = await runner.run(
+      const AutomationCommandRequest(workspaceId: 'ws1', command: 'make'),
+    );
+
+    expect(outcome.error, 'spawn_failed');
+  });
+
+  test('times out when start() never returns so the queue can drain', () async {
+    final runner = HostAutomationCommandRunner(
+      workspaceById: (_) => _workspace([const WorkspaceFolder(path: '/repo')]),
+      resolver: RunTargetResolver(homeTarget: () => RuntimeTarget.local()),
+      executor: _HangingStartExecutor(),
+      timeoutGrace: const Duration(milliseconds: 50),
+    );
+
+    final outcome = await runner
+        .run(
+          const AutomationCommandRequest(
+            workspaceId: 'ws1',
+            command: 'sleep 999',
+            timeoutSeconds: 1,
+          ),
+        )
+        .timeout(const Duration(seconds: 5));
+
+    expect(outcome.timedOut, isTrue);
+    expect(outcome.status, AutomationRunStatus.timedOut);
+  });
+
+  test('picks the longest matching folder path', () async {
+    final executor = _RecordingExecutor();
+    final runner = HostAutomationCommandRunner(
+      workspaceById: (_) => _workspace(const [
+        WorkspaceFolder(path: '/repo'),
+        WorkspaceFolder(path: '/repo/svc', targetId: 'ssh:profile-2'),
+      ]),
+      resolver: RunTargetResolver(homeTarget: () => RuntimeTarget.local()),
+      executor: executor,
+    );
+
+    final outcome = await runner.run(
+      const AutomationCommandRequest(
+        workspaceId: 'ws1',
+        command: 'make',
+        workingDirectoryPath: '/repo/svc',
+      ),
+    );
+
+    expect(outcome.exitCode, 0);
+    expect(executor.capturedPlan?.targetId, 'ssh:profile-2');
+    expect(executor.capturedPlan?.workingDirectory, '/repo/svc');
   });
 
   test('rejects a working directory outside the workspace', () async {
@@ -306,4 +525,19 @@ class _HungHandle implements ProcessRunHandle {
     killed = true;
     if (!_exit.isCompleted) _exit.complete(-1);
   }
+}
+
+/// A transport that dropped before reporting an exit status (SSH disconnect).
+class _ErrorExitHandle implements ProcessRunHandle {
+  @override
+  Future<int> get exitCode => Future<int>.error(StateError('disconnected'));
+
+  @override
+  Stream<List<int>> get stdout => const Stream.empty();
+
+  @override
+  Stream<List<int>> get stderr => const Stream.empty();
+
+  @override
+  void kill() {}
 }
